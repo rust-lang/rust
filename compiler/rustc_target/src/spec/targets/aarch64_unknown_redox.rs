@@ -1,4 +1,4 @@
-use crate::spec::{StackProbeType, Target, base};
+use crate::spec::{StackProbeType, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::redox::opts();
@@ -8,7 +8,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "aarch64-unknown-redox".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("ARM64 RedoxOS".into()),
             tier: Some(3),
             host_tools: Some(false),

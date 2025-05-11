@@ -76,16 +76,16 @@ impl_lint_pass!(MutableKeyType<'_> => [ MUTABLE_KEY_TYPE ]);
 
 impl<'tcx> LateLintPass<'tcx> for MutableKeyType<'tcx> {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
-        if let hir::ItemKind::Fn(ref sig, ..) = item.kind {
+        if let hir::ItemKind::Fn { ref sig, .. } = item.kind {
             self.check_sig(cx, item.owner_id.def_id, sig.decl);
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'tcx>) {
-        if let hir::ImplItemKind::Fn(ref sig, ..) = item.kind {
-            if trait_ref_of_method(cx, item.owner_id.def_id).is_none() {
-                self.check_sig(cx, item.owner_id.def_id, sig.decl);
-            }
+        if let hir::ImplItemKind::Fn(ref sig, ..) = item.kind
+            && trait_ref_of_method(cx, item.owner_id.def_id).is_none()
+        {
+            self.check_sig(cx, item.owner_id.def_id, sig.decl);
         }
     }
 

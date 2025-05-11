@@ -471,7 +471,6 @@ pub trait StructuralPartialEq {}
 
 pub const fn drop<T: ~const Destruct>(_: T) {}
 
-#[rustc_intrinsic_must_be_overridden]
 #[rustc_intrinsic]
 const fn const_eval_select<ARG: Tuple, F, G, RET>(
     arg: ARG,
@@ -480,7 +479,4 @@ const fn const_eval_select<ARG: Tuple, F, G, RET>(
 ) -> RET
 where
     F: const FnOnce<ARG, Output = RET>,
-    G: FnOnce<ARG, Output = RET>,
-{
-    loop {}
-}
+    G: FnOnce<ARG, Output = RET>;

@@ -73,12 +73,12 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::definitions::DisambiguatorState;
 use rustc_middle::bug;
 use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{self, dump_mir};
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::kw;
 
 pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -138,10 +138,10 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
             // If the parent capture is by-ref, then we need to apply an additional
             // deref before applying any further projections to this place.
             if parent_capture.is_by_ref() {
-                child_precise_captures.insert(0, Projection {
-                    ty: parent_capture.place.ty(),
-                    kind: ProjectionKind::Deref,
-                });
+                child_precise_captures.insert(
+                    0,
+                    Projection { ty: parent_capture.place.ty(), kind: ProjectionKind::Deref },
+                );
             }
             // If the child capture is by-ref, then we need to apply a "ref"
             // projection (i.e. `&`) at the end. But wait! We don't have that
@@ -170,7 +170,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
             // this when building the field projection in the MIR body later on.
             let mut parent_capture_ty = parent_capture.place.ty();
             parent_capture_ty = match parent_capture.info.capture_kind {
-                ty::UpvarCapture::ByValue => parent_capture_ty,
+                ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => parent_capture_ty,
                 ty::UpvarCapture::ByRef(kind) => Ty::new_ref(
                     tcx,
                     tcx.lifetimes.re_erased,
@@ -179,7 +179,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
                 ),
             };
 
-            (
+            Some((
                 FieldIdx::from_usize(child_field_idx + num_args),
                 (
                     FieldIdx::from_usize(parent_field_idx + num_args),
@@ -187,9 +187,10 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
                     peel_deref,
                     child_precise_captures,
                 ),
-            )
+            ))
         },
     )
+    .flatten()
     .collect();
 
     if coroutine_kind == ty::ClosureKind::FnOnce {
@@ -213,12 +214,21 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     let mut by_move_body = body.clone();
     MakeByMoveBody { tcx, field_remapping, by_move_coroutine_ty }.visit_body(&mut by_move_body);
 
-    // This will always be `{closure#1}`, since the original coroutine is `{closure#0}`.
-    let body_def = tcx.create_def(parent_def_id, kw::Empty, DefKind::SyntheticCoroutineBody);
+    // This path is unique since we're in a query so we'll only be called once with `parent_def_id`
+    // and this is the only location creating `SyntheticCoroutineBody`.
+    let body_def = tcx.create_def(
+        parent_def_id,
+        None,
+        DefKind::SyntheticCoroutineBody,
+        None,
+        &mut DisambiguatorState::new(),
+    );
     by_move_body.source =
         mir::MirSource::from_instance(InstanceKind::Item(body_def.def_id().to_def_id()));
     dump_mir(tcx, false, "built", &"after", &by_move_body, |_, _| Ok(()));
 
+    // Feed HIR because we try to access this body's attrs in the inliner.
+    body_def.feed_hir();
     // Inherited from the by-ref coroutine.
     body_def.codegen_fn_attrs(tcx.codegen_fn_attrs(coroutine_def_id).clone());
     body_def.coverage_attr_on(tcx.coverage_attr_on(coroutine_def_id));
@@ -313,10 +323,46 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
         self.super_place(place, context, location);
     }
 
+    fn visit_statement(&mut self, statement: &mut mir::Statement<'tcx>, location: mir::Location) {
+        // Remove fake borrows of closure captures if that capture has been
+        // replaced with a by-move version of that capture.
+        //
+        // For example, imagine we capture `Foo` in the parent and `&Foo`
+        // in the child. We will emit two fake borrows like:
+        //
+        // ```
+        //    _2 = &fake shallow (*(_1.0: &Foo));
+        //    _3 = &fake shallow (_1.0: &Foo);
+        // ```
+        //
+        // However, since this transform is responsible for replacing
+        // `_1.0: &Foo` with `_1.0: Foo`, that makes the second fake borrow
+        // obsolete, and we should replace it with a nop.
+        //
+        // As a side-note, we don't actually even care about fake borrows
+        // here at all since they're fully a MIR borrowck artifact, and we
+        // don't need to borrowck by-move MIR bodies. But it's best to preserve
+        // as much as we can between these two bodies :)
+        if let mir::StatementKind::Assign(box (_, rvalue)) = &statement.kind
+            && let mir::Rvalue::Ref(_, mir::BorrowKind::Fake(mir::FakeBorrowKind::Shallow), place) =
+                rvalue
+            && let mir::PlaceRef {
+                local: ty::CAPTURE_STRUCT_LOCAL,
+                projection: [mir::ProjectionElem::Field(idx, _)],
+            } = place.as_ref()
+            && let Some(&(_, _, true, _)) = self.field_remapping.get(&idx)
+        {
+            statement.kind = mir::StatementKind::Nop;
+        }
+
+        self.super_statement(statement, location);
+    }
+
     fn visit_local_decl(&mut self, local: mir::Local, local_decl: &mut mir::LocalDecl<'tcx>) {
         // Replace the type of the self arg.
         if local == ty::CAPTURE_STRUCT_LOCAL {
             local_decl.ty = self.by_move_coroutine_ty;
         }
+        self.super_local_decl(local, local_decl);
     }
 }

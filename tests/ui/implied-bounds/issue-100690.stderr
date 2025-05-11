@@ -6,8 +6,8 @@ LL |         real_dispatch(f)
    |         |
    |         required by a bound introduced by this call
    |
-   = note: expected a closure with arguments `(&mut UIView<'a, _>,)`
-              found a closure with arguments `(&mut UIView<'_, _>,)`
+   = note: expected a closure with signature `for<'a, 'b> fn(&'a mut UIView<'b, _>)`
+              found a closure with signature `fn(&mut UIView<'a, _>)`
 note: required by a bound in `real_dispatch`
   --> $DIR/issue-100690.rs:8:8
    |

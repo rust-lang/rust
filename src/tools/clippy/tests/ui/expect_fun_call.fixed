@@ -33,12 +33,15 @@ fn main() {
     let error_code = 123_i32;
     let with_none_and_format: Option<i32> = None;
     with_none_and_format.unwrap_or_else(|| panic!("Error {}: fake error", error_code));
+    //~^ expect_fun_call
 
     let with_none_and_as_str: Option<i32> = None;
     with_none_and_as_str.unwrap_or_else(|| panic!("Error {}: fake error", error_code));
+    //~^ expect_fun_call
 
     let with_none_and_format_with_macro: Option<i32> = None;
     with_none_and_format_with_macro.unwrap_or_else(|| panic!("Error {}: fake error", one!()));
+    //~^ expect_fun_call
 
     let with_ok: Result<(), ()> = Ok(());
     with_ok.expect("error");
@@ -49,9 +52,11 @@ fn main() {
     let error_code = 123_i32;
     let with_err_and_format: Result<(), ()> = Err(());
     with_err_and_format.unwrap_or_else(|_| panic!("Error {}: fake error", error_code));
+    //~^ expect_fun_call
 
     let with_err_and_as_str: Result<(), ()> = Err(());
     with_err_and_as_str.unwrap_or_else(|_| panic!("Error {}: fake error", error_code));
+    //~^ expect_fun_call
 
     let with_dummy_type = Foo::new();
     with_dummy_type.expect("another test string");
@@ -64,6 +69,7 @@ fn main() {
 
     //Issue #2937
     Some("foo").unwrap_or_else(|| panic!("{} {}", 1, 2));
+    //~^ expect_fun_call
 
     //Issue #2979 - this should not lint
     {
@@ -85,26 +91,35 @@ fn main() {
         }
 
         Some("foo").unwrap_or_else(|| { panic!("{}", get_string()) });
+        //~^ expect_fun_call
         Some("foo").unwrap_or_else(|| { panic!("{}", get_string()) });
+        //~^ expect_fun_call
         Some("foo").unwrap_or_else(|| { panic!("{}", get_string()) });
+        //~^ expect_fun_call
 
         Some("foo").unwrap_or_else(|| { panic!("{}", get_static_str()) });
+        //~^ expect_fun_call
         Some("foo").unwrap_or_else(|| { panic!("{}", get_non_static_str(&0).to_string()) });
+        //~^ expect_fun_call
     }
 
     //Issue #3839
     Some(true).unwrap_or_else(|| panic!("key {}, {}", 1, 2));
+    //~^ expect_fun_call
 
     //Issue #4912 - the receiver is a &Option
     {
         let opt = Some(1);
         let opt_ref = &opt;
         opt_ref.unwrap_or_else(|| panic!("{:?}", opt_ref));
+        //~^ expect_fun_call
     }
 
     let format_capture: Option<i32> = None;
     format_capture.unwrap_or_else(|| panic!("{error_code}"));
+    //~^ expect_fun_call
 
     let format_capture_and_value: Option<i32> = None;
     format_capture_and_value.unwrap_or_else(|| panic!("{error_code}, {}", 1));
+    //~^ expect_fun_call
 }

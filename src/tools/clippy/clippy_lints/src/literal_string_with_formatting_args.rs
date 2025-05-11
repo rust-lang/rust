@@ -7,6 +7,7 @@ use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Span};
 
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::mir::enclosing_mir;
 
 declare_clippy_lint! {
@@ -29,9 +30,9 @@ declare_clippy_lint! {
     /// let y = "hello";
     /// x.expect(&format!("{y:?}"));
     /// ```
-    #[clippy::version = "1.83.0"]
+    #[clippy::version = "1.85.0"]
     pub LITERAL_STRING_WITH_FORMATTING_ARGS,
-    suspicious,
+    nursery,
     "Checks if string literals have formatting arguments"
 }
 
@@ -44,15 +45,14 @@ fn emit_lint(cx: &LateContext<'_>, expr: &Expr<'_>, spans: &[(Span, Option<Strin
         let spans = spans
             .iter()
             .filter_map(|(span, name)| {
-                if let Some(name) = name {
+                if let Some(name) = name
                     // We need to check that the name is a local.
-                    if !mir
+                    && !mir
                         .var_debug_info
                         .iter()
                         .any(|local| !local.source_info.span.from_expansion() && local.name.as_str() == name)
-                    {
-                        return None;
-                    }
+                {
+                    return None;
                 }
                 Some(*span)
             })
@@ -79,9 +79,9 @@ fn emit_lint(cx: &LateContext<'_>, expr: &Expr<'_>, spans: &[(Span, Option<Strin
     }
 }
 
-impl LateLintPass<'_> for LiteralStringWithFormattingArg {
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if expr.span.from_expansion() {
+impl<'tcx> LateLintPass<'tcx> for LiteralStringWithFormattingArg {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
+        if expr.span.from_expansion() || expr.span.is_dummy() {
             return;
         }
         if let ExprKind::Lit(lit) = expr.kind {
@@ -95,6 +95,9 @@ impl LateLintPass<'_> for LiteralStringWithFormattingArg {
                 },
                 _ => return,
             };
+            if is_from_proc_macro(cx, expr) {
+                return;
+            }
             let fmt_str = symbol.as_str();
             let lo = expr.span.lo();
             let mut current = fmt_str;
@@ -124,7 +127,11 @@ impl LateLintPass<'_> for LiteralStringWithFormattingArg {
                     pos.start += diff_len;
                     pos.end += diff_len;
 
-                    let start = fmt_str[..pos.start].rfind('{').unwrap_or(pos.start);
+                    let mut start = pos.start;
+                    while start < fmt_str.len() && !fmt_str.is_char_boundary(start) {
+                        start += 1;
+                    }
+                    let start = fmt_str[..start].rfind('{').unwrap_or(start);
                     // If this is a unicode character escape, we don't want to lint.
                     if start > 1 && fmt_str[..start].ends_with("\\u") {
                         continue;

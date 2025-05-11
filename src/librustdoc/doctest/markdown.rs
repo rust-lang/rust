@@ -104,13 +104,7 @@ pub(crate) fn test(input: &Input, options: Options) -> Result<(), String> {
     };
     let codes = ErrorCodes::from(options.unstable_features.is_nightly_build());
 
-    find_testable_code(
-        &input_str,
-        &mut md_collector,
-        codes,
-        options.enable_per_target_ignores,
-        None,
-    );
+    find_testable_code(&input_str, &mut md_collector, codes, None);
 
     let mut collector = CreateRunnableDocTests::new(options.clone(), opts);
     md_collector.tests.into_iter().for_each(|t| collector.add_test(t));
@@ -122,6 +116,7 @@ pub(crate) fn test(input: &Input, options: Options) -> Result<(), String> {
         &Arc::new(Mutex::new(Vec::new())),
         standalone_tests,
         mergeable_tests,
+        None,
     );
     Ok(())
 }

@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::implements_trait;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
@@ -48,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for NoNegCompOpForPartialOrd {
         if let ExprKind::Unary(UnOp::Not, inner) = expr.kind
             && let ExprKind::Binary(ref op, left, _) = inner.kind
             && let BinOpKind::Le | BinOpKind::Ge | BinOpKind::Lt | BinOpKind::Gt = op.node
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.in_external_macro(cx.sess().source_map())
         {
             let ty = cx.typeck_results().expr_ty(left);
 

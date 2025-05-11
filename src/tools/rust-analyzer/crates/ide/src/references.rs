@@ -11,21 +11,22 @@
 
 use hir::{PathResolution, Semantics};
 use ide_db::{
+    FileId, RootDatabase,
     defs::{Definition, NameClass, NameRefClass},
     search::{ReferenceCategory, SearchScope, UsageSearchResult},
-    FileId, RootDatabase,
 };
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 use span::Edition;
 use syntax::{
-    ast::{self, HasName},
-    match_ast, AstNode,
+    AstNode,
     SyntaxKind::*,
-    SyntaxNode, TextRange, TextSize, T,
+    SyntaxNode, T, TextRange, TextSize,
+    ast::{self, HasName},
+    match_ast,
 };
 
-use crate::{highlight_related, FilePosition, HighlightedRange, NavigationTarget, TryToNav};
+use crate::{FilePosition, HighlightedRange, NavigationTarget, TryToNav, highlight_related};
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
@@ -43,13 +44,11 @@ pub struct Declaration {
 //
 // Shows all references of the item at the cursor location
 //
-// |===
-// | Editor  | Shortcut
+// | Editor  | Shortcut |
+// |---------|----------|
+// | VS Code | <kbd>Shift+Alt+F12</kbd> |
 //
-// | VS Code | kbd:[Shift+Alt+F12]
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113020670-b7c34f00-917a-11eb-8003-370ac5f2b3cb.gif[]
+// ![Find All References](https://user-images.githubusercontent.com/48062697/113020670-b7c34f00-917a-11eb-8003-370ac5f2b3cb.gif)
 pub(crate) fn find_all_refs(
     sema: &Semantics<'_, RootDatabase>,
     position: FilePosition,
@@ -69,7 +68,7 @@ pub(crate) fn find_all_refs(
                 .into_iter()
                 .map(|(file_id, refs)| {
                     (
-                        file_id.into(),
+                        file_id.file_id(sema.db),
                         refs.into_iter()
                             .map(|file_ref| (file_ref.range, file_ref.category))
                             .unique()
@@ -112,7 +111,7 @@ pub(crate) fn find_all_refs(
         Some(name) => {
             let def = match NameClass::classify(sema, &name)? {
                 NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                NameClass::PatFieldShorthand { local_def: _, field_ref } => {
+                NameClass::PatFieldShorthand { local_def: _, field_ref, adt_subst: _ } => {
                     Definition::Field(field_ref)
                 }
             };
@@ -125,11 +124,11 @@ pub(crate) fn find_all_refs(
     }
 }
 
-pub(crate) fn find_defs<'a>(
-    sema: &'a Semantics<'_, RootDatabase>,
+pub(crate) fn find_defs(
+    sema: &Semantics<'_, RootDatabase>,
     syntax: &SyntaxNode,
     offset: TextSize,
-) -> Option<impl IntoIterator<Item = Definition> + 'a> {
+) -> Option<Vec<Definition>> {
     let token = syntax.token_at_offset(offset).find(|t| {
         matches!(
             t.kind(),
@@ -156,10 +155,12 @@ pub(crate) fn find_defs<'a>(
                 let def = match name_like {
                     ast::NameLike::NameRef(name_ref) => {
                         match NameRefClass::classify(sema, &name_ref)? {
-                            NameRefClass::Definition(def) => def,
-                            NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
-                                Definition::Local(local_ref)
-                            }
+                            NameRefClass::Definition(def, _) => def,
+                            NameRefClass::FieldShorthand {
+                                local_ref,
+                                field_ref: _,
+                                adt_subst: _,
+                            } => Definition::Local(local_ref),
                             NameRefClass::ExternCrateShorthand { decl, .. } => {
                                 Definition::ExternCrateDecl(decl)
                             }
@@ -167,14 +168,14 @@ pub(crate) fn find_defs<'a>(
                     }
                     ast::NameLike::Name(name) => match NameClass::classify(sema, &name)? {
                         NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                        NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+                        NameClass::PatFieldShorthand { local_def, field_ref: _, adt_subst: _ } => {
                             Definition::Local(local_def)
                         }
                     },
                     ast::NameLike::Lifetime(lifetime) => {
                         NameRefClass::classify_lifetime(sema, &lifetime)
                             .and_then(|class| match class {
-                                NameRefClass::Definition(it) => Some(it),
+                                NameRefClass::Definition(it, _) => Some(it),
                                 _ => None,
                             })
                             .or_else(|| {
@@ -203,14 +204,14 @@ fn retain_adt_literal_usages(
                     reference
                         .name
                         .as_name_ref()
-                        .map_or(false, |name_ref| is_enum_lit_name_ref(sema, enum_, name_ref))
+                        .is_some_and(|name_ref| is_enum_lit_name_ref(sema, enum_, name_ref))
                 })
             });
             usages.references.retain(|_, it| !it.is_empty());
         }
         Definition::Adt(_) | Definition::Variant(_) => {
             refs.for_each(|it| {
-                it.retain(|reference| reference.name.as_name_ref().map_or(false, is_lit_name_ref))
+                it.retain(|reference| reference.name.as_name_ref().is_some_and(is_lit_name_ref))
             });
             usages.references.retain(|_, it| !it.is_empty());
         }
@@ -306,8 +307,10 @@ fn handle_control_flow_keywords(
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<ReferenceSearchResult> {
     let file = sema.parse_guess_edition(file_id);
-    let edition =
-        sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
+    let edition = sema
+        .attach_first_edition(file_id)
+        .map(|it| it.edition(sema.db))
+        .unwrap_or(Edition::CURRENT);
     let token = file.syntax().token_at_offset(offset).find(|t| t.kind().is_keyword(edition))?;
 
     let references = match token.kind() {
@@ -327,7 +330,7 @@ fn handle_control_flow_keywords(
             .into_iter()
             .map(|HighlightedRange { range, category }| (range, category))
             .collect();
-        (file_id.into(), ranges)
+        (file_id.file_id(sema.db), ranges)
     })
     .collect();
 
@@ -336,12 +339,12 @@ fn handle_control_flow_keywords(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
-    use ide_db::FileId;
-    use span::EditionedFileId;
+    use expect_test::{Expect, expect};
+    use hir::EditionedFileId;
+    use ide_db::{FileId, RootDatabase};
     use stdx::format_to;
 
-    use crate::{fixture, SearchScope};
+    use crate::{SearchScope, fixture};
 
     #[test]
     fn exclude_tests() {
@@ -1003,7 +1006,9 @@ pub(super) struct Foo$0 {
 
         check_with_scope(
             code,
-            Some(SearchScope::single_file(EditionedFileId::current_edition(FileId::from_raw(2)))),
+            Some(&mut |db| {
+                SearchScope::single_file(EditionedFileId::current_edition(db, FileId::from_raw(2)))
+            }),
             expect![[r#"
                 quux Function FileId(0) 19..35 26..30
 
@@ -1253,13 +1258,18 @@ impl Foo {
         );
     }
 
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         check_with_scope(ra_fixture, None, expect)
     }
 
-    fn check_with_scope(ra_fixture: &str, search_scope: Option<SearchScope>, expect: Expect) {
+    fn check_with_scope(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        search_scope: Option<&mut dyn FnMut(&RootDatabase) -> SearchScope>,
+        expect: Expect,
+    ) {
         let (analysis, pos) = fixture::position(ra_fixture);
-        let refs = analysis.find_all_refs(pos, search_scope).unwrap().unwrap();
+        let refs =
+            analysis.find_all_refs(pos, search_scope.map(|it| it(&analysis.db))).unwrap().unwrap();
 
         let mut actual = String::new();
         for mut refs in refs {

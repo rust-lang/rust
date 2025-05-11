@@ -14,49 +14,49 @@ LL |     let _: NonZero<u16> = unsafe { std::mem::transmute(int_u16) };
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `NonZero::new_unchecked(int_u16)`
 
 error: transmute from a `u32` to a `NonZero<u32>`
-  --> tests/ui/transmute_int_to_non_zero.rs:24:36
+  --> tests/ui/transmute_int_to_non_zero.rs:25:36
    |
 LL |     let _: NonZero<u32> = unsafe { std::mem::transmute(int_u32) };
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `NonZero::new_unchecked(int_u32)`
 
 error: transmute from a `u64` to a `NonZero<u64>`
-  --> tests/ui/transmute_int_to_non_zero.rs:26:36
+  --> tests/ui/transmute_int_to_non_zero.rs:28:36
    |
 LL |     let _: NonZero<u64> = unsafe { std::mem::transmute(int_u64) };
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `NonZero::new_unchecked(int_u64)`
 
 error: transmute from a `u128` to a `NonZero<u128>`
-  --> tests/ui/transmute_int_to_non_zero.rs:28:37
+  --> tests/ui/transmute_int_to_non_zero.rs:31:37
    |
 LL |     let _: NonZero<u128> = unsafe { std::mem::transmute(int_u128) };
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `NonZero::new_unchecked(int_u128)`
 
 error: transmute from a `i8` to a `NonZero<i8>`
-  --> tests/ui/transmute_int_to_non_zero.rs:31:35
+  --> tests/ui/transmute_int_to_non_zero.rs:34:35
    |
 LL |     let _: NonZero<i8> = unsafe { std::mem::transmute(int_i8) };
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `NonZero::new_unchecked(int_i8)`
 
 error: transmute from a `i16` to a `NonZero<i16>`
-  --> tests/ui/transmute_int_to_non_zero.rs:33:36
+  --> tests/ui/transmute_int_to_non_zero.rs:37:36
    |
 LL |     let _: NonZero<i16> = unsafe { std::mem::transmute(int_i16) };
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `NonZero::new_unchecked(int_i16)`
 
 error: transmute from a `i32` to a `NonZero<i32>`
-  --> tests/ui/transmute_int_to_non_zero.rs:35:36
+  --> tests/ui/transmute_int_to_non_zero.rs:40:36
    |
 LL |     let _: NonZero<i32> = unsafe { std::mem::transmute(int_i32) };
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `NonZero::new_unchecked(int_i32)`
 
 error: transmute from a `i64` to a `NonZero<i64>`
-  --> tests/ui/transmute_int_to_non_zero.rs:37:36
+  --> tests/ui/transmute_int_to_non_zero.rs:43:36
    |
 LL |     let _: NonZero<i64> = unsafe { std::mem::transmute(int_i64) };
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `NonZero::new_unchecked(int_i64)`
 
 error: transmute from a `i128` to a `NonZero<i128>`
-  --> tests/ui/transmute_int_to_non_zero.rs:39:37
+  --> tests/ui/transmute_int_to_non_zero.rs:46:37
    |
 LL |     let _: NonZero<i128> = unsafe { std::mem::transmute(int_i128) };
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `NonZero::new_unchecked(int_i128)`

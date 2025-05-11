@@ -26,6 +26,10 @@ edition).
 Not all Rust editions have corresponding changes to the Rust style. For
 instance, Rust 2015, Rust 2018, and Rust 2021 all use the same style edition.
 
+## Rust next style edition
+
+- Never break within a nullary function call `func()` or a unit literal `()`.
+
 ## Rust 2024 style edition
 
 This style guide describes the Rust 2024 style edition. The Rust 2024 style
@@ -36,17 +40,9 @@ For a full history of changes in the Rust 2024 style edition, see the git
 history of the style guide. Notable changes in the Rust 2024 style edition
 include:
 
-- [#114764](https://github.com/rust-lang/rust/pull/114764) As the last member
-  of a delimited expression, delimited expressions are generally combinable,
-  regardless of the number of members. Previously only applied with exactly
-  one member (except for closures with explicit blocks).
-- When line-breaking an assignment operator, if the left-hand side spans
-  multiple lines, use the base indentation of the last line of the left-hand
-  side to indent the right-hand side.
 - Miscellaneous `rustfmt` bugfixes.
 - Use version-sort (sort `x8`, `x16`, `x32`, `x64`, `x128` in that order).
 - Change "ASCIIbetical" sort to Unicode-aware "non-lowercase before lowercase".
-- Format single associated type `where` clauses on the same line if they fit.
 
 ## Rust 2015/2018/2021 style edition
 

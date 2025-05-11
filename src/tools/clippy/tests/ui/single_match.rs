@@ -1,3 +1,4 @@
+//@require-annotations-for-level: WARN
 #![warn(clippy::single_match)]
 #![allow(
     unused,
@@ -18,6 +19,7 @@ fn single_match() {
         },
         _ => (),
     };
+    //~^^^^^^ single_match
 
     let x = Some(1u8);
     match x {
@@ -27,12 +29,15 @@ fn single_match() {
         Some(y) => println!("{:?}", y),
         _ => (),
     }
+    //~^^^^^^^ single_match
+    //~| NOTE: you might want to preserve the comments from inside the `match`
 
     let z = (1u8, 1u8);
     match z {
         (2..=3, 7..=9) => dummy(),
         _ => {},
     };
+    //~^^^^ single_match
 
     // Not linted (pattern guards used)
     match x {
@@ -62,11 +67,13 @@ fn single_match_know_enum() {
         Some(y) => dummy(),
         None => (),
     };
+    //~^^^^ single_match
 
     match y {
         Ok(y) => dummy(),
         Err(..) => (),
     };
+    //~^^^^ single_match
 
     let c = Cow::Borrowed("");
 
@@ -74,6 +81,7 @@ fn single_match_know_enum() {
         Cow::Borrowed(..) => dummy(),
         Cow::Owned(..) => (),
     };
+    //~^^^^ single_match
 
     let z = Foo::Bar;
     // no warning
@@ -95,6 +103,7 @@ fn if_suggestion() {
         "test" => println!(),
         _ => (),
     }
+    //~^^^^ single_match
 
     #[derive(PartialEq, Eq)]
     enum Foo {
@@ -108,23 +117,27 @@ fn if_suggestion() {
         Foo::A => println!(),
         _ => (),
     }
+    //~^^^^ single_match
 
     const FOO_C: Foo = Foo::C(0);
     match x {
         FOO_C => println!(),
         _ => (),
     }
+    //~^^^^ single_match
 
     match &&x {
         Foo::A => println!(),
         _ => (),
     }
+    //~^^^^ single_match
 
     let x = &x;
     match &x {
         Foo::A => println!(),
         _ => (),
     }
+    //~^^^^ single_match
 
     enum Bar {
         A,
@@ -142,6 +155,7 @@ fn if_suggestion() {
         Bar::A => println!(),
         _ => (),
     }
+    //~^^^^ single_match
 
     // issue #7038
     struct X;
@@ -150,6 +164,7 @@ fn if_suggestion() {
         None => println!(),
         _ => (),
     };
+    //~^^^^ single_match
 }
 
 // See: issue #8282
@@ -172,18 +187,21 @@ fn ranges() {
         (Some(_), _) => {},
         (None, _) => {},
     }
+    //~^^^^ single_match
 
     // lint
     match x {
         (Some(E::V), _) => todo!(),
         (_, _) => {},
     }
+    //~^^^^ single_match
 
     // lint
     match (Some(42), Some(E::V), Some(42)) {
         (.., Some(E::V), _) => {},
         (..) => {},
     }
+    //~^^^^ single_match
 
     // Don't lint, see above.
     match (Some(E::V), Some(E::V), Some(E::V)) {
@@ -259,6 +277,7 @@ fn issue_10808(bar: Option<i32>) {
         },
         _ => {},
     }
+    //~^^^^^^^ single_match
 
     match bar {
         #[rustfmt::skip]
@@ -270,6 +289,7 @@ fn issue_10808(bar: Option<i32>) {
         },
         _ => {},
     }
+    //~^^^^^^^^^^ single_match
 }
 
 mod issue8634 {
@@ -344,6 +364,7 @@ fn issue11365() {
         Ok(Some(A)) => println!(),
         Err(_) | Ok(None | Some(_)) => {},
     }
+    //~^^^^ single_match
 
     match &Some(A) {
         Some(A | B | C) => println!(),
@@ -359,6 +380,7 @@ fn issue11365() {
         Some(A | B) => println!(),
         None | Some(_) => {},
     }
+    //~^^^^ single_match
 }
 
 fn issue12758(s: &[u8]) {
@@ -366,6 +388,7 @@ fn issue12758(s: &[u8]) {
         b"foo" => println!(),
         _ => {},
     }
+    //~^^^^ single_match
 }
 
 #[derive(Eq, PartialEq)]
@@ -379,11 +402,13 @@ fn irrefutable_match() {
         DATA => println!(),
         _ => {},
     }
+    //~^^^^ single_match
 
     match CONST_I32 {
         CONST_I32 => println!(),
         _ => {},
     }
+    //~^^^^ single_match
 
     let i = 0;
     match i {
@@ -393,32 +418,37 @@ fn irrefutable_match() {
         },
         _ => {},
     }
+    //~^^^^^^^ single_match
 
     match i {
         i => {},
         _ => {},
     }
+    //~^^^^ single_match
 
     match i {
         i => (),
         _ => (),
     }
+    //~^^^^ single_match
 
     match CONST_I32 {
         CONST_I32 => println!(),
         _ => {},
     }
+    //~^^^^ single_match
 
     let mut x = vec![1i8];
 
-    // Should not lint.
     match x.pop() {
         // bla
         Some(u) => println!("{u}"),
         // more comments!
         None => {},
     }
-    // Should not lint.
+    //~^^^^^^ single_match
+    //~| NOTE: you might want to preserve the comments from inside the `match`
+
     match x.pop() {
         // bla
         Some(u) => {
@@ -427,5 +457,49 @@ fn irrefutable_match() {
         },
         // bla
         None => {},
+    }
+    //~^^^^^^^^^ single_match
+    //~| NOTE: you might want to preserve the comments from inside the `match`
+}
+
+fn issue_14493() {
+    macro_rules! mac {
+        (some) => {
+            Some(42)
+        };
+        (any) => {
+            _
+        };
+        (str) => {
+            "foo"
+        };
+    }
+
+    match mac!(some) {
+        Some(u) => println!("{u}"),
+        _ => (),
+    }
+    //~^^^^ single_match
+
+    // When scrutinee comes from macro, do not tell that arm will always match
+    // and suggest an equality check instead.
+    match mac!(str) {
+        "foo" => println!("eq"),
+        _ => (),
+    }
+    //~^^^^ ERROR: for an equality check
+
+    // Do not lint if any match arm come from expansion
+    match Some(0) {
+        mac!(some) => println!("eq"),
+        mac!(any) => println!("neq"),
+    }
+    match Some(0) {
+        Some(42) => println!("eq"),
+        mac!(any) => println!("neq"),
+    }
+    match Some(0) {
+        mac!(some) => println!("eq"),
+        _ => println!("neq"),
     }
 }

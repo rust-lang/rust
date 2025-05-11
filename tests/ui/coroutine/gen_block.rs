@@ -14,13 +14,13 @@ fn main() {
     //[none]~^ ERROR: cannot find
 
     let _ = || yield true; //[none]~ ERROR yield syntax is experimental
-    //~^ ERROR yield syntax is experimental
+    //[none]~^ ERROR yield syntax is experimental
     //~^^ ERROR `yield` can only be used in
 
     let _ = #[coroutine] || yield true; //[none]~ ERROR yield syntax is experimental
-    //~^ ERROR `#[coroutines]` attribute is an experimental feature
-    //~^^ ERROR yield syntax is experimental
+    //~^ ERROR `#[coroutine]` attribute is an experimental feature
+    //[none]~^^ ERROR yield syntax is experimental
 
     let _ = #[coroutine] || {};
-    //~^ ERROR `#[coroutines]` attribute is an experimental feature
+    //~^ ERROR `#[coroutine]` attribute is an experimental feature
 }

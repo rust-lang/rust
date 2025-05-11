@@ -1,4 +1,3 @@
-//@ error-pattern:unwinding panics are not supported without std
 //@ needs-unwind
 //@ compile-flags: -Cpanic=unwind
 
@@ -13,3 +12,5 @@ fn handler(_info: &core::panic::PanicInfo<'_>) -> ! {
 }
 
 fn main() {}
+
+//~? ERROR unwinding panics are not supported without std

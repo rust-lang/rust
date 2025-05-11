@@ -1,6 +1,6 @@
 //! This is an implementation of a global allocator on wasm targets when
-//! emscripten is not in use. In that situation there's no actual runtime for us
-//! to lean on for allocation, so instead we provide our own!
+//! emscripten or wasi is not in use. In that situation there's no actual runtime
+//! for us to lean on for allocation, so instead we provide our own!
 //!
 //! The wasm instruction set has two instructions for getting the current
 //! amount of memory and growing the amount of memory. These instructions are the
@@ -60,10 +60,10 @@ unsafe impl GlobalAlloc for System {
 
 #[cfg(target_feature = "atomics")]
 mod lock {
-    use crate::sync::atomic::AtomicI32;
     use crate::sync::atomic::Ordering::{Acquire, Release};
+    use crate::sync::atomic::{Atomic, AtomicI32};
 
-    static LOCKED: AtomicI32 = AtomicI32::new(0);
+    static LOCKED: Atomic<i32> = AtomicI32::new(0);
 
     pub struct DropLock;
 

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `(): T` is not satisfied
-  --> $DIR/impl_trait_fallback3.rs:11:11
+  --> $DIR/impl_trait_fallback3.rs:12:11
    |
 LL | fn a() -> Foo {
    |           ^^^ the trait `T` is not implemented for `()`

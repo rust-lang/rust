@@ -1,0 +1,42 @@
+SOURCE_FILE
+  STATIC
+    STATIC_KW "static"
+    WHITESPACE " "
+    NAME
+      IDENT "C"
+  ERROR
+    L_ANGLE "<"
+  ERROR
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "i32"
+  ERROR
+    R_ANGLE ">"
+  ERROR
+    COLON ":"
+  WHITESPACE " "
+  ERROR
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "u32"
+  WHITESPACE " "
+  ERROR
+    EQ "="
+  WHITESPACE " "
+  ERROR
+    INT_NUMBER "0"
+  ERROR
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 8: missing type for `const` or `static`
+error 8: expected SEMICOLON
+error 8: expected an item
+error 12: expected an item
+error 12: expected an item
+error 13: expected an item
+error 18: expected an item
+error 19: expected an item
+error 21: expected an item
+error 22: expected an item

@@ -8,7 +8,6 @@ use std::hash::Hash;
 
 use rustc_abi::{Align, Size};
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
@@ -21,7 +20,6 @@ use super::{
     AllocBytes, AllocId, AllocKind, AllocRange, Allocation, CTFE_ALLOC_SALT, ConstAllocation,
     CtfeProvenance, FnArg, Frame, ImmTy, InterpCx, InterpResult, MPlaceTy, MemoryKind,
     Misalignment, OpTy, PlaceTy, Pointer, Provenance, RangeSet, interp_ok, throw_unsup,
-    throw_unsup_format,
 };
 
 /// Data returned by [`Machine::after_stack_pop`], and consumed by
@@ -278,6 +276,20 @@ pub trait Machine<'tcx>: Sized {
         F2::NAN
     }
 
+    /// Apply non-determinism to float operations that do not return a precise result.
+    fn apply_float_nondet(
+        _ecx: &mut InterpCx<'tcx, Self>,
+        val: ImmTy<'tcx, Self::Provenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Self::Provenance>> {
+        interp_ok(val)
+    }
+
+    /// Determines the result of `min`/`max` on floats when the arguments are equal.
+    fn equal_float_min_max<F: Float>(_ecx: &InterpCx<'tcx, Self>, a: F, _b: F) -> F {
+        // By default, we pick the left argument.
+        a
+    }
+
     /// Called before a basic block terminator is executed.
     #[inline]
     fn before_terminator(_ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
@@ -286,6 +298,9 @@ pub trait Machine<'tcx>: Sized {
 
     /// Determines the result of a `NullaryOp::UbChecks` invocation.
     fn ub_checks(_ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool>;
+
+    /// Determines the result of a `NullaryOp::ContractChecks` invocation.
+    fn contract_checks(_ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool>;
 
     /// Called when the interpreter encounters a `StatementKind::ConstEvalCounter` instruction.
     /// You can use this to detect long or endlessly running programs.
@@ -352,6 +367,19 @@ pub trait Machine<'tcx>: Sized {
         size: i64,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)>;
 
+    /// Return a "root" pointer for the given allocation: the one that is used for direct
+    /// accesses to this static/const/fn allocation, or the one returned from the heap allocator.
+    ///
+    /// Not called on `extern` or thread-local statics (those use the methods above).
+    ///
+    /// `kind` is the kind of the allocation the pointer points to; it can be `None` when
+    /// it's a global and `GLOBAL_KIND` is `None`.
+    fn adjust_alloc_root_pointer(
+        ecx: &InterpCx<'tcx, Self>,
+        ptr: Pointer,
+        kind: Option<MemoryKind<Self::MemoryKind>>,
+    ) -> InterpResult<'tcx, Pointer<Self::Provenance>>;
+
     /// Called to adjust global allocations to the Provenance and AllocExtra of this machine.
     ///
     /// If `alloc` contains pointers, then they are all pointing to globals.
@@ -366,11 +394,12 @@ pub trait Machine<'tcx>: Sized {
         alloc: &'b Allocation,
     ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>;
 
-    /// Initialize the extra state of an allocation.
+    /// Initialize the extra state of an allocation local to this machine.
     ///
-    /// This is guaranteed to be called exactly once on all allocations that are accessed by the
-    /// program.
-    fn init_alloc_extra(
+    /// This is guaranteed to be called exactly once on all allocations local to this machine.
+    /// It will not be called automatically for global allocations; `adjust_global_allocation`
+    /// has to do that itself if that is desired.
+    fn init_local_allocation(
         ecx: &InterpCx<'tcx, Self>,
         id: AllocId,
         kind: MemoryKind<Self::MemoryKind>,
@@ -378,35 +407,9 @@ pub trait Machine<'tcx>: Sized {
         align: Align,
     ) -> InterpResult<'tcx, Self::AllocExtra>;
 
-    /// Return a "root" pointer for the given allocation: the one that is used for direct
-    /// accesses to this static/const/fn allocation, or the one returned from the heap allocator.
-    ///
-    /// Not called on `extern` or thread-local statics (those use the methods above).
-    ///
-    /// `kind` is the kind of the allocation the pointer points to; it can be `None` when
-    /// it's a global and `GLOBAL_KIND` is `None`.
-    fn adjust_alloc_root_pointer(
-        ecx: &InterpCx<'tcx, Self>,
-        ptr: Pointer,
-        kind: Option<MemoryKind<Self::MemoryKind>>,
-    ) -> InterpResult<'tcx, Pointer<Self::Provenance>>;
-
-    /// Evaluate the inline assembly.
-    ///
-    /// This should take care of jumping to the next block (one of `targets`) when asm goto
-    /// is triggered, `targets[0]` when the assembly falls through, or diverge in case of
-    /// naked_asm! or `InlineAsmOptions::NORETURN` being set.
-    fn eval_inline_asm(
-        _ecx: &mut InterpCx<'tcx, Self>,
-        _template: &'tcx [InlineAsmTemplatePiece],
-        _operands: &[mir::InlineAsmOperand<'tcx>],
-        _options: InlineAsmOptions,
-        _targets: &[mir::BasicBlock],
-    ) -> InterpResult<'tcx> {
-        throw_unsup_format!("inline assembly is not supported")
-    }
-
     /// Hook for performing extra checks on a memory read access.
+    /// `ptr` will always be a pointer with the provenance in `prov` pointing to the beginning of
+    /// `range`.
     ///
     /// This will *not* be called during validation!
     ///
@@ -420,6 +423,7 @@ pub trait Machine<'tcx>: Sized {
         _tcx: TyCtxtAt<'tcx>,
         _machine: &Self,
         _alloc_extra: &Self::AllocExtra,
+        _ptr: Pointer<Option<Self::Provenance>>,
         _prov: (AllocId, Self::ProvenanceExtra),
         _range: AllocRange,
     ) -> InterpResult<'tcx> {
@@ -439,11 +443,14 @@ pub trait Machine<'tcx>: Sized {
 
     /// Hook for performing extra checks on a memory write access.
     /// This is not invoked for ZST accesses, as no write actually happens.
+    /// `ptr` will always be a pointer with the provenance in `prov` pointing to the beginning of
+    /// `range`.
     #[inline(always)]
     fn before_memory_write(
         _tcx: TyCtxtAt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
+        _ptr: Pointer<Option<Self::Provenance>>,
         _prov: (AllocId, Self::ProvenanceExtra),
         _range: AllocRange,
     ) -> InterpResult<'tcx> {
@@ -451,11 +458,14 @@ pub trait Machine<'tcx>: Sized {
     }
 
     /// Hook for performing extra operations on a memory deallocation.
+    /// `ptr` will always be a pointer with the provenance in `prov` pointing to the beginning of
+    /// the allocation.
     #[inline(always)]
     fn before_memory_deallocation(
         _tcx: TyCtxtAt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
+        _ptr: Pointer<Option<Self::Provenance>>,
         _prov: (AllocId, Self::ProvenanceExtra),
         _size: Size,
         _align: Align,
@@ -674,6 +684,13 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
     }
 
     #[inline(always)]
+    fn contract_checks(_ecx: &InterpCx<$tcx, Self>) -> InterpResult<$tcx, bool> {
+        // We can't look at `tcx.sess` here as that can differ across crates, which can lead to
+        // unsound differences in evaluating the same constant at different instantiation sites.
+        interp_ok(true)
+    }
+
+    #[inline(always)]
     fn adjust_global_allocation<'b>(
         _ecx: &InterpCx<$tcx, Self>,
         _id: AllocId,
@@ -683,7 +700,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         interp_ok(Cow::Borrowed(alloc))
     }
 
-    fn init_alloc_extra(
+    fn init_local_allocation(
         _ecx: &InterpCx<$tcx, Self>,
         _id: AllocId,
         _kind: MemoryKind<Self::MemoryKind>,

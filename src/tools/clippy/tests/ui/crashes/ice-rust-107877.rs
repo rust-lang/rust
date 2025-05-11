@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![allow(dead_code)]
 
 struct Foo;

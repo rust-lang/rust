@@ -14,6 +14,7 @@ mod clone_on_copy;
 mod clone_on_ref_ptr;
 mod cloned_instead_of_copied;
 mod collapsible_str_replace;
+mod double_ended_iterator_last;
 mod drain_collect;
 mod err_expect;
 mod expect_fun_call;
@@ -35,6 +36,7 @@ mod implicit_clone;
 mod inefficient_to_string;
 mod inspect_for_each;
 mod into_iter_on_ref;
+mod io_other_error;
 mod is_digit_ascii_radix;
 mod is_empty;
 mod iter_cloned_collect;
@@ -53,10 +55,12 @@ mod iter_with_drain;
 mod iterator_step_by_zero;
 mod join_absolute_paths;
 mod manual_c_str_literals;
+mod manual_contains;
 mod manual_inspect;
 mod manual_is_variant_and;
 mod manual_next_back;
 mod manual_ok_or;
+mod manual_repeat_n;
 mod manual_saturating_arithmetic;
 mod manual_str_repeat;
 mod manual_try_fold;
@@ -80,7 +84,6 @@ mod ok_expect;
 mod open_options;
 mod option_as_ref_cloned;
 mod option_as_ref_deref;
-mod option_map_or_err_ok;
 mod option_map_or_none;
 mod option_map_unwrap_or;
 mod or_fun_call;
@@ -93,6 +96,7 @@ mod readonly_write_lock;
 mod redundant_as_str;
 mod repeat_once;
 mod result_map_or_else_none;
+mod return_and_then;
 mod search_is_some;
 mod seek_from_current;
 mod seek_to_start_instead_of_rewind;
@@ -100,6 +104,7 @@ mod single_char_add_str;
 mod single_char_insert_string;
 mod single_char_push_string;
 mod skip_while_next;
+mod sliced_string_as_bytes;
 mod stable_sort_primitive;
 mod str_split;
 mod str_splitn;
@@ -109,7 +114,9 @@ mod suspicious_command_arg_space;
 mod suspicious_map;
 mod suspicious_splitn;
 mod suspicious_to_owned;
+mod swap_with_temporary;
 mod type_id_on_box;
+mod unbuffered_bytes;
 mod uninit_assumed_init;
 mod unit_hash;
 mod unnecessary_fallible_conversions;
@@ -129,6 +136,7 @@ mod unnecessary_to_owned;
 mod unused_enumerate_index;
 mod unwrap_expect_used;
 mod useless_asref;
+mod useless_nonzero_new_unchecked;
 mod utils;
 mod vec_resize_to_zero;
 mod verbose_file_reads;
@@ -144,11 +152,11 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty};
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
+use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, sym};
@@ -470,9 +478,6 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Because you usually call `expect()` on the `Result`
     /// directly to get a better error message.
-    ///
-    /// ### Known problems
-    /// The error type needs to implement `Debug`
     ///
     /// ### Example
     /// ```no_run
@@ -2415,14 +2420,14 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `.then_some(..).unwrap_or(..)`
+    /// Checks for unnecessary method chains that can be simplified into `if .. else ..`.
     ///
     /// ### Why is this bad?
     /// This can be written more clearly with `if .. else ..`
     ///
     /// ### Limitations
     /// This lint currently only looks for usages of
-    /// `.then_some(..).unwrap_or(..)`, but will be expanded
+    /// `.{then, then_some}(..).{unwrap_or, unwrap_or_else, unwrap_or_default}(..)`, but will be expanded
     /// to account for similar patterns.
     ///
     /// ### Example
@@ -2637,7 +2642,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.49.0"]
     pub MANUAL_OK_OR,
-    pedantic,
+    style,
     "finds patterns that can be encoded more concisely with `Option::ok_or`"
 }
 
@@ -3514,7 +3519,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.73.0"]
     pub FORMAT_COLLECT,
-    perf,
+    pedantic,
     "`format!`ing every element in a collection, then collecting the strings into a new `String`"
 }
 
@@ -3777,31 +3782,6 @@ declare_clippy_lint! {
     pub JOIN_ABSOLUTE_PATHS,
     suspicious,
     "calls to `Path::join` which will overwrite the original path"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `_.map_or(Err(_), Ok)`.
-    ///
-    /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.ok_or(_)`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let opt = Some(1);
-    /// opt.map_or(Err("error"), Ok);
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let opt = Some(1);
-    /// opt.ok_or("error");
-    /// ```
-    #[clippy::version = "1.76.0"]
-    pub OPTION_MAP_OR_ERR_OK,
-    style,
-    "using `Option.map_or(Err(_), Ok)`, which is more succinctly expressed as `Option.ok_or(_)`"
 }
 
 declare_clippy_lint! {
@@ -4284,11 +4264,278 @@ declare_clippy_lint! {
     "map of a trivial closure (not dependent on parameter) over a range"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `Iterator::last` being called on a  `DoubleEndedIterator`, which can be replaced
+    /// with `DoubleEndedIterator::next_back`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// `Iterator::last` is implemented by consuming the iterator, which is unnecessary if
+    /// the iterator is a `DoubleEndedIterator`. Since Rust traits do not allow specialization,
+    /// `Iterator::last` cannot be optimized for `DoubleEndedIterator`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let last_arg = "echo hello world".split(' ').last();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let last_arg = "echo hello world".split(' ').next_back();
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub DOUBLE_ENDED_ITERATOR_LAST,
+    perf,
+    "using `Iterator::last` on a `DoubleEndedIterator`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `NonZero*::new_unchecked()` being used in a `const` context.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Using `NonZero*::new_unchecked()` is an `unsafe` function and requires an `unsafe` context. When used in a
+    /// context evaluated at compilation time, `NonZero*::new().unwrap()` will provide the same result with identical
+    /// runtime performances while not requiring `unsafe`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::num::NonZeroUsize;
+    /// const PLAYERS: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(3) };
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::num::NonZeroUsize;
+    /// const PLAYERS: NonZeroUsize = NonZeroUsize::new(3).unwrap();
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub USELESS_NONZERO_NEW_UNCHECKED,
+    complexity,
+    "using `NonZero::new_unchecked()` in a `const` context"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `repeat().take()` that can be replaced with `repeat_n()`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Using `repeat_n()` is more concise and clearer. Also, `repeat_n()` is sometimes faster than `repeat().take()` when the type of the element is non-trivial to clone because the original value can be reused for the last `.next()` call rather than always cloning.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let _ = std::iter::repeat(10).take(3);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = std::iter::repeat_n(10, 3);
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MANUAL_REPEAT_N,
+    style,
+    "detect `repeat().take()` that can be replaced with `repeat_n()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for string slices immediately followed by `as_bytes`.
+    ///
+    /// ### Why is this bad?
+    /// It involves doing an unnecessary UTF-8 alignment check which is less efficient, and can cause a panic.
+    ///
+    /// ### Known problems
+    /// In some cases, the UTF-8 validation and potential panic from string slicing may be required for
+    /// the code's correctness. If you need to ensure the slice boundaries fall on valid UTF-8 character
+    /// boundaries, the original form (`s[1..5].as_bytes()`) should be preferred.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let s = "Lorem ipsum";
+    /// s[1..5].as_bytes();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let s = "Lorem ipsum";
+    /// &s.as_bytes()[1..5];
+    /// ```
+     #[clippy::version = "1.86.0"]
+     pub SLICED_STRING_AS_BYTES,
+     perf,
+     "slicing a string and immediately calling as_bytes is less efficient and can lead to panics"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detect functions that end with `Option::and_then` or `Result::and_then`, and suggest using
+    /// the `?` operator instead.
+    ///
+    /// ### Why is this bad?
+    /// The `and_then` method is used to chain a computation that returns an `Option` or a `Result`.
+    /// This can be replaced with the `?` operator, which is more concise and idiomatic.
+    ///
+    /// ### Example
+    ///
+    /// ```no_run
+    /// fn test(opt: Option<i32>) -> Option<i32> {
+    ///     opt.and_then(|n| {
+    ///         if n > 1 {
+    ///             Some(n + 1)
+    ///         } else {
+    ///             None
+    ///        }
+    ///     })
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn test(opt: Option<i32>) -> Option<i32> {
+    ///     let n = opt?;
+    ///     if n > 1 {
+    ///         Some(n + 1)
+    ///     } else {
+    ///         None
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub RETURN_AND_THEN,
+    restriction,
+    "using `Option::and_then` or `Result::and_then` to chain a computation that returns an `Option` or a `Result`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `Read::bytes` on types which don't implement `BufRead`.
+    ///
+    /// ### Why is this bad?
+    /// The default implementation calls `read` for each byte, which can be very inefficient for data that’s not in memory, such as `File`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::io::Read;
+    /// use std::fs::File;
+    /// let file = File::open("./bytes.txt").unwrap();
+    /// file.bytes();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::io::{BufReader, Read};
+    /// use std::fs::File;
+    /// let file = BufReader::new(std::fs::File::open("./bytes.txt").unwrap());
+    /// file.bytes();
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub UNBUFFERED_BYTES,
+    perf,
+    "calling .bytes() is very inefficient when data is not in memory"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `iter().any()` on slices when it can be replaced with `contains()` and suggests doing so.
+    ///
+    /// ### Why is this bad?
+    /// `contains()` is more concise and idiomatic, sometimes more fast.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn foo(values: &[u8]) -> bool {
+    ///     values.iter().any(|&v| v == 10)
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn foo(values: &[u8]) -> bool {
+    ///     values.contains(&10)
+    /// }
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MANUAL_CONTAINS,
+    perf,
+    "unnecessary `iter().any()` on slices that can be replaced with `contains()`"
+}
+
+declare_clippy_lint! {
+    /// This lint warns on calling `io::Error::new(..)` with a kind of
+    /// `io::ErrorKind::Other`.
+    ///
+    /// ### Why is this bad?
+    /// Since Rust 1.74, there's the `io::Error::other(_)` shortcut.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::io;
+    /// let _ = io::Error::new(io::ErrorKind::Other, "bad".to_string());
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = std::io::Error::other("bad".to_string());
+    /// ```
+    #[clippy::version = "1.87.0"]
+    pub IO_OTHER_ERROR,
+    style,
+    "calling `std::io::Error::new(std::io::ErrorKind::Other, _)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `std::mem::swap` with temporary values.
+    ///
+    /// ### Why is this bad?
+    /// Storing a new value in place of a temporary value which will
+    /// be dropped right after the `swap` is an inefficient way of performing
+    /// an assignment. The same result can be achieved by using a regular
+    /// assignment.
+    ///
+    /// ### Examples
+    /// ```no_run
+    /// fn replace_string(s: &mut String) {
+    ///     std::mem::swap(s, &mut String::from("replaced"));
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn replace_string(s: &mut String) {
+    ///     *s = String::from("replaced");
+    /// }
+    /// ```
+    ///
+    /// Also, swapping two temporary values has no effect, as they will
+    /// both be dropped right after swapping them. This is likely an indication
+    /// of a bug. For example, the following code swaps the references to
+    /// the last element of the vectors, instead of swapping the elements
+    /// themselves:
+    ///
+    /// ```no_run
+    /// fn bug(v1: &mut [i32], v2: &mut [i32]) {
+    ///     // Incorrect: swapping temporary references (`&mut &mut` passed to swap)
+    ///     std::mem::swap(&mut v1.last_mut().unwrap(), &mut v2.last_mut().unwrap());
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn correct(v1: &mut [i32], v2: &mut [i32]) {
+    ///     std::mem::swap(v1.last_mut().unwrap(), v2.last_mut().unwrap());
+    /// }
+    /// ```
+    #[clippy::version = "1.88.0"]
+    pub SWAP_WITH_TEMPORARY,
+    complexity,
+    "detect swap with a temporary value"
+}
+
+#[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
     allow_expect_in_tests: bool,
     allow_unwrap_in_tests: bool,
+    allow_expect_in_consts: bool,
+    allow_unwrap_in_consts: bool,
     allowed_dotfiles: FxHashSet<&'static str>,
     format_args: FormatArgsStorage,
 }
@@ -4300,9 +4547,11 @@ impl Methods {
 
         Self {
             avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
             allow_expect_in_tests: conf.allow_expect_in_tests,
             allow_unwrap_in_tests: conf.allow_unwrap_in_tests,
+            allow_expect_in_consts: conf.allow_expect_in_consts,
+            allow_unwrap_in_consts: conf.allow_unwrap_in_consts,
             allowed_dotfiles,
             format_args,
         }
@@ -4431,7 +4680,6 @@ impl_lint_pass!(Methods => [
     WAKER_CLONE_WAKE,
     UNNECESSARY_FALLIBLE_CONVERSIONS,
     JOIN_ABSOLUTE_PATHS,
-    OPTION_MAP_OR_ERR_OK,
     RESULT_FILTER_MAP,
     ITER_FILTER_IS_SOME,
     ITER_FILTER_IS_OK,
@@ -4449,17 +4697,27 @@ impl_lint_pass!(Methods => [
     MAP_ALL_ANY_IDENTITY,
     MAP_WITH_UNUSED_ARGUMENT_OVER_RANGES,
     UNNECESSARY_MAP_OR,
+    DOUBLE_ENDED_ITERATOR_LAST,
+    USELESS_NONZERO_NEW_UNCHECKED,
+    MANUAL_REPEAT_N,
+    SLICED_STRING_AS_BYTES,
+    RETURN_AND_THEN,
+    UNBUFFERED_BYTES,
+    MANUAL_CONTAINS,
+    IO_OTHER_ERROR,
+    SWAP_WITH_TEMPORARY,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
 pub fn method_call<'tcx>(
     recv: &'tcx Expr<'tcx>,
 ) -> Option<(&'tcx str, &'tcx Expr<'tcx>, &'tcx [Expr<'tcx>], Span, Span)> {
-    if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind {
-        if !args.iter().any(|e| e.span.from_expansion()) && !receiver.span.from_expansion() {
-            let name = path.ident.name.as_str();
-            return Some((name, receiver, args, path.ident.span, call_span));
-        }
+    if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind
+        && !args.iter().any(|e| e.span.from_expansion())
+        && !receiver.span.from_expansion()
+    {
+        let name = path.ident.name.as_str();
+        return Some((name, receiver, args, path.ident.span, call_span));
     }
     None
 }
@@ -4476,7 +4734,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ExprKind::Call(func, args) => {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
                 unnecessary_fallible_conversions::check_function(cx, expr, func);
-                manual_c_str_literals::check(cx, expr, func, args, &self.msrv);
+                manual_c_str_literals::check(cx, expr, func, args, self.msrv);
+                useless_nonzero_new_unchecked::check(cx, expr, func, args, self.msrv);
+                io_other_error::check(cx, expr, func, args, self.msrv);
+                swap_with_temporary::check(cx, expr, func, args);
             },
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
@@ -4495,7 +4756,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 inefficient_to_string::check(cx, expr, method_call.ident.name, receiver, args);
                 single_char_add_str::check(cx, expr, receiver, args);
                 into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, receiver);
-                unnecessary_to_owned::check(cx, expr, method_call.ident.name, receiver, args, &self.msrv);
+                unnecessary_to_owned::check(cx, expr, method_call.ident.name, receiver, args, self.msrv);
             },
             ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
                 let mut info = BinaryExprInfo {
@@ -4512,12 +4773,12 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
     #[allow(clippy::too_many_lines)]
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
-        if in_external_macro(cx.sess(), impl_item.span) {
+        if impl_item.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
         let name = impl_item.ident.name.as_str();
-        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
-        let item = cx.tcx.hir().expect_item(parent);
+        let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
+        let item = cx.tcx.hir_expect_item(parent);
         let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
 
         let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
@@ -4561,7 +4822,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if sig.decl.implicit_self.has_implicit_self()
                 && !(self.avoid_breaking_exported_api
                     && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id))
-                && let Some(first_arg) = iter_input_pats(sig.decl, cx.tcx.hir().body(id)).next()
+                && let Some(first_arg) = iter_input_pats(sig.decl, cx.tcx.hir_body(id)).next()
                 && let Some(first_arg_ty) = first_arg_ty_opt
             {
                 wrong_self_convention::check(
@@ -4600,7 +4861,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        if in_external_macro(cx.tcx.sess, item.span) {
+        if item.span.in_external_macro(cx.tcx.sess.source_map()) {
             return;
         }
 
@@ -4641,8 +4902,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             );
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 impl Methods {
@@ -4677,7 +4936,10 @@ impl Methods {
                     let biom_option_linted = bind_instead_of_map::check_and_then_some(cx, expr, recv, arg);
                     let biom_result_linted = bind_instead_of_map::check_and_then_ok(cx, expr, recv, arg);
                     if !biom_option_linted && !biom_result_linted {
-                        unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
+                        let ule_and_linted = unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
+                        if !ule_and_linted {
+                            return_and_then::check(cx, expr, recv, arg);
+                        }
                     }
                 },
                 ("any", [arg]) => {
@@ -4694,13 +4956,16 @@ impl Methods {
                         ),
                         Some(("chars", recv, _, _, _))
                             if let ExprKind::Closure(arg) = arg.kind
-                                && let body = cx.tcx.hir().body(arg.body)
+                                && let body = cx.tcx.hir_body(arg.body)
                                 && let [param] = body.params =>
                         {
-                            string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), &self.msrv);
+                            string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), self.msrv);
                         },
                         Some(("map", _, [map_arg], _, map_call_span)) => {
                             map_all_any_identity::check(cx, expr, recv, map_call_span, map_arg, call_span, arg, "any");
+                        },
+                        Some(("iter", iter_recv, ..)) => {
+                            manual_contains::check(cx, expr, iter_recv, arg);
                         },
                         _ => {},
                     }
@@ -4715,13 +4980,15 @@ impl Methods {
                     if let Some(("as_str", recv, [], as_str_span, _)) = method_call(recv) {
                         redundant_as_str::check(cx, expr, recv, as_str_span, span);
                     }
+                    sliced_string_as_bytes::check(cx, expr, recv);
                 },
                 ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
-                ("as_ptr", []) => manual_c_str_literals::check_as_ptr(cx, expr, recv, &self.msrv),
+                ("as_ptr", []) => manual_c_str_literals::check_as_ptr(cx, expr, recv, self.msrv),
                 ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
                 ("assume_init", []) => uninit_assumed_init::check(cx, expr, recv),
+                ("bytes", []) => unbuffered_bytes::check(cx, expr, recv),
                 ("cloned", []) => {
-                    cloned_instead_of_copied::check(cx, expr, recv, span, &self.msrv);
+                    cloned_instead_of_copied::check(cx, expr, recv, span, self.msrv);
                     option_as_ref_cloned::check(cx, recv, span);
                 },
                 ("collect", []) if is_trait_method(cx, expr, sym::Iterator) => {
@@ -4735,7 +5002,7 @@ impl Methods {
                             format_collect::check(cx, expr, m_arg, m_ident_span);
                         },
                         Some(("take", take_self_arg, [take_arg], _, _)) => {
-                            if self.msrv.meets(msrvs::STR_REPEAT) {
+                            if self.msrv.meets(cx, msrvs::STR_REPEAT) {
                                 manual_str_repeat::check(cx, expr, recv, take_self_arg, take_arg);
                             }
                         },
@@ -4772,21 +5039,22 @@ impl Methods {
                 },
                 ("ends_with", [arg]) => {
                     if let ExprKind::MethodCall(.., span) = expr.kind {
-                        case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg);
+                        case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg, self.msrv);
                     }
-                    path_ends_with_ext::check(cx, recv, arg, expr, &self.msrv, &self.allowed_dotfiles);
+                    path_ends_with_ext::check(cx, recv, arg, expr, self.msrv, &self.allowed_dotfiles);
                 },
                 ("expect", [_]) => {
                     match method_call(recv) {
                         Some(("ok", recv, [], _, _)) => ok_expect::check(cx, expr, recv),
                         Some(("err", recv, [], err_span, _)) => {
-                            err_expect::check(cx, expr, recv, span, err_span, &self.msrv);
+                            err_expect::check(cx, expr, recv, span, err_span, self.msrv);
                         },
                         _ => unwrap_expect_used::check(
                             cx,
                             expr,
                             recv,
                             false,
+                            self.allow_expect_in_consts,
                             self.allow_expect_in_tests,
                             unwrap_expect_used::Variant::Expect,
                         ),
@@ -4800,6 +5068,7 @@ impl Methods {
                         expr,
                         recv,
                         true,
+                        self.allow_expect_in_consts,
                         self.allow_expect_in_tests,
                         unwrap_expect_used::Variant::Expect,
                     );
@@ -4820,7 +5089,7 @@ impl Methods {
                             false,
                         );
                     }
-                    if self.msrv.meets(msrvs::ITER_FLATTEN) {
+                    if self.msrv.meets(cx, msrvs::ITER_FLATTEN) {
                         // use the sourcemap to get the span of the closure
                         iter_filter::check(cx, expr, arg, span);
                     }
@@ -4868,7 +5137,7 @@ impl Methods {
                     _ => {},
                 },
                 ("fold", [init, acc]) => {
-                    manual_try_fold::check(cx, expr, init, acc, call_span, &self.msrv);
+                    manual_try_fold::check(cx, expr, init, acc, call_span, self.msrv);
                     unnecessary_fold::check(cx, expr, init, acc, span);
                 },
                 ("for_each", [arg]) => {
@@ -4890,14 +5159,16 @@ impl Methods {
                     get_first::check(cx, expr, recv, arg);
                     get_last_with_len::check(cx, expr, recv, arg);
                 },
-                ("get_or_insert_with", [arg]) => unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert"),
+                ("get_or_insert_with", [arg]) => {
+                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert");
+                },
                 ("hash", [arg]) => {
                     unit_hash::check(cx, expr, recv, arg);
                 },
                 ("is_empty", []) => {
                     match method_call(recv) {
-                        Some(("as_bytes", prev_recv, [], _, _)) => {
-                            needless_as_bytes::check(cx, "is_empty", recv, prev_recv, expr.span);
+                        Some((prev_method @ ("as_bytes" | "bytes"), prev_recv, [], _, _)) => {
+                            needless_as_bytes::check(cx, prev_method, "is_empty", prev_recv, expr.span);
                         },
                         Some(("as_str", recv, [], as_str_span, _)) => {
                             redundant_as_str::check(cx, expr, recv, as_str_span, span);
@@ -4907,7 +5178,7 @@ impl Methods {
                     is_empty::check(cx, expr, recv);
                 },
                 ("is_file", []) => filetype_is_file::check(cx, expr, recv),
-                ("is_digit", [radix]) => is_digit_ascii_radix::check(cx, expr, recv, radix, &self.msrv),
+                ("is_digit", [radix]) => is_digit_ascii_radix::check(cx, expr, recv, radix, self.msrv),
                 ("is_none", []) => check_is_some_is_none(cx, expr, recv, call_span, false),
                 ("is_some", []) => check_is_some_is_none(cx, expr, recv, call_span, true),
                 ("iter" | "iter_mut" | "into_iter", []) => {
@@ -4931,10 +5202,11 @@ impl Methods {
                             false,
                         );
                     }
+                    double_ended_iterator_last::check(cx, expr, recv, call_span);
                 },
                 ("len", []) => {
-                    if let Some(("as_bytes", prev_recv, [], _, _)) = method_call(recv) {
-                        needless_as_bytes::check(cx, "len", recv, prev_recv, expr.span);
+                    if let Some((prev_method @ ("as_bytes" | "bytes"), prev_recv, [], _, _)) = method_call(recv) {
+                        needless_as_bytes::check(cx, prev_method, "len", prev_recv, expr.span);
                     }
                 },
                 ("lock", []) => {
@@ -4943,11 +5215,11 @@ impl Methods {
                 (name @ ("map" | "map_err"), [m_arg]) => {
                     if name == "map" {
                         unused_enumerate_index::check(cx, expr, recv, m_arg);
-                        map_clone::check(cx, expr, recv, m_arg, &self.msrv);
-                        map_with_unused_argument_over_ranges::check(cx, expr, recv, m_arg, &self.msrv, span);
+                        map_clone::check(cx, expr, recv, m_arg, self.msrv);
+                        map_with_unused_argument_over_ranges::check(cx, expr, recv, m_arg, self.msrv, span);
                         match method_call(recv) {
                             Some((map_name @ ("iter" | "into_iter"), recv2, _, _, _)) => {
-                                iter_kv_map::check(cx, map_name, expr, recv2, m_arg, &self.msrv);
+                                iter_kv_map::check(cx, map_name, expr, recv2, m_arg, self.msrv);
                             },
                             Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
                                 cx,
@@ -4964,8 +5236,8 @@ impl Methods {
                     }
                     if let Some((name, recv2, args, span2, _)) = method_call(recv) {
                         match (name, args) {
-                            ("as_mut", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, true, &self.msrv),
-                            ("as_ref", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, false, &self.msrv),
+                            ("as_mut", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, true, self.msrv),
+                            ("as_ref", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, false, self.msrv),
                             ("filter", [f_arg]) => {
                                 filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, false);
                             },
@@ -4976,7 +5248,7 @@ impl Methods {
                         }
                     }
                     map_identity::check(cx, expr, recv, m_arg, name, span);
-                    manual_inspect::check(cx, expr, m_arg, name, span, &self.msrv);
+                    manual_inspect::check(cx, expr, m_arg, name, span, self.msrv);
                     crate::useless_conversion::check_function_application(cx, expr, recv, m_arg);
                 },
                 ("map_break" | "map_continue", [m_arg]) => {
@@ -4985,8 +5257,7 @@ impl Methods {
                 ("map_or", [def, map]) => {
                     option_map_or_none::check(cx, expr, recv, def, map);
                     manual_ok_or::check(cx, expr, recv, def, map);
-                    option_map_or_err_ok::check(cx, expr, recv, def, map);
-                    unnecessary_map_or::check(cx, expr, recv, def, map, &self.msrv);
+                    unnecessary_map_or::check(cx, expr, recv, def, map, span, self.msrv);
                 },
                 ("map_or_else", [def, map]) => {
                     result_map_or_else_none::check(cx, expr, recv, def, map);
@@ -5004,7 +5275,7 @@ impl Methods {
                                 false,
                             ),
                             ("filter", [arg]) => filter_next::check(cx, expr, recv2, arg),
-                            ("filter_map", [arg]) => filter_map_next::check(cx, expr, recv2, arg, &self.msrv),
+                            ("filter_map", [arg]) => filter_map_next::check(cx, expr, recv2, arg, self.msrv),
                             ("iter", []) => iter_next_slice::check(cx, expr, recv2),
                             ("skip", [arg]) => iter_skip_next::check(cx, expr, recv2, arg),
                             ("skip_while", [_]) => skip_while_next::check(cx, expr),
@@ -5030,7 +5301,9 @@ impl Methods {
                     },
                     _ => iter_nth_zero::check(cx, expr, recv, n_arg),
                 },
-                ("ok_or_else", [arg]) => unnecessary_lazy_eval::check(cx, expr, recv, arg, "ok_or"),
+                ("ok_or_else", [arg]) => {
+                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "ok_or");
+                },
                 ("open", [_]) => {
                     open_options::check(cx, expr, recv);
                 },
@@ -5058,7 +5331,7 @@ impl Methods {
                     no_effect_replace::check(cx, expr, arg1, arg2);
 
                     // Check for repeated `str::replace` calls to perform `collapsible_str_replace` lint
-                    if self.msrv.meets(msrvs::PATTERN_TRAIT_CHAR_ARRAY)
+                    if self.msrv.meets(cx, msrvs::PATTERN_TRAIT_CHAR_ARRAY)
                         && name == "replace"
                         && let Some(("replace", ..)) = method_call(recv)
                     {
@@ -5069,10 +5342,10 @@ impl Methods {
                     vec_resize_to_zero::check(cx, expr, count_arg, default_arg, span);
                 },
                 ("seek", [arg]) => {
-                    if self.msrv.meets(msrvs::SEEK_FROM_CURRENT) {
+                    if self.msrv.meets(cx, msrvs::SEEK_FROM_CURRENT) {
                         seek_from_current::check(cx, expr, recv, arg);
                     }
-                    if self.msrv.meets(msrvs::SEEK_REWIND) {
+                    if self.msrv.meets(cx, msrvs::SEEK_REWIND) {
                         seek_to_start_instead_of_rewind::check(cx, expr, recv, arg, span);
                     }
                 },
@@ -5106,7 +5379,7 @@ impl Methods {
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
                     if let Some(Constant::Int(count)) = ConstEvalCtxt::new(cx).eval(count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);
-                        str_splitn::check(cx, name, expr, recv, pat_arg, count, &self.msrv);
+                        str_splitn::check(cx, name, expr, recv, pat_arg, count, self.msrv);
                     }
                 },
                 ("splitn_mut" | "rsplitn_mut", [count_arg, _]) => {
@@ -5117,6 +5390,7 @@ impl Methods {
                 ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
                 ("take", [arg]) => {
                     iter_out_of_bounds::check_take(cx, expr, recv, arg);
+                    manual_repeat_n::check(cx, expr, recv, arg, self.msrv);
                     if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
                         iter_overeager_cloned::check(
                             cx,
@@ -5130,7 +5404,7 @@ impl Methods {
                 },
                 ("take", []) => needless_option_take::check(cx, expr, recv),
                 ("then", [arg]) => {
-                    if !self.msrv.meets(msrvs::BOOL_THEN_SOME) {
+                    if !self.msrv.meets(cx, msrvs::BOOL_THEN_SOME) {
                         return;
                     }
                     unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some");
@@ -5168,6 +5442,7 @@ impl Methods {
                         expr,
                         recv,
                         false,
+                        self.allow_unwrap_in_consts,
                         self.allow_unwrap_in_tests,
                         unwrap_expect_used::Variant::Unwrap,
                     );
@@ -5179,6 +5454,7 @@ impl Methods {
                         expr,
                         recv,
                         true,
+                        self.allow_unwrap_in_consts,
                         self.allow_unwrap_in_tests,
                         unwrap_expect_used::Variant::Unwrap,
                     );
@@ -5189,18 +5465,24 @@ impl Methods {
                             manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);
                         },
                         Some(("map", m_recv, [m_arg], span, _)) => {
-                            option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, &self.msrv);
+                            option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, self.msrv);
                         },
-                        Some(("then_some", t_recv, [t_arg], _, _)) => {
-                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg);
+                        Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, Some(u_arg), then_method, "unwrap_or");
                         },
                         _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
                 ("unwrap_or_default", []) => {
-                    if let Some(("map", m_recv, [arg], span, _)) = method_call(recv) {
-                        manual_is_variant_and::check(cx, expr, m_recv, arg, span, &self.msrv);
+                    match method_call(recv) {
+                        Some(("map", m_recv, [arg], span, _)) => {
+                            manual_is_variant_and::check(cx, expr, m_recv, arg, span, self.msrv);
+                        },
+                        Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, None, then_method, "unwrap_or_default");
+                        },
+                        _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
@@ -5210,7 +5492,18 @@ impl Methods {
                 ("unwrap_or_else", [u_arg]) => {
                     match method_call(recv) {
                         Some(("map", recv, [map_arg], _, _))
-                            if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, &self.msrv) => {},
+                            if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, self.msrv) => {},
+                        Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
+                            obfuscated_if_else::check(
+                                cx,
+                                expr,
+                                t_recv,
+                                t_arg,
+                                Some(u_arg),
+                                then_method,
+                                "unwrap_or_else",
+                            );
+                        },
                         _ => {
                             unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
                         },
@@ -5280,10 +5573,10 @@ fn lint_binary_expr_with_method_call(cx: &LateContext<'_>, info: &mut BinaryExpr
 }
 
 const FN_HEADER: hir::FnHeader = hir::FnHeader {
-    safety: hir::Safety::Safe,
+    safety: hir::HeaderSafety::Normal(hir::Safety::Safe),
     constness: hir::Constness::NotConst,
     asyncness: hir::IsAsync::NotAsync,
-    abi: rustc_target::spec::abi::Abi::Rust,
+    abi: ExternAbi::Rust,
 };
 
 struct ShouldImplTraitCase {
@@ -5322,9 +5615,12 @@ impl ShouldImplTraitCase {
     fn lifetime_param_cond(&self, impl_item: &hir::ImplItem<'_>) -> bool {
         self.lint_explicit_lifetime
             || !impl_item.generics.params.iter().any(|p| {
-                matches!(p.kind, hir::GenericParamKind::Lifetime {
-                    kind: hir::LifetimeParamKind::Explicit
-                })
+                matches!(
+                    p.kind,
+                    hir::GenericParamKind::Lifetime {
+                        kind: hir::LifetimeParamKind::Explicit
+                    }
+                )
             })
     }
 }

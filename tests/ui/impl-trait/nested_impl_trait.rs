@@ -9,7 +9,7 @@ fn bad_in_ret_position(x: impl Into<u32>) -> impl Into<impl Debug> { x }
 
 fn bad_in_fn_syntax(x: fn() -> impl Into<impl Debug>) {}
 //~^ ERROR nested `impl Trait` is not allowed
-//~| `impl Trait` is not allowed in `fn` pointer
+//~| ERROR `impl Trait` is not allowed in `fn` pointer
 
 fn bad_in_arg_position(_: impl Into<impl Debug>) { }
 //~^ ERROR nested `impl Trait` is not allowed

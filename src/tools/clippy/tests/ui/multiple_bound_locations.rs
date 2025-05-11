@@ -1,21 +1,21 @@
 #![warn(clippy::multiple_bound_locations)]
 
 fn ty<F: std::fmt::Debug>(a: F)
-//~^ ERROR: bound is defined in more than one place
+//~^ multiple_bound_locations
 where
     F: Sized,
 {
 }
 
 fn lifetime<'a, 'b: 'a, 'c>(a: &'b str, b: &'a str, c: &'c str)
-//~^ ERROR: bound is defined in more than one place
+//~^ multiple_bound_locations
 where
     'b: 'c,
 {
 }
 
 fn ty_pred<F: Sized>()
-//~^ ERROR: bound is defined in more than one place
+//~^ multiple_bound_locations
 where
     for<'a> F: Send + 'a,
 {
@@ -25,21 +25,21 @@ struct B;
 
 impl B {
     fn ty<F: std::fmt::Debug>(a: F)
-    //~^ ERROR: bound is defined in more than one place
+    //~^ multiple_bound_locations
     where
         F: Sized,
     {
     }
 
     fn lifetime<'a, 'b: 'a, 'c>(a: &'b str, b: &'a str, c: &'c str)
-    //~^ ERROR: bound is defined in more than one place
+    //~^ multiple_bound_locations
     where
         'b: 'c,
     {
     }
 
     fn ty_pred<F: Sized>()
-    //~^ ERROR: bound is defined in more than one place
+    //~^ multiple_bound_locations
     where
         for<'a> F: Send + 'a,
     {

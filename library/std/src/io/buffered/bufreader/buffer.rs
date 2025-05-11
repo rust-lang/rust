@@ -50,7 +50,7 @@ impl Buffer {
     pub fn buffer(&self) -> &[u8] {
         // SAFETY: self.pos and self.cap are valid, and self.cap => self.pos, and
         // that region is initialized because those are all invariants of this type.
-        unsafe { MaybeUninit::slice_assume_init_ref(self.buf.get_unchecked(self.pos..self.filled)) }
+        unsafe { self.buf.get_unchecked(self.pos..self.filled).assume_init_ref() }
     }
 
     #[inline]
@@ -109,8 +109,8 @@ impl Buffer {
 
     /// Read more bytes into the buffer without discarding any of its contents
     pub fn read_more(&mut self, mut reader: impl Read) -> io::Result<usize> {
-        let mut buf = BorrowedBuf::from(&mut self.buf[self.pos..]);
-        let old_init = self.initialized - self.pos;
+        let mut buf = BorrowedBuf::from(&mut self.buf[self.filled..]);
+        let old_init = self.initialized - self.filled;
         unsafe {
             buf.set_init(old_init);
         }
@@ -123,7 +123,6 @@ impl Buffer {
     /// Remove bytes that have already been read from the buffer.
     pub fn backshift(&mut self) {
         self.buf.copy_within(self.pos.., 0);
-        self.initialized -= self.pos;
         self.filled -= self.pos;
         self.pos = 0;
     }

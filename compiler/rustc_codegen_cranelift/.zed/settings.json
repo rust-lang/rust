@@ -5,7 +5,10 @@
       "initialization_options": {
         "diagnostics": {
           // in case rustc.source is disabled for performance reasons; disable the errors about this
-          "disabled": ["unresolved-extern-crate", "unresolved-macro-call"]
+          "disabled": [
+            "unresolved-extern-crate",
+            "unresolved-macro-call"
+          ]
         },
         "rustc": {
           "source": "discover"
@@ -18,22 +21,25 @@
           "prefix": "crate"
         },
         "cargo": {
-          "features": ["unstable-features"]
+          "features": [
+            "unstable-features"
+          ]
         },
         "linkedProjects": [
           "./Cargo.toml",
           "./build_system/Cargo.toml",
           {
+            "sysroot_src": "./build/stdlib/library",
             "crates": [
               {
                 "root_module": "./example/mini_core.rs",
-                "edition": "2018",
+                "edition": "2015",
                 "deps": [],
                 "cfg": []
               },
               {
                 "root_module": "./example/mini_core_hello_world.rs",
-                "edition": "2018",
+                "edition": "2015",
                 "deps": [
                   {
                     "crate": 0,
@@ -42,17 +48,6 @@
                 ],
                 "cfg": []
               },
-              {
-                "root_module": "./example/mod_bench.rs",
-                "edition": "2018",
-                "deps": [],
-                "cfg": []
-              }
-            ]
-          },
-          {
-            "sysroot_src": "./build/stdlib/library",
-            "crates": [
               {
                 "root_module": "./example/std_example.rs",
                 "edition": "2015",

@@ -3,6 +3,8 @@
 //@ error-pattern: unsafe precondition(s) violated: ptr::replace requires
 //@ revisions: null misaligned
 
+#![allow(invalid_null_arguments)]
+
 use std::ptr;
 
 fn main() {

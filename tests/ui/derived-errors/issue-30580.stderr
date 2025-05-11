@@ -6,8 +6,9 @@ LL |         b.c;
    |
 help: a field with a similar name exists
    |
-LL |         b.a;
-   |           ~
+LL -         b.c;
+LL +         b.a;
+   |
 
 error: aborting due to 1 previous error
 

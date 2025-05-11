@@ -1,14 +1,15 @@
 //@compile-flags: -Cpanic=abort
-#![feature(start, core_intrinsics)]
+#![feature(core_intrinsics)]
 #![no_std]
+#![no_main]
 
 use core::fmt::Write;
 
 #[path = "../../utils/mod.no_std.rs"]
 mod utils;
 
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+#[no_mangle]
+fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
     panic!("blarg I am dead")
 }
 

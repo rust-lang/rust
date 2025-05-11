@@ -1,17 +1,20 @@
 //@ run-pass
 //@ ignore-emscripten no no_std executables
+//@ ignore-wasm different `main` convention
 
-#![feature(lang_items, start)]
+#![feature(lang_items)]
 #![no_std]
+#![no_main]
 
+// Import global allocator and panic handler.
 extern crate std as other;
 
 #[macro_use] extern crate alloc;
 
 use alloc::string::ToString;
 
-#[start]
-fn start(_argc: isize, _argv: *const *const u8) -> isize {
+#[no_mangle]
+extern "C" fn main(_argc: core::ffi::c_int, _argv: *const *const u8) -> core::ffi::c_int {
     let s = format!("{}", 1_isize);
     assert_eq!(s, "1".to_string());
 

@@ -17,7 +17,7 @@ impl Foo {
 fn main() {
     unsafe {
         let sfoo: *mut Foo = &mut SFOO;
-        //~^ WARN mutable reference to mutable static is discouraged [static_mut_refs]
+        //~^ WARN mutable reference to mutable static [static_mut_refs]
         let x = (*sfoo).x();
         (*sfoo).x[1] += 1;
         *x += 1;

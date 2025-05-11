@@ -13,6 +13,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         x.kill();
         x.id();
     }
@@ -40,6 +41,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         let v = &x;
         // (allow shared refs is fine because one cannot call `.wait()` through that)
     }
@@ -65,6 +67,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         if true {
             std::process::exit(0);
         }
@@ -72,6 +75,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         if true {
             while false {}
             // Calling `exit()` after leaving a while loop should still be linted.
@@ -98,6 +102,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         if true {
             return;
         }
@@ -107,6 +112,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         if true {
             x.wait().unwrap();
         }
@@ -115,6 +121,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         if true {
             x.wait().unwrap();
         } else {
@@ -125,6 +132,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         if true {
             // this else block exists to test the other help message
         } else {
@@ -167,4 +175,26 @@ fn process_child(c: Child) {
 fn return_wait() -> ExitStatus {
     let mut x = Command::new("").spawn().unwrap();
     return x.wait().unwrap();
+}
+
+mod issue14677 {
+    use std::io;
+    use std::process::Command;
+
+    fn do_something<F: Fn() -> Result<(), ()>>(f: F) {
+        todo!()
+    }
+
+    fn foo() {
+        let mut child = Command::new("true").spawn().unwrap();
+        let some_condition = true;
+        do_something(|| {
+            if some_condition {
+                return Err(());
+            }
+            Ok(())
+        });
+        child.kill().unwrap();
+        child.wait().unwrap();
+    }
 }

@@ -19,6 +19,17 @@ error[E0412]: cannot find type `Mul` in this scope
 LL | fn getMul() -> Mul {
    |                ^^^ not found in this scope
    |
+note: these items exist but are inaccessible
+  --> $DIR/issue-21221-1.rs:10:5
+   |
+LL |     enum Mul {
+   |     ^^^^^^^^ `mul3::Mul`: not accessible
+...
+LL |     type Mul = String;
+   |     ^^^^^^^^^^^^^^^^^^ `mul4::Mul`: not accessible
+...
+LL |     struct Mul{
+   |     ^^^^^^^^^^ `mul5::Mul`: not accessible
 help: consider importing one of these traits
    |
 LL + use std::ops::Mul;

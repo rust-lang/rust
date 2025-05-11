@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use camino::Utf8PathBuf;
 
 use super::{AllowUnused, Emit, LinkToAux, ProcRes, TargetLocation, TestCx};
 
@@ -19,7 +19,7 @@ impl TestCx<'_> {
         }
     }
 
-    fn compile_test_and_save_assembly(&self) -> (ProcRes, PathBuf) {
+    fn compile_test_and_save_assembly(&self) -> (ProcRes, Utf8PathBuf) {
         // This works with both `--emit asm` (as default output name for the assembly)
         // and `ptx-linker` because the latter can write output at requested location.
         let output_path = self.output_base_name().with_extension("s");

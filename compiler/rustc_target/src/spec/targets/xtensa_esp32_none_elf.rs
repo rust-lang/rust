@@ -1,5 +1,5 @@
 use crate::spec::base::xtensa;
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -7,7 +7,7 @@ pub(crate) fn target() -> Target {
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-v1:8:8-i64:64-i128:128-n32".into(),
         arch: "xtensa".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Xtensa ESP32".into()),
             tier: Some(3),
             host_tools: Some(false),

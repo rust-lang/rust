@@ -51,21 +51,28 @@ pub(crate) fn expand_test_case(
             return vec![];
         }
     };
-    item = item.map(|mut item| {
-        let test_path_symbol = Symbol::intern(&item_path(
-            // skip the name of the root module
-            &ecx.current_expansion.module.mod_path[1..],
-            &item.ident,
-        ));
-        item.vis = ast::Visibility {
-            span: item.vis.span,
-            kind: ast::VisibilityKind::Public,
-            tokens: None,
-        };
-        item.ident.span = item.ident.span.with_ctxt(sp.ctxt());
-        item.attrs.push(ecx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, sp));
-        item
-    });
+
+    // `#[test_case]` is valid on functions, consts, and statics. Only modify
+    // the item in those cases.
+    match &mut item.kind {
+        ast::ItemKind::Fn(box ast::Fn { ident, .. })
+        | ast::ItemKind::Const(box ast::ConstItem { ident, .. })
+        | ast::ItemKind::Static(box ast::StaticItem { ident, .. }) => {
+            ident.span = ident.span.with_ctxt(sp.ctxt());
+            let test_path_symbol = Symbol::intern(&item_path(
+                // skip the name of the root module
+                &ecx.current_expansion.module.mod_path[1..],
+                ident,
+            ));
+            item.vis = ast::Visibility {
+                span: item.vis.span,
+                kind: ast::VisibilityKind::Public,
+                tokens: None,
+            };
+            item.attrs.push(ecx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, sp));
+        }
+        _ => {}
+    }
 
     let ret = if is_stmt {
         Annotatable::Stmt(P(ecx.stmt_item(item.span, item)))
@@ -162,27 +169,33 @@ pub(crate) fn expand_test_or_bench(
     let ret_ty_sp = cx.with_def_site_ctxt(fn_.sig.decl.output.span());
     let attr_sp = cx.with_def_site_ctxt(attr_sp);
 
-    let test_id = Ident::new(sym::test, attr_sp);
+    let test_ident = Ident::new(sym::test, attr_sp);
 
     // creates test::$name
-    let test_path = |name| cx.path(ret_ty_sp, vec![test_id, Ident::from_str_and_span(name, sp)]);
+    let test_path = |name| cx.path(ret_ty_sp, vec![test_ident, Ident::from_str_and_span(name, sp)]);
 
     // creates test::ShouldPanic::$name
     let should_panic_path = |name| {
-        cx.path(sp, vec![
-            test_id,
-            Ident::from_str_and_span("ShouldPanic", sp),
-            Ident::from_str_and_span(name, sp),
-        ])
+        cx.path(
+            sp,
+            vec![
+                test_ident,
+                Ident::from_str_and_span("ShouldPanic", sp),
+                Ident::from_str_and_span(name, sp),
+            ],
+        )
     };
 
     // creates test::TestType::$name
     let test_type_path = |name| {
-        cx.path(sp, vec![
-            test_id,
-            Ident::from_str_and_span("TestType", sp),
-            Ident::from_str_and_span(name, sp),
-        ])
+        cx.path(
+            sp,
+            vec![
+                test_ident,
+                Ident::from_str_and_span("TestType", sp),
+                Ident::from_str_and_span(name, sp),
+            ],
+        )
     };
 
     // creates $name: $expr
@@ -202,69 +215,90 @@ pub(crate) fn expand_test_or_bench(
         // A simple ident for a lambda
         let b = Ident::from_str_and_span("b", attr_sp);
 
-        cx.expr_call(sp, cx.expr_path(test_path("StaticBenchFn")), thin_vec![
-            // #[coverage(off)]
-            // |b| self::test::assert_test_result(
-            coverage_off(cx.lambda1(
-                sp,
-                cx.expr_call(sp, cx.expr_path(test_path("assert_test_result")), thin_vec![
-                    // super::$test_fn(b)
+        cx.expr_call(
+            sp,
+            cx.expr_path(test_path("StaticBenchFn")),
+            thin_vec![
+                // #[coverage(off)]
+                // |b| self::test::assert_test_result(
+                coverage_off(cx.lambda1(
+                    sp,
                     cx.expr_call(
-                        ret_ty_sp,
-                        cx.expr_path(cx.path(sp, vec![item.ident])),
-                        thin_vec![cx.expr_ident(sp, b)],
+                        sp,
+                        cx.expr_path(test_path("assert_test_result")),
+                        thin_vec![
+                            // super::$test_fn(b)
+                            cx.expr_call(
+                                ret_ty_sp,
+                                cx.expr_path(cx.path(sp, vec![fn_.ident])),
+                                thin_vec![cx.expr_ident(sp, b)],
+                            ),
+                        ],
                     ),
-                ],),
-                b,
-            )), // )
-        ])
+                    b,
+                )), // )
+            ],
+        )
     } else {
-        cx.expr_call(sp, cx.expr_path(test_path("StaticTestFn")), thin_vec![
-            // #[coverage(off)]
-            // || {
-            coverage_off(cx.lambda0(
-                sp,
-                // test::assert_test_result(
-                cx.expr_call(sp, cx.expr_path(test_path("assert_test_result")), thin_vec![
-                    // $test_fn()
+        cx.expr_call(
+            sp,
+            cx.expr_path(test_path("StaticTestFn")),
+            thin_vec![
+                // #[coverage(off)]
+                // || {
+                coverage_off(cx.lambda0(
+                    sp,
+                    // test::assert_test_result(
                     cx.expr_call(
-                        ret_ty_sp,
-                        cx.expr_path(cx.path(sp, vec![item.ident])),
-                        ThinVec::new(),
-                    ), // )
-                ],), // }
-            )), // )
-        ])
+                        sp,
+                        cx.expr_path(test_path("assert_test_result")),
+                        thin_vec![
+                            // $test_fn()
+                            cx.expr_call(
+                                ret_ty_sp,
+                                cx.expr_path(cx.path(sp, vec![fn_.ident])),
+                                ThinVec::new(),
+                            ), // )
+                        ],
+                    ), // }
+                )), // )
+            ],
+        )
     };
 
     let test_path_symbol = Symbol::intern(&item_path(
         // skip the name of the root module
         &cx.current_expansion.module.mod_path[1..],
-        &item.ident,
+        &fn_.ident,
     ));
 
-    let location_info = get_location_info(cx, &item);
+    let location_info = get_location_info(cx, &fn_);
 
-    let mut test_const = cx.item(
-        sp,
-        Ident::new(item.ident.name, sp),
-        thin_vec![
-            // #[cfg(test)]
-            cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
-            // #[rustc_test_marker = "test_case_sort_key"]
-            cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
-            // #[doc(hidden)]
-            cx.attr_nested_word(sym::doc, sym::hidden, attr_sp),
-        ],
-        // const $ident: test::TestDescAndFn =
-        ast::ItemKind::Const(
-            ast::ConstItem {
-                defaultness: ast::Defaultness::Final,
-                generics: ast::Generics::default(),
-                ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
-                // test::TestDescAndFn {
-                expr: Some(
-                    cx.expr_struct(sp, test_path("TestDescAndFn"), thin_vec![
+    let mut test_const =
+        cx.item(
+            sp,
+            thin_vec![
+                // #[cfg(test)]
+                cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
+                // #[rustc_test_marker = "test_case_sort_key"]
+                cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
+                // #[doc(hidden)]
+                cx.attr_nested_word(sym::doc, sym::hidden, attr_sp),
+            ],
+            // const $ident: test::TestDescAndFn =
+            ast::ItemKind::Const(
+                ast::ConstItem {
+                    defaultness: ast::Defaultness::Final,
+                    ident: Ident::new(fn_.ident.name, sp),
+                    generics: ast::Generics::default(),
+                    ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
+                    define_opaque: None,
+                    // test::TestDescAndFn {
+                    expr: Some(
+                        cx.expr_struct(
+                            sp,
+                            test_path("TestDescAndFn"),
+                            thin_vec![
                         // desc: test::TestDesc {
                         field(
                             "desc",
@@ -340,19 +374,21 @@ pub(crate) fn expand_test_or_bench(
                         ),
                         // testfn: test::StaticTestFn(...) | test::StaticBenchFn(...)
                         field("testfn", test_fn), // }
-                    ]), // }
-                ),
-            }
-            .into(),
-        ),
-    );
+                    ],
+                        ), // }
+                    ),
+                }
+                .into(),
+            ),
+        );
     test_const = test_const.map(|mut tc| {
         tc.vis.kind = ast::VisibilityKind::Public;
         tc
     });
 
     // extern crate test
-    let test_extern = cx.item(sp, test_id, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None));
+    let test_extern =
+        cx.item(sp, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None, test_ident));
 
     debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
@@ -406,8 +442,8 @@ fn not_testable_error(cx: &ExtCtxt<'_>, attr_sp: Span, item: Option<&ast::Item>)
         .emit();
 }
 
-fn get_location_info(cx: &ExtCtxt<'_>, item: &ast::Item) -> (Symbol, usize, usize, usize, usize) {
-    let span = item.ident.span;
+fn get_location_info(cx: &ExtCtxt<'_>, fn_: &ast::Fn) -> (Symbol, usize, usize, usize, usize) {
+    let span = fn_.ident.span;
     let (source_file, lo_line, lo_col, hi_line, hi_col) =
         cx.sess.source_map().span_to_location_info(span);
 

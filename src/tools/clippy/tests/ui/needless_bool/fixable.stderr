@@ -12,7 +12,7 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::needless_bool)]`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:46:5
+  --> tests/ui/needless_bool/fixable.rs:47:5
    |
 LL | /     if x {
 LL | |         false
@@ -22,7 +22,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `!x`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:51:5
+  --> tests/ui/needless_bool/fixable.rs:53:5
    |
 LL | /     if x && y {
 LL | |         false
@@ -32,7 +32,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `!(x && y)`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:59:5
+  --> tests/ui/needless_bool/fixable.rs:62:5
    |
 LL | /     if a == b {
 LL | |         false
@@ -42,7 +42,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `a != b`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:64:5
+  --> tests/ui/needless_bool/fixable.rs:68:5
    |
 LL | /     if a != b {
 LL | |         false
@@ -52,7 +52,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `a == b`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:69:5
+  --> tests/ui/needless_bool/fixable.rs:74:5
    |
 LL | /     if a < b {
 LL | |         false
@@ -62,7 +62,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `a >= b`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:74:5
+  --> tests/ui/needless_bool/fixable.rs:80:5
    |
 LL | /     if a <= b {
 LL | |         false
@@ -72,7 +72,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `a > b`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:79:5
+  --> tests/ui/needless_bool/fixable.rs:86:5
    |
 LL | /     if a > b {
 LL | |         false
@@ -82,7 +82,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `a <= b`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:84:5
+  --> tests/ui/needless_bool/fixable.rs:92:5
    |
 LL | /     if a >= b {
 LL | |         false
@@ -92,7 +92,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `a < b`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:112:5
+  --> tests/ui/needless_bool/fixable.rs:121:5
    |
 LL | /     if x {
 LL | |         return true;
@@ -102,7 +102,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `return x`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:120:5
+  --> tests/ui/needless_bool/fixable.rs:130:5
    |
 LL | /     if x {
 LL | |         return false;
@@ -112,7 +112,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `return !x`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:128:5
+  --> tests/ui/needless_bool/fixable.rs:139:5
    |
 LL | /     if x && y {
 LL | |         return true;
@@ -122,7 +122,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `return x && y`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:136:5
+  --> tests/ui/needless_bool/fixable.rs:148:5
    |
 LL | /     if x && y {
 LL | |         return false;
@@ -132,7 +132,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `return !(x && y)`
 
 error: equality checks against true are unnecessary
-  --> tests/ui/needless_bool/fixable.rs:144:8
+  --> tests/ui/needless_bool/fixable.rs:157:8
    |
 LL |     if x == true {};
    |        ^^^^^^^^^ help: try simplifying it as shown: `x`
@@ -141,25 +141,25 @@ LL |     if x == true {};
    = help: to override `-D warnings` add `#[allow(clippy::bool_comparison)]`
 
 error: equality checks against false can be replaced by a negation
-  --> tests/ui/needless_bool/fixable.rs:148:8
+  --> tests/ui/needless_bool/fixable.rs:162:8
    |
 LL |     if x == false {};
    |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: equality checks against true are unnecessary
-  --> tests/ui/needless_bool/fixable.rs:158:8
+  --> tests/ui/needless_bool/fixable.rs:173:8
    |
 LL |     if x == true {};
    |        ^^^^^^^^^ help: try simplifying it as shown: `x`
 
 error: equality checks against false can be replaced by a negation
-  --> tests/ui/needless_bool/fixable.rs:159:8
+  --> tests/ui/needless_bool/fixable.rs:175:8
    |
 LL |     if x == false {};
    |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:168:12
+  --> tests/ui/needless_bool/fixable.rs:185:12
    |
 LL |       } else if returns_bool() {
    |  ____________^
@@ -170,7 +170,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `{ !returns_bool() }`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:181:5
+  --> tests/ui/needless_bool/fixable.rs:199:5
    |
 LL | /     if unsafe { no(4) } & 1 != 0 {
 LL | |         true
@@ -180,31 +180,31 @@ LL | |     };
    | |_____^ help: you can reduce it to: `(unsafe { no(4) } & 1 != 0)`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:186:30
+  --> tests/ui/needless_bool/fixable.rs:205:30
    |
 LL |     let _brackets_unneeded = if unsafe { no(4) } & 1 != 0 { true } else { false };
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `unsafe { no(4) } & 1 != 0`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:189:9
+  --> tests/ui/needless_bool/fixable.rs:209:9
    |
 LL |         if unsafe { no(4) } & 1 != 0 { true } else { false }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `(unsafe { no(4) } & 1 != 0)`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:200:14
+  --> tests/ui/needless_bool/fixable.rs:221:14
    |
 LL |     let _x = if a && b { true } else { false }.then(|| todo!());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `(a && b)`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:201:14
+  --> tests/ui/needless_bool/fixable.rs:223:14
    |
 LL |     let _x = if a && b { true } else { false } as u8;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `(a && b)`
 
 error: this if-then-else expression returns a bool literal
-  --> tests/ui/needless_bool/fixable.rs:204:14
+  --> tests/ui/needless_bool/fixable.rs:227:14
    |
 LL |     let _x = if a { true } else { false }.then(|| todo!());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `a`

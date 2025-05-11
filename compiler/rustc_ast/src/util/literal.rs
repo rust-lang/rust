@@ -2,7 +2,7 @@
 
 use std::{ascii, fmt, str};
 
-use rustc_lexer::unescape::{
+use rustc_literal_escaper::{
     MixedUnit, Mode, byte_from_char, unescape_byte, unescape_char, unescape_mixed, unescape_unicode,
 };
 use rustc_span::{Span, Symbol, kw, sym};
@@ -121,7 +121,7 @@ impl LitKind {
             }
             token::ByteStrRaw(n) => {
                 // Raw strings have no escapes so we can convert the symbol
-                // directly to a `Lrc<u8>`.
+                // directly to a `Arc<u8>`.
                 let buf = symbol.as_str().to_owned().into_bytes();
                 LitKind::ByteStr(buf.into(), StrStyle::Raw(n))
             }
@@ -142,7 +142,7 @@ impl LitKind {
             }
             token::CStrRaw(n) => {
                 // Raw strings have no escapes so we can convert the symbol
-                // directly to a `Lrc<u8>` after appending the terminating NUL
+                // directly to a `Arc<u8>` after appending the terminating NUL
                 // char.
                 let mut buf = symbol.as_str().to_owned().into_bytes();
                 buf.push(0);

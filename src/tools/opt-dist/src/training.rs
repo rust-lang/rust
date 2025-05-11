@@ -70,7 +70,9 @@ fn merge_llvm_profiles(
     profdata: LlvmProfdata,
 ) -> anyhow::Result<()> {
     let llvm_profdata = match profdata {
-        LlvmProfdata::Host => env.host_llvm_dir().join("bin/llvm-profdata"),
+        LlvmProfdata::Host => {
+            env.host_llvm_dir().join(format!("bin/llvm-profdata{}", executable_extension()))
+        }
         LlvmProfdata::Target => env
             .build_artifacts()
             .join("llvm")

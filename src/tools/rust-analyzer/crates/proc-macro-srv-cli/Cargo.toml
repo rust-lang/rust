@@ -8,10 +8,12 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+publish = false
 
 [dependencies]
 proc-macro-srv.workspace = true
 proc-macro-api.workspace = true
+tt.workspace = true
 
 [features]
 sysroot-abi = ["proc-macro-srv/sysroot-abi"]

@@ -15,15 +15,15 @@ where
 
     // errors are bad but seems to be pre-existing issue #86198
     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
-    //~^ Error: mismatched types
-    //~^^ Error: unconstrained generic constant
+    //~^ ERROR mismatched types
+    //~^^ ERROR unconstrained generic constant
     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as _ }>>();
-    //~^ Error: mismatched types
-    //~^^ Error: unconstrained generic constant
+    //~^ ERROR mismatched types
+    //~^^ ERROR unconstrained generic constant
     assert_impl::<HasCastInTraitImpl<13, { 12 as u128 }>>();
-    //~^ Error: mismatched types
+    //~^ ERROR mismatched types
     assert_impl::<HasCastInTraitImpl<14, 13>>();
-    //~^ Error: mismatched types
+    //~^ ERROR mismatched types
 }
 pub fn use_trait_impl_2<const N: usize>()
 where
@@ -33,15 +33,15 @@ where
 
     // errors are bad but seems to be pre-existing issue #86198
     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
-    //~^ Error: mismatched types
-    //~^^ Error: unconstrained generic constant
+    //~^ ERROR mismatched types
+    //~^^ ERROR unconstrained generic constant
     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as _ }>>();
-    //~^ Error: mismatched types
-    //~^^ Error: unconstrained generic constant
+    //~^ ERROR mismatched types
+    //~^^ ERROR unconstrained generic constant
     assert_impl::<HasCastInTraitImpl<13, { 12 as u128 }>>();
-    //~^ Error: mismatched types
+    //~^ ERROR mismatched types
     assert_impl::<HasCastInTraitImpl<14, 13>>();
-    //~^ Error: mismatched types
+    //~^ ERROR mismatched types
 }
 
 fn main() {}

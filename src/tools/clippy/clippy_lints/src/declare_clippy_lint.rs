@@ -165,17 +165,4 @@ macro_rules! declare_clippy_lint {
             $(, $eval_always)?
         }
     };
-
-    (
-        $(#[doc = $lit:literal])*
-        pub $lint_name:ident,
-        internal,
-        $desc:literal
-    ) => {
-        declare_clippy_lint! {@
-            $(#[doc = $lit])*
-            pub $lint_name, Allow, crate::LintCategory::Internal, $desc,
-            None, "0.0.0"
-        }
-    };
 }

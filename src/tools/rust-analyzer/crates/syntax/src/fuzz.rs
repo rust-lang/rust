@@ -6,7 +6,7 @@ use std::str::{self, FromStr};
 
 use parser::Edition;
 
-use crate::{validation, AstNode, SourceFile, TextRange};
+use crate::{AstNode, SourceFile, TextRange, validation};
 
 fn check_file_invariants(file: &SourceFile) {
     let root = file.syntax();

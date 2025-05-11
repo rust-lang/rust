@@ -8,6 +8,7 @@
 //@ normalize-stdout: "expn\d{3,}" -> "expnNNN"
 //@ normalize-stdout: "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"
 //@ proc-macro: test-macros.rs
+//@ edition: 2015
 
 #![feature(decl_macro)]
 #![no_std] // Don't load unnecessary hygiene information from std

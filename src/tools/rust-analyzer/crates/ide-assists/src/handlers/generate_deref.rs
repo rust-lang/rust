@@ -1,16 +1,16 @@
 use std::fmt::Display;
 
 use hir::{ModPath, ModuleDef};
-use ide_db::{famous_defs::FamousDefs, RootDatabase};
+use ide_db::{RootDatabase, famous_defs::FamousDefs};
 use syntax::{
-    ast::{self, HasName},
     AstNode, Edition, SyntaxNode,
+    ast::{self, HasName},
 };
 
 use crate::{
+    AssistId,
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
     utils::generate_trait_impl_text,
-    AssistId, AssistKind,
 };
 
 // Assist: generate_deref
@@ -65,7 +65,7 @@ fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
     let field_name = field.name()?;
     let target = field.syntax().text_range();
     acc.add(
-        AssistId("generate_deref", AssistKind::Generate),
+        AssistId::generate("generate_deref"),
         format!("Generate `{deref_type_to_generate:?}` impl using `{field_name}`"),
         target,
         |edit| {
@@ -106,7 +106,7 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
     let field_type = field.ty()?;
     let target = field.syntax().text_range();
     acc.add(
-        AssistId("generate_deref", AssistKind::Generate),
+        AssistId::generate("generate_deref"),
         format!("Generate `{deref_type_to_generate:?}` impl using `{field}`"),
         target,
         |edit| {

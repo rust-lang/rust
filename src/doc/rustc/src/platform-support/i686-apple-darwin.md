@@ -4,8 +4,8 @@ Apple macOS on 32-bit x86.
 
 ## Target maintainers
 
-- [@thomcc](https://github.com/thomcc)
-- [@madsmtm](https://github.com/madsmtm)
+[@thomcc](https://github.com/thomcc)
+[@madsmtm](https://github.com/madsmtm)
 
 ## Requirements
 
@@ -17,7 +17,7 @@ You'll need the macOS 10.13 SDK shipped with Xcode 9. The location of the SDK
 can be passed to `rustc` using the common `SDKROOT` environment variable.
 
 Once you have that, you can build Rust with support for the target by adding
-it to the `target` list in `config.toml`:
+it to the `target` list in `bootstrap.toml`:
 
 ```toml
 [build]

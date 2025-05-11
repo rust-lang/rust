@@ -182,9 +182,9 @@ pub(crate) fn write_bitmap_to_bytes(
             out.write_all(&[b])?;
         }
         if size < NO_OFFSET_THRESHOLD {
-            4 + 4 * size + ((size + 7) / 8)
+            4 + 4 * size + size.div_ceil(8)
         } else {
-            4 + 8 * size + ((size + 7) / 8)
+            4 + 8 * size + size.div_ceil(8)
         }
     } else {
         out.write_all(&u32::to_le_bytes(SERIAL_COOKIE_NO_RUNCONTAINER))?;

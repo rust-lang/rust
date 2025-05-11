@@ -709,8 +709,11 @@ pub(crate) fn build_index(
                 let mut result = Vec::new();
                 for (index, item) in self.items.iter().enumerate() {
                     if let Some(ty) = &item.search_type
-                        && let my =
-                            ty.param_names.iter().map(|sym| sym.as_str()).collect::<Vec<_>>()
+                        && let my = ty
+                            .param_names
+                            .iter()
+                            .filter_map(|sym| sym.map(|sym| sym.to_string()))
+                            .collect::<Vec<_>>()
                         && my != prev
                     {
                         result.push((index, my.join(",")));
@@ -821,7 +824,7 @@ pub(crate) fn get_function_type_for_search(
                     .map(|name| clean::PathSegment {
                         name: *name,
                         args: clean::GenericArgs::AngleBracketed {
-                            args: Vec::new().into_boxed_slice(),
+                            args: ThinVec::new(),
                             constraints: ThinVec::new(),
                         },
                     })
@@ -839,6 +842,19 @@ pub(crate) fn get_function_type_for_search(
         | clean::MethodItem(ref f, _)
         | clean::RequiredMethodItem(ref f) => {
             get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
+        }
+        clean::ConstantItem(ref c) => make_nullary_fn(&c.type_),
+        clean::StaticItem(ref s) => make_nullary_fn(&s.type_),
+        clean::StructFieldItem(ref t) if let Some(parent) = parent => {
+            let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> =
+                Default::default();
+            let output = get_index_type(t, vec![], &mut rgen);
+            let input = RenderType {
+                id: Some(RenderTypeId::DefId(parent)),
+                generics: None,
+                bindings: None,
+            };
+            (vec![input], vec![output], vec![], vec![])
         }
         _ => return None,
     };
@@ -900,7 +916,8 @@ fn get_index_type_id(
         | clean::Generic(_)
         | clean::SelfTy
         | clean::ImplTrait(_)
-        | clean::Infer => None,
+        | clean::Infer
+        | clean::UnsafeBinder(_) => None,
     }
 }
 
@@ -1095,7 +1112,7 @@ fn simplify_fn_type<'a, 'tcx>(
         }
         Type::BareFunction(ref bf) => {
             let mut ty_generics = Vec::new();
-            for ty in bf.decl.inputs.values.iter().map(|arg| &arg.type_) {
+            for ty in bf.decl.inputs.iter().map(|arg| &arg.type_) {
                 simplify_fn_type(
                     self_,
                     generics,
@@ -1248,13 +1265,14 @@ fn simplify_fn_type<'a, 'tcx>(
                                 *stored_bounds = type_bounds;
                             }
                         }
-                        ty_constraints.push((RenderTypeId::AssociatedType(name), vec![
-                            RenderType {
+                        ty_constraints.push((
+                            RenderTypeId::AssociatedType(name),
+                            vec![RenderType {
                                 id: Some(RenderTypeId::Index(idx)),
                                 generics: None,
                                 bindings: None,
-                            },
-                        ]))
+                            }],
+                        ))
                     }
                 }
             }
@@ -1352,6 +1370,17 @@ fn simplify_fn_constraint<'a>(
     res.push((ty_constrained_assoc, ty_constraints));
 }
 
+/// Create a fake nullary function.
+///
+/// Used to allow type-based search on constants and statics.
+fn make_nullary_fn(
+    clean_type: &clean::Type,
+) -> (Vec<RenderType>, Vec<RenderType>, Vec<Option<Symbol>>, Vec<Vec<RenderType>>) {
+    let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> = Default::default();
+    let output = get_index_type(clean_type, vec![], &mut rgen);
+    (vec![], vec![output], vec![], vec![])
+}
+
 /// Return the full list of types when bounds have been resolved.
 ///
 /// i.e. `fn foo<A: Display, B: Option<A>>(x: u32, y: B)` will return
@@ -1361,7 +1390,7 @@ fn get_fn_inputs_and_outputs(
     tcx: TyCtxt<'_>,
     impl_or_trait_generics: Option<&(clean::Type, clean::Generics)>,
     cache: &Cache,
-) -> (Vec<RenderType>, Vec<RenderType>, Vec<Symbol>, Vec<Vec<RenderType>>) {
+) -> (Vec<RenderType>, Vec<RenderType>, Vec<Option<Symbol>>, Vec<Vec<RenderType>>) {
     let decl = &func.decl;
 
     let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> = Default::default();
@@ -1389,15 +1418,15 @@ fn get_fn_inputs_and_outputs(
         (None, &func.generics)
     };
 
-    let mut arg_types = Vec::new();
-    for arg in decl.inputs.values.iter() {
+    let mut param_types = Vec::new();
+    for param in decl.inputs.iter() {
         simplify_fn_type(
             self_,
             generics,
-            &arg.type_,
+            &param.type_,
             tcx,
             0,
-            &mut arg_types,
+            &mut param_types,
             &mut rgen,
             false,
             cache,
@@ -1410,15 +1439,15 @@ fn get_fn_inputs_and_outputs(
     let mut simplified_params = rgen.into_iter().collect::<Vec<_>>();
     simplified_params.sort_by_key(|(_, (idx, _))| -idx);
     (
-        arg_types,
+        param_types,
         ret_types,
         simplified_params
             .iter()
             .map(|(name, (_idx, _traits))| match name {
-                SimplifiedParam::Symbol(name) => *name,
-                SimplifiedParam::Anonymous(_) => kw::Empty,
+                SimplifiedParam::Symbol(name) => Some(*name),
+                SimplifiedParam::Anonymous(_) => None,
                 SimplifiedParam::AssociatedType(def_id, name) => {
-                    Symbol::intern(&format!("{}::{}", tcx.item_name(*def_id), name))
+                    Some(Symbol::intern(&format!("{}::{}", tcx.item_name(*def_id), name)))
                 }
             })
             .collect(),

@@ -7,7 +7,7 @@ applications on AArch64 Windows 11. See <https://learn.microsoft.com/en-us/windo
 
 ## Target maintainers
 
-- [@dpaoliello](https://github.com/dpaoliello)
+[@dpaoliello](https://github.com/dpaoliello)
 
 ## Requirements
 
@@ -56,11 +56,11 @@ To put this in practice:
 ## Building the target
 
 You can build Rust with support for the targets by adding it to the `target`
-list in `config.toml`:
+list in `bootstrap.toml`:
 
 ```toml
 [build]
-target = [ "arm64ec-pc-windows-msvc" ]
+target = ["arm64ec-pc-windows-msvc"]
 ```
 
 ## Building Rust programs

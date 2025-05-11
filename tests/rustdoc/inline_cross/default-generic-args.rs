@@ -53,17 +53,17 @@ pub use default_generic_args::R2;
 
 //@ has user/type.H0.html
 // Check that we handle higher-ranked regions correctly:
-//@ has - '//*[@class="rust item-decl"]//code' "fn(_: for<'a> fn(_: Re<'a>))"
+//@ has - '//*[@class="rust item-decl"]//code' "fn(for<'a> fn(Re<'a>))"
 pub use default_generic_args::H0;
 
 //@ has user/type.H1.html
 // Check that we don't conflate distinct universially quantified regions (#1):
-//@ has - '//*[@class="rust item-decl"]//code' "for<'b> fn(_: for<'a> fn(_: Re<'a, &'b ()>))"
+//@ has - '//*[@class="rust item-decl"]//code' "for<'b> fn(for<'a> fn(Re<'a, &'b ()>))"
 pub use default_generic_args::H1;
 
 //@ has user/type.H2.html
 // Check that we don't conflate distinct universially quantified regions (#2):
-//@ has - '//*[@class="rust item-decl"]//code' "for<'a> fn(_: for<'b> fn(_: Re<'a, &'b ()>))"
+//@ has - '//*[@class="rust item-decl"]//code' "for<'a> fn(for<'b> fn(Re<'a, &'b ()>))"
 pub use default_generic_args::H2;
 
 //@ has user/type.P0.html
@@ -86,7 +86,7 @@ pub use default_generic_args::A0;
 // Demonstrates that we currently don't elide generic arguments that are alpha-equivalent to their
 // respective generic parameter (after instantiation) for perf reasons (it would require us to
 // create an inference context).
-//@ has - '//*[@class="rust item-decl"]//code' "Alpha<for<'arbitrary> fn(_: &'arbitrary ())>"
+//@ has - '//*[@class="rust item-decl"]//code' "Alpha<for<'arbitrary> fn(&'arbitrary ())>"
 pub use default_generic_args::A1;
 
 //@ has user/type.M0.html

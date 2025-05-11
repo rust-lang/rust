@@ -61,7 +61,7 @@ impl CfgPropagator<'_, '_> {
 
         let (_, cfg) =
             merge_attrs(self.cx, item.attrs.other_attrs.as_slice(), Some((&attrs, None)));
-        item.cfg = cfg;
+        item.inner.cfg = cfg;
     }
 }
 
@@ -71,7 +71,7 @@ impl DocFolder for CfgPropagator<'_, '_> {
 
         self.merge_with_parent_attributes(&mut item);
 
-        let new_cfg = match (self.parent_cfg.take(), item.cfg.take()) {
+        let new_cfg = match (self.parent_cfg.take(), item.inner.cfg.take()) {
             (None, None) => None,
             (Some(rc), None) | (None, Some(rc)) => Some(rc),
             (Some(mut a), Some(b)) => {
@@ -81,7 +81,7 @@ impl DocFolder for CfgPropagator<'_, '_> {
             }
         };
         self.parent_cfg = new_cfg.clone();
-        item.cfg = new_cfg;
+        item.inner.cfg = new_cfg;
 
         let old_parent =
             if let Some(def_id) = item.item_id.as_def_id().and_then(|def_id| def_id.as_local()) {

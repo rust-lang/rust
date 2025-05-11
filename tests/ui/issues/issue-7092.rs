@@ -2,12 +2,12 @@ enum Whatever {
 }
 
 fn foo(x: Whatever) {
-    match x {
+    match x { //~ NOTE this expression has type `Whatever`
         Some(field) =>
 //~^ ERROR mismatched types
-//~| expected `Whatever`, found `Option<_>`
-//~| expected enum `Whatever`
-//~| found enum `Option<_>`
+//~| NOTE expected `Whatever`, found `Option<_>`
+//~| NOTE expected enum `Whatever`
+//~| NOTE found enum `Option<_>`
             field.access(),
     }
 }

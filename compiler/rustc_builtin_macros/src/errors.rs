@@ -1,7 +1,7 @@
 use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan, SingleLabelManySpans,
-    SubdiagMessageOp, Subdiagnostic,
+    Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
@@ -110,13 +110,6 @@ pub(crate) struct ProcMacro {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_invalid_crate_attribute)]
-pub(crate) struct InvalidCrateAttr {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(builtin_macros_non_abi)]
 pub(crate) struct NonABI {
     #[primary_span]
@@ -144,10 +137,8 @@ pub(crate) struct AllocMustStatics {
     pub(crate) span: Span,
 }
 
-#[cfg(llvm_enzyme)]
 pub(crate) use autodiff::*;
 
-#[cfg(llvm_enzyme)]
 mod autodiff {
     use super::*;
     #[derive(Diagnostic)]
@@ -188,11 +179,28 @@ mod autodiff {
     }
 
     #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_ret_activity)]
+    pub(crate) struct AutoDiffInvalidRetAct {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) mode: String,
+        pub(crate) act: String,
+    }
+
+    #[derive(Diagnostic)]
     #[diag(builtin_macros_autodiff_mode)]
     pub(crate) struct AutoDiffInvalidMode {
         #[primary_span]
         pub(crate) span: Span,
         pub(crate) mode: String,
+    }
+
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_width)]
+    pub(crate) struct AutoDiffInvalidWidth {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) width: u128,
     }
 
     #[derive(Diagnostic)]
@@ -203,9 +211,7 @@ mod autodiff {
     }
 }
 
-#[cfg(not(llvm_enzyme))]
 pub(crate) use ad_fallback::*;
-#[cfg(not(llvm_enzyme))]
 mod ad_fallback {
     use super::*;
     #[derive(Diagnostic)]
@@ -618,6 +624,17 @@ pub(crate) enum InvalidFormatStringSuggestion {
         #[primary_span]
         span: Span,
     },
+    #[suggestion(
+        builtin_macros_format_reorder_format_parameter,
+        code = "{replacement}",
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    ReorderFormatParameter {
+        #[primary_span]
+        span: Span,
+        replacement: String,
+    },
 }
 
 #[derive(Diagnostic)]
@@ -667,13 +684,9 @@ pub(crate) struct FormatUnusedArg {
 // Allow the singular form to be a subdiagnostic of the multiple-unused
 // form of diagnostic.
 impl Subdiagnostic for FormatUnusedArg {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("named", self.named);
-        let msg = f(diag, crate::fluent_generated::builtin_macros_format_unused_arg.into());
+        let msg = diag.eagerly_translate(crate::fluent_generated::builtin_macros_format_unused_arg);
         diag.span_label(self.span, msg);
     }
 }

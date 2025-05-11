@@ -3,11 +3,10 @@
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::ErrorGuaranteed;
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_lint_defs::builtin::UNCOVERED_PARAM_IN_PROJECTION;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -190,7 +189,7 @@ pub(crate) fn orphan_check_impl(
                     ty::Projection => "associated type",
                     // type Foo = (impl Sized, bool)
                     // impl AutoTrait for Foo {}
-                    ty::Weak => "type alias",
+                    ty::Free => "type alias",
                     // type Opaque = impl Trait;
                     // impl AutoTrait for Opaque {}
                     ty::Opaque => "opaque type",
@@ -320,7 +319,7 @@ fn orphan_check<'tcx>(
         }
 
         let ty = if infcx.next_trait_solver() {
-            ocx.structurally_normalize(
+            ocx.structurally_normalize_ty(
                 &cause,
                 ty::ParamEnv::empty(),
                 infcx.resolve_vars_if_possible(ty),
@@ -356,13 +355,20 @@ fn orphan_check<'tcx>(
             })
         }
         OrphanCheckErr::NonLocalInputType(tys) => {
-            let generics = tcx.generics_of(impl_def_id);
-            let tys = tys
-                .into_iter()
-                .map(|(ty, is_target_ty)| {
-                    (ty.fold_with(&mut TyVarReplacer { infcx: &infcx, generics }), is_target_ty)
-                })
-                .collect();
+            let tys = infcx.probe(|_| {
+                // Map the unconstrained args back to their params,
+                // ignoring any type unification errors.
+                for (arg, id_arg) in
+                    std::iter::zip(args, ty::GenericArgs::identity_for_item(tcx, impl_def_id))
+                {
+                    let _ = infcx.at(&cause, ty::ParamEnv::empty()).eq(
+                        DefineOpaqueTypes::No,
+                        arg,
+                        id_arg,
+                    );
+                }
+                infcx.resolve_vars_if_possible(tys)
+            });
             OrphanCheckErr::NonLocalInputType(tys)
         }
     })
@@ -376,7 +382,7 @@ fn emit_orphan_check_error<'tcx>(
 ) -> ErrorGuaranteed {
     match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
-            let item = tcx.hir().expect_item(impl_def_id);
+            let item = tcx.hir_expect_item(impl_def_id);
             let impl_ = item.expect_impl();
             let hir_trait_ref = impl_.of_trait.as_ref().unwrap();
 
@@ -465,8 +471,8 @@ fn emit_orphan_check_error<'tcx>(
         traits::OrphanCheckErr::UncoveredTyParams(UncoveredTyParams { uncovered, local_ty }) => {
             let mut reported = None;
             for param_def_id in uncovered {
-                let span = tcx.def_ident_span(param_def_id).unwrap();
-                let name = tcx.item_name(param_def_id);
+                let name = tcx.item_ident(param_def_id);
+                let span = name.span;
 
                 reported.get_or_insert(match local_ty {
                     Some(local_type) => tcx.dcx().emit_err(errors::TyParamFirstLocal {
@@ -492,7 +498,7 @@ fn lint_uncovered_ty_params<'tcx>(
 
     for param_def_id in uncovered {
         let span = tcx.def_ident_span(param_def_id).unwrap();
-        let name = tcx.item_name(param_def_id);
+        let name = tcx.item_ident(param_def_id);
 
         match local_ty {
             Some(local_type) => tcx.emit_node_span_lint(
@@ -534,42 +540,5 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UncoveredTyParamCollector<'_, 'tcx> {
         if ct.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
             ct.super_visit_with(self)
         }
-    }
-}
-
-struct TyVarReplacer<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'tcx>,
-    generics: &'tcx ty::Generics,
-}
-
-impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for TyVarReplacer<'cx, 'tcx> {
-    fn cx(&self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
-    }
-
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
-            return ty;
-        }
-        let ty::Infer(ty::TyVar(vid)) = *ty.kind() else {
-            return ty.super_fold_with(self);
-        };
-        let origin = self.infcx.type_var_origin(vid);
-        if let Some(def_id) = origin.param_def_id {
-            // The generics of an `impl` don't have a parent, we can index directly.
-            let index = self.generics.param_def_id_to_index[&def_id];
-            let name = self.generics.own_params[index as usize].name;
-
-            Ty::new_param(self.infcx.tcx, index, name)
-        } else {
-            ty
-        }
-    }
-
-    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if !ct.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
-            return ct;
-        }
-        ct.super_fold_with(self)
     }
 }

@@ -4,11 +4,11 @@ use either::Either;
 use hir_expand::name::Name;
 use intern::Symbol;
 use rustc_parse_format as parse;
-use span::SyntaxContextId;
+use span::SyntaxContext;
 use stdx::TupleExt;
 use syntax::{
-    ast::{self, IsString},
     TextRange,
+    ast::{self, IsString},
 };
 
 use crate::hir::ExprId;
@@ -137,7 +137,7 @@ pub enum FormatAlignment {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FormatCount {
     /// `{:5}` or `{:.5}`
-    Literal(usize),
+    Literal(u16),
     /// `{:.*}`, `{:.5$}`, or `{:a$}`, etc.
     Argument(FormatArgPosition),
 }
@@ -176,7 +176,7 @@ pub(crate) fn parse(
     is_direct_literal: bool,
     mut synth: impl FnMut(Name, Option<TextRange>) -> ExprId,
     mut record_usage: impl FnMut(Name, Option<TextRange>),
-    call_ctx: SyntaxContextId,
+    call_ctx: SyntaxContext,
 ) -> FormatArgs {
     let Ok(text) = s.value() else {
         return FormatArgs {
@@ -214,7 +214,7 @@ pub(crate) fn parse(
         };
     }
 
-    let to_span = |inner_span: parse::InnerSpan| {
+    let to_span = |inner_span: std::ops::Range<usize>| {
         is_source_literal.then(|| {
             TextRange::new(inner_span.start.try_into().unwrap(), inner_span.end.try_into().unwrap())
         })
@@ -287,7 +287,7 @@ pub(crate) fn parse(
 
     for piece in pieces {
         match piece {
-            parse::Piece::String(s) => {
+            parse::Piece::Lit(s) => {
                 unfinished_literal.push_str(s);
             }
             parse::Piece::NextArgument(arg) => {
@@ -297,7 +297,7 @@ pub(crate) fn parse(
                     unfinished_literal.clear();
                 }
 
-                let span = parser.arg_places.get(placeholder_index).and_then(|&s| to_span(s));
+                let span = parser.arg_places.get(placeholder_index).and_then(|s| to_span(s.clone()));
                 placeholder_index += 1;
 
                 let position_span = to_span(position_span);
@@ -458,10 +458,6 @@ impl FormatArgumentsCollector {
             num_explicit_args: self.num_explicit_args,
             names: self.names.into_boxed_slice(),
         }
-    }
-
-    pub fn new() -> Self {
-        Default::default()
     }
 
     pub fn add(&mut self, arg: FormatArgument) -> usize {

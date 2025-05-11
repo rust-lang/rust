@@ -29,6 +29,7 @@ fn main() {
         FromStr::from_str(&env::args().nth(4).expect("need concurrency"))
             .expect("concurrency must be a number");
 
+    let root_manifest = root_path.join("Cargo.toml");
     let src_path = root_path.join("src");
     let tests_path = root_path.join("tests");
     let library_path = root_path.join("library");
@@ -103,8 +104,6 @@ fn main() {
         check!(tests_revision_unpaired_stdout_stderr, &tests_path);
         check!(debug_artifacts, &tests_path);
         check!(ui_tests, &root_path, bless);
-        // FIXME(jieyouxu): remove this check once all run-make tests are ported over to rmake.rs.
-        check!(run_make_tests, &tests_path, &src_path, bless);
         check!(mir_opt_tests, &tests_path, bless);
         check!(rustdoc_gui_tests, &tests_path);
         check!(rustdoc_css_themes, &librustdoc_path);
@@ -117,6 +116,7 @@ fn main() {
         check!(fluent_alphabetical, &compiler_path, bless);
         check!(fluent_period, &compiler_path);
         check!(target_policy, &root_path);
+        check!(gcc_submodule, &root_path, &compiler_path);
 
         // Checks that only make sense for the std libs.
         check!(pal, &library_path);
@@ -139,12 +139,15 @@ fn main() {
         check!(edition, &compiler_path);
         check!(edition, &library_path);
 
+        check!(alphabetical, &root_manifest);
         check!(alphabetical, &src_path);
         check!(alphabetical, &tests_path);
         check!(alphabetical, &compiler_path);
         check!(alphabetical, &library_path);
 
         check!(x_version, &root_path, &cargo);
+
+        check!(triagebot, &root_path);
 
         let collected = {
             drain_handles(&mut handles);

@@ -7,4 +7,4 @@ pub struct Local;
 
 impl trait_with_docs::HasDocs for Local {}
 
-//@ !has "$.index[*][?(@.name == 'HasDocs')]"
+//@ !has "$.index[?(@.name == 'HasDocs')]"

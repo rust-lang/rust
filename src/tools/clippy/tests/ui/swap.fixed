@@ -1,14 +1,9 @@
 //@aux-build: macro_rules.rs
 
-#![warn(clippy::all)]
 #![allow(
     clippy::disallowed_names,
     clippy::no_effect,
     clippy::redundant_clone,
-    redundant_semicolons,
-    dead_code,
-    unused_assignments,
-    unused_variables,
     clippy::let_and_return,
     clippy::useless_vec,
     clippy::redundant_locals

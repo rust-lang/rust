@@ -47,6 +47,9 @@ metadata_crate_dep_rustc_driver =
 metadata_crate_location_unknown_type =
     extern location for {$crate_name} is of an unknown type: {$path}
 
+metadata_crate_not_compiler_builtins =
+    the crate `{$crate_name}` resolved as `compiler_builtins` but is not `#![compiler_builtins]`
+
 metadata_crate_not_panic_runtime =
     the crate `{$crate_name}` is not a panic runtime
 
@@ -94,6 +97,10 @@ metadata_found_staticlib =
     found staticlib `{$crate_name}` instead of rlib or dylib{$add_info}
     .help = please recompile that crate using --crate-type lib
 
+metadata_full_metadata_not_found =
+    only metadata stub found for `{$flavor}` dependency `{$crate_name}`
+    please provide path to the corresponding .rmeta file with full metadata
+
 metadata_global_alloc_required =
     no global memory allocator found but one is required; link to std or add `#[global_allocator]` to a static item that implements the GlobalAlloc trait
 
@@ -113,6 +120,25 @@ metadata_incompatible_rustc =
     found crate `{$crate_name}` compiled by an incompatible version of rustc{$add_info}
     .help = please recompile that crate using this compiler ({$rustc_version}) (consider running `cargo clean` first)
 
+metadata_incompatible_target_modifiers =
+    mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`
+    .note = `{$flag_name_prefixed}={$local_value}` in this crate is incompatible with `{$flag_name_prefixed}={$extern_value}` in dependency `{$extern_crate}`
+    .help = the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
+metadata_incompatible_target_modifiers_help_allow = if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error
+metadata_incompatible_target_modifiers_help_fix = set `{$flag_name_prefixed}={$extern_value}` in this crate or `{$flag_name_prefixed}={$local_value}` in `{$extern_crate}`
+
+metadata_incompatible_target_modifiers_help_fix_l_missed = set `{$flag_name_prefixed}={$extern_value}` in this crate or unset `{$flag_name_prefixed}` in `{$extern_crate}`
+
+metadata_incompatible_target_modifiers_help_fix_r_missed = unset `{$flag_name_prefixed}` in this crate or set `{$flag_name_prefixed}={$local_value}` in `{$extern_crate}`
+
+metadata_incompatible_target_modifiers_l_missed =
+    mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`
+    .note = unset `{$flag_name_prefixed}` in this crate is incompatible with `{$flag_name_prefixed}={$extern_value}` in dependency `{$extern_crate}`
+    .help = the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
+metadata_incompatible_target_modifiers_r_missed =
+    mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`
+    .note = `{$flag_name_prefixed}={$local_value}` in this crate is incompatible with unset `{$flag_name_prefixed}` in dependency `{$extern_crate}`
+    .help = the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
 metadata_incompatible_wasm_link =
     `wasm_import_module` is incompatible with other arguments in `#[link]` attributes
 
@@ -233,6 +259,9 @@ metadata_prev_alloc_error_handler =
 metadata_prev_global_alloc =
     previous global allocator defined here
 
+metadata_raw_dylib_elf_unstable =
+    link kind `raw-dylib` is unstable on ELF platforms
+
 metadata_raw_dylib_no_nul =
     link name must not contain NUL characters if link kind is `raw-dylib`
 
@@ -284,11 +313,16 @@ metadata_unknown_link_kind =
 metadata_unknown_link_modifier =
     unknown linking modifier `{$modifier}`, expected one of: bundle, verbatim, whole-archive, as-needed
 
+metadata_unknown_target_modifier_unsafe_allowed = unknown target modifier `{$flag_name}`, requested by `-Cunsafe-allow-abi-mismatch={$flag_name}`
+
 metadata_unsupported_abi =
     ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture
 
 metadata_unsupported_abi_i686 =
     ABI not supported by `#[link(kind = "raw-dylib")]` on i686
+
+metadata_wasm_c_abi =
+    older versions of the `wasm-bindgen` crate are incompatible with current versions of Rust; please update to `wasm-bindgen` v0.2.88
 
 metadata_wasm_import_form =
     wasm import module must be of the form `wasm_import_module = "string"`

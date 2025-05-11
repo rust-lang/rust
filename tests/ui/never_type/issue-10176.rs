@@ -1,9 +1,9 @@
-fn f() -> isize {
+fn f() -> isize { //~ NOTE expected `isize` because of return type
     (return 1, return 2)
 //~^ ERROR mismatched types
-//~| expected type `isize`
-//~| found tuple `(!, !)`
-//~| expected `isize`, found `(!, !)`
+//~| NOTE expected type `isize`
+//~| NOTE found tuple `(!, !)`
+//~| NOTE expected `isize`, found `(!, !)`
 }
 
 fn main() {}

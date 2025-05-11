@@ -9,6 +9,7 @@ impl UnitStruct {
     fn new() -> Self {
         //should lint
         Self::default()
+        //~^ default_constructed_unit_structs
     }
 }
 
@@ -51,6 +52,7 @@ impl NormalStruct {
         // should lint
         Self {
             inner: PhantomData::default(),
+            //~^ default_constructed_unit_structs
         }
     }
 
@@ -124,9 +126,13 @@ mod issue_10755 {
 fn main() {
     // should lint
     let _ = PhantomData::<usize>::default();
+    //~^ default_constructed_unit_structs
     let _: PhantomData<i32> = PhantomData::default();
+    //~^ default_constructed_unit_structs
     let _: PhantomData<i32> = std::marker::PhantomData::default();
+    //~^ default_constructed_unit_structs
     let _ = UnitStruct::default();
+    //~^ default_constructed_unit_structs
 
     // should not lint
     let _ = TupleStruct::default();
@@ -154,4 +160,18 @@ fn main() {
     }
 
     let _ = <struct_from_macro!()>::default();
+}
+
+fn issue12654() {
+    #[derive(Default)]
+    struct G;
+
+    fn f(_g: G) {}
+
+    f(<_>::default());
+    f(<G>::default());
+    //~^ default_constructed_unit_structs
+
+    // No lint because `as Default` hides the singleton
+    f(<G as Default>::default());
 }

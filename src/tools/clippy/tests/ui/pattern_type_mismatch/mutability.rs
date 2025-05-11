@@ -1,5 +1,5 @@
-#![allow(clippy::all)]
 #![warn(clippy::pattern_type_mismatch)]
+#![allow(clippy::single_match)]
 
 fn main() {}
 
@@ -7,14 +7,14 @@ fn should_lint() {
     let value = &Some(23);
     match value {
         Some(_) => (),
-        //~^ ERROR: type of pattern does not match the expression type
+        //~^ pattern_type_mismatch
         _ => (),
     }
 
     let value = &mut Some(23);
     match value {
         Some(_) => (),
-        //~^ ERROR: type of pattern does not match the expression type
+        //~^ pattern_type_mismatch
         _ => (),
     }
 }

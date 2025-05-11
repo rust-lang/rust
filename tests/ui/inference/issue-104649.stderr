@@ -6,8 +6,8 @@ LL |     let a = A(Result::Ok(Result::Ok(())));
    |
 help: consider giving `a` an explicit type, where the type for type parameter `E` is specified
    |
-LL |     let a: A<std::result::Result<std::result::Result<(), E>, Error>> = A(Result::Ok(Result::Ok(())));
-   |          +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+LL |     let a: A<std::result::Result<std::result::Result<_, E>, _>> = A(Result::Ok(Result::Ok(())));
+   |          ++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

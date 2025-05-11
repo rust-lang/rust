@@ -1,3 +1,4 @@
+#![feature(try_trait_v2)]
 fn foo() -> Result<String, String> { //~ NOTE expected `String` because of this
     let test = String::from("one,two");
     let x = test

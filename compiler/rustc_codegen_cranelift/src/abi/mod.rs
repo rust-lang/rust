@@ -65,7 +65,7 @@ pub(crate) fn conv_to_call_conv(sess: &Session, c: Conv, default_call_conv: Call
             sess.dcx().fatal("C-cmse-nonsecure-entry call conv is not yet implemented");
         }
 
-        Conv::Msp430Intr | Conv::PtxKernel | Conv::AvrInterrupt | Conv::AvrNonBlockingInterrupt => {
+        Conv::Msp430Intr | Conv::GpuKernel | Conv::AvrInterrupt | Conv::AvrNonBlockingInterrupt => {
             unreachable!("tried to use {c:?} call conv which only exists on an unsupported target");
         }
     }
@@ -122,7 +122,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         &mut self,
         name: &str,
         params: Vec<AbiParam>,
-        returns: Vec<AbiParam>,
+        mut returns: Vec<AbiParam>,
         args: &[Value],
     ) -> Cow<'_, [Value]> {
         // Pass i128 arguments by-ref on Windows.
@@ -146,15 +146,19 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
             (params, args.into())
         };
 
-        // Return i128 using a return area pointer on Windows and s390x.
-        let adjust_ret_param =
-            if self.tcx.sess.target.is_like_windows || self.tcx.sess.target.arch == "s390x" {
-                returns.len() == 1 && returns[0].value_type == types::I128
-            } else {
-                false
-            };
+        let ret_single_i128 = returns.len() == 1 && returns[0].value_type == types::I128;
+        if ret_single_i128 && self.tcx.sess.target.is_like_windows {
+            // Return i128 using the vector ABI on Windows
+            returns[0].value_type = types::I64X2;
 
-        if adjust_ret_param {
+            let ret = self.lib_call_unadjusted(name, params, returns, &args)[0];
+
+            // FIXME(bytecodealliance/wasmtime#6104) use bitcast instead of store to get from i64x2 to i128
+            let ret_ptr = self.create_stack_slot(16, 16);
+            ret_ptr.store(self, ret, MemFlags::trusted());
+            Cow::Owned(vec![ret_ptr.load(self, types::I128, MemFlags::trusted())])
+        } else if ret_single_i128 && self.tcx.sess.target.arch == "s390x" {
+            // Return i128 using a return area pointer on s390x.
             let mut params = params;
             let mut args = args.to_vec();
 
@@ -398,9 +402,13 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
         if is_call_from_compiler_builtins_to_upstream_monomorphization(fx.tcx, instance) {
             if target.is_some() {
-                let caller = with_no_trimmed_paths!(fx.tcx.def_path_str(fx.instance.def_id()));
-                let callee = with_no_trimmed_paths!(fx.tcx.def_path_str(def_id));
-                fx.tcx.dcx().emit_err(CompilerBuiltinsCannotCall { caller, callee });
+                let caller_def = fx.instance.def_id();
+                let e = CompilerBuiltinsCannotCall {
+                    span: fx.tcx.def_span(caller_def),
+                    caller: with_no_trimmed_paths!(fx.tcx.def_path_str(caller_def)),
+                    callee: with_no_trimmed_paths!(fx.tcx.def_path_str(def_id)),
+                };
+                fx.tcx.dcx().emit_err(e);
             } else {
                 fx.bcx.ins().trap(TrapCode::user(2).unwrap());
                 return;
@@ -433,7 +441,9 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     Err(instance) => Some(instance),
                 }
             }
-            InstanceKind::DropGlue(_, None) | ty::InstanceKind::AsyncDropGlueCtorShim(_, None) => {
+            // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
+            // it is `func returning noop future`
+            InstanceKind::DropGlue(_, None) => {
                 // empty drop glue - a nop.
                 let dest = target.expect("Non terminating drop_in_place_real???");
                 let ret_block = fx.get_block(dest);
@@ -633,7 +643,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 .flat_map(|arg_abi| arg_abi.get_abi_param(fx.tcx).into_iter()),
         );
 
-        if fx.tcx.sess.target.is_like_osx && fx.tcx.sess.target.arch == "aarch64" {
+        if fx.tcx.sess.target.is_like_darwin && fx.tcx.sess.target.arch == "aarch64" {
             // Add any padding arguments needed for Apple AArch64.
             // There's no need to pad the argument list unless variadic arguments are actually being
             // passed.
@@ -699,9 +709,8 @@ pub(crate) fn codegen_drop<'tcx>(
     let ty = drop_place.layout().ty;
     let drop_instance = Instance::resolve_drop_in_place(fx.tcx, ty);
 
-    if let ty::InstanceKind::DropGlue(_, None) | ty::InstanceKind::AsyncDropGlueCtorShim(_, None) =
-        drop_instance.def
-    {
+    // AsyncDropGlueCtorShim can't be here
+    if let ty::InstanceKind::DropGlue(_, None) = drop_instance.def {
         // we don't actually need to drop anything
     } else {
         match ty.kind() {

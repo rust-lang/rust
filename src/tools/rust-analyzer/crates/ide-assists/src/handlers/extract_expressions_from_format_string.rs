@@ -1,14 +1,15 @@
-use crate::{utils, AssistContext, Assists};
+use crate::{AssistContext, Assists, utils};
 use ide_db::{
     assists::{AssistId, AssistKind},
-    syntax_helpers::format_string_exprs::{parse_format_exprs, Arg},
+    syntax_helpers::format_string_exprs::{Arg, parse_format_exprs},
 };
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make},
-    ted, AstNode, AstToken, NodeOrToken,
+    AstNode, AstToken, NodeOrToken,
     SyntaxKind::WHITESPACE,
     T,
+    ast::{self, make},
+    ted,
 };
 
 // Assist: extract_expressions_from_format_string
@@ -52,6 +53,7 @@ pub(crate) fn extract_expressions_from_format_string(
             } else {
                 AssistKind::QuickFix
             },
+            None,
         ),
         "Extract format expressions",
         tt.syntax().text_range(),
@@ -61,21 +63,28 @@ pub(crate) fn extract_expressions_from_format_string(
             // Extract existing arguments in macro
             let tokens = tt.token_trees_and_tokens().collect_vec();
 
-            let existing_args = if let [_opening_bracket, NodeOrToken::Token(_format_string), _args_start_comma, tokens @ .., NodeOrToken::Token(_end_bracket)] =
-                tokens.as_slice()
+            let existing_args = if let [
+                _opening_bracket,
+                NodeOrToken::Token(_format_string),
+                _args_start_comma,
+                tokens @ ..,
+                NodeOrToken::Token(_end_bracket),
+            ] = tokens.as_slice()
             {
-                let args = tokens.split(|it| matches!(it, NodeOrToken::Token(t) if t.kind() == T![,])).map(|arg| {
-                    // Strip off leading and trailing whitespace tokens
-                    let arg = match arg.split_first() {
-                        Some((NodeOrToken::Token(t), rest)) if t.kind() == WHITESPACE => rest,
-                        _ => arg,
-                    };
-                    let arg = match arg.split_last() {
-                        Some((NodeOrToken::Token(t), rest)) if t.kind() == WHITESPACE => rest,
-                        _ => arg,
-                    };
-                    arg
-                });
+                let args = tokens
+                    .split(|it| matches!(it, NodeOrToken::Token(t) if t.kind() == T![,]))
+                    .map(|arg| {
+                        // Strip off leading and trailing whitespace tokens
+                        let arg = match arg.split_first() {
+                            Some((NodeOrToken::Token(t), rest)) if t.kind() == WHITESPACE => rest,
+                            _ => arg,
+                        };
+
+                        match arg.split_last() {
+                            Some((NodeOrToken::Token(t), rest)) if t.kind() == WHITESPACE => rest,
+                            _ => arg,
+                        }
+                    });
 
                 args.collect()
             } else {
@@ -100,7 +109,8 @@ pub(crate) fn extract_expressions_from_format_string(
                     Arg::Expr(s) => {
                         // insert arg
                         // FIXME: use the crate's edition for parsing
-                        let expr = ast::Expr::parse(&s, syntax::Edition::CURRENT_FIXME).syntax_node();
+                        let expr =
+                            ast::Expr::parse(&s, syntax::Edition::CURRENT_FIXME).syntax_node();
                         let mut expr_tt = utils::tt_from_syntax(expr);
                         new_tt_bits.append(&mut expr_tt);
                     }
@@ -119,7 +129,6 @@ pub(crate) fn extract_expressions_from_format_string(
                     Arg::Ident(_s) => (),
                 }
             }
-
 
             // Insert new args
             let new_tt = make::token_tree(tt_delimiter, new_tt_bits).clone_for_update();

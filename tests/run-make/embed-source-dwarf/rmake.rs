@@ -21,7 +21,7 @@ fn main() {
         .output(&output)
         .arg("-g")
         .arg("-Zembed-source=yes")
-        .arg("-Zdwarf-version=5")
+        .arg("-Cdwarf-version=5")
         .run();
     let output = rfs::read(output);
     let obj = object::File::parse(output.as_slice()).unwrap();

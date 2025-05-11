@@ -1,5 +1,5 @@
 error: mismatched closing delimiter: `}`
-  --> $DIR/issue-81804.rs:6:8
+  --> $DIR/issue-81804.rs:5:8
    |
 LL | fn p([=(}
    |        ^^ mismatched closing delimiter
@@ -7,7 +7,7 @@ LL | fn p([=(}
    |        unclosed delimiter
 
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-81804.rs:6:11
+  --> $DIR/issue-81804.rs:5:11
    |
 LL | fn p([=(}
    |     --   ^

@@ -8,7 +8,7 @@ use rustc_span::sym;
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// Checks for calls to `std::mem::size_of_val()` where the argument is
+    /// Checks for calls to `size_of_val()` where the argument is
     /// a reference to a reference.
     ///
     /// ### Why is this bad?
@@ -29,7 +29,7 @@ declare_clippy_lint! {
     ///         // is already a reference, `&self` is a double-reference.
     ///         // The return value of `size_of_val()` therefore is the
     ///         // size of the reference-type, not the size of `self`.
-    ///         std::mem::size_of_val(&self)
+    ///         size_of_val(&self)
     ///     }
     /// }
     /// ```
@@ -42,14 +42,14 @@ declare_clippy_lint! {
     /// impl Foo {
     ///     fn size(&self) -> usize {
     ///         // Correct
-    ///         std::mem::size_of_val(self)
+    ///         size_of_val(self)
     ///     }
     /// }
     /// ```
     #[clippy::version = "1.68.0"]
     pub SIZE_OF_REF,
     suspicious,
-    "Argument to `std::mem::size_of_val()` is a double-reference, which is almost certainly unintended"
+    "Argument to `size_of_val()` is a double-reference, which is almost certainly unintended"
 }
 declare_lint_pass!(SizeOfRef => [SIZE_OF_REF]);
 
@@ -65,9 +65,9 @@ impl LateLintPass<'_> for SizeOfRef {
                 cx,
                 SIZE_OF_REF,
                 expr.span,
-                "argument to `std::mem::size_of_val()` is a reference to a reference",
+                "argument to `size_of_val()` is a reference to a reference",
                 None,
-                "dereference the argument to `std::mem::size_of_val()` to get the size of the value instead of the size of the reference-type",
+                "dereference the argument to `size_of_val()` to get the size of the value instead of the size of the reference-type",
             );
         }
     }

@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: hard soft
 //@ assembly-output: emit-asm
 //@ [hard] compile-flags: --target thumbv8m.main-none-eabihf --crate-type lib -Copt-level=1
@@ -7,10 +8,9 @@
 #![crate_type = "lib"]
 #![feature(abi_c_cmse_nonsecure_call, cmse_nonsecure_entry, no_core, lang_items)]
 #![no_core]
-#[lang = "sized"]
-pub trait Sized {}
-#[lang = "copy"]
-pub trait Copy {}
+
+extern crate minicore;
+use minicore::*;
 
 // CHECK-LABEL: __acle_se_entry_point:
 // CHECK-NEXT: entry_point:

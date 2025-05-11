@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
             let is_copy = cx.type_is_copy_modulo_regions(arg_ty);
             let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
             let let_underscore_ignore_sugg = || {
-                if let Some((_, node)) = cx.tcx.hir().parent_iter(expr.hir_id).nth(0)
+                if let Some((_, node)) = cx.tcx.hir_parent_iter(expr.hir_id).nth(0)
                     && let Node::Stmt(stmt) = node
                     && let StmtKind::Semi(e) = stmt.kind
                     && e.hir_id == expr.hir_id
@@ -163,32 +163,44 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
             };
             match fn_name {
                 sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => {
-                    cx.emit_span_lint(DROPPING_REFERENCES, expr.span, DropRefDiag {
-                        arg_ty,
-                        label: arg.span,
-                        sugg: let_underscore_ignore_sugg(),
-                    });
+                    cx.emit_span_lint(
+                        DROPPING_REFERENCES,
+                        expr.span,
+                        DropRefDiag { arg_ty, label: arg.span, sugg: let_underscore_ignore_sugg() },
+                    );
                 }
                 sym::mem_forget if arg_ty.is_ref() => {
-                    cx.emit_span_lint(FORGETTING_REFERENCES, expr.span, ForgetRefDiag {
-                        arg_ty,
-                        label: arg.span,
-                        sugg: let_underscore_ignore_sugg(),
-                    });
+                    cx.emit_span_lint(
+                        FORGETTING_REFERENCES,
+                        expr.span,
+                        ForgetRefDiag {
+                            arg_ty,
+                            label: arg.span,
+                            sugg: let_underscore_ignore_sugg(),
+                        },
+                    );
                 }
                 sym::mem_drop if is_copy && !drop_is_single_call_in_arm => {
-                    cx.emit_span_lint(DROPPING_COPY_TYPES, expr.span, DropCopyDiag {
-                        arg_ty,
-                        label: arg.span,
-                        sugg: let_underscore_ignore_sugg(),
-                    });
+                    cx.emit_span_lint(
+                        DROPPING_COPY_TYPES,
+                        expr.span,
+                        DropCopyDiag {
+                            arg_ty,
+                            label: arg.span,
+                            sugg: let_underscore_ignore_sugg(),
+                        },
+                    );
                 }
                 sym::mem_forget if is_copy => {
-                    cx.emit_span_lint(FORGETTING_COPY_TYPES, expr.span, ForgetCopyDiag {
-                        arg_ty,
-                        label: arg.span,
-                        sugg: let_underscore_ignore_sugg(),
-                    });
+                    cx.emit_span_lint(
+                        FORGETTING_COPY_TYPES,
+                        expr.span,
+                        ForgetCopyDiag {
+                            arg_ty,
+                            label: arg.span,
+                            sugg: let_underscore_ignore_sugg(),
+                        },
+                    );
                 }
                 sym::mem_drop
                     if let ty::Adt(adt, _) = arg_ty.kind()

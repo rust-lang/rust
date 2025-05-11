@@ -3,8 +3,6 @@ error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
    |
 LL |     let _ = 0: i32;
    |              ^ expected one of `.`, `;`, `?`, `else`, or an operator
-   |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: aborting due to 1 previous error
 

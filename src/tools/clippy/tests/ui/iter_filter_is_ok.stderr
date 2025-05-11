@@ -8,58 +8,52 @@ LL |         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(Result::is_ok
    = help: to override `-D warnings` add `#[allow(clippy::iter_filter_is_ok)]`
 
 error: `filter` for `is_ok` on iterator over `Result`s
-  --> tests/ui/iter_filter_is_ok.rs:13:56
+  --> tests/ui/iter_filter_is_ok.rs:14:56
    |
 LL |         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(|a| a.is_ok());
    |                                                        ^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_ok` on iterator over `Result`s
-  --> tests/ui/iter_filter_is_ok.rs:16:49
+  --> tests/ui/iter_filter_is_ok.rs:18:49
    |
 LL |         let _ = vec![Ok(1), Err(2)].into_iter().filter(|o| { o.is_ok() });
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_ok` on iterator over `Result`s
-  --> tests/ui/iter_filter_is_ok.rs:21:56
+  --> tests/ui/iter_filter_is_ok.rs:23:56
    |
 LL |         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(|&a| a.is_ok());
    |                                                        ^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_ok` on iterator over `Result`s
-  --> tests/ui/iter_filter_is_ok.rs:24:56
+  --> tests/ui/iter_filter_is_ok.rs:26:56
    |
 LL |         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(|&a| a.is_ok());
    |                                                        ^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_ok` on iterator over `Result`s
-  --> tests/ui/iter_filter_is_ok.rs:28:49
+  --> tests/ui/iter_filter_is_ok.rs:30:49
    |
 LL |         let _ = vec![Ok(1), Err(2)].into_iter().filter(|&o| { o.is_ok() });
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_ok` on iterator over `Result`s
-  --> tests/ui/iter_filter_is_ok.rs:35:14
+  --> tests/ui/iter_filter_is_ok.rs:37:14
    |
 LL |             .filter(std::result::Result::is_ok);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_ok` on iterator over `Result`s
-  --> tests/ui/iter_filter_is_ok.rs:40:14
+  --> tests/ui/iter_filter_is_ok.rs:42:14
    |
 LL |             .filter(|a| std::result::Result::is_ok(a));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_ok` on iterator over `Result`s
-  --> tests/ui/iter_filter_is_ok.rs:43:56
+  --> tests/ui/iter_filter_is_ok.rs:46:56
    |
 LL |         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(|a| { std::result::Result::is_ok(a) });
    |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
-
-error: `filter` for `is_ok` on iterator over `Result`s
-  --> tests/ui/iter_filter_is_ok.rs:48:56
-   |
-LL |         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(|ref a| a.is_ok());
-   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_ok` on iterator over `Result`s
   --> tests/ui/iter_filter_is_ok.rs:51:56
@@ -68,7 +62,13 @@ LL |         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(|ref a| a.is_
    |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_ok` on iterator over `Result`s
-  --> tests/ui/iter_filter_is_ok.rs:55:49
+  --> tests/ui/iter_filter_is_ok.rs:54:56
+   |
+LL |         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(|ref a| a.is_ok());
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
+
+error: `filter` for `is_ok` on iterator over `Result`s
+  --> tests/ui/iter_filter_is_ok.rs:58:49
    |
 LL |         let _ = vec![Ok(1), Err(2)].into_iter().filter(|ref o| { o.is_ok() });
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`

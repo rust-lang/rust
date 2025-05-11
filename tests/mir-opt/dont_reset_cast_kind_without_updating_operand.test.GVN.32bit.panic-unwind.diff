@@ -1,0 +1,86 @@
+- // MIR for `test` before GVN
++ // MIR for `test` after GVN
+  
+  fn test() -> () {
+      let mut _0: ();
+      let _1: &std::boxed::Box<()>;
+      let _2: &std::boxed::Box<()>;
+      let _3: std::boxed::Box<()>;
+      let mut _6: *const ();
+      let mut _8: *const [()];
+      let mut _9: std::boxed::Box<()>;
+      let mut _10: *const ();
+      let mut _11: usize;
+      scope 1 {
+          debug vp_ctx => _1;
+          let _4: *const ();
+          scope 2 {
+              debug slf => _10;
+              let _5: *const [()];
+              scope 3 {
+                  debug bytes => _5;
+                  let _7: *mut ();
+                  scope 4 {
+                      debug _x => _7;
+                  }
+                  scope 7 (inlined foo) {
+                  }
+              }
+              scope 5 (inlined slice_from_raw_parts::<()>) {
+                  scope 6 (inlined std::ptr::from_raw_parts::<[()], ()>) {
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = Box::<()>::new(const ()) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          _2 = &_3;
+          _1 = copy _2;
+          StorageDead(_2);
+          StorageLive(_4);
+-         _9 = deref_copy _3;
++         _9 = copy _3;
+          _10 = copy ((_9.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *const () (Transmute);
+          _4 = copy _10;
+-         StorageLive(_5);
++         nop;
+          StorageLive(_6);
+-         _6 = copy _4;
++         _6 = copy _10;
+          StorageLive(_11);
+          _11 = const 1_usize;
+-         _5 = *const [()] from (copy _6, copy _11);
++         _5 = *const [()] from (copy _10, const 1_usize);
+          StorageDead(_11);
+          StorageDead(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+          _8 = copy _5;
+-         _7 = copy _8 as *mut () (PtrToPtr);
++         _7 = copy ((_9.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *mut () (Transmute);
+          StorageDead(_8);
+          StorageDead(_7);
+-         StorageDead(_5);
++         nop;
+          StorageDead(_4);
+          drop(_3) -> [return: bb2, unwind: bb3];
+      }
+  
+      bb2: {
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  
+      bb3 (cleanup): {
+          resume;
+      }
+  }
+  

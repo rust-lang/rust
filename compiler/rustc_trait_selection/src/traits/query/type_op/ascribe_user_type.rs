@@ -30,8 +30,9 @@ impl<'tcx> super::QueryTypeOp<'tcx> for AscribeUserType<'tcx> {
     fn perform_locally_with_next_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
+        span: Span,
     ) -> Result<Self::QueryResponse, NoSolution> {
-        type_op_ascribe_user_type_with_span(ocx, key, None)
+        type_op_ascribe_user_type_with_span(ocx, key, span)
     }
 }
 
@@ -41,11 +42,10 @@ impl<'tcx> super::QueryTypeOp<'tcx> for AscribeUserType<'tcx> {
 pub fn type_op_ascribe_user_type_with_span<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
     key: ParamEnvAnd<'tcx, AscribeUserType<'tcx>>,
-    span: Option<Span>,
+    span: Span,
 ) -> Result<(), NoSolution> {
     let (param_env, AscribeUserType { mir_ty, user_ty }) = key.into_parts();
     debug!("type_op_ascribe_user_type: mir_ty={:?} user_ty={:?}", mir_ty, user_ty);
-    let span = span.unwrap_or(DUMMY_SP);
     match user_ty.kind {
         UserTypeKind::Ty(user_ty) => relate_mir_and_user_ty(ocx, param_env, span, mir_ty, user_ty)?,
         UserTypeKind::TypeOf(def_id, user_args) => {
@@ -117,8 +117,7 @@ fn relate_mir_and_user_args<'tcx>(
             CRATE_DEF_ID,
             ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span),
         );
-        let instantiated_predicate =
-            ocx.normalize(&cause.clone(), param_env, instantiated_predicate);
+        let instantiated_predicate = ocx.normalize(&cause, param_env, instantiated_predicate);
 
         ocx.register_obligation(Obligation::new(tcx, cause, param_env, instantiated_predicate));
     }
@@ -132,12 +131,12 @@ fn relate_mir_and_user_args<'tcx>(
     //     const CONST: () = { /* arbitrary code that depends on T being WF */ };
     // }
     // ```
-    for arg in args {
+    for term in args.iter().filter_map(ty::GenericArg::as_term) {
         ocx.register_obligation(Obligation::new(
             tcx,
             cause.clone(),
             param_env,
-            ty::ClauseKind::WellFormed(arg),
+            ty::ClauseKind::WellFormed(term),
         ));
     }
 

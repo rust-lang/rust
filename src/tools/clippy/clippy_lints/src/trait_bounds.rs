@@ -10,8 +10,8 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{
-    BoundPolarity, GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment, PredicateOrigin, QPath,
-    TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicateKind,
+    AmbigArg, BoundPolarity, GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment,
+    PredicateOrigin, QPath, TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicateKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -95,7 +95,7 @@ impl TraitBounds {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             max_trait_bounds: conf.max_trait_bounds,
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
         }
     }
 }
@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
         // special handling for self trait bounds as these are not considered generics
         // ie. trait Foo: Display {}
         if let Item {
-            kind: ItemKind::Trait(_, _, _, bounds, ..),
+            kind: ItemKind::Trait(_, _, _, _, bounds, ..),
             ..
         } = item
         {
@@ -133,9 +133,9 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                     ..
                 }) = segments.first()
                 && let Some(Node::Item(Item {
-                    kind: ItemKind::Trait(_, _, _, self_bounds, _),
+                    kind: ItemKind::Trait(_, _, _, _, self_bounds, _),
                     ..
-                })) = cx.tcx.hir().get_if_local(*def_id)
+                })) = cx.tcx.hir_get_if_local(*def_id)
             {
                 if self_bounds_map.is_empty() {
                     for bound in *self_bounds {
@@ -151,27 +151,26 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                     .iter()
                     .filter_map(get_trait_info_from_bound)
                     .for_each(|(trait_item_res, trait_item_segments, span)| {
-                        if let Some(self_segments) = self_bounds_map.get(&trait_item_res) {
-                            if SpanlessEq::new(cx)
+                        if let Some(self_segments) = self_bounds_map.get(&trait_item_res)
+                            && SpanlessEq::new(cx)
                                 .paths_by_resolution()
                                 .eq_path_segments(self_segments, trait_item_segments)
-                            {
-                                span_lint_and_help(
-                                    cx,
-                                    TRAIT_DUPLICATION_IN_BOUNDS,
-                                    span,
-                                    "this trait bound is already specified in trait declaration",
-                                    None,
-                                    "consider removing this trait bound",
-                                );
-                            }
+                        {
+                            span_lint_and_help(
+                                cx,
+                                TRAIT_DUPLICATION_IN_BOUNDS,
+                                span,
+                                "this trait bound is already specified in trait declaration",
+                                None,
+                                "consider removing this trait bound",
+                            );
                         }
                     });
             }
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx>) {
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx, AmbigArg>) {
         if let TyKind::Ref(.., mut_ty) = &ty.kind
             && let TyKind::TraitObject(bounds, ..) = mut_ty.ty.kind
             && bounds.len() > 2
@@ -223,17 +222,15 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
             }
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 impl TraitBounds {
     /// Is the given bound a `?Sized` bound, and is combining it (i.e. `T: X + ?Sized`) an error on
     /// this MSRV? See <https://github.com/rust-lang/rust-clippy/issues/8772> for details.
     fn cannot_combine_maybe_bound(&self, cx: &LateContext<'_>, bound: &GenericBound<'_>) -> bool {
-        if !self.msrv.meets(msrvs::MAYBE_BOUND_IN_WHERE)
-            && let GenericBound::Trait(tr) = bound
+        if let GenericBound::Trait(tr) = bound
             && let BoundPolarity::Maybe(_) = tr.modifiers.polarity
+            && !self.msrv.meets(cx, msrvs::MAYBE_BOUND_IN_WHERE)
         {
             cx.tcx.lang_items().get(LangItem::Sized) == tr.trait_ref.path.res.opt_def_id()
         } else {

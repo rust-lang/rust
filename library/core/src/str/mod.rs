@@ -114,7 +114,6 @@ fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     );
 }
 
-#[cfg(not(test))]
 impl str {
     /// Returns the length of `self`.
     ///
@@ -134,7 +133,8 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_str_len", since = "1.39.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "str_len")]
+    #[rustc_diagnostic_item = "str_len"]
+    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
     #[must_use]
     #[inline]
     pub const fn len(&self) -> usize {
@@ -154,10 +154,180 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_str_is_empty", since = "1.39.0")]
+    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
     #[must_use]
     #[inline]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    /// Converts a slice of bytes to a string slice.
+    ///
+    /// A string slice ([`&str`]) is made of bytes ([`u8`]), and a byte slice
+    /// ([`&[u8]`][byteslice]) is made of bytes, so this function converts between
+    /// the two. Not all byte slices are valid string slices, however: [`&str`] requires
+    /// that it is valid UTF-8. `from_utf8()` checks to ensure that the bytes are valid
+    /// UTF-8, and then does the conversion.
+    ///
+    /// [`&str`]: str
+    /// [byteslice]: prim@slice
+    ///
+    /// If you are sure that the byte slice is valid UTF-8, and you don't want to
+    /// incur the overhead of the validity check, there is an unsafe version of
+    /// this function, [`from_utf8_unchecked`], which has the same
+    /// behavior but skips the check.
+    ///
+    /// If you need a `String` instead of a `&str`, consider
+    /// [`String::from_utf8`][string].
+    ///
+    /// [string]: ../std/string/struct.String.html#method.from_utf8
+    ///
+    /// Because you can stack-allocate a `[u8; N]`, and you can take a
+    /// [`&[u8]`][byteslice] of it, this function is one way to have a
+    /// stack-allocated string. There is an example of this in the
+    /// examples section below.
+    ///
+    /// [byteslice]: slice
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if the slice is not UTF-8 with a description as to why the
+    /// provided slice is not UTF-8.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// // some bytes, in a vector
+    /// let sparkle_heart = vec![240, 159, 146, 150];
+    ///
+    /// // We can use the ? (try) operator to check if the bytes are valid
+    /// let sparkle_heart = str::from_utf8(&sparkle_heart)?;
+    ///
+    /// assert_eq!("💖", sparkle_heart);
+    /// # Ok::<_, std::str::Utf8Error>(())
+    /// ```
+    ///
+    /// Incorrect bytes:
+    ///
+    /// ```
+    /// // some invalid bytes, in a vector
+    /// let sparkle_heart = vec![0, 159, 146, 150];
+    ///
+    /// assert!(str::from_utf8(&sparkle_heart).is_err());
+    /// ```
+    ///
+    /// See the docs for [`Utf8Error`] for more details on the kinds of
+    /// errors that can be returned.
+    ///
+    /// A "stack allocated string":
+    ///
+    /// ```
+    /// // some bytes, in a stack-allocated array
+    /// let sparkle_heart = [240, 159, 146, 150];
+    ///
+    /// // We know these bytes are valid, so just use `unwrap()`.
+    /// let sparkle_heart: &str = str::from_utf8(&sparkle_heart).unwrap();
+    ///
+    /// assert_eq!("💖", sparkle_heart);
+    /// ```
+    #[stable(feature = "inherent_str_constructors", since = "1.87.0")]
+    #[rustc_const_stable(feature = "inherent_str_constructors", since = "1.87.0")]
+    #[rustc_diagnostic_item = "str_inherent_from_utf8"]
+    pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
+        converts::from_utf8(v)
+    }
+
+    /// Converts a mutable slice of bytes to a mutable string slice.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// // "Hello, Rust!" as a mutable vector
+    /// let mut hellorust = vec![72, 101, 108, 108, 111, 44, 32, 82, 117, 115, 116, 33];
+    ///
+    /// // As we know these bytes are valid, we can use `unwrap()`
+    /// let outstr = str::from_utf8_mut(&mut hellorust).unwrap();
+    ///
+    /// assert_eq!("Hello, Rust!", outstr);
+    /// ```
+    ///
+    /// Incorrect bytes:
+    ///
+    /// ```
+    /// // Some invalid bytes in a mutable vector
+    /// let mut invalid = vec![128, 223];
+    ///
+    /// assert!(str::from_utf8_mut(&mut invalid).is_err());
+    /// ```
+    /// See the docs for [`Utf8Error`] for more details on the kinds of
+    /// errors that can be returned.
+    #[stable(feature = "inherent_str_constructors", since = "1.87.0")]
+    #[rustc_const_stable(feature = "const_str_from_utf8", since = "1.87.0")]
+    #[rustc_diagnostic_item = "str_inherent_from_utf8_mut"]
+    pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
+        converts::from_utf8_mut(v)
+    }
+
+    /// Converts a slice of bytes to a string slice without checking
+    /// that the string contains valid UTF-8.
+    ///
+    /// See the safe version, [`from_utf8`], for more information.
+    ///
+    /// # Safety
+    ///
+    /// The bytes passed in must be valid UTF-8.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// // some bytes, in a vector
+    /// let sparkle_heart = vec![240, 159, 146, 150];
+    ///
+    /// let sparkle_heart = unsafe {
+    ///     str::from_utf8_unchecked(&sparkle_heart)
+    /// };
+    ///
+    /// assert_eq!("💖", sparkle_heart);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[stable(feature = "inherent_str_constructors", since = "1.87.0")]
+    #[rustc_const_stable(feature = "inherent_str_constructors", since = "1.87.0")]
+    #[rustc_diagnostic_item = "str_inherent_from_utf8_unchecked"]
+    pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
+        // SAFETY: converts::from_utf8_unchecked has the same safety requirements as this function.
+        unsafe { converts::from_utf8_unchecked(v) }
+    }
+
+    /// Converts a slice of bytes to a string slice without checking
+    /// that the string contains valid UTF-8; mutable version.
+    ///
+    /// See the immutable version, [`from_utf8_unchecked()`] for documentation and safety requirements.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let mut heart = vec![240, 159, 146, 150];
+    /// let heart = unsafe { str::from_utf8_unchecked_mut(&mut heart) };
+    ///
+    /// assert_eq!("💖", heart);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[stable(feature = "inherent_str_constructors", since = "1.87.0")]
+    #[rustc_const_stable(feature = "inherent_str_constructors", since = "1.87.0")]
+    #[rustc_diagnostic_item = "str_inherent_from_utf8_unchecked_mut"]
+    pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
+        // SAFETY: converts::from_utf8_unchecked_mut has the same safety requirements as this function.
+        unsafe { converts::from_utf8_unchecked_mut(v) }
     }
 
     /// Checks that `index`-th byte is the first byte in a UTF-8 code point
@@ -185,7 +355,7 @@ impl str {
     /// ```
     #[must_use]
     #[stable(feature = "is_char_boundary", since = "1.9.0")]
-    #[rustc_const_unstable(feature = "const_is_char_boundary", issue = "131516")]
+    #[rustc_const_stable(feature = "const_is_char_boundary", since = "1.86.0")]
     #[inline]
     pub const fn is_char_boundary(&self, index: usize) -> bool {
         // 0 is always ok.
@@ -642,7 +812,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
-    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
     pub const fn split_at(&self, mid: usize) -> (&str, &str) {
         match self.split_at_checked(mid) {
             None => slice_error_fail(self, 0, mid),
@@ -683,7 +853,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
-    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
     pub const fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -723,7 +893,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
-    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
     pub const fn split_at_checked(&self, mid: usize) -> Option<(&str, &str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -764,7 +934,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
-    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
     pub const fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut str, &mut str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -860,7 +1030,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "str_chars")]
+    #[rustc_diagnostic_item = "str_chars"]
     pub fn chars(&self) -> Chars<'_> {
         Chars { iter: self.as_bytes().iter() }
     }
@@ -991,7 +1161,7 @@ impl str {
     #[must_use = "this returns the split string as an iterator, \
                   without modifying the original"]
     #[stable(feature = "split_whitespace", since = "1.1.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "str_split_whitespace")]
+    #[rustc_diagnostic_item = "str_split_whitespace"]
     #[inline]
     pub fn split_whitespace(&self) -> SplitWhitespace<'_> {
         SplitWhitespace { inner: self.split(IsWhitespace).filter(IsNotEmpty) }
@@ -1108,7 +1278,8 @@ impl str {
         LinesAny(self.lines())
     }
 
-    /// Returns an iterator of `u16` over the string encoded as UTF-16.
+    /// Returns an iterator of `u16` over the string encoded
+    /// as native endian UTF-16 (without byte-order mark).
     ///
     /// # Examples
     ///
@@ -1185,7 +1356,7 @@ impl str {
     /// assert!(bananas.starts_with(&['a', 'b', 'c', 'd']));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "str_starts_with")]
+    #[rustc_diagnostic_item = "str_starts_with"]
     pub fn starts_with<P: Pattern>(&self, pat: P) -> bool {
         pat.is_prefix_of(self)
     }
@@ -1210,7 +1381,7 @@ impl str {
     /// assert!(!bananas.ends_with("nana"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "str_ends_with")]
+    #[rustc_diagnostic_item = "str_ends_with"]
     pub fn ends_with<P: Pattern>(&self, pat: P) -> bool
     where
         for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
@@ -1944,9 +2115,9 @@ impl str {
     #[must_use = "this returns the trimmed string as a slice, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "str_trim")]
+    #[rustc_diagnostic_item = "str_trim"]
     pub fn trim(&self) -> &str {
-        self.trim_matches(|c: char| c.is_whitespace())
+        self.trim_matches(char::is_whitespace)
     }
 
     /// Returns a string slice with leading whitespace removed.
@@ -1983,9 +2154,9 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "str_trim_start")]
+    #[rustc_diagnostic_item = "str_trim_start"]
     pub fn trim_start(&self) -> &str {
-        self.trim_start_matches(|c: char| c.is_whitespace())
+        self.trim_start_matches(char::is_whitespace)
     }
 
     /// Returns a string slice with trailing whitespace removed.
@@ -2022,9 +2193,9 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "str_trim_end")]
+    #[rustc_diagnostic_item = "str_trim_end"]
     pub fn trim_end(&self) -> &str {
-        self.trim_end_matches(|c: char| c.is_whitespace())
+        self.trim_end_matches(char::is_whitespace)
     }
 
     /// Returns a string slice with leading whitespace removed.

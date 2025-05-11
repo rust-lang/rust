@@ -1,8 +1,8 @@
 //! Thread parking without `futex` using the `pthread` synchronization primitives.
 
 use crate::pin::Pin;
-use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use crate::sync::atomic::{Atomic, AtomicUsize};
 use crate::sys::pal::sync::{Condvar, Mutex};
 use crate::time::Duration;
 
@@ -11,7 +11,7 @@ const PARKED: usize = 1;
 const NOTIFIED: usize = 2;
 
 pub struct Parker {
-    state: AtomicUsize,
+    state: Atomic<usize>,
     lock: Mutex,
     cvar: Condvar,
 }

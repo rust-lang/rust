@@ -25,8 +25,7 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 
 ## Target maintainers
 
-* [Rust Embedded Devices Working Group Cortex-M
-  Team](https://github.com/rust-embedded), `cortex-m@teams.rust-embedded.org`
+* [Rust Embedded Devices Working Group Arm Team](https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team)
 
 ## Target CPU and Target Feature options
 

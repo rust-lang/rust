@@ -2,12 +2,14 @@
 //! traits, `Copy`/`Clone`.
 
 use derive_where::derive_where;
-use rustc_ast_ir::{Movability, Mutability};
 use rustc_type_ir::data_structures::HashMap;
-use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::{self as ty, Interner, Upcast as _, elaborate};
+use rustc_type_ir::solve::inspect::ProbeKind;
+use rustc_type_ir::{
+    self as ty, FallibleTypeFolder, Interner, Movability, Mutability, TypeFoldable,
+    TypeSuperFoldable, Upcast as _, elaborate,
+};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
 
@@ -19,7 +21,7 @@ use crate::solve::{AdtDestructorKind, EvalCtxt, Goal, NoSolution};
 pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<D, I>(
     ecx: &EvalCtxt<'_, D>,
     ty: I::Ty,
-) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
+) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -34,15 +36,19 @@ where
         | ty::FnPtr(..)
         | ty::Error(_)
         | ty::Never
-        | ty::Char => Ok(vec![]),
+        | ty::Char => Ok(ty::Binder::dummy(vec![])),
+
+        // This branch is only for `experimental_default_bounds`.
+        // Other foreign types were rejected earlier in
+        // `disqualify_auto_trait_candidate_due_to_possible_impl`.
+        ty::Foreign(..) => Ok(ty::Binder::dummy(vec![])),
 
         // Treat `str` like it's defined as `struct str([u8]);`
-        ty::Str => Ok(vec![ty::Binder::dummy(Ty::new_slice(cx, Ty::new_u8(cx)))]),
+        ty::Str => Ok(ty::Binder::dummy(vec![Ty::new_slice(cx, Ty::new_u8(cx))])),
 
         ty::Dynamic(..)
         | ty::Param(..)
-        | ty::Foreign(..)
-        | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
+        | ty::Alias(ty::Projection | ty::Inherent | ty::Free, ..)
         | ty::Placeholder(..)
         | ty::Bound(..)
         | ty::Infer(_) => {
@@ -50,53 +56,49 @@ where
         }
 
         ty::RawPtr(element_ty, _) | ty::Ref(_, element_ty, _) => {
-            Ok(vec![ty::Binder::dummy(element_ty)])
+            Ok(ty::Binder::dummy(vec![element_ty]))
         }
 
         ty::Pat(element_ty, _) | ty::Array(element_ty, _) | ty::Slice(element_ty) => {
-            Ok(vec![ty::Binder::dummy(element_ty)])
+            Ok(ty::Binder::dummy(vec![element_ty]))
         }
 
         ty::Tuple(tys) => {
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-            Ok(tys.iter().map(ty::Binder::dummy).collect())
+            Ok(ty::Binder::dummy(tys.to_vec()))
         }
 
-        ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
+        ty::Closure(_, args) => Ok(ty::Binder::dummy(vec![args.as_closure().tupled_upvars_ty()])),
 
         ty::CoroutineClosure(_, args) => {
-            Ok(vec![ty::Binder::dummy(args.as_coroutine_closure().tupled_upvars_ty())])
+            Ok(ty::Binder::dummy(vec![args.as_coroutine_closure().tupled_upvars_ty()]))
         }
 
         ty::Coroutine(_, args) => {
             let coroutine_args = args.as_coroutine();
-            Ok(vec![
-                ty::Binder::dummy(coroutine_args.tupled_upvars_ty()),
-                ty::Binder::dummy(coroutine_args.witness()),
-            ])
+            Ok(ty::Binder::dummy(vec![coroutine_args.tupled_upvars_ty(), coroutine_args.witness()]))
         }
 
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .cx()
-            .bound_coroutine_hidden_types(def_id)
-            .into_iter()
-            .map(|bty| bty.instantiate(cx, args))
-            .collect()),
+            .coroutine_hidden_types(def_id)
+            .instantiate(cx, args)
+            .map_bound(|tys| tys.to_vec())),
 
-        ty::UnsafeBinder(bound_ty) => Ok(vec![bound_ty.into()]),
+        ty::UnsafeBinder(bound_ty) => Ok(bound_ty.map_bound(|ty| vec![ty])),
 
         // For `PhantomData<T>`, we pass `T`.
-        ty::Adt(def, args) if def.is_phantom_data() => Ok(vec![ty::Binder::dummy(args.type_at(0))]),
+        ty::Adt(def, args) if def.is_phantom_data() => Ok(ty::Binder::dummy(vec![args.type_at(0)])),
 
         ty::Adt(def, args) => {
-            Ok(def.all_field_tys(cx).iter_instantiated(cx, args).map(ty::Binder::dummy).collect())
+            Ok(ty::Binder::dummy(def.all_field_tys(cx).iter_instantiated(cx, args).collect()))
         }
 
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
             // We can resolve the `impl Trait` to its concrete type,
             // which enforces a DAG between the functions requiring
             // the auto trait bounds in question.
-            Ok(vec![ty::Binder::dummy(cx.type_of(def_id).instantiate(cx, args))])
+            Ok(ty::Binder::dummy(vec![cx.type_of(def_id).instantiate(cx, args)]))
         }
     }
 }
@@ -105,7 +107,7 @@ where
 pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<D, I>(
     ecx: &EvalCtxt<'_, D>,
     ty: I::Ty,
-) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
+) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -131,7 +133,7 @@ where
         | ty::CoroutineClosure(..)
         | ty::Never
         | ty::Dynamic(_, _, ty::DynStar)
-        | ty::Error(_) => Ok(vec![]),
+        | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
 
         ty::Str
         | ty::Slice(_)
@@ -146,11 +148,11 @@ where
             panic!("unexpected type `{ty:?}`")
         }
 
-        ty::UnsafeBinder(bound_ty) => Ok(vec![bound_ty.into()]),
+        ty::UnsafeBinder(bound_ty) => Ok(bound_ty.map_bound(|ty| vec![ty])),
 
         // impl Sized for ()
         // impl Sized for (T1, T2, .., Tn) where Tn: Sized if n >= 1
-        ty::Tuple(tys) => Ok(tys.last().map_or_else(Vec::new, |ty| vec![ty::Binder::dummy(ty)])),
+        ty::Tuple(tys) => Ok(ty::Binder::dummy(tys.last().map_or_else(Vec::new, |ty| vec![ty]))),
 
         // impl Sized for Adt<Args...> where sized_constraint(Adt)<Args...>: Sized
         //   `sized_constraint(Adt)` is the deepest struct trail that can be determined
@@ -163,9 +165,9 @@ where
         //   if the ADT is sized for all possible args.
         ty::Adt(def, args) => {
             if let Some(sized_crit) = def.sized_constraint(ecx.cx()) {
-                Ok(vec![ty::Binder::dummy(sized_crit.instantiate(ecx.cx(), args))])
+                Ok(ty::Binder::dummy(vec![sized_crit.instantiate(ecx.cx(), args)]))
             } else {
-                Ok(vec![])
+                Ok(ty::Binder::dummy(vec![]))
             }
         }
     }
@@ -175,14 +177,14 @@ where
 pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<D, I>(
     ecx: &EvalCtxt<'_, D>,
     ty: I::Ty,
-) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
+) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     match ty.kind() {
         // impl Copy/Clone for FnDef, FnPtr
-        ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => Ok(vec![]),
+        ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
 
         // Implementations are provided in core
         ty::Uint(_)
@@ -198,7 +200,7 @@ where
 
         // Cannot implement in core, as we can't be generic over patterns yet,
         // so we'd have to list all patterns and type combinations.
-        ty::Pat(ty, ..) => Ok(vec![ty::Binder::dummy(ty)]),
+        ty::Pat(ty, ..) => Ok(ty::Binder::dummy(vec![ty])),
 
         ty::Dynamic(..)
         | ty::Str
@@ -216,14 +218,14 @@ where
         }
 
         // impl Copy/Clone for (T1, T2, .., Tn) where T1: Copy/Clone, T2: Copy/Clone, .. Tn: Copy/Clone
-        ty::Tuple(tys) => Ok(tys.iter().map(ty::Binder::dummy).collect()),
+        ty::Tuple(tys) => Ok(ty::Binder::dummy(tys.to_vec())),
 
         // impl Copy/Clone for Closure where Self::TupledUpvars: Copy/Clone
-        ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
+        ty::Closure(_, args) => Ok(ty::Binder::dummy(vec![args.as_closure().tupled_upvars_ty()])),
 
         // impl Copy/Clone for CoroutineClosure where Self::TupledUpvars: Copy/Clone
         ty::CoroutineClosure(_, args) => {
-            Ok(vec![ty::Binder::dummy(args.as_coroutine_closure().tupled_upvars_ty())])
+            Ok(ty::Binder::dummy(vec![args.as_coroutine_closure().tupled_upvars_ty()]))
         }
 
         // only when `coroutine_clone` is enabled and the coroutine is movable
@@ -233,10 +235,7 @@ where
             Movability::Movable => {
                 if ecx.cx().features().coroutine_clone() {
                     let coroutine = args.as_coroutine();
-                    Ok(vec![
-                        ty::Binder::dummy(coroutine.tupled_upvars_ty()),
-                        ty::Binder::dummy(coroutine.witness()),
-                    ])
+                    Ok(ty::Binder::dummy(vec![coroutine.tupled_upvars_ty(), coroutine.witness()]))
                 } else {
                     Err(NoSolution)
                 }
@@ -248,10 +247,9 @@ where
         // impl Copy/Clone for CoroutineWitness where T: Copy/Clone forall T in coroutine_hidden_types
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .cx()
-            .bound_coroutine_hidden_types(def_id)
-            .into_iter()
-            .map(|bty| bty.instantiate(ecx.cx(), args))
-            .collect()),
+            .coroutine_hidden_types(def_id)
+            .instantiate(ecx.cx(), args)
+            .map_bound(|tys| tys.to_vec())),
     }
 }
 
@@ -514,10 +512,11 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
                 // will project to the right upvars for the generator, appending the inputs and
                 // coroutine upvars respecting the closure kind.
                 nested.push(
-                    ty::TraitRef::new(cx, async_fn_kind_trait_def_id, [
-                        kind_ty,
-                        Ty::from_closure_kind(cx, goal_kind),
-                    ])
+                    ty::TraitRef::new(
+                        cx,
+                        async_fn_kind_trait_def_id,
+                        [kind_ty, Ty::from_closure_kind(cx, goal_kind)],
+                    )
                     .upcast(cx),
                 );
             }
@@ -624,14 +623,18 @@ fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
     sig: ty::CoroutineClosureSignature<I>,
 ) -> I::Ty {
     let upvars_projection_def_id = cx.require_lang_item(TraitSolverLangItem::AsyncFnKindUpvars);
-    let tupled_upvars_ty = Ty::new_projection(cx, upvars_projection_def_id, [
-        I::GenericArg::from(args.kind_ty()),
-        Ty::from_closure_kind(cx, goal_kind).into(),
-        goal_region.into(),
-        sig.tupled_inputs_ty.into(),
-        args.tupled_upvars_ty().into(),
-        args.coroutine_captures_by_ref_ty().into(),
-    ]);
+    let tupled_upvars_ty = Ty::new_projection(
+        cx,
+        upvars_projection_def_id,
+        [
+            I::GenericArg::from(args.kind_ty()),
+            Ty::from_closure_kind(cx, goal_kind).into(),
+            goal_region.into(),
+            sig.tupled_inputs_ty.into(),
+            args.tupled_upvars_ty().into(),
+            args.coroutine_captures_by_ref_ty().into(),
+        ],
+    );
     sig.to_coroutine(
         cx,
         args.parent_args(),
@@ -712,6 +715,8 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
     }
 }
 
+// NOTE: Keep this in sync with `evaluate_host_effect_for_destruct_goal` in
+// the old solver, for as long as that exists.
 pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
     cx: I,
     self_ty: I::Ty,
@@ -719,6 +724,9 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
     let destruct_def_id = cx.require_lang_item(TraitSolverLangItem::Destruct);
 
     match self_ty.kind() {
+        // `ManuallyDrop` is trivially `~const Destruct` as we do not run any drop glue on it.
+        ty::Adt(adt_def, _) if adt_def.is_manually_drop() => Ok(vec![]),
+
         // An ADT is `~const Destruct` only if all of the fields are,
         // *and* if there is a `Drop` impl, that `Drop` impl is also `~const`.
         ty::Adt(adt_def, args) => {
@@ -818,22 +826,16 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
 /// impl Baz for dyn Foo<Item = Ty> {}
 /// ```
 ///
-/// However, in order to make such impls well-formed, we need to do an
+/// However, in order to make such impls non-cyclical, we need to do an
 /// additional step of eagerly folding the associated types in the where
 /// clauses of the impl. In this example, that means replacing
 /// `<Self as Foo>::Bar` with `Ty` in the first impl.
-///
-// FIXME: This is only necessary as `<Self as Trait>::Assoc: ItemBound`
-// bounds in impls are trivially proven using the item bound candidates.
-// This is unsound in general and once that is fixed, we don't need to
-// normalize eagerly here. See https://github.com/lcnr/solver-woes/issues/9
-// for more details.
 pub(in crate::solve) fn predicates_for_object_candidate<D, I>(
-    ecx: &EvalCtxt<'_, D>,
+    ecx: &mut EvalCtxt<'_, D>,
     param_env: I::ParamEnv,
     trait_ref: ty::TraitRef<I>,
     object_bounds: I::BoundExistentialPredicates,
-) -> Vec<Goal<I, I::Predicate>>
+) -> Result<Vec<Goal<I, I::Predicate>>, Ambiguous>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -867,72 +869,130 @@ where
             .extend(cx.item_bounds(associated_type_def_id).iter_instantiated(cx, trait_ref.args));
     }
 
-    let mut replace_projection_with = HashMap::default();
+    let mut replace_projection_with: HashMap<_, Vec<_>> = HashMap::default();
     for bound in object_bounds.iter() {
         if let ty::ExistentialPredicate::Projection(proj) = bound.skip_binder() {
+            // FIXME: We *probably* should replace this with a dummy placeholder,
+            // b/c don't want to replace literal instances of this dyn type that
+            // show up in the bounds, but just ones that come from substituting
+            // `Self` with the dyn type.
             let proj = proj.with_self_ty(cx, trait_ref.self_ty());
-            let old_ty = replace_projection_with.insert(proj.def_id(), bound.rebind(proj));
-            assert_eq!(
-                old_ty,
-                None,
-                "{:?} has two generic parameters: {:?} and {:?}",
-                proj.projection_term,
-                proj.term,
-                old_ty.unwrap()
-            );
+            replace_projection_with.entry(proj.def_id()).or_default().push(bound.rebind(proj));
         }
     }
 
-    let mut folder =
-        ReplaceProjectionWith { ecx, param_env, mapping: replace_projection_with, nested: vec![] };
-    let folded_requirements = requirements.fold_with(&mut folder);
+    let mut folder = ReplaceProjectionWith {
+        ecx,
+        param_env,
+        self_ty: trait_ref.self_ty(),
+        mapping: &replace_projection_with,
+        nested: vec![],
+    };
 
-    folder
+    let requirements = requirements.try_fold_with(&mut folder)?;
+    Ok(folder
         .nested
         .into_iter()
-        .chain(folded_requirements.into_iter().map(|clause| Goal::new(cx, param_env, clause)))
-        .collect()
+        .chain(requirements.into_iter().map(|clause| Goal::new(cx, param_env, clause)))
+        .collect())
 }
 
-struct ReplaceProjectionWith<'a, D: SolverDelegate<Interner = I>, I: Interner> {
-    ecx: &'a EvalCtxt<'a, D>,
+struct ReplaceProjectionWith<'a, 'b, I: Interner, D: SolverDelegate<Interner = I>> {
+    ecx: &'a mut EvalCtxt<'b, D>,
     param_env: I::ParamEnv,
-    mapping: HashMap<I::DefId, ty::Binder<I, ty::ProjectionPredicate<I>>>,
+    self_ty: I::Ty,
+    mapping: &'a HashMap<I::DefId, Vec<ty::Binder<I, ty::ProjectionPredicate<I>>>>,
     nested: Vec<Goal<I, I::Predicate>>,
 }
 
-impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
-    for ReplaceProjectionWith<'_, D, I>
+impl<D, I> ReplaceProjectionWith<'_, '_, I, D>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
 {
+    fn projection_may_match(
+        &mut self,
+        source_projection: ty::Binder<I, ty::ProjectionPredicate<I>>,
+        target_projection: ty::AliasTerm<I>,
+    ) -> bool {
+        source_projection.item_def_id() == target_projection.def_id
+            && self
+                .ecx
+                .probe(|_| ProbeKind::ProjectionCompatibility)
+                .enter(|ecx| -> Result<_, NoSolution> {
+                    let source_projection = ecx.instantiate_binder_with_infer(source_projection);
+                    ecx.eq(self.param_env, source_projection.projection_term, target_projection)?;
+                    ecx.try_evaluate_added_goals()
+                })
+                .is_ok()
+    }
+
+    /// Try to replace an alias with the term present in the projection bounds of the self type.
+    /// Returns `Ok<None>` if this alias is not eligible to be replaced, or bail with
+    /// `Err(Ambiguous)` if it's uncertain which projection bound to replace the term with due
+    /// to multiple bounds applying.
+    fn try_eagerly_replace_alias(
+        &mut self,
+        alias_term: ty::AliasTerm<I>,
+    ) -> Result<Option<I::Term>, Ambiguous> {
+        if alias_term.self_ty() != self.self_ty {
+            return Ok(None);
+        }
+
+        let Some(replacements) = self.mapping.get(&alias_term.def_id) else {
+            return Ok(None);
+        };
+
+        // This is quite similar to the `projection_may_match` we use in unsizing,
+        // but here we want to unify a projection predicate against an alias term
+        // so we can replace it with the the projection predicate's term.
+        let mut matching_projections = replacements
+            .iter()
+            .filter(|source_projection| self.projection_may_match(**source_projection, alias_term));
+        let Some(replacement) = matching_projections.next() else {
+            // This shouldn't happen.
+            panic!("could not replace {alias_term:?} with term from from {:?}", self.self_ty);
+        };
+        // FIXME: This *may* have issues with duplicated projections.
+        if matching_projections.next().is_some() {
+            // If there's more than one projection that we can unify here, then we
+            // need to stall until inference constrains things so that there's only
+            // one choice.
+            return Err(Ambiguous);
+        }
+
+        let replacement = self.ecx.instantiate_binder_with_infer(*replacement);
+        self.nested.extend(
+            self.ecx
+                .eq_and_get_goals(self.param_env, alias_term, replacement.projection_term)
+                .expect("expected to be able to unify goal projection with dyn's projection"),
+        );
+
+        Ok(Some(replacement.term))
+    }
+}
+
+/// Marker for bailing with ambiguity.
+pub(crate) struct Ambiguous;
+
+impl<D, I> FallibleTypeFolder<I> for ReplaceProjectionWith<'_, '_, I, D>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    type Error = Ambiguous;
+
     fn cx(&self) -> I {
         self.ecx.cx()
     }
 
-    fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+    fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Ambiguous> {
         if let ty::Alias(ty::Projection, alias_ty) = ty.kind() {
-            if let Some(replacement) = self.mapping.get(&alias_ty.def_id) {
-                // We may have a case where our object type's projection bound is higher-ranked,
-                // but the where clauses we instantiated are not. We can solve this by instantiating
-                // the binder at the usage site.
-                let proj = self.ecx.instantiate_binder_with_infer(*replacement);
-                // FIXME: Technically this equate could be fallible...
-                self.nested.extend(
-                    self.ecx
-                        .eq_and_get_goals(
-                            self.param_env,
-                            alias_ty,
-                            proj.projection_term.expect_ty(self.ecx.cx()),
-                        )
-                        .expect(
-                            "expected to be able to unify goal projection with dyn's projection",
-                        ),
-                );
-                proj.term.expect_ty()
-            } else {
-                ty.super_fold_with(self)
+            if let Some(term) = self.try_eagerly_replace_alias(alias_ty.into())? {
+                return Ok(term.expect_ty());
             }
-        } else {
-            ty.super_fold_with(self)
         }
+
+        ty.try_super_fold_with(self)
     }
 }

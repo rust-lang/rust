@@ -8,6 +8,8 @@ use itertools::Itertools;
 pub use span::{TextRange, TextSize};
 use std::cmp::max;
 
+use crate::source_change::ChangeAnnotationId;
+
 /// `InsertDelete` -- a single "atomic" change to text
 ///
 /// Must not overlap with other `InDel`s
@@ -22,11 +24,13 @@ pub struct Indel {
 pub struct TextEdit {
     /// Invariant: disjoint and sorted by `delete`.
     indels: Vec<Indel>,
+    annotation: Option<ChangeAnnotationId>,
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct TextEditBuilder {
     indels: Vec<Indel>,
+    annotation: Option<ChangeAnnotationId>,
 }
 
 impl Indel {
@@ -138,6 +142,14 @@ impl TextEdit {
         }
         Some(res)
     }
+
+    pub(crate) fn set_annotation(&mut self, conflict_annotation: Option<ChangeAnnotationId>) {
+        self.annotation = conflict_annotation;
+    }
+
+    pub fn change_annotation(&self) -> Option<ChangeAnnotationId> {
+        self.annotation
+    }
 }
 
 impl IntoIterator for TextEdit {
@@ -172,15 +184,15 @@ impl TextEditBuilder {
         self.indel(Indel::insert(offset, text));
     }
     pub fn finish(self) -> TextEdit {
-        let mut indels = self.indels;
+        let TextEditBuilder { mut indels, annotation } = self;
         assert_disjoint_or_equal(&mut indels);
         indels = coalesce_indels(indels);
-        TextEdit { indels }
+        TextEdit { indels, annotation }
     }
     pub fn invalidates_offset(&self, offset: TextSize) -> bool {
         self.indels.iter().any(|indel| indel.delete.contains_inclusive(offset))
     }
-    fn indel(&mut self, indel: Indel) {
+    pub fn indel(&mut self, indel: Indel) {
         self.indels.push(indel);
         if self.indels.len() <= 16 {
             assert_disjoint_or_equal(&mut self.indels);

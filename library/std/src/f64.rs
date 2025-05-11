@@ -12,9 +12,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
-#[cfg(test)]
-mod tests;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::f64::{
@@ -125,7 +122,7 @@ impl f64 {
     #[stable(feature = "round_ties_even", since = "1.77.0")]
     #[inline]
     pub fn round_ties_even(self) -> f64 {
-        unsafe { intrinsics::rintf64(self) }
+        intrinsics::round_ties_even_f64(self)
     }
 
     /// Returns the integer part of `self`.
@@ -210,6 +207,7 @@ impl f64 {
     /// assert_eq!(one_plus_eps * one_minus_eps + minus_one, 0.0);
     /// ```
     #[rustc_allow_incoherent_impl]
+    #[doc(alias = "fma", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -305,8 +303,9 @@ impl f64 {
     /// ```
     /// let x = 2.0_f64;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
+    /// assert!(abs_difference <= f64::EPSILON);
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert_eq!(f64::powi(f64::NAN, 0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -328,8 +327,10 @@ impl f64 {
     /// ```
     /// let x = 2.0_f64;
     /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
+    /// assert!(abs_difference <= f64::EPSILON);
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert_eq!(f64::powf(1.0, f64::NAN), 1.0);
+    /// assert_eq!(f64::powf(f64::NAN, 0.0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -360,6 +361,7 @@ impl f64 {
     /// assert!(negative.sqrt().is_nan());
     /// assert!(negative_zero.sqrt() == negative_zero);
     /// ```
+    #[doc(alias = "squareRoot")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -422,6 +424,8 @@ impl f64 {
 
     /// Returns the natural logarithm of the number.
     ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
+    ///
     /// # Unspecified precision
     ///
     /// The precision of this function is non-deterministic. This means it varies by platform, Rust version, and
@@ -439,6 +443,12 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    ///
+    /// Non-positive values:
+    /// ```
+    /// assert_eq!(0_f64.ln(), f64::NEG_INFINITY);
+    /// assert!((-42_f64).ln().is_nan());
+    /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -448,6 +458,8 @@ impl f64 {
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
+    ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
     ///
     /// The result might not be correctly rounded owing to implementation details;
     /// `self.log2()` can produce more accurate results for base 2, and
@@ -468,6 +480,12 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    ///
+    /// Non-positive values:
+    /// ```
+    /// assert_eq!(0_f64.log(10.0), f64::NEG_INFINITY);
+    /// assert!((-42_f64).log(10.0).is_nan());
+    /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -477,6 +495,8 @@ impl f64 {
     }
 
     /// Returns the base 2 logarithm of the number.
+    ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
     ///
     /// # Unspecified precision
     ///
@@ -493,6 +513,12 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    ///
+    /// Non-positive values:
+    /// ```
+    /// assert_eq!(0_f64.log2(), f64::NEG_INFINITY);
+    /// assert!((-42_f64).log2().is_nan());
+    /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -502,6 +528,8 @@ impl f64 {
     }
 
     /// Returns the base 10 logarithm of the number.
+    ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
     ///
     /// # Unspecified precision
     ///
@@ -517,6 +545,12 @@ impl f64 {
     /// let abs_difference = (hundred.log10() - 2.0).abs();
     ///
     /// assert!(abs_difference < 1e-10);
+    /// ```
+    ///
+    /// Non-positive values:
+    /// ```
+    /// assert_eq!(0_f64.log10(), f64::NEG_INFINITY);
+    /// assert!((-42_f64).log10().is_nan());
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -565,7 +599,7 @@ impl f64 {
                 filing an issue describing your use-case too)."
     )]
     pub fn abs_sub(self, other: f64) -> f64 {
-        unsafe { cmath::fdim(self, other) }
+        cmath::fdim(self, other)
     }
 
     /// Returns the cube root of a number.
@@ -592,7 +626,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cbrt(self) -> f64 {
-        unsafe { cmath::cbrt(self) }
+        cmath::cbrt(self)
     }
 
     /// Compute the distance between the origin and a point (`x`, `y`) on the
@@ -623,7 +657,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn hypot(self, other: f64) -> f64 {
-        unsafe { cmath::hypot(self, other) }
+        cmath::hypot(self, other)
     }
 
     /// Computes the sine of a number (in radians).
@@ -696,7 +730,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn tan(self) -> f64 {
-        unsafe { cmath::tan(self) }
+        cmath::tan(self)
     }
 
     /// Computes the arcsine of a number. Return value is in radians in
@@ -726,7 +760,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asin(self) -> f64 {
-        unsafe { cmath::asin(self) }
+        cmath::asin(self)
     }
 
     /// Computes the arccosine of a number. Return value is in radians in
@@ -756,7 +790,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acos(self) -> f64 {
-        unsafe { cmath::acos(self) }
+        cmath::acos(self)
     }
 
     /// Computes the arctangent of a number. Return value is in radians in the
@@ -785,7 +819,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn atan(self) -> f64 {
-        unsafe { cmath::atan(self) }
+        cmath::atan(self)
     }
 
     /// Computes the four quadrant arctangent of `self` (`y`) and `other` (`x`) in radians.
@@ -826,7 +860,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn atan2(self, other: f64) -> f64 {
-        unsafe { cmath::atan2(self, other) }
+        cmath::atan2(self, other)
     }
 
     /// Simultaneously computes the sine and cosine of the number, `x`. Returns
@@ -885,11 +919,13 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp_m1(self) -> f64 {
-        unsafe { cmath::expm1(self) }
+        cmath::expm1(self)
     }
 
     /// Returns `ln(1+n)` (natural logarithm) more accurately than if
     /// the operations were performed separately.
+    ///
+    /// This returns NaN when `n < -1.0`, and negative infinity when `n == -1.0`.
     ///
     /// # Unspecified precision
     ///
@@ -909,13 +945,19 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-20);
     /// ```
+    ///
+    /// Out-of-range values:
+    /// ```
+    /// assert_eq!((-1.0_f64).ln_1p(), f64::NEG_INFINITY);
+    /// assert!((-2.0_f64).ln_1p().is_nan());
+    /// ```
     #[doc(alias = "log1p")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln_1p(self) -> f64 {
-        unsafe { cmath::log1p(self) }
+        cmath::log1p(self)
     }
 
     /// Hyperbolic sine function.
@@ -945,7 +987,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sinh(self) -> f64 {
-        unsafe { cmath::sinh(self) }
+        cmath::sinh(self)
     }
 
     /// Hyperbolic cosine function.
@@ -975,7 +1017,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cosh(self) -> f64 {
-        unsafe { cmath::cosh(self) }
+        cmath::cosh(self)
     }
 
     /// Hyperbolic tangent function.
@@ -1005,7 +1047,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn tanh(self) -> f64 {
-        unsafe { cmath::tanh(self) }
+        cmath::tanh(self)
     }
 
     /// Inverse hyperbolic sine function.
@@ -1116,7 +1158,7 @@ impl f64 {
     #[unstable(feature = "float_gamma", issue = "99842")]
     #[inline]
     pub fn gamma(self) -> f64 {
-        unsafe { cmath::tgamma(self) }
+        cmath::tgamma(self)
     }
 
     /// Natural logarithm of the absolute value of the gamma function
@@ -1146,7 +1188,71 @@ impl f64 {
     #[inline]
     pub fn ln_gamma(self) -> (f64, i32) {
         let mut signgamp: i32 = 0;
-        let x = unsafe { cmath::lgamma_r(self, &mut signgamp) };
+        let x = cmath::lgamma_r(self, &mut signgamp);
         (x, signgamp)
+    }
+
+    /// Error function.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// This function currently corresponds to the `erf` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_erf)]
+    /// /// The error function relates what percent of a normal distribution lies
+    /// /// within `x` standard deviations (scaled by `1/sqrt(2)`).
+    /// fn within_standard_deviations(x: f64) -> f64 {
+    ///     (x * std::f64::consts::FRAC_1_SQRT_2).erf() * 100.0
+    /// }
+    ///
+    /// // 68% of a normal distribution is within one standard deviation
+    /// assert!((within_standard_deviations(1.0) - 68.269).abs() < 0.01);
+    /// // 95% of a normal distribution is within two standard deviations
+    /// assert!((within_standard_deviations(2.0) - 95.450).abs() < 0.01);
+    /// // 99.7% of a normal distribution is within three standard deviations
+    /// assert!((within_standard_deviations(3.0) - 99.730).abs() < 0.01);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_erf", issue = "136321")]
+    #[inline]
+    pub fn erf(self) -> f64 {
+        cmath::erf(self)
+    }
+
+    /// Complementary error function.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// This function currently corresponds to the `erfc` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_erf)]
+    /// let x: f64 = 0.123;
+    ///
+    /// let one = x.erf() + x.erfc();
+    /// let abs_difference = (one - 1.0).abs();
+    ///
+    /// assert!(abs_difference <= f64::EPSILON);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_erf", issue = "136321")]
+    #[inline]
+    pub fn erfc(self) -> f64 {
+        cmath::erfc(self)
     }
 }

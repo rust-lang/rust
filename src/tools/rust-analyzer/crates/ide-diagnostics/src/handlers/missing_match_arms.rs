@@ -18,15 +18,15 @@ pub(crate) fn missing_match_arms(
 #[cfg(test)]
 mod tests {
     use crate::{
+        DiagnosticsConfig,
         tests::{
             check_diagnostics, check_diagnostics_with_config, check_diagnostics_with_disabled,
         },
-        DiagnosticsConfig,
     };
     use test_utils::skip_slow_tests;
 
     #[track_caller]
-    fn check_diagnostics_no_bails(ra_fixture: &str) {
+    fn check_diagnostics_no_bails(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         cov_mark::check_count!(validate_match_bailed_out, 0);
         crate::tests::check_diagnostics(ra_fixture)
     }

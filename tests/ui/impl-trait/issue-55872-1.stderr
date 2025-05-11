@@ -37,7 +37,13 @@ help: consider further restricting type parameter `T` with trait `Copy`
 LL |     fn foo<T: Default + std::marker::Copy>() -> Self::E {
    |                       +++++++++++++++++++
 
-error: aborting due to 3 previous errors
+error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+  --> $DIR/issue-55872-1.rs:12:29
+   |
+LL |     fn foo<T: Default>() -> Self::E {
+   |                             ^^^^^^^
+
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0276, E0277.
 For more information about an error, try `rustc --explain E0276`.

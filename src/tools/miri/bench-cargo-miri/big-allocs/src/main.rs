@@ -7,7 +7,7 @@ fn main() {
     // We can't use too big of an allocation or this code will encounter an allocation failure in
     // CI. Since the allocation can't be huge, we need to do a few iterations so that the effect
     // we're trying to measure is clearly visible above the interpreter's startup time.
-    for _ in 0..10 {
+    for _ in 0..20 {
         drop(Vec::<u8>::with_capacity(512 * 1024 * 1024));
     }
 }

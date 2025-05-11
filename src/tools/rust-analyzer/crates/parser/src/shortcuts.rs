@@ -5,7 +5,7 @@
 //! abstract token parsing, and string tokenization as completely separate
 //! layers.
 //!
-//! However, often you do pares text into syntax trees and the glue code for
+//! However, often you do parse text into syntax trees and the glue code for
 //! that needs to live somewhere. Rather than putting it to lexer or parser, we
 //! use a separate shortcuts module for that.
 
@@ -27,7 +27,7 @@ pub enum StrStep<'a> {
 impl LexedStr<'_> {
     pub fn to_input(&self, edition: Edition) -> crate::Input {
         let _p = tracing::info_span!("LexedStr::to_input").entered();
-        let mut res = crate::Input::default();
+        let mut res = crate::Input::with_capacity(self.len());
         let mut was_joint = false;
         for i in 0..self.len() {
             let kind = self.kind(i);

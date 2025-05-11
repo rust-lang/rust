@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
 use rustc_middle::bug;
-use rustc_middle::ty::{self, PolyExistentialTraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, ExistentialTraitRef, Ty, TyCtxt};
 
 use super::{DefinitionLocation, SmallVec, UNKNOWN_LINE_NUMBER, unknown_file_metadata};
 use crate::common::{AsCCharPtr, CodegenCx};
@@ -44,7 +44,7 @@ pub(super) enum UniqueTypeId<'tcx> {
     /// The ID for the additional wrapper struct type describing an enum variant in CPP-like mode.
     VariantStructTypeCppLikeWrapper(Ty<'tcx>, VariantIdx, private::HiddenZst),
     /// The ID of the artificial type we create for VTables.
-    VTableTy(Ty<'tcx>, Option<PolyExistentialTraitRef<'tcx>>, private::HiddenZst),
+    VTableTy(Ty<'tcx>, Option<ExistentialTraitRef<'tcx>>, private::HiddenZst),
 }
 
 impl<'tcx> UniqueTypeId<'tcx> {
@@ -88,7 +88,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
     pub(crate) fn for_vtable_ty(
         tcx: TyCtxt<'tcx>,
         self_type: Ty<'tcx>,
-        implemented_trait: Option<PolyExistentialTraitRef<'tcx>>,
+        implemented_trait: Option<ExistentialTraitRef<'tcx>>,
     ) -> Self {
         assert_eq!(
             self_type,
@@ -247,6 +247,16 @@ pub(super) fn stub<'ll, 'tcx>(
     StubInfo { metadata, unique_type_id }
 }
 
+struct AdtStackPopGuard<'ll, 'tcx, 'a> {
+    cx: &'a CodegenCx<'ll, 'tcx>,
+}
+
+impl<'ll, 'tcx, 'a> Drop for AdtStackPopGuard<'ll, 'tcx, 'a> {
+    fn drop(&mut self) {
+        debug_context(self.cx).adt_stack.borrow_mut().pop();
+    }
+}
+
 /// This function enables creating debuginfo nodes that can recursively refer to themselves.
 /// It will first insert the given stub into the type map and only then execute the `members`
 /// and `generics` closures passed in. These closures have access to the stub so they can
@@ -257,16 +267,53 @@ pub(super) fn build_type_with_children<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     stub_info: StubInfo<'ll, 'tcx>,
     members: impl FnOnce(&CodegenCx<'ll, 'tcx>, &'ll DIType) -> SmallVec<&'ll DIType>,
-    generics: impl FnOnce(&CodegenCx<'ll, 'tcx>) -> SmallVec<&'ll DIType>,
+    generics: impl FnOnce(&CodegenCx<'ll, 'tcx>) -> SmallVec<Option<&'ll DIType>>,
 ) -> DINodeCreationResult<'ll> {
     assert_eq!(debug_context(cx).type_map.di_node_for_unique_id(stub_info.unique_type_id), None);
+
+    let mut _adt_stack_pop_guard = None;
+    if let UniqueTypeId::Ty(ty, ..) = stub_info.unique_type_id
+        && let ty::Adt(adt_def, args) = ty.kind()
+    {
+        let def_id = adt_def.did();
+        // If any sub type reference the original type definition and the sub type has a type
+        // parameter that strictly contains the original parameter, the original type is a recursive
+        // type that can expanding indefinitely. Example,
+        // ```
+        // enum Recursive<T> {
+        //     Recurse(*const Recursive<Wrap<T>>),
+        //     Item(T),
+        // }
+        // ```
+        let is_expanding_recursive =
+            debug_context(cx).adt_stack.borrow().iter().any(|(parent_def_id, parent_args)| {
+                if def_id == *parent_def_id {
+                    args.iter().zip(parent_args.iter()).any(|(arg, parent_arg)| {
+                        if let (Some(arg), Some(parent_arg)) = (arg.as_type(), parent_arg.as_type())
+                        {
+                            arg != parent_arg && arg.contains(parent_arg)
+                        } else {
+                            false
+                        }
+                    })
+                } else {
+                    false
+                }
+            });
+        if is_expanding_recursive {
+            // FIXME: indicate that this is an expanding recursive type in stub metadata?
+            return DINodeCreationResult::new(stub_info.metadata, false);
+        } else {
+            debug_context(cx).adt_stack.borrow_mut().push((def_id, args));
+            _adt_stack_pop_guard = Some(AdtStackPopGuard { cx });
+        }
+    }
 
     debug_context(cx).type_map.insert(stub_info.unique_type_id, stub_info.metadata);
 
     let members: SmallVec<_> =
         members(cx, stub_info.metadata).into_iter().map(|node| Some(node)).collect();
-    let generics: SmallVec<Option<&'ll DIType>> =
-        generics(cx).into_iter().map(|node| Some(node)).collect();
+    let generics = generics(cx);
 
     if !(members.is_empty() && generics.is_empty()) {
         unsafe {

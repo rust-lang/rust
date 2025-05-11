@@ -7,5 +7,5 @@ impl PartialEq<i32> for T {
 }
 
 fn main() {
-    4i32 == T(4); //~ mismatched types [E0308]
+    4i32 == T(4); //~ ERROR mismatched types [E0308]
 }

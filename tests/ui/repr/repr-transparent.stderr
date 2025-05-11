@@ -35,10 +35,10 @@ LL | struct GenericAlign<T>(ZstAlign32<T>, u32);
    | needs at most one field with non-trivial size or alignment, but has 2
 
 error[E0084]: unsupported representation for zero-variant enum
-  --> $DIR/repr-transparent.rs:47:1
+  --> $DIR/repr-transparent.rs:47:8
    |
 LL | #[repr(transparent)]
-   | ^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^
 LL | enum Void {}
    | --------- zero-variant enum
 

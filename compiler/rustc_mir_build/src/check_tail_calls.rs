@@ -1,4 +1,5 @@
 use rustc_abi::ExternAbi;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
@@ -131,11 +132,24 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         }
 
         {
+            // `#[track_caller]` affects the ABI of a function (by adding a location argument),
+            // so a `track_caller` can only tail call other `track_caller` functions.
+            //
+            // The issue is however that we can't know if a function is `track_caller` or not at
+            // this point (THIR can be polymorphic, we may have an unresolved trait function).
+            // We could only allow functions that we *can* resolve and *are* `track_caller`,
+            // but that would turn changing `track_caller`-ness into a breaking change,
+            // which is probably undesirable.
+            //
+            // Also note that we don't check callee's `track_caller`-ness at all, mostly for the
+            // reasons above, but also because we can always tailcall the shim we'd generate for
+            // coercing the function to an `fn()` pointer. (although in that case the tailcall is
+            // basically useless -- the shim calls the actual function, so tailcalling the shim is
+            // equivalent to calling the function)
             let caller_needs_location = self.needs_location(self.caller_ty);
-            let callee_needs_location = self.needs_location(ty);
 
-            if caller_needs_location != callee_needs_location {
-                self.report_track_caller_mismatch(expr.span, caller_needs_location);
+            if caller_needs_location {
+                self.report_track_caller_caller(expr.span);
             }
         }
 
@@ -149,7 +163,9 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
     }
 
     /// Returns true if function of type `ty` needs location argument
-    /// (i.e. if a function is marked as `#[track_caller]`)
+    /// (i.e. if a function is marked as `#[track_caller]`).
+    ///
+    /// Panics if the function's instance can't be immediately resolved.
     fn needs_location(&self, ty: Ty<'tcx>) -> bool {
         if let &ty::FnDef(did, substs) = ty.kind() {
             let instance =
@@ -292,25 +308,15 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         self.found_errors = Err(err);
     }
 
-    fn report_track_caller_mismatch(&mut self, sp: Span, caller_needs_location: bool) {
-        let err = match caller_needs_location {
-            true => self
-                .tcx
-                .dcx()
-                .struct_span_err(
-                    sp,
-                    "a function marked with `#[track_caller]` cannot tail-call one that is not",
-                )
-                .emit(),
-            false => self
-                .tcx
-                .dcx()
-                .struct_span_err(
-                    sp,
-                    "a function mot marked with `#[track_caller]` cannot tail-call one that is",
-                )
-                .emit(),
-        };
+    fn report_track_caller_caller(&mut self, sp: Span) {
+        let err = self
+            .tcx
+            .dcx()
+            .struct_span_err(
+                sp,
+                "a function marked with `#[track_caller]` cannot perform a tail-call",
+            )
+            .emit();
 
         self.found_errors = Err(err);
     }
@@ -344,12 +350,14 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for TailCallCkVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'a Expr<'tcx>) {
-        if let ExprKind::Become { value } = expr.kind {
-            let call = &self.thir[value];
-            self.check_tail_call(call, expr);
-        }
+        ensure_sufficient_stack(|| {
+            if let ExprKind::Become { value } = expr.kind {
+                let call = &self.thir[value];
+                self.check_tail_call(call, expr);
+            }
 
-        visit::walk_expr(self, expr);
+            visit::walk_expr(self, expr);
+        });
     }
 }
 

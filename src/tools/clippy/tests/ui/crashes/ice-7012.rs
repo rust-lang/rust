@@ -1,4 +1,6 @@
-#![allow(clippy::all)]
+//@ check-pass
+
+#![expect(clippy::single_match)]
 
 enum _MyOption {
     None,

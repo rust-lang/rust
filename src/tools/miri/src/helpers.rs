@@ -14,9 +14,10 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, MaybeResult, TyAndLayout};
-use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, UintTy};
+use rustc_middle::ty::{self, Binder, FloatTy, FnSig, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::{Conv, FnAbi};
 
 use crate::*;
@@ -38,9 +39,10 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
         item: DefId,
         name: &'a str,
     ) -> impl Iterator<Item = DefId> + 'a {
+        let name = Symbol::intern(name);
         tcx.module_children(item)
             .iter()
-            .filter(move |item| item.ident.name.as_str() == name)
+            .filter(move |item| item.ident.name == name)
             .map(move |item| item.res.def_id())
     }
 
@@ -262,6 +264,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })
     }
 
+    /// Helper function to get a `libc` constant as an `u64`.
+    fn eval_libc_u64(&self, name: &str) -> u64 {
+        // TODO: Cache the result.
+        self.eval_libc(name).to_u64().unwrap_or_else(|_err| {
+            panic!("required libc item has unexpected type (not `u64`): {name}")
+        })
+    }
+
     /// Helper function to get a `windows` constant as a `Scalar`.
     fn eval_windows(&self, module: &str, name: &str) -> Scalar {
         self.eval_context_ref().eval_path_scalar(&["std", "sys", "pal", "windows", module, name])
@@ -412,7 +422,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if this.machine.communicate() {
             // Fill the buffer using the host's rng.
-            getrandom::getrandom(&mut data)
+            getrandom::fill(&mut data)
                 .map_err(|err| err_unsup_format!("host getrandom failed: {}", err))?;
         } else {
             let rng = this.machine.rng.get_mut();
@@ -592,6 +602,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // We want to not actually read from memory for this visit. So, before
                     // walking this value, we have to make sure it is not a
                     // `Variants::Multiple`.
+                    // FIXME: the current logic here is layout-dependent, so enums with
+                    // multiple variants where all but 1 are uninhabited will be recursed into.
+                    // Is that truly what we want?
                     match v.layout.variants {
                         Variants::Multiple { .. } => {
                             // A multi-variant enum, or coroutine, or so.
@@ -667,6 +680,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             target_os,
             "`{name}` is only available on the `{target_os}` target OS",
         )
+    }
+
+    /// Helper function used inside shims of foreign functions to check that the target OS
+    /// is one of `target_oses`. It returns an error containing the `name` of the foreign function
+    /// in a message if this is not the case.
+    fn check_target_os(&self, target_oses: &[&str], name: Symbol) -> InterpResult<'tcx> {
+        let target_os = self.eval_context_ref().tcx.sess.target.os.as_ref();
+        if !target_oses.contains(&target_os) {
+            throw_unsup_format!("`{name}` is not supported on {target_os}");
+        }
+        interp_ok(())
     }
 
     /// Helper function used inside the shims of foreign functions to assert that the target OS
@@ -974,12 +998,128 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         exp_abi: Conv,
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],
-    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]>
+    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
+        self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
+
+        if abi.c_variadic {
+            throw_ub_format!(
+                "calling a non-variadic function with a variadic caller-side signature"
+            );
+        }
+        if let Ok(ops) = args.try_into() {
+            return interp_ok(ops);
+        }
+        throw_ub_format!(
+            "incorrect number of arguments for `{link_name}`: got {}, expected {}",
+            args.len(),
+            N
+        )
+    }
+
+    /// Check that the given `caller_fn_abi` matches the expected ABI described by
+    /// `callee_abi`, `callee_input_tys`, `callee_output_ty`, and then returns the list of
+    /// arguments.
+    fn check_shim_abi<'a, const N: usize>(
+        &mut self,
+        link_name: Symbol,
+        caller_fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        callee_abi: ExternAbi,
+        callee_input_tys: [Ty<'tcx>; N],
+        callee_output_ty: Ty<'tcx>,
+        caller_args: &'a [OpTy<'tcx>],
+    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
+        let this = self.eval_context_mut();
+        let mut inputs_and_output = callee_input_tys.to_vec();
+        inputs_and_output.push(callee_output_ty);
+        let fn_sig_binder = Binder::dummy(FnSig {
+            inputs_and_output: this.machine.tcx.mk_type_list(&inputs_and_output),
+            c_variadic: false,
+            // This does not matter for the ABI.
+            safety: Safety::Safe,
+            abi: callee_abi,
+        });
+        let callee_fn_abi = this.fn_abi_of_fn_ptr(fn_sig_binder, Default::default())?;
+
+        this.check_abi_and_shim_symbol_clash(caller_fn_abi, callee_fn_abi.conv, link_name)?;
+
+        if caller_fn_abi.c_variadic {
+            throw_ub_format!(
+                "ABI mismatch: calling a non-variadic function with a variadic caller-side signature"
+            );
+        }
+
+        if callee_fn_abi.fixed_count != caller_fn_abi.fixed_count {
+            throw_ub_format!(
+                "ABI mismatch: expected {} arguments, found {} arguments ",
+                callee_fn_abi.fixed_count,
+                caller_fn_abi.fixed_count
+            );
+        }
+
+        if callee_fn_abi.can_unwind && !caller_fn_abi.can_unwind {
+            throw_ub_format!(
+                "ABI mismatch: callee may unwind, but caller-side signature prohibits unwinding",
+            );
+        }
+
+        if !this.check_argument_compat(&caller_fn_abi.ret, &callee_fn_abi.ret)? {
+            throw_ub!(AbiMismatchReturn {
+                caller_ty: caller_fn_abi.ret.layout.ty,
+                callee_ty: callee_fn_abi.ret.layout.ty
+            });
+        }
+
+        if let Some(index) = caller_fn_abi
+            .args
+            .iter()
+            .zip(callee_fn_abi.args.iter())
+            .map(|(caller_arg, callee_arg)| this.check_argument_compat(caller_arg, callee_arg))
+            .collect::<InterpResult<'tcx, Vec<bool>>>()?
+            .into_iter()
+            .position(|b| !b)
+        {
+            throw_ub!(AbiMismatchArgument {
+                caller_ty: caller_fn_abi.args[index].layout.ty,
+                callee_ty: callee_fn_abi.args[index].layout.ty
+            });
+        }
+
+        if let Ok(ops) = caller_args.try_into() {
+            return interp_ok(ops);
+        }
+        unreachable!()
+    }
+
+    /// Check shim for variadic function.
+    /// Returns a tuple that consisting of an array of fixed args, and a slice of varargs.
+    fn check_shim_variadic<'a, const N: usize>(
+        &mut self,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        exp_abi: Conv,
+        link_name: Symbol,
+        args: &'a [OpTy<'tcx>],
+    ) -> InterpResult<'tcx, (&'a [OpTy<'tcx>; N], &'a [OpTy<'tcx>])>
     where
         &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
     {
         self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
-        check_arg_count(args)
+
+        if !abi.c_variadic {
+            throw_ub_format!(
+                "calling a variadic function with a non-variadic caller-side signature"
+            );
+        }
+        if abi.fixed_count != u32::try_from(N).unwrap() {
+            throw_ub_format!(
+                "incorrect number of fixed arguments for variadic function `{}`: got {}, expected {N}",
+                link_name.as_str(),
+                abi.fixed_count
+            )
+        }
+        if let Some(args) = args.split_first_chunk() {
+            return interp_ok(args);
+        }
+        panic!("mismatch between signature and `args` slice");
     }
 
     /// Mark a machine allocation that was just created as immutable.
@@ -1122,6 +1262,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         interp_ok(array)
     }
+
+    fn mangle_internal_symbol<'a>(&'a mut self, name: &'static str) -> &'a str
+    where
+        'tcx: 'a,
+    {
+        let this = self.eval_context_mut();
+        let tcx = *this.tcx;
+        this.machine
+            .mangle_internal_symbol_cache
+            .entry(name)
+            .or_insert_with(|| mangle_internal_symbol(tcx, name))
+    }
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -1163,7 +1315,7 @@ impl<'tcx> MiriMachine<'tcx> {
 }
 
 /// Check that the number of args is what we expect.
-pub fn check_arg_count<'a, 'tcx, const N: usize>(
+pub fn check_intrinsic_arg_count<'a, 'tcx, const N: usize>(
     args: &'a [OpTy<'tcx>],
 ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]>
 where
@@ -1172,11 +1324,17 @@ where
     if let Ok(ops) = args.try_into() {
         return interp_ok(ops);
     }
-    throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
+    throw_ub_format!(
+        "incorrect number of arguments for intrinsic: got {}, expected {}",
+        args.len(),
+        N
+    )
 }
 
-/// Check that the number of args is at least the minumim what we expect.
-pub fn check_min_arg_count<'a, 'tcx, const N: usize>(
+/// Check that the number of varargs is at least the minimum what we expect.
+/// Fixed args should not be included.
+/// Use `check_vararg_fixed_arg_count` to extract the varargs slice from full function arguments.
+pub fn check_min_vararg_count<'a, 'tcx, const N: usize>(
     name: &'a str,
     args: &'a [OpTy<'tcx>],
 ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
@@ -1184,7 +1342,7 @@ pub fn check_min_arg_count<'a, 'tcx, const N: usize>(
         return interp_ok(ops);
     }
     throw_ub_format!(
-        "incorrect number of arguments for `{name}`: got {}, expected at least {}",
+        "not enough variadic arguments for `{name}`: got {}, expected at least {}",
         args.len(),
         N
     )
@@ -1224,6 +1382,11 @@ pub(crate) fn bool_to_simd_element(b: bool, size: Size) -> Scalar {
 }
 
 pub(crate) fn simd_element_to_bool(elem: ImmTy<'_>) -> InterpResult<'_, bool> {
+    assert!(
+        matches!(elem.layout.ty.kind(), ty::Int(_) | ty::Uint(_)),
+        "SIMD mask element type must be an integer, but this is `{}`",
+        elem.layout.ty
+    );
     let val = elem.to_scalar().to_int(elem.layout.size)?;
     interp_ok(match val {
         0 => false,

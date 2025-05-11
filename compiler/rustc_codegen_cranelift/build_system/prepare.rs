@@ -91,6 +91,13 @@ impl GitRepo {
 
     fn verify_checksum(&self, dirs: &Dirs) {
         let download_dir = self.download_dir(dirs);
+        if !download_dir.exists() {
+            eprintln!(
+                "Missing directory {download_dir}: Please run ./y.sh prepare to download.",
+                download_dir = download_dir.display(),
+            );
+            std::process::exit(1);
+        }
         let actual_hash = format!("{:016x}", hash_dir(&download_dir));
         if actual_hash != self.content_hash {
             eprintln!(
@@ -186,7 +193,7 @@ fn init_git_repo(repo_dir: &Path) {
     spawn_and_wait(git_add_cmd);
 
     let mut git_commit_cmd = git_command(repo_dir, "commit");
-    git_commit_cmd.arg("-m").arg("Initial commit").arg("-q");
+    git_commit_cmd.arg("-m").arg("Initial commit").arg("-q").arg("--no-verify");
     spawn_and_wait(git_commit_cmd);
 }
 

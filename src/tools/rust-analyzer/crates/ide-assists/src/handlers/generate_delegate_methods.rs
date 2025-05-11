@@ -1,15 +1,15 @@
 use hir::{HasCrate, HasVisibility};
-use ide_db::{path_transform::PathTransform, FxHashSet};
+use ide_db::{FxHashSet, path_transform::PathTransform};
 use syntax::{
     ast::{
-        self, edit_in_place::Indent, make, AstNode, HasGenericParams, HasName, HasVisibility as _,
+        self, AstNode, HasGenericParams, HasName, HasVisibility as _, edit_in_place::Indent, make,
     },
     ted,
 };
 
 use crate::{
-    utils::{convert_param_list_to_arg_list, find_struct_impl},
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
+    utils::{convert_param_list_to_arg_list, find_struct_impl},
 };
 
 // Assist: generate_delegate_methods
@@ -48,6 +48,10 @@ use crate::{
 // }
 // ```
 pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    if !ctx.config.code_action_grouping {
+        return None;
+    }
+
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let strukt_name = strukt.name()?;
     let current_module = ctx.sema.scope(strukt.syntax())?.module();
@@ -88,19 +92,18 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
         });
     }
     methods.sort_by(|(a, _), (b, _)| a.cmp(b));
-    for (name, method) in methods {
+    for (index, (name, method)) in methods.into_iter().enumerate() {
         let adt = ast::Adt::Struct(strukt.clone());
         let name = name.display(ctx.db(), current_edition).to_string();
         // if `find_struct_impl` returns None, that means that a function named `name` already exists.
         let Some(impl_def) = find_struct_impl(ctx, &adt, std::slice::from_ref(&name)) else {
             continue;
         };
-
         let field = make::ext::field_from_idents(["self", &field_name])?;
 
         acc.add_group(
             &GroupLabel("Generate delegate methods…".to_owned()),
-            AssistId("generate_delegate_methods", AssistKind::Generate),
+            AssistId("generate_delegate_methods", AssistKind::Generate, Some(index)),
             format!("Generate delegate for `{field_name}.{name}()`",),
             target,
             |edit| {
@@ -137,7 +140,8 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     .map(convert_param_list_to_arg_list)
                     .unwrap_or_else(|| make::arg_list([]));
 
-                let tail_expr = make::expr_method_call(field, make::name_ref(&name), arg_list);
+                let tail_expr =
+                    make::expr_method_call(field, make::name_ref(&name), arg_list).into();
                 let tail_expr_finished =
                     if is_async { make::expr_await(tail_expr) } else { tail_expr };
                 let body = make::block_expr([], Some(tail_expr_finished));
@@ -213,7 +217,9 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_not_applicable};
+    use crate::tests::{
+        check_assist, check_assist_not_applicable, check_assist_not_applicable_no_grouping,
+    };
 
     use super::*;
 
@@ -715,6 +721,23 @@ impl Person {
     fn age(&self) -> u8 { 0 }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn delegate_method_skipped_when_no_grouping() {
+        check_assist_not_applicable_no_grouping(
+            generate_delegate_methods,
+            r#"
+struct Age(u8);
+impl Age {
+    fn age(&self) -> u8 {
+        self.0
+    }
+}
+struct Person {
+    ag$0e: Age,
+}"#,
         );
     }
 }

@@ -67,6 +67,7 @@ static TARGETS: &[&str] = &[
     "aarch64-unknown-none-softfloat",
     "aarch64-unknown-redox",
     "aarch64-unknown-uefi",
+    "amdgcn-amd-amdhsa",
     "arm64e-apple-darwin",
     "arm64e-apple-ios",
     "arm64e-apple-tvos",
@@ -96,9 +97,9 @@ static TARGETS: &[&str] = &[
     "bpfeb-unknown-none",
     "bpfel-unknown-none",
     "i386-apple-ios",
-    "i586-pc-windows-msvc",
     "i586-unknown-linux-gnu",
     "i586-unknown-linux-musl",
+    "i586-unknown-redox",
     "i686-apple-darwin",
     "i686-linux-android",
     "i686-pc-windows-gnu",
@@ -107,13 +108,13 @@ static TARGETS: &[&str] = &[
     "i686-unknown-freebsd",
     "i686-unknown-linux-gnu",
     "i686-unknown-linux-musl",
-    "i686-unknown-redox",
     "i686-unknown-uefi",
     "loongarch64-unknown-linux-gnu",
     "loongarch64-unknown-linux-musl",
     "loongarch64-unknown-none",
     "loongarch64-unknown-none-softfloat",
     "m68k-unknown-linux-gnu",
+    "m68k-unknown-none-elf",
     "csky-unknown-linux-gnuabiv2",
     "csky-unknown-linux-gnuabiv2hf",
     "mips-unknown-linux-gnu",
@@ -128,6 +129,8 @@ static TARGETS: &[&str] = &[
     "mipsisa64r6el-unknown-linux-gnuabi64",
     "mipsel-unknown-linux-gnu",
     "mipsel-unknown-linux-musl",
+    "mips-mti-none-elf",
+    "mipsel-mti-none-elf",
     "nvptx64-nvidia-cuda",
     "powerpc-unknown-linux-gnu",
     "powerpc64-unknown-linux-gnu",
@@ -383,7 +386,6 @@ impl Builder {
         // NOTE: this profile is effectively deprecated; do not add new components to it.
         let mut complete = default;
         complete.extend([
-            Rls,
             RustAnalyzer,
             RustSrc,
             LlvmTools,
@@ -472,7 +474,6 @@ impl Builder {
                 // but might be marked as unavailable if they weren't built.
                 PkgType::Clippy
                 | PkgType::Miri
-                | PkgType::Rls
                 | PkgType::RustAnalyzer
                 | PkgType::Rustfmt
                 | PkgType::LlvmTools
@@ -600,11 +601,14 @@ impl Builder {
             })
             .collect();
 
-        dst.insert(pkg.manifest_component_name(), Package {
-            version: version_info.version.unwrap_or_default(),
-            git_commit_hash: version_info.git_commit,
-            target: targets,
-        });
+        dst.insert(
+            pkg.manifest_component_name(),
+            Package {
+                version: version_info.version.unwrap_or_default(),
+                git_commit_hash: version_info.git_commit,
+                target: targets,
+            },
+        );
     }
 
     fn url(&self, path: &Path) -> String {

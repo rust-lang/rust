@@ -1,16 +1,16 @@
 use hir::HasSource;
 use syntax::{
-    ast::{self, make, AstNode},
     Edition,
+    ast::{self, AstNode, make},
 };
 
 use crate::{
+    AssistId,
     assist_context::{AssistContext, Assists},
     utils::{
-        add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_fn_body, DefaultMethods,
-        IgnoreAssocItems,
+        DefaultMethods, IgnoreAssocItems, add_trait_assoc_items_to_impl, filter_assoc_items,
+        gen_trait_fn_body,
     },
-    AssistId, AssistKind,
 };
 
 // Assist: add_impl_missing_members
@@ -146,10 +146,11 @@ fn add_missing_impl_members_inner(
     }
 
     let target = impl_def.syntax().text_range();
-    acc.add(AssistId(assist_id, AssistKind::QuickFix), label, target, |edit| {
+    acc.add(AssistId::quick_fix(assist_id), label, target, |edit| {
         let new_impl_def = edit.make_mut(impl_def.clone());
         let first_new_item = add_trait_assoc_items_to_impl(
             &ctx.sema,
+            ctx.config,
             &missing_items,
             trait_,
             &new_impl_def,
@@ -590,9 +591,9 @@ mod m {
 }
 
 impl m::Foo for () {
-    $0fn get_n(&self) -> usize { {40 + 2} }
+    $0fn get_n(&self) -> usize { N }
 
-    fn get_m(&self) -> usize { {m::VAL + 1} }
+    fn get_m(&self) -> usize { M }
 }"#,
         )
     }

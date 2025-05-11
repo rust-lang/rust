@@ -13,7 +13,7 @@ LL | fn _foo1() {}
    = help: to override `-D warnings` add `#[allow(clippy::used_underscore_items)]`
 
 error: used underscore-prefixed item
-  --> tests/ui/used_underscore_items.rs:44:13
+  --> tests/ui/used_underscore_items.rs:45:13
    |
 LL |     let _ = _foo2();
    |             ^^^^^^^
@@ -25,7 +25,7 @@ LL | fn _foo2() -> i32 {
    | ^^^^^^^^^^^^^^^^^
 
 error: used underscore-prefixed item
-  --> tests/ui/used_underscore_items.rs:45:5
+  --> tests/ui/used_underscore_items.rs:47:5
    |
 LL |     a::b::c::_foo3();
    |     ^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL |             pub fn _foo3() {}
    |             ^^^^^^^^^^^^^^
 
 error: used underscore-prefixed item
-  --> tests/ui/used_underscore_items.rs:46:14
+  --> tests/ui/used_underscore_items.rs:49:14
    |
 LL |     let _ = &_FooStruct {};
    |              ^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL | struct _FooStruct {}
    | ^^^^^^^^^^^^^^^^^
 
 error: used underscore-prefixed item
-  --> tests/ui/used_underscore_items.rs:47:13
+  --> tests/ui/used_underscore_items.rs:51:13
    |
 LL |     let _ = _FooStruct {};
    |             ^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL | struct _FooStruct {}
    | ^^^^^^^^^^^^^^^^^
 
 error: used underscore-prefixed item
-  --> tests/ui/used_underscore_items.rs:49:22
+  --> tests/ui/used_underscore_items.rs:54:22
    |
 LL |     let foo_struct = _FooStruct {};
    |                      ^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL | struct _FooStruct {}
    | ^^^^^^^^^^^^^^^^^
 
 error: used underscore-prefixed item
-  --> tests/ui/used_underscore_items.rs:50:5
+  --> tests/ui/used_underscore_items.rs:56:5
    |
 LL |     foo_struct._method_call();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL |     fn _method_call(self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: used underscore-prefixed item
-  --> tests/ui/used_underscore_items.rs:52:23
+  --> tests/ui/used_underscore_items.rs:59:23
    |
 LL |     let foo_struct2 = a::b::c::_FooStruct2 {};
    |                       ^^^^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +97,7 @@ LL |             pub struct _FooStruct2 {}
    |             ^^^^^^^^^^^^^^^^^^^^^^
 
 error: used underscore-prefixed item
-  --> tests/ui/used_underscore_items.rs:53:5
+  --> tests/ui/used_underscore_items.rs:61:5
    |
 LL |     foo_struct2._method_call();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^

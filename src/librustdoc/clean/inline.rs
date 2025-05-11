@@ -17,12 +17,12 @@ use rustc_span::symbol::{Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, trace};
 
-use super::Item;
+use super::{Item, extract_cfg_from_attrs};
 use crate::clean::{
-    self, Attributes, AttributesExt, ImplKind, ItemId, Type, clean_bound_vars, clean_generics,
-    clean_impl_item, clean_middle_assoc_item, clean_middle_field, clean_middle_ty,
-    clean_poly_fn_sig, clean_trait_ref_with_constraints, clean_ty, clean_ty_alias_inner_type,
-    clean_ty_generics, clean_variant_def, utils,
+    self, Attributes, ImplKind, ItemId, Type, clean_bound_vars, clean_generics, clean_impl_item,
+    clean_middle_assoc_item, clean_middle_field, clean_middle_ty, clean_poly_fn_sig,
+    clean_trait_ref_with_constraints, clean_ty, clean_ty_alias_inner_type, clean_ty_generics,
+    clean_variant_def, utils,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -67,8 +67,12 @@ pub(crate) fn try_inline(
             record_extern_fqn(cx, did, ItemType::Trait);
             cx.with_param_env(did, |cx| {
                 build_impls(cx, did, attrs_without_docs, &mut ret);
-                clean::TraitItem(Box::new(build_external_trait(cx, did)))
+                clean::TraitItem(Box::new(build_trait(cx, did)))
             })
+        }
+        Res::Def(DefKind::TraitAlias, did) => {
+            record_extern_fqn(cx, did, ItemType::TraitAlias);
+            cx.with_param_env(did, |cx| clean::TraitAliasItem(build_trait_alias(cx, did)))
         }
         Res::Def(DefKind::Fn, did) => {
             record_extern_fqn(cx, did, ItemType::Function);
@@ -151,7 +155,7 @@ pub(crate) fn try_inline(
     let mut item =
         crate::clean::generate_item_with_correct_attrs(cx, kind, did, name, import_def_id, None);
     // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
-    item.inline_stmt_id = import_def_id;
+    item.inner.inline_stmt_id = import_def_id;
     ret.push(item);
     Some(ret)
 }
@@ -181,7 +185,7 @@ pub(crate) fn try_inline_glob(
                 .filter_map(|child| child.res.opt_def_id())
                 .filter(|def_id| !cx.tcx.is_doc_hidden(def_id))
                 .collect();
-            let attrs = cx.tcx.hir().attrs(import.hir_id());
+            let attrs = cx.tcx.hir_attrs(import.hir_id());
             let mut items = build_module_items(
                 cx,
                 did,
@@ -211,17 +215,7 @@ pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> &'hir [hir:
 }
 
 pub(crate) fn item_relative_path(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<Symbol> {
-    tcx.def_path(def_id)
-        .data
-        .into_iter()
-        .filter_map(|elem| {
-            // extern blocks (and a few others things) have an empty name.
-            match elem.data.get_opt_name() {
-                Some(s) if !s.is_empty() => Some(s),
-                _ => None,
-            }
-        })
-        .collect()
+    tcx.def_path(def_id).data.into_iter().filter_map(|elem| elem.data.get_opt_name()).collect()
 }
 
 /// Record an external fully qualified name in the external_paths cache.
@@ -261,7 +255,7 @@ pub(crate) fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemT
     }
 }
 
-pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
+pub(crate) fn build_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
     let trait_items = cx
         .tcx
         .associated_items(did)
@@ -273,11 +267,18 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
     let predicates = cx.tcx.predicates_of(did);
     let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
     let generics = filter_non_trait_generics(did, generics);
-    let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
+    let (generics, supertrait_bounds) = separate_self_bounds(generics);
     clean::Trait { def_id: did, generics, items: trait_items, bounds: supertrait_bounds }
 }
 
-pub(crate) fn build_function(cx: &mut DocContext<'_>, def_id: DefId) -> Box<clean::Function> {
+fn build_trait_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::TraitAlias {
+    let predicates = cx.tcx.predicates_of(did);
+    let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
+    let (generics, bounds) = separate_self_bounds(generics);
+    clean::TraitAlias { generics, bounds }
+}
+
+pub(super) fn build_function(cx: &mut DocContext<'_>, def_id: DefId) -> Box<clean::Function> {
     let sig = cx.tcx.fn_sig(def_id).instantiate_identity();
     // The generics need to be cleaned before the signature.
     let mut generics =
@@ -408,10 +409,13 @@ pub(crate) fn merge_attrs(
             } else {
                 Attributes::from_hir(&both)
             },
-            both.cfg(cx.tcx, &cx.cache.hidden_cfg),
+            extract_cfg_from_attrs(both.iter(), cx.tcx, &cx.cache.hidden_cfg),
         )
     } else {
-        (Attributes::from_hir(old_attrs), old_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg))
+        (
+            Attributes::from_hir(old_attrs),
+            extract_cfg_from_attrs(old_attrs.iter(), cx.tcx, &cx.cache.hidden_cfg),
+        )
     }
 }
 
@@ -452,7 +456,7 @@ pub(crate) fn build_impl(
     }
 
     let impl_item = match did.as_local() {
-        Some(did) => match &tcx.hir().expect_item(did).kind {
+        Some(did) => match &tcx.hir_expect_item(did).kind {
             hir::ItemKind::Impl(impl_) => Some(impl_),
             _ => panic!("`DefID` passed to `build_impl` is not an `impl"),
         },
@@ -485,7 +489,7 @@ pub(crate) fn build_impl(
             impl_
                 .items
                 .iter()
-                .map(|item| tcx.hir().impl_item(item.id))
+                .map(|item| tcx.hir_impl_item(item.id))
                 .filter(|item| {
                     // Filter out impl items whose corresponding trait item has `doc(hidden)`
                     // not to document such impl items.
@@ -497,17 +501,17 @@ pub(crate) fn build_impl(
                         return true;
                     }
                     if let Some(associated_trait) = associated_trait {
-                        let assoc_kind = match item.kind {
-                            hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
-                            hir::ImplItemKind::Fn(..) => ty::AssocKind::Fn,
-                            hir::ImplItemKind::Type(..) => ty::AssocKind::Type,
+                        let assoc_tag = match item.kind {
+                            hir::ImplItemKind::Const(..) => ty::AssocTag::Const,
+                            hir::ImplItemKind::Fn(..) => ty::AssocTag::Fn,
+                            hir::ImplItemKind::Type(..) => ty::AssocTag::Type,
                         };
                         let trait_item = tcx
                             .associated_items(associated_trait.def_id)
-                            .find_by_name_and_kind(
+                            .find_by_ident_and_kind(
                                 tcx,
                                 item.ident,
-                                assoc_kind,
+                                assoc_tag,
                                 associated_trait.def_id,
                             )
                             .unwrap(); // SAFETY: For all impl items there exists trait item that has the same name.
@@ -531,10 +535,10 @@ pub(crate) fn build_impl(
                     if let Some(associated_trait) = associated_trait {
                         let trait_item = tcx
                             .associated_items(associated_trait.def_id)
-                            .find_by_name_and_kind(
+                            .find_by_ident_and_kind(
                                 tcx,
                                 item.ident(tcx),
-                                item.kind,
+                                item.as_tag(),
                                 associated_trait.def_id,
                             )
                             .unwrap(); // corresponding associated item has to exist
@@ -560,11 +564,13 @@ pub(crate) fn build_impl(
     // Return if the trait itself or any types of the generic parameters are doc(hidden).
     let mut stack: Vec<&Type> = vec![&for_];
 
-    if let Some(did) = trait_.as_ref().map(|t| t.def_id()) {
-        if !document_hidden && tcx.is_doc_hidden(did) {
-            return;
-        }
+    if let Some(did) = trait_.as_ref().map(|t| t.def_id())
+        && !document_hidden
+        && tcx.is_doc_hidden(did)
+    {
+        return;
     }
+
     if let Some(generics) = trait_.as_ref().and_then(|t| t.generics()) {
         stack.extend(generics);
     }
@@ -660,11 +666,11 @@ fn build_module_items(
                 // Primitive types can't be inlined so generate an import instead.
                 let prim_ty = clean::PrimitiveType::from(p);
                 items.push(clean::Item {
-                    name: None,
-                    // We can use the item's `DefId` directly since the only information ever used
-                    // from it is `DefId.krate`.
-                    item_id: ItemId::DefId(did),
                     inner: Box::new(clean::ItemInner {
+                        name: None,
+                        // We can use the item's `DefId` directly since the only information ever
+                        // used from it is `DefId.krate`.
+                        item_id: ItemId::DefId(did),
                         attrs: Default::default(),
                         stability: None,
                         kind: clean::ImportItem(clean::Import::new_simple(
@@ -684,9 +690,9 @@ fn build_module_items(
                             },
                             true,
                         )),
+                        cfg: None,
+                        inline_stmt_id: None,
                     }),
-                    cfg: None,
-                    inline_stmt_id: None,
                 });
             } else if let Some(i) = try_inline(cx, res, item.ident.name, attrs, visited) {
                 items.extend(i)
@@ -700,7 +706,7 @@ fn build_module_items(
 pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
     if let Some(did) = did.as_local() {
         let hir_id = tcx.local_def_id_to_hir_id(did);
-        rustc_hir_pretty::id_to_string(&tcx.hir(), hir_id)
+        rustc_hir_pretty::id_to_string(&tcx, hir_id)
     } else {
         tcx.rendered_const(did).clone()
     }
@@ -793,12 +799,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
     g
 }
 
-/// Supertrait bounds for a trait are also listed in the generics coming from
-/// the metadata for a crate, so we want to separate those out and create a new
-/// list of explicit supertrait bounds to render nicely.
-fn separate_supertrait_bounds(
-    mut g: clean::Generics,
-) -> (clean::Generics, Vec<clean::GenericBound>) {
+fn separate_self_bounds(mut g: clean::Generics) -> (clean::Generics, Vec<clean::GenericBound>) {
     let mut ty_bounds = Vec::new();
     g.where_predicates.retain(|pred| match *pred {
         clean::WherePredicate::BoundPredicate { ty: clean::SelfTy, ref bounds, .. } => {
@@ -811,22 +812,17 @@ fn separate_supertrait_bounds(
 }
 
 pub(crate) fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
-    if did.is_local() {
+    if did.is_local()
+        || cx.external_traits.contains_key(&did)
+        || cx.active_extern_traits.contains(&did)
+    {
         return;
     }
 
-    {
-        if cx.external_traits.contains_key(&did) || cx.active_extern_traits.contains(&did) {
-            return;
-        }
-    }
-
-    {
-        cx.active_extern_traits.insert(did);
-    }
+    cx.active_extern_traits.insert(did);
 
     debug!("record_extern_trait: {did:?}");
-    let trait_ = build_external_trait(cx, did);
+    let trait_ = build_trait(cx, did);
 
     cx.external_traits.insert(did, trait_);
     cx.active_extern_traits.remove(&did);

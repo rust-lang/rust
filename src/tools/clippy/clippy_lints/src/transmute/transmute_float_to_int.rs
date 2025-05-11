@@ -17,11 +17,11 @@ pub(super) fn check<'tcx>(
     to_ty: Ty<'tcx>,
     mut arg: &'tcx Expr<'_>,
     const_context: bool,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
         (ty::Float(float_ty), ty::Int(_) | ty::Uint(_))
-            if !const_context || msrv.meets(msrvs::CONST_FLOAT_BITS_CONV) =>
+            if !const_context || msrv.meets(cx, msrvs::CONST_FLOAT_BITS_CONV) =>
         {
             span_lint_and_then(
                 cx,
@@ -47,7 +47,7 @@ pub(super) fn check<'tcx>(
                         }
                     }
 
-                    sugg = sugg::Sugg::NonParen(format!("{}.to_bits()", sugg.maybe_par()).into());
+                    sugg = sugg::Sugg::NonParen(format!("{}.to_bits()", sugg.maybe_paren()).into());
 
                     // cast the result of `to_bits` if `to_ty` is signed
                     sugg = if let ty::Int(int_ty) = to_ty.kind() {

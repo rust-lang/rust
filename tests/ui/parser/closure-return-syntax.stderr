@@ -2,12 +2,40 @@ error: expected `{`, found `22`
   --> $DIR/closure-return-syntax.rs:5:23
    |
 LL |     let x = || -> i32 22;
-   |                       ^^ expected `{`
+   |                   --- ^^
+   |                   |
+   |                   explicit return type requires closure body to be enclosed in braces
    |
-help: you might have meant to write this as part of a block
+help: wrap the expression in curly braces
    |
 LL |     let x = || -> i32 { 22 };
    |                       +    +
 
-error: aborting due to 1 previous error
+error: expected `{`, found `(`
+  --> $DIR/closure-return-syntax.rs:12:34
+   |
+LL |         let x = || -> (i32, i32) (1, 2);
+   |                       ---------- ^
+   |                       |
+   |                       explicit return type requires closure body to be enclosed in braces
+   |
+help: wrap the expression in curly braces
+   |
+LL |         let x = || -> (i32, i32) { (1, 2) };
+   |                                  +        +
+
+error: expected `{`, found `[`
+  --> $DIR/closure-return-syntax.rs:17:32
+   |
+LL |         let c = || -> [i32; 2] [1, 2];
+   |                       -------- ^
+   |                       |
+   |                       explicit return type requires closure body to be enclosed in braces
+   |
+help: wrap the expression in curly braces
+   |
+LL |         let c = || -> [i32; 2] { [1, 2] };
+   |                                +        +
+
+error: aborting due to 3 previous errors
 

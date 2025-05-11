@@ -6,11 +6,11 @@ use itertools::Itertools;
 use syntax::ToSmolStr;
 
 use crate::{
-    render::{
-        variant::{format_literal_label, format_literal_lookup, visible_fields},
-        RenderContext,
-    },
     CompletionItem, CompletionItemKind,
+    render::{
+        RenderContext,
+        variant::{format_literal_label, format_literal_lookup, visible_fields},
+    },
 };
 
 pub(crate) fn render_union_literal(
@@ -23,12 +23,12 @@ pub(crate) fn render_union_literal(
 
     let (qualified_name, escaped_qualified_name) = match path {
         Some(p) => (
-            p.unescaped().display(ctx.db()).to_string(),
-            p.display(ctx.db(), ctx.completion.edition).to_string(),
+            p.display_verbatim(ctx.db()).to_smolstr(),
+            p.display(ctx.db(), ctx.completion.edition).to_smolstr(),
         ),
         None => (
-            name.unescaped().display(ctx.db()).to_string(),
-            name.display(ctx.db(), ctx.completion.edition).to_string(),
+            name.as_str().to_smolstr(),
+            name.display(ctx.db(), ctx.completion.edition).to_smolstr(),
         ),
     };
     let label = format_literal_label(
@@ -88,7 +88,7 @@ pub(crate) fn render_union_literal(
             f(&format_args!(
                 "{}: {}",
                 field.name(ctx.db()).display(ctx.db(), ctx.completion.edition),
-                field.ty(ctx.db()).display(ctx.db(), ctx.completion.edition)
+                field.ty(ctx.db()).display(ctx.db(), ctx.completion.display_target)
             ))
         }),
         if fields_omitted { ", .." } else { "" }

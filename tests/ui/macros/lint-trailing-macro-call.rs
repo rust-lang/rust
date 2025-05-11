@@ -6,7 +6,7 @@
 
 macro_rules! expand_it {
     () => {
-        #[cfg(FALSE)] 25; //~  WARN trailing semicolon in macro
+        #[cfg(false)] 25; //~  WARN trailing semicolon in macro
                           //~| WARN this was previously
     }
 }

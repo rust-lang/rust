@@ -2,8 +2,6 @@
 //
 // issue: <https://github.com/rust-lang/rust/issues/131813>
 
-#![feature(trait_upcasting)]
-
 trait Pollable {
     #[allow(unused)]
     fn poll(&self) {}

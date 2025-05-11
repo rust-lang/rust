@@ -354,12 +354,43 @@ fn overflowing_add() {
 fn needs_drop() {
     check_number(
         r#"
-        //- minicore: copy, sized
+        //- minicore: drop, manually_drop, copy, sized
+        use core::mem::ManuallyDrop;
         extern "rust-intrinsic" {
             pub fn needs_drop<T: ?Sized>() -> bool;
         }
         struct X;
-        const GOAL: bool = !needs_drop::<i32>() && needs_drop::<X>();
+        struct NeedsDrop;
+        impl Drop for NeedsDrop {
+            fn drop(&mut self) {}
+        }
+        enum Enum<T> {
+            A(T),
+            B(X),
+        }
+        const fn val_needs_drop<T>(_v: T) -> bool { needs_drop::<T>() }
+        const fn closure_needs_drop() -> bool {
+            let a = NeedsDrop;
+            let b = X;
+            !val_needs_drop(|| &a) && val_needs_drop(move || &a) && !val_needs_drop(move || &b)
+        }
+        const fn opaque() -> impl Sized {
+            || {}
+        }
+        const fn opaque_copy() -> impl Sized + Copy {
+            || {}
+        }
+        trait Everything {}
+        impl<T> Everything for T {}
+        const GOAL: bool = !needs_drop::<i32>() && !needs_drop::<X>()
+            && needs_drop::<NeedsDrop>() && !needs_drop::<ManuallyDrop<NeedsDrop>>()
+            && needs_drop::<[NeedsDrop; 1]>() && !needs_drop::<[NeedsDrop; 0]>()
+            && needs_drop::<(X, NeedsDrop)>()
+            && needs_drop::<Enum<NeedsDrop>>() && !needs_drop::<Enum<X>>()
+            && closure_needs_drop()
+            && !val_needs_drop(opaque()) && !val_needs_drop(opaque_copy())
+            && needs_drop::<[NeedsDrop]>() && needs_drop::<dyn Everything>()
+            && !needs_drop::<&dyn Everything>() && !needs_drop::<str>();
         "#,
         1,
     );

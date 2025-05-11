@@ -49,7 +49,7 @@ fn test_unique_id() {
 fn test_lang_string_parse() {
     fn t(lg: LangString) {
         let s = &lg.original;
-        assert_eq!(LangString::parse(s, ErrorCodes::Yes, true, None), lg)
+        assert_eq!(LangString::parse(s, ErrorCodes::Yes, None), lg)
     }
 
     t(Default::default());
@@ -275,14 +275,14 @@ fn test_lang_string_tokenizer() {
     case("foo", &[LangStringToken::LangToken("foo")]);
     case("foo,bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
     case(".foo,.bar", &[]);
-    case("{.foo,.bar}", &[
-        LangStringToken::ClassAttribute("foo"),
-        LangStringToken::ClassAttribute("bar"),
-    ]);
-    case("  {.foo,.bar}  ", &[
-        LangStringToken::ClassAttribute("foo"),
-        LangStringToken::ClassAttribute("bar"),
-    ]);
+    case(
+        "{.foo,.bar}",
+        &[LangStringToken::ClassAttribute("foo"), LangStringToken::ClassAttribute("bar")],
+    );
+    case(
+        "  {.foo,.bar}  ",
+        &[LangStringToken::ClassAttribute("foo"), LangStringToken::ClassAttribute("bar")],
+    );
     case("foo bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
     case("foo\tbar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
     case("foo\t, bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
@@ -479,7 +479,7 @@ fn test_markdown_html_escape() {
 fn test_find_testable_code_line() {
     fn t(input: &str, expect: &[usize]) {
         let mut lines = Vec::<usize>::new();
-        find_testable_code(input, &mut lines, ErrorCodes::No, false, None);
+        find_testable_code(input, &mut lines, ErrorCodes::No, None);
         assert_eq!(lines, expect);
     }
 

@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_enum_variant_ctor, is_expr_used_or_unified};
+use clippy_utils::{is_enum_variant_ctor, is_expr_used_or_unified, sym};
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 use super::SEEK_TO_START_INSTEAD_OF_REWIND;
 
@@ -29,7 +29,7 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Call(func, [arg]) = arg.kind
         && let ExprKind::Path(ref path) = func.kind
         && let Some(ctor_call_id) = cx.qpath_res(path, func.hir_id).opt_def_id()
-        && is_enum_variant_ctor(cx, sym::SeekFrom, sym!(Start), ctor_call_id)
+        && is_enum_variant_ctor(cx, sym::SeekFrom, sym::Start, ctor_call_id)
         && let ExprKind::Lit(lit) = arg.kind
         && let LitKind::Int(Pu128(0), LitIntType::Unsuffixed) = lit.node
     {

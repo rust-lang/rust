@@ -25,7 +25,7 @@ use crate::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 /// assert_eq!(localhost_v4.is_ipv6(), false);
 /// assert_eq!(localhost_v4.is_ipv4(), true);
 /// ```
-#[cfg_attr(not(test), rustc_diagnostic_item = "IpAddr")]
+#[rustc_diagnostic_item = "IpAddr"]
 #[stable(feature = "ip_addr", since = "1.7.0")]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub enum IpAddr {
@@ -451,6 +451,28 @@ impl IpAddr {
             IpAddr::V6(v6) => v6.to_canonical(),
         }
     }
+
+    /// Returns the eight-bit integers this address consists of as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_as_octets)]
+    ///
+    /// use std::net::{Ipv4Addr, Ipv6Addr, IpAddr};
+    ///
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::LOCALHOST).as_octets(), &[127, 0, 0, 1]);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::LOCALHOST).as_octets(),
+    ///            &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
+    /// ```
+    #[unstable(feature = "ip_as_octets", issue = "137259")]
+    #[inline]
+    pub const fn as_octets(&self) -> &[u8] {
+        match self {
+            IpAddr::V4(ip) => ip.as_octets().as_slice(),
+            IpAddr::V6(ip) => ip.as_octets().as_slice(),
+        }
+    }
 }
 
 impl Ipv4Addr {
@@ -614,6 +636,25 @@ impl Ipv4Addr {
     #[inline]
     pub const fn from_octets(octets: [u8; 4]) -> Ipv4Addr {
         Ipv4Addr { octets }
+    }
+
+    /// Returns the four eight-bit integers that make up this address
+    /// as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_as_octets)]
+    ///
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::new(127, 0, 0, 1);
+    /// assert_eq!(addr.as_octets(), &[127, 0, 0, 1]);
+    /// ```
+    #[unstable(feature = "ip_as_octets", issue = "137259")]
+    #[inline]
+    pub const fn as_octets(&self) -> &[u8; 4] {
+        &self.octets
     }
 
     /// Returns [`true`] for the special 'unspecified' address (`0.0.0.0`).
@@ -1539,8 +1580,9 @@ impl Ipv6Addr {
     /// // Addresses reserved for benchmarking (`2001:2::/48`)
     /// assert_eq!(Ipv6Addr::new(0x2001, 2, 0, 0, 0, 0, 0, 1,).is_global(), false);
     ///
-    /// // Addresses reserved for documentation (`2001:db8::/32`)
+    /// // Addresses reserved for documentation (`2001:db8::/32` and `3fff::/20`)
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1).is_global(), false);
+    /// assert_eq!(Ipv6Addr::new(0x3fff, 0, 0, 0, 0, 0, 0, 0).is_global(), false);
     ///
     /// // Unique local addresses (`fc00::/7`)
     /// assert_eq!(Ipv6Addr::new(0xfc02, 0, 0, 0, 0, 0, 0, 1).is_global(), false);
@@ -1581,6 +1623,8 @@ impl Ipv6Addr {
             // IANA says N/A.
             || matches!(self.segments(), [0x2002, _, _, _, _, _, _, _])
             || self.is_documentation()
+            // Segment Routing (SRv6) SIDs (`5f00::/16`)
+            || matches!(self.segments(), [0x5f00, ..])
             || self.is_unique_local()
             || self.is_unicast_link_local())
     }
@@ -1686,11 +1730,12 @@ impl Ipv6Addr {
     }
 
     /// Returns [`true`] if this is an address reserved for documentation
-    /// (`2001:db8::/32`).
+    /// (`2001:db8::/32` and `3fff::/20`).
     ///
-    /// This property is defined in [IETF RFC 3849].
+    /// This property is defined by [IETF RFC 3849] and [IETF RFC 9637].
     ///
     /// [IETF RFC 3849]: https://tools.ietf.org/html/rfc3849
+    /// [IETF RFC 9637]: https://tools.ietf.org/html/rfc9637
     ///
     /// # Examples
     ///
@@ -1701,12 +1746,13 @@ impl Ipv6Addr {
     ///
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_documentation(), false);
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_documentation(), true);
+    /// assert_eq!(Ipv6Addr::new(0x3fff, 0, 0, 0, 0, 0, 0, 0).is_documentation(), true);
     /// ```
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
     pub const fn is_documentation(&self) -> bool {
-        (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
+        matches!(self.segments(), [0x2001, 0xdb8, ..] | [0x3fff, 0..=0x0fff, ..])
     }
 
     /// Returns [`true`] if this is an address reserved for benchmarking (`2001:2::/48`).
@@ -1997,6 +2043,25 @@ impl Ipv6Addr {
     #[inline]
     pub const fn from_octets(octets: [u8; 16]) -> Ipv6Addr {
         Ipv6Addr { octets }
+    }
+
+    /// Returns the sixteen eight-bit integers the IPv6 address consists of
+    /// as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_as_octets)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).as_octets(),
+    ///            &[255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    /// ```
+    #[unstable(feature = "ip_as_octets", issue = "137259")]
+    #[inline]
+    pub const fn as_octets(&self) -> &[u8; 16] {
+        &self.octets
     }
 }
 

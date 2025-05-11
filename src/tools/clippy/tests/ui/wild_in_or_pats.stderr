@@ -9,7 +9,7 @@ LL |         "bar" | _ => {
    = help: to override `-D warnings` add `#[allow(clippy::wildcard_in_or_patterns)]`
 
 error: wildcard pattern covers any other pattern as it will match anyway
-  --> tests/ui/wild_in_or_pats.rs:17:9
+  --> tests/ui/wild_in_or_pats.rs:18:9
    |
 LL |         "bar" | "bar2" | _ => {
    |         ^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |         "bar" | "bar2" | _ => {
    = help: consider handling `_` separately
 
 error: wildcard pattern covers any other pattern as it will match anyway
-  --> tests/ui/wild_in_or_pats.rs:26:9
+  --> tests/ui/wild_in_or_pats.rs:28:9
    |
 LL |         _ | "bar" | _ => {
    |         ^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |         _ | "bar" | _ => {
    = help: consider handling `_` separately
 
 error: wildcard pattern covers any other pattern as it will match anyway
-  --> tests/ui/wild_in_or_pats.rs:35:9
+  --> tests/ui/wild_in_or_pats.rs:38:9
    |
 LL |         _ | "bar" => {
    |         ^^^^^^^^^
@@ -33,7 +33,7 @@ LL |         _ | "bar" => {
    = help: consider handling `_` separately
 
 error: wildcard pattern covers any other pattern as it will match anyway
-  --> tests/ui/wild_in_or_pats.rs:69:9
+  --> tests/ui/wild_in_or_pats.rs:73:9
    |
 LL |         ExhaustiveEnum::Quit | _ => {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL |         ExhaustiveEnum::Quit | _ => {
    = help: consider handling `_` separately
 
 error: wildcard pattern covers any other pattern as it will match anyway
-  --> tests/ui/wild_in_or_pats.rs:104:9
+  --> tests/ui/wild_in_or_pats.rs:109:9
    |
 LL |         ExhaustiveStruct { x: 1, y: 1 } | _ => {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

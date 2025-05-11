@@ -7,7 +7,6 @@ use crate::mem::MaybeUninit;
 use crate::ops::Deref;
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
 fn read_until() {
     let mut buf = Cursor::new(&b"12"[..]);
     let mut v = Vec::new();
@@ -359,7 +358,6 @@ fn chain_zero_length_read_is_not_eof() {
 }
 
 #[bench]
-#[cfg_attr(target_os = "emscripten", ignore)]
 #[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_read_to_end(b: &mut test::Bencher) {
     b.iter(|| {
@@ -813,13 +811,17 @@ fn read_to_end_error() {
 }
 
 #[test]
-// Miri does not support signalling OOM
-#[cfg_attr(miri, ignore)]
-// 64-bit only to be sure the allocator will fail fast on an impossible to satisfy size
-#[cfg(target_pointer_width = "64")]
 fn try_oom_error() {
-    let mut v = Vec::<u8>::new();
-    let reserve_err = v.try_reserve(isize::MAX as usize - 1).unwrap_err();
+    use alloc::alloc::Layout;
+    use alloc::collections::{TryReserveError, TryReserveErrorKind};
+
+    // We simulate a `Vec::try_reserve` error rather than attempting a huge size for real. This way
+    // we're not subject to the whims of optimization that might skip the actual allocation, and it
+    // also works for 32-bit targets and miri that might not OOM at all.
+    let layout = Layout::new::<u8>();
+    let kind = TryReserveErrorKind::AllocError { layout, non_exhaustive: () };
+    let reserve_err = TryReserveError::from(kind);
+
     let io_err = io::Error::from(reserve_err);
     assert_eq!(io::ErrorKind::OutOfMemory, io_err.kind());
 }

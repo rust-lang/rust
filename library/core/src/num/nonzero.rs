@@ -1,6 +1,7 @@
 //! Definitions of integer that is known not to equal zero.
 
 use super::{IntErrorKind, ParseIntError};
+use crate::clone::UseCloned;
 use crate::cmp::Ordering;
 use crate::hash::{Hash, Hasher};
 use crate::marker::{Freeze, StructuralPartialEq};
@@ -37,41 +38,12 @@ pub unsafe trait ZeroablePrimitive: Sized + Copy + private::Sealed {
 macro_rules! impl_zeroable_primitive {
     ($($NonZeroInner:ident ( $primitive:ty )),+ $(,)?) => {
         mod private {
-            use super::*;
-
             #[unstable(
                 feature = "nonzero_internals",
                 reason = "implementation detail which may disappear or be replaced at any time",
                 issue = "none"
             )]
             pub trait Sealed {}
-
-            $(
-                // This inner type is never shown directly, so intentionally does not have Debug
-                #[expect(missing_debug_implementations)]
-                // Since this struct is non-generic and derives Copy,
-                // the derived Clone is `*self` and thus doesn't field-project.
-                #[derive(Clone, Copy)]
-                #[repr(transparent)]
-                #[rustc_layout_scalar_valid_range_start(1)]
-                #[rustc_nonnull_optimization_guaranteed]
-                #[unstable(
-                    feature = "nonzero_internals",
-                    reason = "implementation detail which may disappear or be replaced at any time",
-                    issue = "none"
-                )]
-                pub struct $NonZeroInner($primitive);
-
-                // This is required to allow matching a constant.  We don't get it from a derive
-                // because the derived `PartialEq` would do a field projection, which is banned
-                // by <https://github.com/rust-lang/compiler-team/issues/807>.
-                #[unstable(
-                    feature = "nonzero_internals",
-                    reason = "implementation detail which may disappear or be replaced at any time",
-                    issue = "none"
-                )]
-                impl StructuralPartialEq for $NonZeroInner {}
-            )+
         }
 
         $(
@@ -88,7 +60,7 @@ macro_rules! impl_zeroable_primitive {
                 issue = "none"
             )]
             unsafe impl ZeroablePrimitive for $primitive {
-                type NonZeroInner = private::$NonZeroInner;
+                type NonZeroInner = super::niche_types::$NonZeroInner;
             }
         )+
     };
@@ -115,10 +87,29 @@ impl_zeroable_primitive!(
 /// For example, `Option<NonZero<u32>>` is the same size as `u32`:
 ///
 /// ```
-/// use core::{mem::size_of, num::NonZero};
+/// use core::{num::NonZero};
 ///
 /// assert_eq!(size_of::<Option<NonZero<u32>>>(), size_of::<u32>());
 /// ```
+///
+/// # Layout
+///
+/// `NonZero<T>` is guaranteed to have the same layout and bit validity as `T`
+/// with the exception that the all-zero bit pattern is invalid.
+/// `Option<NonZero<T>>` is guaranteed to be compatible with `T`, including in
+/// FFI.
+///
+/// Thanks to the [null pointer optimization], `NonZero<T>` and
+/// `Option<NonZero<T>>` are guaranteed to have the same size and alignment:
+///
+/// ```
+/// use std::num::NonZero;
+///
+/// assert_eq!(size_of::<NonZero<u32>>(), size_of::<Option<NonZero<u32>>>());
+/// assert_eq!(align_of::<NonZero<u32>>(), align_of::<Option<NonZero<u32>>>());
+/// ```
+///
+/// [null pointer optimization]: crate::option#representation
 #[stable(feature = "generic_nonzero", since = "1.79.0")]
 #[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
@@ -191,6 +182,9 @@ where
         *self
     }
 }
+
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T> UseCloned for NonZero<T> where T: ZeroablePrimitive {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 impl<T> Copy for NonZero<T> where T: ZeroablePrimitive {}
@@ -483,6 +477,7 @@ macro_rules! nonzero_integer {
         #[$stability:meta]
         Self = $Ty:ident,
         Primitive = $signedness:ident $Int:ident,
+        SignedPrimitive = $Sint:ty,
         UnsignedPrimitive = $Uint:ty,
 
         // Used in doc comments.
@@ -508,7 +503,6 @@ macro_rules! nonzero_integer {
         #[doc = concat!("For example, `Option<", stringify!($Ty), ">` is the same size as `", stringify!($Int), "`:")]
         ///
         /// ```rust
-        /// use std::mem::size_of;
         #[doc = concat!("assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", stringify!($Int), ">());")]
         /// ```
         ///
@@ -524,7 +518,6 @@ macro_rules! nonzero_integer {
         /// are guaranteed to have the same size and alignment:
         ///
         /// ```
-        /// # use std::mem::{size_of, align_of};
         #[doc = concat!("use std::num::", stringify!($Ty), ";")]
         ///
         #[doc = concat!("assert_eq!(size_of::<", stringify!($Ty), ">(), size_of::<Option<", stringify!($Ty), ">>());")]
@@ -613,6 +606,70 @@ macro_rules! nonzero_integer {
                 }
             }
 
+            /// Returns `self` with only the most significant bit set.
+            ///
+            /// # Example
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(isolate_most_least_significant_one)]
+            ///
+            /// # use core::num::NonZero;
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let a = NonZero::<", stringify!($Int), ">::new(0b_01100100)?;")]
+            #[doc = concat!("let b = NonZero::<", stringify!($Int), ">::new(0b_01000000)?;")]
+            ///
+            /// assert_eq!(a.isolate_most_significant_one(), b);
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+            #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+            #[inline(always)]
+            pub const fn isolate_most_significant_one(self) -> Self {
+                let n = self.get() & (((1 as $Int) << (<$Int>::BITS - 1)).wrapping_shr(self.leading_zeros()));
+
+                // SAFETY:
+                // `self` is non-zero, so masking to preserve only the most
+                // significant set bit will result in a non-zero `n`.
+                unsafe { NonZero::new_unchecked(n) }
+            }
+
+            /// Returns `self` with only the least significant bit set.
+            ///
+            /// # Example
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(isolate_most_least_significant_one)]
+            ///
+            /// # use core::num::NonZero;
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let a = NonZero::<", stringify!($Int), ">::new(0b_01100100)?;")]
+            #[doc = concat!("let b = NonZero::<", stringify!($Int), ">::new(0b_00000100)?;")]
+            ///
+            /// assert_eq!(a.isolate_least_significant_one(), b);
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+            #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+            #[inline(always)]
+            pub const fn isolate_least_significant_one(self) -> Self {
+                let n = self.get();
+                let n = n & n.wrapping_neg();
+
+                // SAFETY: `self` is non-zero, so `self` with only its least
+                // significant set bit will remain non-zero.
+                unsafe { NonZero::new_unchecked(n) }
+            }
+
             /// Returns the number of ones in the binary representation of `self`.
             ///
             /// # Examples
@@ -620,8 +677,6 @@ macro_rules! nonzero_integer {
             /// Basic usage:
             ///
             /// ```
-            /// #![feature(non_zero_count_ones)]
-            ///
             /// # use std::num::NonZero;
             /// #
             /// # fn main() { test().unwrap(); }
@@ -635,7 +690,8 @@ macro_rules! nonzero_integer {
             /// # }
             /// ```
             ///
-            #[unstable(feature = "non_zero_count_ones", issue = "120287")]
+            #[stable(feature = "non_zero_count_ones", since = "1.86.0")]
+            #[rustc_const_stable(feature = "non_zero_count_ones", since = "1.86.0")]
             #[doc(alias = "popcount")]
             #[doc(alias = "popcnt")]
             #[must_use = "this returns the result of the operation, \
@@ -914,6 +970,7 @@ macro_rules! nonzero_integer {
 
             nonzero_integer_signedness_dependent_methods! {
                 Primitive = $signedness $Int,
+                SignedPrimitive = $Sint,
                 UnsignedPrimitive = $Uint,
             }
 
@@ -1137,6 +1194,7 @@ macro_rules! nonzero_integer {
     (
         Self = $Ty:ident,
         Primitive = unsigned $Int:ident,
+        SignedPrimitive = $Sint:ident,
         rot = $rot:literal,
         rot_op = $rot_op:literal,
         rot_result = $rot_result:literal,
@@ -1149,6 +1207,7 @@ macro_rules! nonzero_integer {
             #[stable(feature = "nonzero", since = "1.28.0")]
             Self = $Ty,
             Primitive = unsigned $Int,
+            SignedPrimitive = $Sint,
             UnsignedPrimitive = $Int,
             rot = $rot,
             rot_op = $rot_op,
@@ -1163,7 +1222,7 @@ macro_rules! nonzero_integer {
     (
         Self = $Ty:ident,
         Primitive = signed $Int:ident,
-        UnsignedPrimitive = $UInt:ident,
+        UnsignedPrimitive = $Uint:ident,
         rot = $rot:literal,
         rot_op = $rot_op:literal,
         rot_result = $rot_result:literal,
@@ -1175,7 +1234,8 @@ macro_rules! nonzero_integer {
             #[stable(feature = "signed_nonzero", since = "1.34.0")]
             Self = $Ty,
             Primitive = signed $Int,
-            UnsignedPrimitive = $UInt,
+            SignedPrimitive = $Int,
+            UnsignedPrimitive = $Uint,
             rot = $rot,
             rot_op = $rot_op,
             rot_result = $rot_result,
@@ -1194,8 +1254,12 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
         impl Div<NonZero<$Int>> for $Int {
             type Output = $Int;
 
+            /// Same as `self / other.get()`, but because `other` is a `NonZero<_>`,
+            /// there's never a runtime check for division-by-zero.
+            ///
             /// This operation rounds towards zero, truncating any fractional
             /// part of the exact result, and cannot panic.
+            #[doc(alias = "unchecked_div")]
             #[inline]
             fn div(self, other: NonZero<$Int>) -> $Int {
                 // SAFETY: Division by zero is checked because `other` is non-zero,
@@ -1206,6 +1270,9 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
 
         #[stable(feature = "nonzero_div_assign", since = "1.79.0")]
         impl DivAssign<NonZero<$Int>> for $Int {
+            /// Same as `self /= other.get()`, but because `other` is a `NonZero<_>`,
+            /// there's never a runtime check for division-by-zero.
+            ///
             /// This operation rounds towards zero, truncating any fractional
             /// part of the exact result, and cannot panic.
             #[inline]
@@ -1288,6 +1355,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
     // Associated items for unsigned nonzero types only.
     (
         Primitive = unsigned $Int:ident,
+        SignedPrimitive = $Sint:ty,
         UnsignedPrimitive = $Uint:ty,
     ) => {
         /// The smallest value that can be represented by this non-zero
@@ -1521,7 +1589,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
             super::int_log10::$Int(self.get())
         }
 
-        /// Calculates the middle point of `self` and `rhs`.
+        /// Calculates the midpoint (average) between `self` and `rhs`.
         ///
         /// `midpoint(a, b)` is `(a + b) >> 1` as if it were performed in a
         /// sufficiently-large signed integral type. This implies that the result is
@@ -1543,10 +1611,12 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Some(())
         /// # }
         /// ```
-        #[stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "num_midpoint", since = "1.85.0")]
+        #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[doc(alias = "average_floor")]
+        #[doc(alias = "average")]
         #[inline]
         pub const fn midpoint(self, rhs: Self) -> Self {
             // SAFETY: The only way to get `0` with midpoint is to have two opposite or
@@ -1622,11 +1692,35 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
             // results will be sqrt(1), which is 1, so a result can't be zero.
             unsafe { Self::new_unchecked(result) }
         }
+
+        /// Returns the bit pattern of `self` reinterpreted as a signed integer of the same size.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # use std::num::NonZero;
+        ///
+        #[doc = concat!("let n = NonZero::<", stringify!($Int), ">::MAX;")]
+        ///
+        #[doc = concat!("assert_eq!(n.cast_signed(), NonZero::new(-1", stringify!($Sint), ").unwrap());")]
+        /// ```
+        #[stable(feature = "integer_sign_cast", since = "1.87.0")]
+        #[rustc_const_stable(feature = "integer_sign_cast", since = "1.87.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn cast_signed(self) -> NonZero<$Sint> {
+            // SAFETY: `self.get()` can't be zero
+            unsafe { NonZero::new_unchecked(self.get().cast_signed()) }
+        }
     };
 
     // Associated items for signed nonzero types only.
     (
         Primitive = signed $Int:ident,
+        SignedPrimitive = $Sint:ty,
         UnsignedPrimitive = $Uint:ty,
     ) => {
         /// The smallest value that can be represented by this non-zero
@@ -2037,12 +2131,37 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
             // SAFETY: negation of nonzero cannot yield zero values.
             unsafe { Self::new_unchecked(result) }
         }
+
+        /// Returns the bit pattern of `self` reinterpreted as an unsigned integer of the same size.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # use std::num::NonZero;
+        ///
+        #[doc = concat!("let n = NonZero::new(-1", stringify!($Int), ").unwrap();")]
+        ///
+        #[doc = concat!("assert_eq!(n.cast_unsigned(), NonZero::<", stringify!($Uint), ">::MAX);")]
+        /// ```
+        #[stable(feature = "integer_sign_cast", since = "1.87.0")]
+        #[rustc_const_stable(feature = "integer_sign_cast", since = "1.87.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn cast_unsigned(self) -> NonZero<$Uint> {
+            // SAFETY: `self.get()` can't be zero
+            unsafe { NonZero::new_unchecked(self.get().cast_unsigned()) }
+        }
+
     };
 }
 
 nonzero_integer! {
     Self = NonZeroU8,
     Primitive = unsigned u8,
+    SignedPrimitive = i8,
     rot = 2,
     rot_op = "0x82",
     rot_result = "0xa",
@@ -2054,6 +2173,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroU16,
     Primitive = unsigned u16,
+    SignedPrimitive = i16,
     rot = 4,
     rot_op = "0xa003",
     rot_result = "0x3a",
@@ -2065,6 +2185,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroU32,
     Primitive = unsigned u32,
+    SignedPrimitive = i32,
     rot = 8,
     rot_op = "0x10000b3",
     rot_result = "0xb301",
@@ -2076,6 +2197,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroU64,
     Primitive = unsigned u64,
+    SignedPrimitive = i64,
     rot = 12,
     rot_op = "0xaa00000000006e1",
     rot_result = "0x6e10aa",
@@ -2087,6 +2209,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroU128,
     Primitive = unsigned u128,
+    SignedPrimitive = i128,
     rot = 16,
     rot_op = "0x13f40000000000000000000000004f76",
     rot_result = "0x4f7613f4",
@@ -2099,6 +2222,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroUsize,
     Primitive = unsigned usize,
+    SignedPrimitive = isize,
     rot = 4,
     rot_op = "0xa003",
     rot_result = "0x3a",
@@ -2111,6 +2235,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroUsize,
     Primitive = unsigned usize,
+    SignedPrimitive = isize,
     rot = 8,
     rot_op = "0x10000b3",
     rot_result = "0xb301",
@@ -2123,6 +2248,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroUsize,
     Primitive = unsigned usize,
+    SignedPrimitive = isize,
     rot = 12,
     rot_op = "0xaa00000000006e1",
     rot_result = "0x6e10aa",

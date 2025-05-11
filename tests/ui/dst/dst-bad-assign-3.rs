@@ -1,8 +1,8 @@
 // Forbid assignment into a dynamically sized type.
 
-#![feature(unsized_tuple_coercion)]
+//@ dont-require-annotations: NOTE
 
-type Fat<T> = (isize, &'static str, T);
+struct Fat<T: ?Sized>(isize, &'static str, T);
 
 #[derive(PartialEq,Eq)]
 struct Bar;
@@ -28,12 +28,12 @@ impl ToBar for Bar1 {
 
 pub fn main() {
     // Assignment.
-    let f5: &mut Fat<dyn ToBar> = &mut (5, "some str", Bar1 {f :42});
+    let f5: &mut Fat<dyn ToBar> = &mut Fat(5, "some str", Bar1 {f :42});
     let z: Box<dyn ToBar> = Box::new(Bar1 {f: 36});
     f5.2 = Bar1 {f: 36};
     //~^ ERROR mismatched types
-    //~| expected `dyn ToBar`, found `Bar1`
-    //~| expected trait object `dyn ToBar`
-    //~| found struct `Bar1`
+    //~| NOTE expected `dyn ToBar`, found `Bar1`
+    //~| NOTE expected trait object `dyn ToBar`
+    //~| NOTE found struct `Bar1`
     //~| ERROR the size for values of type
 }

@@ -16,7 +16,7 @@ where
 fn my_foo() -> impl std::fmt::Debug {
     if false {
         let x = my_foo();
-        //[next]~^ type annotations needed
+        //[next]~^ ERROR type annotations needed
         x.my_debug();
     }
     ()

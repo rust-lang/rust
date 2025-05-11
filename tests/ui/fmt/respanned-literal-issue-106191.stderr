@@ -13,7 +13,6 @@ LL |     format_args!(r#concat!("¡        {"));
    |                  ^^^^^^^^^^^^^^^^^^^^^^^ expected `}` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
-   = note: this error originates in the macro `concat` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

@@ -1,4 +1,39 @@
-error: vtable entries for `<S as D>`: [
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a),
+       ]
+  --> $DIR/vtable-diamond.rs:22:1
+   |
+LL | impl A for S {}
+   | ^^^^^^^^^^^^
+
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a),
+           Method(<S as B>::foo_b),
+       ]
+  --> $DIR/vtable-diamond.rs:26:1
+   |
+LL | impl B for S {}
+   | ^^^^^^^^^^^^
+
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a),
+           Method(<S as C>::foo_c),
+       ]
+  --> $DIR/vtable-diamond.rs:30:1
+   |
+LL | impl C for S {}
+   | ^^^^^^^^^^^^
+
+error: vtable entries: [
            MetadataDropInPlace,
            MetadataSize,
            MetadataAlign,
@@ -8,22 +43,10 @@ error: vtable entries for `<S as D>`: [
            TraitVPtr(<S as C>),
            Method(<S as D>::foo_d),
        ]
-  --> $DIR/vtable-diamond.rs:21:1
+  --> $DIR/vtable-diamond.rs:34:1
    |
-LL | trait D: B + C {
-   | ^^^^^^^^^^^^^^
+LL | impl D for S {}
+   | ^^^^^^^^^^^^
 
-error: vtable entries for `<S as C>`: [
-           MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
-           Method(<S as A>::foo_a),
-           Method(<S as C>::foo_c),
-       ]
-  --> $DIR/vtable-diamond.rs:15:1
-   |
-LL | trait C: A {
-   | ^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 

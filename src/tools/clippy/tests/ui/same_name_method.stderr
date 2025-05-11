@@ -23,7 +23,6 @@ note: existing `clone` defined here
    |
 LL |         #[derive(Clone)]
    |                  ^^^^^
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: method's name is the same as an existing method in a trait
   --> tests/ui/same_name_method.rs:46:13

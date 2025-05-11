@@ -56,6 +56,7 @@
 //! [`Rc`]: rc
 //! [`RefCell`]: core::cell
 
+#![allow(incomplete_features)]
 #![allow(unused_attributes)]
 #![stable(feature = "alloc", since = "1.36.0")]
 #![doc(
@@ -88,11 +89,10 @@
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]
 #![deny(ffi_unwind_calls)]
+#![warn(unreachable_pub)]
 //
 // Library features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(async_closure))]
-#![cfg_attr(test, feature(str_as_str))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_chunks)]
@@ -102,7 +102,10 @@
 #![feature(assert_matches)]
 #![feature(async_fn_traits)]
 #![feature(async_iterator)]
-#![feature(box_uninit_write)]
+#![feature(bstr)]
+#![feature(bstr_internals)]
+#![feature(char_internals)]
+#![feature(char_max_len)]
 #![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
 #![feature(const_eval_select)]
@@ -111,6 +114,7 @@
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]
 #![feature(dispatch_from_dyn)]
+#![feature(ergonomic_clones)]
 #![feature(error_generic_member_access)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
@@ -118,6 +122,7 @@
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(formatting_options)]
+#![feature(generic_atomic)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
@@ -127,13 +132,14 @@
 #![feature(local_waker)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array_transpose)]
+#![feature(nonnull_provenance)]
 #![feature(panic_internals)]
 #![feature(pattern)]
 #![feature(pin_coerce_unsized_trait)]
 #![feature(pointer_like_trait)]
+#![feature(ptr_alignment_type)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
-#![feature(ptr_sub_ptr)]
 #![feature(set_ptr_value)]
 #![feature(sized_type_properties)]
 #![feature(slice_from_ptr_range)]
@@ -143,6 +149,7 @@
 #![feature(slice_range)]
 #![feature(std_internals)]
 #![feature(str_internals)]
+#![feature(temporary_niche_types)]
 #![feature(trusted_fused)]
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]
@@ -152,22 +159,20 @@
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
-#![feature(vec_pop_if)]
 // tidy-alphabetical-end
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(not(test), feature(coroutine_trait))]
-#![cfg_attr(test, feature(panic_update_hook))]
-#![cfg_attr(test, feature(test))]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unstable)]
 #![feature(cfg_sanitize)]
 #![feature(const_precise_live_drops)]
+#![feature(coroutine_trait)]
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
 #![feature(fundamental)]
 #![feature(hashmap_internals)]
+#![feature(intrinsics)]
 #![feature(lang_items)]
 #![feature(min_specialization)]
 #![feature(multiple_supertrait_upcastable)]
@@ -195,15 +200,6 @@
 // from other crates, but since this can only appear for lang items, it doesn't seem worth fixing.
 #![feature(intra_doc_pointers)]
 
-// Allow testing this library
-#[cfg(test)]
-#[macro_use]
-extern crate std;
-#[cfg(test)]
-extern crate test;
-#[cfg(test)]
-mod testing;
-
 // Module with internal macros used by other modules (needs to be included before other modules).
 #[macro_use]
 mod macros;
@@ -211,7 +207,6 @@ mod macros;
 mod raw_vec;
 
 // Heaps provided for low-level allocation strategies
-
 pub mod alloc;
 
 // Primitive types using the heaps above
@@ -219,13 +214,10 @@ pub mod alloc;
 // Need to conditionally define the mod from `boxed.rs` to avoid
 // duplicating the lang-items when building in test cfg; but also need
 // to allow code to have `use boxed::Box;` declarations.
-#[cfg(not(test))]
-pub mod boxed;
-#[cfg(test)]
-mod boxed {
-    pub use std::boxed::Box;
-}
 pub mod borrow;
+pub mod boxed;
+#[unstable(feature = "bstr", issue = "134915")]
+pub mod bstr;
 pub mod collections;
 #[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
 pub mod ffi;
@@ -246,21 +238,4 @@ pub mod vec;
 pub mod __export {
     pub use core::format_args;
     pub use core::hint::must_use;
-}
-
-#[cfg(test)]
-#[allow(dead_code)] // Not used in all configurations
-pub(crate) mod test_helpers {
-    /// Copied from `std::test_helpers::test_rng`, since these tests rely on the
-    /// seed not being the same for every RNG invocation too.
-    pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
-        use std::hash::{BuildHasher, Hash, Hasher};
-        let mut hasher = std::hash::RandomState::new().build_hasher();
-        std::panic::Location::caller().hash(&mut hasher);
-        let hc64 = hasher.finish();
-        let seed_vec =
-            hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<crate::vec::Vec<u8>>();
-        let seed: [u8; 16] = seed_vec.as_slice().try_into().unwrap();
-        rand::SeedableRng::from_seed(seed)
-    }
 }

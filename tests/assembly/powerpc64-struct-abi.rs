@@ -1,11 +1,12 @@
+//@ add-core-stubs
 //@ revisions: elfv1-be elfv2-be elfv2-le aix
 //@ assembly-output: emit-asm
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@[elfv1-be] compile-flags: --target powerpc64-unknown-linux-gnu
 //@[elfv1-be] needs-llvm-components: powerpc
 //@[elfv2-be] compile-flags: --target powerpc64-unknown-linux-musl
 //@[elfv2-be] needs-llvm-components: powerpc
-//@[elfv2-le] compile-flags: --target powerpc64le-unknown-linux-gnu
+//@[elfv2-le] compile-flags: --target powerpc64le-unknown-linux-gnu -C target-cpu=pwr8
 //@[elfv2-le] needs-llvm-components: powerpc
 //@[aix] compile-flags: --target powerpc64-ibm-aix
 //@[aix] needs-llvm-components: powerpc
@@ -20,21 +21,9 @@
 #![no_core]
 #![crate_type = "lib"]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
-#[lang = "copy"]
-trait Copy {}
-
-#[lang = "freeze"]
-trait Freeze {}
-
-#[lang = "unpin"]
-trait Unpin {}
-
-impl Copy for u8 {}
-impl Copy for u16 {}
-impl Copy for u32 {}
 impl Copy for FiveU32s {}
 impl Copy for FiveU16s {}
 impl Copy for ThreeU8s {}
@@ -50,9 +39,9 @@ struct ThreeU8s(u8, u8, u8);
 
 // CHECK-LABEL: read_large
 // aix: lwz [[REG1:.*]], 16(4)
-// aix-NEXT: lxvd2x 0, 0, 4
+// aix-NEXT: lxv{{d2x|w4x}} 0, 0, 4
 // aix-NEXT: stw [[REG1]], 16(3)
-// aix-NEXT: stxvd2x 0, 0, 3
+// aix-NEXT: stxv{{d2x|w4x}} 0, 0, 3
 // be: lwz [[REG1:.*]], 16(4)
 // be-NEXT: stw [[REG1]], 16(3)
 // be-NEXT: ld [[REG2:.*]], 8(4)
@@ -118,8 +107,8 @@ extern "C" fn read_small(x: &ThreeU8s) -> ThreeU8s {
 // aix-NEXT: std 4, 56(1)
 // aix-NEXT: stw [[REG1]], 16(6)
 // aix-NEXT: addi [[REG2:.*]], 1, 48
-// aix-NEXT: lxvd2x 0, 0, [[REG2]]
-// aix-NEXT: stxvd2x 0, 0, 6
+// aix-NEXT: lxv{{d2x|w4x}} 0, 0, [[REG2]]
+// aix-NEXT: stxv{{d2x|w4x}} 0, 0, 6
 // elf: std 3, 0(6)
 // be-NEXT: rldicl [[REG1:.*]], 5, 32, 32
 // elf-NEXT: std 4, 8(6)

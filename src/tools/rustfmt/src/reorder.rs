@@ -25,14 +25,17 @@ use crate::visitor::FmtVisitor;
 /// Choose the ordering between the given two items.
 fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
     match (&a.kind, &b.kind) {
-        (&ast::ItemKind::Mod(..), &ast::ItemKind::Mod(..)) => {
-            a.ident.as_str().cmp(b.ident.as_str())
+        (&ast::ItemKind::Mod(_, a_ident, _), &ast::ItemKind::Mod(_, b_ident, _)) => {
+            a_ident.as_str().cmp(b_ident.as_str())
         }
-        (&ast::ItemKind::ExternCrate(ref a_name), &ast::ItemKind::ExternCrate(ref b_name)) => {
+        (
+            &ast::ItemKind::ExternCrate(ref a_name, a_ident),
+            &ast::ItemKind::ExternCrate(ref b_name, b_ident),
+        ) => {
             // `extern crate foo as bar;`
             //               ^^^ Comparing this.
-            let a_orig_name = a_name.unwrap_or(a.ident.name);
-            let b_orig_name = b_name.unwrap_or(b.ident.name);
+            let a_orig_name = a_name.unwrap_or(a_ident.name);
+            let b_orig_name = b_name.unwrap_or(b_ident.name);
             let result = a_orig_name.as_str().cmp(b_orig_name.as_str());
             if result != Ordering::Equal {
                 return result;
@@ -44,7 +47,7 @@ fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
                 (Some(..), None) => Ordering::Greater,
                 (None, Some(..)) => Ordering::Less,
                 (None, None) => Ordering::Equal,
-                (Some(..), Some(..)) => a.ident.as_str().cmp(b.ident.as_str()),
+                (Some(..), Some(..)) => a_ident.as_str().cmp(b_ident.as_str()),
             }
         }
         _ => unreachable!(),
@@ -69,7 +72,7 @@ fn rewrite_reorderable_item(
 ) -> Option<String> {
     match item.kind {
         ast::ItemKind::ExternCrate(..) => rewrite_extern_crate(context, item, shape),
-        ast::ItemKind::Mod(..) => rewrite_mod(context, item, shape),
+        ast::ItemKind::Mod(_, ident, _) => rewrite_mod(context, item, ident, shape),
         _ => None,
     }
 }

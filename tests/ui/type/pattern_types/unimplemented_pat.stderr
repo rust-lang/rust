@@ -1,23 +1,14 @@
-error[E0658]: pattern types are unstable
-  --> $DIR/unimplemented_pat.rs:8:15
+error: pattern not supported in pattern types
+  --> $DIR/unimplemented_pat.rs:8:44
    |
 LL | type Always = pattern_type!(Option<u32> is Some(_));
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #123646 <https://github.com/rust-lang/rust/issues/123646> for more information
-   = help: add `#![feature(pattern_types)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   |                                            ^^^^^^^
 
-error[E0658]: pattern types are unstable
-  --> $DIR/unimplemented_pat.rs:11:16
+error: pattern not supported in pattern types
+  --> $DIR/unimplemented_pat.rs:11:45
    |
 LL | type Binding = pattern_type!(Option<u32> is x);
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #123646 <https://github.com/rust-lang/rust/issues/123646> for more information
-   = help: add `#![feature(pattern_types)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   |                                             ^
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0658`.

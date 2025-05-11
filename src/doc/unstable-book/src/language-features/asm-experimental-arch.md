@@ -199,3 +199,5 @@ These flags registers must be restored upon exiting the asm block if the `preser
 - SPARC
   - Integer condition codes (`icc` and `xcc`)
   - Floating-point condition codes (`fcc[0-3]`)
+- CSKY
+  - Condition/carry bit (C) in `PSR`.

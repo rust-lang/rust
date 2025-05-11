@@ -10,8 +10,9 @@ LL |         _S(& (mut _y), _v) => {
            found reference `&_`
 help: consider removing `&` from the pattern
    |
-LL |         _S(mut _y, _v) => {
-   |            ~~~~~~
+LL -         _S(& (mut _y), _v) => {
+LL +         _S(mut _y, _v) => {
+   |
 
 error: aborting due to 1 previous error
 

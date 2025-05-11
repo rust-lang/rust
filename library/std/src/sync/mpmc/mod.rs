@@ -18,7 +18,7 @@
 //!    infinite buffer.
 //!
 //! 2. A synchronous, bounded channel. The [`sync_channel`] function will
-//!    return a `(SyncSender, Receiver)` tuple where the storage for pending
+//!    return a `(Sender, Receiver)` tuple where the storage for pending
 //!    messages is a pre-allocated buffer of a fixed size. All sends will be
 //!    **synchronous** by blocking until there is buffer space available. Note
 //!    that a bound of 0 is allowed, causing the channel to become a "rendezvous"
@@ -360,9 +360,17 @@ impl<T> Sender<T> {
     /// that a return value of [`Err`] means that the data will never be
     /// received, but a return value of [`Ok`] does *not* mean that the data
     /// will be received. It is possible for the corresponding receiver to
-    /// hang up immediately after this function returns [`Ok`].
+    /// hang up immediately after this function returns [`Ok`]. However, if
+    /// the channel is zero-capacity, it acts as a rendezvous channel and a
+    /// return value of [`Ok`] means that the data has been received.
     ///
-    /// This method will never block the current thread.
+    /// If the channel is full and not disconnected, this call will block until
+    /// the send operation can proceed. If the channel becomes disconnected,
+    /// this call will wake up and return an error. The returned error contains
+    /// the original message.
+    ///
+    /// If called on a zero-capacity channel, this method will wait for a receive
+    /// operation to appear on the other side of the channel.
     ///
     /// # Examples
     ///
@@ -608,9 +616,9 @@ impl<T> Sender<T> {
     #[unstable(feature = "mpmc_channel", issue = "126840")]
     pub fn same_channel(&self, other: &Sender<T>) -> bool {
         match (&self.flavor, &other.flavor) {
-            (SenderFlavor::Array(ref a), SenderFlavor::Array(ref b)) => a == b,
-            (SenderFlavor::List(ref a), SenderFlavor::List(ref b)) => a == b,
-            (SenderFlavor::Zero(ref a), SenderFlavor::Zero(ref b)) => a == b,
+            (SenderFlavor::Array(a), SenderFlavor::Array(b)) => a == b,
+            (SenderFlavor::List(a), SenderFlavor::List(b)) => a == b,
+            (SenderFlavor::Zero(a), SenderFlavor::Zero(b)) => a == b,
             _ => false,
         }
     }
@@ -650,7 +658,7 @@ impl<T> fmt::Debug for Sender<T> {
 }
 
 /// The receiving half of Rust's [`channel`] (or [`sync_channel`]) type.
-/// Different threads can share this [`Sender`] by cloning it.
+/// Different threads can share this [`Receiver`] by cloning it.
 ///
 /// Messages sent to the channel can be retrieved using [`recv`].
 ///
@@ -1374,3 +1382,6 @@ impl<T> fmt::Debug for Receiver<T> {
         f.pad("Receiver { .. }")
     }
 }
+
+#[cfg(test)]
+mod tests;

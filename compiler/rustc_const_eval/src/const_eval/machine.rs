@@ -21,9 +21,10 @@ use super::error::*;
 use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
-    self, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame, GlobalAlloc, ImmTy,
-    InterpCx, InterpResult, MPlaceTy, OpTy, RangeSet, Scalar, compile_time_machine, interp_ok,
-    throw_exhaust, throw_inval, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
+    self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
+    GlobalAlloc, ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, RangeSet, Scalar,
+    compile_time_machine, interp_ok, throw_exhaust, throw_inval, throw_ub, throw_ub_custom,
+    throw_unsup, throw_unsup_format,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -360,10 +361,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             // sensitive check here. But we can at least rule out functions that are not const at
             // all. That said, we have to allow calling functions inside a trait marked with
             // #[const_trait]. These *are* const-checked!
-            // FIXME(const_trait_impl): why does `is_const_fn` not classify them as const?
-            if (!ecx.tcx.is_const_fn(def) && !ecx.tcx.is_const_default_method(def))
-                || ecx.tcx.has_attr(def, sym::rustc_do_not_const_check)
-            {
+            if !ecx.tcx.is_const_fn(def) || ecx.tcx.has_attr(def, sym::rustc_do_not_const_check) {
                 // We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
                 throw_unsup_format!("calling non-const function `{}`", instance)
@@ -423,6 +421,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     Size::from_bytes(size),
                     align,
                     interpret::MemoryKind::Machine(MemoryKind::Heap),
+                    AllocInit::Uninit,
                 )?;
                 ecx.write_pointer(ptr, dest)?;
             }
@@ -503,12 +502,12 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             RemainderByZero(op) => RemainderByZero(eval_to_int(op)?),
             ResumedAfterReturn(coroutine_kind) => ResumedAfterReturn(*coroutine_kind),
             ResumedAfterPanic(coroutine_kind) => ResumedAfterPanic(*coroutine_kind),
-            MisalignedPointerDereference { ref required, ref found } => {
-                MisalignedPointerDereference {
-                    required: eval_to_int(required)?,
-                    found: eval_to_int(found)?,
-                }
-            }
+            ResumedAfterDrop(coroutine_kind) => ResumedAfterDrop(*coroutine_kind),
+            MisalignedPointerDereference { required, found } => MisalignedPointerDereference {
+                required: eval_to_int(required)?,
+                found: eval_to_int(found)?,
+            },
+            NullPointerDereference => NullPointerDereference,
         };
         Err(ConstEvalErrKind::AssertFailure(err)).into()
     }
@@ -548,7 +547,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                         rustc_session::lint::builtin::LONG_RUNNING_CONST_EVAL,
                         hir_id,
                     )
-                    .0
+                    .level
                     .is_error();
                 let span = ecx.cur_span();
                 ecx.tcx.emit_node_span_lint(
@@ -690,6 +689,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         _tcx: TyCtxtAt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
+        _ptr: Pointer<Option<Self::Provenance>>,
         (_alloc_id, immutable): (AllocId, bool),
         range: AllocRange,
     ) -> InterpResult<'tcx> {

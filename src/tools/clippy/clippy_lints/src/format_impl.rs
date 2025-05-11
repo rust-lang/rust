@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::macros::{FormatArgsStorage, find_format_arg_expr, is_format_macro, root_macro_call_first_node};
-use clippy_utils::{get_parent_as_impl, is_diag_trait_item, path_to_local, peel_ref_operators};
+use clippy_utils::{get_parent_as_impl, is_diag_trait_item, path_to_local, peel_ref_operators, sym};
 use rustc_ast::{FormatArgsPiece, FormatTrait};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Impl, ImplItem, ImplItemKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
+use rustc_span::Symbol;
 use rustc_span::symbol::kw;
-use rustc_span::{Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -185,13 +185,13 @@ impl FormatImplExpr<'_, '_> {
                     && let trait_name = match placeholder.format_trait {
                         FormatTrait::Display => sym::Display,
                         FormatTrait::Debug => sym::Debug,
-                        FormatTrait::LowerExp => sym!(LowerExp),
-                        FormatTrait::UpperExp => sym!(UpperExp),
-                        FormatTrait::Octal => sym!(Octal),
+                        FormatTrait::LowerExp => sym::LowerExp,
+                        FormatTrait::UpperExp => sym::UpperExp,
+                        FormatTrait::Octal => sym::Octal,
                         FormatTrait::Pointer => sym::Pointer,
-                        FormatTrait::Binary => sym!(Binary),
-                        FormatTrait::LowerHex => sym!(LowerHex),
-                        FormatTrait::UpperHex => sym!(UpperHex),
+                        FormatTrait::Binary => sym::Binary,
+                        FormatTrait::LowerHex => sym::LowerHex,
+                        FormatTrait::UpperHex => sym::UpperHex,
                     }
                     && trait_name == self.format_trait_impl.name
                     && let Ok(index) = placeholder.argument.index
@@ -209,9 +209,8 @@ impl FormatImplExpr<'_, '_> {
         // Handle dereference of &self -> self that is equivalent (i.e. via *self in fmt() impl)
         // Since the argument to fmt is itself a reference: &self
         let reference = peel_ref_operators(self.cx, arg);
-        let map = self.cx.tcx.hir();
         // Is the reference self?
-        if path_to_local(reference).map(|x| map.name(x)) == Some(kw::SelfLower) {
+        if path_to_local(reference).map(|x| self.cx.tcx.hir_name(x)) == Some(kw::SelfLower) {
             let FormatTraitNames { name, .. } = self.format_trait_impl;
             span_lint(
                 self.cx,
@@ -262,7 +261,7 @@ fn is_format_trait_impl(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) -> Optio
         && let Some(name) = cx.tcx.get_diagnostic_name(did)
         && matches!(name, sym::Debug | sym::Display)
     {
-        let body = cx.tcx.hir().body(body_id);
+        let body = cx.tcx.hir_body(body_id);
         let formatter_name = body
             .params
             .get(1)

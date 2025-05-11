@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/tail-typeck.rs:3:26
+  --> $DIR/tail-typeck.rs:1:26
    |
 LL | fn f() -> isize { return g(); }
    |           -----          ^^^ expected `isize`, found `usize`

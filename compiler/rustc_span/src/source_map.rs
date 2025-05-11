@@ -102,8 +102,8 @@ pub trait FileLoader {
     fn read_file(&self, path: &Path) -> io::Result<String>;
 
     /// Read the contents of a potentially non-UTF-8 file into memory.
-    /// We don't normalize binary files, so we can start in an Lrc.
-    fn read_binary_file(&self, path: &Path) -> io::Result<Lrc<[u8]>>;
+    /// We don't normalize binary files, so we can start in an Arc.
+    fn read_binary_file(&self, path: &Path) -> io::Result<Arc<[u8]>>;
 }
 
 /// A FileLoader that uses std::fs to load real files.
@@ -124,12 +124,12 @@ impl FileLoader for RealFileLoader {
         fs::read_to_string(path)
     }
 
-    fn read_binary_file(&self, path: &Path) -> io::Result<Lrc<[u8]>> {
+    fn read_binary_file(&self, path: &Path) -> io::Result<Arc<[u8]>> {
         let mut file = fs::File::open(path)?;
         let len = file.metadata()?.len();
 
-        let mut bytes = Lrc::new_uninit_slice(len as usize);
-        let mut buf = BorrowedBuf::from(Lrc::get_mut(&mut bytes).unwrap());
+        let mut bytes = Arc::new_uninit_slice(len as usize);
+        let mut buf = BorrowedBuf::from(Arc::get_mut(&mut bytes).unwrap());
         match file.read_buf_exact(buf.unfilled()) {
             Ok(()) => {}
             Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {
@@ -146,9 +146,9 @@ impl FileLoader for RealFileLoader {
         // But we are not guaranteed to be at the end of the file, because we did not attempt to do
         // a read with a non-zero-sized buffer and get Ok(0).
         // So we do small read to a fixed-size buffer. If the read returns no bytes then we're
-        // already done, and we just return the Lrc we built above.
+        // already done, and we just return the Arc we built above.
         // If the read returns bytes however, we just fall back to reading into a Vec then turning
-        // that into an Lrc, losing our nice peak memory behavior. This fallback code path should
+        // that into an Arc, losing our nice peak memory behavior. This fallback code path should
         // be rarely exercised.
 
         let mut probe = [0u8; 32];
@@ -172,8 +172,8 @@ impl FileLoader for RealFileLoader {
 
 #[derive(Default)]
 struct SourceMapFiles {
-    source_files: monotonic::MonotonicVec<Lrc<SourceFile>>,
-    stable_id_to_source_file: UnhashMap<StableSourceFileId, Lrc<SourceFile>>,
+    source_files: monotonic::MonotonicVec<Arc<SourceFile>>,
+    stable_id_to_source_file: UnhashMap<StableSourceFileId, Arc<SourceFile>>,
 }
 
 /// Used to construct a `SourceMap` with `SourceMap::with_inputs`.
@@ -232,7 +232,7 @@ impl SourceMap {
         self.file_loader.file_exists(path)
     }
 
-    pub fn load_file(&self, path: &Path) -> io::Result<Lrc<SourceFile>> {
+    pub fn load_file(&self, path: &Path) -> io::Result<Arc<SourceFile>> {
         let src = self.file_loader.read_file(path)?;
         let filename = path.to_owned().into();
         Ok(self.new_source_file(filename, src))
@@ -242,7 +242,7 @@ impl SourceMap {
     ///
     /// Unlike `load_file`, guarantees that no normalization like BOM-removal
     /// takes place.
-    pub fn load_binary_file(&self, path: &Path) -> io::Result<(Lrc<[u8]>, Span)> {
+    pub fn load_binary_file(&self, path: &Path) -> io::Result<(Arc<[u8]>, Span)> {
         let bytes = self.file_loader.read_binary_file(path)?;
 
         // We need to add file to the `SourceMap`, so that it is present
@@ -265,14 +265,14 @@ impl SourceMap {
 
     // By returning a `MonotonicVec`, we ensure that consumers cannot invalidate
     // any existing indices pointing into `files`.
-    pub fn files(&self) -> MappedReadGuard<'_, monotonic::MonotonicVec<Lrc<SourceFile>>> {
+    pub fn files(&self) -> MappedReadGuard<'_, monotonic::MonotonicVec<Arc<SourceFile>>> {
         ReadGuard::map(self.files.borrow(), |files| &files.source_files)
     }
 
     pub fn source_file_by_stable_id(
         &self,
         stable_id: StableSourceFileId,
-    ) -> Option<Lrc<SourceFile>> {
+    ) -> Option<Arc<SourceFile>> {
         self.files.borrow().stable_id_to_source_file.get(&stable_id).cloned()
     }
 
@@ -280,7 +280,7 @@ impl SourceMap {
         &self,
         file_id: StableSourceFileId,
         mut file: SourceFile,
-    ) -> Result<Lrc<SourceFile>, OffsetOverflowError> {
+    ) -> Result<Arc<SourceFile>, OffsetOverflowError> {
         let mut files = self.files.borrow_mut();
 
         file.start_pos = BytePos(if let Some(last_file) = files.source_files.last() {
@@ -291,9 +291,9 @@ impl SourceMap {
             0
         });
 
-        let file = Lrc::new(file);
-        files.source_files.push(Lrc::clone(&file));
-        files.stable_id_to_source_file.insert(file_id, Lrc::clone(&file));
+        let file = Arc::new(file);
+        files.source_files.push(Arc::clone(&file));
+        files.stable_id_to_source_file.insert(file_id, Arc::clone(&file));
 
         Ok(file)
     }
@@ -301,7 +301,7 @@ impl SourceMap {
     /// Creates a new `SourceFile`.
     /// If a file already exists in the `SourceMap` with the same ID, that file is returned
     /// unmodified.
-    pub fn new_source_file(&self, filename: FileName, src: String) -> Lrc<SourceFile> {
+    pub fn new_source_file(&self, filename: FileName, src: String) -> Arc<SourceFile> {
         self.try_new_source_file(filename, src).unwrap_or_else(|OffsetOverflowError| {
             eprintln!(
                 "fatal error: rustc does not support text files larger than {} bytes",
@@ -315,7 +315,7 @@ impl SourceMap {
         &self,
         filename: FileName,
         src: String,
-    ) -> Result<Lrc<SourceFile>, OffsetOverflowError> {
+    ) -> Result<Arc<SourceFile>, OffsetOverflowError> {
         // Note that filename may not be a valid path, eg it may be `<anon>` etc,
         // but this is okay because the directory determined by `path.pop()` will
         // be empty, so the working directory will be used.
@@ -353,7 +353,7 @@ impl SourceMap {
         multibyte_chars: Vec<MultiByteChar>,
         normalized_pos: Vec<NormalizedPos>,
         metadata_index: u32,
-    ) -> Lrc<SourceFile> {
+    ) -> Arc<SourceFile> {
         let source_len = RelativeBytePos::from_u32(source_len);
 
         let source_file = SourceFile {
@@ -393,9 +393,9 @@ impl SourceMap {
     }
 
     /// Return the SourceFile that contains the given `BytePos`
-    pub fn lookup_source_file(&self, pos: BytePos) -> Lrc<SourceFile> {
+    pub fn lookup_source_file(&self, pos: BytePos) -> Arc<SourceFile> {
         let idx = self.lookup_source_file_idx(pos);
-        Lrc::clone(&(*self.files.borrow().source_files)[idx])
+        Arc::clone(&(*self.files.borrow().source_files)[idx])
     }
 
     /// Looks up source information about a `BytePos`.
@@ -406,7 +406,7 @@ impl SourceMap {
     }
 
     /// If the corresponding `SourceFile` is empty, does not return a line number.
-    pub fn lookup_line(&self, pos: BytePos) -> Result<SourceFileAndLine, Lrc<SourceFile>> {
+    pub fn lookup_line(&self, pos: BytePos) -> Result<SourceFileAndLine, Arc<SourceFile>> {
         let f = self.lookup_source_file(pos);
 
         let pos = f.relative_position(pos);
@@ -441,7 +441,7 @@ impl SourceMap {
     pub fn span_to_location_info(
         &self,
         sp: Span,
-    ) -> (Option<Lrc<SourceFile>>, usize, usize, usize, usize) {
+    ) -> (Option<Arc<SourceFile>>, usize, usize, usize, usize) {
         if self.files.borrow().source_files.is_empty() || sp.is_dummy() {
             return (None, 0, 0, 0, 0);
         }
@@ -477,7 +477,7 @@ impl SourceMap {
         if lo != hi {
             return true;
         }
-        let f = Lrc::clone(&(*self.files.borrow().source_files)[lo]);
+        let f = Arc::clone(&(*self.files.borrow().source_files)[lo]);
         let lo = f.relative_position(sp.lo());
         let hi = f.relative_position(sp.hi());
         f.lookup_line(lo) != f.lookup_line(hi)
@@ -627,6 +627,24 @@ impl SourceMap {
             let prev_source = prev_source.rsplit(c).next().unwrap_or("");
             if !prev_source.is_empty() && (accept_newlines || !prev_source.contains('\n')) {
                 return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
+            }
+        }
+
+        sp
+    }
+
+    /// Extends the given `Span` to just before the previous occurrence of `c`. Return the same span
+    /// if an error occurred while retrieving the code snippet.
+    pub fn span_extend_to_prev_char_before(
+        &self,
+        sp: Span,
+        c: char,
+        accept_newlines: bool,
+    ) -> Span {
+        if let Ok(prev_source) = self.span_to_prev_source(sp) {
+            let prev_source = prev_source.rsplit(c).next().unwrap_or("");
+            if accept_newlines || !prev_source.contains('\n') {
+                return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32 - 1_u32));
             }
         }
 
@@ -998,12 +1016,12 @@ impl SourceMap {
         }
     }
 
-    pub fn get_source_file(&self, filename: &FileName) -> Option<Lrc<SourceFile>> {
+    pub fn get_source_file(&self, filename: &FileName) -> Option<Arc<SourceFile>> {
         // Remap filename before lookup
         let filename = self.path_mapping().map_filename_prefix(filename).0;
         for sf in self.files.borrow().source_files.iter() {
             if filename == sf.name {
-                return Some(Lrc::clone(&sf));
+                return Some(Arc::clone(&sf));
             }
         }
         None
@@ -1012,7 +1030,7 @@ impl SourceMap {
     /// For a global `BytePos`, computes the local offset within the containing `SourceFile`.
     pub fn lookup_byte_offset(&self, bpos: BytePos) -> SourceFileAndBytePos {
         let idx = self.lookup_source_file_idx(bpos);
-        let sf = Lrc::clone(&(*self.files.borrow().source_files)[idx]);
+        let sf = Arc::clone(&(*self.files.borrow().source_files)[idx]);
         let offset = bpos - sf.start_pos;
         SourceFileAndBytePos { sf, pos: offset }
     }
@@ -1082,7 +1100,7 @@ impl SourceMap {
     }
 }
 
-pub fn get_source_map() -> Option<Lrc<SourceMap>> {
+pub fn get_source_map() -> Option<Arc<SourceMap>> {
     with_session_globals(|session_globals| session_globals.source_map.clone())
 }
 
@@ -1090,18 +1108,28 @@ pub fn get_source_map() -> Option<Lrc<SourceMap>> {
 pub struct FilePathMapping {
     mapping: Vec<(PathBuf, PathBuf)>,
     filename_display_for_diagnostics: FileNameDisplayPreference,
+    filename_embeddable_preference: FileNameEmbeddablePreference,
 }
 
 impl FilePathMapping {
     pub fn empty() -> FilePathMapping {
-        FilePathMapping::new(Vec::new(), FileNameDisplayPreference::Local)
+        FilePathMapping::new(
+            Vec::new(),
+            FileNameDisplayPreference::Local,
+            FileNameEmbeddablePreference::RemappedOnly,
+        )
     }
 
     pub fn new(
         mapping: Vec<(PathBuf, PathBuf)>,
         filename_display_for_diagnostics: FileNameDisplayPreference,
+        filename_embeddable_preference: FileNameEmbeddablePreference,
     ) -> FilePathMapping {
-        FilePathMapping { mapping, filename_display_for_diagnostics }
+        FilePathMapping {
+            mapping,
+            filename_display_for_diagnostics,
+            filename_embeddable_preference,
+        }
     }
 
     /// Applies any path prefix substitution as defined by the mapping.
@@ -1199,11 +1227,13 @@ impl FilePathMapping {
     ) -> RealFileName {
         match file_path {
             // Anything that's already remapped we don't modify, except for erasing
-            // the `local_path` portion.
-            RealFileName::Remapped { local_path: _, virtual_name } => {
+            // the `local_path` portion (if desired).
+            RealFileName::Remapped { local_path, virtual_name } => {
                 RealFileName::Remapped {
-                    // We do not want any local path to be exported into metadata
-                    local_path: None,
+                    local_path: match self.filename_embeddable_preference {
+                        FileNameEmbeddablePreference::RemappedOnly => None,
+                        FileNameEmbeddablePreference::LocalAndRemapped => local_path,
+                    },
                     // We use the remapped name verbatim, even if it looks like a relative
                     // path. The assumption is that the user doesn't want us to further
                     // process paths that have gone through remapping.
@@ -1213,12 +1243,18 @@ impl FilePathMapping {
 
             RealFileName::LocalPath(unmapped_file_path) => {
                 // If no remapping has been applied yet, try to do so
-                let (new_path, was_remapped) = self.map_prefix(unmapped_file_path);
+                let (new_path, was_remapped) = self.map_prefix(&unmapped_file_path);
                 if was_remapped {
                     // It was remapped, so don't modify further
                     return RealFileName::Remapped {
-                        local_path: None,
                         virtual_name: new_path.into_owned(),
+                        // But still provide the local path if desired
+                        local_path: match self.filename_embeddable_preference {
+                            FileNameEmbeddablePreference::RemappedOnly => None,
+                            FileNameEmbeddablePreference::LocalAndRemapped => {
+                                Some(unmapped_file_path)
+                            }
+                        },
                     };
                 }
 
@@ -1234,17 +1270,23 @@ impl FilePathMapping {
 
                 match working_directory {
                     RealFileName::LocalPath(unmapped_working_dir_abs) => {
-                        let file_path_abs = unmapped_working_dir_abs.join(unmapped_file_path_rel);
+                        let unmapped_file_path_abs =
+                            unmapped_working_dir_abs.join(unmapped_file_path_rel);
 
                         // Although neither `working_directory` nor the file name were subject
                         // to path remapping, the concatenation between the two may be. Hence
                         // we need to do a remapping here.
-                        let (file_path_abs, was_remapped) = self.map_prefix(file_path_abs);
+                        let (file_path_abs, was_remapped) =
+                            self.map_prefix(&unmapped_file_path_abs);
                         if was_remapped {
                             RealFileName::Remapped {
-                                // Erase the actual path
-                                local_path: None,
                                 virtual_name: file_path_abs.into_owned(),
+                                local_path: match self.filename_embeddable_preference {
+                                    FileNameEmbeddablePreference::RemappedOnly => None,
+                                    FileNameEmbeddablePreference::LocalAndRemapped => {
+                                        Some(unmapped_file_path_abs)
+                                    }
+                                },
                             }
                         } else {
                             // No kind of remapping applied to this path, so
@@ -1253,41 +1295,25 @@ impl FilePathMapping {
                         }
                     }
                     RealFileName::Remapped {
-                        local_path: _,
+                        local_path,
                         virtual_name: remapped_working_dir_abs,
                     } => {
                         // If working_directory has been remapped, then we emit
                         // Remapped variant as the expanded path won't be valid
                         RealFileName::Remapped {
-                            local_path: None,
                             virtual_name: Path::new(remapped_working_dir_abs)
-                                .join(unmapped_file_path_rel),
+                                .join(&unmapped_file_path_rel),
+                            local_path: match self.filename_embeddable_preference {
+                                FileNameEmbeddablePreference::RemappedOnly => None,
+                                FileNameEmbeddablePreference::LocalAndRemapped => local_path
+                                    .as_ref()
+                                    .map(|local_path| local_path.join(unmapped_file_path_rel)),
+                            },
                         }
                     }
                 }
             }
         }
-    }
-
-    /// Expand a relative path to an absolute path **without** remapping taken into account.
-    ///
-    /// The resulting `RealFileName` will have its `virtual_path` portion erased if
-    /// possible (i.e. if there's also a remapped path).
-    pub fn to_local_embeddable_absolute_path(
-        &self,
-        file_path: RealFileName,
-        working_directory: &RealFileName,
-    ) -> RealFileName {
-        let file_path = file_path.local_path_if_available();
-        if file_path.is_absolute() {
-            // No remapping has applied to this path and it is absolute,
-            // so the working directory cannot influence it either, so
-            // we are done.
-            return RealFileName::LocalPath(file_path.to_path_buf());
-        }
-        debug_assert!(file_path.is_relative());
-        let working_directory = working_directory.local_path_if_available();
-        RealFileName::LocalPath(Path::new(working_directory).join(file_path))
     }
 
     /// Attempts to (heuristically) reverse a prefix mapping.

@@ -2,14 +2,14 @@
 
 use std::iter;
 
-use hir::{HirFileIdExt, Module};
+use hir::Module;
 use ide_db::{
-    base_db::{SourceRootDatabase, VfsPath},
     FxHashSet, RootDatabase, SymbolKind,
+    base_db::{SourceDatabase, VfsPath},
 };
-use syntax::{ast, AstNode, SyntaxKind, ToSmolStr};
+use syntax::{AstNode, SyntaxKind, ast};
 
-use crate::{context::CompletionContext, CompletionItem, Completions};
+use crate::{CompletionItem, Completions, context::CompletionContext};
 
 /// Complete mod declaration, i.e. `mod $0;`
 pub(crate) fn complete_mod(
@@ -43,11 +43,14 @@ pub(crate) fn complete_mod(
 
     let module_definition_file =
         current_module.definition_source_file_id(ctx.db).original_file(ctx.db);
-    let source_root = ctx.db.source_root(ctx.db.file_source_root(module_definition_file.file_id()));
+    let source_root_id =
+        ctx.db.file_source_root(module_definition_file.file_id(ctx.db)).source_root_id(ctx.db);
+    let source_root = ctx.db.source_root(source_root_id).source_root(ctx.db);
+
     let directory_to_look_for_submodules = directory_to_look_for_submodules(
         current_module,
         ctx.db,
-        source_root.path_for_file(&module_definition_file.file_id())?,
+        source_root.path_for_file(&module_definition_file.file_id(ctx.db))?,
     )?;
 
     let existing_mod_declarations = current_module
@@ -63,9 +66,11 @@ pub(crate) fn complete_mod(
 
     source_root
         .iter()
-        .filter(|&submodule_candidate_file| submodule_candidate_file != module_definition_file)
         .filter(|&submodule_candidate_file| {
-            module_declaration_file.is_none_or(|it| it != submodule_candidate_file)
+            submodule_candidate_file != module_definition_file.file_id(ctx.db)
+        })
+        .filter(|&submodule_candidate_file| {
+            module_declaration_file.is_none_or(|it| it.file_id(ctx.db) != submodule_candidate_file)
         })
         .filter_map(|submodule_file| {
             let submodule_path = source_root.path_for_file(&submodule_file)?;
@@ -140,9 +145,7 @@ fn directory_to_look_for_submodules(
     module_chain_to_containing_module_file(module, db)
         .into_iter()
         .filter_map(|module| module.name(db))
-        .try_fold(base_directory, |path, name| {
-            path.join(&name.unescaped().display_no_db().to_smolstr())
-        })
+        .try_fold(base_directory, |path, name| path.join(name.as_str()))
 }
 
 fn module_chain_to_containing_module_file(
@@ -159,14 +162,9 @@ fn module_chain_to_containing_module_file(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
-    use crate::tests::completion_list;
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture);
-        expect.assert_eq(&actual);
-    }
+    use crate::tests::check;
 
     #[test]
     fn lib_module_completion() {

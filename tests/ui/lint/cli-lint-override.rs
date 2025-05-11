@@ -10,8 +10,8 @@
 
 
 extern fn foo() {}
-//[warn_deny]~^ ERROR extern declarations without an explicit ABI are deprecated
-//[forbid_warn]~^^ ERROR extern declarations without an explicit ABI are deprecated
-//[force_warn_deny]~^^^ WARN extern declarations without an explicit ABI are deprecated
+//[warn_deny]~^ ERROR `extern` declarations without an explicit ABI are deprecated
+//[forbid_warn]~^^ ERROR `extern` declarations without an explicit ABI are deprecated
+//[force_warn_deny]~^^^ WARN `extern` declarations without an explicit ABI are deprecated
 
 fn main() {}

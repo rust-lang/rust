@@ -1,7 +1,7 @@
 [package]
 name = "rustdoc"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 build = "build.rs"
 
 [lib]
@@ -9,12 +9,12 @@ path = "lib.rs"
 
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
-rinja = { version = "0.3", default-features = false, features = ["config"] }
+askama = { version = "0.13", default-features = false, features = ["alloc", "config", "derive"] }
 base64 = "0.21.7"
 itertools = "0.12"
 indexmap = "2"
-minifier = { version = "0.3.2", default-features = false }
-pulldown-cmark-old = { version = "0.9.6", package = "pulldown-cmark", default-features = false }
+minifier = { version = "0.3.5", default-features = false }
+pulldown-cmark-escape = { version = "0.11.0", features = ["simd"] }
 regex = "1"
 rustdoc-json-types = { path = "../rustdoc-json-types" }
 serde_json = "1.0"
@@ -33,6 +33,7 @@ features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"]
 
 [build-dependencies]
 sha2 = "0.10.8"
+minifier = { version = "0.3.2", default-features = false }
 
 [dev-dependencies]
 expect-test = "1.4.0"

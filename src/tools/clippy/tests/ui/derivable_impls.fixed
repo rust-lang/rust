@@ -144,6 +144,40 @@ impl Default for SpecializedImpl2<String> {
     }
 }
 
+#[derive(Default)]
+pub struct DirectDefaultDefaultCall {
+    v: Vec<i32>,
+}
+
+
+#[derive(Default)]
+pub struct EquivalentToDefaultDefaultCallVec {
+    v: Vec<i32>,
+}
+
+
+pub struct S {
+    x: i32,
+}
+
+impl S {
+    fn new() -> S {
+        S { x: 42 }
+    }
+}
+
+impl Default for S {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Default)]
+pub struct EquivalentToDefaultDefaultCallLocal {
+    v: S,
+}
+
+
 // https://github.com/rust-lang/rust-clippy/issues/7654
 
 pub struct Color {

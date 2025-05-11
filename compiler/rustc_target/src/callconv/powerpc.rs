@@ -1,4 +1,4 @@
-use crate::abi::call::{ArgAbi, FnAbi};
+use crate::callconv::{ArgAbi, FnAbi};
 use crate::spec::HasTargetSpec;
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {

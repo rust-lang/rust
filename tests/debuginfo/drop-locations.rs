@@ -1,5 +1,7 @@
 //@ ignore-android
-//@ ignore-test: #128971
+
+// FIXME: stepping with "next" in a debugger skips past end-of-scope drops
+//@ ignore-test (broken, see #128971)
 
 #![allow(unused)]
 

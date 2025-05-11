@@ -1,10 +1,10 @@
 use itertools::Itertools;
 use syntax::{
-    ast::{self, edit::IndentLevel, Comment, CommentPlacement, Whitespace},
     AstToken, Direction, SyntaxElement, TextRange,
+    ast::{self, Comment, CommentPlacement, Whitespace, edit::IndentLevel},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: comment_to_doc
 //
@@ -39,7 +39,7 @@ fn doc_to_comment(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
     };
 
     acc.add(
-        AssistId("doc_to_comment", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("doc_to_comment"),
         "Replace doc comment with comment",
         target,
         |edit| {
@@ -86,7 +86,7 @@ fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacem
     };
 
     acc.add(
-        AssistId("comment_to_doc", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("comment_to_doc"),
         "Replace comment with doc comment",
         target,
         |edit| {
@@ -136,7 +136,7 @@ fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacem
 
 /// Not all comments are valid candidates for conversion into doc comments. For example, the
 /// comments in the code:
-/// ```rust
+/// ```ignore
 /// // Brilliant module right here
 ///
 /// // Really good right
@@ -148,7 +148,7 @@ fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacem
 /// mod nice_module {}
 /// ```
 /// can be converted to doc comments. However, the comments in this example:
-/// ```rust
+/// ```ignore
 /// fn foo_bar(foo: Foo /* not bar yet */) -> Bar {
 ///     foo.into_bar()
 ///     // Nicely done
@@ -162,7 +162,7 @@ fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacem
 /// are not allowed to become doc comments. Moreover, some comments _are_ allowed, but aren't common
 /// style in Rust. For example, the following comments are allowed to be doc comments, but it is not
 /// common style for them to be:
-/// ```rust
+/// ```ignore
 /// fn foo_bar(foo: Foo) -> Bar {
 ///     // this could be an inner comment with //!
 ///     foo.into_bar()

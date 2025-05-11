@@ -58,6 +58,7 @@ implement_spanned!(ast::ExprField);
 implement_spanned!(ast::ForeignItem);
 implement_spanned!(ast::Item);
 implement_spanned!(ast::Local);
+implement_spanned!(ast::WherePredicate);
 
 impl Spanned for ast::Stmt {
     fn span(&self) -> Span {
@@ -149,12 +150,6 @@ impl Spanned for ast::FieldDef {
     }
 }
 
-impl Spanned for ast::WherePredicate {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
 impl Spanned for ast::FnRetTy {
     fn span(&self) -> Span {
         match *self {
@@ -211,7 +206,7 @@ impl Spanned for ast::PreciseCapturingArg {
     }
 }
 
-impl<'a> Spanned for RangeOperand<'a> {
+impl<'a, T> Spanned for RangeOperand<'a, T> {
     fn span(&self) -> Span {
         self.span
     }

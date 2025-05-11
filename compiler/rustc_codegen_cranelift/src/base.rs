@@ -8,8 +8,6 @@ use rustc_ast::InlineAsmOptions;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_index::IndexVec;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::InlineAsmMacro;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv};
@@ -18,7 +16,6 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use crate::constant::ConstantCx;
 use crate::debuginfo::{FunctionDebugContext, TypeDebugContext};
 use crate::enable_verifier;
-use crate::inline_asm::codegen_naked_asm;
 use crate::prelude::*;
 use crate::pretty_clif::CommentWriter;
 
@@ -37,7 +34,7 @@ pub(crate) fn codegen_fn<'tcx>(
     cached_func: Function,
     module: &mut dyn Module,
     instance: Instance<'tcx>,
-) -> Option<CodegenedFunction> {
+) -> CodegenedFunction {
     debug_assert!(!instance.args.has_infer());
 
     let symbol_name = tcx.symbol_name(instance).name.to_string();
@@ -53,38 +50,6 @@ pub(crate) fn codegen_fn<'tcx>(
         });
         String::from_utf8_lossy(&buf).into_owned()
     });
-
-    if tcx.codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
-        assert_eq!(mir.basic_blocks.len(), 1);
-        assert!(mir.basic_blocks[START_BLOCK].statements.is_empty());
-
-        match &mir.basic_blocks[START_BLOCK].terminator().kind {
-            TerminatorKind::InlineAsm {
-                asm_macro: InlineAsmMacro::NakedAsm,
-                template,
-                operands,
-                options,
-                line_spans: _,
-                targets: _,
-                unwind: _,
-            } => {
-                codegen_naked_asm(
-                    tcx,
-                    cx,
-                    module,
-                    instance,
-                    mir.basic_blocks[START_BLOCK].terminator().source_info.span,
-                    &symbol_name,
-                    template,
-                    operands,
-                    *options,
-                );
-            }
-            _ => unreachable!(),
-        }
-
-        return None;
-    }
 
     // Declare function
     let sig = get_function_sig(tcx, module.target_config().default_call_conv, instance);
@@ -166,7 +131,7 @@ pub(crate) fn codegen_fn<'tcx>(
     // Verify function
     verify_func(tcx, &clif_comments, &func);
 
-    Some(CodegenedFunction { symbol_name, func_id, func, clif_comments, func_debug_cx })
+    CodegenedFunction { symbol_name, func_id, func, clif_comments, func_debug_cx }
 }
 
 pub(crate) fn compile_fn(
@@ -417,6 +382,16 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             Some(source_info.span),
                         );
                     }
+                    AssertKind::NullPointerDereference => {
+                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+
+                        codegen_panic_inner(
+                            fx,
+                            rustc_hir::LangItem::PanicNullPointerDereference,
+                            &[location],
+                            Some(source_info.span),
+                        )
+                    }
                     _ => {
                         let location = fx.get_caller_location(source_info).load_scalar(fx);
 
@@ -555,7 +530,11 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             | TerminatorKind::CoroutineDrop => {
                 bug!("shouldn't exist at codegen {:?}", bb_data.terminator());
             }
-            TerminatorKind::Drop { place, target, unwind: _, replace: _ } => {
+            TerminatorKind::Drop { place, target, unwind: _, replace: _, drop, async_fut } => {
+                assert!(
+                    async_fut.is_none() && drop.is_none(),
+                    "Async Drop must be expanded or reset to sync before codegen"
+                );
                 let drop_place = codegen_place(fx, *place);
                 crate::abi::codegen_drop(fx, source_info, drop_place, *target);
             }
@@ -719,8 +698,10 @@ fn codegen_stmt<'tcx>(
                     let to_ty = fx.monomorphize(to_ty);
 
                     fn is_wide_ptr<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
-                        ty.builtin_deref(true)
-                            .is_some_and(|pointee_ty| has_ptr_meta(fx.tcx, pointee_ty))
+                        ty.builtin_deref(true).is_some_and(|pointee_ty| {
+                            fx.tcx
+                                .type_has_metadata(pointee_ty, ty::TypingEnv::fully_monomorphized())
+                        })
                     }
 
                     if is_wide_ptr(fx, from_ty) {
@@ -828,6 +809,12 @@ fn codegen_stmt<'tcx>(
                         fx.bcx.ins().nop();
                     }
                 }
+                Rvalue::Len(place) => {
+                    let place = codegen_place(fx, place);
+                    let usize_layout = fx.layout_of(fx.tcx.types.usize);
+                    let len = codegen_array_len(fx, place);
+                    lval.write_cvalue(fx, CValue::by_val(len, usize_layout));
+                }
                 Rvalue::ShallowInitBox(ref operand, content_ty) => {
                     let content_ty = fx.monomorphize(content_ty);
                     let box_layout = fx.layout_of(Ty::new_box(fx.tcx, content_ty));
@@ -852,7 +839,16 @@ fn codegen_stmt<'tcx>(
                         NullOp::UbChecks => {
                             let val = fx.tcx.sess.ub_checks();
                             let val = CValue::by_val(
-                                fx.bcx.ins().iconst(types::I8, i64::try_from(val).unwrap()),
+                                fx.bcx.ins().iconst(types::I8, i64::from(val)),
+                                fx.layout_of(fx.tcx.types.bool),
+                            );
+                            lval.write_cvalue(fx, val);
+                            return;
+                        }
+                        NullOp::ContractChecks => {
+                            let val = fx.tcx.sess.contract_checks();
+                            let val = CValue::by_val(
+                                fx.bcx.ins().iconst(types::I8, i64::from(val)),
                                 fx.layout_of(fx.tcx.types.bool),
                             );
                             lval.write_cvalue(fx, val);
@@ -875,8 +871,8 @@ fn codegen_stmt<'tcx>(
                     };
                     let data = codegen_operand(fx, data);
                     let meta = codegen_operand(fx, meta);
-                    assert!(data.layout().ty.is_unsafe_ptr());
-                    assert!(layout.ty.is_unsafe_ptr());
+                    assert!(data.layout().ty.is_raw_ptr());
+                    assert!(layout.ty.is_raw_ptr());
                     let ptr_val = if meta.layout().is_zst() {
                         data.cast_pointer_to(layout)
                     } else {
@@ -908,6 +904,10 @@ fn codegen_stmt<'tcx>(
                         to.write_cvalue(fx, operand);
                     }
                     crate::discriminant::codegen_set_discriminant(fx, lval, variant_index);
+                }
+                Rvalue::WrapUnsafeBinder(ref operand, _to_ty) => {
+                    let operand = codegen_operand(fx, operand);
+                    lval.write_cvalue_transmute(fx, operand);
                 }
             }
         }
@@ -977,7 +977,9 @@ pub(crate) fn codegen_place<'tcx>(
                 cplace = cplace.place_deref(fx);
             }
             PlaceElem::OpaqueCast(ty) => bug!("encountered OpaqueCast({ty}) in codegen"),
-            PlaceElem::Subtype(ty) => cplace = cplace.place_transmute_type(fx, fx.monomorphize(ty)),
+            PlaceElem::Subtype(ty) | PlaceElem::UnwrapUnsafeBinder(ty) => {
+                cplace = cplace.place_transmute_type(fx, fx.monomorphize(ty));
+            }
             PlaceElem::Field(field, _ty) => {
                 cplace = cplace.place_field(fx, field);
             }

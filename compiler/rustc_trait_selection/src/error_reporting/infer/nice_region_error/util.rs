@@ -3,8 +3,7 @@
 
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::ty::fold::fold_regions;
-use rustc_middle::ty::{self, Binder, Region, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Binder, Region, Ty, TyCtxt, TypeFoldable, fold_regions};
 use rustc_span::Span;
 use tracing::instrument;
 
@@ -43,7 +42,7 @@ pub fn find_param_with_region<'tcx>(
     anon_region: Region<'tcx>,
     replace_region: Region<'tcx>,
 ) -> Option<AnonymousParamInfo<'tcx>> {
-    let (id, kind) = match *anon_region {
+    let (id, kind) = match anon_region.kind() {
         ty::ReLateParam(late_param) => (late_param.scope, late_param.kind),
         ty::ReEarlyParam(ebr) => {
             let region_def = tcx.generics_of(generic_param_scope).region_param(ebr, tcx).def_id;
@@ -52,7 +51,6 @@ pub fn find_param_with_region<'tcx>(
         _ => return None, // not a free region
     };
 
-    let hir = &tcx.hir();
     let def_id = id.as_local()?;
 
     // FIXME: use def_kind
@@ -64,10 +62,10 @@ pub fn find_param_with_region<'tcx>(
         _ => {}
     }
 
-    let body = hir.maybe_body_owned_by(def_id)?;
+    let body = tcx.hir_maybe_body_owned_by(def_id)?;
 
-    let owner_id = hir.body_owner(body.id());
-    let fn_decl = hir.fn_decl_by_hir_id(owner_id)?;
+    let owner_id = tcx.hir_body_owner(body.id());
+    let fn_decl = tcx.hir_fn_decl_by_hir_id(owner_id)?;
     let poly_fn_sig = tcx.fn_sig(id).instantiate_identity();
 
     let fn_sig = tcx.liberate_late_bound_regions(id, poly_fn_sig);
@@ -94,7 +92,7 @@ pub fn find_param_with_region<'tcx>(
             });
             found_anon_region.then(|| {
                 let ty_hir_id = fn_decl.inputs[index].hir_id;
-                let param_ty_span = hir.span(ty_hir_id);
+                let param_ty_span = tcx.hir_span(ty_hir_id);
                 let is_first = index == 0;
                 AnonymousParamInfo { param, param_ty: new_param_ty, param_ty_span, kind, is_first }
             })
@@ -160,6 +158,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             && self
                 .tcx()
                 .opt_associated_item(scope_def_id.to_def_id())
-                .is_some_and(|i| i.fn_has_self_parameter)
+                .is_some_and(|i| i.is_method())
     }
 }

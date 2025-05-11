@@ -13,8 +13,9 @@ LL | |     };
    |
 help: change the type of the numeric literal from `u32` to `i32`
    |
-LL |         2i32
-   |          ~~~
+LL -         2u32
+LL +         2i32
+   |
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/if-else-type-mismatch.rs:8:38
@@ -26,8 +27,9 @@ LL |     let _ = if true { 42i32 } else { 42u32 };
    |
 help: change the type of the numeric literal from `u32` to `i32`
    |
-LL |     let _ = if true { 42i32 } else { 42i32 };
-   |                                        ~~~
+LL -     let _ = if true { 42i32 } else { 42u32 };
+LL +     let _ = if true { 42i32 } else { 42i32 };
+   |
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/if-else-type-mismatch.rs:13:9

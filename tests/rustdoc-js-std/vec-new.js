@@ -9,7 +9,7 @@ const EXPECTED = [
     {
         'query': 'prelude::vec',
         'others': [
-            { 'path': 'std::prelude::rust_2024', 'name': 'Vec' },
+            { 'path': 'std::prelude::v1', 'name': 'Vec' },
         ],
     },
     {

@@ -1,5 +1,22 @@
 use rand::RngCore;
 
+#[cfg(any(
+    windows,
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_vendor = "apple",
+))]
+use crate::assert_matches::assert_matches;
+use crate::char::MAX_LEN_UTF8;
+#[cfg(any(
+    windows,
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_vendor = "apple",
+))]
+use crate::fs::TryLockError;
 use crate::fs::{self, File, FileTimes, OpenOptions};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
@@ -14,7 +31,7 @@ use crate::os::unix::fs::symlink as junction_point;
 use crate::os::windows::fs::{OpenOptionsExt, junction_point, symlink_dir, symlink_file};
 use crate::path::Path;
 use crate::sync::Arc;
-use crate::sys_common::io::test::{TempDir, tmpdir};
+use crate::test_helpers::{TempDir, tmpdir};
 use crate::time::{Duration, Instant, SystemTime};
 use crate::{env, str, thread};
 
@@ -155,7 +172,7 @@ fn file_test_io_non_positional_read() {
 #[test]
 fn file_test_io_seek_and_tell_smoke_test() {
     let message = "ten-four";
-    let mut read_mem = [0; 4];
+    let mut read_mem = [0; MAX_LEN_UTF8];
     let set_cursor = 4 as u64;
     let tell_pos_pre_read;
     let tell_pos_post_read;
@@ -222,8 +239,8 @@ fn file_lock_multiple_shared() {
     check!(f2.lock_shared());
     check!(f1.unlock());
     check!(f2.unlock());
-    assert!(check!(f1.try_lock_shared()));
-    assert!(check!(f2.try_lock_shared()));
+    check!(f1.try_lock_shared());
+    check!(f2.try_lock_shared());
 }
 
 #[test]
@@ -242,12 +259,12 @@ fn file_lock_blocking() {
 
     // Check that shared locks block exclusive locks
     check!(f1.lock_shared());
-    assert!(!check!(f2.try_lock()));
+    assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
     check!(f1.unlock());
 
     // Check that exclusive locks block shared locks
     check!(f1.lock());
-    assert!(!check!(f2.try_lock_shared()));
+    assert_matches!(f2.try_lock_shared(), Err(TryLockError::WouldBlock));
 }
 
 #[test]
@@ -266,9 +283,9 @@ fn file_lock_drop() {
 
     // Check that locks are released when the File is dropped
     check!(f1.lock_shared());
-    assert!(!check!(f2.try_lock()));
+    assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
     drop(f1);
-    assert!(check!(f2.try_lock()));
+    check!(f2.try_lock());
 }
 
 #[test]
@@ -287,10 +304,10 @@ fn file_lock_dup() {
 
     // Check that locks are not dropped if the File has been cloned
     check!(f1.lock_shared());
-    assert!(!check!(f2.try_lock()));
+    assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
     let cloned = check!(f1.try_clone());
     drop(f1);
-    assert!(!check!(f2.try_lock()));
+    assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
     drop(cloned)
 }
 
@@ -306,9 +323,9 @@ fn file_lock_double_unlock() {
     // Check that both are released by unlock()
     check!(f1.lock());
     check!(f1.lock_shared());
-    assert!(!check!(f2.try_lock()));
+    assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
     check!(f1.unlock());
-    assert!(check!(f2.try_lock()));
+    check!(f2.try_lock());
 }
 
 #[test]
@@ -356,7 +373,7 @@ fn file_test_io_seek_shakedown() {
     let chunk_one: &str = "qwer";
     let chunk_two: &str = "asdf";
     let chunk_three: &str = "zxcv";
-    let mut read_mem = [0; 4];
+    let mut read_mem = [0; MAX_LEN_UTF8];
     let tmpdir = tmpdir();
     let filename = &tmpdir.join("file_rt_io_file_test_seek_shakedown.txt");
     {
@@ -621,7 +638,7 @@ fn file_test_directoryinfo_readdir() {
         check!(w.write(msg));
     }
     let files = check!(fs::read_dir(dir));
-    let mut mem = [0; 4];
+    let mut mem = [0; MAX_LEN_UTF8];
     for f in files {
         let f = f.unwrap().path();
         {
@@ -713,6 +730,10 @@ fn recursive_mkdir_empty() {
 }
 
 #[test]
+#[cfg_attr(
+    all(windows, target_arch = "aarch64"),
+    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
+)]
 fn recursive_rmdir() {
     let tmpdir = tmpdir();
     let d1 = tmpdir.join("d1");
@@ -732,6 +753,10 @@ fn recursive_rmdir() {
 }
 
 #[test]
+#[cfg_attr(
+    all(windows, target_arch = "aarch64"),
+    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
+)]
 fn recursive_rmdir_of_symlink() {
     // test we do not recursively delete a symlink but only dirs.
     let tmpdir = tmpdir();
@@ -1384,7 +1409,7 @@ fn file_try_clone() {
 }
 
 #[test]
-#[cfg(not(windows))]
+#[cfg(not(target_vendor = "win7"))]
 fn unlink_readonly() {
     let tmpdir = tmpdir();
     let path = tmpdir.join("file");
@@ -1516,6 +1541,10 @@ fn file_open_not_found() {
 }
 
 #[test]
+#[cfg_attr(
+    all(windows, target_arch = "aarch64"),
+    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
+)]
 fn create_dir_all_with_junctions() {
     let tmpdir = tmpdir();
     let target = tmpdir.join("target");
@@ -1718,6 +1747,23 @@ fn test_eq_direntry_metadata() {
     }
 }
 
+/// Test that windows file type equality is not affected by attributes unrelated
+/// to the file type.
+#[test]
+#[cfg(target_os = "windows")]
+fn test_eq_windows_file_type() {
+    let tmpdir = tmpdir();
+    let file1 = File::create(tmpdir.join("file1")).unwrap();
+    let file2 = File::create(tmpdir.join("file2")).unwrap();
+    assert_eq!(file1.metadata().unwrap().file_type(), file2.metadata().unwrap().file_type());
+
+    // Change the readonly attribute of one file.
+    let mut perms = file1.metadata().unwrap().permissions();
+    perms.set_readonly(true);
+    file1.set_permissions(perms).unwrap();
+    assert_eq!(file1.metadata().unwrap().file_type(), file2.metadata().unwrap().file_type());
+}
+
 /// Regression test for https://github.com/rust-lang/rust/issues/50619.
 #[test]
 #[cfg(target_os = "linux")]
@@ -1877,7 +1923,7 @@ fn windows_unix_socket_exists() {
         let bytes = socket_path.as_os_str().as_encoded_bytes();
         let bytes = core::slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len());
         addr.sun_path[..bytes.len()].copy_from_slice(bytes);
-        let len = mem::size_of_val(&addr) as i32;
+        let len = size_of_val(&addr) as i32;
         let result = c::bind(socket, (&raw const addr).cast::<c::SOCKADDR>(), len);
         c::closesocket(socket);
         assert_eq!(result, 0);
@@ -1913,8 +1959,11 @@ fn test_hidden_file_truncation() {
     assert_eq!(metadata.len(), 0);
 }
 
+// See https://github.com/rust-lang/rust/pull/131072 for more details about why
+// these two tests are disabled under Windows 7 here.
 #[cfg(windows)]
 #[test]
+#[cfg_attr(target_vendor = "win7", ignore = "Unsupported under Windows 7.")]
 fn test_rename_file_over_open_file() {
     // Make sure that std::fs::rename works if the target file is already opened with FILE_SHARE_DELETE. See #123985.
     let tmpdir = tmpdir();
@@ -1939,6 +1988,7 @@ fn test_rename_file_over_open_file() {
 
 #[test]
 #[cfg(windows)]
+#[cfg_attr(target_vendor = "win7", ignore = "Unsupported under Windows 7.")]
 fn test_rename_directory_to_non_empty_directory() {
     // Renaming a directory over a non-empty existing directory should fail on Windows.
     let tmpdir: TempDir = tmpdir();
@@ -1957,6 +2007,10 @@ fn test_rename_directory_to_non_empty_directory() {
 #[test]
 fn test_rename_symlink() {
     let tmpdir = tmpdir();
+    if !got_symlink_permission(&tmpdir) {
+        return;
+    };
+
     let original = tmpdir.join("original");
     let dest = tmpdir.join("dest");
     let not_exist = Path::new("does not exist");
@@ -1969,6 +2023,10 @@ fn test_rename_symlink() {
 
 #[test]
 #[cfg(windows)]
+#[cfg_attr(
+    all(windows, target_arch = "aarch64"),
+    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
+)]
 fn test_rename_junction() {
     let tmpdir = tmpdir();
     let original = tmpdir.join("original");

@@ -105,7 +105,10 @@ impl hir::Pat<'_> {
         let mut variants = vec![];
         self.walk(|p| match &p.kind {
             PatKind::Or(_) => false,
-            PatKind::Path(hir::QPath::Resolved(_, path))
+            PatKind::Expr(hir::PatExpr {
+                kind: hir::PatExprKind::Path(hir::QPath::Resolved(_, path)),
+                ..
+            })
             | PatKind::TupleStruct(hir::QPath::Resolved(_, path), ..)
             | PatKind::Struct(hir::QPath::Resolved(_, path), ..) => {
                 if let Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), id) =

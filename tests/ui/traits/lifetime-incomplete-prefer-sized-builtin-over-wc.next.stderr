@@ -1,0 +1,25 @@
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/lifetime-incomplete-prefer-sized-builtin-over-wc.rs:13:23
+   |
+LL |     (MyType<'a, T>,): Sized,
+   |                       ^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
+  --> $DIR/lifetime-incomplete-prefer-sized-builtin-over-wc.rs:11:8
+   |
+LL | fn foo<'a, T: ?Sized>()
+   |        ^^
+   = note: but lifetime parameter must outlive the static lifetime
+
+error: lifetime may not live long enough
+  --> $DIR/lifetime-incomplete-prefer-sized-builtin-over-wc.rs:22:5
+   |
+LL | fn foo<'a, T: ?Sized>()
+   |        -- lifetime `'a` defined here
+...
+LL |     is_sized::<(MyType<'a, T>,)>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0478`.

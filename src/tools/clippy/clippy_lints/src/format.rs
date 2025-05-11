@@ -94,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
                                 .into_owned()
                         } else {
                             let sugg = Sugg::hir_with_context(cx, value, call_site.ctxt(), "<arg>", &mut applicability);
-                            format!("{}.to_string()", sugg.maybe_par())
+                            format!("{}.to_string()", sugg.maybe_paren())
                         };
                         span_useless_format(cx, call_site, sugg, applicability);
                     }

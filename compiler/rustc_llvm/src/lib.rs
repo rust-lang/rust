@@ -4,7 +4,6 @@
 #![doc(rust_logo)]
 #![feature(extern_types)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::cell::RefCell;
@@ -230,6 +229,7 @@ pub fn initialize_available_targets() {
         LLVMInitializeXtensaTargetInfo,
         LLVMInitializeXtensaTarget,
         LLVMInitializeXtensaTargetMC,
+        LLVMInitializeXtensaAsmPrinter,
         LLVMInitializeXtensaAsmParser
     );
     init_target!(

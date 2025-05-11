@@ -1,10 +1,12 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(let_chains))]
+#![feature(default_field_values)]
 #![feature(iter_intersperse)]
-#![feature(let_chains)]
-#![feature(map_many_mut)]
 #![feature(rustc_attrs)]
-#![warn(unreachable_pub)]
+// To generate CodegenOptionsTargetModifiers and UnstableOptionsTargetModifiers enums
+// with macro_rules, it is necessary to use recursive mechanic ("Incremental TT Munchers").
+#![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 pub mod errors;

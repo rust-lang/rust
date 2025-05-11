@@ -6,7 +6,7 @@ use cranelift_module::*;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, GlobalAlloc, Scalar, read_target_uint};
-use rustc_middle::ty::{Binder, ExistentialTraitRef, ScalarInt};
+use rustc_middle::ty::{ExistentialTraitRef, ScalarInt};
 
 use crate::prelude::*;
 
@@ -167,7 +167,9 @@ pub(crate) fn codegen_const_value<'tcx>(
                             &mut fx.constants_cx,
                             fx.module,
                             ty,
-                            dyn_ty.principal(),
+                            dyn_ty.principal().map(|principal| {
+                                fx.tcx.instantiate_bound_regions_with_erased(principal)
+                            }),
                         );
                         let local_data_id =
                             fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
@@ -243,7 +245,7 @@ pub(crate) fn data_id_for_vtable<'tcx>(
     cx: &mut ConstantCx,
     module: &mut dyn Module,
     ty: Ty<'tcx>,
-    trait_ref: Option<Binder<'tcx, ExistentialTraitRef<'tcx>>>,
+    trait_ref: Option<ExistentialTraitRef<'tcx>>,
 ) -> DataId {
     let alloc_id = tcx.vtable_allocation((ty, trait_ref));
     data_id_for_alloc_id(cx, module, alloc_id, Mutability::Not)
@@ -270,7 +272,7 @@ fn data_id_for_static(
             .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
             .unwrap()
             .align
-            .pref
+            .abi
             .bytes();
 
         let linkage = if import_linkage == rustc_middle::mir::mono::Linkage::ExternalWeak
@@ -389,7 +391,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         data.set_align(alloc.align.bytes());
 
         if let Some(section_name) = section_name {
-            let (segment_name, section_name) = if tcx.sess.target.is_like_osx {
+            let (segment_name, section_name) = if tcx.sess.target.is_like_darwin {
                 // See https://github.com/llvm/llvm-project/blob/main/llvm/lib/MC/MCSectionMachO.cpp
                 let mut parts = section_name.as_str().split(',');
                 let Some(segment_name) = parts.next() else {
@@ -460,9 +462,15 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 GlobalAlloc::Memory(target_alloc) => {
                     data_id_for_alloc_id(cx, module, alloc_id, target_alloc.inner().mutability)
                 }
-                GlobalAlloc::VTable(ty, dyn_ty) => {
-                    data_id_for_vtable(tcx, cx, module, ty, dyn_ty.principal())
-                }
+                GlobalAlloc::VTable(ty, dyn_ty) => data_id_for_vtable(
+                    tcx,
+                    cx,
+                    module,
+                    ty,
+                    dyn_ty
+                        .principal()
+                        .map(|principal| tcx.instantiate_bound_regions_with_erased(principal)),
+                ),
                 GlobalAlloc::Static(def_id) => {
                     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
                     {

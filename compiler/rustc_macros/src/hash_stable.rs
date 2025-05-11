@@ -74,8 +74,6 @@ fn hash_stable_derive_with_mode(
         HashStableMode::Generic | HashStableMode::NoContext => parse_quote!(__CTX),
     };
 
-    s.underscore_const(true);
-
     // no_context impl is able to derive by-field, which is closer to a perfect derive.
     s.add_bounds(match mode {
         HashStableMode::Normal | HashStableMode::Generic => synstructure::AddBounds::Generics,

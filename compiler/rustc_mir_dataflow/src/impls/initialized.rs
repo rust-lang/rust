@@ -2,15 +2,16 @@ use std::assert_matches::assert_matches;
 
 use rustc_abi::VariantIdx;
 use rustc_index::Idx;
-use rustc_index::bit_set::{BitSet, MixedBitSet};
+use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_middle::bug;
-use rustc_middle::mir::{self, Body, CallReturnPlaces, Location, TerminatorEdges};
+use rustc_middle::mir::{
+    self, Body, CallReturnPlaces, Location, SwitchTargetValue, TerminatorEdges,
+};
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{self, TyCtxt};
 use tracing::{debug, instrument};
 
-use crate::elaborate_drops::DropFlagState;
-use crate::framework::SwitchIntTarget;
+use crate::drop_flag_effects::DropFlagState;
 use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use crate::{
     Analysis, GenKill, MaybeReachable, drop_flag_effects, drop_flag_effects_for_function_entry,
@@ -207,7 +208,7 @@ pub struct MaybeUninitializedPlaces<'a, 'tcx> {
     move_data: &'a MoveData<'tcx>,
 
     mark_inactive_variants_as_uninit: bool,
-    skip_unreachable_unwind: BitSet<mir::BasicBlock>,
+    skip_unreachable_unwind: DenseBitSet<mir::BasicBlock>,
 }
 
 impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
@@ -217,7 +218,7 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
             body,
             move_data,
             mark_inactive_variants_as_uninit: false,
-            skip_unreachable_unwind: BitSet::new_empty(body.basic_blocks.len()),
+            skip_unreachable_unwind: DenseBitSet::new_empty(body.basic_blocks.len()),
         }
     }
 
@@ -233,7 +234,7 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
 
     pub fn skipping_unreachable_unwind(
         mut self,
-        unreachable_unwind: BitSet<mir::BasicBlock>,
+        unreachable_unwind: DenseBitSet<mir::BasicBlock>,
     ) -> Self {
         self.skip_unreachable_unwind = unreachable_unwind;
         self
@@ -375,7 +376,14 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         // the result of `is_unwind_dead`.
         let mut edges = terminator.edges();
         if self.skip_unreachable_unwind
-            && let mir::TerminatorKind::Drop { target, unwind, place, replace: _ } = terminator.kind
+            && let mir::TerminatorKind::Drop {
+                target,
+                unwind,
+                place,
+                replace: _,
+                drop: _,
+                async_fut: _,
+            } = terminator.kind
             && matches!(unwind, mir::UnwindAction::Cleanup(_))
             && self.is_unwind_dead(place, state)
         {
@@ -422,9 +430,9 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         &mut self,
         data: &mut Self::SwitchIntData,
         state: &mut Self::Domain,
-        edge: SwitchIntTarget,
+        value: SwitchTargetValue,
     ) {
-        if let Some(value) = edge.value {
+        if let SwitchTargetValue::Normal(value) = value {
             // Kill all move paths that correspond to variants we know to be inactive along this
             // particular outgoing edge of a `SwitchInt`.
             drop_flag_effects::on_all_inactive_variants(
@@ -535,9 +543,9 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         &mut self,
         data: &mut Self::SwitchIntData,
         state: &mut Self::Domain,
-        edge: SwitchIntTarget,
+        value: SwitchTargetValue,
     ) {
-        if let Some(value) = edge.value {
+        if let SwitchTargetValue::Normal(value) = value {
             // Mark all move paths that correspond to variants other than this one as maybe
             // uninitialized (in reality, they are *definitely* uninitialized).
             drop_flag_effects::on_all_inactive_variants(

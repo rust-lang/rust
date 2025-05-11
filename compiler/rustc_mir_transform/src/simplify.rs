@@ -26,6 +26,13 @@
 //! Here the block (`{ return; }`) has the return type `char`, rather than `()`, but the MIR we
 //! naively generate still contains the `_a = ()` write in the unreachable block "after" the
 //! return.
+//!
+//! **WARNING**: This is one of the few optimizations that runs on built and analysis MIR, and
+//! so its effects may affect the type-checking, borrow-checking, and other analysis of MIR.
+//! We must be extremely careful to only apply optimizations that preserve UB and all
+//! non-determinism, since changes here can affect which programs compile in an insta-stable way.
+//! The normal logic that a program with UB can be changed to do anything does not apply to
+//! pre-"runtime" MIR!
 
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
@@ -66,8 +73,8 @@ impl SimplifyCfg {
     }
 }
 
-pub(super) fn simplify_cfg(body: &mut Body<'_>) {
-    CfgSimplifier::new(body).simplify();
+pub(super) fn simplify_cfg<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    CfgSimplifier::new(tcx, body).simplify();
     remove_dead_blocks(body);
 
     // FIXME: Should probably be moved into some kind of pass manager
@@ -79,19 +86,24 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyCfg {
         self.name()
     }
 
-    fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.name(), body.source);
-        simplify_cfg(body);
+        simplify_cfg(tcx, body);
+    }
+
+    fn is_required(&self) -> bool {
+        false
     }
 }
 
 struct CfgSimplifier<'a, 'tcx> {
+    preserve_switch_reads: bool,
     basic_blocks: &'a mut IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
     pred_count: IndexVec<BasicBlock, u32>,
 }
 
 impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
-    fn new(body: &'a mut Body<'tcx>) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, body: &'a mut Body<'tcx>) -> Self {
         let mut pred_count = IndexVec::from_elem(0u32, &body.basic_blocks);
 
         // we can't use mir.predecessors() here because that counts
@@ -106,9 +118,12 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             }
         }
 
+        // Preserve `SwitchInt` reads on built and analysis MIR, or if `-Zmir-preserve-ub`.
+        let preserve_switch_reads = matches!(body.phase, MirPhase::Built | MirPhase::Analysis(_))
+            || tcx.sess.opts.unstable_opts.mir_preserve_ub;
         let basic_blocks = body.basic_blocks_mut();
 
-        CfgSimplifier { basic_blocks, pred_count }
+        CfgSimplifier { preserve_switch_reads, basic_blocks, pred_count }
     }
 
     fn simplify(mut self) {
@@ -132,9 +147,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 let mut terminator =
                     self.basic_blocks[bb].terminator.take().expect("invalid terminator state");
 
-                for successor in terminator.successors_mut() {
-                    self.collapse_goto_chain(successor, &mut changed);
-                }
+                terminator
+                    .successors_mut(|successor| self.collapse_goto_chain(successor, &mut changed));
 
                 let mut inner_changed = true;
                 merged_blocks.clear();
@@ -249,9 +263,15 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
     // turn a branch with all successors identical to a goto
     fn simplify_branch(&mut self, terminator: &mut Terminator<'tcx>) -> bool {
-        match terminator.kind {
-            TerminatorKind::SwitchInt { .. } => {}
-            _ => return false,
+        // Removing a `SwitchInt` terminator may remove reads that result in UB,
+        // so we must not apply this optimization before borrowck or when
+        // `-Zmir-preserve-ub` is set.
+        if self.preserve_switch_reads {
+            return false;
+        }
+
+        let TerminatorKind::SwitchInt { .. } = terminator.kind else {
+            return false;
         };
 
         let first_succ = {
@@ -354,9 +374,7 @@ pub(super) fn remove_dead_blocks(body: &mut Body<'_>) {
     }
 
     for block in basic_blocks {
-        for target in block.terminator_mut().successors_mut() {
-            *target = replacements[target.index()];
-        }
+        block.terminator_mut().successors_mut(|target| *target = replacements[target.index()]);
     }
 }
 
@@ -404,6 +422,10 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
 
             body.local_decls.shrink_to_fit();
         }
+    }
+
+    fn is_required(&self) -> bool {
+        false
     }
 }
 
@@ -560,9 +582,9 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
                     }
                     StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
 
-                    StatementKind::SetDiscriminant { ref place, .. }
-                    | StatementKind::BackwardIncompatibleDropHint { ref place, reason: _ }
-                    | StatementKind::Deinit(ref place) => used_locals.is_used(place.local),
+                    StatementKind::SetDiscriminant { place, .. }
+                    | StatementKind::BackwardIncompatibleDropHint { place, reason: _ }
+                    | StatementKind::Deinit(place) => used_locals.is_used(place.local),
                     StatementKind::Nop => false,
                     _ => true,
                 };
@@ -587,20 +609,6 @@ struct LocalUpdater<'tcx> {
 impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
-    }
-
-    fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
-        if let StatementKind::BackwardIncompatibleDropHint { place, reason: _ } =
-            &mut statement.kind
-        {
-            self.visit_local(
-                &mut place.local,
-                PlaceContext::MutatingUse(MutatingUseContext::Store),
-                location,
-            );
-        } else {
-            self.super_statement(statement, location);
-        }
     }
 
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {

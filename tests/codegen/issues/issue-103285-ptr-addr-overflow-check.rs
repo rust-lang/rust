@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C debug-assertions=yes
+//@ compile-flags: -Copt-level=3 -C debug-assertions=yes
 
 #![crate_type = "lib"]
 

@@ -203,7 +203,8 @@ fn place_components_conflict<'tcx>(
             let base_ty = base.ty(body, tcx).ty;
 
             match (elem, base_ty.kind(), access) {
-                (_, _, Shallow(Some(ArtificialField::FakeBorrow))) => {
+                (_, _, Shallow(Some(ArtificialField::ArrayLength)))
+                | (_, _, Shallow(Some(ArtificialField::FakeBorrow))) => {
                     // The array length is like additional fields on the
                     // type; it does not overlap any existing data there.
                     // Furthermore, if cannot actually be a prefix of any
@@ -249,7 +250,8 @@ fn place_components_conflict<'tcx>(
                 | (ProjectionElem::Subslice { .. }, _, _)
                 | (ProjectionElem::OpaqueCast { .. }, _, _)
                 | (ProjectionElem::Subtype(_), _, _)
-                | (ProjectionElem::Downcast { .. }, _, _) => {
+                | (ProjectionElem::Downcast { .. }, _, _)
+                | (ProjectionElem::UnwrapUnsafeBinder(_), _, _) => {
                     // Recursive case. This can still be disjoint on a
                     // further iteration if this a shallow access and
                     // there's a deref later on, e.g., a borrow
@@ -518,5 +520,9 @@ fn place_projection_conflict<'tcx>(
             pi1_elem,
             pi2_elem
         ),
+
+        (ProjectionElem::UnwrapUnsafeBinder(_), _) => {
+            todo!()
+        }
     }
 }

@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use crate::{
     AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange,
-    TextSize,
+    TextSize, syntax_editor::Element,
 };
 
 /// Returns ancestors of the node at the offset, sorted by length. This should
@@ -25,7 +25,7 @@ pub fn ancestors_at_offset(
 /// imprecise: if the cursor is strictly between two nodes of the desired type,
 /// as in
 ///
-/// ```no_run
+/// ```ignore
 /// struct Foo {}|struct Bar;
 /// ```
 ///
@@ -89,10 +89,46 @@ pub fn least_common_ancestor(u: &SyntaxNode, v: &SyntaxNode) -> Option<SyntaxNod
     Some(res)
 }
 
+pub fn least_common_ancestor_element(u: impl Element, v: impl Element) -> Option<SyntaxNode> {
+    let u = u.syntax_element();
+    let v = v.syntax_element();
+    if u == v {
+        return match u {
+            NodeOrToken::Node(node) => Some(node),
+            NodeOrToken::Token(token) => token.parent(),
+        };
+    }
+
+    let u_depth = u.ancestors().count();
+    let v_depth = v.ancestors().count();
+    let keep = u_depth.min(v_depth);
+
+    let u_candidates = u.ancestors().skip(u_depth - keep);
+    let v_candidates = v.ancestors().skip(v_depth - keep);
+    let (res, _) = u_candidates.zip(v_candidates).find(|(x, y)| x == y)?;
+    Some(res)
+}
+
 pub fn neighbor<T: AstNode>(me: &T, direction: Direction) -> Option<T> {
     me.syntax().siblings(direction).skip(1).find_map(T::cast)
 }
 
 pub fn has_errors(node: &SyntaxNode) -> bool {
     node.children().any(|it| it.kind() == SyntaxKind::ERROR)
+}
+
+pub fn previous_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken> {
+    let mut token = match e.into() {
+        SyntaxElement::Node(n) => n.first_token()?,
+        SyntaxElement::Token(t) => t,
+    }
+    .prev_token();
+    while let Some(inner) = token {
+        if !inner.kind().is_trivia() {
+            return Some(inner);
+        } else {
+            token = inner.prev_token();
+        }
+    }
+    None
 }

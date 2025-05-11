@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `(): Foo` is not satisfied
-  --> $DIR/supress_suggestions_in_help.rs:21:11
+  --> $DIR/supress_suggestions_in_help.rs:22:11
    |
 LL |     check(());
    |     ----- ^^ the trait `Foo` is not implemented for `()`
@@ -8,7 +8,7 @@ LL |     check(());
    |
    = help: the trait `Foo` is implemented for `i32`
 note: required by a bound in `check`
-  --> $DIR/supress_suggestions_in_help.rs:18:18
+  --> $DIR/supress_suggestions_in_help.rs:19:18
    |
 LL | fn check(a: impl Foo) {}
    |                  ^^^ required by this bound in `check`

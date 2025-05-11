@@ -8,7 +8,7 @@ fn main() {
 
     // What if we wanted to pull this apart without individually binding a, b, and c?
     let [first_three @ ..3, rest @ 2..] = xs;
-    //~^ pattern requires 2 elements but array has 8
+    //~^ ERROR pattern requires 2 elements but array has 8
     // This is somewhat unintuitive and makes slice patterns exceedingly verbose.
     // We want to stabilize half-open RangeFrom (`X..`) patterns
     // but without banning us from using them for a more efficient slice pattern syntax.

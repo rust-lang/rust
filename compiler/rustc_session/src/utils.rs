@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use rustc_data_structures::profiling::VerboseTimingGuard;
@@ -34,6 +34,7 @@ pub enum NativeLibKind {
         as_needed: Option<bool>,
     },
     /// Dynamic library (e.g. `foo.dll` on Windows) without a corresponding import library.
+    /// On Linux, it refers to a generated shared library stub.
     RawDylib,
     /// A macOS-specific kind of dynamic libraries.
     Framework {
@@ -103,8 +104,8 @@ pub struct CanonicalizedPath {
 }
 
 impl CanonicalizedPath {
-    pub fn new(path: &Path) -> Self {
-        Self { original: path.to_owned(), canonicalized: try_canonicalize(path).ok() }
+    pub fn new(path: PathBuf) -> Self {
+        Self { canonicalized: try_canonicalize(&path).ok(), original: path }
     }
 
     pub fn canonicalized(&self) -> &PathBuf {
@@ -148,14 +149,15 @@ pub fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
                 arg[a.len()..].to_string()
             };
             let option = content.split_once('=').map(|s| s.0).unwrap_or(&content);
-            if ICE_REPORT_COMPILER_FLAGS_EXCLUDE.iter().any(|exc| option == *exc) {
+            if ICE_REPORT_COMPILER_FLAGS_EXCLUDE.contains(&option) {
                 excluded_cargo_defaults = true;
             } else {
                 result.push(a.to_string());
-                match ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.iter().find(|s| option == **s) {
-                    Some(s) => result.push(format!("{s}=[REDACTED]")),
-                    None => result.push(content),
-                }
+                result.push(if ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.contains(&option) {
+                    format!("{option}=[REDACTED]")
+                } else {
+                    content
+                });
             }
         }
     }

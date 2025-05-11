@@ -9,8 +9,9 @@ LL |         func: &foo,
    = note: fn items are distinct from fn pointers
 help: consider casting to a fn pointer
    |
-LL |         func: &(foo as fn() -> Option<isize>),
-   |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -         func: &foo,
+LL +         func: &(foo as fn() -> Option<isize>),
+   |
 
 error: aborting due to 1 previous error
 

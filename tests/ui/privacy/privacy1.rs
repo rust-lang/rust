@@ -1,4 +1,4 @@
-#![feature(lang_items, start, no_core)]
+#![feature(lang_items, no_core)]
 #![no_core] // makes debugging this test *a lot* easier (during resolve)
 
 #[lang="sized"]
@@ -173,4 +173,4 @@ pub mod mytest {
     }
 }
 
-#[start] fn main(_: isize, _: *const *const u8) -> isize { 3 }
+fn main() {}

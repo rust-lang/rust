@@ -19,7 +19,7 @@ error: unconstrained opaque type
 LL | type OpaqueType = impl OpaqueTrait;
    |                   ^^^^^^^^^^^^^^^^
    |
-   = note: `OpaqueType` must be used in combination with a concrete type within the same module
+   = note: `OpaqueType` must be used in combination with a concrete type within the same crate
 
 error: aborting due to 3 previous errors
 

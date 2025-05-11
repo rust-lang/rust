@@ -1,5 +1,5 @@
 error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/unconstrained-impl-param.rs:11:6
+  --> $DIR/unconstrained-impl-param.rs:12:6
    |
 LL | impl<'a> Trait for Opaque<&'a str> {
    |      ^^ unconstrained lifetime parameter

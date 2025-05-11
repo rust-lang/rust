@@ -18,7 +18,7 @@
    LL|       |macro_rules! on_error {
    LL|       |    ($value:expr, $error_message:expr) => {
    LL|      0|        $value.or_else(|e| {
-   LL|      0|            // This closure, which is declared in a macro, should be instrumented.
+   LL|       |            // This closure, which is declared in a macro, should be instrumented.
    LL|      0|            let message = format!($error_message, e);
    LL|      0|            if message.len() > 0 {
    LL|      0|                println!("{}", message);

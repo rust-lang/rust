@@ -1,4 +1,5 @@
 //@ normalize-stderr: "(abi|pref|unadjusted_abi_align): Align\([1-8] bytes\)" -> "$1: $$SOME_ALIGN"
+//@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 //@ normalize-stderr: "(size): Size\([48] bytes\)" -> "$1: $$SOME_SIZE"
 //@ normalize-stderr: "(can_unwind): (true|false)" -> "$1: $$SOME_BOOL"
 //@ normalize-stderr: "(valid_range): 0\.\.=(4294967295|18446744073709551615)" -> "$1: $$FULL"
@@ -51,3 +52,6 @@ type TestAbiNeSign = (fn(i32), fn(u32)); //~ ERROR: ABIs are not compatible
 
 #[rustc_abi(assert_eq)]
 type TestAbiEqNonsense = (fn((str, str)), fn((str, str))); //~ ERROR: cannot be known at compilation time
+
+#[rustc_abi("assert_eq")] //~ ERROR unrecognized argument
+type Bad = u32;

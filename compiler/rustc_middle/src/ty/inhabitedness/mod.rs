@@ -43,6 +43,7 @@
 //! This code should only compile in modules where the uninhabitedness of `Foo`
 //! is visible.
 
+use rustc_span::sym;
 use rustc_type_ir::TyKind::*;
 use tracing::instrument;
 
@@ -84,6 +85,21 @@ impl<'tcx> VariantDef {
         InhabitedPredicate::all(
             tcx,
             self.fields.iter().map(|field| {
+                // Unstable fields are always considered to be inhabited. In the future,
+                // this could be extended to be conditional on the field being unstable
+                // only within the module that's querying the inhabitedness, like:
+                //     `let pred = pred.or(InhabitedPredicate::IsUnstable(field.did));`
+                // but this is unnecessary for now, since it would only affect nightly-only
+                // code or code within the standard library itself.
+                // HACK: We filter out `rustc_private` fields since with the flag
+                // `-Zforce-unstable-if-unmarked` we consider all unmarked fields to be
+                // unstable when building the compiler.
+                if tcx
+                    .lookup_stability(field.did)
+                    .is_some_and(|stab| stab.is_unstable() && stab.feature != sym::rustc_private)
+                {
+                    return InhabitedPredicate::True;
+                }
                 let pred = tcx.type_of(field.did).instantiate_identity().inhabited_predicate(tcx);
                 if adt.is_enum() {
                     return pred;
@@ -107,11 +123,11 @@ impl<'tcx> Ty<'tcx> {
             // For now, unions are always considered inhabited
             Adt(adt, _) if adt.is_union() => InhabitedPredicate::True,
             // Non-exhaustive ADTs from other crates are always considered inhabited
-            Adt(adt, _) if adt.is_variant_list_non_exhaustive() && !adt.did().is_local() => {
+            Adt(adt, _) if adt.variant_list_has_applicable_non_exhaustive() => {
                 InhabitedPredicate::True
             }
             Never => InhabitedPredicate::False,
-            Param(_) | Alias(ty::Projection | ty::Weak, _) => InhabitedPredicate::GenericType(self),
+            Param(_) | Alias(ty::Projection | ty::Free, _) => InhabitedPredicate::GenericType(self),
             Alias(ty::Opaque, alias_ty) => {
                 match alias_ty.def_id.as_local() {
                     // Foreign opaque is considered inhabited.

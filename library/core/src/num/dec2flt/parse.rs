@@ -1,8 +1,8 @@
 //! Functions to parse floating-point numbers.
 
 use crate::num::dec2flt::common::{ByteSlice, is_8digits};
+use crate::num::dec2flt::decimal::Decimal;
 use crate::num::dec2flt::float::RawFloat;
-use crate::num::dec2flt::number::Number;
 
 const MIN_19DIGIT_INT: u64 = 100_0000_0000_0000_0000;
 
@@ -100,7 +100,7 @@ fn parse_scientific(s_ref: &mut &[u8]) -> Option<i64> {
 ///
 /// This creates a representation of the float as the
 /// significant digits and the decimal exponent.
-fn parse_partial_number(mut s: &[u8]) -> Option<(Number, usize)> {
+fn parse_partial_number(mut s: &[u8]) -> Option<(Decimal, usize)> {
     debug_assert!(!s.is_empty());
 
     // parse initial digits before dot
@@ -146,7 +146,7 @@ fn parse_partial_number(mut s: &[u8]) -> Option<(Number, usize)> {
 
     // handle uncommon case with many digits
     if n_digits <= 19 {
-        return Some((Number { exponent, mantissa, negative: false, many_digits: false }, len));
+        return Some((Decimal { exponent, mantissa, negative: false, many_digits: false }, len));
     }
 
     n_digits -= 19;
@@ -179,13 +179,13 @@ fn parse_partial_number(mut s: &[u8]) -> Option<(Number, usize)> {
         exponent += exp_number;
     }
 
-    Some((Number { exponent, mantissa, negative: false, many_digits }, len))
+    Some((Decimal { exponent, mantissa, negative: false, many_digits }, len))
 }
 
 /// Try to parse a non-special floating point number,
 /// as well as two slices with integer and fractional parts
 /// and the parsed exponent.
-pub fn parse_number(s: &[u8]) -> Option<Number> {
+pub fn parse_number(s: &[u8]) -> Option<Decimal> {
     if let Some((float, rest)) = parse_partial_number(s) {
         if rest == s.len() {
             return Some(float);

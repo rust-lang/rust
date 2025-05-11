@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ ignore-std-debug-assertions
 // (with debug assertions turned on, `assert_unchecked` generates a real assertion)
 

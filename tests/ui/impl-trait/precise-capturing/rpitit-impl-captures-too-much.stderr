@@ -1,5 +1,5 @@
 error: return type captures more lifetimes than trait definition
-  --> $DIR/rpitit-impl-captures-too-much.rs:10:39
+  --> $DIR/rpitit-impl-captures-too-much.rs:8:39
    |
 LL |     fn hello(self_: Invariant<'_>) -> impl Sized + use<Self>;
    |                               -- this lifetime was captured
@@ -8,7 +8,7 @@ LL |     fn hello(self_: Invariant<'_>) -> impl Sized + use<'_> {}
    |                                       ^^^^^^^^^^^^^^^^^^^^
    |
 note: hidden type must only reference lifetimes captured by this impl trait
-  --> $DIR/rpitit-impl-captures-too-much.rs:6:39
+  --> $DIR/rpitit-impl-captures-too-much.rs:4:39
    |
 LL |     fn hello(self_: Invariant<'_>) -> impl Sized + use<Self>;
    |                                       ^^^^^^^^^^^^^^^^^^^^^^

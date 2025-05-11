@@ -4,12 +4,10 @@ use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
-use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::visit::MaxUniverse;
 use rustc_middle::ty::{
-    self, AliasRelationDirection, InferConst, Term, Ty, TyCtxt, TypeVisitable, TypeVisitableExt,
-    TypingMode,
+    self, AliasRelationDirection, InferConst, MaxUniverse, Term, Ty, TyCtxt, TypeVisitable,
+    TypeVisitableExt, TypingMode,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument, warn};
@@ -18,6 +16,7 @@ use super::{
     PredicateEmittingRelation, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,
 };
 use crate::infer::type_variable::TypeVariableValue;
+use crate::infer::unify_key::ConstVariableValue;
 use crate::infer::{InferCtxt, RegionVariableOrigin, relate};
 
 impl<'tcx> InferCtxt<'tcx> {
@@ -114,7 +113,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         }]);
                     }
                     // The old solver only accepts projection predicates for associated types.
-                    ty::Alias(ty::Inherent | ty::Weak | ty::Opaque, _) => {
+                    ty::Alias(ty::Inherent | ty::Free | ty::Opaque, _) => {
                         return Err(TypeError::CyclicTy(source_ty));
                     }
                     _ => bug!("generalized `{source_ty:?} to infer, not an alias"),
@@ -572,7 +571,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         assert_eq!(r, r2); // we are misusing TypeRelation here; both LHS and RHS ought to be ==
 
-        match *r {
+        match r.kind() {
             // Never make variables for regions bound within the type itself,
             // nor for erased regions.
             ty::ReBound(..) | ty::ReErased => {

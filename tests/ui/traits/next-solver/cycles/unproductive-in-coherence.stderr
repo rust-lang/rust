@@ -1,0 +1,11 @@
+error[E0119]: conflicting implementations of trait `Overlap<<Overflow as Trait>::Assoc<Overflow>, _>` for type `Overflow`
+  --> $DIR/unproductive-in-coherence.rs:18:1
+   |
+LL | impl<T: Trait, U: Copy> Overlap<T::Assoc<T>, U> for T {}
+   | ----------------------------------------------------- first implementation here
+LL | impl<U> Overlap<u32, U> for Overflow {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Overflow`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

@@ -1,9 +1,9 @@
-use crate::spec::{Target, TargetOptions, base};
+use crate::spec::{Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "mips64el-unknown-linux-gnuabi64".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("MIPS64 Linux, N64 ABI (kernel 4.4, glibc 2.23)".into()),
             tier: Some(3),
             host_tools: Some(true),
@@ -19,6 +19,7 @@ pub(crate) fn target() -> Target {
             features: "+mips64r2,+xgot".into(),
             max_atomic_width: Some(64),
             mcount: "_mcount".into(),
+            llvm_abiname: "n64".into(),
 
             ..base::linux_gnu::opts()
         },

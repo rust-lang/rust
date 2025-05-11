@@ -162,8 +162,14 @@
 //! The [`is_some`] and [`is_none`] methods return [`true`] if the [`Option`]
 //! is [`Some`] or [`None`], respectively.
 //!
+//! The [`is_some_and`] and [`is_none_or`] methods apply the provided function
+//! to the contents of the [`Option`] to produce a boolean value.
+//! If this is [`None`] then a default result is returned instead without executing the function.
+//!
 //! [`is_none`]: Option::is_none
 //! [`is_some`]: Option::is_some
+//! [`is_some_and`]: Option::is_some_and
+//! [`is_none_or`]: Option::is_none_or
 //!
 //! ## Adapters for working with references
 //!
@@ -177,6 +183,10 @@
 //!   <code>[Option]<[Pin]<[&]T>></code>
 //! * [`as_pin_mut`] converts from <code>[Pin]<[&mut] [Option]\<T>></code> to
 //!   <code>[Option]<[Pin]<[&mut] T>></code>
+//! * [`as_slice`] returns a one-element slice of the contained value, if any.
+//!   If this is [`None`], an empty slice is returned.
+//! * [`as_mut_slice`] returns a mutable one-element slice of the contained value, if any.
+//!   If this is [`None`], an empty slice is returned.
 //!
 //! [&]: reference "shared reference"
 //! [&mut]: reference "mutable reference"
@@ -187,6 +197,8 @@
 //! [`as_pin_mut`]: Option::as_pin_mut
 //! [`as_pin_ref`]: Option::as_pin_ref
 //! [`as_ref`]: Option::as_ref
+//! [`as_slice`]: Option::as_slice
+//! [`as_mut_slice`]: Option::as_mut_slice
 //!
 //! ## Extracting the contained value
 //!
@@ -200,12 +212,15 @@
 //!   (which must implement the [`Default`] trait)
 //! * [`unwrap_or_else`] returns the result of evaluating the provided
 //!   function
+//! * [`unwrap_unchecked`] produces *[undefined behavior]*
 //!
 //! [`expect`]: Option::expect
 //! [`unwrap`]: Option::unwrap
 //! [`unwrap_or`]: Option::unwrap_or
 //! [`unwrap_or_default`]: Option::unwrap_or_default
 //! [`unwrap_or_else`]: Option::unwrap_or_else
+//! [`unwrap_unchecked`]: Option::unwrap_unchecked
+//! [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
 //!
 //! ## Transforming contained values
 //!
@@ -230,8 +245,9 @@
 //! * [`filter`] calls the provided predicate function on the contained
 //!   value `t` if the [`Option`] is [`Some(t)`], and returns [`Some(t)`]
 //!   if the function returns `true`; otherwise, returns [`None`]
-//! * [`flatten`] removes one level of nesting from an
-//!   [`Option<Option<T>>`]
+//! * [`flatten`] removes one level of nesting from an [`Option<Option<T>>`]
+//! * [`inspect`] method takes ownership of the [`Option`] and applies
+//!   the provided function to the contained value by reference if [`Some`]
 //! * [`map`] transforms [`Option<T>`] to [`Option<U>`] by applying the
 //!   provided function to the contained value of [`Some`] and leaving
 //!   [`None`] values unchanged
@@ -239,6 +255,7 @@
 //! [`Some(t)`]: Some
 //! [`filter`]: Option::filter
 //! [`flatten`]: Option::flatten
+//! [`inspect`]: Option::inspect
 //! [`map`]: Option::map
 //!
 //! These methods transform [`Option<T>`] to a value of a possibly
@@ -621,6 +638,10 @@ impl<T> Option<T> {
     ///
     /// let x: Option<u32> = None;
     /// assert_eq!(x.is_some_and(|x| x > 1), false);
+    ///
+    /// let x: Option<String> = Some("ownership".to_string());
+    /// assert_eq!(x.as_ref().is_some_and(|x| x.len() > 1), true);
+    /// println!("still alive {:?}", x);
     /// ```
     #[must_use]
     #[inline]
@@ -665,6 +686,10 @@ impl<T> Option<T> {
     ///
     /// let x: Option<u32> = None;
     /// assert_eq!(x.is_none_or(|x| x > 1), true);
+    ///
+    /// let x: Option<String> = Some("ownership".to_string());
+    /// assert_eq!(x.as_ref().is_none_or(|x| x.len() > 1), true);
+    /// println!("still alive {:?}", x);
     /// ```
     #[must_use]
     #[inline]
@@ -924,7 +949,7 @@ impl<T> Option<T> {
     #[inline]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "option_expect")]
+    #[rustc_diagnostic_item = "option_expect"]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn expect(self, msg: &str) -> T {
@@ -969,7 +994,7 @@ impl<T> Option<T> {
     #[inline(always)]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "option_unwrap")]
+    #[rustc_diagnostic_item = "option_unwrap"]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn unwrap(self) -> T {
@@ -2049,6 +2074,9 @@ where
         }
     }
 }
+
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T> crate::clone::UseCloned for Option<T> where T: crate::clone::UseCloned {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Option<T> {

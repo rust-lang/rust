@@ -14,9 +14,9 @@ error[E0432]: unresolved import `foo`
   --> $DIR/unresolved-imports-used.rs:11:5
    |
 LL | use foo::bar;
-   |     ^^^ you might be missing crate `foo`
+   |     ^^^ use of unresolved module or unlinked crate `foo`
    |
-help: consider importing the `foo` crate
+help: you might be missing a crate named `foo`, add it to your project and import it in your code
    |
 LL + extern crate foo;
    |
@@ -25,9 +25,9 @@ error[E0432]: unresolved import `baz`
   --> $DIR/unresolved-imports-used.rs:12:5
    |
 LL | use baz::*;
-   |     ^^^ you might be missing crate `baz`
+   |     ^^^ use of unresolved module or unlinked crate `baz`
    |
-help: consider importing the `baz` crate
+help: you might be missing a crate named `baz`, add it to your project and import it in your code
    |
 LL + extern crate baz;
    |
@@ -36,9 +36,9 @@ error[E0432]: unresolved import `foo2`
   --> $DIR/unresolved-imports-used.rs:14:5
    |
 LL | use foo2::bar2;
-   |     ^^^^ you might be missing crate `foo2`
+   |     ^^^^ use of unresolved module or unlinked crate `foo2`
    |
-help: consider importing the `foo2` crate
+help: you might be missing a crate named `foo2`, add it to your project and import it in your code
    |
 LL + extern crate foo2;
    |
@@ -47,9 +47,9 @@ error[E0432]: unresolved import `baz2`
   --> $DIR/unresolved-imports-used.rs:15:5
    |
 LL | use baz2::*;
-   |     ^^^^ you might be missing crate `baz2`
+   |     ^^^^ use of unresolved module or unlinked crate `baz2`
    |
-help: consider importing the `baz2` crate
+help: you might be missing a crate named `baz2`, add it to your project and import it in your code
    |
 LL + extern crate baz2;
    |

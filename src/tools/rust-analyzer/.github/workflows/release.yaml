@@ -17,38 +17,49 @@ env:
   RUSTUP_MAX_RETRIES: 10
   FETCH_DEPTH: 0 # pull in the tags for the version string
   MACOSX_DEPLOYMENT_TARGET: 13.0
-  CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-  CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
+  ZIG_VERSION: 0.13.0
+  ZIGBUILD_VERSION: 0.19.8
 
 jobs:
   dist:
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
     strategy:
       matrix:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             code-target: win32-x64
+            pgo: clap-rs/clap@v4.5.36
           - os: windows-latest
             target: i686-pc-windows-msvc
+            pgo: clap-rs/clap@v4.5.36
           - os: windows-latest
             target: aarch64-pc-windows-msvc
             code-target: win32-arm64
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            # Use a container with glibc 2.28
+            # Zig is not used because it doesn't work with PGO
+            container: quay.io/pypa/manylinux_2_28_x86_64
             code-target: linux-x64
-            container: rockylinux:8
-          - os: ubuntu-20.04
+            pgo: clap-rs/clap@v4.5.36
+          - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
+            container: quay.io/pypa/manylinux_2_28_aarch64
             code-target: linux-arm64
-          - os: ubuntu-20.04
+            pgo: clap-rs/clap@v4.5.36
+          - os: ubuntu-latest
             target: arm-unknown-linux-gnueabihf
+            zig_target: arm-unknown-linux-gnueabihf.2.28
             code-target: linux-armhf
           - os: macos-13
             target: x86_64-apple-darwin
             code-target: darwin-x64
-          - os: macos-13
+            pgo: clap-rs/clap@v4.5.36
+          - os: macos-14
             target: aarch64-apple-darwin
             code-target: darwin-arm64
+            pgo: clap-rs/clap@v4.5.36
 
     name: dist (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
@@ -63,39 +74,39 @@ jobs:
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
 
-      - name: Install toolchain dependencies
-        if: matrix.container == 'rockylinux:8'
-        shell: bash
+      - name: Install Node.js toolchain
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install rustup
+        if: ${{ matrix.container }}
         run: |
-          dnf install -y gcc
-          curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" | sh -s -- --profile minimal --default-toolchain none -y
-          echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> $GITHUB_PATH
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install Rust toolchain
         run: |
           rustup update --no-self-update stable
+          # llvm-tools contain the llvm-profdata tool which is needed for PGO
+          rustup component add rust-src ${{ matrix.pgo && 'llvm-tools' || '' }}
           rustup target add ${{ matrix.target }}
-          rustup component add rust-src
 
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
+      - name: Install Zig toolchain
+        if: ${{ matrix.zig_target }}
+        run: |
+          which cargo
+          curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-$(uname -m)-${ZIG_VERSION}.tar.xz" | sudo tar JxC /usr/local
+          sudo ln -s "/usr/local/zig-linux-$(uname -m)-${ZIG_VERSION}/zig" /usr/local/bin/zig
+          curl -L "https://github.com/rust-cross/cargo-zigbuild/releases/download/v${ZIGBUILD_VERSION}/cargo-zigbuild-v${ZIGBUILD_VERSION}.x86_64-unknown-linux-musl.tar.gz" | tar zxC ~/.cargo/bin
 
-      - name: Update apt repositories
-        if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'arm-unknown-linux-gnueabihf'
-        run: sudo apt-get update
+      - name: Dist (plain)
+        if: ${{ !matrix.zig_target }}
+        run: cargo xtask dist --client-patch-version ${{ github.run_number }} ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
 
-      - name: Install AArch64 target toolchain
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: sudo apt-get install gcc-aarch64-linux-gnu
-
-      - name: Install ARM target toolchain
-        if: matrix.target == 'arm-unknown-linux-gnueabihf'
-        run: sudo apt-get install gcc-arm-linux-gnueabihf
-
-      - name: Dist
-        run: cargo xtask dist --client-patch-version ${{ github.run_number }}
+      - name: Dist (using zigbuild)
+        if: ${{ matrix.zig_target }}
+        run: RA_TARGET=${{ matrix.zig_target}} cargo xtask dist --client-patch-version ${{ github.run_number }} --zig ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
 
       - run: npm ci
         working-directory: editors/code
@@ -138,6 +149,7 @@ jobs:
           path: ./dist
 
   dist-x86_64-unknown-linux-musl:
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
     name: dist (x86_64-unknown-linux-musl)
     runs-on: ubuntu-latest
     env:
@@ -183,6 +195,7 @@ jobs:
           path: ./dist
 
   publish:
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
     name: publish
     runs-on: ubuntu-latest
     needs: ["dist", "dist-x86_64-unknown-linux-musl"]
@@ -190,7 +203,7 @@ jobs:
       - name: Install Nodejs
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - run: echo "TAG=$(date --iso -u)" >> $GITHUB_ENV
         if: github.ref == 'refs/heads/release'
@@ -257,24 +270,24 @@ jobs:
         working-directory: ./editors/code
 
       - name: Publish Extension (Code Marketplace, release)
-        if: github.ref == 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
+        if: github.ref == 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
         working-directory: ./editors/code
         # token from https://dev.azure.com/rust-analyzer/
         run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
 
       - name: Publish Extension (OpenVSX, release)
-        if: github.ref == 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
+        if: github.ref == 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
         working-directory: ./editors/code
         run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
         timeout-minutes: 2
 
       - name: Publish Extension (Code Marketplace, nightly)
-        if: github.ref != 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
+        if: github.ref != 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
         working-directory: ./editors/code
         run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix --pre-release
 
       - name: Publish Extension (OpenVSX, nightly)
-        if: github.ref != 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
+        if: github.ref != 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
         working-directory: ./editors/code
         run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
         timeout-minutes: 2

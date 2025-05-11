@@ -20,7 +20,7 @@ macro_rules! mac_variant {
 mac_variant!(MARKER);
 
 // We also accept visibilities on variants syntactically but not semantically.
-#[cfg(FALSE)]
+#[cfg(false)]
 enum E {
     pub U,
     pub(crate) T(u8),

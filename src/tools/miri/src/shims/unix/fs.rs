@@ -2,10 +2,9 @@
 
 use std::borrow::Cow;
 use std::fs::{
-    DirBuilder, File, FileType, Metadata, OpenOptions, ReadDir, read_dir, remove_dir, remove_file,
-    rename,
+    DirBuilder, File, FileType, OpenOptions, ReadDir, read_dir, remove_dir, remove_file, rename,
 };
-use std::io::{self, ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
+use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
@@ -13,106 +12,11 @@ use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashMap;
 
 use self::shims::time::system_time_to_duration;
-use crate::helpers::check_min_arg_count;
-use crate::shims::files::{EvalContextExt as _, FileDescription, FileDescriptionRef};
+use crate::helpers::check_min_vararg_count;
+use crate::shims::files::FileHandle;
 use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::unix::fd::{FlockOp, UnixFileDescription};
 use crate::*;
-
-#[derive(Debug)]
-struct FileHandle {
-    file: File,
-    writable: bool,
-}
-
-impl FileDescription for FileHandle {
-    fn name(&self) -> &'static str {
-        "file"
-    }
-
-    fn read<'tcx>(
-        &self,
-        _self_ref: &FileDescriptionRef,
-        communicate_allowed: bool,
-        ptr: Pointer,
-        len: usize,
-        dest: &MPlaceTy<'tcx>,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx> {
-        assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        let mut bytes = vec![0; len];
-        let result = (&mut &self.file).read(&mut bytes);
-        match result {
-            Ok(read_size) => ecx.return_read_success(ptr, &bytes, read_size, dest),
-            Err(e) => ecx.set_last_error_and_return(e, dest),
-        }
-    }
-
-    fn write<'tcx>(
-        &self,
-        _self_ref: &FileDescriptionRef,
-        communicate_allowed: bool,
-        ptr: Pointer,
-        len: usize,
-        dest: &MPlaceTy<'tcx>,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx> {
-        assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
-        let result = (&mut &self.file).write(bytes);
-        match result {
-            Ok(write_size) => ecx.return_write_success(write_size, dest),
-            Err(e) => ecx.set_last_error_and_return(e, dest),
-        }
-    }
-
-    fn seek<'tcx>(
-        &self,
-        communicate_allowed: bool,
-        offset: SeekFrom,
-    ) -> InterpResult<'tcx, io::Result<u64>> {
-        assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        interp_ok((&mut &self.file).seek(offset))
-    }
-
-    fn close<'tcx>(
-        self: Box<Self>,
-        communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        // We sync the file if it was opened in a mode different than read-only.
-        if self.writable {
-            // `File::sync_all` does the checks that are done when closing a file. We do this to
-            // to handle possible errors correctly.
-            let result = self.file.sync_all();
-            // Now we actually close the file and return the result.
-            drop(*self);
-            interp_ok(result)
-        } else {
-            // We drop the file, this closes it but ignores any errors
-            // produced when closing it. This is done because
-            // `File::sync_all` cannot be done over files like
-            // `/dev/urandom` which are read-only. Check
-            // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439
-            // for a deeper discussion.
-            drop(*self);
-            interp_ok(Ok(()))
-        }
-    }
-
-    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<Metadata>> {
-        interp_ok(self.file.metadata())
-    }
-
-    fn is_tty(&self, communicate_allowed: bool) -> bool {
-        communicate_allowed && self.file.is_terminal()
-    }
-
-    fn as_unix(&self) -> &dyn UnixFileDescription {
-        self
-    }
-}
 
 impl UnixFileDescription for FileHandle {
     fn pread<'tcx>(
@@ -121,8 +25,8 @@ impl UnixFileDescription for FileHandle {
         offset: u64,
         ptr: Pointer,
         len: usize,
-        dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         let mut bytes = vec![0; len];
@@ -139,11 +43,17 @@ impl UnixFileDescription for FileHandle {
                 .expect("failed to restore file position, this shouldn't be possible");
             res
         };
-        let result = f();
-        match result {
-            Ok(read_size) => ecx.return_read_success(ptr, &bytes, read_size, dest),
-            Err(e) => ecx.set_last_error_and_return(e, dest),
-        }
+        let result = match f() {
+            Ok(read_size) => {
+                // If reading to `bytes` did not fail, we write those bytes to the buffer.
+                // Crucially, if fewer than `bytes.len()` bytes were read, only write
+                // that much into the output buffer!
+                ecx.write_bytes_ptr(ptr, bytes[..read_size].iter().copied())?;
+                Ok(read_size)
+            }
+            Err(e) => Err(IoError::HostError(e)),
+        };
+        finish.call(ecx, result)
     }
 
     fn pwrite<'tcx>(
@@ -152,8 +62,8 @@ impl UnixFileDescription for FileHandle {
         ptr: Pointer,
         len: usize,
         offset: u64,
-        dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         // Emulates pwrite using seek + write + seek to restore cursor position.
@@ -171,10 +81,7 @@ impl UnixFileDescription for FileHandle {
             res
         };
         let result = f();
-        match result {
-            Ok(write_size) => ecx.return_write_success(write_size, dest),
-            Err(e) => ecx.set_last_error_and_return(e, dest),
-        }
+        finish.call(ecx, result.map_err(IoError::HostError))
     }
 
     fn flock<'tcx>(
@@ -183,99 +90,98 @@ impl UnixFileDescription for FileHandle {
         op: FlockOp,
     ) -> InterpResult<'tcx, io::Result<()>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        #[cfg(target_family = "unix")]
-        {
-            use std::os::fd::AsRawFd;
+        cfg_match! {
+            all(target_family = "unix", not(target_os = "solaris")) => {
+                use std::os::fd::AsRawFd;
 
-            use FlockOp::*;
-            // We always use non-blocking call to prevent interpreter from being blocked
-            let (host_op, lock_nb) = match op {
-                SharedLock { nonblocking } => (libc::LOCK_SH | libc::LOCK_NB, nonblocking),
-                ExclusiveLock { nonblocking } => (libc::LOCK_EX | libc::LOCK_NB, nonblocking),
-                Unlock => (libc::LOCK_UN, false),
-            };
+                use FlockOp::*;
+                // We always use non-blocking call to prevent interpreter from being blocked
+                let (host_op, lock_nb) = match op {
+                    SharedLock { nonblocking } => (libc::LOCK_SH | libc::LOCK_NB, nonblocking),
+                    ExclusiveLock { nonblocking } => (libc::LOCK_EX | libc::LOCK_NB, nonblocking),
+                    Unlock => (libc::LOCK_UN, false),
+                };
 
-            let fd = self.file.as_raw_fd();
-            let ret = unsafe { libc::flock(fd, host_op) };
-            let res = match ret {
-                0 => Ok(()),
-                -1 => {
-                    let err = io::Error::last_os_error();
-                    if !lock_nb && err.kind() == io::ErrorKind::WouldBlock {
-                        throw_unsup_format!("blocking `flock` is not currently supported");
-                    }
-                    Err(err)
-                }
-                ret => panic!("Unexpected return value from flock: {ret}"),
-            };
-            interp_ok(res)
-        }
-
-        #[cfg(target_family = "windows")]
-        {
-            use std::os::windows::io::AsRawHandle;
-
-            use windows_sys::Win32::Foundation::{
-                ERROR_IO_PENDING, ERROR_LOCK_VIOLATION, FALSE, HANDLE, TRUE,
-            };
-            use windows_sys::Win32::Storage::FileSystem::{
-                LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY, LockFileEx, UnlockFile,
-            };
-
-            let fh = self.file.as_raw_handle() as HANDLE;
-
-            use FlockOp::*;
-            let (ret, lock_nb) = match op {
-                SharedLock { nonblocking } | ExclusiveLock { nonblocking } => {
-                    // We always use non-blocking call to prevent interpreter from being blocked
-                    let mut flags = LOCKFILE_FAIL_IMMEDIATELY;
-                    if matches!(op, ExclusiveLock { .. }) {
-                        flags |= LOCKFILE_EXCLUSIVE_LOCK;
-                    }
-                    let ret = unsafe { LockFileEx(fh, flags, 0, !0, !0, &mut std::mem::zeroed()) };
-                    (ret, nonblocking)
-                }
-                Unlock => {
-                    let ret = unsafe { UnlockFile(fh, 0, 0, !0, !0) };
-                    (ret, false)
-                }
-            };
-
-            let res = match ret {
-                TRUE => Ok(()),
-                FALSE => {
-                    let mut err = io::Error::last_os_error();
-                    // This only runs on Windows hosts so we can use `raw_os_error`.
-                    // We have to be careful not to forward that error code to target code.
-                    let code: u32 = err.raw_os_error().unwrap().try_into().unwrap();
-                    if matches!(code, ERROR_IO_PENDING | ERROR_LOCK_VIOLATION) {
-                        if lock_nb {
-                            // The io error mapping does not know about these error codes,
-                            // so we translate it to `WouldBlock` manually.
-                            let desc = format!("LockFileEx wouldblock error: {err}");
-                            err = io::Error::new(io::ErrorKind::WouldBlock, desc);
-                        } else {
+                let fd = self.file.as_raw_fd();
+                let ret = unsafe { libc::flock(fd, host_op) };
+                let res = match ret {
+                    0 => Ok(()),
+                    -1 => {
+                        let err = io::Error::last_os_error();
+                        if !lock_nb && err.kind() == io::ErrorKind::WouldBlock {
                             throw_unsup_format!("blocking `flock` is not currently supported");
                         }
+                        Err(err)
                     }
-                    Err(err)
-                }
-                _ => panic!("Unexpected return value: {ret}"),
-            };
-            interp_ok(res)
-        }
+                    ret => panic!("Unexpected return value from flock: {ret}"),
+                };
+                interp_ok(res)
+            }
+            target_family = "windows" => {
+                use std::os::windows::io::AsRawHandle;
 
-        #[cfg(not(any(target_family = "unix", target_family = "windows")))]
-        {
-            let _ = op;
-            compile_error!("flock is supported only on UNIX and Windows hosts");
+                use windows_sys::Win32::Foundation::{
+                    ERROR_IO_PENDING, ERROR_LOCK_VIOLATION, FALSE, HANDLE, TRUE,
+                };
+                use windows_sys::Win32::Storage::FileSystem::{
+                    LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY, LockFileEx, UnlockFile,
+                };
+
+                let fh = self.file.as_raw_handle() as HANDLE;
+
+                use FlockOp::*;
+                let (ret, lock_nb) = match op {
+                    SharedLock { nonblocking } | ExclusiveLock { nonblocking } => {
+                        // We always use non-blocking call to prevent interpreter from being blocked
+                        let mut flags = LOCKFILE_FAIL_IMMEDIATELY;
+                        if matches!(op, ExclusiveLock { .. }) {
+                            flags |= LOCKFILE_EXCLUSIVE_LOCK;
+                        }
+                        let ret = unsafe { LockFileEx(fh, flags, 0, !0, !0, &mut std::mem::zeroed()) };
+                        (ret, nonblocking)
+                    }
+                    Unlock => {
+                        let ret = unsafe { UnlockFile(fh, 0, 0, !0, !0) };
+                        (ret, false)
+                    }
+                };
+
+                let res = match ret {
+                    TRUE => Ok(()),
+                    FALSE => {
+                        let mut err = io::Error::last_os_error();
+                        // This only runs on Windows hosts so we can use `raw_os_error`.
+                        // We have to be careful not to forward that error code to target code.
+                        let code: u32 = err.raw_os_error().unwrap().try_into().unwrap();
+                        if matches!(code, ERROR_IO_PENDING | ERROR_LOCK_VIOLATION) {
+                            if lock_nb {
+                                // The io error mapping does not know about these error codes,
+                                // so we translate it to `WouldBlock` manually.
+                                let desc = format!("LockFileEx wouldblock error: {err}");
+                                err = io::Error::new(io::ErrorKind::WouldBlock, desc);
+                            } else {
+                                throw_unsup_format!("blocking `flock` is not currently supported");
+                            }
+                        }
+                        Err(err)
+                    }
+                    _ => panic!("Unexpected return value: {ret}"),
+                };
+                interp_ok(res)
+            }
+            _ => {
+                let _ = op;
+                throw_unsup_format!(
+                    "flock is supported only on UNIX (except Solaris) and Windows hosts"
+                );
+            }
         }
     }
 }
 
 impl<'tcx> EvalContextExtPrivate<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn macos_fbsd_solaris_write_buf(
+    fn macos_fbsd_solarish_write_stat_buf(
         &mut self,
         metadata: FileMetadata,
         buf_op: &OpTy<'tcx>,
@@ -323,9 +229,9 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         if matches!(&*this.tcx.sess.target.os, "solaris" | "illumos") {
-            // FIXME: write st_fstype field once libc is updated.
-            // https://github.com/rust-lang/libc/pull/4145
-            //this.write_int_fields_named(&[("st_fstype", 0)], &buf)?;
+            let st_fstype = this.project_field_named(&buf, "st_fstype")?;
+            // This is an array; write 0 into first element so that it encodes the empty string.
+            this.write_int(0, &this.project_index(&st_fstype, 0)?)?;
         }
 
         interp_ok(0)
@@ -454,9 +360,12 @@ fn maybe_sync_file(
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn open(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, Scalar> {
-        let [path_raw, flag] = check_min_arg_count("open", args)?;
-
+    fn open(
+        &mut self,
+        path_raw: &OpTy<'tcx>,
+        flag: &OpTy<'tcx>,
+        varargs: &[OpTy<'tcx>],
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let path_raw = this.read_pointer(path_raw)?;
@@ -509,7 +418,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Get the mode.  On macOS, the argument type `mode_t` is actually `u16`, but
             // C integer promotion rules mean that on the ABI level, it gets passed as `u32`
             // (see https://github.com/rust-lang/rust/issues/71915).
-            let [_, _, mode] = check_min_arg_count("open(pathname, O_CREAT, ...)", args)?;
+            let [mode] = check_min_vararg_count("open(pathname, O_CREAT, ...)", varargs)?;
             let mode = this.read_scalar(mode)?.to_u32()?;
 
             #[cfg(unix)]
@@ -593,7 +502,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(fd)?))
     }
 
-    fn lseek64(&mut self, fd_num: i32, offset: i128, whence: i32) -> InterpResult<'tcx, Scalar> {
+    fn lseek64(
+        &mut self,
+        fd_num: i32,
+        offset: i128,
+        whence: i32,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         // Isolation check is done via `FileDescription` trait.
@@ -601,7 +516,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let seek_from = if whence == this.eval_libc_i32("SEEK_SET") {
             if offset < 0 {
                 // Negative offsets return `EINVAL`.
-                return this.set_last_error_and_return_i64(LibcError("EINVAL"));
+                return this.set_last_error_and_return(LibcError("EINVAL"), dest);
             } else {
                 SeekFrom::Start(u64::try_from(offset).unwrap())
             }
@@ -610,19 +525,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else if whence == this.eval_libc_i32("SEEK_END") {
             SeekFrom::End(i64::try_from(offset).unwrap())
         } else {
-            return this.set_last_error_and_return_i64(LibcError("EINVAL"));
+            return this.set_last_error_and_return(LibcError("EINVAL"), dest);
         };
 
         let communicate = this.machine.communicate();
 
         let Some(fd) = this.machine.fds.get(fd_num) else {
-            return this.set_last_error_and_return_i64(LibcError("EBADF"));
+            return this.set_last_error_and_return(LibcError("EBADF"), dest);
         };
         let result = fd.seek(communicate, seek_from)?.map(|offset| i64::try_from(offset).unwrap());
         drop(fd);
 
         let result = this.try_unwrap_io_result(result)?;
-        interp_ok(Scalar::from_i64(result))
+        this.write_int(result, dest)?;
+        interp_ok(())
     }
 
     fn unlink(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
@@ -670,7 +586,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
-    fn macos_fbsd_solaris_stat(
+    fn macos_fbsd_solarish_stat(
         &mut self,
         path_op: &OpTy<'tcx>,
         buf_op: &OpTy<'tcx>,
@@ -696,11 +612,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.macos_fbsd_solaris_write_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.macos_fbsd_solarish_write_stat_buf(metadata, buf_op)?))
     }
 
     // `lstat` is used to get symlink metadata.
-    fn macos_fbsd_solaris_lstat(
+    fn macos_fbsd_solarish_lstat(
         &mut self,
         path_op: &OpTy<'tcx>,
         buf_op: &OpTy<'tcx>,
@@ -728,10 +644,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.macos_fbsd_solaris_write_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.macos_fbsd_solarish_write_stat_buf(metadata, buf_op)?))
     }
 
-    fn macos_fbsd_solaris_fstat(
+    fn macos_fbsd_solarish_fstat(
         &mut self,
         fd_op: &OpTy<'tcx>,
         buf_op: &OpTy<'tcx>,
@@ -758,7 +674,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(metadata) => metadata,
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
-        interp_ok(Scalar::from_i32(this.macos_fbsd_solaris_write_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.macos_fbsd_solarish_write_stat_buf(metadata, buf_op)?))
     }
 
     fn linux_statx(
@@ -1111,6 +1027,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Size::from_bytes(size),
                     dirent_layout.align.abi,
                     MiriMemoryKind::Runtime.into(),
+                    AllocInit::Uninit,
                 )?;
                 let entry: Pointer = entry.into();
 
@@ -1170,6 +1087,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let dirp = this.read_target_usize(dirp_op)?;
+        let result_place = this.deref_pointer_as(result_op, this.machine.layouts.mut_raw_ptr)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -1255,15 +1173,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                     _ => unreachable!(),
                 }
-
-                let result_place = this.deref_pointer(result_op)?;
                 this.write_scalar(this.read_scalar(entry_op)?, &result_place)?;
 
                 Scalar::from_i32(0)
             }
             None => {
                 // end of stream: return 0, assign *result=NULL
-                this.write_null(&this.deref_pointer(result_op)?)?;
+                this.write_null(&result_place)?;
                 Scalar::from_i32(0)
             }
             Some(Err(e)) => {
@@ -1311,22 +1227,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         // FIXME: Support ftruncate64 for all FDs
-        let FileHandle { file, writable } = fd.downcast::<FileHandle>().ok_or_else(|| {
+        let file = fd.downcast::<FileHandle>().ok_or_else(|| {
             err_unsup_format!("`ftruncate64` is only supported on file-backed file descriptors")
         })?;
 
-        if *writable {
+        if file.writable {
             if let Ok(length) = length.try_into() {
-                let result = file.set_len(length);
-                drop(fd);
+                let result = file.file.set_len(length);
                 let result = this.try_unwrap_io_result(result.map(|_| 0i32))?;
                 interp_ok(Scalar::from_i32(result))
             } else {
-                drop(fd);
                 this.set_last_error_and_return_i32(LibcError("EINVAL"))
             }
         } else {
-            drop(fd);
             // The file is not writable
             this.set_last_error_and_return_i32(LibcError("EINVAL"))
         }
@@ -1358,11 +1271,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
         // Only regular files support synchronization.
-        let FileHandle { file, writable } = fd.downcast::<FileHandle>().ok_or_else(|| {
+        let file = fd.downcast::<FileHandle>().ok_or_else(|| {
             err_unsup_format!("`fsync` is only supported on file-backed file descriptors")
         })?;
-        let io_result = maybe_sync_file(file, *writable, File::sync_all);
-        drop(fd);
+        let io_result = maybe_sync_file(&file.file, file.writable, File::sync_all);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
@@ -1382,11 +1294,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
         // Only regular files support synchronization.
-        let FileHandle { file, writable } = fd.downcast::<FileHandle>().ok_or_else(|| {
+        let file = fd.downcast::<FileHandle>().ok_or_else(|| {
             err_unsup_format!("`fdatasync` is only supported on file-backed file descriptors")
         })?;
-        let io_result = maybe_sync_file(file, *writable, File::sync_data);
-        drop(fd);
+        let io_result = maybe_sync_file(&file.file, file.writable, File::sync_data);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
@@ -1425,11 +1336,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
         // Only regular files support synchronization.
-        let FileHandle { file, writable } = fd.downcast::<FileHandle>().ok_or_else(|| {
+        let file = fd.downcast::<FileHandle>().ok_or_else(|| {
             err_unsup_format!("`sync_data_range` is only supported on file-backed file descriptors")
         })?;
-        let io_result = maybe_sync_file(file, *writable, File::sync_data);
-        drop(fd);
+        let io_result = maybe_sync_file(&file.file, file.writable, File::sync_data);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
@@ -1555,7 +1465,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
     fn mkstemp(&mut self, template_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        use rand::seq::SliceRandom;
+        use rand::seq::IndexedRandom;
 
         // POSIX defines the template string.
         const TEMPFILE_TEMPLATE_STR: &str = "XXXXXX";

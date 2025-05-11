@@ -6,5 +6,5 @@
 //@ normalize-stderr: ".rs:\d+:\d+" -> ".rs:LL:CC"
 
 fn main() {
-    let _moved @ _from = String::from("foo");
+    let _moved @ _from = String::from("foo"); //~ ERROR use of moved value
 }

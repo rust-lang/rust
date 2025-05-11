@@ -13,10 +13,10 @@
 
 use std::time::Instant;
 
+use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::dep_graph;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -83,15 +83,15 @@ pub(crate) fn compile_codegen_unit(
         // Instantiate monomorphizations without filling out definitions yet...
         let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
         {
-            let cx = CodegenCx::new(tcx, cgu, &llvm_module);
+            let mut cx = CodegenCx::new(tcx, cgu, &llvm_module);
             let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
             for &(mono_item, data) in &mono_items {
                 mono_item.predefine::<Builder<'_, '_, '_>>(&cx, data.linkage, data.visibility);
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.
-            for &(mono_item, _) in &mono_items {
-                mono_item.define::<Builder<'_, '_, '_>>(&cx);
+            for &(mono_item, item_data) in &mono_items {
+                mono_item.define::<Builder<'_, '_, '_>>(&mut cx, item_data);
             }
 
             // If this codegen unit contains the main function, also create the
@@ -133,11 +133,7 @@ pub(crate) fn compile_codegen_unit(
             }
         }
 
-        ModuleCodegen {
-            name: cgu_name.to_string(),
-            module_llvm: llvm_module,
-            kind: ModuleKind::Regular,
-        }
+        ModuleCodegen::new_regular(cgu_name.to_string(), llvm_module)
     }
 
     (module, cost)
@@ -157,9 +153,7 @@ pub(crate) fn linkage_to_llvm(linkage: Linkage) -> llvm::Linkage {
         Linkage::LinkOnceODR => llvm::Linkage::LinkOnceODRLinkage,
         Linkage::WeakAny => llvm::Linkage::WeakAnyLinkage,
         Linkage::WeakODR => llvm::Linkage::WeakODRLinkage,
-        Linkage::Appending => llvm::Linkage::AppendingLinkage,
         Linkage::Internal => llvm::Linkage::InternalLinkage,
-        Linkage::Private => llvm::Linkage::PrivateLinkage,
         Linkage::ExternalWeak => llvm::Linkage::ExternalWeakLinkage,
         Linkage::Common => llvm::Linkage::CommonLinkage,
     }

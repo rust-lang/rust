@@ -2,8 +2,8 @@
 // typeck and codegen.
 
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_middle::mir;
 
+use crate::mir;
 use crate::ty::{self, Ty};
 
 /// Types that are represented as ints.

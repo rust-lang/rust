@@ -10,18 +10,17 @@ use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
-use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{Node, PatKind, TyKind};
+use rustc_hir::{self as hir, Node, PatKind, TyKind};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
 use rustc_session::lint::builtin::DEAD_CODE;
+use rustc_session::lint::{self, LintExpectationId};
 use rustc_span::{Symbol, sym};
 
 use crate::errors::{
@@ -185,7 +184,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             rhs: &'tcx hir::Expr<'tcx>,
         ) -> bool {
             match (&lhs.kind, &rhs.kind) {
-                (hir::ExprKind::Path(ref qpath_l), hir::ExprKind::Path(ref qpath_r)) => {
+                (hir::ExprKind::Path(qpath_l), hir::ExprKind::Path(qpath_r)) => {
                     if let (Res::Local(id_l), Res::Local(id_r)) = (
                         typeck_results.qpath_res(qpath_l, lhs.hir_id),
                         typeck_results.qpath_res(qpath_r, rhs.hir_id),
@@ -359,10 +358,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             if let Some(local_impl_of) = impl_of.as_local()
                 && let Some(local_def_id) = def_id.as_local()
                 && let Some(fn_sig) =
-                    self.tcx.hir().fn_sig_by_hir_id(self.tcx.local_def_id_to_hir_id(local_def_id))
+                    self.tcx.hir_fn_sig_by_hir_id(self.tcx.local_def_id_to_hir_id(local_def_id))
                 && matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None)
                 && let TyKind::Path(hir::QPath::Resolved(_, path)) =
-                    self.tcx.hir().expect_item(local_impl_of).expect_impl().self_ty.kind
+                    self.tcx.hir_expect_item(local_impl_of).expect_impl().self_ty.kind
                 && let Res::Def(def_kind, did) = path.res
             {
                 match def_kind {
@@ -422,10 +421,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 }
                 hir::ItemKind::ForeignMod { .. } => {}
                 hir::ItemKind::Trait(..) => {
-                    for impl_def_id in self.tcx.all_impls(item.owner_id.to_def_id()) {
-                        if let Some(local_def_id) = impl_def_id.as_local()
-                            && let ItemKind::Impl(impl_ref) =
-                                self.tcx.hir().expect_item(local_def_id).kind
+                    for &impl_def_id in self.tcx.local_trait_impls(item.owner_id.def_id) {
+                        if let ItemKind::Impl(impl_ref) = self.tcx.hir_expect_item(impl_def_id).kind
                         {
                             // skip items
                             // mark dependent traits live
@@ -449,7 +446,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     for impl_id in self.tcx.all_impls(trait_id) {
                         if let Some(local_impl_id) = impl_id.as_local()
                             && let ItemKind::Impl(impl_ref) =
-                                self.tcx.hir().expect_item(local_impl_id).kind
+                                self.tcx.hir_expect_item(local_impl_id).kind
                         {
                             if !matches!(trait_item.kind, hir::TraitItemKind::Type(..))
                                 && !ty_ref_to_pub_struct(self.tcx, impl_ref.self_ty)
@@ -460,7 +457,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                             }
 
                             // mark self_ty live
-                            intravisit::walk_ty(self, impl_ref.self_ty);
+                            intravisit::walk_unambig_ty(self, impl_ref.self_ty);
                             if let Some(&impl_item_id) =
                                 self.tcx.impl_item_implementor_ids(impl_id).get(&trait_item_id)
                             {
@@ -532,7 +529,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn impl_item_with_used_self(&mut self, impl_id: hir::ItemId, impl_item_id: LocalDefId) -> bool {
         if let TyKind::Path(hir::QPath::Resolved(_, path)) =
-            self.tcx.hir().item(impl_id).expect_impl().self_ty.kind
+            self.tcx.hir_item(impl_id).expect_impl().self_ty.kind
             && let Res::Def(def_kind, def_id) = path.res
             && let Some(local_def_id) = def_id.as_local()
             && matches!(def_kind, DefKind::Struct | DefKind::Enum | DefKind::Union)
@@ -560,7 +557,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let old_maybe_typeck_results =
             self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
-        let body = self.tcx.hir().body(body);
+        let body = self.tcx.hir_body(body);
         self.visit_body(body);
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
@@ -637,10 +634,6 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                 let res = self.typeck_results().qpath_res(path, pat.hir_id);
                 self.handle_field_pattern_match(pat, res, fields);
             }
-            PatKind::Path(ref qpath) => {
-                let res = self.typeck_results().qpath_res(qpath, pat.hir_id);
-                self.handle_res(res);
-            }
             PatKind::TupleStruct(ref qpath, fields, dotdot) => {
                 let res = self.typeck_results().qpath_res(qpath, pat.hir_id);
                 self.handle_tuple_field_pattern_match(pat, res, fields, dotdot);
@@ -650,6 +643,17 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
 
         intravisit::walk_pat(self, pat);
         self.in_pat = false;
+    }
+
+    fn visit_pat_expr(&mut self, expr: &'tcx rustc_hir::PatExpr<'tcx>) {
+        match &expr.kind {
+            rustc_hir::PatExprKind::Path(qpath) => {
+                let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
+                self.handle_res(res);
+            }
+            _ => {}
+        }
+        intravisit::walk_pat_expr(self, expr);
     }
 
     fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
@@ -692,8 +696,8 @@ fn has_allow_dead_code_or_lang_attr(
 
     fn has_allow_expect_dead_code(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        let lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
-        matches!(lint_level, lint::Allow | lint::Expect(_))
+        let lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).level;
+        matches!(lint_level, lint::Allow | lint::Expect)
     }
 
     fn has_used_like_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
@@ -744,8 +748,8 @@ fn check_item<'tcx>(
 
     match tcx.def_kind(id.owner_id) {
         DefKind::Enum => {
-            let item = tcx.hir().item(id);
-            if let hir::ItemKind::Enum(ref enum_def, _) = item.kind {
+            let item = tcx.hir_item(id);
+            if let hir::ItemKind::Enum(_, ref enum_def, _) = item.kind {
                 if let Some(comes_from_allow) = allow_dead_code {
                     worklist.extend(
                         enum_def.variants.iter().map(|variant| (variant.def_id, comes_from_allow)),
@@ -766,14 +770,14 @@ fn check_item<'tcx>(
                 .iter()
                 .filter_map(|def_id| def_id.as_local());
 
-            let ty_is_pub = ty_ref_to_pub_struct(tcx, tcx.hir().item(id).expect_impl().self_ty);
+            let ty_is_pub = ty_ref_to_pub_struct(tcx, tcx.hir_item(id).expect_impl().self_ty);
 
             // And we access the Map here to get HirId from LocalDefId
             for local_def_id in local_def_ids {
                 // check the function may construct Self
                 let mut may_construct_self = false;
                 if let Some(fn_sig) =
-                    tcx.hir().fn_sig_by_hir_id(tcx.local_def_id_to_hir_id(local_def_id))
+                    tcx.hir_fn_sig_by_hir_id(tcx.local_def_id_to_hir_id(local_def_id))
                 {
                     may_construct_self =
                         matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None);
@@ -799,8 +803,8 @@ fn check_item<'tcx>(
             }
         }
         DefKind::Struct => {
-            let item = tcx.hir().item(id);
-            if let hir::ItemKind::Struct(ref variant_data, _) = item.kind
+            let item = tcx.hir_item(id);
+            if let hir::ItemKind::Struct(_, ref variant_data, _) = item.kind
                 && let Some(ctor_def_id) = variant_data.ctor_def_id()
             {
                 struct_constructors.insert(ctor_def_id, item.owner_id.def_id);
@@ -821,7 +825,7 @@ fn check_trait_item(
 ) {
     use hir::TraitItemKind::{Const, Fn};
     if matches!(tcx.def_kind(id.owner_id), DefKind::AssocConst | DefKind::AssocFn) {
-        let trait_item = tcx.hir().trait_item(id);
+        let trait_item = tcx.hir_trait_item(id);
         if matches!(trait_item.kind, Const(_, Some(_)) | Fn(..))
             && let Some(comes_from_allow) =
                 has_allow_dead_code_or_lang_attr(tcx, trait_item.owner_id.def_id)
@@ -911,7 +915,7 @@ fn live_symbols_and_ignored_derived_traits(
 struct DeadItem {
     def_id: LocalDefId,
     name: Symbol,
-    level: lint::Level,
+    level: (lint::Level, Option<LintExpectationId>),
 }
 
 struct DeadVisitor<'tcx> {
@@ -955,9 +959,10 @@ impl<'tcx> DeadVisitor<'tcx> {
         ShouldWarnAboutField::Yes
     }
 
-    fn def_lint_level(&self, id: LocalDefId) -> lint::Level {
+    fn def_lint_level(&self, id: LocalDefId) -> (lint::Level, Option<LintExpectationId>) {
         let hir_id = self.tcx.local_def_id_to_hir_id(id);
-        self.tcx.lint_level_at_node(DEAD_CODE, hir_id).0
+        let level = self.tcx.lint_level_at_node(DEAD_CODE, hir_id);
+        (level.level, level.lint_id)
     }
 
     // # Panics
@@ -981,7 +986,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                 && let Some(enum_did) = tcx.opt_parent(may_variant.to_def_id())
                 && let Some(enum_local_id) = enum_did.as_local()
                 && let Node::Item(item) = tcx.hir_node_by_def_id(enum_local_id)
-                && let ItemKind::Enum(_, _) = item.kind
+                && let ItemKind::Enum(..) = item.kind
             {
                 enum_local_id
             } else {
@@ -1056,7 +1061,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                 let tuple_fields = if let Some(parent_id) = parent_item
                     && let node = tcx.hir_node_by_def_id(parent_id)
                     && let hir::Node::Item(hir::Item {
-                        kind: hir::ItemKind::Struct(hir::VariantData::Tuple(fields, _, _), _),
+                        kind: hir::ItemKind::Struct(_, hir::VariantData::Tuple(fields, _, _), _),
                         ..
                     }) = node
                 {
@@ -1125,8 +1130,9 @@ impl<'tcx> DeadVisitor<'tcx> {
         if dead_codes.is_empty() {
             return;
         }
-        dead_codes.sort_by_key(|v| v.level);
-        for group in dead_codes[..].chunk_by(|a, b| a.level == b.level) {
+        // FIXME: `dead_codes` should probably be morally equivalent to `IndexMap<(Level, LintExpectationId), (DefId, Symbol)>`
+        dead_codes.sort_by_key(|v| v.level.0);
+        for group in dead_codes.chunk_by(|a, b| a.level == b.level) {
             self.lint_at_single_level(&group, participle, Some(def_id), report_on);
         }
     }
@@ -1231,7 +1237,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                     continue;
                 }
 
-                let is_positional = variant.fields.raw.first().map_or(false, |field| {
+                let is_positional = variant.fields.raw.first().is_some_and(|field| {
                     field.name.as_str().starts_with(|c: char| c.is_ascii_digit())
                 });
                 let report_on =

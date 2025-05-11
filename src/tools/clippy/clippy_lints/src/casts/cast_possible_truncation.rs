@@ -1,16 +1,16 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::expr_or_init;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{get_discriminant_value, is_isize_or_usize};
+use clippy_utils::{expr_or_init, sym};
+use rustc_abi::IntegerType;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, FloatTy, Ty};
 use rustc_span::Span;
-use rustc_target::abi::IntegerType;
 
 use super::{CAST_ENUM_TRUNCATION, CAST_POSSIBLE_TRUNCATION, utils};
 
@@ -64,16 +64,16 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
             apply_reductions(cx, nbits, left, signed).min(max_bits.unwrap_or(u64::MAX))
         },
         ExprKind::MethodCall(method, _, [lo, hi], _) => {
-            if method.ident.as_str() == "clamp" {
+            if method.ident.as_str() == "clamp"
                 //FIXME: make this a diagnostic item
-                if let (Some(lo_bits), Some(hi_bits)) = (get_constant_bits(cx, lo), get_constant_bits(cx, hi)) {
-                    return lo_bits.max(hi_bits);
-                }
+                && let (Some(lo_bits), Some(hi_bits)) = (get_constant_bits(cx, lo), get_constant_bits(cx, hi))
+            {
+                return lo_bits.max(hi_bits);
             }
             nbits
         },
         ExprKind::MethodCall(method, _value, [], _) => {
-            if method.ident.name.as_str() == "signum" {
+            if method.ident.name == sym::signum {
                 0 // do not lint if cast comes from a `signum` function
             } else {
                 nbits
@@ -185,7 +185,7 @@ fn offer_suggestion(
 ) {
     let cast_to_snip = snippet(cx, cast_to_span, "..");
     let suggestion = if cast_to_snip == "_" {
-        format!("{}.try_into()", Sugg::hir(cx, cast_expr, "..").maybe_par())
+        format!("{}.try_into()", Sugg::hir(cx, cast_expr, "..").maybe_paren())
     } else {
         format!("{cast_to_snip}::try_from({})", Sugg::hir(cx, cast_expr, ".."))
     };

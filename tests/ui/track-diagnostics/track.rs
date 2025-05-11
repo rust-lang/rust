@@ -15,4 +15,7 @@
 
 fn main() {
     break rust
+    //~^ ERROR cannot find value `rust` in this scope
+    //~| ERROR `break` outside of a loop or labeled block
+    //~| ERROR It looks like you're trying to break rust; would you like some ICE?
 }

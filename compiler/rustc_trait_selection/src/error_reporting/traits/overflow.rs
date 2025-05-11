@@ -5,10 +5,9 @@ use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_infer::traits::{Obligation, PredicateObligation};
 use rustc_middle::ty::print::{FmtPrinter, Print};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, Upcast};
 use rustc_session::Limit;
 use rustc_span::Span;
-use rustc_type_ir::Upcast;
 use tracing::debug;
 
 use crate::error_reporting::TypeErrCtxt;
@@ -141,7 +140,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             obligation.cause.span,
             suggest_increasing_limit,
             |err| {
-                let mut long_ty_file = None;
                 self.note_obligation_cause_code(
                     obligation.cause.body_id,
                     err,
@@ -150,17 +148,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     obligation.cause.code(),
                     &mut vec![],
                     &mut Default::default(),
-                    &mut long_ty_file,
                 );
-                if let Some(file) = long_ty_file {
-                    err.note(format!(
-                        "the full name for the type has been written to '{}'",
-                        file.display(),
-                    ));
-                    err.note(
-                        "consider using `--verbose` to print the full type name to the console",
-                    );
-                }
             },
         );
     }
@@ -196,7 +184,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             suggest_increasing_limit,
         );
         self.note_obligation_cause(&mut err, &obligation);
-        self.point_at_returns_when_relevant(&mut err, &obligation);
         err.emit()
     }
 }

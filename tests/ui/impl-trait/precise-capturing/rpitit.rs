@@ -3,8 +3,6 @@
 // To fix this soundly, we need to make sure that all the trait header args
 // remain captured, since they affect trait selection.
 
-#![feature(precise_capturing_in_traits)]
-
 fn eq_types<T>(_: T, _: T) {}
 
 trait TraitLt<'a: 'a> {

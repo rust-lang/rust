@@ -16,10 +16,10 @@ impl<F: Duh> Trait for F {
 
 type Sendable = impl Send;
 
+#[define_opaque(Sendable)]
 fn foo() -> impl Trait<Assoc = Sendable> {
     //~^ WARN opaque type `impl Trait<Assoc = Sendable>` does not satisfy its associated type bounds
     42
 }
 
-fn main() {
-}
+fn main() {}

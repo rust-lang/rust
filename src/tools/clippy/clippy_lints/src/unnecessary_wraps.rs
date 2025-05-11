@@ -93,13 +93,13 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
 
         // Abort if the method is implementing a trait or of it a trait method.
         let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
-        if let Node::Item(item) = cx.tcx.parent_hir_node(hir_id) {
-            if matches!(
+        if let Node::Item(item) = cx.tcx.parent_hir_node(hir_id)
+            && matches!(
                 item.kind,
                 ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
-            ) {
-                return;
-            }
+            )
+        {
+            return;
         }
 
         // Get the wrapper and inner types, if can't, abort.

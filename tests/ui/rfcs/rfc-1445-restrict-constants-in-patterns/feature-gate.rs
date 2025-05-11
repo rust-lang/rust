@@ -3,11 +3,10 @@
 // used in a match.
 
 //@ revisions: with_gate no_gate
-
+//@[with_gate] check-pass
 // gate-test-structural_match
 
 #![allow(unused)]
-#![feature(rustc_attrs)]
 #![cfg_attr(with_gate, feature(structural_match))]
 
 
@@ -17,8 +16,7 @@ struct Foo {
 
 const FOO: Foo = Foo { x: 0 };
 
-#[rustc_error]
-fn main() { //[with_gate]~ ERROR fatal error triggered by #[rustc_error]
+fn main() {
     let y = Foo { x: 1 };
     match y {
         FOO => { }

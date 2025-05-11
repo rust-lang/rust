@@ -105,7 +105,11 @@ impl CargoProject {
             .arg(self.manifest_path(dirs))
             .arg("--target-dir")
             .arg(self.target_dir(dirs))
-            .arg("--locked");
+            .arg("--locked")
+            // bootstrap sets both RUSTC and RUSTC_WRAPPER to the same wrapper. RUSTC is already
+            // respected by the rustc-clif wrapper, but RUSTC_WRAPPER will misinterpret rustc-clif
+            // as filename, so we need to unset it.
+            .env_remove("RUSTC_WRAPPER");
 
         if dirs.frozen {
             cmd.arg("--frozen");

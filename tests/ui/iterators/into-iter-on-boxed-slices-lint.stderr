@@ -9,12 +9,14 @@ LL |     boxed.into_iter();
    = note: `#[warn(boxed_slice_into_iter)]` on by default
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
-LL |     boxed.iter();
-   |           ~~~~
+LL -     boxed.into_iter();
+LL +     boxed.iter();
+   |
 help: or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value
    |
-LL |     IntoIterator::into_iter(boxed);
-   |     ++++++++++++++++++++++++     ~
+LL -     boxed.into_iter();
+LL +     IntoIterator::into_iter(boxed);
+   |
 
 warning: this method call resolves to `<&Box<[T]> as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<Box<[T]> as IntoIterator>::into_iter` in Rust 2024
   --> $DIR/into-iter-on-boxed-slices-lint.rs:13:29

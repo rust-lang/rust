@@ -14,6 +14,7 @@ use std::fmt;
 use rustc_errors::{DiagInner, TRACK_DIAGNOSTIC};
 use rustc_middle::dep_graph::{DepNodeExt, TaskDepsRef};
 use rustc_middle::ty::tls;
+use rustc_query_impl::QueryCtxt;
 use rustc_query_system::dep_graph::dep_node::default_dep_kind_debug;
 use rustc_query_system::dep_graph::{DepContext, DepKind, DepNode};
 
@@ -41,9 +42,7 @@ fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
 fn track_diagnostic<R>(diagnostic: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {
     tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
-            if let Some(diagnostics) = icx.diagnostics {
-                diagnostics.lock().extend(Some(diagnostic.clone()));
-            }
+            icx.tcx.dep_graph.record_diagnostic(QueryCtxt::new(icx.tcx), &diagnostic);
 
             // Diagnostics are tracked, we can ignore the dependency.
             let icx = tls::ImplicitCtxt { task_deps: TaskDepsRef::Ignore, ..icx.clone() };

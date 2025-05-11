@@ -3,6 +3,8 @@
 // warnings when used, and that binaries produced by it can also be successfully executed.
 // See https://github.com/rust-lang/rust/pull/23238
 
+//@ ignore-cross-compile target-cpu=native doesn't work well when cross compiling
+
 use run_make_support::{run, rustc};
 
 fn main() {

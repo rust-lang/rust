@@ -1,5 +1,5 @@
 error[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
-  --> $DIR/orphan-check-opaque-types-not-covering.rs:14:6
+  --> $DIR/orphan-check-opaque-types-not-covering.rs:15:6
    |
 LL | impl<T> foreign::Trait0<Local, T, ()> for Identity<T> {}
    |      ^ type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
@@ -8,7 +8,7 @@ LL | impl<T> foreign::Trait0<Local, T, ()> for Identity<T> {}
    = note: in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last
 
 error[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
-  --> $DIR/orphan-check-opaque-types-not-covering.rs:23:6
+  --> $DIR/orphan-check-opaque-types-not-covering.rs:25:6
    |
 LL | impl<T> foreign::Trait1<Local, T> for Opaque<T> {}
    |      ^ type parameter `T` must be covered by another type when it appears before the first local type (`Local`)

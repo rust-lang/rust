@@ -16,10 +16,12 @@ LL |     fn foo() {}
    |     ^^^^^^^^
 help: use fully-qualified syntax to disambiguate
    |
-LL |     <Test as Trait1>::foo()
-   |     ~~~~~~~~~~~~~~~~~~
-LL |     <Test as Trait2>::foo()
-   |     ~~~~~~~~~~~~~~~~~~
+LL -     Test::foo()
+LL +     <Test as Trait1>::foo()
+   |
+LL -     Test::foo()
+LL +     <Test as Trait2>::foo()
+   |
 
 error: aborting due to 1 previous error
 

@@ -4,7 +4,7 @@
 trait B { fn f(a: A) -> A; }
 //[new]~^ ERROR expected a type, found a trait
 //[new]~| ERROR expected a type, found a trait
-//[old]~^^^ ERROR the trait `A` cannot be made into an object
+//[old]~^^^ ERROR the trait `A` is not dyn compatible
 //[old]~| WARN trait objects without an explicit `dyn` are deprecated
 //[old]~| WARN trait objects without an explicit `dyn` are deprecated
 //[old]~| WARN trait objects without an explicit `dyn` are deprecated
@@ -14,7 +14,7 @@ trait B { fn f(a: A) -> A; }
 trait A { fn g(b: B) -> B; }
 //[new]~^ ERROR expected a type, found a trait
 //[new]~| ERROR expected a type, found a trait
-//[old]~^^^ ERROR the trait `B` cannot be made into an object
+//[old]~^^^ ERROR the trait `B` is not dyn compatible
 //[old]~| WARN trait objects without an explicit `dyn` are deprecated
 //[old]~| WARN trait objects without an explicit `dyn` are deprecated
 //[old]~| WARN trait objects without an explicit `dyn` are deprecated

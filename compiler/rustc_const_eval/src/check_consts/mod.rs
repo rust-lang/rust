@@ -4,12 +4,13 @@
 //! has interior mutability or needs to be dropped, as well as the visitor that emits errors when
 //! it finds operations that are invalid in a certain context.
 
+use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_errors::DiagCtxtHandle;
+use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{self, PolyFnSig, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Symbol;
-use {rustc_attr_parsing as attr, rustc_hir as hir};
 
 pub use self::qualifs::Qualif;
 
@@ -31,7 +32,7 @@ pub struct ConstCx<'mir, 'tcx> {
 impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>) -> Self {
         let typing_env = body.typing_env(tcx);
-        let const_kind = tcx.hir().body_const_context(body.source.def_id().expect_local());
+        let const_kind = tcx.hir_body_const_context(body.source.def_id().expect_local());
         ConstCx { body, tcx, typing_env, const_kind }
     }
 
@@ -56,7 +57,7 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
         self.const_kind == Some(hir::ConstContext::ConstFn)
             && (self.tcx.features().staged_api()
                 || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked)
-            && is_safe_to_expose_on_stable_const_fn(self.tcx, self.def_id().to_def_id())
+            && is_fn_or_trait_safe_to_expose_on_stable(self.tcx, self.def_id().to_def_id())
     }
 
     fn is_async(&self) -> bool {
@@ -80,31 +81,23 @@ pub fn rustc_allow_const_fn_unstable(
     def_id: LocalDefId,
     feature_gate: Symbol,
 ) -> bool {
-    let attrs = tcx.hir().attrs(tcx.local_def_id_to_hir_id(def_id));
-    attr::rustc_allow_const_fn_unstable(tcx.sess, attrs).any(|name| name == feature_gate)
+    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
+
+    find_attr!(attrs, AttributeKind::AllowConstFnUnstable(syms) if syms.contains(&feature_gate))
 }
 
-/// Returns `true` if the given `const fn` is "safe to expose on stable".
-///
-/// Panics if the given `DefId` does not refer to a `const fn`.
+/// Returns `true` if the given `def_id` (trait or function) is "safe to expose on stable".
 ///
 /// This is relevant within a `staged_api` crate. Unlike with normal features, the use of unstable
 /// const features *recursively* taints the functions that use them. This is to avoid accidentally
 /// exposing e.g. the implementation of an unstable const intrinsic on stable. So we partition the
 /// world into two functions: those that are safe to expose on stable (and hence may not use
 /// unstable features, not even recursively), and those that are not.
-pub fn is_safe_to_expose_on_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    // A default body in a `#[const_trait]` is not const-stable because const trait fns currently
-    // cannot be const-stable. These functions can't be called from anything stable, so we shouldn't
-    // restrict them to only call const-stable functions.
+pub fn is_fn_or_trait_safe_to_expose_on_stable(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    // A default body in a `#[const_trait]` is const-stable when the trait is const-stable.
     if tcx.is_const_default_method(def_id) {
-        // FIXME(const_trait_impl): we have to eventually allow some of these if these things can ever be stable.
-        // They should probably behave like regular `const fn` for that...
-        return false;
+        return is_fn_or_trait_safe_to_expose_on_stable(tcx, tcx.parent(def_id));
     }
-
-    // Const-stability is only relevant for `const fn`.
-    assert!(tcx.is_const_fn(def_id));
 
     match tcx.lookup_const_stability(def_id) {
         None => {

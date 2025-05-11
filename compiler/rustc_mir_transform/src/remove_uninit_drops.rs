@@ -62,6 +62,10 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUninitDrops {
             block.terminator_mut().kind = TerminatorKind::Goto { target: *target };
         }
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 fn is_needs_drop_and_init<'tcx>(

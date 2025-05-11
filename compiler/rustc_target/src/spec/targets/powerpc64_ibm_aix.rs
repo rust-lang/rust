@@ -1,18 +1,16 @@
-use crate::spec::{Cc, LinkerFlavor, Target, base};
+use crate::spec::{Cc, LinkerFlavor, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::aix::opts();
     base.max_atomic_width = Some(64);
-    base.add_pre_link_args(LinkerFlavor::Unix(Cc::No), &[
-        "-b64",
-        "-bpT:0x100000000",
-        "-bpD:0x110000000",
-        "-bcdtors:all:0:s",
-    ]);
+    base.add_pre_link_args(
+        LinkerFlavor::Unix(Cc::No),
+        &["-b64", "-bpT:0x100000000", "-bpD:0x110000000", "-bcdtors:all:0:s"],
+    );
 
     Target {
         llvm_target: "powerpc64-ibm-aix".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("64-bit AIX (7.2 and newer)".into()),
             tier: Some(3),
             host_tools: Some(false),

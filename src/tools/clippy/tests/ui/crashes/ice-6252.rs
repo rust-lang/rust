@@ -7,8 +7,11 @@ trait TypeVal<T> {
 struct Five;
 struct Multiply<N, M> {
     _n: PhantomData,
+    //~^ ERROR: cannot find type
 }
 impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
+//~^ ERROR: cannot find type
+//~| ERROR: not all trait items
 
 fn main() {
     [1; <Multiply<Five, Five>>::VAL];

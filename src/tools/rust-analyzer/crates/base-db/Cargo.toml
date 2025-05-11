@@ -10,13 +10,13 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
-doctest = false
 
 [dependencies]
-lz4_flex = { version = "0.11", default-features = false }
-
 la-arena.workspace = true
-ra-salsa.workspace = true
+dashmap.workspace = true
+salsa.workspace = true
+salsa-macros.workspace = true
+query-group.workspace = true
 rustc-hash.workspace = true
 triomphe.workspace = true
 semver.workspace = true
@@ -24,7 +24,6 @@ tracing.workspace = true
 
 # local deps
 cfg.workspace = true
-stdx.workspace = true
 syntax.workspace = true
 vfs.workspace = true
 span.workspace = true

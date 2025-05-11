@@ -32,20 +32,15 @@ declare_lint_pass!(InlineFnWithoutBody => [INLINE_FN_WITHOUT_BODY]);
 impl<'tcx> LateLintPass<'tcx> for InlineFnWithoutBody {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Fn(_, TraitFn::Required(_)) = item.kind
-            && let Some(attr) = cx
-                .tcx
-                .hir()
-                .attrs(item.hir_id())
-                .iter()
-                .find(|a| a.has_name(sym::inline))
+            && let Some(attr) = cx.tcx.hir_attrs(item.hir_id()).iter().find(|a| a.has_name(sym::inline))
         {
             span_lint_and_then(
                 cx,
                 INLINE_FN_WITHOUT_BODY,
-                attr.span,
+                attr.span(),
                 format!("use of `#[inline]` on trait method `{}` which has no body", item.ident),
                 |diag| {
-                    diag.suggest_remove_item(cx, attr.span, "remove", Applicability::MachineApplicable);
+                    diag.suggest_remove_item(cx, attr.span(), "remove", Applicability::MachineApplicable);
                 },
             );
         }

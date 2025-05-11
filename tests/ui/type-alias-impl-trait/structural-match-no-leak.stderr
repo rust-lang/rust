@@ -1,8 +1,8 @@
 error: opaque type `Bar` cannot be used in patterns
   --> $DIR/structural-match-no-leak.rs:16:9
    |
-LL | const LEAK_FREE: bar::Bar = bar::leak_free();
-   | ------------------------- constant defined here
+LL | const LEAK_FREE: Bar = leak_free();
+   | -------------------- constant defined here
 ...
 LL |         LEAK_FREE => (),
    |         ^^^^^^^^^ opaque type can't be used in patterns

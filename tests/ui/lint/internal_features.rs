@@ -4,8 +4,7 @@
 //~^ ERROR: internal
 //~| ERROR: internal
 
-extern "rust-intrinsic" {
-    fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
-}
+#[rustc_intrinsic]
+unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
 fn main() {}

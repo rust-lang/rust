@@ -5,25 +5,25 @@ use crate::{
     utils::convert_param_list_to_arg_list,
 };
 use either::Either;
-use hir::{db::HirDatabase, HasVisibility};
+use hir::{HasVisibility, db::HirDatabase};
 use ide_db::{
+    FxHashMap, FxHashSet,
     assists::{AssistId, GroupLabel},
     path_transform::PathTransform,
     syntax_helpers::suggest_name,
-    FxHashMap, FxHashSet,
 };
 use itertools::Itertools;
 use syntax::{
+    AstNode, Edition, NodeOrToken, SmolStr, SyntaxKind, ToSmolStr,
     ast::{
-        self,
-        edit::{self, AstNodeEdit},
-        edit_in_place::AttrsOwnerEdit,
-        make, AssocItem, GenericArgList, GenericParamList, HasAttrs, HasGenericArgs,
+        self, AssocItem, GenericArgList, GenericParamList, HasAttrs, HasGenericArgs,
         HasGenericParams, HasName, HasTypeBounds, HasVisibility as astHasVisibility, Path,
         WherePred,
+        edit::{self, AstNodeEdit},
+        edit_in_place::AttrsOwnerEdit,
+        make,
     },
     ted::{self, Position},
-    AstNode, Edition, NodeOrToken, SmolStr, SyntaxKind, ToSmolStr,
 };
 
 // Assist: generate_delegate_trait
@@ -88,6 +88,10 @@ use syntax::{
 // }
 // ```
 pub(crate) fn generate_delegate_trait(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    if !ctx.config.code_action_grouping {
+        return None;
+    }
+
     let strukt = Struct::new(ctx.find_node_at_offset::<ast::Struct>()?)?;
 
     let field: Field = match ctx.find_node_at_offset::<ast::RecordField>() {
@@ -120,7 +124,7 @@ impl Field {
     ) -> Option<Field> {
         let db = ctx.sema.db;
 
-        let module = ctx.sema.file_to_module_def(ctx.file_id())?;
+        let module = ctx.sema.file_to_module_def(ctx.vfs_file_id())?;
         let edition = module.krate().edition(ctx.db());
 
         let (name, range, ty) = match f {
@@ -197,7 +201,7 @@ impl Struct {
     pub(crate) fn delegate(&self, field: Field, acc: &mut Assists, ctx: &AssistContext<'_>) {
         let db = ctx.db();
 
-        for delegee in &field.impls {
+        for (index, delegee) in field.impls.iter().enumerate() {
             let trait_ = match delegee {
                 Delegee::Bound(b) => b,
                 Delegee::Impls(i, _) => i,
@@ -225,7 +229,11 @@ impl Struct {
 
             acc.add_group(
                 &GroupLabel(format!("Generate delegate trait impls for field `{}`", field.name)),
-                AssistId("generate_delegate_trait", ide_db::assists::AssistKind::Generate),
+                AssistId(
+                    "generate_delegate_trait",
+                    ide_db::assists::AssistKind::Generate,
+                    Some(index),
+                ),
                 format!("Generate delegate trait impl `{}` for `{}`", signature, field.name),
                 field.range,
                 |builder| {
@@ -743,7 +751,7 @@ fn func_assoc_item(
     }
     .clone_for_update();
 
-    let body = make::block_expr(vec![], Some(call)).clone_for_update();
+    let body = make::block_expr(vec![], Some(call.into())).clone_for_update();
     let func = make::fn_(
         item.visibility(),
         item.name()?,
@@ -788,7 +796,9 @@ fn qualified_path(qual_path_ty: ast::Path, path_expr_seg: ast::Path) -> ast::Pat
 mod test {
 
     use super::*;
-    use crate::tests::{check_assist, check_assist_not_applicable};
+    use crate::tests::{
+        check_assist, check_assist_not_applicable, check_assist_not_applicable_no_grouping,
+    };
 
     #[test]
     fn test_tuple_struct_basic() {
@@ -1835,5 +1845,34 @@ impl<D, T: C<A>> C<D> for B<T> {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn delegate_trait_skipped_when_no_grouping() {
+        check_assist_not_applicable_no_grouping(
+            generate_delegate_trait,
+            r#"
+trait SomeTrait {
+    type T;
+    fn fn_(arg: u32) -> u32;
+    fn method_(&mut self) -> bool;
+}
+struct A;
+impl SomeTrait for A {
+    type T = u32;
+
+    fn fn_(arg: u32) -> u32 {
+        42
+    }
+
+    fn method_(&mut self) -> bool {
+        false
+    }
+}
+struct B {
+    a$0 : A,
+}
+"#,
+        );
     }
 }

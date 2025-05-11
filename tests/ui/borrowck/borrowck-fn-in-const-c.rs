@@ -14,7 +14,7 @@ impl Drop for DropString {
 const LOCAL_REF: fn() -> &'static str = {
     fn broken() -> &'static str {
         let local = DropString { inner: format!("Some local string") };
-        return &local.inner; //~ borrow may still be in use when destructor runs
+        return &local.inner; //~ ERROR borrow may still be in use when destructor runs
     }
     broken
 };

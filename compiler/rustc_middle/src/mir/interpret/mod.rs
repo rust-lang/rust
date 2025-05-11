@@ -15,12 +15,11 @@ use std::{fmt, io};
 use rustc_abi::{AddressSpace, Align, Endian, HasDataLayout, Size};
 use rustc_ast::{LitKind, Mutability};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lock;
-use rustc_errors::ErrorGuaranteed;
+use rustc_data_structures::sharded::ShardedHashMap;
+use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
 use tracing::{debug, trace};
 // Also make the error macros available from this module.
@@ -31,8 +30,8 @@ pub use {
 };
 
 pub use self::allocation::{
-    AllocBytes, AllocError, AllocRange, AllocResult, Allocation, ConstAllocation, InitChunk,
-    InitChunkIter, alloc_range,
+    AllocBytes, AllocError, AllocInit, AllocRange, AllocResult, Allocation, ConstAllocation,
+    InitChunk, InitChunkIter, alloc_range,
 };
 pub use self::error::{
     BadBytesAccess, CheckAlignMsg, CheckInAllocMsg, ErrorHandled, EvalStaticInitializerRawResult,
@@ -46,6 +45,7 @@ pub use self::pointer::{CtfeProvenance, Pointer, PointerArithmetic, Provenance};
 pub use self::value::Scalar;
 use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
+use crate::ty::print::with_no_trimmed_paths;
 use crate::ty::{self, Instance, Ty, TyCtxt};
 
 /// Uniquely identifies one of the following:
@@ -84,16 +84,6 @@ pub struct LitToConstInput<'tcx> {
     pub neg: bool,
 }
 
-/// Error type for `tcx.lit_to_const`.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable)]
-pub enum LitToConstError {
-    /// The literal's inferred type did not match the expected `ty` in the input.
-    /// This is used for graceful error handling (`span_delayed_bug`) in
-    /// type checking (`Const::from_anon_const`).
-    TypeError,
-    Reported(ErrorGuaranteed),
-}
-
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AllocId(pub NonZero<u64>);
 
@@ -115,7 +105,7 @@ enum AllocDiscriminant {
     Static,
 }
 
-pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>>(
+pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<'tcx>>(
     encoder: &mut E,
     tcx: TyCtxt<'tcx>,
     alloc_id: AllocId,
@@ -185,7 +175,7 @@ impl<'s> AllocDecodingSession<'s> {
     /// Decodes an `AllocId` in a thread-safe way.
     pub fn decode_alloc_id<'tcx, D>(&self, decoder: &mut D) -> AllocId
     where
-        D: TyDecoder<I = TyCtxt<'tcx>>,
+        D: TyDecoder<'tcx>,
     {
         // Read the index of the allocation.
         let idx = usize::try_from(decoder.read_u32()).unwrap();
@@ -400,35 +390,39 @@ pub const CTFE_ALLOC_SALT: usize = 0;
 
 pub(crate) struct AllocMap<'tcx> {
     /// Maps `AllocId`s to their corresponding allocations.
-    alloc_map: FxHashMap<AllocId, GlobalAlloc<'tcx>>,
+    // Note that this map on rustc workloads seems to be rather dense, but in miri workloads should
+    // be pretty sparse. In #136105 we considered replacing it with a (dense) Vec-based map, but
+    // since there are workloads where it can be sparse we decided to go with sharding for now. At
+    // least up to 32 cores the one workload tested didn't exhibit much difference between the two.
+    //
+    // Should be locked *after* locking dedup if locking both to avoid deadlocks.
+    to_alloc: ShardedHashMap<AllocId, GlobalAlloc<'tcx>>,
 
     /// Used to deduplicate global allocations: functions, vtables, string literals, ...
     ///
     /// The `usize` is a "salt" used by Miri to make deduplication imperfect, thus better emulating
     /// the actual guarantees.
-    dedup: FxHashMap<(GlobalAlloc<'tcx>, usize), AllocId>,
+    dedup: Lock<FxHashMap<(GlobalAlloc<'tcx>, usize), AllocId>>,
 
     /// The `AllocId` to assign to the next requested ID.
     /// Always incremented; never gets smaller.
-    next_id: AllocId,
+    next_id: AtomicU64,
 }
 
 impl<'tcx> AllocMap<'tcx> {
     pub(crate) fn new() -> Self {
         AllocMap {
-            alloc_map: Default::default(),
+            to_alloc: Default::default(),
             dedup: Default::default(),
-            next_id: AllocId(NonZero::new(1).unwrap()),
+            next_id: AtomicU64::new(1),
         }
     }
-    fn reserve(&mut self) -> AllocId {
-        let next = self.next_id;
-        self.next_id.0 = self.next_id.0.checked_add(1).expect(
-            "You overflowed a u64 by incrementing by 1... \
-             You've just earned yourself a free drink if we ever meet. \
-             Seriously, how did you do that?!",
-        );
-        next
+    fn reserve(&self) -> AllocId {
+        // Technically there is a window here where we overflow and then another thread
+        // increments `next_id` *again* and uses it before we panic and tear down the entire session.
+        // We consider this fine since such overflows cannot realistically occur.
+        let next_id = self.next_id.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        AllocId(NonZero::new(next_id).unwrap())
     }
 }
 
@@ -439,26 +433,29 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Make sure to call `set_alloc_id_memory` or `set_alloc_id_same_memory` before returning such
     /// an `AllocId` from a query.
     pub fn reserve_alloc_id(self) -> AllocId {
-        self.alloc_map.lock().reserve()
+        self.alloc_map.reserve()
     }
 
     /// Reserves a new ID *if* this allocation has not been dedup-reserved before.
     /// Should not be used for mutable memory.
     fn reserve_and_set_dedup(self, alloc: GlobalAlloc<'tcx>, salt: usize) -> AllocId {
-        let mut alloc_map = self.alloc_map.lock();
         if let GlobalAlloc::Memory(mem) = alloc {
             if mem.inner().mutability.is_mut() {
                 bug!("trying to dedup-reserve mutable memory");
             }
         }
         let alloc_salt = (alloc, salt);
-        if let Some(&alloc_id) = alloc_map.dedup.get(&alloc_salt) {
+        // Locking this *before* `to_alloc` also to ensure correct lock order.
+        let mut dedup = self.alloc_map.dedup.lock();
+        if let Some(&alloc_id) = dedup.get(&alloc_salt) {
             return alloc_id;
         }
-        let id = alloc_map.reserve();
+        let id = self.alloc_map.reserve();
         debug!("creating alloc {:?} with id {id:?}", alloc_salt.0);
-        alloc_map.alloc_map.insert(id, alloc_salt.0.clone());
-        alloc_map.dedup.insert(alloc_salt, id);
+        let had_previous = self.alloc_map.to_alloc.insert(id, alloc_salt.0.clone()).is_some();
+        // We just reserved, so should always be unique.
+        assert!(!had_previous);
+        dedup.insert(alloc_salt, id);
         id
     }
 
@@ -508,7 +505,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// local dangling pointers and allocations in constants/statics.
     #[inline]
     pub fn try_get_global_alloc(self, id: AllocId) -> Option<GlobalAlloc<'tcx>> {
-        self.alloc_map.lock().alloc_map.get(&id).cloned()
+        self.alloc_map.to_alloc.get(&id)
     }
 
     #[inline]
@@ -527,7 +524,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
     /// call this function twice, even with the same `Allocation` will ICE the compiler.
     pub fn set_alloc_id_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
-        if let Some(old) = self.alloc_map.lock().alloc_map.insert(id, GlobalAlloc::Memory(mem)) {
+        if let Some(old) = self.alloc_map.to_alloc.insert(id, GlobalAlloc::Memory(mem)) {
             bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
         }
     }
@@ -536,7 +533,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// call this function twice, even with the same `DefId` will ICE the compiler.
     pub fn set_nested_alloc_id_static(self, id: AllocId, def_id: LocalDefId) {
         if let Some(old) =
-            self.alloc_map.lock().alloc_map.insert(id, GlobalAlloc::Static(def_id.to_def_id()))
+            self.alloc_map.to_alloc.insert(id, GlobalAlloc::Static(def_id.to_def_id()))
         {
             bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
         }
@@ -566,7 +563,7 @@ pub fn write_target_uint(
 #[inline]
 pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, io::Error> {
     // This u128 holds an "any-size uint" (since smaller uints can fits in it)
-    let mut buf = [0u8; std::mem::size_of::<u128>()];
+    let mut buf = [0u8; size_of::<u128>()];
     // So we do not read exactly 16 bytes into the u128, just the "payload".
     let uint = match endianness {
         Endian::Little => {

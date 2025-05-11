@@ -6,7 +6,8 @@ use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{
-    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, peel_middle_ty_refs, return_ty,
+    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, is_expr_temporary_value, peel_middle_ty_refs,
+    return_ty, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -19,7 +20,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{
     self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionPredicate, TraitPredicate, Ty,
 };
-use rustc_span::{Symbol, sym};
+use rustc_span::Symbol;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
 
@@ -31,7 +32,7 @@ pub fn check<'tcx>(
     method_name: Symbol,
     receiver: &'tcx Expr<'_>,
     args: &'tcx [Expr<'_>],
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && args.is_empty()
@@ -152,7 +153,7 @@ fn check_addr_of_expr(
         }
         if let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
             && implements_trait(cx, receiver_ty, deref_trait_id, &[])
-            && cx.get_associated_type(receiver_ty, deref_trait_id, "Target") == Some(target_ty)
+            && cx.get_associated_type(receiver_ty, deref_trait_id, sym::Target) == Some(target_ty)
             // Make sure that it's actually calling the right `.to_string()`, (#10033)
             // *or* this is a `Cow::into_owned()` call (which would be the wrong into_owned receiver (str != Cow)
             // but that's ok for Cow::into_owned specifically)
@@ -207,7 +208,7 @@ fn check_into_iter_call_arg(
     expr: &Expr<'_>,
     method_name: Symbol,
     receiver: &Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr)
         && let Some(callee_def_id) = fn_def_id(cx, parent)
@@ -217,11 +218,16 @@ fn check_into_iter_call_arg(
         && implements_trait(cx, parent_ty, iterator_trait_id, &[])
         && let Some(item_ty) = get_iterator_item_ty(cx, parent_ty)
         && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
+        // If the receiver is a `Cow`, we can't remove the `into_owned` generally, see https://github.com/rust-lang/rust-clippy/issues/13624.
+        && !is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(receiver), sym::Cow)
+        // Calling `iter()` on a temporary object can lead to false positives. #14242
+        && !is_expr_temporary_value(cx, receiver)
     {
         if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver, true) {
             return true;
         }
-        let cloned_or_copied = if is_copy(cx, item_ty) && msrv.meets(msrvs::ITERATOR_COPIED) {
+
+        let cloned_or_copied = if is_copy(cx, item_ty) && msrv.meets(cx, msrvs::ITERATOR_COPIED) {
             "copied"
         } else {
             "cloned"
@@ -306,8 +312,7 @@ fn check_string_from_utf8<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, 
 /// call of a `to_owned`-like function is unnecessary.
 fn check_split_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, receiver: &Expr<'_>) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr)
-        && let Some((fn_name, argument_expr)) = get_fn_name_and_arg(cx, parent)
-        && fn_name.as_str() == "split"
+        && let Some((sym::split, argument_expr)) = get_fn_name_and_arg(cx, parent)
         && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
         && let Some(arg_snippet) = argument_expr.span.get_source_text(cx)
     {
@@ -316,7 +321,7 @@ fn check_split_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symb
         // add `.as_ref()` to the suggestion.
         let as_ref = if is_type_lang_item(cx, cx.typeck_results().expr_ty(expr), LangItem::String)
             && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
-            && cx.get_associated_type(cx.typeck_results().expr_ty(receiver), deref_trait_id, "Target")
+            && cx.get_associated_type(cx.typeck_results().expr_ty(receiver), deref_trait_id, sym::Target)
                 != Some(cx.tcx.types.str_)
         {
             ".as_ref()"
@@ -491,19 +496,19 @@ fn get_input_traits_and_projections<'tcx>(
 
 #[expect(clippy::too_many_lines)]
 fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<'a>) -> bool {
-    for (_, node) in cx.tcx.hir().parent_iter(expr.hir_id) {
+    for (_, node) in cx.tcx.hir_parent_iter(expr.hir_id) {
         match node {
             Node::Stmt(_) => return true,
-            Node::Block(..) => continue,
+            Node::Block(..) => {},
             Node::Item(item) => {
-                if let ItemKind::Fn(_, _, body_id) = &item.kind
+                if let ItemKind::Fn { body: body_id, .. } = &item.kind
                     && let output_ty = return_ty(cx, item.owner_id)
                     && rustc_hir_typeck::can_coerce(cx.tcx, cx.param_env, item.owner_id.def_id, ty, output_ty)
                 {
                     if has_lifetime(output_ty) && has_lifetime(ty) {
                         return false;
                     }
-                    let body = cx.tcx.hir().body(*body_id);
+                    let body = cx.tcx.hir_body(*body_id);
                     let body_expr = &body.value;
                     let mut count = 0;
                     return find_all_ret_expressions(cx, body_expr, |_| {
@@ -608,8 +613,7 @@ fn has_lifetime(ty: Ty<'_>) -> bool {
 
 /// Returns true if the named method is `Iterator::cloned` or `Iterator::copied`.
 fn is_cloned_or_copied(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
-    (method_name.as_str() == "cloned" || method_name.as_str() == "copied")
-        && is_diag_trait_item(cx, method_def_id, sym::Iterator)
+    matches!(method_name, sym::cloned | sym::copied) && is_diag_trait_item(cx, method_def_id, sym::Iterator)
 }
 
 /// Returns true if the named method can be used to convert the receiver to its "owned"
@@ -622,7 +626,7 @@ fn is_to_owned_like<'a>(cx: &LateContext<'a>, call_expr: &Expr<'a>, method_name:
 
 /// Returns true if the named method is `Cow::into_owned`.
 fn is_cow_into_owned(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
-    method_name.as_str() == "into_owned" && is_diag_item_method(cx, method_def_id, sym::Cow)
+    method_name == sym::into_owned && is_diag_item_method(cx, method_def_id, sym::Cow)
 }
 
 /// Returns true if the named method is `ToString::to_string` and it's called on a type that
@@ -642,7 +646,7 @@ fn is_to_string_on_string_like<'a>(
         && let GenericArgKind::Type(ty) = generic_arg.unpack()
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
-        && (cx.get_associated_type(ty, deref_trait_id, "Target") == Some(cx.tcx.types.str_)
+        && (cx.get_associated_type(ty, deref_trait_id, sym::Target) == Some(cx.tcx.types.str_)
             || implements_trait(cx, ty, as_ref_trait_id, &[cx.tcx.types.str_.into()]))
     {
         true

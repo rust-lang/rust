@@ -34,14 +34,18 @@ yields ()
         StorageDead(_5);
         StorageDead(_4);
         StorageDead(_3);
-        drop(_1) -> [return: bb1, unwind: bb2];
+        drop(_1) -> [return: bb1, unwind: bb3, drop: bb2];
     }
 
     bb1: {
         return;
     }
 
-    bb2 (cleanup): {
+    bb2: {
+        coroutine_drop;
+    }
+
+    bb3 (cleanup): {
         resume;
     }
 }

@@ -14,13 +14,13 @@ use rustc_hir::{
 };
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_middle::mir::FakeReadCause;
 use rustc_session::Session;
 use rustc_span::Span;
 
 use super::RvalueScopes;
 use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::Canonical;
+use crate::mir::FakeReadCause;
 use crate::traits::ObligationCause;
 use crate::ty::{
     self, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind, GenericArgs,
@@ -73,12 +73,12 @@ pub struct TypeckResults<'tcx> {
     /// Stores the actual binding mode for all instances of [`BindingMode`].
     pat_binding_modes: ItemLocalMap<BindingMode>,
 
-    /// Top-level patterns whose match ergonomics need to be desugared by the Rust 2021 -> 2024
-    /// migration lint. Problematic subpatterns are stored in the `Vec` for the lint to highlight.
-    rust_2024_migration_desugared_pats: ItemLocalMap<Vec<(Span, String)>>,
+    /// Top-level patterns incompatible with Rust 2024's match ergonomics. These will be translated
+    /// to a form valid in all Editions, either as a lint diagnostic or hard error.
+    rust_2024_migration_desugared_pats: ItemLocalMap<Rust2024IncompatiblePatInfo>,
 
-    /// Stores the types which were implicitly dereferenced in pattern binding modes
-    /// for later usage in THIR lowering. For example,
+    /// Stores the types which were implicitly dereferenced in pattern binding modes or deref
+    /// patterns for later usage in THIR lowering. For example,
     ///
     /// ```
     /// match &&Some(5i32) {
@@ -86,11 +86,20 @@ pub struct TypeckResults<'tcx> {
     ///     _ => {},
     /// }
     /// ```
-    /// leads to a `vec![&&Option<i32>, &Option<i32>]`. Empty vectors are not stored.
+    /// leads to a `vec![&&Option<i32>, &Option<i32>]` and
+    ///
+    /// ```
+    /// #![feature(deref_patterns)]
+    /// match &Box::new(Some(5i32)) {
+    ///     Some(n) => {},
+    ///     _ => {},
+    /// }
+    /// ```
+    /// leads to a `vec![&Box<Option<i32>>, Box<Option<i32>>]`. Empty vectors are not stored.
     ///
     /// See:
     /// <https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md#definitions>
-    pat_adjustments: ItemLocalMap<Vec<Ty<'tcx>>>,
+    pat_adjustments: ItemLocalMap<Vec<ty::adjustment::PatAdjustment<'tcx>>>,
 
     /// Set of reference patterns that match against a match-ergonomics inserted reference
     /// (as opposed to against a reference in the scrutinee type).
@@ -147,9 +156,7 @@ pub struct TypeckResults<'tcx> {
     coercion_casts: ItemLocalSet,
 
     /// Set of trait imports actually used in the method resolution.
-    /// This is used for warning unused imports. During type
-    /// checking, this `Lrc` should not be cloned: it must have a ref-count
-    /// of 1 so that we can insert things into the set mutably.
+    /// This is used for warning unused imports.
     pub used_trait_imports: UnordSet<LocalDefId>,
 
     /// If any errors occurred while type-checking this body,
@@ -160,7 +167,7 @@ pub struct TypeckResults<'tcx> {
     /// We also store the type here, so that the compiler can use it as a hint
     /// for figuring out hidden types, even if they are only set in dead code
     /// (which doesn't show up in MIR).
-    pub concrete_opaque_types: FxIndexMap<ty::OpaqueTypeKey<'tcx>, ty::OpaqueHiddenType<'tcx>>,
+    pub concrete_opaque_types: FxIndexMap<LocalDefId, ty::OpaqueHiddenType<'tcx>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.
@@ -199,12 +206,6 @@ pub struct TypeckResults<'tcx> {
     /// formatting modified file tests/ui/coroutine/retain-resume-ref.rs
     pub coroutine_stalled_predicates: FxIndexSet<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>,
 
-    /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
-    /// as `&[u8]`, depending on the pattern in which they are used.
-    /// This hashset records all instances where we behave
-    /// like this to allow `const_to_pat` to reliably handle this situation.
-    pub treat_byte_string_as_slice: ItemLocalSet,
-
     /// Contains the data for evaluating the effect of feature `capture_disjoint_fields`
     /// on closure size.
     pub closure_size_eval: LocalDefIdMap<ClosureSizeProfileData<'tcx>>,
@@ -239,7 +240,6 @@ impl<'tcx> TypeckResults<'tcx> {
             closure_fake_reads: Default::default(),
             rvalue_scopes: Default::default(),
             coroutine_stalled_predicates: Default::default(),
-            treat_byte_string_as_slice: Default::default(),
             closure_size_eval: Default::default(),
             offset_of_data: Default::default(),
         }
@@ -312,7 +312,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn node_type(&self, id: HirId) -> Ty<'tcx> {
         self.node_type_opt(id).unwrap_or_else(|| {
-            bug!("node_type: no type for node {}", tls::with(|tcx| tcx.hir().node_to_string(id)))
+            bug!("node_type: no type for node {}", tls::with(|tcx| tcx.hir_id_to_string(id)))
         })
     }
 
@@ -396,8 +396,10 @@ impl<'tcx> TypeckResults<'tcx> {
         matches!(self.type_dependent_defs().get(expr.hir_id), Some(Ok((DefKind::AssocFn, _))))
     }
 
-    pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> Option<BindingMode> {
-        self.pat_binding_modes().get(id).copied().or_else(|| {
+    /// Returns the computed binding mode for a `PatKind::Binding` pattern
+    /// (after match ergonomics adjustments).
+    pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> BindingMode {
+        self.pat_binding_modes().get(id).copied().unwrap_or_else(|| {
             s.dcx().span_bug(sp, "missing binding mode");
         })
     }
@@ -410,17 +412,21 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_binding_modes }
     }
 
-    pub fn pat_adjustments(&self) -> LocalTableInContext<'_, Vec<Ty<'tcx>>> {
+    pub fn pat_adjustments(
+        &self,
+    ) -> LocalTableInContext<'_, Vec<ty::adjustment::PatAdjustment<'tcx>>> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.pat_adjustments }
     }
 
-    pub fn pat_adjustments_mut(&mut self) -> LocalTableInContextMut<'_, Vec<Ty<'tcx>>> {
+    pub fn pat_adjustments_mut(
+        &mut self,
+    ) -> LocalTableInContextMut<'_, Vec<ty::adjustment::PatAdjustment<'tcx>>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_adjustments }
     }
 
     pub fn rust_2024_migration_desugared_pats(
         &self,
-    ) -> LocalTableInContext<'_, Vec<(Span, String)>> {
+    ) -> LocalTableInContext<'_, Rust2024IncompatiblePatInfo> {
         LocalTableInContext {
             hir_owner: self.hir_owner,
             data: &self.rust_2024_migration_desugared_pats,
@@ -429,7 +435,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn rust_2024_migration_desugared_pats_mut(
         &mut self,
-    ) -> LocalTableInContextMut<'_, Vec<(Span, String)>> {
+    ) -> LocalTableInContextMut<'_, Rust2024IncompatiblePatInfo> {
         LocalTableInContextMut {
             hir_owner: self.hir_owner,
             data: &mut self.rust_2024_migration_desugared_pats,
@@ -467,6 +473,21 @@ impl<'tcx> TypeckResults<'tcx> {
             }
         });
         has_ref_mut
+    }
+
+    /// How should a deref pattern find the place for its inner pattern to match on?
+    ///
+    /// In most cases, if the pattern recursively contains a `ref mut` binding, we find the inner
+    /// pattern's scrutinee by calling `DerefMut::deref_mut`, and otherwise we call `Deref::deref`.
+    /// However, for boxes we can use a built-in deref instead, which doesn't borrow the scrutinee;
+    /// in this case, we return `ByRef::No`.
+    pub fn deref_pat_borrow_mode(&self, pointer_ty: Ty<'_>, inner: &hir::Pat<'_>) -> ByRef {
+        if pointer_ty.is_box() {
+            ByRef::No
+        } else {
+            let mutable = self.pat_has_ref_mut_binding(inner);
+            ByRef::Yes(if mutable { Mutability::Mut } else { Mutability::Not })
+        }
     }
 
     /// For a given closure, returns the iterator of `ty::CapturedPlace`s that are captured
@@ -554,7 +575,7 @@ fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: HirId) {
     ty::tls::with(|tcx| {
         bug!(
             "node {} cannot be placed in TypeckResults with hir_owner {:?}",
-            tcx.hir().node_to_string(hir_id),
+            tcx.hir_id_to_string(hir_id),
             hir_owner
         )
     });
@@ -577,7 +598,7 @@ impl<'a, V> LocalTableInContext<'a, V> {
     }
 
     pub fn items(
-        &'a self,
+        &self,
     ) -> UnordItems<(hir::ItemLocalId, &'a V), impl Iterator<Item = (hir::ItemLocalId, &'a V)>>
     {
         self.data.items().map(|(id, value)| (*id, value))
@@ -695,6 +716,8 @@ pub type CanonicalUserTypeAnnotations<'tcx> =
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     pub user_ty: Box<CanonicalUserType<'tcx>>,
     pub span: Span,
     pub inferred_ty: Ty<'tcx>,
@@ -765,7 +788,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                             _ => false,
                         },
 
-                        GenericArgKind::Lifetime(r) => match *r {
+                        GenericArgKind::Lifetime(r) => match r.kind() {
                             ty::ReBound(debruijn, br) => {
                                 // We only allow a `ty::INNERMOST` index in generic parameters.
                                 assert_eq!(debruijn, ty::INNERMOST);
@@ -810,4 +833,18 @@ impl<'tcx> std::fmt::Display for UserTypeKind<'tcx> {
             Self::TypeOf(arg0, arg1) => write!(f, "TypeOf({:?}, {:?})", arg0, arg1),
         }
     }
+}
+
+/// Information on a pattern incompatible with Rust 2024, for use by the error/migration diagnostic
+/// emitted during THIR construction.
+#[derive(TyEncodable, TyDecodable, Debug, HashStable)]
+pub struct Rust2024IncompatiblePatInfo {
+    /// Labeled spans for `&`s, `&mut`s, and binding modifiers incompatible with Rust 2024.
+    pub primary_labels: Vec<(Span, String)>,
+    /// Whether any binding modifiers occur under a non-`move` default binding mode.
+    pub bad_modifiers: bool,
+    /// Whether any `&` or `&mut` patterns occur under a non-`move` default binding mode.
+    pub bad_ref_pats: bool,
+    /// If `true`, we can give a simpler suggestion solely by eliding explicit binding modifiers.
+    pub suggest_eliding_modes: bool,
 }

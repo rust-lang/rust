@@ -1,21 +1,22 @@
 error[E0782]: expected a type, found a trait
-  --> $DIR/ice-return-unsized-can-impl-2.rs:11:20
+  --> $DIR/ice-return-unsized-can-impl-2.rs:12:20
    |
 LL |     fn concrete(b: B) -> B;
    |                    ^
    |
-   = note: `B` it is dyn-incompatible, so it can't be `dyn`
+   = note: `B` is dyn-incompatible, otherwise a trait object could be used
 help: use a new generic type parameter, constrained by `B`
    |
-LL |     fn concrete<T: B>(b: T) -> B;
-   |                ++++++    ~
+LL -     fn concrete(b: B) -> B;
+LL +     fn concrete<T: B>(b: T) -> B;
+   |
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
 LL |     fn concrete(b: impl B) -> B;
    |                    ++++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/ice-return-unsized-can-impl-2.rs:11:26
+  --> $DIR/ice-return-unsized-can-impl-2.rs:12:26
    |
 LL |     fn concrete(b: B) -> B;
    |                          ^
@@ -31,11 +32,12 @@ error[E0782]: expected a type, found a trait
 LL |     fn f(a: A) -> A;
    |             ^
    |
-   = note: `A` it is dyn-incompatible, so it can't be `dyn`
+   = note: `A` is dyn-incompatible, otherwise a trait object could be used
 help: use a new generic type parameter, constrained by `A`
    |
-LL |     fn f<T: A>(a: T) -> A;
-   |         ++++++    ~
+LL -     fn f(a: A) -> A;
+LL +     fn f<T: A>(a: T) -> A;
+   |
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
 LL |     fn f(a: impl A) -> A;

@@ -1,22 +1,22 @@
-use base_db::ra_salsa::InternKey;
-use expect_test::{expect, Expect};
+use expect_test::{Expect, expect};
 use hir_def::db::DefDatabase;
-use hir_expand::files::InFileWrapper;
+use hir_expand::{HirFileId, files::InFileWrapper};
 use itertools::Itertools;
-use span::{HirFileId, TextRange};
+use salsa::plumbing::FromId;
+use span::TextRange;
 use syntax::{AstNode, AstPtr};
 use test_fixture::WithFixture;
 
 use crate::db::{HirDatabase, InternedClosureId};
-use crate::display::HirDisplay;
+use crate::display::{DisplayTarget, HirDisplay};
 use crate::mir::MirSpan;
 use crate::test_db::TestDB;
 
 use super::visit_module;
 
-fn check_closure_captures(ra_fixture: &str, expect: Expect) {
+fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
-    let module = db.module_for_file(file_id);
+    let module = db.module_for_file(file_id.file_id(&db));
     let def_map = module.def_map(&db);
 
     let mut defs = Vec::new();
@@ -24,11 +24,18 @@ fn check_closure_captures(ra_fixture: &str, expect: Expect) {
 
     let mut captures_info = Vec::new();
     for def in defs {
+        let def = match def {
+            hir_def::ModuleDefId::FunctionId(it) => it.into(),
+            hir_def::ModuleDefId::EnumVariantId(it) => it.into(),
+            hir_def::ModuleDefId::ConstId(it) => it.into(),
+            hir_def::ModuleDefId::StaticId(it) => it.into(),
+            _ => continue,
+        };
         let infer = db.infer(def);
         let db = &db;
         captures_info.extend(infer.closure_info.iter().flat_map(|(closure_id, (captures, _))| {
-            let closure = db.lookup_intern_closure(InternedClosureId::from_intern_id(closure_id.0));
-            let (_, source_map) = db.body_with_source_map(closure.0);
+            let closure = db.lookup_intern_closure(InternedClosureId::from_id(closure_id.0));
+            let source_map = db.body_with_source_map(closure.0).1;
             let closure_text_range = source_map
                 .expr_syntax(closure.1)
                 .expect("failed to map closure to SyntaxNode")
@@ -59,7 +66,11 @@ fn check_closure_captures(ra_fixture: &str, expect: Expect) {
                         .join(", "),
                 };
                 let place = capture.display_place(closure.0, db);
-                let capture_ty = capture.ty.skip_binders().display_test(db).to_string();
+                let capture_ty = capture
+                    .ty
+                    .skip_binders()
+                    .display_test(db, DisplayTarget::from_crate(db, module.krate()))
+                    .to_string();
                 let spans = capture
                     .spans()
                     .iter()
@@ -373,7 +384,9 @@ fn main() {
     };
 }
 "#,
-        expect!["57..149;20..25;78..80,98..100,118..124,134..135 ByRef(Mut { kind: Default }) a &'? mut bool"],
+        expect![
+            "57..149;20..25;78..80,98..100,118..124,134..135 ByRef(Mut { kind: Default }) a &'? mut bool"
+        ],
     );
 }
 

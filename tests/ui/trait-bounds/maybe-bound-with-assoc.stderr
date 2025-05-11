@@ -1,10 +1,10 @@
-warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
   --> $DIR/maybe-bound-with-assoc.rs:4:16
    |
 LL | fn hasassoc<T: ?HasAssoc<Assoc = ()>>() {}
    |                ^^^^^^^^^^^^^^^^^^^^^
 
-warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
   --> $DIR/maybe-bound-with-assoc.rs:8:15
    |
 LL | fn noassoc<T: ?NoAssoc<Missing = ()>>() {}
@@ -16,6 +16,6 @@ error[E0220]: associated type `Missing` not found for `NoAssoc`
 LL | fn noassoc<T: ?NoAssoc<Missing = ()>>() {}
    |                        ^^^^^^^ associated type `Missing` not found
 
-error: aborting due to 1 previous error; 2 warnings emitted
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0220`.

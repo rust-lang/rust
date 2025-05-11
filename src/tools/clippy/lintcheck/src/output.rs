@@ -94,8 +94,8 @@ impl ClippyWarning {
         Some(Self {
             name,
             diag,
-            url,
             krate: krate.to_string(),
+            url,
         })
     }
 

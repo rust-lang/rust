@@ -399,7 +399,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), false)
         }
         // macOS / iOS AArch64
-        "aarch64" if target.is_like_osx => {
+        "aarch64" if target.is_like_darwin => {
             emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), true)
         }
         "aarch64" => emit_aapcs_va_arg(bx, addr, target_ty),

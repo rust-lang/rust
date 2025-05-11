@@ -2,12 +2,12 @@ enum Either<T, U> { Left(T), Right(U) }
 struct S(Either<usize, usize>);
 
 fn main() {
-    match S(Either::Left(5)) {
+    match S(Either::Left(5)) { //~ NOTE this expression has type `S`
         Either::Right(_) => {}
         //~^ ERROR mismatched types
-        //~| expected `S`, found `Either<_, _>`
-        //~| expected struct `S`
-        //~| found enum `Either<_, _>`
+        //~| NOTE expected `S`, found `Either<_, _>`
+        //~| NOTE expected struct `S`
+        //~| NOTE found enum `Either<_, _>`
         _ => {}
     }
 }

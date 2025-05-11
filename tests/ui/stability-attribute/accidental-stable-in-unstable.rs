@@ -8,3 +8,4 @@ use core::unicode::UNICODE_VERSION; //~ ERROR use of unstable library feature `u
 // Known accidental stabilizations with known users
 // fully stable @ core::mem::transmute
 use core::intrinsics::transmute; // depended upon by rand_core
+//~^WARN deprecated

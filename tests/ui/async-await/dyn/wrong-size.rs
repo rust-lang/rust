@@ -1,7 +1,7 @@
 //@ edition: 2021
+//@ known-bug: #133119
 
 #![feature(async_fn_in_dyn_trait)]
-//~^ WARN the feature `async_fn_in_dyn_trait` is incomplete
 
 use std::future::Future;
 
@@ -19,5 +19,5 @@ impl AsyncTrait for &'static str {
 
 fn main() {
     let x: &dyn AsyncTrait = &"hello, world!";
-    //~^ ERROR `impl Future<Output = ()>` needs to have the same ABI as a pointer
+    // FIXME ~^ ERROR `impl Future<Output = ()>` needs to have the same ABI as a pointer
 }

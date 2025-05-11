@@ -1,6 +1,7 @@
 use std::fmt::Write;
 
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hashes::Hash64;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::ty::{Instance, TyCtxt};
 

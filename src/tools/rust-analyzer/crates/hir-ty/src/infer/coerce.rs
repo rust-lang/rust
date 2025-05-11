@@ -7,15 +7,14 @@
 
 use std::iter;
 
-use chalk_ir::{cast::Cast, BoundVar, Goal, Mutability, TyKind, TyVariableKind};
-use hir_def::{
-    hir::ExprId,
-    lang_item::{LangItem, LangItemTarget},
-};
+use chalk_ir::{BoundVar, Goal, Mutability, TyKind, TyVariableKind, cast::Cast};
+use hir_def::{hir::ExprId, lang_item::LangItem};
 use stdx::always;
 use triomphe::Arc;
 
 use crate::{
+    Canonical, DomainGoal, FnAbi, FnPointer, FnSig, Guidance, InEnvironment, Interner, Lifetime,
+    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
     autoderef::{Autoderef, AutoderefKind},
     db::HirDatabase,
     infer::{
@@ -23,8 +22,6 @@ use crate::{
         TypeError, TypeMismatch,
     },
     utils::ClosureSubst,
-    Canonical, DomainGoal, FnAbi, FnPointer, FnSig, Guidance, InEnvironment, Interner, Lifetime,
-    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
 };
 
 use super::unify::InferenceTable;
@@ -148,11 +145,11 @@ impl CoerceMany {
             if let (Ok(result1), Ok(result2)) = (result1, result2) {
                 ctx.table.register_infer_ok(InferOk { value: (), goals: result1.goals });
                 for &e in &self.expressions {
-                    ctx.write_expr_adj(e, result1.value.0.clone());
+                    ctx.write_expr_adj(e, result1.value.0.clone().into_boxed_slice());
                 }
                 ctx.table.register_infer_ok(InferOk { value: (), goals: result2.goals });
                 if let Some(expr) = expr {
-                    ctx.write_expr_adj(expr, result2.value.0);
+                    ctx.write_expr_adj(expr, result2.value.0.into_boxed_slice());
                     self.expressions.push(expr);
                 }
                 return self.final_ty = Some(target_ty);
@@ -163,10 +160,27 @@ impl CoerceMany {
         // type is a type variable and the new one is `!`, trying it the other
         // way around first would mean we make the type variable `!`, instead of
         // just marking it as possibly diverging.
-        if let Ok(res) = ctx.coerce(expr, &expr_ty, &self.merged_ty(), CoerceNever::Yes) {
+        //
+        // - [Comment from rustc](https://github.com/rust-lang/rust/blob/5ff18d0eaefd1bd9ab8ec33dab2404a44e7631ed/compiler/rustc_hir_typeck/src/coercion.rs#L1334-L1335)
+        // First try to coerce the new expression to the type of the previous ones,
+        // but only if the new expression has no coercion already applied to it.
+        if expr.is_none_or(|expr| !ctx.result.expr_adjustments.contains_key(&expr)) {
+            if let Ok(res) = ctx.coerce(expr, &expr_ty, &self.merged_ty(), CoerceNever::Yes) {
+                self.final_ty = Some(res);
+                if let Some(expr) = expr {
+                    self.expressions.push(expr);
+                }
+                return;
+            }
+        }
+
+        if let Ok((adjustments, res)) =
+            ctx.coerce_inner(&self.merged_ty(), &expr_ty, CoerceNever::Yes)
+        {
             self.final_ty = Some(res);
-        } else if let Ok(res) = ctx.coerce(expr, &self.merged_ty(), &expr_ty, CoerceNever::Yes) {
-            self.final_ty = Some(res);
+            for &e in &self.expressions {
+                ctx.write_expr_adj(e, adjustments.clone().into_boxed_slice());
+            }
         } else {
             match cause {
                 CoercionCause::Expr(id) => {
@@ -244,13 +258,22 @@ impl InferenceContext<'_> {
         // between places and values.
         coerce_never: CoerceNever,
     ) -> Result<Ty, TypeError> {
-        let from_ty = self.resolve_ty_shallow(from_ty);
-        let to_ty = self.resolve_ty_shallow(to_ty);
-        let (adjustments, ty) = self.table.coerce(&from_ty, &to_ty, coerce_never)?;
+        let (adjustments, ty) = self.coerce_inner(from_ty, to_ty, coerce_never)?;
         if let Some(expr) = expr {
-            self.write_expr_adj(expr, adjustments);
+            self.write_expr_adj(expr, adjustments.into_boxed_slice());
         }
         Ok(ty)
+    }
+
+    fn coerce_inner(
+        &mut self,
+        from_ty: &Ty,
+        to_ty: &Ty,
+        coerce_never: CoerceNever,
+    ) -> Result<(Vec<Adjustment>, Ty), TypeError> {
+        let from_ty = self.resolve_ty_shallow(from_ty);
+        let to_ty = self.resolve_ty_shallow(to_ty);
+        self.table.coerce(&from_ty, &to_ty, coerce_never)
     }
 }
 
@@ -373,7 +396,7 @@ impl InferenceTable<'_> {
         // Check that the types which they point at are compatible.
         let from_raw = TyKind::Raw(to_mt, from_inner.clone()).intern(Interner);
 
-        // Although references and unsafe ptrs have the same
+        // Although references and raw ptrs have the same
         // representation, we still register an Adjust::DerefRef so that
         // regionck knows that the region for `a` must be valid here.
         if is_ref {
@@ -420,7 +443,7 @@ impl InferenceTable<'_> {
 
         let snapshot = self.snapshot();
 
-        let mut autoderef = Autoderef::new(self, from_ty.clone(), false);
+        let mut autoderef = Autoderef::new(self, from_ty.clone(), false, false);
         let mut first_error = None;
         let mut found = None;
 
@@ -675,8 +698,8 @@ impl InferenceTable<'_> {
             reborrow.as_ref().map_or_else(|| from_ty.clone(), |(_, adj)| adj.target.clone());
 
         let krate = self.trait_env.krate;
-        let coerce_unsized_trait = match self.db.lang_item(krate, LangItem::CoerceUnsized) {
-            Some(LangItemTarget::Trait(trait_)) => trait_,
+        let coerce_unsized_trait = match LangItem::CoerceUnsized.resolve_trait(self.db, krate) {
+            Some(trait_) => trait_,
             _ => return Err(TypeError),
         };
 

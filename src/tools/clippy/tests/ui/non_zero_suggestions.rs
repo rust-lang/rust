@@ -7,19 +7,19 @@ fn main() {
     let x: u64 = 100;
     let y = NonZeroU32::new(10).unwrap();
     let r1 = x / u64::from(y.get());
-    //~^ ERROR: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
+    //~^ non_zero_suggestions
 
     let r2 = x % u64::from(y.get());
-    //~^ ERROR: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
+    //~^ non_zero_suggestions
 
     // U16 -> U32
     let a: u32 = 50;
     let b = NonZeroU16::new(5).unwrap();
     let r3 = a / u32::from(b.get());
-    //~^ ERROR: consider using `NonZeroU32::from()` for more efficient and type-safe conversion
+    //~^ non_zero_suggestions
 
     let x = u64::from(NonZeroU32::new(5).unwrap().get());
-    //~^ ERROR: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
+    //~^ non_zero_suggestions
 
     /// Negative test cases (lint should not trigger)
     // Left hand side expressions should not be triggered
@@ -50,7 +50,7 @@ fn main() {
 // Additional function to test the lint in a different context
 fn divide_numbers(x: u64, y: NonZeroU32) -> u64 {
     x / u64::from(y.get())
-    //~^ ERROR: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
+    //~^ non_zero_suggestions
 }
 
 struct Calculator {
@@ -60,6 +60,6 @@ struct Calculator {
 impl Calculator {
     fn divide(&self, divisor: NonZeroU32) -> u64 {
         self.value / u64::from(divisor.get())
-        //~^ ERROR: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
+        //~^ non_zero_suggestions
     }
 }

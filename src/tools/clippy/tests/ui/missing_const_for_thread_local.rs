@@ -6,8 +6,8 @@ fn main() {
     // lint and suggest const
     thread_local! {
         static BUF_1: RefCell<String> = RefCell::new(String::new());
+        //~^ missing_const_for_thread_local
     }
-    //~^^ ERROR: initializer for `thread_local` value can be made `const`
 
     // don't lint
     thread_local! {
@@ -16,23 +16,25 @@ fn main() {
 
     thread_local! {
         static SIMPLE:i32 = 1;
+        //~^ missing_const_for_thread_local
     }
-    //~^^ ERROR: initializer for `thread_local` value can be made `const`
 
     // lint and suggest const for all non const items
     thread_local! {
         static BUF_3_CAN_BE_MADE_CONST: RefCell<String> = RefCell::new(String::new());
+        //~^ missing_const_for_thread_local
         static CONST_MIXED_WITH:i32 = const { 1 };
         static BUF_4_CAN_BE_MADE_CONST: RefCell<String> = RefCell::new(String::new());
+        //~^ missing_const_for_thread_local
     }
-    //~^^^^ ERROR: initializer for `thread_local` value can be made `const`
-    //~^^^ ERROR: initializer for `thread_local` value can be made `const`
 
     thread_local! {
         static PEEL_ME: i32 = { 1 };
-        //~^ ERROR: initializer for `thread_local` value can be made `const`
+        //~^ missing_const_for_thread_local
+
         static PEEL_ME_MANY: i32 = { let x = 1; x * x };
-        //~^ ERROR: initializer for `thread_local` value can be made `const`
+        //~^ missing_const_for_thread_local
+
     }
 }
 

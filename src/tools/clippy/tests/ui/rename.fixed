@@ -39,6 +39,8 @@
 #![allow(invalid_reference_casting)]
 #![allow(suspicious_double_ref_op)]
 #![allow(invalid_nan_comparisons)]
+#![allow(invalid_null_arguments)]
+#![allow(double_negations)]
 #![allow(drop_bounds)]
 #![allow(dropping_copy_types)]
 #![allow(dropping_references)]
@@ -60,7 +62,6 @@
 #![allow(unknown_lints)]
 #![allow(unused_labels)]
 #![allow(ambiguous_wide_pointer_comparisons)]
-#![allow(unpredictable_function_pointer_comparisons)]
 #![allow(clippy::reversed_empty_ranges)]
 #![warn(clippy::almost_complete_range)] //~ ERROR: lint `clippy::almost_complete_letter_range`
 #![warn(clippy::disallowed_names)] //~ ERROR: lint `clippy::blacklisted_name`
@@ -104,6 +105,8 @@
 #![warn(invalid_reference_casting)] //~ ERROR: lint `clippy::cast_ref_to_mut`
 #![warn(suspicious_double_ref_op)] //~ ERROR: lint `clippy::clone_double_ref`
 #![warn(invalid_nan_comparisons)] //~ ERROR: lint `clippy::cmp_nan`
+#![warn(invalid_null_arguments)] //~ ERROR: lint `clippy::invalid_null_ptr_usage`
+#![warn(double_negations)] //~ ERROR: lint `clippy::double_neg`
 #![warn(drop_bounds)] //~ ERROR: lint `clippy::drop_bounds`
 #![warn(dropping_copy_types)] //~ ERROR: lint `clippy::drop_copy`
 #![warn(dropping_references)] //~ ERROR: lint `clippy::drop_ref`

@@ -1,6 +1,14 @@
 #![doc = include_str!("../../stdarch/crates/core_arch/src/core_arch_docs.md")]
 
-#[allow(unused_imports)]
+#[allow(
+    // some targets don't have anything to reexport, which
+    // makes the `pub use` unused and unreachable, allow
+    // both lints as to not have `#[cfg]`s
+    //
+    // cf. https://github.com/rust-lang/rust/pull/116033#issuecomment-1760085575
+    unused_imports,
+    unreachable_pub
+)]
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub use crate::core_arch::arch::*;
 
@@ -24,7 +32,7 @@ pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
 ///
 /// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
 /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
-#[unstable(feature = "naked_functions", issue = "90957")]
+#[stable(feature = "naked_functions", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_builtin_macro]
 pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
@@ -65,7 +73,6 @@ pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?
 // When stabilizing this, update the comment on `core::intrinsics::breakpoint`.
 #[unstable(feature = "breakpoint", issue = "133724")]
 #[inline(always)]
-#[cfg(not(bootstrap))]
 pub fn breakpoint() {
     core::intrinsics::breakpoint();
 }

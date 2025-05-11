@@ -10,6 +10,7 @@ fn get_enumerate() -> Enumerate<std::vec::IntoIter<i32>> {
 fn main() {
     let v = [1, 2, 3];
     for (_, x) in v.iter().enumerate() {
+        //~^ unused_enumerate_index
         println!("{x}");
     }
 
@@ -57,12 +58,15 @@ fn main() {
 
     let dummy = Dummy3(vec![1, 2, 3].into_iter());
     for (_, x) in dummy.enumerate() {
+        //~^ unused_enumerate_index
         println!("{x}");
     }
 
     let _ = vec![1, 2, 3].into_iter().enumerate().map(|(_, x)| println!("{x}"));
+    //~^ unused_enumerate_index
 
     let p = vec![1, 2, 3].into_iter().enumerate();
+    //~^ unused_enumerate_index
     p.map(|(_, x)| println!("{x}"));
 
     // This shouldn't trigger the lint. `get_enumerate` may come from an external library on which we
@@ -84,6 +88,7 @@ fn main() {
         };
     }
     _ = mac2!().enumerate().map(|(_, _v)| {});
+    //~^ unused_enumerate_index
 
     // This shouldn't trigger the lint because of the `allow`.
     #[allow(clippy::unused_enumerate_index)]
@@ -92,15 +97,18 @@ fn main() {
 
     // This should keep the explicit type of `x`.
     let v = [1, 2, 3].iter().copied().enumerate();
+    //~^ unused_enumerate_index
     let x = v.map(|(_, x): (usize, i32)| x).sum::<i32>();
     assert_eq!(x, 6);
 
     // This should keep the explicit type of `x`.
     let v = [1, 2, 3].iter().copied().enumerate();
+    //~^ unused_enumerate_index
     let x = v.map(|(_, x): (_, i32)| x).sum::<i32>();
     assert_eq!(x, 6);
 
     let v = [1, 2, 3].iter().copied().enumerate();
+    //~^ unused_enumerate_index
     let x = v.map(|(_, x)| x).sum::<i32>();
     assert_eq!(x, 6);
 }

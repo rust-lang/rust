@@ -129,21 +129,6 @@ impl<'tcx> TraitDef {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// `trait_def_id` MUST BE the `DefId` of a trait.
-    pub fn for_each_impl<F: FnMut(DefId)>(self, trait_def_id: DefId, mut f: F) {
-        let impls = self.trait_impls_of(trait_def_id);
-
-        for &impl_def_id in impls.blanket_impls.iter() {
-            f(impl_def_id);
-        }
-
-        for v in impls.non_blanket_impls.values() {
-            for &impl_def_id in v {
-                f(impl_def_id);
-            }
-        }
-    }
-
     /// Iterate over every impl that could possibly match the self type `self_ty`.
     ///
     /// `trait_def_id` MUST BE the `DefId` of a trait.
@@ -188,7 +173,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-    ) -> impl Iterator<Item = DefId> + 'tcx {
+    ) -> impl Iterator<Item = DefId> {
         let impls = self.trait_impls_of(trait_def_id);
         if let Some(simp) =
             fast_reject::simplify_type(self, self_ty, TreatParams::InstantiateWithInfer)
@@ -204,7 +189,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns an iterator containing all impls for `trait_def_id`.
     ///
     /// `trait_def_id` MUST BE the `DefId` of a trait.
-    pub fn all_impls(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
+    pub fn all_impls(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> {
         let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(trait_def_id);
 
         blanket_impls.iter().chain(non_blanket_impls.iter().flat_map(|(_, v)| v)).cloned()
@@ -235,7 +220,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         }
     }
 
-    for &impl_def_id in tcx.hir().trait_impls(trait_id) {
+    for &impl_def_id in tcx.local_trait_impls(trait_id) {
         let impl_def_id = impl_def_id.to_def_id();
 
         let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
@@ -267,7 +252,7 @@ pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -
 
 pub(super) fn traits_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
     let mut traits = Vec::new();
-    for id in tcx.hir().items() {
+    for id in tcx.hir_free_items() {
         if matches!(tcx.def_kind(id.owner_id), DefKind::Trait | DefKind::TraitAlias) {
             traits.push(id.owner_id.to_def_id())
         }
@@ -278,7 +263,7 @@ pub(super) fn traits_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
 
 pub(super) fn trait_impls_in_crate_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
     let mut trait_impls = Vec::new();
-    for id in tcx.hir().items() {
+    for id in tcx.hir_free_items() {
         if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. })
             && tcx.impl_trait_ref(id.owner_id).is_some()
         {

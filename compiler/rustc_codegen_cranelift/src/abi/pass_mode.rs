@@ -84,7 +84,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                     AbiParam::new(scalar_to_clif_type(tcx, scalar)),
                     attrs
                 )],
-                BackendRepr::Vector { .. } => {
+                BackendRepr::SimdVector { .. } => {
                     let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout);
                     smallvec![AbiParam::new(vector_ty)]
                 }
@@ -135,7 +135,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 BackendRepr::Scalar(scalar) => {
                     (None, vec![AbiParam::new(scalar_to_clif_type(tcx, scalar))])
                 }
-                BackendRepr::Vector { .. } => {
+                BackendRepr::SimdVector { .. } => {
                     let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout);
                     (None, vec![AbiParam::new(vector_ty)])
                 }
@@ -195,7 +195,7 @@ pub(super) fn from_casted_value<'tcx>(
         // It may also be smaller for example when the type is a wrapper around an integer with a
         // larger alignment than the integer.
         std::cmp::max(abi_param_size, layout_size),
-        u32::try_from(layout.align.pref.bytes()).unwrap(),
+        u32::try_from(layout.align.abi.bytes()).unwrap(),
     );
     let mut offset = 0;
     let mut block_params_iter = block_params.iter().copied();

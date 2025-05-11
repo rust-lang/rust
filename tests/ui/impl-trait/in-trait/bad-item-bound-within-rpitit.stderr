@@ -9,8 +9,10 @@ LL |         'b: 'a;
    |
 help: copy the `where` clause predicates from the trait
    |
-LL |     where Self: 'b;
-   |     ~~~~~~~~~~~~~~
+LL -     where
+LL -         'b: 'a;
+LL +     where Self: 'b;
+   |
 
 warning: impl trait in impl method signature does not match trait method signature
   --> $DIR/bad-item-bound-within-rpitit.rs:18:28
@@ -26,8 +28,9 @@ LL |     fn iter(&self) -> impl 'a + Iterator<Item = I::Item<'a>> {
    = note: `#[warn(refining_impl_trait_reachable)]` on by default
 help: replace the return type so that it matches the trait
    |
-LL |     fn iter(&self) -> impl Iterator<Item = <Self as Iterable>::Item<'_>> + '_ {
-   |                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     fn iter(&self) -> impl 'a + Iterator<Item = I::Item<'a>> {
+LL +     fn iter(&self) -> impl Iterator<Item = <Self as Iterable>::Item<'_>> + '_ {
+   |
 
 error: aborting due to 1 previous error; 1 warning emitted
 

@@ -117,24 +117,49 @@ pub struct WLinkToCloneWithUnmatchedEscapedCloseParenAndDoubleSpace;
 
 // References
 
-/// The [cln][] link here is going to be unresolved, because `Clone()` gets rejected //~ERROR link
-/// in Markdown for not being URL-shaped enough.
-///
-/// [cln]: Clone() //~ERROR link
+/// The [cln][] link here is going to be unresolved, because `Clone()` gets
+//~^ ERROR link
+/// rejected in Markdown for not being URL-shaped enough.
+/// [cln]: Clone()
+//~^ ERROR link
 pub struct LinkToCloneWithParensInReference;
 
-/// The [cln][] link here is going to be unresolved, because `struct@Clone` gets //~ERROR link
-/// rejected in Markdown for not being URL-shaped enough.
+/// The [cln][] link here is going to produce a good inline suggestion
 ///
-/// [cln]: struct@Clone //~ERROR link
+/// [cln]: struct@Clone
+//~^ ERROR link
 pub struct LinkToCloneWithWrongPrefix;
 
-/// The [cln][] link here will produce a plain text suggestion //~ERROR link
+/// The [cln][] link here will produce a good inline suggestion
 ///
 /// [cln]: Clone\(\)
+//~^ ERROR link
 pub struct LinkToCloneWithEscapedParensInReference;
 
-/// The [cln][] link here will produce a plain text suggestion //~ERROR link
+/// The [cln][] link here will produce a good inline suggestion
 ///
 /// [cln]: struct\@Clone
+//~^ ERROR link
 pub struct LinkToCloneWithEscapedAtsInReference;
+
+
+/// This link reference definition isn't used, but since it is still parsed,
+/// it should still produce a warning.
+///
+/// [cln]: struct\@Clone
+//~^ ERROR link
+pub struct UnusedLinkToCloneReferenceDefinition;
+
+/// <https://github.com/rust-lang/rust/issues/133150>
+///
+/// - [`SDL_PROP_WINDOW_CREATE_COCOA_WINDOW_POINTER`]: the
+//~^ ERROR link
+///   `(__unsafe_unretained)` NSWindow associated with the window, if you want
+///   to wrap an existing window.
+/// - [`SDL_PROP_WINDOW_CREATE_COCOA_VIEW_POINTER`]: the `(__unsafe_unretained)`
+///   NSView associated with the window, defaults to `[window contentView]`
+pub fn a() {}
+#[allow(nonstandard_style)]
+pub struct SDL_PROP_WINDOW_CREATE_COCOA_WINDOW_POINTER;
+#[allow(nonstandard_style)]
+pub struct SDL_PROP_WINDOW_CREATE_COCOA_VIEW_POINTER;

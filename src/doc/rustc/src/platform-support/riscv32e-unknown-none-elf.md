@@ -6,7 +6,7 @@ Bare-metal target for RISC-V CPUs with the RV32E, RV32EM and RV32EMC ISAs.
 
 ## Target maintainers
 
-* Henri Lunnikivi, <henri.lunnikivi@gmail.com>, [@hegza](https://github.com/hegza)
+[@hegza](https://github.com/hegza)
 
 ## Requirements
 

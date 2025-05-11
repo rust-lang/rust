@@ -89,7 +89,7 @@
 //! Check out the Rust contribution guidelines [here](
 //! https://rustc-dev-guide.rust-lang.org/contributing.html#writing-documentation).
 //! The source for this documentation can be found on
-//! [GitHub](https://github.com/rust-lang/rust).
+//! [GitHub](https://github.com/rust-lang/rust) in the 'library/std/' directory.
 //! To contribute changes, make sure you read the guidelines first, then submit
 //! pull-requests for your suggested changes.
 //!
@@ -174,7 +174,9 @@
 //!
 //! - after-main use of thread-locals, which also affects additional features:
 //!   - [`thread::current()`]
-//! - before-main stdio file descriptors are not guaranteed to be open on unix platforms
+//! - under UNIX, before main, file descriptors 0, 1, and 2 may be unchanged
+//!   (they are guaranteed to be open during main,
+//!    and are opened to /dev/null O_RDWR if they weren't open on program start)
 //!
 //!
 //! [I/O]: io
@@ -272,6 +274,8 @@
 //
 // Language features:
 // tidy-alphabetical-start
+
+// stabilization was reverted after it hit beta
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -281,6 +285,7 @@
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
+#![feature(char_max_len)]
 #![feature(concat_idents)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
@@ -289,22 +294,26 @@
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
+#![feature(extended_varargs_abi_support)]
 #![feature(f128)]
 #![feature(f16)]
+#![feature(ffi_const)]
 #![feature(formatting_options)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
+#![feature(iter_advance_by)]
+#![feature(iter_next_chunk)]
 #![feature(lang_items)]
 #![feature(let_chains)]
 #![feature(link_cfg)]
 #![feature(linkage)]
 #![feature(macro_metavar_expr_concat)]
+#![feature(maybe_uninit_fill)]
 #![feature(min_specialization)]
 #![feature(must_not_suspend)]
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
 #![feature(never_type)]
-#![feature(no_sanitize)]
 #![feature(optimize_attribute)]
 #![feature(prelude_import)]
 #![feature(rustc_attrs)]
@@ -314,13 +323,15 @@
 #![feature(strict_provenance_lints)]
 #![feature(thread_local)]
 #![feature(try_blocks)]
+#![feature(try_trait_v2)]
 #![feature(type_alias_impl_trait)]
 // tidy-alphabetical-end
 //
 // Library features (core):
 // tidy-alphabetical-start
 #![feature(array_chunks)]
-#![feature(c_str_module)]
+#![feature(bstr)]
+#![feature(bstr_internals)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
 #![feature(core_intrinsics)]
@@ -331,10 +342,11 @@
 #![feature(exact_size_is_empty)]
 #![feature(exclusive_wrapper)]
 #![feature(extend_one)]
+#![feature(float_algebraic)]
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
-#![feature(float_next_up_down)]
 #![feature(fmt_internals)]
+#![feature(generic_atomic)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(hint_must_use)]
@@ -342,6 +354,7 @@
 #![feature(lazy_get)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_write_slice)]
+#![feature(nonnull_provenance)]
 #![feature(panic_can_unwind)]
 #![feature(panic_internals)]
 #![feature(pin_coerce_unsized_trait)]
@@ -357,6 +370,7 @@
 #![feature(str_internals)]
 #![feature(strict_provenance_atomic_ptr)]
 #![feature(sync_unsafe_cell)]
+#![feature(temporary_niche_types)]
 #![feature(ub_checks)]
 #![feature(used_with_arg)]
 // tidy-alphabetical-end
@@ -398,7 +412,6 @@
 #![feature(custom_test_frameworks)]
 #![feature(edition_panic)]
 #![feature(format_args_nl)]
-#![feature(get_many_mut)]
 #![feature(log_syntax)]
 #![feature(test)]
 #![feature(trace_macros)]
@@ -527,6 +540,8 @@ pub use core::option;
 pub use core::pin;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ptr;
+#[unstable(feature = "new_range_api", issue = "125687")]
+pub use core::range;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -580,6 +595,8 @@ pub mod f64;
 pub mod thread;
 pub mod ascii;
 pub mod backtrace;
+#[unstable(feature = "bstr", issue = "134915")]
+pub mod bstr;
 pub mod collections;
 pub mod env;
 pub mod error;
@@ -594,8 +611,6 @@ pub mod panic;
 #[unstable(feature = "pattern_type_macro", issue = "123646")]
 pub mod pat;
 pub mod path;
-#[unstable(feature = "anonymous_pipe", issue = "127154")]
-pub mod pipe;
 pub mod process;
 #[unstable(feature = "random", issue = "130703")]
 pub mod random;
@@ -657,6 +672,8 @@ pub mod arch {
     pub use std_detect::is_loongarch_feature_detected;
     #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
     pub use std_detect::is_riscv_feature_detected;
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    pub use std_detect::is_s390x_feature_detected;
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub use std_detect::is_x86_feature_detected;
     #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
@@ -690,11 +707,18 @@ pub use core::cfg_match;
     reason = "`concat_bytes` is not stable enough for use and is subject to change"
 )]
 pub use core::concat_bytes;
+#[stable(feature = "matches_macro", since = "1.42.0")]
+#[allow(deprecated, deprecated_in_future)]
+pub use core::matches;
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use core::primitive;
+#[stable(feature = "todo_macro", since = "1.40.0")]
+#[allow(deprecated, deprecated_in_future)]
+pub use core::todo;
 // Re-export built-in macros defined through core.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated)]
+#[cfg_attr(bootstrap, allow(deprecated_in_future))]
 pub use core::{
     assert, assert_matches, cfg, column, compile_error, concat, concat_idents, const_format_args,
     env, file, format_args, format_args_nl, include, include_bytes, include_str, line, log_syntax,
@@ -704,8 +728,8 @@ pub use core::{
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::{
-    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, todo, r#try,
-    unimplemented, unreachable, write, writeln,
+    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, r#try, unimplemented,
+    unreachable, write, writeln,
 };
 
 // Include a number of private modules that exist solely to provide
@@ -734,27 +758,4 @@ mod sealed {
 
 #[cfg(test)]
 #[allow(dead_code)] // Not used in all configurations.
-pub(crate) mod test_helpers {
-    /// Test-only replacement for `rand::thread_rng()`, which is unusable for
-    /// us, as we want to allow running stdlib tests on tier-3 targets which may
-    /// not have `getrandom` support.
-    ///
-    /// Does a bit of a song and dance to ensure that the seed is different on
-    /// each call (as some tests sadly rely on this), but doesn't try that hard.
-    ///
-    /// This is duplicated in the `core`, `alloc` test suites (as well as
-    /// `std`'s integration tests), but figuring out a mechanism to share these
-    /// seems far more painful than copy-pasting a 7 line function a couple
-    /// times, given that even under a perma-unstable feature, I don't think we
-    /// want to expose types from `rand` from `std`.
-    #[track_caller]
-    pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
-        use core::hash::{BuildHasher, Hash, Hasher};
-        let mut hasher = crate::hash::RandomState::new().build_hasher();
-        core::panic::Location::caller().hash(&mut hasher);
-        let hc64 = hasher.finish();
-        let seed_vec = hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<Vec<u8>>();
-        let seed: [u8; 16] = seed_vec.as_slice().try_into().unwrap();
-        rand::SeedableRng::from_seed(seed)
-    }
-}
+pub(crate) mod test_helpers;

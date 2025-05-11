@@ -1,13 +1,14 @@
 use rustc_errors::Applicability;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::InferOk;
+use rustc_infer::traits::{Obligation, ObligationCauseCode};
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, OverloadedDeref,
     PointerCoercion,
 };
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Span, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -29,10 +30,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ok = self.try_overloaded_deref(expr.span, oprnd_ty)?;
         let method = self.register_infer_ok_obligations(ok);
         if let ty::Ref(_, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
-            self.apply_adjustments(oprnd_expr, vec![Adjustment {
-                kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)),
-                target: method.sig.inputs()[0],
-            }]);
+            self.apply_adjustments(
+                oprnd_expr,
+                vec![Adjustment {
+                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)),
+                    target: method.sig.inputs()[0],
+                }],
+            );
         } else {
             span_bug!(expr.span, "input to deref is not a ref?");
         }
@@ -136,8 +140,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut self_ty = adjusted_ty;
             if unsize {
                 // We only unsize arrays here.
-                if let ty::Array(element_ty, _) = adjusted_ty.kind() {
-                    self_ty = Ty::new_slice(self.tcx, *element_ty);
+                if let ty::Array(element_ty, ct) = *adjusted_ty.kind() {
+                    self.register_predicate(Obligation::new(
+                        self.tcx,
+                        self.cause(base_expr.span, ObligationCauseCode::ArrayLen(adjusted_ty)),
+                        self.param_env,
+                        ty::ClauseKind::ConstArgHasType(ct, self.tcx.types.usize),
+                    ));
+                    self_ty = Ty::new_slice(self.tcx, element_ty);
                 } else {
                     continue;
                 }
@@ -201,13 +211,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        self.lookup_method_in_trait(
-            self.misc(span),
-            Ident::with_dummy_span(imm_op),
-            imm_tr,
-            base_ty,
-            opt_rhs_ty,
-        )
+        self.lookup_method_for_operator(self.misc(span), imm_op, imm_tr, base_ty, opt_rhs_ty)
     }
 
     fn try_mutable_overloaded_place_op(
@@ -227,13 +231,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        self.lookup_method_in_trait(
-            self.misc(span),
-            Ident::with_dummy_span(mut_op),
-            mut_tr,
-            base_ty,
-            opt_rhs_ty,
-        )
+        self.lookup_method_for_operator(self.misc(span), mut_op, mut_tr, base_ty, opt_rhs_ty)
     }
 
     /// Convert auto-derefs, indices, etc of an expression from `Deref` and `Index`

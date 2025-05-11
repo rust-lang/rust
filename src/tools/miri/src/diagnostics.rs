@@ -16,6 +16,8 @@ pub enum TerminationInfo {
         leak_check: bool,
     },
     Abort(String),
+    /// Miri was interrupted by a Ctrl+C from the user
+    Interrupted,
     UnsupportedInIsolation(String),
     StackedBorrowsUb {
         msg: String,
@@ -29,6 +31,8 @@ pub enum TerminationInfo {
     },
     Int2PtrWithStrictProvenance,
     Deadlock,
+    /// In GenMC mode, an execution can get stuck in certain cases. This is not an error.
+    GenmcStuckExecution,
     MultipleSymbolDefinitions {
         link_name: Symbol,
         first: SpanData,
@@ -63,6 +67,7 @@ impl fmt::Display for TerminationInfo {
         match self {
             Exit { code, .. } => write!(f, "the evaluated program completed with exit code {code}"),
             Abort(msg) => write!(f, "{msg}"),
+            Interrupted => write!(f, "interpretation was interrupted"),
             UnsupportedInIsolation(msg) => write!(f, "{msg}"),
             Int2PtrWithStrictProvenance =>
                 write!(
@@ -72,6 +77,7 @@ impl fmt::Display for TerminationInfo {
             StackedBorrowsUb { msg, .. } => write!(f, "{msg}"),
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
             Deadlock => write!(f, "the evaluated program deadlocked"),
+            GenmcStuckExecution => write!(f, "GenMC determined that the execution got stuck"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
@@ -226,11 +232,18 @@ pub fn report_error<'tcx>(
         let title = match info {
             &Exit { code, leak_check } => return Some((code, leak_check)),
             Abort(_) => Some("abnormal termination"),
+            Interrupted => None,
             UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance | UnsupportedForeignItem(_) =>
                 Some("unsupported operation"),
             StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } =>
                 Some("Undefined Behavior"),
             Deadlock => Some("deadlock"),
+            GenmcStuckExecution => {
+                // This case should only happen in GenMC mode. We treat it like a normal program exit.
+                assert!(ecx.machine.data_race.as_genmc_ref().is_some());
+                tracing::info!("GenMC: found stuck execution");
+                return Some((0, true));
+            }
             MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
         };
         #[rustfmt::skip]

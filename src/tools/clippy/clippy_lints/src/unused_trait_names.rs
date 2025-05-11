@@ -7,7 +7,6 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind, UseKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Visibility;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
@@ -52,9 +51,7 @@ pub struct UnusedTraitNames {
 
 impl UnusedTraitNames {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -62,11 +59,10 @@ impl_lint_pass!(UnusedTraitNames => [UNUSED_TRAIT_NAMES]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedTraitNames {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if self.msrv.meets(msrvs::UNDERSCORE_IMPORTS)
-            && !in_external_macro(cx.sess(), item.span)
-            && let ItemKind::Use(path, UseKind::Single) = item.kind
+        if !item.span.in_external_macro(cx.sess().source_map())
+            && let ItemKind::Use(path, UseKind::Single(ident)) = item.kind
             // Ignore imports that already use Underscore
-            && item.ident.name != kw::Underscore
+            && ident.name != kw::Underscore
             // Only check traits
             && let Some(Res::Def(DefKind::Trait, _)) = path.res.first()
             && cx.tcx.maybe_unused_trait_imports(()).contains(&item.owner_id.def_id)
@@ -75,9 +71,10 @@ impl<'tcx> LateLintPass<'tcx> for UnusedTraitNames {
             && cx.tcx.visibility(item.owner_id.def_id) == Visibility::Restricted(module.to_def_id())
             && let Some(last_segment) = path.segments.last()
             && let Some(snip) = snippet_opt(cx, last_segment.ident.span)
+            && self.msrv.meets(cx, msrvs::UNDERSCORE_IMPORTS)
             && !is_from_proc_macro(cx, &last_segment.ident)
         {
-            let complete_span = last_segment.ident.span.to(item.ident.span);
+            let complete_span = last_segment.ident.span.to(ident.span);
             span_lint_and_sugg(
                 cx,
                 UNUSED_TRAIT_NAMES,
@@ -89,6 +86,4 @@ impl<'tcx> LateLintPass<'tcx> for UnusedTraitNames {
             );
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }

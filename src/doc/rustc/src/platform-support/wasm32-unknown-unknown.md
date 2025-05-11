@@ -34,7 +34,7 @@ was not maintained at that time. This means that the list below is not
 exhaustive, and there are more interested parties in this target. That being
 said, those interested in maintaining this target are:
 
-- Alex Crichton, https://github.com/alexcrichton
+[@alexcrichton](https://github.com/alexcrichton)
 
 ## Requirements
 
@@ -65,7 +65,7 @@ Building this target can be done by:
 * Configure LLD to be built.
 * Ensure the `WebAssembly` target backend is not disabled in LLVM.
 
-These are all controlled through `config.toml` options. It should be possible
+These are all controlled through `bootstrap.toml` options. It should be possible
 to build this target on any platform.
 
 ## Building Rust programs
@@ -129,6 +129,8 @@ As of the time of this writing the proposals that are enabled by default (the
 * `mutable-globals`
 * `reference-types`
 * `sign-ext`
+* `nontrapping-fptoint` (Rust 1.87.0+, LLVM 20+)
+* `bulk-memory` (Rust 1.87.0+, LLVM 20+)
 
 If you're compiling WebAssembly code for an engine that does not support a
 feature in LLVM's default feature set then the feature must be disabled at

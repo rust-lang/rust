@@ -9,11 +9,12 @@ LL |     for (t, path) in files.iter().copied() {
 help: remove any references to the binding
    |
 LL ~     for (t, path) in files {
+LL |
 LL ~         let other = match get_file_path(t) {
    |
 
 error: unnecessary use of `copied`
-  --> tests/ui/unnecessary_iter_cloned.rs:46:22
+  --> tests/ui/unnecessary_iter_cloned.rs:47:22
    |
 LL |     for (t, path) in files.iter().copied() {
    |                      ^^^^^^^^^^^^^^^^^^^^^
@@ -21,17 +22,18 @@ LL |     for (t, path) in files.iter().copied() {
 help: remove any references to the binding
    |
 LL ~     for (t, path) in files.iter() {
+LL |
 LL ~         let other = match get_file_path(t) {
    |
 
 error: unnecessary use of `cloned`
-  --> tests/ui/unnecessary_iter_cloned.rs:177:18
+  --> tests/ui/unnecessary_iter_cloned.rs:179:18
    |
 LL |         for c in v.iter().cloned() {
    |                  ^^^^^^^^^^^^^^^^^ help: remove any references to the binding: `v.iter()`
 
 error: unnecessary use of `cloned`
-  --> tests/ui/unnecessary_iter_cloned.rs:185:18
+  --> tests/ui/unnecessary_iter_cloned.rs:188:18
    |
 LL |         for c in v.iter().cloned() {
    |                  ^^^^^^^^^^^^^^^^^
@@ -40,11 +42,12 @@ help: remove any references to the binding
    |
 LL ~         for c in v.iter() {
 LL |
+LL |
 LL ~             let ref_c = c;
    |
 
 error: unnecessary use of `cloned`
-  --> tests/ui/unnecessary_iter_cloned.rs:194:23
+  --> tests/ui/unnecessary_iter_cloned.rs:198:23
    |
 LL |         for (i, c) in v.iter().cloned() {
    |                       ^^^^^^^^^^^^^^^^^
@@ -52,6 +55,7 @@ LL |         for (i, c) in v.iter().cloned() {
 help: remove any references to the binding
    |
 LL ~         for (i, c) in v.iter() {
+LL |
 LL |
 LL ~             let ref_c = c;
 LL ~             let ref_i = i;

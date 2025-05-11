@@ -2,9 +2,9 @@ error[E0432]: unresolved import `unresolved`
   --> $DIR/issue-1697.rs:3:5
    |
 LL | use unresolved::*;
-   |     ^^^^^^^^^^ you might be missing crate `unresolved`
+   |     ^^^^^^^^^^ use of unresolved module or unlinked crate `unresolved`
    |
-help: consider importing the `unresolved` crate
+help: you might be missing a crate named `unresolved`, add it to your project and import it in your code
    |
 LL + extern crate unresolved;
    |

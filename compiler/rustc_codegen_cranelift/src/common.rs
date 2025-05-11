@@ -71,7 +71,7 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
         },
         ty::FnPtr(..) => pointer_ty(tcx),
         ty::RawPtr(pointee_ty, _) | ty::Ref(_, pointee_ty, _) => {
-            if has_ptr_meta(tcx, *pointee_ty) {
+            if tcx.type_has_metadata(*pointee_ty, ty::TypingEnv::fully_monomorphized()) {
                 return None;
             } else {
                 pointer_ty(tcx)
@@ -91,7 +91,7 @@ fn clif_pair_type_from_ty<'tcx>(
             (clif_type_from_ty(tcx, types[0])?, clif_type_from_ty(tcx, types[1])?)
         }
         ty::RawPtr(pointee_ty, _) | ty::Ref(_, pointee_ty, _) => {
-            if has_ptr_meta(tcx, *pointee_ty) {
+            if tcx.type_has_metadata(*pointee_ty, ty::TypingEnv::fully_monomorphized()) {
                 (pointer_ty(tcx), pointer_ty(tcx))
             } else {
                 return None;
@@ -99,20 +99,6 @@ fn clif_pair_type_from_ty<'tcx>(
         }
         _ => return None,
     })
-}
-
-/// Is a pointer to this type a wide ptr?
-pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    if ty.is_sized(tcx, ty::TypingEnv::fully_monomorphized()) {
-        return false;
-    }
-
-    let tail = tcx.struct_tail_for_codegen(ty, ty::TypingEnv::fully_monomorphized());
-    match tail.kind() {
-        ty::Foreign(..) => false,
-        ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
-        _ => bug!("unexpected unsized tail: {:?}", tail),
-    }
 }
 
 pub(crate) fn codegen_icmp_imm(
@@ -382,6 +368,11 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     }
 
     pub(crate) fn create_stack_slot(&mut self, size: u32, align: u32) -> Pointer {
+        assert!(
+            size % align == 0,
+            "size must be a multiple of alignment (size={size}, align={align})"
+        );
+
         let abi_align = if self.tcx.sess.target.arch == "s390x" { 8 } else { 16 };
         if align <= abi_align {
             let stack_slot = self.bcx.create_sized_stack_slot(StackSlotData {
@@ -403,7 +394,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                 align_shift: 4,
             });
             let base_ptr = self.bcx.ins().stack_addr(self.pointer_type, stack_slot, 0);
-            let misalign_offset = self.bcx.ins().urem_imm(base_ptr, i64::from(align));
+            let misalign_offset = self.bcx.ins().band_imm(base_ptr, i64::from(align - 1));
             let realign_offset = self.bcx.ins().irsub_imm(misalign_offset, i64::from(align));
             Pointer::new(self.bcx.ins().iadd(base_ptr, realign_offset))
         }

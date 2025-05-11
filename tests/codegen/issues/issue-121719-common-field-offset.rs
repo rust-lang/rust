@@ -1,7 +1,7 @@
 //! This test checks that match branches which all access a field
 //! at the same offset are merged together.
 //!
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 #![crate_type = "lib"]
 
 #[repr(C)]

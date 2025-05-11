@@ -26,6 +26,10 @@ impl<'tcx> crate::MirPass<'tcx> for LowerSliceLenCalls {
             lower_slice_len_call(block, slice_len_fn_item_def_id);
         }
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 fn lower_slice_len_call<'tcx>(block: &mut BasicBlockData<'tcx>, slice_len_fn_item_def_id: DefId) {

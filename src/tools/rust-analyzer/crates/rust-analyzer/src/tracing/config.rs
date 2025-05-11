@@ -6,10 +6,10 @@ use std::io::{self};
 use anyhow::Context;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{
-    filter::{filter_fn, Targets},
-    fmt::{time, MakeWriter},
-    layer::SubscriberExt,
     Layer, Registry,
+    filter::{Targets, filter_fn},
+    fmt::{MakeWriter, time},
+    layer::SubscriberExt,
 };
 use tracing_tree::HierarchicalLayer;
 
@@ -31,7 +31,7 @@ pub struct Config<T> {
     /// that specify level.
     pub chalk_filter: Option<String>,
     /// Filtering syntax, set in a shell:
-    /// ```
+    /// ```text
     /// env RA_PROFILE=*             // dump everything
     /// env RA_PROFILE=foo|bar|baz   // enabled only selected entries
     /// env RA_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more than 10
@@ -39,7 +39,7 @@ pub struct Config<T> {
     pub profile_filter: Option<String>,
 
     /// Filtering syntax, set in a shell:
-    /// ```
+    /// ```text
     /// env RA_PROFILE_JSON=foo|bar|baz
     /// ```
     pub json_profile_filter: Option<String>,

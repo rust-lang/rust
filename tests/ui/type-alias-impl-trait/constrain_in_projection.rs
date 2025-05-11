@@ -20,9 +20,11 @@ impl Trait<()> for Foo {
     type Assoc = u32;
 }
 
-fn bop(_: Bar) {
+#[define_opaque(Bar)]
+fn bop() {
     let x = <Foo as Trait<Bar>>::Assoc::default();
-    //[current]~^ `Foo: Trait<Bar>` is not satisfied
+    //[current]~^ ERROR `Foo: Trait<Bar>` is not satisfied
+    //[current]~| ERROR `Foo: Trait<Bar>` is not satisfied
 }
 
 fn main() {}

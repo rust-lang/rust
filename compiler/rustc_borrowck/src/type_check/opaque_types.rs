@@ -2,10 +2,9 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::span_bug;
-use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{
     self, GenericArgKind, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, fold_regions,
 };
 use tracing::{debug, trace};
 
@@ -25,8 +24,8 @@ pub(super) fn take_opaques_and_register_member_constraints<'tcx>(
     let opaque_types = infcx
         .take_opaque_types()
         .into_iter()
-        .map(|(opaque_type_key, decl)| {
-            let hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
+        .map(|(opaque_type_key, hidden_type)| {
+            let hidden_type = infcx.resolve_vars_if_possible(hidden_type);
             register_member_constraints(
                 typeck,
                 &mut member_constraints,
@@ -180,6 +179,7 @@ pub(super) fn take_opaques_and_register_member_constraints<'tcx>(
 /// // Equivalent to:
 /// # mod dummy { use super::*;
 /// type FooReturn<'a, T> = impl Foo<'a>;
+/// #[define_opaque(FooReturn)]
 /// fn foo<'a, T>(x: &'a u32, y: T) -> FooReturn<'a, T> {
 ///   (x, y)
 /// }
@@ -266,12 +266,8 @@ impl<'tcx, OP> TypeVisitor<TyCtxt<'tcx>> for ConstrainOpaqueTypeRegionVisitor<'t
 where
     OP: FnMut(ty::Region<'tcx>),
 {
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &ty::Binder<'tcx, T>) {
-        t.super_visit_with(self);
-    }
-
     fn visit_region(&mut self, r: ty::Region<'tcx>) {
-        match *r {
+        match r.kind() {
             // ignore bound regions, keep visiting
             ty::ReBound(_, _) => {}
             _ => (self.op)(r),
@@ -284,7 +280,7 @@ where
             return;
         }
 
-        match ty.kind() {
+        match *ty.kind() {
             ty::Closure(_, args) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
@@ -316,10 +312,12 @@ where
                 args.as_coroutine().resume_ty().visit_with(self);
             }
 
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
-                // Skip lifetime parameters that are not captures.
-                let variances = self.tcx.variances_of(*def_id);
-
+            ty::Alias(kind, ty::AliasTy { def_id, args, .. })
+                if let Some(variances) = self.tcx.opt_alias_variances(kind, def_id) =>
+            {
+                // Skip lifetime parameters that are not captured, since they do
+                // not need member constraints registered for them; we'll erase
+                // them (and hopefully in the future replace them with placeholders).
                 for (v, s) in std::iter::zip(variances, args.iter()) {
                     if *v != ty::Bivariant {
                         s.visit_with(self);

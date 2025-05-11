@@ -3,7 +3,7 @@
 //@ edition:2018
 
 trait T {
-    fn foo(i32); //~ expected one of `:`, `@`, or `|`, found `)`
+    fn foo(i32); //~ ERROR expected one of `:`, `@`, or `|`, found `)`
 
     // Also checks with `&`
     fn foo_with_ref(&mut i32);

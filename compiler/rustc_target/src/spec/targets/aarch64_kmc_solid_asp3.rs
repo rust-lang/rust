@@ -1,10 +1,10 @@
-use crate::spec::{RelocModel, StackProbeType, Target, TargetOptions, base};
+use crate::spec::{RelocModel, StackProbeType, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let base = base::solid::opts("asp3");
     Target {
         llvm_target: "aarch64-unknown-none".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("ARM64 SOLID with TOPPERS/ASP3".into()),
             tier: Some(3),
             host_tools: Some(false),

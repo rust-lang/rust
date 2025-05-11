@@ -1,5 +1,5 @@
+//@ edition: 2024
 #![feature(never_patterns)]
-#![feature(let_chains)]
 #![allow(incomplete_features)]
 #![deny(unreachable_patterns)]
 

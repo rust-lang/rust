@@ -12,11 +12,13 @@ fn should_ret_unit() -> impl T {
 
 type Foo = impl T;
 
+#[define_opaque(Foo)]
 fn a() -> Foo {
     //~^ ERROR `(): T` is not satisfied
     panic!()
 }
 
+#[define_opaque(Foo)]
 fn b() -> Foo {
     42
 }

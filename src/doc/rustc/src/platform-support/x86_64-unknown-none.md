@@ -6,8 +6,8 @@ Freestanding/bare-metal x86-64 binaries in ELF format: firmware, kernels, etc.
 
 ## Target maintainers
 
-- Harald Hoyer `harald@profian.com`, https://github.com/haraldh
-- Mike Leany, https://github.com/mikeleany
+[@haraldh](https://github.com/haraldh)
+[@mikeleany](https://github.com/mikeleany)
 
 ## Requirements
 
@@ -39,7 +39,7 @@ scripts.
 ## Building the target
 
 You can build Rust with support for the target by adding it to the `target`
-list in `config.toml`:
+list in `bootstrap.toml`:
 
 ```toml
 [build]

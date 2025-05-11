@@ -4,6 +4,6 @@
 //~^ WARN the feature `dyn_star` is incomplete
 
 static S: dyn* Send + Sync = async { 42 };
-//~^ needs to have the same ABI as a pointer
+//~^ ERROR needs to have the same ABI as a pointer
 
 pub fn main() {}

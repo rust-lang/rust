@@ -5,10 +5,10 @@ use std::{
     time::Duration,
 };
 
-use crossbeam_channel::{after, select, Receiver};
+use crossbeam_channel::{Receiver, after, select};
 use itertools::Itertools;
 use lsp_server::{Connection, Message, Notification, Request};
-use lsp_types::{notification::Exit, request::Shutdown, TextDocumentIdentifier, Url};
+use lsp_types::{TextDocumentIdentifier, Url, notification::Exit, request::Shutdown};
 use parking_lot::{Mutex, MutexGuard};
 use paths::{Utf8Path, Utf8PathBuf};
 use rust_analyzer::{
@@ -17,7 +17,7 @@ use rust_analyzer::{
     lsp, main_loop,
 };
 use serde::Serialize;
-use serde_json::{json, to_string_pretty, Value};
+use serde_json::{Value, json, to_string_pretty};
 use test_utils::FixtureWithProjectMeta;
 use tracing_subscriber::fmt::TestWriter;
 use vfs::AbsPathBuf;
@@ -88,11 +88,7 @@ impl Project<'_> {
 
     pub(crate) fn run_lsif(self) -> String {
         let tmp_dir = self.tmp_dir.unwrap_or_else(|| {
-            if self.root_dir_contains_symlink {
-                TestDir::new_symlink()
-            } else {
-                TestDir::new()
-            }
+            if self.root_dir_contains_symlink { TestDir::new_symlink() } else { TestDir::new() }
         });
 
         let FixtureWithProjectMeta {
@@ -148,7 +144,10 @@ impl Project<'_> {
                 let guard = CONFIG_DIR_LOCK.lock();
                 let test_dir = TestDir::new();
                 let value = test_dir.path().to_owned();
-                env::set_var("__TEST_RA_USER_CONFIG_DIR", &value);
+                // SAFETY: This is safe because this is single-threaded.
+                unsafe {
+                    env::set_var("__TEST_RA_USER_CONFIG_DIR", &value);
+                }
                 (guard, test_dir)
             })
         } else {
@@ -156,11 +155,7 @@ impl Project<'_> {
         };
 
         let tmp_dir = self.tmp_dir.unwrap_or_else(|| {
-            if self.root_dir_contains_symlink {
-                TestDir::new_symlink()
-            } else {
-                TestDir::new()
-            }
+            if self.root_dir_contains_symlink { TestDir::new_symlink() } else { TestDir::new() }
         });
 
         static INIT: Once = Once::new();
@@ -207,7 +202,7 @@ impl Project<'_> {
         }
 
         let mut config = Config::new(
-            tmp_dir_path.clone(),
+            tmp_dir_path,
             lsp_types::ClientCapabilities {
                 workspace: Some(lsp_types::WorkspaceClientCapabilities {
                     did_change_watched_files: Some(
@@ -303,8 +298,7 @@ impl Server {
     ) -> Server {
         let (connection, client) = Connection::memory();
 
-        let _thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
-            .name("test server".to_owned())
+        let _thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker, "test server")
             .spawn(move || main_loop(config, connection).unwrap())
             .expect("failed to spawn a thread");
 

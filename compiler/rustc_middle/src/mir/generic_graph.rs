@@ -1,5 +1,6 @@
 use gsgdt::{Edge, Graph, Node, NodeStyle};
-use rustc_middle::mir::*;
+
+use crate::mir::*;
 
 /// Convert an MIR function into a gsgdt Graph
 pub(crate) fn mir_fn_to_generic_graph<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Graph {

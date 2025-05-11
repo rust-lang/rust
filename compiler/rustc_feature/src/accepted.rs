@@ -9,7 +9,7 @@ macro_rules! declare_features {
         $(#[doc = $doc:tt])* (accepted, $feature:ident, $ver:expr, $issue:expr),
     )+) => {
         /// Formerly unstable features that have now been accepted (stabilized).
-        pub const ACCEPTED_LANG_FEATURES: &[Feature] = &[
+        pub static ACCEPTED_LANG_FEATURES: &[Feature] = &[
             $(Feature {
                 name: sym::$feature,
                 since: $ver,
@@ -62,6 +62,8 @@ declare_features! (
     (accepted, arbitrary_enum_discriminant, "1.66.0", Some(60553)),
     /// Allows using `const` operands in inline assembly.
     (accepted, asm_const, "1.82.0", Some(93332)),
+    /// Allows using `label` operands in inline assembly.
+    (accepted, asm_goto, "1.87.0", Some(119364)),
     /// Allows using `sym` operands in inline assembly.
     (accepted, asm_sym, "1.66.0", Some(93333)),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
@@ -73,7 +75,7 @@ declare_features! (
     /// Allows free and inherent `async fn`s, `async` blocks, and `<expr>.await` expressions.
     (accepted, async_await, "1.39.0", Some(50547)),
     /// Allows `async || body` closures.
-    (accepted, async_closure, "CURRENT_RUSTC_VERSION", Some(62290)),
+    (accepted, async_closure, "1.85.0", Some(62290)),
     /// Allows async functions to be declared, implemented, and used in traits.
     (accepted, async_fn_in_trait, "1.75.0", Some(91611)),
     /// Allows all literals in attribute lists and values of key-value pairs.
@@ -93,6 +95,8 @@ declare_features! (
     (accepted, c_unwind, "1.81.0", Some(74990)),
     /// Allows `#[cfg_attr(predicate, multiple, attributes, here)]`.
     (accepted, cfg_attr_multi, "1.33.0", Some(54881)),
+    /// Allows the use of `#[cfg(<true/false>)]`.
+    (accepted, cfg_boolean_literals, "CURRENT_RUSTC_VERSION", Some(131204)),
     /// Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests.
     (accepted, cfg_doctest, "1.40.0", Some(62210)),
     /// Enables `#[cfg(panic = "...")]` config key.
@@ -176,7 +180,7 @@ declare_features! (
     /// Allows using the `#[diagnostic]` attribute tool namespace
     (accepted, diagnostic_namespace, "1.78.0", Some(111996)),
     /// Controls errors in trait implementations.
-    (accepted, do_not_recommend, "CURRENT_RUSTC_VERSION", Some(51992)),
+    (accepted, do_not_recommend, "1.85.0", Some(51992)),
     /// Allows `#[doc(alias = "...")]`.
     (accepted, doc_alias, "1.48.0", Some(50146)),
     /// Allows `..` in tuple (struct) patterns.
@@ -197,9 +201,6 @@ declare_features! (
     (accepted, expr_fragment_specifier_2024, "1.83.0", Some(123742)),
     /// Allows arbitrary expressions in key-value attributes at parse time.
     (accepted, extended_key_value_attributes, "1.54.0", Some(78835)),
-    /// Allows using `efiapi`, `aapcs`, `sysv64` and `win64` as calling
-    /// convention for functions with varargs.
-    (accepted, extended_varargs_abi_support, "CURRENT_RUSTC_VERSION", Some(100189)),
     /// Allows resolving absolute paths as paths from other crates.
     (accepted, extern_absolute_paths, "1.30.0", Some(44660)),
     /// Allows `extern crate foo as bar;`. This puts `bar` into extern prelude.
@@ -299,6 +300,8 @@ declare_features! (
     /// Allows patterns with concurrent by-move and by-ref bindings.
     /// For example, you can write `Foo(a, ref b)` where `a` is by-move and `b` is by-ref.
     (accepted, move_ref_pattern, "1.49.0", Some(68354)),
+    /// Allows using `#[naked]` on functions.
+    (accepted, naked_functions, "CURRENT_RUSTC_VERSION", Some(90957)),
     /// Allows specifying modifiers in the link attribute: `#[link(modifiers = "...")]`
     (accepted, native_link_modifiers, "1.61.0", Some(81490)),
     /// Allows specifying the bundle link modifier
@@ -332,6 +335,8 @@ declare_features! (
     (accepted, pattern_parentheses, "1.31.0", Some(51087)),
     /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.
     (accepted, precise_capturing, "1.82.0", Some(123432)),
+    /// Allows `use<..>` precise capturign on impl Trait in traits.
+    (accepted, precise_capturing_in_traits, "1.87.0", Some(130044)),
     /// Allows procedural macros in `proc-macro` crates.
     (accepted, proc_macro, "1.29.0", Some(38356)),
     /// Allows multi-segment paths in attributes and derives.
@@ -389,6 +394,8 @@ declare_features! (
     (accepted, struct_variant, "1.0.0", None),
     /// Allows `#[target_feature(...)]`.
     (accepted, target_feature, "1.27.0", None),
+    /// Allows the use of `#[target_feature]` on safe functions.
+    (accepted, target_feature_11, "1.86.0", Some(69098)),
     /// Allows `fn main()` with return types which implements `Termination` (RFC 1937).
     (accepted, termination_trait, "1.26.0", Some(43301)),
     /// Allows `#[test]` functions where the return type implements `Termination` (RFC 1937).
@@ -400,6 +407,9 @@ declare_features! (
     /// Allows `#[track_caller]` to be used which provides
     /// accurate caller location reporting during panic (RFC 2091).
     (accepted, track_caller, "1.46.0", Some(47809)),
+    /// Allows dyn upcasting trait objects via supertraits.
+    /// Dyn upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
+    (accepted, trait_upcasting, "1.86.0", Some(65991)),
     /// Allows #[repr(transparent)] on univariant enums (RFC 2645).
     (accepted, transparent_enums, "1.42.0", Some(60405)),
     /// Allows indexing tuples.

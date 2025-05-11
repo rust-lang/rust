@@ -1,5 +1,5 @@
 use rustc_hir::{Expr, HirId};
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
     BasicBlock, Body, InlineAsmOperand, Local, Location, Place, START_BLOCK, StatementKind, TerminatorKind, traversal,
@@ -30,7 +30,7 @@ pub fn visit_local_usage(locals: &[Local], mir: &Body<'_>, location: Location) -
         locals.len()
     ];
 
-    traversal::Postorder::new(&mir.basic_blocks, location.block, ())
+    traversal::Postorder::new(&mir.basic_blocks, location.block, None)
         .collect::<Vec<_>>()
         .into_iter()
         .rev()
@@ -76,7 +76,7 @@ impl<'tcx> Visitor<'tcx> for V<'_> {
                 }
                 if matches!(
                     ctx,
-                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)
+                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Move | NonMutatingUseContext::Inspect)
                         | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
                 ) {
                     self.results[i].local_consume_or_mutate_locs.push(loc);
@@ -88,7 +88,7 @@ impl<'tcx> Visitor<'tcx> for V<'_> {
 
 /// Checks if the block is part of a cycle
 pub fn block_in_cycle(body: &Body<'_>, block: BasicBlock) -> bool {
-    let mut seen = BitSet::new_empty(body.basic_blocks.len());
+    let mut seen = DenseBitSet::new_empty(body.basic_blocks.len());
     let mut to_visit = Vec::with_capacity(body.basic_blocks.len() / 2);
 
     seen.insert(block);
@@ -112,10 +112,14 @@ pub fn block_in_cycle(body: &Body<'_>, block: BasicBlock) -> bool {
 
 /// Convenience wrapper around `visit_local_usage`.
 pub fn used_exactly_once(mir: &Body<'_>, local: Local) -> Option<bool> {
-    visit_local_usage(&[local], mir, Location {
-        block: START_BLOCK,
-        statement_index: 0,
-    })
+    visit_local_usage(
+        &[local],
+        mir,
+        Location {
+            block: START_BLOCK,
+            statement_index: 0,
+        },
+    )
     .map(|mut vec| {
         let LocalUsage { local_use_locs, .. } = vec.remove(0);
         let mut locations = local_use_locs
@@ -132,8 +136,8 @@ pub fn used_exactly_once(mir: &Body<'_>, local: Local) -> Option<bool> {
 /// Returns the `mir::Body` containing the node associated with `hir_id`.
 #[allow(clippy::module_name_repetitions)]
 pub fn enclosing_mir(tcx: TyCtxt<'_>, hir_id: HirId) -> Option<&Body<'_>> {
-    let body_owner_local_def_id = tcx.hir().enclosing_body_owner(hir_id);
-    if tcx.hir().body_owner_kind(body_owner_local_def_id).is_fn_or_closure() {
+    let body_owner_local_def_id = tcx.hir_enclosing_body_owner(hir_id);
+    if tcx.hir_body_owner_kind(body_owner_local_def_id).is_fn_or_closure() {
         Some(tcx.optimized_mir(body_owner_local_def_id.to_def_id()))
     } else {
         None

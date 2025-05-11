@@ -8,7 +8,7 @@ LL |         write!(f, "{:?}", 43.1415)
    = help: to override `-D warnings` add `#[allow(clippy::use_debug)]`
 
 error: use of `println!`
-  --> tests/ui/print.rs:25:5
+  --> tests/ui/print.rs:24:5
    |
 LL |     println!("Hello");
    |     ^^^^^^^^^^^^^^^^^
@@ -17,37 +17,37 @@ LL |     println!("Hello");
    = help: to override `-D warnings` add `#[allow(clippy::print_stdout)]`
 
 error: use of `print!`
-  --> tests/ui/print.rs:28:5
+  --> tests/ui/print.rs:27:5
    |
 LL |     print!("Hello");
    |     ^^^^^^^^^^^^^^^
 
 error: use of `print!`
-  --> tests/ui/print.rs:31:5
+  --> tests/ui/print.rs:30:5
    |
 LL |     print!("Hello {}", "World");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `print!`
-  --> tests/ui/print.rs:34:5
+  --> tests/ui/print.rs:33:5
    |
 LL |     print!("Hello {:?}", "World");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `Debug`-based formatting
-  --> tests/ui/print.rs:34:19
+  --> tests/ui/print.rs:33:19
    |
 LL |     print!("Hello {:?}", "World");
    |                   ^^^^
 
 error: use of `print!`
-  --> tests/ui/print.rs:38:5
+  --> tests/ui/print.rs:37:5
    |
 LL |     print!("Hello {:#?}", "#orld");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `Debug`-based formatting
-  --> tests/ui/print.rs:38:19
+  --> tests/ui/print.rs:37:19
    |
 LL |     print!("Hello {:#?}", "#orld");
    |                   ^^^^^

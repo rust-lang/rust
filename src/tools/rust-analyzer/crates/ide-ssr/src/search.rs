@@ -1,17 +1,16 @@
 //! Searching for matches.
 
 use crate::{
-    matching,
+    Match, MatchFinder, matching,
     resolving::{ResolvedPath, ResolvedPattern, ResolvedRule},
-    Match, MatchFinder,
 };
 use hir::FileRange;
 use ide_db::{
+    EditionedFileId, FileId, FxHashSet,
     defs::Definition,
     search::{SearchScope, UsageSearchResult},
-    EditionedFileId, FileId, FxHashSet,
 };
-use syntax::{ast, AstNode, SyntaxKind, SyntaxNode};
+use syntax::{AstNode, SyntaxKind, SyntaxNode, ast};
 
 /// A cache for the results of find_usages. This is for when we have multiple patterns that have the
 /// same path. e.g. if the pattern was `foo::Bar` that can parse as a path, an expression, a type
@@ -139,7 +138,7 @@ impl MatchFinder<'_> {
             files.push(
                 self.sema
                     .attach_first_edition(file_id)
-                    .unwrap_or_else(|| EditionedFileId::current_edition(file_id)),
+                    .unwrap_or_else(|| EditionedFileId::current_edition(self.sema.db, file_id)),
             );
         });
         SearchScope::files(&files)
@@ -156,10 +155,10 @@ impl MatchFinder<'_> {
     fn search_files_do(&self, mut callback: impl FnMut(FileId)) {
         if self.restrict_ranges.is_empty() {
             // Unrestricted search.
-            use ide_db::base_db::SourceRootDatabase;
+            use ide_db::base_db::SourceDatabase;
             use ide_db::symbol_index::SymbolsDatabase;
             for &root in self.sema.db.local_roots().iter() {
-                let sr = self.sema.db.source_root(root);
+                let sr = self.sema.db.source_root(root).source_root(self.sema.db);
                 for file_id in sr.iter() {
                     callback(file_id);
                 }
@@ -230,7 +229,9 @@ impl MatchFinder<'_> {
         }
         let Some(node_range) = self.sema.original_range_opt(code) else { return false };
         for range in &self.restrict_ranges {
-            if range.file_id == node_range.file_id && range.range.contains_range(node_range.range) {
+            if range.file_id == node_range.file_id.file_id(self.sema.db)
+                && range.range.contains_range(node_range.range)
+            {
                 return true;
             }
         }

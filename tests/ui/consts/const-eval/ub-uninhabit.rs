@@ -1,6 +1,8 @@
 // Strip out raw byte dumps to make comparison platform-independent:
 //@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 //@ normalize-stderr: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
+//@ dont-require-annotations: NOTE
+
 #![feature(core_intrinsics)]
 #![feature(never_type)]
 
@@ -18,15 +20,15 @@ union MaybeUninit<T: Copy> {
 
 const BAD_BAD_BAD: Bar = unsafe { MaybeUninit { uninit: () }.init };
 //~^ ERROR evaluation of constant value failed
-//~| constructing invalid value
+//~| NOTE constructing invalid value
 
 const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
 //~^ ERROR it is undefined behavior to use this value
-//~| constructing invalid value
+//~| NOTE constructing invalid value
 
 const BAD_BAD_ARRAY: [Bar; 1] = unsafe { MaybeUninit { uninit: () }.init };
 //~^ ERROR evaluation of constant value failed
-//~| constructing invalid value
+//~| NOTE constructing invalid value
 
 
 const READ_NEVER: () = unsafe {
@@ -34,7 +36,7 @@ const READ_NEVER: () = unsafe {
     let ptr = mem.as_ptr().cast::<!>();
     let _val = intrinsics::read_via_copy(ptr);
     //~^ ERROR evaluation of constant value failed
-    //~| constructing invalid value
+    //~| NOTE constructing invalid value
 };
 
 

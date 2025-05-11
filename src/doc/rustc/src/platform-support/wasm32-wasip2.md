@@ -13,8 +13,8 @@ WebAssembly binaries with native host capabilities.
 
 ## Target maintainers
 
-- Alex Crichton, https://github.com/alexcrichton
-- Ryan Levick, https://github.com/rylev
+[@alexcrichton](https://github.com/alexcrichton)
+[@rylev](https://github.com/rylev)
 
 ## Requirements
 

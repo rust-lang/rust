@@ -1,10 +1,8 @@
-//! Type-checking for the rust-intrinsic intrinsics that the compiler exposes.
+//! Type-checking for the `#[rustc_intrinsic]` intrinsics that the compiler exposes.
 
 use rustc_abi::ExternAbi;
-use rustc_errors::codes::*;
-use rustc_errors::{DiagMessage, struct_span_code_err};
-use rustc_hir::{self as hir, Safety};
-use rustc_middle::bug;
+use rustc_errors::DiagMessage;
+use rustc_hir::{self as hir, LangItem};
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
@@ -26,17 +24,10 @@ fn equate_intrinsic_type<'tcx>(
     sig: ty::PolyFnSig<'tcx>,
 ) {
     let (generics, span) = match tcx.hir_node_by_def_id(def_id) {
-        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })
-        | hir::Node::ForeignItem(hir::ForeignItem {
-            kind: hir::ForeignItemKind::Fn(_, _, generics),
-            ..
-        }) => (tcx.generics_of(def_id), generics.span),
-        _ => {
-            struct_span_code_err!(tcx.dcx(), span, E0622, "intrinsic must be a function")
-                .with_span_label(span, "expected a function")
-                .emit();
-            return;
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { generics, .. }, .. }) => {
+            (tcx.generics_of(def_id), generics.span)
         }
+        _ => tcx.dcx().span_bug(span, "intrinsic must be a function"),
     };
     let own_counts = generics.own_counts();
 
@@ -70,13 +61,7 @@ fn equate_intrinsic_type<'tcx>(
 }
 
 /// Returns the unsafety of the given intrinsic.
-pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hir::Safety {
-    let has_safe_attr = if tcx.has_attr(intrinsic_id, sym::rustc_intrinsic) {
-        tcx.fn_sig(intrinsic_id).skip_binder().safety()
-    } else {
-        // Old-style intrinsics are never safe
-        Safety::Unsafe
-    };
+fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hir::Safety {
     let is_in_list = match tcx.item_name(intrinsic_id.into()) {
         // When adding a new intrinsic to this list,
         // it's usually worth updating that intrinsic's documentation
@@ -86,6 +71,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::assert_inhabited
         | sym::assert_zero_valid
         | sym::assert_mem_uninitialized_valid
+        | sym::box_new
         | sym::breakpoint
         | sym::size_of
         | sym::min_align_of
@@ -117,10 +103,18 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::minnumf32
         | sym::minnumf64
         | sym::minnumf128
+        | sym::minimumf16
+        | sym::minimumf32
+        | sym::minimumf64
+        | sym::minimumf128
         | sym::maxnumf16
         | sym::maxnumf32
         | sym::maxnumf64
         | sym::maxnumf128
+        | sym::maximumf16
+        | sym::maximumf32
+        | sym::maximumf64
+        | sym::maximumf128
         | sym::rustc_peek
         | sym::type_name
         | sym::forget
@@ -131,16 +125,23 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::aggregate_raw_ptr
         | sym::ptr_metadata
         | sym::ub_checks
+        | sym::contract_checks
+        | sym::contract_check_requires
+        | sym::contract_check_ensures
         | sym::fadd_algebraic
         | sym::fsub_algebraic
         | sym::fmul_algebraic
         | sym::fdiv_algebraic
         | sym::frem_algebraic
+        | sym::round_ties_even_f16
+        | sym::round_ties_even_f32
+        | sym::round_ties_even_f64
+        | sym::round_ties_even_f128
         | sym::const_eval_select => hir::Safety::Safe,
         _ => hir::Safety::Unsafe,
     };
 
-    if has_safe_attr != is_in_list {
+    if tcx.fn_sig(intrinsic_id).skip_binder().safety() != is_in_list {
         tcx.dcx().struct_span_err(
             tcx.def_span(intrinsic_id),
             DiagMessage::from(format!(
@@ -155,12 +156,11 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
 
 /// Remember to add all intrinsics here, in `compiler/rustc_codegen_llvm/src/intrinsic.rs`,
 /// and in `library/core/src/intrinsics.rs`.
-pub fn check_intrinsic_type(
+pub(crate) fn check_intrinsic_type(
     tcx: TyCtxt<'_>,
     intrinsic_id: LocalDefId,
     span: Span,
     intrinsic_name: Symbol,
-    abi: ExternAbi,
 ) {
     let generics = tcx.generics_of(intrinsic_id);
     let param = |n| {
@@ -180,25 +180,30 @@ pub fn check_intrinsic_type(
         ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
     ]);
     let mk_va_list_ty = |mutbl| {
-        tcx.lang_items().va_list().map(|did| {
-            let region = ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
-                var: ty::BoundVar::ZERO,
-                kind: ty::BoundRegionKind::Anon,
-            });
-            let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
+        let did = tcx.require_lang_item(LangItem::VaList, Some(span));
+        let region = ty::Region::new_bound(
+            tcx,
+            ty::INNERMOST,
+            ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon },
+        );
+        let env_region = ty::Region::new_bound(
+            tcx,
+            ty::INNERMOST,
+            ty::BoundRegion {
                 var: ty::BoundVar::from_u32(2),
                 kind: ty::BoundRegionKind::ClosureEnv,
-            });
-            let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]);
-            (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
-        })
+            },
+        );
+        let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]);
+        (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
     };
 
     let (n_tps, n_lts, n_cts, inputs, output, safety) = if name_str.starts_with("atomic_") {
         let split: Vec<&str> = name_str.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic in an incorrect format");
 
-        //We only care about the operation here
+        // Each atomic op has variants with different suffixes (`_seq_cst`, `_acquire`, etc.). Use
+        // string ops to strip the suffixes, because the variants all get the same treatment here.
         let (n_tps, inputs, output) = match split[1] {
             "cxchg" | "cxchgweak" => (
                 1,
@@ -217,6 +222,12 @@ pub fn check_intrinsic_type(
             }
         };
         (n_tps, 0, 0, inputs, output, hir::Safety::Unsafe)
+    } else if intrinsic_name == sym::contract_check_ensures {
+        // contract_check_ensures::<Ret, C>(Ret, C) -> Ret
+        // where C: for<'a> Fn(&'a Ret) -> bool,
+        //
+        // so: two type params, 0 lifetime param, 0 const params, two inputs, no return
+        (2, 0, 0, vec![param(0), param(1)], param(1), hir::Safety::Safe)
     } else {
         let safety = intrinsic_operation_unsafety(tcx, intrinsic_id);
         let (n_tps, n_cts, inputs, output) = match intrinsic_name {
@@ -371,10 +382,20 @@ pub fn check_intrinsic_type(
             sym::minnumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
             sym::minnumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
 
+            sym::minimumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
+            sym::minimumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
+            sym::minimumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
+            sym::minimumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
+
             sym::maxnumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
             sym::maxnumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
             sym::maxnumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
             sym::maxnumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
+
+            sym::maximumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
+            sym::maximumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
+            sym::maximumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
+            sym::maximumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
 
             sym::copysignf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
             sym::copysignf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
@@ -396,25 +417,15 @@ pub fn check_intrinsic_type(
             sym::truncf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
             sym::truncf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
 
-            sym::rintf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-            sym::rintf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-            sym::rintf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-            sym::rintf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-            sym::nearbyintf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-            sym::nearbyintf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-            sym::nearbyintf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-            sym::nearbyintf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
+            sym::round_ties_even_f16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
+            sym::round_ties_even_f32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
+            sym::round_ties_even_f64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
+            sym::round_ties_even_f128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
 
             sym::roundf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
             sym::roundf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
             sym::roundf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
             sym::roundf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-            sym::roundevenf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-            sym::roundevenf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-            sym::roundevenf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-            sym::roundevenf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
 
             sym::volatile_load | sym::unaligned_volatile_load => {
                 (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(0))
@@ -470,7 +481,7 @@ pub fn check_intrinsic_type(
                 vec![Ty::new_imm_ptr(tcx, param(0)), Ty::new_imm_ptr(tcx, param(0))],
                 tcx.types.usize,
             ),
-            sym::unchecked_div | sym::unchecked_rem | sym::exact_div => {
+            sym::unchecked_div | sym::unchecked_rem | sym::exact_div | sym::disjoint_bitor => {
                 (1, 0, vec![param(0), param(0)], param(0))
             }
             sym::unchecked_shl | sym::unchecked_shr => (2, 0, vec![param(0), param(1)], param(0)),
@@ -553,23 +564,17 @@ pub fn check_intrinsic_type(
                 )
             }
 
-            sym::va_start | sym::va_end => match mk_va_list_ty(hir::Mutability::Mut) {
-                Some((va_list_ref_ty, _)) => (0, 0, vec![va_list_ref_ty], tcx.types.unit),
-                None => bug!("`va_list` lang item needed for C-variadic intrinsics"),
-            },
+            sym::va_start | sym::va_end => {
+                (0, 0, vec![mk_va_list_ty(hir::Mutability::Mut).0], tcx.types.unit)
+            }
 
-            sym::va_copy => match mk_va_list_ty(hir::Mutability::Not) {
-                Some((va_list_ref_ty, va_list_ty)) => {
-                    let va_list_ptr_ty = Ty::new_mut_ptr(tcx, va_list_ty);
-                    (0, 0, vec![va_list_ptr_ty, va_list_ref_ty], tcx.types.unit)
-                }
-                None => bug!("`va_list` lang item needed for C-variadic intrinsics"),
-            },
+            sym::va_copy => {
+                let (va_list_ref_ty, va_list_ty) = mk_va_list_ty(hir::Mutability::Not);
+                let va_list_ptr_ty = Ty::new_mut_ptr(tcx, va_list_ty);
+                (0, 0, vec![va_list_ptr_ty, va_list_ref_ty], tcx.types.unit)
+            }
 
-            sym::va_arg => match mk_va_list_ty(hir::Mutability::Mut) {
-                Some((va_list_ref_ty, _)) => (1, 0, vec![va_list_ref_ty], param(0)),
-                None => bug!("`va_list` lang item needed for C-variadic intrinsics"),
-            },
+            sym::va_arg => (1, 0, vec![mk_va_list_ty(hir::Mutability::Mut).0], param(0)),
 
             sym::nontemporal_store => {
                 (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit)
@@ -606,6 +611,13 @@ pub fn check_intrinsic_type(
 
             sym::ub_checks => (0, 0, Vec::new(), tcx.types.bool),
 
+            sym::box_new => (1, 0, vec![param(0)], Ty::new_box(tcx, param(0))),
+
+            // contract_checks() -> bool
+            sym::contract_checks => (0, 0, Vec::new(), tcx.types.bool),
+            // contract_check_requires::<C>(C) -> bool, where C: impl Fn() -> bool
+            sym::contract_check_requires => (1, 0, vec![param(0)], tcx.types.unit),
+
             sym::simd_eq
             | sym::simd_ne
             | sym::simd_lt
@@ -624,7 +636,6 @@ pub fn check_intrinsic_type(
             | sym::simd_xor
             | sym::simd_fmin
             | sym::simd_fmax
-            | sym::simd_fpow
             | sym::simd_saturating_add
             | sym::simd_saturating_sub => (1, 0, vec![param(0), param(0)], param(0)),
             sym::simd_arith_offset => (2, 0, vec![param(0), param(1)], param(0)),
@@ -647,7 +658,6 @@ pub fn check_intrinsic_type(
             | sym::simd_floor
             | sym::simd_round
             | sym::simd_trunc => (1, 0, vec![param(0)], param(0)),
-            sym::simd_fpowi => (1, 0, vec![param(0), tcx.types.i32], param(0)),
             sym::simd_fma | sym::simd_relaxed_fma => {
                 (1, 0, vec![param(0), param(0), param(0)], param(0))
             }
@@ -655,8 +665,12 @@ pub fn check_intrinsic_type(
             sym::simd_masked_load => (3, 0, vec![param(0), param(1), param(2)], param(2)),
             sym::simd_masked_store => (3, 0, vec![param(0), param(1), param(2)], tcx.types.unit),
             sym::simd_scatter => (3, 0, vec![param(0), param(1), param(2)], tcx.types.unit),
-            sym::simd_insert => (2, 0, vec![param(0), tcx.types.u32, param(1)], param(0)),
-            sym::simd_extract => (2, 0, vec![param(0), tcx.types.u32], param(1)),
+            sym::simd_insert | sym::simd_insert_dyn => {
+                (2, 0, vec![param(0), tcx.types.u32, param(1)], param(0))
+            }
+            sym::simd_extract | sym::simd_extract_dyn => {
+                (2, 0, vec![param(0), tcx.types.u32], param(1))
+            }
             sym::simd_cast
             | sym::simd_as
             | sym::simd_cast_ptr
@@ -678,7 +692,7 @@ pub fn check_intrinsic_type(
             | sym::simd_reduce_min
             | sym::simd_reduce_max => (2, 0, vec![param(0)], param(1)),
             sym::simd_shuffle => (3, 0, vec![param(0), param(0), param(1)], param(2)),
-            sym::simd_shuffle_generic => (2, 1, vec![param(0), param(0)], param(1)),
+            sym::simd_shuffle_const_generic => (2, 1, vec![param(0), param(0)], param(1)),
 
             other => {
                 tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });
@@ -687,7 +701,7 @@ pub fn check_intrinsic_type(
         };
         (n_tps, 0, n_cts, inputs, output, safety)
     };
-    let sig = tcx.mk_fn_sig(inputs, output, false, safety, abi);
+    let sig = tcx.mk_fn_sig(inputs, output, false, safety, ExternAbi::Rust);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
     equate_intrinsic_type(tcx, span, intrinsic_id, n_tps, n_lts, n_cts, sig)
 }

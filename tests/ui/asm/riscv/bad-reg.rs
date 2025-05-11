@@ -38,8 +38,6 @@ fn f() {
         //~^ ERROR invalid register `sp`: the stack pointer cannot be used as an operand for inline asm
         asm!("", out("gp") _);
         //~^ ERROR invalid register `gp`: the global pointer cannot be used as an operand for inline asm
-        asm!("", out("gp") _);
-        //~^ ERROR invalid register `gp`: the global pointer cannot be used as an operand for inline asm
         asm!("", out("tp") _);
         //~^ ERROR invalid register `tp`: the thread pointer cannot be used as an operand for inline asm
         asm!("", out("zero") _);

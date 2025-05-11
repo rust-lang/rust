@@ -11,15 +11,15 @@ mod sub {
     pub fn public() {}
 }
 
-//@ matches - '//*[@class="desc docblock-short"]' '^Displayed$'
+//@ matches - '//dd' '^Displayed$'
 /// Displayed
 #[doc(inline)]
 pub use crate::bar as Bar;
-//@ matches - '//*[@class="desc docblock-short"]' '^Hello\sDisplayed$'
+//@ matches - '//dd' '^Hello\sDisplayed$'
 #[doc(inline)]
 /// Hello
 pub use crate::Bar as Bar2;
 
-//@ matches - '//*[@class="desc docblock-short"]' '^Public$'
+//@ matches - '//dd' '^Public$'
 /// Public
 pub use crate::sub::public as Public;

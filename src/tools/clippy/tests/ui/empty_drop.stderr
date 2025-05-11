@@ -2,6 +2,7 @@ error: empty drop implementation
   --> tests/ui/empty_drop.rs:7:1
    |
 LL | / impl Drop for Foo {
+LL | |
 LL | |     fn drop(&mut self) {}
 LL | | }
    | |_^
@@ -11,9 +12,10 @@ LL | | }
    = help: try removing this impl
 
 error: empty drop implementation
-  --> tests/ui/empty_drop.rs:23:1
+  --> tests/ui/empty_drop.rs:24:1
    |
 LL | / impl Drop for Baz {
+LL | |
 LL | |     fn drop(&mut self) {
 LL | |         {}
 LL | |     }

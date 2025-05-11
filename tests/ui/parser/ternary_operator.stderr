@@ -33,8 +33,6 @@ error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
    |
 LL |     let x = 5 > 2 ? { let x = vec![]: Vec<u16>; x } : { false };
    |                                     ^ expected one of `.`, `;`, `?`, `else`, or an operator
-   |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: Rust has no ternary operator
   --> $DIR/ternary_operator.rs:26:19

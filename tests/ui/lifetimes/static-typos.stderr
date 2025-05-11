@@ -1,0 +1,26 @@
+error[E0261]: use of undeclared lifetime name `'stati`
+  --> $DIR/static-typos.rs:1:13
+   |
+LL | fn stati<T: 'stati>() {}
+   |             ^^^^^^ undeclared lifetime
+   |
+help: you may have misspelled the `'static` lifetime
+   |
+LL | fn stati<T: 'static>() {}
+   |                   +
+
+error[E0261]: use of undeclared lifetime name `'statoc`
+  --> $DIR/static-typos.rs:4:14
+   |
+LL | fn statoc<T: 'statoc>() {}
+   |              ^^^^^^^ undeclared lifetime
+   |
+help: you may have misspelled the `'static` lifetime
+   |
+LL - fn statoc<T: 'statoc>() {}
+LL + fn statoc<T: 'static>() {}
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0261`.

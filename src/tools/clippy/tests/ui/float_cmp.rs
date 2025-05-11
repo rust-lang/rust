@@ -70,17 +70,19 @@ fn main() {
     ONE != 0.0; // no error, comparison with zero is ok
     twice(ONE) != ONE;
     ONE as f64 != 2.0;
-    //~^ ERROR: strict comparison of `f32` or `f64`
+    //~^ float_cmp
+
     ONE as f64 != 0.0; // no error, comparison with zero is ok
 
     let x: f64 = 1.0;
 
     x == 1.0;
-    //~^ ERROR: strict comparison of `f32` or `f64`
+    //~^ float_cmp
+
     x != 0f64; // no error, comparison with zero is ok
 
     twice(x) != twice(ONE as f64);
-    //~^ ERROR: strict comparison of `f32` or `f64`
+    //~^ float_cmp
 
     x < 0.0; // no errors, lower or greater comparisons need no fuzzyness
     x > 0.0;
@@ -101,15 +103,16 @@ fn main() {
 
     ZERO_ARRAY[i] == NON_ZERO_ARRAY[j]; // ok, because lhs is zero regardless of i
     NON_ZERO_ARRAY[i] == NON_ZERO_ARRAY[j];
-    //~^ ERROR: strict comparison of `f32` or `f64`
+    //~^ float_cmp
 
     let a1: [f32; 1] = [0.0];
     let a2: [f32; 1] = [1.1];
 
     a1 == a2;
-    //~^ ERROR: strict comparison of `f32` or `f64` arrays
+    //~^ float_cmp
+
     a1[0] == a2[0];
-    //~^ ERROR: strict comparison of `f32` or `f64`
+    //~^ float_cmp
 
     // no errors - comparing signums is ok
     let x32 = 3.21f32;

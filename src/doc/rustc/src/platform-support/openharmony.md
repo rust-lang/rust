@@ -1,6 +1,6 @@
 # `*-unknown-linux-ohos`
 
-**Tier: 2**
+**Tier: 2 (with Host Tools)**
 
 * aarch64-unknown-linux-ohos
 * armv7-unknown-linux-ohos
@@ -15,8 +15,22 @@ system.
 
 ## Target maintainers
 
-- Amanieu d'Antras ([@Amanieu](https://github.com/Amanieu))
-- Lu Binglun ([@lubinglun](https://github.com/lubinglun))
+[@Amanieu](https://github.com/Amanieu)
+[@lubinglun](https://github.com/lubinglun)
+
+## Requirements
+
+All the ohos targets of Tier 2 with host tools support all extended rust tools.
+(exclude `miri`, the support of `miri` will be added soon)
+
+### Host toolchain
+
+The targets require a reasonably up-to-date OpenHarmony SDK on the host.
+
+The targets support `cargo`, which require [ohos-openssl](https://github.com/ohos-rs/ohos-openssl).
+
+`miri` isn't supported yet, since its dependencies (`libffi` and `tikv-jemalloc-sys`) don't support
+compiling for the OHOS targets.
 
 ## Setup
 
@@ -131,7 +145,7 @@ linker = "/path/to/x86_64-unknown-linux-ohos-clang.sh"
 ## Building the target from source
 
 Instead of using `rustup`, you can instead build a rust toolchain from source.
-Create a `config.toml` with the following contents:
+Create a `bootstrap.toml` with the following contents:
 
 ```toml
 profile = "compiler"

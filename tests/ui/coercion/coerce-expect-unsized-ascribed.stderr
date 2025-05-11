@@ -29,7 +29,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:14:27
    |
 LL |     let _ = type_ascribe!(Box::new( { |x| (x as u8) }), Box<dyn Fn(i32) -> _>);
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<dyn Fn(i32) -> u8>`, found `Box<{closure@coerce-expect-unsized-ascribed.rs:14:39}>`
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<dyn Fn(i32) -> u8>`, found `Box<{closure@...}>`
    |
    = note: expected struct `Box<dyn Fn(i32) -> u8>`
               found struct `Box<{closure@$DIR/coerce-expect-unsized-ascribed.rs:14:39: 14:42}>`
@@ -85,7 +85,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:22:27
    |
 LL |     let _ = type_ascribe!(&{ |x| (x as u8) }, &dyn Fn(i32) -> _);
-   |                           ^^^^^^^^^^^^^^^^^^ expected `&dyn Fn(i32) -> u8`, found `&{closure@coerce-expect-unsized-ascribed.rs:22:30}`
+   |                           ^^^^^^^^^^^^^^^^^^ expected `&dyn Fn(i32) -> u8`, found `&{closure@...}`
    |
    = note: expected reference `&dyn Fn(i32) -> u8`
               found reference `&{closure@$DIR/coerce-expect-unsized-ascribed.rs:22:30: 22:33}`
@@ -123,7 +123,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:27:27
    |
 LL |     let _ = type_ascribe!(Box::new(|x| (x as u8)), Box<dyn Fn(i32) -> _>);
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<dyn Fn(i32) -> u8>`, found `Box<{closure@coerce-expect-unsized-ascribed.rs:27:36}>`
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<dyn Fn(i32) -> u8>`, found `Box<{closure@...}>`
    |
    = note: expected struct `Box<dyn Fn(i32) -> u8>`
               found struct `Box<{closure@$DIR/coerce-expect-unsized-ascribed.rs:27:36: 27:39}>`

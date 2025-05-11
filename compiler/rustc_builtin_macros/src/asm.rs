@@ -10,13 +10,13 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::exp;
 use rustc_parse::parser::{ExpKeywordPair, Parser};
 use rustc_session::lint;
-use rustc_span::{ErrorGuaranteed, Ident, InnerSpan, Span, Symbol, kw};
+use rustc_span::{ErrorGuaranteed, InnerSpan, Span, Symbol, kw};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
 use {rustc_ast as ast, rustc_parse_format as parse};
 
 use crate::errors;
-use crate::util::expr_to_spanned_string;
+use crate::util::{ExprToSpannedString, expr_to_spanned_string};
 
 pub struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,
@@ -527,7 +527,12 @@ fn expand_preparsed_asm(
         let msg = "asm template must be a string literal";
         let template_sp = template_expr.span;
         let template_is_mac_call = matches!(template_expr.kind, ast::ExprKind::MacCall(_));
-        let (template_str, template_style, template_span) = {
+        let ExprToSpannedString {
+            symbol: template_str,
+            style: template_style,
+            span: template_span,
+            ..
+        } = {
             let ExpandResult::Ready(mac) = expr_to_spanned_string(ecx, template_expr, msg) else {
                 return ExpandResult::Retry(());
             };
@@ -646,7 +651,7 @@ fn expand_preparsed_asm(
             .map(|span| template_span.from_inner(InnerSpan::new(span.start, span.end)));
         for piece in unverified_pieces {
             match piece {
-                parse::Piece::String(s) => {
+                parse::Piece::Lit(s) => {
                     template.push(ast::InlineAsmTemplatePiece::String(s.to_string().into()))
                 }
                 parse::Piece::NextArgument(arg) => {
@@ -883,7 +888,6 @@ pub(super) fn expand_global_asm<'cx>(
             };
             match mac {
                 Ok(inline_asm) => MacEager::items(smallvec![P(ast::Item {
-                    ident: Ident::empty(),
                     attrs: ast::AttrVec::new(),
                     id: ast::DUMMY_NODE_ID,
                     kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),

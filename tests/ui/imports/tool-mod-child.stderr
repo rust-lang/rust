@@ -1,10 +1,10 @@
-error[E0433]: failed to resolve: you might be missing crate `clippy`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `clippy`
   --> $DIR/tool-mod-child.rs:2:5
    |
 LL | use clippy::a::b;
-   |     ^^^^^^ you might be missing crate `clippy`
+   |     ^^^^^^ use of unresolved module or unlinked crate `clippy`
    |
-help: consider importing the `clippy` crate
+help: you might be missing a crate named `clippy`, add it to your project and import it in your code
    |
 LL + extern crate clippy;
    |
@@ -13,20 +13,20 @@ error[E0432]: unresolved import `clippy`
   --> $DIR/tool-mod-child.rs:1:5
    |
 LL | use clippy::a;
-   |     ^^^^^^ you might be missing crate `clippy`
+   |     ^^^^^^ use of unresolved module or unlinked crate `clippy`
    |
-help: consider importing the `clippy` crate
+help: you might be missing a crate named `clippy`, add it to your project and import it in your code
    |
 LL + extern crate clippy;
    |
 
-error[E0433]: failed to resolve: you might be missing crate `rustdoc`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `rustdoc`
   --> $DIR/tool-mod-child.rs:5:5
    |
 LL | use rustdoc::a::b;
-   |     ^^^^^^^ you might be missing crate `rustdoc`
+   |     ^^^^^^^ use of unresolved module or unlinked crate `rustdoc`
    |
-help: consider importing the `rustdoc` crate
+help: you might be missing a crate named `rustdoc`, add it to your project and import it in your code
    |
 LL + extern crate rustdoc;
    |
@@ -35,9 +35,9 @@ error[E0432]: unresolved import `rustdoc`
   --> $DIR/tool-mod-child.rs:4:5
    |
 LL | use rustdoc::a;
-   |     ^^^^^^^ you might be missing crate `rustdoc`
+   |     ^^^^^^^ use of unresolved module or unlinked crate `rustdoc`
    |
-help: consider importing the `rustdoc` crate
+help: you might be missing a crate named `rustdoc`, add it to your project and import it in your code
    |
 LL + extern crate rustdoc;
    |

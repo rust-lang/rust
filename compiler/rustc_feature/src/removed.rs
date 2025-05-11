@@ -14,7 +14,7 @@ macro_rules! declare_features {
         $(#[doc = $doc:tt])* (removed, $feature:ident, $ver:expr, $issue:expr, $reason:expr),
     )+) => {
         /// Formerly unstable features that have now been removed.
-        pub const REMOVED_LANG_FEATURES: &[RemovedFeature] = &[
+        pub static REMOVED_LANG_FEATURES: &[RemovedFeature] = &[
             $(RemovedFeature {
                 feature: Feature {
                     name: sym::$feature,
@@ -100,6 +100,15 @@ declare_features! (
      Some("renamed to `doc_notable_trait`")),
     /// Allows using `#[unsafe_destructor_blind_to_params]` (RFC 1238).
     (removed, dropck_parametricity, "1.38.0", Some(28498), None),
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn compatible[^1].
+    /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
+    /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
+    ///
+    /// Renamed from `object_safe_for_dispatch`.
+    ///
+    /// [^1]: Formerly known as "object safe".
+    (removed, dyn_compatible_for_dispatch, "1.83.0", Some(43561),
+     Some("removed, not used heavily and represented additional complexity in dyn compatibility")),
     /// Uses generic effect parameters for ~const bounds
     (removed, effects, "1.84.0", Some(102090),
      Some("removed, redundant with `#![feature(const_trait_impl)]`")),
@@ -120,7 +129,7 @@ declare_features! (
     /// Allows defining generators.
     (removed, generators, "1.21.0", Some(43122), Some("renamed to `coroutines`")),
     /// An extension to the `generic_associated_types` feature, allowing incomplete features.
-    (removed, generic_associated_types_extended, "CURRENT_RUSTC_VERSION", Some(95451),
+    (removed, generic_associated_types_extended, "1.85.0", Some(95451),
         Some(
             "feature needs overhaul and reimplementation pending \
             better implied higher-ranked implied bounds support"
@@ -133,8 +142,13 @@ declare_features! (
     /// Allows inferring `'static` outlives requirements (RFC 2093).
     (removed, infer_static_outlives_requirements, "1.63.0", Some(54185),
      Some("removed as it caused some confusion and discussion was inactive for years")),
+    /// Allow anonymous constants from an inline `const` block in pattern position
+    (removed, inline_const_pat, "CURRENT_RUSTC_VERSION", Some(76001),
+     Some("removed due to implementation concerns as it requires significant refactorings")),
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (removed, lazy_normalization_consts, "1.46.0", Some(72219), Some("superseded by `generic_const_exprs`")),
+    /// Changes `impl Trait` to capture all lifetimes in scope.
+    (removed, lifetime_capture_rules_2024, "1.76.0", None, Some("unnecessary -- use edition 2024 instead")),
     /// Allows using the `#[link_args]` attribute.
     (removed, link_args, "1.53.0", Some(29596),
      Some("removed in favor of using `-C link-arg=ARG` on command line, \
@@ -163,7 +177,7 @@ declare_features! (
     /// then removed. But there was no utility storing it separately, so now
     /// it's in this list.
     (removed, no_stack_check, "1.0.0", None, None),
-    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn-compatible (object safe).
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn compatible (object safe).
     /// Renamed to `dyn_compatible_for_dispatch`.
     (removed, object_safe_for_dispatch, "1.83.0", Some(43561),
      Some("renamed to `dyn_compatible_for_dispatch`")),
@@ -220,8 +234,9 @@ declare_features! (
     (removed, rustc_diagnostic_macros, "1.38.0", None, None),
     /// Allows identifying crates that contain sanitizer runtimes.
     (removed, sanitizer_runtime, "1.17.0", None, None),
-    (removed, simd, "1.0.0", Some(27731),
-     Some("removed in favor of `#[repr(simd)]`")),
+    (removed, simd, "1.0.0", Some(27731), Some("removed in favor of `#[repr(simd)]`")),
+    /// Allows using `#[start]` on a function indicating that it is the program entrypoint.
+    (removed, start, "1.0.0", Some(29633), Some("not portable enough and never RFC'd")),
     /// Allows `#[link(kind = "static-nobundle", ...)]`.
     (removed, static_nobundle, "1.16.0", Some(37403),
      Some(r#"subsumed by `#[link(kind = "static", modifiers = "-bundle", ...)]`"#)),
@@ -232,6 +247,8 @@ declare_features! (
     /// Allows unnamed fields of struct and union type
     (removed, unnamed_fields, "1.83.0", Some(49804), Some("feature needs redesign")),
     (removed, unsafe_no_drop_flag, "1.0.0", None, None),
+    (removed, unsized_tuple_coercion, "1.87.0", Some(42877),
+     Some("The feature restricts possible layouts for tuples, and this restriction is not worth it.")),
     /// Allows `union` fields that don't implement `Copy` as long as they don't have any drop glue.
     (removed, untagged_unions, "1.13.0", Some(55149),
      Some("unions with `Copy` and `ManuallyDrop` fields are stable; there is no intent to stabilize more")),

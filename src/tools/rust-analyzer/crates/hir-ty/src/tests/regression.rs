@@ -629,7 +629,7 @@ fn issue_4053_diesel_where_clauses() {
             488..522 '{     ...     }': ()
             498..502 'self': SelectStatement<F, S, D, W, O, LOf, {unknown}, {unknown}>
             498..508 'self.order': O
-            498..515 'self.o...into()': dyn QueryFragment<DB>
+            498..515 'self.o...into()': dyn QueryFragment<DB> + 'static
         "#]],
     );
 }
@@ -773,7 +773,7 @@ fn issue_4800() {
         "#,
         expect![[r#"
             379..383 'self': &'? mut PeerSet<D>
-            401..424 '{     ...     }': dyn Future<Output = ()>
+            401..424 '{     ...     }': dyn Future<Output = ()> + 'static
             411..418 'loop {}': !
             416..418 '{}': ()
             575..579 'self': &'? mut Self
@@ -1585,23 +1585,6 @@ type Member<U> = ConstGen<U, N>;
 }
 
 #[test]
-fn cfgd_out_self_param() {
-    cov_mark::check!(cfgd_out_self_param);
-    check_no_mismatches(
-        r#"
-struct S;
-impl S {
-    fn f(#[cfg(never)] &self) {}
-}
-
-fn f(s: S) {
-    s.f();
-}
-"#,
-    );
-}
-
-#[test]
 fn tuple_struct_pattern_with_unmatched_args_crash() {
     check_infer(
         r#"
@@ -2292,6 +2275,29 @@ fn test(x: bool) {
             321..327 'return': !
             337..338 '_': bool
             342..344 '42': i32
+        "#]],
+    );
+}
+
+#[test]
+fn issue_19730() {
+    check_infer(
+        r#"
+trait Trait<T = Self> {}
+
+trait Foo {
+    type Bar<A, B>: Trait;
+
+    fn foo<A, B>(bar: Self::Bar<A, B>) {
+        let _ = bar;
+    }
+}
+"#,
+        expect![[r#"
+            83..86 'bar': Foo::Bar<Self, A, B>
+            105..133 '{     ...     }': ()
+            119..120 '_': Foo::Bar<Self, A, B>
+            123..126 'bar': Foo::Bar<Self, A, B>
         "#]],
     );
 }

@@ -85,11 +85,11 @@ fn install_sh(
     } else {
         assert!(
             is_dir_writable_for_user(&prefix),
-            "User doesn't have write access on `install.prefix` path in the `config.toml`.",
+            "User doesn't have write access on `install.prefix` path in the `bootstrap.toml`.",
         );
         assert!(
             is_dir_writable_for_user(&sysconfdir),
-            "User doesn't have write access on `install.sysconfdir` path in `config.toml`."
+            "User doesn't have write access on `install.sysconfdir` path in `bootstrap.toml`."
         );
     }
 
@@ -307,7 +307,7 @@ impl Step for Src {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let config = &run.builder.config;
-        let cond = config.extended && config.tools.as_ref().map_or(true, |t| t.contains("src"));
+        let cond = config.extended && config.tools.as_ref().is_none_or(|t| t.contains("src"));
         run.path("src").default_condition(cond)
     }
 

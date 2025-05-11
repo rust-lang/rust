@@ -1,6 +1,3 @@
-#![feature(trait_upcasting)]
-#![allow(incomplete_features)]
-
 use std::fmt;
 
 fn main() {
@@ -10,6 +7,9 @@ fn main() {
     replace_vptr();
     vtable_nop_cast();
     drop_principal();
+    modulo_binder();
+    modulo_assoc();
+    bidirectional_subtyping();
 }
 
 fn vtable_nop_cast() {
@@ -481,4 +481,83 @@ fn drop_principal() {
     assert_eq!(x_layout, y_layout);
     println!("before");
     drop(y);
+}
+
+// Test for <https://github.com/rust-lang/rust/issues/135316>.
+fn modulo_binder() {
+    trait Supertrait<T> {
+        fn _print_numbers(&self, mem: &[usize; 100]) {
+            println!("{mem:?}");
+        }
+    }
+    impl<T> Supertrait<T> for () {}
+
+    trait Trait<T, U>: Supertrait<T> + Supertrait<U> {
+        fn say_hello(&self, _: &usize) {
+            println!("Hello!");
+        }
+    }
+    impl<T, U> Trait<T, U> for () {}
+
+    (&() as &'static dyn for<'a> Trait<&'static (), &'a ()>
+        as &'static dyn Trait<&'static (), &'static ()>)
+        .say_hello(&0);
+}
+
+// Test for <https://github.com/rust-lang/rust/issues/135315>.
+fn modulo_assoc() {
+    trait Supertrait<T> {
+        fn _print_numbers(&self, mem: &[usize; 100]) {
+            println!("{mem:?}");
+        }
+    }
+    impl<T> Supertrait<T> for () {}
+
+    trait Identity {
+        type Selff;
+    }
+    impl<Selff> Identity for Selff {
+        type Selff = Selff;
+    }
+
+    trait Middle<T>: Supertrait<()> + Supertrait<T> {
+        fn say_hello(&self, _: &usize) {
+            println!("Hello!");
+        }
+    }
+    impl<T> Middle<T> for () {}
+
+    trait Trait: Middle<<() as Identity>::Selff> {}
+    impl Trait for () {}
+
+    (&() as &dyn Trait as &dyn Middle<()>).say_hello(&0);
+}
+
+fn bidirectional_subtyping() {
+    // Test that transmuting between subtypes of dyn traits is fine, even in the
+    // "wrong direction", i.e. going from a lower-ranked to a higher-ranked dyn trait.
+    // Note that compared to the `dyn-transmute-inner-binder` test, the `for` is on the
+    // *outside* here!
+
+    trait Trait<U: ?Sized> {}
+    impl<T, U: ?Sized> Trait<U> for T {}
+
+    struct Wrapper<T: ?Sized>(T);
+
+    let x: &dyn Trait<fn(&'static ())> = &();
+    let _y: &dyn for<'a> Trait<fn(&'a ())> = unsafe { std::mem::transmute(x) };
+
+    let x: &dyn for<'a> Trait<fn(&'a ())> = &();
+    let _y: &dyn Trait<fn(&'static ())> = unsafe { std::mem::transmute(x) };
+
+    let x: &dyn Trait<dyn Trait<fn(&'static ())>> = &();
+    let _y: &dyn for<'a> Trait<dyn Trait<fn(&'a ())>> = unsafe { std::mem::transmute(x) };
+
+    let x: &dyn for<'a> Trait<dyn Trait<fn(&'a ())>> = &();
+    let _y: &dyn Trait<dyn Trait<fn(&'static ())>> = unsafe { std::mem::transmute(x) };
+
+    // This lowers to a ptr-to-ptr cast (which behaves like a transmute)
+    // and not an unsizing coercion:
+    let x: *const dyn for<'a> Trait<&'a ()> = &();
+    let _y: *const Wrapper<dyn Trait<&'static ()>> = x as _;
 }

@@ -1,18 +1,19 @@
 use hir::{HirDisplay, TypeInfo};
 use ide_db::{
     assists::GroupLabel,
-    syntax_helpers::{suggest_name, LexedStr},
+    syntax_helpers::{LexedStr, suggest_name},
 };
 use syntax::{
+    NodeOrToken, SyntaxKind, SyntaxNode, T,
+    algo::ancestors_at_offset,
     ast::{
-        self, edit::IndentLevel, edit_in_place::Indent, make, syntax_factory::SyntaxFactory,
-        AstNode,
+        self, AstNode, edit::IndentLevel, edit_in_place::Indent, make,
+        syntax_factory::SyntaxFactory,
     },
     syntax_editor::Position,
-    NodeOrToken, SyntaxKind, SyntaxNode, T,
 };
 
-use crate::{utils::is_body_const, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists, utils::is_body_const};
 
 // Assist: extract_variable
 //
@@ -68,7 +69,10 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     let node = if ctx.has_empty_selection() {
         if let Some(t) = ctx.token_at_offset().find(|it| it.kind() == T![;]) {
             t.parent().and_then(ast::ExprStmt::cast)?.syntax().clone()
-        } else if let Some(expr) = ctx.find_node_at_offset::<ast::Expr>() {
+        } else if let Some(expr) = ancestors_at_offset(ctx.source_file().syntax(), ctx.offset())
+            .next()
+            .and_then(ast::Expr::cast)
+        {
             expr.syntax().ancestors().find_map(valid_target_expr)?.syntax().clone()
         } else {
             return None;
@@ -99,7 +103,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
     let parent = to_extract.syntax().parent().and_then(ast::Expr::cast);
     // Any expression that autoderefs may need adjustment.
-    let mut needs_adjust = parent.as_ref().map_or(false, |it| match it {
+    let mut needs_adjust = parent.as_ref().is_some_and(|it| match it {
         ast::Expr::FieldExpr(_)
         | ast::Expr::MethodCallExpr(_)
         | ast::Expr::CallExpr(_)
@@ -166,7 +170,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             |edit| {
                 let (var_name, expr_replace) = kind.get_name_and_expr(ctx, &to_extract);
 
-                let make = SyntaxFactory::new();
+                let make = SyntaxFactory::with_mappings();
                 let mut editor = edit.make_editor(&expr_replace);
 
                 let pat_name = make.name(&var_name);
@@ -259,7 +263,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 }
 
                 editor.add_mappings(make.finish_with_mappings());
-                edit.add_file_edits(ctx.file_id(), editor);
+                edit.add_file_edits(ctx.vfs_file_id(), editor);
                 edit.rename();
             },
         );
@@ -307,7 +311,7 @@ impl ExtractionKind {
             ExtractionKind::Static => "extract_static",
         };
 
-        AssistId(s, AssistKind::RefactorExtract)
+        AssistId::refactor_extract(s)
     }
 
     fn label(&self) -> &'static str {
@@ -336,10 +340,12 @@ impl ExtractionKind {
             }
         }
 
+        let mut name_generator =
+            suggest_name::NameGenerator::new_from_scope_locals(ctx.sema.scope(to_extract.syntax()));
         let var_name = if let Some(literal_name) = get_literal_name(ctx, to_extract) {
-            literal_name
+            name_generator.suggest_name(&literal_name)
         } else {
-            suggest_name::for_variable(to_extract, &ctx.sema)
+            name_generator.for_variable(to_extract, &ctx.sema)
         };
 
         let var_name = match self {
@@ -352,10 +358,10 @@ impl ExtractionKind {
 }
 
 fn get_literal_name(ctx: &AssistContext<'_>, expr: &ast::Expr) -> Option<String> {
-    let literal = match expr {
-        ast::Expr::Literal(literal) => literal,
-        _ => return None,
+    let ast::Expr::Literal(literal) = expr else {
+        return None;
     };
+
     let inner = match literal.kind() {
         ast::LiteralKind::String(string) => string.value().ok()?.into_owned(),
         ast::LiteralKind::ByteString(byte_string) => {
@@ -372,7 +378,7 @@ fn get_literal_name(ctx: &AssistContext<'_>, expr: &ast::Expr) -> Option<String>
         return None;
     }
 
-    match LexedStr::single_token(ctx.file_id().edition(), &inner) {
+    match LexedStr::single_token(ctx.edition(), &inner) {
         Some((SyntaxKind::IDENT, None)) => Some(inner),
         _ => None,
     }
@@ -467,11 +473,11 @@ mod tests {
             extract_variable,
             r#"
 fn main() -> i32 {
-    if true {
+    if$0 true {
         1
     } else {
         2
-    }$0
+    }
 }
 "#,
             r#"
@@ -579,11 +585,11 @@ fn main() {
             extract_variable,
             r#"
 fn main() -> i32 {
-    if true {
+    if$0 true {
         1
     } else {
         2
-    }$0
+    }
 }
 "#,
             r#"
@@ -625,7 +631,7 @@ fn main() {
 "#,
             r#"
 fn main() {
-    const $0HELLO: &str = "hello";
+    const $0HELLO: &'static str = "hello";
 }
 "#,
             "Extract into constant",
@@ -674,11 +680,11 @@ fn main() {
             extract_variable,
             r#"
 fn main() -> i32 {
-    if true {
+    if$0 true {
         1
     } else {
         2
-    }$0
+    }
 }
 "#,
             r#"
@@ -720,7 +726,7 @@ fn main() {
 "#,
             r#"
 fn main() {
-    static $0HELLO: &str = "hello";
+    static $0HELLO: &'static str = "hello";
 }
 "#,
             "Extract into static",
@@ -1666,8 +1672,8 @@ macro_rules! vec {
     () => {Vec}
 }
 fn main() {
-    let $0vec = vec![];
-    let _ = vec;
+    let $0items = vec![];
+    let _ = items;
 }
 "#,
             "Extract into variable",
@@ -1690,8 +1696,8 @@ macro_rules! vec {
     () => {Vec}
 }
 fn main() {
-    const $0VEC: Vec = vec![];
-    let _ = VEC;
+    const $0ITEMS: Vec = vec![];
+    let _ = ITEMS;
 }
 "#,
             "Extract into constant",
@@ -1714,8 +1720,8 @@ macro_rules! vec {
     () => {Vec}
 }
 fn main() {
-    static $0VEC: Vec = vec![];
-    let _ = VEC;
+    static $0ITEMS: Vec = vec![];
+    let _ = ITEMS;
 }
 "#,
             "Extract into static",
@@ -2013,8 +2019,8 @@ impl<T> Vec<T> {
 }
 
 fn foo(s: &mut S) {
-    let $0vec = &mut s.vec;
-    vec.push(0);
+    let $0items = &mut s.vec;
+    items.push(0);
 }"#,
             "Extract into variable",
         );
@@ -2100,8 +2106,8 @@ impl<T> Vec<T> {
 }
 
 fn foo(f: &mut Y) {
-    let $0vec = &mut f.field.field.vec;
-    vec.push(0);
+    let $0items = &mut f.field.field.vec;
+    items.push(0);
 }"#,
             "Extract into variable",
         );
@@ -2522,13 +2528,13 @@ fn foo() {
         check_assist_by_label(
             extract_variable,
             r#"
-struct Entry(&str);
+struct Entry<'a>(&'a str);
 fn foo() {
     let entry = Entry($0"Hello"$0);
 }
 "#,
             r#"
-struct Entry(&str);
+struct Entry<'a>(&'a str);
 fn foo() {
     let $0hello = "Hello";
     let entry = Entry(hello);
@@ -2540,13 +2546,13 @@ fn foo() {
         check_assist_by_label(
             extract_variable,
             r#"
-struct Entry(&str);
+struct Entry<'a>(&'a str);
 fn foo() {
     let entry = Entry($0"Hello"$0);
 }
 "#,
             r#"
-struct Entry(&str);
+struct Entry<'a>(&'a str);
 fn foo() {
     const $0HELLO: &str = "Hello";
     let entry = Entry(HELLO);
@@ -2558,13 +2564,13 @@ fn foo() {
         check_assist_by_label(
             extract_variable,
             r#"
-struct Entry(&str);
+struct Entry<'a>(&'a str);
 fn foo() {
     let entry = Entry($0"Hello"$0);
 }
 "#,
             r#"
-struct Entry(&str);
+struct Entry<'a>(&'a str);
 fn foo() {
     static $0HELLO: &str = "Hello";
     let entry = Entry(HELLO);
@@ -2581,13 +2587,13 @@ fn foo() {
         check_assist_by_label(
             extract_variable,
             r#"
-struct Entry { message: &str }
+struct Entry<'a> { message: &'a str }
 fn foo() {
     let entry = Entry { message: $0"Hello"$0 };
 }
 "#,
             r#"
-struct Entry { message: &str }
+struct Entry<'a> { message: &'a str }
 fn foo() {
     let $0message = "Hello";
     let entry = Entry { message };
@@ -2599,13 +2605,13 @@ fn foo() {
         check_assist_by_label(
             extract_variable,
             r#"
-struct Entry { message: &str }
+struct Entry<'a> { message: &'a str }
 fn foo() {
     let entry = Entry { message: $0"Hello"$0 };
 }
 "#,
             r#"
-struct Entry { message: &str }
+struct Entry<'a> { message: &'a str }
 fn foo() {
     const $0HELLO: &str = "Hello";
     let entry = Entry { message: HELLO };
@@ -2617,19 +2623,48 @@ fn foo() {
         check_assist_by_label(
             extract_variable,
             r#"
-struct Entry { message: &str }
+struct Entry<'a> { message: &'a str }
 fn foo() {
     let entry = Entry { message: $0"Hello"$0 };
 }
 "#,
             r#"
-struct Entry { message: &str }
+struct Entry<'a> { message: &'a str }
 fn foo() {
     static $0HELLO: &str = "Hello";
     let entry = Entry { message: HELLO };
 }
 "#,
             "Extract into static",
+        );
+    }
+
+    #[test]
+    fn extract_variable_name_conflicts() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+struct S { x: i32 };
+
+fn main() {
+    let s = 2;
+    let t = $0S { x: 1 }$0;
+    let t2 = t;
+    let x = s;
+}
+"#,
+            r#"
+struct S { x: i32 };
+
+fn main() {
+    let s = 2;
+    let $0s1 = S { x: 1 };
+    let t = s1;
+    let t2 = t;
+    let x = s;
+}
+"#,
+            "Extract into variable",
         );
     }
 }

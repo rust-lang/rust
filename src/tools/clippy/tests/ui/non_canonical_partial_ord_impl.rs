@@ -14,6 +14,7 @@ impl Ord for A {
 }
 
 impl PartialOrd for A {
+    //~^ non_canonical_partial_ord_impl
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         todo!();
     }
@@ -48,6 +49,7 @@ impl Ord for C {
 }
 
 impl PartialOrd for C {
+    //~^ non_canonical_partial_ord_impl
     fn partial_cmp(&self, _: &Self) -> Option<Ordering> {
         todo!();
     }
@@ -162,5 +164,40 @@ impl PartialOrd for I {
     #[allow(clippy::needless_return)]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         return Some(self.cmp(other));
+    }
+}
+
+// #13640, do not lint
+
+#[derive(Eq, PartialEq)]
+struct J(u32);
+
+impl Ord for J {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl PartialOrd for J {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.cmp(other).into()
+    }
+}
+
+// #13640, check that a simple `.into()` does not obliterate the lint
+
+#[derive(Eq, PartialEq)]
+struct K(u32);
+
+impl Ord for K {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl PartialOrd for K {
+    //~^ non_canonical_partial_ord_impl
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Ordering::Greater.into()
     }
 }

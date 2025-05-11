@@ -1,6 +1,7 @@
 //! Deeply normalize types using the old trait solver.
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_hir::def::DefKind;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::{
@@ -10,15 +11,12 @@ use rustc_macros::extension;
 use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt,
-    TypingMode,
+    self, AliasTerm, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
+    TypeVisitableExt, TypingMode,
 };
 use tracing::{debug, instrument};
 
-use super::{
-    BoundVarReplacer, PlaceholderReplacer, SelectionContext, project,
-    with_replaced_escaping_bound_vars,
-};
+use super::{BoundVarReplacer, PlaceholderReplacer, SelectionContext, project};
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::error_reporting::traits::OverflowCause;
 use crate::solve::NextSolverError;
@@ -77,7 +75,15 @@ impl<'tcx> At<'_, 'tcx> {
                 .into_value_registering_obligations(self.infcx, &mut *fulfill_cx);
             let errors = fulfill_cx.select_all_or_error(self.infcx);
             let value = self.infcx.resolve_vars_if_possible(value);
-            if errors.is_empty() { Ok(value) } else { Err(errors) }
+            if errors.is_empty() {
+                Ok(value)
+            } else {
+                // Drop pending obligations, since deep normalization may happen
+                // in a loop and we don't want to trigger the assertion on the next
+                // iteration due to pending ambiguous obligations we've left over.
+                let _ = fulfill_cx.collect_remaining_errors(self.infcx);
+                Err(errors)
+            }
         }
     }
 }
@@ -130,6 +136,7 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
         // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
         TypingMode::Coherence
         | TypingMode::Analysis { .. }
+        | TypingMode::Borrowck { .. }
         | TypingMode::PostBorrowckAnalysis { .. } => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
         TypingMode::PostAnalysis => {}
     }
@@ -168,6 +175,163 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         );
 
         if !needs_normalization(self.selcx.infcx, &value) { value } else { value.fold_with(self) }
+    }
+
+    // FIXME(mgca): While this supports constants, it is only used for types by default right now
+    #[instrument(level = "debug", skip(self), ret)]
+    fn normalize_trait_projection(&mut self, proj: AliasTerm<'tcx>) -> Term<'tcx> {
+        if !proj.has_escaping_bound_vars() {
+            // When we don't have escaping bound vars we can normalize ambig aliases
+            // to inference variables (done in `normalize_projection_ty`). This would
+            // be wrong if there were escaping bound vars as even if we instantiated
+            // the bound vars with placeholders, we wouldn't be able to map them back
+            // after normalization succeeded.
+            //
+            // Also, as an optimization: when we don't have escaping bound vars, we don't
+            // need to replace them with placeholders (see branch below).
+            let proj = proj.fold_with(self);
+            project::normalize_projection_term(
+                self.selcx,
+                self.param_env,
+                proj,
+                self.cause.clone(),
+                self.depth,
+                self.obligations,
+            )
+        } else {
+            // If there are escaping bound vars, we temporarily replace the
+            // bound vars with placeholders. Note though, that in the case
+            // that we still can't project for whatever reason (e.g. self
+            // type isn't known enough), we *can't* register an obligation
+            // and return an inference variable (since then that obligation
+            // would have bound vars and that's a can of worms). Instead,
+            // we just give up and fall back to pretending like we never tried!
+            //
+            // Note: this isn't necessarily the final approach here; we may
+            // want to figure out how to register obligations with escaping vars
+            // or handle this some other way.
+            let infcx = self.selcx.infcx;
+            let (proj, mapped_regions, mapped_types, mapped_consts) =
+                BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, proj);
+            let proj = proj.fold_with(self);
+            let normalized_term = project::opt_normalize_projection_term(
+                self.selcx,
+                self.param_env,
+                proj,
+                self.cause.clone(),
+                self.depth,
+                self.obligations,
+            )
+            .ok()
+            .flatten()
+            .unwrap_or(proj.to_term(infcx.tcx));
+
+            PlaceholderReplacer::replace_placeholders(
+                infcx,
+                mapped_regions,
+                mapped_types,
+                mapped_consts,
+                &self.universes,
+                normalized_term,
+            )
+        }
+    }
+
+    // FIXME(mgca): While this supports constants, it is only used for types by default right now
+    #[instrument(level = "debug", skip(self), ret)]
+    fn normalize_inherent_projection(&mut self, inherent: AliasTerm<'tcx>) -> Term<'tcx> {
+        if !inherent.has_escaping_bound_vars() {
+            // When we don't have escaping bound vars we can normalize ambig aliases
+            // to inference variables (done in `normalize_projection_ty`). This would
+            // be wrong if there were escaping bound vars as even if we instantiated
+            // the bound vars with placeholders, we wouldn't be able to map them back
+            // after normalization succeeded.
+            //
+            // Also, as an optimization: when we don't have escaping bound vars, we don't
+            // need to replace them with placeholders (see branch below).
+
+            let inherent = inherent.fold_with(self);
+            project::normalize_inherent_projection(
+                self.selcx,
+                self.param_env,
+                inherent,
+                self.cause.clone(),
+                self.depth,
+                self.obligations,
+            )
+        } else {
+            let infcx = self.selcx.infcx;
+            let (inherent, mapped_regions, mapped_types, mapped_consts) =
+                BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, inherent);
+            let inherent = inherent.fold_with(self);
+            let inherent = project::normalize_inherent_projection(
+                self.selcx,
+                self.param_env,
+                inherent,
+                self.cause.clone(),
+                self.depth,
+                self.obligations,
+            );
+
+            PlaceholderReplacer::replace_placeholders(
+                infcx,
+                mapped_regions,
+                mapped_types,
+                mapped_consts,
+                &self.universes,
+                inherent,
+            )
+        }
+    }
+
+    // FIXME(mgca): While this supports constants, it is only used for types by default right now
+    #[instrument(level = "debug", skip(self), ret)]
+    fn normalize_free_alias(&mut self, free: AliasTerm<'tcx>) -> Term<'tcx> {
+        let recursion_limit = self.cx().recursion_limit();
+        if !recursion_limit.value_within_limit(self.depth) {
+            self.selcx.infcx.err_ctxt().report_overflow_error(
+                OverflowCause::DeeplyNormalize(free.into()),
+                self.cause.span,
+                false,
+                |diag| {
+                    diag.note(crate::fluent_generated::trait_selection_ty_alias_overflow);
+                },
+            );
+        }
+
+        let infcx = self.selcx.infcx;
+        self.obligations.extend(
+            // FIXME(BoxyUwU):
+            // FIXME(lazy_type_alias):
+            // It seems suspicious to instantiate the predicates with arguments that might be bound vars,
+            // we might wind up instantiating one of these bound vars underneath a hrtb.
+            infcx.tcx.predicates_of(free.def_id).instantiate_own(infcx.tcx, free.args).map(
+                |(mut predicate, span)| {
+                    if free.has_escaping_bound_vars() {
+                        (predicate, ..) = BoundVarReplacer::replace_bound_vars(
+                            infcx,
+                            &mut self.universes,
+                            predicate,
+                        );
+                    }
+                    let mut cause = self.cause.clone();
+                    cause.map_code(|code| ObligationCauseCode::TypeAlias(code, span, free.def_id));
+                    Obligation::new(infcx.tcx, cause, self.param_env, predicate)
+                },
+            ),
+        );
+        self.depth += 1;
+        let res = if free.kind(infcx.tcx).is_type() {
+            infcx.tcx.type_of(free.def_id).instantiate(infcx.tcx, free.args).fold_with(self).into()
+        } else {
+            // FIXME(mgca): once const items are actual aliases defined as equal to type system consts
+            // this should instead use that rather than evaluating.
+            super::evaluate_const(infcx, free.to_term(infcx.tcx).expect_const(), self.param_env)
+                .super_fold_with(self)
+                .into()
+        };
+        self.depth -= 1;
+        res
     }
 }
 
@@ -226,6 +390,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
                     TypingMode::Coherence
                     | TypingMode::Analysis { .. }
+                    | TypingMode::Borrowck { .. }
                     | TypingMode::PostBorrowckAnalysis { .. } => ty.super_fold_with(self),
                     TypingMode::PostAnalysis => {
                         let recursion_limit = self.cx().recursion_limit();
@@ -249,183 +414,63 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 }
             }
 
-            ty::Projection if !data.has_escaping_bound_vars() => {
-                // This branch is *mostly* just an optimization: when we don't
-                // have escaping bound vars, we don't need to replace them with
-                // placeholders (see branch below). *Also*, we know that we can
-                // register an obligation to *later* project, since we know
-                // there won't be bound vars there.
-                let data = data.fold_with(self);
-                let normalized_ty = project::normalize_projection_ty(
-                    self.selcx,
-                    self.param_env,
-                    data,
-                    self.cause.clone(),
-                    self.depth,
-                    self.obligations,
-                );
-                debug!(
-                    ?self.depth,
-                    ?ty,
-                    ?normalized_ty,
-                    obligations.len = ?self.obligations.len(),
-                    "AssocTypeNormalizer: normalized type"
-                );
-                normalized_ty.expect_type()
-            }
-
-            ty::Projection => {
-                // If there are escaping bound vars, we temporarily replace the
-                // bound vars with placeholders. Note though, that in the case
-                // that we still can't project for whatever reason (e.g. self
-                // type isn't known enough), we *can't* register an obligation
-                // and return an inference variable (since then that obligation
-                // would have bound vars and that's a can of worms). Instead,
-                // we just give up and fall back to pretending like we never tried!
-                //
-                // Note: this isn't necessarily the final approach here; we may
-                // want to figure out how to register obligations with escaping vars
-                // or handle this some other way.
-
-                let infcx = self.selcx.infcx;
-                let (data, mapped_regions, mapped_types, mapped_consts) =
-                    BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, data);
-                let data = data.fold_with(self);
-                let normalized_ty = project::opt_normalize_projection_term(
-                    self.selcx,
-                    self.param_env,
-                    data.into(),
-                    self.cause.clone(),
-                    self.depth,
-                    self.obligations,
-                )
-                .ok()
-                .flatten()
-                .map(|term| term.expect_type())
-                .map(|normalized_ty| {
-                    PlaceholderReplacer::replace_placeholders(
-                        infcx,
-                        mapped_regions,
-                        mapped_types,
-                        mapped_consts,
-                        &self.universes,
-                        normalized_ty,
-                    )
-                })
-                .unwrap_or_else(|| ty.super_fold_with(self));
-
-                debug!(
-                    ?self.depth,
-                    ?ty,
-                    ?normalized_ty,
-                    obligations.len = ?self.obligations.len(),
-                    "AssocTypeNormalizer: normalized type"
-                );
-                normalized_ty
-            }
-            ty::Weak => {
-                let recursion_limit = self.cx().recursion_limit();
-                if !recursion_limit.value_within_limit(self.depth) {
-                    self.selcx.infcx.err_ctxt().report_overflow_error(
-                        OverflowCause::DeeplyNormalize(data.into()),
-                        self.cause.span,
-                        false,
-                        |diag| {
-                            diag.note(crate::fluent_generated::trait_selection_ty_alias_overflow);
-                        },
-                    );
-                }
-
-                let infcx = self.selcx.infcx;
-                self.obligations.extend(
-                    infcx.tcx.predicates_of(data.def_id).instantiate_own(infcx.tcx, data.args).map(
-                        |(mut predicate, span)| {
-                            if data.has_escaping_bound_vars() {
-                                (predicate, ..) = BoundVarReplacer::replace_bound_vars(
-                                    infcx,
-                                    &mut self.universes,
-                                    predicate,
-                                );
-                            }
-                            let mut cause = self.cause.clone();
-                            cause.map_code(|code| {
-                                ObligationCauseCode::TypeAlias(code, span, data.def_id)
-                            });
-                            Obligation::new(infcx.tcx, cause, self.param_env, predicate)
-                        },
-                    ),
-                );
-                self.depth += 1;
-                let res = infcx
-                    .tcx
-                    .type_of(data.def_id)
-                    .instantiate(infcx.tcx, data.args)
-                    .fold_with(self);
-                self.depth -= 1;
-                res
-            }
-
-            ty::Inherent if !data.has_escaping_bound_vars() => {
-                // This branch is *mostly* just an optimization: when we don't
-                // have escaping bound vars, we don't need to replace them with
-                // placeholders (see branch below). *Also*, we know that we can
-                // register an obligation to *later* project, since we know
-                // there won't be bound vars there.
-
-                let data = data.fold_with(self);
-
-                project::normalize_inherent_projection(
-                    self.selcx,
-                    self.param_env,
-                    data,
-                    self.cause.clone(),
-                    self.depth,
-                    self.obligations,
-                )
-            }
-
-            ty::Inherent => {
-                let infcx = self.selcx.infcx;
-                let (data, mapped_regions, mapped_types, mapped_consts) =
-                    BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, data);
-                let data = data.fold_with(self);
-                let ty = project::normalize_inherent_projection(
-                    self.selcx,
-                    self.param_env,
-                    data,
-                    self.cause.clone(),
-                    self.depth,
-                    self.obligations,
-                );
-
-                PlaceholderReplacer::replace_placeholders(
-                    infcx,
-                    mapped_regions,
-                    mapped_types,
-                    mapped_consts,
-                    &self.universes,
-                    ty,
-                )
-            }
+            ty::Projection => self.normalize_trait_projection(data.into()).expect_type(),
+            ty::Inherent => self.normalize_inherent_projection(data.into()).expect_type(),
+            ty::Free => self.normalize_free_alias(data.into()).expect_type(),
         }
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn fold_const(&mut self, constant: ty::Const<'tcx>) -> ty::Const<'tcx> {
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         let tcx = self.selcx.tcx();
-        if tcx.features().generic_const_exprs() || !needs_normalization(self.selcx.infcx, &constant)
-        {
-            constant
+        if tcx.features().generic_const_exprs() || !needs_normalization(self.selcx.infcx, &ct) {
+            return ct;
+        }
+
+        // Doing "proper" normalization of const aliases is inherently cyclic until const items
+        // are real aliases instead of having bodies. We gate proper const alias handling behind
+        // mgca to avoid breaking stable code, though this should become the "main" codepath long
+        // before mgca is stabilized.
+        //
+        // FIXME(BoxyUwU): Enabling this by default is blocked on a refactoring to how const items
+        // are represented.
+        if tcx.features().min_generic_const_args() {
+            let uv = match ct.kind() {
+                ty::ConstKind::Unevaluated(uv) => uv,
+                _ => return ct.super_fold_with(self),
+            };
+
+            let ct = match tcx.def_kind(uv.def) {
+                DefKind::AssocConst => match tcx.def_kind(tcx.parent(uv.def)) {
+                    DefKind::Trait => self.normalize_trait_projection(uv.into()),
+                    DefKind::Impl { of_trait: false } => {
+                        self.normalize_inherent_projection(uv.into())
+                    }
+                    kind => unreachable!(
+                        "unexpected `DefKind` for const alias' resolution's parent def: {:?}",
+                        kind
+                    ),
+                },
+                DefKind::Const | DefKind::AnonConst => self.normalize_free_alias(uv.into()),
+                kind => {
+                    unreachable!("unexpected `DefKind` for const alias to resolve to: {:?}", kind)
+                }
+            };
+
+            // We re-fold the normalized const as the `ty` field on `ConstKind::Value` may be
+            // unnormalized after const evaluation returns.
+            ct.expect_const().super_fold_with(self)
         } else {
-            let constant = constant.super_fold_with(self);
-            debug!(?constant, ?self.param_env);
-            with_replaced_escaping_bound_vars(
+            let ct = ct.super_fold_with(self);
+            return super::with_replaced_escaping_bound_vars(
                 self.selcx.infcx,
                 &mut self.universes,
-                constant,
-                |constant| super::evaluate_const(self.selcx.infcx, constant, self.param_env),
+                ct,
+                |ct| super::evaluate_const(self.selcx.infcx, ct, self.param_env),
             )
-            .super_fold_with(self)
+            .super_fold_with(self);
+            // We re-fold the normalized const as the `ty` field on `ConstKind::Value` may be
+            // unnormalized after const evaluation returns.
         }
     }
 

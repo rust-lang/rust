@@ -1,7 +1,7 @@
 //@ check-pass
 
-#![feature(pattern_types)]
-#![feature(pattern_type_macro)]
+#![feature(pattern_types, generic_pattern_types, pattern_type_macro)]
+#![expect(incomplete_features)]
 
 use std::pat::pattern_type;
 

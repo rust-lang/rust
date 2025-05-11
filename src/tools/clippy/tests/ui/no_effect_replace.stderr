@@ -14,37 +14,37 @@ LL |     let _ = "12345".replace("12", "12");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: replacing text with itself
-  --> tests/ui/no_effect_replace.rs:9:13
+  --> tests/ui/no_effect_replace.rs:10:13
    |
 LL |     let _ = String::new().replace("12", "12");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: replacing text with itself
-  --> tests/ui/no_effect_replace.rs:12:13
+  --> tests/ui/no_effect_replace.rs:13:13
    |
 LL |     let _ = "12345".replacen('1', "1", 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: replacing text with itself
-  --> tests/ui/no_effect_replace.rs:14:13
+  --> tests/ui/no_effect_replace.rs:16:13
    |
 LL |     let _ = "12345".replacen("12", "12", 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: replacing text with itself
-  --> tests/ui/no_effect_replace.rs:16:13
+  --> tests/ui/no_effect_replace.rs:19:13
    |
 LL |     let _ = String::new().replacen("12", "12", 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: replacing text with itself
-  --> tests/ui/no_effect_replace.rs:23:13
+  --> tests/ui/no_effect_replace.rs:26:13
    |
 LL |     let _ = "hello".replace(&x.f(), &x.f());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: replacing text with itself
-  --> tests/ui/no_effect_replace.rs:27:13
+  --> tests/ui/no_effect_replace.rs:31:13
    |
 LL |     let _ = "hello".replace(&y(), &y());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,6 @@
+//@ add-core-stubs
 //@ revisions: arm-linux arm-android armv7-linux armv7-android mips thumb sparc
-//@ compile-flags: -O -C no-prepopulate-passes
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 
 //@[arm-linux] compile-flags: --target arm-unknown-linux-gnueabi
 //@[arm-linux] needs-llvm-components: arm
@@ -27,14 +28,8 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
-
-impl Copy for [u32; 16] {}
+extern crate minicore;
+use minicore::*;
 impl Copy for BigS {}
 impl Copy for BigU {}
 

@@ -471,7 +471,7 @@ impl Functions {
                 .iter()
                 .flat_map(|p| def_path_def_ids(tcx, &p.split("::").collect::<Vec<_>>()))
                 .collect(),
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
         }
     }
 }
@@ -521,12 +521,12 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         must_use::check_item(cx, item);
-        result::check_item(cx, item, self.large_error_threshold, &self.msrv);
+        result::check_item(cx, item, self.large_error_threshold, self.msrv);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         must_use::check_impl_item(cx, item);
-        result::check_impl_item(cx, item, self.large_error_threshold, &self.msrv);
+        result::check_impl_item(cx, item, self.large_error_threshold, self.msrv);
         impl_trait_in_params::check_impl_item(cx, item);
         renamed_function_params::check_impl_item(cx, item, &self.trait_ids);
     }
@@ -535,10 +535,8 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         too_many_arguments::check_trait_item(cx, item, self.too_many_arguments_threshold);
         not_unsafe_ptr_arg_deref::check_trait_item(cx, item);
         must_use::check_trait_item(cx, item);
-        result::check_trait_item(cx, item, self.large_error_threshold, &self.msrv);
+        result::check_trait_item(cx, item, self.large_error_threshold, self.msrv);
         impl_trait_in_params::check_trait_item(cx, item, self.avoid_breaking_exported_api);
         ref_option::check_trait_item(cx, item, self.avoid_breaking_exported_api);
     }
-
-    extract_msrv_attr!(LateContext);
 }

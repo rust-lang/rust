@@ -53,7 +53,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.40.0"]
     pub COMPARISON_CHAIN,
-    style,
+    pedantic,
     "`if`s that can be rewritten with `match` and `cmp`"
 }
 
@@ -125,7 +125,7 @@ impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
         let ExprKind::Binary(_, lhs, rhs) = conds[0].kind else {
             unreachable!();
         };
-        let lhs = Sugg::hir(cx, lhs, "..").maybe_par();
+        let lhs = Sugg::hir(cx, lhs, "..").maybe_paren();
         let rhs = Sugg::hir(cx, rhs, "..").addr();
         span_lint_and_sugg(
             cx,

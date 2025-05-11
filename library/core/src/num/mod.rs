@@ -51,6 +51,10 @@ mod overflow_panic;
 mod saturating;
 mod wrapping;
 
+/// 100% perma-unstable
+#[doc(hidden)]
+pub mod niche_types;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(no_fp_fmt_parse))]
 pub use dec2flt::ParseFloatError;
@@ -95,8 +99,8 @@ macro_rules! i8_xe_bytes_doc {
 
 **Note**: This function is meaningless on `i8`. Byte order does not exist as a
 concept for byte-sized integers. This function is only provided in symmetry
-with larger integer types. You can cast from and to `u8` using `as i8` and `as
-u8`.
+with larger integer types. You can cast from and to `u8` using
+[`cast_signed`](u8::cast_signed) and [`cast_unsigned`](Self::cast_unsigned).
 
 "
     };
@@ -126,7 +130,7 @@ depending on the target pointer size.
 
 macro_rules! midpoint_impl {
     ($SelfT:ty, unsigned) => {
-        /// Calculates the middle point of `self` and `rhs`.
+        /// Calculates the midpoint (average) between `self` and `rhs`.
         ///
         /// `midpoint(a, b)` is `(a + b) / 2` as if it were performed in a
         /// sufficiently-large unsigned integral type. This implies that the result is
@@ -138,10 +142,12 @@ macro_rules! midpoint_impl {
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
         /// ```
-        #[stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "num_midpoint", since = "1.85.0")]
+        #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[doc(alias = "average_floor")]
+        #[doc(alias = "average")]
         #[inline]
         pub const fn midpoint(self, rhs: $SelfT) -> $SelfT {
             // Use the well known branchless algorithm from Hacker's Delight to compute
@@ -150,7 +156,7 @@ macro_rules! midpoint_impl {
         }
     };
     ($SelfT:ty, signed) => {
-        /// Calculates the middle point of `self` and `rhs`.
+        /// Calculates the midpoint (average) between `self` and `rhs`.
         ///
         /// `midpoint(a, b)` is `(a + b) / 2` as if it were performed in a
         /// sufficiently-large signed integral type. This implies that the result is
@@ -159,16 +165,19 @@ macro_rules! midpoint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(num_midpoint_signed)]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
         #[doc = concat!("assert_eq!((-1", stringify!($SelfT), ").midpoint(2), 0);")]
         #[doc = concat!("assert_eq!((-7", stringify!($SelfT), ").midpoint(0), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(-7), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
-        #[unstable(feature = "num_midpoint_signed", issue = "110840")]
+        #[stable(feature = "num_midpoint_signed", since = "1.87.0")]
+        #[rustc_const_stable(feature = "num_midpoint_signed", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[doc(alias = "average_floor")]
+        #[doc(alias = "average_ceil")]
+        #[doc(alias = "average")]
         #[inline]
         pub const fn midpoint(self, rhs: Self) -> Self {
             // Use the well known branchless algorithm from Hacker's Delight to compute
@@ -180,7 +189,7 @@ macro_rules! midpoint_impl {
         }
     };
     ($SelfT:ty, $WideT:ty, unsigned) => {
-        /// Calculates the middle point of `self` and `rhs`.
+        /// Calculates the midpoint (average) between `self` and `rhs`.
         ///
         /// `midpoint(a, b)` is `(a + b) / 2` as if it were performed in a
         /// sufficiently-large unsigned integral type. This implies that the result is
@@ -192,17 +201,19 @@ macro_rules! midpoint_impl {
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
         /// ```
-        #[stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "num_midpoint", since = "1.85.0")]
+        #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[doc(alias = "average_floor")]
+        #[doc(alias = "average")]
         #[inline]
         pub const fn midpoint(self, rhs: $SelfT) -> $SelfT {
             ((self as $WideT + rhs as $WideT) / 2) as $SelfT
         }
     };
     ($SelfT:ty, $WideT:ty, signed) => {
-        /// Calculates the middle point of `self` and `rhs`.
+        /// Calculates the midpoint (average) between `self` and `rhs`.
         ///
         /// `midpoint(a, b)` is `(a + b) / 2` as if it were performed in a
         /// sufficiently-large signed integral type. This implies that the result is
@@ -211,16 +222,19 @@ macro_rules! midpoint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(num_midpoint_signed)]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
         #[doc = concat!("assert_eq!((-1", stringify!($SelfT), ").midpoint(2), 0);")]
         #[doc = concat!("assert_eq!((-7", stringify!($SelfT), ").midpoint(0), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(-7), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
-        #[unstable(feature = "num_midpoint_signed", issue = "110840")]
+        #[stable(feature = "num_midpoint_signed", since = "1.87.0")]
+        #[rustc_const_stable(feature = "num_midpoint_signed", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[doc(alias = "average_floor")]
+        #[doc(alias = "average_ceil")]
+        #[doc(alias = "average")]
         #[inline]
         pub const fn midpoint(self, rhs: $SelfT) -> $SelfT {
             ((self as $WideT + rhs as $WideT) / 2) as $SelfT
@@ -1237,7 +1251,7 @@ impl usize {
     /// Returns an `usize` where every byte is equal to `x`.
     #[inline]
     pub(crate) const fn repeat_u8(x: u8) -> usize {
-        usize::from_ne_bytes([x; mem::size_of::<usize>()])
+        usize::from_ne_bytes([x; size_of::<usize>()])
     }
 
     /// Returns an `usize` where every byte pair is equal to `x`.
@@ -1245,7 +1259,7 @@ impl usize {
     pub(crate) const fn repeat_u16(x: u16) -> usize {
         let mut r = 0usize;
         let mut i = 0;
-        while i < mem::size_of::<usize>() {
+        while i < size_of::<usize>() {
             // Use `wrapping_shl` to make it work on targets with 16-bit `usize`
             r = r.wrapping_shl(16) | (x as usize);
             i += 2;
@@ -1318,20 +1332,6 @@ pub enum FpCategory {
     Normal,
 }
 
-macro_rules! from_str_radix_int_impl {
-    ($($t:ty)*) => {$(
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl FromStr for $t {
-            type Err = ParseIntError;
-            #[inline]
-            fn from_str(src: &str) -> Result<Self, ParseIntError> {
-                <$t>::from_str_radix(src, 10)
-            }
-        }
-    )*}
-}
-from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
-
 /// Determines if a string of text of that length of that radix could be guaranteed to be
 /// stored in the given type T.
 /// Note that if the radix is known to the compiler, it is just the check of digits.len that
@@ -1340,25 +1340,65 @@ from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 #[inline(always)]
 #[unstable(issue = "none", feature = "std_internals")]
 pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> bool {
-    radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
+    radix <= 16 && digits.len() <= size_of::<T>() * 2 - is_signed_ty as usize
 }
 
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
-const fn from_str_radix_panic(radix: u32) -> ! {
+const fn from_ascii_radix_panic(radix: u32) -> ! {
     const_panic!(
-        "from_str_radix_int: must lie in the range `[2, 36]`",
-        "from_str_radix_int: must lie in the range `[2, 36]` - found {radix}",
+        "from_ascii_radix: radix must lie in the range `[2, 36]`",
+        "from_ascii_radix: radix must lie in the range `[2, 36]` - found {radix}",
         radix: u32 = radix,
     )
 }
 
-macro_rules! from_str_radix {
+macro_rules! from_str_int_impl {
     ($signedness:ident $($int_ty:ty)+) => {$(
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl FromStr for $int_ty {
+            type Err = ParseIntError;
+
+            /// Parses an integer from a string slice with decimal digits.
+            ///
+            /// The characters are expected to be an optional
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    " `+` or `-` "
+                }
+                if unsigned {
+                    " `+` "
+                }
+            }]
+            /// sign followed by only digits. Leading and trailing non-digit characters (including
+            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
+            /// also represent an error.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            /// ```
+            /// use std::str::FromStr;
+            ///
+            #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_str(\"+10\"), Ok(10));")]
+            /// ```
+            /// Trailing space returns error:
+            /// ```
+            /// # use std::str::FromStr;
+            /// #
+            #[doc = concat!("assert!(", stringify!($int_ty), "::from_str(\"1 \").is_err());")]
+            /// ```
+            #[inline]
+            fn from_str(src: &str) -> Result<$int_ty, ParseIntError> {
+                <$int_ty>::from_str_radix(src, 10)
+            }
+        }
+
         impl $int_ty {
-            /// Converts a string slice in a given base to an integer.
+            /// Parses an integer from a string slice with digits in a given base.
             ///
             /// The string is expected to be an optional
             #[doc = sign_dependent_expr!{
@@ -1371,7 +1411,7 @@ macro_rules! from_str_radix {
                 }
             }]
             /// sign followed by only digits. Leading and trailing non-digit characters (including
-            /// whitespace) represent an error. Underscores (which are accepted in rust literals)
+            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
             /// also represent an error.
             ///
             /// Digits are a subset of these characters, depending on `radix`:
@@ -1397,11 +1437,92 @@ macro_rules! from_str_radix {
             #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
             #[inline]
             pub const fn from_str_radix(src: &str, radix: u32) -> Result<$int_ty, ParseIntError> {
+                <$int_ty>::from_ascii_radix(src.as_bytes(), radix)
+            }
+
+            /// Parses an integer from an ASCII-byte slice with decimal digits.
+            ///
+            /// The characters are expected to be an optional
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    " `+` or `-` "
+                }
+                if unsigned {
+                    " `+` "
+                }
+            }]
+            /// sign followed by only digits. Leading and trailing non-digit characters (including
+            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
+            /// also represent an error.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            /// ```
+            /// #![feature(int_from_ascii)]
+            ///
+            #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_ascii(b\"+10\"), Ok(10));")]
+            /// ```
+            /// Trailing space returns error:
+            /// ```
+            /// # #![feature(int_from_ascii)]
+            /// #
+            #[doc = concat!("assert!(", stringify!($int_ty), "::from_ascii(b\"1 \").is_err());")]
+            /// ```
+            #[unstable(feature = "int_from_ascii", issue = "134821")]
+            #[inline]
+            pub const fn from_ascii(src: &[u8]) -> Result<$int_ty, ParseIntError> {
+                <$int_ty>::from_ascii_radix(src, 10)
+            }
+
+            /// Parses an integer from an ASCII-byte slice with digits in a given base.
+            ///
+            /// The characters are expected to be an optional
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    " `+` or `-` "
+                }
+                if unsigned {
+                    " `+` "
+                }
+            }]
+            /// sign followed by only digits. Leading and trailing non-digit characters (including
+            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
+            /// also represent an error.
+            ///
+            /// Digits are a subset of these characters, depending on `radix`:
+            /// * `0-9`
+            /// * `a-z`
+            /// * `A-Z`
+            ///
+            /// # Panics
+            ///
+            /// This function panics if `radix` is not in the range from 2 to 36.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            /// ```
+            /// #![feature(int_from_ascii)]
+            ///
+            #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_ascii_radix(b\"A\", 16), Ok(10));")]
+            /// ```
+            /// Trailing space returns error:
+            /// ```
+            /// # #![feature(int_from_ascii)]
+            /// #
+            #[doc = concat!("assert!(", stringify!($int_ty), "::from_ascii_radix(b\"1 \", 10).is_err());")]
+            /// ```
+            #[unstable(feature = "int_from_ascii", issue = "134821")]
+            #[inline]
+            pub const fn from_ascii_radix(src: &[u8], radix: u32) -> Result<$int_ty, ParseIntError> {
                 use self::IntErrorKind::*;
                 use self::ParseIntError as PIE;
 
                 if 2 > radix || radix > 36 {
-                    from_str_radix_panic(radix);
+                    from_ascii_radix_panic(radix);
                 }
 
                 if src.is_empty() {
@@ -1410,12 +1531,6 @@ macro_rules! from_str_radix {
 
                 #[allow(unused_comparisons)]
                 let is_signed_ty = 0 > <$int_ty>::MIN;
-
-                // all valid digits are ascii, so we will just iterate over the utf8 bytes
-                // and cast them to chars. .to_digit() will safely return None for anything
-                // other than a valid ascii digit for the given radix, including the first-byte
-                // of multi-byte sequences
-                let src = src.as_bytes();
 
                 let (is_positive, mut digits) = match src {
                     [b'+' | b'-'] => {
@@ -1492,67 +1607,8 @@ macro_rules! from_str_radix {
                 Ok(result)
             }
         }
-    )+}
+    )*}
 }
 
-from_str_radix! { unsigned u8 u16 u32 u64 u128 }
-from_str_radix! { signed i8 i16 i32 i64 i128 }
-
-// Re-use the relevant implementation of from_str_radix for isize and usize to avoid outputting two
-// identical functions.
-macro_rules! from_str_radix_size_impl {
-    ($($signedness:ident $t:ident $size:ty),*) => {$(
-    impl $size {
-        /// Converts a string slice in a given base to an integer.
-        ///
-        /// The string is expected to be an optional
-        #[doc = sign_dependent_expr!{
-            $signedness ?
-            if signed {
-                " `+` or `-` "
-            }
-            if unsigned {
-                " `+` "
-            }
-        }]
-        /// sign followed by only digits. Leading and trailing non-digit characters (including
-        /// whitespace) represent an error. Underscores (which are accepted in rust literals)
-        /// also represent an error.
-        ///
-        /// Digits are a subset of these characters, depending on `radix`:
-        /// * `0-9`
-        /// * `a-z`
-        /// * `A-Z`
-        ///
-        /// # Panics
-        ///
-        /// This function panics if `radix` is not in the range from 2 to 36.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        /// ```
-        #[doc = concat!("assert_eq!(", stringify!($size), "::from_str_radix(\"A\", 16), Ok(10));")]
-        /// ```
-        /// Trailing space returns error:
-        /// ```
-        #[doc = concat!("assert!(", stringify!($size), "::from_str_radix(\"1 \", 10).is_err());")]
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
-        #[inline]
-        pub const fn from_str_radix(src: &str, radix: u32) -> Result<$size, ParseIntError> {
-            match <$t>::from_str_radix(src, radix) {
-                Ok(x) => Ok(x as $size),
-                Err(e) => Err(e),
-            }
-        }
-    })*}
-}
-
-#[cfg(target_pointer_width = "16")]
-from_str_radix_size_impl! { signed i16 isize, unsigned u16 usize }
-#[cfg(target_pointer_width = "32")]
-from_str_radix_size_impl! { signed i32 isize, unsigned u32 usize }
-#[cfg(target_pointer_width = "64")]
-from_str_radix_size_impl! { signed i64 isize, unsigned u64 usize }
+from_str_int_impl! { signed isize i8 i16 i32 i64 i128 }
+from_str_int_impl! { unsigned usize u8 u16 u32 u64 u128 }

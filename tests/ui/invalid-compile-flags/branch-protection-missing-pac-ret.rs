@@ -15,3 +15,7 @@
 
 #[lang = "sized"]
 trait Sized {}
+
+//[BADFLAGS]~? ERROR incorrect value `leaf` for unstable option `branch-protection`
+//[BADFLAGSPC]~? ERROR incorrect value `pc` for unstable option `branch-protection`
+//[BADTARGET]~? ERROR `-Zbranch-protection` is only supported on aarch64

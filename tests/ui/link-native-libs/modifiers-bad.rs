@@ -9,3 +9,8 @@
 // Tests various illegal values for the "modifier" part of an `-l` flag.
 
 fn main() {}
+
+//[blank]~? ERROR invalid linking modifier syntax, expected '+' or '-' prefix
+//[no-prefix]~? ERROR invalid linking modifier syntax, expected '+' or '-' prefix
+//[prefix-only]~? ERROR unknown linking modifier ``
+//[unknown]~? ERROR unknown linking modifier `ferris`

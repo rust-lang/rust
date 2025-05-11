@@ -37,7 +37,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match ref_never {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error: unreachable pattern
@@ -67,7 +67,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match res_u32_never {
 LL +         Ok(_) => todo!(),
-LL +     }
+LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: `Ok(1_u32..=u32::MAX)` not covered
@@ -312,7 +312,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match slice_never {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
@@ -367,7 +367,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match *slice_never {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: type `[!; 0]` is non-empty
@@ -381,7 +381,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match array_0_never {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error: unreachable pattern
@@ -493,7 +493,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match *ref_tuple_half_never {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error: unreachable pattern

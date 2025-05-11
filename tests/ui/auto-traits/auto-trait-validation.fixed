@@ -4,11 +4,11 @@
 //@ run-rustfix
 
 auto trait Generic {}
-//~^ auto traits cannot have generic parameters [E0567]
+//~^ ERROR auto traits cannot have generic parameters [E0567]
 auto trait Bound {}
-//~^ auto traits cannot have super traits or lifetime bounds [E0568]
+//~^ ERROR auto traits cannot have super traits or lifetime bounds [E0568]
 auto trait LifetimeBound {}
-//~^ auto traits cannot have super traits or lifetime bounds [E0568]
+//~^ ERROR auto traits cannot have super traits or lifetime bounds [E0568]
 auto trait MyTrait {  }
-//~^ auto traits cannot have associated items [E0380]
+//~^ ERROR auto traits cannot have associated items [E0380]
 fn main() {}

@@ -1,4 +1,4 @@
-#![deny(clippy::all)]
+//@ check-pass
 
 // Test for https://github.com/rust-lang/rust-clippy/issues/700
 

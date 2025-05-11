@@ -1,14 +1,13 @@
 // tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
-#![feature(let_chains)]
 #![feature(never_type)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod _match;
@@ -24,6 +23,7 @@ mod diverges;
 mod errors;
 mod expectation;
 mod expr;
+mod inline_asm;
 // Used by clippy;
 pub mod expr_use_visitor;
 mod fallback;
@@ -32,6 +32,7 @@ mod gather_locals;
 mod intrinsicck;
 mod method;
 mod op;
+mod opaque_types;
 mod pat;
 mod place_op;
 mod rvalue_scopes;
@@ -46,7 +47,6 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirId, HirIdMap, Node};
 use rustc_hir_analysis::check::check_abi;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
@@ -87,21 +87,7 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
 }
 
 fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
-    let fallback = move || tcx.type_of(def_id.to_def_id()).instantiate_identity();
-    typeck_with_fallback(tcx, def_id, fallback, None)
-}
-
-/// Used only to get `TypeckResults` for type inference during error recovery.
-/// Currently only used for type inference of `static`s and `const`s to avoid type cycle errors.
-fn diagnostic_only_typeck<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-) -> &'tcx ty::TypeckResults<'tcx> {
-    let fallback = move || {
-        let span = tcx.hir().span(tcx.local_def_id_to_hir_id(def_id));
-        Ty::new_error_with_message(tcx, span, "diagnostic only typeck table used")
-    };
-    typeck_with_fallback(tcx, def_id, fallback, None)
+    typeck_with_inspect(tcx, def_id, None)
 }
 
 /// Same as `typeck` but `inspect` is invoked on evaluation of each root obligation.
@@ -113,15 +99,13 @@ pub fn inspect_typeck<'tcx>(
     def_id: LocalDefId,
     inspect: ObligationInspector<'tcx>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
-    let fallback = move || tcx.type_of(def_id.to_def_id()).instantiate_identity();
-    typeck_with_fallback(tcx, def_id, fallback, Some(inspect))
+    typeck_with_inspect(tcx, def_id, Some(inspect))
 }
 
-#[instrument(level = "debug", skip(tcx, fallback, inspector), ret)]
-fn typeck_with_fallback<'tcx>(
+#[instrument(level = "debug", skip(tcx, inspector), ret)]
+fn typeck_with_inspect<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-    fallback: impl Fn() -> Ty<'tcx> + 'tcx,
     inspector: Option<ObligationInspector<'tcx>>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
     // Closures' typeck results come from their outermost function,
@@ -133,13 +117,13 @@ fn typeck_with_fallback<'tcx>(
 
     let id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(id);
-    let span = tcx.hir().span(id);
+    let span = tcx.def_span(def_id);
 
     // Figure out what primary body this item has.
     let body_id = node.body_id().unwrap_or_else(|| {
         span_bug!(span, "can't type-check body of {:?}", def_id);
     });
-    let body = tcx.hir().body(body_id);
+    let body = tcx.hir_body(body_id);
 
     let param_env = tcx.param_env(def_id);
 
@@ -149,9 +133,18 @@ fn typeck_with_fallback<'tcx>(
     }
     let mut fcx = FnCtxt::new(&root_ctxt, param_env, def_id);
 
-    if let Some(hir::FnSig { header, decl, .. }) = node.fn_sig() {
-        let fn_sig = if decl.output.get_infer_ret_ty().is_some() {
-            fcx.lowerer().lower_fn_ty(id, header.safety, header.abi, decl, None, None)
+    if let hir::Node::Item(hir::Item { kind: hir::ItemKind::GlobalAsm { .. }, .. }) = node {
+        // Check the fake body of a global ASM. There's not much to do here except
+        // for visit the asm expr of the body.
+        let ty = fcx.check_expr(body.value);
+        fcx.write_ty(id, ty);
+    } else if let Some(hir::FnSig { header, decl, .. }) = node.fn_sig() {
+        let fn_sig = if decl.output.is_suggestable_infer_ty().is_some() {
+            // In the case that we're recovering `fn() -> W<_>` or some other return
+            // type that has an infer in it, lower the type directly so that it'll
+            // be correctly filled with infer. We'll use this inference to provide
+            // a suggestion later on.
+            fcx.lowerer().lower_fn_ty(id, header.safety(), header.abi, decl, None, None)
         } else {
             tcx.fn_sig(def_id).instantiate_identity()
         };
@@ -159,28 +152,58 @@ fn typeck_with_fallback<'tcx>(
         check_abi(tcx, span, fn_sig.abi());
 
         // Compute the function signature from point of view of inside the fn.
-        let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
-        let fn_sig = fcx.normalize(body.value.span, fn_sig);
+        let mut fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
+
+        // Normalize the input and output types one at a time, using a different
+        // `WellFormedLoc` for each. We cannot call `normalize_associated_types`
+        // on the entire `FnSig`, since this would use the same `WellFormedLoc`
+        // for each type, preventing the HIR wf check from generating
+        // a nice error message.
+        let arg_span =
+            |idx| decl.inputs.get(idx).map_or(decl.output.span(), |arg: &hir::Ty<'_>| arg.span);
+
+        fn_sig.inputs_and_output = tcx.mk_type_list_from_iter(
+            fn_sig
+                .inputs_and_output
+                .iter()
+                .enumerate()
+                .map(|(idx, ty)| fcx.normalize(arg_span(idx), ty)),
+        );
 
         check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params());
     } else {
-        let expected_type = infer_type_if_missing(&fcx, node);
-        let expected_type = expected_type.unwrap_or_else(fallback);
+        let expected_type = if let Some(infer_ty) = infer_type_if_missing(&fcx, node) {
+            infer_ty
+        } else if let Some(ty) = node.ty()
+            && ty.is_suggestable_infer_ty()
+        {
+            // In the case that we're recovering `const X: [T; _]` or some other
+            // type that has an infer in it, lower the type directly so that it'll
+            // be correctly filled with infer. We'll use this inference to provide
+            // a suggestion later on.
+            fcx.lowerer().lower_ty(ty)
+        } else {
+            tcx.type_of(def_id).instantiate_identity()
+        };
 
         let expected_type = fcx.normalize(body.value.span, expected_type);
 
         let wf_code = ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id)));
         fcx.register_wf_obligation(expected_type.into(), body.value.span, wf_code);
 
-        fcx.require_type_is_sized(expected_type, body.value.span, ObligationCauseCode::ConstSized);
-
-        // Gather locals in statics (because of block expressions).
-        GatherLocalsVisitor::new(&fcx).visit_body(body);
-
         fcx.check_expr_coercible_to_type(body.value, expected_type, None);
 
         fcx.write_ty(id, expected_type);
     };
+
+    // Whether to check repeat exprs before/after inference fallback is somewhat arbitrary of a decision
+    // as neither option is strictly more permissive than the other. However, we opt to check repeat exprs
+    // first as errors from not having inferred array lengths yet seem less confusing than errors from inference
+    // fallback arbitrarily inferring something incompatible with `Copy` inference side effects.
+    //
+    // This should also be forwards compatible with moving repeat expr checks to a custom goal kind or using
+    // marker traits in the future.
+    fcx.check_repeat_exprs();
 
     fcx.type_inference_fallback();
 
@@ -223,9 +246,7 @@ fn typeck_with_fallback<'tcx>(
 
     let typeck_results = fcx.resolve_type_vars_in_body(body);
 
-    // We clone the defined opaque types during writeback in the new solver
-    // because we have to use them during normalization.
-    let _ = fcx.infcx.take_opaque_types();
+    fcx.detect_opaque_types_added_during_writeback();
 
     // Consistency check our TypeckResults instance can hold all ItemLocalIds
     // it will need to hold.
@@ -237,9 +258,10 @@ fn typeck_with_fallback<'tcx>(
 fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Option<Ty<'tcx>> {
     let tcx = fcx.tcx;
     let def_id = fcx.body_id;
-    let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = node.ty() {
+    let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer(()), span, .. }) = node.ty()
+    {
         if let Some(item) = tcx.opt_associated_item(def_id.into())
-            && let ty::AssocKind::Const = item.kind
+            && let ty::AssocKind::Const { .. } = item.kind
             && let ty::AssocItemContainer::Impl = item.container
             && let Some(trait_item_def_id) = item.trait_item_def_id
         {
@@ -264,12 +286,9 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
                 Some(fcx.next_ty_var(span))
             }
             Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), span, .. })
-            | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), span, .. }) => {
+            | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm { asm, .. }, span, .. }) => {
                 asm.operands.iter().find_map(|(op, _op_sp)| match op {
-                    hir::InlineAsmOperand::Const { anon_const }
-                    | hir::InlineAsmOperand::SymFn { anon_const }
-                        if anon_const.hir_id == id =>
-                    {
+                    hir::InlineAsmOperand::Const { anon_const } if anon_const.hir_id == id => {
                         Some(fcx.next_ty_var(span))
                     }
                     _ => None,
@@ -438,7 +457,7 @@ fn report_unexpected_variant_res(
                 );
                 let fields = fields
                     .iter()
-                    .map(|field| format!("{}: _", field.name.to_ident_string()))
+                    .map(|field| format!("{}: _", field.ident(tcx)))
                     .collect::<Vec<_>>()
                     .join(", ");
                 let sugg = format!(" {{ {} }}", fields);
@@ -506,5 +525,5 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
 
 pub fn provide(providers: &mut Providers) {
     method::provide(providers);
-    *providers = Providers { typeck, diagnostic_only_typeck, used_trait_imports, ..*providers };
+    *providers = Providers { typeck, used_trait_imports, ..*providers };
 }

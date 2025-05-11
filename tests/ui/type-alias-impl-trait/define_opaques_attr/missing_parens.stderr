@@ -1,0 +1,8 @@
+error: expected list of type aliases
+  --> $DIR/missing_parens.rs:3:1
+   |
+LL | #[define_opaque]
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

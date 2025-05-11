@@ -1,18 +1,18 @@
 use std::collections::hash_map::Entry;
 
-use hir::{FileRange, HirFileIdExt, InFile, InRealFile, Module, ModuleSource};
+use hir::{FileRange, InFile, InRealFile, Module, ModuleSource};
 use ide_db::text_edit::TextRange;
 use ide_db::{
+    FxHashMap, RootDatabase,
     defs::Definition,
     search::{FileReference, ReferenceCategory, SearchScope},
-    FxHashMap, RootDatabase,
 };
 use syntax::{
-    ast::{self, Rename},
     AstNode,
+    ast::{self, Rename},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: remove_unused_imports
 //
@@ -126,7 +126,7 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
     // Peek so we terminate early if an unused use is found. Only do the rest of the work if the user selects the assist.
     if unused.peek().is_some() {
         acc.add(
-            AssistId("remove_unused_imports", AssistKind::QuickFix),
+            AssistId::quick_fix("remove_unused_imports"),
             "Remove all the unused imports",
             selected_el.text_range(),
             |builder| {

@@ -262,6 +262,25 @@ themselves marked as unstable. To use any of these options, pass `-Z unstable-op
 the flag in question to Rustdoc on the command-line. To do this from Cargo, you can either use the
 `RUSTDOCFLAGS` environment variable or the `cargo rustdoc` command.
 
+### `--document-hidden-items`: Show items that are `#[doc(hidden)]`
+<span id="document-hidden-items"></span>
+
+By default, `rustdoc` does not document items that are annotated with
+[`#[doc(hidden)]`](write-documentation/the-doc-attribute.html#hidden).
+
+`--document-hidden-items` causes all items to be documented as if they did not have `#[doc(hidden)]`, except that hidden items will be shown with a 👻 icon.
+
+Here is a table that fully describes which items are documented with each combination of `--document-hidden-items` and `--document-private-items`:
+
+
+| rustdoc flags                   | items that will be documented         |
+|---------------------------------|---------------------------------------|
+| neither flag                    | only public items that are not hidden |
+| only `--document-hidden-items`  | all public items                      |
+| only `--document-private-items` | all items that are not hidden         |
+| both flags                      | all items                             |
+
+
 ### `--markdown-before-content`: include rendered Markdown before the content
 
  * Tracking issue: [#44027](https://github.com/rust-lang/rust/issues/44027)
@@ -330,7 +349,7 @@ the source.
 
 ## `--show-type-layout`: add a section to each type's docs describing its memory layout
 
-* Tracking issue: [#113248](https://github.com/rust-lang/rust/issues/113248)
+ * Tracking issue: [#113248](https://github.com/rust-lang/rust/issues/113248)
 
 Using this flag looks like this:
 
@@ -524,9 +543,12 @@ use `-o -`.
 
 ## `-w`/`--output-format`: output format
 
+### json
+
+ * Tracking Issue: [#76578](https://github.com/rust-lang/rust/issues/76578)
+
 `--output-format json` emits documentation in the experimental
-[JSON format](https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc_json_types/). `--output-format html` has no effect,
-and is also accepted on stable toolchains.
+[JSON format](https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc_json_types/).
 
 JSON Output for toolchain crates (`std`, `alloc`, `core`, `test`, and `proc_macro`)
 is available via the `rust-docs-json` rustup component.
@@ -542,59 +564,72 @@ It can also be used with `--show-coverage`. Take a look at its
 [documentation](#--show-coverage-calculate-the-percentage-of-items-with-documentation) for more
 information.
 
-## `--enable-per-target-ignores`: allow `ignore-foo` style filters for doctests
+### doctest
 
- * Tracking issue: [#64245](https://github.com/rust-lang/rust/issues/64245)
+ * Tracking issue: [#134529](https://github.com/rust-lang/rust/issues/134529)
 
-Using this flag looks like this:
+`--output-format doctest` emits JSON on stdout which gives you information about doctests in the
+provided crate.
+
+You can use this option like this:
 
 ```bash
-$ rustdoc src/lib.rs -Z unstable-options --enable-per-target-ignores
+rustdoc -Zunstable-options --output-format=doctest src/lib.rs
 ```
 
-This flag allows you to tag doctests with compiletest style `ignore-foo` filters that prevent
-rustdoc from running that test if the target triple string contains foo. For example:
+For this rust code:
 
 ```rust
-///```ignore-foo,ignore-bar
-///assert!(2 == 2);
-///```
-struct Foo;
+/// ```
+/// let x = 12;
+/// ```
+pub trait Trait {}
 ```
 
-This will not be run when the build target is `super-awesome-foo` or `less-bar-awesome`.
-If the flag is not enabled, then rustdoc will consume the filter, but do nothing with it, and
-the above example will be run for all targets.
-If you want to preserve backwards compatibility for older versions of rustdoc, you can use
+The generated output (formatted) will look like this:
 
-```rust
-///```ignore,ignore-foo
-///assert!(2 == 2);
-///```
-struct Foo;
+```json
+{
+  "format_version": 1,
+  "doctests": [
+    {
+      "file": "foo.rs",
+      "line": 1,
+      "doctest_attributes": {
+        "original": "",
+        "should_panic": false,
+        "no_run": false,
+        "ignore": "None",
+        "rust": true,
+        "test_harness": false,
+        "compile_fail": false,
+        "standalone_crate": false,
+        "error_codes": [],
+        "edition": null,
+        "added_css_classes": [],
+        "unknown": []
+      },
+      "original_code": "let x = 12;",
+      "doctest_code": "#![allow(unused)]\nfn main() {\nlet x = 12;\n}",
+      "name": "foo.rs - Trait (line 1)"
+    }
+  ]
+}
 ```
 
-In older versions, this will be ignored on all targets, but on newer versions `ignore-gnu` will
-override `ignore`.
+ * `format_version` gives you the current version of the generated JSON. If we change the output in any way, the number will increase.
+ * `doctests` contains the list of doctests present in the crate.
+   * `file` is the file path where the doctest is located.
+   * `line` is the line where the doctest starts (so where the \`\`\` is located in the current code).
+   * `doctest_attributes` contains computed information about the attributes used on the doctests. For more information about doctest attributes, take a look [here](write-documentation/documentation-tests.html#attributes).
+   * `original_code` is the code as written in the source code before rustdoc modifies it.
+   * `doctest_code` is the code modified by rustdoc that will be run. If there is a fatal syntax error, this field will not be present.
+   * `name` is the name generated by rustdoc which represents this doctest.
 
-## `--runtool`, `--runtool-arg`: program to run tests with; args to pass to it
+### html
 
- * Tracking issue: [#64245](https://github.com/rust-lang/rust/issues/64245)
-
-Using these options looks like this:
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options --runtool runner --runtool-arg --do-thing --runtool-arg --do-other-thing
-```
-
-These options can be used to run the doctest under a program, and also pass arguments to
-that program. For example, if you want to run your doctests under valgrind you might run
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options --runtool valgrind
-```
-
-Another use case would be to run a test inside an emulator, or through a Virtual Machine.
+`--output-format html` has no effect, as the default output is HTML. This is
+accepted on stable, even though the other options for this flag aren't.
 
 ## `--with-examples`: include examples of uses of items as documentation
 

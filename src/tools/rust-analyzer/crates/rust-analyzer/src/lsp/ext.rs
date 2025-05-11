@@ -1,14 +1,18 @@
 //! rust-analyzer extensions to the LSP.
 
+// Note when adding new resolve payloads, add a #[serde(default)] on boolean fields as some clients
+// might strip `false` values from the JSON payload due to their reserialization logic turning false
+// into null which will then cause them to be omitted in the resolve request. See https://github.com/rust-lang/rust-analyzer/issues/18767
+
 #![allow(clippy::disallowed_types)]
 
 use std::ops;
 
-use lsp_types::request::Request;
 use lsp_types::Url;
+use lsp_types::request::Request;
 use lsp_types::{
-    notification::Notification, CodeActionKind, DocumentOnTypeFormattingParams,
-    PartialResultParams, Position, Range, TextDocumentIdentifier, WorkDoneProgressParams,
+    CodeActionKind, DocumentOnTypeFormattingParams, PartialResultParams, Position, Range,
+    TextDocumentIdentifier, WorkDoneProgressParams, notification::Notification,
 };
 use paths::Utf8PathBuf;
 use rustc_hash::FxHashMap;
@@ -104,19 +108,18 @@ impl Request for RebuildProcMacros {
     const METHOD: &'static str = "rust-analyzer/rebuildProcMacros";
 }
 
-pub enum SyntaxTree {}
+pub enum ViewSyntaxTree {}
 
-impl Request for SyntaxTree {
-    type Params = SyntaxTreeParams;
+impl Request for ViewSyntaxTree {
+    type Params = ViewSyntaxTreeParams;
     type Result = String;
-    const METHOD: &'static str = "rust-analyzer/syntaxTree";
+    const METHOD: &'static str = "rust-analyzer/viewSyntaxTree";
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct SyntaxTreeParams {
+pub struct ViewSyntaxTreeParams {
     pub text_document: TextDocumentIdentifier,
-    pub range: Option<Range>,
 }
 
 pub enum ViewHir {}
@@ -396,6 +399,14 @@ impl Request for ParentModule {
     const METHOD: &'static str = "experimental/parentModule";
 }
 
+pub enum ChildModules {}
+
+impl Request for ChildModules {
+    type Params = lsp_types::TextDocumentPositionParams;
+    type Result = Option<lsp_types::GotoDefinitionResponse>;
+    const METHOD: &'static str = "experimental/childModules";
+}
+
 pub enum JoinLines {}
 
 impl Request for JoinLines {
@@ -427,14 +438,14 @@ impl Request for Runnables {
     const METHOD: &'static str = "experimental/runnables";
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RunnablesParams {
     pub text_document: TextDocumentIdentifier,
     pub position: Option<Position>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Runnable {
     pub label: String,
@@ -444,7 +455,7 @@ pub struct Runnable {
     pub args: RunnableArgs,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 #[serde(untagged)]
 pub enum RunnableArgs {
@@ -452,14 +463,14 @@ pub enum RunnableArgs {
     Shell(ShellRunnableArgs),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum RunnableKind {
     Cargo,
     Shell,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CargoRunnableArgs {
     #[serde(skip_serializing_if = "FxHashMap::is_empty")]
@@ -475,7 +486,7 @@ pub struct CargoRunnableArgs {
     pub executable_args: Vec<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ShellRunnableArgs {
     #[serde(skip_serializing_if = "FxHashMap::is_empty")]
@@ -829,6 +840,7 @@ pub struct CompletionResolveData {
     pub version: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub trigger_character: Option<char>,
+    #[serde(default)]
     pub for_ref: bool,
     pub hash: String,
 }
@@ -846,7 +858,6 @@ pub struct InlayHintResolveData {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CompletionImport {
     pub full_import_path: String,
-    pub imported_name: String,
 }
 
 #[derive(Debug, Deserialize, Default)]

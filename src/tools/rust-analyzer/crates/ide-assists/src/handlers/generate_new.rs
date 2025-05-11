@@ -2,13 +2,13 @@ use ide_db::{
     imports::import_assets::item_for_path_search, use_trivial_constructor::use_trivial_constructor,
 };
 use syntax::{
-    ast::{self, edit_in_place::Indent, make, AstNode, HasName, HasVisibility, StructKind},
+    ast::{self, AstNode, HasName, HasVisibility, StructKind, edit_in_place::Indent, make},
     ted,
 };
 
 use crate::{
+    AssistContext, AssistId, Assists,
     utils::{find_struct_impl, generate_impl},
-    AssistContext, AssistId, AssistKind, Assists,
 };
 
 // Assist: generate_new
@@ -48,7 +48,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     let current_module = ctx.sema.scope(strukt.syntax())?.module();
 
     let target = strukt.syntax().text_range();
-    acc.add(AssistId("generate_new", AssistKind::Generate), "Generate `new`", target, |builder| {
+    acc.add(AssistId::generate("generate_new"), "Generate `new`", target, |builder| {
         let trivial_constructors = field_list
             .fields()
             .map(|f| {

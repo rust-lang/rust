@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingTraitMethods {
                     cx,
                     MISSING_TRAIT_METHODS,
                     cx.tcx.def_span(item.owner_id),
-                    format!("missing trait method provided by default: `{}`", assoc.name),
+                    format!("missing trait method provided by default: `{}`", assoc.name()),
                     |diag| {
                         diag.span_help(cx.tcx.def_span(assoc.def_id), "implement the method");
                     },

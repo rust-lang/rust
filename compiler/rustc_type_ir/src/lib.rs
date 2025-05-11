@@ -1,12 +1,12 @@
 // tidy-alphabetical-start
 #![allow(rustc::usage_of_ty_tykind)]
 #![allow(rustc::usage_of_type_ir_inherent)]
+#![allow(rustc::usage_of_type_ir_traits)]
 #![cfg_attr(
     feature = "nightly",
     feature(associated_type_defaults, never_type, rustc_attrs, negative_impls)
 )]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 extern crate self as rustc_type_ir;
@@ -18,15 +18,10 @@ use std::hash::Hash;
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
 
 // These modules are `pub` since they are not glob-imported.
-#[macro_use]
-pub mod visit;
-#[cfg(feature = "nightly")]
-pub mod codec;
 pub mod data_structures;
 pub mod elaborate;
 pub mod error;
 pub mod fast_reject;
-pub mod fold;
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_inherent")]
 pub mod inherent;
 pub mod ir_print;
@@ -36,6 +31,7 @@ pub mod outlives;
 pub mod relate;
 pub mod search_graph;
 pub mod solve;
+pub mod walk;
 
 // These modules are not `pub` since they are glob-imported.
 #[macro_use]
@@ -44,16 +40,19 @@ mod binder;
 mod canonical;
 mod const_kind;
 mod flags;
+mod fold;
 mod generic_arg;
 mod infer_ctxt;
 mod interner;
 mod opaque_ty;
+mod pattern;
 mod predicate;
 mod predicate_kind;
 mod region_kind;
 mod ty_info;
 mod ty_kind;
 mod upcast;
+mod visit;
 
 pub use AliasTyKind::*;
 pub use DynKind::*;
@@ -63,20 +62,22 @@ pub use TyKind::*;
 pub use Variance::*;
 pub use binder::*;
 pub use canonical::*;
-#[cfg(feature = "nightly")]
-pub use codec::*;
 pub use const_kind::*;
 pub use flags::*;
+pub use fold::*;
 pub use generic_arg::*;
 pub use infer_ctxt::*;
 pub use interner::*;
 pub use opaque_ty::*;
+pub use pattern::*;
 pub use predicate::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
+pub use rustc_ast_ir::{Movability, Mutability, Pinnedness};
 pub use ty_info::*;
 pub use ty_kind::*;
 pub use upcast::*;
+pub use visit::*;
 
 rustc_index::newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing

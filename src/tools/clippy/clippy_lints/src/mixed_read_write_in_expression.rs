@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::macros::root_macro_call_first_node;
-use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
+use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id, sym};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, LetStmt, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -135,10 +135,10 @@ impl<'tcx> DivergenceVisitor<'_, 'tcx> {
     }
 
     fn report_diverging_sub_expr(&mut self, e: &Expr<'_>) {
-        if let Some(macro_call) = root_macro_call_first_node(self.cx, e) {
-            if self.cx.tcx.item_name(macro_call.def_id).as_str() == "todo" {
-                return;
-            }
+        if let Some(macro_call) = root_macro_call_first_node(self.cx, e)
+            && self.cx.tcx.is_diagnostic_item(sym::todo_macro, macro_call.def_id)
+        {
+            return;
         }
         span_lint(self.cx, DIVERGING_SUB_EXPRESSION, e.span, "sub-expression diverges");
     }
@@ -261,10 +261,11 @@ fn check_expr<'tcx>(vis: &mut ReadVisitor<'_, 'tcx>, expr: &'tcx Expr<'_>) -> St
         | ExprKind::Assign(..)
         | ExprKind::Index(..)
         | ExprKind::Repeat(_, _)
-        | ExprKind::Struct(_, _, _) => {
+        | ExprKind::Struct(_, _, _)
+        | ExprKind::AssignOp(_, _, _) => {
             walk_expr(vis, expr);
         },
-        ExprKind::Binary(op, _, _) | ExprKind::AssignOp(op, _, _) => {
+        ExprKind::Binary(op, _, _) => {
             if op.node == BinOpKind::And || op.node == BinOpKind::Or {
                 // x && y and x || y always evaluate x first, so these are
                 // strictly sequenced.
@@ -327,22 +328,22 @@ impl<'tcx> Visitor<'tcx> for ReadVisitor<'_, 'tcx> {
             return;
         }
 
-        if path_to_local_id(expr, self.var) {
+        if path_to_local_id(expr, self.var)
             // Check that this is a read, not a write.
-            if !is_in_assignment_position(self.cx, expr) {
-                span_lint_and_then(
-                    self.cx,
-                    MIXED_READ_WRITE_IN_EXPRESSION,
-                    expr.span,
-                    format!("unsequenced read of `{}`", self.cx.tcx.hir().name(self.var)),
-                    |diag| {
-                        diag.span_note(
-                            self.write_expr.span,
-                            "whether read occurs before this write depends on evaluation order",
-                        );
-                    },
-                );
-            }
+            && !is_in_assignment_position(self.cx, expr)
+        {
+            span_lint_and_then(
+                self.cx,
+                MIXED_READ_WRITE_IN_EXPRESSION,
+                expr.span,
+                format!("unsequenced read of `{}`", self.cx.tcx.hir_name(self.var)),
+                |diag| {
+                    diag.span_note(
+                        self.write_expr.span,
+                        "whether read occurs before this write depends on evaluation order",
+                    );
+                },
+            );
         }
         match expr.kind {
             // We're about to descend a closure. Since we don't know when (or
@@ -372,10 +373,10 @@ impl<'tcx> Visitor<'tcx> for ReadVisitor<'_, 'tcx> {
 
 /// Returns `true` if `expr` is the LHS of an assignment, like `expr = ...`.
 fn is_in_assignment_position(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if let Some(parent) = get_parent_expr(cx, expr) {
-        if let ExprKind::Assign(lhs, ..) = parent.kind {
-            return lhs.hir_id == expr.hir_id;
-        }
+    if let Some(parent) = get_parent_expr(cx, expr)
+        && let ExprKind::Assign(lhs, ..) = parent.kind
+    {
+        return lhs.hir_id == expr.hir_id;
     }
     false
 }

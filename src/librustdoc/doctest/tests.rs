@@ -197,6 +197,7 @@ fn make_test_crate_attrs() {
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
 #![feature(sick_rad)]
+
 fn main() {
 assert_eq!(2+2, 4);
 }"
@@ -228,8 +229,8 @@ fn make_test_fake_main() {
     let input = "//Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
-//Ceci n'est pas une `fn main`
 fn main() {
+//Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);
 }"
     .to_string();
@@ -259,8 +260,8 @@ fn make_test_issues_21299() {
 assert_eq!(2+2, 4);";
 
     let expected = "#![allow(unused)]
-// fn main
 fn main() {
+// fn main
 assert_eq!(2+2, 4);
 }"
     .to_string();
@@ -316,7 +317,7 @@ let mut input = String::new();
 io::stdin().read_line(&mut input)?;
 Ok::<(), io:Error>(())";
     let expected = "#![allow(unused)]
-fn main() { fn _inner() -> Result<(), impl core::fmt::Debug> {
+fn main() { fn _inner() -> core::result::Result<(), impl core::fmt::Debug> {
 use std::io;
 let mut input = String::new();
 io::stdin().read_line(&mut input)?;
@@ -381,23 +382,74 @@ fn main() {
 }
 
 #[test]
-fn check_split_args() {
-    fn compare(input: &str, expected: &[&str]) {
-        let output = super::split_args(input);
-        let expected = expected.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        assert_eq!(expected, output, "test failed for {input:?}");
-    }
+fn comment_in_attrs() {
+    // If there is an inline code comment after attributes, we need to ensure that
+    // a backline will be added to prevent generating code "inside" it (and thus generating)
+    // invalid code.
+    let opts = default_global_opts("");
+    let input = "\
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+//! This crate has the Rust(tm) branding on it.";
+    let expected = "\
+#![allow(unused)]
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+//! This crate has the Rust(tm) branding on it.
+fn main() {
 
-    compare("'a' \"b\"c", &["a", "bc"]);
-    compare("'a' \"b \"c d", &["a", "b c", "d"]);
-    compare("'a' \"b\\\"c\"", &["a", "b\"c"]);
-    compare("'a\"'", &["a\""]);
-    compare("\"a'\"", &["a'"]);
-    compare("\\ a", &[" a"]);
-    compare("\\\\", &["\\"]);
-    compare("a'", &["a"]);
-    compare("a          ", &["a"]);
-    compare("a          b", &["a", "b"]);
-    compare("a\n\t \rb", &["a", "b"]);
-    compare("a\n\t1 \rb", &["a", "1", "b"]);
+}"
+    .to_string();
+    let (output, len) = make_test(input, None, false, &opts, None);
+    assert_eq!((output, len), (expected, 2));
+
+    // And same, if there is a `main` function provided by the user, we ensure that it's
+    // correctly separated.
+    let input = "\
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+//! This crate has the Rust(tm) branding on it.
+fn main() {}";
+    let expected = "\
+#![allow(unused)]
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+//! This crate has the Rust(tm) branding on it.
+
+fn main() {}"
+        .to_string();
+    let (output, len) = make_test(input, None, false, &opts, None);
+    assert_eq!((output, len), (expected, 1));
+}
+
+// This test ensures that the only attributes taken into account when we switch between
+// "crate level" content and the rest doesn't include inner attributes span, as it would
+// include part of the item and generate broken code.
+#[test]
+fn inner_attributes() {
+    let opts = default_global_opts("");
+    let input = r#"
+//! A doc comment that applies to the implicit anonymous module of this crate
+
+pub mod outer_module {
+    //!! - Still an inner line doc (but with a bang at the beginning)
+}
+"#;
+    let expected = "#![allow(unused)]
+
+//! A doc comment that applies to the implicit anonymous module of this crate
+
+
+fn main() {
+pub mod outer_module {
+    //!! - Still an inner line doc (but with a bang at the beginning)
+}
+}"
+    .to_string();
+    let (output, len) = make_test(input, None, false, &opts, None);
+    assert_eq!((output, len), (expected, 2));
 }

@@ -16,7 +16,7 @@ pub(super) fn check<'tcx>(
     cast_expr: &Expr<'_>,
     cast_from: Ty<'tcx>,
     cast_to: Ty<'tcx>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if let ty::RawPtr(from_ty, from_mutbl) = cast_from.kind()
         && let ty::RawPtr(to_ty, to_mutbl) = cast_to.kind()
@@ -52,8 +52,9 @@ pub(super) fn check<'tcx>(
             return;
         }
 
-        if msrv.meets(msrvs::POINTER_CAST_CONSTNESS) {
-            let sugg = Sugg::hir(cx, cast_expr, "_");
+        if msrv.meets(cx, msrvs::POINTER_CAST_CONSTNESS) {
+            let mut app = Applicability::MachineApplicable;
+            let sugg = Sugg::hir_with_context(cx, cast_expr, expr.span.ctxt(), "_", &mut app);
             let constness = match *to_mutbl {
                 Mutability::Not => "const",
                 Mutability::Mut => "mut",
@@ -65,8 +66,8 @@ pub(super) fn check<'tcx>(
                 expr.span,
                 "`as` casting between raw pointers while changing only its constness",
                 format!("try `pointer::cast_{constness}`, a safer alternative"),
-                format!("{}.cast_{constness}()", sugg.maybe_par()),
-                Applicability::MachineApplicable,
+                format!("{}.cast_{constness}()", sugg.maybe_paren()),
+                app,
             );
         }
     }

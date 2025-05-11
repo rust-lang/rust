@@ -1,5 +1,6 @@
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::num::NonZero;
+use crate::ops::{NeverShortCircuit, Try};
 use crate::ub_checks;
 
 /// Like a `Range<usize>`, but with a safety invariant that `start <= end`.
@@ -18,7 +19,7 @@ impl IndexRange {
     /// # Safety
     /// - `start <= end`
     #[inline]
-    pub const unsafe fn new_unchecked(start: usize, end: usize) -> Self {
+    pub(crate) const unsafe fn new_unchecked(start: usize, end: usize) -> Self {
         ub_checks::assert_unsafe_precondition!(
             check_library_ub,
             "IndexRange::new_unchecked requires `start <= end`",
@@ -28,22 +29,22 @@ impl IndexRange {
     }
 
     #[inline]
-    pub const fn zero_to(end: usize) -> Self {
+    pub(crate) const fn zero_to(end: usize) -> Self {
         IndexRange { start: 0, end }
     }
 
     #[inline]
-    pub const fn start(&self) -> usize {
+    pub(crate) const fn start(&self) -> usize {
         self.start
     }
 
     #[inline]
-    pub const fn end(&self) -> usize {
+    pub(crate) const fn end(&self) -> usize {
         self.end
     }
 
     #[inline]
-    pub const fn len(&self) -> usize {
+    pub(crate) const fn len(&self) -> usize {
         // SAFETY: By invariant, this cannot wrap
         // Using the intrinsic because a UB check here impedes LLVM optimization. (#131563)
         unsafe { crate::intrinsics::unchecked_sub(self.end, self.start) }
@@ -79,7 +80,7 @@ impl IndexRange {
     ///
     /// This is designed to help implement `Iterator::advance_by`.
     #[inline]
-    pub fn take_prefix(&mut self, n: usize) -> Self {
+    pub(crate) fn take_prefix(&mut self, n: usize) -> Self {
         let mid = if n <= self.len() {
             // SAFETY: We just checked that this will be between start and end,
             // and thus the addition cannot overflow.
@@ -99,7 +100,7 @@ impl IndexRange {
     ///
     /// This is designed to help implement `Iterator::advance_back_by`.
     #[inline]
-    pub fn take_suffix(&mut self, n: usize) -> Self {
+    pub(crate) fn take_suffix(&mut self, n: usize) -> Self {
         let mid = if n <= self.len() {
             // SAFETY: We just checked that this will be between start and end,
             // and thus the subtraction cannot overflow.
@@ -111,6 +112,12 @@ impl IndexRange {
         let suffix = Self { start: mid, end: self.end };
         self.end = mid;
         suffix
+    }
+
+    #[inline]
+    fn assume_range(&self) {
+        // SAFETY: This is the type invariant
+        unsafe { crate::hint::assert_unchecked(self.start <= self.end) }
     }
 }
 
@@ -138,6 +145,30 @@ impl Iterator for IndexRange {
         let taken = self.take_prefix(n);
         NonZero::new(n - taken.len()).map_or(Ok(()), Err)
     }
+
+    #[inline]
+    fn fold<B, F: FnMut(B, usize) -> B>(mut self, init: B, f: F) -> B {
+        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).0
+    }
+
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, mut accum: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        // `Range` needs to check `start < end`, but thanks to our type invariant
+        // we can loop on the stricter `start != end`.
+
+        self.assume_range();
+        while self.start != self.end {
+            // SAFETY: We just checked that the range is non-empty
+            let i = unsafe { self.next_unchecked() };
+            accum = f(accum, i)?;
+        }
+        try { accum }
+    }
 }
 
 impl DoubleEndedIterator for IndexRange {
@@ -155,6 +186,30 @@ impl DoubleEndedIterator for IndexRange {
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let taken = self.take_suffix(n);
         NonZero::new(n - taken.len()).map_or(Ok(()), Err)
+    }
+
+    #[inline]
+    fn rfold<B, F: FnMut(B, usize) -> B>(mut self, init: B, f: F) -> B {
+        self.try_rfold(init, NeverShortCircuit::wrap_mut_2(f)).0
+    }
+
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, mut accum: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        // `Range` needs to check `start < end`, but thanks to our type invariant
+        // we can loop on the stricter `start != end`.
+
+        self.assume_range();
+        while self.start != self.end {
+            // SAFETY: We just checked that the range is non-empty
+            let i = unsafe { self.next_back_unchecked() };
+            accum = f(accum, i)?;
+        }
+        try { accum }
     }
 }
 

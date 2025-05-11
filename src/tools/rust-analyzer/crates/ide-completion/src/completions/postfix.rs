@@ -2,26 +2,27 @@
 
 mod format_like;
 
-use hir::ItemInNs;
-use ide_db::text_edit::TextEdit;
+use base_db::SourceDatabase;
+use hir::{ItemInNs, Semantics};
 use ide_db::{
+    RootDatabase, SnippetCap,
     documentation::{Documentation, HasDocs},
     imports::insert_use::ImportScope,
+    text_edit::TextEdit,
     ty_filter::TryEnum,
-    SnippetCap,
 };
 use stdx::never;
 use syntax::{
-    ast::{self, make, AstNode, AstToken},
     SyntaxKind::{BLOCK_EXPR, EXPR_STMT, FOR_EXPR, IF_EXPR, LOOP_EXPR, STMT_LIST, WHILE_EXPR},
     TextRange, TextSize,
+    ast::{self, AstNode, AstToken},
 };
 
 use crate::{
+    CompletionItem, CompletionItemKind, CompletionRelevance, Completions, SnippetScope,
     completions::postfix::format_like::add_format_like_completions,
     context::{BreakableKind, CompletionContext, DotAccess, DotAccessKind},
     item::{Builder, CompletionRelevancePostfixMatch},
-    CompletionItem, CompletionItemKind, CompletionRelevance, Completions, SnippetScope,
 };
 
 pub(crate) fn complete_postfix(
@@ -48,7 +49,8 @@ pub(crate) fn complete_postfix(
     };
     let expr_ctx = &dot_access.ctx;
 
-    let receiver_text = get_receiver_text(dot_receiver, receiver_is_ambiguous_float_literal);
+    let receiver_text =
+        get_receiver_text(&ctx.sema, dot_receiver, receiver_is_ambiguous_float_literal);
 
     let cap = match ctx.config.snippet_cap {
         Some(it) => it,
@@ -60,7 +62,7 @@ pub(crate) fn complete_postfix(
         None => return,
     };
 
-    let cfg = ctx.config.import_path_config();
+    let cfg = ctx.config.import_path_config(ctx.is_nightly);
 
     if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop() {
         if receiver_ty.impls_trait(ctx.db, drop_trait, &[]) {
@@ -153,32 +155,41 @@ pub(crate) fn complete_postfix(
     postfix_snippet("refm", "&mut expr", &format!("&mut {receiver_text}")).add_to(acc, ctx.db);
     postfix_snippet("deref", "*expr", &format!("*{receiver_text}")).add_to(acc, ctx.db);
 
-    let mut unsafe_should_be_wrapped = true;
+    let mut block_should_be_wrapped = true;
     if dot_receiver.syntax().kind() == BLOCK_EXPR {
-        unsafe_should_be_wrapped = false;
+        block_should_be_wrapped = false;
         if let Some(parent) = dot_receiver.syntax().parent() {
             if matches!(parent.kind(), IF_EXPR | WHILE_EXPR | LOOP_EXPR | FOR_EXPR) {
-                unsafe_should_be_wrapped = true;
+                block_should_be_wrapped = true;
             }
         }
     };
-    let unsafe_completion_string = if unsafe_should_be_wrapped {
+    let unsafe_completion_string = if block_should_be_wrapped {
         format!("unsafe {{ {receiver_text} }}")
     } else {
         format!("unsafe {receiver_text}")
     };
     postfix_snippet("unsafe", "unsafe {}", &unsafe_completion_string).add_to(acc, ctx.db);
 
+    let const_completion_string = if block_should_be_wrapped {
+        format!("const {{ {receiver_text} }}")
+    } else {
+        format!("const {receiver_text}")
+    };
+    postfix_snippet("const", "const {}", &const_completion_string).add_to(acc, ctx.db);
+
     // The rest of the postfix completions create an expression that moves an argument,
     // so it's better to consider references now to avoid breaking the compilation
 
-    let (dot_receiver, node_to_replace_with) = include_references(dot_receiver);
-    let receiver_text =
-        get_receiver_text(&node_to_replace_with, receiver_is_ambiguous_float_literal);
-    let postfix_snippet = match build_postfix_snippet_builder(ctx, cap, &dot_receiver) {
-        Some(it) => it,
-        None => return,
-    };
+    let (dot_receiver_including_refs, prefix) = include_references(dot_receiver);
+    let mut receiver_text =
+        get_receiver_text(&ctx.sema, dot_receiver, receiver_is_ambiguous_float_literal);
+    receiver_text.insert_str(0, &prefix);
+    let postfix_snippet =
+        match build_postfix_snippet_builder(ctx, cap, &dot_receiver_including_refs) {
+            Some(it) => it,
+            None => return,
+        };
 
     if !ctx.config.snippets.is_empty() {
         add_custom_postfix_completions(acc, ctx, &postfix_snippet, &receiver_text);
@@ -222,7 +233,7 @@ pub(crate) fn complete_postfix(
     postfix_snippet("call", "function(expr)", &format!("${{1}}({receiver_text})"))
         .add_to(acc, ctx.db);
 
-    if let Some(parent) = dot_receiver.syntax().parent().and_then(|p| p.parent()) {
+    if let Some(parent) = dot_receiver_including_refs.syntax().parent().and_then(|p| p.parent()) {
         if matches!(parent.kind(), STMT_LIST | EXPR_STMT) {
             postfix_snippet("let", "let", &format!("let $0 = {receiver_text};"))
                 .add_to(acc, ctx.db);
@@ -231,9 +242,9 @@ pub(crate) fn complete_postfix(
         }
     }
 
-    if let ast::Expr::Literal(literal) = dot_receiver.clone() {
+    if let ast::Expr::Literal(literal) = dot_receiver_including_refs.clone() {
         if let Some(literal_text) = ast::String::cast(literal.token()) {
-            add_format_like_completions(acc, ctx, &dot_receiver, cap, &literal_text);
+            add_format_like_completions(acc, ctx, &dot_receiver_including_refs, cap, &literal_text);
         }
     }
 
@@ -260,14 +271,20 @@ pub(crate) fn complete_postfix(
     }
 }
 
-fn get_receiver_text(receiver: &ast::Expr, receiver_is_ambiguous_float_literal: bool) -> String {
-    let mut text = if receiver_is_ambiguous_float_literal {
-        let text = receiver.syntax().text();
-        let without_dot = ..text.len() - TextSize::of('.');
-        text.slice(without_dot).to_string()
-    } else {
-        receiver.to_string()
+fn get_receiver_text(
+    sema: &Semantics<'_, RootDatabase>,
+    receiver: &ast::Expr,
+    receiver_is_ambiguous_float_literal: bool,
+) -> String {
+    // Do not just call `receiver.to_string()`, as that will mess up whitespaces inside macros.
+    let Some(mut range) = sema.original_range_opt(receiver.syntax()) else {
+        return receiver.to_string();
     };
+    if receiver_is_ambiguous_float_literal {
+        range.range = TextRange::at(range.range.start(), range.range.len() - TextSize::of('.'))
+    }
+    let file_text = sema.db.file_text(range.file_id.file_id(sema.db));
+    let mut text = file_text.text(sema.db)[range.range].to_owned();
 
     // The receiver texts should be interpreted as-is, as they are expected to be
     // normal Rust expressions.
@@ -284,7 +301,7 @@ fn escape_snippet_bits(text: &mut String) {
     stdx::replace(text, '$', "\\$");
 }
 
-fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {
+fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
     let mut resulting_element = initial_element.clone();
 
     while let Some(field_expr) = resulting_element.syntax().parent().and_then(ast::FieldExpr::cast)
@@ -292,7 +309,7 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {
         resulting_element = ast::Expr::from(field_expr);
     }
 
-    let mut new_element_opt = initial_element.clone();
+    let mut prefix = String::new();
 
     while let Some(parent_deref_element) =
         resulting_element.syntax().parent().and_then(ast::PrefixExpr::cast)
@@ -303,7 +320,7 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {
 
         resulting_element = ast::Expr::from(parent_deref_element);
 
-        new_element_opt = make::expr_prefix(syntax::T![*], new_element_opt);
+        prefix.insert(0, '*');
     }
 
     if let Some(first_ref_expr) = resulting_element.syntax().parent().and_then(ast::RefExpr::cast) {
@@ -317,7 +334,7 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {
             let exclusive = parent_ref_element.mut_token().is_some();
             resulting_element = ast::Expr::from(parent_ref_element);
 
-            new_element_opt = make::expr_ref(new_element_opt, exclusive);
+            prefix.insert_str(0, if exclusive { "&mut " } else { "&" });
         }
     } else {
         // If we do not find any ref expressions, restore
@@ -325,7 +342,7 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {
         resulting_element = initial_element.clone();
     }
 
-    (resulting_element, new_element_opt)
+    (resulting_element, prefix)
 }
 
 fn build_postfix_snippet_builder<'ctx>(
@@ -401,17 +418,12 @@ fn add_custom_postfix_completions(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
     use crate::{
-        tests::{check_edit, check_edit_with_config, completion_list, TEST_CONFIG},
         CompletionConfig, Snippet,
+        tests::{TEST_CONFIG, check, check_edit, check_edit_with_config},
     };
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture);
-        expect.assert_eq(&actual)
-    }
 
     #[test]
     fn postfix_completion_works_for_trivial_path_expression() {
@@ -425,6 +437,7 @@ fn main() {
             expect![[r#"
                 sn box  Box::new(expr)
                 sn call function(expr)
+                sn const      const {}
                 sn dbg      dbg!(expr)
                 sn dbgr    dbg!(&expr)
                 sn deref         *expr
@@ -458,6 +471,7 @@ fn main() {
             expect![[r#"
                 sn box  Box::new(expr)
                 sn call function(expr)
+                sn const      const {}
                 sn dbg      dbg!(expr)
                 sn dbgr    dbg!(&expr)
                 sn deref         *expr
@@ -485,6 +499,7 @@ fn main() {
             expect![[r#"
                 sn box  Box::new(expr)
                 sn call function(expr)
+                sn const      const {}
                 sn dbg      dbg!(expr)
                 sn dbgr    dbg!(&expr)
                 sn deref         *expr
@@ -511,6 +526,7 @@ fn main() {
             expect![[r#"
                 sn box  Box::new(expr)
                 sn call function(expr)
+                sn const      const {}
                 sn dbg      dbg!(expr)
                 sn dbgr    dbg!(&expr)
                 sn deref         *expr
@@ -648,59 +664,74 @@ fn main() {
 
     #[test]
     fn postfix_completion_for_unsafe() {
-        check_edit("unsafe", r#"fn main() { foo.$0 }"#, r#"fn main() { unsafe { foo } }"#);
-        check_edit("unsafe", r#"fn main() { { foo }.$0 }"#, r#"fn main() { unsafe { foo } }"#);
+        postfix_completion_for_block("unsafe");
+    }
+
+    #[test]
+    fn postfix_completion_for_const() {
+        postfix_completion_for_block("const");
+    }
+
+    fn postfix_completion_for_block(kind: &str) {
+        check_edit(kind, r#"fn main() { foo.$0 }"#, &format!("fn main() {{ {kind} {{ foo }} }}"));
         check_edit(
-            "unsafe",
+            kind,
+            r#"fn main() { { foo }.$0 }"#,
+            &format!("fn main() {{ {kind} {{ foo }} }}"),
+        );
+        check_edit(
+            kind,
             r#"fn main() { if x { foo }.$0 }"#,
-            r#"fn main() { unsafe { if x { foo } } }"#,
+            &format!("fn main() {{ {kind} {{ if x {{ foo }} }} }}"),
         );
         check_edit(
-            "unsafe",
+            kind,
             r#"fn main() { loop { foo }.$0 }"#,
-            r#"fn main() { unsafe { loop { foo } } }"#,
+            &format!("fn main() {{ {kind} {{ loop {{ foo }} }} }}"),
         );
         check_edit(
-            "unsafe",
+            kind,
             r#"fn main() { if true {}.$0 }"#,
-            r#"fn main() { unsafe { if true {} } }"#,
+            &format!("fn main() {{ {kind} {{ if true {{}} }} }}"),
         );
         check_edit(
-            "unsafe",
+            kind,
             r#"fn main() { while true {}.$0 }"#,
-            r#"fn main() { unsafe { while true {} } }"#,
+            &format!("fn main() {{ {kind} {{ while true {{}} }} }}"),
         );
         check_edit(
-            "unsafe",
+            kind,
             r#"fn main() { for i in 0..10 {}.$0 }"#,
-            r#"fn main() { unsafe { for i in 0..10 {} } }"#,
+            &format!("fn main() {{ {kind} {{ for i in 0..10 {{}} }} }}"),
         );
         check_edit(
-            "unsafe",
+            kind,
             r#"fn main() { let x = if true {1} else {2}.$0 }"#,
-            r#"fn main() { let x = unsafe { if true {1} else {2} } }"#,
+            &format!("fn main() {{ let x = {kind} {{ if true {{1}} else {{2}} }} }}"),
         );
 
         // completion will not be triggered
         check_edit(
-            "unsafe",
+            kind,
             r#"fn main() { let x = true else {panic!()}.$0}"#,
-            r#"fn main() { let x = true else {panic!()}.unsafe $0}"#,
+            &format!("fn main() {{ let x = true else {{panic!()}}.{kind} $0}}"),
         );
     }
 
     #[test]
     fn custom_postfix_completion() {
         let config = CompletionConfig {
-            snippets: vec![Snippet::new(
-                &[],
-                &["break".into()],
-                &["ControlFlow::Break(${receiver})".into()],
-                "",
-                &["core::ops::ControlFlow".into()],
-                crate::SnippetScope::Expr,
-            )
-            .unwrap()],
+            snippets: vec![
+                Snippet::new(
+                    &[],
+                    &["break".into()],
+                    &["ControlFlow::Break(${receiver})".into()],
+                    "",
+                    &["core::ops::ControlFlow".into()],
+                    crate::SnippetScope::Expr,
+                )
+                .unwrap(),
+            ],
             ..TEST_CONFIG
         };
 
@@ -904,6 +935,33 @@ fn main() {
     ${1}(&mut *x);
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn inside_macro() {
+        check_edit(
+            "box",
+            r#"
+macro_rules! assert {
+    ( $it:expr $(,)? ) => { $it };
+}
+
+fn foo() {
+    let a = true;
+    assert!(if a == false { true } else { false }.$0);
+}
+        "#,
+            r#"
+macro_rules! assert {
+    ( $it:expr $(,)? ) => { $it };
+}
+
+fn foo() {
+    let a = true;
+    assert!(Box::new(if a == false { true } else { false }));
+}
+        "#,
         );
     }
 }

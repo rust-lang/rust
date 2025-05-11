@@ -1,12 +1,8 @@
 //@ run-pass
 
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 
-extern "rust-intrinsic" {
-    fn simd_cast_ptr<T, U>(x: T) -> U;
-    fn simd_expose_provenance<T, U>(x: T) -> U;
-    fn simd_with_exposed_provenance<T, U>(x: T) -> U;
-}
+use std::intrinsics::simd::{simd_cast_ptr, simd_expose_provenance, simd_with_exposed_provenance};
 
 #[derive(Copy, Clone)]
 #[repr(simd)]

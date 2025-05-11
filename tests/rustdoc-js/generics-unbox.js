@@ -31,4 +31,10 @@ const EXPECTED = [
             { 'path': 'generics_unbox', 'name': 'beta' },
         ],
     },
+    {
+        'query': '-> Sigma',
+        'others': [
+            { 'path': 'generics_unbox', 'name': 'delta' },
+        ],
+    },
 ];

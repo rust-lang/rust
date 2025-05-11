@@ -159,11 +159,7 @@ impl Annotation {
     /// Length of this annotation as displayed in the stderr output
     pub(crate) fn len(&self) -> usize {
         // Account for usize underflows
-        if self.end_col.display > self.start_col.display {
-            self.end_col.display - self.start_col.display
-        } else {
-            self.start_col.display - self.end_col.display
-        }
+        self.end_col.display.abs_diff(self.start_col.display)
     }
 
     pub(crate) fn has_label(&self) -> bool {

@@ -1,5 +1,5 @@
 warning: elided lifetime has a name
-  --> $DIR/missing_lifetime_bound.rs:5:41
+  --> $DIR/missing_lifetime_bound.rs:6:41
    |
 LL | fn defining<'a, T>(x: &'a i32) -> Opaque<T> { x }
    |             --                          ^ this elided lifetime gets resolved as `'a`
@@ -9,11 +9,11 @@ LL | fn defining<'a, T>(x: &'a i32) -> Opaque<T> { x }
    = note: `#[warn(elided_named_lifetimes)]` on by default
 
 error[E0700]: hidden type for `Opaque2<T>` captures lifetime that does not appear in bounds
-  --> $DIR/missing_lifetime_bound.rs:5:47
+  --> $DIR/missing_lifetime_bound.rs:6:47
    |
 LL | type Opaque2<T> = impl Sized;
    |                   ---------- opaque type defined here
-LL | type Opaque<'a, T> = Opaque2<T>;
+...
 LL | fn defining<'a, T>(x: &'a i32) -> Opaque<T> { x }
    |             --                                ^
    |             |

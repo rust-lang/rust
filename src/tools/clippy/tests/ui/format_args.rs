@@ -75,36 +75,58 @@ fn main() {
     let x_ref = &x;
 
     let _ = format!("error: something failed at {}", Location::caller().to_string());
+    //~^ to_string_in_format_args
     let _ = write!(
         stdout(),
         "error: something failed at {}",
-        Location::caller().to_string()
+        Location::caller().to_string(),
+        //~^ to_string_in_format_args
     );
     let _ = writeln!(
         stdout(),
         "error: something failed at {}",
-        Location::caller().to_string()
+        Location::caller().to_string(),
+        //~^ to_string_in_format_args
     );
     print!("error: something failed at {}", Location::caller().to_string());
+    //~^ to_string_in_format_args
     println!("error: something failed at {}", Location::caller().to_string());
+    //~^ to_string_in_format_args
     eprint!("error: something failed at {}", Location::caller().to_string());
+    //~^ to_string_in_format_args
     eprintln!("error: something failed at {}", Location::caller().to_string());
+    //~^ to_string_in_format_args
     let _ = format_args!("error: something failed at {}", Location::caller().to_string());
+    //~^ to_string_in_format_args
     assert!(true, "error: something failed at {}", Location::caller().to_string());
+    //~^ to_string_in_format_args
     assert_eq!(0, 0, "error: something failed at {}", Location::caller().to_string());
+    //~^ to_string_in_format_args
     assert_ne!(0, 0, "error: something failed at {}", Location::caller().to_string());
+    //~^ to_string_in_format_args
     panic!("error: something failed at {}", Location::caller().to_string());
+    //~^ to_string_in_format_args
     println!("{}", X(1).to_string());
+    //~^ to_string_in_format_args
     println!("{}", Y(&X(1)).to_string());
+    //~^ to_string_in_format_args
     println!("{}", Z(1).to_string());
+    //~^ to_string_in_format_args
     println!("{}", x.to_string());
+    //~^ to_string_in_format_args
     println!("{}", x_ref.to_string());
+    //~^ to_string_in_format_args
     // https://github.com/rust-lang/rust-clippy/issues/7903
     println!("{foo}{bar}", foo = "foo".to_string(), bar = "bar");
+    //~^ to_string_in_format_args
     println!("{foo}{bar}", foo = "foo", bar = "bar".to_string());
+    //~^ to_string_in_format_args
     println!("{foo}{bar}", bar = "bar".to_string(), foo = "foo");
+    //~^ to_string_in_format_args
     println!("{foo}{bar}", bar = "bar", foo = "foo".to_string());
+    //~^ to_string_in_format_args
     println!("{}", my_other_macro!().to_string());
+    //~^ to_string_in_format_args
 
     // negative tests
     println!("error: something failed at {}", Somewhere.to_string());
@@ -117,7 +139,9 @@ fn main() {
     // https://github.com/rust-lang/rust-clippy/issues/7903
     println!("{foo}{foo:?}", foo = "foo".to_string());
     print!("{}", (Location::caller().to_string()));
+    //~^ to_string_in_format_args
     print!("{}", ((Location::caller()).to_string()));
+    //~^ to_string_in_format_args
 }
 
 fn issue8643(vendor_id: usize, product_id: usize, name: &str) {
@@ -146,6 +170,7 @@ mod issue_8855 {
         let b = A {};
 
         let x = format!("{} {}", a, b.to_string());
+        //~^ to_string_in_format_args
         dbg!(x);
 
         let x = format!("{:>6} {:>6}", a, b.to_string());
@@ -160,6 +185,7 @@ mod issue_9256 {
     fn print_substring(original: &str) {
         assert!(original.len() > 10);
         println!("{}", original[..10].to_string());
+        //~^ to_string_in_format_args
     }
 
     fn main() {

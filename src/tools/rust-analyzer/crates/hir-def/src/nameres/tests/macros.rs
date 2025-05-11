@@ -97,9 +97,9 @@ macro_rules! structs {
             bar: t
 
             crate::bar
-            Bar: t
-            Foo: t
-            bar: t
+            Bar: tg
+            Foo: tg
+            bar: tg
         "#]],
     );
 }
@@ -130,9 +130,9 @@ macro_rules! structs {
             bar: t
 
             crate::bar
-            Bar: t
-            Foo: t
-            bar: t
+            Bar: tg
+            Foo: tg
+            bar: tg
         "#]],
     );
 }
@@ -169,9 +169,9 @@ macro_rules! inner {
             bar: t
 
             crate::bar
-            Bar: t
-            Foo: t
-            bar: t
+            Bar: tg
+            Foo: tg
+            bar: tg
         "#]],
     );
 }
@@ -794,7 +794,7 @@ pub trait Clone {}
 "#,
         expect![[r#"
             crate
-            Clone: t m
+            Clone: tg mg
         "#]],
     );
 }
@@ -1075,9 +1075,9 @@ macro_rules! mbe {
 "#,
         expect![[r#"
             crate
-            DummyTrait: m
-            attribute_macro: m
-            function_like_macro: m
+            DummyTrait: mg
+            attribute_macro: mg
+            function_like_macro: mg
         "#]],
     );
 }
@@ -1095,7 +1095,7 @@ pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
 }
 "#,
     );
-    let krate = db.crate_graph().iter().next().unwrap();
+    let krate = *db.all_crates().last().expect("no crate graph present");
     let def_map = db.crate_def_map(krate);
 
     assert_eq!(def_map.data.exported_derives.len(), 1);
@@ -1445,7 +1445,7 @@ struct TokenStream;
 fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
     "#,
     );
-    let krate = db.crate_graph().iter().next().unwrap();
+    let krate = *db.all_crates().last().expect("no crate graph present");
     let def_map = db.crate_def_map(krate);
 
     let root_module = &def_map[DefMap::ROOT].scope;

@@ -1,4 +1,6 @@
 //@build-fail
+//@ dont-require-annotations: NOTE
+
 //! Make sure that monomorphization-time const errors from `static_assert` take priority over the
 //! error from simd_extract. Basically this checks that if a const fails to evaluate in some
 //! function, we don't bother codegen'ing the function.
@@ -15,7 +17,7 @@ struct int8x4_t([u8; 4]);
 fn get_elem<const LANE: u32>(a: int8x4_t) -> u8 {
     const { assert!(LANE < 4); } // the error should be here...
     //~^ ERROR failed
-    //~| assertion failed
+    //~| NOTE assertion failed
     unsafe { simd_extract(a, LANE) } // ...not here
 }
 

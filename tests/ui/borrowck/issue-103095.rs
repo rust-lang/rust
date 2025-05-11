@@ -1,4 +1,7 @@
 //@ check-pass
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 
 trait FnOnceForGenericRef<T>: FnOnce(&T) -> Self::FnOutput {
     type FnOutput;
@@ -16,10 +19,7 @@ struct Data<T, D: FnOnceForGenericRef<T>> {
 impl<T, D: FnOnceForGenericRef<T>> Data<T, D> {
     fn new(value: T, f: D) -> Self {
         let output = f(&value);
-        Self {
-            value: Some(value),
-            output: Some(output),
-        }
+        Self { value: Some(value), output: Some(output) }
     }
 }
 

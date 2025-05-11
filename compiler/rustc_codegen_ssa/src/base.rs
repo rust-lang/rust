@@ -1,35 +1,39 @@
 use std::cmp;
 use std::collections::BTreeSet;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
+use rustc_ast as ast;
 use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, AllocatorKind, global_fn_name};
+use rustc_attr_parsing::OptimizeAttr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
-use rustc_data_structures::sync::{Lrc, par_map};
+use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{ItemId, Target};
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_middle::middle::{exported_symbols, lang_items};
 use rustc_middle::mir::BinOp;
-use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
+use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
-use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
+use rustc_session::config::{self, CrateType, EntryFnType, OutputType};
 use rustc_span::{DUMMY_SP, Symbol, sym};
-use rustc_trait_selection::infer::at::ToTrace;
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
-use {rustc_ast as ast, rustc_attr_parsing as attr};
 
 use crate::assert_module_sources::CguReuse;
 use crate::back::link::are_upstream_rust_objects_already_included;
@@ -44,7 +48,8 @@ use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{
-    CachedModuleCodegen, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind, errors, meth, mir,
+    CachedModuleCodegen, CodegenLintLevels, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
+    errors, meth, mir,
 };
 
 pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
@@ -128,14 +133,9 @@ pub fn validate_trivial_unsize<'tcx>(
                     BoundRegionConversionTime::HigherRankedType,
                     hr_source_principal,
                 );
-                let Ok(()) = ocx.eq_trace(
+                let Ok(()) = ocx.eq(
                     &ObligationCause::dummy(),
                     param_env,
-                    ToTrace::to_trace(
-                        &ObligationCause::dummy(),
-                        hr_target_principal,
-                        hr_source_principal,
-                    ),
                     target_principal,
                     source_principal,
                 ) else {
@@ -210,7 +210,12 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 old_info
             }
         }
-        (_, ty::Dynamic(data, _, _)) => meth::get_vtable(cx, source, data.principal()),
+        (_, ty::Dynamic(data, _, _)) => meth::get_vtable(
+            cx,
+            source,
+            data.principal()
+                .map(|principal| bx.tcx().instantiate_bound_regions_with_erased(principal)),
+        ),
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
     }
 }
@@ -363,13 +368,7 @@ pub(crate) fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let rhs_sz = bx.cx().int_width(rhs_llty);
     let lhs_sz = bx.cx().int_width(lhs_llty);
     if lhs_sz < rhs_sz {
-        if is_unchecked && bx.sess().opts.optimize != OptLevel::No {
-            // FIXME: Use `trunc nuw` once that's available
-            let inrange = bx.icmp(IntPredicate::IntULE, rhs, mask);
-            bx.assume(inrange);
-        }
-
-        bx.trunc(rhs, lhs_llty)
+        if is_unchecked { bx.unchecked_utrunc(rhs, lhs_llty) } else { bx.trunc(rhs, lhs_llty) }
     } else if lhs_sz > rhs_sz {
         // We zero-extend even if the RHS is signed. So e.g. `(x: i32) << -1i8` will zero-extend the
         // RHS to `255i32`. But then we mask the shift amount to be within the size of the LHS
@@ -388,7 +387,8 @@ pub(crate) fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 // exceptions. This means that the VM does the unwinding for
 // us
 pub fn wants_wasm_eh(sess: &Session) -> bool {
-    sess.target.is_like_wasm && sess.target.os != "emscripten"
+    sess.target.is_like_wasm
+        && (sess.target.os != "emscripten" || sess.opts.unstable_opts.emscripten_wasm_eh)
 }
 
 /// Returns `true` if this session's target will use SEH-based unwinding.
@@ -417,6 +417,75 @@ pub(crate) fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     info!("codegen_instance({})", instance);
 
     mir::codegen_mir::<Bx>(cx, instance);
+}
+
+pub fn codegen_global_asm<'tcx, Cx>(cx: &mut Cx, item_id: ItemId)
+where
+    Cx: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + AsmCodegenMethods<'tcx>,
+{
+    let item = cx.tcx().hir_item(item_id);
+    if let rustc_hir::ItemKind::GlobalAsm { asm, .. } = item.kind {
+        let operands: Vec<_> = asm
+            .operands
+            .iter()
+            .map(|(op, op_sp)| match *op {
+                rustc_hir::InlineAsmOperand::Const { ref anon_const } => {
+                    match cx.tcx().const_eval_poly(anon_const.def_id.to_def_id()) {
+                        Ok(const_value) => {
+                            let ty =
+                                cx.tcx().typeck_body(anon_const.body).node_type(anon_const.hir_id);
+                            let string = common::asm_const_to_str(
+                                cx.tcx(),
+                                *op_sp,
+                                const_value,
+                                cx.layout_of(ty),
+                            );
+                            GlobalAsmOperandRef::Const { string }
+                        }
+                        Err(ErrorHandled::Reported { .. }) => {
+                            // An error has already been reported and
+                            // compilation is guaranteed to fail if execution
+                            // hits this path. So an empty string instead of
+                            // a stringified constant value will suffice.
+                            GlobalAsmOperandRef::Const { string: String::new() }
+                        }
+                        Err(ErrorHandled::TooGeneric(_)) => {
+                            span_bug!(*op_sp, "asm const cannot be resolved; too generic")
+                        }
+                    }
+                }
+                rustc_hir::InlineAsmOperand::SymFn { expr } => {
+                    let ty = cx.tcx().typeck(item_id.owner_id).expr_ty(expr);
+                    let instance = match ty.kind() {
+                        &ty::FnDef(def_id, args) => Instance::expect_resolve(
+                            cx.tcx(),
+                            ty::TypingEnv::fully_monomorphized(),
+                            def_id,
+                            args,
+                            expr.span,
+                        ),
+                        _ => span_bug!(*op_sp, "asm sym is not a function"),
+                    };
+
+                    GlobalAsmOperandRef::SymFn { instance }
+                }
+                rustc_hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
+                    GlobalAsmOperandRef::SymStatic { def_id }
+                }
+                rustc_hir::InlineAsmOperand::In { .. }
+                | rustc_hir::InlineAsmOperand::Out { .. }
+                | rustc_hir::InlineAsmOperand::InOut { .. }
+                | rustc_hir::InlineAsmOperand::SplitInOut { .. }
+                | rustc_hir::InlineAsmOperand::Label { .. } => {
+                    span_bug!(*op_sp, "invalid operand type for global_asm!")
+                }
+            })
+            .collect();
+
+        cx.codegen_global_asm(asm.template, &operands, asm.options, asm.line_spans);
+    } else {
+        span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
+    }
 }
 
 /// Creates the `main` function which will initialize the rust runtime and call
@@ -489,8 +558,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let ptr_ty = cx.type_ptr();
         let (arg_argc, arg_argv) = get_argc_argv(&mut bx);
 
-        let (start_fn, start_ty, args, instance) = if let EntryFnType::Main { sigpipe } = entry_type
-        {
+        let EntryFnType::Main { sigpipe } = entry_type;
+        let (start_fn, start_ty, args, instance) = {
             let start_def_id = cx.tcx().require_lang_item(LangItem::Start, None);
             let start_instance = ty::Instance::expect_resolve(
                 cx.tcx(),
@@ -511,10 +580,6 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 vec![rust_main, arg_argc, arg_argv, arg_sigpipe],
                 Some(start_instance),
             )
-        } else {
-            debug!("using user-defined start fn");
-            let start_ty = cx.type_func(&[isize_ty, ptr_ty], isize_ty);
-            (rust_main, start_ty, vec![arg_argc, arg_argv], None)
         };
 
         let result = bx.call(start_ty, None, None, start_fn, &args, None, instance);
@@ -529,7 +594,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-/// Obtain the `argc` and `argv` values to pass to the rust start function.
+/// Obtain the `argc` and `argv` values to pass to the rust start function
+/// (i.e., the "start" lang item).
 fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(bx: &mut Bx) -> (Bx::Value, Bx::Value) {
     if bx.cx().sess().target.os.contains("uefi") {
         // Params for UEFI
@@ -616,11 +682,18 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         return ongoing_codegen;
     }
 
+    if tcx.sess.target.need_explicit_cpu && tcx.sess.opts.cg.target_cpu.is_none() {
+        // The target has no default cpu, but none is set explicitly
+        tcx.dcx().emit_fatal(errors::CpuRequired);
+    }
+
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
 
     // Run the monomorphization collector and partition the collected items into
     // codegen units.
-    let codegen_units = tcx.collect_and_partition_mono_items(()).1;
+    let MonoItemPartitions { codegen_units, autodiff_items, .. } =
+        tcx.collect_and_partition_mono_items(());
+    let autodiff_fncs = autodiff_items.to_vec();
 
     // Force all codegen_unit queries so they are already either red or green
     // when compile_codegen_unit accesses them. We are not able to re-execute
@@ -629,7 +702,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // unnecessarily.
     if tcx.dep_graph.is_fully_enabled() {
         for cgu in codegen_units {
-            tcx.ensure().codegen_unit(cgu.name());
+            tcx.ensure_ok().codegen_unit(cgu.name());
         }
     }
 
@@ -638,8 +711,11 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         let metadata_cgu_name =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata")).to_string();
         tcx.sess.time("write_compressed_metadata", || {
-            let file_name =
-                tcx.output_filenames(()).temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
+            let file_name = tcx.output_filenames(()).temp_path_for_cgu(
+                OutputType::Metadata,
+                &metadata_cgu_name,
+                tcx.sess.invocation_temp.as_deref(),
+            );
             let data = create_compressed_metadata_file(
                 tcx.sess,
                 &metadata,
@@ -656,6 +732,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 bytecode: None,
                 assembly: None,
                 llvm_ir: None,
+                links_from_incr_cache: Vec::new(),
             }
         })
     });
@@ -686,9 +763,13 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         submit_codegened_module_to_llvm(
             &backend,
             &ongoing_codegen.coordinator.sender,
-            ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator },
+            ModuleCodegen::new_allocator(llmod_id, module_llvm),
             cost,
         );
+    }
+
+    if !autodiff_fncs.is_empty() {
+        ongoing_codegen.submit_autodiff_items(autodiff_fncs);
     }
 
     // For better throughput during parallel processing by LLVM, we used to sort
@@ -750,7 +831,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
             let pre_compiled_cgus = par_map(cgus, |(i, _)| {
                 let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
-                (i, module)
+                (i, IntoDynSyncSend(module))
             });
 
             total_codegen_time += start_time.elapsed();
@@ -770,7 +851,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         match cgu_reuse {
             CguReuse::No => {
                 let (module, cost) = if let Some(cgu) = pre_compiled_cgus.remove(&i) {
-                    cgu
+                    cgu.0
                 } else {
                     let start_time = Instant::now();
                     let module = backend.compile_codegen_unit(tcx, cgu.name());
@@ -871,7 +952,7 @@ impl CrateInfo {
         let linked_symbols =
             crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
-        let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+        let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
         let subsystem =
             ast::attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
         let windows_subsystem = subsystem.map(|subsystem| {
@@ -911,6 +992,7 @@ impl CrateInfo {
         let n_crates = crates.len();
         let mut info = CrateInfo {
             target_cpu,
+            target_features: tcx.global_backend_features(()).clone(),
             crate_types,
             exported_symbols,
             linked_symbols,
@@ -923,9 +1005,10 @@ impl CrateInfo {
             crate_name: UnordMap::with_capacity(n_crates),
             used_crates,
             used_crate_source: UnordMap::with_capacity(n_crates),
-            dependency_formats: Lrc::clone(tcx.dependency_formats(())),
+            dependency_formats: Arc::clone(tcx.dependency_formats(())),
             windows_subsystem,
             natvis_debugger_visualizers: Default::default(),
+            lint_levels: CodegenLintLevels::from_tcx(tcx),
         };
 
         info.native_libraries.reserve(n_crates);
@@ -936,7 +1019,7 @@ impl CrateInfo {
             info.crate_name.insert(cnum, tcx.crate_name(cnum));
 
             let used_crate_source = tcx.used_crate_source(cnum);
-            info.used_crate_source.insert(cnum, Lrc::clone(used_crate_source));
+            info.used_crate_source.insert(cnum, Arc::clone(used_crate_source));
             if tcx.is_profiler_runtime(cnum) {
                 info.profiler_runtime = Some(cnum);
             }
@@ -955,21 +1038,35 @@ impl CrateInfo {
         // by the compiler, but that's ok because all this stuff is unstable anyway.
         let target = &tcx.sess.target;
         if !are_upstream_rust_objects_already_included(tcx.sess) {
-            let missing_weak_lang_items: FxIndexSet<Symbol> = info
+            let add_prefix = match (target.is_like_windows, target.arch.as_ref()) {
+                (true, "x86") => |name: String, _: SymbolExportKind| format!("_{name}"),
+                (true, "arm64ec") => {
+                    // Only functions are decorated for arm64ec.
+                    |name: String, export_kind: SymbolExportKind| match export_kind {
+                        SymbolExportKind::Text => format!("#{name}"),
+                        _ => name,
+                    }
+                }
+                _ => |name: String, _: SymbolExportKind| name,
+            };
+            let missing_weak_lang_items: FxIndexSet<(Symbol, SymbolExportKind)> = info
                 .used_crates
                 .iter()
                 .flat_map(|&cnum| tcx.missing_lang_items(cnum))
                 .filter(|l| l.is_weak())
                 .filter_map(|&l| {
                     let name = l.link_name()?;
-                    lang_items::required(tcx, l).then_some(name)
+                    let export_kind = match l.target() {
+                        Target::Fn => SymbolExportKind::Text,
+                        Target::Static => SymbolExportKind::Data,
+                        _ => bug!(
+                            "Don't know what the export kind is for lang item of kind {:?}",
+                            l.target()
+                        ),
+                    };
+                    lang_items::required(tcx, l).then_some((name, export_kind))
                 })
                 .collect();
-            let prefix = match (target.is_like_windows, target.arch.as_ref()) {
-                (true, "x86") => "_",
-                (true, "arm64ec") => "#",
-                _ => "",
-            };
 
             // This loop only adds new items to values of the hash map, so the order in which we
             // iterate over the values is not important.
@@ -982,7 +1079,15 @@ impl CrateInfo {
                 .for_each(|(_, linked_symbols)| {
                     let mut symbols = missing_weak_lang_items
                         .iter()
-                        .map(|item| (format!("{prefix}{item}"), SymbolExportKind::Text))
+                        .map(|(item, export_kind)| {
+                            (
+                                add_prefix(
+                                    mangle_internal_symbol(tcx, item.as_str()),
+                                    *export_kind,
+                                ),
+                                *export_kind,
+                            )
+                        })
                         .collect::<Vec<_>>();
                     symbols.sort_unstable_by(|a, b| a.0.cmp(&b.0));
                     linked_symbols.extend(symbols);
@@ -995,7 +1100,13 @@ impl CrateInfo {
                         // errors.
                         linked_symbols.extend(ALLOCATOR_METHODS.iter().map(|method| {
                             (
-                                format!("{prefix}{}", global_fn_name(method.name).as_str()),
+                                add_prefix(
+                                    mangle_internal_symbol(
+                                        tcx,
+                                        global_fn_name(method.name).as_str(),
+                                    ),
+                                    SymbolExportKind::Text,
+                                ),
                                 SymbolExportKind::Text,
                             )
                         }));
@@ -1004,7 +1115,7 @@ impl CrateInfo {
         }
 
         let embed_visualizers = tcx.crate_types().iter().any(|&crate_type| match crate_type {
-            CrateType::Executable | CrateType::Dylib | CrateType::Cdylib => {
+            CrateType::Executable | CrateType::Dylib | CrateType::Cdylib | CrateType::Sdylib => {
                 // These are crate types for which we invoke the linker and can embed
                 // NatVis visualizers.
                 true
@@ -1043,22 +1154,19 @@ pub(crate) fn provide(providers: &mut Providers) {
             config::OptLevel::No => return config::OptLevel::No,
             // If globally optimise-speed is already specified, just use that level.
             config::OptLevel::Less => return config::OptLevel::Less,
-            config::OptLevel::Default => return config::OptLevel::Default,
+            config::OptLevel::More => return config::OptLevel::More,
             config::OptLevel::Aggressive => return config::OptLevel::Aggressive,
             // If globally optimize-for-size has been requested, use -O2 instead (if optimize(size)
             // are present).
-            config::OptLevel::Size => config::OptLevel::Default,
-            config::OptLevel::SizeMin => config::OptLevel::Default,
+            config::OptLevel::Size => config::OptLevel::More,
+            config::OptLevel::SizeMin => config::OptLevel::More,
         };
 
-        let (defids, _) = tcx.collect_and_partition_mono_items(cratenum);
+        let defids = tcx.collect_and_partition_mono_items(cratenum).all_mono_items;
 
         let any_for_speed = defids.items().any(|id| {
             let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
-            match optimize {
-                attr::OptimizeAttr::None | attr::OptimizeAttr::Size => false,
-                attr::OptimizeAttr::Speed => true,
-            }
+            matches!(optimize, OptimizeAttr::Speed)
         });
 
         if any_for_speed {
@@ -1088,11 +1196,12 @@ pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> 
     // know that later). If we are not doing LTO, there is only one optimized
     // version of each module, so we re-use that.
     let dep_node = cgu.codegen_dep_node(tcx);
-    assert!(
-        !tcx.dep_graph.dep_node_exists(&dep_node),
-        "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
-        cgu.name()
-    );
+    tcx.dep_graph.assert_dep_node_not_yet_allocated_in_current_session(&dep_node, || {
+        format!(
+            "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
+            cgu.name()
+        )
+    });
 
     if tcx.try_mark_green(&dep_node) {
         // We can re-use either the pre- or the post-thinlto state. If no LTO is

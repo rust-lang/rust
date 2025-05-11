@@ -55,6 +55,7 @@ fn main() {
     // wrong, produces first error in stderr
     let mut a: A = Default::default();
     a.i = 42;
+    //~^ field_reassign_with_default
 
     // right
     let mut a: A = Default::default();
@@ -95,17 +96,20 @@ fn main() {
     // wrong, produces second error in stderr
     let mut a: A = Default::default();
     a.j = 43;
+    //~^ field_reassign_with_default
     a.i = 42;
 
     // wrong, produces third error in stderr
     let mut a: A = Default::default();
     a.i = 42;
+    //~^ field_reassign_with_default
     a.j = 43;
     a.j = 44;
 
     // wrong, produces fourth error in stderr
     let mut a = A::default();
     a.i = 42;
+    //~^ field_reassign_with_default
 
     // wrong, but does not produce an error in stderr, because we can't produce a correct kind of
     // suggestion with current implementation
@@ -116,10 +120,12 @@ fn main() {
     // wrong, produces the fifth error in stderr
     let mut a: A = Default::default();
     a.i = Default::default();
+    //~^ field_reassign_with_default
 
     // wrong, produces the sixth error in stderr
     let mut a: A = Default::default();
     a.i = Default::default();
+    //~^ field_reassign_with_default
     a.j = 45;
 
     // right, because an assignment refers to another field
@@ -142,6 +148,7 @@ fn main() {
     // don't expand macros in the suggestion (#6522)
     let mut a: C = C::default();
     a.i = vec![1];
+    //~^ field_reassign_with_default
 
     // Don't lint in external macros
     external! {
@@ -160,9 +167,11 @@ fn main() {
     // be sure suggestion is correct with generics
     let mut a: Wrapper<bool> = Default::default();
     a.i = true;
+    //~^ field_reassign_with_default
 
     let mut a: WrapperMulti<i32, i64> = Default::default();
     a.i = 42;
+    //~^ field_reassign_with_default
 
     // Don't lint in macros
     inline!(
@@ -234,6 +243,7 @@ mod issue6312 {
         fn new(name: &str) -> Self {
             let mut f = ImplDropAllCopy::default();
             f.name = name.len();
+            //~^ field_reassign_with_default
             f
         }
         fn close(&self) {}
@@ -250,6 +260,7 @@ mod issue6312 {
         fn new(name: &str) -> Self {
             let mut f = NoDropAllCopy::default();
             f.name = name.len();
+            //~^ field_reassign_with_default
             f
         }
     }

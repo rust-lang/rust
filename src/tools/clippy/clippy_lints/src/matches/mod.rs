@@ -2,12 +2,12 @@ mod collapsible_match;
 mod infallible_destructuring_match;
 mod manual_filter;
 mod manual_map;
+mod manual_ok_err;
 mod manual_unwrap_or;
 mod manual_utils;
 mod match_as_ref;
 mod match_bool;
 mod match_like_matches;
-mod match_on_vec_items;
 mod match_ref_pats;
 mod match_same_arms;
 mod match_single_binding;
@@ -32,7 +32,6 @@ use clippy_utils::{
 };
 use rustc_hir::{Arm, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::{SpanData, SyntaxContext};
 
@@ -583,11 +582,6 @@ declare_clippy_lint! {
     /// are the same on purpose, you can factor them
     /// [using `|`](https://doc.rust-lang.org/book/patterns.html#multiple-patterns).
     ///
-    /// ### Known problems
-    /// False positive possible with order dependent `match`
-    /// (see issue
-    /// [#860](https://github.com/rust-lang/rust-clippy/issues/860)).
-    ///
     /// ### Example
     /// ```rust,ignore
     /// match foo {
@@ -729,38 +723,39 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `match vec[idx]` or `match vec[n..m]`.
+    /// Checks if a `match` or `if let` expression can be simplified using
+    /// `.unwrap_or_default()`.
     ///
     /// ### Why is this bad?
-    /// This can panic at runtime.
+    /// It can be done in one call with `.unwrap_or_default()`.
     ///
     /// ### Example
-    /// ```rust, no_run
-    /// let arr = vec![0, 1, 2, 3];
-    /// let idx = 1;
+    /// ```no_run
+    /// let x: Option<String> = Some(String::new());
+    /// let y: String = match x {
+    ///     Some(v) => v,
+    ///     None => String::new(),
+    /// };
     ///
-    /// match arr[idx] {
-    ///     0 => println!("{}", 0),
-    ///     1 => println!("{}", 3),
-    ///     _ => {},
-    /// }
+    /// let x: Option<Vec<String>> = Some(Vec::new());
+    /// let y: Vec<String> = if let Some(v) = x {
+    ///     v
+    /// } else {
+    ///     Vec::new()
+    /// };
     /// ```
-    ///
     /// Use instead:
-    /// ```rust, no_run
-    /// let arr = vec![0, 1, 2, 3];
-    /// let idx = 1;
+    /// ```no_run
+    /// let x: Option<String> = Some(String::new());
+    /// let y: String = x.unwrap_or_default();
     ///
-    /// match arr.get(idx) {
-    ///     Some(0) => println!("{}", 0),
-    ///     Some(1) => println!("{}", 3),
-    ///     _ => {},
-    /// }
+    /// let x: Option<Vec<String>> = Some(Vec::new());
+    /// let y: Vec<String> = x.unwrap_or_default();
     /// ```
-    #[clippy::version = "1.45.0"]
-    pub MATCH_ON_VEC_ITEMS,
-    pedantic,
-    "matching on vector elements can panic"
+    #[clippy::version = "1.79.0"]
+    pub MANUAL_UNWRAP_OR_DEFAULT,
+    suspicious,
+    "check if a `match` or `if let` can be simplified with `unwrap_or_default`"
 }
 
 declare_clippy_lint! {
@@ -977,6 +972,40 @@ declare_clippy_lint! {
     "checks for unnecessary guards in match expressions"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for manual implementation of `.ok()` or `.err()`
+    /// on `Result` values.
+    ///
+    /// ### Why is this bad?
+    /// Using `.ok()` or `.err()` rather than a `match` or
+    /// `if let` is less complex and more readable.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # fn func() -> Result<u32, &'static str> { Ok(0) }
+    /// let a = match func() {
+    ///     Ok(v) => Some(v),
+    ///     Err(_) => None,
+    /// };
+    /// let b = if let Err(v) = func() {
+    ///     Some(v)
+    /// } else {
+    ///     None
+    /// };
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # fn func() -> Result<u32, &'static str> { Ok(0) }
+    /// let a = func().ok();
+    /// let b = func().err();
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MANUAL_OK_ERR,
+    complexity,
+    "find manual implementations of `.ok()` or `.err()` on `Result`"
+}
+
 pub struct Matches {
     msrv: Msrv,
     infallible_destructuring_match_linted: bool,
@@ -985,7 +1014,7 @@ pub struct Matches {
 impl Matches {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
             infallible_destructuring_match_linted: false,
         }
     }
@@ -1011,19 +1040,20 @@ impl_lint_pass!(Matches => [
     NEEDLESS_MATCH,
     COLLAPSIBLE_MATCH,
     MANUAL_UNWRAP_OR,
-    MATCH_ON_VEC_ITEMS,
+    MANUAL_UNWRAP_OR_DEFAULT,
     MATCH_STR_CASE_MISMATCH,
     SIGNIFICANT_DROP_IN_SCRUTINEE,
     TRY_ERR,
     MANUAL_MAP,
     MANUAL_FILTER,
     REDUNDANT_GUARDS,
+    MANUAL_OK_ERR,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
     #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if is_direct_expn_of(expr.span, "matches").is_none() && in_external_macro(cx.sess(), expr.span) {
+        if is_direct_expn_of(expr.span, "matches").is_none() && expr.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
         let from_expansion = expr.span.from_expansion();
@@ -1043,7 +1073,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 significant_drop_in_scrutinee::check_match(cx, expr, ex, arms, source);
             }
 
-            collapsible_match::check_match(cx, arms, &self.msrv);
+            collapsible_match::check_match(cx, arms, self.msrv);
             if !from_expansion {
                 // These don't depend on a relationship between multiple arms
                 match_wild_err_arm::check(cx, ex, arms);
@@ -1056,7 +1086,9 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
 
             if !from_expansion && !contains_cfg_arm(cx, expr, ex, arms) {
                 if source == MatchSource::Normal {
-                    if !(self.msrv.meets(msrvs::MATCHES_MACRO) && match_like_matches::check_match(cx, expr, ex, arms)) {
+                    if !(self.msrv.meets(cx, msrvs::MATCHES_MACRO)
+                        && match_like_matches::check_match(cx, expr, ex, arms))
+                    {
                         match_same_arms::check(cx, arms);
                     }
 
@@ -1078,24 +1110,22 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                             }
                         }
                     }
-                    // If there are still comments, it means they are outside of the arms, therefore
-                    // we should not lint.
-                    if match_comments.is_empty() {
-                        single_match::check(cx, ex, arms, expr);
-                    }
+                    // If there are still comments, it means they are outside of the arms. Tell the lint
+                    // code about it.
+                    single_match::check(cx, ex, arms, expr, !match_comments.is_empty());
                     match_bool::check(cx, ex, arms, expr);
                     overlapping_arms::check(cx, ex, arms);
                     match_wild_enum::check(cx, ex, arms);
                     match_as_ref::check(cx, ex, arms, expr);
                     needless_match::check_match(cx, ex, arms, expr);
-                    match_on_vec_items::check(cx, ex);
                     match_str_case_mismatch::check(cx, ex, arms);
-                    redundant_guards::check(cx, arms, &self.msrv);
+                    redundant_guards::check(cx, arms, self.msrv);
 
                     if !is_in_const_context(cx) {
                         manual_unwrap_or::check_match(cx, expr, ex, arms);
                         manual_map::check_match(cx, expr, ex, arms);
                         manual_filter::check_match(cx, ex, arms, expr);
+                        manual_ok_err::check_match(cx, expr, ex, arms);
                     }
 
                     if self.infallible_destructuring_match_linted {
@@ -1107,11 +1137,11 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 match_ref_pats::check(cx, ex, arms.iter().map(|el| el.pat), expr);
             }
         } else if let Some(if_let) = higher::IfLet::hir(cx, expr) {
-            collapsible_match::check_if_let(cx, if_let.let_pat, if_let.if_then, if_let.if_else, &self.msrv);
+            collapsible_match::check_if_let(cx, if_let.let_pat, if_let.if_then, if_let.if_else, self.msrv);
             significant_drop_in_scrutinee::check_if_let(cx, expr, if_let.let_expr, if_let.if_then, if_let.if_else);
             if !from_expansion {
                 if let Some(else_expr) = if_let.if_else {
-                    if self.msrv.meets(msrvs::MATCHES_MACRO) {
+                    if self.msrv.meets(cx, msrvs::MATCHES_MACRO) {
                         match_like_matches::check_if_let(
                             cx,
                             expr,
@@ -1132,6 +1162,14 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                         );
                         manual_map::check_if_let(cx, expr, if_let.let_pat, if_let.let_expr, if_let.if_then, else_expr);
                         manual_filter::check_if_let(
+                            cx,
+                            expr,
+                            if_let.let_pat,
+                            if_let.let_expr,
+                            if_let.if_then,
+                            else_expr,
+                        );
+                        manual_ok_err::check_if_let(
                             cx,
                             expr,
                             if_let.let_pat,
@@ -1169,8 +1207,6 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
         rest_pat_in_fully_bound_struct::check(cx, pat);
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 /// Checks if there are any arms with a `#[cfg(..)]` attribute.
@@ -1235,16 +1271,12 @@ fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, ar
 }
 
 /// Checks if `pat` contains OR patterns that cannot be nested due to a too low MSRV.
-fn pat_contains_disallowed_or(pat: &Pat<'_>, msrv: &Msrv) -> bool {
-    if msrv.meets(msrvs::OR_PATTERNS) {
-        return false;
-    }
-
-    let mut result = false;
+fn pat_contains_disallowed_or(cx: &LateContext<'_>, pat: &Pat<'_>, msrv: Msrv) -> bool {
+    let mut contains_or = false;
     pat.walk(|p| {
         let is_or = matches!(p.kind, PatKind::Or(_));
-        result |= is_or;
+        contains_or |= is_or;
         !is_or
     });
-    result
+    contains_or && !msrv.meets(cx, msrvs::OR_PATTERNS)
 }

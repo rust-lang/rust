@@ -1,12 +1,7 @@
 //! Completion tests for expressions.
-use expect_test::{expect, Expect};
+use expect_test::expect;
 
-use crate::tests::completion_list;
-
-fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(ra_fixture);
-    expect.assert_eq(&actual)
-}
+use crate::tests::check;
 
 #[test]
 fn complete_dot_in_attr() {
@@ -27,6 +22,7 @@ fn main() {
             me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
@@ -60,6 +56,7 @@ fn main() {
             me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
@@ -95,6 +92,7 @@ fn main() {}
             me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
@@ -130,6 +128,7 @@ fn main() {}
             me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr

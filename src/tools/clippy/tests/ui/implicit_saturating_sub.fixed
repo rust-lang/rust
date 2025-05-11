@@ -228,3 +228,27 @@ fn regression_13524(a: usize, b: usize, c: bool) -> usize {
         123
     } else { b.saturating_sub(a) }
 }
+
+fn with_side_effect(a: u64) -> u64 {
+    println!("a = {a}");
+    a
+}
+
+fn arbitrary_expression() {
+    let (a, b) = (15u64, 20u64);
+
+    let _ = (a * 2).saturating_sub(b);
+    //~^ implicit_saturating_sub
+
+    let _ = a.saturating_sub(b * 2);
+    //~^ implicit_saturating_sub
+
+    let _ = a.saturating_sub(b * 2);
+    //~^ implicit_saturating_sub
+
+    let _ = if with_side_effect(a) > a {
+        with_side_effect(a) - a
+    } else {
+        0
+    };
+}

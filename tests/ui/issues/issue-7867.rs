@@ -1,3 +1,5 @@
+//@ dont-require-annotations: NOTE
+
 enum A { B, C }
 
 mod foo { pub fn bar() {} }
@@ -6,9 +8,9 @@ fn main() {
     match (true, false) {
         A::B => (),
         //~^ ERROR mismatched types
-        //~| expected `(bool, bool)`, found `A`
-        //~| expected tuple `(bool, bool)`
-        //~| found enum `A`
+        //~| NOTE expected `(bool, bool)`, found `A`
+        //~| NOTE expected tuple `(bool, bool)`
+        //~| NOTE found enum `A`
         _ => ()
     }
 }

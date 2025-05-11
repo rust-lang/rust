@@ -3,9 +3,8 @@ use std::cell::RefCell;
 use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir_analysis::check::{check_function_signature, forbid_intrinsic_abi};
+use rustc_hir_analysis::check::check_function_signature;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::traits::WellFormedLoc;
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt};
@@ -35,12 +34,8 @@ pub(super) fn check_fn<'a, 'tcx>(
     params_can_be_unsized: bool,
 ) -> Option<CoroutineTypes<'tcx>> {
     let fn_id = fcx.tcx.local_def_id_to_hir_id(fn_def_id);
-
     let tcx = fcx.tcx;
-    let hir = tcx.hir();
-
     let declared_ret_ty = fn_sig.output();
-
     let ret_ty =
         fcx.register_infer_ok_obligations(fcx.infcx.replace_opaque_types_with_inference_vars(
             declared_ret_ty,
@@ -54,9 +49,9 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     let span = body.value.span;
 
-    forbid_intrinsic_abi(tcx, span, fn_sig.abi);
-
-    GatherLocalsVisitor::new(fcx).visit_body(body);
+    for param in body.params {
+        GatherLocalsVisitor::gather_from_param(fcx, param);
+    }
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
@@ -69,7 +64,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     });
 
     // Add formal parameters.
-    let inputs_hir = hir.fn_decl_by_hir_id(fn_id).map(|decl| &decl.inputs);
+    let inputs_hir = tcx.hir_fn_decl_by_hir_id(fn_id).map(|decl| &decl.inputs);
     let inputs_fn = fn_sig.inputs().iter().copied();
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // We checked the root's signature during wfcheck, but not the child.
@@ -117,22 +112,17 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     fcx.typeck_results.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
 
-    let return_or_body_span = match decl.output {
-        hir::FnRetTy::DefaultReturn(_) => body.value.span,
-        hir::FnRetTy::Return(ty) => ty.span,
-    };
-
-    fcx.require_type_is_sized(
-        declared_ret_ty,
-        return_or_body_span,
-        ObligationCauseCode::SizedReturnType,
-    );
-    // We checked the root's signature during wfcheck, but not the child.
+    // We checked the root's ret ty during wfcheck, but not the child.
     if fcx.tcx.is_typeck_child(fn_def_id.to_def_id()) {
+        let return_or_body_span = match decl.output {
+            hir::FnRetTy::DefaultReturn(_) => body.value.span,
+            hir::FnRetTy::Return(ty) => ty.span,
+        };
+
         fcx.require_type_is_sized(
             declared_ret_ty,
             return_or_body_span,
-            ObligationCauseCode::WellFormed(None),
+            ObligationCauseCode::SizedReturnType,
         );
     }
 
@@ -191,18 +181,21 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
     let panic_info_did = tcx.require_lang_item(hir::LangItem::PanicInfo, Some(span));
 
     // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
-    let panic_info_ty = tcx.type_of(panic_info_did).instantiate(tcx, &[ty::GenericArg::from(
-        ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
-            var: ty::BoundVar::from_u32(1),
-            kind: ty::BoundRegionKind::Anon,
-        }),
-    )]);
+    let panic_info_ty = tcx.type_of(panic_info_did).instantiate(
+        tcx,
+        &[ty::GenericArg::from(ty::Region::new_bound(
+            tcx,
+            ty::INNERMOST,
+            ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BoundRegionKind::Anon },
+        ))],
+    );
     let panic_info_ref_ty = Ty::new_imm_ref(
         tcx,
-        ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
-            var: ty::BoundVar::ZERO,
-            kind: ty::BoundRegionKind::Anon,
-        }),
+        ty::Region::new_bound(
+            tcx,
+            ty::INNERMOST,
+            ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon },
+        ),
         panic_info_ty,
     );
 

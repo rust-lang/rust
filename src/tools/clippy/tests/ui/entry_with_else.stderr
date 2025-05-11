@@ -2,6 +2,7 @@ error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> tests/ui/entry_with_else.rs:14:5
    |
 LL | /     if !m.contains_key(&k) {
+LL | |
 LL | |         m.insert(k, v);
 LL | |     } else {
 LL | |         m.insert(k, v2);
@@ -14,6 +15,7 @@ help: try
    |
 LL ~     match m.entry(k) {
 LL +         std::collections::hash_map::Entry::Vacant(e) => {
+LL +
 LL +             e.insert(v);
 LL +         }
 LL +         std::collections::hash_map::Entry::Occupied(mut e) => {
@@ -23,9 +25,10 @@ LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry_with_else.rs:20:5
+  --> tests/ui/entry_with_else.rs:21:5
    |
 LL | /     if m.contains_key(&k) {
+LL | |
 LL | |         m.insert(k, v);
 LL | |     } else {
 LL | |         m.insert(k, v2);
@@ -36,6 +39,7 @@ help: try
    |
 LL ~     match m.entry(k) {
 LL +         std::collections::hash_map::Entry::Occupied(mut e) => {
+LL +
 LL +             e.insert(v);
 LL +         }
 LL +         std::collections::hash_map::Entry::Vacant(e) => {
@@ -45,9 +49,10 @@ LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry_with_else.rs:26:5
+  --> tests/ui/entry_with_else.rs:28:5
    |
 LL | /     if !m.contains_key(&k) {
+LL | |
 LL | |         m.insert(k, v);
 LL | |     } else {
 LL | |         foo();
@@ -57,6 +62,7 @@ LL | |     }
 help: try
    |
 LL ~     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+LL +
 LL +         e.insert(v);
 LL +     } else {
 LL +         foo();
@@ -64,9 +70,10 @@ LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry_with_else.rs:32:5
+  --> tests/ui/entry_with_else.rs:35:5
    |
 LL | /     if !m.contains_key(&k) {
+LL | |
 LL | |         foo();
 LL | |     } else {
 LL | |         m.insert(k, v);
@@ -78,14 +85,16 @@ help: try
 LL ~     if let std::collections::hash_map::Entry::Occupied(mut e) = m.entry(k) {
 LL +         e.insert(v);
 LL +     } else {
+LL +
 LL +         foo();
 LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry_with_else.rs:38:5
+  --> tests/ui/entry_with_else.rs:42:5
    |
 LL | /     if !m.contains_key(&k) {
+LL | |
 LL | |         m.insert(k, v);
 LL | |     } else {
 LL | |         m.insert(k, v2);
@@ -96,6 +105,7 @@ help: try
    |
 LL ~     match m.entry(k) {
 LL +         std::collections::hash_map::Entry::Vacant(e) => {
+LL +
 LL +             e.insert(v);
 LL +         }
 LL +         std::collections::hash_map::Entry::Occupied(mut e) => {
@@ -105,9 +115,10 @@ LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry_with_else.rs:44:5
+  --> tests/ui/entry_with_else.rs:49:5
    |
 LL | /     if m.contains_key(&k) {
+LL | |
 LL | |         if true { m.insert(k, v) } else { m.insert(k, v2) }
 LL | |     } else {
 LL | |         m.insert(k, v)
@@ -118,6 +129,7 @@ help: try
    |
 LL ~     match m.entry(k) {
 LL +         std::collections::hash_map::Entry::Occupied(mut e) => {
+LL +
 LL +             if true { Some(e.insert(v)) } else { Some(e.insert(v2)) }
 LL +         }
 LL +         std::collections::hash_map::Entry::Vacant(e) => {
@@ -128,9 +140,10 @@ LL ~     };
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry_with_else.rs:50:5
+  --> tests/ui/entry_with_else.rs:56:5
    |
 LL | /     if m.contains_key(&k) {
+LL | |
 LL | |         foo();
 LL | |         m.insert(k, v)
 LL | |     } else {
@@ -141,6 +154,7 @@ LL | |     };
 help: try
    |
 LL ~     if let std::collections::hash_map::Entry::Occupied(mut e) = m.entry(k) {
+LL +
 LL +         foo();
 LL +         Some(e.insert(v))
 LL +     } else {

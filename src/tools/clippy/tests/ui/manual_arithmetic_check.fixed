@@ -7,14 +7,16 @@ fn main() {
     let c = 8u32;
 
     let result = a.saturating_sub(b);
-    //~^ ERROR: manual arithmetic check found
-    let result = a.saturating_sub(b);
-    //~^ ERROR: manual arithmetic check found
+    //~^ implicit_saturating_sub
 
     let result = a.saturating_sub(b);
-    //~^ ERROR: manual arithmetic check found
+    //~^ implicit_saturating_sub
+
     let result = a.saturating_sub(b);
-    //~^ ERROR: manual arithmetic check found
+    //~^ implicit_saturating_sub
+
+    let result = a.saturating_sub(b);
+    //~^ implicit_saturating_sub
 
     // Should not warn!
     let result = if a > b { a - b } else { a - c };

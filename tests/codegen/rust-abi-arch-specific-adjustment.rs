@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C no-prepopulate-passes
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 //@ revisions: riscv64 loongarch64
 
 //@[riscv64] only-riscv64

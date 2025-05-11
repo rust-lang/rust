@@ -13,9 +13,9 @@ use smallvec::smallvec;
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::metadata::type_map::{self, Stub, StubInfo, UniqueTypeId};
 use crate::debuginfo::metadata::{
-    DINodeCreationResult, NO_GENERICS, SmallVec, UNKNOWN_LINE_NUMBER, file_metadata,
-    file_metadata_from_def_id, size_and_align_of, type_di_node, unknown_file_metadata,
-    visibility_di_flags,
+    DINodeCreationResult, NO_GENERICS, SmallVec, UNKNOWN_LINE_NUMBER, create_member_type,
+    file_metadata, file_metadata_from_def_id, size_and_align_of, type_di_node,
+    unknown_file_metadata, visibility_di_flags,
 };
 use crate::debuginfo::utils::{DIB, create_DIArray, get_namespace_for_item};
 use crate::llvm::debuginfo::{DIFile, DIFlags, DIType};
@@ -174,10 +174,8 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
             DIFlags::FlagZero,
         ),
         |cx, coroutine_type_di_node| {
-            let coroutine_layout = cx
-                .tcx
-                .coroutine_layout(coroutine_def_id, coroutine_args.as_coroutine().kind_ty())
-                .unwrap();
+            let coroutine_layout =
+                cx.tcx.coroutine_layout(coroutine_def_id, coroutine_args).unwrap();
 
             let Variants::Multiple { tag_encoding: TagEncoding::Direct, ref variants, .. } =
                 coroutine_type_and_layout.variants
@@ -363,23 +361,22 @@ fn build_discr_member_di_node<'ll, 'tcx>(
 
         &Variants::Multiple { tag_field, .. } => {
             let tag_base_type = tag_base_type(cx.tcx, enum_or_coroutine_type_and_layout);
-            let (size, align) = cx.size_and_align_of(tag_base_type);
+            let ty = type_di_node(cx, tag_base_type);
+            let file = unknown_file_metadata(cx);
 
-            unsafe {
-                Some(llvm::LLVMRustDIBuilderCreateMemberType(
-                    DIB(cx),
-                    containing_scope,
-                    tag_name.as_c_char_ptr(),
-                    tag_name.len(),
-                    unknown_file_metadata(cx),
-                    UNKNOWN_LINE_NUMBER,
-                    size.bits(),
-                    align.bits() as u32,
-                    enum_or_coroutine_type_and_layout.fields.offset(tag_field).bits(),
-                    DIFlags::FlagArtificial,
-                    type_di_node(cx, tag_base_type),
-                ))
-            }
+            let layout = cx.layout_of(tag_base_type);
+
+            Some(create_member_type(
+                cx,
+                containing_scope,
+                &tag_name,
+                file,
+                UNKNOWN_LINE_NUMBER,
+                layout,
+                enum_or_coroutine_type_and_layout.fields.offset(tag_field),
+                DIFlags::FlagArtificial,
+                ty,
+            ))
         }
     }
 }
@@ -437,6 +434,12 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
         .source_info
         .unwrap_or_else(|| (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER));
 
+    let discr = discr_value.opt_single_val().map(|value| {
+        let tag_base_type = tag_base_type(cx.tcx, enum_type_and_layout);
+        let size = cx.size_of(tag_base_type);
+        cx.const_uint_big(cx.type_ix(size.bits()), value)
+    });
+
     unsafe {
         llvm::LLVMRustDIBuilderCreateVariantMemberType(
             DIB(cx),
@@ -448,7 +451,7 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
             enum_type_and_layout.size.bits(),
             enum_type_and_layout.align.abi.bits() as u32,
             Size::ZERO.bits(),
-            discr_value.opt_single_val().map(|value| cx.const_u128(value)),
+            discr,
             DIFlags::FlagZero,
             variant_member_info.variant_struct_type_di_node,
         )

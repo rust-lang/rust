@@ -17,18 +17,15 @@ fn main() {
 
     match my_enum {
         Foo::Empty => 0_u8.hash(&mut state),
-        //~^ ERROR: this call to `hash` on the unit type will do nothing
-        //~| NOTE: the implementation of `Hash` for `()` is a no-op
+        //~^ unit_hash
         Foo::WithValue(x) => x.hash(&mut state),
     }
 
     let res = ();
     0_u8.hash(&mut state);
-    //~^ ERROR: this call to `hash` on the unit type will do nothing
-    //~| NOTE: the implementation of `Hash` for `()` is a no-op
+    //~^ unit_hash
 
     #[allow(clippy::unit_arg)]
     0_u8.hash(&mut state);
-    //~^ ERROR: this call to `hash` on the unit type will do nothing
-    //~| NOTE: the implementation of `Hash` for `()` is a no-op
+    //~^ unit_hash
 }

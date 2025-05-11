@@ -11,8 +11,9 @@ LL | #![deny(clippy::doc_markdown)]
    |         ^^^^^^^^^^^^^^^^^^^^
 help: try
    |
-LL |     /// `HumaNified`
-   |         ~~~~~~~~~~~~
+LL -     /// HumaNified
+LL +     /// `HumaNified`
+   |
 
 error: aborting due to 1 previous error
 

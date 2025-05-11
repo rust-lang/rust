@@ -70,6 +70,17 @@ fn has_no_inference_or_external_constraints<I: Interner>(
         && normalization_nested_goals.is_empty()
 }
 
+fn has_only_region_constraints<I: Interner>(response: ty::Canonical<I, Response<I>>) -> bool {
+    let ExternalConstraintsData {
+        region_constraints: _,
+        ref opaque_types,
+        ref normalization_nested_goals,
+    } = *response.value.external_constraints;
+    response.value.var_values.is_identity_modulo_regions()
+        && opaque_types.is_empty()
+        && normalization_nested_goals.is_empty()
+}
+
 impl<'a, D, I> EvalCtxt<'a, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -126,7 +137,7 @@ where
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn compute_well_formed_goal(&mut self, goal: Goal<I, I::GenericArg>) -> QueryResult<I> {
+    fn compute_well_formed_goal(&mut self, goal: Goal<I, I::Term>) -> QueryResult<I> {
         match self.well_formed_goals(goal.param_env, goal.predicate) {
             Some(goals) => {
                 self.add_goals(GoalSource::Misc, goals);
@@ -160,9 +171,7 @@ where
             ty::ConstKind::Infer(_) => {
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
-            ty::ConstKind::Placeholder(_)
-            | ty::ConstKind::Value(_, _)
-            | ty::ConstKind::Error(_) => {
+            ty::ConstKind::Placeholder(_) | ty::ConstKind::Value(_) | ty::ConstKind::Error(_) => {
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             // We can freely ICE here as:
@@ -199,7 +208,7 @@ where
                 unreachable!("`ConstKind::Param` should have been canonicalized to `Placeholder`")
             }
             ty::ConstKind::Bound(_, _) => panic!("escaping bound vars in {:?}", ct),
-            ty::ConstKind::Value(ty, _) => ty,
+            ty::ConstKind::Value(cv) => cv.ty(),
             ty::ConstKind::Placeholder(placeholder) => {
                 self.cx().find_const_ty_from_env(goal.param_env, placeholder)
             }
@@ -244,16 +253,18 @@ where
     }
 
     fn bail_with_ambiguity(&mut self, responses: &[CanonicalResponse<I>]) -> CanonicalResponse<I> {
-        debug_assert!(!responses.is_empty());
-        if let Certainty::Maybe(maybe_cause) =
-            responses.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
-                certainty.unify_with(response.value.certainty)
-            })
-        {
-            self.make_ambiguous_response_no_constraints(maybe_cause)
-        } else {
-            panic!("expected flounder response to be ambiguous")
-        }
+        debug_assert!(responses.len() > 1);
+        let maybe_cause = responses.iter().fold(MaybeCause::Ambiguity, |maybe_cause, response| {
+            // Pull down the certainty of `Certainty::Yes` to ambiguity when combining
+            // these responses, b/c we're combining more than one response and this we
+            // don't know which one applies.
+            let candidate = match response.value.certainty {
+                Certainty::Yes => MaybeCause::Ambiguity,
+                Certainty::Maybe(candidate) => candidate,
+            };
+            maybe_cause.or(candidate)
+        });
+        self.make_ambiguous_response_no_constraints(maybe_cause)
     }
 
     /// If we fail to merge responses we flounder and return overflow or ambiguity.
@@ -277,23 +288,7 @@ where
         param_env: I::ParamEnv,
         ty: I::Ty,
     ) -> Result<I::Ty, NoSolution> {
-        if let ty::Alias(..) = ty.kind() {
-            let normalized_ty = self.next_ty_infer();
-            let alias_relate_goal = Goal::new(
-                self.cx(),
-                param_env,
-                ty::PredicateKind::AliasRelate(
-                    ty.into(),
-                    normalized_ty.into(),
-                    ty::AliasRelationDirection::Equate,
-                ),
-            );
-            self.add_goal(GoalSource::Misc, alias_relate_goal);
-            self.try_evaluate_added_goals()?;
-            Ok(self.resolve_vars_if_possible(normalized_ty))
-        } else {
-            Ok(ty)
-        }
+        self.structurally_normalize_term(param_env, ty.into()).map(|term| term.expect_ty())
     }
 
     /// Normalize a const for when it is structurally matched on, or more likely
@@ -308,22 +303,36 @@ where
         param_env: I::ParamEnv,
         ct: I::Const,
     ) -> Result<I::Const, NoSolution> {
-        if let ty::ConstKind::Unevaluated(..) = ct.kind() {
-            let normalized_ct = self.next_const_infer();
+        self.structurally_normalize_term(param_env, ct.into()).map(|term| term.expect_const())
+    }
+
+    /// Normalize a term for when it is structurally matched on.
+    ///
+    /// This function is necessary in nearly all cases before matching on a ty/const.
+    /// Not doing so is likely to be incomplete and therefore unsound during coherence.
+    fn structurally_normalize_term(
+        &mut self,
+        param_env: I::ParamEnv,
+        term: I::Term,
+    ) -> Result<I::Term, NoSolution> {
+        if let Some(_) = term.to_alias_term() {
+            let normalized_term = self.next_term_infer_of_kind(term);
             let alias_relate_goal = Goal::new(
                 self.cx(),
                 param_env,
                 ty::PredicateKind::AliasRelate(
-                    ct.into(),
-                    normalized_ct.into(),
+                    term,
+                    normalized_term,
                     ty::AliasRelationDirection::Equate,
                 ),
             );
-            self.add_goal(GoalSource::Misc, alias_relate_goal);
+            // We normalize the self type to be able to relate it with
+            // types from candidates.
+            self.add_goal(GoalSource::TypeRelating, alias_relate_goal);
             self.try_evaluate_added_goals()?;
-            Ok(self.resolve_vars_if_possible(normalized_ct))
+            Ok(self.resolve_vars_if_possible(normalized_term))
         } else {
-            Ok(ct)
+            Ok(term)
         }
     }
 
@@ -333,7 +342,8 @@ where
             TypingMode::Coherence | TypingMode::PostAnalysis => false,
             // During analysis, opaques are rigid unless they may be defined by
             // the current body.
-            TypingMode::Analysis { defining_opaque_types: non_rigid_opaques }
+            TypingMode::Analysis { defining_opaque_types_and_generators: non_rigid_opaques }
+            | TypingMode::Borrowck { defining_opaque_types: non_rigid_opaques }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: non_rigid_opaques } => {
                 !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id))
             }

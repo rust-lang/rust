@@ -2,7 +2,7 @@
 name = "windows-targets"
 description = "A drop-in replacement for the real windows-targets crate for use in std only."
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 
 [features]
 # Enable using raw-dylib for Windows imports.

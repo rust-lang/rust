@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::process::ExitCode;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 use std::{env, fs};
 
 use regex::{Regex, RegexBuilder};
@@ -65,6 +65,11 @@ enum CommandKind {
     /// Checks the path doesn't exist.
     HasNotPath,
 
+    /// `//@ !has <path> <value>`
+    ///
+    /// Checks the path exists, but doesn't have the given value.
+    HasNotValue { value: String },
+
     /// `//@ is <path> <value>`
     ///
     /// Check the path is the given value.
@@ -128,10 +133,11 @@ impl CommandKind {
                 [_path, value] => Self::HasValue { value: value.clone() },
                 _ => panic!("`//@ has` must have 2 or 3 arguments, but got {args:?}"),
             },
-            ("has", true) => {
-                assert_eq!(args.len(), 1, "args={args:?}");
-                Self::HasNotPath
-            }
+            ("has", true) => match args {
+                [_path] => Self::HasNotPath,
+                [_path, value] => Self::HasNotValue { value: value.clone() },
+                _ => panic!("`//@ !has` must have 2 or 3 arguments, but got {args:?}"),
+            },
 
             (_, false) if KNOWN_DIRECTIVE_NAMES.contains(&command_name) => {
                 return None;
@@ -145,13 +151,13 @@ impl CommandKind {
     }
 }
 
-static LINE_PATTERN: OnceLock<Regex> = OnceLock::new();
-fn line_pattern() -> Regex {
+static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     RegexBuilder::new(
         r#"
+        ^\s*
         //@\s+
         (?P<negated>!?)
-        (?P<cmd>[A-Za-z]+(?:-[A-Za-z]+)*)
+        (?P<cmd>[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)
         (?P<args>.*)$
     "#,
     )
@@ -159,7 +165,19 @@ fn line_pattern() -> Regex {
     .unicode(true)
     .build()
     .unwrap()
-}
+});
+
+static DEPRECATED_LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
+    RegexBuilder::new(
+        r#"
+        //\s+@
+    "#,
+    )
+    .ignore_whitespace(true)
+    .unicode(true)
+    .build()
+    .unwrap()
+});
 
 fn print_err(msg: &str, lineno: usize) {
     eprintln!("Invalid command: {} on line {}", msg, lineno)
@@ -178,21 +196,23 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
     for (lineno, line) in file.split('\n').enumerate() {
         let lineno = lineno + 1;
 
-        let cap = match LINE_PATTERN.get_or_init(line_pattern).captures(line) {
-            Some(c) => c,
-            None => continue,
+        if DEPRECATED_LINE_PATTERN.is_match(line) {
+            print_err("Deprecated command syntax, replace `// @` with `//@ `", lineno);
+            errors = true;
+            continue;
+        }
+
+        let Some(cap) = LINE_PATTERN.captures(line) else {
+            continue;
         };
 
-        let negated = cap.name("negated").unwrap().as_str() == "!";
+        let negated = &cap["negated"] == "!";
 
         let args_str = &cap["args"];
-        let args = match shlex::split(args_str) {
-            Some(args) => args,
-            None => {
-                print_err(&format!("Invalid arguments to shlex::split: `{args_str}`",), lineno);
-                errors = true;
-                continue;
-            }
+        let Some(args) = shlex::split(args_str) else {
+            print_err(&format!("Invalid arguments to shlex::split: `{args_str}`",), lineno);
+            errors = true;
+            continue;
         };
 
         if let Some((kind, path)) = CommandKind::parse(&cap["cmd"], negated, &args) {
@@ -223,6 +243,19 @@ fn check_command(command: &Command, cache: &mut Cache) -> Result<(), String> {
                 return Err(format!("matched to {matches:?}, which didn't contain {want_value:?}"));
             }
         }
+        CommandKind::HasNotValue { value } => {
+            let wantnt_value = string_to_value(value, cache);
+            if matches.contains(&wantnt_value.as_ref()) {
+                return Err(format!(
+                    "matched to {matches:?}, which contains unwanted {wantnt_value:?}"
+                ));
+            } else if matches.is_empty() {
+                return Err(format!(
+                    "got no matches, but expected some matched (not containing {wantnt_value:?}"
+                ));
+            }
+        }
+
         CommandKind::Is { value } => {
             let want_value = string_to_value(value, cache);
             let matched = get_one(&matches)?;

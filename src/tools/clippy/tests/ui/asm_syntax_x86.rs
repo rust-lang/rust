@@ -5,20 +5,27 @@ mod warn_intel {
     use std::arch::{asm, global_asm};
 
     pub(super) unsafe fn use_asm() {
-        asm!("");
-        //~^ ERROR: Intel x86 assembly syntax used
-        asm!("", options());
-        //~^ ERROR: Intel x86 assembly syntax used
-        asm!("", options(nostack));
-        //~^ ERROR: Intel x86 assembly syntax used
-        asm!("", options(att_syntax));
-        asm!("", options(nostack, att_syntax));
+        unsafe {
+            asm!("");
+            //~^ inline_asm_x86_intel_syntax
+
+            asm!("", options());
+            //~^ inline_asm_x86_intel_syntax
+
+            asm!("", options(nostack));
+            //~^ inline_asm_x86_intel_syntax
+
+            asm!("", options(att_syntax));
+            asm!("", options(nostack, att_syntax));
+        }
     }
 
     global_asm!("");
-    //~^ ERROR: Intel x86 assembly syntax used
+    //~^ inline_asm_x86_intel_syntax
+
     global_asm!("", options());
-    //~^ ERROR: Intel x86 assembly syntax used
+    //~^ inline_asm_x86_intel_syntax
+
     global_asm!("", options(att_syntax));
 }
 
@@ -27,19 +34,22 @@ mod warn_att {
     use std::arch::{asm, global_asm};
 
     pub(super) unsafe fn use_asm() {
-        asm!("");
-        asm!("", options());
-        asm!("", options(nostack));
-        asm!("", options(att_syntax));
-        //~^ ERROR: AT&T x86 assembly syntax used
-        asm!("", options(nostack, att_syntax));
-        //~^ ERROR: AT&T x86 assembly syntax used
+        unsafe {
+            asm!("");
+            asm!("", options());
+            asm!("", options(nostack));
+            asm!("", options(att_syntax));
+            //~^ inline_asm_x86_att_syntax
+
+            asm!("", options(nostack, att_syntax));
+            //~^ inline_asm_x86_att_syntax
+        }
     }
 
     global_asm!("");
     global_asm!("", options());
     global_asm!("", options(att_syntax));
-    //~^ ERROR: AT&T x86 assembly syntax used
+    //~^ inline_asm_x86_att_syntax
 }
 
 fn main() {

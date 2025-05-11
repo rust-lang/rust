@@ -1,5 +1,5 @@
 //@ revisions: INT32 INT16
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ [INT32] ignore-16bit
 //@ [INT16] only-16bit
 

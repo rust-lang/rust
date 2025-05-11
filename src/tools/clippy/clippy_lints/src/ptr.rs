@@ -1,8 +1,10 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::SpanRangeExt;
+use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::contains_unsafe_block;
 use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, std_or_core};
-use hir::LifetimeName;
+use hir::LifetimeKind;
+use rustc_abi::ExternAbi;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::hir_id::{HirId, HirIdMap};
 use rustc_hir::intravisit::{Visitor, walk_expr};
@@ -18,7 +20,6 @@ use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, Pre
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
-use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use std::{fmt, iter};
@@ -126,28 +127,34 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// This lint checks for invalid usages of `ptr::null`.
+    /// Use `std::ptr::eq` when applicable
     ///
     /// ### Why is this bad?
-    /// This causes undefined behavior.
+    /// `ptr::eq` can be used to compare `&T` references
+    /// (which coerce to `*const T` implicitly) by their address rather than
+    /// comparing the values they point to.
     ///
     /// ### Example
-    /// ```ignore
-    /// // Undefined behavior
-    /// unsafe { std::slice::from_raw_parts(ptr::null(), 0); }
-    /// ```
+    /// ```no_run
+    /// let a = &[1, 2, 3];
+    /// let b = &[1, 2, 3];
     ///
-    /// Use instead:
-    /// ```ignore
-    /// unsafe { std::slice::from_raw_parts(NonNull::dangling().as_ptr(), 0); }
+    /// assert!(a as *const _ as usize == b as *const _ as usize);
     /// ```
-    #[clippy::version = "1.53.0"]
-    pub INVALID_NULL_PTR_USAGE,
-    correctness,
-    "invalid usage of a null pointer, suggesting `NonNull::dangling()` instead"
+    /// Use instead:
+    /// ```no_run
+    /// let a = &[1, 2, 3];
+    /// let b = &[1, 2, 3];
+    ///
+    /// assert!(std::ptr::eq(a, b));
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub PTR_EQ,
+    style,
+    "use `std::ptr::eq` when comparing raw pointers"
 }
 
-declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF, INVALID_NULL_PTR_USAGE]);
+declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF, PTR_EQ]);
 
 impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
@@ -159,7 +166,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
             check_mut_from_ref(cx, sig, None);
 
-            if !matches!(sig.header.abi, Abi::Rust) {
+            if !matches!(sig.header.abi, ExternAbi::Rust) {
                 // Ignore `extern` functions with non-Rust calling conventions
                 return;
             }
@@ -185,11 +192,10 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
     }
 
     fn check_body(&mut self, cx: &LateContext<'tcx>, body: &Body<'tcx>) {
-        let hir = cx.tcx.hir();
-        let mut parents = hir.parent_iter(body.value.hir_id);
+        let mut parents = cx.tcx.hir_parent_iter(body.value.hir_id);
         let (item_id, sig, is_trait_item) = match parents.next() {
             Some((_, Node::Item(i))) => {
-                if let ItemKind::Fn(sig, ..) = &i.kind {
+                if let ItemKind::Fn { sig, .. } = &i.kind {
                     (i.owner_id, sig, false)
                 } else {
                     return;
@@ -219,7 +225,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
         check_mut_from_ref(cx, sig, Some(body));
 
-        if !matches!(sig.header.abi, Abi::Rust) {
+        if !matches!(sig.header.abi, ExternAbi::Rust) {
             // Ignore `extern` functions with non-Rust calling conventions
             return;
         }
@@ -250,63 +256,28 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Binary(ref op, l, r) = expr.kind {
-            if (op.node == BinOpKind::Eq || op.node == BinOpKind::Ne) && (is_null_path(cx, l) || is_null_path(cx, r)) {
-                span_lint(
-                    cx,
-                    CMP_NULL,
-                    expr.span,
-                    "comparing with null is better expressed by the `.is_null()` method",
-                );
-            }
-        } else {
-            check_invalid_ptr_usage(cx, expr);
-        }
-    }
-}
+        if let ExprKind::Binary(op, l, r) = expr.kind
+            && (op.node == BinOpKind::Eq || op.node == BinOpKind::Ne)
+        {
+            let non_null_path_snippet = match (
+                is_lint_allowed(cx, CMP_NULL, expr.hir_id),
+                is_null_path(cx, l),
+                is_null_path(cx, r),
+            ) {
+                (false, true, false) if let Some(sugg) = Sugg::hir_opt(cx, r) => sugg.maybe_paren(),
+                (false, false, true) if let Some(sugg) = Sugg::hir_opt(cx, l) => sugg.maybe_paren(),
+                _ => return check_ptr_eq(cx, expr, op.node, l, r),
+            };
 
-fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let ExprKind::Call(fun, args) = expr.kind
-        && let ExprKind::Path(ref qpath) = fun.kind
-        && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
-        && let Some(name) = cx.tcx.get_diagnostic_name(fun_def_id)
-    {
-        // TODO: `ptr_slice_from_raw_parts` and its mutable variant should probably still be linted
-        // conditionally based on how the return value is used, but not universally like the other
-        // functions since there are valid uses for null slice pointers.
-        //
-        // See: https://github.com/rust-lang/rust-clippy/pull/13452/files#r1773772034
-
-        // `arg` positions where null would cause U.B.
-        let arg_indices: &[_] = match name {
-            sym::ptr_read
-            | sym::ptr_read_unaligned
-            | sym::ptr_read_volatile
-            | sym::ptr_replace
-            | sym::ptr_write
-            | sym::ptr_write_bytes
-            | sym::ptr_write_unaligned
-            | sym::ptr_write_volatile
-            | sym::slice_from_raw_parts
-            | sym::slice_from_raw_parts_mut => &[0],
-            sym::ptr_copy | sym::ptr_copy_nonoverlapping | sym::ptr_swap | sym::ptr_swap_nonoverlapping => &[0, 1],
-            _ => return,
-        };
-
-        for &arg_idx in arg_indices {
-            if let Some(arg) = args.get(arg_idx).filter(|arg| is_null_path(cx, arg))
-                && let Some(std_or_core) = std_or_core(cx)
-            {
-                span_lint_and_sugg(
-                    cx,
-                    INVALID_NULL_PTR_USAGE,
-                    arg.span,
-                    "pointer must be non-null",
-                    "change this to",
-                    format!("{std_or_core}::ptr::NonNull::dangling().as_ptr()"),
-                    Applicability::MachineApplicable,
-                );
-            }
+            span_lint_and_sugg(
+                cx,
+                CMP_NULL,
+                expr.span,
+                "comparing with null is better expressed by the `.is_null()` method",
+                "try",
+                format!("{non_null_path_snippet}.is_null()"),
+                Applicability::MachineApplicable,
+            );
         }
     }
 }
@@ -461,7 +432,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                             }
                             None
                         }) {
-                            if let LifetimeName::Param(param_def_id) = lifetime.res
+                            if let LifetimeKind::Param(param_def_id) = lifetime.kind
                                 && !lifetime.is_anonymous()
                                 && fn_sig
                                     .output()
@@ -527,29 +498,33 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
 }
 
 fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Option<&Body<'tcx>>) {
-    if let FnRetTy::Return(ty) = sig.decl.output
-        && let Some((out, Mutability::Mut, _)) = get_ref_lm(ty)
-    {
+    let FnRetTy::Return(ty) = sig.decl.output else { return };
+    for (out, mutability, out_span) in get_lifetimes(ty) {
+        if mutability != Some(Mutability::Mut) {
+            continue;
+        }
         let out_region = cx.tcx.named_bound_var(out.hir_id);
-        let args: Option<Vec<_>> = sig
+        // `None` if one of the types contains `&'a mut T` or `T<'a>`.
+        // Else, contains all the locations of `&'a T` types.
+        let args_immut_refs: Option<Vec<Span>> = sig
             .decl
             .inputs
             .iter()
-            .filter_map(get_ref_lm)
+            .flat_map(get_lifetimes)
             .filter(|&(lt, _, _)| cx.tcx.named_bound_var(lt.hir_id) == out_region)
-            .map(|(_, mutability, span)| (mutability == Mutability::Not).then_some(span))
+            .map(|(_, mutability, span)| (mutability == Some(Mutability::Not)).then_some(span))
             .collect();
-        if let Some(args) = args
-            && !args.is_empty()
-            && body.is_none_or(|body| sig.header.safety.is_unsafe() || contains_unsafe_block(cx, body.value))
+        if let Some(args_immut_refs) = args_immut_refs
+            && !args_immut_refs.is_empty()
+            && body.is_none_or(|body| sig.header.is_unsafe() || contains_unsafe_block(cx, body.value))
         {
             span_lint_and_then(
                 cx,
                 MUT_FROM_REF,
-                ty.span,
+                out_span,
                 "mutable borrow from immutable input(s)",
                 |diag| {
-                    let ms = MultiSpan::from_spans(args);
+                    let ms = MultiSpan::from_spans(args_immut_refs);
                     diag.span_note(ms, "immutable borrow here");
                 },
             );
@@ -573,8 +548,8 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[
     }
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
         type NestedFilter = nested_filter::OnlyBodies;
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.cx.tcx.hir()
+        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+            self.cx.tcx
         }
 
         fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}
@@ -715,12 +690,36 @@ fn matches_preds<'tcx>(
         })
 }
 
-fn get_ref_lm<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutability, Span)> {
-    if let TyKind::Ref(lt, ref m) = ty.kind {
-        Some((lt, m.mutbl, ty.span))
-    } else {
-        None
+struct LifetimeVisitor<'tcx> {
+    result: Vec<(&'tcx Lifetime, Option<Mutability>, Span)>,
+}
+
+impl<'tcx> Visitor<'tcx> for LifetimeVisitor<'tcx> {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, hir::AmbigArg>) {
+        if let TyKind::Ref(lt, ref m) = ty.kind {
+            self.result.push((lt, Some(m.mutbl), ty.span));
+        }
+        hir::intravisit::walk_ty(self, ty);
     }
+
+    fn visit_generic_arg(&mut self, generic_arg: &'tcx GenericArg<'tcx>) {
+        if let GenericArg::Lifetime(lt) = generic_arg {
+            self.result.push((lt, None, generic_arg.span()));
+        }
+        hir::intravisit::walk_generic_arg(self, generic_arg);
+    }
+}
+
+/// Visit `ty` and collect the all the lifetimes appearing in it, implicit or not.
+///
+/// The second field of the vector's elements indicate if the lifetime is attached to a
+/// shared reference, a mutable reference, or neither.
+fn get_lifetimes<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Vec<(&'tcx Lifetime, Option<Mutability>, Span)> {
+    use hir::intravisit::VisitorExt as _;
+
+    let mut visitor = LifetimeVisitor { result: Vec::new() };
+    visitor.visit_ty_unambig(ty);
+    visitor.result
 }
 
 fn is_null_path(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
@@ -729,5 +728,82 @@ fn is_null_path(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             .is_some_and(|id| matches!(cx.tcx.get_diagnostic_name(id), Some(sym::ptr_null | sym::ptr_null_mut)))
     } else {
         false
+    }
+}
+
+fn check_ptr_eq<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    op: BinOpKind,
+    left: &'tcx Expr<'_>,
+    right: &'tcx Expr<'_>,
+) {
+    if expr.span.from_expansion() {
+        return;
+    }
+
+    // Remove one level of usize conversion if any
+    let (left, right, usize_peeled) = match (expr_as_cast_to_usize(cx, left), expr_as_cast_to_usize(cx, right)) {
+        (Some(lhs), Some(rhs)) => (lhs, rhs, true),
+        _ => (left, right, false),
+    };
+
+    // This lint concerns raw pointers
+    let (left_ty, right_ty) = (cx.typeck_results().expr_ty(left), cx.typeck_results().expr_ty(right));
+    if !left_ty.is_raw_ptr() || !right_ty.is_raw_ptr() {
+        return;
+    }
+
+    let ((left_var, left_casts_peeled), (right_var, right_casts_peeled)) =
+        (peel_raw_casts(cx, left, left_ty), peel_raw_casts(cx, right, right_ty));
+
+    if !(usize_peeled || left_casts_peeled || right_casts_peeled) {
+        return;
+    }
+
+    let mut app = Applicability::MachineApplicable;
+    let left_snip = Sugg::hir_with_context(cx, left_var, expr.span.ctxt(), "_", &mut app);
+    let right_snip = Sugg::hir_with_context(cx, right_var, expr.span.ctxt(), "_", &mut app);
+    {
+        let Some(top_crate) = std_or_core(cx) else { return };
+        let invert = if op == BinOpKind::Eq { "" } else { "!" };
+        span_lint_and_sugg(
+            cx,
+            PTR_EQ,
+            expr.span,
+            format!("use `{top_crate}::ptr::eq` when comparing raw pointers"),
+            "try",
+            format!("{invert}{top_crate}::ptr::eq({left_snip}, {right_snip})"),
+            app,
+        );
+    }
+}
+
+// If the given expression is a cast to a usize, return the lhs of the cast
+// E.g., `foo as *const _ as usize` returns `foo as *const _`.
+fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+    if !cast_expr.span.from_expansion()
+        && cx.typeck_results().expr_ty(cast_expr) == cx.tcx.types.usize
+        && let ExprKind::Cast(expr, _) = cast_expr.kind
+    {
+        Some(expr)
+    } else {
+        None
+    }
+}
+
+// Peel raw casts if the remaining expression can be coerced to it, and whether casts have been
+// peeled or not.
+fn peel_raw_casts<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, expr_ty: Ty<'tcx>) -> (&'tcx Expr<'tcx>, bool) {
+    if !expr.span.from_expansion()
+        && let ExprKind::Cast(inner, _) = expr.kind
+        && let ty::RawPtr(target_ty, _) = expr_ty.kind()
+        && let inner_ty = cx.typeck_results().expr_ty(inner)
+        && let ty::RawPtr(inner_target_ty, _) | ty::Ref(_, inner_target_ty, _) = inner_ty.kind()
+        && target_ty == inner_target_ty
+    {
+        (peel_raw_casts(cx, inner, inner_ty).0, true)
+    } else {
+        (expr, false)
     }
 }

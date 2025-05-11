@@ -1,15 +1,10 @@
 #![allow(clippy::lint_without_lint_pass)]
 
-mod lazy_continuation;
-mod too_long_first_doc_paragraph;
-
 use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
-use clippy_utils::macros::{is_panic, root_macro_call_first_node};
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::visitors::Visitable;
-use clippy_utils::{is_entrypoint_fn, is_trait_impl_item, method_chain_args};
+use clippy_utils::source::snippet_opt;
+use clippy_utils::{is_entrypoint_fn, is_trait_impl_item};
 use pulldown_cmark::Event::{
     Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
     TaskListMarker, Text,
@@ -18,29 +13,27 @@ use pulldown_cmark::Tag::{BlockQuote, CodeBlock, FootnoteDefinition, Heading, It
 use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{AnonConst, Attribute, Expr, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::hir::nested_filter;
-use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty;
+use rustc_hir::{Attribute, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_resolve::rustdoc::{
     DocFragment, add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range,
     span_of_fragments,
 };
 use rustc_session::impl_lint_pass;
+use rustc_span::Span;
 use rustc_span::edition::Edition;
-use rustc_span::{Span, sym};
 use std::ops::Range;
 use url::Url;
 
-mod empty_line_after;
+mod doc_comment_double_space_linebreaks;
 mod include_in_doc_without_cfg;
+mod lazy_continuation;
 mod link_with_quotes;
 mod markdown;
 mod missing_headers;
 mod needless_doctest_main;
 mod suspicious_doc_comments;
+mod too_long_first_doc_paragraph;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -82,6 +75,28 @@ declare_clippy_lint! {
     pub DOC_MARKDOWN,
     pedantic,
     "presence of `_`, `::` or camel-case outside backticks in documentation"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for links with code directly adjacent to code text:
+    /// `` [`MyItem`]`<`[`u32`]`>` ``.
+    ///
+    /// ### Why is this bad?
+    /// It can be written more simply using HTML-style `<code>` tags.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// //! [`first`](x)`second`
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// //! <code>[first](x)second</code>
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub DOC_LINK_CODE,
+    nursery,
+    "link with code back-to-back with other code"
 }
 
 declare_clippy_lint! {
@@ -171,6 +186,19 @@ declare_clippy_lint! {
     ///     } else {
     ///         x / y
     ///     }
+    /// }
+    /// ```
+    ///
+    /// Individual panics within a function can be ignored with `#[expect]` or
+    /// `#[allow]`:
+    ///
+    /// ```no_run
+    /// # use std::num::NonZeroUsize;
+    /// pub fn will_not_panic(x: usize) {
+    ///     #[expect(clippy::missing_panics_doc, reason = "infallible")]
+    ///     let y = NonZeroUsize::new(1).unwrap();
+    ///
+    ///     // If any panics are added in the future the lint will still catch them
     /// }
     /// ```
     #[clippy::version = "1.51.0"]
@@ -430,6 +458,39 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    ///
+    /// Detects overindented list items in doc comments where the continuation
+    /// lines are indented more than necessary.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Overindented list items in doc comments can lead to inconsistent and
+    /// poorly formatted documentation when rendered. Excessive indentation may
+    /// cause the text to be misinterpreted as a nested list item or code block,
+    /// affecting readability and the overall structure of the documentation.
+    ///
+    /// ### Example
+    ///
+    /// ```no_run
+    /// /// - This is the first item in a list
+    /// ///      and this line is overindented.
+    /// # fn foo() {}
+    /// ```
+    ///
+    /// Fixes this into:
+    /// ```no_run
+    /// /// - This is the first item in a list
+    /// ///   and this line is overindented.
+    /// # fn foo() {}
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub DOC_OVERINDENTED_LIST_ITEMS,
+    style,
+    "ensure list items are not overindented"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks if the first paragraph in the documentation of items listed in the module page is too long.
     ///
     /// ### Why is this bad?
@@ -461,82 +522,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for empty lines after outer attributes
-    ///
-    /// ### Why is this bad?
-    /// The attribute may have meant to be an inner attribute (`#![attr]`). If
-    /// it was meant to be an outer attribute (`#[attr]`) then the empty line
-    /// should be removed
-    ///
-    /// ### Example
-    /// ```no_run
-    /// #[allow(dead_code)]
-    ///
-    /// fn not_quite_good_code() {}
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// // Good (as inner attribute)
-    /// #![allow(dead_code)]
-    ///
-    /// fn this_is_fine() {}
-    ///
-    /// // or
-    ///
-    /// // Good (as outer attribute)
-    /// #[allow(dead_code)]
-    /// fn this_is_fine_too() {}
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub EMPTY_LINE_AFTER_OUTER_ATTR,
-    suspicious,
-    "empty line after outer attribute"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for empty lines after doc comments.
-    ///
-    /// ### Why is this bad?
-    /// The doc comment may have meant to be an inner doc comment, regular
-    /// comment or applied to some old code that is now commented out. If it was
-    /// intended to be a doc comment, then the empty line should be removed.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// /// Some doc comment with a blank line after it.
-    ///
-    /// fn f() {}
-    ///
-    /// /// Docs for `old_code`
-    /// // fn old_code() {}
-    ///
-    /// fn new_code() {}
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// //! Convert it to an inner doc comment
-    ///
-    /// // Or a regular comment
-    ///
-    /// /// Or remove the empty line
-    /// fn f() {}
-    ///
-    /// // /// Docs for `old_code`
-    /// // fn old_code() {}
-    ///
-    /// fn new_code() {}
-    /// ```
-    #[clippy::version = "1.70.0"]
-    pub EMPTY_LINE_AFTER_DOC_COMMENTS,
-    suspicious,
-    "empty line after doc comments"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks if included files in doc comments are included only for `cfg(doc)`.
     ///
     /// ### Why restrict this?
@@ -558,7 +543,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// #![cfg_attr(doc, doc = include_str!("some_file.md"))]
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.85.0"]
     pub DOC_INCLUDE_WITHOUT_CFG,
     restriction,
     "check if files included in documentation are behind `cfg(doc)`"
@@ -584,10 +569,43 @@ declare_clippy_lint! {
     /// //!
     /// //! [link]: destination (for link reference definition)
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.85.0"]
     pub DOC_NESTED_REFDEFS,
     suspicious,
     "link reference defined in list item or quote"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects doc comment linebreaks that use double spaces to separate lines, instead of back-slash (`\`).
+    ///
+    /// ### Why is this bad?
+    /// Double spaces, when used as doc comment linebreaks, can be difficult to see, and may
+    /// accidentally be removed during automatic formatting or manual refactoring. The use of a back-slash (`\`)
+    /// is clearer in this regard.
+    ///
+    /// ### Example
+    /// The two replacement dots in this example represent a double space.
+    /// ```no_run
+    /// /// This command takes two numbers as inputs and··
+    /// /// adds them together, and then returns the result.
+    /// fn add(l: i32, r: i32) -> i32 {
+    ///     l + r
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// /// This command takes two numbers as inputs and\
+    /// /// adds them together, and then returns the result.
+    /// fn add(l: i32, r: i32) -> i32 {
+    ///     l + r
+    /// }
+    /// ```
+    #[clippy::version = "1.87.0"]
+    pub DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS,
+    pedantic,
+    "double-space used for doc comment linebreak instead of `\\`"
 }
 
 pub struct Documentation {
@@ -605,6 +623,7 @@ impl Documentation {
 }
 
 impl_lint_pass!(Documentation => [
+    DOC_LINK_CODE,
     DOC_LINK_WITH_QUOTES,
     DOC_MARKDOWN,
     DOC_NESTED_REFDEFS,
@@ -617,11 +636,17 @@ impl_lint_pass!(Documentation => [
     SUSPICIOUS_DOC_COMMENTS,
     EMPTY_DOCS,
     DOC_LAZY_CONTINUATION,
-    EMPTY_LINE_AFTER_OUTER_ATTR,
-    EMPTY_LINE_AFTER_DOC_COMMENTS,
+    DOC_OVERINDENTED_LIST_ITEMS,
     TOO_LONG_FIRST_DOC_PARAGRAPH,
     DOC_INCLUDE_WITHOUT_CFG,
+    DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS
 ]);
+
+impl EarlyLintPass for Documentation {
+    fn check_attributes(&mut self, cx: &EarlyContext<'_>, attrs: &[rustc_ast::Attribute]) {
+        include_in_doc_without_cfg::check(cx, attrs);
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for Documentation {
     fn check_attributes(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
@@ -639,20 +664,16 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                     self.check_private_items,
                 );
                 match item.kind {
-                    ItemKind::Fn(sig, _, body_id) => {
+                    ItemKind::Fn { sig, body, .. } => {
                         if !(is_entrypoint_fn(cx, item.owner_id.to_def_id())
-                            || in_external_macro(cx.tcx.sess, item.span))
+                            || item.span.in_external_macro(cx.tcx.sess.source_map()))
                         {
-                            let body = cx.tcx.hir().body(body_id);
-
-                            let panic_info = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(item.owner_id), body.value);
                             missing_headers::check(
                                 cx,
                                 item.owner_id,
                                 sig,
                                 headers,
-                                Some(body_id),
-                                panic_info,
+                                Some(body),
                                 self.check_private_items,
                             );
                         }
@@ -677,34 +698,22 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
             },
             Node::TraitItem(trait_item) => {
                 if let TraitItemKind::Fn(sig, ..) = trait_item.kind
-                    && !in_external_macro(cx.tcx.sess, trait_item.span)
+                    && !trait_item.span.in_external_macro(cx.tcx.sess.source_map())
                 {
-                    missing_headers::check(
-                        cx,
-                        trait_item.owner_id,
-                        sig,
-                        headers,
-                        None,
-                        None,
-                        self.check_private_items,
-                    );
+                    missing_headers::check(cx, trait_item.owner_id, sig, headers, None, self.check_private_items);
                 }
             },
             Node::ImplItem(impl_item) => {
                 if let ImplItemKind::Fn(sig, body_id) = impl_item.kind
-                    && !in_external_macro(cx.tcx.sess, impl_item.span)
+                    && !impl_item.span.in_external_macro(cx.tcx.sess.source_map())
                     && !is_trait_impl_item(cx, impl_item.hir_id())
                 {
-                    let body = cx.tcx.hir().body(body_id);
-
-                    let panic_span = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(impl_item.owner_id), body.value);
                     missing_headers::check(
                         cx,
                         impl_item.owner_id,
                         sig,
                         headers,
                         Some(body_id),
-                        panic_span,
                         self.check_private_items,
                     );
                 }
@@ -750,14 +759,13 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         Some(("fake".into(), "fake".into()))
     }
 
-    include_in_doc_without_cfg::check(cx, attrs);
-    if suspicious_doc_comments::check(cx, attrs) || empty_line_after::check(cx, attrs) || is_doc_hidden(attrs) {
+    if suspicious_doc_comments::check(cx, attrs) || is_doc_hidden(attrs) {
         return None;
     }
 
     let (fragments, _) = attrs_to_doc_fragments(
         attrs.iter().filter_map(|attr| {
-            if in_external_macro(cx.sess(), attr.span) {
+            if attr.doc_str_and_comment_kind().is_none() || attr.span().in_external_macro(cx.sess().source_map()) {
                 None
             } else {
                 Some((attr, None))
@@ -787,6 +795,21 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
 
     let mut cb = fake_broken_link_callback;
 
+    check_for_code_clusters(
+        cx,
+        pulldown_cmark::Parser::new_with_broken_link_callback(
+            &doc,
+            main_body_opts() - Options::ENABLE_SMART_PUNCTUATION,
+            Some(&mut cb),
+        )
+        .into_offset_iter(),
+        &doc,
+        Fragments {
+            doc: &doc,
+            fragments: &fragments,
+        },
+    );
+
     // disable smart punctuation to pick up ['link'] more easily
     let opts = main_body_opts() - Options::ENABLE_SMART_PUNCTUATION;
     let parser = pulldown_cmark::Parser::new_with_broken_link_callback(&doc, opts, Some(&mut cb));
@@ -797,8 +820,8 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         parser.into_offset_iter(),
         &doc,
         Fragments {
-            fragments: &fragments,
             doc: &doc,
+            fragments: &fragments,
         },
     ))
 }
@@ -808,6 +831,65 @@ const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail"];
 enum Container {
     Blockquote,
     List(usize),
+}
+
+/// Scan the documentation for code links that are back-to-back with code spans.
+///
+/// This is done separately from the rest of the docs, because that makes it easier to produce
+/// the correct messages.
+fn check_for_code_clusters<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize>)>>(
+    cx: &LateContext<'_>,
+    events: Events,
+    doc: &str,
+    fragments: Fragments<'_>,
+) {
+    let mut events = events.peekable();
+    let mut code_starts_at = None;
+    let mut code_ends_at = None;
+    let mut code_includes_link = false;
+    while let Some((event, range)) = events.next() {
+        match event {
+            Start(Link { .. }) if matches!(events.peek(), Some((Code(_), _range))) => {
+                if code_starts_at.is_some() {
+                    code_ends_at = Some(range.end);
+                } else {
+                    code_starts_at = Some(range.start);
+                }
+                code_includes_link = true;
+                // skip the nested "code", because we're already handling it here
+                let _ = events.next();
+            },
+            Code(_) => {
+                if code_starts_at.is_some() {
+                    code_ends_at = Some(range.end);
+                } else {
+                    code_starts_at = Some(range.start);
+                }
+            },
+            End(TagEnd::Link) => {},
+            _ => {
+                if let Some(start) = code_starts_at
+                    && let Some(end) = code_ends_at
+                    && code_includes_link
+                    && let Some(span) = fragments.span(cx, start..end)
+                {
+                    span_lint_and_then(cx, DOC_LINK_CODE, span, "code link adjacent to code text", |diag| {
+                        let sugg = format!("<code>{}</code>", doc[start..end].replace('`', ""));
+                        diag.span_suggestion_verbose(
+                            span,
+                            "wrap the entire group in `<code>` tags",
+                            sugg,
+                            Applicability::MaybeIncorrect,
+                        );
+                        diag.help("separate code snippets will be shown with a gap");
+                    });
+                }
+                code_includes_link = false;
+                code_starts_at = None;
+                code_ends_at = None;
+            },
+        }
+    }
 }
 
 /// Checks parsed documentation.
@@ -837,6 +919,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     let mut paragraph_range = 0..0;
     let mut code_level = 0;
     let mut blockquote_level = 0;
+    let mut collected_breaks: Vec<Span> = Vec::new();
     let mut is_first_paragraph = true;
 
     let mut containers = Vec::new();
@@ -952,7 +1035,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                                 // backslashes aren't in the event stream...
                                 start -= 1;
                             }
-                            start - range.start
+
+                            start.saturating_sub(range.start)
                         }
                     } else {
                         0
@@ -1011,6 +1095,14 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         &containers[..],
                     );
                 }
+
+                if let Some(span) = fragments.span(cx, range.clone())
+                    && !span.from_expansion()
+                    && let Some(snippet) = snippet_opt(cx, span)
+                    && !snippet.trim().starts_with('\\')
+                    && event == HardBreak {
+                    collected_breaks.push(span);
+                }
             },
             Text(text) => {
                 paragraph_range.end = range.end;
@@ -1061,77 +1153,18 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             FootnoteReference(_) => {}
         }
     }
+
+    doc_comment_double_space_linebreaks::check(cx, &collected_breaks);
+
     headers
-}
-
-struct FindPanicUnwrap<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    is_const: bool,
-    panic_span: Option<Span>,
-    typeck_results: &'tcx ty::TypeckResults<'tcx>,
-}
-
-impl<'a, 'tcx> FindPanicUnwrap<'a, 'tcx> {
-    pub fn find_span(
-        cx: &'a LateContext<'tcx>,
-        typeck_results: &'tcx ty::TypeckResults<'tcx>,
-        body: impl Visitable<'tcx>,
-    ) -> Option<(Span, bool)> {
-        let mut vis = Self {
-            cx,
-            is_const: false,
-            panic_span: None,
-            typeck_results,
-        };
-        body.visit(&mut vis);
-        vis.panic_span.map(|el| (el, vis.is_const))
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
-    type NestedFilter = nested_filter::OnlyBodies;
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.panic_span.is_some() {
-            return;
-        }
-
-        if let Some(macro_call) = root_macro_call_first_node(self.cx, expr) {
-            if is_panic(self.cx, macro_call.def_id)
-                || matches!(
-                    self.cx.tcx.item_name(macro_call.def_id).as_str(),
-                    "assert" | "assert_eq" | "assert_ne"
-                )
-            {
-                self.is_const = self.cx.tcx.hir().is_inside_const_context(expr.hir_id);
-                self.panic_span = Some(macro_call.span);
-            }
-        }
-
-        // check for `unwrap` and `expect` for both `Option` and `Result`
-        if let Some(arglists) = method_chain_args(expr, &["unwrap"]).or(method_chain_args(expr, &["expect"])) {
-            let receiver_ty = self.typeck_results.expr_ty(arglists[0].0).peel_refs();
-            if is_type_diagnostic_item(self.cx, receiver_ty, sym::Option)
-                || is_type_diagnostic_item(self.cx, receiver_ty, sym::Result)
-            {
-                self.panic_span = Some(expr.span);
-            }
-        }
-
-        // and check sub-expressions
-        intravisit::walk_expr(self, expr);
-    }
-
-    // Panics in const blocks will cause compilation to fail.
-    fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
-    }
 }
 
 #[expect(clippy::range_plus_one)] // inclusive ranges aren't the same type
 fn looks_like_refdef(doc: &str, range: Range<usize>) -> Option<Range<usize>> {
+    if range.end < range.start {
+        return None;
+    }
+
     let offset = range.start;
     let mut iterator = doc.as_bytes()[range].iter().copied().enumerate();
     let mut start = None;

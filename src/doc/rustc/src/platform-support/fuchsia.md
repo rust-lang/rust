@@ -7,9 +7,11 @@ updatable, and performant.
 
 ## Target maintainers
 
-See [`fuchsia.toml`] in the `team` repository for current target maintainers.
+[@erickt](https://github.com/erickt)
+[@Nashenas88](https://github.com/Nashenas88)
 
-[`fuchsia.toml`]: https://github.com/rust-lang/team/blob/master/teams/fuchsia.toml
+The up-to-date list can be also found via the
+[fuchsia marker team](https://github.com/rust-lang/team/blob/master/teams/fuchsia.toml).
 
 ## Table of contents
 
@@ -180,7 +182,7 @@ Fuchsia as well. A recent version (14+) of clang should be sufficient to compile
 Rust for Fuchsia.
 
 x86-64 and AArch64 Fuchsia targets can be enabled using the following
-configuration in `config.toml`:
+configuration in `bootstrap.toml`:
 
 ```toml
 [build]
@@ -212,7 +214,7 @@ cxx = "clang++"
 
 By default, the Rust compiler installs itself to `/usr/local` on most UNIX
 systems. You may want to install it to another location (e.g. a local `install`
-directory) by setting a custom prefix in `config.toml`:
+directory) by setting a custom prefix in `bootstrap.toml`:
 
 ```toml
 [install]
@@ -695,7 +697,7 @@ We can then use the script to start our test environment with:
 )
 ```
 
-Where `${RUST_SRC_PATH}/build` is the `build-dir` set in `config.toml`.
+Where `${RUST_SRC_PATH}/build` is the `build-dir` set in `bootstrap.toml`.
 
 Once our environment is started, we can run our tests using `x.py` as usual. The
 test runner script will run the compiled tests on an emulated Fuchsia device. To
@@ -705,7 +707,7 @@ run the full `tests/ui` test suite:
 ( \
     source config-env.sh &&                                                   \
     ./x.py                                                                    \
-    --config config.toml                                                      \
+    --config bootstrap.toml                                                      \
     --stage=2                                                                 \
     test tests/ui                                                             \
     --target x86_64-unknown-fuchsia                                           \
@@ -893,7 +895,7 @@ through our `x.py` invocation. The full invocation is:
 ( \
     source config-env.sh &&                                                   \
     ./x.py                                                                    \
-    --config config.toml                                                      \
+    --config bootstrap.toml                                                      \
     --stage=2                                                                 \
     test tests/${TEST}                                                        \
     --target x86_64-unknown-fuchsia                                           \

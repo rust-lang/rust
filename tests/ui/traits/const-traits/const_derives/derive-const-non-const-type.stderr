@@ -6,7 +6,6 @@ LL | #[derive_const(Default)]
    |
    = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
    = note: adding a non-const method body in the future would be a breaking change
-   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: cannot call non-const associated function `<A as Default>::default` in constant functions
   --> $DIR/derive-const-non-const-type.rs:11:14
@@ -17,7 +16,6 @@ LL | pub struct S(A);
    |              ^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

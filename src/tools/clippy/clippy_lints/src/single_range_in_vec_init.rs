@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::get_trait_def_id;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
+use clippy_utils::{get_trait_def_id, is_no_std_crate};
 use rustc_ast::{LitIntType, LitKind, UintTy};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, QPath, StructTailExpr};
@@ -125,7 +125,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
                     span,
                     format!("{suggested_type} of `Range` that is only one element"),
                     |diag| {
-                        if should_emit_every_value {
+                        if should_emit_every_value && !is_no_std_crate(cx) {
                             diag.span_suggestion(
                                 span,
                                 "if you wanted a `Vec` that contains the entire range, try",

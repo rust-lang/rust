@@ -1,13 +1,11 @@
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 
 //@ revisions:rpass1 rpass2
 
+use std::intrinsics::simd::simd_shuffle;
+
 #[repr(simd)]
 struct I32x2([i32; 2]);
-
-extern "rust-intrinsic" {
-    fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
-}
 
 #[repr(simd)]
 struct SimdShuffleIdx<const LEN: usize>([u32; LEN]);

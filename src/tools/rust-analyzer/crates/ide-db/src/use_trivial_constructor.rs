@@ -3,8 +3,8 @@
 use hir::StructKind;
 use span::Edition;
 use syntax::{
-    ast::{make, Expr, Path},
     ToSmolStr,
+    ast::{Expr, Path, make},
 };
 
 /// given a type return the trivial constructor (if one exists)

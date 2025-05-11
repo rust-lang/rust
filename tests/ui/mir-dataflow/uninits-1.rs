@@ -49,3 +49,5 @@ fn main() {
     foo(true, &mut S(13), S(14), S(15));
     foo(false, &mut S(13), S(14), S(15));
 }
+
+//~? ERROR stop_after_dataflow ended compilation

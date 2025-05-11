@@ -22,3 +22,5 @@ fn main() {
     foo(&mut S(13));
     foo(&mut S(13));
 }
+
+//~? ERROR stop_after_dataflow ended compilation

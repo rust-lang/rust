@@ -4,15 +4,14 @@
 
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Formatter};
+use std::iter;
 use std::ops::{Index, IndexMut};
-use std::{iter, mem};
 
-pub use basic_blocks::BasicBlocks;
+pub use basic_blocks::{BasicBlocks, SwitchTargetValue};
 use either::Either;
 use polonius_engine::Atom;
 use rustc_abi::{FieldIdx, VariantIdx};
 pub use rustc_ast::Mutability;
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
@@ -21,25 +20,21 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{
     self as hir, BindingMode, ByRef, CoroutineDesugaring, CoroutineKind, HirId, ImplicitSelfKind,
 };
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use tracing::trace;
+use tracing::{debug, trace};
 
 pub use self::query::*;
-use self::visit::TyContext;
 use crate::mir::interpret::{AllocRange, Scalar};
-use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
-use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{
-    self, AdtDef, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt, TypingEnv,
-    UserTypeAnnotationIndex,
+    self, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt, TypeVisitableExt,
+    TypingEnv, UserTypeAnnotationIndex,
 };
 
 mod basic_blocks;
@@ -50,16 +45,13 @@ pub mod generic_graphviz;
 pub mod graphviz;
 pub mod interpret;
 pub mod mono;
-pub mod patch;
 pub mod pretty;
 mod query;
 mod statement;
 mod syntax;
-pub mod tcx;
 mod terminator;
 
 pub mod traversal;
-mod type_foldable;
 pub mod visit;
 
 pub use consts::*;
@@ -103,24 +95,28 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
 }
 
 impl MirPhase {
-    /// Gets the index of the current MirPhase within the set of all `MirPhase`s.
-    ///
-    /// FIXME(JakobDegen): Return a `(usize, usize)` instead.
-    pub fn phase_index(&self) -> usize {
-        const BUILT_PHASE_COUNT: usize = 1;
-        const ANALYSIS_PHASE_COUNT: usize = 2;
-        match self {
-            MirPhase::Built => 1,
-            MirPhase::Analysis(analysis_phase) => {
-                1 + BUILT_PHASE_COUNT + (*analysis_phase as usize)
-            }
-            MirPhase::Runtime(runtime_phase) => {
-                1 + BUILT_PHASE_COUNT + ANALYSIS_PHASE_COUNT + (*runtime_phase as usize)
-            }
+    pub fn name(&self) -> &'static str {
+        match *self {
+            MirPhase::Built => "built",
+            MirPhase::Analysis(AnalysisPhase::Initial) => "analysis",
+            MirPhase::Analysis(AnalysisPhase::PostCleanup) => "analysis-post-cleanup",
+            MirPhase::Runtime(RuntimePhase::Initial) => "runtime",
+            MirPhase::Runtime(RuntimePhase::PostCleanup) => "runtime-post-cleanup",
+            MirPhase::Runtime(RuntimePhase::Optimized) => "runtime-optimized",
         }
     }
 
-    /// Parses an `MirPhase` from a pair of strings. Panics if this isn't possible for any reason.
+    /// Gets the (dialect, phase) index of the current `MirPhase`. Both numbers
+    /// are 1-indexed.
+    pub fn index(&self) -> (usize, usize) {
+        match *self {
+            MirPhase::Built => (1, 1),
+            MirPhase::Analysis(analysis_phase) => (2, 1 + analysis_phase as usize),
+            MirPhase::Runtime(runtime_phase) => (3, 1 + runtime_phase as usize),
+        }
+    }
+
+    /// Parses a `MirPhase` from a pair of strings. Panics if this isn't possible for any reason.
     pub fn parse(dialect: String, phase: Option<String>) -> Self {
         match &*dialect.to_ascii_lowercase() {
             "built" => {
@@ -204,7 +200,13 @@ pub struct CoroutineInfo<'tcx> {
     /// Coroutine drop glue. This field is populated after the state transform pass.
     pub coroutine_drop: Option<Body<'tcx>>,
 
-    /// The layout of a coroutine. This field is populated after the state transform pass.
+    /// Coroutine async drop glue.
+    pub coroutine_drop_async: Option<Body<'tcx>>,
+
+    /// When coroutine has sync drop, this is async proxy calling `coroutine_drop` sync impl.
+    pub coroutine_drop_proxy_async: Option<Body<'tcx>>,
+
+    /// The layout of a coroutine. Produced by the state transformation.
     pub coroutine_layout: Option<CoroutineLayout<'tcx>>,
 
     /// If this is a coroutine then record the type of source expression that caused this coroutine
@@ -224,6 +226,8 @@ impl<'tcx> CoroutineInfo<'tcx> {
             yield_ty: Some(yield_ty),
             resume_ty: Some(resume_ty),
             coroutine_drop: None,
+            coroutine_drop_async: None,
+            coroutine_drop_proxy_async: None,
             coroutine_layout: None,
         }
     }
@@ -335,13 +339,13 @@ pub struct Body<'tcx> {
     ///
     /// ```rust
     /// fn test<T>() {
-    ///     let _ = [0; std::mem::size_of::<*mut T>()];
+    ///     let _ = [0; size_of::<*mut T>()];
     /// }
     /// ```
     ///
     /// **WARNING**: Do not change this flags after the MIR was originally created, even if an optimization
     /// removed the last mention of all generic params. We do not want to rely on optimizations and
-    /// potentially allow things like `[u8; std::mem::size_of::<T>() * 0]` due to this.
+    /// potentially allow things like `[u8; size_of::<T>() * 0]` due to this.
     pub is_polymorphic: bool,
 
     /// The phase at which this MIR should be "injected" into the compilation process.
@@ -358,6 +362,8 @@ pub struct Body<'tcx> {
     ///
     /// Only present if coverage is enabled and this function is eligible.
     /// Boxed to limit space overhead in non-coverage builds.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     pub coverage_info_hi: Option<Box<coverage::CoverageInfoHi>>,
 
     /// Per-function coverage information added by the `InstrumentCoverage`
@@ -366,6 +372,8 @@ pub struct Body<'tcx> {
     ///
     /// If `-Cinstrument-coverage` is not active, or if an individual function
     /// is not eligible for coverage, then this should always be `None`.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     pub function_coverage_info: Option<Box<coverage::FunctionCoverageInfo>>,
 }
 
@@ -481,7 +489,7 @@ impl<'tcx> Body<'tcx> {
 
     /// Returns an iterator over all user-declared mutable locals.
     #[inline]
-    pub fn mut_vars_iter<'a>(&'a self) -> impl Iterator<Item = Local> + Captures<'tcx> + 'a {
+    pub fn mut_vars_iter(&self) -> impl Iterator<Item = Local> {
         (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             let decl = &self.local_decls[local];
@@ -491,9 +499,7 @@ impl<'tcx> Body<'tcx> {
 
     /// Returns an iterator over all user-declared mutable arguments and locals.
     #[inline]
-    pub fn mut_vars_and_args_iter<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = Local> + Captures<'tcx> + 'a {
+    pub fn mut_vars_and_args_iter(&self) -> impl Iterator<Item = Local> {
         (1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             let decl = &self.local_decls[local];
@@ -523,7 +529,7 @@ impl<'tcx> Body<'tcx> {
     }
 
     #[inline]
-    pub fn drain_vars_and_temps<'a>(&'a mut self) -> impl Iterator<Item = LocalDecl<'tcx>> + 'a {
+    pub fn drain_vars_and_temps(&mut self) -> impl Iterator<Item = LocalDecl<'tcx>> {
         self.local_decls.drain(self.arg_count + 1..)
     }
 
@@ -537,17 +543,6 @@ impl<'tcx> Body<'tcx> {
         } else {
             assert_eq!(idx, stmts.len());
             &block.terminator().source_info
-        }
-    }
-
-    pub fn span_for_ty_context(&self, ty_context: TyContext) -> Span {
-        match ty_context {
-            TyContext::UserTy(span) => span,
-            TyContext::ReturnTy(source_info)
-            | TyContext::LocalDecl { source_info, .. }
-            | TyContext::YieldTy(source_info)
-            | TyContext::ResumeTy(source_info) => source_info.span,
-            TyContext::Location(loc) => self.source_info(loc).span,
         }
     }
 
@@ -598,6 +593,26 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn coroutine_drop(&self) -> Option<&Body<'tcx>> {
         self.coroutine.as_ref().and_then(|coroutine| coroutine.coroutine_drop.as_ref())
+    }
+
+    #[inline]
+    pub fn coroutine_drop_async(&self) -> Option<&Body<'tcx>> {
+        self.coroutine.as_ref().and_then(|coroutine| coroutine.coroutine_drop_async.as_ref())
+    }
+
+    #[inline]
+    pub fn coroutine_requires_async_drop(&self) -> bool {
+        self.coroutine_drop_async().is_some()
+    }
+
+    #[inline]
+    pub fn future_drop_poll(&self) -> Option<&Body<'tcx>> {
+        self.coroutine.as_ref().and_then(|coroutine| {
+            coroutine
+                .coroutine_drop_async
+                .as_ref()
+                .or(coroutine.coroutine_drop_proxy_async.as_ref())
+        })
     }
 
     #[inline]
@@ -792,7 +807,7 @@ impl<T> ClearCrossCrate<T> {
         }
     }
 
-    pub fn assert_crate_local(self) -> T {
+    pub fn unwrap_crate_local(self) -> T {
         match self {
             ClearCrossCrate::Clear => bug!("unwrapping cross-crate data"),
             ClearCrossCrate::Set(v) => v,
@@ -803,7 +818,7 @@ impl<T> ClearCrossCrate<T> {
 const TAG_CLEAR_CROSS_CRATE_CLEAR: u8 = 0;
 const TAG_CLEAR_CROSS_CRATE_SET: u8 = 1;
 
-impl<E: TyEncoder, T: Encodable<E>> Encodable<E> for ClearCrossCrate<T> {
+impl<'tcx, E: TyEncoder<'tcx>, T: Encodable<E>> Encodable<E> for ClearCrossCrate<T> {
     #[inline]
     fn encode(&self, e: &mut E) {
         if E::CLEAR_CROSS_CRATE {
@@ -819,7 +834,7 @@ impl<E: TyEncoder, T: Encodable<E>> Encodable<E> for ClearCrossCrate<T> {
         }
     }
 }
-impl<D: TyDecoder, T: Decodable<D>> Decodable<D> for ClearCrossCrate<T> {
+impl<'tcx, D: TyDecoder<'tcx>, T: Decodable<D>> Decodable<D> for ClearCrossCrate<T> {
     #[inline]
     fn decode(d: &mut D) -> ClearCrossCrate<T> {
         if D::CLEAR_CROSS_CRATE {
@@ -923,8 +938,6 @@ pub enum BindingForm<'tcx> {
     RefForGuard,
 }
 
-TrivialTypeTraversalImpls! { BindingForm<'tcx> }
-
 mod binding_form_impl {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
     use rustc_query_system::ich::StableHashingContext;
@@ -951,7 +964,7 @@ mod binding_form_impl {
 /// involved in borrow_check errors, e.g., explanations of where the
 /// temporaries come from, when their destructors are run, and/or how
 /// one might revise the code to satisfy the borrow checker's rules.
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub struct BlockTailInfo {
     /// If `true`, then the value resulting from evaluating this tail
     /// expression is ignored by the block's expression context.
@@ -975,7 +988,6 @@ pub struct LocalDecl<'tcx> {
     /// Temporaries and the return place are always mutable.
     pub mutability: Mutability,
 
-    // FIXME(matthewjasper) Don't store in this in `Body`
     pub local_info: ClearCrossCrate<Box<LocalInfo<'tcx>>>,
 
     /// The type of this local.
@@ -985,7 +997,6 @@ pub struct LocalDecl<'tcx> {
     /// e.g., via `let x: T`, then we carry that type here. The MIR
     /// borrow checker needs this information since it can affect
     /// region inference.
-    // FIXME(matthewjasper) Don't store in this in `Body`
     pub user_ty: Option<Box<UserTypeProjections>>,
 
     /// The *syntactic* (i.e., not visibility) source scope the local is defined
@@ -1093,7 +1104,6 @@ pub enum LocalInfo<'tcx> {
     AggregateTemp,
     /// A temporary created for evaluation of some subexpression of some block's tail expression
     /// (with no intervening statement context).
-    // FIXME(matthewjasper) Don't store in this in `Body`
     BlockTailTemp(BlockTailInfo),
     /// A temporary created during evaluating `if` predicate, possibly for pattern matching for `let`s,
     /// and subject to Edition 2024 temporary lifetime rules
@@ -1108,7 +1118,7 @@ pub enum LocalInfo<'tcx> {
 
 impl<'tcx> LocalDecl<'tcx> {
     pub fn local_info(&self) -> &LocalInfo<'tcx> {
-        self.local_info.as_ref().assert_crate_local()
+        self.local_info.as_ref().unwrap_crate_local()
     }
 
     /// Returns `true` only if local is a binding that can itself be
@@ -1366,70 +1376,6 @@ impl<'tcx> BasicBlockData<'tcx> {
         self.terminator.as_mut().expect("invalid terminator state")
     }
 
-    pub fn retain_statements<F>(&mut self, mut f: F)
-    where
-        F: FnMut(&mut Statement<'_>) -> bool,
-    {
-        for s in &mut self.statements {
-            if !f(s) {
-                s.make_nop();
-            }
-        }
-    }
-
-    pub fn expand_statements<F, I>(&mut self, mut f: F)
-    where
-        F: FnMut(&mut Statement<'tcx>) -> Option<I>,
-        I: iter::TrustedLen<Item = Statement<'tcx>>,
-    {
-        // Gather all the iterators we'll need to splice in, and their positions.
-        let mut splices: Vec<(usize, I)> = vec![];
-        let mut extra_stmts = 0;
-        for (i, s) in self.statements.iter_mut().enumerate() {
-            if let Some(mut new_stmts) = f(s) {
-                if let Some(first) = new_stmts.next() {
-                    // We can already store the first new statement.
-                    *s = first;
-
-                    // Save the other statements for optimized splicing.
-                    let remaining = new_stmts.size_hint().0;
-                    if remaining > 0 {
-                        splices.push((i + 1 + extra_stmts, new_stmts));
-                        extra_stmts += remaining;
-                    }
-                } else {
-                    s.make_nop();
-                }
-            }
-        }
-
-        // Splice in the new statements, from the end of the block.
-        // FIXME(eddyb) This could be more efficient with a "gap buffer"
-        // where a range of elements ("gap") is left uninitialized, with
-        // splicing adding new elements to the end of that gap and moving
-        // existing elements from before the gap to the end of the gap.
-        // For now, this is safe code, emulating a gap but initializing it.
-        let mut gap = self.statements.len()..self.statements.len() + extra_stmts;
-        self.statements.resize(gap.end, Statement {
-            source_info: SourceInfo::outermost(DUMMY_SP),
-            kind: StatementKind::Nop,
-        });
-        for (splice_start, new_stmts) in splices.into_iter().rev() {
-            let splice_end = splice_start + new_stmts.size_hint().0;
-            while gap.end > splice_end {
-                gap.start -= 1;
-                gap.end -= 1;
-                self.statements.swap(gap.start, gap.end);
-            }
-            self.statements.splice(splice_start..splice_end, new_stmts);
-            gap.end = splice_start;
-        }
-    }
-
-    pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
-        if index < self.statements.len() { &self.statements[index] } else { &self.terminator }
-    }
-
     /// Does the block have no statements and an unreachable terminator?
     #[inline]
     pub fn is_empty_unreachable(&self) -> bool {
@@ -1561,64 +1507,12 @@ pub struct SourceScopeLocalData {
 /// &'static str`.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UserTypeProjections {
-    pub contents: Vec<(UserTypeProjection, Span)>,
+    pub contents: Vec<UserTypeProjection>,
 }
 
-impl<'tcx> UserTypeProjections {
-    pub fn none() -> Self {
-        UserTypeProjections { contents: vec![] }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.contents.is_empty()
-    }
-
-    pub fn projections_and_spans(
-        &self,
-    ) -> impl Iterator<Item = &(UserTypeProjection, Span)> + ExactSizeIterator {
-        self.contents.iter()
-    }
-
+impl UserTypeProjections {
     pub fn projections(&self) -> impl Iterator<Item = &UserTypeProjection> + ExactSizeIterator {
-        self.contents.iter().map(|&(ref user_type, _span)| user_type)
-    }
-
-    pub fn push_projection(mut self, user_ty: &UserTypeProjection, span: Span) -> Self {
-        self.contents.push((user_ty.clone(), span));
-        self
-    }
-
-    fn map_projections(
-        mut self,
-        mut f: impl FnMut(UserTypeProjection) -> UserTypeProjection,
-    ) -> Self {
-        self.contents = self.contents.into_iter().map(|(proj, span)| (f(proj), span)).collect();
-        self
-    }
-
-    pub fn index(self) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.index())
-    }
-
-    pub fn subslice(self, from: u64, to: u64) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.subslice(from, to))
-    }
-
-    pub fn deref(self) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.deref())
-    }
-
-    pub fn leaf(self, field: FieldIdx) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.leaf(field))
-    }
-
-    pub fn variant(
-        self,
-        adt_def: AdtDef<'tcx>,
-        variant_index: VariantIdx,
-        field_index: FieldIdx,
-    ) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.variant(adt_def, variant_index, field_index))
+        self.contents.iter()
     }
 }
 
@@ -1642,42 +1536,6 @@ impl<'tcx> UserTypeProjections {
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
     pub projs: Vec<ProjectionKind>,
-}
-
-impl UserTypeProjection {
-    pub(crate) fn index(mut self) -> Self {
-        self.projs.push(ProjectionElem::Index(()));
-        self
-    }
-
-    pub(crate) fn subslice(mut self, from: u64, to: u64) -> Self {
-        self.projs.push(ProjectionElem::Subslice { from, to, from_end: true });
-        self
-    }
-
-    pub(crate) fn deref(mut self) -> Self {
-        self.projs.push(ProjectionElem::Deref);
-        self
-    }
-
-    pub(crate) fn leaf(mut self, field: FieldIdx) -> Self {
-        self.projs.push(ProjectionElem::Field(field, ()));
-        self
-    }
-
-    pub(crate) fn variant(
-        mut self,
-        adt_def: AdtDef<'_>,
-        variant_index: VariantIdx,
-        field_index: FieldIdx,
-    ) -> Self {
-        self.projs.push(ProjectionElem::Downcast(
-            Some(adt_def.variant(variant_index).name),
-            variant_index,
-        ));
-        self.projs.push(ProjectionElem::Field(field_index, ()));
-        self
-    }
 }
 
 rustc_index::newtype_index! {
@@ -1790,6 +1648,47 @@ impl DefLocation {
             }
         }
     }
+}
+
+/// Checks if the specified `local` is used as the `self` parameter of a method call
+/// in the provided `BasicBlock`. If it is, then the `DefId` of the called method is
+/// returned.
+pub fn find_self_call<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    local: Local,
+    block: BasicBlock,
+) -> Option<(DefId, GenericArgsRef<'tcx>)> {
+    debug!("find_self_call(local={:?}): terminator={:?}", local, body[block].terminator);
+    if let Some(Terminator { kind: TerminatorKind::Call { func, args, .. }, .. }) =
+        &body[block].terminator
+        && let Operand::Constant(box ConstOperand { const_, .. }) = func
+        && let ty::FnDef(def_id, fn_args) = *const_.ty().kind()
+        && let Some(item) = tcx.opt_associated_item(def_id)
+        && item.is_method()
+        && let [Spanned { node: Operand::Move(self_place) | Operand::Copy(self_place), .. }, ..] =
+            **args
+    {
+        if self_place.as_local() == Some(local) {
+            return Some((def_id, fn_args));
+        }
+
+        // Handle the case where `self_place` gets reborrowed.
+        // This happens when the receiver is `&T`.
+        for stmt in &body[block].statements {
+            if let StatementKind::Assign(box (place, rvalue)) = &stmt.kind
+                && let Some(reborrow_local) = place.as_local()
+                && self_place.as_local() == Some(reborrow_local)
+                && let Rvalue::Ref(_, _, deref_place) = rvalue
+                && let PlaceRef { local: deref_local, projection: [ProjectionElem::Deref] } =
+                    deref_place.as_ref()
+                && deref_local == local
+            {
+                return Some((def_id, fn_args));
+            }
+        }
+    }
+    None
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.

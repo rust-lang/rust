@@ -40,20 +40,26 @@ fn func_non_mutable() {
 
 fn func_mutable() {
     debug_assert!(bool_mut(&mut 3));
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert!`
-    //~| NOTE: `-D clippy::debug-assert-with-mut-call` implied by `-D warnings`
+    //~^ debug_assert_with_mut_call
+
+
     debug_assert!(!bool_mut(&mut 3));
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert!`
+    //~^ debug_assert_with_mut_call
+
 
     debug_assert_eq!(0, u32_mut(&mut 3));
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_eq!`
+    //~^ debug_assert_with_mut_call
+
     debug_assert_eq!(u32_mut(&mut 3), 0);
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_eq!`
+    //~^ debug_assert_with_mut_call
+
 
     debug_assert_ne!(1, u32_mut(&mut 3));
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_ne!`
+    //~^ debug_assert_with_mut_call
+
     debug_assert_ne!(u32_mut(&mut 3), 1);
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_ne!`
+    //~^ debug_assert_with_mut_call
+
 }
 
 fn method_non_mutable() {
@@ -69,33 +75,46 @@ fn method_non_mutable() {
 
 fn method_mutable() {
     debug_assert!(S.bool_self_mut());
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert!`
+    //~^ debug_assert_with_mut_call
+
     debug_assert!(!S.bool_self_mut());
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert!`
+    //~^ debug_assert_with_mut_call
+
     debug_assert!(S.bool_self_ref_arg_mut(&mut 3));
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert!`
+    //~^ debug_assert_with_mut_call
+
     debug_assert!(S.bool_self_mut_arg_ref(&3));
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert!`
+    //~^ debug_assert_with_mut_call
+
     debug_assert!(S.bool_self_mut_arg_mut(&mut 3));
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert!`
+    //~^ debug_assert_with_mut_call
+
 
     debug_assert_eq!(S.u32_self_mut(), 0);
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_eq!`
+    //~^ debug_assert_with_mut_call
+
     debug_assert_eq!(S.u32_self_mut_arg_ref(&3), 0);
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_eq!`
+    //~^ debug_assert_with_mut_call
+
     debug_assert_eq!(S.u32_self_ref_arg_mut(&mut 3), 0);
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_eq!`
+    //~^ debug_assert_with_mut_call
+
     debug_assert_eq!(S.u32_self_mut_arg_mut(&mut 3), 0);
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_eq!`
+    //~^ debug_assert_with_mut_call
+
 
     debug_assert_ne!(S.u32_self_mut(), 1);
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_ne!`
+    //~^ debug_assert_with_mut_call
+
     debug_assert_ne!(S.u32_self_mut_arg_ref(&3), 1);
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_ne!`
+    //~^ debug_assert_with_mut_call
+
     debug_assert_ne!(S.u32_self_ref_arg_mut(&mut 3), 1);
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_ne!`
+    //~^ debug_assert_with_mut_call
+
     debug_assert_ne!(S.u32_self_mut_arg_mut(&mut 3), 1);
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_ne!`
+    //~^ debug_assert_with_mut_call
+
 }
 
 fn misc() {
@@ -104,35 +123,43 @@ fn misc() {
     debug_assert_eq!(v.get(0), Some(&1));
     debug_assert_ne!(v[0], 2);
     debug_assert_eq!(v.pop(), Some(1));
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_eq!`
+    //~^ debug_assert_with_mut_call
+
     debug_assert_ne!(Some(3), v.pop());
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_ne!`
+    //~^ debug_assert_with_mut_call
+
 
     let a = &mut 3;
     debug_assert!(bool_mut(a));
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert!`
+    //~^ debug_assert_with_mut_call
+
 
     // nested
     debug_assert!(!(bool_ref(&u32_mut(&mut 3))));
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert!`
+    //~^ debug_assert_with_mut_call
+
 
     // chained
     debug_assert_eq!(v.pop().unwrap(), 3);
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert_eq!`
+    //~^ debug_assert_with_mut_call
+
 
     // format args
     debug_assert!(bool_ref(&3), "w/o format");
     debug_assert!(bool_mut(&mut 3), "w/o format");
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert!`
+    //~^ debug_assert_with_mut_call
+
     debug_assert!(bool_ref(&3), "{} format", "w/");
     debug_assert!(bool_mut(&mut 3), "{} format", "w/");
-    //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert!`
+    //~^ debug_assert_with_mut_call
+
 
     // sub block
     let mut x = 42_u32;
     debug_assert!({
         bool_mut(&mut x);
-        //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert!
+        //~^ debug_assert_with_mut_call
+
         x > 10
     });
 
@@ -140,7 +167,8 @@ fn misc() {
     debug_assert!((|| {
         let mut x = 42;
         bool_mut(&mut x);
-        //~^ ERROR: do not call a function with mutable arguments inside of `debug_assert!
+        //~^ debug_assert_with_mut_call
+
         x > 10
     })());
 }

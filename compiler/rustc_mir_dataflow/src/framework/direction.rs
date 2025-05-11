@@ -1,9 +1,11 @@
 use std::ops::RangeInclusive;
 
-use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
+use rustc_middle::mir::{
+    self, BasicBlock, CallReturnPlaces, Location, SwitchTargetValue, TerminatorEdges,
+};
 
 use super::visitor::ResultsVisitor;
-use super::{Analysis, Effect, EffectIndex, Results, SwitchIntTarget};
+use super::{Analysis, Effect, EffectIndex};
 
 pub trait Direction {
     const IS_FORWARD: bool;
@@ -34,14 +36,14 @@ pub trait Direction {
         A: Analysis<'tcx>;
 
     /// Called by `ResultsVisitor` to recompute the analysis domain values for
-    /// all locations in a basic block (starting from the entry value stored
-    /// in `Results`) and to visit them with `vis`.
+    /// all locations in a basic block (starting from `entry_state` and to
+    /// visit them with `vis`.
     fn visit_results_in_block<'mir, 'tcx, A>(
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &mut Results<'tcx, A>,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, A>,
+        analysis: &mut A,
+        vis: &mut impl ResultsVisitor<'tcx, A>,
     ) where
         A: Analysis<'tcx>;
 }
@@ -112,14 +114,10 @@ impl Direction for Backward {
 
                 mir::TerminatorKind::SwitchInt { targets: _, ref discr } => {
                     if let Some(mut data) = analysis.get_switch_int_data(block, discr) {
-                        let values = &body.basic_blocks.switch_sources()[&(block, pred)];
-                        let targets =
-                            values.iter().map(|&value| SwitchIntTarget { value, target: block });
-
                         let mut tmp = analysis.bottom_value(body);
-                        for target in targets {
-                            tmp.clone_from(&exit_state);
-                            analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, target);
+                        for &value in &body.basic_blocks.switch_sources()[&(block, pred)] {
+                            tmp.clone_from(exit_state);
+                            analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, value);
                             propagate(pred, &tmp);
                         }
                     } else {
@@ -213,28 +211,26 @@ impl Direction for Backward {
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &mut Results<'tcx, A>,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, A>,
+        analysis: &mut A,
+        vis: &mut impl ResultsVisitor<'tcx, A>,
     ) where
         A: Analysis<'tcx>,
     {
-        state.clone_from(results.entry_set_for_block(block));
-
         vis.visit_block_end(state);
 
         let loc = Location { block, statement_index: block_data.statements.len() };
         let term = block_data.terminator();
-        results.analysis.apply_early_terminator_effect(state, term, loc);
-        vis.visit_after_early_terminator_effect(results, state, term, loc);
-        results.analysis.apply_primary_terminator_effect(state, term, loc);
-        vis.visit_after_primary_terminator_effect(results, state, term, loc);
+        analysis.apply_early_terminator_effect(state, term, loc);
+        vis.visit_after_early_terminator_effect(analysis, state, term, loc);
+        analysis.apply_primary_terminator_effect(state, term, loc);
+        vis.visit_after_primary_terminator_effect(analysis, state, term, loc);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
             let loc = Location { block, statement_index };
-            results.analysis.apply_early_statement_effect(state, stmt, loc);
-            vis.visit_after_early_statement_effect(results, state, stmt, loc);
-            results.analysis.apply_primary_statement_effect(state, stmt, loc);
-            vis.visit_after_primary_statement_effect(results, state, stmt, loc);
+            analysis.apply_early_statement_effect(state, stmt, loc);
+            vis.visit_after_early_statement_effect(analysis, state, stmt, loc);
+            analysis.apply_primary_statement_effect(state, stmt, loc);
+            vis.visit_after_primary_statement_effect(analysis, state, stmt, loc);
         }
 
         vis.visit_block_start(state);
@@ -292,12 +288,9 @@ impl Direction for Forward {
                 if let Some(mut data) = analysis.get_switch_int_data(block, discr) {
                     let mut tmp = analysis.bottom_value(body);
                     for (value, target) in targets.iter() {
-                        tmp.clone_from(&exit_state);
-                        analysis.apply_switch_int_edge_effect(
-                            &mut data,
-                            &mut tmp,
-                            SwitchIntTarget { value: Some(value), target },
-                        );
+                        tmp.clone_from(exit_state);
+                        let value = SwitchTargetValue::Normal(value);
+                        analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, value);
                         propagate(target, &tmp);
                     }
 
@@ -305,10 +298,11 @@ impl Direction for Forward {
                     // `exit_state`, so pass it directly to `apply_switch_int_edge_effect` to save
                     // a clone of the dataflow state.
                     let otherwise = targets.otherwise();
-                    analysis.apply_switch_int_edge_effect(&mut data, exit_state, SwitchIntTarget {
-                        value: None,
-                        target: otherwise,
-                    });
+                    analysis.apply_switch_int_edge_effect(
+                        &mut data,
+                        exit_state,
+                        SwitchTargetValue::Otherwise,
+                    );
                     propagate(otherwise, exit_state);
                 } else {
                     for target in targets.all_targets() {
@@ -397,29 +391,27 @@ impl Direction for Forward {
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &mut Results<'tcx, A>,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, A>,
+        analysis: &mut A,
+        vis: &mut impl ResultsVisitor<'tcx, A>,
     ) where
         A: Analysis<'tcx>,
     {
-        state.clone_from(results.entry_set_for_block(block));
-
         vis.visit_block_start(state);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate() {
             let loc = Location { block, statement_index };
-            results.analysis.apply_early_statement_effect(state, stmt, loc);
-            vis.visit_after_early_statement_effect(results, state, stmt, loc);
-            results.analysis.apply_primary_statement_effect(state, stmt, loc);
-            vis.visit_after_primary_statement_effect(results, state, stmt, loc);
+            analysis.apply_early_statement_effect(state, stmt, loc);
+            vis.visit_after_early_statement_effect(analysis, state, stmt, loc);
+            analysis.apply_primary_statement_effect(state, stmt, loc);
+            vis.visit_after_primary_statement_effect(analysis, state, stmt, loc);
         }
 
         let loc = Location { block, statement_index: block_data.statements.len() };
         let term = block_data.terminator();
-        results.analysis.apply_early_terminator_effect(state, term, loc);
-        vis.visit_after_early_terminator_effect(results, state, term, loc);
-        results.analysis.apply_primary_terminator_effect(state, term, loc);
-        vis.visit_after_primary_terminator_effect(results, state, term, loc);
+        analysis.apply_early_terminator_effect(state, term, loc);
+        vis.visit_after_early_terminator_effect(analysis, state, term, loc);
+        analysis.apply_primary_terminator_effect(state, term, loc);
+        vis.visit_after_primary_terminator_effect(analysis, state, term, loc);
 
         vis.visit_block_end(state);
     }

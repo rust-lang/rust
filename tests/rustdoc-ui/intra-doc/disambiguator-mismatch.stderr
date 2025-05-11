@@ -11,8 +11,9 @@ LL | #![deny(rustdoc::broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: to link to the enum, prefix with `enum@`
    |
-LL | /// Link to [enum@S]
-   |              ~~~~~
+LL - /// Link to [struct@S]
+LL + /// Link to [enum@S]
+   |
 
 error: incompatible link kind for `S`
   --> $DIR/disambiguator-mismatch.rs:27:14
@@ -22,8 +23,9 @@ LL | /// Link to [mod@S]
    |
 help: to link to the enum, prefix with `enum@`
    |
-LL | /// Link to [enum@S]
-   |              ~~~~~
+LL - /// Link to [mod@S]
+LL + /// Link to [enum@S]
+   |
 
 error: incompatible link kind for `S`
   --> $DIR/disambiguator-mismatch.rs:32:14
@@ -33,8 +35,9 @@ LL | /// Link to [union@S]
    |
 help: to link to the enum, prefix with `enum@`
    |
-LL | /// Link to [enum@S]
-   |              ~~~~~
+LL - /// Link to [union@S]
+LL + /// Link to [enum@S]
+   |
 
 error: incompatible link kind for `S`
   --> $DIR/disambiguator-mismatch.rs:37:14
@@ -44,8 +47,9 @@ LL | /// Link to [trait@S]
    |
 help: to link to the enum, prefix with `enum@`
    |
-LL | /// Link to [enum@S]
-   |              ~~~~~
+LL - /// Link to [trait@S]
+LL + /// Link to [enum@S]
+   |
 
 error: incompatible link kind for `T`
   --> $DIR/disambiguator-mismatch.rs:42:14
@@ -55,8 +59,9 @@ LL | /// Link to [struct@T]
    |
 help: to link to the trait, prefix with `trait@`
    |
-LL | /// Link to [trait@T]
-   |              ~~~~~~
+LL - /// Link to [struct@T]
+LL + /// Link to [trait@T]
+   |
 
 error: incompatible link kind for `m`
   --> $DIR/disambiguator-mismatch.rs:47:14
@@ -89,8 +94,9 @@ LL | /// Link to [const@s]
    |
 help: to link to the static, prefix with `static@`
    |
-LL | /// Link to [static@s]
-   |              ~~~~~~~
+LL - /// Link to [const@s]
+LL + /// Link to [static@s]
+   |
 
 error: incompatible link kind for `c`
   --> $DIR/disambiguator-mismatch.rs:63:14
@@ -100,8 +106,9 @@ LL | /// Link to [static@c]
    |
 help: to link to the constant, prefix with `const@`
    |
-LL | /// Link to [const@c]
-   |              ~~~~~~
+LL - /// Link to [static@c]
+LL + /// Link to [const@c]
+   |
 
 error: incompatible link kind for `c`
   --> $DIR/disambiguator-mismatch.rs:68:14
@@ -111,8 +118,9 @@ LL | /// Link to [fn@c]
    |
 help: to link to the constant, prefix with `const@`
    |
-LL | /// Link to [const@c]
-   |              ~~~~~~
+LL - /// Link to [fn@c]
+LL + /// Link to [const@c]
+   |
 
 error: incompatible link kind for `c`
   --> $DIR/disambiguator-mismatch.rs:73:14
@@ -146,8 +154,9 @@ LL | /// Link to [fn@std]
    |
 help: to link to the crate, prefix with `mod@`
    |
-LL | /// Link to [mod@std]
-   |              ~~~~
+LL - /// Link to [fn@std]
+LL + /// Link to [mod@std]
+   |
 
 error: incompatible link kind for `X::y`
   --> $DIR/disambiguator-mismatch.rs:88:14
@@ -157,8 +166,9 @@ LL | /// Link to [method@X::y]
    |
 help: to link to the field, prefix with `field@`
    |
-LL | /// Link to [field@X::y]
-   |              ~~~~~~
+LL - /// Link to [method@X::y]
+LL + /// Link to [field@X::y]
+   |
 
 error: unresolved link to `S::A`
   --> $DIR/disambiguator-mismatch.rs:93:14
@@ -168,8 +178,9 @@ LL | /// Link to [field@S::A]
    |
 help: to link to the variant, prefix with `variant@`
    |
-LL | /// Link to [variant@S::A]
-   |              ~~~~~~~~
+LL - /// Link to [field@S::A]
+LL + /// Link to [variant@S::A]
+   |
 
 error: aborting due to 15 previous errors
 

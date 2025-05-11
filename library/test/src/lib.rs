@@ -20,6 +20,7 @@
 #![feature(rustdoc_internals)]
 #![feature(file_buffered)]
 #![feature(internal_output_capture)]
+#![feature(io_const_error)]
 #![feature(staged_api)]
 #![feature(process_exitcode_internals)]
 #![feature(panic_can_unwind)]
@@ -27,6 +28,7 @@
 #![feature(thread_spawn_hook)]
 #![allow(internal_features)]
 #![warn(rustdoc::unescaped_backticks)]
+#![warn(unreachable_pub)]
 
 pub use cli::TestOpts;
 
@@ -96,6 +98,15 @@ const SECONDARY_TEST_BENCH_BENCHMARKS_VAR: &str = "__RUST_TEST_BENCH_BENCHMARKS"
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
 pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Options>) {
+    test_main_with_exit_callback(args, tests, options, || {})
+}
+
+pub fn test_main_with_exit_callback<F: FnOnce()>(
+    args: &[String],
+    tests: Vec<TestDescAndFn>,
+    options: Option<Options>,
+    exit_callback: F,
+) {
     let mut opts = match cli::parse_opts(args) {
         Some(Ok(o)) => o,
         Some(Err(msg)) => {
@@ -149,6 +160,7 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
         let res = console::run_tests_console(&opts, tests);
         // Prevent Valgrind from reporting reachable blocks in users' unit tests.
         drop(panic::take_hook());
+        exit_callback();
         match res {
             Ok(true) => {}
             Ok(false) => process::exit(ERROR_EXIT_CODE),
@@ -183,12 +195,16 @@ pub fn test_main_static_abort(tests: &[&TestDescAndFn]) {
     // If we're being run in SpawnedSecondary mode, run the test here. run_test
     // will then exit the process.
     if let Ok(name) = env::var(SECONDARY_TEST_INVOKER_VAR) {
-        env::remove_var(SECONDARY_TEST_INVOKER_VAR);
+        unsafe {
+            env::remove_var(SECONDARY_TEST_INVOKER_VAR);
+        }
 
         // Convert benchmarks to tests if we're not benchmarking.
         let mut tests = tests.iter().map(make_owned_test).collect::<Vec<_>>();
         if env::var(SECONDARY_TEST_BENCH_BENCHMARKS_VAR).is_ok() {
-            env::remove_var(SECONDARY_TEST_BENCH_BENCHMARKS_VAR);
+            unsafe {
+                env::remove_var(SECONDARY_TEST_BENCH_BENCHMARKS_VAR);
+            }
         } else {
             tests = convert_benchmarks_to_tests(tests);
         };
@@ -660,10 +676,11 @@ fn run_test_in_process(
 
     io::set_output_capture(None);
 
-    let test_result = match result {
-        Ok(()) => calc_result(&desc, Ok(()), time_opts.as_ref(), exec_time.as_ref()),
-        Err(e) => calc_result(&desc, Err(e.as_ref()), time_opts.as_ref(), exec_time.as_ref()),
-    };
+    // Determine whether the test passed or failed, by comparing its panic
+    // payload (if any) with its `ShouldPanic` value, and by checking for
+    // fatal timeout.
+    let test_result =
+        calc_result(&desc, result.err().as_deref(), time_opts.as_ref(), exec_time.as_ref());
     let stdout = data.lock().unwrap_or_else(|e| e.into_inner()).to_vec();
     let message = CompletedTest::new(id, desc, test_result, exec_time, stdout);
     monitor_ch.send(message).unwrap();
@@ -735,10 +752,7 @@ fn spawn_test_subprocess(
 fn run_test_in_spawned_subprocess(desc: TestDesc, runnable_test: RunnableTest) -> ! {
     let builtin_panic_hook = panic::take_hook();
     let record_result = Arc::new(move |panic_info: Option<&'_ PanicHookInfo<'_>>| {
-        let test_result = match panic_info {
-            Some(info) => calc_result(&desc, Err(info.payload()), None, None),
-            None => calc_result(&desc, Ok(()), None, None),
-        };
+        let test_result = calc_result(&desc, panic_info.map(|info| info.payload()), None, None);
 
         // We don't support serializing TrFailedMsg, so just
         // print the message out to stderr.

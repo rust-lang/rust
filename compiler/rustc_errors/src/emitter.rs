@@ -14,10 +14,11 @@ use std::io::prelude::*;
 use std::io::{self, IsTerminal};
 use std::iter;
 use std::path::Path;
+use std::sync::Arc;
 
 use derive_setters::Setters;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
-use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
+use rustc_data_structures::sync::{DynSend, IntoDynSyncSend};
 use rustc_error_messages::{FluentArgs, SpanLabel};
 use rustc_lexer;
 use rustc_lint_defs::pluralize;
@@ -35,8 +36,8 @@ use crate::snippet::{
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{Translate, to_fluent_args};
 use crate::{
-    CodeSuggestion, DiagCtxt, DiagInner, DiagMessage, ErrCode, FluentBundle, LazyFallbackBundle,
-    Level, MultiSpan, Subdiag, SubstitutionHighlight, SuggestionStyle, TerminalUrl,
+    CodeSuggestion, DiagInner, DiagMessage, ErrCode, FluentBundle, LazyFallbackBundle, Level,
+    MultiSpan, Subdiag, SubstitutionHighlight, SuggestionStyle, TerminalUrl,
 };
 
 /// Default column width, used in tests and when terminal dimensions cannot be determined.
@@ -112,24 +113,11 @@ impl Margin {
         self.computed_left > 0
     }
 
-    fn was_cut_right(&self, line_len: usize) -> bool {
-        let right =
-            if self.computed_right == self.span_right || self.computed_right == self.label_right {
-                // FIXME: This comment refers to the only callsite of this method.
-                //        Rephrase it or refactor it, so it can stand on its own.
-                // Account for the "..." padding given above. Otherwise we end up with code lines
-                // that do fit but end in "..." as if they were trimmed.
-                // FIXME: Don't hard-code this offset. Is this meant to represent
-                //        `2 * str_width(self.margin())`?
-                self.computed_right - 6
-            } else {
-                self.computed_right
-            };
-        right < line_len && self.computed_left + self.column_width < line_len
-    }
-
     fn compute(&mut self, max_line_len: usize) {
         // When there's a lot of whitespace (>20), we want to trim it as it is useless.
+        // FIXME: this doesn't account for '\t', but to do so correctly we need to perform that
+        // calculation later, right before printing in order to be accurate with both unicode
+        // handling and trimming of long lines.
         self.computed_left = if self.whitespace_left > 20 {
             self.whitespace_left - 16 // We want some padding.
         } else {
@@ -309,7 +297,9 @@ pub trait Emitter: Translate {
                     // are some which do actually involve macros.
                     ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
-                    ExpnKind::Macro(macro_kind, name) => Some((macro_kind, name)),
+                    ExpnKind::Macro(macro_kind, name) => {
+                        Some((macro_kind, name, expn_data.hide_backtrace))
+                    }
                 }
             })
             .collect();
@@ -321,13 +311,17 @@ pub trait Emitter: Translate {
         self.render_multispans_macro_backtrace(span, children, backtrace);
 
         if !backtrace {
-            if let Some((macro_kind, name)) = has_macro_spans.first() {
+            // Skip builtin macros, as their expansion isn't relevant to the end user. This includes
+            // actual intrinsics, like `asm!`.
+            if let Some((macro_kind, name, _)) = has_macro_spans.first()
+                && let Some((_, _, false)) = has_macro_spans.last()
+            {
                 // Mark the actual macro this originates from
-                let and_then = if let Some((macro_kind, last_name)) = has_macro_spans.last()
+                let and_then = if let Some((macro_kind, last_name, _)) = has_macro_spans.last()
                     && last_name != name
                 {
                     let descr = macro_kind.descr();
-                    format!(" which comes from the expansion of the {descr} `{last_name}`",)
+                    format!(" which comes from the expansion of the {descr} `{last_name}`")
                 } else {
                     "".to_string()
                 };
@@ -537,11 +531,10 @@ impl Emitter for HumanEmitter {
 }
 
 /// An emitter that does nothing when emitting a non-fatal diagnostic.
-/// Fatal diagnostics are forwarded to `fatal_dcx` to avoid silent
+/// Fatal diagnostics are forwarded to `fatal_emitter` to avoid silent
 /// failures of rustc, as witnessed e.g. in issue #89358.
 pub struct SilentEmitter {
-    pub fallback_bundle: LazyFallbackBundle,
-    pub fatal_dcx: DiagCtxt,
+    pub fatal_emitter: Box<dyn Emitter + DynSend>,
     pub fatal_note: Option<String>,
     pub emit_fatal_diagnostic: bool,
 }
@@ -552,9 +545,7 @@ impl Translate for SilentEmitter {
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        // Ideally this field wouldn't be necessary and the fallback bundle in `fatal_dcx` would be
-        // used but the lock prevents this.
-        &self.fallback_bundle
+        self.fatal_emitter.fallback_fluent_bundle()
     }
 }
 
@@ -563,12 +554,12 @@ impl Emitter for SilentEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, mut diag: DiagInner, _registry: &Registry) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner, registry: &Registry) {
         if self.emit_fatal_diagnostic && diag.level == Level::Fatal {
             if let Some(fatal_note) = &self.fatal_note {
                 diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());
             }
-            self.fatal_dcx.handle().emit_diagnostic(diag);
+            self.fatal_emitter.emit_diagnostic(diag, registry);
         }
     }
 }
@@ -613,12 +604,11 @@ pub enum OutputTheme {
 pub struct HumanEmitter {
     #[setters(skip)]
     dst: IntoDynSyncSend<Destination>,
-    sm: Option<Lrc<SourceMap>>,
-    fluent_bundle: Option<Lrc<FluentBundle>>,
+    sm: Option<Arc<SourceMap>>,
+    fluent_bundle: Option<Arc<FluentBundle>>,
     #[setters(skip)]
     fallback_bundle: LazyFallbackBundle,
     short_message: bool,
-    teach: bool,
     ui_testing: bool,
     ignored_directories_in_source_blocks: Vec<String>,
     diagnostic_width: Option<usize>,
@@ -631,7 +621,7 @@ pub struct HumanEmitter {
 
 #[derive(Debug)]
 pub(crate) struct FileWithAnnotatedLines {
-    pub(crate) file: Lrc<SourceFile>,
+    pub(crate) file: Arc<SourceFile>,
     pub(crate) lines: Vec<Line>,
     multiline_depth: usize,
 }
@@ -644,7 +634,6 @@ impl HumanEmitter {
             fluent_bundle: None,
             fallback_bundle,
             short_message: false,
-            teach: false,
             ui_testing: false,
             ignored_directories_in_source_blocks: Vec::new(),
             diagnostic_width: None,
@@ -672,50 +661,50 @@ impl HumanEmitter {
         width_offset: usize,
         code_offset: usize,
         margin: Margin,
-    ) {
-        // Tabs are assumed to have been replaced by spaces in calling code.
-        debug_assert!(!source_string.contains('\t'));
+    ) -> usize {
         let line_len = source_string.len();
         // Create the source line we will highlight.
         let left = margin.left(line_len);
         let right = margin.right(line_len);
         // FIXME: The following code looks fishy. See #132860.
         // On long lines, we strip the source line, accounting for unicode.
-        let mut taken = 0;
         let code: String = source_string
             .chars()
-            .skip(left)
-            .take_while(|ch| {
-                // Make sure that the trimming on the right will fall within the terminal width.
-                let next = char_width(*ch);
-                if taken + next > right - left {
-                    return false;
-                }
-                taken += next;
-                true
-            })
+            .enumerate()
+            .skip_while(|(i, _)| *i < left)
+            .take_while(|(i, _)| *i < right)
+            .map(|(_, c)| c)
             .collect();
+        let code = normalize_whitespace(&code);
+        let was_cut_right =
+            source_string.chars().enumerate().skip_while(|(i, _)| *i < right).next().is_some();
         buffer.puts(line_offset, code_offset, &code, Style::Quotation);
         let placeholder = self.margin();
         if margin.was_cut_left() {
             // We have stripped some code/whitespace from the beginning, make it clear.
             buffer.puts(line_offset, code_offset, placeholder, Style::LineNumber);
         }
-        if margin.was_cut_right(line_len) {
+        if was_cut_right {
             let padding = str_width(placeholder);
             // We have stripped some code after the rightmost span end, make it clear we did so.
-            buffer.puts(line_offset, code_offset + taken - padding, placeholder, Style::LineNumber);
+            buffer.puts(
+                line_offset,
+                code_offset + str_width(&code) - padding,
+                placeholder,
+                Style::LineNumber,
+            );
         }
         buffer.puts(line_offset, 0, &self.maybe_anonymized(line_index), Style::LineNumber);
 
         self.draw_col_separator_no_space(buffer, line_offset, width_offset - 2);
+        left
     }
 
     #[instrument(level = "trace", skip(self), ret)]
     fn render_source_line(
         &self,
         buffer: &mut StyledBuffer,
-        file: Lrc<SourceFile>,
+        file: Arc<SourceFile>,
         line: &Line,
         width_offset: usize,
         code_offset: usize,
@@ -740,22 +729,16 @@ impl HumanEmitter {
             return Vec::new();
         }
 
-        let source_string = match file.get_line(line.line_index - 1) {
-            Some(s) => normalize_whitespace(&s),
-            None => return Vec::new(),
+        let Some(source_string) = file.get_line(line.line_index - 1) else {
+            return Vec::new();
         };
         trace!(?source_string);
 
         let line_offset = buffer.num_lines();
 
-        // Left trim
-        let left = margin.left(source_string.len());
-
+        // Left trim.
         // FIXME: This looks fishy. See #132860.
-        // Account for unicode characters of width !=0 that were removed.
-        let left = source_string.chars().take(left).map(|ch| char_width(ch)).sum();
-
-        self.draw_line(
+        let left = self.draw_line(
             buffer,
             &source_string,
             line.line_index,
@@ -786,7 +769,7 @@ impl HumanEmitter {
         let mut short_start = true;
         for ann in &line.annotations {
             if let AnnotationType::MultilineStart(depth) = ann.annotation_type {
-                if source_string.chars().take(ann.start_col.display).all(|c| c.is_whitespace()) {
+                if source_string.chars().take(ann.start_col.file).all(|c| c.is_whitespace()) {
                     let uline = self.underline(ann.is_primary);
                     let chr = uline.multiline_whole_line;
                     annotations.push((depth, uline.style));
@@ -905,11 +888,16 @@ impl HumanEmitter {
         //      |      x_span
         //      <EMPTY LINE>
         //
+        let mut overlap = vec![false; annotations.len()];
         let mut annotations_position = vec![];
         let mut line_len: usize = 0;
         let mut p = 0;
         for (i, annotation) in annotations.iter().enumerate() {
             for (j, next) in annotations.iter().enumerate() {
+                if overlaps(next, annotation, 0) && j > i {
+                    overlap[i] = true;
+                    overlap[j] = true;
+                }
                 if overlaps(next, annotation, 0)  // This label overlaps with another one and both
                     && annotation.has_label()     // take space (they have text and are not
                     && j > i                      // multiline lines).
@@ -1037,22 +1025,19 @@ impl HumanEmitter {
             let pos = pos + 1;
             match annotation.annotation_type {
                 AnnotationType::MultilineStart(depth) | AnnotationType::MultilineEnd(depth) => {
+                    let pre: usize = source_string
+                        .chars()
+                        .take(annotation.start_col.file)
+                        .skip(left)
+                        .map(|c| char_width(c))
+                        .sum();
                     self.draw_range(
                         buffer,
                         underline.multiline_horizontal,
                         line_offset + pos,
                         width_offset + depth,
-                        (code_offset + annotation.start_col.display).saturating_sub(left),
+                        code_offset + pre,
                         underline.style,
-                    );
-                }
-                _ if self.teach => {
-                    buffer.set_style_range(
-                        line_offset,
-                        (code_offset + annotation.start_col.display).saturating_sub(left),
-                        (code_offset + annotation.end_col.display).saturating_sub(left),
-                        underline.style,
-                        annotation.is_primary,
                     );
                 }
                 _ => {}
@@ -1074,11 +1059,18 @@ impl HumanEmitter {
             let underline = self.underline(annotation.is_primary);
             let pos = pos + 1;
 
+            let code_offset = code_offset
+                + source_string
+                    .chars()
+                    .take(annotation.start_col.file)
+                    .skip(left)
+                    .map(|c| char_width(c))
+                    .sum::<usize>();
             if pos > 1 && (annotation.has_label() || annotation.takes_space()) {
                 for p in line_offset + 1..=line_offset + pos {
                     buffer.putc(
                         p,
-                        (code_offset + annotation.start_col.display).saturating_sub(left),
+                        code_offset,
                         match annotation.annotation_type {
                             AnnotationType::MultilineLine(_) => underline.multiline_vertical,
                             _ => underline.vertical_text_line,
@@ -1089,7 +1081,7 @@ impl HumanEmitter {
                 if let AnnotationType::MultilineStart(_) = annotation.annotation_type {
                     buffer.putc(
                         line_offset + pos,
-                        (code_offset + annotation.start_col.display).saturating_sub(left),
+                        code_offset,
                         underline.bottom_right,
                         underline.style,
                     );
@@ -1099,7 +1091,7 @@ impl HumanEmitter {
                 {
                     buffer.putc(
                         line_offset + pos,
-                        (code_offset + annotation.start_col.display).saturating_sub(left),
+                        code_offset,
                         underline.multiline_bottom_right_with_text,
                         underline.style,
                     );
@@ -1157,13 +1149,30 @@ impl HumanEmitter {
             let style =
                 if annotation.is_primary { Style::LabelPrimary } else { Style::LabelSecondary };
             let (pos, col) = if pos == 0 {
-                if annotation.end_col.display == 0 {
-                    (pos + 1, (annotation.end_col.display + 2).saturating_sub(left))
+                let pre: usize = source_string
+                    .chars()
+                    .take(annotation.end_col.file)
+                    .skip(left)
+                    .map(|c| char_width(c))
+                    .sum();
+                if annotation.end_col.file == 0 {
+                    (pos + 1, (pre + 2))
                 } else {
-                    (pos + 1, (annotation.end_col.display + 1).saturating_sub(left))
+                    let pad = if annotation.end_col.file - annotation.start_col.file == 0 {
+                        2
+                    } else {
+                        1
+                    };
+                    (pos + 1, (pre + pad))
                 }
             } else {
-                (pos + 2, annotation.start_col.display.saturating_sub(left))
+                let pre: usize = source_string
+                    .chars()
+                    .take(annotation.start_col.file)
+                    .skip(left)
+                    .map(|c| char_width(c))
+                    .sum();
+                (pos + 2, pre)
             };
             if let Some(ref label) = annotation.label {
                 buffer.puts(line_offset + pos, code_offset + col, label, style);
@@ -1196,14 +1205,35 @@ impl HumanEmitter {
         //   |  _^  test
         for &(pos, annotation) in &annotations_position {
             let uline = self.underline(annotation.is_primary);
-            for p in annotation.start_col.display..annotation.end_col.display {
+            let width = annotation.end_col.file - annotation.start_col.file;
+            let previous: String =
+                source_string.chars().take(annotation.start_col.file).skip(left).collect();
+            let underlined: String =
+                source_string.chars().skip(annotation.start_col.file).take(width).collect();
+            debug!(?previous, ?underlined);
+            let code_offset = code_offset
+                + source_string
+                    .chars()
+                    .take(annotation.start_col.file)
+                    .skip(left)
+                    .map(|c| char_width(c))
+                    .sum::<usize>();
+            let ann_width: usize = source_string
+                .chars()
+                .skip(annotation.start_col.file)
+                .take(width)
+                .map(|c| char_width(c))
+                .sum();
+            let ann_width = if ann_width == 0
+                && matches!(annotation.annotation_type, AnnotationType::Singleline)
+            {
+                1
+            } else {
+                ann_width
+            };
+            for p in 0..ann_width {
                 // The default span label underline.
-                buffer.putc(
-                    line_offset + 1,
-                    (code_offset + p).saturating_sub(left),
-                    uline.underline,
-                    uline.style,
-                );
+                buffer.putc(line_offset + 1, code_offset + p, uline.underline, uline.style);
             }
 
             if pos == 0
@@ -1215,7 +1245,7 @@ impl HumanEmitter {
                 // The beginning of a multiline span with its leftward moving line on the same line.
                 buffer.putc(
                     line_offset + 1,
-                    (code_offset + annotation.start_col.display).saturating_sub(left),
+                    code_offset,
                     match annotation.annotation_type {
                         AnnotationType::MultilineStart(_) => uline.top_right_flat,
                         AnnotationType::MultilineEnd(_) => uline.multiline_end_same_line,
@@ -1233,7 +1263,7 @@ impl HumanEmitter {
                 // so we start going down first.
                 buffer.putc(
                     line_offset + 1,
-                    (code_offset + annotation.start_col.display).saturating_sub(left),
+                    code_offset,
                     match annotation.annotation_type {
                         AnnotationType::MultilineStart(_) => uline.multiline_start_down,
                         AnnotationType::MultilineEnd(_) => uline.multiline_end_up,
@@ -1243,11 +1273,37 @@ impl HumanEmitter {
                 );
             } else if pos != 0 && annotation.has_label() {
                 // The beginning of a span label with an actual label, we'll point down.
-                buffer.putc(
+                buffer.putc(line_offset + 1, code_offset, uline.label_start, uline.style);
+            }
+        }
+
+        // We look for individual *long* spans, and we trim the *middle*, so that we render
+        // LL | ...= [0, 0, 0, ..., 0, 0];
+        //    |      ^^^^^^^^^^...^^^^^^^ expected `&[u8]`, found `[{integer}; 1680]`
+        for (i, (_pos, annotation)) in annotations_position.iter().enumerate() {
+            // Skip cases where multiple spans overlap each other.
+            if overlap[i] {
+                continue;
+            };
+            let AnnotationType::Singleline = annotation.annotation_type else { continue };
+            let width = annotation.end_col.display - annotation.start_col.display;
+            if width > margin.column_width * 2 && width > 10 {
+                // If the terminal is *too* small, we keep at least a tiny bit of the span for
+                // display.
+                let pad = max(margin.column_width / 3, 5);
+                // Code line
+                buffer.replace(
+                    line_offset,
+                    annotation.start_col.file + pad,
+                    annotation.end_col.file - pad,
+                    self.margin(),
+                );
+                // Underline line
+                buffer.replace(
                     line_offset + 1,
-                    (code_offset + annotation.start_col.display).saturating_sub(left),
-                    uline.label_start,
-                    uline.style,
+                    annotation.start_col.file + pad,
+                    annotation.end_col.file - pad,
+                    self.margin(),
                 );
             }
         }
@@ -1694,7 +1750,7 @@ impl HumanEmitter {
                 // Get the left-side margin to remove it
                 let mut whitespace_margin = usize::MAX;
                 for line_idx in 0..annotated_file.lines.len() {
-                    let file = Lrc::clone(&annotated_file.file);
+                    let file = Arc::clone(&annotated_file.file);
                     let line = &annotated_file.lines[line_idx];
                     if let Some(source_string) =
                         line.line_index.checked_sub(1).and_then(|l| file.get_line(l))
@@ -1704,17 +1760,11 @@ impl HumanEmitter {
                         // non-rustc_lexer::is_whitespace() chars are reported as an
                         // error (ex. no-break-spaces \u{a0}), and thus can't be considered
                         // for removal during error reporting.
+                        // FIXME: doesn't account for '\t' properly.
                         let leading_whitespace = source_string
                             .chars()
                             .take_while(|c| rustc_lexer::is_whitespace(*c))
-                            .map(|c| {
-                                match c {
-                                    // Tabs are displayed as 4 spaces
-                                    '\t' => 4,
-                                    _ => 1,
-                                }
-                            })
-                            .sum();
+                            .count();
                         if source_string.chars().any(|c| !rustc_lexer::is_whitespace(c)) {
                             whitespace_margin = min(whitespace_margin, leading_whitespace);
                         }
@@ -1728,8 +1778,8 @@ impl HumanEmitter {
                 let mut span_left_margin = usize::MAX;
                 for line in &annotated_file.lines {
                     for ann in &line.annotations {
-                        span_left_margin = min(span_left_margin, ann.start_col.display);
-                        span_left_margin = min(span_left_margin, ann.end_col.display);
+                        span_left_margin = min(span_left_margin, ann.start_col.file);
+                        span_left_margin = min(span_left_margin, ann.end_col.file);
                     }
                 }
                 if span_left_margin == usize::MAX {
@@ -1749,12 +1799,12 @@ impl HumanEmitter {
                             .map_or(0, |s| s.len()),
                     );
                     for ann in &line.annotations {
-                        span_right_margin = max(span_right_margin, ann.start_col.display);
-                        span_right_margin = max(span_right_margin, ann.end_col.display);
+                        span_right_margin = max(span_right_margin, ann.start_col.file);
+                        span_right_margin = max(span_right_margin, ann.end_col.file);
                         // FIXME: account for labels not in the same line
                         let label_right = ann.label.as_ref().map_or(0, |l| l.len() + 1);
                         label_right_margin =
-                            max(label_right_margin, ann.end_col.display + label_right);
+                            max(label_right_margin, ann.end_col.file + label_right);
                     }
                 }
 
@@ -1765,15 +1815,7 @@ impl HumanEmitter {
                     width_offset + annotated_file.multiline_depth + 1
                 };
 
-                let column_width = if let Some(width) = self.diagnostic_width {
-                    width.saturating_sub(code_offset)
-                } else if self.ui_testing {
-                    DEFAULT_COLUMN_WIDTH
-                } else {
-                    termize::dimensions()
-                        .map(|(w, _)| w.saturating_sub(code_offset))
-                        .unwrap_or(DEFAULT_COLUMN_WIDTH)
-                };
+                let column_width = self.column_width(code_offset);
 
                 let margin = Margin::new(
                     whitespace_margin,
@@ -1790,7 +1832,7 @@ impl HumanEmitter {
 
                     let depths = self.render_source_line(
                         &mut buffer,
-                        Lrc::clone(&annotated_file.file),
+                        Arc::clone(&annotated_file.file),
                         &annotated_file.lines[line_idx],
                         width_offset,
                         code_offset,
@@ -1930,6 +1972,18 @@ impl HumanEmitter {
         Ok(())
     }
 
+    fn column_width(&self, code_offset: usize) -> usize {
+        if let Some(width) = self.diagnostic_width {
+            width.saturating_sub(code_offset)
+        } else if self.ui_testing || cfg!(miri) {
+            DEFAULT_COLUMN_WIDTH
+        } else {
+            termize::dimensions()
+                .map(|(w, _)| w.saturating_sub(code_offset))
+                .unwrap_or(DEFAULT_COLUMN_WIDTH)
+        }
+    }
+
     fn emit_suggestion_default(
         &mut self,
         span: &MultiSpan,
@@ -1978,13 +2032,16 @@ impl HumanEmitter {
             Some(Style::HeaderMsg),
         );
 
+        let other_suggestions = suggestions.len().saturating_sub(MAX_SUGGESTIONS);
+
         let mut row_num = 2;
         for (i, (complete, parts, highlights, _)) in
-            suggestions.iter().enumerate().take(MAX_SUGGESTIONS)
+            suggestions.into_iter().enumerate().take(MAX_SUGGESTIONS)
         {
             debug!(?complete, ?parts, ?highlights);
 
-            let has_deletion = parts.iter().any(|p| p.is_deletion(sm));
+            let has_deletion =
+                parts.iter().any(|p| p.is_deletion(sm) || p.is_destructive_replacement(sm));
             let is_multiline = complete.lines().count() > 1;
 
             if i == 0 {
@@ -2169,7 +2226,7 @@ impl HumanEmitter {
                 self.draw_code_line(
                     &mut buffer,
                     &mut row_num,
-                    highlight_parts,
+                    &highlight_parts,
                     line_pos + line_start,
                     line,
                     show_code_change,
@@ -2378,9 +2435,12 @@ impl HumanEmitter {
                 row_num = row + 1;
             }
         }
-        if suggestions.len() > MAX_SUGGESTIONS {
-            let others = suggestions.len() - MAX_SUGGESTIONS;
-            let msg = format!("and {} other candidate{}", others, pluralize!(others));
+        if other_suggestions > 0 {
+            let msg = format!(
+                "and {} other candidate{}",
+                other_suggestions,
+                pluralize!(other_suggestions)
+            );
             buffer.puts(row_num, max_line_num_len + 3, &msg, Style::NoStyle);
         }
 
@@ -2979,7 +3039,7 @@ impl FileWithAnnotatedLines {
     ) -> Vec<FileWithAnnotatedLines> {
         fn add_annotation_to_file(
             file_vec: &mut Vec<FileWithAnnotatedLines>,
-            file: Lrc<SourceFile>,
+            file: Arc<SourceFile>,
             line_index: usize,
             ann: Annotation,
         ) {
@@ -3116,7 +3176,7 @@ impl FileWithAnnotatedLines {
                 //  |        baz
                 add_annotation_to_file(
                     &mut output,
-                    Lrc::clone(&file),
+                    Arc::clone(&file),
                     ann.line_start,
                     ann.as_start(),
                 );
@@ -3143,12 +3203,12 @@ impl FileWithAnnotatedLines {
                     .unwrap_or(ann.line_start);
                 for line in ann.line_start + 1..until {
                     // Every `|` that joins the beginning of the span (`___^`) to the end (`|__^`).
-                    add_annotation_to_file(&mut output, Lrc::clone(&file), line, ann.as_line());
+                    add_annotation_to_file(&mut output, Arc::clone(&file), line, ann.as_line());
                 }
                 let line_end = ann.line_end - 1;
-                let end_is_empty = file.get_line(line_end - 1).map_or(false, |s| !filter(&s));
+                let end_is_empty = file.get_line(line_end - 1).is_some_and(|s| !filter(&s));
                 if middle < line_end && !end_is_empty {
-                    add_annotation_to_file(&mut output, Lrc::clone(&file), line_end, ann.as_line());
+                    add_annotation_to_file(&mut output, Arc::clone(&file), line_end, ann.as_line());
                 }
             } else {
                 end_ann.annotation_type = AnnotationType::Singleline;

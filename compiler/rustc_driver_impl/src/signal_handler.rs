@@ -2,9 +2,18 @@
 //! Primarily used to extract a backtrace from stack overflow
 
 use std::alloc::{Layout, alloc};
-use std::{fmt, mem, ptr};
+use std::{fmt, mem, ptr, slice};
 
 use rustc_interface::util::{DEFAULT_STACK_SIZE, STACK_SIZE};
+
+/// Signals that represent that we have a bug, and our prompt termination has
+/// been ordered.
+#[rustfmt::skip]
+const KILL_SIGNALS: [(libc::c_int, &str); 3] = [
+    (libc::SIGILL, "SIGILL"),
+    (libc::SIGBUS, "SIGBUS"),
+    (libc::SIGSEGV, "SIGSEGV")
+];
 
 unsafe extern "C" {
     fn backtrace_symbols_fd(buffer: *const *mut libc::c_void, size: libc::c_int, fd: libc::c_int);
@@ -35,24 +44,38 @@ macro raw_errln($tokens:tt) {
 }
 
 /// Signal handler installed for SIGSEGV
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
-#[allow(static_mut_refs)]
-extern "C" fn print_stack_trace(_: libc::c_int) {
+///
+/// # Safety
+///
+/// Caller must ensure that this function is not re-entered.
+unsafe extern "C" fn print_stack_trace(signum: libc::c_int) {
     const MAX_FRAMES: usize = 256;
-    // Reserve data segment so we don't have to malloc in a signal handler, which might fail
-    // in incredibly undesirable and unexpected ways due to e.g. the allocator deadlocking
-    static mut STACK_TRACE: [*mut libc::c_void; MAX_FRAMES] = [ptr::null_mut(); MAX_FRAMES];
+
+    let signame = {
+        let mut signame = "<unknown>";
+        for sig in KILL_SIGNALS {
+            if sig.0 == signum {
+                signame = sig.1;
+            }
+        }
+        signame
+    };
+
     let stack = unsafe {
+        // Reserve data segment so we don't have to malloc in a signal handler, which might fail
+        // in incredibly undesirable and unexpected ways due to e.g. the allocator deadlocking
+        static mut STACK_TRACE: [*mut libc::c_void; MAX_FRAMES] = [ptr::null_mut(); MAX_FRAMES];
         // Collect return addresses
-        let depth = libc::backtrace(STACK_TRACE.as_mut_ptr(), MAX_FRAMES as i32);
+        let depth = libc::backtrace(&raw mut STACK_TRACE as _, MAX_FRAMES as i32);
         if depth == 0 {
             return;
         }
-        &STACK_TRACE.as_slice()[0..(depth as _)]
+        slice::from_raw_parts(&raw const STACK_TRACE as _, depth as _)
     };
 
     // Just a stack trace is cryptic. Explain what we're doing.
-    raw_errln!("error: rustc interrupted by SIGSEGV, printing backtrace\n");
+    raw_errln!("error: rustc interrupted by {signame}, printing backtrace\n");
+
     let mut written = 1;
     let mut consumed = 0;
     // Begin elaborating return addrs into symbols and writing them directly to stderr
@@ -92,7 +115,7 @@ extern "C" fn print_stack_trace(_: libc::c_int) {
     written += rem.len() + 1;
 
     let random_depth = || 8 * 16; // chosen by random diceroll (2d20)
-    if cyclic || stack.len() > random_depth() {
+    if (cyclic || stack.len() > random_depth()) && signum == libc::SIGSEGV {
         // technically speculation, but assert it with confidence anyway.
         // rustc only arrived in this signal handler because bad things happened
         // and this message is for explaining it's not the programmer's fault
@@ -104,17 +127,22 @@ extern "C" fn print_stack_trace(_: libc::c_int) {
         written += 1;
     }
     raw_errln!("note: we would appreciate a report at https://github.com/rust-lang/rust");
-    // get the current stack size WITHOUT blocking and double it
-    let new_size = STACK_SIZE.get().copied().unwrap_or(DEFAULT_STACK_SIZE) * 2;
-    raw_errln!("help: you can increase rustc's stack size by setting RUST_MIN_STACK={new_size}");
-    written += 2;
+    written += 1;
+    if signum == libc::SIGSEGV {
+        // get the current stack size WITHOUT blocking and double it
+        let new_size = STACK_SIZE.get().copied().unwrap_or(DEFAULT_STACK_SIZE) * 2;
+        raw_errln!(
+            "help: you can increase rustc's stack size by setting RUST_MIN_STACK={new_size}"
+        );
+        written += 1;
+    }
     if written > 24 {
-        // We probably just scrolled the earlier "we got SIGSEGV" message off the terminal
-        raw_errln!("note: backtrace dumped due to SIGSEGV! resuming signal");
+        // We probably just scrolled the earlier "interrupted by {signame}" message off the terminal
+        raw_errln!("note: backtrace dumped due to {signame}! resuming signal");
     };
 }
 
-/// When SIGSEGV is delivered to the process, print a stack trace and then exit.
+/// When one of the KILL signals is delivered to the process, print a stack trace and then exit.
 pub(super) fn install() {
     unsafe {
         let alt_stack_size: usize = min_sigstack_size() + 64 * 1024;
@@ -127,7 +155,9 @@ pub(super) fn install() {
         sa.sa_sigaction = print_stack_trace as libc::sighandler_t;
         sa.sa_flags = libc::SA_NODEFER | libc::SA_RESETHAND | libc::SA_ONSTACK;
         libc::sigemptyset(&mut sa.sa_mask);
-        libc::sigaction(libc::SIGSEGV, &sa, ptr::null_mut());
+        for (signum, _signame) in KILL_SIGNALS {
+            libc::sigaction(signum, &sa, ptr::null_mut());
+        }
     }
 }
 

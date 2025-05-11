@@ -11,7 +11,7 @@ use rustc_trait_selection::traits::{
 use tracing::{debug, instrument};
 
 use crate::coercion::{AsCoercionSite, CoerceMany};
-use crate::{Diverges, Expectation, FnCtxt, Needs};
+use crate::{Diverges, Expectation, FnCtxt, GatherLocalsVisitor, Needs};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug", ret)]
@@ -43,6 +43,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // #55810: Type check patterns first so we get types for all bindings.
         let scrut_span = scrut.span.find_ancestor_inside(expr.span).unwrap_or(scrut.span);
         for arm in arms {
+            GatherLocalsVisitor::gather_from_arm(self, arm);
+
             self.check_pat_top(arm.pat, scrutinee_ty, Some(scrut_span), Some(scrut), None);
         }
 
@@ -213,10 +215,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arm_ty: Ty<'tcx>,
         prior_arm: Option<(Option<hir::HirId>, Ty<'tcx>, Span)>,
     ) {
-        let hir = self.tcx.hir();
-
         // First, check that we're actually in the tail of a function.
-        let Some(body) = hir.maybe_body_owned_by(self.body_id) else {
+        let Some(body) = self.tcx.hir_maybe_body_owned_by(self.body_id) else {
             return;
         };
         let hir::ExprKind::Block(block, _) = body.value.kind else {
@@ -391,7 +391,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let hir::Node::Block(block) = node {
             // check that the body's parent is an fn
             let parent = self.tcx.parent_hir_node(self.tcx.parent_hir_id(block.hir_id));
-            if let (Some(expr), hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })) =
+            if let (Some(expr), hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { .. }, .. })) =
                 (&block.expr, parent)
             {
                 // check that the `if` expr without `else` is the fn body's expr
@@ -603,7 +603,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // FIXME(-Znext-solver): Remove this branch once `replace_opaque_types_with_infer` is gone.
             ty::Infer(ty::TyVar(_)) => self
                 .inner
-                .borrow()
+                .borrow_mut()
+                .opaque_types()
                 .iter_opaque_types()
                 .find(|(_, v)| v.ty == expected_ty)
                 .map(|(k, _)| (k.def_id, k.args))?,

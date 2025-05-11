@@ -293,7 +293,7 @@ impl<T> Trait<T> for X {
                     (ty::Dynamic(t, _, ty::DynKind::Dyn), ty::Alias(ty::Opaque, alias))
                         if let Some(def_id) = t.principal_def_id()
                             && tcx
-                                .explicit_item_super_predicates(alias.def_id)
+                                .explicit_item_self_bounds(alias.def_id)
                                 .skip_binder()
                                 .iter()
                                 .any(|(pred, _span)| match pred.kind().skip_binder() {
@@ -395,11 +395,28 @@ impl<T> Trait<T> for X {
                             let sp = tcx
                                 .def_ident_span(body_owner_def_id)
                                 .unwrap_or_else(|| tcx.def_span(body_owner_def_id));
-                            diag.span_note(
-                                sp,
-                                "this item must have the opaque type in its signature in order to \
-                                 be able to register hidden types",
-                            );
+                            let mut alias_def_id = opaque_ty.def_id;
+                            while let DefKind::OpaqueTy = tcx.def_kind(alias_def_id) {
+                                alias_def_id = tcx.parent(alias_def_id);
+                            }
+                            let opaque_path = tcx.def_path_str(alias_def_id);
+                            // FIXME(type_alias_impl_trait): make this a structured suggestion
+                            match tcx.opaque_ty_origin(opaque_ty.def_id) {
+                                rustc_hir::OpaqueTyOrigin::FnReturn { .. } => {}
+                                rustc_hir::OpaqueTyOrigin::AsyncFn { .. } => {}
+                                rustc_hir::OpaqueTyOrigin::TyAlias {
+                                    in_assoc_ty: false, ..
+                                } => {
+                                    diag.span_note(
+                                        sp,
+                                        format!("this item must have a `#[define_opaque({opaque_path})]` \
+                                        attribute to be able to define hidden types"),
+                                    );
+                                }
+                                rustc_hir::OpaqueTyOrigin::TyAlias {
+                                    in_assoc_ty: true, ..
+                                } => {}
+                            }
                         }
                         // If two if arms can be coerced to a trait object, provide a structured
                         // suggestion.
@@ -422,7 +439,7 @@ impl<T> Trait<T> for X {
                             ty::Alias(..) => values.expected,
                             _ => values.found,
                         };
-                        let preds = tcx.explicit_item_super_predicates(opaque_ty.def_id);
+                        let preds = tcx.explicit_item_self_bounds(opaque_ty.def_id);
                         for (pred, _span) in preds.skip_binder() {
                             let ty::ClauseKind::Trait(trait_predicate) = pred.kind().skip_binder()
                             else {
@@ -461,9 +478,11 @@ impl<T> Trait<T> for X {
                     (ty::FnPtr(_, hdr), ty::FnDef(def_id, _))
                     | (ty::FnDef(def_id, _), ty::FnPtr(_, hdr)) => {
                         if tcx.fn_sig(def_id).skip_binder().safety() < hdr.safety {
-                            diag.note(
+                            if !tcx.codegen_fn_attrs(def_id).safe_target_features {
+                                diag.note(
                                 "unsafe functions cannot be coerced into safe function pointers",
-                            );
+                                );
+                            }
                         }
                     }
                     (ty::Adt(_, _), ty::Adt(def, args))
@@ -520,7 +539,8 @@ impl<T> Trait<T> for X {
                 }
             }
             TypeError::TargetFeatureCast(def_id) => {
-                let target_spans = tcx.get_attrs(def_id, sym::target_feature).map(|attr| attr.span);
+                let target_spans =
+                    tcx.get_attrs(def_id, sym::target_feature).map(|attr| attr.span());
                 diag.note(
                     "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
                 );
@@ -541,7 +561,7 @@ impl<T> Trait<T> for X {
         let tcx = self.tcx;
         let assoc = tcx.associated_item(proj_ty.def_id);
         let (trait_ref, assoc_args) = proj_ty.trait_ref_and_own_args(tcx);
-        let Some(item) = tcx.hir().get_if_local(body_owner_def_id) else {
+        let Some(item) = tcx.hir_get_if_local(body_owner_def_id) else {
             return false;
         };
         let Some(hir_generics) = item.generics() else {
@@ -584,7 +604,7 @@ impl<T> Trait<T> for X {
             hir::Node::TraitItem(item) => item.hir_id(),
             _ => return false,
         };
-        let parent = tcx.hir().get_parent_item(hir_id).def_id;
+        let parent = tcx.hir_get_parent_item(hir_id).def_id;
         self.suggest_constraint(diag, msg, parent.into(), proj_ty, ty)
     }
 
@@ -623,14 +643,14 @@ impl<T> Trait<T> for X {
             )
         };
 
-        let body_owner = tcx.hir().get_if_local(body_owner_def_id);
+        let body_owner = tcx.hir_get_if_local(body_owner_def_id);
         let current_method_ident = body_owner.and_then(|n| n.ident()).map(|i| i.name);
 
         // We don't want to suggest calling an assoc fn in a scope where that isn't feasible.
         let callable_scope = matches!(
             body_owner,
             Some(
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { .. }, .. })
                     | hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. })
                     | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }),
             )
@@ -723,7 +743,7 @@ fn foo(&self) -> Self::T { String::new() }
         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *proj_ty.self_ty().kind() {
             let opaque_local_def_id = def_id.as_local();
             let opaque_hir_ty = if let Some(opaque_local_def_id) = opaque_local_def_id {
-                tcx.hir().expect_opaque_ty(opaque_local_def_id)
+                tcx.hir_expect_opaque_ty(opaque_local_def_id)
             } else {
                 return false;
             };
@@ -762,8 +782,8 @@ fn foo(&self) -> Self::T { String::new() }
         let methods: Vec<(Span, String)> = items
             .in_definition_order()
             .filter(|item| {
-                ty::AssocKind::Fn == item.kind
-                    && Some(item.name) != current_method_ident
+                item.is_fn()
+                    && Some(item.name()) != current_method_ident
                     && !tcx.is_doc_hidden(item.def_id)
             })
             .filter_map(|item| {
@@ -818,7 +838,7 @@ fn foo(&self) -> Self::T { String::new() }
         // When `body_owner` is an `impl` or `trait` item, look in its associated types for
         // `expected` and point at it.
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        let parent_id = tcx.hir().get_parent_item(hir_id);
+        let parent_id = tcx.hir_get_parent_item(hir_id);
         let item = tcx.hir_node_by_def_id(parent_id.def_id);
 
         debug!("expected_projection parent item {:?}", item);

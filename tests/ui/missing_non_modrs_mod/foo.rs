@@ -1,4 +1,3 @@
-//
-//@ ignore-test this is just a helper for the real test in this dir
+//@ ignore-auxiliary (used by `./missing_non_modrs_mod.rs`)
 
 mod missing;

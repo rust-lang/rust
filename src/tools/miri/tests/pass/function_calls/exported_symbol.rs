@@ -40,6 +40,7 @@ fn main() {
 
         extern "Rust" {
             fn bar() -> i32;
+            #[rustc_std_internal_symbol]
             fn baz() -> i32;
             fn qux() -> i32;
         }
@@ -63,6 +64,7 @@ fn main() {
 
             extern "C" {
                 fn bar() -> i32;
+                #[rustc_std_internal_symbol]
                 fn baz() -> i32;
                 fn qux() -> i32;
             }

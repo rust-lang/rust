@@ -18,6 +18,6 @@ use minicore::*;
 fn main() {
     unsafe {
         asm!("", out("r9") _);
-        //[rwpi]~^ cannot use register `r9`
+        //[rwpi]~^ ERROR cannot use register `r9`
     }
 }

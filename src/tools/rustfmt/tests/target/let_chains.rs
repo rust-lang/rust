@@ -50,6 +50,9 @@ fn test_single_line_let_chain() {
     // first item in let-chain is an ident
     if a && let Some(b) = foo() {}
 
+    // first item in let-chain is a bool literal
+    if true && let Some(x) = y {}
+
     // first item in let-chain is a unary ! with an ident
     let unary_not = if !from_hir_call && let Some(p) = parent {};
 
@@ -99,11 +102,6 @@ fn test_multi_line_let_chain() {
 
     // function call
     if a()
-        && let Some(x) = y
-    {}
-
-    // bool literal
-    if true
         && let Some(x) = y
     {}
 

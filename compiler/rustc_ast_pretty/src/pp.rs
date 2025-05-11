@@ -234,6 +234,34 @@ struct BufEntry {
     size: isize,
 }
 
+// Boxes opened with methods like `Printer::{cbox,ibox}` must be closed with
+// `Printer::end`. Failure to do so can result in bad indenting, or in extreme
+// cases, cause no output to be produced at all.
+//
+// Box opening and closing used to be entirely implicit, which was hard to
+// understand and easy to get wrong. This marker type is now returned from the
+// box opening methods and forgotten by `Printer::end`. Any marker that isn't
+// forgotten will trigger a panic in `drop`. (Closing a box more than once
+// isn't possible because `BoxMarker` doesn't implement `Copy` or `Clone`.)
+//
+// Note: it would be better to make open/close mismatching impossible and avoid
+// the need for this marker type altogether by having functions like
+// `with_ibox` that open a box, call a closure, and then close the box. That
+// would work for simple cases, but box lifetimes sometimes interact with
+// complex control flow and across function boundaries in ways that are
+// difficult to handle with such a technique.
+#[must_use]
+pub struct BoxMarker;
+
+impl !Clone for BoxMarker {}
+impl !Copy for BoxMarker {}
+
+impl Drop for BoxMarker {
+    fn drop(&mut self) {
+        panic!("BoxMarker not ended with `Printer::end()`");
+    }
+}
+
 impl Printer {
     pub fn new() -> Self {
         Printer {
@@ -270,7 +298,8 @@ impl Printer {
         }
     }
 
-    fn scan_begin(&mut self, token: BeginToken) {
+    // This is is where `BoxMarker`s are produced.
+    fn scan_begin(&mut self, token: BeginToken) -> BoxMarker {
         if self.scan_stack.is_empty() {
             self.left_total = 1;
             self.right_total = 1;
@@ -278,15 +307,18 @@ impl Printer {
         }
         let right = self.buf.push(BufEntry { token: Token::Begin(token), size: -self.right_total });
         self.scan_stack.push_back(right);
+        BoxMarker
     }
 
-    fn scan_end(&mut self) {
+    // This is is where `BoxMarker`s are consumed.
+    fn scan_end(&mut self, b: BoxMarker) {
         if self.scan_stack.is_empty() {
             self.print_end();
         } else {
             let right = self.buf.push(BufEntry { token: Token::End, size: -1 });
             self.scan_stack.push_back(right);
         }
+        std::mem::forget(b)
     }
 
     fn scan_break(&mut self, token: BreakToken) {

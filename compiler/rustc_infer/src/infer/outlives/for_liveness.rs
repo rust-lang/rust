@@ -24,12 +24,8 @@ impl<'tcx, OP> TypeVisitor<TyCtxt<'tcx>> for FreeRegionsVisitor<'tcx, OP>
 where
     OP: FnMut(ty::Region<'tcx>),
 {
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &ty::Binder<'tcx, T>) {
-        t.super_visit_with(self);
-    }
-
     fn visit_region(&mut self, r: ty::Region<'tcx>) {
-        match *r {
+        match r.kind() {
             // ignore bound regions, keep visiting
             ty::ReBound(_, _) => {}
             _ => (self.op)(r),
@@ -48,7 +44,7 @@ where
             return ty.super_visit_with(self);
         }
 
-        match ty.kind() {
+        match *ty.kind() {
             // We can prove that an alias is live two ways:
             // 1. All the components are live.
             //
@@ -95,11 +91,9 @@ where
                     assert!(r.type_flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS));
                     r.visit_with(self);
                 } else {
-                    // Skip lifetime parameters that are not captures.
-                    let variances = match kind {
-                        ty::Opaque => Some(self.tcx.variances_of(*def_id)),
-                        _ => None,
-                    };
+                    // Skip lifetime parameters that are not captured, since they do
+                    // not need to be live.
+                    let variances = tcx.opt_alias_variances(kind, def_id);
 
                     for (idx, s) in args.iter().enumerate() {
                         if variances.map(|variances| variances[idx]) != Some(ty::Bivariant) {

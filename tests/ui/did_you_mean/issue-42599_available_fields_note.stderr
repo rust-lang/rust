@@ -6,8 +6,9 @@ LL |             Self { secret_integer: 2, inocently_mispellable: () }
    |
 help: a field with a similar name exists
    |
-LL |             Self { secret_integer: 2, innocently_misspellable: () }
-   |                                       ~~~~~~~~~~~~~~~~~~~~~~~
+LL -             Self { secret_integer: 2, inocently_mispellable: () }
+LL +             Self { secret_integer: 2, innocently_misspellable: () }
+   |
 
 error[E0560]: struct `Demo` has no field named `egregiously_nonexistent_field`
   --> $DIR/issue-42599_available_fields_note.rs:21:39
@@ -25,8 +26,9 @@ LL |     let innocent_field_misaccess = demo.inocently_mispellable;
    |
 help: a field with a similar name exists
    |
-LL |     let innocent_field_misaccess = demo.innocently_misspellable;
-   |                                         ~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let innocent_field_misaccess = demo.inocently_mispellable;
+LL +     let innocent_field_misaccess = demo.innocently_misspellable;
+   |
 
 error[E0609]: no field `egregiously_nonexistent_field` on type `Demo`
   --> $DIR/issue-42599_available_fields_note.rs:35:42

@@ -1,5 +1,5 @@
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/packed-struct-transmute.rs:26:24
+  --> $DIR/packed-struct-transmute.rs:25:24
    |
 LL |         let oof: Oof = mem::transmute(foo);
    |                        ^^^^^^^^^^^^^^

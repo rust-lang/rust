@@ -1,4 +1,4 @@
-//@ compile-flags: -O -Z merge-functions=disabled
+//@ compile-flags: -Copt-level=3 -Z merge-functions=disabled
 
 #![crate_type = "lib"]
 

@@ -12,7 +12,7 @@ pub macro link {
     ($library:literal $abi:literal $($link_name:literal)? $(#[$doc:meta])? fn $($function:tt)*) => (
         #[cfg_attr(not(target_arch = "x86"), link(name = $library, kind = "raw-dylib", modifiers = "+verbatim"))]
         #[cfg_attr(target_arch = "x86", link(name = $library, kind = "raw-dylib", modifiers = "+verbatim", import_name_type = "undecorated"))]
-        extern $abi {
+        unsafe extern $abi {
             $(#[link_name=$link_name])?
             pub fn $($function)*;
         }
@@ -26,7 +26,7 @@ pub macro link {
         // libraries below by using an empty extern block. This works because extern blocks are not
         // connected to the library given in the #[link] attribute.
         #[link(name = "kernel32")]
-        extern $abi {
+        unsafe extern $abi {
             $(#[link_name=$link_name])?
             pub fn $($function)*;
         }
@@ -34,9 +34,10 @@ pub macro link {
 }
 
 #[cfg(not(feature = "windows_raw_dylib"))]
-#[link(name = "advapi32")]
+#[cfg(not(target_os = "cygwin"))] // Cygwin doesn't need these libs
+#[cfg_attr(target_vendor = "win7", link(name = "advapi32"))]
 #[link(name = "ntdll")]
 #[link(name = "userenv")]
 #[link(name = "ws2_32")]
 #[link(name = "dbghelp")] // required for backtrace-rs symbolization
-extern "C" {}
+unsafe extern "C" {}

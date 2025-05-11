@@ -2,6 +2,9 @@
 // Making this compile was a feature request in rust-lang/rust#34117 but this is currently
 // "working as intended". Allowing "deep pointer coercion" seems footgun-prone, and would
 // require proceeding carefully.
+
+//@ dont-require-annotations: NOTE
+
 use std::ops::{Deref, DerefMut};
 
 struct Foo(i32);
@@ -33,8 +36,8 @@ fn make_foo(_: *mut *mut Foo) {
 
 fn main() {
     let mut result: SmartPtr<Foo> = SmartPtr(std::ptr::null_mut());
-    make_foo(&mut &mut *result); //~ mismatched types
-                                 //~^ expected `*mut *mut Foo`, found `&mut &mut Foo`
+    make_foo(&mut &mut *result); //~ ERROR mismatched types
+                                 //~^ NOTE expected `*mut *mut Foo`, found `&mut &mut Foo`
     make_foo(out(&mut result)); // works, but makes one wonder why above coercion cannot happen
 }
 

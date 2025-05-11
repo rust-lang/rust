@@ -1,7 +1,19 @@
 //@ build-fail
 
-#![feature(repr_simd, intrinsics, rustc_attrs, adt_const_params, unsized_const_params)]
+#![feature(
+    repr_simd,
+    intrinsics,
+    core_intrinsics,
+    rustc_attrs,
+    adt_const_params,
+    unsized_const_params
+)]
 #![allow(incomplete_features)]
+
+use std::intrinsics::simd::{simd_extract, simd_insert, simd_shuffle};
+
+#[rustc_intrinsic]
+unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -28,14 +40,6 @@ struct f32x4([f32; 4]);
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
 struct f32x8([f32; 8]);
-
-extern "rust-intrinsic" {
-    fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
-    fn simd_extract<T, E>(x: T, idx: u32) -> E;
-
-    fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
-    fn simd_shuffle_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
-}
 
 #[repr(simd)]
 struct SimdShuffleIdx<const LEN: usize>([u32; LEN]);
@@ -76,27 +80,27 @@ fn main() {
         //~^ ERROR expected return type of length 8, found `i32x2` with length 2
 
         const I2: &[u32] = &[0; 2];
-        simd_shuffle_generic::<i32, i32, I2>(0, 0);
+        simd_shuffle_const_generic::<i32, i32, I2>(0, 0);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         const I4: &[u32] = &[0; 4];
-        simd_shuffle_generic::<i32, i32, I4>(0, 0);
+        simd_shuffle_const_generic::<i32, i32, I4>(0, 0);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         const I8: &[u32] = &[0; 8];
-        simd_shuffle_generic::<i32, i32, I8>(0, 0);
+        simd_shuffle_const_generic::<i32, i32, I8>(0, 0);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
 
-        simd_shuffle_generic::<_, f32x2, I2>(x, x);
+        simd_shuffle_const_generic::<_, f32x2, I2>(x, x);
         //~^ ERROR element type `i32` (element of input `i32x4`), found `f32x2` with element type `f32`
-        simd_shuffle_generic::<_, f32x4, I4>(x, x);
+        simd_shuffle_const_generic::<_, f32x4, I4>(x, x);
         //~^ ERROR element type `i32` (element of input `i32x4`), found `f32x4` with element type `f32`
-        simd_shuffle_generic::<_, f32x8, I8>(x, x);
+        simd_shuffle_const_generic::<_, f32x8, I8>(x, x);
         //~^ ERROR element type `i32` (element of input `i32x4`), found `f32x8` with element type `f32`
 
-        simd_shuffle_generic::<_, i32x8, I2>(x, x);
+        simd_shuffle_const_generic::<_, i32x8, I2>(x, x);
         //~^ ERROR expected return type of length 2, found `i32x8` with length 8
-        simd_shuffle_generic::<_, i32x8, I4>(x, x);
+        simd_shuffle_const_generic::<_, i32x8, I4>(x, x);
         //~^ ERROR expected return type of length 4, found `i32x8` with length 8
-        simd_shuffle_generic::<_, i32x2, I8>(x, x);
+        simd_shuffle_const_generic::<_, i32x2, I8>(x, x);
         //~^ ERROR expected return type of length 8, found `i32x2` with length 2
     }
 }

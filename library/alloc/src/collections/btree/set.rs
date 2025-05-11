@@ -139,7 +139,7 @@ pub struct Iter<'a, T: 'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Iter").field(&self.iter.clone()).finish()
+        f.debug_tuple("Iter").field(&self.iter).finish()
     }
 }
 
@@ -1442,20 +1442,20 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     ///
     /// let mut set = BTreeSet::from([1, 2, 3, 4]);
     ///
-    /// let mut cursor = unsafe { set.upper_bound_mut(Bound::Included(&3)) };
+    /// let mut cursor = set.upper_bound_mut(Bound::Included(&3));
     /// assert_eq!(cursor.peek_prev(), Some(&3));
     /// assert_eq!(cursor.peek_next(), Some(&4));
     ///
-    /// let mut cursor = unsafe { set.upper_bound_mut(Bound::Excluded(&3)) };
+    /// let mut cursor = set.upper_bound_mut(Bound::Excluded(&3));
     /// assert_eq!(cursor.peek_prev(), Some(&2));
     /// assert_eq!(cursor.peek_next(), Some(&3));
     ///
-    /// let mut cursor = unsafe { set.upper_bound_mut(Bound::Unbounded) };
+    /// let mut cursor = set.upper_bound_mut(Bound::Unbounded);
     /// assert_eq!(cursor.peek_prev(), Some(&4));
     /// assert_eq!(cursor.peek_next(), None);
     /// ```
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub unsafe fn upper_bound_mut<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, T, A>
+    pub fn upper_bound_mut<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, T, A>
     where
         T: Borrow<Q> + Ord,
         Q: Ord,
@@ -1556,10 +1556,7 @@ pub struct ExtractIf<
     T,
     F,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
-> where
-    T: 'a,
-    F: 'a + FnMut(&T) -> bool,
-{
+> {
     pred: F,
     inner: super::map::ExtractIfInner<'a, T, SetValZST>,
     /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
@@ -1567,13 +1564,15 @@ pub struct ExtractIf<
 }
 
 #[unstable(feature = "btree_extract_if", issue = "70530")]
-impl<T, F, A: Allocator + Clone> fmt::Debug for ExtractIf<'_, T, F, A>
+impl<T, F, A> fmt::Debug for ExtractIf<'_, T, F, A>
 where
     T: fmt::Debug,
-    F: FnMut(&T) -> bool,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("ExtractIf").field(&self.inner.peek().map(|(k, _)| k)).finish()
+        f.debug_struct("ExtractIf")
+            .field("peek", &self.inner.peek().map(|(k, _)| k))
+            .finish_non_exhaustive()
     }
 }
 

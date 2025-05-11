@@ -6,8 +6,9 @@ LL |     foo(Mod::Foo.Bar);
    |
 help: use the path separator to refer to an item
    |
-LL |     foo(Mod::Foo::Bar);
-   |                 ~~
+LL -     foo(Mod::Foo.Bar);
+LL +     foo(Mod::Foo::Bar);
+   |
 
 error: aborting due to 1 previous error
 

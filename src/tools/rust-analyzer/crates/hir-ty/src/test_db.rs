@@ -3,35 +3,40 @@
 use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
-    ra_salsa::{self, Durability},
-    AnchoredPath, CrateId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
+    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, RootQueryDb, SourceDatabase,
+    SourceRoot, SourceRootId, SourceRootInput,
 };
-use hir_def::{db::DefDatabase, ModuleId};
-use hir_expand::db::ExpandDatabase;
+
+use hir_def::{ModuleId, db::DefDatabase};
+use hir_expand::EditionedFileId;
 use rustc_hash::FxHashMap;
-use span::{EditionedFileId, FileId};
+use salsa::{AsDynDatabase, Durability};
+use span::FileId;
 use syntax::TextRange;
 use test_utils::extract_annotations;
 use triomphe::Arc;
 
-#[ra_salsa::database(
-    base_db::SourceRootDatabaseStorage,
-    base_db::SourceDatabaseStorage,
-    hir_expand::db::ExpandDatabaseStorage,
-    hir_def::db::InternDatabaseStorage,
-    hir_def::db::DefDatabaseStorage,
-    crate::db::HirDatabaseStorage
-)]
+#[salsa_macros::db]
+#[derive(Clone)]
 pub(crate) struct TestDB {
-    storage: ra_salsa::Storage<TestDB>,
-    events: Mutex<Option<Vec<ra_salsa::Event>>>,
+    storage: salsa::Storage<Self>,
+    files: Arc<base_db::Files>,
+    crates_map: Arc<CratesMap>,
+    events: Arc<Mutex<Option<Vec<salsa::Event>>>>,
 }
 
 impl Default for TestDB {
     fn default() -> Self {
-        let mut this = Self { storage: Default::default(), events: Default::default() };
-        this.setup_syntax_context_root();
+        let mut this = Self {
+            storage: Default::default(),
+            events: Default::default(),
+            files: Default::default(),
+            crates_map: Default::default(),
+        };
         this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
+        // This needs to be here otherwise `CrateGraphBuilder` panics.
+        this.set_all_crates(Arc::new(Box::new([])));
+        CrateGraphBuilder::default().set_in_db(&mut this);
         this
     }
 }
@@ -42,46 +47,72 @@ impl fmt::Debug for TestDB {
     }
 }
 
-impl Upcast<dyn ExpandDatabase> for TestDB {
-    fn upcast(&self) -> &(dyn ExpandDatabase + 'static) {
-        self
+#[salsa_macros::db]
+impl SourceDatabase for TestDB {
+    fn file_text(&self, file_id: base_db::FileId) -> FileText {
+        self.files.file_text(file_id)
+    }
+
+    fn set_file_text(&mut self, file_id: base_db::FileId, text: &str) {
+        let files = Arc::clone(&self.files);
+        files.set_file_text(self, file_id, text);
+    }
+
+    fn set_file_text_with_durability(
+        &mut self,
+        file_id: base_db::FileId,
+        text: &str,
+        durability: Durability,
+    ) {
+        let files = Arc::clone(&self.files);
+        files.set_file_text_with_durability(self, file_id, text, durability);
+    }
+
+    /// Source root of the file.
+    fn source_root(&self, source_root_id: SourceRootId) -> SourceRootInput {
+        self.files.source_root(source_root_id)
+    }
+
+    fn set_source_root_with_durability(
+        &mut self,
+        source_root_id: SourceRootId,
+        source_root: Arc<SourceRoot>,
+        durability: Durability,
+    ) {
+        let files = Arc::clone(&self.files);
+        files.set_source_root_with_durability(self, source_root_id, source_root, durability);
+    }
+
+    fn file_source_root(&self, id: base_db::FileId) -> FileSourceRootInput {
+        self.files.file_source_root(id)
+    }
+
+    fn set_file_source_root_with_durability(
+        &mut self,
+        id: base_db::FileId,
+        source_root_id: SourceRootId,
+        durability: Durability,
+    ) {
+        let files = Arc::clone(&self.files);
+        files.set_file_source_root_with_durability(self, id, source_root_id, durability);
+    }
+
+    fn crates_map(&self) -> Arc<CratesMap> {
+        self.crates_map.clone()
     }
 }
 
-impl Upcast<dyn DefDatabase> for TestDB {
-    fn upcast(&self) -> &(dyn DefDatabase + 'static) {
-        self
-    }
-}
-
-impl ra_salsa::Database for TestDB {
-    fn salsa_event(&self, event: ra_salsa::Event) {
+#[salsa_macros::db]
+impl salsa::Database for TestDB {
+    fn salsa_event(&self, event: &dyn std::ops::Fn() -> salsa::Event) {
         let mut events = self.events.lock().unwrap();
         if let Some(events) = &mut *events {
-            events.push(event);
+            events.push(event());
         }
     }
 }
 
-impl ra_salsa::ParallelDatabase for TestDB {
-    fn snapshot(&self) -> ra_salsa::Snapshot<TestDB> {
-        ra_salsa::Snapshot::new(TestDB {
-            storage: self.storage.snapshot(),
-            events: Default::default(),
-        })
-    }
-}
-
 impl panic::RefUnwindSafe for TestDB {}
-
-impl FileLoader for TestDB {
-    fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
-        FileLoaderDelegate(self).resolve_path(path)
-    }
-    fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]> {
-        FileLoaderDelegate(self).relevant_crates(file_id)
-    }
-}
 
 impl TestDB {
     pub(crate) fn module_for_file_opt(&self, file_id: impl Into<FileId>) -> Option<ModuleId> {
@@ -89,7 +120,7 @@ impl TestDB {
         for &krate in self.relevant_crates(file_id).iter() {
             let crate_def_map = self.crate_def_map(krate);
             for (local_id, data) in crate_def_map.modules() {
-                if data.origin.file_id().map(EditionedFileId::file_id) == Some(file_id) {
+                if data.origin.file_id().map(|file_id| file_id.file_id(self)) == Some(file_id) {
                     return Some(crate_def_map.module_id(local_id));
                 }
             }
@@ -105,8 +136,7 @@ impl TestDB {
         &self,
     ) -> FxHashMap<EditionedFileId, Vec<(TextRange, String)>> {
         let mut files = Vec::new();
-        let crate_graph = self.crate_graph();
-        for krate in crate_graph.iter() {
+        for &krate in self.all_crates().iter() {
             let crate_def_map = self.crate_def_map(krate);
             for (module_id, _) in crate_def_map.modules() {
                 let file_id = crate_def_map[module_id].origin.file_id();
@@ -116,8 +146,8 @@ impl TestDB {
         files
             .into_iter()
             .filter_map(|file_id| {
-                let text = self.file_text(file_id.file_id());
-                let annotations = extract_annotations(&text);
+                let text = self.file_text(file_id.file_id(self));
+                let annotations = extract_annotations(&text.text(self));
                 if annotations.is_empty() {
                     return None;
                 }
@@ -128,7 +158,7 @@ impl TestDB {
 }
 
 impl TestDB {
-    pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<ra_salsa::Event> {
+    pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event> {
         *self.events.lock().unwrap() = Some(Vec::new());
         f();
         self.events.lock().unwrap().take().unwrap()
@@ -141,8 +171,11 @@ impl TestDB {
             .filter_map(|e| match e.kind {
                 // This is pretty horrible, but `Debug` is the only way to inspect
                 // QueryDescriptor at the moment.
-                ra_salsa::EventKind::WillExecute { database_key } => {
-                    Some(format!("{:?}", database_key.debug(self)))
+                salsa::EventKind::WillExecute { database_key } => {
+                    let ingredient = self
+                        .as_dyn_database()
+                        .ingredient_debug_name(database_key.ingredient_index());
+                    Some(ingredient.to_string())
                 }
                 _ => None,
             })

@@ -1,5 +1,5 @@
-// We're testing x86 target specific features
-//@only-target: x86_64 i686
+// We're testing x86-32 target specific features. SSE always exists on x86-64.
+//@only-target: i686
 //@compile-flags: -C target-feature=-sse2
 
 #[cfg(target_arch = "x86")]

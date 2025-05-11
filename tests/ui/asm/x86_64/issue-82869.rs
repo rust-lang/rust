@@ -12,9 +12,9 @@ pub unsafe fn aarch64(a: f64, b: f64) -> f64 {
         || {};
         b
     });
-    //~^^^^ invalid register class
-    //~^^^^^ invalid register class
-    //~^^^^^^ invalid register
+    //~^^^^ ERROR invalid register class
+    //~^^^^^ ERROR invalid register class
+    //~^^^^^^ ERROR invalid register
     c
 }
 

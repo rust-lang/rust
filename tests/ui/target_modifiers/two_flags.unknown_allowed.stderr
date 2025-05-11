@@ -1,0 +1,8 @@
+error: unknown target modifier `unknown_flag`, requested by `-Cunsafe-allow-abi-mismatch=unknown_flag`
+  --> $DIR/two_flags.rs:10:1
+   |
+LL | #![feature(no_core)]
+   | ^
+
+error: aborting due to 1 previous error
+

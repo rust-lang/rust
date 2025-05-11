@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 // This target is for musl Linux on ARMv7 with thumb mode enabled
 // (for consistency with Android and Debian-based distributions)
@@ -8,11 +8,8 @@ use crate::spec::{Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
-        // It's important we use "gnueabihf" and not "musleabihf" here. LLVM
-        // uses it to determine the calling convention and float ABI, and LLVM
-        // doesn't support the "musleabihf" value.
-        llvm_target: "armv7-unknown-linux-gnueabihf".into(),
-        metadata: crate::spec::TargetMetadata {
+        llvm_target: "armv7-unknown-linux-musleabihf".into(),
+        metadata: TargetMetadata {
             description: Some("Thumb2-mode ARMv7-A Linux with NEON, musl 1.2.3".into()),
             tier: Some(3),
             host_tools: Some(false),
@@ -26,6 +23,7 @@ pub(crate) fn target() -> Target {
         // target.
         options: TargetOptions {
             abi: "eabihf".into(),
+            llvm_floatabi: Some(FloatAbi::Hard),
             features: "+v7,+thumb-mode,+thumb2,+vfp3,+neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),

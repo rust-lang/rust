@@ -1,13 +1,13 @@
 //! Completion for derives
 use hir::ScopeDef;
-use ide_db::{documentation::HasDocs, SymbolKind};
+use ide_db::{SymbolKind, documentation::HasDocs};
 use itertools::Itertools;
 use syntax::{SmolStr, ToSmolStr};
 
 use crate::{
+    Completions,
     context::{CompletionContext, ExistingDerives, PathCompletionCtx, Qualified},
     item::CompletionItem,
-    Completions,
 };
 
 pub(crate) fn complete_derive_path(

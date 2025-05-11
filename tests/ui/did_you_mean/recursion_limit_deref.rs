@@ -51,3 +51,6 @@ fn main() {
     let x: &Bottom = &t; //~ ERROR mismatched types
     //~^ error recursion limit
 }
+
+//~? ERROR reached the recursion limit finding the struct tail for `K`
+//~? ERROR reached the recursion limit finding the struct tail for `Bottom`

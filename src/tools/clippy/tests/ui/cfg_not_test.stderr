@@ -10,7 +10,7 @@ LL |     #[cfg(not(test))]
    = help: to override `-D warnings` add `#[allow(clippy::cfg_not_test)]`
 
 error: code is excluded from test builds
-  --> tests/ui/cfg_not_test.rs:12:5
+  --> tests/ui/cfg_not_test.rs:13:5
    |
 LL |     #[cfg(not(test))]
    |     ^^^^^^^^^^^^^^^^^
@@ -18,7 +18,7 @@ LL |     #[cfg(not(test))]
    = help: consider not excluding any code from test builds
 
 error: code is excluded from test builds
-  --> tests/ui/cfg_not_test.rs:24:1
+  --> tests/ui/cfg_not_test.rs:26:1
    |
 LL | #[cfg(not(test))]
    | ^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL | #[cfg(not(test))]
    = help: consider not excluding any code from test builds
 
 error: code is excluded from test builds
-  --> tests/ui/cfg_not_test.rs:26:1
+  --> tests/ui/cfg_not_test.rs:29:1
    |
 LL | #[cfg(all(debug_assertions, not(test)))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -34,7 +34,7 @@ LL | #[cfg(all(debug_assertions, not(test)))]
    = help: consider not excluding any code from test builds
 
 error: code is excluded from test builds
-  --> tests/ui/cfg_not_test.rs:28:1
+  --> tests/ui/cfg_not_test.rs:32:1
    |
 LL | #[cfg(not(any(not(debug_assertions), test)))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

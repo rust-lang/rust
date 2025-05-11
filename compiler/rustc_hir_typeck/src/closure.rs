@@ -12,13 +12,14 @@ use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, 
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::span_bug;
-use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::{self, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{
+    self, ClosureKind, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor,
+};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::traits::ArgKind;
 use rustc_trait_selection::traits;
-use rustc_type_ir::ClosureKind;
 use tracing::{debug, instrument, trace};
 
 use super::{CoroutineTypes, Expectation, FnCtxt, check_fn};
@@ -51,7 +52,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let body = tcx.hir().body(closure.body);
+        let body = tcx.hir_body(closure.body);
         let expr_def_id = closure.def_id;
 
         // It's always helpful for inference if we know the kind of
@@ -103,12 +104,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None => self.next_ty_var(expr_span),
                 };
 
-                let closure_args = ty::ClosureArgs::new(tcx, ty::ClosureArgsParts {
-                    parent_args,
-                    closure_kind_ty,
-                    closure_sig_as_fn_ptr_ty: Ty::new_fn_ptr(tcx, sig),
-                    tupled_upvars_ty,
-                });
+                let closure_args = ty::ClosureArgs::new(
+                    tcx,
+                    ty::ClosureArgsParts {
+                        parent_args,
+                        closure_kind_ty,
+                        closure_sig_as_fn_ptr_ty: Ty::new_fn_ptr(tcx, sig),
+                        tupled_upvars_ty,
+                    },
+                );
 
                 (Ty::new_closure(tcx, expr_def_id.to_def_id(), closure_args.args), None)
             }
@@ -159,12 +163,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Resume type defaults to `()` if the coroutine has no argument.
                 let resume_ty = liberated_sig.inputs().get(0).copied().unwrap_or(tcx.types.unit);
 
-                let interior = self.next_ty_var(expr_span);
-                self.deferred_coroutine_interiors.borrow_mut().push((
-                    expr_def_id,
-                    body.id(),
-                    interior,
-                ));
+                // In the new solver, we can just instantiate this eagerly
+                // with the witness. This will ensure that goals that don't need
+                // to stall on interior types will get processed eagerly.
+                let interior = if self.next_trait_solver() {
+                    Ty::new_coroutine_witness(tcx, expr_def_id.to_def_id(), parent_args)
+                } else {
+                    self.next_ty_var(expr_span)
+                };
+
+                self.deferred_coroutine_interiors.borrow_mut().push((expr_def_id, interior));
 
                 // Coroutines that come from coroutine closures have not yet determined
                 // their kind ty, so make a fresh infer var which will be constrained
@@ -177,15 +185,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => tcx.types.unit,
                 };
 
-                let coroutine_args = ty::CoroutineArgs::new(tcx, ty::CoroutineArgsParts {
-                    parent_args,
-                    kind_ty,
-                    resume_ty,
-                    yield_ty,
-                    return_ty: liberated_sig.output(),
-                    witness: interior,
-                    tupled_upvars_ty,
-                });
+                let coroutine_args = ty::CoroutineArgs::new(
+                    tcx,
+                    ty::CoroutineArgsParts {
+                        parent_args,
+                        kind_ty,
+                        resume_ty,
+                        yield_ty,
+                        return_ty: liberated_sig.output(),
+                        witness: interior,
+                        tupled_upvars_ty,
+                    },
+                );
 
                 (
                     Ty::new_coroutine(tcx, expr_def_id.to_def_id(), coroutine_args.args),
@@ -216,8 +227,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 let coroutine_captures_by_ref_ty = self.next_ty_var(expr_span);
-                let closure_args =
-                    ty::CoroutineClosureArgs::new(tcx, ty::CoroutineClosureArgsParts {
+                let closure_args = ty::CoroutineClosureArgs::new(
+                    tcx,
+                    ty::CoroutineClosureArgsParts {
                         parent_args,
                         closure_kind_ty,
                         signature_parts_ty: Ty::new_fn_ptr(
@@ -238,7 +250,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         tupled_upvars_ty,
                         coroutine_captures_by_ref_ty,
                         coroutine_witness_ty: interior,
-                    });
+                    },
+                );
 
                 let coroutine_kind_ty = match expected_kind {
                     Some(kind) => Ty::from_coroutine_closure_kind(tcx, kind),
@@ -296,7 +309,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Given the expected type, figures out what it can about this closure we
     /// are about to type check:
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     fn deduce_closure_signature(
         &self,
         expected_ty: Ty<'tcx>,
@@ -308,7 +321,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     expected_ty,
                     closure_kind,
                     self.tcx
-                        .explicit_item_super_predicates(def_id)
+                        .explicit_item_self_bounds(def_id)
                         .iter_instantiated_copied(self.tcx, args)
                         .map(|(c, s)| (c.as_predicate(), s)),
                 ),
@@ -378,6 +391,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         bound_predicate.rebind(proj_predicate),
                     ),
                 );
+
                 // Make sure that we didn't infer a signature that mentions itself.
                 // This can happen when we elaborate certain supertrait bounds that
                 // mention projections containing the `Self` type. See #105401.
@@ -395,8 +409,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
-                    expected_sig = inferred_sig;
+
+                // Don't infer a closure signature from a goal that names the closure type as this will
+                // (almost always) lead to occurs check errors later in type checking.
+                if self.next_trait_solver()
+                    && let Some(inferred_sig) = inferred_sig
+                {
+                    // In the new solver it is difficult to explicitly normalize the inferred signature as we
+                    // would have to manually handle universes and rewriting bound vars and placeholders back
+                    // and forth.
+                    //
+                    // Instead we take advantage of the fact that we relating an inference variable with an alias
+                    // will only instantiate the variable if the alias is rigid(*not quite). Concretely we:
+                    // - Create some new variable `?sig`
+                    // - Equate `?sig` with the unnormalized signature, e.g. `fn(<Foo<?x> as Trait>::Assoc)`
+                    // - Depending on whether `<Foo<?x> as Trait>::Assoc` is rigid, ambiguous or normalizeable,
+                    //   we will either wind up with `?sig=<Foo<?x> as Trait>::Assoc/?y/ConcreteTy` respectively.
+                    //
+                    // *: In cases where there are ambiguous aliases in the signature that make use of bound vars
+                    //    they will wind up present in `?sig` even though they are non-rigid.
+                    //
+                    //    This is a bit weird and means we may wind up discarding the goal due to it naming `expected_ty`
+                    //    even though the normalized form may not name `expected_ty`. However, this matches the existing
+                    //    behaviour of the old solver and would be technically a breaking change to fix.
+                    let generalized_fnptr_sig = self.next_ty_var(span);
+                    let inferred_fnptr_sig = Ty::new_fn_ptr(self.tcx, inferred_sig.sig);
+                    self.demand_eqtype(span, inferred_fnptr_sig, generalized_fnptr_sig);
+
+                    let resolved_sig = self.resolve_vars_if_possible(generalized_fnptr_sig);
+
+                    if resolved_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
+                        expected_sig = Some(ExpectedSig {
+                            cause_span: inferred_sig.cause_span,
+                            sig: resolved_sig.fn_sig(self.tcx),
+                        });
+                    }
+                } else {
+                    if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
+                        expected_sig = inferred_sig;
+                    }
                 }
             }
 
@@ -927,7 +978,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
 
         // Normalize only after registering in `user_provided_sigs`.
-        self.normalize(self.tcx.hir().span(hir_id), result)
+        self.normalize(self.tcx.def_span(expr_def_id), result)
     }
 
     /// Invoked when we are translating the coroutine that results
@@ -981,7 +1032,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => self
                 .tcx
-                .explicit_item_super_predicates(def_id)
+                .explicit_item_self_bounds(def_id)
                 .iter_instantiated_copied(self.tcx, args)
                 .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             ty::Error(_) => return Some(ret_ty),

@@ -1,7 +1,9 @@
 // Checking that the compiler reports multiple type errors at once
 
+//@ dont-require-annotations: NOTE
+
 fn main() { let a: bool = 1; let b: i32 = true; }
 //~^ ERROR mismatched types
-//~| expected `bool`, found integer
+//~| NOTE expected `bool`, found integer
 //~| ERROR mismatched types
-//~| expected `i32`, found `bool`
+//~| NOTE expected `i32`, found `bool`

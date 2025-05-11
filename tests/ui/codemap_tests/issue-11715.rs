@@ -1,5 +1,4 @@
-#![feature(rustc_attrs)]
-fn main() { #![rustc_error] // rust-lang/rust#49855
+fn main() {
     let mut x = "foo";
     let y = &mut x;
     let z = &mut x; //~ ERROR cannot borrow

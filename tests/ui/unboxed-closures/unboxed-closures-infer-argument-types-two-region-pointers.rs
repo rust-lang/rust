@@ -15,6 +15,6 @@ fn doit<T,F>(val: T, f: &F)
 pub fn main() {
     doit(0, &|x, y| {
         x.set(y);
-        //~^ lifetime may not live long enough
+        //~^ ERROR lifetime may not live long enough
     });
 }

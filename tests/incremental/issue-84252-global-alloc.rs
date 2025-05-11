@@ -1,5 +1,6 @@
 //@ revisions: cfail1 cfail2
 //@ build-pass
+//@ needs-crate-type: cdylib
 
 #![crate_type="lib"]
 #![crate_type="cdylib"]

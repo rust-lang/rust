@@ -1,11 +1,11 @@
 //! Targets the ARMv5TE, with code as `t32` code by default.
 
-use crate::spec::{FramePointer, Target, TargetOptions, base, cvs};
+use crate::spec::{FloatAbi, FramePointer, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "thumbv5te-none-eabi".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Thumb-mode Bare ARMv5TE".into()),
             tier: Some(3),
             host_tools: Some(false),
@@ -26,6 +26,7 @@ pub(crate) fn target() -> Target {
 
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             // extra args passed to the external assembler (assuming `arm-none-eabi-as`):
             // * activate t32/a32 interworking
             // * use arch ARMv5TE

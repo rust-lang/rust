@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `(): Root` is not satisfied
-  --> $DIR/nested.rs:21:18
+  --> $DIR/nested.rs:22:18
    |
 LL |     needs_root::<()>();
    |                  ^^ the trait `Root` is not implemented for `()`
    |
 note: required by a bound in `needs_root`
-  --> $DIR/nested.rs:18:18
+  --> $DIR/nested.rs:19:18
    |
 LL | fn needs_root<T: Root>() {}
    |                  ^^^^ required by this bound in `needs_root`

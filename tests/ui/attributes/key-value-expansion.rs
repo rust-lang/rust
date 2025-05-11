@@ -39,7 +39,7 @@ bug!();
 macro_rules! doc_comment {
     ($x:expr) => {
         #[doc = $x]
-        extern {}
+        extern "C" {}
     };
 }
 

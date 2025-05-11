@@ -1,4 +1,4 @@
-//@ compile-flags: -O -Zcross-crate-inline-threshold=always
+//@ compile-flags: -Copt-level=3 -Zcross-crate-inline-threshold=always
 
 #![crate_type = "lib"]
 

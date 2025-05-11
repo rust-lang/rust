@@ -1,16 +1,13 @@
 use std::iter;
 
-use ide_db::{
-    assists::{AssistId, AssistKind},
-    ty_filter::TryEnum,
-};
+use ide_db::{assists::AssistId, ty_filter::TryEnum};
 use syntax::{
+    AstNode, T,
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
         make,
     },
-    AstNode, T,
 };
 
 use crate::assist_context::{AssistContext, Assists};
@@ -48,7 +45,7 @@ pub(crate) fn replace_try_expr_with_match(
 
     let target = qm_kw_parent.syntax().text_range();
     acc.add(
-        AssistId("replace_try_expr_with_match", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("replace_try_expr_with_match"),
         "Replace try expression with match",
         target,
         |edit| {
@@ -64,26 +61,27 @@ pub(crate) fn replace_try_expr_with_match(
                 TryEnum::Option => {
                     make::expr_return(Some(make::expr_path(make::ext::ident_path("None"))))
                 }
-                TryEnum::Result => make::expr_return(Some(make::expr_call(
-                    make::expr_path(make::ext::ident_path("Err")),
-                    make::arg_list(iter::once(make::expr_path(make::ext::ident_path("err")))),
-                ))),
+                TryEnum::Result => make::expr_return(Some(
+                    make::expr_call(
+                        make::expr_path(make::ext::ident_path("Err")),
+                        make::arg_list(iter::once(make::expr_path(make::ext::ident_path("err")))),
+                    )
+                    .into(),
+                )),
             };
 
             let happy_arm = make::match_arm(
-                iter::once(
-                    try_enum.happy_pattern(make::ident_pat(false, false, make::name("it")).into()),
-                ),
+                try_enum.happy_pattern(make::ident_pat(false, false, make::name("it")).into()),
                 None,
                 make::expr_path(make::ext::ident_path("it")),
             );
-            let sad_arm = make::match_arm(iter::once(sad_pat), None, sad_expr);
+            let sad_arm = make::match_arm(sad_pat, None, sad_expr);
 
             let match_arm_list = make::match_arm_list([happy_arm, sad_arm]);
 
             let expr_match = make::expr_match(expr, match_arm_list)
                 .indent(IndentLevel::from_node(qm_kw_parent.syntax()));
-            edit.replace_ast::<ast::Expr>(qm_kw_parent.into(), expr_match);
+            edit.replace_ast::<ast::Expr>(qm_kw_parent.into(), expr_match.into());
         },
     )
 }

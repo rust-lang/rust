@@ -49,5 +49,5 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, op: BinOpKind, lhs: &'tcx Expr
             lint_double_comparison!(==);
         },
         _ => (),
-    };
+    }
 }

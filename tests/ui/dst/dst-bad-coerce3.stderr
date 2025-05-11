@@ -1,5 +1,5 @@
 error[E0597]: `f1` does not live long enough
-  --> $DIR/dst-bad-coerce3.rs:16:32
+  --> $DIR/dst-bad-coerce3.rs:14:32
    |
 LL | fn baz<'a>() {
    |        -- lifetime `'a` defined here
@@ -15,7 +15,7 @@ LL | }
    | - `f1` dropped here while still borrowed
 
 error[E0597]: `f1` does not live long enough
-  --> $DIR/dst-bad-coerce3.rs:21:25
+  --> $DIR/dst-bad-coerce3.rs:19:25
    |
 LL | fn baz<'a>() {
    |        -- lifetime `'a` defined here
@@ -26,41 +26,9 @@ LL |     let f2: &Fat<Foo> = &f1;
    |                         ^^^ borrowed value does not live long enough
 LL |     let f3: &'a Fat<dyn Bar> = f2;
    |             ---------------- type annotation requires that `f1` is borrowed for `'a`
-...
 LL | }
    | - `f1` dropped here while still borrowed
 
-error[E0597]: `f1` does not live long enough
-  --> $DIR/dst-bad-coerce3.rs:26:30
-   |
-LL | fn baz<'a>() {
-   |        -- lifetime `'a` defined here
-...
-LL |     let f1 = ([1, 2, 3],);
-   |         -- binding `f1` declared here
-LL |     let f2: &([isize; 3],) = &f1;
-   |                              ^^^ borrowed value does not live long enough
-LL |     let f3: &'a ([isize],) = f2;
-   |             -------------- type annotation requires that `f1` is borrowed for `'a`
-...
-LL | }
-   | - `f1` dropped here while still borrowed
-
-error[E0597]: `f1` does not live long enough
-  --> $DIR/dst-bad-coerce3.rs:31:23
-   |
-LL | fn baz<'a>() {
-   |        -- lifetime `'a` defined here
-...
-LL |     let f1 = (Foo,);
-   |         -- binding `f1` declared here
-LL |     let f2: &(Foo,) = &f1;
-   |                       ^^^ borrowed value does not live long enough
-LL |     let f3: &'a (dyn Bar,) = f2;
-   |             -------------- type annotation requires that `f1` is borrowed for `'a`
-LL | }
-   | - `f1` dropped here while still borrowed
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0597`.

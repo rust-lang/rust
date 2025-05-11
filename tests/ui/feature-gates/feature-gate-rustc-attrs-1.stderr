@@ -7,18 +7,9 @@ LL | #[rustc_variance]
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: the `#[rustc_error]` attribute is just used for rustc unit tests and will never be stable
-  --> $DIR/feature-gate-rustc-attrs-1.rs:4:1
-   |
-LL | #[rustc_error]
-   | ^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0658]: the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to document guaranteed niche optimizations in libcore and libstd and will never be stable
               (note that the compiler does not even check whether the type indeed is being non-null-optimized; it is your responsibility to ensure that the attribute is only used on types that are optimized)
-  --> $DIR/feature-gate-rustc-attrs-1.rs:5:1
+  --> $DIR/feature-gate-rustc-attrs-1.rs:4:1
    |
 LL | #[rustc_nonnull_optimization_guaranteed]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,6 +17,6 @@ LL | #[rustc_nonnull_optimization_guaranteed]
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

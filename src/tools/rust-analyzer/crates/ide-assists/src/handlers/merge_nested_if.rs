@@ -1,12 +1,12 @@
 use ide_db::syntax_helpers::node_ext::is_pattern_cond;
 use syntax::{
-    ast::{self, AstNode, BinaryOp},
     T,
+    ast::{self, AstNode, BinaryOp},
 };
 
 use crate::{
+    AssistId,
     assist_context::{AssistContext, Assists},
-    AssistId, AssistKind,
 };
 // Assist: merge_nested_if
 //
@@ -69,29 +69,24 @@ pub(crate) fn merge_nested_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     let nested_if_then_branch = nested_if_to_merge.then_branch()?;
     let then_branch_range = then_branch.syntax().text_range();
 
-    acc.add(
-        AssistId("merge_nested_if", AssistKind::RefactorRewrite),
-        "Merge nested if",
-        if_range,
-        |edit| {
-            let cond_text = if has_logic_op_or(&cond) {
-                format!("({})", cond.syntax().text())
-            } else {
-                cond.syntax().text().to_string()
-            };
+    acc.add(AssistId::refactor_rewrite("merge_nested_if"), "Merge nested if", if_range, |edit| {
+        let cond_text = if has_logic_op_or(&cond) {
+            format!("({})", cond.syntax().text())
+        } else {
+            cond.syntax().text().to_string()
+        };
 
-            let nested_if_cond_text = if has_logic_op_or(&nested_if_cond) {
-                format!("({})", nested_if_cond.syntax().text())
-            } else {
-                nested_if_cond.syntax().text().to_string()
-            };
+        let nested_if_cond_text = if has_logic_op_or(&nested_if_cond) {
+            format!("({})", nested_if_cond.syntax().text())
+        } else {
+            nested_if_cond.syntax().text().to_string()
+        };
 
-            let replace_cond = format!("{cond_text} && {nested_if_cond_text}");
+        let replace_cond = format!("{cond_text} && {nested_if_cond_text}");
 
-            edit.replace(cond_range, replace_cond);
-            edit.replace(then_branch_range, nested_if_then_branch.syntax().text());
-        },
-    )
+        edit.replace(cond_range, replace_cond);
+        edit.replace(then_branch_range, nested_if_then_branch.syntax().text());
+    })
 }
 
 /// Returns whether the given if condition has logical operators.

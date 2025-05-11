@@ -13,7 +13,6 @@ LL | impl<T: Clone, U> PartialEq<U> for Struct<T>
    |         unsatisfied trait bound introduced here
 note: required by a bound in `Eq`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   = note: this error originates in the derive macro `Eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T` with trait `Clone`
    |
 LL | pub struct Struct<T: std::clone::Clone>(T);

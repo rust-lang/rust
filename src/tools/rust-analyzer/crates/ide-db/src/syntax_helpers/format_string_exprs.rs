@@ -183,7 +183,7 @@ pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
 
     fn check(input: &str, expect: &Expect) {
         let (output, exprs) = parse_format_exprs(input).unwrap_or(("-".to_owned(), vec![]));

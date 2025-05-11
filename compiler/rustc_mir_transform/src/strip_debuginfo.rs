@@ -31,4 +31,8 @@ impl<'tcx> crate::MirPass<'tcx> for StripDebugInfo {
             )
         });
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }

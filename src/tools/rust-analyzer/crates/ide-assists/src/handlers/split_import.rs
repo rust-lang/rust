@@ -1,6 +1,6 @@
-use syntax::{ast, AstNode, T};
+use syntax::{AstNode, T, ast};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: split_import
 //
@@ -29,7 +29,7 @@ pub(crate) fn split_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     }
 
     let target = colon_colon.text_range();
-    acc.add(AssistId("split_import", AssistKind::RefactorRewrite), "Split import", target, |edit| {
+    acc.add(AssistId::refactor_rewrite("split_import"), "Split import", target, |edit| {
         let use_tree = edit.make_mut(use_tree.clone());
         let path = edit.make_mut(path);
         use_tree.split_prefix(&path);

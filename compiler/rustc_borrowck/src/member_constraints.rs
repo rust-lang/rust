@@ -1,7 +1,6 @@
 use std::hash::Hash;
 use std::ops::Index;
 
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::ty::{self, Ty};
@@ -147,9 +146,7 @@ impl<'tcx, R> MemberConstraintSet<'tcx, R>
 where
     R: Copy + Hash + Eq,
 {
-    pub(crate) fn all_indices(
-        &self,
-    ) -> impl Iterator<Item = NllMemberConstraintIndex> + Captures<'tcx> + '_ {
+    pub(crate) fn all_indices(&self) -> impl Iterator<Item = NllMemberConstraintIndex> {
         self.constraints.indices()
     }
 
@@ -159,7 +156,7 @@ where
     pub(crate) fn indices(
         &self,
         member_region_vid: R,
-    ) -> impl Iterator<Item = NllMemberConstraintIndex> + Captures<'tcx> + '_ {
+    ) -> impl Iterator<Item = NllMemberConstraintIndex> {
         let mut next = self.first_constraints.get(&member_region_vid).cloned();
         std::iter::from_fn(move || -> Option<NllMemberConstraintIndex> {
             if let Some(current) = next {

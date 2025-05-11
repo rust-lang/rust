@@ -3,22 +3,22 @@
 use std::{collections::hash_map::Entry, fmt::Display, iter};
 
 use crate::{
+    CallableDefId, ClosureId, Const, ConstScalar, InferenceResult, Interner, MemoryMap,
+    Substitution, TraitEnvironment, Ty, TyExt, TyKind,
     consteval::usize_const,
     db::HirDatabase,
-    display::HirDisplay,
-    infer::{normalize, PointerCast},
+    display::{DisplayTarget, HirDisplay},
+    infer::{PointerCast, normalize},
     lang_items::is_box,
     mapping::ToChalk,
-    CallableDefId, ClosureId, Const, ConstScalar, InferenceResult, Interner, MemoryMap,
-    Substitution, TraitEnvironment, Ty, TyKind,
 };
-use base_db::CrateId;
+use base_db::Crate;
 use chalk_ir::Mutability;
 use either::Either;
 use hir_def::{
-    body::Body,
-    hir::{BindingAnnotation, BindingId, Expr, ExprId, Ordering, PatId},
     DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
+    expr_store::Body,
+    hir::{BindingAnnotation, BindingId, Expr, ExprId, Ordering, PatId},
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 
@@ -28,20 +28,21 @@ mod lower;
 mod monomorphization;
 mod pretty;
 
-pub use borrowck::{borrowck_query, BorrowckResult, MutabilityReason};
+pub use borrowck::{BorrowckResult, MutabilityReason, borrowck_query};
 pub use eval::{
-    interpret_mir, pad16, render_const_using_debug_impl, Evaluator, MirEvalError, VTableMap,
+    Evaluator, MirEvalError, VTableMap, interpret_mir, pad16, render_const_using_debug_impl,
 };
-pub use lower::{
-    lower_to_mir, mir_body_for_closure_query, mir_body_query, mir_body_recover, MirLowerError,
-};
+pub use lower::{MirLowerError, lower_to_mir, mir_body_for_closure_query, mir_body_query};
 pub use monomorphization::{
     monomorphize_mir_body_bad, monomorphized_mir_body_for_closure_query,
-    monomorphized_mir_body_query, monomorphized_mir_body_recover,
+    monomorphized_mir_body_query,
 };
 use rustc_hash::FxHashMap;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use stdx::{impl_from, never};
+
+pub(crate) use lower::mir_body_cycle_result;
+pub(crate) use monomorphization::monomorphized_mir_body_cycle_result;
 
 use super::consteval::{intern_const_scalar, try_const_usize};
 
@@ -76,7 +77,14 @@ pub struct Local {
 /// currently implements it, but it seems like this may be something to check against in the
 /// validator.
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Operand {
+pub struct Operand {
+    kind: OperandKind,
+    // FIXME : This should actually just be of type `MirSpan`.
+    span: Option<MirSpan>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum OperandKind {
     /// Creates a value by loading the given place.
     ///
     /// Before drop elaboration, the type of the place must be `Copy`. After drop elaboration there
@@ -100,7 +108,13 @@ pub enum Operand {
 
 impl Operand {
     fn from_concrete_const(data: Box<[u8]>, memory_map: MemoryMap, ty: Ty) -> Self {
-        Operand::Constant(intern_const_scalar(ConstScalar::Bytes(data, memory_map), ty))
+        Operand {
+            kind: OperandKind::Constant(intern_const_scalar(
+                ConstScalar::Bytes(data, memory_map),
+                ty,
+            )),
+            span: None,
+        }
     }
 
     fn from_bytes(data: Box<[u8]>, ty: Ty) -> Self {
@@ -142,8 +156,15 @@ impl<V, T> ProjectionElem<V, T> {
         mut base: Ty,
         db: &dyn HirDatabase,
         closure_field: impl FnOnce(ClosureId, &Substitution, usize) -> Ty,
-        krate: CrateId,
+        krate: Crate,
     ) -> Ty {
+        // we only bail on mir building when there are type mismatches
+        // but error types may pop up resulting in us still attempting to build the mir
+        // so just propagate the error type
+        if base.is_unknown() {
+            return TyKind::Error.intern(Interner);
+        }
+
         if matches!(base.kind(Interner), TyKind::Alias(_) | TyKind::AssociatedType(..)) {
             base = normalize(
                 db,
@@ -161,12 +182,12 @@ impl<V, T> ProjectionElem<V, T> {
                 _ => {
                     never!(
                         "Overloaded deref on type {} is not a projection",
-                        base.display(db, db.crate_graph()[krate].edition)
+                        base.display(db, DisplayTarget::from_crate(db, krate))
                     );
                     TyKind::Error.intern(Interner)
                 }
             },
-            ProjectionElem::Field(Either::Left(f)) => match &base.kind(Interner) {
+            ProjectionElem::Field(Either::Left(f)) => match base.kind(Interner) {
                 TyKind::Adt(_, subst) => {
                     db.field_types(f.parent)[f.local_id].clone().substitute(Interner, subst)
                 }
@@ -1068,11 +1089,11 @@ impl MirBody {
             f: &mut impl FnMut(&mut Place, &mut ProjectionStore),
             store: &mut ProjectionStore,
         ) {
-            match op {
-                Operand::Copy(p) | Operand::Move(p) => {
+            match &mut op.kind {
+                OperandKind::Copy(p) | OperandKind::Move(p) => {
                     f(p, store);
                 }
-                Operand::Constant(_) | Operand::Static(_) => (),
+                OperandKind::Constant(_) | OperandKind::Static(_) => (),
             }
         }
         for (_, block) in self.basic_blocks.iter_mut() {

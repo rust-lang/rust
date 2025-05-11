@@ -3,13 +3,13 @@
 use std::fmt::Write;
 use std::ops::ControlFlow;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, IntoDiagArg, into_diag_arg_using_display, pluralize,
+    Applicability, Diag, DiagArgValue, IntoDiagArg, into_diag_arg_using_display, listify, pluralize,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem, PredicateOrigin, WherePredicateKind};
+use rustc_hir::{self as hir, AmbigArg, LangItem, PredicateOrigin, WherePredicateKind};
 use rustc_span::{BytePos, Span};
 use rustc_type_ir::TyKind::*;
 
@@ -19,8 +19,16 @@ use crate::ty::{
     TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 
+impl IntoDiagArg for Ty<'_> {
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
+        ty::tls::with(|tcx| {
+            let ty = tcx.short_string(self, path);
+            rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(ty))
+        })
+    }
+}
+
 into_diag_arg_using_display! {
-    Ty<'_>,
     ty::Region<'_>,
 }
 
@@ -69,10 +77,10 @@ impl<'tcx> Ty<'tcx> {
     /// description in error messages. This is used in the primary span label. Beyond what
     /// `is_simple_ty` includes, it also accepts ADTs with no type arguments and references to
     /// ADTs with no type arguments.
-    pub fn is_simple_text(self, tcx: TyCtxt<'tcx>) -> bool {
+    pub fn is_simple_text(self) -> bool {
         match self.kind() {
             Adt(_, args) => args.non_erasable_generics().next().is_none(),
-            Ref(_, ty, _) => ty.is_simple_text(tcx),
+            Ref(_, ty, _) => ty.is_simple_text(),
             _ => self.is_simple_ty(),
         }
     }
@@ -134,8 +142,8 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
     if let Some((name, term)) = associated_ty {
         // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
         // That should be extracted into a helper function.
-        if constraint.ends_with('>') {
-            constraint = format!("{}, {} = {}>", &constraint[..constraint.len() - 1], name, term);
+        if let Some(stripped) = constraint.strip_suffix('>') {
+            constraint = format!("{stripped}, {name} = {term}>");
         } else {
             constraint.push_str(&format!("<{name} = {term}>"));
         }
@@ -279,7 +287,7 @@ pub fn suggest_constraining_type_params<'a>(
     param_names_and_constraints: impl Iterator<Item = (&'a str, &'a str, Option<DefId>)>,
     span_to_replace: Option<Span>,
 ) -> bool {
-    let mut grouped = FxHashMap::default();
+    let mut grouped = FxIndexMap::default();
     let mut unstable_suggestion = false;
     param_names_and_constraints.for_each(|(param_name, constraint, def_id)| {
         let stable = match def_id {
@@ -336,7 +344,7 @@ pub fn suggest_constraining_type_params<'a>(
             .collect();
 
         constraints
-            .retain(|(_, def_id, _)| def_id.map_or(true, |def| !bound_trait_defs.contains(&def)));
+            .retain(|(_, def_id, _)| def_id.is_none_or(|def| !bound_trait_defs.contains(&def)));
 
         if constraints.is_empty() {
             continue;
@@ -362,11 +370,8 @@ pub fn suggest_constraining_type_params<'a>(
             let n = trait_names.len();
             let stable = if all_stable { "" } else { "unstable " };
             let trait_ = if all_known { format!("trait{}", pluralize!(n)) } else { String::new() };
-            format!("{stable}{trait_}{}", match &trait_names[..] {
-                [t] => format!(" {t}"),
-                [ts @ .., last] => format!(" {} and {last}", ts.join(", ")),
-                [] => return false,
-            },)
+            let Some(trait_names) = listify(&trait_names, |n| n.to_string()) else { return false };
+            format!("{stable}{trait_} {trait_names}")
         } else {
             // We're more explicit when there's a mix of stable and unstable traits.
             let mut trait_names = constraints
@@ -378,10 +383,9 @@ pub fn suggest_constraining_type_params<'a>(
                 .collect::<Vec<_>>();
             trait_names.sort();
             trait_names.dedup();
-            match &trait_names[..] {
-                [t] => t.to_string(),
-                [ts @ .., last] => format!("{} and {last}", ts.join(", ")),
-                [] => return false,
+            match listify(&trait_names, |t| t.to_string()) {
+                Some(names) => names,
+                None => return false,
             }
         };
         let constraint = constraint.join(" + ");
@@ -567,36 +571,24 @@ pub fn suggest_constraining_type_params<'a>(
 }
 
 /// Collect al types that have an implicit `'static` obligation that we could suggest `'_` for.
-pub struct TraitObjectVisitor<'tcx>(pub Vec<&'tcx hir::Ty<'tcx>>, pub crate::hir::map::Map<'tcx>);
+pub(crate) struct TraitObjectVisitor<'tcx>(pub(crate) Vec<&'tcx hir::Ty<'tcx>>);
 
 impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
-    fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+    fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
         match ty.kind {
-            hir::TyKind::TraitObject(
-                _,
-                hir::Lifetime {
-                    res:
-                        hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static,
+            hir::TyKind::TraitObject(_, tagged_ptr)
+                if let hir::Lifetime {
+                    kind:
+                        hir::LifetimeKind::ImplicitObjectLifetimeDefault | hir::LifetimeKind::Static,
                     ..
-                },
-                _,
-            )
-            | hir::TyKind::OpaqueDef(..) => self.0.push(ty),
+                } = tagged_ptr.pointer() =>
+            {
+                self.0.push(ty.as_unambig_ty())
+            }
+            hir::TyKind::OpaqueDef(..) => self.0.push(ty.as_unambig_ty()),
             _ => {}
         }
         hir::intravisit::walk_ty(self, ty);
-    }
-}
-
-/// Collect al types that have an implicit `'static` obligation that we could suggest `'_` for.
-pub struct StaticLifetimeVisitor<'tcx>(pub Vec<Span>, pub crate::hir::map::Map<'tcx>);
-
-impl<'v> hir::intravisit::Visitor<'v> for StaticLifetimeVisitor<'v> {
-    fn visit_lifetime(&mut self, lt: &'v hir::Lifetime) {
-        if let hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static = lt.res
-        {
-            self.0.push(lt.ident.span);
-        }
     }
 }
 
@@ -637,21 +629,19 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
                 }
             }
 
-            Alias(Projection, AliasTy { def_id, .. }) => {
-                if self.tcx.def_kind(def_id) != DefKind::AssocTy {
-                    return ControlFlow::Break(());
-                }
+            Alias(Projection, AliasTy { def_id, .. })
+                if self.tcx.def_kind(def_id) != DefKind::AssocTy =>
+            {
+                return ControlFlow::Break(());
             }
 
-            Param(param) => {
-                // FIXME: It would be nice to make this not use string manipulation,
-                // but it's pretty hard to do this, since `ty::ParamTy` is missing
-                // sufficient info to determine if it is synthetic, and we don't
-                // always have a convenient way of getting `ty::Generics` at the call
-                // sites we invoke `IsSuggestable::is_suggestable`.
-                if param.name.as_str().starts_with("impl ") {
-                    return ControlFlow::Break(());
-                }
+            // FIXME: It would be nice to make this not use string manipulation,
+            // but it's pretty hard to do this, since `ty::ParamTy` is missing
+            // sufficient info to determine if it is synthetic, and we don't
+            // always have a convenient way of getting `ty::Generics` at the call
+            // sites we invoke `IsSuggestable::is_suggestable`.
+            Param(param) if param.name.as_str().starts_with("impl ") => {
+                return ControlFlow::Break(());
             }
 
             _ => {}
@@ -729,17 +719,13 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
                 }
             }
 
-            Param(param) => {
-                // FIXME: It would be nice to make this not use string manipulation,
-                // but it's pretty hard to do this, since `ty::ParamTy` is missing
-                // sufficient info to determine if it is synthetic, and we don't
-                // always have a convenient way of getting `ty::Generics` at the call
-                // sites we invoke `IsSuggestable::is_suggestable`.
-                if param.name.as_str().starts_with("impl ") {
-                    return Err(());
-                }
-
-                t
+            // FIXME: It would be nice to make this not use string manipulation,
+            // but it's pretty hard to do this, since `ty::ParamTy` is missing
+            // sufficient info to determine if it is synthetic, and we don't
+            // always have a convenient way of getting `ty::Generics` at the call
+            // sites we invoke `IsSuggestable::is_suggestable`.
+            Param(param) if param.name.as_str().starts_with("impl ") => {
+                return Err(());
             }
 
             _ => t,

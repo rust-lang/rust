@@ -101,7 +101,7 @@ use crate::ascii::Char as AsciiChar;
 ///     bar: f32,
 /// }
 /// ```
-#[cfg_attr(not(test), rustc_diagnostic_item = "Default")]
+#[rustc_diagnostic_item = "Default"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_trivial_field_reads]
 pub trait Default: Sized {

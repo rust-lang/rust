@@ -73,9 +73,7 @@ impl GenericParamDef {
 
     pub fn is_anonymous_lifetime(&self) -> bool {
         match self.kind {
-            GenericParamDefKind::Lifetime => {
-                self.name == kw::UnderscoreLifetime || self.name == kw::Empty
-            }
+            GenericParamDefKind::Lifetime => self.name == kw::UnderscoreLifetime,
             _ => false,
         }
     }

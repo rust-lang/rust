@@ -1,5 +1,5 @@
 error[E0277]: no implementation for `{integer} >> char`
-  --> $DIR/shift-various-bad-types.rs:9:8
+  --> $DIR/shift-various-bad-types.rs:11:8
    |
 LL |     22 >> p.char;
    |        ^^ no implementation for `{integer} >> char`
@@ -17,7 +17,7 @@ LL |     22 >> p.char;
            and 568 others
 
 error[E0277]: no implementation for `{integer} >> &str`
-  --> $DIR/shift-various-bad-types.rs:12:8
+  --> $DIR/shift-various-bad-types.rs:14:8
    |
 LL |     22 >> p.str;
    |        ^^ no implementation for `{integer} >> &str`
@@ -35,7 +35,7 @@ LL |     22 >> p.str;
            and 568 others
 
 error[E0277]: no implementation for `{integer} >> &Panolpy`
-  --> $DIR/shift-various-bad-types.rs:15:8
+  --> $DIR/shift-various-bad-types.rs:17:8
    |
 LL |     22 >> p;
    |        ^^ no implementation for `{integer} >> &Panolpy`
@@ -53,7 +53,7 @@ LL |     22 >> p;
            and 568 others
 
 error[E0308]: mismatched types
-  --> $DIR/shift-various-bad-types.rs:25:18
+  --> $DIR/shift-various-bad-types.rs:27:18
    |
 LL |     let _: i32 = 22_i64 >> 1_i32;
    |            ---   ^^^^^^^^^^^^^^^ expected `i32`, found `i64`

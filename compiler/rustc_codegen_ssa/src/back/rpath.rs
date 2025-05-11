@@ -9,7 +9,7 @@ use tracing::debug;
 pub(super) struct RPathConfig<'a> {
     pub libs: &'a [&'a Path],
     pub out_filename: PathBuf,
-    pub is_like_osx: bool,
+    pub is_like_darwin: bool,
     pub linker_is_gnu: bool,
 }
 
@@ -63,7 +63,7 @@ fn get_rpaths_relative_to_output(config: &RPathConfig<'_>) -> Vec<OsString> {
 
 fn get_rpath_relative_to_output(config: &RPathConfig<'_>, lib: &Path) -> OsString {
     // Mac doesn't appear to support $ORIGIN
-    let prefix = if config.is_like_osx { "@loader_path" } else { "$ORIGIN" };
+    let prefix = if config.is_like_darwin { "@loader_path" } else { "$ORIGIN" };
 
     // Strip filenames
     let lib = lib.parent().unwrap();

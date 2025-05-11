@@ -5,7 +5,7 @@
 // updating everytime someone adds or removes a line.
 //@ normalize-stderr: ".rs:\d+:\d+" -> ".rs:LL:CC"
 
-pub onion {
+pub onion { //~ ERROR missing `enum` for enum definition
     Owo(u8),
     Uwu(i8),
 }

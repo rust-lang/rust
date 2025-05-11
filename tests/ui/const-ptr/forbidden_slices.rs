@@ -48,9 +48,11 @@ pub static S8: &[u64] = unsafe {
 pub static R0: &[u32] = unsafe { from_ptr_range(ptr::null()..ptr::null()) };
 //~^ ERROR it is undefined behavior to use this value
 pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) }; // errors inside libcore
+//~^ ERROR could not evaluate static initializer
 pub static R2: &[u32] = unsafe {
     let ptr = &D0 as *const u32;
     from_ptr_range(ptr..ptr.add(2)) // errors inside libcore
+    //~^ ERROR could not evaluate static initializer
 };
 pub static R4: &[u8] = unsafe {
     //~^ ERROR: it is undefined behavior to use this value
@@ -74,13 +76,16 @@ pub static R7: &[u16] = unsafe {
 };
 pub static R8: &[u64] = unsafe {
     let ptr = (&D4 as *const [u32; 2] as *const u32).byte_add(1).cast::<u64>();
-    from_ptr_range(ptr..ptr.add(1)) //~ inside `R8`
+    from_ptr_range(ptr..ptr.add(1))
+    //~^ ERROR could not evaluate static initializer
 };
 
 // This is sneaky: &D0 and &D0 point to different objects
 // (even if at runtime they have the same address)
 pub static R9: &[u32] = unsafe { from_ptr_range(&D0..(&D0 as *const u32).add(1)) };
+//~^ ERROR could not evaluate static initializer
 pub static R10: &[u32] = unsafe { from_ptr_range(&D0..&D0) };
+//~^ ERROR could not evaluate static initializer
 
 const D0: u32 = 0x11111111; // Constant chosen for endianness-independent behavior.
 const D1: MaybeUninit<&u32> = MaybeUninit::uninit();

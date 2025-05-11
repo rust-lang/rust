@@ -2,24 +2,28 @@
 use std::iter;
 
 use hir::{ExpandResult, Semantics, Type, TypeInfo, Variant};
-use ide_db::{active_parameter::ActiveParameter, RootDatabase};
+use ide_db::{RootDatabase, active_parameter::ActiveParameter};
 use itertools::Either;
 use syntax::{
-    algo::{ancestors_at_offset, find_node_at_offset, non_trivia_sibling},
+    AstNode, AstToken, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken,
+    T, TextRange, TextSize,
+    algo::{
+        self, ancestors_at_offset, find_node_at_offset, non_trivia_sibling,
+        previous_non_trivia_token,
+    },
     ast::{
         self, AttrKind, HasArgList, HasGenericArgs, HasGenericParams, HasLoopBody, HasName,
         NameOrNameRef,
     },
-    match_ast, AstNode, AstToken, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode,
-    SyntaxToken, TextRange, TextSize, T,
+    match_ast,
 };
 
 use crate::context::{
-    AttrCtx, BreakableKind, CompletionAnalysis, DotAccess, DotAccessExprCtx, DotAccessKind,
-    ItemListKind, LifetimeContext, LifetimeKind, NameContext, NameKind, NameRefContext,
-    NameRefKind, ParamContext, ParamKind, PathCompletionCtx, PathExprCtx, PathKind, PatternContext,
-    PatternRefutability, Qualified, QualifierCtx, TypeAscriptionTarget, TypeLocation,
-    COMPLETION_MARKER,
+    AttrCtx, BreakableKind, COMPLETION_MARKER, CompletionAnalysis, DotAccess, DotAccessExprCtx,
+    DotAccessKind, ItemListKind, LifetimeContext, LifetimeKind, NameContext, NameKind,
+    NameRefContext, NameRefKind, ParamContext, ParamKind, PathCompletionCtx, PathExprCtx, PathKind,
+    PatternContext, PatternRefutability, Qualified, QualifierCtx, TypeAscriptionTarget,
+    TypeLocation,
 };
 
 #[derive(Debug)]
@@ -59,7 +63,7 @@ pub(super) fn expand_and_analyze(
     // make the offset point to the start of the original token, as that is what the
     // intermediate offsets calculated in expansion always points to
     let offset = offset - relative_offset;
-    let expansion = expand(
+    let expansion = expand_maybe_stop(
         sema,
         original_file.clone(),
         speculative_file.clone(),
@@ -85,6 +89,11 @@ pub(super) fn expand_and_analyze(
     })
 }
 
+fn token_at_offset_ignore_whitespace(file: &SyntaxNode, offset: TextSize) -> Option<SyntaxToken> {
+    let token = file.token_at_offset(offset).left_biased()?;
+    algo::skip_whitespace_token(token, Direction::Prev)
+}
+
 /// Expand attributes and macro calls at the current cursor position for both the original file
 /// and fake file repeatedly. As soon as one of the two expansions fail we stop so the original
 /// and speculative states stay in sync.
@@ -92,7 +101,8 @@ pub(super) fn expand_and_analyze(
 /// We do this by recursively expanding all macros and picking the best possible match. We cannot just
 /// choose the first expansion each time because macros can expand to something that does not include
 /// our completion marker, e.g.:
-/// ```
+///
+/// ```ignore
 /// macro_rules! helper { ($v:ident) => {} }
 /// macro_rules! my_macro {
 ///     ($v:ident) => {
@@ -101,7 +111,7 @@ pub(super) fn expand_and_analyze(
 ///     };
 /// }
 ///
-/// my_macro!(complete_me_here)
+/// my_macro!(complete_me_here);
 /// ```
 /// If we would expand the first thing we encounter only (which in fact this method used to do), we would
 /// be unable to complete here, because we would be walking directly into the void. So we instead try
@@ -113,6 +123,47 @@ pub(super) fn expand_and_analyze(
 /// that we check, we subtract `COMPLETION_MARKER.len()`. This may not be accurate because proc macros
 /// can insert the text of the completion marker in other places while removing the span, but this is
 /// the best we can do.
+fn expand_maybe_stop(
+    sema: &Semantics<'_, RootDatabase>,
+    original_file: SyntaxNode,
+    speculative_file: SyntaxNode,
+    original_offset: TextSize,
+    fake_ident_token: SyntaxToken,
+    relative_offset: TextSize,
+) -> Option<ExpansionResult> {
+    if let result @ Some(_) = expand(
+        sema,
+        original_file.clone(),
+        speculative_file.clone(),
+        original_offset,
+        fake_ident_token.clone(),
+        relative_offset,
+    ) {
+        return result;
+    }
+
+    // This needs to come after the recursive call, because our "inside macro" detection is subtly wrong
+    // with regard to attribute macros named `test` that are not std's test. So hopefully we will expand
+    // them successfully above and be able to analyze.
+    // Left biased since there may already be an identifier token there, and we appended to it.
+    if !sema.might_be_inside_macro_call(&fake_ident_token)
+        && token_at_offset_ignore_whitespace(&original_file, original_offset + relative_offset)
+            .is_some_and(|original_token| !sema.might_be_inside_macro_call(&original_token))
+    {
+        // Recursion base case.
+        Some(ExpansionResult {
+            original_file,
+            speculative_file,
+            original_offset,
+            speculative_offset: fake_ident_token.text_range().start(),
+            fake_ident_token,
+            derive_ctx: None,
+        })
+    } else {
+        None
+    }
+}
+
 fn expand(
     sema: &Semantics<'_, RootDatabase>,
     original_file: SyntaxNode,
@@ -123,28 +174,13 @@ fn expand(
 ) -> Option<ExpansionResult> {
     let _p = tracing::info_span!("CompletionContext::expand").entered();
 
-    if !sema.might_be_inside_macro_call(&fake_ident_token)
-        && original_file
-            .token_at_offset(original_offset + relative_offset)
-            .right_biased()
-            .is_some_and(|original_token| !sema.might_be_inside_macro_call(&original_token))
-    {
-        // Recursion base case.
-        return Some(ExpansionResult {
-            original_file,
-            speculative_file,
-            original_offset,
-            speculative_offset: fake_ident_token.text_range().start(),
-            fake_ident_token,
-            derive_ctx: None,
-        });
-    }
-
     let parent_item =
         |item: &ast::Item| item.syntax().ancestors().skip(1).find_map(ast::Item::cast);
+    let original_node = token_at_offset_ignore_whitespace(&original_file, original_offset)
+        .and_then(|token| token.parent_ancestors().find_map(ast::Item::cast));
     let ancestor_items = iter::successors(
         Option::zip(
-            find_node_at_offset::<ast::Item>(&original_file, original_offset),
+            original_node,
             find_node_at_offset::<ast::Item>(
                 &speculative_file,
                 fake_ident_token.text_range().start(),
@@ -191,7 +227,7 @@ fn expand(
                             // stop here to prevent problems from happening
                             return None;
                         }
-                        let result = expand(
+                        let result = expand_maybe_stop(
                             sema,
                             actual_expansion.clone(),
                             fake_expansion.clone(),
@@ -311,7 +347,7 @@ fn expand(
                                     // stop here to prevent problems from happening
                                     return None;
                                 }
-                                let result = expand(
+                                let result = expand_maybe_stop(
                                     sema,
                                     actual_expansion.clone(),
                                     fake_expansion.clone(),
@@ -351,11 +387,7 @@ fn expand(
 
     match (
         sema.expand_macro_call(&actual_macro_call),
-        sema.speculative_expand_macro_call(
-            &actual_macro_call,
-            &speculative_args,
-            fake_ident_token.clone(),
-        ),
+        sema.speculative_expand_macro_call(&actual_macro_call, &speculative_args, fake_ident_token),
     ) {
         // successful expansions
         (Some(actual_expansion), Some((fake_expansion, fake_mapped_tokens))) => {
@@ -380,7 +412,7 @@ fn expand(
                         // stop here to prevent problems from happening
                         return None;
                     }
-                    let result = expand(
+                    let result = expand_maybe_stop(
                         sema,
                         actual_expansion.clone(),
                         fake_expansion.clone(),
@@ -416,6 +448,15 @@ fn analyze(
         fake_ident_token,
         derive_ctx,
     } = expansion_result;
+
+    if original_token.kind() != self_token.kind()
+        // FIXME: This check can be removed once we use speculative database forking for completions
+        && !(original_token.kind().is_punct() || original_token.kind().is_trivia())
+        && !(SyntaxKind::is_any_identifier(original_token.kind())
+            && SyntaxKind::is_any_identifier(self_token.kind()))
+    {
+        return None;
+    }
 
     // Overwrite the path kind for derives
     if let Some((original_file, file_with_fake_ident, offset, origin_attr)) = derive_ctx {
@@ -456,7 +497,7 @@ fn analyze(
                 && p.ancestors().any(|it| it.kind() == SyntaxKind::META)
             {
                 let colon_prefix = previous_non_trivia_token(self_token.clone())
-                    .map_or(false, |it| T![:] == it.kind());
+                    .is_some_and(|it| T![:] == it.kind());
 
                 CompletionAnalysis::UnexpandedAttrTT {
                     fake_attribute_under_caret: fake_ident_token
@@ -616,9 +657,8 @@ fn expected_type_and_name(
                             ))
                         } else {
                             cov_mark::hit!(expected_type_struct_field_without_leading_char);
-                            let expr_field = token.prev_sibling_or_token()?
-                                .into_node()
-                                .and_then(ast::RecordExprField::cast)?;
+                            cov_mark::hit!(expected_type_struct_field_followed_by_comma);
+                            let expr_field = previous_non_trivia_token(token.clone())?.parent().and_then(ast::RecordExprField::cast)?;
                             let (_, _, ty) = sema.resolve_record_field(&expr_field)?;
                             Some((
                                 Some(ty),
@@ -636,14 +676,13 @@ fn expected_type_and_name(
                             .or_else(|| sema.type_of_expr(&expr).map(TypeInfo::original));
                         (ty, field_name)
                     } else {
-                        cov_mark::hit!(expected_type_struct_field_followed_by_comma);
                         (field_ty, field_name)
                     }
                 },
                 // match foo { $0 }
                 // match foo { ..., pat => $0 }
                 ast::MatchExpr(it) => {
-                    let on_arrow = previous_non_trivia_token(token.clone()).map_or(false, |it| T![=>] == it.kind());
+                    let on_arrow = previous_non_trivia_token(token.clone()).is_some_and(|it| T![=>] == it.kind());
 
                     let ty = if on_arrow {
                         // match foo { ..., pat => $0 }
@@ -780,7 +819,7 @@ fn classify_name_ref(
 
     if let Some(record_field) = ast::RecordExprField::for_field_name(&name_ref) {
         let dot_prefix = previous_non_trivia_token(name_ref.syntax().clone())
-            .map_or(false, |it| T![.] == it.kind());
+            .is_some_and(|it| T![.] == it.kind());
 
         return find_node_in_file_compensated(
             sema,
@@ -814,7 +853,7 @@ fn classify_name_ref(
                 let receiver_is_ambiguous_float_literal = match &receiver {
                     Some(ast::Expr::Literal(l)) => matches! {
                         l.kind(),
-                        ast::LiteralKind::FloatNumber { .. } if l.syntax().last_token().map_or(false, |it| it.text().ends_with('.'))
+                        ast::LiteralKind::FloatNumber { .. } if l.syntax().last_token().is_some_and(|it| it.text().ends_with('.'))
                     },
                     _ => false,
                 };
@@ -846,7 +885,7 @@ fn classify_name_ref(
                 let receiver = find_opt_node_in_file(original_file, method.receiver());
                 let kind = NameRefKind::DotAccess(DotAccess {
                     receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
-                    kind: DotAccessKind::Method { has_parens: method.arg_list().map_or(false, |it| it.l_paren_token().is_some()) },
+                    kind: DotAccessKind::Method { has_parens: method.arg_list().is_some_and(|it| it.l_paren_token().is_some()) },
                     receiver,
                     ctx: DotAccessExprCtx { in_block_expr: is_in_block(method.syntax()), in_breakable: is_in_breakable(method.syntax()) }
                 });
@@ -1141,6 +1180,9 @@ fn classify_name_ref(
         let after_if_expr = after_if_expr(it.clone());
         let ref_expr_parent =
             path.as_single_name_ref().and_then(|_| it.parent()).and_then(ast::RefExpr::cast);
+        let after_amp = non_trivia_sibling(it.clone().into(), Direction::Prev)
+            .map(|it| it.kind() == SyntaxKind::AMP)
+            .unwrap_or(false);
         let (innermost_ret_ty, self_param) = {
             let find_ret_ty = |it: SyntaxNode| {
                 if let Some(item) = ast::Item::cast(it.clone()) {
@@ -1193,13 +1235,13 @@ fn classify_name_ref(
         let incomplete_let = it
             .parent()
             .and_then(ast::LetStmt::cast)
-            .map_or(false, |it| it.semicolon_token().is_none());
+            .is_some_and(|it| it.semicolon_token().is_none());
         let impl_ = fetch_immediate_impl(sema, original_file, expr.syntax());
 
         let in_match_guard = match it.parent().and_then(ast::MatchArm::cast) {
             Some(arm) => arm
                 .fat_arrow_token()
-                .map_or(true, |arrow| it.text_range().start() < arrow.text_range().start()),
+                .is_none_or(|arrow| it.text_range().start() < arrow.text_range().start()),
             None => false,
         };
 
@@ -1210,6 +1252,7 @@ fn classify_name_ref(
                 after_if_expr,
                 in_condition,
                 ref_expr_parent,
+                after_amp,
                 is_func_update,
                 innermost_ret_ty,
                 self_param,
@@ -1329,7 +1372,7 @@ fn classify_name_ref(
                         }
                     }
 
-                    path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
+                    path_ctx.has_call_parens = it.syntax().parent().is_some_and(|it| ast::CallExpr::can_cast(it.kind()));
 
                     make_path_kind_expr(it.into())
                 },
@@ -1358,7 +1401,7 @@ fn classify_name_ref(
                         match parent {
                             ast::PathType(it) => make_path_kind_type(it.into()),
                             ast::PathExpr(it) => {
-                                path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
+                                path_ctx.has_call_parens = it.syntax().parent().is_some_and(|it| ast::CallExpr::can_cast(it.kind()));
 
                                 make_path_kind_expr(it.into())
                             },
@@ -1576,11 +1619,11 @@ fn pattern_context_for(
                                         }).map(|enum_| enum_.variants(sema.db))
                                     })
                                 }).map(|variants| variants.iter().filter_map(|variant| {
-                                        let variant_name = variant.name(sema.db).unescaped().display(sema.db).to_string();
+                                        let variant_name = variant.name(sema.db);
 
                                         let variant_already_present = match_arm_list.arms().any(|arm| {
                                             arm.pat().and_then(|pat| {
-                                                let pat_already_present = pat.syntax().to_string().contains(&variant_name);
+                                                let pat_already_present = pat.syntax().to_string().contains(variant_name.as_str());
                                                 pat_already_present.then_some(pat_already_present)
                                             }).is_some()
                                         });
@@ -1612,8 +1655,7 @@ fn pattern_context_for(
             &pat,
             ast::Pat::IdentPat(it)
                 if it.syntax()
-                .parent()
-                .map_or(false, |node| {
+                .parent().is_some_and(|node| {
                     let kind = node.kind();
                     ast::LetStmt::can_cast(kind) || ast::Param::can_cast(kind)
                 })
@@ -1766,22 +1808,6 @@ fn is_in_block(node: &SyntaxNode) -> bool {
     node.parent()
         .map(|node| ast::ExprStmt::can_cast(node.kind()) || ast::StmtList::can_cast(node.kind()))
         .unwrap_or(false)
-}
-
-fn previous_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken> {
-    let mut token = match e.into() {
-        SyntaxElement::Node(n) => n.first_token()?,
-        SyntaxElement::Token(t) => t,
-    }
-    .prev_token();
-    while let Some(inner) = token {
-        if !inner.kind().is_trivia() {
-            return Some(inner);
-        } else {
-            token = inner.prev_token();
-        }
-    }
-    None
 }
 
 fn next_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken> {

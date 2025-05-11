@@ -17,7 +17,7 @@ fn test_async_gen() {
 
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn foo() {
     gen {};
     //[e2024]~^ ERROR: gen blocks are experimental

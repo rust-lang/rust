@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher;
 use clippy_utils::ty::is_type_lang_item;
-use rustc_hir::{BinOpKind, Expr, ExprKind, LangItem, MatchSource};
+use rustc_hir::{AssignOpKind, Expr, ExprKind, LangItem, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
@@ -11,7 +11,7 @@ declare_clippy_lint! {
     /// Detects cases where the result of a `format!` call is
     /// appended to an existing `String`.
     ///
-    /// ### Why restrict this?
+    /// ### Why is this bad?
     /// Introduces an extra, avoidable heap allocation.
     ///
     /// ### Known problems
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.62.0"]
     pub FORMAT_PUSH_STRING,
-    restriction,
+    pedantic,
     "`format!(..)` appended to existing `String`"
 }
 declare_lint_pass!(FormatPushString => [FORMAT_PUSH_STRING]);
@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatPushString {
                     return;
                 }
             },
-            ExprKind::AssignOp(op, left, arg) if op.node == BinOpKind::Add && is_string(cx, left) => arg,
+            ExprKind::AssignOp(op, left, arg) if op.node == AssignOpKind::AddAssign && is_string(cx, left) => arg,
             _ => return,
         };
         if is_format(cx, arg) {

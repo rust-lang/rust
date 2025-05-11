@@ -58,7 +58,7 @@ fn list_from<T: Clone>(v: &[T]) -> LinkedList<T> {
     v.iter().cloned().collect()
 }
 
-pub fn check_links<T>(list: &LinkedList<T>) {
+fn check_links<T>(list: &LinkedList<T>) {
     unsafe {
         let mut len = 0;
         let mut last_ptr: Option<&Node<T>> = None;
@@ -696,9 +696,10 @@ fn test_cursor_mut_insert() {
     cursor.splice_after(p);
     cursor.splice_before(q);
     check_links(&m);
-    assert_eq!(m.iter().cloned().collect::<Vec<_>>(), &[
-        200, 201, 202, 203, 1, 100, 101, 102, 103, 8, 2, 3, 4, 5, 6
-    ]);
+    assert_eq!(
+        m.iter().cloned().collect::<Vec<_>>(),
+        &[200, 201, 202, 203, 1, 100, 101, 102, 103, 8, 2, 3, 4, 5, 6]
+    );
     let mut cursor = m.cursor_front_mut();
     cursor.move_prev();
     let tmp = cursor.split_before();
@@ -915,9 +916,10 @@ fn extract_if_complex() {
         assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
 
         assert_eq!(list.len(), 14);
-        assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![
-            1, 7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39
-        ]);
+        assert_eq!(
+            list.into_iter().collect::<Vec<_>>(),
+            vec![1, 7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39]
+        );
     }
 
     {
@@ -932,9 +934,10 @@ fn extract_if_complex() {
         assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
 
         assert_eq!(list.len(), 13);
-        assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![
-            7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39
-        ]);
+        assert_eq!(
+            list.into_iter().collect::<Vec<_>>(),
+            vec![7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39]
+        );
     }
 
     {
@@ -949,9 +952,10 @@ fn extract_if_complex() {
         assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
 
         assert_eq!(list.len(), 11);
-        assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![
-            7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35
-        ]);
+        assert_eq!(
+            list.into_iter().collect::<Vec<_>>(),
+            vec![7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35]
+        );
     }
 
     {

@@ -3,9 +3,10 @@ use std::ops::ControlFlow;
 use derive_where::derive_where;
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
+use crate::data_structures::DelayedMap;
 use crate::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable, shift_region};
 use crate::inherent::*;
-use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::{self as ty, Interner};
 
 /// A closure can be modeled as a struct that looks like:
@@ -341,7 +342,7 @@ struct HasRegionsBoundAt {
 // FIXME: Could be optimized to not walk into components with no escaping bound vars.
 impl<I: Interner> TypeVisitor<I> for HasRegionsBoundAt {
     type Result = ControlFlow<()>;
-    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
+    fn visit_binder<T: TypeFoldable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
         self.binder.shift_in(1);
         t.super_visit_with(self)?;
         self.binder.shift_out(1);
@@ -398,15 +399,18 @@ impl<I: Interner> CoroutineClosureSignature<I> {
         coroutine_def_id: I::DefId,
         tupled_upvars_ty: I::Ty,
     ) -> I::Ty {
-        let coroutine_args = ty::CoroutineArgs::new(cx, ty::CoroutineArgsParts {
-            parent_args,
-            kind_ty: coroutine_kind_ty,
-            resume_ty: self.resume_ty,
-            yield_ty: self.yield_ty,
-            return_ty: self.return_ty,
-            witness: self.interior,
-            tupled_upvars_ty,
-        });
+        let coroutine_args = ty::CoroutineArgs::new(
+            cx,
+            ty::CoroutineArgsParts {
+                parent_args,
+                kind_ty: coroutine_kind_ty,
+                resume_ty: self.resume_ty,
+                yield_ty: self.yield_ty,
+                return_ty: self.return_ty,
+                witness: self.interior,
+                tupled_upvars_ty,
+            },
+        );
 
         Ty::new_coroutine(cx, coroutine_def_id, coroutine_args.args)
     }
@@ -471,6 +475,7 @@ impl<I: Interner> CoroutineClosureSignature<I> {
                         interner: cx,
                         region: env_region,
                         debruijn: ty::INNERMOST,
+                        cache: Default::default(),
                     });
                 Ty::new_tup_from_iter(
                     cx,
@@ -498,11 +503,27 @@ struct FoldEscapingRegions<I: Interner> {
     interner: I,
     debruijn: ty::DebruijnIndex,
     region: I::Region,
+
+    // Depends on `debruijn` because we may have types with regions of different
+    // debruijn depths depending on the binders we've entered.
+    cache: DelayedMap<(ty::DebruijnIndex, I::Ty), I::Ty>,
 }
 
 impl<I: Interner> TypeFolder<I> for FoldEscapingRegions<I> {
     fn cx(&self) -> I {
         self.interner
+    }
+
+    fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
+        if !t.has_vars_bound_at_or_above(self.debruijn) {
+            t
+        } else if let Some(&t) = self.cache.get(&(self.debruijn, t)) {
+            t
+        } else {
+            let res = t.super_fold_with(self);
+            assert!(self.cache.insert((self.debruijn, t), res));
+            res
+        }
     }
 
     fn fold_binder<T>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T>

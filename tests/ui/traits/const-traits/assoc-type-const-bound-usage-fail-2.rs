@@ -22,11 +22,9 @@ trait Other {}
 
 const fn fails<T: ~const Trait, U: Other>() {
     T::Assoc::<U>::func();
-    //[current]~^ ERROR the trait bound `U: ~const Other` is not satisfied
-    //[next]~^^ ERROR the trait bound `<T as Trait>::Assoc<U>: ~const Trait` is not satisfied
+    //~^ ERROR the trait bound `U: ~const Other` is not satisfied
     <T as Trait>::Assoc::<U>::func();
-    //[current]~^ ERROR the trait bound `U: ~const Other` is not satisfied
-    //[next]~^^ ERROR the trait bound `<T as Trait>::Assoc<U>: ~const Trait` is not satisfied
+    //~^ ERROR the trait bound `U: ~const Other` is not satisfied
 }
 
 const fn works<T: ~const Trait, U: ~const Other>() {

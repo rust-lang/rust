@@ -10,10 +10,9 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
-doctest = false
 
 [dependencies]
-home = "0.5.4"
+home = "0.5.11"
 camino.workspace = true
 
 [lints]

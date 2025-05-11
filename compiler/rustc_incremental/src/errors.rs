@@ -107,11 +107,10 @@ pub(crate) struct NotLoaded<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_unknown_item)]
-pub(crate) struct UnknownItem {
+#[diag(incremental_unknown_rustc_clean_argument)]
+pub(crate) struct UnknownRustcCleanArgument {
     #[primary_span]
     pub span: Span,
-    pub name: Symbol,
 }
 
 #[derive(Diagnostic)]

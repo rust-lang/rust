@@ -1,0 +1,41 @@
+warning: trait item `hello` from `B` shadows identically named item from supertrait
+  --> $DIR/common-ancestor.rs:17:5
+   |
+LL |     fn hello(&self) {
+   |     ^^^^^^^^^^^^^^^
+   |
+note: item from `A` is shadowed by a subtrait item
+  --> $DIR/common-ancestor.rs:10:5
+   |
+LL |     fn hello(&self) {
+   |     ^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/common-ancestor.rs:6:9
+   |
+LL | #![warn(supertrait_item_shadowing_definition)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: trait item `hello` from `B` shadows identically named item from supertrait
+  --> $DIR/common-ancestor.rs:25:8
+   |
+LL |     ().hello();
+   |        ^^^^^
+   |
+note: item from `B` shadows a supertrait item
+  --> $DIR/common-ancestor.rs:17:5
+   |
+LL |     fn hello(&self) {
+   |     ^^^^^^^^^^^^^^^
+note: item from `A` is shadowed by a subtrait item
+  --> $DIR/common-ancestor.rs:10:5
+   |
+LL |     fn hello(&self) {
+   |     ^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/common-ancestor.rs:5:9
+   |
+LL | #![warn(supertrait_item_shadowing_usage)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 2 warnings emitted
+

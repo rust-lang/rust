@@ -35,6 +35,8 @@ fn main() {
             "rustc_abi",
             "-p",
             "rustc_parse_format",
+            "-p",
+            "rustc_hashes",
         ])
         .run();
 }

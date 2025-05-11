@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/wrong-ret-type.rs:2:49
+  --> $DIR/wrong-ret-type.rs:1:49
    |
 LL | fn mk_int() -> usize { let i: isize = 3; return i; }
    |                -----                            ^ expected `usize`, found `isize`

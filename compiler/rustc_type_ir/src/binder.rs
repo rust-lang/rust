@@ -5,7 +5,7 @@ use std::ops::{ControlFlow, Deref};
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use tracing::instrument;
 
 use crate::data_structures::SsoHashSet;
@@ -57,7 +57,7 @@ where
 macro_rules! impl_binder_encode_decode {
     ($($t:ty),+ $(,)?) => {
         $(
-            impl<I: Interner, E: crate::TyEncoder<I = I>> rustc_serialize::Encodable<E> for ty::Binder<I, $t>
+            impl<I: Interner, E: rustc_serialize::Encoder> rustc_serialize::Encodable<E> for ty::Binder<I, $t>
             where
                 $t: rustc_serialize::Encodable<E>,
                 I::BoundVarKinds: rustc_serialize::Encodable<E>,
@@ -67,7 +67,7 @@ macro_rules! impl_binder_encode_decode {
                     self.as_ref().skip_binder().encode(e);
                 }
             }
-            impl<I: Interner, D: crate::TyDecoder<I = I>> rustc_serialize::Decodable<D> for ty::Binder<I, $t>
+            impl<I: Interner, D: rustc_serialize::Decoder> rustc_serialize::Decodable<D> for ty::Binder<I, $t>
             where
                 $t: TypeVisitable<I> + rustc_serialize::Decodable<D>,
                 I::BoundVarKinds: rustc_serialize::Decodable<D>,
@@ -89,6 +89,7 @@ impl_binder_encode_decode! {
     ty::ExistentialPredicate<I>,
     ty::TraitRef<I>,
     ty::ExistentialTraitRef<I>,
+    ty::HostEffectPredicate<I>,
 }
 
 impl<I: Interner, T> Binder<I, T>
@@ -111,7 +112,7 @@ where
     pub fn bind_with_vars(value: T, bound_vars: I::BoundVarKinds) -> Binder<I, T> {
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(bound_vars);
-            value.visit_with(&mut validator);
+            let _ = value.visit_with(&mut validator);
         }
         Binder { value, bound_vars }
     }
@@ -121,9 +122,13 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Binder<I, T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         folder.try_fold_binder(self)
     }
+
+    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        folder.fold_binder(self)
+    }
 }
 
-impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Binder<I, T> {
+impl<I: Interner, T: TypeFoldable<I>> TypeVisitable<I> for Binder<I, T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_binder(self)
     }
@@ -134,11 +139,15 @@ impl<I: Interner, T: TypeFoldable<I>> TypeSuperFoldable<I> for Binder<I, T> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        self.try_map_bound(|ty| ty.try_fold_with(folder))
+        self.try_map_bound(|t| t.try_fold_with(folder))
+    }
+
+    fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        self.map_bound(|t| t.fold_with(folder))
     }
 }
 
-impl<I: Interner, T: TypeVisitable<I>> TypeSuperVisitable<I> for Binder<I, T> {
+impl<I: Interner, T: TypeFoldable<I>> TypeSuperVisitable<I> for Binder<I, T> {
     fn super_visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         self.as_ref().skip_binder().visit_with(visitor)
     }
@@ -195,7 +204,7 @@ impl<I: Interner, T> Binder<I, T> {
         let value = f(value);
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(bound_vars);
-            value.visit_with(&mut validator);
+            let _ = value.visit_with(&mut validator);
         }
         Binder { value, bound_vars }
     }
@@ -208,7 +217,7 @@ impl<I: Interner, T> Binder<I, T> {
         let value = f(value)?;
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(bound_vars);
-            value.visit_with(&mut validator);
+            let _ = value.visit_with(&mut validator);
         }
         Ok(Binder { value, bound_vars })
     }
@@ -283,7 +292,7 @@ impl<I: Interner> ValidateBoundVars<I> {
 impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
     type Result = ControlFlow<()>;
 
-    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &Binder<I, T>) -> Self::Result {
+    fn visit_binder<T: TypeFoldable<I>>(&mut self, t: &Binder<I, T>) -> Self::Result {
         self.binder_index.shift_in(1);
         let result = t.super_visit_with(self);
         self.binder_index.shift_out(1);
@@ -341,7 +350,10 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 #[derive_where(PartialOrd; I: Interner, T: Ord)]
 #[derive_where(Hash; I: Interner, T: Hash)]
 #[derive_where(Debug; I: Interner, T: Debug)]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
 pub struct EarlyBinder<I: Interner, T> {
     value: T,
     #[derive_where(skip(Debug))]
@@ -803,7 +815,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     #[inline(never)]
     fn region_param_out_of_range(&self, ebr: I::EarlyParamRegion, r: I::Region) -> ! {
         panic!(
-            "const parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
+            "region parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
             ebr,
             r,
             ebr.index(),
@@ -858,7 +870,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         if self.binders_passed == 0 || !val.has_escaping_bound_vars() {
             val
         } else {
-            ty::fold::shift_vars(self.cx, val, self.binders_passed)
+            ty::shift_vars(self.cx, val, self.binders_passed)
         }
     }
 
@@ -866,7 +878,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         if self.binders_passed == 0 || !region.has_escaping_bound_vars() {
             region
         } else {
-            ty::fold::shift_region(self.cx, region, self.binders_passed)
+            ty::shift_region(self.cx, region, self.binders_passed)
         }
     }
 }

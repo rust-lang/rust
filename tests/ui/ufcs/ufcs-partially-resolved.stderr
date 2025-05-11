@@ -24,7 +24,8 @@ LL |     let _: <u8 as A>::N;
    |
 help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
    |
-LL | trait A = u32;
+LL - type A = u32;
+LL + trait A = u32;
    |
 
 error[E0576]: cannot find method or associated constant `N` in trait `Tr`
@@ -53,7 +54,8 @@ LL |     <u8 as A>::N;
    |
 help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
    |
-LL | trait A = u32;
+LL - type A = u32;
+LL + trait A = u32;
    |
 
 error[E0404]: expected trait, found enum `E`
@@ -100,7 +102,8 @@ LL |     let _: <u8 as A>::N::NN;
    |
 help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
    |
-LL | trait A = u32;
+LL - type A = u32;
+LL + trait A = u32;
    |
 
 error[E0576]: cannot find associated type `N` in trait `Tr`
@@ -129,7 +132,8 @@ LL |     <u8 as A>::N::NN;
    |
 help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
    |
-LL | trait A = u32;
+LL - type A = u32;
+LL + trait A = u32;
    |
 
 error[E0404]: expected trait, found enum `E`
@@ -253,8 +257,9 @@ LL |     let _: <u8 as Tr>::Y::NN;
    |
 help: if there were a trait named `Example` with associated type `NN` implemented for `<u8 as Tr>::Y`, you could use the fully-qualified path
    |
-LL |     let _: <<u8 as Tr>::Y as Example>::NN;
-   |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _: <u8 as Tr>::Y::NN;
+LL +     let _: <<u8 as Tr>::Y as Example>::NN;
+   |
 
 error[E0599]: no associated item named `NN` found for type `u16` in the current scope
   --> $DIR/ufcs-partially-resolved.rs:38:20

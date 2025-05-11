@@ -12,6 +12,7 @@ pub(crate) use graph::DepGraphData;
 pub use graph::{DepGraph, DepNodeIndex, TaskDepsRef, WorkProduct, WorkProductMap, hash_result};
 pub use query::DepGraphQuery;
 use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_data_structures::sync::DynSync;
 use rustc_session::Session;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 use tracing::instrument;
@@ -58,10 +59,15 @@ pub trait DepContext: Copy {
     /// dep-node or when the query kind outright does not support it.
     #[inline]
     #[instrument(skip(self, frame), level = "debug")]
-    fn try_force_from_dep_node(self, dep_node: DepNode, frame: Option<&MarkFrame<'_>>) -> bool {
+    fn try_force_from_dep_node(
+        self,
+        dep_node: DepNode,
+        prev_index: SerializedDepNodeIndex,
+        frame: Option<&MarkFrame<'_>>,
+    ) -> bool {
         let cb = self.dep_kind_info(dep_node.kind);
         if let Some(f) = cb.force_from_dep_node {
-            match panic::catch_unwind(panic::AssertUnwindSafe(|| f(self, dep_node))) {
+            match panic::catch_unwind(panic::AssertUnwindSafe(|| f(self, dep_node, prev_index))) {
                 Err(value) => {
                     if !value.is::<rustc_errors::FatalErrorMarker>() {
                         print_markframe_trace(self.dep_graph(), frame);
@@ -84,7 +90,7 @@ pub trait DepContext: Copy {
     }
 }
 
-pub trait Deps {
+pub trait Deps: DynSync {
     /// Execute the operation with provided dependencies.
     fn with_deps<OP, R>(deps: TaskDepsRef<'_>, op: OP) -> R
     where
@@ -95,11 +101,19 @@ pub trait Deps {
     where
         OP: for<'a> FnOnce(TaskDepsRef<'a>);
 
+    fn name(&self, dep_kind: DepKind) -> &'static str;
+
     /// We use this for most things when incr. comp. is turned off.
     const DEP_KIND_NULL: DepKind;
 
     /// We use this to create a forever-red node.
     const DEP_KIND_RED: DepKind;
+
+    /// We use this to create a side effect node.
+    const DEP_KIND_SIDE_EFFECT: DepKind;
+
+    /// We use this to create the anon node with zero dependencies.
+    const DEP_KIND_ANON_ZERO_DEPS: DepKind;
 
     /// This is the highest value a `DepKind` can have. It's used during encoding to
     /// pack information into the unused bits.
@@ -146,7 +160,7 @@ pub enum FingerprintStyle {
 
 impl FingerprintStyle {
     #[inline]
-    pub fn reconstructible(self) -> bool {
+    pub const fn reconstructible(self) -> bool {
         match self {
             FingerprintStyle::DefPathHash | FingerprintStyle::Unit | FingerprintStyle::HirId => {
                 true

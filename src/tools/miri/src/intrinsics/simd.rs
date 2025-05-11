@@ -7,7 +7,9 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{mir, ty};
 use rustc_span::{Symbol, sym};
 
-use crate::helpers::{ToHost, ToSoft, bool_to_simd_element, check_arg_count, simd_element_to_bool};
+use crate::helpers::{
+    ToHost, ToSoft, bool_to_simd_element, check_intrinsic_arg_count, simd_element_to_bool,
+};
 use crate::*;
 
 #[derive(Copy, Clone)]
@@ -50,7 +52,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "bswap"
             | "bitreverse"
             => {
-                let [op] = check_arg_count(args)?;
+                let [op] = check_intrinsic_arg_count(args)?;
                 let (op, op_len) = this.project_to_simd(op)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;
 
@@ -197,7 +199,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             => {
                 use mir::BinOp;
 
-                let [left, right] = check_arg_count(args)?;
+                let [left, right] = check_intrinsic_arg_count(args)?;
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;
@@ -288,7 +290,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
             "fma" | "relaxed_fma" => {
-                let [a, b, c] = check_arg_count(args)?;
+                let [a, b, c] = check_intrinsic_arg_count(args)?;
                 let (a, a_len) = this.project_to_simd(a)?;
                 let (b, b_len) = this.project_to_simd(b)?;
                 let (c, c_len) = this.project_to_simd(c)?;
@@ -304,7 +306,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let c = this.read_scalar(&this.project_index(&c, i)?)?;
                     let dest = this.project_index(&dest, i)?;
 
-                    let fuse: bool = intrinsic_name == "fma" || this.machine.rng.get_mut().gen();
+                    let fuse: bool = intrinsic_name == "fma" || this.machine.rng.get_mut().random();
 
                     // Works for f32 and f64.
                     // FIXME: using host floats to work around https://github.com/rust-lang/miri/issues/2468.
@@ -352,7 +354,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "reduce_min" => {
                 use mir::BinOp;
 
-                let [op] = check_arg_count(args)?;
+                let [op] = check_intrinsic_arg_count(args)?;
                 let (op, op_len) = this.project_to_simd(op)?;
 
                 let imm_from_bool =
@@ -415,7 +417,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "reduce_mul_ordered" => {
                 use mir::BinOp;
 
-                let [op, init] = check_arg_count(args)?;
+                let [op, init] = check_intrinsic_arg_count(args)?;
                 let (op, op_len) = this.project_to_simd(op)?;
                 let init = this.read_immediate(init)?;
 
@@ -433,7 +435,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_immediate(*res, dest)?;
             }
             "select" => {
-                let [mask, yes, no] = check_arg_count(args)?;
+                let [mask, yes, no] = check_intrinsic_arg_count(args)?;
                 let (mask, mask_len) = this.project_to_simd(mask)?;
                 let (yes, yes_len) = this.project_to_simd(yes)?;
                 let (no, no_len) = this.project_to_simd(no)?;
@@ -455,7 +457,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             // Variant of `select` that takes a bitmask rather than a "vector of bool".
             "select_bitmask" => {
-                let [mask, yes, no] = check_arg_count(args)?;
+                let [mask, yes, no] = check_intrinsic_arg_count(args)?;
                 let (yes, yes_len) = this.project_to_simd(yes)?;
                 let (no, no_len) = this.project_to_simd(no)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;
@@ -504,7 +506,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 let dest_len = u32::try_from(dest_len).unwrap();
-                let bitmask_len = u32::try_from(bitmask_len).unwrap();
                 for i in 0..dest_len {
                     let bit_i = simd_bitmask_index(i, dest_len, this.data_layout().endian);
                     let mask = mask & 1u64.strict_shl(bit_i);
@@ -515,21 +516,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let val = if mask != 0 { yes } else { no };
                     this.write_immediate(*val, &dest)?;
                 }
-                for i in dest_len..bitmask_len {
-                    // If the mask is "padded", ensure that padding is all-zero.
-                    // This deliberately does not use `simd_bitmask_index`; these bits are outside
-                    // the bitmask. It does not matter in which order we check them.
-                    let mask = mask & 1u64.strict_shl(i);
-                    if mask != 0 {
-                        throw_ub_format!(
-                            "a SIMD bitmask less than 8 bits long must be filled with 0s for the remaining bits"
-                        );
-                    }
-                }
+                // The remaining bits of the mask are ignored.
             }
             // Converts a "vector of bool" into a bitmask.
             "bitmask" => {
-                let [op] = check_arg_count(args)?;
+                let [op] = check_intrinsic_arg_count(args)?;
                 let (op, op_len) = this.project_to_simd(op)?;
                 let bitmask_len = op_len.next_multiple_of(8);
                 if bitmask_len > 64 {
@@ -577,7 +568,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
             "cast" | "as" | "cast_ptr" | "expose_provenance" | "with_exposed_provenance" => {
-                let [op] = check_arg_count(args)?;
+                let [op] = check_intrinsic_arg_count(args)?;
                 let (op, op_len) = this.project_to_simd(op)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;
 
@@ -633,14 +624,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_immediate(*val, &dest)?;
                 }
             }
-            "shuffle_generic" => {
-                let [left, right] = check_arg_count(args)?;
+            "shuffle_const_generic" => {
+                let [left, right] = check_intrinsic_arg_count(args)?;
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;
 
-                let index =
-                    generic_args[2].expect_const().try_to_valtree().unwrap().0.unwrap_branch();
+                let index = generic_args[2].expect_const().to_value().valtree.unwrap_branch();
                 let index_len = index.len();
 
                 assert_eq!(left_len, right_len);
@@ -658,14 +648,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.read_immediate(&this.project_index(&right, right_idx)?)?
                     } else {
                         throw_ub_format!(
-                            "`simd_shuffle_generic` index {src_index} is out-of-bounds for 2 vectors with length {dest_len}"
+                            "`simd_shuffle_const_generic` index {src_index} is out-of-bounds for 2 vectors with length {dest_len}"
                         );
                     };
                     this.write_immediate(*val, &dest)?;
                 }
             }
             "shuffle" => {
-                let [left, right, index] = check_arg_count(args)?;
+                let [left, right, index] = check_intrinsic_arg_count(args)?;
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
                 let (index, index_len) = this.project_to_simd(index)?;
@@ -696,7 +686,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
             "gather" => {
-                let [passthru, ptrs, mask] = check_arg_count(args)?;
+                let [passthru, ptrs, mask] = check_intrinsic_arg_count(args)?;
                 let (passthru, passthru_len) = this.project_to_simd(passthru)?;
                 let (ptrs, ptrs_len) = this.project_to_simd(ptrs)?;
                 let (mask, mask_len) = this.project_to_simd(mask)?;
@@ -722,7 +712,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
             "scatter" => {
-                let [value, ptrs, mask] = check_arg_count(args)?;
+                let [value, ptrs, mask] = check_intrinsic_arg_count(args)?;
                 let (value, value_len) = this.project_to_simd(value)?;
                 let (ptrs, ptrs_len) = this.project_to_simd(ptrs)?;
                 let (mask, mask_len) = this.project_to_simd(mask)?;
@@ -742,7 +732,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
             "masked_load" => {
-                let [mask, ptr, default] = check_arg_count(args)?;
+                let [mask, ptr, default] = check_intrinsic_arg_count(args)?;
                 let (mask, mask_len) = this.project_to_simd(mask)?;
                 let ptr = this.read_pointer(ptr)?;
                 let (default, default_len) = this.project_to_simd(default)?;
@@ -768,7 +758,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
             "masked_store" => {
-                let [mask, ptr, vals] = check_arg_count(args)?;
+                let [mask, ptr, vals] = check_intrinsic_arg_count(args)?;
                 let (mask, mask_len) = this.project_to_simd(mask)?;
                 let ptr = this.read_pointer(ptr)?;
                 let (vals, vals_len) = this.project_to_simd(vals)?;

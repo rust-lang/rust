@@ -38,11 +38,11 @@ impl ChannelSender for Sender {
     //[current]~| ERROR the trait bound `F: MyFn<i32>` is not satisfied
     //[current]~| ERROR the trait bound `F: MyFn<i32>` is not satisfied
     //[current]~| ERROR the trait bound `F: MyFn<i32>` is not satisfied
-    //[current]~| ERROR the trait bound `F: MyFn<i32>` is not satisfied
     where
         F: Callback<Self::CallbackArg>,
         //[current]~^ ERROR the trait bound `F: MyFn<i32>` is not satisfied
-    {
+        //[current]~| ERROR the trait bound `F: Callback<i32>` is not satisfied
+        {
         Thing
     }
 }

@@ -3,11 +3,11 @@
 
 fn main() {
     let _ = (0..3).map(|x| x + 2).count();
-    //~^ ERROR: this call to `map()` won't have an effect on the call to `count()`
+    //~^ suspicious_map
 
     let f = |x| x + 1;
     let _ = (0..3).map(f).count();
-    //~^ ERROR: this call to `map()` won't have an effect on the call to `count()`
+    //~^ suspicious_map
 }
 
 fn negative() {

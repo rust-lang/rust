@@ -8,7 +8,9 @@ use clippy_utils::{
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, BindingMode, ByRef, Expr, ExprKind, ItemKind, Node, Pat, PatKind, Path, QPath};
+use rustc_hir::{
+    Arm, BindingMode, ByRef, Expr, ExprKind, ItemKind, Node, Pat, PatExpr, PatExprKind, PatKind, Path, QPath,
+};
 use rustc_lint::LateContext;
 use rustc_span::sym;
 
@@ -65,10 +67,10 @@ fn check_all_arms(cx: &LateContext<'_>, match_expr: &Expr<'_>, arms: &[Arm<'_>])
     for arm in arms {
         let arm_expr = peel_blocks_with_stmt(arm.body);
 
-        if let Some(guard_expr) = &arm.guard {
-            if guard_expr.can_have_side_effects() {
-                return false;
-            }
+        if let Some(guard_expr) = &arm.guard
+            && guard_expr.can_have_side_effects()
+        {
+            return false;
         }
 
         if let PatKind::Wild = arm.pat.kind {
@@ -133,7 +135,7 @@ fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>
         },
         // compare match_expr ty with RetTy in `fn foo() -> RetTy`
         Node::Item(item) => {
-            if let ItemKind::Fn(..) = item.kind {
+            if let ItemKind::Fn { .. } = item.kind {
                 let output = cx
                     .tcx
                     .fn_sig(item.owner_id)
@@ -183,14 +185,24 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
             return !matches!(annot, BindingMode(ByRef::Yes(_), _)) && pat_ident.name == first_seg.ident.name;
         },
         // Example: `Custom::TypeA => Custom::TypeB`, or `None => None`
-        (PatKind::Path(QPath::Resolved(_, p_path)), ExprKind::Path(QPath::Resolved(_, e_path))) => {
+        (
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Path(QPath::Resolved(_, p_path)),
+                ..
+            }),
+            ExprKind::Path(QPath::Resolved(_, e_path)),
+        ) => {
             return over(p_path.segments, e_path.segments, |p_seg, e_seg| {
                 p_seg.ident.name == e_seg.ident.name
             });
         },
         // Example: `5 => 5`
-        (PatKind::Lit(pat_lit_expr), ExprKind::Lit(expr_spanned)) => {
-            if let ExprKind::Lit(pat_spanned) = &pat_lit_expr.kind {
+        (PatKind::Expr(pat_expr_expr), ExprKind::Lit(expr_spanned)) => {
+            if let PatExprKind::Lit {
+                lit: pat_spanned,
+                negated: false,
+            } = &pat_expr_expr.kind
+            {
                 return pat_spanned.node == expr_spanned.node;
             }
         },

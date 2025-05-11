@@ -171,3 +171,20 @@ fn issue_10447() -> usize {
 
     2
 }
+
+fn issue14634() {
+    macro_rules! id {
+        ($i:ident) => {
+            $i
+        };
+    }
+    dbg!(3);
+    println!("here");
+    //~^^^ match_single_binding
+    let id!(a) = dbg!(3);
+    println!("found {a}");
+    //~^^^ match_single_binding
+    let id!(b) = dbg!(3);
+    let id!(_a) = dbg!(b + 1);
+    //~^^^ match_single_binding
+}

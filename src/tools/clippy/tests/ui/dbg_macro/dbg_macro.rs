@@ -1,30 +1,38 @@
+#![allow(
+    clippy::no_effect,
+    clippy::uninlined_format_args,
+    clippy::unit_arg,
+    clippy::unnecessary_operation
+)]
 #![warn(clippy::dbg_macro)]
-#![allow(clippy::unnecessary_operation, clippy::no_effect, clippy::unit_arg)]
 
 fn foo(n: u32) -> u32 {
     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }
-    //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+    //~^ dbg_macro
 }
 fn bar(_: ()) {}
 
 fn factorial(n: u32) -> u32 {
     if dbg!(n <= 1) {
-        //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+        //~^ dbg_macro
+
         dbg!(1)
-        //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+        //~^ dbg_macro
     } else {
         dbg!(n * factorial(n - 1))
-        //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+        //~^ dbg_macro
     }
 }
 
 fn main() {
     dbg!(42);
-    //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+    //~^ dbg_macro
+
     foo(3) + dbg!(factorial(4));
-    //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+    //~^ dbg_macro
+
     dbg!(1, 2, 3, 4, 5);
-    //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+    //~^ dbg_macro
 }
 
 fn issue9914() {
@@ -41,21 +49,26 @@ fn issue9914() {
     macro_rules! expand_to_dbg {
         () => {
             dbg!();
-            //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+            //~^ dbg_macro
         };
     }
 
     dbg!();
-    //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+    //~^ dbg_macro
+
     #[allow(clippy::let_unit_value)]
     let _ = dbg!();
-    //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+    //~^ dbg_macro
+
     bar(dbg!());
-    //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+    //~^ dbg_macro
+
     foo!(dbg!());
-    //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+    //~^ dbg_macro
+
     foo2!(foo!(dbg!()));
-    //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+    //~^ dbg_macro
+
     expand_to_dbg!();
 }
 
@@ -77,35 +90,36 @@ mod issue7274 {
     struct MyThing;
     define_thing!(MyThing, {
         dbg!(2);
-        //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+        //~^ dbg_macro
     });
 }
 
 #[test]
 pub fn issue8481() {
     dbg!(1);
-    //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+    //~^ dbg_macro
 }
 
 #[cfg(test)]
 fn foo2() {
     dbg!(1);
-    //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+    //~^ dbg_macro
 }
 
 #[cfg(test)]
 mod mod1 {
     fn func() {
         dbg!(1);
-        //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+        //~^ dbg_macro
     }
 }
 
 mod issue12131 {
     fn dbg_in_print(s: &str) {
         println!("dbg: {:?}", dbg!(s));
-        //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+        //~^ dbg_macro
+
         print!("{}", dbg!(s));
-        //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+        //~^ dbg_macro
     }
 }

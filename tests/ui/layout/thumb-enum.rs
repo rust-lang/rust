@@ -1,4 +1,6 @@
+//@ add-core-stubs
 //@ compile-flags: --target thumbv8m.main-none-eabihf
+//@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 //@ needs-llvm-components: arm
 //
 // Verify that thumb targets implement the repr(C) for enums correctly.
@@ -8,8 +10,8 @@
 #![crate_type = "lib"]
 #![no_core]
 
-#[lang="sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 #[rustc_layout(debug)]
 #[repr(C)]

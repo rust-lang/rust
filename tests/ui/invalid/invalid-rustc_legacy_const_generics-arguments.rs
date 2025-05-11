@@ -21,7 +21,7 @@ struct S;
 #[rustc_legacy_const_generics(0usize)] //~ ERROR suffixed literals are not allowed in attributes
 fn foo6<const X: usize>() {}
 
-extern {
+extern "C" {
     #[rustc_legacy_const_generics(1)] //~ ERROR attribute should be applied to a function
     fn foo7<const X: usize>(); //~ ERROR foreign items may not have const parameters
 }

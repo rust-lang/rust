@@ -135,3 +135,15 @@ fn broken_unc_path() {
     assert_eq!(components.next(), Some(Component::Normal("foo".as_ref())));
     assert_eq!(components.next(), Some(Component::Normal("bar".as_ref())));
 }
+
+#[test]
+fn test_is_absolute_exact() {
+    use crate::sys::pal::api::wide_str;
+    // These paths can be made verbatim by only changing their prefix.
+    assert!(is_absolute_exact(wide_str!(r"C:\path\to\file")));
+    assert!(is_absolute_exact(wide_str!(r"\\server\share\path\to\file")));
+    // These paths change more substantially
+    assert!(!is_absolute_exact(wide_str!(r"C:\path\to\..\file")));
+    assert!(!is_absolute_exact(wide_str!(r"\\server\share\path\to\..\file")));
+    assert!(!is_absolute_exact(wide_str!(r"C:\path\to\NUL"))); // Converts to \\.\NUL
+}

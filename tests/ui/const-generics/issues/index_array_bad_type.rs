@@ -1,15 +1,13 @@
-//@ check-fail
-//@ compile-flags: -C opt-level=0
+struct Struct<const N: i128>(pub [u8; N]);
+//~^ ERROR the constant `N` is not of type `usize`
 
-#![crate_type = "lib"]
-
-// This used to fail in the known-panics lint, as the MIR was ill-typed due to
-// the length constant not actually having type usize.
-// https://github.com/rust-lang/rust/issues/134352
-
-pub struct BadStruct<const N: i64>(pub [u8; N]);
-//~^ ERROR: the constant `N` is not of type `usize`
-
-pub fn bad_array_length_type(value: BadStruct<3>) -> u8 {
+pub fn function(value: Struct<3>) -> u8 {
     value.0[0]
+    //~^ ERROR the constant `3` is not of type `usize`
+
+    // FIXME(const_generics): Ideally we wouldn't report the above error
+    // b/c `Struct<_>` is never well formed, but I'd rather report too many
+    // errors rather than ICE the compiler.
 }
+
+fn main() {}

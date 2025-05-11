@@ -4,7 +4,7 @@ use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
     self as hir, BindingMode, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind, ExprKind,
-    FnRetTy, HirId, Lit, PatKind, QPath, StmtKind, StructTailExpr, TyKind,
+    FnRetTy, HirId, Lit, PatExprKind, PatKind, QPath, StmtKind, StructTailExpr, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
@@ -132,8 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
 }
 
 fn check_item(cx: &LateContext<'_>, hir_id: HirId) {
-    let hir = cx.tcx.hir();
-    if let Some(body) = hir.maybe_body_owned_by(hir_id.expect_owner().def_id) {
+    if let Some(body) = cx.tcx.hir_maybe_body_owned_by(hir_id.expect_owner().def_id) {
         check_node(cx, hir_id, |v| {
             v.expr(&v.bind("expr", body.value));
         });
@@ -427,6 +426,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Tup({elements})");
                 self.slice(elements, |e| self.expr(e));
             },
+            ExprKind::Use(expr, _) => {
+                bind!(self, expr);
+                kind!("Use({expr})");
+                self.expr(expr);
+            },
             ExprKind::Binary(op, left, right) => {
                 bind!(self, op, left, right);
                 kind!("Binary({op}, {left}, {right})");
@@ -489,6 +493,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             }) => {
                 let capture_clause = match capture_clause {
                     CaptureBy::Value { .. } => "Value { .. }",
+                    CaptureBy::Use { .. } => "Use { .. }",
                     CaptureBy::Ref => "Ref",
                 };
 
@@ -637,10 +642,31 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn body(&self, body_id: &Binding<hir::BodyId>) {
-        let expr = self.cx.tcx.hir().body(body_id.value).value;
+        let expr = self.cx.tcx.hir_body(body_id.value).value;
         bind!(self, expr);
-        chain!(self, "{expr} = &cx.tcx.hir().body({body_id}).value");
+        chain!(self, "{expr} = &cx.tcx.hir_body({body_id}).value");
         self.expr(expr);
+    }
+
+    fn pat_expr(&self, lit: &Binding<&hir::PatExpr<'_>>) {
+        let kind = |kind| chain!(self, "let PatExprKind::{kind} = {lit}.kind");
+        macro_rules! kind {
+            ($($t:tt)*) => (kind(format_args!($($t)*)));
+        }
+        match lit.value.kind {
+            PatExprKind::Lit { lit, negated } => {
+                bind!(self, lit);
+                bind!(self, negated);
+                kind!("Lit{{ref {lit}, {negated} }}");
+                self.lit(lit);
+            },
+            PatExprKind::ConstBlock(_) => kind!("ConstBlock(_)"),
+            PatExprKind::Path(ref qpath) => {
+                bind!(self, qpath);
+                kind!("Path(ref {qpath})");
+                self.qpath(qpath);
+            },
+        }
     }
 
     fn pat(&self, pat: &Binding<&hir::Pat<'_>>) {
@@ -650,6 +676,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         }
 
         match pat.value.kind {
+            PatKind::Missing => unreachable!(),
             PatKind::Wild => kind!("Wild"),
             PatKind::Never => kind!("Never"),
             PatKind::Binding(ann, _, name, sub) => {
@@ -687,11 +714,6 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.qpath(qpath);
                 self.slice(fields, |pat| self.pat(pat));
             },
-            PatKind::Path(ref qpath) => {
-                bind!(self, qpath);
-                kind!("Path(ref {qpath})");
-                self.qpath(qpath);
-            },
             PatKind::Tuple(fields, skip_pos) => {
                 bind!(self, fields);
                 kind!("Tuple({fields}, {skip_pos:?})");
@@ -712,16 +734,22 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Ref({pat}, Mutability::{muta:?})");
                 self.pat(pat);
             },
-            PatKind::Lit(lit_expr) => {
+            PatKind::Guard(pat, cond) => {
+                bind!(self, pat, cond);
+                kind!("Guard({pat}, {cond})");
+                self.pat(pat);
+                self.expr(cond);
+            },
+            PatKind::Expr(lit_expr) => {
                 bind!(self, lit_expr);
-                kind!("Lit({lit_expr})");
-                self.expr(lit_expr);
+                kind!("Expr({lit_expr})");
+                self.pat_expr(lit_expr);
             },
             PatKind::Range(start, end, end_kind) => {
                 opt_bind!(self, start, end);
                 kind!("Range({start}, {end}, RangeEnd::{end_kind:?})");
-                start.if_some(|e| self.expr(e));
-                end.if_some(|e| self.expr(e));
+                start.if_some(|e| self.pat_expr(e));
+                end.if_some(|e| self.pat_expr(e));
             },
             PatKind::Slice(start, middle, end) => {
                 bind!(self, start, end);
@@ -766,7 +794,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 }
 
 fn has_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    let attrs = cx.tcx.hir().attrs(hir_id);
+    let attrs = cx.tcx.hir_attrs(hir_id);
     get_attr(cx.sess(), attrs, "author").count() > 0
 }
 

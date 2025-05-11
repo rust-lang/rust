@@ -6,8 +6,9 @@ LL | fn call_this<F>(f: F) : Fn(&str) + call_that {}
    |
 help: use `->` instead
    |
-LL | fn call_this<F>(f: F) -> Fn(&str) + call_that {}
-   |                       ~~
+LL - fn call_this<F>(f: F) : Fn(&str) + call_that {}
+LL + fn call_this<F>(f: F) -> Fn(&str) + call_that {}
+   |
 
 error[E0405]: cannot find trait `call_that` in this scope
   --> $DIR/avoid-ice-on-warning.rs:4:36

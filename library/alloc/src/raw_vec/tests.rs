@@ -1,4 +1,3 @@
-use core::mem::size_of;
 use std::cell::Cell;
 
 use super::*;
@@ -93,7 +92,7 @@ fn zst_sanity<T>(v: &RawVec<T>) {
 fn zst() {
     let cap_err = Err(crate::collections::TryReserveErrorKind::CapacityOverflow.into());
 
-    assert_eq!(std::mem::size_of::<ZST>(), 0);
+    assert_eq!(size_of::<ZST>(), 0);
 
     // All these different ways of creating the RawVec produce the same thing.
 

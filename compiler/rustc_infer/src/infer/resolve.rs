@@ -1,8 +1,8 @@
 use rustc_middle::bug;
-use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};
-use rustc_type_ir::data_structures::DelayedMap;
+use rustc_middle::ty::{
+    self, Const, DelayedMap, FallibleTypeFolder, InferConst, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt,
+};
 
 use super::{FixupError, FixupResult, InferCtxt};
 
@@ -88,7 +88,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticRegionResolver<'a, 'tcx
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
+        match r.kind() {
             ty::ReVar(vid) => self
                 .infcx
                 .inner
@@ -152,7 +152,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
     }
 
     fn try_fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
-        match *r {
+        match r.kind() {
             ty::ReVar(_) => Ok(self
                 .infcx
                 .lexical_region_resolutions

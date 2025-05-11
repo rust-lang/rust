@@ -1,9 +1,6 @@
 // Validation stops this too early.
 //@compile-flags: -Zmiri-disable-validation
 
-#![feature(trait_upcasting)]
-#![allow(incomplete_features)]
-
 trait Foo: PartialEq<i32> + std::fmt::Debug + Send + Sync {
     #[allow(dead_code)]
     fn a(&self) -> i32 {

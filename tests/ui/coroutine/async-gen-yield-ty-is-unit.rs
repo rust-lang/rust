@@ -1,4 +1,4 @@
-//@ compile-flags: --edition 2024
+//@ edition: 2024
 //@ check-pass
 
 #![feature(async_iterator, gen_blocks)]

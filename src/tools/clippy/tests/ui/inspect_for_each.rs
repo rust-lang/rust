@@ -5,7 +5,8 @@ fn main() {
 
     let mut b: Vec<usize> = Vec::new();
     a.into_iter().inspect(|x| assert!(*x > 0)).for_each(|x| {
-        //~^ ERROR: called `inspect(..).for_each(..)` on an `Iterator`
+        //~^ inspect_for_each
+
         let y = do_some(x);
         let z = do_more(y);
         b.push(z);

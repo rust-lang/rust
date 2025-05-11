@@ -101,7 +101,7 @@ impl<'tcx> CValue<'tcx> {
     /// The is represented by a dangling pointer of suitable alignment.
     pub(crate) fn zst(layout: TyAndLayout<'tcx>) -> CValue<'tcx> {
         assert!(layout.is_zst());
-        CValue::by_ref(crate::Pointer::dangling(layout.align.pref), layout)
+        CValue::by_ref(crate::Pointer::dangling(layout.align.abi), layout)
     }
 
     pub(crate) fn layout(&self) -> TyAndLayout<'tcx> {
@@ -173,9 +173,11 @@ impl<'tcx> CValue<'tcx> {
             CValueInner::ByRef(ptr, None) => {
                 let clif_ty = match layout.backend_repr {
                     BackendRepr::Scalar(scalar) => scalar_to_clif_type(fx.tcx, scalar),
-                    BackendRepr::Vector { element, count } => scalar_to_clif_type(fx.tcx, element)
-                        .by(u32::try_from(count).unwrap())
-                        .unwrap(),
+                    BackendRepr::SimdVector { element, count } => {
+                        scalar_to_clif_type(fx.tcx, element)
+                            .by(u32::try_from(count).unwrap())
+                            .unwrap()
+                    }
                     _ => unreachable!("{:?}", layout.ty),
                 };
                 let mut flags = MemFlags::new();
@@ -392,7 +394,7 @@ impl<'tcx> CPlace<'tcx> {
         assert!(layout.is_sized());
         if layout.size.bytes() == 0 {
             return CPlace {
-                inner: CPlaceInner::Addr(Pointer::dangling(layout.align.pref), None),
+                inner: CPlaceInner::Addr(Pointer::dangling(layout.align.abi), None),
                 layout,
             };
         }
@@ -405,7 +407,7 @@ impl<'tcx> CPlace<'tcx> {
 
         let stack_slot = fx.create_stack_slot(
             u32::try_from(layout.size.bytes()).unwrap(),
-            u32::try_from(layout.align.pref.bytes()).unwrap(),
+            u32::try_from(layout.align.abi.bytes()).unwrap(),
         );
         CPlace { inner: CPlaceInner::Addr(stack_slot, None), layout }
     }
@@ -638,9 +640,7 @@ impl<'tcx> CPlace<'tcx> {
             }
             CPlaceInner::Addr(_, Some(_)) => bug!("Can't write value to unsized place {:?}", self),
             CPlaceInner::Addr(to_ptr, None) => {
-                if dst_layout.size == Size::ZERO
-                    || dst_layout.backend_repr == BackendRepr::Uninhabited
-                {
+                if dst_layout.size == Size::ZERO {
                     return;
                 }
 
@@ -746,7 +746,7 @@ impl<'tcx> CPlace<'tcx> {
         };
 
         let (field_ptr, field_layout) = codegen_field(fx, base, extra, layout, field);
-        if has_ptr_meta(fx.tcx, field_layout.ty) {
+        if fx.tcx.type_has_metadata(field_layout.ty, ty::TypingEnv::fully_monomorphized()) {
             CPlace::for_ptr_with_extra(field_ptr, extra.unwrap(), field_layout)
         } else {
             CPlace::for_ptr(field_ptr, field_layout)
@@ -832,7 +832,7 @@ impl<'tcx> CPlace<'tcx> {
 
     pub(crate) fn place_deref(self, fx: &mut FunctionCx<'_, '_, 'tcx>) -> CPlace<'tcx> {
         let inner_layout = fx.layout_of(self.layout().ty.builtin_deref(true).unwrap());
-        if has_ptr_meta(fx.tcx, inner_layout.ty) {
+        if fx.tcx.type_has_metadata(inner_layout.ty, ty::TypingEnv::fully_monomorphized()) {
             let (addr, extra) = self.to_cvalue(fx).load_scalar_pair(fx);
             CPlace::for_ptr_with_extra(Pointer::new(addr), extra, inner_layout)
         } else {
@@ -845,7 +845,7 @@ impl<'tcx> CPlace<'tcx> {
         fx: &mut FunctionCx<'_, '_, 'tcx>,
         layout: TyAndLayout<'tcx>,
     ) -> CValue<'tcx> {
-        if has_ptr_meta(fx.tcx, self.layout().ty) {
+        if fx.tcx.type_has_metadata(self.layout().ty, ty::TypingEnv::fully_monomorphized()) {
             let (ptr, extra) = self.to_ptr_unsized();
             CValue::by_val_pair(ptr.get_addr(fx), extra, layout)
         } else {

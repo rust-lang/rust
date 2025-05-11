@@ -3,7 +3,7 @@
 #![stable(feature = "std_panic", since = "1.9.0")]
 
 use crate::any::Any;
-use crate::sync::atomic::{AtomicU8, Ordering};
+use crate::sync::atomic::{Atomic, AtomicU8, Ordering};
 use crate::sync::{Condvar, Mutex, RwLock};
 use crate::thread::Result;
 use crate::{collections, fmt, panicking};
@@ -255,6 +255,7 @@ pub use crate::panicking::{set_hook, take_hook};
 #[stable(feature = "panic_any", since = "1.51.0")]
 #[inline]
 #[track_caller]
+#[cfg_attr(not(test), rustc_diagnostic_item = "panic_any")]
 pub fn panic_any<M: 'static + Any + Send>(msg: M) -> ! {
     crate::panicking::begin_panic(msg);
 }
@@ -376,7 +377,9 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 /// use std::panic;
 ///
 /// let result = panic::catch_unwind(|| {
-///     panic!("oh no!");
+///     if 1 != 2 {
+///         panic!("oh no!");
+///     }
 /// });
 ///
 /// if let Err(err) = result {
@@ -466,7 +469,7 @@ impl BacktraceStyle {
 // that backtrace.
 //
 // Internally stores equivalent of an Option<BacktraceStyle>.
-static SHOULD_CAPTURE: AtomicU8 = AtomicU8::new(0);
+static SHOULD_CAPTURE: Atomic<u8> = AtomicU8::new(0);
 
 /// Configures whether the default panic hook will capture and display a
 /// backtrace.
@@ -529,6 +532,3 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
         Err(new) => BacktraceStyle::from_u8(new),
     }
 }
-
-#[cfg(test)]
-mod tests;

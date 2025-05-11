@@ -21,7 +21,7 @@ use crate::any::Any;
 use crate::io::try_set_output_capture;
 use crate::mem::{self, ManuallyDrop};
 use crate::panic::{BacktraceStyle, PanicHookInfo};
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 use crate::sync::{PoisonError, RwLock};
 use crate::sys::backtrace;
 use crate::sys::stdio::panic_output;
@@ -54,13 +54,15 @@ pub static EMPTY_PANIC: fn(&'static str) -> ! =
 // One day this may look a little less ad-hoc with the compiler helping out to
 // hook up these functions, but it is not this day!
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
+    #[rustc_std_internal_symbol]
     fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
 }
 
-extern "Rust" {
+unsafe extern "Rust" {
     /// `PanicPayload` lazily performs allocation only when needed (this avoids
     /// allocations when using the "abort" panic runtime).
+    #[rustc_std_internal_symbol]
     fn __rust_start_panic(payload: &mut dyn PanicPayload) -> u32;
 }
 
@@ -258,17 +260,36 @@ fn default_hook(info: &PanicHookInfo<'_>) {
     let location = info.location().unwrap();
 
     let msg = payload_as_str(info.payload());
-    let thread = thread::try_current();
-    let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = #[optimize(size)]
     |err: &mut dyn crate::io::Write| {
         // Use a lock to prevent mixed output in multithreading context.
         // Some platforms also require it when printing a backtrace, like `SymFromAddr` on Windows.
         let mut lock = backtrace::lock();
-        let _ = writeln!(err, "thread '{name}' panicked at {location}:\n{msg}");
 
-        static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
+        thread::with_current_name(|name| {
+            let name = name.unwrap_or("<unnamed>");
+
+            // Try to write the panic message to a buffer first to prevent other concurrent outputs
+            // interleaving with it.
+            let mut buffer = [0u8; 512];
+            let mut cursor = crate::io::Cursor::new(&mut buffer[..]);
+
+            let write_msg = |dst: &mut dyn crate::io::Write| {
+                // We add a newline to ensure the panic message appears at the start of a line.
+                writeln!(dst, "\nthread '{name}' panicked at {location}:\n{msg}")
+            };
+
+            if write_msg(&mut cursor).is_ok() {
+                let pos = cursor.position() as usize;
+                let _ = err.write_all(&buffer[0..pos]);
+            } else {
+                // The message did not fit into the buffer, write it directly instead.
+                let _ = write_msg(err);
+            };
+        });
+
+        static FIRST_PANIC: Atomic<bool> = AtomicBool::new(true);
 
         match backtrace {
             // SAFETY: we took out a lock just a second ago.
@@ -353,7 +374,7 @@ pub mod panic_count {
 #[unstable(feature = "update_panic_count", issue = "none")]
 pub mod panic_count {
     use crate::cell::Cell;
-    use crate::sync::atomic::{AtomicUsize, Ordering};
+    use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 
     const ALWAYS_ABORT_FLAG: usize = 1 << (usize::BITS - 1);
 
@@ -395,7 +416,7 @@ pub mod panic_count {
     //
     // Stealing a bit is fine because it just amounts to assuming that each
     // panicking thread consumes at least 2 bytes of address space.
-    static GLOBAL_PANIC_COUNT: AtomicUsize = AtomicUsize::new(0);
+    static GLOBAL_PANIC_COUNT: Atomic<usize> = AtomicUsize::new(0);
 
     // Increases the global and local panic count, and returns whether an
     // immediate abort is required.

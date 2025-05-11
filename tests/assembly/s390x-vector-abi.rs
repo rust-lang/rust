@@ -1,10 +1,10 @@
 //@ revisions: z10 z10_vector z13 z13_no_vector
 // ignore-tidy-linelength
 //@ assembly-output: emit-asm
-//@ compile-flags: -O -Z merge-functions=disabled
-//@[z10] compile-flags: --target s390x-unknown-linux-gnu --cfg no_vector
+//@ compile-flags: -Copt-level=3 -Z merge-functions=disabled
+//@[z10] compile-flags: --target s390x-unknown-linux-gnu  -C target-cpu=z10 --cfg no_vector
 //@[z10] needs-llvm-components: systemz
-//@[z10_vector] compile-flags: --target s390x-unknown-linux-gnu -C target-feature=+vector
+//@[z10_vector] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z10 -C target-feature=+vector
 //@[z10_vector] needs-llvm-components: systemz
 //@[z13] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z13
 //@[z13] needs-llvm-components: systemz

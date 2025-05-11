@@ -257,6 +257,13 @@ impl Parse for Newtype {
                 }
             }
 
+            impl std::ops::AddAssign<usize> for #name {
+                #[inline]
+                fn add_assign(&mut self, other: usize) {
+                    *self = *self + other;
+                }
+            }
+
             impl rustc_index::Idx for #name {
                 #[inline]
                 fn new(value: usize) -> Self {
@@ -305,7 +312,7 @@ impl Parse for Newtype {
     }
 }
 
-pub fn newtype(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub(crate) fn newtype(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as Newtype);
     input.0.into()
 }

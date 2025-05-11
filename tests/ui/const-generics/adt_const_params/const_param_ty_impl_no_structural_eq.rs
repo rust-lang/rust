@@ -9,11 +9,11 @@ struct CantParam(ImplementsConstParamTy);
 
 impl std::marker::UnsizedConstParamTy for CantParam {}
 //~^ error: the type `CantParam` does not `#[derive(PartialEq)]`
-//~| the trait bound `CantParam: Eq` is not satisfied
+//~| ERROR the trait bound `CantParam: Eq` is not satisfied
 
 #[derive(std::marker::UnsizedConstParamTy)]
 //~^ error: the type `CantParamDerive` does not `#[derive(PartialEq)]`
-//~| the trait bound `CantParamDerive: Eq` is not satisfied
+//~| ERROR the trait bound `CantParamDerive: Eq` is not satisfied
 struct CantParamDerive(ImplementsConstParamTy);
 
 fn check<T: std::marker::UnsizedConstParamTy>() {}

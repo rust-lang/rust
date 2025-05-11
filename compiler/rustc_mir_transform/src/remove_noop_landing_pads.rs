@@ -1,9 +1,10 @@
-use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::patch::MirPatch;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_target::spec::PanicStrategy;
 use tracing::debug;
+
+use crate::patch::MirPatch;
 
 /// A pass that removes noop landing pads and replaces jumps to them with
 /// `UnwindAction::Continue`. This is important because otherwise LLVM generates
@@ -40,7 +41,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
 
         let mut jumps_folded = 0;
         let mut landing_pads_removed = 0;
-        let mut nop_landing_pads = BitSet::new_empty(body.basic_blocks.len());
+        let mut nop_landing_pads = DenseBitSet::new_empty(body.basic_blocks.len());
 
         // This is a post-order traversal, so that if A post-dominates B
         // then A will be visited before B.
@@ -57,13 +58,13 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
                 }
             }
 
-            for target in body[bb].terminator_mut().successors_mut() {
+            body[bb].terminator_mut().successors_mut(|target| {
                 if *target != resume_block && nop_landing_pads.contains(*target) {
                     debug!("    folding noop jump to {:?} to resume block", target);
                     *target = resume_block;
                     jumps_folded += 1;
                 }
-            }
+            });
 
             let is_nop_landing_pad = self.is_nop_landing_pad(bb, body, &nop_landing_pads);
             if is_nop_landing_pad {
@@ -74,6 +75,10 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
 
         debug!("removed {:?} jumps and {:?} landing pads", jumps_folded, landing_pads_removed);
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 impl RemoveNoopLandingPads {
@@ -81,7 +86,7 @@ impl RemoveNoopLandingPads {
         &self,
         bb: BasicBlock,
         body: &Body<'_>,
-        nop_landing_pads: &BitSet<BasicBlock>,
+        nop_landing_pads: &DenseBitSet<BasicBlock>,
     ) -> bool {
         for stmt in &body[bb].statements {
             match &stmt.kind {

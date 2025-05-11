@@ -1,4 +1,3 @@
-#![warn(clippy::all)]
 #![warn(clippy::if_not_else)]
 
 fn foo() -> bool {
@@ -10,13 +9,15 @@ fn bla() -> bool {
 
 fn main() {
     if !bla() {
-        //~^ ERROR: unnecessary boolean `not` operation
+        //~^ if_not_else
+
         println!("Bugs");
     } else {
         println!("Bunny");
     }
     if 4 != 5 {
-        //~^ ERROR: unnecessary `!=` operation
+        //~^ if_not_else
+
         println!("Bugs");
     } else {
         println!("Bunny");
@@ -30,6 +31,7 @@ fn main() {
     }
 
     if !(foo() && bla()) {
+        //~^ if_not_else
         #[cfg(not(debug_assertions))]
         println!("not debug");
         #[cfg(debug_assertions)]
@@ -48,6 +50,7 @@ fn main() {
 
 fn with_comments() {
     if !foo() {
+        //~^ if_not_else
         /* foo is false */
         println!("foo is false");
     } else {
@@ -55,6 +58,7 @@ fn with_comments() {
     }
 
     if !bla() {
+        //~^ if_not_else
         // bla is false
         println!("bla");
     } else {
@@ -65,6 +69,7 @@ fn with_comments() {
 fn with_annotations() {
     #[cfg(debug_assertions)]
     if !foo() {
+        //~^ if_not_else
         /* foo is false */
         println!("foo is false");
     } else {

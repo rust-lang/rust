@@ -25,17 +25,12 @@ pub mod lib_features {
             self.stability
                 .to_sorted_stable_ord()
                 .iter()
-                .map(|(&sym, &(stab, _))| (sym, stab))
+                .map(|&(&sym, &(stab, _))| (sym, stab))
                 .collect()
         }
     }
 }
-pub mod limits;
 pub mod privacy;
 pub mod region;
 pub mod resolve_bound_vars;
 pub mod stability;
-
-pub fn provide(providers: &mut crate::query::Providers) {
-    limits::provide(providers);
-}

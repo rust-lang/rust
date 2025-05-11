@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ compile-flags: --target riscv64imac-unknown-none-elf -Zsanitizer=shadow-call-stack
 //@ needs-llvm-components: riscv
 
@@ -6,8 +7,8 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 // CHECK: ; Function Attrs:{{.*}}shadowcallstack
 // CHECK: define dso_local void @foo() unnamed_addr #0

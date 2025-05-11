@@ -1,0 +1,65 @@
+error: manual implementation of `midpoint` which can overflow
+  --> tests/ui/manual_midpoint.rs:30:13
+   |
+LL |     let _ = (a + 5) / 2;
+   |             ^^^^^^^^^^^ help: use `u32::midpoint` instead: `u32::midpoint(a, 5)`
+   |
+   = note: `-D clippy::manual-midpoint` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_midpoint)]`
+
+error: manual implementation of `midpoint` which can overflow
+  --> tests/ui/manual_midpoint.rs:33:13
+   |
+LL |     let _ = (f + 5.0) / 2.0;
+   |             ^^^^^^^^^^^^^^^ help: use `f32::midpoint` instead: `f32::midpoint(f, 5.0)`
+
+error: manual implementation of `midpoint` which can overflow
+  --> tests/ui/manual_midpoint.rs:35:22
+   |
+LL |     let _: u32 = 5 + (8 + 8) / 2 + 2;
+   |                      ^^^^^^^^^^^ help: use `u32::midpoint` instead: `u32::midpoint(8, 8)`
+
+error: manual implementation of `midpoint` which can overflow
+  --> tests/ui/manual_midpoint.rs:36:26
+   |
+LL |     let _: u32 = const { (8 + 8) / 2 };
+   |                          ^^^^^^^^^^^ help: use `u32::midpoint` instead: `u32::midpoint(8, 8)`
+
+error: manual implementation of `midpoint` which can overflow
+  --> tests/ui/manual_midpoint.rs:37:26
+   |
+LL |     let _: f64 = const { (8.0f64 + 8.) / 2. };
+   |                          ^^^^^^^^^^^^^^^^^^ help: use `f64::midpoint` instead: `f64::midpoint(8.0f64, 8.)`
+
+error: manual implementation of `midpoint` which can overflow
+  --> tests/ui/manual_midpoint.rs:38:18
+   |
+LL |     let _: u32 = (u32::default() + u32::default()) / 2;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `u32::midpoint` instead: `u32::midpoint(u32::default(), u32::default())`
+
+error: manual implementation of `midpoint` which can overflow
+  --> tests/ui/manual_midpoint.rs:39:18
+   |
+LL |     let _: u32 = (two!() + two!()) / 2;
+   |                  ^^^^^^^^^^^^^^^^^^^^^ help: use `u32::midpoint` instead: `u32::midpoint(two!(), two!())`
+
+error: manual implementation of `midpoint` which can overflow
+  --> tests/ui/manual_midpoint.rs:61:13
+   |
+LL |     let _ = (f + 1.0) / 2.0;
+   |             ^^^^^^^^^^^^^^^ help: use `f32::midpoint` instead: `f32::midpoint(f, 1.0)`
+
+error: manual implementation of `midpoint` which can overflow
+  --> tests/ui/manual_midpoint.rs:62:13
+   |
+LL |     let _ = (1.0 + f) / 2.0;
+   |             ^^^^^^^^^^^^^^^ help: use `f32::midpoint` instead: `f32::midpoint(1.0, f)`
+
+error: manual implementation of `midpoint` which can overflow
+  --> tests/ui/manual_midpoint.rs:73:13
+   |
+LL |     let _ = (i + 10) / 2;
+   |             ^^^^^^^^^^^^ help: use `i32::midpoint` instead: `i32::midpoint(i, 10)`
+
+error: aborting due to 10 previous errors
+

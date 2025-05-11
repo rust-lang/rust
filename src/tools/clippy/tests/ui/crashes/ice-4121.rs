@@ -1,3 +1,5 @@
+//@ check-pass
+
 use std::mem;
 
 pub struct Foo<A, B>(A, B);

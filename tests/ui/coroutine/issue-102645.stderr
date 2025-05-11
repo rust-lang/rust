@@ -9,7 +9,7 @@ note: method defined here
 help: provide the argument
    |
 LL |     Pin::new(&mut b).resume(());
-   |                            ~~~~
+   |                             ++
 
 error: aborting due to 1 previous error
 

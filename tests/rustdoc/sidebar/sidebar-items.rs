@@ -26,7 +26,7 @@ pub trait Foo {
 }
 
 //@ has foo/trait.DynCompatible.html
-//@ !has - '//div[@class="sidebar-elems"]//h3/a[@href="#object-safety"]' ''
+//@ !has - '//div[@class="sidebar-elems"]//h3/a[@href="#dyn-compatibility"]' ''
 pub trait DynCompatible {
     fn access(&self);
 }

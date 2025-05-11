@@ -9,8 +9,9 @@ LL |         Some(x) @ y => {}
    |
 help: switch the order
    |
-LL |         y @ Some(x) => {}
-   |         ~~~~~~~~~~~
+LL -         Some(x) @ y => {}
+LL +         y @ Some(x) => {}
+   |
 
 error: pattern on wrong side of `@`
   --> $DIR/intersection-patterns-1.rs:27:9
@@ -23,8 +24,9 @@ LL |         1 ..= 5 @ e => {}
    |
 help: switch the order
    |
-LL |         e @ 1..=5 => {}
-   |         ~~~~~~~~~
+LL -         1 ..= 5 @ e => {}
+LL +         e @ 1..=5 => {}
+   |
 
 error: aborting due to 2 previous errors
 

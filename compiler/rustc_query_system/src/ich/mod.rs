@@ -8,7 +8,7 @@ mod hcx;
 mod impls_syntax;
 
 pub const IGNORED_ATTRIBUTES: &[Symbol] = &[
-    sym::cfg,
+    sym::cfg_trace, // FIXME should this really be ignored?
     sym::rustc_if_this_changed,
     sym::rustc_then_this_would_need,
     sym::rustc_dirty,

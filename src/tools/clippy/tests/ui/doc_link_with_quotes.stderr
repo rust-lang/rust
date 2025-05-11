@@ -8,7 +8,7 @@ LL | /// Calls ['bar'] uselessly
    = help: to override `-D warnings` add `#[allow(clippy::doc_link_with_quotes)]`
 
 error: possible intra-doc link using quotes instead of backticks
-  --> tests/ui/doc_link_with_quotes.rs:14:12
+  --> tests/ui/doc_link_with_quotes.rs:13:12
    |
 LL | /// Calls ["bar"] uselessly
    |            ^^^^^

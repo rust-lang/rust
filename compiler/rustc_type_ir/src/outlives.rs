@@ -148,7 +148,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
             // trait-ref. Therefore, if we see any higher-ranked regions,
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
-            ty::Alias(_, alias_ty) => {
+            ty::Alias(kind, alias_ty) => {
                 if !alias_ty.has_escaping_bound_vars() {
                     // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus generating no
@@ -162,7 +162,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
                     // OutlivesProjectionComponents. Continue walking
                     // through and constrain Pi.
                     let mut subcomponents = smallvec![];
-                    compute_alias_components_recursive(self.cx, ty, &mut subcomponents);
+                    compute_alias_components_recursive(self.cx, kind, alias_ty, &mut subcomponents);
                     self.out.push(Component::EscapingAlias(subcomponents.into_iter().collect()));
                 }
             }
@@ -217,21 +217,17 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
     }
 }
 
-/// Collect [Component]s for *all* the args of `parent`.
+/// Collect [Component]s for *all* the args of `alias_ty`.
 ///
-/// This should not be used to get the components of `parent` itself.
+/// This should not be used to get the components of `alias_ty` itself.
 /// Use [push_outlives_components] instead.
 pub fn compute_alias_components_recursive<I: Interner>(
     cx: I,
-    alias_ty: I::Ty,
+    kind: ty::AliasTyKind,
+    alias_ty: ty::AliasTy<I>,
     out: &mut SmallVec<[Component<I>; 4]>,
 ) {
-    let ty::Alias(kind, alias_ty) = alias_ty.kind() else {
-        unreachable!("can only call `compute_alias_components_recursive` on an alias type")
-    };
-
-    let opt_variances =
-        if kind == ty::Opaque { Some(cx.variances_of(alias_ty.def_id)) } else { None };
+    let opt_variances = cx.opt_alias_variances(kind, alias_ty.def_id);
 
     let mut visitor = OutlivesCollector { cx, out, visited: Default::default() };
 

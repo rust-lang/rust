@@ -1,9 +1,11 @@
 //@ build-fail
 //@ compile-flags: --crate-type rlib
-//@ error-pattern: could not find native static library `libfoo.a`
-//@ error-pattern: only provide the library name `foo`, not the full filename
 
 #[link(name = "libfoo.a", kind = "static")]
-extern { }
+extern { } //~ WARN `extern` declarations without an explicit ABI are deprecated
+           //~| HELP explicitly specify the "C" ABI
 
 pub fn main() { }
+
+//~? ERROR could not find native static library `libfoo.a`
+//~? HELP only provide the library name `foo`, not the full filename

@@ -1,5 +1,5 @@
 error: expected item after attributes
-  --> $DIR/attr-bad-crate-attr.rs:9:1
+  --> $DIR/attr-bad-crate-attr.rs:7:1
    |
 LL | #[attr = "val"] // Unterminated
    | ^^^^^^^^^^^^^^^

@@ -83,9 +83,9 @@ pub(crate) fn synthesize_blanket_impls(
             cx.generated_synthetics.insert((ty.skip_binder(), trait_def_id));
 
             blanket_impls.push(clean::Item {
-                name: None,
-                item_id: clean::ItemId::Blanket { impl_id: impl_def_id, for_: item_def_id },
                 inner: Box::new(clean::ItemInner {
+                    name: None,
+                    item_id: clean::ItemId::Blanket { impl_id: impl_def_id, for_: item_def_id },
                     attrs: Default::default(),
                     stability: None,
                     kind: clean::ImplItem(Box::new(clean::Impl {
@@ -122,9 +122,9 @@ pub(crate) fn synthesize_blanket_impls(
                             None,
                         ))),
                     })),
+                    cfg: None,
+                    inline_stmt_id: None,
                 }),
-                cfg: None,
-                inline_stmt_id: None,
             });
         }
     }

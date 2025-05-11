@@ -101,14 +101,13 @@ impl<'tcx> Visitor<'tcx> for MutArgVisitor<'_, 'tcx> {
                 return;
             },
             ExprKind::Path(_) => {
-                if let Some(adj) = self.cx.typeck_results().adjustments().get(expr.hir_id) {
-                    if adj
+                if let Some(adj) = self.cx.typeck_results().adjustments().get(expr.hir_id)
+                    && adj
                         .iter()
                         .any(|a| matches!(a.target.kind(), ty::Ref(_, _, Mutability::Mut)))
-                    {
-                        self.found = true;
-                        return;
-                    }
+                {
+                    self.found = true;
+                    return;
                 }
             },
             // Don't check await desugars
@@ -119,7 +118,7 @@ impl<'tcx> Visitor<'tcx> for MutArgVisitor<'_, 'tcx> {
         walk_expr(self, expr);
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }

@@ -4,7 +4,7 @@
 
 // Tests for standalone blocks as expressions
 
-fn test_basic() { let rs: bool = { true }; assert!((rs)); }
+fn test_basic() { let rs: bool = { true }; assert!(rs); }
 
 struct RS { v1: isize, v2: isize }
 

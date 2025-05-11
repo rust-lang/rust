@@ -1,12 +1,12 @@
 use crate::spec::{
     Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, Target,
-    TargetOptions,
+    TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
     Target {
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Bare RISC-V (RV64IMAFDC ISA)".into()),
             tier: Some(2),
             host_tools: Some(false),
@@ -22,7 +22,7 @@ pub(crate) fn target() -> Target {
             llvm_abiname: "lp64d".into(),
             cpu: "generic-rv64".into(),
             max_atomic_width: Some(64),
-            features: "+m,+a,+f,+d,+c".into(),
+            features: "+m,+a,+f,+d,+c,+zicsr,+zifencei".into(),
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,
             code_model: Some(CodeModel::Medium),

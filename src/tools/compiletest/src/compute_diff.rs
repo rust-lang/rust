@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::fs::{File, FileType};
-use std::path::Path;
+
+use camino::Utf8Path;
 
 #[derive(Debug, PartialEq)]
 pub enum DiffLine {
@@ -31,7 +32,7 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
 
     for result in diff::lines(expected, actual) {
         match result {
-            diff::Result::Left(str) => {
+            diff::Result::Left(s) => {
                 if lines_since_mismatch >= context_size && lines_since_mismatch > 0 {
                     results.push(mismatch);
                     mismatch = Mismatch::new(line_number - context_queue.len() as u32);
@@ -41,11 +42,11 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
                     mismatch.lines.push(DiffLine::Context(line.to_owned()));
                 }
 
-                mismatch.lines.push(DiffLine::Expected(str.to_owned()));
+                mismatch.lines.push(DiffLine::Expected(s.to_owned()));
                 line_number += 1;
                 lines_since_mismatch = 0;
             }
-            diff::Result::Right(str) => {
+            diff::Result::Right(s) => {
                 if lines_since_mismatch >= context_size && lines_since_mismatch > 0 {
                     results.push(mismatch);
                     mismatch = Mismatch::new(line_number - context_queue.len() as u32);
@@ -55,18 +56,18 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
                     mismatch.lines.push(DiffLine::Context(line.to_owned()));
                 }
 
-                mismatch.lines.push(DiffLine::Resulting(str.to_owned()));
+                mismatch.lines.push(DiffLine::Resulting(s.to_owned()));
                 lines_since_mismatch = 0;
             }
-            diff::Result::Both(str, _) => {
+            diff::Result::Both(s, _) => {
                 if context_queue.len() >= context_size {
                     let _ = context_queue.pop_front();
                 }
 
                 if lines_since_mismatch < context_size {
-                    mismatch.lines.push(DiffLine::Context(str.to_owned()));
+                    mismatch.lines.push(DiffLine::Context(s.to_owned()));
                 } else if context_size > 0 {
-                    context_queue.push_back(str);
+                    context_queue.push_back(s);
                 }
 
                 line_number += 1;
@@ -112,8 +113,8 @@ pub(crate) fn write_diff(expected: &str, actual: &str, context_size: usize) -> S
 /// Returns whether any data was actually written.
 pub(crate) fn write_filtered_diff<Filter>(
     diff_filename: &str,
-    out_dir: &Path,
-    compare_dir: &Path,
+    out_dir: &Utf8Path,
+    compare_dir: &Utf8Path,
     verbose: bool,
     filter: Filter,
 ) -> bool
@@ -123,19 +124,21 @@ where
     use std::io::{Read, Write};
     let mut diff_output = File::create(diff_filename).unwrap();
     let mut wrote_data = false;
-    for entry in walkdir::WalkDir::new(out_dir) {
+    for entry in walkdir::WalkDir::new(out_dir.as_std_path()) {
         let entry = entry.expect("failed to read file");
         let extension = entry.path().extension().and_then(|p| p.to_str());
         if filter(entry.file_type(), extension) {
-            let expected_path = compare_dir.join(entry.path().strip_prefix(&out_dir).unwrap());
+            let expected_path = compare_dir
+                .as_std_path()
+                .join(entry.path().strip_prefix(&out_dir.as_std_path()).unwrap());
             let expected = if let Ok(s) = std::fs::read(&expected_path) { s } else { continue };
             let actual_path = entry.path();
             let actual = std::fs::read(&actual_path).unwrap();
             let diff = unified_diff::diff(
                 &expected,
-                &expected_path.to_string_lossy(),
+                &expected_path.to_str().unwrap(),
                 &actual,
-                &actual_path.to_string_lossy(),
+                &actual_path.to_str().unwrap(),
                 3,
             );
             wrote_data |= !diff.is_empty();

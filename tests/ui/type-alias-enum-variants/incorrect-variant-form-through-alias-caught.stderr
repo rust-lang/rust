@@ -28,8 +28,9 @@ LL |     let Alias::Braced(..) = panic!();
    |
 help: use the struct variant pattern syntax
    |
-LL |     let Alias::Braced {} = panic!();
-   |                       ~~
+LL -     let Alias::Braced(..) = panic!();
+LL +     let Alias::Braced {} = panic!();
+   |
 
 error[E0618]: expected function, found enum variant `Alias::Unit`
   --> $DIR/incorrect-variant-form-through-alias-caught.rs:15:5

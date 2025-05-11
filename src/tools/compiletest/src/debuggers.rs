@@ -1,8 +1,8 @@
 use std::env;
-use std::ffi::OsString;
-use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
+
+use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::common::{Config, Debugger};
 
@@ -40,7 +40,9 @@ pub(crate) fn configure_gdb(config: &Config) -> Option<Arc<Config>> {
         //
         // we should figure out how to lift this restriction! (run them all
         // on different ports allocated dynamically).
-        env::set_var("RUST_TEST_THREADS", "1");
+        //
+        // SAFETY: at this point we are still single-threaded.
+        unsafe { env::set_var("RUST_TEST_THREADS", "1") };
     }
 
     Some(Arc::new(Config { debugger: Some(Debugger::Gdb), ..config.clone() }))
@@ -76,12 +78,15 @@ fn is_pc_windows_msvc_target(target: &str) -> bool {
     target.ends_with("-pc-windows-msvc")
 }
 
-fn find_cdb(target: &str) -> Option<OsString> {
+fn find_cdb(target: &str) -> Option<Utf8PathBuf> {
     if !(cfg!(windows) && is_pc_windows_msvc_target(target)) {
         return None;
     }
 
-    let pf86 = env::var_os("ProgramFiles(x86)").or_else(|| env::var_os("ProgramFiles"))?;
+    let pf86 = Utf8PathBuf::from_path_buf(
+        env::var_os("ProgramFiles(x86)").or_else(|| env::var_os("ProgramFiles"))?.into(),
+    )
+    .unwrap();
     let cdb_arch = if cfg!(target_arch = "x86") {
         "x86"
     } else if cfg!(target_arch = "x86_64") {
@@ -94,8 +99,7 @@ fn find_cdb(target: &str) -> Option<OsString> {
         return None; // No compatible CDB.exe in the Windows 10 SDK
     };
 
-    let mut path = PathBuf::new();
-    path.push(pf86);
+    let mut path = pf86;
     path.push(r"Windows Kits\10\Debuggers"); // We could check 8.1 etc. too?
     path.push(cdb_arch);
     path.push(r"cdb.exe");
@@ -104,15 +108,15 @@ fn find_cdb(target: &str) -> Option<OsString> {
         return None;
     }
 
-    Some(path.into_os_string())
+    Some(path)
 }
 
 /// Returns Path to CDB
 pub(crate) fn analyze_cdb(
     cdb: Option<String>,
     target: &str,
-) -> (Option<OsString>, Option<[u16; 4]>) {
-    let cdb = cdb.map(OsString::from).or_else(|| find_cdb(target));
+) -> (Option<Utf8PathBuf>, Option<[u16; 4]>) {
+    let cdb = cdb.map(Utf8PathBuf::from).or_else(|| find_cdb(target));
 
     let mut version = None;
     if let Some(cdb) = cdb.as_ref() {
@@ -141,7 +145,7 @@ pub(crate) fn extract_cdb_version(full_version_line: &str) -> Option<[u16; 4]> {
 pub(crate) fn analyze_gdb(
     gdb: Option<String>,
     target: &str,
-    android_cross_path: &Path,
+    android_cross_path: &Utf8Path,
 ) -> (Option<String>, Option<u32>) {
     #[cfg(not(windows))]
     const GDB_FALLBACK: &str = "gdb";
@@ -150,10 +154,7 @@ pub(crate) fn analyze_gdb(
 
     let fallback_gdb = || {
         if is_android_gdb_target(target) {
-            let mut gdb_path = match android_cross_path.to_str() {
-                Some(x) => x.to_owned(),
-                None => panic!("cannot find android cross path"),
-            };
+            let mut gdb_path = android_cross_path.to_string();
             gdb_path.push_str("/bin/gdb");
             gdb_path
         } else {

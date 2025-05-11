@@ -1,6 +1,5 @@
    LL|       |#![feature(coverage_attribute)]
    LL|       |//@ edition: 2021
-   LL|       |//@ min-llvm-version: 19
    LL|       |//@ compile-flags: -Zcoverage-options=mcdc
    LL|       |//@ llvm-cov-flags: --show-branches=count --show-mcdc
    LL|       |
@@ -123,9 +122,9 @@
    LL|      4|}
    LL|       |
    LL|      3|fn nested_single_condition_decision(a: bool, b: bool) {
-   LL|      3|    // Decision with only 1 decision should not be instrumented by MCDC because
-   LL|      3|    // branch-coverage is equivalent to MCDC coverage in this case, and we don't
-   LL|      3|    // want to waste bitmap space for this.
+   LL|       |    // Decision with only 1 decision should not be instrumented by MCDC because
+   LL|       |    // branch-coverage is equivalent to MCDC coverage in this case, and we don't
+   LL|       |    // want to waste bitmap space for this.
    LL|      3|    if a && if b { false } else { true } {
                              ^2  ^1             ^1
   ------------------

@@ -1,0 +1,34 @@
+error: `instruction_set_a32` could not be inlined into `t32` but is required to be inlined
+  --> $DIR/asm.rs:45:5
+   |
+LL |     instruction_set_a32();
+   |     ^^^^^^^^^^^^^^^^^^^^^ ...`instruction_set_a32` called here
+   |
+   = note: could not be inlined due to: incompatible instruction set
+
+error: `inline_always_and_using_inline_asm` could not be inlined into `t32` but is required to be inlined
+  --> $DIR/asm.rs:49:5
+   |
+LL |     inline_always_and_using_inline_asm();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...`inline_always_and_using_inline_asm` called here
+   |
+   = note: could not be inlined due to: cannot move inline-asm across instruction sets
+
+error: `instruction_set_a32` could not be inlined into `default` but is required to be inlined
+  --> $DIR/asm.rs:54:5
+   |
+LL |     instruction_set_a32();
+   |     ^^^^^^^^^^^^^^^^^^^^^ ...`instruction_set_a32` called here
+   |
+   = note: could not be inlined due to: incompatible instruction set
+
+error: `instruction_set_t32` could not be inlined into `default` but is required to be inlined
+  --> $DIR/asm.rs:56:5
+   |
+LL |     instruction_set_t32();
+   |     ^^^^^^^^^^^^^^^^^^^^^ ...`instruction_set_t32` called here
+   |
+   = note: could not be inlined due to: incompatible instruction set
+
+error: aborting due to 4 previous errors
+

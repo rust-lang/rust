@@ -10,4 +10,4 @@ fn main() {
 }
 
 extern "unadjusted" fn foo() {}
-//[cfail2]~^ ERROR: unadjusted ABI is an implementation detail and perma-unstable
+//[cfail2]~^ ERROR: "unadjusted" ABI is an implementation detail and perma-unstable

@@ -1,0 +1,34 @@
+error: trait item `method` from `Super` shadows identically named item from supertrait
+  --> $DIR/definition-site.rs:9:5
+   |
+LL |     fn method();
+   |     ^^^^^^^^^^^^
+   |
+note: item from `SuperSuper` is shadowed by a subtrait item
+  --> $DIR/definition-site.rs:5:5
+   |
+LL |     fn method();
+   |     ^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/definition-site.rs:2:9
+   |
+LL | #![deny(supertrait_item_shadowing_definition)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: trait item `method` from `Sub` shadows identically named item from supertrait
+  --> $DIR/definition-site.rs:14:5
+   |
+LL |     fn method();
+   |     ^^^^^^^^^^^^
+   |
+note: items from several supertraits are shadowed: `Super` and `SuperSuper`
+  --> $DIR/definition-site.rs:5:5
+   |
+LL |     fn method();
+   |     ^^^^^^^^^^^^
+...
+LL |     fn method();
+   |     ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -6,8 +6,9 @@ LL | mode parser;
    |
 help: there is a keyword `mod` with a similar name
    |
-LL | mod parser;
-   | ~~~
+LL - mode parser;
+LL + mod parser;
+   |
 
 error: aborting due to 1 previous error
 

@@ -53,12 +53,12 @@
       bb3: {
           StorageDead(_9);
           _0 = MyThing::<T> { v: move _2, i: move _5, a: move _8 };
-          StorageDead(_8);
-          StorageDead(_5);
-          StorageDead(_2);
           StorageDead(_10);
+          StorageDead(_8);
           StorageDead(_7);
+          StorageDead(_5);
           StorageDead(_4);
+          StorageDead(_2);
           return;
       }
   }

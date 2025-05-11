@@ -5,8 +5,8 @@ use std::marker::PhantomData;
 
 fn transmute<T, U>(t: T) -> U {
     (&PhantomData::<T> as &dyn Foo<T, U>).transmute(t)
-    //~^ ERROR the trait `Foo` cannot be made into an object
-    //~| ERROR the trait `Foo` cannot be made into an object
+    //~^ ERROR the trait `Foo` is not dyn compatible
+    //~| ERROR the trait `Foo` is not dyn compatible
 }
 
 struct ActuallySuper;
@@ -19,7 +19,7 @@ trait Dyn {
     type Out;
 }
 impl<T, U> Dyn for dyn Foo<T, U> + '_ {
-//~^ ERROR the trait `Foo` cannot be made into an object
+//~^ ERROR the trait `Foo` is not dyn compatible
     type Out = U;
 }
 impl<S: Dyn<Out = U> + ?Sized, U> Super<NotActuallySuper> for S {

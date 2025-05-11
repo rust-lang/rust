@@ -1,15 +1,17 @@
 use hir::InFile;
+use ide_db::RootDatabase;
 use ide_db::text_edit::TextEdit;
-use ide_db::{source_change::SourceChange, EditionedFileId, FileRange};
+use ide_db::{EditionedFileId, FileRange, source_change::SourceChange};
 use itertools::Itertools;
-use syntax::{ast, AstNode, SyntaxNode, SyntaxNodePtr};
+use syntax::{AstNode, SyntaxNode, SyntaxNodePtr, ast};
 
-use crate::{fix, Diagnostic, DiagnosticCode};
+use crate::{Diagnostic, DiagnosticCode, fix};
 
 // Diagnostic: unnecessary-braces
 //
 // Diagnostic for unnecessary braces in `use` items.
 pub(crate) fn useless_braces(
+    db: &RootDatabase,
     acc: &mut Vec<Diagnostic>,
     file_id: EditionedFileId,
     node: &SyntaxNode,
@@ -38,13 +40,13 @@ pub(crate) fn useless_braces(
             Diagnostic::new(
                 DiagnosticCode::RustcLint("unused_braces"),
                 "Unnecessary braces in use statement".to_owned(),
-                FileRange { file_id: file_id.into(), range: use_range },
+                FileRange { file_id: file_id.file_id(db), range: use_range },
             )
             .with_main_node(InFile::new(file_id.into(), SyntaxNodePtr::new(node)))
             .with_fixes(Some(vec![fix(
                 "remove_braces",
                 "Remove unnecessary braces",
-                SourceChange::from_text_edit(file_id, edit),
+                SourceChange::from_text_edit(file_id.file_id(db), edit),
                 use_range,
             )])),
         );
@@ -56,8 +58,8 @@ pub(crate) fn useless_braces(
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests::{check_diagnostics, check_diagnostics_with_config, check_fix},
         DiagnosticsConfig,
+        tests::{check_diagnostics, check_diagnostics_with_config, check_fix},
     };
 
     #[test]

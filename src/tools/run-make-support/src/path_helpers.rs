@@ -34,6 +34,12 @@ pub fn source_root() -> PathBuf {
     env_var("SOURCE_ROOT").into()
 }
 
+/// Path to the build directory root.
+#[must_use]
+pub fn build_root() -> PathBuf {
+    env_var("BUILD_ROOT").into()
+}
+
 /// Browse the directory `path` non-recursively and return all files which respect the parameters
 /// outlined by `closure`.
 #[track_caller]
@@ -47,6 +53,25 @@ pub fn shallow_find_files<P: AsRef<Path>, F: Fn(&PathBuf) -> bool>(
         let path = entry.path();
 
         if path.is_file() && filter(&path) {
+            matching_files.push(path);
+        }
+    }
+    matching_files
+}
+
+/// Browse the directory `path` non-recursively and return all directories which respect the
+/// parameters outlined by `closure`.
+#[track_caller]
+pub fn shallow_find_directories<P: AsRef<Path>, F: Fn(&PathBuf) -> bool>(
+    path: P,
+    filter: F,
+) -> Vec<PathBuf> {
+    let mut matching_files = Vec::new();
+    for entry in rfs::read_dir(path) {
+        let entry = entry.expect("failed to read directory entry.");
+        let path = entry.path();
+
+        if path.is_dir() && filter(&path) {
             matching_files.push(path);
         }
     }

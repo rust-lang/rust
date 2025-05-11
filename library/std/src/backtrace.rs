@@ -92,8 +92,8 @@ use crate::backtrace_rs::{self, BytesOrWideString};
 use crate::ffi::c_void;
 use crate::panic::UnwindSafe;
 use crate::sync::LazyLock;
-use crate::sync::atomic::AtomicU8;
 use crate::sync::atomic::Ordering::Relaxed;
+use crate::sync::atomic::{Atomic, AtomicU8};
 use crate::sys::backtrace::{lock, output_filename, set_image_base};
 use crate::{env, fmt};
 
@@ -254,7 +254,7 @@ impl Backtrace {
         // Cache the result of reading the environment variables to make
         // backtrace captures speedy, because otherwise reading environment
         // variables every time can be somewhat slow.
-        static ENABLED: AtomicU8 = AtomicU8::new(0);
+        static ENABLED: Atomic<u8> = AtomicU8::new(0);
         match ENABLED.load(Relaxed) {
             0 => {}
             1 => return false,
@@ -432,6 +432,7 @@ mod helper {
     use super::*;
     pub(super) type LazyResolve = impl (FnOnce() -> Capture) + Send + Sync + UnwindSafe;
 
+    #[define_opaque(LazyResolve)]
     pub(super) fn lazy_resolve(mut capture: Capture) -> LazyResolve {
         move || {
             // Use the global backtrace lock to synchronize this as it's a

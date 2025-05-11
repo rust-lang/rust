@@ -11,36 +11,39 @@
 //! * Use define_* family of methods when you might be defining the Value.
 //! * When in doubt, define.
 
+use std::borrow::Borrow;
+
 use itertools::Itertools;
 use rustc_codegen_ssa::traits::TypeMembershipCodegenMethods;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
+use rustc_target::callconv::FnAbi;
 use smallvec::SmallVec;
 use tracing::debug;
 
-use crate::abi::{FnAbi, FnAbiLlvmExt};
+use crate::abi::FnAbiLlvmExt;
 use crate::common::AsCCharPtr;
-use crate::context::CodegenCx;
+use crate::context::{CodegenCx, GenericCx, SCx, SimpleCx};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::Visibility;
 use crate::type_::Type;
 use crate::value::Value;
 use crate::{attributes, llvm};
 
-/// Declare a function.
+/// Declare a function with a SimpleCx.
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
-fn declare_raw_fn<'ll>(
-    cx: &CodegenCx<'ll, '_>,
+pub(crate) fn declare_simple_fn<'ll>(
+    cx: &SimpleCx<'ll>,
     name: &str,
     callconv: llvm::CallConv,
     unnamed: llvm::UnnamedAddr,
     visibility: llvm::Visibility,
     ty: &'ll Type,
 ) -> &'ll Value {
-    debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
+    debug!("declare_simple_fn(name={:?}, ty={:?})", name, ty);
     let llfn = unsafe {
         llvm::LLVMRustGetOrInsertFunction(cx.llmod, name.as_c_char_ptr(), name.len(), ty)
     };
@@ -48,6 +51,24 @@ fn declare_raw_fn<'ll>(
     llvm::SetFunctionCallConv(llfn, callconv);
     llvm::SetUnnamedAddress(llfn, unnamed);
     llvm::set_visibility(llfn, visibility);
+
+    llfn
+}
+
+/// Declare a function.
+///
+/// If there’s a value with the same name already declared, the function will
+/// update the declaration and return existing Value instead.
+pub(crate) fn declare_raw_fn<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    name: &str,
+    callconv: llvm::CallConv,
+    unnamed: llvm::UnnamedAddr,
+    visibility: llvm::Visibility,
+    ty: &'ll Type,
+) -> &'ll Value {
+    debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
+    let llfn = declare_simple_fn(cx, name, callconv, unnamed, visibility, ty);
 
     let mut attrs = SmallVec::<[_; 4]>::new();
 
@@ -62,16 +83,25 @@ fn declare_raw_fn<'ll>(
     llfn
 }
 
-impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
+impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     /// Declare a global value.
     ///
     /// If there’s a value with the same name already declared, the function will
     /// return its Value instead.
     pub(crate) fn declare_global(&self, name: &str, ty: &'ll Type) -> &'ll Value {
         debug!("declare_global(name={:?})", name);
-        unsafe { llvm::LLVMRustGetOrInsertGlobal(self.llmod, name.as_c_char_ptr(), name.len(), ty) }
+        unsafe {
+            llvm::LLVMRustGetOrInsertGlobal(
+                (**self).borrow().llmod,
+                name.as_c_char_ptr(),
+                name.len(),
+                ty,
+            )
+        }
     }
+}
 
+impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// Declare a C ABI function.
     ///
     /// Only use this for foreign function ABIs and glue. For Rust functions use
@@ -125,7 +155,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         let llfn = declare_raw_fn(
             self,
             name,
-            fn_abi.llvm_cconv(),
+            fn_abi.llvm_cconv(self),
             llvm::UnnamedAddr::Global,
             llvm::Visibility::Default,
             fn_abi.llvm_type(self),
@@ -217,7 +247,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// name.
     pub(crate) fn get_defined_value(&self, name: &str) -> Option<&'ll Value> {
         self.get_declared_value(name).and_then(|val| {
-            let declaration = unsafe { llvm::LLVMIsDeclaration(val) != 0 };
+            let declaration = llvm::is_declaration(val);
             if !declaration { Some(val) } else { None }
         })
     }

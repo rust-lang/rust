@@ -25,6 +25,7 @@ fn friend_of_return_never_rpit(x: Void) {
 }
 
 type T = impl Copy;
+#[define_opaque(T)]
 fn return_never_tait(x: Void) -> T {
     if false {
         match return_never_tait(x) {
@@ -88,6 +89,7 @@ fn inner_tuple() {
 }
 
 type U = impl Copy;
+#[define_opaque(U)]
 fn unify_never(x: Void, u: U) -> U {
     if false {
         match u {
@@ -98,6 +100,7 @@ fn unify_never(x: Void, u: U) -> U {
 }
 
 type V = impl Copy;
+#[define_opaque(V)]
 fn infer_in_match(x: Option<V>) {
     match x {
         None => {}
@@ -116,6 +119,7 @@ struct Rec<'a> {
     n: u32,
     w: Option<&'a W>,
 }
+#[define_opaque(W)]
 fn recursive_opaque() -> W {
     if false {
         match recursive_opaque() {
@@ -130,6 +134,7 @@ fn recursive_opaque() -> W {
 
 type X = impl Copy;
 struct SecretelyVoid(X);
+#[define_opaque(X)]
 fn nested_empty_opaque(x: Void) -> X {
     if false {
         let opaque_void = nested_empty_opaque(x);
@@ -143,6 +148,7 @@ fn nested_empty_opaque(x: Void) -> X {
 
 type Y = (impl Copy, impl Copy);
 struct SecretelyDoubleVoid(Y);
+#[define_opaque(Y)]
 fn super_nested_empty_opaque(x: Void) -> Y {
     if false {
         let opaque_void = super_nested_empty_opaque(x);

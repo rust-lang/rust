@@ -31,18 +31,32 @@ use crate::utils::{format_mutability, mk_sp, mk_sp_lo_plus_one, rewrite_ident};
 ///     - `[small, ntp]`
 ///     - unary tuple constructor `([small, ntp])`
 ///     - `&[small]`
-pub(crate) fn is_short_pattern(pat: &ast::Pat, pat_str: &str) -> bool {
+pub(crate) fn is_short_pattern(
+    context: &RewriteContext<'_>,
+    pat: &ast::Pat,
+    pat_str: &str,
+) -> bool {
     // We also require that the pattern is reasonably 'small' with its literal width.
-    pat_str.len() <= 20 && !pat_str.contains('\n') && is_short_pattern_inner(pat)
+    pat_str.len() <= 20 && !pat_str.contains('\n') && is_short_pattern_inner(context, pat)
 }
 
-fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
-    match pat.kind {
-        ast::PatKind::Rest
-        | ast::PatKind::Never
-        | ast::PatKind::Wild
-        | ast::PatKind::Err(_)
-        | ast::PatKind::Lit(_) => true,
+fn is_short_pattern_inner(context: &RewriteContext<'_>, pat: &ast::Pat) -> bool {
+    match &pat.kind {
+        ast::PatKind::Missing => unreachable!(),
+        ast::PatKind::Rest | ast::PatKind::Never | ast::PatKind::Wild | ast::PatKind::Err(_) => {
+            true
+        }
+        ast::PatKind::Expr(expr) => match &expr.kind {
+            ast::ExprKind::Lit(_) => true,
+            ast::ExprKind::Unary(ast::UnOp::Neg, expr) => match &expr.kind {
+                ast::ExprKind::Lit(_) => true,
+                _ => unreachable!(),
+            },
+            ast::ExprKind::ConstBlock(_) | ast::ExprKind::Path(..) => {
+                context.config.style_edition() <= StyleEdition::Edition2024
+            }
+            _ => unreachable!(),
+        },
         ast::PatKind::Ident(_, _, ref pat) => pat.is_none(),
         ast::PatKind::Struct(..)
         | ast::PatKind::MacCall(..)
@@ -57,17 +71,17 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
         ast::PatKind::Box(ref p)
         | PatKind::Deref(ref p)
         | ast::PatKind::Ref(ref p, _)
-        | ast::PatKind::Paren(ref p) => is_short_pattern_inner(&*p),
-        PatKind::Or(ref pats) => pats.iter().all(|p| is_short_pattern_inner(p)),
+        | ast::PatKind::Paren(ref p) => is_short_pattern_inner(context, &*p),
+        PatKind::Or(ref pats) => pats.iter().all(|p| is_short_pattern_inner(context, p)),
     }
 }
 
-pub(crate) struct RangeOperand<'a> {
-    operand: &'a Option<ptr::P<ast::Expr>>,
-    pub(crate) span: Span,
+pub(crate) struct RangeOperand<'a, T> {
+    pub operand: &'a Option<ptr::P<T>>,
+    pub span: Span,
 }
 
-impl<'a> Rewrite for RangeOperand<'a> {
+impl<'a, T: Rewrite> Rewrite for RangeOperand<'a, T> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         self.rewrite_result(context, shape).ok()
     }
@@ -87,6 +101,7 @@ impl Rewrite for Pat {
 
     fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match self.kind {
+            PatKind::Missing => unreachable!(),
             PatKind::Or(ref pats) => {
                 let pat_strs = pats
                     .iter()
@@ -96,7 +111,7 @@ impl Rewrite for Pat {
                 let use_mixed_layout = pats
                     .iter()
                     .zip(pat_strs.iter())
-                    .all(|(pat, pat_str)| is_short_pattern(pat, pat_str));
+                    .all(|(pat, pat_str)| is_short_pattern(context, pat, pat_str));
                 let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
                 let tactic = if use_mixed_layout {
                     DefinitiveListTactic::Mixed
@@ -246,40 +261,7 @@ impl Rewrite for Pat {
             }
             PatKind::Never => Err(RewriteError::Unknown),
             PatKind::Range(ref lhs, ref rhs, ref end_kind) => {
-                let infix = match end_kind.node {
-                    RangeEnd::Included(RangeSyntax::DotDotDot) => "...",
-                    RangeEnd::Included(RangeSyntax::DotDotEq) => "..=",
-                    RangeEnd::Excluded => "..",
-                };
-                let infix = if context.config.spaces_around_ranges() {
-                    let lhs_spacing = match lhs {
-                        None => "",
-                        Some(_) => " ",
-                    };
-                    let rhs_spacing = match rhs {
-                        None => "",
-                        Some(_) => " ",
-                    };
-                    format!("{lhs_spacing}{infix}{rhs_spacing}")
-                } else {
-                    infix.to_owned()
-                };
-                let lspan = self.span.with_hi(end_kind.span.lo());
-                let rspan = self.span.with_lo(end_kind.span.hi());
-                rewrite_pair(
-                    &RangeOperand {
-                        operand: lhs,
-                        span: lspan,
-                    },
-                    &RangeOperand {
-                        operand: rhs,
-                        span: rspan,
-                    },
-                    PairParts::infix(&infix),
-                    context,
-                    shape,
-                    SeparatorPlace::Front,
-                )
+                rewrite_range_pat(context, shape, lhs, rhs, end_kind, self.span)
             }
             PatKind::Ref(ref pat, mutability) => {
                 let prefix = format!("&{}", format_mutability(mutability));
@@ -293,7 +275,7 @@ impl Rewrite for Pat {
                 let path_str = rewrite_path(context, PathContext::Expr, q_self, path, shape)?;
                 rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape)
             }
-            PatKind::Lit(ref expr) => expr.rewrite_result(context, shape),
+            PatKind::Expr(ref expr) => expr.rewrite_result(context, shape),
             PatKind::Slice(ref slice_pat)
                 if context.config.style_edition() <= StyleEdition::Edition2021 =>
             {
@@ -327,9 +309,7 @@ impl Rewrite for Pat {
                 context,
                 shape,
             ),
-            PatKind::MacCall(ref mac) => {
-                rewrite_macro(mac, None, context, shape, MacroPosition::Pat)
-            }
+            PatKind::MacCall(ref mac) => rewrite_macro(mac, context, shape, MacroPosition::Pat),
             PatKind::Paren(ref pat) => pat
                 .rewrite_result(
                     context,
@@ -344,6 +324,50 @@ impl Rewrite for Pat {
             PatKind::Err(_) => Err(RewriteError::Unknown),
         }
     }
+}
+
+pub fn rewrite_range_pat<T: Rewrite>(
+    context: &RewriteContext<'_>,
+    shape: Shape,
+    lhs: &Option<ptr::P<T>>,
+    rhs: &Option<ptr::P<T>>,
+    end_kind: &rustc_span::source_map::Spanned<RangeEnd>,
+    span: Span,
+) -> RewriteResult {
+    let infix = match end_kind.node {
+        RangeEnd::Included(RangeSyntax::DotDotDot) => "...",
+        RangeEnd::Included(RangeSyntax::DotDotEq) => "..=",
+        RangeEnd::Excluded => "..",
+    };
+    let infix = if context.config.spaces_around_ranges() {
+        let lhs_spacing = match lhs {
+            None => "",
+            Some(_) => " ",
+        };
+        let rhs_spacing = match rhs {
+            None => "",
+            Some(_) => " ",
+        };
+        format!("{lhs_spacing}{infix}{rhs_spacing}")
+    } else {
+        infix.to_owned()
+    };
+    let lspan = span.with_hi(end_kind.span.lo());
+    let rspan = span.with_lo(end_kind.span.hi());
+    rewrite_pair(
+        &RangeOperand {
+            operand: lhs,
+            span: lspan,
+        },
+        &RangeOperand {
+            operand: rhs,
+            span: rspan,
+        },
+        PairParts::infix(&infix),
+        context,
+        shape,
+        SeparatorPlace::Front,
+    )
 }
 
 fn rewrite_struct_pat(
@@ -530,7 +554,7 @@ pub(crate) fn can_be_overflowed_pat(
             ast::PatKind::Ref(ref p, _) | ast::PatKind::Box(ref p) => {
                 can_be_overflowed_pat(context, &TuplePatField::Pat(p), len)
             }
-            ast::PatKind::Lit(ref expr) => can_be_overflowed_expr(context, expr, len),
+            ast::PatKind::Expr(ref expr) => can_be_overflowed_expr(context, expr, len),
             _ => false,
         },
         TuplePatField::Dotdot(..) => false,

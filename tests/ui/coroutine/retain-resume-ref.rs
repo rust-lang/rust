@@ -22,5 +22,5 @@ fn main() {
     let mut gen = Pin::new(&mut gen);
     gen.as_mut().resume(&mut thing);
     gen.as_mut().resume(&mut thing);
-    //~^ cannot borrow `thing` as mutable more than once at a time
+    //~^ ERROR cannot borrow `thing` as mutable more than once at a time
 }

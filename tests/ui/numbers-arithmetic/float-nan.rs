@@ -2,7 +2,7 @@
 
 pub fn main() {
   let nan: f64 = f64::NAN;
-  assert!((nan).is_nan());
+  assert!(nan.is_nan());
 
   let inf: f64 = f64::INFINITY;
   let neg_inf: f64 = -f64::INFINITY;

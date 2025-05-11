@@ -14,11 +14,9 @@ pub(crate) fn render_const(ctx: RenderContext<'_>, const_: hir::Const) -> Option
 fn render(ctx: RenderContext<'_>, const_: hir::Const) -> Option<CompletionItem> {
     let db = ctx.db();
     let name = const_.name(db)?;
-    let (name, escaped_name) = (
-        name.unescaped().display(db).to_smolstr(),
-        name.display(db, ctx.completion.edition).to_smolstr(),
-    );
-    let detail = const_.display(db, ctx.completion.edition).to_string();
+    let (name, escaped_name) =
+        (name.as_str().to_smolstr(), name.display(db, ctx.completion.edition).to_smolstr());
+    let detail = const_.display(db, ctx.completion.display_target).to_string();
 
     let mut item =
         CompletionItem::new(SymbolKind::Const, ctx.source_range(), name, ctx.completion.edition);

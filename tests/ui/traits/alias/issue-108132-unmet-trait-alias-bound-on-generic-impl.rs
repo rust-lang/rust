@@ -11,5 +11,5 @@ impl<I: IteratorAlias> Foo<I> {
 }
 
 fn main() {
-    Foo::<()>::f() //~ trait bounds were not satisfied
+    Foo::<()>::f() //~ ERROR trait bounds were not satisfied
 }

@@ -1,13 +1,13 @@
 use syntax::{
+    AstNode, SyntaxKind, T, TextRange,
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
         make,
     },
-    AstNode, SyntaxKind, TextRange, T,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: unwrap_block
 //
@@ -27,9 +27,8 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let assist_id = AssistId("unwrap_block", AssistKind::RefactorRewrite);
+    let assist_id = AssistId::refactor_rewrite("unwrap_block");
     let assist_label = "Unwrap block";
-
     let l_curly_token = ctx.find_token_syntax_at_offset(T!['{'])?;
     let mut block = ast::BlockExpr::cast(l_curly_token.parent_ancestors().nth(1)?)?;
     let target = block.syntax().text_range();
@@ -61,7 +60,7 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                 }
             }
             None => {
-                let empty_tuple = make::expr_tuple([]);
+                let empty_tuple = make::ext::expr_unit();
                 make::let_stmt(pattern, ty, Some(empty_tuple)).to_string()
             }
         };

@@ -12,59 +12,59 @@ assert: (".stab.portability")
 
 // make sure that deprecated and portability have the right colors
 assert-css: (
-    ".item-table .item-name .stab.deprecated",
+    ".item-table dt .stab.deprecated",
     { "background-color": "#fff5d6" },
 )
 assert-css: (
-    ".item-table .item-name .stab.portability",
+    ".item-table dt .stab.portability",
     { "background-color": "#fff5d6" },
 )
 
 // table like view
-assert-css: (".desc.docblock-short", { "padding-left": "0px" })
+assert-css: ("dd", { "padding-left": "0px" })
 compare-elements-position-near: (
-    "//*[@class='item-name']//a[normalize-space()='replaced_function']",
-    ".item-name .stab.deprecated",
+    "//dt//a[normalize-space()='replaced_function']",
+    "dt .stab.deprecated",
     {"y": 2},
 )
 // "Unix" part is on second line
 compare-elements-position-false: (
-    ".item-name .stab.deprecated",
-    ".item-name .stab.portability",
+    "dt .stab.deprecated",
+    "dt .stab.portability",
     ["y"],
 )
 
 // Ensure no wrap
 compare-elements-position: (
-    "//*[@class='item-name']//a[normalize-space()='replaced_function']/..",
-    "//*[@class='desc docblock-short'][normalize-space()='a thing with a label']",
+    "//dt//a[normalize-space()='replaced_function']/..",
+    "//dd[normalize-space()='a thing with a label']",
     ["y"],
 )
 
 // Mobile view
 set-window-size: (600, 600)
 // staggered layout with 2em spacing
-assert-css: (".desc.docblock-short", { "padding-left": "32px" })
+assert-css: ("dd", { "padding-left": "32px" })
 compare-elements-position-near: (
-    "//*[@class='item-name']//a[normalize-space()='replaced_function']",
-    ".item-name .stab.deprecated",
+    "//dt//a[normalize-space()='replaced_function']",
+    "dt .stab.deprecated",
     {"y": 2},
 )
 compare-elements-position: (
-    ".item-name .stab.deprecated",
-    ".item-name .stab.portability",
+    "dt .stab.deprecated",
+    "dt .stab.portability",
     ["y"],
 )
 
 // Ensure wrap
 compare-elements-position-false: (
-    "//*[@class='item-name']//a[normalize-space()='replaced_function']/..",
-    "//*[@class='desc docblock-short'][normalize-space()='a thing with a label']",
+    "//dt//a[normalize-space()='replaced_function']/..",
+    "//dd[normalize-space()='a thing with a label']",
     ["y"],
 )
 compare-elements-position-false: (
-    ".item-name .stab.deprecated",
-    "//*[@class='desc docblock-short'][normalize-space()='a thing with a label']",
+    "dt .stab.deprecated",
+    "//dd[normalize-space()='a thing with a label']",
     ["y"],
 )
 

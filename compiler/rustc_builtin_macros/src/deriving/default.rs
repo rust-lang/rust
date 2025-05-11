@@ -42,7 +42,7 @@ pub(crate) fn expand_deriving_default(
                     StaticStruct(_, fields) => {
                         default_struct_substructure(cx, trait_span, substr, fields)
                     }
-                    StaticEnum(enum_def, _) => {
+                    StaticEnum(enum_def) => {
                         default_enum_substructure(cx, trait_span, enum_def, item.span())
                     }
                     _ => cx.dcx().span_bug(trait_span, "method in `derive(Default)`"),
@@ -108,30 +108,38 @@ fn default_enum_substructure(
         Ok(default_variant) => {
             // We now know there is exactly one unit variant with exactly one `#[default]` attribute.
             match &default_variant.data {
-                VariantData::Unit(_) => cx.expr_path(cx.path(default_variant.span, vec![
-                    Ident::new(kw::SelfUpper, default_variant.span),
-                    default_variant.ident,
-                ])),
+                VariantData::Unit(_) => cx.expr_path(cx.path(
+                    default_variant.span,
+                    vec![Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
+                )),
                 VariantData::Struct { fields, .. } => {
                     // This only happens if `#![feature(default_field_values)]`. We have validated
                     // all fields have default values in the definition.
                     let default_fields = fields
                         .iter()
                         .map(|field| {
-                            cx.field_imm(field.span, field.ident.unwrap(), match &field.default {
-                                // We use `Default::default()`.
-                                None => default_call(cx, field.span),
-                                // We use the field default const expression.
-                                Some(val) => {
-                                    cx.expr(val.value.span, ast::ExprKind::ConstBlock(val.clone()))
-                                }
-                            })
+                            cx.field_imm(
+                                field.span,
+                                field.ident.unwrap(),
+                                match &field.default {
+                                    // We use `Default::default()`.
+                                    None => default_call(cx, field.span),
+                                    // We use the field default const expression.
+                                    Some(val) => cx.expr(
+                                        val.value.span,
+                                        ast::ExprKind::ConstBlock(val.clone()),
+                                    ),
+                                },
+                            )
                         })
                         .collect();
-                    let path = cx.path(default_variant.span, vec![
-                        Ident::new(kw::SelfUpper, default_variant.span),
-                        default_variant.ident,
-                    ]);
+                    let path = cx.path(
+                        default_variant.span,
+                        vec![
+                            Ident::new(kw::SelfUpper, default_variant.span),
+                            default_variant.ident,
+                        ],
+                    );
                     cx.expr_struct(default_variant.span, path, default_fields)
                 }
                 // Logic error in `extract_default_variant`.

@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_config::types::create_disallowed_map;
+use clippy_config::types::{DisallowedPath, create_disallowed_map};
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
@@ -31,6 +31,8 @@ declare_clippy_lint! {
     ///     # When using an inline table, can add a `reason` for why the method
     ///     # is disallowed.
     ///     { path = "std::vec::Vec::leak", reason = "no leaking memory" },
+    ///     # Can also add a `replacement` that will be offered as a suggestion.
+    ///     { path = "std::sync::Mutex::new", reason = "prefer faster & simpler non-poisonable mutex", replacement = "parking_lot::Mutex::new" },
     /// ]
     /// ```
     ///
@@ -56,14 +58,24 @@ declare_clippy_lint! {
 }
 
 pub struct DisallowedMethods {
-    disallowed: DefIdMap<(&'static str, Option<&'static str>)>,
+    disallowed: DefIdMap<(&'static str, &'static DisallowedPath)>,
 }
 
 impl DisallowedMethods {
     pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
-        Self {
-            disallowed: create_disallowed_map(tcx, &conf.disallowed_methods),
-        }
+        let (disallowed, _) = create_disallowed_map(
+            tcx,
+            &conf.disallowed_methods,
+            |def_kind| {
+                matches!(
+                    def_kind,
+                    DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::AssocFn
+                )
+            },
+            "function",
+            false,
+        );
+        Self { disallowed }
     }
 }
 
@@ -72,28 +84,19 @@ impl_lint_pass!(DisallowedMethods => [DISALLOWED_METHODS]);
 impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let (id, span) = match &expr.kind {
-            ExprKind::Path(path)
-                if let Res::Def(DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::AssocFn, id) =
-                    cx.qpath_res(path, expr.hir_id) =>
-            {
-                (id, expr.span)
-            },
+            ExprKind::Path(path) if let Res::Def(_, id) = cx.qpath_res(path, expr.hir_id) => (id, expr.span),
             ExprKind::MethodCall(name, ..) if let Some(id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) => {
                 (id, name.ident.span)
             },
             _ => return,
         };
-        if let Some(&(path, reason)) = self.disallowed.get(&id) {
+        if let Some(&(path, disallowed_path)) = self.disallowed.get(&id) {
             span_lint_and_then(
                 cx,
                 DISALLOWED_METHODS,
                 span,
                 format!("use of a disallowed method `{path}`"),
-                |diag| {
-                    if let Some(reason) = reason {
-                        diag.note(reason);
-                    }
-                },
+                disallowed_path.diag_amendment(span),
             );
         }
     }

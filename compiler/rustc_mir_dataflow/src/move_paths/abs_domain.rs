@@ -32,6 +32,7 @@ impl<'tcx> Lift for PlaceElem<'tcx> {
             }
             ProjectionElem::Downcast(a, u) => ProjectionElem::Downcast(a, u),
             ProjectionElem::Subtype(_ty) => ProjectionElem::Subtype(()),
+            ProjectionElem::UnwrapUnsafeBinder(_ty) => ProjectionElem::UnwrapUnsafeBinder(()),
         }
     }
 }

@@ -1,15 +1,15 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, base};
+use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::hurd_gnu::opts();
-    base.cpu = "pentiumpro".into();
+    base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"]);
     base.stack_probes = StackProbeType::Inline;
 
     Target {
         llvm_target: "i686-unknown-hurd-gnu".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("32-bit GNU/Hurd".into()),
             tier: Some(3),
             host_tools: Some(true),

@@ -1,6 +1,5 @@
    LL|       |#![feature(coverage_attribute)]
    LL|       |//@ edition: 2021
-   LL|       |//@ min-llvm-version: 19
    LL|       |//@ compile-flags: -Zcoverage-options=mcdc
    LL|       |//@ llvm-cov-flags: --show-branches=count --show-mcdc
    LL|       |
@@ -124,8 +123,8 @@
    LL|      3|}
    LL|       |
    LL|      4|fn mcdc_check_tree_decision(a: bool, b: bool, c: bool) {
-   LL|      4|    // This expression is intentionally written in a way
-   LL|      4|    // where 100% branch coverage indicates 100% mcdc coverage.
+   LL|       |    // This expression is intentionally written in a way
+   LL|       |    // where 100% branch coverage indicates 100% mcdc coverage.
    LL|      4|    if a && (b || c) {
                            ^3   ^2
   ------------------
@@ -161,8 +160,8 @@
    LL|      4|}
    LL|       |
    LL|      4|fn mcdc_check_not_tree_decision(a: bool, b: bool, c: bool) {
-   LL|      4|    // Contradict to `mcdc_check_tree_decision`,
-   LL|      4|    // 100% branch coverage of this expression does not indicate 100% mcdc coverage.
+   LL|       |    // Contradict to `mcdc_check_tree_decision`,
+   LL|       |    // 100% branch coverage of this expression does not indicate 100% mcdc coverage.
    LL|      4|    if (a || b) && c {
                            ^1
   ------------------

@@ -7,8 +7,11 @@ pub mod pub_module {
         private_field: bool,
         pub pub_field: bool,
         pub(crate) pub_crate_field: bool,
+        //~^ field_scoped_visibility_modifiers
         pub(in crate::pub_module) pub_in_path_field: bool,
+        //~^ field_scoped_visibility_modifiers
         pub(super) pub_super_field: bool,
+        //~^ field_scoped_visibility_modifiers
         #[allow(clippy::needless_pub_self)]
         pub(self) pub_self_field: bool,
     }

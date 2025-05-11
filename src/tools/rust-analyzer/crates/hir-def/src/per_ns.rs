@@ -6,9 +6,9 @@
 use bitflags::bitflags;
 
 use crate::{
-    item_scope::{ImportId, ImportOrExternCrate, ItemInNs},
-    visibility::Visibility,
     MacroId, ModuleDefId,
+    item_scope::{ImportId, ImportOrExternCrate, ImportOrGlob, ItemInNs},
+    visibility::Visibility,
 };
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
@@ -36,8 +36,9 @@ pub struct Item<Def, Import = ImportId> {
 }
 
 pub type TypesItem = Item<ModuleDefId, ImportOrExternCrate>;
-pub type ValuesItem = Item<ModuleDefId>;
-pub type MacrosItem = Item<MacroId>;
+pub type ValuesItem = Item<ModuleDefId, ImportOrGlob>;
+// May be Externcrate for `[macro_use]`'d macros
+pub type MacrosItem = Item<MacroId, ImportOrExternCrate>;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct PerNs {
@@ -59,7 +60,7 @@ impl PerNs {
         PerNs { types: None, values: None, macros: None }
     }
 
-    pub fn values(def: ModuleDefId, vis: Visibility, import: Option<ImportId>) -> PerNs {
+    pub fn values(def: ModuleDefId, vis: Visibility, import: Option<ImportOrGlob>) -> PerNs {
         PerNs { types: None, values: Some(Item { def, vis, import }), macros: None }
     }
 
@@ -78,13 +79,13 @@ impl PerNs {
             values: Some(Item {
                 def: values,
                 vis,
-                import: import.and_then(ImportOrExternCrate::into_import),
+                import: import.and_then(ImportOrExternCrate::import_or_glob),
             }),
             macros: None,
         }
     }
 
-    pub fn macros(def: MacroId, vis: Visibility, import: Option<ImportId>) -> PerNs {
+    pub fn macros(def: MacroId, vis: Visibility, import: Option<ImportOrExternCrate>) -> PerNs {
         PerNs { types: None, values: None, macros: Some(Item { def, vis, import }) }
     }
 
@@ -108,7 +109,7 @@ impl PerNs {
         self.values.map(|it| it.def)
     }
 
-    pub fn take_values_import(self) -> Option<(ModuleDefId, Option<ImportId>)> {
+    pub fn take_values_import(self) -> Option<(ModuleDefId, Option<ImportOrGlob>)> {
         self.values.map(|it| (it.def, it.import))
     }
 
@@ -116,7 +117,7 @@ impl PerNs {
         self.macros.map(|it| it.def)
     }
 
-    pub fn take_macros_import(self) -> Option<(MacroId, Option<ImportId>)> {
+    pub fn take_macros_import(self) -> Option<(MacroId, Option<ImportOrExternCrate>)> {
         self.macros.map(|it| (it.def, it.import))
     }
 
@@ -146,11 +147,7 @@ impl PerNs {
     }
 
     pub fn or_else(self, f: impl FnOnce() -> PerNs) -> PerNs {
-        if self.is_full() {
-            self
-        } else {
-            self.or(f())
-        }
+        if self.is_full() { self } else { self.or(f()) }
     }
 
     pub fn iter_items(self) -> impl Iterator<Item = (ItemInNs, Option<ImportOrExternCrate>)> {
@@ -159,14 +156,9 @@ impl PerNs {
             .map(|it| (ItemInNs::Types(it.def), it.import))
             .into_iter()
             .chain(
-                self.values.map(|it| {
-                    (ItemInNs::Values(it.def), it.import.map(ImportOrExternCrate::Import))
-                }),
+                self.values
+                    .map(|it| (ItemInNs::Values(it.def), it.import.map(ImportOrExternCrate::from))),
             )
-            .chain(
-                self.macros.map(|it| {
-                    (ItemInNs::Macros(it.def), it.import.map(ImportOrExternCrate::Import))
-                }),
-            )
+            .chain(self.macros.map(|it| (ItemInNs::Macros(it.def), it.import)))
     }
 }

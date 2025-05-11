@@ -1,25 +1,28 @@
 use std::ops::Range;
 
+use diagnostics::make_unclosed_delims_error;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, StashKey};
-use rustc_lexer::unescape::{self, EscapeError, Mode};
-use rustc_lexer::{Base, Cursor, DocStyle, LiteralKind, RawStrError};
+use rustc_lexer::{
+    Base, Cursor, DocStyle, FrontmatterAllowed, LiteralKind, RawStrError, is_whitespace,
+};
+use rustc_literal_escaper::{EscapeError, Mode, unescape_mixed, unescape_unicode};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
     TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
 };
 use rustc_session::parse::ParseSess;
-use rustc_span::{BytePos, Pos, Span, Symbol};
+use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use tracing::debug;
 
+use crate::errors;
 use crate::lexer::diagnostics::TokenTreeDiagInfo;
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
-use crate::{errors, make_unclosed_delims_error};
 
 mod diagnostics;
 mod tokentrees;
@@ -55,7 +58,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
         start_pos = start_pos + BytePos::from_usize(shebang_len);
     }
 
-    let cursor = Cursor::new(src);
+    let cursor = Cursor::new(src, FrontmatterAllowed::Yes);
     let mut lexer = Lexer {
         psess,
         start_pos,
@@ -192,6 +195,11 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     let content = self.str_from_to(content_start, content_end);
                     self.cook_doc_comment(content_start, content, CommentKind::Block, doc_style)
                 }
+                rustc_lexer::TokenKind::Frontmatter { has_invalid_preceding_whitespace, invalid_infostring } => {
+                    self.validate_frontmatter(start, has_invalid_preceding_whitespace, invalid_infostring);
+                    preceded_by_whitespace = true;
+                    continue;
+                }
                 rustc_lexer::TokenKind::Whitespace => {
                     preceded_by_whitespace = true;
                     continue;
@@ -255,8 +263,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     // was consumed.
                     let lit_start = start + BytePos(prefix_len);
                     self.pos = lit_start;
-                    self.cursor = Cursor::new(&str_before[prefix_len as usize..]);
-
+                    self.cursor = Cursor::new(&str_before[prefix_len as usize..], FrontmatterAllowed::No);
                     self.report_unknown_prefix(start);
                     let prefix_span = self.mk_sp(start, lit_start);
                     return (Token::new(self.ident(start), prefix_span), preceded_by_whitespace);
@@ -361,7 +368,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                         // Reset the state so we just lex the `'r`.
                         let lt_start = start + BytePos(2);
                         self.pos = lt_start;
-                        self.cursor = Cursor::new(&str_before[2 as usize..]);
+                        self.cursor = Cursor::new(&str_before[2 as usize..], FrontmatterAllowed::No);
 
                         let lifetime_name = self.str_from(start);
                         let ident = Symbol::intern(lifetime_name);
@@ -371,12 +378,12 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 rustc_lexer::TokenKind::Semi => token::Semi,
                 rustc_lexer::TokenKind::Comma => token::Comma,
                 rustc_lexer::TokenKind::Dot => token::Dot,
-                rustc_lexer::TokenKind::OpenParen => token::OpenDelim(Delimiter::Parenthesis),
-                rustc_lexer::TokenKind::CloseParen => token::CloseDelim(Delimiter::Parenthesis),
-                rustc_lexer::TokenKind::OpenBrace => token::OpenDelim(Delimiter::Brace),
-                rustc_lexer::TokenKind::CloseBrace => token::CloseDelim(Delimiter::Brace),
-                rustc_lexer::TokenKind::OpenBracket => token::OpenDelim(Delimiter::Bracket),
-                rustc_lexer::TokenKind::CloseBracket => token::CloseDelim(Delimiter::Bracket),
+                rustc_lexer::TokenKind::OpenParen => token::OpenParen,
+                rustc_lexer::TokenKind::CloseParen => token::CloseParen,
+                rustc_lexer::TokenKind::OpenBrace => token::OpenBrace,
+                rustc_lexer::TokenKind::CloseBrace => token::CloseBrace,
+                rustc_lexer::TokenKind::OpenBracket => token::OpenBracket,
+                rustc_lexer::TokenKind::CloseBracket => token::CloseBracket,
                 rustc_lexer::TokenKind::At => token::At,
                 rustc_lexer::TokenKind::Pound => token::Pound,
                 rustc_lexer::TokenKind::Tilde => token::Tilde,
@@ -384,17 +391,17 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 rustc_lexer::TokenKind::Colon => token::Colon,
                 rustc_lexer::TokenKind::Dollar => token::Dollar,
                 rustc_lexer::TokenKind::Eq => token::Eq,
-                rustc_lexer::TokenKind::Bang => token::Not,
+                rustc_lexer::TokenKind::Bang => token::Bang,
                 rustc_lexer::TokenKind::Lt => token::Lt,
                 rustc_lexer::TokenKind::Gt => token::Gt,
-                rustc_lexer::TokenKind::Minus => token::BinOp(token::Minus),
-                rustc_lexer::TokenKind::And => token::BinOp(token::And),
-                rustc_lexer::TokenKind::Or => token::BinOp(token::Or),
-                rustc_lexer::TokenKind::Plus => token::BinOp(token::Plus),
-                rustc_lexer::TokenKind::Star => token::BinOp(token::Star),
-                rustc_lexer::TokenKind::Slash => token::BinOp(token::Slash),
-                rustc_lexer::TokenKind::Caret => token::BinOp(token::Caret),
-                rustc_lexer::TokenKind::Percent => token::BinOp(token::Percent),
+                rustc_lexer::TokenKind::Minus => token::Minus,
+                rustc_lexer::TokenKind::And => token::And,
+                rustc_lexer::TokenKind::Or => token::Or,
+                rustc_lexer::TokenKind::Plus => token::Plus,
+                rustc_lexer::TokenKind::Star => token::Star,
+                rustc_lexer::TokenKind::Slash => token::Slash,
+                rustc_lexer::TokenKind::Caret => token::Caret,
+                rustc_lexer::TokenKind::Percent => token::Percent,
 
                 rustc_lexer::TokenKind::Unknown | rustc_lexer::TokenKind::InvalidIdent => {
                     // Don't emit diagnostics for sequences of the same invalid token
@@ -471,6 +478,91 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 ast::CRATE_NODE_ID,
                 BuiltinLintDiag::UnicodeTextFlow(span, content.to_string()),
             );
+        }
+    }
+
+    fn validate_frontmatter(
+        &self,
+        start: BytePos,
+        has_invalid_preceding_whitespace: bool,
+        invalid_infostring: bool,
+    ) {
+        let s = self.str_from(start);
+        let real_start = s.find("---").unwrap();
+        let frontmatter_opening_pos = BytePos(real_start as u32) + start;
+        let s_new = &s[real_start..];
+        let within = s_new.trim_start_matches('-');
+        let len_opening = s_new.len() - within.len();
+
+        let frontmatter_opening_end_pos = frontmatter_opening_pos + BytePos(len_opening as u32);
+        if has_invalid_preceding_whitespace {
+            let line_start =
+                BytePos(s[..real_start].rfind("\n").map_or(0, |i| i as u32 + 1)) + start;
+            let span = self.mk_sp(line_start, frontmatter_opening_end_pos);
+            let label_span = self.mk_sp(line_start, frontmatter_opening_pos);
+            self.dcx().emit_err(errors::FrontmatterInvalidOpeningPrecedingWhitespace {
+                span,
+                note_span: label_span,
+            });
+        }
+
+        if invalid_infostring {
+            let line_end = s[real_start..].find('\n').unwrap_or(s[real_start..].len());
+            let span = self.mk_sp(
+                frontmatter_opening_end_pos,
+                frontmatter_opening_pos + BytePos(line_end as u32),
+            );
+            self.dcx().emit_err(errors::FrontmatterInvalidInfostring { span });
+        }
+
+        let last_line_start = within.rfind('\n').map_or(0, |i| i + 1);
+        let last_line = &within[last_line_start..];
+        let last_line_trimmed = last_line.trim_start_matches(is_whitespace);
+        let last_line_start_pos = frontmatter_opening_end_pos + BytePos(last_line_start as u32);
+
+        let frontmatter_span = self.mk_sp(frontmatter_opening_pos, self.pos);
+        self.psess.gated_spans.gate(sym::frontmatter, frontmatter_span);
+
+        if !last_line_trimmed.starts_with("---") {
+            let label_span = self.mk_sp(frontmatter_opening_pos, frontmatter_opening_end_pos);
+            self.dcx().emit_err(errors::FrontmatterUnclosed {
+                span: frontmatter_span,
+                note_span: label_span,
+            });
+            return;
+        }
+
+        if last_line_trimmed.len() != last_line.len() {
+            let line_end = last_line_start_pos + BytePos(last_line.len() as u32);
+            let span = self.mk_sp(last_line_start_pos, line_end);
+            let whitespace_end =
+                last_line_start_pos + BytePos((last_line.len() - last_line_trimmed.len()) as u32);
+            let label_span = self.mk_sp(last_line_start_pos, whitespace_end);
+            self.dcx().emit_err(errors::FrontmatterInvalidClosingPrecedingWhitespace {
+                span,
+                note_span: label_span,
+            });
+        }
+
+        let rest = last_line_trimmed.trim_start_matches('-');
+        let len_close = last_line_trimmed.len() - rest.len();
+        if len_close != len_opening {
+            let span = self.mk_sp(frontmatter_opening_pos, self.pos);
+            let opening = self.mk_sp(frontmatter_opening_pos, frontmatter_opening_end_pos);
+            let last_line_close_pos = last_line_start_pos + BytePos(len_close as u32);
+            let close = self.mk_sp(last_line_start_pos, last_line_close_pos);
+            self.dcx().emit_err(errors::FrontmatterLengthMismatch {
+                span,
+                opening,
+                close,
+                len_opening,
+                len_close,
+            });
+        }
+
+        if !rest.trim_matches(is_whitespace).is_empty() {
+            let span = self.mk_sp(last_line_start_pos, self.pos);
+            self.dcx().emit_err(errors::FrontmatterExtraCharactersAfterClose { span });
         }
     }
 
@@ -789,13 +881,14 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     fn report_unknown_prefix(&self, start: BytePos) {
         let prefix_span = self.mk_sp(start, self.pos);
         let prefix = self.str_from_to(start, self.pos);
-
         let expn_data = prefix_span.ctxt().outer_expn_data();
 
         if expn_data.edition.at_least_rust_2021() {
             // In Rust 2021, this is a hard error.
             let sugg = if prefix == "rb" {
                 Some(errors::UnknownPrefixSugg::UseBr(prefix_span))
+            } else if prefix == "rc" {
+                Some(errors::UnknownPrefixSugg::UseCr(prefix_span))
             } else if expn_data.is_root() {
                 if self.cursor.first() == '\''
                     && let Some(start) = self.last_lifetime
@@ -838,7 +931,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let space_pos = start + BytePos(1);
         let space_span = self.mk_sp(space_pos, space_pos);
 
-        let mut cursor = Cursor::new(str_before);
+        let mut cursor = Cursor::new(str_before, FrontmatterAllowed::No);
 
         let (is_string, span, unterminated) = match cursor.guarded_double_quoted_string() {
             Some(rustc_lexer::GuardedStr { n_hashes, terminated, token_len }) => {
@@ -904,7 +997,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             // For backwards compatibility, roll back to after just the first `#`
             // and return the `Pound` token.
             self.pos = start + BytePos(1);
-            self.cursor = Cursor::new(&str_before[1..]);
+            self.cursor = Cursor::new(&str_before[1..], FrontmatterAllowed::No);
             token::Pound
         }
     }
@@ -970,9 +1063,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         postfix_len: u32,
     ) -> (token::LitKind, Symbol) {
         self.cook_common(kind, mode, start, end, prefix_len, postfix_len, |src, mode, callback| {
-            unescape::unescape_unicode(src, mode, &mut |span, result| {
-                callback(span, result.map(drop))
-            })
+            unescape_unicode(src, mode, &mut |span, result| callback(span, result.map(drop)))
         })
     }
 
@@ -986,9 +1077,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         postfix_len: u32,
     ) -> (token::LitKind, Symbol) {
         self.cook_common(kind, mode, start, end, prefix_len, postfix_len, |src, mode, callback| {
-            unescape::unescape_mixed(src, mode, &mut |span, result| {
-                callback(span, result.map(drop))
-            })
+            unescape_mixed(src, mode, &mut |span, result| callback(span, result.map(drop)))
         })
     }
 }

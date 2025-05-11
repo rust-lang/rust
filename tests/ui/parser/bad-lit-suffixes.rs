@@ -1,10 +1,10 @@
 #![feature(rustc_attrs)]
 
-extern
+extern //~ WARN missing_abi
     "C"suffix //~ ERROR suffixes on string literals are invalid
     fn foo() {}
 
-extern
+extern //~ WARN missing_abi
     "C"suffix //~ ERROR suffixes on string literals are invalid
 {}
 

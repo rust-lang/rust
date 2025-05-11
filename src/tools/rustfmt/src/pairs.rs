@@ -1,4 +1,4 @@
-use rustc_ast::ast;
+use rustc_ast::{ast, token};
 use rustc_span::Span;
 
 use crate::config::IndentStyle;
@@ -272,13 +272,17 @@ struct PairList<'a, 'b, T: Rewrite> {
     span: Span,
 }
 
-fn is_ident(expr: &ast::Expr) -> bool {
+fn is_ident_or_bool_lit(expr: &ast::Expr) -> bool {
     match &expr.kind {
         ast::ExprKind::Path(None, path) if path.segments.len() == 1 => true,
+        ast::ExprKind::Lit(token::Lit {
+            kind: token::LitKind::Bool,
+            ..
+        }) => true,
         ast::ExprKind::Unary(_, expr)
         | ast::ExprKind::AddrOf(_, _, expr)
         | ast::ExprKind::Paren(expr)
-        | ast::ExprKind::Try(expr) => is_ident(expr),
+        | ast::ExprKind::Try(expr) => is_ident_or_bool_lit(expr),
         _ => false,
     }
 }
@@ -296,10 +300,10 @@ impl<'a, 'b> PairList<'a, 'b, ast::Expr> {
             return false;
         }
 
-        let fist_item_is_ident = is_ident(self.list[0].0);
+        let fist_item_is_ident_or_bool_lit = is_ident_or_bool_lit(self.list[0].0);
         let second_item_is_let_chain = matches!(self.list[1].0.kind, ast::ExprKind::Let(..));
 
-        fist_item_is_ident && second_item_is_let_chain
+        fist_item_is_ident_or_bool_lit && second_item_is_let_chain
     }
 }
 

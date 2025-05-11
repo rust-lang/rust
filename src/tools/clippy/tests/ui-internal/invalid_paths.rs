@@ -1,4 +1,4 @@
-#![warn(clippy::internal)]
+#![deny(clippy::invalid_paths)]
 #![allow(clippy::missing_clippy_version_attribute, clippy::unnecessary_def_path)]
 
 mod paths {
@@ -13,12 +13,15 @@ mod paths {
 
     // Path with empty segment
     pub const TRANSMUTE: [&str; 4] = ["core", "intrinsics", "", "transmute"];
+    //~^ invalid_paths
 
     // Path with bad crate
     pub const BAD_CRATE_PATH: [&str; 2] = ["bad", "path"];
+    //~^ invalid_paths
 
     // Path with bad module
     pub const BAD_MOD_PATH: [&str; 2] = ["std", "xxx"];
+    //~^ invalid_paths
 
     // Path to method on an enum inherent impl
     pub const OPTION_IS_SOME: [&str; 4] = ["core", "option", "Option", "is_some"];

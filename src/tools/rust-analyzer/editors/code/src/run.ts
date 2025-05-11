@@ -7,7 +7,7 @@ import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
 import type { Config } from "./config";
 import type { LanguageClient } from "vscode-languageclient/node";
-import { unwrapUndefinable, type RustEditor } from "./util";
+import { log, unwrapUndefinable, type RustEditor } from "./util";
 
 const quickPickButtons = [
     { iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configuration." },
@@ -19,7 +19,7 @@ export async function selectRunnable(
     debuggeeOnly = false,
     showButtons: boolean = true,
 ): Promise<RunnableQuickPick | undefined> {
-    const editor = ctx.activeRustEditor;
+    const editor = ctx.activeRustEditor ?? ctx.activeCargoTomlEditor;
     if (!editor) return;
 
     // show a placeholder while we get the runnables from the server
@@ -175,10 +175,17 @@ async function getRunnables(
         uri: editor.document.uri.toString(),
     };
 
-    const runnables = await client.sendRequest(ra.runnables, {
-        textDocument,
-        position: client.code2ProtocolConverter.asPosition(editor.selection.active),
-    });
+    const runnables = await client
+        .sendRequest(ra.runnables, {
+            textDocument,
+            position: client.code2ProtocolConverter.asPosition(editor.selection.active),
+        })
+        .catch((err) => {
+            // If this command is run for a virtual manifest at the workspace root, then this request
+            // will fail as we do not watch this file.
+            log.error(`${err}`);
+            return [];
+        });
     const items: RunnableQuickPick[] = [];
     if (prevRunnable) {
         items.push(prevRunnable);

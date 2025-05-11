@@ -10,11 +10,5 @@ note: the lint level is defined here
 LL | #![warn(unused_extern_crates)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: fatal error triggered by #[rustc_error]
-  --> $DIR/no-macro-use-attr.rs:10:1
-   |
-LL | fn main() {}
-   | ^^^^^^^^^
-
-error: aborting due to 1 previous error; 1 warning emitted
+warning: 1 warning emitted
 

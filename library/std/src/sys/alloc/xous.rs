@@ -4,11 +4,11 @@
 use crate::alloc::{GlobalAlloc, Layout, System};
 
 #[cfg(not(test))]
-#[export_name = "_ZN16__rust_internals3std3sys4xous5alloc8DLMALLOCE"]
+#[unsafe(export_name = "_ZN16__rust_internals3std3sys4xous5alloc8DLMALLOCE")]
 static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::Dlmalloc::new();
 
 #[cfg(test)]
-extern "Rust" {
+unsafe extern "Rust" {
     #[link_name = "_ZN16__rust_internals3std3sys4xous5alloc8DLMALLOCE"]
     static mut DLMALLOC: dlmalloc::Dlmalloc;
 }
@@ -49,10 +49,10 @@ unsafe impl GlobalAlloc for System {
 }
 
 mod lock {
-    use crate::sync::atomic::AtomicI32;
     use crate::sync::atomic::Ordering::{Acquire, Release};
+    use crate::sync::atomic::{Atomic, AtomicI32};
 
-    static LOCKED: AtomicI32 = AtomicI32::new(0);
+    static LOCKED: Atomic<i32> = AtomicI32::new(0);
 
     pub struct DropLock;
 

@@ -185,8 +185,9 @@ use rustc_ast::{
     self as ast, AnonConst, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind,
     Generics, Mutability, PatKind, VariantData,
 };
-use rustc_attr_parsing as attr;
+use rustc_attr_parsing::{AttributeKind, AttributeParser, ReprPacked};
 use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_hir::Attribute;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
@@ -311,7 +312,7 @@ pub(crate) enum SubstructureFields<'a> {
     /// Matching variants of the enum: variant index, ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
     /// variant.
-    EnumMatching(usize, &'a ast::Variant, Vec<FieldInfo>),
+    EnumMatching(&'a ast::Variant, Vec<FieldInfo>),
 
     /// The discriminant of an enum. The first field is a `FieldInfo` for the discriminants, as
     /// if they were fields. The second field is the expression to combine the
@@ -322,7 +323,7 @@ pub(crate) enum SubstructureFields<'a> {
     StaticStruct(&'a ast::VariantData, StaticFields),
 
     /// A static method where `Self` is an enum.
-    StaticEnum(&'a ast::EnumDef, Vec<(Ident, Span, StaticFields)>),
+    StaticEnum(&'a ast::EnumDef),
 }
 
 /// Combine the values of all the fields together. The last argument is
@@ -480,38 +481,34 @@ impl<'a> TraitDef<'a> {
     ) {
         match item {
             Annotatable::Item(item) => {
-                let is_packed = item.attrs.iter().any(|attr| {
-                    for r in attr::find_repr_attrs(cx.sess, attr) {
-                        if let attr::ReprPacked(_) = r {
-                            return true;
-                        }
-                    }
-                    false
-                });
+                let is_packed = matches!(
+                    AttributeParser::parse_limited(cx.sess, &item.attrs, sym::repr, item.span, true),
+                    Some(Attribute::Parsed(AttributeKind::Repr(r))) if r.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
+                );
 
                 let newitem = match &item.kind {
-                    ast::ItemKind::Struct(struct_def, generics) => self.expand_struct_def(
+                    ast::ItemKind::Struct(ident, struct_def, generics) => self.expand_struct_def(
                         cx,
                         struct_def,
-                        item.ident,
+                        *ident,
                         generics,
                         from_scratch,
                         is_packed,
                     ),
-                    ast::ItemKind::Enum(enum_def, generics) => {
+                    ast::ItemKind::Enum(ident, enum_def, generics) => {
                         // We ignore `is_packed` here, because `repr(packed)`
                         // enums cause an error later on.
                         //
                         // This can only cause further compilation errors
                         // downstream in blatantly illegal code, so it is fine.
-                        self.expand_enum_def(cx, enum_def, item.ident, generics, from_scratch)
+                        self.expand_enum_def(cx, enum_def, *ident, generics, from_scratch)
                     }
-                    ast::ItemKind::Union(struct_def, generics) => {
+                    ast::ItemKind::Union(ident, struct_def, generics) => {
                         if self.supports_unions {
                             self.expand_struct_def(
                                 cx,
                                 struct_def,
-                                item.ident,
+                                *ident,
                                 generics,
                                 from_scratch,
                                 is_packed,
@@ -530,15 +527,14 @@ impl<'a> TraitDef<'a> {
                     item.attrs
                         .iter()
                         .filter(|a| {
-                            [
+                            a.has_any_name(&[
                                 sym::allow,
                                 sym::warn,
                                 sym::deny,
                                 sym::forbid,
                                 sym::stable,
                                 sym::unstable,
-                            ]
-                            .contains(&a.name_or_empty())
+                            ])
                         })
                         .cloned(),
                 );
@@ -599,7 +595,6 @@ impl<'a> TraitDef<'a> {
             P(ast::AssocItem {
                 id: ast::DUMMY_NODE_ID,
                 span: self.span,
-                ident,
                 vis: ast::Visibility {
                     span: self.span.shrink_to_lo(),
                     kind: ast::VisibilityKind::Inherited,
@@ -608,6 +603,7 @@ impl<'a> TraitDef<'a> {
                 attrs: ast::AttrVec::new(),
                 kind: ast::AssocItemKind::Type(Box::new(ast::TyAlias {
                     defaultness: ast::Defaultness::Final,
+                    ident,
                     generics: Generics::default(),
                     where_clauses: ast::TyAliasWhereClauses::default(),
                     bounds: Vec::new(),
@@ -690,9 +686,11 @@ impl<'a> TraitDef<'a> {
         // and similarly for where clauses
         where_clause.predicates.extend(generics.where_clause.predicates.iter().map(|clause| {
             ast::WherePredicate {
+                attrs: clause.attrs.clone(),
                 kind: clause.kind.clone(),
                 id: ast::DUMMY_NODE_ID,
                 span: clause.span.with_ctxt(ctxt),
+                is_placeholder: false,
             }
         }));
 
@@ -747,8 +745,13 @@ impl<'a> TraitDef<'a> {
                         };
 
                         let kind = ast::WherePredicateKind::BoundPredicate(predicate);
-                        let predicate =
-                            ast::WherePredicate { kind, id: ast::DUMMY_NODE_ID, span: self.span };
+                        let predicate = ast::WherePredicate {
+                            attrs: ThinVec::new(),
+                            kind,
+                            id: ast::DUMMY_NODE_ID,
+                            span: self.span,
+                            is_placeholder: false,
+                        };
                         where_clause.predicates.push(predicate);
                     }
                 }
@@ -785,7 +788,6 @@ impl<'a> TraitDef<'a> {
 
         cx.item(
             self.span,
-            Ident::empty(),
             attrs,
             ast::ItemKind::Impl(Box::new(ast::Impl {
                 safety: ast::Safety::Default,
@@ -1029,12 +1031,14 @@ impl<'a> MethodDef<'a> {
                 kind: ast::VisibilityKind::Inherited,
                 tokens: None,
             },
-            ident: method_ident,
             kind: ast::AssocItemKind::Fn(Box::new(ast::Fn {
                 defaultness,
                 sig,
+                ident: method_ident,
                 generics: fn_generics,
+                contract: None,
                 body: Some(body_block),
+                define_opaque: None,
             })),
             tokens: None,
         })
@@ -1219,10 +1223,12 @@ impl<'a> MethodDef<'a> {
 
             let discr_let_stmts: ThinVec<_> = iter::zip(&discr_idents, &selflike_args)
                 .map(|(&ident, selflike_arg)| {
-                    let variant_value =
-                        deriving::call_intrinsic(cx, span, sym::discriminant_value, thin_vec![
-                            selflike_arg.clone()
-                        ]);
+                    let variant_value = deriving::call_intrinsic(
+                        cx,
+                        span,
+                        sym::discriminant_value,
+                        thin_vec![selflike_arg.clone()],
+                    );
                     cx.stmt_let(span, false, ident, variant_value)
                 })
                 .collect();
@@ -1270,7 +1276,7 @@ impl<'a> MethodDef<'a> {
                     trait_,
                     type_ident,
                     nonselflike_args,
-                    &EnumMatching(0, variant, Vec::new()),
+                    &EnumMatching(variant, Vec::new()),
                 );
             }
         }
@@ -1282,9 +1288,8 @@ impl<'a> MethodDef<'a> {
         // where each tuple has length = selflike_args.len()
         let mut match_arms: ThinVec<ast::Arm> = variants
             .iter()
-            .enumerate()
-            .filter(|&(_, v)| !(unify_fieldless_variants && v.data.fields().is_empty()))
-            .map(|(index, variant)| {
+            .filter(|&v| !(unify_fieldless_variants && v.data.fields().is_empty()))
+            .map(|variant| {
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
                 // (see "Final wrinkle" note below for why.)
 
@@ -1316,7 +1321,7 @@ impl<'a> MethodDef<'a> {
                 // expressions for referencing every field of every
                 // Self arg, assuming all are instances of VariantK.
                 // Build up code associated with such a case.
-                let substructure = EnumMatching(index, variant, fields);
+                let substructure = EnumMatching(variant, fields);
                 let arm_expr = self
                     .call_substructure_method(
                         cx,
@@ -1344,7 +1349,7 @@ impl<'a> MethodDef<'a> {
                         trait_,
                         type_ident,
                         nonselflike_args,
-                        &EnumMatching(0, v, Vec::new()),
+                        &EnumMatching(v, Vec::new()),
                     )
                     .into_expr(cx, span),
                 )
@@ -1407,21 +1412,12 @@ impl<'a> MethodDef<'a> {
         type_ident: Ident,
         nonselflike_args: &[P<Expr>],
     ) -> BlockOrExpr {
-        let summary = enum_def
-            .variants
-            .iter()
-            .map(|v| {
-                let sp = v.span.with_ctxt(trait_.span.ctxt());
-                let summary = trait_.summarise_struct(cx, &v.data);
-                (v.ident, sp, summary)
-            })
-            .collect();
         self.call_substructure_method(
             cx,
             trait_,
             type_ident,
             nonselflike_args,
-            &StaticEnum(enum_def, summary),
+            &StaticEnum(enum_def),
         )
     }
 }

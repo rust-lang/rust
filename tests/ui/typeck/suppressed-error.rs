@@ -1,8 +1,9 @@
 fn main() {
     let (x, y) = ();
 //~^ ERROR mismatched types
-//~| expected unit type `()`
-//~| found tuple `(_, _)`
-//~| expected `()`, found
+//~| NOTE expected unit type `()`
+//~| NOTE found tuple `(_, _)`
+//~| NOTE expected `()`, found
+//~| NOTE this expression has type `()`
     return x;
 }

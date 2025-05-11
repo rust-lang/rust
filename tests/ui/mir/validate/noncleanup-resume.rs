@@ -2,7 +2,7 @@
 //
 //@ failure-status: 101
 //@ dont-check-compiler-stderr
-//@ error-pattern: resume on non-cleanup block
+
 #![feature(custom_mir, core_intrinsics)]
 extern crate core;
 use core::intrinsics::mir::*;
@@ -11,7 +11,7 @@ use core::intrinsics::mir::*;
 pub fn main() {
     mir! {
         {
-            UnwindResume()
+            UnwindResume() //~ ERROR resume on non-cleanup block
         }
     }
 }

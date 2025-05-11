@@ -1,40 +1,28 @@
-error: multiple `deprecated` attributes
-  --> $DIR/stability-attribute-sanity.rs:62:1
-   |
-LL | #[deprecated(since = "5.5.5", note = "text")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/stability-attribute-sanity.rs:61:1
-   |
-LL | #[deprecated(since = "5.5.5", note = "text")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0541]: unknown meta item 'reason'
   --> $DIR/stability-attribute-sanity.rs:8:46
    |
 LL |     #[stable(feature = "a", since = "4.4.4", reason)]
    |                                              ^^^^^^ expected one of `feature`, `since`
 
-error[E0539]: incorrect meta item
+error[E0539]: expected a quoted string literal
   --> $DIR/stability-attribute-sanity.rs:11:29
    |
 LL |     #[stable(feature = "a", since)]
    |                             ^^^^^
 
-error[E0539]: incorrect meta item
+error[E0539]: expected a quoted string literal
   --> $DIR/stability-attribute-sanity.rs:14:14
    |
 LL |     #[stable(feature, since = "3.3.3")]
    |              ^^^^^^^
 
-error[E0539]: incorrect meta item
+error[E0539]: expected a quoted string literal
   --> $DIR/stability-attribute-sanity.rs:17:29
    |
 LL |     #[stable(feature = "a", since(b))]
    |                             ^^^^^^^^
 
-error[E0539]: incorrect meta item
+error[E0539]: expected a quoted string literal
   --> $DIR/stability-attribute-sanity.rs:20:14
    |
 LL |     #[stable(feature(b), since = "3.3.3")]
@@ -99,6 +87,18 @@ error: 'since' must be a Rust version number, such as "1.31.0"
    |
 LL | #[stable(feature = "e", since = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple `deprecated` attributes
+  --> $DIR/stability-attribute-sanity.rs:62:1
+   |
+LL | #[deprecated(since = "5.5.5", note = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/stability-attribute-sanity.rs:61:1
+   |
+LL | #[deprecated(since = "5.5.5", note = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:64:1

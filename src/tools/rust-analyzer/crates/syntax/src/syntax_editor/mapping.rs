@@ -20,10 +20,6 @@ pub struct SyntaxMapping {
 }
 
 impl SyntaxMapping {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Like [`SyntaxMapping::upmap_child`] but for syntax elements.
     pub fn upmap_child_element(
         &self,
@@ -239,10 +235,10 @@ impl SyntaxMappingBuilder {
 
     pub fn map_children(
         &mut self,
-        input: impl Iterator<Item = SyntaxNode>,
-        output: impl Iterator<Item = SyntaxNode>,
+        input: impl IntoIterator<Item = SyntaxNode>,
+        output: impl IntoIterator<Item = SyntaxNode>,
     ) {
-        for pairs in input.zip_longest(output) {
+        for pairs in input.into_iter().zip_longest(output) {
             let (input, output) = match pairs {
                 itertools::EitherOrBoth::Both(l, r) => (l, r),
                 itertools::EitherOrBoth::Left(_) => {

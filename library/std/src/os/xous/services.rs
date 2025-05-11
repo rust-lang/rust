@@ -1,4 +1,4 @@
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{Atomic, AtomicU32, Ordering};
 
 use crate::os::xous::ffi::Connection;
 
@@ -106,7 +106,7 @@ pub fn try_connect(name: &str) -> Option<Connection> {
     ns::try_connect_with_name(name)
 }
 
-static NAME_SERVER_CONNECTION: AtomicU32 = AtomicU32::new(0);
+static NAME_SERVER_CONNECTION: Atomic<u32> = AtomicU32::new(0);
 
 /// Returns a `Connection` to the name server. If the name server has not been started,
 /// then this call will block until the name server has been started. The `Connection`

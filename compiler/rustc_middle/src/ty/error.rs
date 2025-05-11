@@ -10,8 +10,8 @@ use rustc_hir::def::{CtorOf, DefKind};
 use rustc_macros::extension;
 pub use rustc_type_ir::error::ExpectedFound;
 
-use crate::ty::print::{FmtPrinter, PrettyPrinter, with_forced_trimmed_paths};
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::print::{FmtPrinter, Print, with_forced_trimmed_paths};
+use crate::ty::{self, Lift, Ty, TyCtxt};
 
 pub type TypeError<'tcx> = rustc_type_ir::error::TypeError<TyCtxt<'tcx>>;
 
@@ -109,6 +109,9 @@ impl<'tcx> TypeError<'tcx> {
             TypeError::ConstMismatch(ref values) => {
                 format!("expected `{}`, found `{}`", values.expected, values.found).into()
             }
+            TypeError::ForceInlineCast => {
+                "cannot coerce functions which must be inlined to function pointers".into()
+            }
             TypeError::IntrinsicCast => "cannot coerce intrinsics to function pointers".into(),
             TypeError::TargetFeatureCast(_) => {
                 "cannot coerce functions with `#[target_feature]` to safe function pointers".into()
@@ -156,8 +159,8 @@ impl<'tcx> Ty<'tcx> {
             ty::Error(_) => "type error".into(),
             _ => {
                 let width = tcx.sess.diagnostic_width();
-                let length_limit = std::cmp::max(width / 4, 15);
-                format!("`{}`", tcx.ty_string_with_limit(self, length_limit)).into()
+                let length_limit = std::cmp::max(width / 4, 40);
+                format!("`{}`", tcx.string_with_limit(self, length_limit)).into()
             }
         }
     }
@@ -202,7 +205,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Placeholder(..) => "higher-ranked type".into(),
             ty::Bound(..) => "bound type variable".into(),
             ty::Alias(ty::Projection | ty::Inherent, _) => "associated type".into(),
-            ty::Alias(ty::Weak, _) => "type alias".into(),
+            ty::Alias(ty::Free, _) => "type alias".into(),
             ty::Param(_) => "type parameter".into(),
             ty::Alias(ty::Opaque, ..) => "opaque type".into(),
         }
@@ -210,10 +213,13 @@ impl<'tcx> Ty<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn ty_string_with_limit(self, ty: Ty<'tcx>, length_limit: usize) -> String {
+    pub fn string_with_limit<T>(self, p: T, length_limit: usize) -> String
+    where
+        T: Copy + for<'a, 'b> Lift<TyCtxt<'b>, Lifted: Print<'b, FmtPrinter<'a, 'b>>>,
+    {
         let mut type_limit = 50;
         let regular = FmtPrinter::print_string(self, hir::def::Namespace::TypeNS, |cx| {
-            cx.pretty_print_type(ty)
+            self.lift(p).expect("could not lift for printing").print(cx)
         })
         .expect("could not write to `String`");
         if regular.len() <= length_limit {
@@ -228,7 +234,10 @@ impl<'tcx> TyCtxt<'tcx> {
                     hir::def::Namespace::TypeNS,
                     rustc_session::Limit(type_limit),
                 );
-                cx.pretty_print_type(ty).expect("could not write to `String`");
+                self.lift(p)
+                    .expect("could not lift for printing")
+                    .print(&mut cx)
+                    .expect("could not print type");
                 cx.into_buffer()
             });
             if short.len() <= length_limit || type_limit == 0 {
@@ -239,9 +248,16 @@ impl<'tcx> TyCtxt<'tcx> {
         short
     }
 
-    pub fn short_ty_string(self, ty: Ty<'tcx>, path: &mut Option<PathBuf>) -> String {
+    /// When calling this after a `Diag` is constructed, the preferred way of doing so is
+    /// `tcx.short_string(ty, diag.long_ty_path())`. The diagnostic itself is the one that keeps
+    /// the existence of a "long type" anywhere in the diagnostic, so the note telling the user
+    /// where we wrote the file to is only printed once.
+    pub fn short_string<T>(self, p: T, path: &mut Option<PathBuf>) -> String
+    where
+        T: Copy + Hash + for<'a, 'b> Lift<TyCtxt<'b>, Lifted: Print<'b, FmtPrinter<'a, 'b>>>,
+    {
         let regular = FmtPrinter::print_string(self, hir::def::Namespace::TypeNS, |cx| {
-            cx.pretty_print_type(ty)
+            self.lift(p).expect("could not lift for printing").print(cx)
         })
         .expect("could not write to `String`");
 
@@ -254,16 +270,16 @@ impl<'tcx> TyCtxt<'tcx> {
         if regular.len() <= width * 2 / 3 {
             return regular;
         }
-        let short = self.ty_string_with_limit(ty, length_limit);
+        let short = self.string_with_limit(p, length_limit);
         if regular == short {
             return regular;
         }
         // Ensure we create an unique file for the type passed in when we create a file.
         let mut s = DefaultHasher::new();
-        ty.hash(&mut s);
+        p.hash(&mut s);
         let hash = s.finish();
         *path = Some(path.take().unwrap_or_else(|| {
-            self.output_filenames(()).temp_path_ext(&format!("long-type-{hash}.txt"), None)
+            self.output_filenames(()).temp_path_for_diagnostic(&format!("long-type-{hash}.txt"))
         }));
         let Ok(mut file) =
             File::options().create(true).read(true).append(true).open(&path.as_ref().unwrap())

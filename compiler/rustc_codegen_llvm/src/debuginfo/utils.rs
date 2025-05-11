@@ -41,7 +41,7 @@ pub(crate) fn debug_context<'a, 'll, 'tcx>(
 #[inline]
 #[allow(non_snake_case)]
 pub(crate) fn DIB<'a, 'll>(cx: &'a CodegenCx<'ll, '_>) -> &'a DIBuilder<'ll> {
-    cx.dbg_cx.as_ref().unwrap().builder
+    cx.dbg_cx.as_ref().unwrap().builder.as_ref()
 }
 
 pub(crate) fn get_namespace_for_item<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {

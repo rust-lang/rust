@@ -108,7 +108,7 @@ use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use rand::{RngCore, thread_rng};
+use rand::{RngCore, rng};
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::svh::Svh;
@@ -117,8 +117,9 @@ use rustc_data_structures::{base_n, flock};
 use rustc_fs_util::{LinkOrCopy, link_or_copy, try_canonicalize};
 use rustc_middle::bug;
 use rustc_session::config::CrateType;
-use rustc_session::output::{collect_crate_types, find_crate_name};
+use rustc_session::output::collect_crate_types;
 use rustc_session::{Session, StableCrateId};
+use rustc_span::Symbol;
 use tracing::debug;
 
 use crate::errors;
@@ -211,7 +212,7 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 /// The garbage collection will take care of it.
 ///
 /// [`rustc_interface::queries::dep_graph`]: ../../rustc_interface/struct.Queries.html#structfield.dep_graph
-pub(crate) fn prepare_session_directory(sess: &Session) {
+pub(crate) fn prepare_session_directory(sess: &Session, crate_name: Symbol) {
     if sess.opts.incremental.is_none() {
         return;
     }
@@ -221,7 +222,7 @@ pub(crate) fn prepare_session_directory(sess: &Session) {
     debug!("prepare_session_directory");
 
     // {incr-comp-dir}/{crate-name-and-disambiguator}
-    let crate_dir = crate_path(sess);
+    let crate_dir = crate_path(sess, crate_name);
     debug!("crate-dir: {}", crate_dir.display());
     create_dir(sess, &crate_dir, "crate");
 
@@ -289,7 +290,7 @@ pub(crate) fn prepare_session_directory(sess: &Session) {
 
             // Try to remove the session directory we just allocated. We don't
             // know if there's any garbage in it from the failed copy action.
-            if let Err(err) = safe_remove_dir_all(&session_dir) {
+            if let Err(err) = std_fs::remove_dir_all(&session_dir) {
                 sess.dcx().emit_warn(errors::DeletePartial { path: &session_dir, err });
             }
 
@@ -323,7 +324,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
             incr_comp_session_dir.display()
         );
 
-        if let Err(err) = safe_remove_dir_all(&*incr_comp_session_dir) {
+        if let Err(err) = std_fs::remove_dir_all(&*incr_comp_session_dir) {
             sess.dcx().emit_warn(errors::DeleteFull { path: &incr_comp_session_dir, err });
         }
 
@@ -444,7 +445,7 @@ fn copy_files(sess: &Session, target_dir: &Path, source_dir: &Path) -> Result<bo
 fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
     let timestamp = timestamp_to_string(SystemTime::now());
     debug!("generate_session_dir_path: timestamp = {}", timestamp);
-    let random_number = thread_rng().next_u32();
+    let random_number = rng().next_u32();
     debug!("generate_session_dir_path: random_number = {}", random_number);
 
     // Chop the first 3 characters off the timestamp. Those 3 bytes will be zero for a while.
@@ -594,10 +595,9 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, &'static str> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path(sess: &Session) -> PathBuf {
+fn crate_path(sess: &Session, crate_name: Symbol) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
-    let crate_name = find_crate_name(sess, &[]);
     let crate_types = collect_crate_types(sess, &[]);
     let stable_crate_id = StableCrateId::new(
         crate_name,
@@ -715,7 +715,7 @@ pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<
     for directory_name in session_directories {
         if !lock_file_to_session_dir.items().any(|(_, dir)| *dir == directory_name) {
             let path = crate_directory.join(directory_name);
-            if let Err(err) = safe_remove_dir_all(&path) {
+            if let Err(err) = std_fs::remove_dir_all(&path) {
                 sess.dcx().emit_warn(errors::InvalidGcFailed { path: &path, err });
             }
         }
@@ -821,7 +821,7 @@ pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<
     all_except_most_recent(deletion_candidates).into_items().all(|(path, lock)| {
         debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
 
-        if let Err(err) = safe_remove_dir_all(&path) {
+        if let Err(err) = std_fs::remove_dir_all(&path) {
             sess.dcx().emit_warn(errors::FinalizedGcFailed { path: &path, err });
         } else {
             delete_session_dir_lock_file(sess, &lock_file_path(&path));
@@ -839,7 +839,7 @@ pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<
 fn delete_old(sess: &Session, path: &Path) {
     debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
 
-    if let Err(err) = safe_remove_dir_all(path) {
+    if let Err(err) = std_fs::remove_dir_all(path) {
         sess.dcx().emit_warn(errors::SessionGcFailed { path, err });
     } else {
         delete_session_dir_lock_file(sess, &lock_file_path(path));
@@ -862,30 +862,8 @@ fn all_except_most_recent(
     }
 }
 
-/// Since paths of artifacts within session directories can get quite long, we
-/// need to support deleting files with very long paths. The regular
-/// WinApi functions only support paths up to 260 characters, however. In order
-/// to circumvent this limitation, we canonicalize the path of the directory
-/// before passing it to std::fs::remove_dir_all(). This will convert the path
-/// into the '\\?\' format, which supports much longer paths.
-fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
-    let canonicalized = match try_canonicalize(p) {
-        Ok(canonicalized) => canonicalized,
-        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
-        Err(err) => return Err(err),
-    };
-
-    std_fs::remove_dir_all(canonicalized)
-}
-
 fn safe_remove_file(p: &Path) -> io::Result<()> {
-    let canonicalized = match try_canonicalize(p) {
-        Ok(canonicalized) => canonicalized,
-        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
-        Err(err) => return Err(err),
-    };
-
-    match std_fs::remove_file(canonicalized) {
+    match std_fs::remove_file(p) {
         Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
         result => result,
     }

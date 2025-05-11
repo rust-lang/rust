@@ -10,9 +10,8 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{AssignOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
@@ -134,7 +133,7 @@ fn generate_swap_warning<'tcx>(
                             applicability: &mut applicability,
                         }
                         .snippet_index_bindings(&[idx1, idx2, rhs1, rhs2]),
-                        slice.maybe_par(),
+                        slice.maybe_paren(),
                         snippet_with_context(cx, idx1.span, ctxt, "..", &mut applicability).0,
                         snippet_with_context(cx, idx2.span, ctxt, "..", &mut applicability).0,
                     ),
@@ -212,7 +211,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
         if let Some((lhs0, rhs0)) = parse(first)
             && let Some((lhs1, rhs1)) = parse(second)
             && first.span.eq_ctxt(second.span)
-			&& !in_external_macro(cx.sess(), first.span)
+			&& !first.span.in_external_macro(cx.sess().source_map())
             && is_same(cx, lhs0, rhs1)
             && is_same(cx, lhs1, rhs0)
 			&& !is_same(cx, lhs1, rhs1) // Ignore a = b; a = a (#10421)
@@ -270,12 +269,11 @@ fn parse<'a, 'hir>(stmt: &'a Stmt<'hir>) -> Option<(ExprOrIdent<'hir>, &'a Expr<
         if let ExprKind::Assign(lhs, rhs, _) = expr.kind {
             return Some((ExprOrIdent::Expr(lhs), rhs));
         }
-    } else if let StmtKind::Let(expr) = stmt.kind {
-        if let Some(rhs) = expr.init {
-            if let PatKind::Binding(_, _, ident_l, _) = expr.pat.kind {
-                return Some((ExprOrIdent::Ident(ident_l), rhs));
-            }
-        }
+    } else if let StmtKind::Let(expr) = stmt.kind
+        && let Some(rhs) = expr.init
+        && let PatKind::Binding(_, _, ident_l, _) = expr.pat.kind
+    {
+        return Some((ExprOrIdent::Ident(ident_l), rhs));
     }
     None
 }
@@ -296,7 +294,7 @@ fn check_xor_swap<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         {
             let span = s1.span.to(s3.span);
             generate_swap_warning(block, cx, lhs0, rhs0, rhs1, rhs2, span, true);
-        };
+        }
     }
 }
 
@@ -308,7 +306,7 @@ fn extract_sides_of_xor_assign<'a, 'hir>(
     if let StmtKind::Semi(expr) = stmt.kind
         && let ExprKind::AssignOp(
             Spanned {
-                node: BinOpKind::BitXor,
+                node: AssignOpKind::BitXorAssign,
                 ..
             },
             lhs,
@@ -384,9 +382,9 @@ impl<'tcx> IndexBinding<'_, 'tcx> {
 
     fn is_used_after_swap(&mut self, idx_ident: Ident) -> bool {
         let mut v = IndexBindingVisitor {
-            found_used: false,
-            suggest_span: self.suggest_span,
             idx: idx_ident,
+            suggest_span: self.suggest_span,
+            found_used: false,
         };
 
         for stmt in self.block.stmts {

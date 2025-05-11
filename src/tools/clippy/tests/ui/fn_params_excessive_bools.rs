@@ -1,7 +1,7 @@
 #![warn(clippy::fn_params_excessive_bools)]
 #![allow(clippy::too_many_arguments)]
 
-extern "C" {
+unsafe extern "C" {
     // Should not lint, most of the time users have no control over extern function signatures
     fn f(_: bool, _: bool, _: bool, _: bool);
 }
@@ -14,8 +14,8 @@ macro_rules! foo {
 
 foo!();
 
-#[no_mangle]
-extern "C" fn k(_: bool, _: bool, _: bool, _: bool) {}
+#[unsafe(no_mangle)]
+unsafe extern "C" fn k(_: bool, _: bool, _: bool, _: bool) {}
 fn g(_: bool, _: bool, _: bool, _: bool) {}
 //~^ ERROR: more than 3 bools in function parameters
 fn h(_: bool, _: bool, _: bool) {}
@@ -39,8 +39,8 @@ impl S {
     fn f(&self, _: bool, _: bool, _: bool, _: bool) {}
     //~^ ERROR: more than 3 bools in function parameters
     fn g(&self, _: bool, _: bool, _: bool) {}
-    #[no_mangle]
-    extern "C" fn h(_: bool, _: bool, _: bool, _: bool) {}
+    #[unsafe(no_mangle)]
+    unsafe extern "C" fn h(_: bool, _: bool, _: bool, _: bool) {}
 }
 
 impl Trait for S {

@@ -10,12 +10,10 @@
 use std::fmt::Debug;
 use std::iter;
 
-use rustc_data_structures::captures::Captures;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument};
 
@@ -134,7 +132,13 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let certainty = if errors.is_empty() { Certainty::Proven } else { Certainty::Ambiguous };
 
-        let opaque_types = self.take_opaque_types_for_query_response();
+        let opaque_types = self
+            .inner
+            .borrow_mut()
+            .opaque_type_storage
+            .take_opaque_types()
+            .map(|(k, v)| (k, v.ty))
+            .collect();
 
         Ok(QueryResponse {
             var_values: inference_vars,
@@ -143,24 +147,6 @@ impl<'tcx> InferCtxt<'tcx> {
             value: answer,
             opaque_types,
         })
-    }
-
-    /// Used by the new solver as that one takes the opaque types at the end of a probe
-    /// to deal with multiple candidates without having to recompute them.
-    pub fn clone_opaque_types_for_query_response(
-        &self,
-    ) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
-        self.inner
-            .borrow()
-            .opaque_type_storage
-            .opaque_types
-            .iter()
-            .map(|(k, v)| (*k, v.hidden_type.ty))
-            .collect()
-    }
-
-    fn take_opaque_types_for_query_response(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
-        self.take_opaque_types().into_iter().map(|(k, v)| (k, v.hidden_type.ty)).collect()
     }
 
     /// Given the (canonicalized) result to a canonical query,
@@ -434,7 +420,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
                 GenericArgKind::Lifetime(result_value) => {
                     // e.g., here `result_value` might be `'?1` in the example above...
-                    if let ty::ReBound(debruijn, br) = *result_value {
+                    if let ty::ReBound(debruijn, br) = result_value.kind() {
                         // ... in which case we would set `canonical_vars[0]` to `Some('static)`.
 
                         // We only allow a `ty::INNERMOST` index in generic parameters.
@@ -541,13 +527,13 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Converts the region constraints resulting from a query into an
     /// iterator of obligations.
-    fn query_outlives_constraints_into_obligations<'a>(
-        &'a self,
-        cause: &'a ObligationCause<'tcx>,
+    fn query_outlives_constraints_into_obligations(
+        &self,
+        cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        uninstantiated_region_constraints: &'a [QueryOutlivesConstraint<'tcx>],
-        result_args: &'a CanonicalVarValues<'tcx>,
-    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
+        uninstantiated_region_constraints: &[QueryOutlivesConstraint<'tcx>],
+        result_args: &CanonicalVarValues<'tcx>,
+    ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
         uninstantiated_region_constraints.iter().map(move |&constraint| {
             let predicate = instantiate_value(self.tcx, result_args, constraint);
             self.query_outlives_constraint_to_obligation(predicate, cause.clone(), param_env)

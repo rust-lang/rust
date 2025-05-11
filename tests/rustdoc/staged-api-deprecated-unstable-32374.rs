@@ -4,11 +4,9 @@
 #![unstable(feature = "test", issue = "32374")]
 #![crate_name="issue_32374"]
 
-//@ matches issue_32374/index.html '//*[@class="item-name"]/span[@class="stab deprecated"]' \
-//      'Deprecated'
-//@ matches issue_32374/index.html '//*[@class="item-name"]/span[@class="stab unstable"]' \
-//      'Experimental'
-//@ matches issue_32374/index.html '//*[@class="desc docblock-short"]/text()' 'Docs'
+//@ matches issue_32374/index.html '//dt/span[@class="stab deprecated"]' 'Deprecated'
+//@ matches issue_32374/index.html '//dt/span[@class="stab unstable"]' 'Experimental'
+//@ matches issue_32374/index.html '//dd/text()' 'Docs'
 
 //@ has issue_32374/struct.T.html '//*[@class="stab deprecated"]/span' '👎'
 //@ has issue_32374/struct.T.html '//*[@class="stab deprecated"]/span' \

@@ -1,5 +1,5 @@
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -28,9 +28,9 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut finder = SingleUseConstsFinder {
-            ineligible_locals: BitSet::new_empty(body.local_decls.len()),
+            ineligible_locals: DenseBitSet::new_empty(body.local_decls.len()),
             locations: IndexVec::from_elem(LocationPair::new(), &body.local_decls),
-            locals_in_debug_info: BitSet::new_empty(body.local_decls.len()),
+            locals_in_debug_info: DenseBitSet::new_empty(body.local_decls.len()),
         };
 
         finder.ineligible_locals.insert_range(..=Local::from_usize(body.arg_count));
@@ -48,9 +48,11 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
 
             // We're only changing an operand, not the terminator kinds or successors
             let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
-            let init_statement =
-                basic_blocks[init_loc.block].statements[init_loc.statement_index].replace_nop();
-            let StatementKind::Assign(place_and_rvalue) = init_statement.kind else {
+            let init_statement_kind = std::mem::replace(
+                &mut basic_blocks[init_loc.block].statements[init_loc.statement_index].kind,
+                StatementKind::Nop,
+            );
+            let StatementKind::Assign(place_and_rvalue) = init_statement_kind else {
                 bug!("No longer an assign?");
             };
             let (place, rvalue) = *place_and_rvalue;
@@ -81,6 +83,10 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
             }
         }
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -96,9 +102,9 @@ impl LocationPair {
 }
 
 struct SingleUseConstsFinder {
-    ineligible_locals: BitSet<Local>,
+    ineligible_locals: DenseBitSet<Local>,
     locations: IndexVec<Local, LocationPair>,
-    locals_in_debug_info: BitSet<Local>,
+    locals_in_debug_info: DenseBitSet<Local>,
 }
 
 impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {

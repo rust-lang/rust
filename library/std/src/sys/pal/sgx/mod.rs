@@ -6,24 +6,13 @@
 #![allow(fuzzy_provenance_casts)] // FIXME: this entire module systematically confuses pointers and integers
 
 use crate::io::ErrorKind;
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 
 pub mod abi;
-pub mod args;
-pub mod env;
-pub mod fd;
-#[path = "../unsupported/fs.rs"]
-pub mod fs;
-#[path = "../unsupported/io.rs"]
-pub mod io;
 mod libunwind_integration;
-pub mod net;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-#[path = "../unsupported/process.rs"]
-pub mod process;
-pub mod stdio;
 pub mod thread;
 pub mod thread_parking;
 pub mod time;
@@ -33,7 +22,7 @@ pub mod waitqueue;
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
     unsafe {
-        args::init(argc, argv);
+        crate::sys::args::init(argc, argv);
     }
 }
 
@@ -57,7 +46,7 @@ pub fn unsupported_err() -> crate::io::Error {
 /// what happens when `SGX_INEFFECTIVE_ERROR` is set to `true`. If it is
 /// `false`, the behavior is the same as `unsupported`.
 pub fn sgx_ineffective<T>(v: T) -> crate::io::Result<T> {
-    static SGX_INEFFECTIVE_ERROR: AtomicBool = AtomicBool::new(false);
+    static SGX_INEFFECTIVE_ERROR: Atomic<bool> = AtomicBool::new(false);
     if SGX_INEFFECTIVE_ERROR.load(Ordering::Relaxed) {
         Err(crate::io::const_error!(
             ErrorKind::Uncategorized,
@@ -126,7 +115,7 @@ pub fn abort_internal() -> ! {
 // This function is needed by the panic runtime. The symbol is named in
 // pre-link args for the target specification, so keep that in sync.
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 // NB. used by both libunwind and libpanic_abort
 pub extern "C" fn __rust_abort() {
     abort_internal();

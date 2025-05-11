@@ -13,7 +13,7 @@ LL |     fn bar(&self) -> impl Iterator + '_ {
 help: replace the return type so that it matches the trait
    |
 LL |     fn bar(&self) -> impl Iterator<Item = impl Sized> + '_ {
-   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                                   +++++++++++++++++++
 
 warning: 1 warning emitted
 

@@ -1,12 +1,11 @@
 //@ run-pass
 
 #![allow(unused_must_use)]
-#![allow(stable_features)]
 #![allow(deprecated)]
 #![allow(unused_imports)]
+
 //@ compile-flags:--test
-//@ ignore-wasm32 no processes
-//@ ignore-sgx no processes
+//@ needs-subprocess
 //@ ignore-vxworks no 'cat' and 'sleep'
 //@ ignore-fuchsia no 'cat'
 

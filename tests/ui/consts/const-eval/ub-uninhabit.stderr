@@ -1,11 +1,11 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-uninhabit.rs:19:35
+  --> $DIR/ub-uninhabit.rs:21:35
    |
 LL | const BAD_BAD_BAD: Bar = unsafe { MaybeUninit { uninit: () }.init };
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a value of uninhabited type `Bar`
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-uninhabit.rs:23:1
+  --> $DIR/ub-uninhabit.rs:25:1
    |
 LL | const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a reference pointing to uninhabited type Bar
@@ -16,13 +16,13 @@ LL | const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
            }
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-uninhabit.rs:27:42
+  --> $DIR/ub-uninhabit.rs:29:42
    |
 LL | const BAD_BAD_ARRAY: [Bar; 1] = unsafe { MaybeUninit { uninit: () }.init };
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at [0]: encountered a value of uninhabited type `Bar`
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-uninhabit.rs:35:16
+  --> $DIR/ub-uninhabit.rs:37:16
    |
 LL |     let _val = intrinsics::read_via_copy(ptr);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a value of the never type `!`

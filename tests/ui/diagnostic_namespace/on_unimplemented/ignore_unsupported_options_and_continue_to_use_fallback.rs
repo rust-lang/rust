@@ -8,8 +8,8 @@
     note = "custom note"
 )]
 #[diagnostic::on_unimplemented(message = "fallback!!")]
-//~^ `message` is ignored due to previous definition of `message`
-//~| `message` is ignored due to previous definition of `message`
+//~^ WARN `message` is ignored due to previous definition of `message`
+//~| WARN `message` is ignored due to previous definition of `message`
 #[diagnostic::on_unimplemented(label = "fallback label")]
 #[diagnostic::on_unimplemented(note = "fallback note")]
 trait Foo {}

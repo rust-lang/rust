@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/while-type-error.rs:3:19
+  --> $DIR/while-type-error.rs:1:19
    |
 LL | fn main() { while main { } }
    |                   ^^^^ expected `bool`, found fn item

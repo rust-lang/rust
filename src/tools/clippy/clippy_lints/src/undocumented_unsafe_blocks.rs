@@ -1,4 +1,5 @@
 use std::ops::ControlFlow;
+use std::sync::Arc;
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
@@ -6,12 +7,10 @@ use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
 use clippy_utils::visitors::{Descend, for_each_expr};
 use hir::HirId;
-use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::{Block, BlockCheckMode, ItemKind, Node, UnsafeSource};
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Pos, RelativeBytePos, Span, SyntaxContext};
 
@@ -111,7 +110,7 @@ impl_lint_pass!(UndocumentedUnsafeBlocks => [UNDOCUMENTED_UNSAFE_BLOCKS, UNNECES
 impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
-            && !in_external_macro(cx.tcx.sess, block.span)
+            && !block.span.in_external_macro(cx.tcx.sess.source_map())
             && !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, block.hir_id)
             && !is_unsafe_from_proc_macro(cx, block.span)
             && !block_has_safety_comment(cx, block.span)
@@ -143,7 +142,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
 
         if let Some(tail) = block.expr
             && !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, tail.hir_id)
-            && !in_external_macro(cx.tcx.sess, tail.span)
+            && !tail.span.in_external_macro(cx.tcx.sess.source_map())
             && let HasSafetyComment::Yes(pos) = stmt_has_safety_comment(cx, tail.span, tail.hir_id)
             && let Some(help_span) = expr_has_unnecessary_safety_comment(cx, tail, pos)
         {
@@ -167,7 +166,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
             return;
         };
         if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, stmt.hir_id)
-            && !in_external_macro(cx.tcx.sess, stmt.span)
+            && !stmt.span.in_external_macro(cx.tcx.sess.source_map())
             && let HasSafetyComment::Yes(pos) = stmt_has_safety_comment(cx, stmt.span, stmt.hir_id)
             && let Some(help_span) = expr_has_unnecessary_safety_comment(cx, expr, pos)
         {
@@ -184,7 +183,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if in_external_macro(cx.tcx.sess, item.span) {
+        if item.span.in_external_macro(cx.tcx.sess.source_map()) {
             return;
         }
 
@@ -246,7 +245,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
             // const and static items only need a safety comment if their body is an unsafe block, lint otherwise
             (&ItemKind::Const(.., body) | &ItemKind::Static(.., body), HasSafetyComment::Yes(pos)) => {
                 if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, body.hir_id) {
-                    let body = cx.tcx.hir().body(body);
+                    let body = cx.tcx.hir_body(body);
                     if !matches!(
                         body.value.kind, hir::ExprKind::Block(block, _)
                         if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
@@ -292,7 +291,7 @@ fn expr_has_unnecessary_safety_comment<'tcx>(
     expr: &'tcx hir::Expr<'tcx>,
     comment_pos: BytePos,
 ) -> Option<Span> {
-    if cx.tcx.hir().parent_iter(expr.hir_id).any(|(_, ref node)| {
+    if cx.tcx.hir_parent_iter(expr.hir_id).any(|(_, ref node)| {
         matches!(
             node,
             Node::Block(Block {
@@ -313,6 +312,25 @@ fn expr_has_unnecessary_safety_comment<'tcx>(
             },
             _,
         ) => ControlFlow::Break(()),
+        // `_ = foo()` is desugared to `{ let _ = foo(); }`
+        hir::ExprKind::Block(
+            Block {
+                rules: BlockCheckMode::DefaultBlock,
+                stmts:
+                    [
+                        hir::Stmt {
+                            kind:
+                                hir::StmtKind::Let(hir::LetStmt {
+                                    source: hir::LocalSource::AssignDesugar(_),
+                                    ..
+                                }),
+                            ..
+                        },
+                    ],
+                ..
+            },
+            _,
+        ) => ControlFlow::Continue(Descend::Yes),
         // statements will be handled by check_stmt itself again
         hir::ExprKind::Block(..) => ControlFlow::Continue(Descend::No),
         _ => ControlFlow::Continue(Descend::Yes),
@@ -340,6 +358,33 @@ fn is_unsafe_from_proc_macro(cx: &LateContext<'_>, span: Span) -> bool {
         .is_none_or(|src| !src.starts_with("unsafe"))
 }
 
+fn find_unsafe_block_parent_in_expr<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+) -> Option<(Span, HirId)> {
+    match cx.tcx.parent_hir_node(expr.hir_id) {
+        Node::LetStmt(hir::LetStmt { span, hir_id, .. })
+        | Node::Expr(hir::Expr {
+            hir_id,
+            kind: hir::ExprKind::Assign(_, _, span),
+            ..
+        }) => Some((*span, *hir_id)),
+        Node::Expr(expr) => find_unsafe_block_parent_in_expr(cx, expr),
+        node if let Some((span, hir_id)) = span_and_hid_of_item_alike_node(&node)
+            && is_const_or_static(&node) =>
+        {
+            Some((span, hir_id))
+        },
+
+        _ => {
+            if is_branchy(expr) {
+                return None;
+            }
+            Some((expr.span, expr.hir_id))
+        },
+    }
+}
+
 // Checks if any parent {expression, statement, block, local, const, static}
 // has a safety comment
 fn block_parents_have_safety_comment(
@@ -349,21 +394,7 @@ fn block_parents_have_safety_comment(
     id: HirId,
 ) -> bool {
     let (span, hir_id) = match cx.tcx.parent_hir_node(id) {
-        Node::Expr(expr) => match cx.tcx.parent_hir_node(expr.hir_id) {
-            Node::LetStmt(hir::LetStmt { span, hir_id, .. }) => (*span, *hir_id),
-            Node::Item(hir::Item {
-                kind: ItemKind::Const(..) | ItemKind::Static(..),
-                span,
-                owner_id,
-                ..
-            }) => (*span, cx.tcx.local_def_id_to_hir_id(owner_id.def_id)),
-            _ => {
-                if is_branchy(expr) {
-                    return false;
-                }
-                (expr.span, expr.hir_id)
-            },
-        },
+        Node::Expr(expr) if let Some(inner) = find_unsafe_block_parent_in_expr(cx, expr) => inner,
         Node::Stmt(hir::Stmt {
             kind:
                 hir::StmtKind::Let(hir::LetStmt { span, hir_id, .. })
@@ -372,12 +403,13 @@ fn block_parents_have_safety_comment(
             ..
         })
         | Node::LetStmt(hir::LetStmt { span, hir_id, .. }) => (*span, *hir_id),
-        Node::Item(hir::Item {
-            kind: ItemKind::Const(..) | ItemKind::Static(..),
-            span,
-            owner_id,
-            ..
-        }) => (*span, cx.tcx.local_def_id_to_hir_id(owner_id.def_id)),
+
+        node if let Some((span, hir_id)) = span_and_hid_of_item_alike_node(&node)
+            && is_const_or_static(&node) =>
+        {
+            (span, hir_id)
+        },
+
         _ => return false,
     };
     // if unsafe block is part of a let/const/static statement,
@@ -428,12 +460,12 @@ fn block_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
 }
 
 fn include_attrs_in_span(cx: &LateContext<'_>, hir_id: HirId, span: Span) -> Span {
-    span.to(cx
-        .tcx
-        .hir()
-        .attrs(hir_id)
-        .iter()
-        .fold(span, |acc, attr| acc.to(attr.span)))
+    span.to(cx.tcx.hir_attrs(hir_id).iter().fold(span, |acc, attr| {
+        if attr.is_doc_comment() {
+            return acc;
+        }
+        acc.to(attr.span())
+    }))
 }
 
 enum HasSafetyComment {
@@ -456,7 +488,7 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
     let comment_start = match cx.tcx.parent_hir_node(item.hir_id()) {
         Node::Crate(parent_mod) => comment_start_before_item_in_mod(cx, parent_mod, parent_mod.spans.inner_span, item),
         Node::Item(parent_item) => {
-            if let ItemKind::Mod(parent_mod) = &parent_item.kind {
+            if let ItemKind::Mod(_, parent_mod) = &parent_item.kind {
                 comment_start_before_item_in_mod(cx, parent_mod, parent_item.span, item)
             } else {
                 // Doesn't support impls in this position. Pretend a comment was found.
@@ -481,7 +513,7 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
     if let Some(comment_start) = comment_start
         && let Ok(unsafe_line) = source_map.lookup_line(item.span.lo())
         && let Ok(comment_start_line) = source_map.lookup_line(comment_start)
-        && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
+        && Arc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
         && let Some(src) = unsafe_line.sf.src.as_deref()
     {
         return if comment_start_line.line >= unsafe_line.line {
@@ -521,7 +553,7 @@ fn stmt_has_safety_comment(cx: &LateContext<'_>, span: Span, hir_id: HirId) -> H
     if let Some(comment_start) = comment_start
         && let Ok(unsafe_line) = source_map.lookup_line(span.lo())
         && let Ok(comment_start_line) = source_map.lookup_line(comment_start)
-        && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
+        && Arc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
         && let Some(src) = unsafe_line.sf.src.as_deref()
     {
         return if comment_start_line.line >= unsafe_line.line {
@@ -559,7 +591,7 @@ fn comment_start_before_item_in_mod(
                 // some_item /* comment */ unsafe impl T {}
                 // ^-------^ returns the end of this span
                 //         ^---------------^ finally checks comments in this range
-                let prev_item = cx.tcx.hir().item(parent_mod.item_ids[idx - 1]);
+                let prev_item = cx.tcx.hir_item(parent_mod.item_ids[idx - 1]);
                 if let Some(sp) = walk_span_to_context(prev_item.span, SyntaxContext::root()) {
                     return Some(sp.hi());
                 }
@@ -581,7 +613,7 @@ fn span_from_macro_expansion_has_safety_comment(cx: &LateContext<'_>, span: Span
         //     ^--------------------------------------------^
         if let Ok(unsafe_line) = source_map.lookup_line(span.lo())
             && let Ok(macro_line) = source_map.lookup_line(ctxt.outer_expn_data().def_site.lo())
-            && Lrc::ptr_eq(&unsafe_line.sf, &macro_line.sf)
+            && Arc::ptr_eq(&unsafe_line.sf, &macro_line.sf)
             && let Some(src) = unsafe_line.sf.src.as_deref()
         {
             if macro_line.line < unsafe_line.line {
@@ -605,32 +637,35 @@ fn span_from_macro_expansion_has_safety_comment(cx: &LateContext<'_>, span: Span
 
 fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
     let body = cx.enclosing_body?;
-    let map = cx.tcx.hir();
-    let mut span = map.body(body).value.span;
-    let mut maybe_global_var = false;
-    for (_, node) in map.parent_iter(body.hir_id) {
-        match node {
-            Node::Expr(e) => span = e.span,
-            Node::Block(_) | Node::Arm(_) | Node::Stmt(_) | Node::LetStmt(_) => (),
+    let mut maybe_mod_item = None;
+
+    for (_, parent_node) in cx.tcx.hir_parent_iter(body.hir_id) {
+        match parent_node {
+            Node::Crate(mod_) => return Some(mod_.spans.inner_span),
             Node::Item(hir::Item {
-                kind: ItemKind::Const(..) | ItemKind::Static(..),
-                ..
-            }) => maybe_global_var = true,
-            Node::Item(hir::Item {
-                kind: ItemKind::Mod(_),
-                span: item_span,
+                kind: ItemKind::Mod(_, mod_),
+                span,
                 ..
             }) => {
-                span = *item_span;
-                break;
+                return maybe_mod_item
+                    .and_then(|item| comment_start_before_item_in_mod(cx, mod_, *span, &item))
+                    .map(|comment_start| mod_.spans.inner_span.with_lo(comment_start))
+                    .or(Some(*span));
             },
-            Node::Crate(mod_) if maybe_global_var => {
-                span = mod_.spans.inner_span;
+            node if let Some((span, _)) = span_and_hid_of_item_alike_node(&node)
+                && !is_const_or_static(&node) =>
+            {
+                return Some(span);
             },
-            _ => break,
+            Node::Item(item) => {
+                maybe_mod_item = Some(*item);
+            },
+            _ => {
+                maybe_mod_item = None;
+            },
         }
     }
-    Some(span)
+    None
 }
 
 fn span_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
@@ -642,7 +677,7 @@ fn span_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
         if let Ok(unsafe_line) = source_map.lookup_line(span.lo())
             && let Some(body_span) = walk_span_to_context(search_span, SyntaxContext::root())
             && let Ok(body_line) = source_map.lookup_line(body_span.lo())
-            && Lrc::ptr_eq(&unsafe_line.sf, &body_line.sf)
+            && Arc::ptr_eq(&unsafe_line.sf, &body_line.sf)
             && let Some(src) = unsafe_line.sf.src.as_deref()
         {
             // Get the text from the start of function body to the unsafe block.
@@ -718,4 +753,29 @@ fn text_has_safety_comment(src: &str, line_starts: &[RelativeBytePos], start_pos
             None => return None,
         }
     }
+}
+
+fn span_and_hid_of_item_alike_node(node: &Node<'_>) -> Option<(Span, HirId)> {
+    match node {
+        Node::Item(item) => Some((item.span, item.owner_id.into())),
+        Node::TraitItem(ti) => Some((ti.span, ti.owner_id.into())),
+        Node::ImplItem(ii) => Some((ii.span, ii.owner_id.into())),
+        _ => None,
+    }
+}
+
+fn is_const_or_static(node: &Node<'_>) -> bool {
+    matches!(
+        node,
+        Node::Item(hir::Item {
+            kind: ItemKind::Const(..) | ItemKind::Static(..),
+            ..
+        }) | Node::ImplItem(hir::ImplItem {
+            kind: hir::ImplItemKind::Const(..),
+            ..
+        }) | Node::TraitItem(hir::TraitItem {
+            kind: hir::TraitItemKind::Const(..),
+            ..
+        })
+    )
 }

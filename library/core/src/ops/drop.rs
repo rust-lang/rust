@@ -203,7 +203,8 @@
 /// [nomicon]: ../../nomicon/phantom-data.html#an-exception-the-special-case-of-the-standard-library-and-its-unstable-may_dangle
 #[lang = "drop"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), const_trait)]
+#[const_trait]
+#[rustc_const_unstable(feature = "const_destruct", issue = "133214")]
 pub trait Drop {
     /// Executes the destructor for this type.
     ///
@@ -238,11 +239,4 @@ pub trait Drop {
     /// [`ptr::drop_in_place`]: crate::ptr::drop_in_place
     #[stable(feature = "rust1", since = "1.0.0")]
     fn drop(&mut self);
-}
-
-/// Fallback function to call surface level `Drop::drop` function
-#[allow(drop_bounds)]
-#[lang = "fallback_surface_drop"]
-pub(crate) fn fallback_surface_drop<T: Drop + ?Sized>(x: &mut T) {
-    <T as Drop>::drop(x)
 }

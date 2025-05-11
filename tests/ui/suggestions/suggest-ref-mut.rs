@@ -1,9 +1,11 @@
+//@ dont-require-annotations: SUGGESTION
+
 struct X(usize);
 
 impl X {
     fn zap(&self) {
         //~^ HELP
-        //~| SUGGESTION &mut self
+        //~| SUGGESTION mut
         self.0 = 32;
         //~^ ERROR
     }

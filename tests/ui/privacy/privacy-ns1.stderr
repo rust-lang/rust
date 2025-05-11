@@ -7,10 +7,19 @@ LL |     pub struct Baz;
 LL |     Bar();
    |     ^^^
    |
+note: these functions exist but are inaccessible
+  --> $DIR/privacy-ns1.rs:14:5
+   |
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo1::Bar`: not accessible
+...
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo3::Bar`: not accessible
 help: a unit struct with a similar name exists
    |
-LL |     Baz();
-   |     ~~~
+LL -     Bar();
+LL +     Baz();
+   |
 help: consider importing this function instead
    |
 LL + use foo2::Bar;
@@ -25,10 +34,19 @@ LL |     pub struct Baz;
 LL |     Bar();
    |     ^^^
    |
+note: these functions exist but are inaccessible
+  --> $DIR/privacy-ns1.rs:14:5
+   |
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo1::Bar`: not accessible
+...
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo3::Bar`: not accessible
 help: a unit struct with a similar name exists
    |
-LL |     Baz();
-   |     ~~~
+LL -     Bar();
+LL +     Baz();
+   |
 help: consider importing this function
    |
 LL + use foo2::Bar;
@@ -43,10 +61,19 @@ LL |     pub struct Baz;
 LL |     let _x: Box<Bar>;
    |                 ^^^
    |
+note: these traits exist but are inaccessible
+  --> $DIR/privacy-ns1.rs:25:5
+   |
+LL |     trait Bar {
+   |     ^^^^^^^^^ `foo2::Bar`: not accessible
+...
+LL |     trait Bar {
+   |     ^^^^^^^^^ `foo3::Bar`: not accessible
 help: a struct with a similar name exists
    |
-LL |     let _x: Box<Baz>;
-   |                 ~~~
+LL -     let _x: Box<Bar>;
+LL +     let _x: Box<Baz>;
+   |
 help: consider importing this trait
    |
 LL + use foo1::Bar;

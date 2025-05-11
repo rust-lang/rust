@@ -46,13 +46,13 @@ fn main() {
     //~^ ERROR prefix `blah` is unknown
     //~| ERROR invalid string literal
 
-    demo2!(## "foo"); //~ reserved multi-hash token is forbidden
-    demo3!("foo"###); //~ reserved multi-hash token is forbidden
-    demo3!(### "foo"); //~ reserved multi-hash token is forbidden
-    demo3!(## "foo"#); //~ reserved multi-hash token is forbidden
+    demo2!(## "foo"); //~ ERROR reserved multi-hash token is forbidden
+    demo3!("foo"###); //~ ERROR reserved multi-hash token is forbidden
+    demo3!(### "foo"); //~ ERROR reserved multi-hash token is forbidden
+    demo3!(## "foo"#); //~ ERROR reserved multi-hash token is forbidden
     demo5!(### "foo"###);
-    //~^ reserved multi-hash token is forbidden
-    //~| reserved multi-hash token is forbidden
+    //~^ ERROR reserved multi-hash token is forbidden
+    //~| ERROR reserved multi-hash token is forbidden
 
     demo1!(#""); //~ ERROR invalid string literal
     demo1!(#""#); //~ ERROR invalid string literal

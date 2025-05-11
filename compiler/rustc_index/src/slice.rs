@@ -1,8 +1,10 @@
+use std::fmt;
 use std::marker::PhantomData;
-use std::ops::{Index, IndexMut};
-use std::{fmt, slice};
+use std::ops::{Index, IndexMut, RangeBounds};
+use std::slice::GetDisjointMutError::*;
+use std::slice::{self, SliceIndex};
 
-use crate::{Idx, IndexVec};
+use crate::{Idx, IndexVec, IntoSliceIdx};
 
 /// A view into contiguous `T`s, indexed by `I` rather than by `usize`.
 ///
@@ -63,9 +65,9 @@ impl<I: Idx, T> IndexSlice<I, T> {
     }
 
     #[inline]
-    pub fn iter_enumerated(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = (I, &T)> + ExactSizeIterator + '_ {
+    pub fn iter_enumerated(&self) -> impl DoubleEndedIterator<Item = (I, &T)> + ExactSizeIterator {
+        // Allow the optimizer to elide the bounds checking when creating each index.
+        let _ = I::new(self.len());
         self.raw.iter().enumerate().map(|(n, t)| (I::new(n), t))
     }
 
@@ -73,6 +75,8 @@ impl<I: Idx, T> IndexSlice<I, T> {
     pub fn indices(
         &self,
     ) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + Clone + 'static {
+        // Allow the optimizer to elide the bounds checking when creating each index.
+        let _ = I::new(self.len());
         (0..self.len()).map(|n| I::new(n))
     }
 
@@ -84,7 +88,9 @@ impl<I: Idx, T> IndexSlice<I, T> {
     #[inline]
     pub fn iter_enumerated_mut(
         &mut self,
-    ) -> impl DoubleEndedIterator<Item = (I, &mut T)> + ExactSizeIterator + '_ {
+    ) -> impl DoubleEndedIterator<Item = (I, &mut T)> + ExactSizeIterator {
+        // Allow the optimizer to elide the bounds checking when creating each index.
+        let _ = I::new(self.len());
         self.raw.iter_mut().enumerate().map(|(n, t)| (I::new(n), t))
     }
 
@@ -99,43 +105,64 @@ impl<I: Idx, T> IndexSlice<I, T> {
     }
 
     #[inline]
-    pub fn get(&self, index: I) -> Option<&T> {
-        self.raw.get(index.index())
+    pub fn copy_within(
+        &mut self,
+        src: impl IntoSliceIdx<I, [T], Output: RangeBounds<usize>>,
+        dest: I,
+    ) where
+        T: Copy,
+    {
+        self.raw.copy_within(src.into_slice_idx(), dest.index());
     }
 
     #[inline]
-    pub fn get_mut(&mut self, index: I) -> Option<&mut T> {
-        self.raw.get_mut(index.index())
+    pub fn get<R: IntoSliceIdx<I, [T]>>(
+        &self,
+        index: R,
+    ) -> Option<&<R::Output as SliceIndex<[T]>>::Output> {
+        self.raw.get(index.into_slice_idx())
+    }
+
+    #[inline]
+    pub fn get_mut<R: IntoSliceIdx<I, [T]>>(
+        &mut self,
+        index: R,
+    ) -> Option<&mut <R::Output as SliceIndex<[T]>>::Output> {
+        self.raw.get_mut(index.into_slice_idx())
     }
 
     /// Returns mutable references to two distinct elements, `a` and `b`.
     ///
-    /// Panics if `a == b`.
+    /// Panics if `a == b` or if some of them are out of bounds.
     #[inline]
     pub fn pick2_mut(&mut self, a: I, b: I) -> (&mut T, &mut T) {
         let (ai, bi) = (a.index(), b.index());
-        assert!(ai != bi);
 
-        if ai < bi {
-            let (c1, c2) = self.raw.split_at_mut(bi);
-            (&mut c1[ai], &mut c2[0])
-        } else {
-            let (c2, c1) = self.pick2_mut(b, a);
-            (c1, c2)
+        match self.raw.get_disjoint_mut([ai, bi]) {
+            Ok([a, b]) => (a, b),
+            Err(OverlappingIndices) => panic!("Indices {ai:?} and {bi:?} are not disjoint!"),
+            Err(IndexOutOfBounds) => {
+                panic!("Some indices among ({ai:?}, {bi:?}) are out of bounds")
+            }
         }
     }
 
     /// Returns mutable references to three distinct elements.
     ///
-    /// Panics if the elements are not distinct.
+    /// Panics if the elements are not distinct or if some of them are out of bounds.
     #[inline]
     pub fn pick3_mut(&mut self, a: I, b: I, c: I) -> (&mut T, &mut T, &mut T) {
         let (ai, bi, ci) = (a.index(), b.index(), c.index());
-        assert!(ai != bi && bi != ci && ci != ai);
-        let len = self.raw.len();
-        assert!(ai < len && bi < len && ci < len);
-        let ptr = self.raw.as_mut_ptr();
-        unsafe { (&mut *ptr.add(ai), &mut *ptr.add(bi), &mut *ptr.add(ci)) }
+
+        match self.raw.get_disjoint_mut([ai, bi, ci]) {
+            Ok([a, b, c]) => (a, b, c),
+            Err(OverlappingIndices) => {
+                panic!("Indices {ai:?}, {bi:?} and {ci:?} are not disjoint!")
+            }
+            Err(IndexOutOfBounds) => {
+                panic!("Some indices among ({ai:?}, {bi:?}, {ci:?}) are out of bounds")
+            }
+        }
     }
 
     #[inline]
@@ -186,19 +213,19 @@ impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexSlice<I, T> {
     }
 }
 
-impl<I: Idx, T> Index<I> for IndexSlice<I, T> {
-    type Output = T;
+impl<I: Idx, T, R: IntoSliceIdx<I, [T]>> Index<R> for IndexSlice<I, T> {
+    type Output = <R::Output as SliceIndex<[T]>>::Output;
 
     #[inline]
-    fn index(&self, index: I) -> &T {
-        &self.raw[index.index()]
+    fn index(&self, index: R) -> &Self::Output {
+        &self.raw[index.into_slice_idx()]
     }
 }
 
-impl<I: Idx, T> IndexMut<I> for IndexSlice<I, T> {
+impl<I: Idx, T, R: IntoSliceIdx<I, [T]>> IndexMut<R> for IndexSlice<I, T> {
     #[inline]
-    fn index_mut(&mut self, index: I) -> &mut T {
-        &mut self.raw[index.index()]
+    fn index_mut(&mut self, index: R) -> &mut Self::Output {
+        &mut self.raw[index.into_slice_idx()]
     }
 }
 

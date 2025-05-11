@@ -6,7 +6,11 @@ mod utils;
 
 #[track_caller]
 fn assert_absolute_eq(in_: &str, out: &str) {
-    assert_eq!(absolute(in_).unwrap().as_os_str(), Path::new(out).as_os_str());
+    assert_eq!(
+        absolute(in_).unwrap().as_os_str(),
+        Path::new(out).as_os_str(),
+        "incorrect absolute path for {in_:?}"
+    );
 }
 
 fn test_absolute() {
@@ -29,11 +33,28 @@ fn test_absolute() {
         assert_absolute_eq(r"\\?\C:\path\to\file", r"\\?\C:\path\to\file");
         assert_absolute_eq(r"\\?\UNC\server\share\to\file", r"\\?\UNC\server\share\to\file");
         assert_absolute_eq(r"\\?\PIPE\name", r"\\?\PIPE\name");
+        assert_absolute_eq(r"\\server\share\NUL", r"\\server\share\NUL");
+        // This fails on Windows 10 hosts. FIXME: enable this once GHA runners are on Windows 11.
+        //assert_absolute_eq(r"C:\path\to\COM1", r"C:\path\to\COM1");
         // Verbatim paths are always unchanged, no matter what.
         assert_absolute_eq(r"\\?\path.\to/file..", r"\\?\path.\to/file..");
-
+        // Trailing dot is removed here.
         assert_absolute_eq(r"C:\path..\to.\file.", r"C:\path..\to\file");
+        // `..` is resolved here.
+        assert_absolute_eq(r"C:\path\to\..\file", r"C:\path\file");
+        assert_absolute_eq(r"C:\path\to\..\..\file", r"C:\file");
+        assert_absolute_eq(r"C:\path\to\..\..\..\..\..\..\file", r"C:\file");
+        assert_absolute_eq(r"C:\..", r"C:\");
+        assert_absolute_eq(r"\\server\share\to\path\with\..\file", r"\\server\share\to\path\file");
+        assert_absolute_eq(r"\\server\share\to\..\..\..\..\file", r"\\server\share\file");
+        assert_absolute_eq(r"\\server\share\..", r"\\server\share");
+        // Magic filenames.
+        assert_absolute_eq(r"NUL", r"\\.\NUL");
+        assert_absolute_eq(r"nul", r"\\.\nul");
         assert_absolute_eq(r"COM1", r"\\.\COM1");
+        assert_absolute_eq(r"com1", r"\\.\com1");
+        assert_absolute_eq(r"C:\path\to\NUL", r"\\.\NUL");
+        assert_absolute_eq(r"C:\path\to\nul", r"\\.\nul");
     } else {
         panic!("unsupported OS");
     }

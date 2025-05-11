@@ -1,7 +1,7 @@
 use rustc_middle::mir::BinOp;
 use rustc_middle::{mir, ty};
 
-use self::helpers::check_arg_count;
+use self::helpers::check_intrinsic_arg_count;
 use crate::*;
 
 pub enum AtomicOp {
@@ -131,7 +131,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let [place] = check_arg_count(args)?;
+        let [place] = check_intrinsic_arg_count(args)?;
         let place = this.deref_pointer(place)?;
 
         // Perform atomic load.
@@ -144,12 +144,12 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     fn atomic_store(&mut self, args: &[OpTy<'tcx>], atomic: AtomicWriteOrd) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let [place, val] = check_arg_count(args)?;
+        let [place, val] = check_intrinsic_arg_count(args)?;
         let place = this.deref_pointer(place)?;
 
         // Perform regular load.
         let val = this.read_scalar(val)?;
-        // Perform atomic store
+        // Perform atomic store.
         this.write_scalar_atomic(val, &place, atomic)?;
         interp_ok(())
     }
@@ -159,9 +159,9 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         atomic: AtomicFenceOrd,
     ) -> InterpResult<'tcx> {
-        let [] = check_arg_count(args)?;
+        let [] = check_intrinsic_arg_count(args)?;
         let _ = atomic;
-        //FIXME: compiler fences are currently ignored
+        // FIXME, FIXME(GenMC): compiler fences are currently ignored (also ignored in GenMC mode)
         interp_ok(())
     }
 
@@ -171,7 +171,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         atomic: AtomicFenceOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let [] = check_arg_count(args)?;
+        let [] = check_intrinsic_arg_count(args)?;
         this.atomic_fence(atomic)?;
         interp_ok(())
     }
@@ -185,11 +185,11 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let [place, rhs] = check_arg_count(args)?;
+        let [place, rhs] = check_intrinsic_arg_count(args)?;
         let place = this.deref_pointer(place)?;
         let rhs = this.read_immediate(rhs)?;
 
-        if !place.layout.ty.is_integral() && !place.layout.ty.is_unsafe_ptr() {
+        if !place.layout.ty.is_integral() && !place.layout.ty.is_raw_ptr() {
             span_bug!(
                 this.cur_span(),
                 "atomic arithmetic operations only work on integer and raw pointer types",
@@ -199,23 +199,16 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             span_bug!(this.cur_span(), "atomic arithmetic operation type mismatch");
         }
 
-        match atomic_op {
-            AtomicOp::Min => {
-                let old = this.atomic_min_max_scalar(&place, rhs, true, atomic)?;
-                this.write_immediate(*old, dest)?; // old value is returned
-                interp_ok(())
-            }
-            AtomicOp::Max => {
-                let old = this.atomic_min_max_scalar(&place, rhs, false, atomic)?;
-                this.write_immediate(*old, dest)?; // old value is returned
-                interp_ok(())
-            }
-            AtomicOp::MirOp(op, not) => {
-                let old = this.atomic_rmw_op_immediate(&place, &rhs, op, not, atomic)?;
-                this.write_immediate(*old, dest)?; // old value is returned
-                interp_ok(())
-            }
-        }
+        let old = match atomic_op {
+            AtomicOp::Min =>
+                this.atomic_min_max_scalar(&place, rhs, /* min */ true, atomic)?,
+            AtomicOp::Max =>
+                this.atomic_min_max_scalar(&place, rhs, /* min */ false, atomic)?,
+            AtomicOp::MirOp(op, not) =>
+                this.atomic_rmw_op_immediate(&place, &rhs, op, not, atomic)?,
+        };
+        this.write_immediate(*old, dest)?; // old value is returned
+        interp_ok(())
     }
 
     fn atomic_exchange(
@@ -226,7 +219,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let [place, new] = check_arg_count(args)?;
+        let [place, new] = check_intrinsic_arg_count(args)?;
         let place = this.deref_pointer(place)?;
         let new = this.read_scalar(new)?;
 
@@ -245,7 +238,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let [place, expect_old, new] = check_arg_count(args)?;
+        let [place, expect_old, new] = check_intrinsic_arg_count(args)?;
         let place = this.deref_pointer(place)?;
         let expect_old = this.read_immediate(expect_old)?; // read as immediate for the sake of `binary_op()`
         let new = this.read_scalar(new)?;

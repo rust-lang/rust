@@ -1,7 +1,11 @@
 // Tests the different rules for `fn` forms requiring the presence or lack of a body.
+// Also ensures that functions without a body don't show other odd errors.
+
+trait Trait {}
 
 fn main() {
     fn f1(); //~ ERROR free function without a body
+    fn f1_rpit() -> impl Trait; //~ ERROR free function without a body
     fn f2() {} // OK.
 
     trait X {

@@ -1,7 +1,11 @@
+//@ revisions: explicit implicit
 //@ run-pass
 #![feature(deref_patterns)]
 #![allow(incomplete_features)]
 
+use std::rc::Rc;
+
+#[cfg(explicit)]
 fn simple_vec(vec: Vec<u32>) -> u32 {
     match vec {
         deref!([]) => 100,
@@ -9,10 +13,21 @@ fn simple_vec(vec: Vec<u32>) -> u32 {
         deref!([x]) => x,
         deref!([1, x]) => x + 200,
         deref!(ref slice) => slice.iter().sum(),
-        _ => 2000,
     }
 }
 
+#[cfg(implicit)]
+fn simple_vec(vec: Vec<u32>) -> u32 {
+    match vec {
+        [] => 100,
+        [x] if x == 4 => x + 4,
+        [x] => x,
+        [1, x] => x + 200,
+        deref!(ref slice) => slice.iter().sum(),
+    }
+}
+
+#[cfg(explicit)]
 fn nested_vec(vecvec: Vec<Vec<u32>>) -> u32 {
     match vecvec {
         deref!([]) => 0,
@@ -24,25 +39,65 @@ fn nested_vec(vecvec: Vec<Vec<u32>>) -> u32 {
     }
 }
 
+#[cfg(implicit)]
+fn nested_vec(vecvec: Vec<Vec<u32>>) -> u32 {
+    match vecvec {
+        [] => 0,
+        [[x]] => x,
+        [[0, x] | [1, x]] => x,
+        [ref x] => x.iter().sum(),
+        [[], [1, x, y]] => y - x,
+        _ => 2000,
+    }
+}
+
+#[cfg(explicit)]
 fn ref_mut(val: u32) -> u32 {
-    let mut b = Box::new(0u32);
+    let mut b = vec![0u32];
     match &mut b {
-        deref!(_x) if false => unreachable!(),
-        deref!(x) => {
+        deref!([_x]) if false => unreachable!(),
+        deref!([x]) => {
             *x = val;
         }
         _ => unreachable!(),
     }
-    let deref!(x) = &b else { unreachable!() };
+    let deref!([x]) = &b else { unreachable!() };
     *x
 }
 
+#[cfg(implicit)]
+fn ref_mut(val: u32) -> u32 {
+    let mut b = vec![0u32];
+    match &mut b {
+        [_x] if false => unreachable!(),
+        [x] => {
+            *x = val;
+        }
+        _ => unreachable!(),
+    }
+    let [x] = &b else { unreachable!() };
+    *x
+}
+
+#[cfg(explicit)]
 #[rustfmt::skip]
 fn or_and_guard(tuple: (u32, u32)) -> u32 {
     let mut sum = 0;
-    let b = Box::new(tuple);
+    let b = Rc::new(tuple);
     match b {
         deref!((x, _) | (_, x)) if { sum += x; false } => {},
+        _ => {},
+    }
+    sum
+}
+
+#[cfg(implicit)]
+#[rustfmt::skip]
+fn or_and_guard(tuple: (u32, u32)) -> u32 {
+    let mut sum = 0;
+    let b = Rc::new(tuple);
+    match b {
+        (x, _) | (_, x) if { sum += x; false } => {},
         _ => {},
     }
     sum

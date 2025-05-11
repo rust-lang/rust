@@ -7,8 +7,9 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
+use std::thread::panicking;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
-use std::{env, fs, io, str};
+use std::{env, fs, io, panic, str};
 
 use build_helper::util::fail;
 use object::read::archive::ArchiveFile;
@@ -16,10 +17,28 @@ use object::read::archive::ArchiveFile;
 use crate::LldMode;
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
+use crate::utils::exec::{BootstrapCommand, command};
 pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
 
 #[cfg(test)]
 mod tests;
+
+/// A wrapper around `std::panic::Location` used to track the location of panics
+/// triggered by `t` macro usage.
+pub struct PanicTracker<'a>(pub &'a panic::Location<'a>);
+
+impl Drop for PanicTracker<'_> {
+    fn drop(&mut self) {
+        if panicking() {
+            eprintln!(
+                "Panic was initiated from {}:{}:{}",
+                self.0.file(),
+                self.0.line(),
+                self.0.column()
+            );
+        }
+    }
+}
 
 /// A helper macro to `unwrap` a result except also print out details like:
 ///
@@ -31,32 +50,57 @@ mod tests;
 /// using a `Result` with `try!`, but this may change one day...
 #[macro_export]
 macro_rules! t {
-    ($e:expr) => {
+    ($e:expr) => {{
+        let _panic_guard = $crate::PanicTracker(std::panic::Location::caller());
         match $e {
             Ok(e) => e,
             Err(e) => panic!("{} failed with {}", stringify!($e), e),
         }
-    };
+    }};
     // it can show extra info in the second parameter
-    ($e:expr, $extra:expr) => {
+    ($e:expr, $extra:expr) => {{
+        let _panic_guard = $crate::PanicTracker(std::panic::Location::caller());
         match $e {
             Ok(e) => e,
             Err(e) => panic!("{} failed with {} ({:?})", stringify!($e), e, $extra),
         }
-    };
+    }};
 }
+
 pub use t;
-
-use crate::utils::exec::{BootstrapCommand, command};
-
 pub fn exe(name: &str, target: TargetSelection) -> String {
     crate::utils::shared_helpers::exe(name, &target.triple)
+}
+
+/// Returns the path to the split debug info for the specified file if it exists.
+pub fn split_debuginfo(name: impl Into<PathBuf>) -> Option<PathBuf> {
+    // FIXME: only msvc is currently supported
+
+    let path = name.into();
+    let pdb = path.with_extension("pdb");
+    if pdb.exists() {
+        return Some(pdb);
+    }
+
+    // pdbs get named with '-' replaced by '_'
+    let file_name = pdb.file_name()?.to_str()?.replace("-", "_");
+
+    let pdb: PathBuf = [path.parent()?, Path::new(&file_name)].into_iter().collect();
+    pdb.exists().then_some(pdb)
 }
 
 /// Returns `true` if the file name given looks like a dynamic library.
 pub fn is_dylib(path: &Path) -> bool {
     path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| {
         ext == "dylib" || ext == "so" || ext == "dll" || (ext == "a" && is_aix_shared_archive(path))
+    })
+}
+
+/// Return the path to the containing submodule if available.
+pub fn submodule_path_of(builder: &Builder<'_>, path: &str) -> Option<String> {
+    let submodule_paths = build_helper::util::parse_gitmodules(&builder.src);
+    submodule_paths.iter().find_map(|submodule_path| {
+        if path.starts_with(submodule_path) { Some(submodule_path.to_string()) } else { None }
     })
 }
 
@@ -99,31 +143,6 @@ pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
     cmd.env(dylib_path_var(), t!(env::join_paths(list)));
 }
 
-/// Adds a list of lookup paths to `cmd`'s link library lookup path.
-pub fn add_link_lib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
-    let mut list = link_lib_path();
-    for path in path {
-        list.insert(0, path);
-    }
-    cmd.env(link_lib_path_var(), t!(env::join_paths(list)));
-}
-
-/// Returns the environment variable which the link library lookup path
-/// resides in for this platform.
-fn link_lib_path_var() -> &'static str {
-    if cfg!(target_env = "msvc") { "LIB" } else { "LIBRARY_PATH" }
-}
-
-/// Parses the `link_lib_path_var()` environment variable, returning a list of
-/// paths that are members of this lookup path.
-fn link_lib_path() -> Vec<PathBuf> {
-    let var = match env::var_os(link_lib_path_var()) {
-        Some(v) => v,
-        None => return vec![],
-    };
-    env::split_paths(&var).collect()
-}
-
 pub struct TimeIt(bool, Instant);
 
 /// Returns an RAII structure that prints out how long it took to drop.
@@ -138,14 +157,6 @@ impl Drop for TimeIt {
             println!("\tfinished in {}.{:03} seconds", time.as_secs(), time.subsec_millis());
         }
     }
-}
-
-/// Used for download caching
-pub(crate) fn program_out_of_date(stamp: &Path, key: &str) -> bool {
-    if !stamp.exists() {
-        return true;
-    }
-    t!(fs::read_to_string(stamp)) != key
 }
 
 /// Symlinks two directories, using junctions on Windows and normal symlinks on
@@ -173,10 +184,7 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
 /// copy and remove the file otherwise
 pub fn move_file<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> {
     match fs::rename(&from, &to) {
-        // FIXME: Once `ErrorKind::CrossesDevices` is stabilized use
-        // if e.kind() == io::ErrorKind::CrossesDevices {
-        #[cfg(unix)]
-        Err(e) if e.raw_os_error() == Some(libc::EXDEV) => {
+        Err(e) if e.kind() == io::ErrorKind::CrossesDevices => {
             std::fs::copy(&from, &to)?;
             std::fs::remove_file(&from)
         }
@@ -294,6 +302,9 @@ pub fn make(host: &str) -> PathBuf {
 
 #[track_caller]
 pub fn output(cmd: &mut Command) -> String {
+    #[cfg(feature = "tracing")]
+    let _run_span = crate::trace_cmd!(cmd);
+
     let output = match cmd.stderr(Stdio::inherit()).output() {
         Ok(status) => status,
         Err(e) => fail(&format!("failed to execute command: {cmd:?}\nERROR: {e}")),
@@ -312,7 +323,7 @@ pub fn output(cmd: &mut Command) -> String {
 /// to finish and then return its output. This allows the spawned process
 /// to do work without immediately blocking bootstrap.
 #[track_caller]
-pub fn start_process(cmd: &mut Command) -> impl FnOnce() -> String {
+pub fn start_process(cmd: &mut Command) -> impl FnOnce() -> String + use<> {
     let child = match cmd.stderr(Stdio::inherit()).stdout(Stdio::piped()).spawn() {
         Ok(child) => child,
         Err(e) => fail(&format!("failed to execute command: {cmd:?}\nERROR: {e}")),
@@ -432,7 +443,7 @@ fn lld_flag_no_threads(builder: &Builder<'_>, lld_mode: LldMode, is_windows: boo
 }
 
 pub fn dir_is_empty(dir: &Path) -> bool {
-    t!(std::fs::read_dir(dir)).next().is_none()
+    t!(std::fs::read_dir(dir), dir).next().is_none()
 }
 
 /// Extract the beta revision from the full version string.
@@ -441,9 +452,7 @@ pub fn dir_is_empty(dir: &Path) -> bool {
 /// the "y" part from the string.
 pub fn extract_beta_rev(version: &str) -> Option<String> {
     let parts = version.splitn(2, "-beta.").collect::<Vec<_>>();
-    let count = parts.get(1).and_then(|s| s.find(' ').map(|p| s[..p].to_string()));
-
-    count
+    parts.get(1).and_then(|s| s.find(' ').map(|p| s[..p].to_string()))
 }
 
 pub enum LldThreads {
@@ -475,7 +484,20 @@ pub fn linker_flags(
 ) -> Vec<String> {
     let mut args = vec![];
     if !builder.is_lld_direct_linker(target) && builder.config.lld_mode.is_used() {
-        args.push(String::from("-Clink-arg=-fuse-ld=lld"));
+        match builder.config.lld_mode {
+            LldMode::External => {
+                args.push("-Zlinker-features=+lld".to_string());
+                // FIXME(kobzol): remove this flag once MCP510 gets stabilized
+                args.push("-Zunstable-options".to_string());
+            }
+            LldMode::SelfContained => {
+                args.push("-Zlinker-features=+lld".to_string());
+                args.push("-Clink-self-contained=+linker".to_string());
+                // FIXME(kobzol): remove this flag once MCP510 gets stabilized
+                args.push("-Zunstable-options".to_string());
+            }
+            LldMode::Unused => unreachable!(),
+        };
 
         if matches!(lld_threads, LldThreads::No) {
             args.push(format!(
@@ -579,42 +601,4 @@ pub fn set_file_times<P: AsRef<Path>>(path: P, times: fs::FileTimes) -> io::Resu
         fs::File::open(path)?
     };
     f.set_times(times)
-}
-
-pub struct HashStamp {
-    pub path: PathBuf,
-    pub hash: Option<Vec<u8>>,
-}
-
-impl HashStamp {
-    pub fn new(path: PathBuf, hash: Option<&str>) -> Self {
-        HashStamp { path, hash: hash.map(|s| s.as_bytes().to_owned()) }
-    }
-
-    pub fn is_done(&self) -> bool {
-        match fs::read(&self.path) {
-            Ok(h) => self.hash.as_deref().unwrap_or(b"") == h.as_slice(),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => false,
-            Err(e) => {
-                panic!("failed to read stamp file `{}`: {}", self.path.display(), e);
-            }
-        }
-    }
-
-    pub fn remove(&self) -> io::Result<()> {
-        match fs::remove_file(&self.path) {
-            Ok(()) => Ok(()),
-            Err(e) => {
-                if e.kind() == io::ErrorKind::NotFound {
-                    Ok(())
-                } else {
-                    Err(e)
-                }
-            }
-        }
-    }
-
-    pub fn write(&self) -> io::Result<()> {
-        fs::write(&self.path, self.hash.as_deref().unwrap_or(b""))
-    }
 }

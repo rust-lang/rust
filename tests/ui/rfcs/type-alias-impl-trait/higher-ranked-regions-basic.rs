@@ -12,6 +12,7 @@ impl<'a, T> Trait<'a> for T {
 mod basic_pass {
     use super::*;
     type Opq<'a> = impl Sized + 'a;
+    #[define_opaque(Opq)]
     fn test() -> impl for<'a> Trait<'a, Ty = Opq<'a>> {}
     //~^ ERROR: expected generic lifetime parameter, found `'a`
 }
@@ -27,6 +28,7 @@ mod capture_tait {
     type Opq0 = impl Sized;
     type Opq1<'a> = impl for<'b> Trait<'b, Ty = Opq0>;
     type Opq2 = impl for<'a> Trait<'a, Ty = Opq1<'a>>;
+    #[define_opaque(Opq2)]
     fn test() -> Opq2 {}
     //~^ ERROR hidden type for `capture_tait::Opq0` captures lifetime that does not appear in bounds
 }
@@ -36,6 +38,7 @@ mod capture_tait_complex_pass {
     type Opq0<'a> = impl Sized;
     type Opq1<'a> = impl for<'b> Trait<'b, Ty = Opq0<'b>>; // <- Note 'b
     type Opq2 = impl for<'a> Trait<'a, Ty = Opq1<'a>>;
+    #[define_opaque(Opq2)]
     fn test() -> Opq2 {}
     //~^ ERROR: expected generic lifetime parameter, found `'a`
 }
@@ -46,6 +49,7 @@ mod capture_tait_complex_fail {
     type Opq0<'a> = impl Sized;
     type Opq1<'a> = impl for<'b> Trait<'b, Ty = Opq0<'a>>; // <- Note 'a
     type Opq2 = impl for<'a> Trait<'a, Ty = Opq1<'a>>;
+    #[define_opaque(Opq2)]
     fn test() -> Opq2 {}
     //~^ ERROR hidden type for `capture_tait_complex_fail::Opq0<'a>` captures lifetime that does not appear in bounds
 }
@@ -54,18 +58,18 @@ mod capture_tait_complex_fail {
 mod constrain_fail0 {
     use super::*;
     type Opq0<'a, 'b> = impl Sized;
+    #[define_opaque(Opq0)]
     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'static>> {}
-    //~^ ERROR non-defining opaque type use in defining scope
-    //~| ERROR: expected generic lifetime parameter, found `'a`
+    //~^ ERROR: expected generic lifetime parameter, found `'a`
 }
 
 // non-defining use because generic lifetime is used multiple times.
 mod constrain_fail {
     use super::*;
     type Opq0<'a, 'b> = impl Sized;
+    #[define_opaque(Opq0)]
     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'a>> {}
-    //~^ ERROR non-defining opaque type use in defining scope
-    //~| ERROR: expected generic lifetime parameter, found `'a`
+    //~^ ERROR: expected generic lifetime parameter, found `'a`
 }
 
 mod constrain_pass {
@@ -73,6 +77,7 @@ mod constrain_pass {
     type Opq0<'a, 'b> = impl Sized;
     type Opq1<'a> = impl for<'b> Trait<'b, Ty = Opq0<'a, 'b>>;
     type Opq2 = impl for<'a> Trait<'a, Ty = Opq1<'a>>;
+    #[define_opaque(Opq2)]
     fn test() -> Opq2 {}
     //~^ ERROR: expected generic lifetime parameter, found `'a`
 }

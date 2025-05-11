@@ -1,7 +1,10 @@
 use rustc_ast::ptr::P;
+use rustc_ast::token::Delimiter;
+use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::literal;
 use rustc_ast::{
-    self as ast, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp, attr, token,
+    self as ast, AnonConst, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp,
+    attr, token, tokenstream,
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -54,13 +57,13 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         path: ast::Path,
-        delim: ast::token::Delimiter,
-        tokens: ast::tokenstream::TokenStream,
+        delim: Delimiter,
+        tokens: TokenStream,
     ) -> P<ast::MacCall> {
         P(ast::MacCall {
             path,
             args: P(ast::DelimArgs {
-                dspan: ast::tokenstream::DelimSpan { open: span, close: span },
+                dspan: tokenstream::DelimSpan { open: span, close: span },
                 delim,
                 tokens,
             }),
@@ -138,6 +141,42 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
+    pub fn lifetime_param(
+        &self,
+        span: Span,
+        ident: Ident,
+        bounds: ast::GenericBounds,
+    ) -> ast::GenericParam {
+        ast::GenericParam {
+            id: ast::DUMMY_NODE_ID,
+            ident: ident.with_span_pos(span),
+            attrs: AttrVec::new(),
+            bounds,
+            is_placeholder: false,
+            kind: ast::GenericParamKind::Lifetime,
+            colon_span: None,
+        }
+    }
+
+    pub fn const_param(
+        &self,
+        span: Span,
+        ident: Ident,
+        bounds: ast::GenericBounds,
+        ty: P<ast::Ty>,
+        default: Option<AnonConst>,
+    ) -> ast::GenericParam {
+        ast::GenericParam {
+            id: ast::DUMMY_NODE_ID,
+            ident: ident.with_span_pos(span),
+            attrs: AttrVec::new(),
+            bounds,
+            is_placeholder: false,
+            kind: ast::GenericParamKind::Const { ty, kw_span: DUMMY_SP, default },
+            colon_span: None,
+        }
+    }
+
     pub fn trait_ref(&self, path: ast::Path) -> ast::TraitRef {
         ast::TraitRef { path, ref_id: ast::DUMMY_NODE_ID }
     }
@@ -193,6 +232,7 @@ impl<'a> ExtCtxt<'a> {
             self.pat_ident(sp, ident)
         };
         let local = P(ast::Local {
+            super_: None,
             pat,
             ty,
             id: ast::DUMMY_NODE_ID,
@@ -208,6 +248,7 @@ impl<'a> ExtCtxt<'a> {
     /// Generates `let _: Type;`, which is usually used for type assertions.
     pub fn stmt_let_type_only(&self, span: Span, ty: P<ast::Ty>) -> ast::Stmt {
         let local = P(ast::Local {
+            super_: None,
             pat: self.pat_wild(span),
             ty: Some(ty),
             id: ast::DUMMY_NODE_ID,
@@ -233,11 +274,14 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
-        self.block(expr.span, thin_vec![ast::Stmt {
-            id: ast::DUMMY_NODE_ID,
-            span: expr.span,
-            kind: ast::StmtKind::Expr(expr),
-        }])
+        self.block(
+            expr.span,
+            thin_vec![ast::Stmt {
+                id: ast::DUMMY_NODE_ID,
+                span: expr.span,
+                kind: ast::StmtKind::Expr(expr),
+            }],
+        )
     }
     pub fn block(&self, span: Span, stmts: ThinVec<ast::Stmt>) -> P<ast::Block> {
         P(ast::Block {
@@ -246,7 +290,6 @@ impl<'a> ExtCtxt<'a> {
             rules: BlockCheckMode::Default,
             span,
             tokens: None,
-            could_be_bare_literal: false,
         })
     }
 
@@ -439,8 +482,8 @@ impl<'a> ExtCtxt<'a> {
                     span,
                     [sym::std, sym::unreachable].map(|s| Ident::new(s, span)).to_vec(),
                 ),
-                ast::token::Delimiter::Parenthesis,
-                ast::tokenstream::TokenStream::default(),
+                Delimiter::Parenthesis,
+                TokenStream::default(),
             ),
         )
     }
@@ -486,7 +529,7 @@ impl<'a> ExtCtxt<'a> {
         self.pat(span, PatKind::Wild)
     }
     pub fn pat_lit(&self, span: Span, expr: P<ast::Expr>) -> P<ast::Pat> {
-        self.pat(span, PatKind::Lit(expr))
+        self.pat(span, PatKind::Expr(expr))
     }
     pub fn pat_ident(&self, span: Span, ident: Ident) -> P<ast::Pat> {
         self.pat_ident_binding_mode(span, ident, ast::BindingMode::NONE)
@@ -623,15 +666,8 @@ impl<'a> ExtCtxt<'a> {
         P(ast::FnDecl { inputs, output })
     }
 
-    pub fn item(
-        &self,
-        span: Span,
-        name: Ident,
-        attrs: ast::AttrVec,
-        kind: ast::ItemKind,
-    ) -> P<ast::Item> {
+    pub fn item(&self, span: Span, attrs: ast::AttrVec, kind: ast::ItemKind) -> P<ast::Item> {
         P(ast::Item {
-            ident: name,
             attrs,
             id: ast::DUMMY_NODE_ID,
             kind,
@@ -648,18 +684,24 @@ impl<'a> ExtCtxt<'a> {
     pub fn item_static(
         &self,
         span: Span,
-        name: Ident,
+        ident: Ident,
         ty: P<ast::Ty>,
         mutability: ast::Mutability,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
         self.item(
             span,
-            name,
             AttrVec::new(),
             ast::ItemKind::Static(
-                ast::StaticItem { ty, safety: ast::Safety::Default, mutability, expr: Some(expr) }
-                    .into(),
+                ast::StaticItem {
+                    ident,
+                    ty,
+                    safety: ast::Safety::Default,
+                    mutability,
+                    expr: Some(expr),
+                    define_opaque: None,
+                }
+                .into(),
             ),
         )
     }
@@ -667,22 +709,23 @@ impl<'a> ExtCtxt<'a> {
     pub fn item_const(
         &self,
         span: Span,
-        name: Ident,
+        ident: Ident,
         ty: P<ast::Ty>,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
         let defaultness = ast::Defaultness::Final;
         self.item(
             span,
-            name,
             AttrVec::new(),
             ast::ItemKind::Const(
                 ast::ConstItem {
                     defaultness,
+                    ident,
                     // FIXME(generic_const_items): Pass the generics as a parameter.
                     generics: ast::Generics::default(),
                     ty,
                     expr: Some(expr),
+                    define_opaque: None,
                 }
                 .into(),
             ),

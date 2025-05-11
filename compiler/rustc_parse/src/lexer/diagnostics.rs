@@ -1,14 +1,17 @@
 use rustc_ast::token::Delimiter;
 use rustc_errors::Diag;
+use rustc_session::parse::ParseSess;
 use rustc_span::Span;
 use rustc_span::source_map::SourceMap;
 
 use super::UnmatchedDelim;
+use crate::errors::MismatchedClosingDelimiter;
+use crate::pprust;
 
 #[derive(Default)]
 pub(super) struct TokenTreeDiagInfo {
     /// Stack of open delimiters and their spans. Used for error message.
-    pub open_braces: Vec<(Delimiter, Span)>,
+    pub open_delimiters: Vec<(Delimiter, Span)>,
     pub unmatched_delims: Vec<UnmatchedDelim>,
 
     /// Used only for error recovery when arriving to EOF with mismatched braces.
@@ -108,11 +111,32 @@ pub(super) fn report_suspicious_mismatch_block(
     } else {
         // If there is no suspicious span, give the last properly closed block may help
         if let Some(parent) = diag_info.matching_block_spans.last()
-            && diag_info.open_braces.last().is_none()
+            && diag_info.open_delimiters.last().is_none()
             && diag_info.empty_block_spans.iter().all(|&sp| sp != parent.0.to(parent.1))
         {
             err.span_label(parent.0, "this opening brace...");
             err.span_label(parent.1, "...matches this closing brace");
         }
     }
+}
+
+pub(crate) fn make_unclosed_delims_error(
+    unmatched: UnmatchedDelim,
+    psess: &ParseSess,
+) -> Option<Diag<'_>> {
+    // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
+    // `unmatched_delims` only for error recovery in the `Parser`.
+    let found_delim = unmatched.found_delim?;
+    let mut spans = vec![unmatched.found_span];
+    if let Some(sp) = unmatched.unclosed_span {
+        spans.push(sp);
+    };
+    let err = psess.dcx().create_err(MismatchedClosingDelimiter {
+        spans,
+        delimiter: pprust::token_kind_to_string(&found_delim.as_close_token_kind()).to_string(),
+        unmatched: unmatched.found_span,
+        opening_candidate: unmatched.candidate_span,
+        unclosed: unmatched.unclosed_span,
+    });
+    Some(err)
 }

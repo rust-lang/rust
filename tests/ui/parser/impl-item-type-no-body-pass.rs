@@ -2,7 +2,7 @@
 
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 impl X {
     type Y;
     type Z: Ord;

@@ -5,8 +5,9 @@
 //!
 //! [annotate_snippets]: https://docs.rs/crate/annotate-snippets/
 
+use std::sync::Arc;
+
 use annotate_snippets::{Renderer, Snippet};
-use rustc_data_structures::sync::Lrc;
 use rustc_error_messages::FluentArgs;
 use rustc_span::SourceFile;
 use rustc_span::source_map::SourceMap;
@@ -22,8 +23,8 @@ use crate::{
 
 /// Generates diagnostics using annotate-snippet
 pub struct AnnotateSnippetEmitter {
-    source_map: Option<Lrc<SourceMap>>,
-    fluent_bundle: Option<Lrc<FluentBundle>>,
+    source_map: Option<Arc<SourceMap>>,
+    fluent_bundle: Option<Arc<FluentBundle>>,
     fallback_bundle: LazyFallbackBundle,
 
     /// If true, hides the longer explanation text
@@ -80,7 +81,7 @@ impl Emitter for AnnotateSnippetEmitter {
 }
 
 /// Provides the source string for the given `line` of `file`
-fn source_string(file: Lrc<SourceFile>, line: &Line) -> String {
+fn source_string(file: Arc<SourceFile>, line: &Line) -> String {
     file.get_line(line.line_index - 1).map(|a| a.to_string()).unwrap_or_default()
 }
 
@@ -90,20 +91,20 @@ fn annotation_level_for_level(level: Level) -> annotate_snippets::Level {
         Level::Bug | Level::Fatal | Level::Error | Level::DelayedBug => {
             annotate_snippets::Level::Error
         }
-        Level::ForceWarning(_) | Level::Warning => annotate_snippets::Level::Warning,
+        Level::ForceWarning | Level::Warning => annotate_snippets::Level::Warning,
         Level::Note | Level::OnceNote => annotate_snippets::Level::Note,
         Level::Help | Level::OnceHelp => annotate_snippets::Level::Help,
         // FIXME(#59346): Not sure how to map this level
         Level::FailureNote => annotate_snippets::Level::Error,
         Level::Allow => panic!("Should not call with Allow"),
-        Level::Expect(_) => panic!("Should not call with Expect"),
+        Level::Expect => panic!("Should not call with Expect"),
     }
 }
 
 impl AnnotateSnippetEmitter {
     pub fn new(
-        source_map: Option<Lrc<SourceMap>>,
-        fluent_bundle: Option<Lrc<FluentBundle>>,
+        source_map: Option<Arc<SourceMap>>,
+        fluent_bundle: Option<Arc<FluentBundle>>,
         fallback_bundle: LazyFallbackBundle,
         short_message: bool,
         macro_backtrace: bool,
@@ -174,7 +175,7 @@ impl AnnotateSnippetEmitter {
                             source_map.ensure_source_file_source_present(&file);
                             (
                                 format!("{}", source_map.filename_for_diagnostics(&file.name)),
-                                source_string(Lrc::clone(&file), &line),
+                                source_string(Arc::clone(&file), &line),
                                 line.line_index,
                                 line.annotations,
                             )

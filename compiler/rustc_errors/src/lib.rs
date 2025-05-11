@@ -7,6 +7,7 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
@@ -14,10 +15,9 @@
 #![feature(associated_type_defaults)]
 #![feature(box_into_inner)]
 #![feature(box_patterns)]
+#![feature(default_field_values)]
 #![feature(error_reporter)]
-#![feature(extract_if)]
 #![feature(if_let_guard)]
-#![feature(let_chains)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
@@ -25,7 +25,6 @@
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 extern crate self as rustc_errors;
@@ -35,6 +34,7 @@ use std::backtrace::{Backtrace, BacktraceStatus};
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::error::Report;
+use std::ffi::OsStr;
 use std::hash::Hash;
 use std::io::Write;
 use std::num::NonZero;
@@ -47,7 +47,7 @@ pub use codes::*;
 pub use diagnostic::{
     BugAbort, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue, DiagInner, DiagStyledString,
     Diagnostic, EmissionGuarantee, FatalAbort, IntoDiagArg, LintDiagnostic, StringPart, Subdiag,
-    SubdiagMessageOp, Subdiagnostic,
+    Subdiagnostic,
 };
 pub use diagnostic_impls::{
     DiagArgFromDisplay, DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
@@ -57,19 +57,20 @@ pub use emitter::ColorConfig;
 use emitter::{DynEmitter, Emitter, is_case_difference, is_different};
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::sync::{DynSend, Lock};
 pub use rustc_error_messages::{
     DiagMessage, FluentBundle, LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel,
     SubdiagMessage, fallback_fluent_bundle, fluent_bundle,
 };
+use rustc_hashes::Hash128;
 use rustc_lint_defs::LintExpectationId;
-pub use rustc_lint_defs::{Applicability, pluralize};
+pub use rustc_lint_defs::{Applicability, listify, pluralize};
 use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{DUMMY_SP, Loc, Span};
+use rustc_span::{BytePos, DUMMY_SP, Loc, Span};
 pub use snippet::Style;
 // Used by external projects such as `rust-gpu`.
 // See https://github.com/rust-lang/rust/pull/115393.
@@ -229,9 +230,62 @@ impl SubstitutionPart {
         !self.snippet.is_empty() && self.replaces_meaningful_content(sm)
     }
 
+    /// Whether this is a replacement that overwrites source with a snippet
+    /// in a way that isn't a superset of the original string. For example,
+    /// replacing "abc" with "abcde" is not destructive, but replacing it
+    /// it with "abx" is, since the "c" character is lost.
+    pub fn is_destructive_replacement(&self, sm: &SourceMap) -> bool {
+        self.is_replacement(sm)
+            && !sm
+                .span_to_snippet(self.span)
+                .is_ok_and(|snippet| as_substr(snippet.trim(), self.snippet.trim()).is_some())
+    }
+
     fn replaces_meaningful_content(&self, sm: &SourceMap) -> bool {
         sm.span_to_snippet(self.span)
             .map_or(!self.span.is_empty(), |snippet| !snippet.trim().is_empty())
+    }
+
+    /// Try to turn a replacement into an addition when the span that is being
+    /// overwritten matches either the prefix or suffix of the replacement.
+    fn trim_trivial_replacements(&mut self, sm: &SourceMap) {
+        if self.snippet.is_empty() {
+            return;
+        }
+        let Ok(snippet) = sm.span_to_snippet(self.span) else {
+            return;
+        };
+
+        if let Some((prefix, substr, suffix)) = as_substr(&snippet, &self.snippet) {
+            self.span = Span::new(
+                self.span.lo() + BytePos(prefix as u32),
+                self.span.hi() - BytePos(suffix as u32),
+                self.span.ctxt(),
+                self.span.parent(),
+            );
+            self.snippet = substr.to_string();
+        }
+    }
+}
+
+/// Given an original string like `AACC`, and a suggestion like `AABBCC`, try to detect
+/// the case where a substring of the suggestion is "sandwiched" in the original, like
+/// `BB` is. Return the length of the prefix, the "trimmed" suggestion, and the length
+/// of the suffix.
+fn as_substr<'a>(original: &'a str, suggestion: &'a str) -> Option<(usize, &'a str, usize)> {
+    let common_prefix = original
+        .chars()
+        .zip(suggestion.chars())
+        .take_while(|(c1, c2)| c1 == c2)
+        .map(|(c, _)| c.len_utf8())
+        .sum();
+    let original = &original[common_prefix..];
+    let suggestion = &suggestion[common_prefix..];
+    if suggestion.ends_with(original) {
+        let common_suffix = original.len();
+        Some((common_prefix, &suggestion[..suggestion.len() - original.len()], common_suffix))
+    } else {
+        None
     }
 }
 
@@ -348,7 +402,12 @@ impl CodeSuggestion {
                 // or deleted code in order to point at the correct column *after* substitution.
                 let mut acc = 0;
                 let mut only_capitalization = false;
-                for part in &substitution.parts {
+                for part in &mut substitution.parts {
+                    // If this is a replacement of, e.g. `"a"` into `"ab"`, adjust the
+                    // suggestion and snippet to look as if we just suggested to add
+                    // `"b"`, which is typically much easier for the user to understand.
+                    part.trim_trivial_replacements(sm);
+
                     only_capitalization |= is_case_difference(sm, &part.snippet, part.span);
                     let cur_lo = sm.lookup_char_pos(part.span.lo());
                     if prev_hi.line == cur_lo.line {
@@ -530,7 +589,8 @@ struct DiagCtxtInner {
     /// add more information). All stashed diagnostics must be emitted with
     /// `emit_stashed_diagnostics` by the time the `DiagCtxtInner` is dropped,
     /// otherwise an assertion failure will occur.
-    stashed_diagnostics: FxIndexMap<(Span, StashKey), (DiagInner, Option<ErrorGuaranteed>)>,
+    stashed_diagnostics:
+        FxIndexMap<StashKey, FxIndexMap<Span, (DiagInner, Option<ErrorGuaranteed>)>>,
 
     future_breakage_diagnostics: Vec<DiagInner>,
 
@@ -566,10 +626,7 @@ pub enum StashKey {
     /// FRU syntax
     MaybeFruTypo,
     CallAssocMethod,
-    TraitMissingMethod,
     AssociatedTypeSuggestion,
-    OpaqueHiddenTypeMismatch,
-    MaybeForgetReturn,
     /// Query cycle detected, stashing in favor of a better error.
     Cycle,
     UndeterminedMacroResolution,
@@ -677,57 +734,44 @@ impl DiagCtxt {
         Self { inner: Lock::new(DiagCtxtInner::new(emitter)) }
     }
 
-    pub fn make_silent(
-        &self,
-        fallback_bundle: LazyFallbackBundle,
-        fatal_note: Option<String>,
-        emit_fatal_diagnostic: bool,
-    ) {
-        self.wrap_emitter(|old_dcx| {
-            Box::new(emitter::SilentEmitter {
-                fallback_bundle,
-                fatal_dcx: DiagCtxt { inner: Lock::new(old_dcx) },
-                fatal_note,
-                emit_fatal_diagnostic,
-            })
-        });
-    }
-
-    fn wrap_emitter<F>(&self, f: F)
-    where
-        F: FnOnce(DiagCtxtInner) -> Box<DynEmitter>,
-    {
-        // A empty type that implements `Emitter` so that a `DiagCtxtInner` can be constructed
-        // to temporarily swap in place of the real one, which will be used in constructing
-        // its replacement.
+    pub fn make_silent(&self, fatal_note: Option<String>, emit_fatal_diagnostic: bool) {
+        // An empty type that implements `Emitter` to temporarily swap in place of the real one,
+        // which will be used in constructing its replacement.
         struct FalseEmitter;
 
         impl Emitter for FalseEmitter {
             fn emit_diagnostic(&mut self, _: DiagInner, _: &Registry) {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
 
             fn source_map(&self) -> Option<&SourceMap> {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
         }
 
         impl translation::Translate for FalseEmitter {
             fn fluent_bundle(&self) -> Option<&FluentBundle> {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
 
             fn fallback_fluent_bundle(&self) -> &FluentBundle {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
         }
 
         let mut inner = self.inner.borrow_mut();
-        let mut prev_dcx = DiagCtxtInner::new(Box::new(FalseEmitter));
-        std::mem::swap(&mut *inner, &mut prev_dcx);
-        let new_emitter = f(prev_dcx);
-        let mut new_dcx = DiagCtxtInner::new(new_emitter);
-        std::mem::swap(&mut *inner, &mut new_dcx);
+        let mut prev_emitter = Box::new(FalseEmitter) as Box<dyn Emitter + DynSend>;
+        std::mem::swap(&mut inner.emitter, &mut prev_emitter);
+        let new_emitter = Box::new(emitter::SilentEmitter {
+            fatal_emitter: prev_emitter,
+            fatal_note,
+            emit_fatal_diagnostic,
+        });
+        inner.emitter = new_emitter;
+    }
+
+    pub fn set_emitter(&self, emitter: Box<dyn Emitter + DynSend>) {
+        self.inner.borrow_mut().emitter = emitter;
     }
 
     /// Translate `message` eagerly with `args` to `SubdiagMessage::Eager`.
@@ -862,15 +906,19 @@ impl<'a> DiagCtxtHandle<'a> {
             DelayedBug => {
                 return self.inner.borrow_mut().emit_diagnostic(diag, self.tainted_with_errors);
             }
-            ForceWarning(_) | Warning | Note | OnceNote | Help | OnceHelp | FailureNote | Allow
-            | Expect(_) => None,
+            ForceWarning | Warning | Note | OnceNote | Help | OnceHelp | FailureNote | Allow
+            | Expect => None,
         };
 
         // FIXME(Centril, #69537): Consider reintroducing panic on overwriting a stashed diagnostic
         // if/when we have a more robust macro-friendly replacement for `(span, key)` as a key.
         // See the PR for a discussion.
-        let key = (span.with_parent(None), key);
-        self.inner.borrow_mut().stashed_diagnostics.insert(key, (diag, guar));
+        self.inner
+            .borrow_mut()
+            .stashed_diagnostics
+            .entry(key)
+            .or_default()
+            .insert(span.with_parent(None), (diag, guar));
 
         guar
     }
@@ -879,9 +927,10 @@ impl<'a> DiagCtxtHandle<'a> {
     /// and [`StashKey`] as the key. Panics if the found diagnostic is an
     /// error.
     pub fn steal_non_err(self, span: Span, key: StashKey) -> Option<Diag<'a, ()>> {
-        let key = (span.with_parent(None), key);
         // FIXME(#120456) - is `swap_remove` correct?
-        let (diag, guar) = self.inner.borrow_mut().stashed_diagnostics.swap_remove(&key)?;
+        let (diag, guar) = self.inner.borrow_mut().stashed_diagnostics.get_mut(&key).and_then(
+            |stashed_diagnostics| stashed_diagnostics.swap_remove(&span.with_parent(None)),
+        )?;
         assert!(!diag.is_error());
         assert!(guar.is_none());
         Some(Diag::new_diagnostic(self, diag))
@@ -900,9 +949,10 @@ impl<'a> DiagCtxtHandle<'a> {
     where
         F: FnMut(&mut Diag<'_>),
     {
-        let key = (span.with_parent(None), key);
         // FIXME(#120456) - is `swap_remove` correct?
-        let err = self.inner.borrow_mut().stashed_diagnostics.swap_remove(&key);
+        let err = self.inner.borrow_mut().stashed_diagnostics.get_mut(&key).and_then(
+            |stashed_diagnostics| stashed_diagnostics.swap_remove(&span.with_parent(None)),
+        );
         err.map(|(err, guar)| {
             // The use of `::<ErrorGuaranteed>` is safe because level is `Level::Error`.
             assert_eq!(err.level, Error);
@@ -923,9 +973,10 @@ impl<'a> DiagCtxtHandle<'a> {
         key: StashKey,
         new_err: Diag<'_>,
     ) -> ErrorGuaranteed {
-        let key = (span.with_parent(None), key);
         // FIXME(#120456) - is `swap_remove` correct?
-        let old_err = self.inner.borrow_mut().stashed_diagnostics.swap_remove(&key);
+        let old_err = self.inner.borrow_mut().stashed_diagnostics.get_mut(&key).and_then(
+            |stashed_diagnostics| stashed_diagnostics.swap_remove(&span.with_parent(None)),
+        );
         match old_err {
             Some((old_err, guar)) => {
                 assert_eq!(old_err.level, Error);
@@ -940,7 +991,14 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 
     pub fn has_stashed_diagnostic(&self, span: Span, key: StashKey) -> bool {
-        self.inner.borrow().stashed_diagnostics.get(&(span.with_parent(None), key)).is_some()
+        let inner = self.inner.borrow();
+        if let Some(stashed_diagnostics) = inner.stashed_diagnostics.get(&key)
+            && !stashed_diagnostics.is_empty()
+        {
+            stashed_diagnostics.contains_key(&span.with_parent(None))
+        } else {
+            false
+        }
     }
 
     /// Emit all stashed diagnostics.
@@ -954,7 +1012,11 @@ impl<'a> DiagCtxtHandle<'a> {
         let inner = self.inner.borrow();
         inner.err_guars.len()
             + inner.lint_err_guars.len()
-            + inner.stashed_diagnostics.values().filter(|(_diag, guar)| guar.is_some()).count()
+            + inner
+                .stashed_diagnostics
+                .values()
+                .map(|a| a.values().filter(|(_, guar)| guar.is_some()).count())
+                .sum::<usize>()
     }
 
     /// This excludes lint errors and delayed bugs. Unless absolutely
@@ -1002,7 +1064,7 @@ impl<'a> DiagCtxtHandle<'a> {
                 // Use `ForceWarning` rather than `Warning` to guarantee emission, e.g. with a
                 // configuration like `--cap-lints allow --force-warn bare_trait_objects`.
                 inner.emit_diagnostic(
-                    DiagInner::new(ForceWarning(None), DiagMessage::Str(warnings)),
+                    DiagInner::new(ForceWarning, DiagMessage::Str(warnings)),
                     None,
                 );
             }
@@ -1062,8 +1124,8 @@ impl<'a> DiagCtxtHandle<'a> {
     /// bad results, such as spurious/uninteresting additional errors -- when
     /// returning an error `Result` is difficult.
     pub fn abort_if_errors(&self) {
-        if self.has_errors().is_some() {
-            FatalError.raise();
+        if let Some(guar) = self.has_errors() {
+            guar.raise_fatal();
         }
     }
 
@@ -1407,7 +1469,7 @@ impl<'a> DiagCtxtHandle<'a> {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_expect(self, msg: impl Into<DiagMessage>, id: LintExpectationId) -> Diag<'a, ()> {
-        Diag::new(self, Expect(id), msg)
+        Diag::new(self, Expect, msg).with_lint_id(id)
     }
 }
 
@@ -1443,16 +1505,18 @@ impl DiagCtxtInner {
     fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {
         let mut guar = None;
         let has_errors = !self.err_guars.is_empty();
-        for (_, (diag, _guar)) in std::mem::take(&mut self.stashed_diagnostics).into_iter() {
-            if !diag.is_error() {
-                // Unless they're forced, don't flush stashed warnings when
-                // there are errors, to avoid causing warning overload. The
-                // stash would've been stolen already if it were important.
-                if !diag.is_force_warn() && has_errors {
-                    continue;
+        for (_, stashed_diagnostics) in std::mem::take(&mut self.stashed_diagnostics).into_iter() {
+            for (_, (diag, _guar)) in stashed_diagnostics {
+                if !diag.is_error() {
+                    // Unless they're forced, don't flush stashed warnings when
+                    // there are errors, to avoid causing warning overload. The
+                    // stash would've been stolen already if it were important.
+                    if !diag.is_force_warn() && has_errors {
+                        continue;
+                    }
                 }
+                guar = guar.or(self.emit_diagnostic(diag, None));
             }
-            guar = guar.or(self.emit_diagnostic(diag, None));
         }
         guar
     }
@@ -1467,7 +1531,7 @@ impl DiagCtxtInner {
             // Future breakages aren't emitted if they're `Level::Allow` or
             // `Level::Expect`, but they still need to be constructed and
             // stashed below, so they'll trigger the must_produce_diag check.
-            assert_matches!(diagnostic.level, Error | Warning | Allow | Expect(_));
+            assert_matches!(diagnostic.level, Error | Warning | Allow | Expect);
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
@@ -1515,7 +1579,7 @@ impl DiagCtxtInner {
                     };
                 }
             }
-            ForceWarning(None) => {} // `ForceWarning(Some(...))` is below, with `Expect`
+            ForceWarning if diagnostic.lint_id.is_none() => {} // `ForceWarning(Some(...))` is below, with `Expect`
             Warning => {
                 if !self.flags.can_emit_warnings {
                     // We are not emitting warnings.
@@ -1537,9 +1601,9 @@ impl DiagCtxtInner {
                 }
                 return None;
             }
-            Expect(expect_id) | ForceWarning(Some(expect_id)) => {
-                self.fulfilled_expectations.insert(expect_id);
-                if let Expect(_) = diagnostic.level {
+            Expect | ForceWarning => {
+                self.fulfilled_expectations.insert(diagnostic.lint_id.unwrap());
+                if let Expect = diagnostic.level {
                     // Nothing emitted here for expected lints.
                     TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
                     self.suppressed_expected_diag = true;
@@ -1588,7 +1652,7 @@ impl DiagCtxtInner {
 
                 if is_error {
                     self.deduplicated_err_count += 1;
-                } else if matches!(diagnostic.level, ForceWarning(_) | Warning) {
+                } else if matches!(diagnostic.level, ForceWarning | Warning) {
                     self.deduplicated_warn_count += 1;
                 }
                 self.has_printed = true;
@@ -1645,6 +1709,7 @@ impl DiagCtxtInner {
             if let Some((_diag, guar)) = self
                 .stashed_diagnostics
                 .values()
+                .flat_map(|stashed_diagnostics| stashed_diagnostics.values())
                 .find(|(diag, guar)| guar.is_some() && diag.is_lint.is_none())
             {
                 *guar
@@ -1657,13 +1722,9 @@ impl DiagCtxtInner {
     fn has_errors(&self) -> Option<ErrorGuaranteed> {
         self.err_guars.get(0).copied().or_else(|| self.lint_err_guars.get(0).copied()).or_else(
             || {
-                if let Some((_diag, guar)) =
-                    self.stashed_diagnostics.values().find(|(_diag, guar)| guar.is_some())
-                {
-                    *guar
-                } else {
-                    None
-                }
+                self.stashed_diagnostics.values().find_map(|stashed_diagnostics| {
+                    stashed_diagnostics.values().find_map(|(_, guar)| *guar)
+                })
             },
         )
     }
@@ -1719,7 +1780,7 @@ impl DiagCtxtInner {
         let bugs: Vec<_> =
             std::mem::take(&mut self.delayed_bugs).into_iter().map(|(b, _)| b).collect();
 
-        let backtrace = std::env::var_os("RUST_BACKTRACE").map_or(true, |x| &x != "0");
+        let backtrace = std::env::var_os("RUST_BACKTRACE").as_deref() != Some(OsStr::new("0"));
         let decorate = backtrace || self.ice_file.is_none();
         let mut out = self
             .ice_file
@@ -1856,9 +1917,9 @@ pub enum Level {
     /// A `force-warn` lint warning about the code being compiled. Does not prevent compilation
     /// from finishing.
     ///
-    /// The [`LintExpectationId`] is used for expected lint diagnostics. In all other cases this
+    /// Requires a [`LintExpectationId`] for expected lint diagnostics. In all other cases this
     /// should be `None`.
-    ForceWarning(Option<LintExpectationId>),
+    ForceWarning,
 
     /// A warning about the code being compiled. Does not prevent compilation from finishing.
     /// Will be skipped if `can_emit_warnings` is false.
@@ -1883,8 +1944,8 @@ pub enum Level {
     /// Only used for lints.
     Allow,
 
-    /// Only used for lints.
-    Expect(LintExpectationId),
+    /// Only used for lints. Requires a [`LintExpectationId`] for silencing the lints.
+    Expect,
 }
 
 impl fmt::Display for Level {
@@ -1900,7 +1961,7 @@ impl Level {
             Bug | Fatal | Error | DelayedBug => {
                 spec.set_fg(Some(Color::Red)).set_intense(true);
             }
-            ForceWarning(_) | Warning => {
+            ForceWarning | Warning => {
                 spec.set_fg(Some(Color::Yellow)).set_intense(cfg!(windows));
             }
             Note | OnceNote => {
@@ -1910,7 +1971,7 @@ impl Level {
                 spec.set_fg(Some(Color::Cyan)).set_intense(true);
             }
             FailureNote => {}
-            Allow | Expect(_) => unreachable!(),
+            Allow | Expect => unreachable!(),
         }
         spec
     }
@@ -1919,11 +1980,11 @@ impl Level {
         match self {
             Bug | DelayedBug => "error: internal compiler error",
             Fatal | Error => "error",
-            ForceWarning(_) | Warning => "warning",
+            ForceWarning | Warning => "warning",
             Note | OnceNote => "note",
             Help | OnceHelp => "help",
             FailureNote => "failure-note",
-            Allow | Expect(_) => unreachable!(),
+            Allow | Expect => unreachable!(),
         }
     }
 
@@ -1934,8 +1995,7 @@ impl Level {
     // Can this level be used in a subdiagnostic message?
     fn can_be_subdiag(&self) -> bool {
         match self {
-            Bug | DelayedBug | Fatal | Error | ForceWarning(_) | FailureNote | Allow
-            | Expect(_) => false,
+            Bug | DelayedBug | Fatal | Error | ForceWarning | FailureNote | Allow | Expect => false,
 
             Warning | Note | Help | OnceNote | OnceHelp => true,
         }
@@ -1997,18 +2057,6 @@ pub fn a_or_an(s: &str) -> &'static str {
         "an"
     } else {
         "a"
-    }
-}
-
-/// Grammatical tool for displaying messages to end users in a nice form.
-///
-/// Take a list ["a", "b", "c"] and output a display friendly version "a, b and c"
-pub fn display_list_with_comma_and<T: std::fmt::Display>(v: &[T]) -> String {
-    match v {
-        [] => "".to_string(),
-        [a] => a.to_string(),
-        [a, b] => format!("{a} and {b}"),
-        [a, v @ ..] => format!("{a}, {}", display_list_with_comma_and(v)),
     }
 }
 

@@ -1,5 +1,5 @@
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:217:5
+  --> tests/ui/manual_clamp.rs:212:5
    |
 LL | /     if x9 < CONST_MIN {
 LL | |
@@ -15,7 +15,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::manual_clamp)]`
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:236:5
+  --> tests/ui/manual_clamp.rs:230:5
    |
 LL | /     if x11 > CONST_MAX {
 LL | |
@@ -29,7 +29,7 @@ LL | |     }
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:246:5
+  --> tests/ui/manual_clamp.rs:240:5
    |
 LL | /     if CONST_MIN > x12 {
 LL | |
@@ -43,7 +43,7 @@ LL | |     }
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:256:5
+  --> tests/ui/manual_clamp.rs:250:5
    |
 LL | /     if CONST_MAX < x13 {
 LL | |
@@ -57,7 +57,7 @@ LL | |     }
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:370:5
+  --> tests/ui/manual_clamp.rs:363:5
    |
 LL | /     if CONST_MAX < x35 {
 LL | |
@@ -139,7 +139,7 @@ LL |     let x4 = input.max(CONST_MIN).min(CONST_MAX);
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:188:14
+  --> tests/ui/manual_clamp.rs:187:14
    |
 LL |     let x5 = input.min(CONST_MAX).max(CONST_MIN);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_MIN, CONST_MAX)`
@@ -147,12 +147,11 @@ LL |     let x5 = input.min(CONST_MAX).max(CONST_MIN);
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:192:14
+  --> tests/ui/manual_clamp.rs:190:14
    |
 LL |       let x6 = match input {
    |  ______________^
 LL | |
-LL | |
 LL | |         x if x > CONST_MAX => CONST_MAX,
 LL | |         x if x < CONST_MIN => CONST_MIN,
 LL | |         x => x,
@@ -162,12 +161,11 @@ LL | |     };
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:200:14
+  --> tests/ui/manual_clamp.rs:197:14
    |
 LL |       let x7 = match input {
    |  ______________^
 LL | |
-LL | |
 LL | |         x if x < CONST_MIN => CONST_MIN,
 LL | |         x if x > CONST_MAX => CONST_MAX,
 LL | |         x => x,
@@ -177,12 +175,11 @@ LL | |     };
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:208:14
+  --> tests/ui/manual_clamp.rs:204:14
    |
 LL |       let x8 = match input {
    |  ______________^
 LL | |
-LL | |
 LL | |         x if CONST_MAX < x => CONST_MAX,
 LL | |         x if CONST_MIN > x => CONST_MIN,
 LL | |         x => x,
@@ -192,12 +189,11 @@ LL | |     };
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:226:15
+  --> tests/ui/manual_clamp.rs:221:15
    |
 LL |       let x10 = match input {
    |  _______________^
 LL | |
-LL | |
 LL | |         x if CONST_MIN > x => CONST_MIN,
 LL | |         x if CONST_MAX < x => CONST_MAX,
 LL | |         x => x,
@@ -207,7 +203,7 @@ LL | |     };
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:265:15
+  --> tests/ui/manual_clamp.rs:259:15
    |
 LL |       let x14 = if input > CONST_MAX {
    |  _______________^
@@ -222,7 +218,7 @@ LL | |     };
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:276:19
+  --> tests/ui/manual_clamp.rs:270:19
    |
 LL |           let x15 = if input > CONST_F64_MAX {
    |  ___________________^
@@ -238,7 +234,7 @@ LL | |         };
    = note: clamp returns NaN if the input is NaN
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:289:19
+  --> tests/ui/manual_clamp.rs:283:19
    |
 LL |         let x16 = cmp_max(cmp_min(input, CONST_MAX), CONST_MIN);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_MIN, CONST_MAX)`
@@ -246,7 +242,7 @@ LL |         let x16 = cmp_max(cmp_min(input, CONST_MAX), CONST_MIN);
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:292:19
+  --> tests/ui/manual_clamp.rs:286:19
    |
 LL |         let x17 = cmp_min(cmp_max(input, CONST_MIN), CONST_MAX);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_MIN, CONST_MAX)`
@@ -254,7 +250,7 @@ LL |         let x17 = cmp_min(cmp_max(input, CONST_MIN), CONST_MAX);
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:295:19
+  --> tests/ui/manual_clamp.rs:289:19
    |
 LL |         let x18 = cmp_max(CONST_MIN, cmp_min(input, CONST_MAX));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_MIN, CONST_MAX)`
@@ -262,7 +258,7 @@ LL |         let x18 = cmp_max(CONST_MIN, cmp_min(input, CONST_MAX));
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:298:19
+  --> tests/ui/manual_clamp.rs:292:19
    |
 LL |         let x19 = cmp_min(CONST_MAX, cmp_max(input, CONST_MIN));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_MIN, CONST_MAX)`
@@ -270,7 +266,7 @@ LL |         let x19 = cmp_min(CONST_MAX, cmp_max(input, CONST_MIN));
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:301:19
+  --> tests/ui/manual_clamp.rs:295:19
    |
 LL |         let x20 = cmp_max(cmp_min(CONST_MAX, input), CONST_MIN);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_MIN, CONST_MAX)`
@@ -278,7 +274,7 @@ LL |         let x20 = cmp_max(cmp_min(CONST_MAX, input), CONST_MIN);
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:304:19
+  --> tests/ui/manual_clamp.rs:298:19
    |
 LL |         let x21 = cmp_min(cmp_max(CONST_MIN, input), CONST_MAX);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_MIN, CONST_MAX)`
@@ -286,7 +282,7 @@ LL |         let x21 = cmp_min(cmp_max(CONST_MIN, input), CONST_MAX);
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:307:19
+  --> tests/ui/manual_clamp.rs:301:19
    |
 LL |         let x22 = cmp_max(CONST_MIN, cmp_min(CONST_MAX, input));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_MIN, CONST_MAX)`
@@ -294,7 +290,7 @@ LL |         let x22 = cmp_max(CONST_MIN, cmp_min(CONST_MAX, input));
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:310:19
+  --> tests/ui/manual_clamp.rs:304:19
    |
 LL |         let x23 = cmp_min(CONST_MAX, cmp_max(CONST_MIN, input));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_MIN, CONST_MAX)`
@@ -302,7 +298,7 @@ LL |         let x23 = cmp_min(CONST_MAX, cmp_max(CONST_MIN, input));
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:314:19
+  --> tests/ui/manual_clamp.rs:308:19
    |
 LL |         let x24 = f64::max(f64::min(input, CONST_F64_MAX), CONST_F64_MIN);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_F64_MIN, CONST_F64_MAX)`
@@ -311,7 +307,7 @@ LL |         let x24 = f64::max(f64::min(input, CONST_F64_MAX), CONST_F64_MIN);
    = note: clamp returns NaN if the input is NaN
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:317:19
+  --> tests/ui/manual_clamp.rs:311:19
    |
 LL |         let x25 = f64::min(f64::max(input, CONST_F64_MIN), CONST_F64_MAX);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_F64_MIN, CONST_F64_MAX)`
@@ -320,7 +316,7 @@ LL |         let x25 = f64::min(f64::max(input, CONST_F64_MIN), CONST_F64_MAX);
    = note: clamp returns NaN if the input is NaN
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:320:19
+  --> tests/ui/manual_clamp.rs:314:19
    |
 LL |         let x26 = f64::max(CONST_F64_MIN, f64::min(input, CONST_F64_MAX));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_F64_MIN, CONST_F64_MAX)`
@@ -329,7 +325,7 @@ LL |         let x26 = f64::max(CONST_F64_MIN, f64::min(input, CONST_F64_MAX));
    = note: clamp returns NaN if the input is NaN
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:323:19
+  --> tests/ui/manual_clamp.rs:317:19
    |
 LL |         let x27 = f64::min(CONST_F64_MAX, f64::max(input, CONST_F64_MIN));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_F64_MIN, CONST_F64_MAX)`
@@ -338,7 +334,7 @@ LL |         let x27 = f64::min(CONST_F64_MAX, f64::max(input, CONST_F64_MIN));
    = note: clamp returns NaN if the input is NaN
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:326:19
+  --> tests/ui/manual_clamp.rs:320:19
    |
 LL |         let x28 = f64::max(f64::min(CONST_F64_MAX, input), CONST_F64_MIN);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_F64_MIN, CONST_F64_MAX)`
@@ -347,7 +343,7 @@ LL |         let x28 = f64::max(f64::min(CONST_F64_MAX, input), CONST_F64_MIN);
    = note: clamp returns NaN if the input is NaN
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:329:19
+  --> tests/ui/manual_clamp.rs:323:19
    |
 LL |         let x29 = f64::min(f64::max(CONST_F64_MIN, input), CONST_F64_MAX);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_F64_MIN, CONST_F64_MAX)`
@@ -356,7 +352,7 @@ LL |         let x29 = f64::min(f64::max(CONST_F64_MIN, input), CONST_F64_MAX);
    = note: clamp returns NaN if the input is NaN
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:332:19
+  --> tests/ui/manual_clamp.rs:326:19
    |
 LL |         let x30 = f64::max(CONST_F64_MIN, f64::min(CONST_F64_MAX, input));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_F64_MIN, CONST_F64_MAX)`
@@ -365,7 +361,7 @@ LL |         let x30 = f64::max(CONST_F64_MIN, f64::min(CONST_F64_MAX, input));
    = note: clamp returns NaN if the input is NaN
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:335:19
+  --> tests/ui/manual_clamp.rs:329:19
    |
 LL |         let x31 = f64::min(CONST_F64_MAX, f64::max(CONST_F64_MIN, input));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `input.clamp(CONST_F64_MIN, CONST_F64_MAX)`
@@ -374,7 +370,7 @@ LL |         let x31 = f64::min(CONST_F64_MAX, f64::max(CONST_F64_MIN, input));
    = note: clamp returns NaN if the input is NaN
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:340:5
+  --> tests/ui/manual_clamp.rs:333:5
    |
 LL | /     if x32 < CONST_MIN {
 LL | |
@@ -388,7 +384,7 @@ LL | |     }
    = note: clamp will panic if max < min
 
 error: clamp-like pattern without using clamp function
-  --> tests/ui/manual_clamp.rs:532:13
+  --> tests/ui/manual_clamp.rs:525:13
    |
 LL |       let _ = if input > CONST_MAX {
    |  _____________^

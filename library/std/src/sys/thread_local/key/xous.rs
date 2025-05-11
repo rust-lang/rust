@@ -42,7 +42,7 @@ use crate::mem::ManuallyDrop;
 use crate::os::xous::ffi::{MemoryFlags, map_memory, unmap_memory};
 use crate::ptr;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
-use crate::sync::atomic::{AtomicPtr, AtomicUsize};
+use crate::sync::atomic::{Atomic, AtomicPtr, AtomicUsize};
 
 pub type Key = usize;
 pub type Dtor = unsafe extern "C" fn(*mut u8);
@@ -51,20 +51,20 @@ const TLS_MEMORY_SIZE: usize = 4096;
 
 /// TLS keys start at `1`. Index `0` is unused
 #[cfg(not(test))]
-#[export_name = "_ZN16__rust_internals3std3sys4xous16thread_local_key13TLS_KEY_INDEXE"]
-static TLS_KEY_INDEX: AtomicUsize = AtomicUsize::new(1);
+#[unsafe(export_name = "_ZN16__rust_internals3std3sys4xous16thread_local_key13TLS_KEY_INDEXE")]
+static TLS_KEY_INDEX: Atomic<usize> = AtomicUsize::new(1);
 
 #[cfg(not(test))]
-#[export_name = "_ZN16__rust_internals3std3sys4xous16thread_local_key9DTORSE"]
-static DTORS: AtomicPtr<Node> = AtomicPtr::new(ptr::null_mut());
+#[unsafe(export_name = "_ZN16__rust_internals3std3sys4xous16thread_local_key9DTORSE")]
+static DTORS: Atomic<*mut Node> = AtomicPtr::new(ptr::null_mut());
 
 #[cfg(test)]
-extern "Rust" {
+unsafe extern "Rust" {
     #[link_name = "_ZN16__rust_internals3std3sys4xous16thread_local_key13TLS_KEY_INDEXE"]
-    static TLS_KEY_INDEX: AtomicUsize;
+    static TLS_KEY_INDEX: Atomic<usize>;
 
     #[link_name = "_ZN16__rust_internals3std3sys4xous16thread_local_key9DTORSE"]
-    static DTORS: AtomicPtr<Node>;
+    static DTORS: Atomic<*mut Node>;
 }
 
 fn tls_ptr_addr() -> *mut *mut u8 {
@@ -85,7 +85,7 @@ fn tls_table() -> &'static mut [*mut u8] {
 
     if !tp.is_null() {
         return unsafe {
-            core::slice::from_raw_parts_mut(tp, TLS_MEMORY_SIZE / core::mem::size_of::<*mut u8>())
+            core::slice::from_raw_parts_mut(tp, TLS_MEMORY_SIZE / size_of::<*mut u8>())
         };
     }
     // If the TP register is `0`, then this thread hasn't initialized
@@ -94,7 +94,7 @@ fn tls_table() -> &'static mut [*mut u8] {
         map_memory(
             None,
             None,
-            TLS_MEMORY_SIZE / core::mem::size_of::<*mut u8>(),
+            TLS_MEMORY_SIZE / size_of::<*mut u8>(),
             MemoryFlags::R | MemoryFlags::W,
         )
         .expect("Unable to allocate memory for thread local storage")
@@ -177,11 +177,8 @@ pub unsafe fn destroy_tls() {
 
     // Finally, free the TLS array
     unsafe {
-        unmap_memory(core::slice::from_raw_parts_mut(
-            tp,
-            TLS_MEMORY_SIZE / core::mem::size_of::<usize>(),
-        ))
-        .unwrap()
+        unmap_memory(core::slice::from_raw_parts_mut(tp, TLS_MEMORY_SIZE / size_of::<usize>()))
+            .unwrap()
     };
 }
 

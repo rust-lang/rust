@@ -11,7 +11,11 @@ fn test_get_dbpath_for_term() {
     }
     assert_eq!(x("screen"), PathBuf::from("/usr/share/terminfo/s/screen"));
     assert_eq!(get_dbpath_for_term(""), None);
-    env::set_var("TERMINFO_DIRS", ":");
+    unsafe {
+        env::set_var("TERMINFO_DIRS", ":");
+    }
     assert_eq!(x("screen"), PathBuf::from("/usr/share/terminfo/s/screen"));
-    env::remove_var("TERMINFO_DIRS");
+    unsafe {
+        env::remove_var("TERMINFO_DIRS");
+    }
 }

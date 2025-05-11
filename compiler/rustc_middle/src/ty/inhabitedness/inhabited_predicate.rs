@@ -236,6 +236,11 @@ impl<'tcx> InhabitedPredicate<'tcx> {
         self.instantiate_opt(tcx, args).unwrap_or(self)
     }
 
+    /// Same as [`Self::instantiate`], but if there is no generics to
+    /// instantiate, returns `None`. This is useful because it lets us avoid
+    /// allocating a recursive copy of everything when the result is unchanged.
+    ///
+    /// Only used to implement `instantiate` itself.
     fn instantiate_opt(self, tcx: TyCtxt<'tcx>, args: ty::GenericArgsRef<'tcx>) -> Option<Self> {
         match self {
             Self::ConstIsZero(c) => {
@@ -260,7 +265,10 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                 Some(InhabitedPredicate::True) => Some(InhabitedPredicate::True),
                 Some(a) => Some(a.or(tcx, b.instantiate_opt(tcx, args).unwrap_or(b))),
             },
-            _ => None,
+            Self::True | Self::False | Self::NotInModule(_) => None,
+            Self::OpaqueType(_) => {
+                bug!("unexpected OpaqueType in InhabitedPredicate");
+            }
         }
     }
 }

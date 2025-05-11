@@ -10,5 +10,6 @@ struct LazyLock {
 }
 
 static EMPTY_SET: LazyLock = todo!();
+//~^ ERROR could not evaluate static initializer
 
 fn main() {}

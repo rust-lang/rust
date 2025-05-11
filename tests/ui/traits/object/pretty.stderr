@@ -110,7 +110,7 @@ error[E0308]: mismatched types
   --> $DIR/pretty.rs:36:79
    |
 LL | fn dyn_fixed_generic_multi(x: &dyn for<'a> FixedGeneric1<'a, Assoc2 = &u8>) { x }
-   |                                                                            -  ^ expected `()`, found `&dyn FixedGeneric1<'a, Assoc2 = ...>`
+   |                                                                            -  ^ expected `()`, found `&dyn FixedGeneric1<'a, Assoc2 = &u8>`
    |                                                                            |
    |                                                                            help: try adding a return type: `-> &dyn for<'a> FixedGeneric1<'a, Assoc2 = &u8>`
    |
@@ -132,7 +132,7 @@ error[E0308]: mismatched types
   --> $DIR/pretty.rs:38:73
    |
 LL | fn dyn_any_different_binders(x: &dyn AnyDifferentBinders<Assoc = u8>) { x }
-   |                                                                      -  ^ expected `()`, found `&dyn AnyDifferentBinders<Assoc = ...>`
+   |                                                                      -  ^ expected `()`, found `&dyn AnyDifferentBinders<Assoc = u8>`
    |                                                                      |
    |                                                                      help: try adding a return type: `-> &dyn AnyDifferentBinders<Assoc = u8>`
    |

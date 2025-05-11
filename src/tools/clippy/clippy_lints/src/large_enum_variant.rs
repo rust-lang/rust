@@ -5,7 +5,6 @@ use clippy_utils::ty::{AdtVariantInfo, approx_ty_size, is_copy};
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -74,11 +73,11 @@ impl_lint_pass!(LargeEnumVariant => [LARGE_ENUM_VARIANT]);
 
 impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {
-        if let ItemKind::Enum(ref def, _) = item.kind
+        if let ItemKind::Enum(ident, ref def, _) = item.kind
             && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
             && let ty::Adt(adt, subst) = ty.kind()
             && adt.variants().len() > 1
-            && !in_external_macro(cx.tcx.sess, item.span)
+            && !item.span.in_external_macro(cx.tcx.sess.source_map())
         {
             let variants_size = AdtVariantInfo::new(cx, *adt, subst);
 
@@ -115,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
                         let mut applicability = Applicability::MaybeIncorrect;
                         if is_copy(cx, ty) || maybe_copy(cx, ty) {
                             diag.span_note(
-                                item.ident.span,
+                                ident.span,
                                 "boxing a variant would require the type no longer be `Copy`",
                             );
                         } else {

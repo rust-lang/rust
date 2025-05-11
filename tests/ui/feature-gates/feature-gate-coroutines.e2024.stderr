@@ -45,7 +45,7 @@ LL |     yield true;
    |     ^^^^^^^^^^
    |
    = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
-   = help: add `#![feature(coroutines)]` to the crate attributes to enable
+   = help: add `#![feature(yield_expr)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
@@ -66,7 +66,7 @@ LL |     let _ = || yield true;
    |                ^^^^^^^^^^
    |
    = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
-   = help: add `#![feature(coroutines)]` to the crate attributes to enable
+   = help: add `#![feature(yield_expr)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks

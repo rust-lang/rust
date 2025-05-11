@@ -90,8 +90,12 @@ fn _macros() {
     }
     use_expr!((let 0 = 1 && 0 == 0));
     //[feature,no_feature]~^ ERROR expected expression, found `let` statement
+    //[feature,no_feature]~| ERROR expected expression, found `let` statement
+    //[feature,no_feature]~| ERROR expected expression, found `let` statement
     use_expr!((let 0 = 1));
     //[feature,no_feature]~^ ERROR expected expression, found `let` statement
+    //[feature,no_feature]~| ERROR expected expression, found `let` statement
+    //[feature,no_feature]~| ERROR expected expression, found `let` statement
 }
 
 #[cfg(not(nothing))]
@@ -115,7 +119,7 @@ fn nested_within_if_expr() {
     //~^ ERROR expected expression, found `let` statement
 
     if true || let 0 = 0 {}
-    //~^ ERROR expected expression, found `let` statement
+    //~^ ERROR `||` operators are not supported in let chain conditions
     if (true || let 0 = 0) {}
     //~^ ERROR expected expression, found `let` statement
     if true && (true || let 0 = 0) {}
@@ -206,7 +210,7 @@ fn nested_within_while_expr() {
     //~^ ERROR expected expression, found `let` statement
 
     while true || let 0 = 0 {}
-    //~^ ERROR expected expression, found `let` statement
+    //~^ ERROR `||` operators are not supported in let chain conditions
     while (true || let 0 = 0) {}
     //~^ ERROR expected expression, found `let` statement
     while true && (true || let 0 = 0) {}
@@ -336,12 +340,12 @@ fn outside_if_and_while_expr() {
     //~| ERROR expected expression, found `let` statement
 
     {
-        #[cfg(FALSE)]
+        #[cfg(false)]
         let x = true && let y = 1;
         //~^ ERROR expected expression, found `let` statement
     }
 
-    #[cfg(FALSE)]
+    #[cfg(false)]
     {
         [1, 2, 3][let _ = ()]
         //~^ ERROR expected expression, found `let` statement
@@ -432,11 +436,11 @@ fn with_parenthesis() {
     //[no_feature]~^ ERROR `let` expressions in this position are unstable
     }
 
-    #[cfg(FALSE)]
+    #[cfg(false)]
     let x = (true && let y = 1);
     //~^ ERROR expected expression, found `let` statement
 
-    #[cfg(FALSE)]
+    #[cfg(false)]
     {
         ([1, 2, 3][let _ = ()])
         //~^ ERROR expected expression, found `let` statement

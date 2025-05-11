@@ -6,10 +6,10 @@ use rustc_middle::ty::layout::{FnAbiError, LayoutError};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TyCtxt};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
-use rustc_target::abi::call::FnAbi;
+use rustc_target::callconv::FnAbi;
 
 use super::layout_test::ensure_wf;
-use crate::errors::{AbiInvalidAttribute, AbiNe, AbiOf, UnrecognizedField};
+use crate::errors::{AbiInvalidAttribute, AbiNe, AbiOf, UnrecognizedArgument};
 
 pub fn test_abi(tcx: TyCtxt<'_>) {
     if !tcx.features().rustc_attrs() {
@@ -46,15 +46,6 @@ fn unwrap_fn_abi<'tcx>(
                 span: tcx.def_span(item_def_id),
             });
         }
-        Err(FnAbiError::AdjustForForeignAbi(e)) => {
-            // Sadly there seems to be no `into_diagnostic` for this case... and I am not sure if
-            // this can even be reached. Anyway this is a perma-unstable debug attribute, an ICE
-            // isn't the worst thing. Also this matches what codegen does.
-            span_bug!(
-                tcx.def_span(item_def_id),
-                "error computing fn_abi_of_instance, cannot adjust for foreign ABI: {e:?}",
-            )
-        }
     }
 }
 
@@ -86,8 +77,8 @@ fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
     // The `..` are the names of fields to dump.
     let meta_items = attr.meta_item_list().unwrap_or_default();
     for meta_item in meta_items {
-        match meta_item.name_or_empty() {
-            sym::debug => {
+        match meta_item.name() {
+            Some(sym::debug) => {
                 let fn_name = tcx.item_name(item_def_id.into());
                 tcx.dcx().emit_err(AbiOf {
                     span: tcx.def_span(item_def_id),
@@ -97,8 +88,8 @@ fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                 });
             }
 
-            name => {
-                tcx.dcx().emit_err(UnrecognizedField { span: meta_item.span(), name });
+            _ => {
+                tcx.dcx().emit_err(UnrecognizedArgument { span: meta_item.span() });
             }
         }
     }
@@ -127,8 +118,8 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
     }
     let meta_items = attr.meta_item_list().unwrap_or_default();
     for meta_item in meta_items {
-        match meta_item.name_or_empty() {
-            sym::debug => {
+        match meta_item.name() {
+            Some(sym::debug) => {
                 let ty::FnPtr(sig_tys, hdr) = ty.kind() else {
                     span_bug!(
                         meta_item.span(),
@@ -147,7 +138,7 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                 let fn_name = tcx.item_name(item_def_id.into());
                 tcx.dcx().emit_err(AbiOf { span, fn_name, fn_abi: format!("{:#?}", abi) });
             }
-            sym::assert_eq => {
+            Some(sym::assert_eq) => {
                 let ty::Tuple(fields) = ty.kind() else {
                     span_bug!(
                         meta_item.span(),
@@ -197,8 +188,8 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                     });
                 }
             }
-            name => {
-                tcx.dcx().emit_err(UnrecognizedField { span: meta_item.span(), name });
+            _ => {
+                tcx.dcx().emit_err(UnrecognizedArgument { span: meta_item.span() });
             }
         }
     }

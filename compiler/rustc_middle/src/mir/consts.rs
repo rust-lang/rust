@@ -6,10 +6,12 @@ use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, Typ
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_type_ir::visit::TypeVisitableExt;
+use rustc_type_ir::TypeVisitableExt;
 
 use super::interpret::ReportedErrorInfo;
-use crate::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, Scalar, alloc_range};
+use crate::mir::interpret::{
+    AllocId, AllocRange, ConstAllocation, ErrorHandled, GlobalAlloc, Scalar, alloc_range,
+};
 use crate::mir::{Promoted, pretty_print_const_value};
 use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
 use crate::ty::{self, ConstKind, GenericArgsRef, ScalarInt, Ty, TyCtxt};
@@ -192,8 +194,30 @@ impl<'tcx> ConstValue<'tcx> {
                 .unwrap_memory()
                 .inner()
                 .provenance()
-                .range_empty(super::AllocRange::from(offset..offset + size), &tcx),
+                .range_empty(AllocRange::from(offset..offset + size), &tcx),
         }
+    }
+
+    /// Check if a constant only contains uninitialized bytes.
+    pub fn all_bytes_uninit(&self, tcx: TyCtxt<'tcx>) -> bool {
+        let ConstValue::Indirect { alloc_id, .. } = self else {
+            return false;
+        };
+        let alloc = tcx.global_alloc(*alloc_id);
+        let GlobalAlloc::Memory(alloc) = alloc else {
+            return false;
+        };
+        let init_mask = alloc.0.init_mask();
+        let init_range = init_mask.is_range_initialized(AllocRange {
+            start: Size::ZERO,
+            size: Size::from_bytes(alloc.0.len()),
+        });
+        if let Err(range) = init_range {
+            if range.size == alloc.0.size() {
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -250,7 +274,7 @@ impl<'tcx> Const<'tcx> {
                     // Dont use the outer ty as on invalid code we can wind up with them not being the same.
                     // this then results in allowing const eval to add `1_i64 + 1_usize` in cases where the mir
                     // was originally `({N: usize} + 1_usize)` under `generic_const_exprs`.
-                    ty::ConstKind::Value(ty, _) => ty,
+                    ty::ConstKind::Value(cv) => cv.ty,
                     _ => *ty,
                 }
             }
@@ -264,7 +288,7 @@ impl<'tcx> Const<'tcx> {
     pub fn is_required_const(&self) -> bool {
         match self {
             Const::Ty(_, c) => match c.kind() {
-                ty::ConstKind::Value(_, _) => false, // already a value, cannot error
+                ty::ConstKind::Value(_) => false, // already a value, cannot error
                 _ => true,
             },
             Const::Val(..) => false, // already a value, cannot error
@@ -276,11 +300,11 @@ impl<'tcx> Const<'tcx> {
     pub fn try_to_scalar(self) -> Option<Scalar> {
         match self {
             Const::Ty(_, c) => match c.kind() {
-                ty::ConstKind::Value(ty, valtree) if ty.is_primitive() => {
+                ty::ConstKind::Value(cv) if cv.ty.is_primitive() => {
                     // A valtree of a type where leaves directly represent the scalar const value.
                     // Just checking whether it is a leaf is insufficient as e.g. references are leafs
                     // but the leaf value is the value they point to, not the reference itself!
-                    Some(valtree.unwrap_leaf().into())
+                    Some(cv.valtree.unwrap_leaf().into())
                 }
                 _ => None,
             },
@@ -295,9 +319,7 @@ impl<'tcx> Const<'tcx> {
         match self {
             Const::Val(ConstValue::Scalar(Scalar::Int(x)), _) => Some(x),
             Const::Ty(_, c) => match c.kind() {
-                ty::ConstKind::Value(ty, valtree) if ty.is_primitive() => {
-                    Some(valtree.unwrap_leaf())
-                }
+                ty::ConstKind::Value(cv) if cv.ty.is_primitive() => Some(cv.valtree.unwrap_leaf()),
                 _ => None,
             },
             _ => None,
@@ -328,7 +350,7 @@ impl<'tcx> Const<'tcx> {
                 }
 
                 match c.kind() {
-                    ConstKind::Value(ty, val) => Ok(tcx.valtree_to_const_val((ty, val))),
+                    ConstKind::Value(cv) => Ok(tcx.valtree_to_const_val(cv)),
                     ConstKind::Expr(_) => {
                         bug!("Normalization of `ty::ConstKind::Expr` is unimplemented")
                     }
@@ -353,13 +375,13 @@ impl<'tcx> Const<'tcx> {
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<Scalar> {
         if let Const::Ty(_, c) = self
-            && let ty::ConstKind::Value(ty, val) = c.kind()
-            && ty.is_primitive()
+            && let ty::ConstKind::Value(cv) = c.kind()
+            && cv.ty.is_primitive()
         {
             // Avoid the `valtree_to_const_val` query. Can only be done on primitive types that
             // are valtree leaves, and *not* on references. (References should return the
             // pointer here, which valtrees don't represent.)
-            Some(val.unwrap_leaf().into())
+            Some(cv.valtree.unwrap_leaf().into())
         } else {
             self.eval(tcx, typing_env, DUMMY_SP).ok()?.try_to_scalar()
         }
@@ -460,20 +482,6 @@ impl<'tcx> Const<'tcx> {
         Self::Val(val, ty)
     }
 
-    pub fn from_ty_const(c: ty::Const<'tcx>, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        match c.kind() {
-            ty::ConstKind::Value(ty, valtree) => {
-                // Make sure that if `c` is normalized, then the return value is normalized.
-                let const_val = tcx.valtree_to_const_val((ty, valtree));
-                Self::Val(const_val, ty)
-            }
-            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {
-                Self::Unevaluated(UnevaluatedConst { def, args, promoted: None }, ty)
-            }
-            _ => Self::Ty(ty, c),
-        }
-    }
-
     /// Return true if any evaluation of this constant always returns the same value,
     /// taking into account even pointer identity tests.
     pub fn is_deterministic(&self) -> bool {
@@ -487,7 +495,7 @@ impl<'tcx> Const<'tcx> {
                 // A valtree may be a reference. Valtree references correspond to a
                 // different allocation each time they are evaluated. Valtrees for primitive
                 // types are fine though.
-                ty::ConstKind::Value(ty, _) => ty.is_primitive(),
+                ty::ConstKind::Value(cv) => cv.ty.is_primitive(),
                 ty::ConstKind::Unevaluated(..) | ty::ConstKind::Expr(..) => false,
                 // This can happen if evaluation of a constant failed. The result does not matter
                 // much since compilation is doomed.

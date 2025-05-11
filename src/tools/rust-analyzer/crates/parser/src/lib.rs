@@ -35,6 +35,8 @@ mod shortcuts;
 mod syntax_kind;
 mod token_set;
 
+pub use T_ as T;
+
 #[cfg(test)]
 mod tests;
 
@@ -59,7 +61,7 @@ pub use crate::{
 ///
 /// That is, for something like
 ///
-/// ```
+/// ```ignore
 /// quick_check! {
 ///    fn prop() {}
 /// }

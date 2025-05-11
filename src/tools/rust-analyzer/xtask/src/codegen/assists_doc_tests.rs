@@ -1,11 +1,11 @@
-//! Generates `assists.md` documentation.
+//! Generates `assists_generated.md` documentation.
 
 use std::{fmt, fs, path::Path};
 
 use stdx::format_to_acc;
 
 use crate::{
-    codegen::{add_preamble, ensure_file_contents, reformat, CommentBlock, Location},
+    codegen::{CommentBlock, Location, add_preamble, ensure_file_contents, reformat},
     project_root,
     util::list_rust_files,
 };
@@ -53,6 +53,11 @@ r#####"
         );
     }
 
+    // Do not generate assists manual when run with `--check`
+    if check {
+        return;
+    }
+
     {
         // Generate assists manual. Note that we do _not_ commit manual to the
         // git repo. Instead, `cargo xtask release` runs this test before making
@@ -62,7 +67,7 @@ r#####"
             crate::flags::CodegenType::AssistsDocTests,
             assists.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n"),
         );
-        let dst = project_root().join("docs/user/generated_assists.adoc");
+        let dst = project_root().join("docs/book/src/assists_generated.md");
         fs::write(dst, contents).unwrap();
     }
 }
@@ -146,7 +151,7 @@ impl fmt::Display for Assist {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let _ = writeln!(
             f,
-            "[discrete]\n=== `{}`
+            "### `{}`
 **Source:** {}",
             self.id, self.location,
         );
@@ -159,11 +164,11 @@ impl fmt::Display for Assist {
                 "
 {}
 
-.Before
+#### Before
 ```rust
 {}```
 
-.After
+#### After
 ```rust
 {}```",
                 section.doc,

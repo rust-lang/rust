@@ -17,8 +17,6 @@ LL | |     test()?;
 ...  |
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
-   |
-   = help: the trait `FromResidual<_>` is not implemented for `()`
 
 error: aborting due to 2 previous errors
 

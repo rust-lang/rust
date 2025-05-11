@@ -1,4 +1,4 @@
-//@ ignore-test (auxiliary, used by other tests)
+//@ ignore-auxiliary (used by `./saturating-float-casts.rs` and `./saturating-float-casts-wasm.rs`)
 
 // Tests saturating float->int casts. See u128-as-f32.rs for the opposite direction.
 //

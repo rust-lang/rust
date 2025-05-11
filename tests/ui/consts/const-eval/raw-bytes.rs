@@ -2,7 +2,9 @@
 //@ ignore-endian-big
 // ignore-tidy-linelength
 //@ normalize-stderr: "╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼" -> "╾ALLOC_ID$1╼"
-#![allow(invalid_value)]
+//@ dont-require-annotations: NOTE
+
+#![allow(invalid_value, unnecessary_transmutes)]
 #![feature(never_type, rustc_attrs, ptr_metadata, slice_from_ptr_range, const_slice_from_ptr_range)]
 
 use std::mem;
@@ -83,11 +85,11 @@ const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
 
 const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
 //~^ ERROR it is undefined behavior to use this value
-//~| constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
+//~| NOTE constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
 
 const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
 //~^ ERROR it is undefined behavior to use this value
-//~| constructing invalid value: encountered an unaligned box (required 2 byte alignment but found 1)
+//~| NOTE constructing invalid value: encountered an unaligned box (required 2 byte alignment but found 1)
 
 const NULL: &u16 = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
@@ -161,44 +163,44 @@ const SLICE_TOO_LONG_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, 999usize))
 // bad data *inside* the slice
 const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
 //~^ ERROR it is undefined behavior to use this value
-//~| constant
+//~| NOTE constant
 
 
 // bad: sized field is not okay
 const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
 //~^ ERROR it is undefined behavior to use this value
-//~| constant
+//~| NOTE constant
 // bad: unsized part is not okay
 const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
 //~^ ERROR it is undefined behavior to use this value
-//~| constant
+//~| NOTE constant
 
 // bad trait object
 const TRAIT_OBJ_SHORT_VTABLE_1: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u8))) };
 //~^ ERROR it is undefined behavior to use this value
-//~| expected a vtable
+//~| NOTE expected a vtable
 // bad trait object
 const TRAIT_OBJ_SHORT_VTABLE_2: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u64))) };
 //~^ ERROR it is undefined behavior to use this value
-//~| expected a vtable
+//~| NOTE expected a vtable
 // bad trait object
 const TRAIT_OBJ_INT_VTABLE: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, 4usize))) };
 //~^ ERROR it is undefined behavior to use this value
-//~| expected a vtable
+//~| NOTE expected a vtable
 const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &[&42u8; 8]))) };
 //~^ ERROR it is undefined behavior to use this value
-//~| expected a vtable
+//~| NOTE expected a vtable
 // bad data *inside* the trait object
 const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) };
 //~^ ERROR it is undefined behavior to use this value
-//~| expected a boolean
+//~| NOTE expected a boolean
 
 const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
 //~^ ERROR it is undefined behavior to use this value
-//~| null pointer
+//~| NOTE null pointer
 const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
 //~^ ERROR it is undefined behavior to use this value
-//~| vtable
+//~| NOTE vtable
 
 // Uninhabited types
 const _: &[!; 1] = unsafe { &*(1_usize as *const [!; 1]) }; //~ ERROR undefined behavior

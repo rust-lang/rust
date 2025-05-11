@@ -183,12 +183,12 @@ pub(crate) fn mod_file_path_from_attr(
     let first_path = attrs.iter().find(|at| at.has_name(sym::path))?;
     let Some(path_sym) = first_path.value_str() else {
         // This check is here mainly to catch attempting to use a macro,
-        // such as #[path = concat!(...)]. This isn't currently supported
-        // because otherwise the InvocationCollector would need to defer
-        // loading a module until the #[path] attribute was expanded, and
-        // it doesn't support that (and would likely add a bit of
-        // complexity). Usually bad forms are checked in AstValidator (via
-        // `check_builtin_attribute`), but by the time that runs the macro
+        // such as `#[path = concat!(...)]`. This isn't supported because
+        // otherwise the `InvocationCollector` would need to defer loading
+        // a module until the `#[path]` attribute was expanded, and it
+        // doesn't support that (and would likely add a bit of complexity).
+        // Usually bad forms are checked during semantic analysis via
+        // `TyCtxt::check_mod_attrs`), but by the time that runs the macro
         // is expanded, and it doesn't give an error.
         validate_attr::emit_fatal_malformed_builtin_attribute(&sess.psess, first_path, sym::path);
     };

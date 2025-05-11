@@ -1,5 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir;
+use rustc_abi::ExternAbi;
 use rustc_hir::{AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind, intravisit};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass};
@@ -10,7 +11,6 @@ use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
-use rustc_target::spec::abi::Abi;
 
 pub struct BoxedLocal {
     too_large_for_stack: u64,
@@ -72,16 +72,15 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         _: Span,
         fn_def_id: LocalDefId,
     ) {
-        if let Some(header) = fn_kind.header() {
-            if header.abi != Abi::Rust {
-                return;
-            }
+        if let Some(header) = fn_kind.header()
+            && header.abi != ExternAbi::Rust
+        {
+            return;
         }
 
         let parent_id = cx
             .tcx
-            .hir()
-            .get_parent_item(cx.tcx.local_def_id_to_hir_id(fn_def_id))
+            .hir_get_parent_item(cx.tcx.local_def_id_to_hir_id(fn_def_id))
             .def_id;
 
         let mut trait_self_ty = None;
@@ -92,14 +91,13 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
             }
 
             // find `self` ty for this trait if relevant
-            if let ItemKind::Trait(_, _, _, _, items) = item.kind {
+            if let ItemKind::Trait(_, _, _, _, _, items) = item.kind {
                 for trait_item in items {
-                    if trait_item.id.owner_id.def_id == fn_def_id {
+                    if trait_item.id.owner_id.def_id == fn_def_id
                         // be sure we have `self` parameter in this function
-                        if trait_item.kind == (AssocItemKind::Fn { has_self: true }) {
-                            trait_self_ty =
-                                Some(TraitRef::identity(cx.tcx, trait_item.id.owner_id.to_def_id()).self_ty());
-                        }
+                        && trait_item.kind == (AssocItemKind::Fn { has_self: true })
+                    {
+                        trait_self_ty = Some(TraitRef::identity(cx.tcx, trait_item.id.owner_id.to_def_id()).self_ty());
                     }
                 }
             }
@@ -121,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
                 cx,
                 BOXED_LOCAL,
                 node,
-                cx.tcx.hir().span(node),
+                cx.tcx.hir_span(node),
                 "local variable doesn't need to be boxed here",
             );
         }
@@ -143,44 +141,44 @@ fn is_argument(tcx: TyCtxt<'_>, id: HirId) -> bool {
 
 impl<'tcx> Delegate<'tcx> for EscapeDelegate<'_, 'tcx> {
     fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
-        if cmt.place.projections.is_empty() {
-            if let PlaceBase::Local(lid) = cmt.place.base {
-                // FIXME(rust/#120456) - is `swap_remove` correct?
-                self.set.swap_remove(&lid);
-            }
+        if cmt.place.projections.is_empty()
+            && let PlaceBase::Local(lid) = cmt.place.base
+        {
+            // FIXME(rust/#120456) - is `swap_remove` correct?
+            self.set.swap_remove(&lid);
         }
     }
 
+    fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {
-        if cmt.place.projections.is_empty() {
-            if let PlaceBase::Local(lid) = cmt.place.base {
-                // FIXME(rust/#120456) - is `swap_remove` correct?
-                self.set.swap_remove(&lid);
-            }
+        if cmt.place.projections.is_empty()
+            && let PlaceBase::Local(lid) = cmt.place.base
+        {
+            // FIXME(rust/#120456) - is `swap_remove` correct?
+            self.set.swap_remove(&lid);
         }
     }
 
     fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
-        if cmt.place.projections.is_empty() {
-            let map = &self.cx.tcx.hir();
-            if is_argument(self.cx.tcx, cmt.hir_id) {
-                // Skip closure arguments
-                let parent_id = self.cx.tcx.parent_hir_id(cmt.hir_id);
-                if let Node::Expr(..) = self.cx.tcx.parent_hir_node(parent_id) {
-                    return;
-                }
+        if cmt.place.projections.is_empty() && is_argument(self.cx.tcx, cmt.hir_id) {
+            // Skip closure arguments
+            let parent_id = self.cx.tcx.parent_hir_id(cmt.hir_id);
+            if let Node::Expr(..) = self.cx.tcx.parent_hir_node(parent_id) {
+                return;
+            }
 
-                // skip if there is a `self` parameter binding to a type
-                // that contains `Self` (i.e.: `self: Box<Self>`), see #4804
-                if let Some(trait_self_ty) = self.trait_self_ty {
-                    if map.name(cmt.hir_id) == kw::SelfLower && cmt.place.ty().contains(trait_self_ty) {
-                        return;
-                    }
-                }
+            // skip if there is a `self` parameter binding to a type
+            // that contains `Self` (i.e.: `self: Box<Self>`), see #4804
+            if let Some(trait_self_ty) = self.trait_self_ty
+                && self.cx.tcx.hir_name(cmt.hir_id) == kw::SelfLower
+                && cmt.place.ty().contains(trait_self_ty)
+            {
+                return;
+            }
 
-                if is_non_trait_box(cmt.place.ty()) && !self.is_large_box(cmt.place.ty()) {
-                    self.set.insert(cmt.hir_id);
-                }
+            if is_non_trait_box(cmt.place.ty()) && !self.is_large_box(cmt.place.ty()) {
+                self.set.insert(cmt.hir_id);
             }
         }
     }

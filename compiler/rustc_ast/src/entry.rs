@@ -18,12 +18,6 @@ pub enum EntryPointType {
     /// fn main() {}
     /// ```
     RustcMainAttr,
-    /// This is a function with the `#[start]` attribute.
-    /// ```ignore (clashes with test entrypoint)
-    /// #[start]
-    /// fn main() {}
-    /// ```
-    Start,
     /// This function is **not** an entrypoint but simply named `main` (not at the root).
     /// This is only used for diagnostics.
     /// ```
@@ -40,9 +34,7 @@ pub fn entry_point_type(
     at_root: bool,
     name: Option<Symbol>,
 ) -> EntryPointType {
-    if attr::contains_name(attrs, sym::start) {
-        EntryPointType::Start
-    } else if attr::contains_name(attrs, sym::rustc_main) {
+    if attr::contains_name(attrs, sym::rustc_main) {
         EntryPointType::RustcMainAttr
     } else if let Some(name) = name
         && name == sym::main

@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: arm-mode thumb-mode
 //@ [arm-mode] compile-flags: --target armv5te-none-eabi
 //@ [thumb-mode] compile-flags: --target thumbv5te-none-eabi
@@ -5,18 +6,11 @@
 //@ [thumb-mode] needs-llvm-components: arm
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items, rustc_attrs, naked_functions)]
+#![feature(no_core, lang_items, rustc_attrs)]
 #![no_core]
 
-#[rustc_builtin_macro]
-macro_rules! naked_asm {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 // arm-mode: .arm
 // thumb-mode: .thumb
@@ -26,8 +20,8 @@ trait Copy {}
 // arm-mode: .arm
 // thumb-mode: .thumb
 #[no_mangle]
-#[naked]
-unsafe extern "C" fn test_unspecified() {
+#[unsafe(naked)]
+extern "C" fn test_unspecified() {
     naked_asm!("bx lr");
 }
 
@@ -39,9 +33,9 @@ unsafe extern "C" fn test_unspecified() {
 // arm-mode: .arm
 // thumb-mode: .thumb
 #[no_mangle]
-#[naked]
+#[unsafe(naked)]
 #[instruction_set(arm::t32)]
-unsafe extern "C" fn test_thumb() {
+extern "C" fn test_thumb() {
     naked_asm!("bx lr");
 }
 
@@ -52,8 +46,8 @@ unsafe extern "C" fn test_thumb() {
 // arm-mode: .arm
 // thumb-mode: .thumb
 #[no_mangle]
-#[naked]
+#[unsafe(naked)]
 #[instruction_set(arm::a32)]
-unsafe extern "C" fn test_arm() {
+extern "C" fn test_arm() {
     naked_asm!("bx lr");
 }

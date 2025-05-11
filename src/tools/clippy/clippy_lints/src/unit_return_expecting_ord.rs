@@ -123,7 +123,7 @@ fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Spa
         && let ty = cx.tcx.instantiate_bound_regions_with_erased(ret_ty)
         && ty.is_unit()
     {
-        let body = cx.tcx.hir().body(body);
+        let body = cx.tcx.hir_body(body);
         if let ExprKind::Block(block, _) = body.value.kind
             && block.expr.is_none()
             && let Some(stmt) = block.stmts.last()

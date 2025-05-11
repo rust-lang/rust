@@ -6,8 +6,9 @@ LL |     y: (typeof("hey"),),
    |
 help: consider replacing `typeof(...)` with an actual type
    |
-LL |     y: (&str,),
-   |         ~~~~
+LL -     y: (typeof("hey"),),
+LL +     y: (&str,),
+   |
 
 error: aborting due to 1 previous error
 

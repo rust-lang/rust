@@ -2,15 +2,16 @@
 
 use std::cell::{OnceCell, RefCell};
 use std::ops::Range;
+use std::sync::Arc;
 use std::{iter, ptr};
 
 use libc::c_uint;
+use metadata::create_subroutine_type;
 use rustc_abi::Size;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_index::IndexVec;
@@ -22,23 +23,25 @@ use rustc_session::config::{self, DebugInfo};
 use rustc_span::{
     BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId, Symbol,
 };
+use rustc_target::callconv::FnAbi;
+use rustc_target::spec::DebuginfoKind;
 use smallvec::SmallVec;
 use tracing::debug;
 
 use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, type_di_node};
 use self::namespace::mangled_name_of_instance;
 use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
-use crate::abi::FnAbi;
 use crate::builder::Builder;
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm;
 use crate::llvm::debuginfo::{
-    DIArray, DIBuilder, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope, DIType,
-    DIVariable,
+    DIArray, DIBuilderBox, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope,
+    DITemplateTypeParameter, DIType, DIVariable,
 };
 use crate::value::Value;
 
 mod create_scope_map;
+mod dwarf_const;
 mod gdb;
 pub(crate) mod metadata;
 mod namespace;
@@ -47,6 +50,10 @@ mod utils;
 use self::create_scope_map::compute_mir_scopes;
 pub(crate) use self::metadata::build_global_var_di_node;
 
+// FIXME(Zalathar): These `DW_TAG_*` constants are fake values that were
+// removed from LLVM in 2015, and are only used by our own `RustWrapper.cpp`
+// to decide which C++ API to call. Instead, we should just have two separate
+// FFI functions and choose the correct one on the Rust side.
 #[allow(non_upper_case_globals)]
 const DW_TAG_auto_variable: c_uint = 0x100;
 #[allow(non_upper_case_globals)]
@@ -55,62 +62,62 @@ const DW_TAG_arg_variable: c_uint = 0x101;
 /// A context object for maintaining all state needed by the debuginfo module.
 pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     llmod: &'ll llvm::Module,
-    builder: &'ll mut DIBuilder<'ll>,
+    builder: DIBuilderBox<'ll>,
     created_files: RefCell<UnordMap<Option<(StableSourceFileId, SourceFileHash)>, &'ll DIFile>>,
 
     type_map: metadata::TypeMap<'ll, 'tcx>,
+    adt_stack: RefCell<Vec<(DefId, GenericArgsRef<'tcx>)>>,
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
     recursion_marker_type: OnceCell<&'ll DIType>,
-}
-
-impl Drop for CodegenUnitDebugContext<'_, '_> {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMRustDIBuilderDispose(&mut *(self.builder as *mut _));
-        }
-    }
 }
 
 impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
     pub(crate) fn new(llmod: &'ll llvm::Module) -> Self {
         debug!("CodegenUnitDebugContext::new");
-        let builder = unsafe { llvm::LLVMRustDIBuilderCreate(llmod) };
+        let builder = DIBuilderBox::new(llmod);
         // DIBuilder inherits context from the module, so we'd better use the same one
         CodegenUnitDebugContext {
             llmod,
             builder,
             created_files: Default::default(),
             type_map: Default::default(),
+            adt_stack: Default::default(),
             namespace_map: RefCell::new(Default::default()),
             recursion_marker_type: OnceCell::new(),
         }
     }
 
     pub(crate) fn finalize(&self, sess: &Session) {
-        unsafe { llvm::LLVMRustDIBuilderFinalize(self.builder) };
-        if !sess.target.is_like_msvc {
-            // Debuginfo generation in LLVM by default uses a higher
-            // version of dwarf than macOS currently understands. We can
-            // instruct LLVM to emit an older version of dwarf, however,
-            // for macOS to understand. For more info see #11352
-            // This can be overridden using --llvm-opts -dwarf-version,N.
-            // Android has the same issue (#22398)
-            let dwarf_version =
-                sess.opts.unstable_opts.dwarf_version.unwrap_or(sess.target.default_dwarf_version);
-            llvm::add_module_flag_u32(
-                self.llmod,
-                llvm::ModuleFlagMergeBehavior::Warning,
-                "Dwarf Version",
-                dwarf_version,
-            );
-        } else {
-            // Indicate that we want CodeView debug information on MSVC
-            llvm::add_module_flag_u32(
-                self.llmod,
-                llvm::ModuleFlagMergeBehavior::Warning,
-                "CodeView",
-                1,
-            );
+        unsafe { llvm::LLVMDIBuilderFinalize(self.builder.as_ref()) };
+
+        match sess.target.debuginfo_kind {
+            DebuginfoKind::Dwarf | DebuginfoKind::DwarfDsym => {
+                // Debuginfo generation in LLVM by default uses a higher
+                // version of dwarf than macOS currently understands. We can
+                // instruct LLVM to emit an older version of dwarf, however,
+                // for macOS to understand. For more info see #11352
+                // This can be overridden using --llvm-opts -dwarf-version,N.
+                // Android has the same issue (#22398)
+                llvm::add_module_flag_u32(
+                    self.llmod,
+                    // In the case where multiple CGUs with different dwarf version
+                    // values are being merged together, such as with cross-crate
+                    // LTO, then we want to use the highest version of dwarf
+                    // we can. This matches Clang's behavior as well.
+                    llvm::ModuleFlagMergeBehavior::Max,
+                    "Dwarf Version",
+                    sess.dwarf_version(),
+                );
+            }
+            DebuginfoKind::Pdb => {
+                // Indicate that we want CodeView debug information
+                llvm::add_module_flag_u32(
+                    self.llmod,
+                    llvm::ModuleFlagMergeBehavior::Warning,
+                    "CodeView",
+                    1,
+                );
+            }
         }
 
         // Prevent bitcode readers from deleting the debug info.
@@ -152,29 +159,26 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         indirect_offsets: &[Size],
         fragment: Option<Range<Size>>,
     ) {
+        use dwarf_const::{DW_OP_LLVM_fragment, DW_OP_deref, DW_OP_plus_uconst};
+
         // Convert the direct and indirect offsets and fragment byte range to address ops.
-        // FIXME(eddyb) use `const`s instead of getting the values via FFI,
-        // the values should match the ones in the DWARF standard anyway.
-        let op_deref = || unsafe { llvm::LLVMRustDIBuilderCreateOpDeref() };
-        let op_plus_uconst = || unsafe { llvm::LLVMRustDIBuilderCreateOpPlusUconst() };
-        let op_llvm_fragment = || unsafe { llvm::LLVMRustDIBuilderCreateOpLLVMFragment() };
         let mut addr_ops = SmallVec::<[u64; 8]>::new();
 
         if direct_offset.bytes() > 0 {
-            addr_ops.push(op_plus_uconst());
+            addr_ops.push(DW_OP_plus_uconst);
             addr_ops.push(direct_offset.bytes() as u64);
         }
         for &offset in indirect_offsets {
-            addr_ops.push(op_deref());
+            addr_ops.push(DW_OP_deref);
             if offset.bytes() > 0 {
-                addr_ops.push(op_plus_uconst());
+                addr_ops.push(DW_OP_plus_uconst);
                 addr_ops.push(offset.bytes() as u64);
             }
         }
         if let Some(fragment) = fragment {
             // `DW_OP_LLVM_fragment` takes as arguments the fragment's
             // offset and size, both of them in bits.
-            addr_ops.push(op_llvm_fragment());
+            addr_ops.push(DW_OP_LLVM_fragment);
             addr_ops.push(fragment.start.bits() as u64);
             addr_ops.push((fragment.end - fragment.start).bits() as u64);
         }
@@ -243,14 +247,14 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
 // `lookup_char_pos` return the right information instead.
 struct DebugLoc {
     /// Information about the original source file.
-    file: Lrc<SourceFile>,
+    file: Arc<SourceFile>,
     /// The (1-based) line number.
     line: u32,
     /// The (1-based) column number.
     col: u32,
 }
 
-impl CodegenCx<'_, '_> {
+impl<'ll> CodegenCx<'ll, '_> {
     /// Looks up debug source information about a `BytePos`.
     // FIXME(eddyb) rename this to better indicate it's a duplicate of
     // `lookup_char_pos` rather than `dbg_loc`, perhaps by making
@@ -278,6 +282,22 @@ impl CodegenCx<'_, '_> {
             DebugLoc { file, line, col }
         }
     }
+
+    fn create_template_type_parameter(
+        &self,
+        name: &str,
+        actual_type_metadata: &'ll DIType,
+    ) -> &'ll DITemplateTypeParameter {
+        unsafe {
+            llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
+                DIB(self),
+                None,
+                name.as_c_char_ptr(),
+                name.len(),
+                actual_type_metadata,
+            )
+        }
+    }
 }
 
 impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
@@ -293,12 +313,12 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
 
         // Initialize fn debug context (including scopes).
-        let empty_scope = Some(DebugScope {
+        let empty_scope = DebugScope {
             dbg_scope: self.dbg_scope_fn(instance, fn_abi, Some(llfn)),
             inlined_at: None,
             file_start_pos: BytePos(0),
             file_end_pos: BytePos(0),
-        });
+        };
         let mut fn_debug_context = FunctionDebugContext {
             scopes: IndexVec::from_elem(empty_scope, &mir.source_scopes),
             inlined_function_scopes: Default::default(),
@@ -324,10 +344,8 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
-        let function_type_metadata = unsafe {
-            let fn_signature = get_function_signature(self, fn_abi);
-            llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), fn_signature)
-        };
+        let function_type_metadata =
+            create_subroutine_type(self, get_function_signature(self, fn_abi));
 
         let mut name = String::with_capacity(64);
         type_names::push_item_name(tcx, def_id, false, &mut name);
@@ -482,16 +500,10 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         kind.as_type().map(|ty| {
                             let actual_type = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
                             let actual_type_metadata = type_di_node(cx, actual_type);
-                            let name = name.as_str();
-                            unsafe {
-                                Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
-                                    DIB(cx),
-                                    None,
-                                    name.as_c_char_ptr(),
-                                    name.len(),
-                                    actual_type_metadata,
-                                ))
-                            }
+                            Some(cx.create_template_type_parameter(
+                                name.as_str(),
+                                actual_type_metadata,
+                            ))
                         })
                     })
                     .collect()
@@ -547,14 +559,17 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 }
             }
 
-            let scope = namespace::item_namespace(cx, DefId {
-                krate: instance.def_id().krate,
-                index: cx
-                    .tcx
-                    .def_key(instance.def_id())
-                    .parent
-                    .expect("get_containing_scope: missing parent?"),
-            });
+            let scope = namespace::item_namespace(
+                cx,
+                DefId {
+                    krate: instance.def_id().krate,
+                    index: cx
+                        .tcx
+                        .def_key(instance.def_id())
+                        .parent
+                        .expect("get_containing_scope: missing parent?"),
+                },
+            );
             (scope, false)
         }
     }
@@ -577,13 +592,13 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             (line, col)
         };
 
-        unsafe { llvm::LLVMRustDIBuilderCreateDebugLocation(line, col, scope, inlined_at) }
+        unsafe { llvm::LLVMDIBuilderCreateDebugLocation(self.llcx, line, col, scope, inlined_at) }
     }
 
     fn create_vtable_debuginfo(
         &self,
         ty: Ty<'tcx>,
-        trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+        trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
         vtable: Self::Value,
     ) {
         metadata::create_vtable_di_node(self, ty, trait_ref, vtable)
@@ -636,7 +651,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 true,
                 DIFlags::FlagZero,
                 argument_index,
-                align.bytes() as u32,
+                align.bits() as u32,
             )
         }
     }

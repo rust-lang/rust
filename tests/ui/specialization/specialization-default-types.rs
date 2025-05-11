@@ -1,3 +1,7 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+
 // It should not be possible to use the concrete value of a defaulted
 // associated type in the impl defining it -- otherwise, what happens
 // if it's overridden?

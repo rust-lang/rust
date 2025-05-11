@@ -14,8 +14,8 @@ LL |     let local = 0;
 help: ALLOC was deallocated here:
   --> tests/fail/tail_calls/dangling-local-var.rs:LL:CC
    |
-LL | }
-   | ^
+LL |     become g(ptr)
+   |     ^^^^^^^^^^^^^
    = note: BACKTRACE (of the first span):
    = note: inside `g` at tests/fail/tail_calls/dangling-local-var.rs:LL:CC
 note: inside `main`

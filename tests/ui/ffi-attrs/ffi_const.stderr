@@ -1,21 +1,32 @@
+error: unsafe attribute used without unsafe
+  --> $DIR/ffi_const.rs:16:7
+   |
+LL |     #[ffi_const]
+   |       ^^^^^^^^^ usage of unsafe attribute
+   |
+help: wrap the attribute in `unsafe(...)`
+   |
+LL |     #[unsafe(ffi_const)]
+   |       +++++++         +
+
 error[E0756]: `#[ffi_const]` may only be used on foreign functions
   --> $DIR/ffi_const.rs:4:1
    |
-LL | #[ffi_const]
-   | ^^^^^^^^^^^^
+LL | #[unsafe(ffi_const)]
+   | ^^^^^^^^^^^^^^^^^^^^
 
 error[E0756]: `#[ffi_const]` may only be used on foreign functions
   --> $DIR/ffi_const.rs:7:1
    |
-LL | #[ffi_const]
-   | ^^^^^^^^^^^^
+LL | #[unsafe(ffi_const)]
+   | ^^^^^^^^^^^^^^^^^^^^
 
 error[E0756]: `#[ffi_const]` may only be used on foreign functions
   --> $DIR/ffi_const.rs:13:5
    |
-LL |     #[ffi_const]
-   |     ^^^^^^^^^^^^
+LL |     #[unsafe(ffi_const)]
+   |     ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0756`.

@@ -1,4 +1,6 @@
 //@ aux-build:no_method_suggested_traits.rs
+//@ dont-require-annotations: HELP
+
 extern crate no_method_suggested_traits;
 
 struct Foo;
@@ -22,9 +24,9 @@ fn main() {
 
     1u32.method();
     //~^ ERROR no method named
-    //~|items from traits can only be used if the trait is in scope
+    //~| HELP items from traits can only be used if the trait is in scope
     std::rc::Rc::new(&mut Box::new(&1u32)).method();
-    //~^items from traits can only be used if the trait is in scope
+    //~^ HELP items from traits can only be used if the trait is in scope
     //~| ERROR no method named `method` found for struct
 
     'a'.method();

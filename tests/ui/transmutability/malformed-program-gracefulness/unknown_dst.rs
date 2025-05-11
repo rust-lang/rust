@@ -15,5 +15,5 @@ mod assert {
 
 fn should_gracefully_handle_unknown_dst() {
     struct Src;
-    assert::is_transmutable::<Src, Dst>(); //~ cannot find type
+    assert::is_transmutable::<Src, Dst>(); //~ ERROR cannot find type
 }

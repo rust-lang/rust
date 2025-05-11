@@ -1,10 +1,10 @@
 use hir::Name;
 use ide_db::text_edit::TextEdit;
 use ide_db::{
-    assists::{Assist, AssistId, AssistKind},
+    FileRange, RootDatabase,
+    assists::{Assist, AssistId},
     label::Label,
     source_change::SourceChange,
-    FileRange, RootDatabase,
 };
 use syntax::{Edition, TextRange};
 
@@ -46,7 +46,7 @@ pub(crate) fn unused_variables(
                 ctx.sema.db,
                 var_name,
                 it.range,
-                diagnostic_range.into(),
+                diagnostic_range,
                 ast.file_id.is_macro(),
                 ctx.edition,
             )
@@ -68,7 +68,7 @@ fn fixes(
     }
 
     Some(vec![Assist {
-        id: AssistId("unscore_unused_variable_name", AssistKind::QuickFix),
+        id: AssistId::quick_fix("unscore_unused_variable_name"),
         label: Label::new(format!(
             "Rename unused {} to _{}",
             var_name.display(db, edition),
@@ -259,6 +259,19 @@ fn main() {
 fn main() {
     let arr = [1, 2, 3, 4, 5];
     let [_x, _y @ ..] = arr;
+}
+"#,
+        );
+    }
+
+    // regression test as we used to panic in this scenario
+    #[test]
+    fn unknown_struct_pattern_param_type() {
+        check_diagnostics(
+            r#"
+struct S { field : u32 }
+fn f(S { field }: error) {
+      // ^^^^^ 💡 warn: unused variable
 }
 "#,
         );

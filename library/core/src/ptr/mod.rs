@@ -15,8 +15,8 @@
 //! The precise rules for validity are not determined yet. The guarantees that are
 //! provided at this point are very minimal:
 //!
-//! * For operations of [size zero][zst], *every* pointer is valid, including the [null] pointer.
-//!   The following points are only concerned with non-zero-sized accesses.
+//! * For memory accesses of [size zero][zst], *every* pointer is valid, including the [null]
+//!   pointer. The following points are only concerned with non-zero-sized accesses.
 //! * A [null] pointer is *never* valid.
 //! * For a pointer to be valid, it is necessary, but not always sufficient, that the pointer be
 //!   *dereferenceable*. The [provenance] of the pointer is used to determine which [allocated
@@ -48,7 +48,7 @@
 //!
 //! Valid raw pointers as defined above are not necessarily properly aligned (where
 //! "proper" alignment is defined by the pointee type, i.e., `*const T` must be
-//! aligned to `mem::align_of::<T>()`). However, most functions require their
+//! aligned to `align_of::<T>()`). However, most functions require their
 //! arguments to be properly aligned, and will explicitly state
 //! this requirement in their documentation. Notable exceptions to this are
 //! [`read_unaligned`] and [`write_unaligned`].
@@ -278,7 +278,7 @@
 //! ### Using Strict Provenance
 //!
 //! Most code needs no changes to conform to strict provenance, as the only really concerning
-//! operation is casts from usize to a pointer. For code which *does* cast a `usize` to a pointer,
+//! operation is casts from `usize` to a pointer. For code which *does* cast a `usize` to a pointer,
 //! the scope of the change depends on exactly what you're doing.
 //!
 //! In general, you just need to make sure that if you want to convert a `usize` address to a
@@ -297,7 +297,7 @@
 //!
 //!     // Our value, which must have enough alignment to have spare least-significant-bits.
 //!     let my_precious_data: u32 = 17;
-//!     assert!(core::mem::align_of::<u32>() > 1);
+//!     assert!(align_of::<u32>() > 1);
 //!
 //!     // Create a tagged pointer
 //!     let ptr = &my_precious_data as *const u32;
@@ -398,6 +398,7 @@ use crate::cmp::Ordering;
 use crate::intrinsics::const_eval_select;
 use crate::marker::FnPtr;
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
+use crate::num::NonZero;
 use crate::{fmt, hash, intrinsics, ub_checks};
 
 mod alignment;
@@ -596,12 +597,7 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn without_provenance<T>(addr: usize) -> *const T {
-    // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
-    // pointer without provenance. Note that this is *not* a stable guarantee about transmute
-    // semantics, it relies on sysroot crates having special status.
-    // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
-    // pointer).
-    unsafe { mem::transmute(addr) }
+    without_provenance_mut(addr)
 }
 
 /// Creates a new pointer that is dangling, but non-null and well-aligned.
@@ -618,7 +614,7 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn dangling<T>() -> *const T {
-    without_provenance(mem::align_of::<T>())
+    dangling_mut()
 }
 
 /// Creates a pointer with the given address and no [provenance][crate::ptr#provenance].
@@ -661,7 +657,7 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn dangling_mut<T>() -> *mut T {
-    without_provenance_mut(mem::align_of::<T>())
+    NonNull::dangling().as_ptr()
 }
 
 /// Converts an address back to a pointer, picking up some previously 'exposed'
@@ -777,7 +773,7 @@ pub fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T {
 /// # type T = i32;
 /// # fn foo() -> T { 42 }
 /// // The temporary holding the return value of `foo` does *not* have its lifetime extended,
-/// // because the surrounding expression involves no function call.
+/// // because the surrounding expression involves a function call.
 /// let p = ptr::from_ref(&foo());
 /// unsafe { p.read() }; // UB! Reading from a dangling pointer ⚠️
 /// ```
@@ -828,7 +824,7 @@ pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
 /// # type T = i32;
 /// # fn foo() -> T { 42 }
 /// // The temporary holding the return value of `foo` does *not* have its lifetime extended,
-/// // because the surrounding expression involves no function call.
+/// // because the surrounding expression involves a function call.
 /// let p = ptr::from_mut(&mut foo());
 /// unsafe { p.write(T::default()) }; // UB! Writing to a dangling pointer ⚠️
 /// ```
@@ -1009,7 +1005,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_swap", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_swap", since = "1.85.0")]
 #[rustc_diagnostic_item = "ptr_swap"]
 pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with.
@@ -1069,13 +1065,48 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// assert_eq!(x, [7, 8, 3, 4]);
 /// assert_eq!(y, [1, 2, 9]);
 /// ```
+///
+/// # Const evaluation limitations
+///
+/// If this function is invoked during const-evaluation, the current implementation has a small (and
+/// rarely relevant) limitation: if `count` is at least 2 and the data pointed to by `x` or `y`
+/// contains a pointer that crosses the boundary of two `T`-sized chunks of memory, the function may
+/// fail to evaluate (similar to a panic during const-evaluation). This behavior may change in the
+/// future.
+///
+/// The limitation is illustrated by the following example:
+///
+/// ```
+/// use std::mem::size_of;
+/// use std::ptr;
+///
+/// const { unsafe {
+///     const PTR_SIZE: usize = size_of::<*const i32>();
+///     let mut data1 = [0u8; PTR_SIZE];
+///     let mut data2 = [0u8; PTR_SIZE];
+///     // Store a pointer in `data1`.
+///     data1.as_mut_ptr().cast::<*const i32>().write_unaligned(&42);
+///     // Swap the contents of `data1` and `data2` by swapping `PTR_SIZE` many `u8`-sized chunks.
+///     // This call will fail, because the pointer in `data1` crosses the boundary
+///     // between several of the 1-byte chunks that are being swapped here.
+///     //ptr::swap_nonoverlapping(data1.as_mut_ptr(), data2.as_mut_ptr(), PTR_SIZE);
+///     // Swap the contents of `data1` and `data2` by swapping a single chunk of size
+///     // `[u8; PTR_SIZE]`. That works, as there is no pointer crossing the boundary between
+///     // two chunks.
+///     ptr::swap_nonoverlapping(&mut data1, &mut data2, 1);
+///     // Read the pointer from `data2` and dereference it.
+///     let ptr = data2.as_ptr().cast::<*const i32>().read_unaligned();
+///     assert!(*ptr == 42);
+/// } }
+/// ```
 #[inline]
 #[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
-#[rustc_const_unstable(feature = "const_swap_nonoverlapping", issue = "133668")]
+#[rustc_const_stable(feature = "const_swap_nonoverlapping", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_diagnostic_item = "ptr_swap_nonoverlapping"]
+#[rustc_allow_const_fn_unstable(const_eval_select)] // both implementations behave the same
 pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     ub_checks::assert_unsafe_precondition!(
-        check_language_ub,
+        check_library_ub,
         "ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null \
         and the specified memory ranges do not overlap",
         (
@@ -1099,51 +1130,25 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
             // are pointers inside `T` we will copy them in one go rather than trying to copy a part
             // of a pointer (which would not work).
             // SAFETY: Same preconditions as this function
-            unsafe { swap_nonoverlapping_simple_untyped(x, y, count) }
+            unsafe { swap_nonoverlapping_const(x, y, count) }
         } else {
-            macro_rules! attempt_swap_as_chunks {
-                ($ChunkTy:ty) => {
-                    if mem::align_of::<T>() >= mem::align_of::<$ChunkTy>()
-                        && mem::size_of::<T>() % mem::size_of::<$ChunkTy>() == 0
-                    {
-                        let x: *mut $ChunkTy = x.cast();
-                        let y: *mut $ChunkTy = y.cast();
-                        let count = count * (mem::size_of::<T>() / mem::size_of::<$ChunkTy>());
-                        // SAFETY: these are the same bytes that the caller promised were
-                        // ok, just typed as `MaybeUninit<ChunkTy>`s instead of as `T`s.
-                        // The `if` condition above ensures that we're not violating
-                        // alignment requirements, and that the division is exact so
-                        // that we don't lose any bytes off the end.
-                        return unsafe { swap_nonoverlapping_simple_untyped(x, y, count) };
-                    }
-                };
+            // Going though a slice here helps codegen know the size fits in `isize`
+            let slice = slice_from_raw_parts_mut(x, count);
+            // SAFETY: This is all readable from the pointer, meaning it's one
+            // allocated object, and thus cannot be more than isize::MAX bytes.
+            let bytes = unsafe { mem::size_of_val_raw::<[T]>(slice) };
+            if let Some(bytes) = NonZero::new(bytes) {
+                // SAFETY: These are the same ranges, just expressed in a different
+                // type, so they're still non-overlapping.
+                unsafe { swap_nonoverlapping_bytes(x.cast(), y.cast(), bytes) };
             }
-
-            // Split up the slice into small power-of-two-sized chunks that LLVM is able
-            // to vectorize (unless it's a special type with more-than-pointer alignment,
-            // because we don't want to pessimize things like slices of SIMD vectors.)
-            if mem::align_of::<T>() <= mem::size_of::<usize>()
-            && (!mem::size_of::<T>().is_power_of_two()
-                || mem::size_of::<T>() > mem::size_of::<usize>() * 2)
-            {
-                attempt_swap_as_chunks!(usize);
-                attempt_swap_as_chunks!(u8);
-            }
-
-            // SAFETY: Same preconditions as this function
-            unsafe { swap_nonoverlapping_simple_untyped(x, y, count) }
         }
     )
 }
 
 /// Same behavior and safety conditions as [`swap_nonoverlapping`]
-///
-/// LLVM can vectorize this (at least it can for the power-of-two-sized types
-/// `swap_nonoverlapping` tries to use) so no need to manually SIMD it.
 #[inline]
-const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, count: usize) {
-    let x = x.cast::<MaybeUninit<T>>();
-    let y = y.cast::<MaybeUninit<T>>();
+const unsafe fn swap_nonoverlapping_const<T>(x: *mut T, y: *mut T, count: usize) {
     let mut i = 0;
     while i < count {
         // SAFETY: By precondition, `i` is in-bounds because it's below `n`
@@ -1152,23 +1157,88 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
         // and it's distinct from `x` since the ranges are non-overlapping
         let y = unsafe { y.add(i) };
 
-        // If we end up here, it's because we're using a simple type -- like
-        // a small power-of-two-sized thing -- or a special type with particularly
-        // large alignment, particularly SIMD types.
-        // Thus, we're fine just reading-and-writing it, as either it's small
-        // and that works well anyway or it's special and the type's author
-        // presumably wanted things to be done in the larger chunk.
-
         // SAFETY: we're only ever given pointers that are valid to read/write,
         // including being aligned, and nothing here panics so it's drop-safe.
         unsafe {
-            let a: MaybeUninit<T> = read(x);
-            let b: MaybeUninit<T> = read(y);
-            write(x, b);
-            write(y, a);
+            // Note that it's critical that these use `copy_nonoverlapping`,
+            // rather than `read`/`write`, to avoid #134713 if T has padding.
+            let mut temp = MaybeUninit::<T>::uninit();
+            copy_nonoverlapping(x, temp.as_mut_ptr(), 1);
+            copy_nonoverlapping(y, x, 1);
+            copy_nonoverlapping(temp.as_ptr(), y, 1);
         }
 
         i += 1;
+    }
+}
+
+// Don't let MIR inline this, because we really want it to keep its noalias metadata
+#[rustc_no_mir_inline]
+#[inline]
+fn swap_chunk<const N: usize>(x: &mut MaybeUninit<[u8; N]>, y: &mut MaybeUninit<[u8; N]>) {
+    let a = *x;
+    let b = *y;
+    *x = b;
+    *y = a;
+}
+
+#[inline]
+unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, bytes: NonZero<usize>) {
+    // Same as `swap_nonoverlapping::<[u8; N]>`.
+    unsafe fn swap_nonoverlapping_chunks<const N: usize>(
+        x: *mut MaybeUninit<[u8; N]>,
+        y: *mut MaybeUninit<[u8; N]>,
+        chunks: NonZero<usize>,
+    ) {
+        let chunks = chunks.get();
+        for i in 0..chunks {
+            // SAFETY: i is in [0, chunks) so the adds and dereferences are in-bounds.
+            unsafe { swap_chunk(&mut *x.add(i), &mut *y.add(i)) };
+        }
+    }
+
+    // Same as `swap_nonoverlapping_bytes`, but accepts at most 1+2+4=7 bytes
+    #[inline]
+    unsafe fn swap_nonoverlapping_short(x: *mut u8, y: *mut u8, bytes: NonZero<usize>) {
+        // Tail handling for auto-vectorized code sometimes has element-at-a-time behaviour,
+        // see <https://github.com/rust-lang/rust/issues/134946>.
+        // By swapping as different sizes, rather than as a loop over bytes,
+        // we make sure not to end up with, say, seven byte-at-a-time copies.
+
+        let bytes = bytes.get();
+        let mut i = 0;
+        macro_rules! swap_prefix {
+            ($($n:literal)+) => {$(
+                if (bytes & $n) != 0 {
+                    // SAFETY: `i` can only have the same bits set as those in bytes,
+                    // so these `add`s are in-bounds of `bytes`.  But the bit for
+                    // `$n` hasn't been set yet, so the `$n` bytes that `swap_chunk`
+                    // will read and write are within the usable range.
+                    unsafe { swap_chunk::<$n>(&mut*x.add(i).cast(), &mut*y.add(i).cast()) };
+                    i |= $n;
+                }
+            )+};
+        }
+        swap_prefix!(4 2 1);
+        debug_assert_eq!(i, bytes);
+    }
+
+    const CHUNK_SIZE: usize = size_of::<*const ()>();
+    let bytes = bytes.get();
+
+    let chunks = bytes / CHUNK_SIZE;
+    let tail = bytes % CHUNK_SIZE;
+    if let Some(chunks) = NonZero::new(chunks) {
+        // SAFETY: this is bytes/CHUNK_SIZE*CHUNK_SIZE bytes, which is <= bytes,
+        // so it's within the range of our non-overlapping bytes.
+        unsafe { swap_nonoverlapping_chunks::<CHUNK_SIZE>(x.cast(), y.cast(), chunks) };
+    }
+    if let Some(tail) = NonZero::new(tail) {
+        const { assert!(CHUNK_SIZE <= 8) };
+        let delta = chunks * CHUNK_SIZE;
+        // SAFETY: the tail length is below CHUNK SIZE because of the remainder,
+        // and CHUNK_SIZE is at most 8 by the const assert, so tail <= 7
+        unsafe { swap_nonoverlapping_short(x.add(delta), y.add(delta), tail) };
     }
 }
 
@@ -1403,8 +1473,6 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the returned
 /// value and the value at `*src` can [violate memory safety][read-ownership].
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-null.
-///
 /// [read-ownership]: read#ownership-of-the-returned-value
 /// [valid]: self#safety
 ///
@@ -1450,10 +1518,8 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// Read a `usize` value from a byte buffer:
 ///
 /// ```
-/// use std::mem;
-///
 /// fn read_usize(x: &[u8]) -> usize {
-///     assert!(x.len() >= mem::size_of::<usize>());
+///     assert!(x.len() >= size_of::<usize>());
 ///
 ///     let ptr = x.as_ptr() as *const usize;
 ///
@@ -1474,7 +1540,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
     // Also, since we just wrote a valid value into `tmp`, it is guaranteed
     // to be properly initialized.
     unsafe {
-        copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, mem::size_of::<T>());
+        copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, size_of::<T>());
         tmp.assume_init()
     }
 }
@@ -1611,8 +1677,6 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// * `dst` must be [valid] for writes.
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-null.
-///
 /// [valid]: self#safety
 ///
 /// ## On `packed` structs
@@ -1656,10 +1720,8 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// Write a `usize` value to a byte buffer:
 ///
 /// ```
-/// use std::mem;
-///
 /// fn write_usize(x: &mut [u8], val: usize) {
-///     assert!(x.len() >= mem::size_of::<usize>());
+///     assert!(x.len() >= size_of::<usize>());
 ///
 ///     let ptr = x.as_mut_ptr() as *mut usize;
 ///
@@ -1676,7 +1738,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
-        copy_nonoverlapping((&raw const src) as *const u8, dst as *mut u8, mem::size_of::<T>());
+        copy_nonoverlapping((&raw const src) as *const u8, dst as *mut u8, size_of::<T>());
         // We are calling the intrinsic directly to avoid function calls in the generated code.
         intrinsics::forget(src);
     }
@@ -1920,7 +1982,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         inverse & m_minus_one
     }
 
-    let stride = mem::size_of::<T>();
+    let stride = size_of::<T>();
 
     let addr: usize = p.addr();
 
@@ -2154,7 +2216,7 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 /// ```
 ///
 /// [subtype]: https://doc.rust-lang.org/reference/subtyping.html
-#[stable(feature = "ptr_fn_addr_eq", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "ptr_fn_addr_eq", since = "1.85.0")]
 #[inline(always)]
 #[must_use = "function pointer comparison produces a value"]
 pub fn fn_addr_eq<T: FnPtr, U: FnPtr>(f: T, g: U) -> bool {

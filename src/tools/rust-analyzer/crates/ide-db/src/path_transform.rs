@@ -7,8 +7,9 @@ use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use span::Edition;
 use syntax::{
-    ast::{self, make, AstNode, HasGenericArgs},
-    ted, NodeOrToken, SyntaxNode,
+    NodeOrToken, SyntaxNode,
+    ast::{self, AstNode, HasGenericArgs, make},
+    ted,
 };
 
 #[derive(Default)]
@@ -32,7 +33,7 @@ type DefaultedParam = Either<hir::TypeParam, hir::ConstParam>;
 /// block), you generally want to appropriately qualify the names, and sometimes
 /// you might want to substitute generic parameters as well:
 ///
-/// ```
+/// ```ignore
 /// mod x {
 ///   pub struct A<V>;
 ///   pub trait T<U> { fn foo(&self, _: U) -> A<U>; }
@@ -192,7 +193,9 @@ impl<'a> PathTransform<'a> {
                     }
                 }
                 (Either::Left(k), None) => {
-                    if let Some(default) = k.default(db, target_edition) {
+                    if let Some(default) =
+                        k.default(db, target_module.krate().to_display_target(db))
+                    {
                         if let Some(default) = default.expr() {
                             const_substs.insert(k, default.syntax().clone_for_update());
                             defaulted_params.push(Either::Right(k));
@@ -207,7 +210,7 @@ impl<'a> PathTransform<'a> {
             .flat_map(|it| it.lifetime_params(db))
             .zip(self.substs.lifetimes.clone())
             .filter_map(|(k, v)| {
-                Some((k.name(db).display(db.upcast(), target_edition).to_string(), v.lifetime()?))
+                Some((k.name(db).display(db, target_edition).to_string(), v.lifetime()?))
             })
             .collect();
         let ctx = Ctx {
@@ -285,7 +288,7 @@ impl Ctx<'_> {
         if path.qualifier().is_some() {
             return None;
         }
-        if path.segment().map_or(false, |s| {
+        if path.segment().is_some_and(|s| {
             s.parenthesized_arg_list().is_some()
                 || (s.self_token().is_some() && path.parent_path().is_none())
         }) {
@@ -319,9 +322,10 @@ impl Ctx<'_> {
                                 prefer_no_std: false,
                                 prefer_prelude: true,
                                 prefer_absolute: false,
+                                allow_unstable: true,
                             };
                             let found_path = self.target_module.find_path(
-                                self.source_scope.db.upcast(),
+                                self.source_scope.db,
                                 hir::ModuleDef::Trait(trait_ref),
                                 cfg,
                             )?;
@@ -378,9 +382,9 @@ impl Ctx<'_> {
                     prefer_no_std: false,
                     prefer_prelude: true,
                     prefer_absolute: false,
+                    allow_unstable: true,
                 };
-                let found_path =
-                    self.target_module.find_path(self.source_scope.db.upcast(), def, cfg)?;
+                let found_path = self.target_module.find_path(self.source_scope.db, def, cfg)?;
                 let res = mod_path_to_ast(&found_path, self.target_edition).clone_for_update();
                 if let Some(args) = path.segment().and_then(|it| it.generic_arg_list()) {
                     if let Some(segment) = res.segment() {
@@ -417,9 +421,10 @@ impl Ctx<'_> {
                             prefer_no_std: false,
                             prefer_prelude: true,
                             prefer_absolute: false,
+                            allow_unstable: true,
                         };
                         let found_path = self.target_module.find_path(
-                            self.source_scope.db.upcast(),
+                            self.source_scope.db,
                             ModuleDef::from(adt),
                             cfg,
                         )?;

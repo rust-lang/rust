@@ -1,4 +1,4 @@
-use rustc_errors::{Applicability, Diag, MultiSpan};
+use rustc_errors::{Applicability, Diag, MultiSpan, listify};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
@@ -6,9 +6,8 @@ use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::bug;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, AssocItem, Ty, TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::{self, AssocItem, BottomUpFolder, Ty, TypeFoldable, TypeVisitableExt};
 use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCause;
@@ -30,7 +29,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if expr_ty == expected {
             return;
         }
-
         self.annotate_alternative_method_deref(err, expr, error);
         self.explain_self_literal(err, expr, expected, expr_ty);
 
@@ -39,6 +37,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_missing_unwrap_expect(err, expr, expected, expr_ty)
             || self.suggest_remove_last_method_call(err, expr, expected)
             || self.suggest_associated_const(err, expr, expected)
+            || self.suggest_semicolon_in_repeat_expr(err, expr, expr_ty)
             || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
             || self.suggest_option_to_bool(err, expr, expr_ty, expected)
             || self.suggest_compatible_variants(err, expr, expected, expr_ty)
@@ -85,6 +84,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.annotate_expected_due_to_let_ty(err, expr, error);
         self.annotate_loop_expected_due_to_inference(err, expr, error);
+        if self.annotate_mut_binding_to_immutable_binding(err, expr, error) {
+            return;
+        }
 
         // FIXME(#73154): For now, we do leak check when coercing function
         // pointers in typeck, instead of only during borrowck. This can lead
@@ -153,7 +155,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && segment.ident.name.as_str() == name
                 && let Res::Local(hir_id) = path.res
                 && let Some((_, hir::Node::Expr(match_expr))) =
-                    self.tcx.hir().parent_iter(hir_id).nth(2)
+                    self.tcx.hir_parent_iter(hir_id).nth(2)
                 && let hir::ExprKind::Match(scrutinee, _, _) = match_expr.kind
                 && let hir::ExprKind::Tup(exprs) = scrutinee.kind
                 && let hir::ExprKind::AddrOf(_, _, macro_arg) = exprs[idx].kind
@@ -290,8 +292,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         source: TypeMismatchSource<'tcx>,
     ) -> bool {
-        let hir = self.tcx.hir();
-
         let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind else {
             return false;
         };
@@ -331,7 +331,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut expr_finder = FindExprs { hir_id: local_hir_id, uses: init.into_iter().collect() };
-        let body = hir.body_owned_by(self.body_id);
+        let body = self.tcx.hir_body_owned_by(self.body_id);
         expr_finder.visit_expr(body.value);
 
         // Replaces all of the variables in the given type with a fresh inference variable.
@@ -576,9 +576,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut parent;
         'outer: loop {
             // Climb the HIR tree to see if the current `Expr` is part of a `break;` statement.
-            let (hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Semi(&ref p), .. })
-            | hir::Node::Block(hir::Block { expr: Some(&ref p), .. })
-            | hir::Node::Expr(&ref p)) = self.tcx.hir_node(parent_id)
+            let (hir::Node::Stmt(&hir::Stmt { kind: hir::StmtKind::Semi(p), .. })
+            | hir::Node::Block(&hir::Block { expr: Some(p), .. })
+            | hir::Node::Expr(p)) = self.tcx.hir_node(parent_id)
             else {
                 break;
             };
@@ -592,13 +592,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             loop {
                 // Climb the HIR tree to find the (desugared) `loop` this `break` corresponds to.
                 let parent = match self.tcx.hir_node(parent_id) {
-                    hir::Node::Expr(&ref parent) => {
+                    hir::Node::Expr(parent) => {
                         parent_id = self.tcx.parent_hir_id(parent.hir_id);
                         parent
                     }
                     hir::Node::Stmt(hir::Stmt {
                         hir_id,
-                        kind: hir::StmtKind::Semi(&ref parent) | hir::StmtKind::Expr(&ref parent),
+                        kind: hir::StmtKind::Semi(parent) | hir::StmtKind::Expr(parent),
                         ..
                     }) => {
                         parent_id = self.tcx.parent_hir_id(*hir_id);
@@ -721,10 +721,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         },
                     )) => {
                         if let Some(hir::Node::Item(hir::Item {
-                            ident,
-                            kind: hir::ItemKind::Static(ty, ..) | hir::ItemKind::Const(ty, ..),
+                            kind:
+                                hir::ItemKind::Static(ident, ty, ..)
+                                | hir::ItemKind::Const(ident, ty, ..),
                             ..
-                        })) = self.tcx.hir().get_if_local(*def_id)
+                        })) = self.tcx.hir_get_if_local(*def_id)
                         {
                             primary_span = ty.span;
                             secondary_span = ident.span;
@@ -793,6 +794,95 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => {}
         }
+    }
+
+    /// Detect the following case
+    ///
+    /// ```text
+    /// fn change_object(mut a: &Ty) {
+    ///     let a = Ty::new();
+    ///     b = a;
+    /// }
+    /// ```
+    ///
+    /// where the user likely meant to modify the value behind there reference, use `a` as an out
+    /// parameter, instead of mutating the local binding. When encountering this we suggest:
+    ///
+    /// ```text
+    /// fn change_object(a: &'_ mut Ty) {
+    ///     let a = Ty::new();
+    ///     *b = a;
+    /// }
+    /// ```
+    fn annotate_mut_binding_to_immutable_binding(
+        &self,
+        err: &mut Diag<'_>,
+        expr: &hir::Expr<'_>,
+        error: Option<TypeError<'tcx>>,
+    ) -> bool {
+        if let Some(TypeError::Sorts(ExpectedFound { expected, found })) = error
+            && let ty::Ref(_, inner, hir::Mutability::Not) = expected.kind()
+
+            // The difference between the expected and found values is one level of borrowing.
+            && self.can_eq(self.param_env, *inner, found)
+
+            // We have an `ident = expr;` assignment.
+            && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Assign(lhs, rhs, _), .. }) =
+                self.tcx.parent_hir_node(expr.hir_id)
+            && rhs.hir_id == expr.hir_id
+
+            // We are assigning to some binding.
+            && let hir::ExprKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path { res: hir::def::Res::Local(hir_id), .. },
+            )) = lhs.kind
+            && let hir::Node::Pat(pat) = self.tcx.hir_node(*hir_id)
+
+            // The pattern we have is an fn argument.
+            && let hir::Node::Param(hir::Param { ty_span, .. }) =
+                self.tcx.parent_hir_node(pat.hir_id)
+            && let item = self.tcx.hir_get_parent_item(pat.hir_id)
+            && let item = self.tcx.hir_owner_node(item)
+            && let Some(fn_decl) = item.fn_decl()
+
+            // We have a mutable binding in the argument.
+            && let hir::PatKind::Binding(hir::BindingMode::MUT, _hir_id, ident, _) = pat.kind
+
+            // Look for the type corresponding to the argument pattern we have in the argument list.
+            && let Some(ty_ref) = fn_decl
+                .inputs
+                .iter()
+                .filter_map(|ty| match ty.kind {
+                    hir::TyKind::Ref(lt, mut_ty) if ty.span == *ty_span => Some((lt, mut_ty)),
+                    _ => None,
+                })
+                .next()
+        {
+            let mut sugg = if ty_ref.1.mutbl.is_mut() {
+                // Leave `&'name mut Ty` and `&mut Ty` as they are (#136028).
+                vec![]
+            } else {
+                // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
+                vec![(
+                    ty_ref.1.ty.span.shrink_to_lo(),
+                    format!("{}mut ", if ty_ref.0.ident.span.is_empty() { "" } else { " " },),
+                )]
+            };
+            sugg.extend([
+                (pat.span.until(ident.span), String::new()),
+                (lhs.span.shrink_to_lo(), "*".to_string()),
+            ]);
+            // We suggest changing the argument from `mut ident: &Ty` to `ident: &'_ mut Ty` and the
+            // assignment from `ident = val;` to `*ident = val;`.
+            err.multipart_suggestion_verbose(
+                "you might have meant to mutate the pointed at value being passed in, instead of \
+                changing the reference in the local binding",
+                sugg,
+                Applicability::MaybeIncorrect,
+            );
+            return true;
+        }
+        false
     }
 
     fn annotate_alternative_method_deref(
@@ -906,10 +996,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let container = with_no_trimmed_paths!(self.tcx.def_path_str(container_id));
         for def_id in pick.import_ids {
             let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
-            path_span.push_span_label(
-                self.tcx.hir().span(hir_id),
-                format!("`{container}` imported here"),
-            );
+            path_span
+                .push_span_label(self.tcx.hir_span(hir_id), format!("`{container}` imported here"));
         }
         let tail = with_no_trimmed_paths!(match &other_methods_in_scope[..] {
             [] => return,
@@ -921,18 +1009,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
                 self.tcx.def_path_str(candidate.item.container_id(self.tcx))
             ),
-            [.., last] if other_methods_in_scope.len() < 5 => {
+            _ if other_methods_in_scope.len() < 5 => {
                 format!(
-                    "the methods of the same name on {} and `{}`",
-                    other_methods_in_scope[..other_methods_in_scope.len() - 1]
-                        .iter()
-                        .map(|c| format!(
-                            "`{}`",
-                            self.tcx.def_path_str(c.item.container_id(self.tcx))
-                        ))
-                        .collect::<Vec<String>>()
-                        .join(", "),
-                    self.tcx.def_path_str(last.item.container_id(self.tcx))
+                    "the methods of the same name on {}",
+                    listify(
+                        &other_methods_in_scope[..other_methods_in_scope.len() - 1],
+                        |c| format!("`{}`", self.tcx.def_path_str(c.item.container_id(self.tcx)))
+                    )
+                    .unwrap_or_default(),
                 )
             }
             _ => format!(
@@ -1005,14 +1089,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// This function checks whether the method is not static and does not accept other parameters than `self`.
     fn has_only_self_parameter(&self, method: &AssocItem) -> bool {
-        match method.kind {
-            ty::AssocKind::Fn => {
-                method.fn_has_self_parameter
-                    && self.tcx.fn_sig(method.def_id).skip_binder().inputs().skip_binder().len()
-                        == 1
-            }
-            _ => false,
-        }
+        method.is_method()
+            && self.tcx.fn_sig(method.def_id).skip_binder().inputs().skip_binder().len() == 1
     }
 
     /// If the given `HirId` corresponds to a block with a trailing expression, return that expression
@@ -1082,7 +1160,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::Impl(hir::Impl { self_ty, .. }),
                     ..
-                })) = self.tcx.hir().get_if_local(*alias_to)
+                })) = self.tcx.hir_get_if_local(*alias_to)
                 {
                     err.span_label(self_ty.span, "this is the type of the `Self` literal");
                 }
@@ -1176,7 +1254,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     CallableKind::Function
                 };
-                maybe_emit_help(def_id, path.segments[0].ident, args, callable_kind);
+                maybe_emit_help(def_id, path.segments.last().unwrap().ident, args, callable_kind);
             }
             hir::ExprKind::MethodCall(method, _receiver, args, _span) => {
                 let Some(def_id) =

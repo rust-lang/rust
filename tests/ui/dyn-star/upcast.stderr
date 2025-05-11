@@ -1,7 +1,7 @@
 warning: the feature `dyn_star` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/upcast.rs:3:12
    |
-LL | #![feature(dyn_star, trait_upcasting)]
+LL | #![feature(dyn_star)]
    |            ^^^^^^^^
    |
    = note: see issue #102425 <https://github.com/rust-lang/rust/issues/102425> for more information

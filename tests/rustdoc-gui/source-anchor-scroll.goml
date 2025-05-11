@@ -8,13 +8,13 @@ set-window-size: (600, 800)
 assert-property: ("html", {"scrollTop": "0"})
 
 click: '//a[text() = "barbar" and @href="#5-7"]'
-assert-property: ("html", {"scrollTop": "208"})
+assert-property: ("html", {"scrollTop": "206"})
 click: '//a[text() = "bar" and @href="#28-36"]'
 assert-property: ("html", {"scrollTop": "239"})
 click: '//a[normalize-space() = "sub_fn" and @href="#2-4"]'
-assert-property: ("html", {"scrollTop": "136"})
+assert-property: ("html", {"scrollTop": "134"})
 
 // We now check that clicking on lines doesn't change the scroll
 // Extra information: the "sub_fn" function header is on line 1.
 click: '//*[@id="6"]'
-assert-property: ("html", {"scrollTop": "136"})
+assert-property: ("html", {"scrollTop": "134"})

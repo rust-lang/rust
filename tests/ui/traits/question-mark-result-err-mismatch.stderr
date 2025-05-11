@@ -1,5 +1,5 @@
 error[E0277]: `?` couldn't convert the error to `String`
-  --> $DIR/question-mark-result-err-mismatch.rs:14:22
+  --> $DIR/question-mark-result-err-mismatch.rs:15:22
    |
 LL |   fn foo() -> Result<String, String> {
    |               ---------------------- expected `String` because of this
@@ -17,7 +17,7 @@ LL |           .map(|()| "")?;
    = note: required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
 
 error[E0277]: `?` couldn't convert the error to `String`
-  --> $DIR/question-mark-result-err-mismatch.rs:28:25
+  --> $DIR/question-mark-result-err-mismatch.rs:29:25
    |
 LL | fn bar() -> Result<(), String> {
    |             ------------------ expected `String` because of this
@@ -40,7 +40,7 @@ LL |         .map_err(|_| ())?;
    = note: required for `Result<(), String>` to implement `FromResidual<Result<Infallible, ()>>`
 
 error[E0277]: `?` couldn't convert the error to `String`
-  --> $DIR/question-mark-result-err-mismatch.rs:48:11
+  --> $DIR/question-mark-result-err-mismatch.rs:49:11
    |
 LL |   fn baz() -> Result<String, String> {
    |               ---------------------- expected `String` because of this

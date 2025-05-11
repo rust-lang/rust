@@ -9,3 +9,10 @@ macro_rules! mixed_edition_pat {
         Some(mut $foo)
     };
 }
+
+#[macro_export]
+macro_rules! bind_ref {
+    ($foo:ident) => {
+        ref $foo
+    };
+}

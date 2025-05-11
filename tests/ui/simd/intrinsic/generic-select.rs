@@ -3,8 +3,10 @@
 // Test that the simd_select intrinsic produces ok-ish error
 // messages when misused.
 
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::{simd_select, simd_select_bitmask};
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -22,11 +24,6 @@ struct b8x4(pub [i8; 4]);
 #[derive(Copy, Clone, PartialEq)]
 struct b8x8(pub [i8; 8]);
 
-extern "rust-intrinsic" {
-    fn simd_select<T, U>(x: T, a: U, b: U) -> U;
-    fn simd_select_bitmask<T, U>(x: T, a: U, b: U) -> U;
-}
-
 fn main() {
     let m4 = b8x4([0, 0, 0, 0]);
     let m8 = b8x8([0, 0, 0, 0, 0, 0, 0, 0]);
@@ -39,11 +36,8 @@ fn main() {
         simd_select(m8, x, x);
         //~^ ERROR mismatched lengths: mask length `8` != other vector length `4`
 
-        simd_select(x, x, x);
-        //~^ ERROR mask element type is `u32`, expected `i_`
-
         simd_select(z, z, z);
-        //~^ ERROR mask element type is `f32`, expected `i_`
+        //~^ ERROR expected mask element type to be an integer, found `f32`
 
         simd_select(m4, 0u32, 1u32);
         //~^ ERROR found non-SIMD `u32`

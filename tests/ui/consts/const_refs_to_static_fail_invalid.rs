@@ -1,5 +1,7 @@
 //@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 //@ normalize-stderr: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
+//@ dont-require-annotations: NOTE
+
 #![allow(static_mut_refs)]
 
 fn invalid() {
@@ -7,7 +9,7 @@ fn invalid() {
 
     const C: &bool = unsafe { std::mem::transmute(&S) };
     //~^ERROR: undefined behavior
-    //~| expected a boolean
+    //~| NOTE expected a boolean
 
     // This must be rejected here (or earlier), since it's not a valid `&bool`.
     match &true {
@@ -23,7 +25,7 @@ fn extern_() {
 
     const C: &i8 = unsafe { &S };
     //~^ERROR: undefined behavior
-    //~| `extern` static
+    //~| NOTE `extern` static
 
     // This must be rejected here (or earlier), since the pattern cannot be read.
     match &0 {
@@ -37,7 +39,7 @@ fn mutable() {
 
     const C: &i32 = unsafe { &S_MUT };
     //~^ERROR: undefined behavior
-    //~| encountered reference to mutable memory
+    //~| NOTE encountered reference to mutable memory
 
     // This *must not build*, the constant we are matching against
     // could change its value!

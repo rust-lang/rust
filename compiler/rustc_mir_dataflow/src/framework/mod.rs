@@ -35,10 +35,12 @@
 use std::cmp::Ordering;
 
 use rustc_data_structures::work_queue::WorkQueue;
-use rustc_index::bit_set::{BitSet, MixedBitSet};
+use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
-use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges, traversal};
+use rustc_middle::mir::{
+    self, BasicBlock, CallReturnPlaces, Location, SwitchTargetValue, TerminatorEdges, traversal,
+};
 use rustc_middle::ty::TyCtxt;
 use tracing::error;
 
@@ -56,8 +58,9 @@ mod visitor;
 pub use self::cursor::ResultsCursor;
 pub use self::direction::{Backward, Direction, Forward};
 pub use self::lattice::{JoinSemiLattice, MaybeReachable};
-pub use self::results::{EntryStates, Results};
-pub use self::visitor::{ResultsVisitor, visit_results};
+pub(crate) use self::results::AnalysisAndResults;
+pub use self::results::Results;
+pub use self::visitor::{ResultsVisitor, visit_reachable_results, visit_results};
 
 /// Analysis domains are all bitsets of various kinds. This trait holds
 /// operations needed by all of them.
@@ -65,7 +68,7 @@ pub trait BitSetExt<T> {
     fn contains(&self, elem: T) -> bool;
 }
 
-impl<T: Idx> BitSetExt<T> for BitSet<T> {
+impl<T: Idx> BitSetExt<T> for DenseBitSet<T> {
     fn contains(&self, elem: T) -> bool {
         self.contains(elem)
     }
@@ -220,7 +223,7 @@ pub trait Analysis<'tcx> {
         &mut self,
         _data: &mut Self::SwitchIntData,
         _state: &mut Self::Domain,
-        _edge: SwitchIntTarget,
+        _value: SwitchTargetValue,
     ) {
         unreachable!();
     }
@@ -245,17 +248,15 @@ pub trait Analysis<'tcx> {
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
         pass_name: Option<&'static str>,
-    ) -> Results<'tcx, Self>
+    ) -> AnalysisAndResults<'tcx, Self>
     where
         Self: Sized,
         Self::Domain: DebugWithContext<Self>,
     {
-        let mut entry_states =
-            IndexVec::from_fn_n(|_| self.bottom_value(body), body.basic_blocks.len());
-        self.initialize_start_block(body, &mut entry_states[mir::START_BLOCK]);
+        let mut results = IndexVec::from_fn_n(|_| self.bottom_value(body), body.basic_blocks.len());
+        self.initialize_start_block(body, &mut results[mir::START_BLOCK]);
 
-        if Self::Direction::IS_BACKWARD && entry_states[mir::START_BLOCK] != self.bottom_value(body)
-        {
+        if Self::Direction::IS_BACKWARD && results[mir::START_BLOCK] != self.bottom_value(body) {
             bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
         }
 
@@ -278,10 +279,9 @@ pub trait Analysis<'tcx> {
         // every iteration.
         let mut state = self.bottom_value(body);
         while let Some(bb) = dirty_queue.pop() {
-            // Set the state to the entry state of the block.
-            // This is equivalent to `state = entry_states[bb].clone()`,
-            // but it saves an allocation, thus improving compile times.
-            state.clone_from(&entry_states[bb]);
+            // Set the state to the entry state of the block. This is equivalent to `state =
+            // results[bb].clone()`, but it saves an allocation, thus improving compile times.
+            state.clone_from(&results[bb]);
 
             Self::Direction::apply_effects_in_block(
                 &mut self,
@@ -290,7 +290,7 @@ pub trait Analysis<'tcx> {
                 bb,
                 &body[bb],
                 |target: BasicBlock, state: &Self::Domain| {
-                    let set_changed = entry_states[target].join(state);
+                    let set_changed = results[target].join(state);
                     if set_changed {
                         dirty_queue.insert(target);
                     }
@@ -298,16 +298,14 @@ pub trait Analysis<'tcx> {
             );
         }
 
-        let mut results = Results { analysis: self, entry_states };
-
         if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
-            let res = write_graphviz_results(tcx, body, &mut results, pass_name);
+            let res = write_graphviz_results(tcx, body, &mut self, &results, pass_name);
             if let Err(e) = res {
                 error!("Failed to write graphviz dataflow results: {}", e);
             }
         }
 
-        results
+        AnalysisAndResults { analysis: self, results }
     }
 }
 
@@ -334,7 +332,7 @@ pub trait GenKill<T> {
     }
 }
 
-impl<T: Idx> GenKill<T> for BitSet<T> {
+impl<T: Idx> GenKill<T> for DenseBitSet<T> {
     fn gen_(&mut self, elem: T) {
         self.insert(elem);
     }
@@ -428,11 +426,6 @@ impl EffectIndex {
             .then_with(|| self.effect.cmp(&other.effect));
         ord == Ordering::Less
     }
-}
-
-pub struct SwitchIntTarget {
-    pub value: Option<u128>,
-    pub target: BasicBlock,
 }
 
 #[cfg(test)]

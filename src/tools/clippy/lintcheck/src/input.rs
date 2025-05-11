@@ -288,11 +288,11 @@ impl CrateWithSource {
                 // as a result of this filter.
                 let dest_crate_root = PathBuf::from(LINTCHECK_SOURCES).join(name);
                 if dest_crate_root.exists() {
-                    println!("Deleting existing directory at {dest_crate_root:?}");
+                    println!("Deleting existing directory at `{}`", dest_crate_root.display());
                     fs::remove_dir_all(&dest_crate_root).unwrap();
                 }
 
-                println!("Copying {path:?} to {dest_crate_root:?}");
+                println!("Copying `{}` to `{}`", path.display(), dest_crate_root.display());
 
                 for entry in WalkDir::new(path).into_iter().filter_entry(|e| !is_cache_dir(e)) {
                     let entry = entry.unwrap();

@@ -133,6 +133,7 @@ Meta =
 
 SourceFile =
   '#shebang'?
+  '#frontmatter'?
   Attr*
   Item*
 
@@ -240,8 +241,8 @@ RecordFieldList =
  '{' fields:(RecordField (',' RecordField)* ','?)? '}'
 
 RecordField =
-  Attr* Visibility?
-  Name ':' Type
+  Attr* Visibility? 'unsafe'?
+  Name ':' Type ('=' Expr)?
 
 TupleFieldList =
   '(' fields:(TupleField (',' TupleField)* ','?)? ')'
@@ -279,11 +280,17 @@ Adt =
 | Struct
 | Union
 
+VariantDef =
+  Struct
+| Union
+| Variant
+
 Const =
   Attr* Visibility?
   'default'?
-  'const' (Name | '_') ':' Type
-  ('=' body:Expr)? ';'
+  'const' (Name | '_') GenericParamList? ':' Type
+  ('=' body:Expr)?
+  WhereClause? ';'
 
 Static =
   Attr* Visibility?
@@ -343,7 +350,7 @@ Stmt =
 | LetStmt
 
 LetStmt =
-  Attr* 'let' Pat (':' Type)?
+  Attr* 'super'? 'let' Pat (':' Type)?
   '=' initializer:Expr
   LetElse?
   ';'
@@ -438,9 +445,9 @@ MacroExpr =
 Literal =
   Attr* value:(
     '@int_number' | '@float_number'
-  | '@string' | '@raw_string'
-  | '@byte_string' | '@raw_byte_string'
-  | '@c_string' | '@raw_c_string'
+  | '@string'
+  | '@byte_string'
+  | '@c_string'
   | '@char' | '@byte'
   | 'true' | 'false'
   )

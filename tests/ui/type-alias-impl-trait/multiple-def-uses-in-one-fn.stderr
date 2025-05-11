@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `&'static B: From<&A>` is not satisfied
-  --> $DIR/multiple-def-uses-in-one-fn.rs:9:45
+  --> $DIR/multiple-def-uses-in-one-fn.rs:10:45
    |
 LL | fn f<A, B: 'static>(a: &'static A, b: B) -> (X<A, B>, X<B, A>) {
    |                                             ^^^^^^^^^^^^^^^^^^ the trait `From<&A>` is not implemented for `&'static B`

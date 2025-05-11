@@ -2,9 +2,9 @@
 //! behaves differently depending on the current `TypingMode`.
 
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_type_ir::fold::fold_regions;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::{self as ty, Interner, TypingMode};
+use rustc_type_ir::solve::GoalSource;
+use rustc_type_ir::{self as ty, Interner, TypingMode, fold_regions};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::{Certainty, EvalCtxt, Goal, NoSolution, QueryResult, inspect};
@@ -32,16 +32,22 @@ where
                     goal.param_env,
                     expected,
                 );
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                // Trying to normalize an opaque type during coherence is always ambiguous.
+                // We add a nested ambiguous goal here instead of using `Certainty::AMBIGUOUS`.
+                // This allows us to return the nested goals to the parent `AliasRelate` goal.
+                // This can then allow nested goals to fail after we've constrained the `term`.
+                self.add_goal(GoalSource::Misc, goal.with(cx, ty::PredicateKind::Ambiguous));
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
-            TypingMode::Analysis { defining_opaque_types } => {
-                let Some(def_id) = opaque_ty.def_id.as_local() else {
-                    return Err(NoSolution);
+            TypingMode::Analysis { defining_opaque_types_and_generators } => {
+                let Some(def_id) = opaque_ty
+                    .def_id
+                    .as_local()
+                    .filter(|&def_id| defining_opaque_types_and_generators.contains(&def_id))
+                else {
+                    self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                 };
-
-                if !defining_opaque_types.contains(&def_id) {
-                    return Err(NoSolution);
-                }
 
                 // FIXME: This may have issues when the args contain aliases...
                 match uses_unique_placeholders_ignoring_regions(self.cx(), opaque_ty.args) {
@@ -86,8 +92,44 @@ where
                 }
 
                 // Otherwise, define a new opaque type
-                // FIXME: should we use `inject_hidden_type_unchecked` here?
-                self.insert_hidden_type(opaque_type_key, goal.param_env, expected)?;
+                let prev = self.register_hidden_type_in_storage(opaque_type_key, expected);
+                assert_eq!(prev, None);
+                self.add_item_bounds_for_hidden_type(
+                    def_id.into(),
+                    opaque_ty.args,
+                    goal.param_env,
+                    expected,
+                );
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }
+            // Very similar to `TypingMode::Analysis` with some notably differences:
+            // - we accept opaque types even if they have non-universal arguments
+            // - we do a structural lookup instead of semantically unifying regions
+            // - the hidden type starts out as the type from HIR typeck with fresh region
+            //   variables instead of a fully unconstrained inference variable
+            TypingMode::Borrowck { defining_opaque_types } => {
+                let Some(def_id) = opaque_ty
+                    .def_id
+                    .as_local()
+                    .filter(|&def_id| defining_opaque_types.contains(&def_id))
+                else {
+                    self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                };
+
+                let opaque_type_key = ty::OpaqueTypeKey { def_id, args: opaque_ty.args };
+                let actual = self
+                    .register_hidden_type_in_storage(opaque_type_key, expected)
+                    .unwrap_or_else(|| {
+                        let actual =
+                            cx.type_of_opaque_hir_typeck(def_id).instantiate(cx, opaque_ty.args);
+                        let actual = fold_regions(cx, actual, |re, _dbi| match re.kind() {
+                            ty::ReErased => self.next_region_var(),
+                            _ => re,
+                        });
+                        actual
+                    });
+                self.eq(goal.param_env, expected, actual)?;
                 self.add_item_bounds_for_hidden_type(
                     def_id.into(),
                     opaque_ty.args,
@@ -97,15 +139,16 @@ where
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             TypingMode::PostBorrowckAnalysis { defined_opaque_types } => {
-                let Some(def_id) = opaque_ty.def_id.as_local() else {
-                    return Err(NoSolution);
+                let Some(def_id) = opaque_ty
+                    .def_id
+                    .as_local()
+                    .filter(|&def_id| defined_opaque_types.contains(&def_id))
+                else {
+                    self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                 };
 
-                if !defined_opaque_types.contains(&def_id) {
-                    return Err(NoSolution);
-                }
-
-                let actual = cx.type_of(opaque_ty.def_id).instantiate(cx, opaque_ty.args);
+                let actual = cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args);
                 // FIXME: Actually use a proper binder here instead of relying on `ReErased`.
                 //
                 // This is also probably unsound or sth :shrug:

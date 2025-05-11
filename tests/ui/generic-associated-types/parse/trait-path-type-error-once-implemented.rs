@@ -10,7 +10,7 @@ const _: () = {
       //~| ERROR associated type takes 0 generic arguments but 1 generic argument
       //~| ERROR associated type takes 1 lifetime argument but 0 lifetime arguments
       //~| ERROR associated type takes 0 generic arguments but 1 generic argument
-      //~| ERROR the trait `X` cannot be made into an object
+      //~| ERROR the trait `X` is not dyn compatible
 };
 
 fn main() {}

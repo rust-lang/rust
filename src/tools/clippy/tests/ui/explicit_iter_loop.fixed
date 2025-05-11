@@ -16,10 +16,13 @@ fn main() {
     let mut vec = vec![1, 2, 3, 4];
 
     for _ in &vec {}
+    //~^ explicit_iter_loop
     for _ in &mut vec {}
+    //~^ explicit_iter_loop
 
     let rvec = &vec;
     for _ in rvec {}
+    //~^ explicit_iter_loop
 
     let rmvec = &mut vec;
     for _ in rmvec.iter() {}
@@ -29,36 +32,48 @@ fn main() {
     for _ in &mut vec {} // these are fine
 
     for _ in &[1, 2, 3] {}
+    //~^ explicit_iter_loop
 
     for _ in (&mut [1, 2, 3]).iter() {}
 
     for _ in &[0; 32] {}
+    //~^ explicit_iter_loop
     for _ in &[0; 33] {}
+    //~^ explicit_iter_loop
 
     let ll: LinkedList<()> = LinkedList::new();
     for _ in &ll {}
+    //~^ explicit_iter_loop
     let rll = &ll;
     for _ in rll {}
+    //~^ explicit_iter_loop
 
     let vd: VecDeque<()> = VecDeque::new();
     for _ in &vd {}
+    //~^ explicit_iter_loop
     let rvd = &vd;
     for _ in rvd {}
+    //~^ explicit_iter_loop
 
     let bh: BinaryHeap<()> = BinaryHeap::new();
     for _ in &bh {}
+    //~^ explicit_iter_loop
 
     let hm: HashMap<(), ()> = HashMap::new();
     for _ in &hm {}
+    //~^ explicit_iter_loop
 
     let bt: BTreeMap<(), ()> = BTreeMap::new();
     for _ in &bt {}
+    //~^ explicit_iter_loop
 
     let hs: HashSet<()> = HashSet::new();
     for _ in &hs {}
+    //~^ explicit_iter_loop
 
     let bs: BTreeSet<()> = BTreeSet::new();
     for _ in &bs {}
+    //~^ explicit_iter_loop
 
     struct NoIntoIter();
     impl NoIntoIter {
@@ -148,10 +163,13 @@ fn main() {
     }
     let mut x = CustomType;
     for _ in &x {}
+    //~^ explicit_iter_loop
     for _ in &mut x {}
+    //~^ explicit_iter_loop
 
     let r = &x;
     for _ in r {}
+    //~^ explicit_iter_loop
 }
 
 #[clippy::msrv = "1.79"]

@@ -15,25 +15,27 @@ LL | a!();
    |
    = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: use of undeclared crate or module `my_core`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `my_core`
   --> $DIR/extern-prelude-from-opaque-fail.rs:12:18
    |
 LL |         fn f() { my_core::mem::drop(0); }
-   |                  ^^^^^^^ use of undeclared crate or module `my_core`
+   |                  ^^^^^^^ use of unresolved module or unlinked crate `my_core`
 ...
 LL | a!();
    | ---- in this macro invocation
    |
+   = help: you might be missing a crate named `my_core`
    = help: consider importing this module:
            my_core::mem
    = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: use of undeclared crate or module `my_core`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `my_core`
   --> $DIR/extern-prelude-from-opaque-fail.rs:25:14
    |
 LL |     fn f() { my_core::mem::drop(0); }
-   |              ^^^^^^^ use of undeclared crate or module `my_core`
+   |              ^^^^^^^ use of unresolved module or unlinked crate `my_core`
    |
+   = help: you might be missing a crate named `my_core`
 help: consider importing this module
    |
 LL +     use my_core::mem;

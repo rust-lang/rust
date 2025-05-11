@@ -3,8 +3,8 @@
 
 // Lifetimes should only be linted when they're introduced
 struct DiagnosticCtx<'a, 'b>
-//~^ ERROR: single-character lifetime names are likely uninformative
-//~| ERROR: single-character lifetime names are likely uninformative
+//~^ single_char_lifetime_names
+//~| single_char_lifetime_names
 where
     'a: 'b,
 {
@@ -14,8 +14,9 @@ where
 
 // Only the lifetimes on the `impl`'s generics should be linted
 impl<'a, 'b> DiagnosticCtx<'a, 'b> {
-    //~^ ERROR: single-character lifetime names are likely uninformative
-    //~| ERROR: single-character lifetime names are likely uninformative
+    //~^ single_char_lifetime_names
+    //~| single_char_lifetime_names
+
     fn new(source: &'a str, unit: &'b ()) -> DiagnosticCtx<'a, 'b> {
         Self {
             _source: source,
@@ -36,7 +37,8 @@ impl<'src, 'unit> DiagnosticCtx<'src, 'unit> {
 
 // Only 'a should be linted here
 fn split_once<'a>(base: &'a str, other: &'_ str) -> (&'a str, Option<&'a str>) {
-    //~^ ERROR: single-character lifetime names are likely uninformative
+    //~^ single_char_lifetime_names
+
     base.split_once(other)
         .map(|(left, right)| (left, Some(right)))
         .unwrap_or((base, None))

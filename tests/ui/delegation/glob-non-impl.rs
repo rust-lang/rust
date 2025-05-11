@@ -11,7 +11,7 @@ trait OtherTrait {
     reuse Trait::*; //~ ERROR glob delegation is only supported in impls
 }
 
-extern {
+extern "C" {
     reuse Trait::*; //~ ERROR delegation is not supported in `extern` blocks
 }
 

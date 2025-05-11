@@ -1,9 +1,9 @@
 //! Code specific to the coverage test suites.
 
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use camino::{Utf8Path, Utf8PathBuf};
 use glob::glob;
 
 use crate::common::{UI_COVERAGE, UI_COVERAGE_MAP};
@@ -11,7 +11,7 @@ use crate::runtest::{Emit, ProcRes, TestCx, WillExecute};
 use crate::util::static_regex;
 
 impl<'test> TestCx<'test> {
-    fn coverage_dump_path(&self) -> &Path {
+    fn coverage_dump_path(&self) -> &Utf8Path {
         self.config
             .coverage_dump_path
             .as_deref()
@@ -79,10 +79,8 @@ impl<'test> TestCx<'test> {
             std::fs::remove_file(&profdata_path).unwrap();
         }
 
-        let proc_res = self.exec_compiled_test_general(
-            &[("LLVM_PROFILE_FILE", &profraw_path.to_str().unwrap())],
-            false,
-        );
+        let proc_res =
+            self.exec_compiled_test_general(&[("LLVM_PROFILE_FILE", profraw_path.as_str())], false);
         if self.props.failure_status.is_some() {
             self.check_correct_failure_status(&proc_res);
         } else if !proc_res.status.success() {
@@ -158,8 +156,8 @@ impl<'test> TestCx<'test> {
     /// `.profraw` files and doctest executables to the given vectors.
     fn run_doctests_for_coverage(
         &self,
-        profraw_paths: &mut Vec<PathBuf>,
-        bin_paths: &mut Vec<PathBuf>,
+        profraw_paths: &mut Vec<Utf8PathBuf>,
+        bin_paths: &mut Vec<Utf8PathBuf>,
     ) {
         // Put .profraw files and doctest executables in dedicated directories,
         // to make it easier to glob them all later.
@@ -204,10 +202,9 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("rustdoc --test failed!", &proc_res)
         }
 
-        fn glob_iter(path: impl AsRef<Path>) -> impl Iterator<Item = PathBuf> {
-            let path_str = path.as_ref().to_str().unwrap();
-            let iter = glob(path_str).unwrap();
-            iter.map(Result::unwrap)
+        fn glob_iter(path: impl AsRef<Utf8Path>) -> impl Iterator<Item = Utf8PathBuf> {
+            let iter = glob(path.as_ref().as_str()).unwrap();
+            iter.map(Result::unwrap).map(Utf8PathBuf::try_from).map(Result::unwrap)
         }
 
         // Find all profraw files in the profraw directory.

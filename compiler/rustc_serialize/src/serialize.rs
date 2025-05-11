@@ -10,6 +10,7 @@ use std::path;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use rustc_hashes::{Hash64, Hash128};
 use smallvec::{Array, SmallVec};
 use thin_vec::ThinVec;
 
@@ -714,5 +715,33 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Arc<[T]> {
     fn decode(d: &mut D) -> Arc<[T]> {
         let vec: Vec<T> = Decodable::decode(d);
         vec.into()
+    }
+}
+
+impl<S: Encoder> Encodable<S> for Hash64 {
+    #[inline]
+    fn encode(&self, s: &mut S) {
+        s.emit_raw_bytes(&self.as_u64().to_le_bytes());
+    }
+}
+
+impl<S: Encoder> Encodable<S> for Hash128 {
+    #[inline]
+    fn encode(&self, s: &mut S) {
+        s.emit_raw_bytes(&self.as_u128().to_le_bytes());
+    }
+}
+
+impl<D: Decoder> Decodable<D> for Hash64 {
+    #[inline]
+    fn decode(d: &mut D) -> Self {
+        Self::new(u64::from_le_bytes(d.read_raw_bytes(8).try_into().unwrap()))
+    }
+}
+
+impl<D: Decoder> Decodable<D> for Hash128 {
+    #[inline]
+    fn decode(d: &mut D) -> Self {
+        Self::new(u128::from_le_bytes(d.read_raw_bytes(16).try_into().unwrap()))
     }
 }

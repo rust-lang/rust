@@ -18,7 +18,6 @@ mod elided {
     // But that lifetime does not participate in resolution.
     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
     //~^ ERROR missing lifetime specifier
-    //~| ERROR lifetime may not live long enough
 }
 
 mod underscore {
@@ -37,7 +36,6 @@ mod underscore {
     // But that lifetime does not participate in resolution.
     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
     //~^ ERROR missing lifetime specifier
-    //~| ERROR lifetime may not live long enough
 }
 
 mod alone_in_path {
@@ -47,6 +45,17 @@ mod alone_in_path {
     //~^ ERROR anonymous lifetimes in `impl Trait` are unstable
 
     fn g(mut x: impl Foo) -> Option<&()> { x.next() }
+    //~^ ERROR anonymous lifetimes in `impl Trait` are unstable
+    //~| ERROR missing lifetime specifier
+}
+
+mod alone_in_path2 {
+    trait Foo<'a> { fn next(&mut self) -> Option<&'a ()>; }
+
+    fn f(_: impl Foo<>) {}
+    //~^ ERROR anonymous lifetimes in `impl Trait` are unstable
+
+    fn g(mut x: impl Foo<>) -> Option<&()> { x.next() }
     //~^ ERROR anonymous lifetimes in `impl Trait` are unstable
     //~| ERROR missing lifetime specifier
 }

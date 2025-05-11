@@ -9,13 +9,11 @@ use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::builtin::UNDEFINED_NAKED_FUNCTION_ABI;
 use rustc_span::{Span, sym};
-use rustc_target::spec::abi::Abi;
 
 use crate::errors::{
     NakedAsmOutsideNakedFn, NakedFunctionsAsmBlock, NakedFunctionsMustNakedAsm, NoPatterns,
-    ParamsNotAllowed, UndefinedNakedFunctionAbi,
+    ParamsNotAllowed,
 };
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -29,23 +27,21 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
             continue;
         }
 
-        let (fn_header, body_id) = match tcx.hir_node_by_def_id(def_id) {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. })
+        let body = match tcx.hir_node_by_def_id(def_id) {
+            hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Fn { body: body_id, .. }, ..
+            })
             | hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)),
+                kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)),
                 ..
             })
             | hir::Node::ImplItem(hir::ImplItem {
-                kind: hir::ImplItemKind::Fn(sig, body_id),
-                ..
-            }) => (sig.header, *body_id),
+                kind: hir::ImplItemKind::Fn(_, body_id), ..
+            }) => tcx.hir_body(*body_id),
             _ => continue,
         };
 
-        let body = tcx.hir().body(body_id);
-
         if tcx.has_attr(def_id, sym::naked) {
-            check_abi(tcx, def_id, fn_header.abi);
             check_no_patterns(tcx, body.params);
             check_no_parameters_use(tcx, body);
             check_asm(tcx, def_id, body);
@@ -54,20 +50,6 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
             let mut visitor = CheckNakedAsmInNakedFn { tcx };
             visitor.visit_body(body);
         }
-    }
-}
-
-/// Checks that function uses non-Rust ABI.
-fn check_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, abi: Abi) {
-    if abi == Abi::Rust {
-        let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        let span = tcx.def_span(def_id);
-        tcx.emit_node_span_lint(
-            UNDEFINED_NAKED_FUNCTION_ABI,
-            hir_id,
-            span,
-            UndefinedNakedFunctionAbi,
-        );
     }
 }
 
@@ -179,6 +161,7 @@ impl CheckInlineAssembly {
             | ExprKind::Array(..)
             | ExprKind::Call(..)
             | ExprKind::MethodCall(..)
+            | ExprKind::Use(..)
             | ExprKind::Tup(..)
             | ExprKind::Binary(..)
             | ExprKind::Unary(..)
@@ -256,8 +239,8 @@ struct CheckNakedAsmInNakedFn<'tcx> {
 impl<'tcx> Visitor<'tcx> for CheckNakedAsmInNakedFn<'tcx> {
     type NestedFilter = OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {

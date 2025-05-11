@@ -847,8 +847,7 @@ fn long_line_flushed() {
 }
 
 /// Test that, given a very long partial line *after* successfully
-/// flushing a complete line, the very long partial line is buffered
-/// unconditionally, and no additional writes take place. This assures
+/// flushing a complete line, no additional writes take place. This assures
 /// the property that `write` should make at-most-one attempt to write
 /// new data.
 #[test]
@@ -856,13 +855,22 @@ fn line_long_tail_not_flushed() {
     let writer = ProgrammableSink::default();
     let mut writer = LineWriter::with_capacity(5, writer);
 
-    // Assert that Line 1\n is flushed, and 01234 is buffered
-    assert_eq!(writer.write(b"Line 1\n0123456789").unwrap(), 12);
+    // Assert that Line 1\n is flushed and the long tail isn't.
+    let bytes = b"Line 1\n0123456789";
+    writer.write(bytes).unwrap();
     assert_eq!(&writer.get_ref().buffer, b"Line 1\n");
+}
+
+// Test that appending to a full buffer emits a single write, flushing the buffer.
+#[test]
+fn line_full_buffer_flushed() {
+    let writer = ProgrammableSink::default();
+    let mut writer = LineWriter::with_capacity(5, writer);
+    assert_eq!(writer.write(b"01234").unwrap(), 5);
 
     // Because the buffer is full, this subsequent write will flush it
     assert_eq!(writer.write(b"5").unwrap(), 1);
-    assert_eq!(&writer.get_ref().buffer, b"Line 1\n01234");
+    assert_eq!(&writer.get_ref().buffer, b"01234");
 }
 
 /// Test that, if an attempt to pre-flush buffered data returns Ok(0),

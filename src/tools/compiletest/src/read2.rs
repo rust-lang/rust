@@ -165,6 +165,7 @@ mod imp {
         mut err_pipe: ChildStderr,
         data: &mut dyn FnMut(bool, &mut Vec<u8>, bool),
     ) -> io::Result<()> {
+        // FIXME(#139616): justify why this is sound.
         unsafe {
             libc::fcntl(out_pipe.as_raw_fd(), libc::F_SETFL, libc::O_NONBLOCK);
             libc::fcntl(err_pipe.as_raw_fd(), libc::F_SETFL, libc::O_NONBLOCK);
@@ -175,6 +176,7 @@ mod imp {
         let mut out = Vec::new();
         let mut err = Vec::new();
 
+        // FIXME(#139616): justify why this is sound.
         let mut fds: [libc::pollfd; 2] = unsafe { mem::zeroed() };
         fds[0].fd = out_pipe.as_raw_fd();
         fds[0].events = libc::POLLIN;
@@ -185,6 +187,7 @@ mod imp {
 
         while nfds > 0 {
             // wait for either pipe to become readable using `select`
+            // FIXME(#139616): justify why this is sound.
             let r = unsafe { libc::poll(fds.as_mut_ptr(), nfds, -1) };
             if r == -1 {
                 let err = io::Error::last_os_error();
@@ -256,6 +259,7 @@ mod imp {
         port.add_handle(0, &out_pipe)?;
         port.add_handle(1, &err_pipe)?;
 
+        // FIXME(#139616): justify why this is sound.
         unsafe {
             let mut out_pipe = Pipe::new(out_pipe, &mut out);
             let mut err_pipe = Pipe::new(err_pipe, &mut err);
@@ -284,18 +288,23 @@ mod imp {
     }
 
     impl<'a> Pipe<'a> {
+        // FIXME(#139616): document caller contract.
         unsafe fn new<P: IntoRawHandle>(p: P, dst: &'a mut Vec<u8>) -> Pipe<'a> {
             Pipe {
                 dst,
-                pipe: NamedPipe::from_raw_handle(p.into_raw_handle()),
+                // FIXME(#139616): justify why this is sound.
+                pipe: unsafe { NamedPipe::from_raw_handle(p.into_raw_handle()) },
                 overlapped: Overlapped::zero(),
                 done: false,
             }
         }
 
+        // FIXME(#139616): document caller contract.
         unsafe fn read(&mut self) -> io::Result<()> {
-            let dst = slice_to_end(self.dst);
-            match self.pipe.read_overlapped(dst, self.overlapped.raw()) {
+            // FIXME(#139616): justify why this is sound.
+            let dst = unsafe { slice_to_end(self.dst) };
+            // FIXME(#139616): justify why this is sound.
+            match unsafe { self.pipe.read_overlapped(dst, self.overlapped.raw()) } {
                 Ok(_) => Ok(()),
                 Err(e) => {
                     if e.raw_os_error() == Some(ERROR_BROKEN_PIPE.0 as i32) {
@@ -308,15 +317,18 @@ mod imp {
             }
         }
 
+        // FIXME(#139616): document caller contract.
         unsafe fn complete(&mut self, status: &CompletionStatus) {
             let prev = self.dst.len();
-            self.dst.set_len(prev + status.bytes_transferred() as usize);
+            // FIXME(#139616): justify why this is sound.
+            unsafe { self.dst.set_len(prev + status.bytes_transferred() as usize) };
             if status.bytes_transferred() == 0 {
                 self.done = true;
             }
         }
     }
 
+    // FIXME(#139616): document caller contract.
     unsafe fn slice_to_end(v: &mut Vec<u8>) -> &mut [u8] {
         if v.capacity() == 0 {
             v.reserve(16);
@@ -324,6 +336,12 @@ mod imp {
         if v.capacity() == v.len() {
             v.reserve(1);
         }
-        slice::from_raw_parts_mut(v.as_mut_ptr().offset(v.len() as isize), v.capacity() - v.len())
+        // FIXME(#139616): justify why this is sound.
+        unsafe {
+            slice::from_raw_parts_mut(
+                v.as_mut_ptr().offset(v.len() as isize),
+                v.capacity() - v.len(),
+            )
+        }
     }
 }

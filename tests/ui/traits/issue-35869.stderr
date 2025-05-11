@@ -13,8 +13,9 @@ LL |     fn foo(_: fn(u8) -> ());
               found signature `fn(fn(u16))`
 help: change the parameter type to match the trait
    |
-LL |     fn foo(_: fn(u8)) {}
-   |               ~~~~~~
+LL -     fn foo(_: fn(u16) -> ()) {}
+LL +     fn foo(_: fn(u8)) {}
+   |
 
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/issue-35869.rs:13:15
@@ -31,8 +32,9 @@ LL |     fn bar(_: Option<u8>);
               found signature `fn(Option<u16>)`
 help: change the parameter type to match the trait
    |
-LL |     fn bar(_: Option<u8>) {}
-   |               ~~~~~~~~~~
+LL -     fn bar(_: Option<u16>) {}
+LL +     fn bar(_: Option<u8>) {}
+   |
 
 error[E0053]: method `baz` has an incompatible type for trait
   --> $DIR/issue-35869.rs:15:15
@@ -49,8 +51,9 @@ LL |     fn baz(_: (u8, u16));
               found signature `fn((u16, _))`
 help: change the parameter type to match the trait
    |
-LL |     fn baz(_: (u8, u16)) {}
-   |               ~~~~~~~~~
+LL -     fn baz(_: (u16, u16)) {}
+LL +     fn baz(_: (u8, u16)) {}
+   |
 
 error[E0053]: method `qux` has an incompatible type for trait
   --> $DIR/issue-35869.rs:17:17
@@ -67,8 +70,9 @@ LL |     fn qux() -> u8;
               found signature `fn() -> u16`
 help: change the output type to match the trait
    |
-LL |     fn qux() -> u8 { 5u16 }
-   |                 ~~
+LL -     fn qux() -> u16 { 5u16 }
+LL +     fn qux() -> u8 { 5u16 }
+   |
 
 error: aborting due to 4 previous errors
 

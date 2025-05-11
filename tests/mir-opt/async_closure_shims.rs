@@ -42,11 +42,11 @@ async fn call_normal_mut<F: Future<Output = ()>>(f: &mut impl FnMut(i32) -> F) {
 
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}.coroutine_closure_by_move.0.mir
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}-{closure#0}.built.after.mir
-// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}-{closure#1}.built.after.mir
+// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}-{synthetic#0}.built.after.mir
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#1}.coroutine_closure_by_ref.0.mir
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#1}.coroutine_closure_by_move.0.mir
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#1}-{closure#0}.built.after.mir
-// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#1}-{closure#1}.built.after.mir
+// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#1}-{synthetic#0}.built.after.mir
 pub fn main() {
     block_on(async {
         let b = 2i32;

@@ -1,5 +1,5 @@
 error: expected non-macro inner attribute, found attribute macro `print_attr`
-  --> $DIR/inner-attrs.rs:65:12
+  --> $DIR/inner-attrs.rs:64:12
    |
 LL |         #![print_attr]
    |            ^^^^^^^^^^ not a non-macro inner attribute
@@ -11,16 +11,24 @@ LL |         #![print_attr]
    |            ^^^^^^^^^^ not a non-macro inner attribute
 
 error: expected non-macro inner attribute, found attribute macro `print_attr`
-  --> $DIR/inner-attrs.rs:73:12
+  --> $DIR/inner-attrs.rs:74:12
    |
 LL |         #![print_attr]
    |            ^^^^^^^^^^ not a non-macro inner attribute
 
 error: expected non-macro inner attribute, found attribute macro `print_attr`
-  --> $DIR/inner-attrs.rs:77:12
+  --> $DIR/inner-attrs.rs:79:12
    |
 LL |         #![print_attr]
    |            ^^^^^^^^^^ not a non-macro inner attribute
 
-error: aborting due to 4 previous errors
+warning: `extern` declarations without an explicit ABI are deprecated
+  --> $DIR/inner-attrs.rs:85:1
+   |
+LL | extern {
+   | ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`
+   |
+   = note: `#[warn(missing_abi)]` on by default
+
+error: aborting due to 4 previous errors; 1 warning emitted
 

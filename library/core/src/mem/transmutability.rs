@@ -32,7 +32,7 @@ use crate::marker::{ConstParamTy_, UnsizedConstParamTy};
 ///         src: ManuallyDrop::new(src),
 ///     };
 ///
-///     let dst = transmute.dst;
+///     let dst = unsafe { transmute.dst };
 ///
 ///     ManuallyDrop::into_inner(dst)
 /// }
@@ -84,9 +84,8 @@ use crate::marker::{ConstParamTy_, UnsizedConstParamTy};
 /// `usize` is stable, but not portable.
 #[unstable(feature = "transmutability", issue = "99571")]
 #[lang = "transmute_trait"]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
-#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 #[rustc_coinductive]
 pub unsafe trait TransmuteFrom<Src, const ASSUME: Assume = { Assume::NOTHING }>
 where
@@ -154,7 +153,7 @@ pub struct Assume {
     ///
     /// ```compile_fail,E0277
     /// #![feature(transmutability)]
-    /// use core::mem::{align_of, TransmuteFrom};
+    /// use core::mem::TransmuteFrom;
     ///
     /// assert_eq!(align_of::<[u8; 2]>(), 1);
     /// assert_eq!(align_of::<u16>(), 2);
@@ -173,7 +172,7 @@ pub struct Assume {
     ///
     /// ```rust
     /// #![feature(pointer_is_aligned_to, transmutability)]
-    /// use core::mem::{align_of, Assume, TransmuteFrom};
+    /// use core::mem::{Assume, TransmuteFrom};
     ///
     /// let src: &[u8; 2] = &[0xFF, 0xFF];
     ///
@@ -338,7 +337,7 @@ impl Assume {
     ///     transmutability,
     /// )]
     /// #![allow(incomplete_features)]
-    /// use core::mem::{align_of, Assume, TransmuteFrom};
+    /// use core::mem::{Assume, TransmuteFrom};
     ///
     /// /// Attempts to transmute `src` to `&Dst`.
     /// ///

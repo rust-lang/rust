@@ -1,0 +1,13 @@
+// MIR for `match1` after PreCodegen
+
+fn match1(_1: bool, _2: i32, _3: i32) -> i32 {
+    debug c => _1;
+    debug v1 => _2;
+    debug v2 => _3;
+    let mut _0: i32;
+
+    bb0: {
+        _0 = Sub(copy _2, copy _3);
+        return;
+    }
+}

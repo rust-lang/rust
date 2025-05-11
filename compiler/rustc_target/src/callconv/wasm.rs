@@ -1,5 +1,6 @@
-use crate::abi::call::{ArgAbi, FnAbi};
-use crate::abi::{HasDataLayout, TyAbiInterface};
+use rustc_abi::{BackendRepr, Float, HasDataLayout, Integer, Primitive, TyAbiInterface};
+
+use crate::callconv::{ArgAbi, FnAbi};
 
 fn unwrap_trivial_aggregate<'a, Ty, C>(cx: &C, val: &mut ArgAbi<'a, Ty>) -> bool
 where
@@ -9,6 +10,9 @@ where
     if val.layout.is_aggregate() {
         if let Some(unit) = val.layout.homogeneous_aggregate(cx).ok().and_then(|ha| ha.unit()) {
             let size = val.layout.size;
+            // This size check also catches over-aligned scalars as `size` will be rounded up to a
+            // multiple of the alignment, and the default alignment of all scalar types on wasm
+            // equals their size.
             if unit.size == size {
                 val.cast_to(unit);
                 return true;
@@ -26,6 +30,16 @@ where
     ret.extend_integer_width_to(32);
     if ret.layout.is_aggregate() && !unwrap_trivial_aggregate(cx, ret) {
         ret.make_indirect();
+    }
+
+    // `long double`, `__int128_t` and `__uint128_t` use an indirect return
+    if let BackendRepr::Scalar(scalar) = ret.layout.backend_repr {
+        match scalar.primitive() {
+            Primitive::Int(Integer::I128, _) | Primitive::Float(Float::F128) => {
+                ret.make_indirect();
+            }
+            _ => {}
+        }
     }
 }
 

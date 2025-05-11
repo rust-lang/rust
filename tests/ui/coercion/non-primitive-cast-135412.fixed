@@ -1,0 +1,10 @@
+//@ run-rustfix
+
+use std::sync::Arc;
+
+fn main() {
+    let _ = Option::<_>::from(7u32);
+    //~^ ERROR non-primitive cast: `u32` as `Option<_>`
+    let _ = Arc::<str>::from("String");
+    //~^ ERROR non-primitive cast: `&'static str` as `Arc<str>`
+}

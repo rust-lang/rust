@@ -1,7 +1,10 @@
 // 32-bit x86 returns float types differently to avoid the x87 stack.
 // 32-bit systems will return 128bit values using a return area pointer.
-//@ revisions: x86 bit32 bit64
-//@[x86] only-x86
+//@ revisions: x86-sse x86-nosse bit32 bit64
+//@[x86-sse] only-x86
+//@[x86-sse] only-rustc_abi-x86-sse2
+//@[x86-nosse] only-x86
+//@[x86-nosse] ignore-rustc_abi-x86-sse2
 //@[bit32] ignore-x86
 //@[bit32] only-32bit
 //@[bit64] ignore-x86
@@ -59,8 +62,10 @@ pub fn f16_le(a: f16, b: f16) -> bool {
 }
 
 // This is where we check the argument and return ABI for f16.
-// other-LABEL: half @f16_neg(half
-// x86-LABEL: i16 @f16_neg(half
+// bit32-LABEL: half @f16_neg(half
+// bit64-LABEL: half @f16_neg(half
+// x86-sse-LABEL: <2 x i8> @f16_neg(half
+// x86-nosse-LABEL: i16 @f16_neg(half
 #[no_mangle]
 pub fn f16_neg(a: f16) -> f16 {
     // CHECK: fneg half %{{.+}}
@@ -144,17 +149,23 @@ pub fn f16_rem_assign(a: &mut f16, b: f16) {
 
 /* float to float conversions */
 
-// other-LABEL: half @f16_as_self(
-// x86-LABEL: i16 @f16_as_self(
+// bit32-LABEL: half @f16_as_self(
+// bit64-LABEL: half @f16_as_self(
+// x86-sse-LABEL: <2 x i8> @f16_as_self(
+// x86-nosse-LABEL: i16 @f16_as_self(
 #[no_mangle]
 pub fn f16_as_self(a: f16) -> f16 {
-    // other-CHECK: ret half %{{.+}}
-    // x86-CHECK: bitcast half
-    // x86-CHECK: ret i16
+    // bit32-CHECK: ret half %{{.+}}
+    // bit64-CHECK: ret half %{{.+}}
+    // x86-sse-CHECK: bitcast half
+    // x86-nosse-CHECK: bitcast half
+    // x86-sse-CHECK: ret i16
+    // x86-nosse-CHECK: ret i16
     a as f16
 }
 
-// x86-LABEL: i32 @f16_as_f32(
+// x86-sse-LABEL: <4 x i8> @f16_as_f32(
+// x86-nosse-LABEL: i32 @f16_as_f32(
 // bit32-LABEL: float @f16_as_f32(
 // bit64-LABEL: float @f16_as_f32(
 #[no_mangle]
@@ -163,7 +174,8 @@ pub fn f16_as_f32(a: f16) -> f32 {
     a as f32
 }
 
-// x86-LABEL: void @f16_as_f64(
+// x86-sse-LABEL: <8 x i8> @f16_as_f64(
+// x86-nosse-LABEL: void @f16_as_f64({{.*}}sret([8 x i8])
 // bit32-LABEL: double @f16_as_f64(
 // bit64-LABEL: double @f16_as_f64(
 #[no_mangle]
@@ -172,7 +184,8 @@ pub fn f16_as_f64(a: f16) -> f64 {
     a as f64
 }
 
-// x86-LABEL: void @f16_as_f128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @f16_as_f128(
+// x86-nosse-LABEL: void @f16_as_f128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @f16_as_f128({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @f16_as_f128(
 #[no_mangle]
@@ -231,7 +244,8 @@ pub fn f16_as_u64(a: f16) -> u64 {
     a as u64
 }
 
-// x86-LABEL: void @f16_as_u128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: void @f16_as_u128({{.*}}sret([16 x i8])
+// x86-nosse-LABEL: void @f16_as_u128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @f16_as_u128({{.*}}sret([16 x i8])
 // bit64-LABEL: i128 @f16_as_u128(
 #[no_mangle]
@@ -267,7 +281,8 @@ pub fn f16_as_i64(a: f16) -> i64 {
     a as i64
 }
 
-// x86-LABEL: void @f16_as_i128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: void @f16_as_i128({{.*}}sret([16 x i8])
+// x86-nosse-LABEL: void @f16_as_i128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @f16_as_i128({{.*}}sret([16 x i8])
 // bit64-LABEL: i128 @f16_as_i128(
 #[no_mangle]

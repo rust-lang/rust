@@ -2,7 +2,7 @@ error: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/lint-if-let-rescope-with-macro.rs:12:12
    |
 LL |           if let $p = $e { $($conseq)* } else { $($alt)* }
-   |              ^^^
+   |              ^^^^^^^^^^^
 ...
 LL | /     edition_2021_if_let! {
 LL | |         Some(_value),
@@ -15,6 +15,11 @@ LL | |     };
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/lint-if-let-rescope-with-macro.rs:22:1
+   |
+LL | impl Drop for Droppy {
+   | ^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope-with-macro.rs:12:38
    |

@@ -1,8 +1,8 @@
 //! Renderer for macro invocations.
 
 use hir::HirDisplay;
-use ide_db::{documentation::Documentation, SymbolKind};
-use syntax::{format_smolstr, SmolStr, ToSmolStr};
+use ide_db::{SymbolKind, documentation::Documentation};
+use syntax::{SmolStr, ToSmolStr, format_smolstr};
 
 use crate::{
     context::{PathCompletionCtx, PathKind, PatternContext},
@@ -46,36 +46,34 @@ fn render(
         ctx.source_range()
     };
 
-    let (name, escaped_name) = (
-        name.unescaped().display(ctx.db()).to_smolstr(),
-        name.display(ctx.db(), completion.edition).to_smolstr(),
-    );
+    let (name, escaped_name) =
+        (name.as_str(), name.display(ctx.db(), completion.edition).to_smolstr());
     let docs = ctx.docs(macro_);
     let docs_str = docs.as_ref().map(Documentation::as_str).unwrap_or_default();
     let is_fn_like = macro_.is_fn_like(completion.db);
-    let (bra, ket) = if is_fn_like { guess_macro_braces(&name, docs_str) } else { ("", "") };
+    let (bra, ket) = if is_fn_like { guess_macro_braces(name, docs_str) } else { ("", "") };
 
     let needs_bang = is_fn_like && !is_use_path && !has_macro_bang;
 
     let mut item = CompletionItem::new(
         SymbolKind::from(macro_.kind(completion.db)),
         source_range,
-        label(&ctx, needs_bang, bra, ket, &name),
+        label(&ctx, needs_bang, bra, ket, &name.to_smolstr()),
         completion.edition,
     );
     item.set_deprecated(ctx.is_deprecated(macro_))
-        .detail(macro_.display(completion.db, completion.edition).to_string())
+        .detail(macro_.display(completion.db, completion.display_target).to_string())
         .set_documentation(docs)
         .set_relevance(ctx.completion_relevance());
 
     match ctx.snippet_cap() {
         Some(cap) if needs_bang && !has_call_parens => {
             let snippet = format!("{escaped_name}!{bra}$0{ket}");
-            let lookup = banged_name(&name);
+            let lookup = banged_name(name);
             item.insert_snippet(cap, snippet).lookup_by(lookup);
         }
         _ if needs_bang => {
-            item.insert_text(banged_name(&escaped_name)).lookup_by(banged_name(&name));
+            item.insert_text(banged_name(&escaped_name)).lookup_by(banged_name(name));
         }
         _ => {
             cov_mark::hit!(dont_insert_macro_call_parens_unnecessary);

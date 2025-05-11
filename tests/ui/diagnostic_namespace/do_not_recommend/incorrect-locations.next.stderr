@@ -1,5 +1,5 @@
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
-  --> $DIR/incorrect-locations.rs:6:1
+  --> $DIR/incorrect-locations.rs:7:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,49 +7,49 @@ LL | #[diagnostic::do_not_recommend]
    = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
-  --> $DIR/incorrect-locations.rs:10:1
+  --> $DIR/incorrect-locations.rs:11:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
-  --> $DIR/incorrect-locations.rs:14:1
+  --> $DIR/incorrect-locations.rs:15:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
-  --> $DIR/incorrect-locations.rs:18:1
+  --> $DIR/incorrect-locations.rs:19:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
-  --> $DIR/incorrect-locations.rs:22:1
+  --> $DIR/incorrect-locations.rs:23:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
-  --> $DIR/incorrect-locations.rs:26:1
+  --> $DIR/incorrect-locations.rs:27:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
-  --> $DIR/incorrect-locations.rs:30:1
+  --> $DIR/incorrect-locations.rs:31:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
-  --> $DIR/incorrect-locations.rs:34:1
+  --> $DIR/incorrect-locations.rs:35:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
-  --> $DIR/incorrect-locations.rs:38:1
+  --> $DIR/incorrect-locations.rs:39:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

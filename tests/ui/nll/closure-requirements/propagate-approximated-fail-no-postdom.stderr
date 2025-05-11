@@ -23,6 +23,10 @@ LL |         |_outlives1, _outlives2, _outlives3, x, y| {
 ...
 LL |             demand_y(x, y, p)
    |             ^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of the type `Cell<&'?34 u32>`, which makes the generic argument `&'?34 u32` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 note: no external requirements
   --> $DIR/propagate-approximated-fail-no-postdom.rs:38:1

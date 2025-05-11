@@ -1,3 +1,4 @@
+
 at $DIR/auxiliary/test-macros.rs:38:5:
 panic-derive
 error: proc-macro derive panicked

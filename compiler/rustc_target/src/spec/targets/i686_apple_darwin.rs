@@ -1,11 +1,11 @@
 use crate::spec::base::apple::{Arch, TargetAbi, base};
-use crate::spec::{FramePointer, Target, TargetOptions};
+use crate::spec::{FramePointer, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     let (opts, llvm_target, arch) = base("macos", Arch::I686, TargetAbi::Normal);
     Target {
         llvm_target,
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("x86 Apple macOS (10.12+, Sierra+)".into()),
             tier: Some(3),
             host_tools: Some(true),

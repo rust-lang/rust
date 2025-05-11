@@ -1,43 +1,45 @@
+use std::sync::Arc;
+
+use rustc_hir::ByRef;
 use rustc_middle::mir::*;
-use rustc_middle::thir::{self, *};
+use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
-use crate::builder::matches::{FlatPat, MatchPairTree, TestCase};
+use crate::builder::matches::{FlatPat, MatchPairTree, PatternExtraData, TestCase};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// Builds and returns [`MatchPairTree`] subtrees, one for each pattern in
+    /// Builds and pushes [`MatchPairTree`] subtrees, one for each pattern in
     /// `subpatterns`, representing the fields of a [`PatKind::Variant`] or
     /// [`PatKind::Leaf`].
     ///
     /// Used internally by [`MatchPairTree::for_pattern`].
-    fn field_match_pairs<'pat>(
+    fn field_match_pairs(
         &mut self,
+        match_pairs: &mut Vec<MatchPairTree<'tcx>>,
+        extra_data: &mut PatternExtraData<'tcx>,
         place: PlaceBuilder<'tcx>,
-        subpatterns: &'pat [FieldPat<'tcx>],
-    ) -> Vec<MatchPairTree<'pat, 'tcx>> {
-        subpatterns
-            .iter()
-            .map(|fieldpat| {
-                let place =
-                    place.clone_project(PlaceElem::Field(fieldpat.field, fieldpat.pattern.ty));
-                MatchPairTree::for_pattern(place, &fieldpat.pattern, self)
-            })
-            .collect()
+        subpatterns: &[FieldPat<'tcx>],
+    ) {
+        for fieldpat in subpatterns {
+            let place = place.clone_project(PlaceElem::Field(fieldpat.field, fieldpat.pattern.ty));
+            MatchPairTree::for_pattern(place, &fieldpat.pattern, self, match_pairs, extra_data);
+        }
     }
 
     /// Builds [`MatchPairTree`] subtrees for the prefix/middle/suffix parts of an
     /// array pattern or slice pattern, and adds those trees to `match_pairs`.
     ///
     /// Used internally by [`MatchPairTree::for_pattern`].
-    fn prefix_slice_suffix<'pat>(
+    fn prefix_slice_suffix(
         &mut self,
-        match_pairs: &mut Vec<MatchPairTree<'pat, 'tcx>>,
+        match_pairs: &mut Vec<MatchPairTree<'tcx>>,
+        extra_data: &mut PatternExtraData<'tcx>,
         place: &PlaceBuilder<'tcx>,
-        prefix: &'pat [Box<Pat<'tcx>>],
-        opt_slice: &'pat Option<Box<Pat<'tcx>>>,
-        suffix: &'pat [Box<Pat<'tcx>>],
+        prefix: &[Pat<'tcx>],
+        opt_slice: &Option<Box<Pat<'tcx>>>,
+        suffix: &[Pat<'tcx>],
     ) {
         let tcx = self.tcx;
         let (min_length, exact_size) = if let Some(place_resolved) = place.try_to_place(self) {
@@ -54,11 +56,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ((prefix.len() + suffix.len()).try_into().unwrap(), false)
         };
 
-        match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
+        for (idx, subpattern) in prefix.iter().enumerate() {
             let elem =
                 ProjectionElem::ConstantIndex { offset: idx as u64, min_length, from_end: false };
-            MatchPairTree::for_pattern(place.clone_project(elem), subpattern, self)
-        }));
+            let place = place.clone_project(elem);
+            MatchPairTree::for_pattern(place, subpattern, self, match_pairs, extra_data)
+        }
 
         if let Some(subslice_pat) = opt_slice {
             let suffix_len = suffix.len() as u64;
@@ -67,10 +70,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 to: if exact_size { min_length - suffix_len } else { suffix_len },
                 from_end: !exact_size,
             });
-            match_pairs.push(MatchPairTree::for_pattern(subslice, subslice_pat, self));
+            MatchPairTree::for_pattern(subslice, subslice_pat, self, match_pairs, extra_data);
         }
 
-        match_pairs.extend(suffix.iter().rev().enumerate().map(|(idx, subpattern)| {
+        for (idx, subpattern) in suffix.iter().rev().enumerate() {
             let end_offset = (idx + 1) as u64;
             let elem = ProjectionElem::ConstantIndex {
                 offset: if exact_size { min_length - end_offset } else { end_offset },
@@ -78,183 +81,236 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 from_end: !exact_size,
             };
             let place = place.clone_project(elem);
-            MatchPairTree::for_pattern(place, subpattern, self)
-        }));
+            MatchPairTree::for_pattern(place, subpattern, self, match_pairs, extra_data)
+        }
     }
 }
 
-impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
+impl<'tcx> MatchPairTree<'tcx> {
     /// Recursively builds a match pair tree for the given pattern and its
     /// subpatterns.
-    pub(in crate::builder) fn for_pattern(
+    pub(super) fn for_pattern(
         mut place_builder: PlaceBuilder<'tcx>,
-        pattern: &'pat Pat<'tcx>,
+        pattern: &Pat<'tcx>,
         cx: &mut Builder<'_, 'tcx>,
-    ) -> MatchPairTree<'pat, 'tcx> {
+        match_pairs: &mut Vec<Self>, // Newly-created nodes are added to this vector
+        extra_data: &mut PatternExtraData<'tcx>, // Bindings/ascriptions are added here
+    ) {
         // Force the place type to the pattern's type.
         // FIXME(oli-obk): can we use this to simplify slice/array pattern hacks?
         if let Some(resolved) = place_builder.resolve_upvar(cx) {
             place_builder = resolved;
         }
 
-        // Only add the OpaqueCast projection if the given place is an opaque type and the
-        // expected type from the pattern is not.
-        let may_need_cast = match place_builder.base() {
-            PlaceBase::Local(local) => {
-                let ty =
-                    Place::ty_from(local, place_builder.projection(), &cx.local_decls, cx.tcx).ty;
-                ty != pattern.ty && ty.has_opaque_types()
+        if !cx.tcx.next_trait_solver_globally() {
+            // Only add the OpaqueCast projection if the given place is an opaque type and the
+            // expected type from the pattern is not.
+            let may_need_cast = match place_builder.base() {
+                PlaceBase::Local(local) => {
+                    let ty =
+                        Place::ty_from(local, place_builder.projection(), &cx.local_decls, cx.tcx)
+                            .ty;
+                    ty != pattern.ty && ty.has_opaque_types()
+                }
+                _ => true,
+            };
+            if may_need_cast {
+                place_builder = place_builder.project(ProjectionElem::OpaqueCast(pattern.ty));
             }
-            _ => true,
-        };
-        if may_need_cast {
-            place_builder = place_builder.project(ProjectionElem::OpaqueCast(pattern.ty));
         }
 
         let place = place_builder.try_to_place(cx);
-        let default_irrefutable = || TestCase::Irrefutable { binding: None, ascription: None };
         let mut subpairs = Vec::new();
         let test_case = match pattern.kind {
-            PatKind::Wild | PatKind::Error(_) => default_irrefutable(),
+            PatKind::Missing | PatKind::Wild | PatKind::Error(_) => None,
 
-            PatKind::Or { ref pats } => TestCase::Or {
+            PatKind::Or { ref pats } => Some(TestCase::Or {
                 pats: pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect(),
-            },
+            }),
 
             PatKind::Range(ref range) => {
                 if range.is_full_range(cx.tcx) == Some(true) {
-                    default_irrefutable()
+                    None
                 } else {
-                    TestCase::Range(range)
+                    Some(TestCase::Range(Arc::clone(range)))
                 }
             }
 
-            PatKind::Constant { value } => TestCase::Constant { value },
+            PatKind::Constant { value } => Some(TestCase::Constant { value }),
 
             PatKind::AscribeUserType {
-                ascription: thir::Ascription { ref annotation, variance },
+                ascription: Ascription { ref annotation, variance },
                 ref subpattern,
                 ..
             } => {
-                // Apply the type ascription to the value at `match_pair.place`
-                let ascription = place.map(|source| super::Ascription {
-                    annotation: annotation.clone(),
-                    source,
-                    variance,
-                });
+                MatchPairTree::for_pattern(
+                    place_builder,
+                    subpattern,
+                    cx,
+                    &mut subpairs,
+                    extra_data,
+                );
 
-                subpairs.push(MatchPairTree::for_pattern(place_builder, subpattern, cx));
-                TestCase::Irrefutable { ascription, binding: None }
+                // Apply the type ascription to the value at `match_pair.place`
+                if let Some(source) = place {
+                    let annotation = annotation.clone();
+                    extra_data.ascriptions.push(super::Ascription { source, annotation, variance });
+                }
+
+                None
             }
 
             PatKind::Binding { mode, var, ref subpattern, .. } => {
-                let binding = place.map(|source| super::Binding {
-                    span: pattern.span,
-                    source,
-                    var_id: var,
-                    binding_mode: mode,
-                });
+                // In order to please the borrow checker, when lowering a pattern
+                // like `x @ subpat` we must establish any bindings in `subpat`
+                // before establishing the binding for `x`.
+                //
+                // For example (from #69971):
+                //
+                // ```ignore (illustrative)
+                // struct NonCopyStruct {
+                //     copy_field: u32,
+                // }
+                //
+                // fn foo1(x: NonCopyStruct) {
+                //     let y @ NonCopyStruct { copy_field: z } = x;
+                //     // the above should turn into
+                //     let z = x.copy_field;
+                //     let y = x;
+                // }
+                // ```
 
+                // First, recurse into the subpattern, if any.
                 if let Some(subpattern) = subpattern.as_ref() {
                     // this is the `x @ P` case; have to keep matching against `P` now
-                    subpairs.push(MatchPairTree::for_pattern(place_builder, subpattern, cx));
+                    MatchPairTree::for_pattern(
+                        place_builder,
+                        subpattern,
+                        cx,
+                        &mut subpairs,
+                        extra_data,
+                    );
                 }
-                TestCase::Irrefutable { ascription: None, binding }
+
+                // Then push this binding, after any bindings in the subpattern.
+                if let Some(source) = place {
+                    extra_data.bindings.push(super::Binding {
+                        span: pattern.span,
+                        source,
+                        var_id: var,
+                        binding_mode: mode,
+                    });
+                }
+
+                None
             }
 
-            PatKind::ExpandedConstant { subpattern: ref pattern, def_id: _, is_inline: false } => {
-                subpairs.push(MatchPairTree::for_pattern(place_builder, pattern, cx));
-                default_irrefutable()
-            }
-            PatKind::ExpandedConstant { subpattern: ref pattern, def_id, is_inline: true } => {
-                // Apply a type ascription for the inline constant to the value at `match_pair.place`
-                let ascription = place.map(|source| {
-                    let span = pattern.span;
-                    let parent_id = cx.tcx.typeck_root_def_id(cx.def_id.to_def_id());
-                    let args = ty::InlineConstArgs::new(cx.tcx, ty::InlineConstArgsParts {
-                        parent_args: ty::GenericArgs::identity_for_item(cx.tcx, parent_id),
-                        ty: cx.infcx.next_ty_var(span),
-                    })
-                    .args;
-                    let user_ty = cx.infcx.canonicalize_user_type_annotation(ty::UserType::new(
-                        ty::UserTypeKind::TypeOf(def_id, ty::UserArgs { args, user_self_ty: None }),
-                    ));
-                    let annotation = ty::CanonicalUserTypeAnnotation {
-                        inferred_ty: pattern.ty,
-                        span,
-                        user_ty: Box::new(user_ty),
-                    };
-                    super::Ascription { annotation, source, variance: ty::Contravariant }
-                });
-
-                subpairs.push(MatchPairTree::for_pattern(place_builder, pattern, cx));
-                TestCase::Irrefutable { ascription, binding: None }
+            PatKind::ExpandedConstant { subpattern: ref pattern, .. } => {
+                MatchPairTree::for_pattern(place_builder, pattern, cx, &mut subpairs, extra_data);
+                None
             }
 
             PatKind::Array { ref prefix, ref slice, ref suffix } => {
-                cx.prefix_slice_suffix(&mut subpairs, &place_builder, prefix, slice, suffix);
-                default_irrefutable()
+                cx.prefix_slice_suffix(
+                    &mut subpairs,
+                    extra_data,
+                    &place_builder,
+                    prefix,
+                    slice,
+                    suffix,
+                );
+                None
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                cx.prefix_slice_suffix(&mut subpairs, &place_builder, prefix, slice, suffix);
+                cx.prefix_slice_suffix(
+                    &mut subpairs,
+                    extra_data,
+                    &place_builder,
+                    prefix,
+                    slice,
+                    suffix,
+                );
 
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
-                    default_irrefutable()
+                    None
                 } else {
-                    TestCase::Slice {
+                    Some(TestCase::Slice {
                         len: prefix.len() + suffix.len(),
                         variable_length: slice.is_some(),
-                    }
+                    })
                 }
             }
 
             PatKind::Variant { adt_def, variant_index, args, ref subpatterns } => {
                 let downcast_place = place_builder.downcast(adt_def, variant_index); // `(x as Variant)`
-                subpairs = cx.field_match_pairs(downcast_place, subpatterns);
+                cx.field_match_pairs(&mut subpairs, extra_data, downcast_place, subpatterns);
 
                 let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
                     i == variant_index
-                        || !v
-                            .inhabited_predicate(cx.tcx, adt_def)
-                            .instantiate(cx.tcx, args)
-                            .apply_ignore_module(cx.tcx, cx.infcx.typing_env(cx.param_env))
-                }) && (adt_def.did().is_local()
-                    || !adt_def.is_variant_list_non_exhaustive());
-                if irrefutable {
-                    default_irrefutable()
-                } else {
-                    TestCase::Variant { adt_def, variant_index }
-                }
+                        || !v.inhabited_predicate(cx.tcx, adt_def).instantiate(cx.tcx, args).apply(
+                            cx.tcx,
+                            cx.infcx.typing_env(cx.param_env),
+                            cx.def_id.into(),
+                        )
+                }) && !adt_def.variant_list_has_applicable_non_exhaustive();
+                if irrefutable { None } else { Some(TestCase::Variant { adt_def, variant_index }) }
             }
 
             PatKind::Leaf { ref subpatterns } => {
-                subpairs = cx.field_match_pairs(place_builder, subpatterns);
-                default_irrefutable()
+                cx.field_match_pairs(&mut subpairs, extra_data, place_builder, subpatterns);
+                None
             }
 
-            PatKind::Deref { ref subpattern } => {
-                subpairs.push(MatchPairTree::for_pattern(place_builder.deref(), subpattern, cx));
-                default_irrefutable()
+            PatKind::Deref { ref subpattern }
+            | PatKind::DerefPattern { ref subpattern, borrow: ByRef::No } => {
+                if cfg!(debug_assertions) && matches!(pattern.kind, PatKind::DerefPattern { .. }) {
+                    // Only deref patterns on boxes can be lowered using a built-in deref.
+                    debug_assert!(pattern.ty.is_box());
+                }
+
+                MatchPairTree::for_pattern(
+                    place_builder.deref(),
+                    subpattern,
+                    cx,
+                    &mut subpairs,
+                    extra_data,
+                );
+                None
             }
 
-            PatKind::DerefPattern { ref subpattern, mutability } => {
+            PatKind::DerefPattern { ref subpattern, borrow: ByRef::Yes(mutability) } => {
                 // Create a new temporary for each deref pattern.
                 // FIXME(deref_patterns): dedup temporaries to avoid multiple `deref()` calls?
                 let temp = cx.temp(
                     Ty::new_ref(cx.tcx, cx.tcx.lifetimes.re_erased, subpattern.ty, mutability),
                     pattern.span,
                 );
-                subpairs.push(MatchPairTree::for_pattern(
+                MatchPairTree::for_pattern(
                     PlaceBuilder::from(temp).deref(),
                     subpattern,
                     cx,
-                ));
-                TestCase::Deref { temp, mutability }
+                    &mut subpairs,
+                    extra_data,
+                );
+                Some(TestCase::Deref { temp, mutability })
             }
 
-            PatKind::Never => TestCase::Never,
+            PatKind::Never => Some(TestCase::Never),
         };
 
-        MatchPairTree { place, test_case, subpairs, pattern }
+        if let Some(test_case) = test_case {
+            // This pattern is refutable, so push a new match-pair node.
+            match_pairs.push(MatchPairTree {
+                place,
+                test_case,
+                subpairs,
+                pattern_ty: pattern.ty,
+                pattern_span: pattern.span,
+            })
+        } else {
+            // This pattern is irrefutable, so it doesn't need its own match-pair node.
+            // Just push its refutable subpatterns instead, if any.
+            match_pairs.extend(subpairs);
+        }
     }
 }

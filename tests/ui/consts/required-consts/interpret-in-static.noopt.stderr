@@ -2,12 +2,10 @@ error[E0080]: evaluation of `Fail::<i32>::C` failed
   --> $DIR/interpret-in-static.rs:8:19
    |
 LL |     const C: () = panic!();
-   |                   ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/interpret-in-static.rs:8:19
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+   |                   ^^^^^^^^ evaluation panicked: explicit panic
 
 note: erroneous constant encountered
-  --> $DIR/interpret-in-static.rs:16:9
+  --> $DIR/interpret-in-static.rs:17:9
    |
 LL |         Fail::<i32>::C;
    |         ^^^^^^^^^^^^^^

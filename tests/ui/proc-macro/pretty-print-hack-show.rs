@@ -18,3 +18,5 @@ mod second {
 }
 
 fn main() {}
+
+//~? ERROR using an old version of `rental`

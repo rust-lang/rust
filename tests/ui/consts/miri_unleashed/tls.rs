@@ -23,3 +23,5 @@ static TEST_BAD_REF: () = {
 };
 
 fn main() {}
+
+//~? WARN skipping const checks

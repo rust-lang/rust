@@ -11,8 +11,8 @@ LL | fn foo<const N: usize>(_: impl std::fmt::Display) -> [usize; N] {
    |        ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
 help: consider giving this pattern a type, where the value of const parameter `N` is specified
    |
-LL |     let _: [usize; N] = foo("foo");
-   |          ++++++++++++
+LL |     let _: [_; N] = foo("foo");
+   |          ++++++++
 
 error: aborting due to 1 previous error
 

@@ -3,12 +3,12 @@ use std::ops::ControlFlow;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{SpanlessEq, higher, peel_hir_expr_while};
+use clippy_utils::{SpanlessEq, higher, peel_hir_expr_while, sym};
 use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
+use rustc_span::Span;
 use rustc_span::symbol::Symbol;
-use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for SetContainsOrInsert {
                 then: then_expr,
                 ..
             }) = higher::If::hir(expr)
-            && let Some((contains_expr, sym)) = try_parse_op_call(cx, cond_expr, sym!(contains))//try_parse_contains(cx, cond_expr)
+            && let Some((contains_expr, sym)) = try_parse_op_call(cx, cond_expr, sym::contains)//try_parse_contains(cx, cond_expr)
             && let Some(insert_expr) = find_insert_calls(cx, &contains_expr, then_expr)
         {
             span_lint(
@@ -118,7 +118,7 @@ fn find_insert_calls<'tcx>(
     expr: &'tcx Expr<'_>,
 ) -> Option<OpExpr<'tcx>> {
     for_each_expr(cx, expr, |e| {
-        if let Some((insert_expr, _)) = try_parse_op_call(cx, e, sym!(insert))
+        if let Some((insert_expr, _)) = try_parse_op_call(cx, e, sym::insert)
             && SpanlessEq::new(cx).eq_expr(contains_expr.receiver, insert_expr.receiver)
             && SpanlessEq::new(cx).eq_expr(contains_expr.value, insert_expr.value)
         {

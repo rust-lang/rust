@@ -11,8 +11,9 @@ LL |     mod b {
    |     ^^^^^
 help: consider importing this trait through its public re-export instead
    |
-LL | impl a::Trait for S {}
-   |      ~~~~~~~~
+LL - impl a::b::Trait for S {}
+LL + impl a::Trait for S {}
+   |
 
 error: aborting due to 1 previous error
 

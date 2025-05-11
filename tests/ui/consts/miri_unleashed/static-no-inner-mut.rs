@@ -38,3 +38,5 @@ static RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
 //~^ ERROR mutable pointer in final value
 
 fn main() {}
+
+//~? WARN skipping const checks

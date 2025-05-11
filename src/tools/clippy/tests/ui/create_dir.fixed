@@ -8,7 +8,9 @@ fn create_dir() {}
 fn main() {
     // Should be warned
     create_dir_all("foo");
+    //~^ create_dir
     create_dir_all("bar").unwrap();
+    //~^ create_dir
 
     // Shouldn't be warned
     create_dir();

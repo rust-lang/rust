@@ -2,9 +2,9 @@ error[E0432]: unresolved import `test`
   --> $DIR/issue-37887.rs:3:9
    |
 LL |     use test::*;
-   |         ^^^^ you might be missing crate `test`
+   |         ^^^^ use of unresolved module or unlinked crate `test`
    |
-help: consider importing the `test` crate
+help: you might be missing a crate named `test`, add it to your project and import it in your code
    |
 LL + extern crate test;
    |

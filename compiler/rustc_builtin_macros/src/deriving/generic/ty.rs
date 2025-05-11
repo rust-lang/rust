@@ -21,7 +21,6 @@ pub(crate) struct Path {
 #[derive(Clone)]
 pub(crate) enum PathKind {
     Local,
-    Global,
     Std,
 }
 
@@ -57,7 +56,6 @@ impl Path {
         let params = tys.map(GenericArg::Type).collect();
 
         match self.kind {
-            PathKind::Global => cx.path_all(span, true, idents, params),
             PathKind::Local => cx.path_all(span, false, idents, params),
             PathKind::Std => {
                 let def_site = cx.with_def_site_ctxt(DUMMY_SP);

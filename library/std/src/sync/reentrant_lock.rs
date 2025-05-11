@@ -1,6 +1,3 @@
-#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
-mod tests;
-
 use cfg_if::cfg_if;
 
 use crate::cell::UnsafeCell;
@@ -92,9 +89,9 @@ pub struct ReentrantLock<T: ?Sized> {
 
 cfg_if!(
     if #[cfg(target_has_atomic = "64")] {
-        use crate::sync::atomic::{AtomicU64, Ordering::Relaxed};
+        use crate::sync::atomic::{Atomic, AtomicU64, Ordering::Relaxed};
 
-        struct Tid(AtomicU64);
+        struct Tid(Atomic<u64>);
 
         impl Tid {
             const fn new() -> Self {
@@ -123,6 +120,7 @@ cfg_if!(
         }
 
         use crate::sync::atomic::{
+            Atomic,
             AtomicUsize,
             Ordering,
         };
@@ -140,7 +138,7 @@ cfg_if!(
             // the current thread, or by a thread that has terminated before
             // the current thread was created. In either case, no further
             // synchronization is needed (as per <https://github.com/rust-lang/miri/issues/3450>)
-            tls_addr: AtomicUsize,
+            tls_addr: Atomic<usize>,
             tid: UnsafeCell<u64>,
         }
 
@@ -324,7 +322,10 @@ impl<T: ?Sized> ReentrantLock<T> {
     /// Otherwise, an RAII guard is returned.
     ///
     /// This function does not block.
-    pub(crate) fn try_lock(&self) -> Option<ReentrantLockGuard<'_, T>> {
+    // FIXME maybe make it a public part of the API?
+    #[unstable(issue = "none", feature = "std_internals")]
+    #[doc(hidden)]
+    pub fn try_lock(&self) -> Option<ReentrantLockGuard<'_, T>> {
         let this_thread = current_id();
         // Safety: We only touch lock_count when we own the inner mutex.
         // Additionally, we only call `self.owner.set()` while holding

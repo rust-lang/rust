@@ -1,8 +1,10 @@
-warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
-  --> $DIR/allow-non-lint-warnings.rs:26:13
+warning: skipping const checks
    |
-LL | pub fn f<T: ?Trait>() {}
-   |             ^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/allow-non-lint-warnings.rs:24:23
+   |
+LL | const fn constant() { non_constant() }
+   |                       ^^^^^^^^^^^^^^
 
 warning: 1 warning emitted
 

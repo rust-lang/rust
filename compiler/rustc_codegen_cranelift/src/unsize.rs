@@ -61,7 +61,12 @@ pub(crate) fn unsized_info<'tcx>(
                 old_info
             }
         }
-        (_, ty::Dynamic(data, ..)) => crate::vtable::get_vtable(fx, source, data.principal()),
+        (_, ty::Dynamic(data, ..)) => crate::vtable::get_vtable(
+            fx,
+            source,
+            data.principal()
+                .map(|principal| fx.tcx.instantiate_bound_regions_with_erased(principal)),
+        ),
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
     }
 }

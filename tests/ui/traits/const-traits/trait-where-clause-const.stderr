@@ -8,7 +8,7 @@ note: required by a bound in `Foo::b`
   --> $DIR/trait-where-clause-const.rs:15:24
    |
 LL |     fn b() where Self: ~const Bar;
-   |                        ^^^^^^ required by this bound in `Foo::b`
+   |                        ^^^^^^^^^^ required by this bound in `Foo::b`
 
 error[E0277]: the trait bound `T: ~const Bar` is not satisfied
   --> $DIR/trait-where-clause-const.rs:23:12
@@ -20,7 +20,7 @@ note: required by a bound in `Foo::c`
   --> $DIR/trait-where-clause-const.rs:16:13
    |
 LL |     fn c<T: ~const Bar>();
-   |             ^^^^^^ required by this bound in `Foo::c`
+   |             ^^^^^^^^^^ required by this bound in `Foo::c`
 
 error: aborting due to 2 previous errors
 

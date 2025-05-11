@@ -37,9 +37,9 @@
 //!
 //! [mutex in Fuchsia's libsync]: https://cs.opensource.google/fuchsia/fuchsia/+/main:zircon/system/ulib/sync/mutex.c
 
-use crate::sync::atomic::AtomicU32;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
-use crate::sys::futex::zircon::{
+use crate::sync::atomic::{Atomic, AtomicU32};
+use crate::sys::fuchsia::{
     ZX_ERR_BAD_HANDLE, ZX_ERR_BAD_STATE, ZX_ERR_INVALID_ARGS, ZX_ERR_TIMED_OUT, ZX_ERR_WRONG_TYPE,
     ZX_OK, ZX_TIME_INFINITE, zx_futex_wait, zx_futex_wake_single_owner, zx_handle_t,
     zx_thread_self,
@@ -52,7 +52,7 @@ const CONTESTED_BIT: u32 = 1;
 const UNLOCKED: u32 = 0;
 
 pub struct Mutex {
-    futex: AtomicU32,
+    futex: Atomic<u32>,
 }
 
 #[inline]
@@ -83,13 +83,13 @@ impl Mutex {
 
     #[inline]
     pub fn try_lock(&self) -> bool {
-        let thread_self = unsafe { zx_thread_self() };
+        let thread_self = zx_thread_self();
         self.futex.compare_exchange(UNLOCKED, to_state(thread_self), Acquire, Relaxed).is_ok()
     }
 
     #[inline]
     pub fn lock(&self) {
-        let thread_self = unsafe { zx_thread_self() };
+        let thread_self = zx_thread_self();
         if let Err(state) =
             self.futex.compare_exchange(UNLOCKED, to_state(thread_self), Acquire, Relaxed)
         {

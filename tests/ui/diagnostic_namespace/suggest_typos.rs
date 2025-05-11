@@ -16,4 +16,9 @@ trait Y{}
 //~^^HELP an attribute with a similar name exists
 trait Z{}
 
+#[diagnostic::dont_recommend]
+//~^ERROR unknown diagnostic attribute
+//~^^HELP an attribute with a similar name exists
+impl X for u8 {}
+
 fn main(){}

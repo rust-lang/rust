@@ -1,4 +1,4 @@
-//@ ignore-test auxiliary file for expansion-time.rs
+//@ ignore-auxiliary (used by `./expansion-time.rs`)
 
 1
 2

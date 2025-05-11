@@ -1,5 +1,5 @@
 use rustc_hir::def::DefKind;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
@@ -83,10 +83,10 @@ fn representability_adt_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Representab
     Representability::Representable
 }
 
-fn params_in_repr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> BitSet<u32> {
+fn params_in_repr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DenseBitSet<u32> {
     let adt_def = tcx.adt_def(def_id);
     let generics = tcx.generics_of(def_id);
-    let mut params_in_repr = BitSet::new_empty(generics.own_params.len());
+    let mut params_in_repr = DenseBitSet::new_empty(generics.own_params.len());
     for variant in adt_def.variants() {
         for field in variant.fields.iter() {
             params_in_repr_ty(
@@ -99,7 +99,7 @@ fn params_in_repr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> BitSet<u32> {
     params_in_repr
 }
 
-fn params_in_repr_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, params_in_repr: &mut BitSet<u32>) {
+fn params_in_repr_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, params_in_repr: &mut DenseBitSet<u32>) {
     match *ty.kind() {
         ty::Adt(adt, args) => {
             let inner_params_in_repr = tcx.params_in_repr(adt.did());

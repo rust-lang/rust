@@ -6,7 +6,6 @@ LL | pub struct Foo {
 LL |   a: Vec<foo::bar:A>,
    |                  ^
    |
-   = note: if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 help: use a double colon instead
    |
 LL |   a: Vec<foo::bar::A>,

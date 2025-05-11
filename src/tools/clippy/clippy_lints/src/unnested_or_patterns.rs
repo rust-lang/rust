@@ -3,7 +3,7 @@
 use clippy_config::Conf;
 use clippy_utils::ast_utils::{eq_field_pat, eq_id, eq_maybe_qself, eq_pat, eq_path};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::msrvs::{self, MsrvStack};
 use clippy_utils::over;
 use rustc_ast::PatKind::*;
 use rustc_ast::mut_visit::*;
@@ -48,13 +48,13 @@ declare_clippy_lint! {
 }
 
 pub struct UnnestedOrPatterns {
-    msrv: Msrv,
+    msrv: MsrvStack,
 }
 
 impl UnnestedOrPatterns {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: MsrvStack::new(conf.msrv),
         }
     }
 }
@@ -69,10 +69,10 @@ impl EarlyLintPass for UnnestedOrPatterns {
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if self.msrv.meets(msrvs::OR_PATTERNS) {
-            if let ast::ExprKind::Let(pat, _, _, _) = &e.kind {
-                lint_unnested_or_patterns(cx, pat);
-            }
+        if self.msrv.meets(msrvs::OR_PATTERNS)
+            && let ast::ExprKind::Let(pat, _, _, _) = &e.kind
+        {
+            lint_unnested_or_patterns(cx, pat);
         }
     }
 
@@ -88,11 +88,11 @@ impl EarlyLintPass for UnnestedOrPatterns {
         }
     }
 
-    extract_msrv_attr!(EarlyContext);
+    extract_msrv_attr!();
 }
 
 fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
-    if let Ident(.., None) | Lit(_) | Wild | Path(..) | Range(..) | Rest | MacCall(_) = pat.kind {
+    if let Ident(.., None) | Expr(_) | Wild | Path(..) | Range(..) | Rest | MacCall(_) = pat.kind {
         // This is a leaf pattern, so cloning is unprofitable.
         return;
     }
@@ -120,18 +120,25 @@ fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
 
 /// Remove all `(p)` patterns in `pat`.
 fn remove_all_parens(pat: &mut P<Pat>) {
-    struct Visitor;
+    #[derive(Default)]
+    struct Visitor {
+        /// If is not in the outer most pattern. This is needed to avoid removing the outermost
+        /// parens because top-level or-patterns are not allowed in let statements.
+        is_inner: bool,
+    }
+
     impl MutVisitor for Visitor {
         fn visit_pat(&mut self, pat: &mut P<Pat>) {
+            let is_inner = mem::replace(&mut self.is_inner, true);
             walk_pat(self, pat);
             let inner = match &mut pat.kind {
-                Paren(i) => mem::replace(&mut i.kind, Wild),
+                Paren(i) if is_inner => mem::replace(&mut i.kind, Wild),
                 _ => return,
             };
             pat.kind = inner;
         }
     }
-    Visitor.visit_pat(pat);
+    Visitor::default().visit_pat(pat);
 }
 
 /// Insert parens where necessary according to Rust's precedence rules for patterns.
@@ -224,11 +231,12 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
 
     // We're trying to find whatever kind (~"constructor") we found in `alternatives[start..]`.
     let changed = match &mut focus_kind {
+        Missing => unreachable!(),
         // These pattern forms are "leafs" and do not have sub-patterns.
         // Therefore they are not some form of constructor `C`,
         // with which a pattern `C(p_0)` may be formed,
         // which we would want to join with other `C(p_j)`s.
-        Ident(.., None) | Lit(_) | Wild | Err(_) | Never | Path(..) | Range(..) | Rest | MacCall(_)
+        Ident(.., None) | Expr(_) | Wild | Err(_) | Never | Path(..) | Range(..) | Rest | MacCall(_)
         // Skip immutable refs, as grouping them saves few characters,
         // and almost always requires adding parens (increasing noisiness).
         // In the case of only two patterns, replacement adds net characters.

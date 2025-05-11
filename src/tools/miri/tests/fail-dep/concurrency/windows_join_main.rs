@@ -1,6 +1,6 @@
 //@only-target: windows # Uses win32 api functions
 // We are making scheduler assumptions here.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency
 //@error-in-other-file: deadlock
 
 // On windows, joining main is not UB, but it will block a thread forever.
@@ -13,7 +13,7 @@ use windows_sys::Win32::System::Threading::{INFINITE, WaitForSingleObject};
 // XXX HACK: This is how miri represents the handle for thread 0.
 // This value can be "legitimately" obtained by using `GetCurrentThread` with `DuplicateHandle`
 // but miri does not implement `DuplicateHandle` yet.
-const MAIN_THREAD: HANDLE = (2i32 << 30) as HANDLE;
+const MAIN_THREAD: HANDLE = (2i32 << 29) as HANDLE;
 
 fn main() {
     thread::spawn(|| {

@@ -1,11 +1,11 @@
 use either::Either;
 use ide_db::syntax_helpers::node_ext::walk_ty;
 use syntax::{
-    ast::{self, edit::IndentLevel, make, AstNode, HasGenericArgs, HasGenericParams, HasName},
+    ast::{self, AstNode, HasGenericArgs, HasGenericParams, HasName, edit::IndentLevel, make},
     syntax_editor,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: extract_type_alias
 //
@@ -40,7 +40,7 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let target = ty.syntax().text_range();
 
     acc.add(
-        AssistId("extract_type_alias", AssistKind::RefactorExtract),
+        AssistId::refactor_extract("extract_type_alias"),
         "Extract type as type alias",
         target,
         |builder| {
@@ -87,7 +87,7 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                 ],
             );
 
-            builder.add_file_edits(ctx.file_id(), edit);
+            builder.add_file_edits(ctx.vfs_file_id(), edit);
         },
     )
 }
@@ -100,7 +100,7 @@ fn collect_used_generics<'gp>(
     fn find_lifetime(text: &str) -> impl Fn(&&ast::GenericParam) -> bool + '_ {
         move |gp: &&ast::GenericParam| match gp {
             ast::GenericParam::LifetimeParam(lp) => {
-                lp.lifetime().map_or(false, |lt| lt.text() == text)
+                lp.lifetime().is_some_and(|lt| lt.text() == text)
             }
             _ => false,
         }
@@ -118,7 +118,7 @@ fn collect_used_generics<'gp>(
                                 ast::GenericParam::TypeParam(tp) => tp.name(),
                                 _ => None,
                             }
-                            .map_or(false, |n| n.text() == name_ref.text())
+                            .is_some_and(|n| n.text() == name_ref.text())
                         }) {
                             generics.push(param);
                         }
@@ -165,7 +165,7 @@ fn collect_used_generics<'gp>(
                         if let Some(name_ref) = path.as_single_name_ref() {
                             if let Some(param) = known_generics.iter().find(|gp| {
                                 if let ast::GenericParam::ConstParam(cp) = gp {
-                                    cp.name().map_or(false, |n| n.text() == name_ref.text())
+                                    cp.name().is_some_and(|n| n.text() == name_ref.text())
                                 } else {
                                     false
                                 }

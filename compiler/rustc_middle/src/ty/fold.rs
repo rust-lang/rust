@@ -1,12 +1,11 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
 use rustc_type_ir::data_structures::DelayedMap;
-pub use rustc_type_ir::fold::{
-    FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable, fold_regions, shift_region,
-    shift_vars,
-};
 
-use crate::ty::{self, Binder, BoundTy, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{
+    self, Binder, BoundTy, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt,
+};
 
 ///////////////////////////////////////////////////////////////////////////
 // Some sample folders
@@ -129,7 +128,7 @@ where
             ty::Bound(debruijn, bound_ty) if debruijn == self.current_index => {
                 let ty = self.delegate.replace_ty(bound_ty);
                 debug_assert!(!ty.has_vars_bound_above(ty::INNERMOST));
-                ty::fold::shift_vars(self.tcx, ty, self.current_index.as_u32())
+                ty::shift_vars(self.tcx, ty, self.current_index.as_u32())
             }
             _ => {
                 if !t.has_vars_bound_at_or_above(self.current_index) {
@@ -146,10 +145,10 @@ where
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
+        match r.kind() {
             ty::ReBound(debruijn, br) if debruijn == self.current_index => {
                 let region = self.delegate.replace_region(br);
-                if let ty::ReBound(debruijn1, br) = *region {
+                if let ty::ReBound(debruijn1, br) = region.kind() {
                     // If the callback returns a bound region,
                     // that region should always use the INNERMOST
                     // debruijn index. Then we adjust it to the
@@ -169,7 +168,7 @@ where
             ty::ConstKind::Bound(debruijn, bound_const) if debruijn == self.current_index => {
                 let ct = self.delegate.replace_const(bound_const);
                 debug_assert!(!ct.has_vars_bound_above(ty::INNERMOST));
-                ty::fold::shift_vars(self.tcx, ct, self.current_index.as_u32())
+                ty::shift_vars(self.tcx, ct, self.current_index.as_u32())
             }
             _ => ct.super_fold_with(self),
         }
@@ -279,22 +278,27 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let shift_bv = |bv: ty::BoundVar| ty::BoundVar::from_usize(bv.as_usize() + bound_vars);
-        self.replace_escaping_bound_vars_uncached(value, FnMutDelegate {
-            regions: &mut |r: ty::BoundRegion| {
-                ty::Region::new_bound(self, ty::INNERMOST, ty::BoundRegion {
-                    var: shift_bv(r.var),
-                    kind: r.kind,
-                })
+        let shift_bv = |bv: ty::BoundVar| bv + bound_vars;
+        self.replace_escaping_bound_vars_uncached(
+            value,
+            FnMutDelegate {
+                regions: &mut |r: ty::BoundRegion| {
+                    ty::Region::new_bound(
+                        self,
+                        ty::INNERMOST,
+                        ty::BoundRegion { var: shift_bv(r.var), kind: r.kind },
+                    )
+                },
+                types: &mut |t: ty::BoundTy| {
+                    Ty::new_bound(
+                        self,
+                        ty::INNERMOST,
+                        ty::BoundTy { var: shift_bv(t.var), kind: t.kind },
+                    )
+                },
+                consts: &mut |c| ty::Const::new_bound(self, ty::INNERMOST, shift_bv(c)),
             },
-            types: &mut |t: ty::BoundTy| {
-                Ty::new_bound(self, ty::INNERMOST, ty::BoundTy {
-                    var: shift_bv(t.var),
-                    kind: t.kind,
-                })
-            },
-            consts: &mut |c| ty::Const::new_bound(self, ty::INNERMOST, shift_bv(c)),
-        })
+        )
     }
 
     /// Replaces any late-bound regions bound in `value` with `'erased`. Useful in codegen but also

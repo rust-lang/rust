@@ -1,5 +1,6 @@
 use std::mem;
 
+use rustc_attr_parsing::StabilityLevel;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_middle::ty::{self, TyCtxt};
@@ -139,6 +140,7 @@ struct CacheBuilder<'a, 'tcx> {
     /// This field is used to prevent duplicated impl blocks.
     impl_ids: DefIdMap<DefIdSet>,
     tcx: TyCtxt<'tcx>,
+    is_json_output: bool,
 }
 
 impl Cache {
@@ -183,8 +185,13 @@ impl Cache {
         }
 
         let (krate, mut impl_ids) = {
-            let mut cache_builder =
-                CacheBuilder { tcx, cache: &mut cx.cache, impl_ids: Default::default() };
+            let is_json_output = cx.is_json_output();
+            let mut cache_builder = CacheBuilder {
+                tcx,
+                cache: &mut cx.cache,
+                impl_ids: Default::default(),
+                is_json_output,
+            };
             krate = cache_builder.fold_crate(krate);
             (krate, cache_builder.impl_ids)
         };
@@ -281,7 +288,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
 
         // Keep track of the fully qualified path for this item.
         let pushed = match item.name {
-            Some(n) if !n.is_empty() => {
+            Some(n) => {
                 self.cache.stack.push(n);
                 true
             }
@@ -306,7 +313,13 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::ProcMacroItem(..)
             | clean::VariantItem(..) => {
                 use rustc_data_structures::fx::IndexEntry as Entry;
-                if !self.cache.stripped_mod {
+
+                let skip_because_unstable = matches!(
+                    item.stability.map(|stab| stab.level),
+                    Some(StabilityLevel::Stable { allowed_through_unstable_modules: Some(_), .. })
+                );
+
+                if (!self.cache.stripped_mod && !skip_because_unstable) || self.is_json_output {
                     // Re-exported items mean that the same id can show up twice
                     // in the rustdoc ast that we're looking at. We know,
                     // however, that a re-exported item doesn't show up in the
@@ -372,7 +385,6 @@ impl DocFolder for CacheBuilder<'_, '_> {
         // implementations elsewhere.
         let ret = if let clean::Item {
             inner: box clean::ItemInner { kind: clean::ImplItem(ref i), .. },
-            ..
         } = item
         {
             // Figure out the id of this impl. This may map to a
@@ -406,7 +418,9 @@ impl DocFolder for CacheBuilder<'_, '_> {
                 }
             }
 
-            if let Some(generics) = i.trait_.as_ref().and_then(|t| t.generics()) {
+            if let Some(trait_) = &i.trait_
+                && let Some(generics) = trait_.generics()
+            {
                 for bound in generics {
                     dids.extend(bound.def_id(self.cache));
                 }

@@ -52,10 +52,15 @@ access_url="https://ci-artifacts.rust-lang.org/${deploy_dir}/$(ciCommit)"
 # to make them easily accessible.
 if [ -n "${GITHUB_STEP_SUMMARY}" ]
 then
-  echo "# CI artifacts" >> "${GITHUB_STEP_SUMMARY}"
+  archives=($(find "${upload_dir}" -maxdepth 1 -name "*.xz"))
 
-  for filename in "${upload_dir}"/*.xz; do
-    filename=$(basename "${filename}")
-    echo "- [${filename}](${access_url}/${filename})" >> "${GITHUB_STEP_SUMMARY}"
-  done
+  # Avoid generating an invalid "*.xz" file if there are no archives
+  if [ ${#archives[@]} -gt 0 ]; then
+    echo "# CI artifacts" >> "${GITHUB_STEP_SUMMARY}"
+
+    for filename in "${upload_dir}"/*.xz; do
+      filename=$(basename "${filename}")
+      echo "- [${filename}](${access_url}/${filename})" >> "${GITHUB_STEP_SUMMARY}"
+    done
+  fi
 fi

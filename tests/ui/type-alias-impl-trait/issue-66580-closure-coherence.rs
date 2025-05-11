@@ -6,6 +6,7 @@
 
 type Closure = impl FnOnce();
 
+#[define_opaque(Closure)]
 fn closure() -> Closure {
     || {}
 }

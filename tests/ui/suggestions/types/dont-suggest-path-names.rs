@@ -5,11 +5,11 @@
 
 struct Select<F, I>(F, I);
 fn select<F, I>(filter: F) -> Select<F, I> {}
-//~^ 7:31: 7:43: mismatched types [E0308]
+//~^ ERROR mismatched types [E0308]
 
 fn parser1() {
     let lit = select(|x| match x {
-        //~^ 11:23: 11:24: type annotations needed [E0282]
+        //~^ ERROR type annotations needed [E0282]
         _ => (),
     });
 }

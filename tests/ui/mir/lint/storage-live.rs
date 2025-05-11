@@ -1,7 +1,5 @@
 //@ compile-flags: -Zlint-mir -Ztreat-err-as-bug
 //@ failure-status: 101
-//@ error-pattern: broken MIR in
-//@ error-pattern: StorageLive(_1) which already has storage here
 //@ normalize-stderr: "note: .*\n\n" -> ""
 //@ normalize-stderr: "thread 'rustc' panicked.*\n" -> ""
 //@ normalize-stderr: "storage_live\[....\]" -> "storage_live[HASH]"
@@ -20,7 +18,8 @@ fn multiple_storage() {
         let a: usize;
         {
             StorageLive(a);
-            StorageLive(a);
+            StorageLive(a); //~ ERROR broken MIR
+                            //~| ERROR StorageLive(_1) which already has storage here
             Return()
         }
     }

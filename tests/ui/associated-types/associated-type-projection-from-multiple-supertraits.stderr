@@ -20,12 +20,14 @@ LL | fn dent<C:BoxCar>(c: C, color: C::Color) {
    |
 help: use fully-qualified syntax to disambiguate
    |
-LL | fn dent<C:BoxCar>(c: C, color: <C as Vehicle>::Color) {
-   |                                ~~~~~~~~~~~~~~~~
+LL - fn dent<C:BoxCar>(c: C, color: C::Color) {
+LL + fn dent<C:BoxCar>(c: C, color: <C as Vehicle>::Color) {
+   |
 help: use fully-qualified syntax to disambiguate
    |
-LL | fn dent<C:BoxCar>(c: C, color: <C as Box>::Color) {
-   |                                ~~~~~~~~~~~~
+LL - fn dent<C:BoxCar>(c: C, color: C::Color) {
+LL + fn dent<C:BoxCar>(c: C, color: <C as Box>::Color) {
+   |
 
 error[E0222]: ambiguous associated type `Color` in bounds of `BoxCar`
   --> $DIR/associated-type-projection-from-multiple-supertraits.rs:23:38
@@ -73,12 +75,14 @@ LL | fn paint<C:BoxCar>(c: C, d: C::Color) {
    |
 help: use fully-qualified syntax to disambiguate
    |
-LL | fn paint<C:BoxCar>(c: C, d: <C as Vehicle>::Color) {
-   |                             ~~~~~~~~~~~~~~~~
+LL - fn paint<C:BoxCar>(c: C, d: C::Color) {
+LL + fn paint<C:BoxCar>(c: C, d: <C as Vehicle>::Color) {
+   |
 help: use fully-qualified syntax to disambiguate
    |
-LL | fn paint<C:BoxCar>(c: C, d: <C as Box>::Color) {
-   |                             ~~~~~~~~~~~~
+LL - fn paint<C:BoxCar>(c: C, d: C::Color) {
+LL + fn paint<C:BoxCar>(c: C, d: <C as Box>::Color) {
+   |
 
 error[E0191]: the value of the associated types `Color` in `Box`, `Color` in `Vehicle` must be specified
   --> $DIR/associated-type-projection-from-multiple-supertraits.rs:32:33

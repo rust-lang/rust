@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
+use clippy_utils::sym;
 use rustc_ast::ast::BinOpKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
-use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for NonZeroSuggestions {
             check_non_zero_conversion(cx, rhs, Applicability::MachineApplicable);
         } else {
             // Check if the parent expression is a binary operation
-            let parent_is_binary = cx.tcx.hir().parent_iter(expr.hir_id).any(|(_, node)| {
+            let parent_is_binary = cx.tcx.hir_parent_iter(expr.hir_id).any(|(_, node)| {
                 matches!(node, rustc_hir::Node::Expr(parent_expr) if matches!(parent_expr.kind, ExprKind::Binary(..)))
             });
 
@@ -72,7 +72,7 @@ fn check_non_zero_conversion(cx: &LateContext<'_>, expr: &Expr<'_>, applicabilit
         && let ExprKind::Path(qpath) = &func.kind
         && let Some(def_id) = cx.qpath_res(qpath, func.hir_id).opt_def_id()
         && let ExprKind::MethodCall(rcv_path, receiver, [], _) = &arg.kind
-        && rcv_path.ident.name.as_str() == "get"
+        && rcv_path.ident.name == sym::get
     {
         let fn_name = cx.tcx.item_name(def_id);
         let target_ty = cx.typeck_results().expr_ty(expr);
@@ -82,11 +82,10 @@ fn check_non_zero_conversion(cx: &LateContext<'_>, expr: &Expr<'_>, applicabilit
         if let ty::Adt(adt_def, _) = receiver_ty.kind()
             && adt_def.is_struct()
             && cx.tcx.get_diagnostic_name(adt_def.did()) == Some(sym::NonZero)
+            && let Some(target_non_zero_type) = get_target_non_zero_type(target_ty)
         {
-            if let Some(target_non_zero_type) = get_target_non_zero_type(target_ty) {
-                let arg_snippet = get_arg_snippet(cx, arg, rcv_path);
-                suggest_non_zero_conversion(cx, expr, fn_name, target_non_zero_type, &arg_snippet, applicability);
-            }
+            let arg_snippet = get_arg_snippet(cx, arg, rcv_path);
+            suggest_non_zero_conversion(cx, expr, fn_name, target_non_zero_type, &arg_snippet, applicability);
         }
     }
 }

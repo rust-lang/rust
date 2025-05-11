@@ -1,15 +1,17 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{SpanRangeExt, expr_block, snippet, snippet_block_with_context};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::{
+    SpanRangeExt, expr_block, snippet, snippet_block_with_context, snippet_with_applicability, snippet_with_context,
+};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{
     is_lint_allowed, is_unit_expr, peel_blocks, peel_hir_pat_refs, peel_middle_ty_refs, peel_n_hir_expr_refs,
 };
 use core::ops::ControlFlow;
 use rustc_arena::DroplessArena;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_pat};
-use rustc_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatKind, QPath, StmtKind};
+use rustc_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, AdtDef, TyCtxt, TypeckResults, VariantDef};
 use rustc_span::{Span, sym};
@@ -32,10 +34,9 @@ fn empty_arm_has_comment(cx: &LateContext<'_>, span: Span) -> bool {
 }
 
 #[rustfmt::skip]
-pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>], expr: &'tcx Expr<'_>) {
+pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>], expr: &'tcx Expr<'_>, contains_comments: bool) {
     if let [arm1, arm2] = arms
-        && arm1.guard.is_none()
-        && arm2.guard.is_none()
+        && !arms.iter().any(|arm| arm.guard.is_some() || arm.pat.span.from_expansion())
         && !expr.span.from_expansion()
         // don't lint for or patterns for now, this makes
         // the lint noisy in unnecessary situations
@@ -77,20 +78,36 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tc
                 }
             }
 
-            report_single_pattern(cx, ex, arm1, expr, els);
+            report_single_pattern(cx, ex, arm1, expr, els, contains_comments);
         }
     }
 }
 
-fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, expr: &Expr<'_>, els: Option<&Expr<'_>>) {
+fn report_single_pattern(
+    cx: &LateContext<'_>,
+    ex: &Expr<'_>,
+    arm: &Arm<'_>,
+    expr: &Expr<'_>,
+    els: Option<&Expr<'_>>,
+    contains_comments: bool,
+) {
     let lint = if els.is_some() { SINGLE_MATCH_ELSE } else { SINGLE_MATCH };
     let ctxt = expr.span.ctxt();
-    let mut app = Applicability::MachineApplicable;
+    let note = |diag: &mut Diag<'_, ()>| {
+        if contains_comments {
+            diag.note("you might want to preserve the comments from inside the `match`");
+        }
+    };
+    let mut app = if contains_comments {
+        Applicability::MaybeIncorrect
+    } else {
+        Applicability::MachineApplicable
+    };
     let els_str = els.map_or(String::new(), |els| {
         format!(" else {}", expr_block(cx, els, ctxt, "..", Some(expr.span), &mut app))
     });
 
-    if snippet(cx, ex.span, "..") == snippet(cx, arm.pat.span, "..") {
+    if ex.span.eq_ctxt(expr.span) && snippet(cx, ex.span, "..") == snippet(cx, arm.pat.span, "..") {
         let msg = "this pattern is irrefutable, `match` is useless";
         let (sugg, help) = if is_unit_expr(arm.body) {
             (String::new(), "`match` expression can be removed")
@@ -109,12 +126,15 @@ fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, exp
             }
             (sugg, "try")
         };
-        span_lint_and_sugg(cx, lint, expr.span, msg, help, sugg.to_string(), app);
+        span_lint_and_then(cx, lint, expr.span, msg, |diag| {
+            diag.span_suggestion(expr.span, help, sugg.to_string(), app);
+            note(diag);
+        });
         return;
     }
 
     let (pat, pat_ref_count) = peel_hir_pat_refs(arm.pat);
-    let (msg, sugg) = if let PatKind::Path(_) | PatKind::Lit(_) = pat.kind
+    let (msg, sugg) = if let PatKind::Expr(_) = pat.kind
         && let (ty, ty_ref_count) = peel_middle_ty_refs(cx.typeck_results().expr_ty(ex))
         && let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait()
         && let Some(pe_trait_id) = cx.tcx.lang_items().eq_trait()
@@ -126,8 +146,8 @@ fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, exp
         // scrutinee derives PartialEq and the pattern is a constant.
         let pat_ref_count = match pat.kind {
             // string literals are already a reference.
-            PatKind::Lit(Expr {
-                kind: ExprKind::Lit(lit),
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Lit { lit, negated: false },
                 ..
             }) if lit.node.is_str() || lit.node.is_bytestr() => pat_ref_count + 1,
             _ => pat_ref_count,
@@ -144,10 +164,10 @@ fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, exp
         let msg = "you seem to be trying to use `match` for an equality check. Consider using `if`";
         let sugg = format!(
             "if {} == {}{} {}{els_str}",
-            snippet(cx, ex.span, ".."),
+            snippet_with_context(cx, ex.span, ctxt, "..", &mut app).0,
             // PartialEq for different reference counts may not exist.
             "&".repeat(ref_count_diff),
-            snippet(cx, arm.pat.span, ".."),
+            snippet_with_applicability(cx, arm.pat.span, "..", &mut app),
             expr_block(cx, arm.body, ctxt, "..", Some(expr.span), &mut app),
         );
         (msg, sugg)
@@ -155,14 +175,17 @@ fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, exp
         let msg = "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`";
         let sugg = format!(
             "if let {} = {} {}{els_str}",
-            snippet(cx, arm.pat.span, ".."),
-            snippet(cx, ex.span, ".."),
+            snippet_with_applicability(cx, arm.pat.span, "..", &mut app),
+            snippet_with_context(cx, ex.span, ctxt, "..", &mut app).0,
             expr_block(cx, arm.body, ctxt, "..", Some(expr.span), &mut app),
         );
         (msg, sugg)
     };
 
-    span_lint_and_sugg(cx, lint, expr.span, msg, "try", sugg, app);
+    span_lint_and_then(cx, lint, expr.span, msg, |diag| {
+        diag.span_suggestion(expr.span, "try", sugg.to_string(), app);
+        note(diag);
+    });
 }
 
 struct PatVisitor<'tcx> {
@@ -331,15 +354,21 @@ impl<'a> PatState<'a> {
     #[expect(clippy::similar_names)]
     fn add_pat<'tcx>(&mut self, cx: &'a PatCtxt<'tcx>, pat: &'tcx Pat<'_>) -> bool {
         match pat.kind {
-            PatKind::Path(_)
-                if match *cx.typeck.pat_ty(pat).peel_refs().kind() {
-                    ty::Adt(adt, _) => adt.is_enum() || (adt.is_struct() && !adt.non_enum_variant().fields.is_empty()),
-                    ty::Tuple(tys) => !tys.is_empty(),
-                    ty::Array(_, len) => len.try_to_target_usize(cx.tcx) != Some(1),
-                    ty::Slice(..) => true,
-                    _ => false,
-                } =>
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Path(_),
+                ..
+            }) if match *cx.typeck.pat_ty(pat).peel_refs().kind() {
+                ty::Adt(adt, _) => adt.is_enum() || (adt.is_struct() && !adt.non_enum_variant().fields.is_empty()),
+                ty::Tuple(tys) => !tys.is_empty(),
+                ty::Array(_, len) => len.try_to_target_usize(cx.tcx) != Some(1),
+                ty::Slice(..) => true,
+                _ => false,
+            } =>
             {
+                matches!(self, Self::Wild)
+            },
+
+            PatKind::Guard(..) => {
                 matches!(self, Self::Wild)
             },
 
@@ -378,11 +407,11 @@ impl<'a> PatState<'a> {
                 pats.iter().map(|p| p.pat),
             ),
 
+            PatKind::Missing => unreachable!(),
             PatKind::Wild
             | PatKind::Binding(_, _, _, None)
-            | PatKind::Lit(_)
+            | PatKind::Expr(_)
             | PatKind::Range(..)
-            | PatKind::Path(_)
             | PatKind::Never
             | PatKind::Err(_) => {
                 *self = PatState::Wild;

@@ -1,6 +1,5 @@
 //@ pp-exact
 
-#![feature(inline_const_pat)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 
@@ -206,9 +205,7 @@ fn _11() {
             let _ = ();
             ()
         };
-    let const {
-                    #![rustc_dummy]
-                } =
+    let _ =
         #[rustc_dummy] const {
                 #![rustc_dummy]
             };

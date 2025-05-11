@@ -6,8 +6,9 @@ LL |     legacy_const_generics::foo(0, a, 2);
    |
 help: consider using `const` instead of `let`
    |
-LL |     const a: /* Type */ = 1;
-   |     ~~~~~  ++++++++++++
+LL -     let a = 1;
+LL +     const a: /* Type */ = 1;
+   |
 
 error: generic parameters may not be used in const operations
   --> $DIR/legacy-const-generics-bad.rs:12:35

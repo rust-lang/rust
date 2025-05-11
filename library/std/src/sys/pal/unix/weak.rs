@@ -20,18 +20,19 @@
 // each instance of `weak!` and `syscall!`. Rather than trying to unify all of
 // that, we'll just allow that some unix targets don't use this module at all.
 #![allow(dead_code, unused_macros)]
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::CStr;
 use crate::marker::PhantomData;
-use crate::sync::atomic::{self, AtomicPtr, Ordering};
+use crate::sync::atomic::{self, Atomic, AtomicPtr, Ordering};
 use crate::{mem, ptr};
 
 // We can use true weak linkage on ELF targets.
 #[cfg(all(unix, not(target_vendor = "apple")))]
 pub(crate) macro weak {
-    (fn $name:ident($($t:ty),*) -> $ret:ty) => (
+    (fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;) => (
         let ref $name: ExternWeak<unsafe extern "C" fn($($t),*) -> $ret> = {
-            extern "C" {
+            unsafe extern "C" {
                 #[linkage = "extern_weak"]
                 static $name: Option<unsafe extern "C" fn($($t),*) -> $ret>;
             }
@@ -62,10 +63,16 @@ impl<F: Copy> ExternWeak<F> {
 }
 
 pub(crate) macro dlsym {
-    (fn $name:ident($($t:ty),*) -> $ret:ty) => (
-         dlsym!(fn $name($($t),*) -> $ret, stringify!($name));
+    (fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;) => (
+         dlsym!(
+            #[link_name = stringify!($name)]
+            fn $name($($param : $t),*) -> $ret;
+        );
     ),
-    (fn $name:ident($($t:ty),*) -> $ret:ty, $sym:expr) => (
+    (
+        #[link_name = $sym:expr]
+        fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;
+    ) => (
         static DLSYM: DlsymWeak<unsafe extern "C" fn($($t),*) -> $ret> =
             DlsymWeak::new(concat!($sym, '\0'));
         let $name = &DLSYM;
@@ -73,7 +80,7 @@ pub(crate) macro dlsym {
 }
 pub(crate) struct DlsymWeak<F> {
     name: &'static str,
-    func: AtomicPtr<libc::c_void>,
+    func: Atomic<*mut libc::c_void>,
     _marker: PhantomData<F>,
 }
 
@@ -123,13 +130,17 @@ impl<F> DlsymWeak<F> {
     // Cold because it should only happen during first-time initialization.
     #[cold]
     unsafe fn initialize(&self) -> Option<F> {
-        assert_eq!(mem::size_of::<F>(), mem::size_of::<*mut libc::c_void>());
+        assert_eq!(size_of::<F>(), size_of::<*mut libc::c_void>());
 
-        let val = fetch(self.name);
+        let val = unsafe { fetch(self.name) };
         // This synchronizes with the acquire fence in `get`.
         self.func.store(val, Ordering::Release);
 
-        if val.is_null() { None } else { Some(mem::transmute_copy::<*mut libc::c_void, F>(&val)) }
+        if val.is_null() {
+            None
+        } else {
+            Some(unsafe { mem::transmute_copy::<*mut libc::c_void, F>(&val) })
+        }
     }
 }
 
@@ -138,17 +149,17 @@ unsafe fn fetch(name: &str) -> *mut libc::c_void {
         Ok(cstr) => cstr,
         Err(..) => return ptr::null_mut(),
     };
-    libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr())
+    unsafe { libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) }
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
 pub(crate) macro syscall {
-    (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
-        unsafe fn $name($($arg_name: $t),*) -> $ret {
-            weak! { fn $name($($t),*) -> $ret }
+    (fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;) => (
+        unsafe fn $name($($param: $t),*) -> $ret {
+            weak!(fn $name($($param: $t),*) -> $ret;);
 
             if let Some(fun) = $name.get() {
-                fun($($arg_name),*)
+                unsafe { fun($($param),*) }
             } else {
                 super::os::set_errno(libc::ENOSYS);
                 -1
@@ -159,16 +170,18 @@ pub(crate) macro syscall {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub(crate) macro syscall {
-    (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
-        unsafe fn $name($($arg_name:$t),*) -> $ret {
-            weak! { fn $name($($t),*) -> $ret }
+    (
+        fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;
+    ) => (
+        unsafe fn $name($($param: $t),*) -> $ret {
+            weak!(fn $name($($param: $t),*) -> $ret;);
 
             // Use a weak symbol from libc when possible, allowing `LD_PRELOAD`
             // interposition, but if it's not found just use a raw syscall.
             if let Some(fun) = $name.get() {
-                fun($($arg_name),*)
+                unsafe { fun($($param),*) }
             } else {
-                libc::syscall(libc::${concat(SYS_, $name)}, $($arg_name),*) as $ret
+                unsafe { libc::syscall(libc::${concat(SYS_, $name)}, $($param),*) as $ret }
             }
         }
     )
@@ -176,9 +189,9 @@ pub(crate) macro syscall {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub(crate) macro raw_syscall {
-    (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
-        unsafe fn $name($($arg_name:$t),*) -> $ret {
-            libc::syscall(libc::${concat(SYS_, $name)}, $($arg_name),*) as $ret
+    (fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;) => (
+        unsafe fn $name($($param: $t),*) -> $ret {
+            unsafe { libc::syscall(libc::${concat(SYS_, $name)}, $($param),*) as $ret }
         }
     )
 }

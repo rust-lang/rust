@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `AnotherTrait`
-  --> $DIR/issue-83613.rs:10:1
+  --> $DIR/issue-83613.rs:11:1
    |
 LL | impl<T: Send> AnotherTrait for T {}
    | -------------------------------- first implementation here

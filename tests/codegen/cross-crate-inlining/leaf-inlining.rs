@@ -1,4 +1,4 @@
-//@ compile-flags: -O -Zcross-crate-inline-threshold=yes
+//@ compile-flags: -Copt-level=3 -Zcross-crate-inline-threshold=yes
 //@ aux-build:leaf.rs
 
 #![crate_type = "lib"]

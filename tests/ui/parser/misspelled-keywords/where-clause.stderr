@@ -8,7 +8,8 @@ LL | wheree
    |
 help: there is a keyword `where` with a similar name
    |
-LL | where
+LL - wheree
+LL + where
    |
 
 error: aborting due to 1 previous error

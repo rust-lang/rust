@@ -1,6 +1,7 @@
 //@ run-pass
 
 #![feature(concat_idents)]
+#![expect(deprecated)] // concat_idents is deprecated
 
 pub fn main() {
     struct Foo;

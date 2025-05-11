@@ -1,9 +1,15 @@
 use rand::Rng as _;
-use rand::distributions::Distribution as _;
 use rustc_apfloat::Float as _;
 use rustc_apfloat::ieee::IeeeFloat;
+use rustc_middle::ty::{self, FloatTy, ScalarInt};
 
-/// Disturbes a floating-point result by a relative error on the order of (-2^scale, 2^scale).
+use crate::*;
+
+/// Disturbes a floating-point result by a relative error in the range (-2^scale, 2^scale).
+///
+/// For a 2^N ULP error, you can use an `err_scale` of `-(F::PRECISION - 1 - N)`.
+/// In other words, a 1 ULP (absolute) error is the same as a `2^-(F::PRECISION-1)` relative error.
+/// (Subtracting 1 compensates for the integer bit.)
 pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
     ecx: &mut crate::MiriInterpCx<'_>,
     val: F,
@@ -11,14 +17,56 @@ pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
 ) -> F {
     let rng = ecx.machine.rng.get_mut();
     // Generate a random integer in the range [0, 2^PREC).
-    let dist = rand::distributions::Uniform::new(0, 1 << F::PRECISION);
-    let err = F::from_u128(dist.sample(rng))
-        .value
-        .scalbn(err_scale.strict_sub(F::PRECISION.try_into().unwrap()));
+    // (When read as binary, the position of the first `1` determines the exponent,
+    // and the remaining bits fill the mantissa. `PREC` is one plus the size of the mantissa,
+    // so this all works out.)
+    let r = F::from_u128(rng.random_range(0..(1 << F::PRECISION))).value;
+    // Multiply this with 2^(scale - PREC). The result is between 0 and
+    // 2^PREC * 2^(scale - PREC) = 2^scale.
+    let err = r.scalbn(err_scale.strict_sub(F::PRECISION.try_into().unwrap()));
     // give it a random sign
-    let err = if rng.gen::<bool>() { -err } else { err };
+    let err = if rng.random() { -err } else { err };
     // multiple the value with (1+err)
     (val * (F::from_u128(1).value + err).value).value
+}
+
+/// [`apply_random_float_error`] gives instructions to apply a 2^N ULP error.
+/// This function implements these instructions such that applying a 2^N ULP error is less error prone.
+/// So for a 2^N ULP error, you would pass N as the `ulp_exponent` argument.
+pub(crate) fn apply_random_float_error_ulp<F: rustc_apfloat::Float>(
+    ecx: &mut crate::MiriInterpCx<'_>,
+    val: F,
+    ulp_exponent: u32,
+) -> F {
+    let n = i32::try_from(ulp_exponent)
+        .expect("`err_scale_for_ulp`: exponent is too large to create an error scale");
+    // we know this fits
+    let prec = i32::try_from(F::PRECISION).unwrap();
+    let err_scale = -(prec - n - 1);
+    apply_random_float_error(ecx, val, err_scale)
+}
+
+/// Applies a random 16ULP floating point error to `val` and returns the new value.
+/// Will fail if `val` is not a floating point number.
+pub(crate) fn apply_random_float_error_to_imm<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    val: ImmTy<'tcx>,
+    ulp_exponent: u32,
+) -> InterpResult<'tcx, ImmTy<'tcx>> {
+    let scalar = val.to_scalar_int()?;
+    let res: ScalarInt = match val.layout.ty.kind() {
+        ty::Float(FloatTy::F16) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f16(), ulp_exponent).into(),
+        ty::Float(FloatTy::F32) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f32(), ulp_exponent).into(),
+        ty::Float(FloatTy::F64) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f64(), ulp_exponent).into(),
+        ty::Float(FloatTy::F128) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f128(), ulp_exponent).into(),
+        _ => bug!("intrinsic called with non-float input type"),
+    };
+
+    interp_ok(ImmTy::from_scalar_int(res, val.layout))
 }
 
 pub(crate) fn sqrt<S: rustc_apfloat::ieee::Semantics>(x: IeeeFloat<S>) -> IeeeFloat<S> {

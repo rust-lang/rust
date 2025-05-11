@@ -5,6 +5,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            accept-comment-above-statement
            allow-comparison-to-zero
            allow-dbg-in-tests
+           allow-expect-in-consts
            allow-expect-in-tests
            allow-indexing-slicing-in-tests
            allow-mixed-uninlined-format-args
@@ -13,6 +14,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            allow-print-in-tests
            allow-private-module-inception
            allow-renamed-params-for
+           allow-unwrap-in-consts
            allow-unwrap-in-tests
            allow-useless-vec-in-tests
            allowed-dotfiles
@@ -27,11 +29,11 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            array-size-threshold
            avoid-breaking-exported-api
            await-holding-invalid-types
-           blacklisted-names
            cargo-ignore-publish
+           check-incompatible-msrv-in-tests
+           check-inconsistent-struct-field-initializers
            check-private-items
            cognitive-complexity-threshold
-           cyclomatic-complexity-threshold
            disallowed-macros
            disallowed-methods
            disallowed-names
@@ -46,6 +48,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            future-size-threshold
            ignore-interior-mutability
            large-error-threshold
+           lint-commented-code
            literal-representation-threshold
            matches-for-let-else
            max-fn-params-bools
@@ -56,6 +59,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings
+           module-items-ordered-within-groupings
            msrv
            pass-by-value-size-limit
            pub-underscore-fields-behavior
@@ -93,6 +97,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            accept-comment-above-statement
            allow-comparison-to-zero
            allow-dbg-in-tests
+           allow-expect-in-consts
            allow-expect-in-tests
            allow-indexing-slicing-in-tests
            allow-mixed-uninlined-format-args
@@ -101,6 +106,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            allow-print-in-tests
            allow-private-module-inception
            allow-renamed-params-for
+           allow-unwrap-in-consts
            allow-unwrap-in-tests
            allow-useless-vec-in-tests
            allowed-dotfiles
@@ -115,11 +121,11 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            array-size-threshold
            avoid-breaking-exported-api
            await-holding-invalid-types
-           blacklisted-names
            cargo-ignore-publish
+           check-incompatible-msrv-in-tests
+           check-inconsistent-struct-field-initializers
            check-private-items
            cognitive-complexity-threshold
-           cyclomatic-complexity-threshold
            disallowed-macros
            disallowed-methods
            disallowed-names
@@ -134,6 +140,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            future-size-threshold
            ignore-interior-mutability
            large-error-threshold
+           lint-commented-code
            literal-representation-threshold
            matches-for-let-else
            max-fn-params-bools
@@ -144,6 +151,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings
+           module-items-ordered-within-groupings
            msrv
            pass-by-value-size-limit
            pub-underscore-fields-behavior
@@ -181,6 +189,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            accept-comment-above-statement
            allow-comparison-to-zero
            allow-dbg-in-tests
+           allow-expect-in-consts
            allow-expect-in-tests
            allow-indexing-slicing-in-tests
            allow-mixed-uninlined-format-args
@@ -189,6 +198,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            allow-print-in-tests
            allow-private-module-inception
            allow-renamed-params-for
+           allow-unwrap-in-consts
            allow-unwrap-in-tests
            allow-useless-vec-in-tests
            allowed-dotfiles
@@ -203,11 +213,11 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            array-size-threshold
            avoid-breaking-exported-api
            await-holding-invalid-types
-           blacklisted-names
            cargo-ignore-publish
+           check-incompatible-msrv-in-tests
+           check-inconsistent-struct-field-initializers
            check-private-items
            cognitive-complexity-threshold
-           cyclomatic-complexity-threshold
            disallowed-macros
            disallowed-methods
            disallowed-names
@@ -222,6 +232,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            future-size-threshold
            ignore-interior-mutability
            large-error-threshold
+           lint-commented-code
            literal-representation-threshold
            matches-for-let-else
            max-fn-params-bools
@@ -232,6 +243,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings
+           module-items-ordered-within-groupings
            msrv
            pass-by-value-size-limit
            pub-underscore-fields-behavior

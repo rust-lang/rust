@@ -7,6 +7,7 @@
 //@ check-pass
 //@ proc-macro: another-proc-macro.rs
 //@ compile-flags: -Zunpretty=expanded
+//@ edition: 2015
 
 #![feature(derive_coerce_pointee)]
 

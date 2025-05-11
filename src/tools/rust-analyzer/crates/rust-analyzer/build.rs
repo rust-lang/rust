@@ -32,6 +32,7 @@ fn set_rerun() {
 }
 
 fn set_commit_info() {
+    #[allow(clippy::disallowed_methods)]
     let output = match Command::new("git")
         .arg("log")
         .arg("-1")

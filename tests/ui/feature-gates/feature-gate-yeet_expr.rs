@@ -1,4 +1,4 @@
-//@ compile-flags: --edition 2018
+//@ edition: 2018
 
 pub fn demo() -> Option<i32> {
     do yeet //~ ERROR `do yeet` expression is experimental

@@ -581,15 +581,18 @@ impl Tree {
             let mut debug_info = NodeDebugInfo::new(root_tag, root_default_perm, span);
             // name the root so that all allocations contain one named pointer
             debug_info.add_name("root of the allocation");
-            nodes.insert(root_idx, Node {
-                tag: root_tag,
-                parent: None,
-                children: SmallVec::default(),
-                default_initial_perm: root_default_perm,
-                // The root may never be skipped, all accesses will be local.
-                default_initial_idempotent_foreign_access: IdempotentForeignAccess::None,
-                debug_info,
-            });
+            nodes.insert(
+                root_idx,
+                Node {
+                    tag: root_tag,
+                    parent: None,
+                    children: SmallVec::default(),
+                    default_initial_perm: root_default_perm,
+                    // The root may never be skipped, all accesses will be local.
+                    default_initial_idempotent_foreign_access: IdempotentForeignAccess::None,
+                    debug_info,
+                },
+            );
             nodes
         };
         let rperms = {
@@ -624,14 +627,17 @@ impl<'tcx> Tree {
         let parent_idx = self.tag_mapping.get(&parent_tag).unwrap();
         let strongest_idempotent = default_initial_perm.strongest_idempotent_foreign_access(prot);
         // Create the node
-        self.nodes.insert(idx, Node {
-            tag: new_tag,
-            parent: Some(parent_idx),
-            children: SmallVec::default(),
-            default_initial_perm,
-            default_initial_idempotent_foreign_access: strongest_idempotent,
-            debug_info: NodeDebugInfo::new(new_tag, default_initial_perm, span),
-        });
+        self.nodes.insert(
+            idx,
+            Node {
+                tag: new_tag,
+                parent: Some(parent_idx),
+                children: SmallVec::default(),
+                default_initial_perm,
+                default_initial_idempotent_foreign_access: strongest_idempotent,
+                debug_info: NodeDebugInfo::new(new_tag, default_initial_perm, span),
+            },
+        );
         // Register new_tag as a child of parent_tag
         self.nodes.get_mut(parent_idx).unwrap().children.push(idx);
         // Initialize perms
@@ -715,9 +721,14 @@ impl<'tcx> Tree {
                     // visit all children, skipping none
                     |_| ContinueTraversal::Recurse,
                     |args: NodeAppArgs<'_>| -> Result<(), TransitionError> {
-                        let NodeAppArgs { node, .. } = args;
+                        let NodeAppArgs { node, perm, .. } = args;
+                        let perm =
+                            perm.get().copied().unwrap_or_else(|| node.default_location_state());
                         if global.borrow().protected_tags.get(&node.tag)
                             == Some(&ProtectorKind::StrongProtector)
+                            // Don't check for protector if it is a Cell (see `unsafe_cell_deallocate` in `interior_mutability.rs`).
+                            // Related to https://github.com/rust-lang/rust/issues/55005.
+                            && !perm.permission().is_cell()
                         {
                             Err(TransitionError::ProtectedDealloc)
                         } else {
@@ -859,10 +870,9 @@ impl<'tcx> Tree {
                 let idx = self.tag_mapping.get(&tag).unwrap();
                 // Only visit initialized permissions
                 if let Some(p) = perms.get(idx)
+                    && let Some(access_kind) = p.permission.protector_end_access()
                     && p.initialized
                 {
-                    let access_kind =
-                        if p.permission.is_active() { AccessKind::Write } else { AccessKind::Read };
                     let access_cause = diagnostics::AccessCause::FnExit(access_kind);
                     TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
                         .traverse_nonchildren(

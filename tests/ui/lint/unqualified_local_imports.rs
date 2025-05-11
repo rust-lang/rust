@@ -1,4 +1,4 @@
-//@compile-flags: --edition 2018
+//@ edition: 2018
 #![feature(unqualified_local_imports)]
 #![deny(unqualified_local_imports)]
 

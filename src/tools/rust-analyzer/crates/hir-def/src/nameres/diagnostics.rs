@@ -3,15 +3,14 @@
 use std::ops::Not;
 
 use cfg::{CfgExpr, CfgOptions};
-use hir_expand::{attrs::AttrId, ExpandErrorKind, MacroCallKind};
+use hir_expand::{ExpandErrorKind, MacroCallKind, attrs::AttrId, mod_path::ModPath};
 use la_arena::Idx;
 use syntax::ast;
 
 use crate::{
+    AstId,
     item_tree::{self, AttrOwner, ItemTreeId, TreeId},
     nameres::LocalModuleId,
-    path::ModPath,
-    AstId,
 };
 
 #[derive(Debug, PartialEq, Eq)]

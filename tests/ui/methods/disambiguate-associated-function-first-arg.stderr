@@ -25,16 +25,19 @@ LL |     fn new(_a: Self, _b: i32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: disambiguate the associated function for candidate #1
    |
-LL |     <A as M>::new(1);
-   |     ~~~~~~~~~~~~~~~~
+LL -     _a.new(1);
+LL +     <A as M>::new(1);
+   |
 help: disambiguate the associated function for candidate #2
    |
-LL |     <A as N>::new(_a, 1);
-   |     ~~~~~~~~~~~~~~~~~~~~
+LL -     _a.new(1);
+LL +     <A as N>::new(_a, 1);
+   |
 help: disambiguate the associated function for candidate #3
    |
-LL |     <A as O>::new(_a, 1);
-   |     ~~~~~~~~~~~~~~~~~~~~
+LL -     _a.new(1);
+LL +     <A as O>::new(_a, 1);
+   |
 
 error[E0034]: multiple applicable items in scope
   --> $DIR/disambiguate-associated-function-first-arg.rs:47:7
@@ -54,12 +57,14 @@ LL |     fn f(self) {}
    |     ^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
-LL |     TraitA::f(S);
-   |     ~~~~~~~~~~~~
+LL -     S.f();
+LL +     TraitA::f(S);
+   |
 help: disambiguate the method for candidate #2
    |
-LL |     TraitB::f(S);
-   |     ~~~~~~~~~~~~
+LL -     S.f();
+LL +     TraitB::f(S);
+   |
 
 error: aborting due to 2 previous errors
 

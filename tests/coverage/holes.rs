@@ -8,6 +8,12 @@ use core::hint::black_box;
 fn main() {
     black_box(());
 
+    static MY_STATIC: () = ();
+
+    black_box(());
+
+    const MY_CONST: () = ();
+
     // Splitting this across multiple lines makes it easier to see where the
     // coverage mapping regions begin and end.
     #[rustfmt::skip]
@@ -39,6 +45,14 @@ fn main() {
 
     black_box(());
 
+    trait MyTrait {}
+
+    black_box(());
+
+    impl MyTrait for MyStruct {}
+
+    black_box(());
+
     macro_rules! _my_macro {
         () => {};
     }
@@ -61,6 +75,25 @@ fn main() {
         {
             7 + 4
         }
+        ;
+
+    black_box(());
+
+    // This tests the edge case of a const block nested inside an "anon const",
+    // such as the length of an array literal. Handling this case requires
+    // `nested_filter::OnlyBodies` or equivalent.
+    #[rustfmt::skip]
+    let _const_block_inside_anon_const =
+        [
+            0
+            ;
+            7
+            +
+            const
+            {
+                3
+            }
+        ]
         ;
 
     black_box(());

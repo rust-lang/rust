@@ -6,9 +6,6 @@ LL | fn foo() -> Result<u32, ()> {
 LL |     let x: Option<u32> = None;
 LL |     x?;
    |      ^ use `.ok_or(...)?` to provide an error compatible with `Result<u32, ()>`
-   |
-   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `Result<u32, ()>`
-   = help: the trait `FromResidual<Result<Infallible, E>>` is implemented for `Result<T, F>`
 
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option.rs:11:6
@@ -18,8 +15,6 @@ LL | fn bar() -> u32 {
 LL |     let x: Option<u32> = None;
 LL |     x?;
    |      ^ cannot use the `?` operator in a function that returns `u32`
-   |
-   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
 
 error: aborting due to 2 previous errors
 

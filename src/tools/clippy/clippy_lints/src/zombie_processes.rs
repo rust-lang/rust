@@ -1,9 +1,10 @@
 use ControlFlow::{Break, Continue};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{fn_def_id, get_enclosing_block, match_any_def_paths, match_def_path, path_to_local_id, paths};
+use clippy_utils::{fn_def_id, get_enclosing_block, path_to_local_id};
 use rustc_ast::Mutability;
 use rustc_ast::visit::visit_opt;
 use rustc_errors::Applicability;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_local};
 use rustc_hir::{Expr, ExprKind, HirId, LetStmt, Node, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -58,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for ZombieProcesses {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Call(..) | ExprKind::MethodCall(..) = expr.kind
             && let Some(child_adt) = cx.typeck_results().expr_ty(expr).ty_adt_def()
-            && match_def_path(cx, child_adt.did(), &paths::CHILD)
+            && cx.tcx.is_diagnostic_item(sym::Child, child_adt.did())
         {
             match cx.tcx.parent_hir_node(expr.hir_id) {
                 Node::LetStmt(local)
@@ -68,6 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for ZombieProcesses {
                     let mut vis = WaitFinder {
                         cx,
                         local_id,
+                        body_id: cx.tcx.hir_enclosing_body_owner(expr.hir_id),
                         state: VisitorState::WalkUpToLocal,
                         early_return: None,
                         missing_wait_branch: None,
@@ -129,9 +131,10 @@ struct MaybeWait(Span);
 struct WaitFinder<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     local_id: HirId,
+    body_id: LocalDefId,
     state: VisitorState,
     early_return: Option<Span>,
-    // When joining two if branches where one of them doesn't call `wait()`, stores its span for more targetted help
+    // When joining two if branches where one of them doesn't call `wait()`, stores its span for more targeted help
     // messages
     missing_wait_branch: Option<MissingWaitBranch>,
 }
@@ -178,15 +181,15 @@ impl<'tcx> Visitor<'tcx> for WaitFinder<'_, 'tcx> {
                 Node::Expr(expr) if let ExprKind::AddrOf(_, Mutability::Not, _) = expr.kind => {},
                 Node::Expr(expr)
                     if let Some(fn_did) = fn_def_id(self.cx, expr)
-                        && match_any_def_paths(self.cx, fn_did, &[&paths::CHILD_ID, &paths::CHILD_KILL]).is_some() => {
-                },
+                        && (self.cx.tcx.is_diagnostic_item(sym::child_id, fn_did)
+                            || self.cx.tcx.is_diagnostic_item(sym::child_kill, fn_did)) => {},
 
                 // Conservatively assume that all other kinds of nodes call `.wait()` somehow.
                 _ => return Break(MaybeWait(ex.span)),
             }
         } else {
             match ex.kind {
-                ExprKind::Ret(e) => {
+                ExprKind::Ret(e) if self.cx.tcx.hir_enclosing_body_owner(ex.hir_id) == self.body_id => {
                     visit_opt!(self, visit_expr, e);
                     if self.early_return.is_none() {
                         self.early_return = Some(ex.span);
@@ -249,8 +252,8 @@ impl<'tcx> Visitor<'tcx> for WaitFinder<'_, 'tcx> {
         walk_expr(self, ex)
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 
@@ -300,8 +303,8 @@ fn check<'tcx>(cx: &LateContext<'tcx>, spawn_expr: &'tcx Expr<'tcx>, cause: Caus
     };
 
     let mut vis = ExitPointFinder {
-        cx,
         state: ExitPointState::WalkUpTo(spawn_expr.hir_id),
+        cx,
     };
     if let Break(ExitCallFound) = vis.visit_block(block) {
         // Visitor found an unconditional `exit()` call, so don't lint.
@@ -353,7 +356,7 @@ fn check<'tcx>(cx: &LateContext<'tcx>, spawn_expr: &'tcx Expr<'tcx>, cause: Caus
 /// Checks if the given expression exits the process.
 fn is_exit_expression(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     fn_def_id(cx, expr).is_some_and(|fn_did| {
-        cx.tcx.is_diagnostic_item(sym::process_exit, fn_did) || match_def_path(cx, fn_did, &paths::ABORT)
+        cx.tcx.is_diagnostic_item(sym::process_exit, fn_did) || cx.tcx.is_diagnostic_item(sym::process_abort, fn_did)
     })
 }
 

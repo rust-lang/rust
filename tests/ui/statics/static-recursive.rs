@@ -1,7 +1,7 @@
 //@ run-pass
 
 static mut S: *const u8 = unsafe { &S as *const *const u8 as *const u8 };
-//~^ WARN shared reference to mutable static is discouraged [static_mut_refs]
+//~^ WARN shared reference to mutable static [static_mut_refs]
 
 struct StaticDoubleLinked {
     prev: &'static StaticDoubleLinked,
@@ -17,7 +17,7 @@ static L3: StaticDoubleLinked = StaticDoubleLinked { prev: &L2, next: &L1, data:
 pub fn main() {
     unsafe {
         assert_eq!(S, *(S as *const *const u8));
-        //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^ WARN creating a shared reference to mutable static [static_mut_refs]
     }
 
     let mut test_vec = Vec::new();

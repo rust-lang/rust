@@ -6,8 +6,9 @@ LL | usee a::b;
    |
 help: there is a keyword `use` with a similar name
    |
-LL | use a::b;
-   | ~~~
+LL - usee a::b;
+LL + use a::b;
+   |
 
 error: aborting due to 1 previous error
 

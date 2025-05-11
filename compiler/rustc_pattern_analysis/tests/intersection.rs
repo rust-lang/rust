@@ -1,5 +1,7 @@
 //! Test the computation of arm intersections.
 
+#![allow(unused_crate_dependencies)]
+
 use common::*;
 use rustc_pattern_analysis::MatchArm;
 use rustc_pattern_analysis::pat::DeconstructedPat;
@@ -14,7 +16,8 @@ fn check(patterns: Vec<DeconstructedPat<Cx>>) -> Vec<Vec<usize>> {
     let arms: Vec<_> =
         patterns.iter().map(|pat| MatchArm { pat, has_guard: false, arm_data: () }).collect();
     let report =
-        compute_match_usefulness(arms.as_slice(), ty, PlaceValidity::ValidOnly, None).unwrap();
+        compute_match_usefulness(arms.as_slice(), ty, PlaceValidity::ValidOnly, usize::MAX)
+            .unwrap();
     report.arm_intersections.into_iter().map(|bitset| bitset.iter().collect()).collect()
 }
 

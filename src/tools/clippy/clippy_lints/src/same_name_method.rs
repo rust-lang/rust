@@ -3,7 +3,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, Impl, ItemKind, Node, Path, QPath, TraitRef, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::AssocKind;
+use rustc_middle::ty::AssocItem;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
@@ -50,9 +50,9 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         let mut map = FxHashMap::<Res, ExistingName>::default();
 
-        for id in cx.tcx.hir().items() {
+        for id in cx.tcx.hir_free_items() {
             if matches!(cx.tcx.def_kind(id.owner_id), DefKind::Impl { .. })
-                && let item = cx.tcx.hir().item(id)
+                && let item = cx.tcx.hir_item(id)
                 && let ItemKind::Impl(Impl {
                     items,
                     of_trait,
@@ -62,10 +62,13 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                 && let TyKind::Path(QPath::Resolved(_, Path { res, .. })) = self_ty.kind
             {
                 if !map.contains_key(res) {
-                    map.insert(*res, ExistingName {
-                        impl_methods: BTreeMap::new(),
-                        trait_methods: BTreeMap::new(),
-                    });
+                    map.insert(
+                        *res,
+                        ExistingName {
+                            impl_methods: BTreeMap::new(),
+                            trait_methods: BTreeMap::new(),
+                        },
+                    );
                 }
                 let existing_name = map.get_mut(res).unwrap();
 
@@ -82,8 +85,8 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                             cx.tcx
                                 .associated_items(did)
                                 .in_definition_order()
-                                .filter(|assoc_item| matches!(assoc_item.kind, AssocKind::Fn))
-                                .map(|assoc_item| assoc_item.name)
+                                .filter(|assoc_item| assoc_item.is_fn())
+                                .map(AssocItem::name)
                                 .collect()
                         } else {
                             BTreeSet::new()

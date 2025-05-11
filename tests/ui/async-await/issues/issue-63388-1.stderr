@@ -10,16 +10,13 @@ LL |     ) -> &dyn Foo
    = note: `#[warn(elided_named_lifetimes)]` on by default
 
 error[E0621]: explicit lifetime required in the type of `foo`
-  --> $DIR/issue-63388-1.rs:13:5
+  --> $DIR/issue-63388-1.rs:14:9
    |
-LL |           &'a self, foo: &dyn Foo
-   |                          -------- help: add explicit lifetime `'a` to the type of `foo`: `&'a (dyn Foo + 'a)`
-LL |       ) -> &dyn Foo
-LL | /     {
-LL | |
-LL | |         foo
-LL | |     }
-   | |_____^ lifetime `'a` required
+LL |         &'a self, foo: &dyn Foo
+   |                        -------- help: add explicit lifetime `'a` to the type of `foo`: `&'a (dyn Foo + 'a)`
+...
+LL |         foo
+   |         ^^^ lifetime `'a` required
 
 error: aborting due to 1 previous error; 1 warning emitted
 

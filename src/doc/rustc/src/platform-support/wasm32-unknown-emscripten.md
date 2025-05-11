@@ -36,8 +36,8 @@ If you are only targeting the web and need to access web APIs, the
 
 ## Target maintainers
 
-- Hood Chatham, https://github.com/hoodmane
-- Juniper Tyree, https://github.com/juntyr
+[@hoodmane](https://github.com/hoodmane)
+[@juntyr](https://github.com/juntyr)
 
 ## Requirements
 
@@ -61,7 +61,7 @@ Building this target can be done by:
 * Configure the `wasm32-unknown-emscripten` target to get built.
 * Ensure the `WebAssembly` target backend is not disabled in LLVM.
 
-These are all controlled through `config.toml` options. It should be possible
+These are all controlled through `bootstrap.toml` options. It should be possible
 to build this target on any platform. A minimal example configuration would be:
 
 ```toml
@@ -118,7 +118,7 @@ This target is not extensively tested in CI for the rust-lang/rust repository. I
 can be tested locally, for example, with:
 
 ```sh
-./x.py test --target wasm32-unknown-emscripten --skip src/tools/linkchecker
+EMCC_CFLAGS="-s MAXIMUM_MEMORY=2GB" ./x.py test --target wasm32-unknown-emscripten --skip src/tools/linkchecker
 ```
 
 To run these tests, both `emcc` and `node` need to be in your `$PATH`. You can

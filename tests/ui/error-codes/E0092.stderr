@@ -1,8 +1,8 @@
 error[E0092]: unrecognized atomic operation function: `foo`
-  --> $DIR/E0092.rs:3:5
+  --> $DIR/E0092.rs:4:11
    |
-LL |     fn atomic_foo();
-   |     ^^^^^^^^^^^^^^^^ unrecognized atomic operation
+LL | unsafe fn atomic_foo();
+   |           ^^^^^^^^^^ unrecognized atomic operation
 
 error: aborting due to 1 previous error
 

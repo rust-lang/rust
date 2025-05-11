@@ -43,7 +43,7 @@ LL |     fn f() where T: ?Sized {}
    = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
   --> $DIR/maybe-bounds-where.rs:12:34
    |
 LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
@@ -58,13 +58,13 @@ LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
    = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
   --> $DIR/maybe-bounds-where.rs:16:33
    |
 LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
    |                                 ^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors; 2 warnings emitted
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0203, E0658.
 For more information about an error, try `rustc --explain E0203`.

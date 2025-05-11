@@ -13,6 +13,7 @@ fn main() {
             println!("world!")
         }
     }
+    //~^^^^^ collapsible_else_if
 
     if x == "hello" {
         print!("Hello ");
@@ -21,6 +22,7 @@ fn main() {
             println!("world!")
         }
     }
+    //~^^^^^ collapsible_else_if
 
     if x == "hello" {
         print!("Hello ");
@@ -32,6 +34,7 @@ fn main() {
             println!("!")
         }
     }
+    //~^^^^^^^^ collapsible_else_if
 
     if x == "hello" {
         print!("Hello ");
@@ -43,6 +46,7 @@ fn main() {
             println!("!")
         }
     }
+    //~^^^^^^^^ collapsible_else_if
 
     if let Some(42) = Some(42) {
         print!("Hello ");
@@ -54,6 +58,7 @@ fn main() {
             println!("!")
         }
     }
+    //~^^^^^^^^ collapsible_else_if
 
     if let Some(42) = Some(42) {
         print!("Hello ");
@@ -65,6 +70,7 @@ fn main() {
             println!("!")
         }
     }
+    //~^^^^^^^^ collapsible_else_if
 
     if let Some(42) = Some(42) {
         print!("Hello ");
@@ -76,6 +82,7 @@ fn main() {
             println!("!")
         }
     }
+    //~^^^^^^^^ collapsible_else_if
 
     if x == "hello" {
         print!("Hello ");
@@ -93,4 +100,5 @@ fn issue_7318() {
     }else{
         if false {}
     }
+    //~^^^ collapsible_else_if
 }

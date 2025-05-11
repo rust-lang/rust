@@ -13,9 +13,9 @@ use object::read::archive::ArchiveFile;
 use object::read::macho::FatArch;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
+use rustc_fs_util::TempDirBuilder;
 use rustc_session::Session;
 use rustc_span::Symbol;
-use tempfile::Builder as TempFileBuilder;
 use tracing::trace;
 
 use super::metadata::search_for_section;
@@ -389,11 +389,10 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
         mut skip: Box<dyn FnMut(&str) -> bool + 'static>,
     ) -> io::Result<()> {
         let mut archive_path = archive_path.to_path_buf();
-        if self.sess.target.llvm_target.contains("-apple-macosx") {
-            if let Some(new_archive_path) = try_extract_macho_fat_archive(self.sess, &archive_path)?
-            {
-                archive_path = new_archive_path
-            }
+        if self.sess.target.llvm_target.contains("-apple-macosx")
+            && let Some(new_archive_path) = try_extract_macho_fat_archive(self.sess, &archive_path)?
+        {
+            archive_path = new_archive_path
         }
 
         if self.src_archives.iter().any(|archive| archive.0 == archive_path) {
@@ -414,10 +413,10 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
                     let member_path = archive_path.parent().unwrap().join(Path::new(&file_name));
                     self.entries.push((file_name.into_bytes(), ArchiveEntry::File(member_path)));
                 } else {
-                    self.entries.push((file_name.into_bytes(), ArchiveEntry::FromArchive {
-                        archive_index,
-                        file_range: entry.file_range(),
-                    }));
+                    self.entries.push((
+                        file_name.into_bytes(),
+                        ArchiveEntry::FromArchive { archive_index, file_range: entry.file_range() },
+                    ));
                 }
             }
         }
@@ -502,7 +501,7 @@ impl<'a> ArArchiveBuilder<'a> {
         // it creates. We need it to be the default mode for back compat reasons however. (See
         // #107495) To handle this we are telling tempfile to create a temporary directory instead
         // and then inside this directory create a file using File::create.
-        let archive_tmpdir = TempFileBuilder::new()
+        let archive_tmpdir = TempDirBuilder::new()
             .suffix(".temp-archive")
             .tempdir_in(output.parent().unwrap_or_else(|| Path::new("")))
             .map_err(|err| {

@@ -1,12 +1,7 @@
 //! Completion tests for use trees.
-use expect_test::{expect, Expect};
+use expect_test::expect;
 
-use crate::tests::completion_list;
-
-fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(ra_fixture);
-    expect.assert_eq(&actual)
-}
+use crate::tests::check;
 
 #[test]
 fn use_tree_completion() {
@@ -453,6 +448,23 @@ marco_rules! m { () => {} }
             fn foo fn()
             md simd
             st S      S
+        "#]],
+    );
+}
+
+#[test]
+fn use_tree_doc_hidden() {
+    check(
+        r#"
+//- /foo.rs crate:foo
+#[doc(hidden)] pub struct Hidden;
+pub struct Visible;
+
+//- /lib.rs crate:lib deps:foo
+use foo::$0;
+    "#,
+        expect![[r#"
+            st Visible Visible
         "#]],
     );
 }

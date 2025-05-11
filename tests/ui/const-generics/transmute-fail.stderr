@@ -3,6 +3,8 @@ error: the constant `W` is not of type `usize`
    |
 LL | fn bar<const W: bool, const H: usize>(v: [[u32; H]; W]) -> [[u32; W]; H] {
    |                                          ^^^^^^^^^^^^^ expected `usize`, found `bool`
+   |
+   = note: the length of array `[[u32; H]; W]` must be type `usize`
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/transmute-fail.rs:11:9
@@ -18,6 +20,8 @@ error: the constant `W` is not of type `usize`
    |
 LL |         std::mem::transmute(v)
    |         ^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
+   |
+   = note: the length of array `[[u32; H]; W]` must be type `usize`
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/transmute-fail.rs:26:9

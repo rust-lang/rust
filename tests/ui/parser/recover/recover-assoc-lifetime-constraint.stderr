@@ -10,8 +10,9 @@ LL |     bar::<Item = 'a>();
    = help: if you meant to specify a trait object, write `dyn /* Trait */ + 'a`
 help: you might have meant to write a bound here
    |
-LL |     bar::<Item: 'a>();
-   |               ~
+LL -     bar::<Item = 'a>();
+LL +     bar::<Item: 'a>();
+   |
 
 error: aborting due to 1 previous error
 

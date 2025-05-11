@@ -1,7 +1,8 @@
+//~ ERROR values of the type `Example` are too big for the target architecture
 //@ build-fail
 //@ compile-flags: --crate-type lib
 //@ only-32bit Layout computation rejects this layout for different reasons on 64-bit.
-//@ error-pattern: too big for the target architecture
+
 #![feature(core_intrinsics)]
 #![allow(internal_features)]
 

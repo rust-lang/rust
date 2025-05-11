@@ -1,13 +1,12 @@
 use std::collections::hash_map::Entry;
 use std::fmt::Write;
 
-use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::parse::feature_err;
-use rustc_span::{Span, kw, sym};
+use rustc_span::{Span, sym};
 use rustc_target::asm;
 
 use super::LoweringContext;
@@ -39,6 +38,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
         if let Some(asm_arch) = asm_arch {
             // Inline assembly is currently only stable for these architectures.
+            // (See also compiletest's `has_asm_support`.)
             let is_stable = matches!(
                 asm_arch,
                 asm::InlineAsmArch::X86
@@ -152,11 +152,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     InlineAsmRegOrRegClass::RegClass(reg_class) => {
                         asm::InlineAsmRegOrRegClass::RegClass(if let Some(asm_arch) = asm_arch {
                             asm::InlineAsmRegClass::parse(asm_arch, reg_class).unwrap_or_else(
-                                |error| {
+                                |supported_register_classes| {
+                                    let mut register_classes =
+                                        format!("`{}`", supported_register_classes[0]);
+                                    for m in &supported_register_classes[1..] {
+                                        let _ = write!(register_classes, ", `{m}`");
+                                    }
                                     self.dcx().emit_err(InvalidRegisterClass {
                                         op_span: *op_sp,
                                         reg_class,
-                                        error,
+                                        supported_register_classes: register_classes,
                                     });
                                     asm::InlineAsmRegClass::Err
                                 },
@@ -191,7 +196,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                     }
                     InlineAsmOperand::Const { anon_const } => hir::InlineAsmOperand::Const {
-                        anon_const: self.lower_anon_const_to_anon_const(anon_const),
+                        anon_const: self.lower_const_block(anon_const),
                     },
                     InlineAsmOperand::Sym { sym } => {
                         let static_def_id = self
@@ -225,20 +230,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 tokens: None,
                             };
 
-                            // Wrap the expression in an AnonConst.
-                            let parent_def_id = self.current_hir_id_owner.def_id;
-                            let node_id = self.next_node_id();
-                            self.create_def(
-                                parent_def_id,
-                                node_id,
-                                kw::Empty,
-                                DefKind::AnonConst,
-                                *op_sp,
-                            );
-                            let anon_const = AnonConst { id: node_id, value: P(expr) };
-                            hir::InlineAsmOperand::SymFn {
-                                anon_const: self.lower_anon_const_to_anon_const(&anon_const),
-                            }
+                            hir::InlineAsmOperand::SymFn { expr: self.lower_expr(&expr) }
                         }
                     }
                     InlineAsmOperand::Label { block } => {
@@ -478,22 +470,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        // Feature gate checking for asm goto.
+        // Feature gate checking for `asm_goto_with_outputs`.
         if let Some((_, op_sp)) =
             operands.iter().find(|(op, _)| matches!(op, hir::InlineAsmOperand::Label { .. }))
         {
-            if !self.tcx.features().asm_goto() {
-                feature_err(
-                    sess,
-                    sym::asm_goto,
-                    *op_sp,
-                    fluent::ast_lowering_unstable_inline_assembly_label_operands,
-                )
-                .emit();
-            }
-
-            // In addition, check if an output operand is used.
-            // This is gated behind an additional feature.
+            // Check if an output operand is used.
             let output_operand_used = operands.iter().any(|(op, _)| {
                 matches!(
                     op,

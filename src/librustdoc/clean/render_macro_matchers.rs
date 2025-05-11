@@ -1,11 +1,11 @@
-use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::PrintState;
 use rustc_ast_pretty::pprust::state::State as Printer;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::ParseSess;
-use rustc_span::Span;
 use rustc_span::symbol::{Ident, Symbol, kw};
+use rustc_span::{FileName, Span};
 
 /// Render a macro matcher in a format suitable for displaying to the user
 /// as part of an item declaration.
@@ -34,20 +34,20 @@ pub(super) fn render_macro_matcher(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Stri
     //             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
     //         ) => {...};
     //     }
-    printer.cbox(8);
+    let cb = printer.cbox(8);
     printer.word("(");
     printer.zerobreak();
-    printer.ibox(0);
+    let ib = printer.ibox(0);
     match matcher {
         TokenTree::Delimited(_span, _spacing, _delim, tts) => print_tts(&mut printer, tts),
         // Matcher which is not a Delimited is unexpected and should've failed
         // to compile, but we render whatever it is wrapped in parens.
         TokenTree::Token(..) => print_tt(&mut printer, matcher),
     }
-    printer.end();
+    printer.end(ib);
     printer.break_offset_if_not_bol(0, -4);
     printer.word(")");
-    printer.end();
+    printer.end(cb);
     printer.s.eof()
 }
 
@@ -63,7 +63,7 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
 
     // Create a Parser.
     let psess = ParseSess::new(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec());
-    let file_name = source_map.span_to_filename(span);
+    let file_name = FileName::macro_expansion_source_code(&snippet);
     let mut parser =
         match rustc_parse::new_parser_from_source_str(&psess, file_name, snippet.clone()) {
             Ok(parser) => parser,
@@ -96,7 +96,7 @@ fn print_tt(printer: &mut Printer<'_>, tt: &TokenTree) {
             }
         }
         TokenTree::Delimited(_span, _spacing, delim, tts) => {
-            let open_delim = printer.token_kind_to_string(&token::OpenDelim(*delim));
+            let open_delim = printer.token_kind_to_string(&delim.as_open_token_kind());
             printer.word(open_delim);
             if !tts.is_empty() {
                 if *delim == Delimiter::Brace {
@@ -107,7 +107,7 @@ fn print_tt(printer: &mut Printer<'_>, tt: &TokenTree) {
                     printer.space();
                 }
             }
-            let close_delim = printer.token_kind_to_string(&token::CloseDelim(*delim));
+            let close_delim = printer.token_kind_to_string(&delim.as_close_token_kind());
             printer.word(close_delim);
         }
     }
@@ -137,15 +137,10 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
                 (Dollar, token::Ident(..)) => (false, DollarIdent),
                 (DollarIdent, token::Colon) => (false, DollarIdentColon),
                 (DollarIdentColon, token::Ident(..)) => (false, Other),
-                (
-                    DollarParen,
-                    token::BinOp(BinOpToken::Plus | BinOpToken::Star) | token::Question,
-                ) => (false, Other),
+                (DollarParen, token::Plus | token::Star | token::Question) => (false, Other),
                 (DollarParen, _) => (false, DollarParenSep),
-                (DollarParenSep, token::BinOp(BinOpToken::Plus | BinOpToken::Star)) => {
-                    (false, Other)
-                }
-                (Pound, token::Not) => (false, PoundBang),
+                (DollarParenSep, token::Plus | token::Star) => (false, Other),
+                (Pound, token::Bang) => (false, PoundBang),
                 (_, token::Ident(symbol, IdentIsRaw::No))
                     if !usually_needs_space_between_keyword_and_open_delim(*symbol, tt.span) =>
                 {
@@ -172,7 +167,7 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
 }
 
 fn usually_needs_space_between_keyword_and_open_delim(symbol: Symbol, span: Span) -> bool {
-    let ident = Ident { name: symbol, span };
+    let ident = Ident::new(symbol, span);
     let is_keyword = ident.is_used_keyword() || ident.is_unused_keyword();
     if !is_keyword {
         // An identifier that is not a keyword usually does not need a space

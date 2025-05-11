@@ -9,6 +9,7 @@ macro_rules! arena_types {
     ($macro:path) => (
         $macro!([
             [] layout: rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi::VariantIdx>,
+            [] proxy_coroutine_layout: rustc_middle::mir::CoroutineLayout<'tcx>,
             [] fn_abi: rustc_target::callconv::FnAbi<'tcx, rustc_middle::ty::Ty<'tcx>>,
             // AdtDef are interned and compared by address
             [decode] adt_def: rustc_middle::ty::AdtDefData,
@@ -28,10 +29,10 @@ macro_rules! arena_types {
                     rustc_middle::mir::Body<'tcx>
                 >,
             [decode] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
-            [decode] borrowck_result: rustc_middle::mir::BorrowCheckResult<'tcx>,
+            [decode] borrowck_result: rustc_middle::mir::ConcreteOpaqueTypes<'tcx>,
             [] resolver: rustc_data_structures::steal::Steal<(
                 rustc_middle::ty::ResolverAstLowering,
-                rustc_data_structures::sync::Lrc<rustc_ast::Crate>,
+                std::sync::Arc<rustc_ast::Crate>,
             )>,
             [] crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
             [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,
@@ -87,8 +88,11 @@ macro_rules! arena_types {
             [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<'tcx>,
             [decode] attribute: rustc_hir::Attribute,
             [] name_set: rustc_data_structures::unord::UnordSet<rustc_span::Symbol>,
+            [] autodiff_item: rustc_ast::expand::autodiff_attrs::AutoDiffItem,
             [] ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::Symbol>,
-            [] pats: rustc_middle::ty::PatternKind<'tcx>,
+            [] valtree: rustc_middle::ty::ValTreeKind<'tcx>,
+            [] stable_order_of_exportable_impls:
+                rustc_data_structures::fx::FxIndexMap<rustc_hir::def_id::DefId, usize>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena

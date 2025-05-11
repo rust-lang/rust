@@ -1,6 +1,6 @@
 //! Advertises the capabilities of the LSP Server.
 use ide::{CompletionFieldsToResolve, InlayFieldsToResolve};
-use ide_db::{line_index::WideEncoding, FxHashSet};
+use ide_db::{FxHashSet, line_index::WideEncoding};
 use lsp_types::{
     CallHierarchyServerCapability, CodeActionKind, CodeActionOptions, CodeActionProviderCapability,
     CodeLensOptions, CompletionOptions, CompletionOptionsCompletionItem, DeclarationCapability,
@@ -157,6 +157,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             "onEnter": true,
             "openCargoToml": true,
             "parentModule": true,
+            "childModules": true,
             "runnables": {
                 "kinds": [ "cargo" ],
             },
@@ -165,7 +166,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         })),
         diagnostic_provider: Some(lsp_types::DiagnosticServerCapabilities::Options(
             lsp_types::DiagnosticOptions {
-                identifier: None,
+                identifier: Some("rust-analyzer".to_owned()),
                 inter_file_dependencies: true,
                 // FIXME
                 workspace_diagnostics: false,

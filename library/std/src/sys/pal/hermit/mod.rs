@@ -16,26 +16,17 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(missing_docs, nonstandard_style)]
 
+use crate::io::ErrorKind;
+use crate::os::hermit::hermit_abi;
 use crate::os::raw::c_char;
+use crate::sys::env;
 
-pub mod args;
-pub mod env;
-pub mod fd;
-pub mod fs;
 pub mod futex;
-pub mod io;
-pub mod net;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-#[path = "../unsupported/process.rs"]
-pub mod process;
-pub mod stdio;
 pub mod thread;
 pub mod time;
-
-use crate::io::ErrorKind;
-use crate::os::hermit::hermit_abi;
 
 pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())
@@ -55,7 +46,7 @@ pub fn abort_internal() -> ! {
 // This function is needed by the panic runtime. The symbol is named in
 // pre-link args for the target specification, so keep that in sync.
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 // NB. used by both libunwind and libpanic_abort
 pub extern "C" fn __rust_abort() {
     abort_internal();
@@ -65,7 +56,7 @@ pub extern "C" fn __rust_abort() {
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
     unsafe {
-        args::init(argc, argv);
+        crate::sys::args::init(argc, argv);
     }
 }
 
@@ -74,18 +65,18 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
 pub unsafe fn cleanup() {}
 
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn runtime_entry(
     argc: i32,
     argv: *const *const c_char,
     env: *const *const c_char,
 ) -> ! {
-    extern "C" {
+    unsafe extern "C" {
         fn main(argc: isize, argv: *const *const c_char) -> i32;
     }
 
     // initialize environment
-    os::init_environment(env);
+    env::init(env);
 
     let result = unsafe { main(argc as isize, argv) };
 

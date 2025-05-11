@@ -3,7 +3,6 @@
 use std::borrow::Cow;
 use std::ffi::OsString;
 use std::io::Error;
-use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
@@ -12,10 +11,9 @@ use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutError;
+use rustc_middle::ty::{FloatTy, Ty};
 use rustc_span::{Span, Symbol};
-use rustc_type_ir::FloatTy;
 
 use crate::assert_module_sources::CguReuse;
 use crate::back::command::Command;
@@ -38,6 +36,10 @@ pub(crate) struct CguNotRecorded<'a> {
     pub cgu_user_name: &'a str,
     pub cgu_name: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_autodiff_without_lto)]
+pub struct AutodiffWithoutLto;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unknown_reuse_kind)]
@@ -132,6 +134,110 @@ pub(crate) struct NoSavedObjectFile<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_requires_rust_abi, code = E0737)]
+pub(crate) struct RequiresRustAbi {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_null_on_export, code = E0648)]
+pub(crate) struct NullOnExport {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unsupported_instruction_set, code = E0779)]
+pub(crate) struct UnsuportedInstructionSet {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_instruction_set, code = E0779)]
+pub(crate) struct InvalidInstructionSet {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_bare_instruction_set, code = E0778)]
+pub(crate) struct BareInstructionSet {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_multiple_instruction_set, code = E0779)]
+pub(crate) struct MultipleInstructionSet {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_expected_name_value_pair)]
+pub(crate) struct ExpectedNameValuePair {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unexpected_parameter_name)]
+pub(crate) struct UnexpectedParameterName {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub prefix_nops: Symbol,
+    pub entry_nops: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_literal_value)]
+pub(crate) struct InvalidLiteralValue {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_out_of_range_integer)]
+pub(crate) struct OutOfRangeInteger {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_expected_one_argument, code = E0534)]
+pub(crate) struct ExpectedOneArgument {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_expected_one_argument, code = E0722)]
+pub(crate) struct ExpectedOneArgumentOptimize {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_argument, code = E0535)]
+#[help]
+pub(crate) struct InvalidArgument {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_argument, code = E0722)]
+pub(crate) struct InvalidArgumentOptimize {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_copy_path_buf)]
 pub(crate) struct CopyPathBuf {
     pub source_file: PathBuf,
@@ -157,7 +263,7 @@ impl<'a> CopyPath<'a> {
 struct DebugArgPath<'a>(pub &'a Path);
 
 impl IntoDiagArg for DebugArgPath<'_> {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         DiagArgValue::Str(Cow::Owned(format!("{:?}", self.0)))
     }
 }
@@ -171,13 +277,13 @@ pub struct BinaryOutputToTty {
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_ignoring_emit_path)]
 pub struct IgnoringEmitPath {
-    pub extension: String,
+    pub extension: &'static str,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_ignoring_output)]
 pub struct IgnoringOutput {
-    pub extension: String,
+    pub extension: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -351,6 +457,7 @@ pub(crate) struct LinkingFailed<'a> {
     pub command: Command,
     pub escaped_output: String,
     pub verbose: bool,
+    pub sysroot_dir: PathBuf,
 }
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
@@ -364,6 +471,8 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
         if self.verbose {
             diag.note(format!("{:?}", self.command));
         } else {
+            self.command.env_clear();
+
             enum ArgGroup {
                 Regular(OsString),
                 Objects(usize),
@@ -398,26 +507,55 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
                     args.push(ArgGroup::Regular(arg));
                 }
             }
-            self.command.args(args.into_iter().map(|arg_group| match arg_group {
-                ArgGroup::Regular(arg) => arg,
-                ArgGroup::Objects(n) => OsString::from(format!("<{n} object files omitted>")),
-                ArgGroup::Rlibs(dir, rlibs) => {
-                    let mut arg = dir.into_os_string();
-                    arg.push("/{");
-                    let mut first = true;
-                    for rlib in rlibs {
-                        if !first {
-                            arg.push(",");
+            let crate_hash = regex::bytes::Regex::new(r"-[0-9a-f]+\.rlib$").unwrap();
+            self.command.args(args.into_iter().map(|arg_group| {
+                match arg_group {
+                    // SAFETY: we are only matching on ASCII, not any surrogate pairs, so any replacements we do will still be valid.
+                    ArgGroup::Regular(arg) => unsafe {
+                        use bstr::ByteSlice;
+                        OsString::from_encoded_bytes_unchecked(
+                            arg.as_encoded_bytes().replace(
+                                self.sysroot_dir.as_os_str().as_encoded_bytes(),
+                                b"<sysroot>",
+                            ),
+                        )
+                    },
+                    ArgGroup::Objects(n) => OsString::from(format!("<{n} object files omitted>")),
+                    ArgGroup::Rlibs(mut dir, rlibs) => {
+                        let is_sysroot_dir = match dir.strip_prefix(&self.sysroot_dir) {
+                            Ok(short) => {
+                                dir = Path::new("<sysroot>").join(short);
+                                true
+                            }
+                            Err(_) => false,
+                        };
+                        let mut arg = dir.into_os_string();
+                        arg.push("/{");
+                        let mut first = true;
+                        for mut rlib in rlibs {
+                            if !first {
+                                arg.push(",");
+                            }
+                            first = false;
+                            if is_sysroot_dir {
+                                // SAFETY: Regex works one byte at a type, and our regex will not match surrogate pairs (because it only matches ascii).
+                                rlib = unsafe {
+                                    OsString::from_encoded_bytes_unchecked(
+                                        crate_hash
+                                            .replace(rlib.as_encoded_bytes(), b"-*")
+                                            .into_owned(),
+                                    )
+                                };
+                            }
+                            arg.push(rlib);
                         }
-                        first = false;
-                        arg.push(rlib);
+                        arg.push("}.rlib");
+                        arg
                     }
-                    arg.push("}");
-                    arg
                 }
             }));
 
-            diag.note(format!("{:?}", self.command));
+            diag.note(format!("{:?}", self.command).trim_start_matches("env -i").to_owned());
             diag.note("some arguments are omitted. use `--verbose` to show all linker arguments");
         }
 
@@ -490,6 +628,10 @@ pub(crate) struct CheckInstalledVisualStudio;
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_insufficient_vs_code_product)]
 pub(crate) struct InsufficientVSCodeProduct;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_cpu_required)]
+pub(crate) struct CpuRequired;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_processing_dymutil_failed)]
@@ -593,27 +735,6 @@ pub enum ExtractBundledLibsError<'a> {
 
     #[diag(codegen_ssa_extract_bundled_libs_write_file)]
     ExtractSection { rlib: &'a Path, error: Box<dyn std::error::Error> },
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_unsupported_arch)]
-pub(crate) struct UnsupportedArch<'a> {
-    pub arch: &'a str,
-    pub os: &'a str,
-}
-
-#[derive(Diagnostic)]
-pub(crate) enum AppleDeploymentTarget {
-    #[diag(codegen_ssa_apple_deployment_target_invalid)]
-    Invalid { env_var: &'static str, error: ParseIntError },
-    #[diag(codegen_ssa_apple_deployment_target_too_low)]
-    TooLow { env_var: &'static str, version: String, os_min: String },
-}
-
-#[derive(Diagnostic)]
-pub(crate) enum AppleSdkRootError<'a> {
-    #[diag(codegen_ssa_apple_sdk_error_sdk_path)]
-    SdkPath { sdk_name: &'a str, error: Error },
 }
 
 #[derive(Diagnostic)]
@@ -916,21 +1037,12 @@ pub enum InvalidMonomorphization<'tcx> {
         v_len: u64,
     },
 
-    #[diag(codegen_ssa_invalid_monomorphization_mask_type, code = E0511)]
-    MaskType {
+    #[diag(codegen_ssa_invalid_monomorphization_mask_wrong_element_type, code = E0511)]
+    MaskWrongElementType {
         #[primary_span]
         span: Span,
         name: Symbol,
         ty: Ty<'tcx>,
-    },
-
-    #[diag(codegen_ssa_invalid_monomorphization_vector_argument, code = E0511)]
-    VectorArgument {
-        #[primary_span]
-        span: Span,
-        name: Symbol,
-        in_ty: Ty<'tcx>,
-        in_elem: Ty<'tcx>,
     },
 
     #[diag(codegen_ssa_invalid_monomorphization_cannot_return, code = E0511)]
@@ -953,15 +1065,6 @@ pub enum InvalidMonomorphization<'tcx> {
         in_elem: Ty<'tcx>,
         in_ty: Ty<'tcx>,
         mutability: ExpectedPointerMutability,
-    },
-
-    #[diag(codegen_ssa_invalid_monomorphization_third_arg_element_type, code = E0511)]
-    ThirdArgElementType {
-        #[primary_span]
-        span: Span,
-        name: Symbol,
-        expected_element: Ty<'tcx>,
-        third_arg: Ty<'tcx>,
     },
 
     #[diag(codegen_ssa_invalid_monomorphization_unsupported_symbol_of_size, code = E0511)]
@@ -1047,7 +1150,7 @@ pub enum ExpectedPointerMutability {
 }
 
 impl IntoDiagArg for ExpectedPointerMutability {
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         match self {
             ExpectedPointerMutability::Mut => DiagArgValue::Str(Cow::Borrowed("*mut")),
             ExpectedPointerMutability::Not => DiagArgValue::Str(Cow::Borrowed("*_")),
@@ -1140,6 +1243,8 @@ pub(crate) struct ErrorCreatingRemarkDir {
 pub struct CompilerBuiltinsCannotCall {
     pub caller: String,
     pub callee: String,
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1187,4 +1292,27 @@ pub(crate) struct MixedExportNameAndNoMangle {
     pub export_name: Span,
     #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
     pub removal_span: Span,
+}
+
+#[derive(Diagnostic, Debug)]
+pub(crate) enum XcrunError {
+    #[diag(codegen_ssa_xcrun_failed_invoking)]
+    FailedInvoking { sdk_name: &'static str, command_formatted: String, error: std::io::Error },
+
+    #[diag(codegen_ssa_xcrun_unsuccessful)]
+    #[note]
+    Unsuccessful {
+        sdk_name: &'static str,
+        command_formatted: String,
+        stdout: String,
+        stderr: String,
+    },
+}
+
+#[derive(Diagnostic, Debug)]
+#[diag(codegen_ssa_xcrun_sdk_path_warning)]
+#[note]
+pub(crate) struct XcrunSdkPathWarning {
+    pub sdk_name: &'static str,
+    pub stderr: String,
 }

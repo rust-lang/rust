@@ -53,15 +53,16 @@ use crate::ptr::NonNull;
 ///
 /// [`to_raw_parts`]: *const::to_raw_parts
 #[lang = "pointee_trait"]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
-#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 pub trait Pointee {
     /// The type for metadata in pointers and references to `Self`.
     #[lang = "metadata_type"]
     // NOTE: Keep trait bounds in `static_assert_expected_bounds_for_metadata`
     // in `library/core/src/ptr/metadata.rs`
     // in sync with those here:
+    // NOTE: The metadata of `dyn Trait + 'a` is `DynMetadata<dyn Trait + 'a>`
+    // so a `'static` bound must not be added.
     type Metadata: fmt::Debug + Copy + Send + Sync + Ord + Hash + Unpin + Freeze;
 }
 
@@ -75,7 +76,7 @@ pub trait Pointee {
 /// #![feature(ptr_metadata)]
 ///
 /// fn this_never_panics<T: std::ptr::Thin>() {
-///     assert_eq!(std::mem::size_of::<&T>(), std::mem::size_of::<usize>())
+///     assert_eq!(size_of::<&T>(), size_of::<usize>())
 /// }
 /// ```
 #[unstable(feature = "ptr_metadata", issue = "81513")]
@@ -156,7 +157,7 @@ pub struct DynMetadata<Dyn: ?Sized> {
     _phantom: crate::marker::PhantomData<Dyn>,
 }
 
-extern "C" {
+unsafe extern "C" {
     /// Opaque type for accessing vtables.
     ///
     /// Private implementation detail of `DynMetadata::size_of` etc.

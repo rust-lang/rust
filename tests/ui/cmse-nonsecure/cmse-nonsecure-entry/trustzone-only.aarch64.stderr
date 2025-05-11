@@ -1,5 +1,5 @@
 error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
-  --> $DIR/trustzone-only.rs:20:1
+  --> $DIR/trustzone-only.rs:17:1
    |
 LL | pub extern "C-cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

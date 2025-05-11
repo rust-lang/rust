@@ -1,5 +1,5 @@
 error: expected `,`, found `label`
-  --> $DIR/expected-comma-found-token.rs:9:5
+  --> $DIR/expected-comma-found-token.rs:8:5
    |
 LL |     message="the message"
    |                          - expected `,`

@@ -91,7 +91,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
                 Some(e) => return Some(e),
                 None => {
                     if !self.footnotes.is_empty() {
-                        // After all the markdown is emmited, emit an <hr> then all the footnotes
+                        // After all the markdown is emitted, emit an <hr> then all the footnotes
                         // in a list.
                         let defs: Vec<_> = self.footnotes.drain(..).map(|(_, x)| x).collect();
                         self.existing_footnotes.fetch_add(defs.len(), Ordering::Relaxed);

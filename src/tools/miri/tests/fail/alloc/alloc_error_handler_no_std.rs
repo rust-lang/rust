@@ -1,8 +1,9 @@
 //@compile-flags: -Cpanic=abort
-#![feature(start, core_intrinsics)]
+#![feature(core_intrinsics)]
 #![feature(alloc_error_handler)]
 #![feature(allocator_api)]
 #![no_std]
+#![no_main]
 
 extern crate alloc;
 
@@ -41,7 +42,7 @@ mod plumbing {
     static GLOBAL: NoAlloc = NoAlloc;
 }
 
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+#[no_mangle]
+fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
     handle_alloc_error(Layout::for_value(&0));
 }

@@ -1,39 +1,42 @@
 use std::borrow::Cow;
 
-use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetOptions, cvs};
+use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, cvs};
 
 pub(crate) fn target() -> Target {
-    let pre_link_args = TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &[
-        "-e",
-        "elf_entry",
-        "-Bstatic",
-        "--gc-sections",
-        "-z",
-        "text",
-        "-z",
-        "norelro",
-        "--no-undefined",
-        "--error-unresolved-symbols",
-        "--no-undefined-version",
-        "-Bsymbolic",
-        "--export-dynamic",
-        // The following symbols are needed by libunwind, which is linked after
-        // libstd. Make sure they're included in the link.
-        "-u",
-        "__rust_abort",
-        "-u",
-        "__rust_c_alloc",
-        "-u",
-        "__rust_c_dealloc",
-        "-u",
-        "__rust_print_err",
-        "-u",
-        "__rust_rwlock_rdlock",
-        "-u",
-        "__rust_rwlock_unlock",
-        "-u",
-        "__rust_rwlock_wrlock",
-    ]);
+    let pre_link_args = TargetOptions::link_args(
+        LinkerFlavor::Gnu(Cc::No, Lld::No),
+        &[
+            "-e",
+            "elf_entry",
+            "-Bstatic",
+            "--gc-sections",
+            "-z",
+            "text",
+            "-z",
+            "norelro",
+            "--no-undefined",
+            "--error-unresolved-symbols",
+            "--no-undefined-version",
+            "-Bsymbolic",
+            "--export-dynamic",
+            // The following symbols are needed by libunwind, which is linked after
+            // libstd. Make sure they're included in the link.
+            "-u",
+            "__rust_abort",
+            "-u",
+            "__rust_c_alloc",
+            "-u",
+            "__rust_c_dealloc",
+            "-u",
+            "__rust_print_err",
+            "-u",
+            "__rust_rwlock_rdlock",
+            "-u",
+            "__rust_rwlock_unlock",
+            "-u",
+            "__rust_rwlock_wrlock",
+        ],
+    );
 
     const EXPORT_SYMBOLS: &[&str] = &[
         "sgx_entry",
@@ -71,7 +74,7 @@ pub(crate) fn target() -> Target {
     };
     Target {
         llvm_target: "x86_64-elf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Fortanix ABI for 64-bit Intel SGX".into()),
             tier: Some(2),
             host_tools: Some(false),

@@ -28,6 +28,14 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                 let _7: usize;
                 let mut _8: usize;
                 scope 7 {
+                    scope 9 (inlined <usize as Step>::forward_unchecked) {
+                        scope 10 (inlined core::num::<impl usize>::unchecked_add) {
+                            scope 11 (inlined core::ub_checks::check_language_ub) {
+                                scope 12 (inlined core::ub_checks::check_language_ub::runtime) {
+                                }
+                            }
+                        }
+                    }
                 }
                 scope 8 (inlined std::cmp::impls::<impl PartialOrd for usize>::lt) {
                     let mut _5: usize;
@@ -47,7 +55,6 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb1: {
         StorageLive(_9);
-        StorageLive(_7);
         StorageLive(_6);
         StorageLive(_5);
         _5 = copy _4;
@@ -58,7 +65,6 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb2: {
         StorageDead(_6);
-        StorageDead(_7);
         StorageDead(_9);
         StorageDead(_4);
         drop(_2) -> [return: bb3, unwind continue];
@@ -71,41 +77,37 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     bb4: {
         _7 = copy _4;
         StorageLive(_8);
-        _8 = <usize as Step>::forward_unchecked(copy _7, const 1_usize) -> [return: bb5, unwind: bb8];
-    }
-
-    bb5: {
+        _8 = AddUnchecked(copy _7, const 1_usize);
         _4 = move _8;
         StorageDead(_8);
         _9 = Option::<usize>::Some(copy _7);
         StorageDead(_6);
-        StorageDead(_7);
         _10 = copy ((_9 as Some).0: usize);
         _11 = Lt(copy _10, copy _3);
-        assert(move _11, "index out of bounds: the length is {} but the index is {}", copy _3, copy _10) -> [success: bb6, unwind: bb8];
+        assert(move _11, "index out of bounds: the length is {} but the index is {}", copy _3, copy _10) -> [success: bb5, unwind: bb7];
     }
 
-    bb6: {
+    bb5: {
         _12 = &(*_1)[_10];
         StorageLive(_13);
         _13 = &_2;
         StorageLive(_14);
         _14 = (copy _10, copy _12);
-        _15 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _13, move _14) -> [return: bb7, unwind: bb8];
+        _15 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _13, move _14) -> [return: bb6, unwind: bb7];
     }
 
-    bb7: {
+    bb6: {
         StorageDead(_14);
         StorageDead(_13);
         StorageDead(_9);
         goto -> bb1;
     }
 
-    bb8 (cleanup): {
-        drop(_2) -> [return: bb9, unwind terminate(cleanup)];
+    bb7 (cleanup): {
+        drop(_2) -> [return: bb8, unwind terminate(cleanup)];
     }
 
-    bb9 (cleanup): {
+    bb8 (cleanup): {
         resume;
     }
 }

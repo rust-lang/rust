@@ -113,18 +113,23 @@ where
 pub(super) fn run_spawn_hooks(thread: &Thread) -> ChildSpawnHooks {
     // Get a snapshot of the spawn hooks.
     // (Increments the refcount to the first node.)
-    let hooks = SPAWN_HOOKS.with(|hooks| {
+    if let Ok(hooks) = SPAWN_HOOKS.try_with(|hooks| {
         let snapshot = hooks.take();
         hooks.set(snapshot.clone());
         snapshot
-    });
-    // Iterate over the hooks, run them, and collect the results in a vector.
-    let to_run: Vec<_> = iter::successors(hooks.first.as_deref(), |hook| hook.next.as_deref())
-        .map(|hook| (hook.hook)(thread))
-        .collect();
-    // Pass on the snapshot of the hooks and the results to the new thread,
-    // which will then run SpawnHookResults::run().
-    ChildSpawnHooks { hooks, to_run }
+    }) {
+        // Iterate over the hooks, run them, and collect the results in a vector.
+        let to_run: Vec<_> = iter::successors(hooks.first.as_deref(), |hook| hook.next.as_deref())
+            .map(|hook| (hook.hook)(thread))
+            .collect();
+        // Pass on the snapshot of the hooks and the results to the new thread,
+        // which will then run SpawnHookResults::run().
+        ChildSpawnHooks { hooks, to_run }
+    } else {
+        // TLS has been destroyed. Skip running the hooks.
+        // See https://github.com/rust-lang/rust/issues/138696
+        ChildSpawnHooks::default()
+    }
 }
 
 /// The results of running the spawn hooks.

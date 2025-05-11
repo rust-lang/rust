@@ -6,8 +6,9 @@ LL |         ...X => {}
    |
 help: use `..=` instead
    |
-LL |         ..=X => {}
-   |         ~~~
+LL -         ...X => {}
+LL +         ..=X => {}
+   |
 
 error: range-to patterns with `...` are not allowed
   --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:16:9
@@ -17,8 +18,9 @@ LL |         ...0 => {}
    |
 help: use `..=` instead
    |
-LL |         ..=0 => {}
-   |         ~~~
+LL -         ...0 => {}
+LL +         ..=0 => {}
+   |
 
 error: range-to patterns with `...` are not allowed
   --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:17:9
@@ -28,8 +30,9 @@ LL |         ...'a' => {}
    |
 help: use `..=` instead
    |
-LL |         ..='a' => {}
-   |         ~~~
+LL -         ...'a' => {}
+LL +         ..='a' => {}
+   |
 
 error: range-to patterns with `...` are not allowed
   --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:18:9
@@ -39,8 +42,9 @@ LL |         ...0.0f32 => {}
    |
 help: use `..=` instead
    |
-LL |         ..=0.0f32 => {}
-   |         ~~~
+LL -         ...0.0f32 => {}
+LL +         ..=0.0f32 => {}
+   |
 
 error: range-to patterns with `...` are not allowed
   --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:25:17
@@ -54,8 +58,9 @@ LL |     mac!(0);
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use `..=` instead
    |
-LL |             let ..=$e;
-   |                 ~~~
+LL -             let ...$e;
+LL +             let ..=$e;
+   |
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:25:17

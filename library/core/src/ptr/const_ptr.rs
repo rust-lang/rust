@@ -1,7 +1,7 @@
 use super::*;
 use crate::cmp::Ordering::{Equal, Greater, Less};
 use crate::intrinsics::const_eval_select;
-use crate::mem::SizedTypeProperties;
+use crate::mem::{self, SizedTypeProperties};
 use crate::slice::{self, SliceIndex};
 
 impl<T: ?Sized> *const T {
@@ -193,7 +193,6 @@ impl<T: ?Sized> *const T {
     /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
     ///
     /// [`with_exposed_provenance`]: with_exposed_provenance
-    #[must_use]
     #[inline(always)]
     #[stable(feature = "exposed_provenance", since = "1.84.0")]
     pub fn expose_provenance(self) -> usize {
@@ -387,7 +386,8 @@ impl<T: ?Sized> *const T {
     /// * If the computed offset is non-zero, then `self` must be [derived from][crate::ptr#provenance] a pointer to some
     ///   [allocated object], and the entire memory range between `self` and the result must be in
     ///   bounds of that allocated object. In particular, this range must not "wrap around" the edge
-    ///   of the address space.
+    ///   of the address space. Note that "range" here refers to a half-open range as usual in Rust,
+    ///   i.e., `self..result` for non-negative offsets and `result..self` for negative offsets.
     ///
     /// Allocated objects can never be larger than `isize::MAX` bytes, so if the computed offset
     /// stays in bounds of the allocated object, it is guaranteed to satisfy the first requirement.
@@ -484,8 +484,9 @@ impl<T: ?Sized> *const T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it must not
-    /// be used to read or write other allocated objects.
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to
+    /// (this is called "[Provenance](ptr/index.html#provenance)").
+    /// The pointer must not be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_offset((y as isize) - (x as isize))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
@@ -595,9 +596,9 @@ impl<T: ?Sized> *const T {
     }
 
     /// Calculates the distance between two pointers within the same allocation. The returned value is in
-    /// units of T: the distance in bytes divided by `mem::size_of::<T>()`.
+    /// units of T: the distance in bytes divided by `size_of::<T>()`.
     ///
-    /// This is equivalent to `(self as isize - origin as isize) / (mem::size_of::<T>() as isize)`,
+    /// This is equivalent to `(self as isize - origin as isize) / (size_of::<T>() as isize)`,
     /// except that it has a lot more opportunities for UB, in exchange for the compiler
     /// better understanding what you are doing.
     ///
@@ -633,7 +634,7 @@ impl<T: ?Sized> *const T {
     /// objects is not known at compile-time. However, the requirement also exists at
     /// runtime and may be exploited by optimizations. If you wish to compute the difference between
     /// pointers that are not guaranteed to be from the same allocation, use `(self as isize -
-    /// origin as isize) / mem::size_of::<T>()`.
+    /// origin as isize) / size_of::<T>()`.
     // FIXME: recommend `addr()` instead of `as usize` once that is stable.
     ///
     /// [`add`]: #method.add
@@ -683,7 +684,7 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        let pointee_size = mem::size_of::<T>();
+        let pointee_size = size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
         // SAFETY: the caller must uphold the safety contract for `ptr_offset_from`.
         unsafe { intrinsics::ptr_offset_from(self, origin) }
@@ -709,7 +710,7 @@ impl<T: ?Sized> *const T {
 
     /// Calculates the distance between two pointers within the same allocation, *where it's known that
     /// `self` is equal to or greater than `origin`*. The returned value is in
-    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    /// units of T: the distance in bytes is divided by `size_of::<T>()`.
     ///
     /// This computes the same value that [`offset_from`](#method.offset_from)
     /// would compute, but with the added precondition that the offset is
@@ -723,14 +724,13 @@ impl<T: ?Sized> *const T {
     /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
     /// that their safety preconditions are met:
     /// ```rust
-    /// # #![feature(ptr_sub_ptr)]
-    /// # unsafe fn blah(ptr: *const i32, origin: *const i32, count: usize) -> bool {
-    /// ptr.sub_ptr(origin) == count
+    /// # unsafe fn blah(ptr: *const i32, origin: *const i32, count: usize) -> bool { unsafe {
+    /// ptr.offset_from_unsigned(origin) == count
     /// # &&
     /// origin.add(count) == ptr
     /// # &&
     /// ptr.sub(count) == origin
-    /// # }
+    /// # } }
     /// ```
     ///
     /// # Safety
@@ -752,26 +752,24 @@ impl<T: ?Sized> *const T {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_sub_ptr)]
-    ///
     /// let a = [0; 5];
     /// let ptr1: *const i32 = &a[1];
     /// let ptr2: *const i32 = &a[3];
     /// unsafe {
-    ///     assert_eq!(ptr2.sub_ptr(ptr1), 2);
+    ///     assert_eq!(ptr2.offset_from_unsigned(ptr1), 2);
     ///     assert_eq!(ptr1.add(2), ptr2);
     ///     assert_eq!(ptr2.sub(2), ptr1);
-    ///     assert_eq!(ptr2.sub_ptr(ptr2), 0);
+    ///     assert_eq!(ptr2.offset_from_unsigned(ptr2), 0);
     /// }
     ///
     /// // This would be incorrect, as the pointers are not correctly ordered:
-    /// // ptr1.sub_ptr(ptr2)
+    /// // ptr1.offset_from_unsigned(ptr2)
     /// ```
-    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
-    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub const unsafe fn sub_ptr(self, origin: *const T) -> usize
+    pub const unsafe fn offset_from_unsigned(self, origin: *const T) -> usize
     where
         T: Sized,
     {
@@ -789,14 +787,14 @@ impl<T: ?Sized> *const T {
 
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::sub_ptr requires `self >= origin`",
+            "ptr::offset_from_unsigned requires `self >= origin`",
             (
                 this: *const () = self as *const (),
                 origin: *const () = origin as *const (),
             ) => runtime_ptr_ge(this, origin)
         );
 
-        let pointee_size = mem::size_of::<T>();
+        let pointee_size = size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
         // SAFETY: the caller must uphold the safety contract for `ptr_offset_from_unsigned`.
         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
@@ -807,18 +805,18 @@ impl<T: ?Sized> *const T {
     /// units of **bytes**.
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
-    /// using [`sub_ptr`][pointer::sub_ptr] on it. See that method for
-    /// documentation and safety requirements.
+    /// using [`offset_from_unsigned`][pointer::offset_from_unsigned] on it.
+    /// See that method for documentation and safety requirements.
     ///
     /// For non-`Sized` pointees this operation considers only the data pointers,
     /// ignoring the metadata.
-    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
-    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub const unsafe fn byte_sub_ptr<U: ?Sized>(self, origin: *const U) -> usize {
-        // SAFETY: the caller must uphold the safety contract for `sub_ptr`.
-        unsafe { self.cast::<u8>().sub_ptr(origin.cast::<u8>()) }
+    pub const unsafe fn byte_offset_from_unsigned<U: ?Sized>(self, origin: *const U) -> usize {
+        // SAFETY: the caller must uphold the safety contract for `offset_from_unsigned`.
+        unsafe { self.cast::<u8>().offset_from_unsigned(origin.cast::<u8>()) }
     }
 
     /// Returns whether two pointers are guaranteed to be equal.
@@ -1316,7 +1314,7 @@ impl<T: ?Sized> *const T {
         unsafe { read_unaligned(self) }
     }
 
-    /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
+    /// Copies `count * size_of::<T>()` bytes from `self` to `dest`. The source
     /// and destination may overlap.
     ///
     /// NOTE: this has the *same* argument order as [`ptr::copy`].
@@ -1336,7 +1334,7 @@ impl<T: ?Sized> *const T {
         unsafe { copy(self, dest, count) }
     }
 
-    /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
+    /// Copies `count * size_of::<T>()` bytes from `self` to `dest`. The source
     /// and destination may *not* overlap.
     ///
     /// NOTE: this has the *same* argument order as [`ptr::copy_nonoverlapping`].
@@ -1378,8 +1376,6 @@ impl<T: ?Sized> *const T {
     /// Accessing adjacent `u8` as `u16`
     ///
     /// ```
-    /// use std::mem::align_of;
-    ///
     /// # unsafe {
     /// let x = [5_u8, 6, 7, 8, 9];
     /// let ptr = x.as_ptr();
@@ -1439,7 +1435,7 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        self.is_aligned_to(mem::align_of::<T>())
+        self.is_aligned_to(align_of::<T>())
     }
 
     /// Returns whether the pointer is aligned to `align`.
@@ -1598,7 +1594,7 @@ impl<T> *const [T] {
     /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// all of the following is true:
     ///
-    /// * The pointer must be [valid] for reads for `ptr.len() * mem::size_of::<T>()` many bytes,
+    /// * The pointer must be [valid] for reads for `ptr.len() * size_of::<T>()` many bytes,
     ///   and it must be properly aligned. This means in particular:
     ///
     ///     * The entire memory range of this slice must be contained within a single [allocated object]!
@@ -1610,7 +1606,7 @@ impl<T> *const [T] {
     ///       them from other data. You can obtain a pointer that is usable as `data`
     ///       for zero-length slices using [`NonNull::dangling()`].
     ///
-    /// * The total size `ptr.len() * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`.
+    /// * The total size `ptr.len() * size_of::<T>()` of the slice must be no larger than `isize::MAX`.
     ///   See the safety documentation of [`pointer::offset`].
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
@@ -1681,7 +1677,7 @@ impl<T, const N: usize> *const [T; N] {
     }
 }
 
-// Equality for pointers
+/// Pointer equality is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *const T {
     #[inline]
@@ -1691,10 +1687,11 @@ impl<T: ?Sized> PartialEq for *const T {
     }
 }
 
+/// Pointer equality is an equivalence relation.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Eq for *const T {}
 
-// Comparison for pointers
+/// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Ord for *const T {
     #[inline]
@@ -1710,6 +1707,7 @@ impl<T: ?Sized> Ord for *const T {
     }
 }
 
+/// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialOrd for *const T {
     #[inline]
@@ -1740,5 +1738,13 @@ impl<T: ?Sized> PartialOrd for *const T {
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn ge(&self, other: &*const T) -> bool {
         *self >= *other
+    }
+}
+
+#[stable(feature = "raw_ptr_default", since = "CURRENT_RUSTC_VERSION")]
+impl<T: ?Sized + Thin> Default for *const T {
+    /// Returns the default value of [`null()`][crate::ptr::null].
+    fn default() -> Self {
+        crate::ptr::null()
     }
 }

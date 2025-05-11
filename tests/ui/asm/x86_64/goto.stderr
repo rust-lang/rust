@@ -17,7 +17,6 @@ note: the lint level is defined here
    |
 LL | #[warn(unreachable_code)]
    |        ^^^^^^^^^^^^^^^^
-   = note: this warning originates in the macro `unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 1 warning emitted
 

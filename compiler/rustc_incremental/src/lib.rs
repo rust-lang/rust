@@ -7,7 +7,6 @@
 #![doc(rust_logo)]
 #![feature(file_buffered)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod assert_dep_graph;
@@ -24,7 +23,7 @@ use rustc_middle::util::Providers;
 #[allow(missing_docs)]
 pub fn provide(providers: &mut Providers) {
     providers.hooks.save_dep_graph =
-        |tcx| tcx.sess.time("serialize_dep_graph", || persist::save_dep_graph(tcx.tcx));
+        |tcx| tcx.sess.time("serialize_dep_graph", || persist::save_dep_graph(tcx));
 }
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

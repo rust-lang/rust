@@ -4,13 +4,13 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 //
 // This diagnostic is shown for macro expansion errors.
 
-// Diagnostic: proc-macros-disabled
+// Diagnostic: attribute-expansion-disabled
 //
-// This diagnostic is shown for proc macros where proc macros have been disabled.
+// This diagnostic is shown for attribute proc macros when attribute expansions have been disabled.
 
 // Diagnostic: proc-macro-disabled
 //
-// This diagnostic is shown for proc macros that has been specifically disabled via `rust-analyzer.procMacro.ignored`.
+// This diagnostic is shown for proc macros that have been specifically disabled via `rust-analyzer.procMacro.ignored`.
 pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> Diagnostic {
     // Use more accurate position if available.
     let display_range = ctx.resolve_precise_location(&d.node, d.precise_location);
@@ -38,8 +38,8 @@ pub(crate) fn macro_def_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroDefErr
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests::{check_diagnostics, check_diagnostics_with_config},
         DiagnosticsConfig,
+        tests::{check_diagnostics, check_diagnostics_with_config},
     };
 
     #[test]
@@ -123,6 +123,7 @@ include!("foo/bar.rs");
 
     #[test]
     fn good_out_dir_diagnostic() {
+        // FIXME: The diagnostic here is duplicated for each eager expansion
         check_diagnostics(
             r#"
 #[rustc_builtin_macro]
@@ -133,7 +134,9 @@ macro_rules! env { () => {} }
 macro_rules! concat { () => {} }
 
   include!(concat!(env!("OUT_DIR"), "/out.rs"));
-                      //^^^^^^^^^ error: `OUT_DIR` not set, enable "build scripts" to fix
+                      //^^^^^^^^^ error: `OUT_DIR` not set, build scripts may have failed to run
+                 //^^^^^^^^^^^^^^^ error: `OUT_DIR` not set, build scripts may have failed to run
+         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: `OUT_DIR` not set, build scripts may have failed to run
 "#,
         );
     }
@@ -186,7 +189,7 @@ fn main() {
        //^^^^^^^ error: expected string literal
 
     env!("OUT_DIR");
-       //^^^^^^^^^ error: `OUT_DIR` not set, enable "build scripts" to fix
+       //^^^^^^^^^ error: `OUT_DIR` not set, build scripts may have failed to run
 
     compile_error!("compile_error works");
   //^^^^^^^^^^^^^ error: compile_error works
@@ -238,6 +241,7 @@ macro_rules! outer {
 fn f() {
     outer!();
 } //^^^^^^^^ error: leftover tokens
+  //^^^^^^^^ error: Syntax Error in Expansion: expected expression
 "#,
         )
     }
@@ -289,6 +293,32 @@ include!("include-me.rs");
 //^^^^^^error: unresolved macro `err`
 mod prim_never {}
 "#,
+        );
+    }
+
+    #[test]
+    fn no_stack_overflow_for_missing_binding() {
+        check_diagnostics(
+            r#"
+#[macro_export]
+macro_rules! boom {
+    (
+        $($code:literal),+,
+        $(param: $param:expr,)?
+    ) => {{
+        let _ = $crate::boom!(@param $($param)*);
+    }};
+    (@param) => { () };
+    (@param $param:expr) => { $param };
+}
+
+fn it_works() {
+    // NOTE: there is an error, but RA crashes before showing it
+    boom!("RAND", param: c7.clone());
+               // ^^^^^ error: expected literal
+}
+
+        "#,
         );
     }
 }

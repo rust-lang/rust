@@ -288,6 +288,9 @@ fn test_expr() {
     // ExprKind::OffsetOf: untestable because this test works pre-expansion.
 
     // ExprKind::MacCall
+    c1!(expr, [ mac!() ], "mac!()");
+    c1!(expr, [ mac![] ], "mac![]");
+    c1!(expr, [ mac! {} ], "mac! {}");
     c1!(expr, [ mac!(...) ], "mac!(...)");
     c1!(expr, [ mac![...] ], "mac![...]");
     c1!(expr, [ mac! { ... } ], "mac! { ... }");
@@ -353,7 +356,8 @@ fn test_item() {
     c1!(item, [ pub extern crate self as std; ], "pub extern crate self as std;");
 
     // ItemKind::Use
-    c1!(item, [ pub use crate::{a, b::c}; ], "pub use crate::{ a, b::c };"); // FIXME
+    c1!(item, [ pub use crate::{a, b::c}; ], "pub use crate::{a, b::c};");
+    c1!(item, [ pub use crate::{ e, ff }; ], "pub use crate::{ e, ff };");
     c1!(item, [ pub use A::*; ], "pub use A::*;");
 
     // ItemKind::Static
@@ -482,9 +486,12 @@ fn test_item() {
     c1!(item, [ impl ~const Struct {} ], "impl ~const Struct {}");
 
     // ItemKind::MacCall
+    c1!(item, [ mac!(); ], "mac!();");
+    c1!(item, [ mac![]; ], "mac![];");
+    c1!(item, [ mac! {} ], "mac! {}");
     c1!(item, [ mac!(...); ], "mac!(...);");
     c1!(item, [ mac![...]; ], "mac![...];");
-    c1!(item, [ mac! { ... } ], "mac! { ... }");
+    c1!(item, [ mac! {...} ], "mac! {...}");
 
     // ItemKind::MacroDef
     c1!(item,
@@ -515,6 +522,8 @@ fn test_meta() {
 
 #[test]
 fn test_pat() {
+    // PatKind::Missing: untestable in isolation.
+
     // PatKind::Wild
     c1!(pat, [ _ ], "_");
 
@@ -569,7 +578,7 @@ fn test_pat() {
     c1!(pat, [ &pat ], "&pat");
     c1!(pat, [ &mut pat ], "&mut pat");
 
-    // PatKind::Lit
+    // PatKind::Expr
     c1!(pat, [ 1_000_i8 ], "1_000_i8");
 
     // PatKind::Range
@@ -596,8 +605,11 @@ fn test_pat() {
     c1!(pat, [ (pat) ], "(pat)");
 
     // PatKind::MacCall
+    c1!(pat, [ mac!() ], "mac!()");
+    c1!(pat, [ mac![] ], "mac![]");
+    c1!(pat, [ mac! {} ], "mac! {}");
     c1!(pat, [ mac!(...) ], "mac!(...)");
-    c1!(pat, [ mac![...] ], "mac![...]");
+    c1!(pat, [ mac! [ ... ] ], "mac! [...]");
     c1!(pat, [ mac! { ... } ], "mac! { ... }");
 
     // Attributes are not allowed on patterns.
@@ -642,6 +654,9 @@ fn test_stmt() {
     c1!(stmt, [ ; ], ";");
 
     // StmtKind::MacCall
+    c1!(stmt, [ mac! ( ) ], "mac! ()");
+    c1!(stmt, [ mac![] ], "mac![]");
+    c1!(stmt, [ mac!{} ], "mac!{}");
     c1!(stmt, [ mac!(...) ], "mac!(...)");
     c1!(stmt, [ mac![...] ], "mac![...]");
     c1!(stmt, [ mac! { ... } ], "mac! { ... }");
@@ -737,6 +752,9 @@ fn test_ty() {
     // TyKind::ImplicitSelf: there is no syntax for this.
 
     // TyKind::MacCall
+    c1!(ty, [ mac!() ], "mac!()");
+    c1!(ty, [ mac![] ], "mac![]");
+    c1!(ty, [ mac! { } ], "mac! {}");
     c1!(ty, [ mac!(...) ], "mac!(...)");
     c1!(ty, [ mac![...] ], "mac![...]");
     c1!(ty, [ mac! { ... } ], "mac! { ... }");

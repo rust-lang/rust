@@ -1,13 +1,11 @@
 use std::cmp::Ordering;
 
-use rustc_type_ir::data_structures::HashMap;
-use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_type_ir::data_structures::{HashMap, ensure_sufficient_stack};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
-use rustc_type_ir::visit::TypeVisitableExt;
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, InferCtxtLike,
-    Interner,
+    Interner, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 
 use crate::delegate::SolverDelegate;
@@ -273,7 +271,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         //
                         // For this we set `next_orig_uv` to the next smallest, not yet compressed,
                         // universe of the input.
-                        if next_orig_uv.map_or(true, |curr_next_uv| uv.cannot_name(curr_next_uv)) {
+                        if next_orig_uv.is_none_or(|curr_next_uv| uv.cannot_name(curr_next_uv)) {
                             next_orig_uv = Some(uv);
                         }
                     }
@@ -389,7 +387,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             | ty::Alias(_, _)
             | ty::Bound(_, _)
             | ty::Error(_) => {
-                return t.super_fold_with(self);
+                return ensure_sufficient_stack(|| t.super_fold_with(self));
             }
         };
 
@@ -522,7 +520,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             // FIXME: See comment above -- we could fold the region separately or something.
             ty::ConstKind::Bound(_, _)
             | ty::ConstKind::Unevaluated(_)
-            | ty::ConstKind::Value(_, _)
+            | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
             | ty::ConstKind::Expr(_) => return c.super_fold_with(self),
         };

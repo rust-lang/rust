@@ -6,8 +6,9 @@ LL |     matche a {}
    |
 help: there is a keyword `match` with a similar name
    |
-LL |     match a {}
-   |     ~~~~~
+LL -     matche a {}
+LL +     match a {}
+   |
 
 error: aborting due to 1 previous error
 

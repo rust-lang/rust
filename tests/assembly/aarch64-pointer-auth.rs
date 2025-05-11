@@ -1,5 +1,6 @@
 // Test that PAC instructions are emitted when branch-protection is specified.
 
+//@ add-core-stubs
 //@ revisions: PACRET PAUTHLR_NOP PAUTHLR
 //@ assembly-output: emit-asm
 //@ needs-llvm-components: aarch64
@@ -7,15 +8,14 @@
 //@ [PACRET] compile-flags: -Z branch-protection=pac-ret,leaf
 //@ [PAUTHLR_NOP] compile-flags: -Z branch-protection=pac-ret,pc,leaf
 //@ [PAUTHLR] compile-flags: -C target-feature=+pauth-lr -Z branch-protection=pac-ret,pc,leaf
-//@ min-llvm-version: 19
 
 #![feature(no_core, lang_items)]
 #![no_std]
 #![no_core]
 #![crate_type = "lib"]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 // PACRET: hint #25
 // PACRET: hint #29

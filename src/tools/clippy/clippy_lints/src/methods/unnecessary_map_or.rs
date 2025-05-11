@@ -1,18 +1,17 @@
 use std::borrow::Cow;
 
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::snippet_opt;
 use clippy_utils::sugg::{Sugg, make_binop};
-use clippy_utils::ty::{get_type_diagnostic_name, implements_trait};
+use clippy_utils::ty::{get_type_diagnostic_name, implements_trait, is_copy};
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{is_from_proc_macro, path_to_local_id};
+use clippy_utils::{get_parent_expr, is_from_proc_macro, path_to_local_id};
 use rustc_ast::LitKind::Bool;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PatKind};
 use rustc_lint::LateContext;
-use rustc_span::sym;
+use rustc_span::{Span, sym};
 
 use super::UNNECESSARY_MAP_OR;
 
@@ -42,13 +41,14 @@ pub(super) fn check<'a>(
     recv: &Expr<'_>,
     def: &Expr<'_>,
     map: &Expr<'_>,
-    msrv: &Msrv,
+    method_span: Span,
+    msrv: Msrv,
 ) {
     let ExprKind::Lit(def_kind) = def.kind else {
         return;
     };
 
-    let recv_ty = cx.typeck_results().expr_ty(recv);
+    let recv_ty = cx.typeck_results().expr_ty_adjusted(recv);
 
     let Bool(def_bool) = def_kind.node else {
         return;
@@ -60,8 +60,10 @@ pub(super) fn check<'a>(
         Some(_) | None => return,
     };
 
+    let ext_def_span = def.span.until(map.span);
+
     let (sugg, method, applicability) = if let ExprKind::Closure(map_closure) = map.kind
-            && let closure_body = cx.tcx.hir().body(map_closure.body)
+            && let closure_body = cx.tcx.hir_body(map_closure.body)
             && let closure_body_value = closure_body.value.peel_blocks()
             && let ExprKind::Binary(op, l, r) = closure_body_value.kind
             && let Some(param) = closure_body.params.first()
@@ -74,21 +76,23 @@ pub(super) fn check<'a>(
             && ((BinOpKind::Eq == op.node && !def_bool) || (BinOpKind::Ne == op.node && def_bool))
             && let non_binding_location = if path_to_local_id(l, hir_id) { r } else { l }
             && switch_to_eager_eval(cx, non_binding_location)
-            // xor, because if its both then thats a strange edge case and
+            // xor, because if its both then that's a strange edge case and
             // we can just ignore it, since by default clippy will error on this
             && (path_to_local_id(l, hir_id) ^ path_to_local_id(r, hir_id))
             && !is_local_used(cx, non_binding_location, hir_id)
             && let typeck_results = cx.typeck_results()
-            && typeck_results.expr_ty(l) == typeck_results.expr_ty(r)
+            && let l_ty = typeck_results.expr_ty(l)
+            && l_ty == typeck_results.expr_ty(r)
             && let Some(partial_eq) = cx.tcx.get_diagnostic_item(sym::PartialEq)
             && implements_trait(cx, recv_ty, partial_eq, &[recv_ty.into()])
+            && is_copy(cx, l_ty)
     {
         let wrap = variant.variant_name();
 
         // we may need to add parens around the suggestion
         // in case the parent expression has additional method calls,
         // since for example `Some(5).map_or(false, |x| x == 5).then(|| 1)`
-        // being converted to `Some(5) == Some(5).then(|| 1)` isnt
+        // being converted to `Some(5) == Some(5).then(|| 1)` isn't
         // the same thing
 
         let inner_non_binding = Sugg::NonParen(Cow::Owned(format!(
@@ -96,30 +100,35 @@ pub(super) fn check<'a>(
             Sugg::hir(cx, non_binding_location, "")
         )));
 
-        let binop = make_binop(op.node, &Sugg::hir(cx, recv, ".."), &inner_non_binding)
-            .maybe_par()
-            .into_string();
+        let mut app = Applicability::MachineApplicable;
+        let binop = make_binop(
+            op.node,
+            &Sugg::hir_with_applicability(cx, recv, "..", &mut app),
+            &inner_non_binding,
+        );
 
-        (binop, "a standard comparison", Applicability::MaybeIncorrect)
-    } else if !def_bool
-        && msrv.meets(msrvs::OPTION_RESULT_IS_VARIANT_AND)
-        && let Some(recv_callsite) = snippet_opt(cx, recv.span.source_callsite())
-        && let Some(span_callsite) = snippet_opt(cx, map.span.source_callsite())
-    {
+        let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr) {
+            match parent_expr.kind {
+                ExprKind::Binary(..) | ExprKind::Unary(..) | ExprKind::Cast(..) => binop.maybe_paren(),
+                ExprKind::MethodCall(_, receiver, _, _) if receiver.hir_id == expr.hir_id => binop.maybe_paren(),
+                _ => binop,
+            }
+        } else {
+            binop
+        }
+        .into_string();
+
+        (vec![(expr.span, sugg)], "a standard comparison", app)
+    } else if !def_bool && msrv.meets(cx, msrvs::OPTION_RESULT_IS_VARIANT_AND) {
         let suggested_name = variant.method_name();
         (
-            format!("{recv_callsite}.{suggested_name}({span_callsite})",),
+            vec![(method_span, suggested_name.into()), (ext_def_span, String::default())],
             suggested_name,
             Applicability::MachineApplicable,
         )
-    } else if def_bool
-        && matches!(variant, Variant::Some)
-        && msrv.meets(msrvs::IS_NONE_OR)
-        && let Some(recv_callsite) = snippet_opt(cx, recv.span.source_callsite())
-        && let Some(span_callsite) = snippet_opt(cx, map.span.source_callsite())
-    {
+    } else if def_bool && matches!(variant, Variant::Some) && msrv.meets(cx, msrvs::IS_NONE_OR) {
         (
-            format!("{recv_callsite}.is_none_or({span_callsite})"),
+            vec![(method_span, "is_none_or".into()), (ext_def_span, String::default())],
             "is_none_or",
             Applicability::MachineApplicable,
         )
@@ -131,13 +140,13 @@ pub(super) fn check<'a>(
         return;
     }
 
-    span_lint_and_sugg(
+    span_lint_and_then(
         cx,
         UNNECESSARY_MAP_OR,
         expr.span,
         "this `map_or` can be simplified",
-        format!("use {method} instead"),
-        sugg,
-        applicability,
+        |diag| {
+            diag.multipart_suggestion_verbose(format!("use {method} instead"), sugg, applicability);
+        },
     );
 }

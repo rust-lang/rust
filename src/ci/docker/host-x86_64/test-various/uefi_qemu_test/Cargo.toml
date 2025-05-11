@@ -7,4 +7,4 @@ edition = "2021"
 resolver = "2"
 
 [dependencies]
-r-efi = "4.1.0"
+r-efi = "5.2.0"

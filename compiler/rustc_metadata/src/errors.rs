@@ -333,6 +333,12 @@ pub struct CrateNotPanicRuntime {
 }
 
 #[derive(Diagnostic)]
+#[diag(metadata_crate_not_compiler_builtins)]
+pub struct CrateNotCompilerBuiltins {
+    pub crate_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(metadata_no_panic_strategy)]
 pub struct NoPanicStrategy {
     pub crate_name: Symbol,
@@ -517,6 +523,15 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for MultipleCandidates {
         }
         diag
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_full_metadata_not_found)]
+pub(crate) struct FullMetadataNotFound {
+    #[primary_span]
+    pub span: Span,
+    pub flavor: CrateFlavor,
+    pub crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -731,4 +746,68 @@ pub struct UnknownImportNameType<'a> {
 pub struct ImportNameTypeRaw {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_wasm_c_abi)]
+pub(crate) struct WasmCAbi {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_incompatible_target_modifiers)]
+#[help]
+#[note]
+#[help(metadata_incompatible_target_modifiers_help_fix)]
+#[help(metadata_incompatible_target_modifiers_help_allow)]
+pub struct IncompatibleTargetModifiers {
+    #[primary_span]
+    pub span: Span,
+    pub extern_crate: Symbol,
+    pub local_crate: Symbol,
+    pub flag_name: String,
+    pub flag_name_prefixed: String,
+    pub local_value: String,
+    pub extern_value: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_incompatible_target_modifiers_l_missed)]
+#[help]
+#[note]
+#[help(metadata_incompatible_target_modifiers_help_fix_l_missed)]
+#[help(metadata_incompatible_target_modifiers_help_allow)]
+pub struct IncompatibleTargetModifiersLMissed {
+    #[primary_span]
+    pub span: Span,
+    pub extern_crate: Symbol,
+    pub local_crate: Symbol,
+    pub flag_name: String,
+    pub flag_name_prefixed: String,
+    pub extern_value: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_incompatible_target_modifiers_r_missed)]
+#[help]
+#[note]
+#[help(metadata_incompatible_target_modifiers_help_fix_r_missed)]
+#[help(metadata_incompatible_target_modifiers_help_allow)]
+pub struct IncompatibleTargetModifiersRMissed {
+    #[primary_span]
+    pub span: Span,
+    pub extern_crate: Symbol,
+    pub local_crate: Symbol,
+    pub flag_name: String,
+    pub flag_name_prefixed: String,
+    pub local_value: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_unknown_target_modifier_unsafe_allowed)]
+pub struct UnknownTargetModifierUnsafeAllowed {
+    #[primary_span]
+    pub span: Span,
+    pub flag_name: String,
 }

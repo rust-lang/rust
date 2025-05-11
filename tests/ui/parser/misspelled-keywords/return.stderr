@@ -6,8 +6,9 @@ LL |     returnn a;
    |
 help: there is a keyword `return` with a similar name
    |
-LL |     return a;
-   |     ~~~~~~
+LL -     returnn a;
+LL +     return a;
+   |
 
 error: aborting due to 1 previous error
 

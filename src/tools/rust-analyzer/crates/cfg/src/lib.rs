@@ -9,7 +9,7 @@ use std::fmt;
 
 use rustc_hash::FxHashSet;
 
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 
 pub use cfg_expr::{CfgAtom, CfgExpr};
 pub use dnf::DnfExpr;
@@ -31,7 +31,7 @@ pub struct CfgOptions {
 
 impl Default for CfgOptions {
     fn default() -> Self {
-        Self { enabled: FxHashSet::from_iter([CfgAtom::Flag(sym::true_.clone())]) }
+        Self { enabled: FxHashSet::from_iter([CfgAtom::Flag(sym::true_)]) }
     }
 }
 
@@ -104,6 +104,17 @@ impl CfgOptions {
             _ => None,
         })
     }
+
+    pub fn to_hashable(&self) -> HashableCfgOptions {
+        let mut enabled = self.enabled.iter().cloned().collect::<Box<[_]>>();
+        enabled.sort_unstable();
+        HashableCfgOptions { _enabled: enabled }
+    }
+
+    #[inline]
+    pub fn shrink_to_fit(&mut self) {
+        self.enabled.shrink_to_fit();
+    }
 }
 
 impl Extend<CfgAtom> for CfgOptions {
@@ -148,16 +159,20 @@ pub struct CfgDiff {
 }
 
 impl CfgDiff {
-    /// Create a new CfgDiff. Will return None if the same item appears more than once in the set
-    /// of both.
-    pub fn new(enable: Vec<CfgAtom>, disable: Vec<CfgAtom>) -> Option<CfgDiff> {
-        let mut occupied = FxHashSet::default();
-        if enable.iter().chain(disable.iter()).any(|item| !occupied.insert(item)) {
-            // was present
-            return None;
+    /// Create a new CfgDiff.
+    pub fn new(mut enable: Vec<CfgAtom>, mut disable: Vec<CfgAtom>) -> CfgDiff {
+        enable.sort();
+        enable.dedup();
+        disable.sort();
+        disable.dedup();
+        for i in (0..enable.len()).rev() {
+            if let Some(j) = disable.iter().position(|atom| *atom == enable[i]) {
+                enable.remove(i);
+                disable.remove(j);
+            }
         }
 
-        Some(CfgDiff { enable, disable })
+        CfgDiff { enable, disable }
     }
 
     /// Returns the total number of atoms changed by this diff.
@@ -251,4 +266,10 @@ impl fmt::Display for InactiveReason {
 
         Ok(())
     }
+}
+
+/// A `CfgOptions` that implements `Hash`, for the sake of hashing only.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct HashableCfgOptions {
+    _enabled: Box<[CfgAtom]>,
 }

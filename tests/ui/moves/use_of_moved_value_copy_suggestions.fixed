@@ -4,27 +4,27 @@
 fn duplicate_t<T: Copy>(t: T) -> (T, T) {
     //~^ HELP consider restricting type parameter `T`
     //~| HELP if `T` implemented `Clone`, you could clone the value
-    (t, t) //~ use of moved value: `t`
+    (t, t) //~ ERROR use of moved value: `t`
 }
 
 fn duplicate_opt<T: Copy>(t: Option<T>) -> (Option<T>, Option<T>) {
     //~^ HELP consider restricting type parameter `T`
-    (t, t) //~ use of moved value: `t`
+    (t, t) //~ ERROR use of moved value: `t`
 }
 
 fn duplicate_tup1<T: Copy>(t: (T,)) -> ((T,), (T,)) {
     //~^ HELP consider restricting type parameter `T`
-    (t, t) //~ use of moved value: `t`
+    (t, t) //~ ERROR use of moved value: `t`
 }
 
 fn duplicate_tup2<A: Copy, B: Copy>(t: (A, B)) -> ((A, B), (A, B)) {
     //~^ HELP consider restricting type parameters
-    (t, t) //~ use of moved value: `t`
+    (t, t) //~ ERROR use of moved value: `t`
 }
 
 fn duplicate_custom<T: Copy + Trait>(t: S<T>) -> (S<T>, S<T>) {
     //~^ HELP consider restricting type parameter `T`
-    (t, t) //~ use of moved value: `t`
+    (t, t) //~ ERROR use of moved value: `t`
 }
 
 struct S<T>(T);
@@ -42,7 +42,7 @@ trait B {}
 // Test where bounds are added with different bound placements
 fn duplicate_custom_1<T: Copy + Trait>(t: S<T>) -> (S<T>, S<T>) where {
     //~^ HELP consider restricting type parameter `T`
-    (t, t) //~ use of moved value: `t`
+    (t, t) //~ ERROR use of moved value: `t`
 }
 
 fn duplicate_custom_2<T>(t: S<T>) -> (S<T>, S<T>)
@@ -50,7 +50,7 @@ where
     T: A + Copy + Trait,
     //~^ HELP consider further restricting
 {
-    (t, t) //~ use of moved value: `t`
+    (t, t) //~ ERROR use of moved value: `t`
 }
 
 fn duplicate_custom_3<T>(t: S<T>) -> (S<T>, S<T>)
@@ -59,7 +59,7 @@ where
     //~^ HELP consider further restricting
     T: B,
 {
-    (t, t) //~ use of moved value: `t`
+    (t, t) //~ ERROR use of moved value: `t`
 }
 
 fn duplicate_custom_4<T: A + Copy + Trait>(t: S<T>) -> (S<T>, S<T>)
@@ -67,14 +67,14 @@ fn duplicate_custom_4<T: A + Copy + Trait>(t: S<T>) -> (S<T>, S<T>)
 where
     T: B,
 {
-    (t, t) //~ use of moved value: `t`
+    (t, t) //~ ERROR use of moved value: `t`
 }
 
 #[rustfmt::skip]
 fn existing_colon<T: Copy>(t: T) {
     //~^ HELP consider restricting type parameter `T`
     //~| HELP if `T` implemented `Clone`, you could clone the value
-    [t, t]; //~ use of moved value: `t`
+    [t, t]; //~ ERROR use of moved value: `t`
 }
 
 fn existing_colon_in_where<T>(t: T) //~ HELP if `T` implemented `Clone`, you could clone the value
@@ -82,7 +82,7 @@ where
     T:, T: Copy
     //~^ HELP consider further restricting type parameter `T`
 {
-    [t, t]; //~ use of moved value: `t`
+    [t, t]; //~ ERROR use of moved value: `t`
 }
 
 fn main() {}

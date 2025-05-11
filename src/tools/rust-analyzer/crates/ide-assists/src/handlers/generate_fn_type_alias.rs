@@ -1,8 +1,9 @@
 use either::Either;
-use ide_db::assists::{AssistId, AssistKind, GroupLabel};
+use ide_db::assists::{AssistId, GroupLabel};
 use syntax::{
-    ast::{self, edit::IndentLevel, make, HasGenericParams, HasName},
-    syntax_editor, AstNode,
+    AstNode,
+    ast::{self, HasGenericParams, HasName, edit::IndentLevel, make},
+    syntax_editor,
 };
 
 use crate::{AssistContext, Assists};
@@ -85,7 +86,6 @@ pub(crate) fn generate_fn_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>)
 
                 let is_unsafe = func_node.unsafe_token().is_some();
                 let ty = make::ty_fn_ptr(
-                    None,
                     is_unsafe,
                     func_node.abi(),
                     fn_params_vec.into_iter(),
@@ -117,7 +117,7 @@ pub(crate) fn generate_fn_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>)
                     }
                 }
 
-                builder.add_file_edits(ctx.file_id(), edit);
+                builder.add_file_edits(ctx.vfs_file_id(), edit);
             },
         );
     }
@@ -139,7 +139,7 @@ impl ParamStyle {
             ParamStyle::Unnamed => "generate_fn_type_alias_unnamed",
         };
 
-        AssistId(s, AssistKind::Generate)
+        AssistId::generate(s)
     }
 
     fn label(&self) -> &'static str {

@@ -5,10 +5,6 @@
 
 #![feature(const_black_box)]
 
-/*
- * Code
- */
-
 fn main() {
     use std::hint::black_box;
 

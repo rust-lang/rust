@@ -1,6 +1,6 @@
 #![deny(uncommon_codepoints)]
 
-const µ: f64 = 0.000001; //~ identifier contains a non normalized (NFKC) character: 'µ'
+const µ: f64 = 0.000001; //~ ERROR identifier contains a non normalized (NFKC) character: 'µ'
 //~| WARNING should have an upper case name
 
 fn dĳkstra() {}

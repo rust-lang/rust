@@ -1,5 +1,6 @@
 // Checks if the correct annotation for the efiapi ABI is passed to llvm.
 
+//@ add-core-stubs
 //@ revisions:x86_64 i686 aarch64 arm riscv
 //@[x86_64] compile-flags: --target x86_64-unknown-uefi
 //@[x86_64] needs-llvm-components: aarch64 arm riscv
@@ -17,12 +18,8 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 //x86_64: define win64cc void @has_efiapi
 //i686: define void @has_efiapi

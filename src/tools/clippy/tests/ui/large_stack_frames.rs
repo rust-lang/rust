@@ -25,7 +25,8 @@ impl<const N: usize> Default for ArrayDefault<N> {
 }
 
 fn many_small_arrays() {
-    //~^ ERROR: this function may allocate
+    //~^ large_stack_frames
+
     let x = [0u8; 500_000];
     let x2 = [0u8; 500_000];
     let x3 = [0u8; 500_000];
@@ -35,18 +36,21 @@ fn many_small_arrays() {
 }
 
 fn large_return_value() -> ArrayDefault<1_000_000> {
-    //~^ ERROR: this function may allocate 1000000 bytes on the stack
+    //~^ large_stack_frames
+
     Default::default()
 }
 
 fn large_fn_arg(x: ArrayDefault<1_000_000>) {
-    //~^ ERROR: this function may allocate
+    //~^ large_stack_frames
+
     black_box(&x);
 }
 
 fn has_large_closure() {
     let f = || black_box(&[0u8; 1_000_000]);
-    //~^ ERROR: this function may allocate
+    //~^ large_stack_frames
+
     f();
 }
 

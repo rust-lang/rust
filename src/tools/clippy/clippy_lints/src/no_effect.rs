@@ -12,7 +12,6 @@ use rustc_hir::{
 };
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -142,9 +141,9 @@ impl NoEffect {
                     stmt.span,
                     "statement with no effect",
                     |diag| {
-                        for parent in cx.tcx.hir().parent_iter(stmt.hir_id) {
+                        for parent in cx.tcx.hir_parent_iter(stmt.hir_id) {
                             if let Node::Item(item) = parent.1
-                                && let ItemKind::Fn(..) = item.kind
+                                && let ItemKind::Fn { .. } = item.kind
                                 && let Node::Block(block) = cx.tcx.parent_hir_node(stmt.hir_id)
                                 && let [.., final_stmt] = block.stmts
                                 && final_stmt.hir_id == stmt.hir_id
@@ -183,23 +182,22 @@ impl NoEffect {
                 );
                 return true;
             }
-        } else if let StmtKind::Let(local) = stmt.kind {
-            if !is_lint_allowed(cx, NO_EFFECT_UNDERSCORE_BINDING, local.hir_id)
-                && !matches!(local.source, LocalSource::AsyncFn)
-                && let Some(init) = local.init
-                && local.els.is_none()
-                && !local.pat.span.from_expansion()
-                && has_no_effect(cx, init)
-                && let PatKind::Binding(_, hir_id, ident, _) = local.pat.kind
-                && ident.name.to_ident_string().starts_with('_')
-                && !in_automatically_derived(cx.tcx, local.hir_id)
-            {
-                if let Some(l) = self.local_bindings.last_mut() {
-                    l.push(hir_id);
-                    self.underscore_bindings.insert(hir_id, ident.span);
-                }
-                return true;
+        } else if let StmtKind::Let(local) = stmt.kind
+            && !is_lint_allowed(cx, NO_EFFECT_UNDERSCORE_BINDING, local.hir_id)
+            && !matches!(local.source, LocalSource::AsyncFn)
+            && let Some(init) = local.init
+            && local.els.is_none()
+            && !local.pat.span.from_expansion()
+            && has_no_effect(cx, init)
+            && let PatKind::Binding(_, hir_id, ident, _) = local.pat.kind
+            && ident.name.to_ident_string().starts_with('_')
+            && !in_automatically_derived(cx.tcx, local.hir_id)
+        {
+            if let Some(l) = self.local_bindings.last_mut() {
+                l.push(hir_id);
+                self.underscore_bindings.insert(hir_id, ident.span);
             }
+            return true;
         }
         false
     }
@@ -268,7 +266,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
     if let StmtKind::Semi(expr) = stmt.kind
-        && !in_external_macro(cx.sess(), stmt.span)
+        && !stmt.span.in_external_macro(cx.sess().source_map())
         && let ctxt = stmt.span.ctxt()
         && expr.span.ctxt() == ctxt
         && let Some(reduced) = reduce_expression(cx, expr)

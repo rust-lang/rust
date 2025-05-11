@@ -3,11 +3,17 @@
 
 fn array() {
     assert_eq!(std::iter::once(123).next(), Some(123));
+    //~^ iter_on_single_items
     assert_eq!(std::iter::once(&mut 123).next(), Some(&mut 123));
+    //~^ iter_on_single_items
     assert_eq!(std::iter::once(&123).next(), Some(&123));
+    //~^ iter_on_single_items
     assert_eq!(std::iter::once(123).next(), Some(123));
+    //~^ iter_on_single_items
     assert_eq!(std::iter::once(&mut 123).next(), Some(&mut 123));
+    //~^ iter_on_single_items
     assert_eq!(std::iter::once(&123).next(), Some(&123));
+    //~^ iter_on_single_items
 
     // Don't trigger on non-iter methods
     let _: Option<String> = Some("test".to_string()).clone();

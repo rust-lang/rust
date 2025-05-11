@@ -4,7 +4,7 @@ use hir_def::ImportPathConfig;
 use hir_expand::mod_path::ModPath;
 use hir_ty::{
     db::HirDatabase,
-    display::{DisplaySourceCodeError, HirDisplay},
+    display::{DisplaySourceCodeError, DisplayTarget, HirDisplay},
 };
 use itertools::Itertools;
 use span::Edition;
@@ -22,7 +22,7 @@ fn mod_item_path(
 ) -> Option<ModPath> {
     let db = sema_scope.db;
     let m = sema_scope.module();
-    m.find_path(db.upcast(), *def, cfg)
+    m.find_path(db, *def, cfg)
 }
 
 /// Helper function to get path to `ModuleDef` as string
@@ -33,14 +33,14 @@ fn mod_item_path_str(
     edition: Edition,
 ) -> Result<String, DisplaySourceCodeError> {
     let path = mod_item_path(sema_scope, def, cfg);
-    path.map(|it| it.display(sema_scope.db.upcast(), edition).to_string())
+    path.map(|it| it.display(sema_scope.db, edition).to_string())
         .ok_or(DisplaySourceCodeError::PathNotFound)
 }
 
 /// Type tree shows how can we get from set of types to some type.
 ///
 /// Consider the following code as an example
-/// ```
+/// ```ignore
 /// fn foo(x: i32, y: bool) -> Option<i32> { None }
 /// fn bar() {
 ///    let a = 1;
@@ -99,38 +99,41 @@ impl Expr {
         sema_scope: &SemanticsScope<'_>,
         many_formatter: &mut dyn FnMut(&Type) -> String,
         cfg: ImportPathConfig,
-        edition: Edition,
+        display_target: DisplayTarget,
     ) -> Result<String, DisplaySourceCodeError> {
         let db = sema_scope.db;
+        let edition = display_target.edition;
         let mod_item_path_str = |s, def| mod_item_path_str(s, def, cfg, edition);
         match self {
             Expr::Const(it) => match it.as_assoc_item(db).map(|it| it.container(db)) {
                 Some(container) => {
-                    let container_name = container_name(container, sema_scope, cfg, edition)?;
+                    let container_name =
+                        container_name(container, sema_scope, cfg, edition, display_target)?;
                     let const_name = it
                         .name(db)
-                        .map(|c| c.display(db.upcast(), edition).to_string())
+                        .map(|c| c.display(db, edition).to_string())
                         .unwrap_or(String::new());
                     Ok(format!("{container_name}::{const_name}"))
                 }
                 None => mod_item_path_str(sema_scope, &ModuleDef::Const(*it)),
             },
             Expr::Static(it) => mod_item_path_str(sema_scope, &ModuleDef::Static(*it)),
-            Expr::Local(it) => Ok(it.name(db).display(db.upcast(), edition).to_string()),
-            Expr::ConstParam(it) => Ok(it.name(db).display(db.upcast(), edition).to_string()),
+            Expr::Local(it) => Ok(it.name(db).display(db, edition).to_string()),
+            Expr::ConstParam(it) => Ok(it.name(db).display(db, edition).to_string()),
             Expr::FamousType { value, .. } => Ok(value.to_string()),
             Expr::Function { func, params, .. } => {
                 let args = params
                     .iter()
-                    .map(|f| f.gen_source_code(sema_scope, many_formatter, cfg, edition))
+                    .map(|f| f.gen_source_code(sema_scope, many_formatter, cfg, display_target))
                     .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
                     .into_iter()
                     .join(", ");
 
                 match func.as_assoc_item(db).map(|it| it.container(db)) {
                     Some(container) => {
-                        let container_name = container_name(container, sema_scope, cfg, edition)?;
-                        let fn_name = func.name(db).display(db.upcast(), edition).to_string();
+                        let container_name =
+                            container_name(container, sema_scope, cfg, edition, display_target)?;
+                        let fn_name = func.name(db).display(db, edition).to_string();
                         Ok(format!("{container_name}::{fn_name}({args})"))
                     }
                     None => {
@@ -144,13 +147,13 @@ impl Expr {
                     return Ok(many_formatter(&target.ty(db)));
                 }
 
-                let func_name = func.name(db).display(db.upcast(), edition).to_string();
+                let func_name = func.name(db).display(db, edition).to_string();
                 let self_param = func.self_param(db).unwrap();
                 let target_str =
-                    target.gen_source_code(sema_scope, many_formatter, cfg, edition)?;
+                    target.gen_source_code(sema_scope, many_formatter, cfg, display_target)?;
                 let args = params
                     .iter()
-                    .map(|f| f.gen_source_code(sema_scope, many_formatter, cfg, edition))
+                    .map(|f| f.gen_source_code(sema_scope, many_formatter, cfg, display_target))
                     .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
                     .into_iter()
                     .join(", ");
@@ -180,7 +183,9 @@ impl Expr {
                     StructKind::Tuple => {
                         let args = params
                             .iter()
-                            .map(|f| f.gen_source_code(sema_scope, many_formatter, cfg, edition))
+                            .map(|f| {
+                                f.gen_source_code(sema_scope, many_formatter, cfg, display_target)
+                            })
                             .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
                             .into_iter()
                             .join(", ");
@@ -194,8 +199,13 @@ impl Expr {
                             .map(|(a, f)| {
                                 let tmp = format!(
                                     "{}: {}",
-                                    f.name(db).display(db.upcast(), edition),
-                                    a.gen_source_code(sema_scope, many_formatter, cfg, edition)?
+                                    f.name(db).display(db, edition),
+                                    a.gen_source_code(
+                                        sema_scope,
+                                        many_formatter,
+                                        cfg,
+                                        display_target
+                                    )?
                                 );
                                 Ok(tmp)
                             })
@@ -215,7 +225,9 @@ impl Expr {
                     StructKind::Tuple => {
                         let args = params
                             .iter()
-                            .map(|a| a.gen_source_code(sema_scope, many_formatter, cfg, edition))
+                            .map(|a| {
+                                a.gen_source_code(sema_scope, many_formatter, cfg, display_target)
+                            })
                             .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
                             .into_iter()
                             .join(", ");
@@ -229,8 +241,13 @@ impl Expr {
                             .map(|(a, f)| {
                                 let tmp = format!(
                                     "{}: {}",
-                                    f.name(db).display(db.upcast(), edition),
-                                    a.gen_source_code(sema_scope, many_formatter, cfg, edition)?
+                                    f.name(db).display(db, edition),
+                                    a.gen_source_code(
+                                        sema_scope,
+                                        many_formatter,
+                                        cfg,
+                                        display_target
+                                    )?
                                 );
                                 Ok(tmp)
                             })
@@ -248,7 +265,7 @@ impl Expr {
             Expr::Tuple { params, .. } => {
                 let args = params
                     .iter()
-                    .map(|a| a.gen_source_code(sema_scope, many_formatter, cfg, edition))
+                    .map(|a| a.gen_source_code(sema_scope, many_formatter, cfg, display_target))
                     .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
                     .into_iter()
                     .join(", ");
@@ -260,8 +277,9 @@ impl Expr {
                     return Ok(many_formatter(&expr.ty(db)));
                 }
 
-                let strukt = expr.gen_source_code(sema_scope, many_formatter, cfg, edition)?;
-                let field = field.name(db).display(db.upcast(), edition).to_string();
+                let strukt =
+                    expr.gen_source_code(sema_scope, many_formatter, cfg, display_target)?;
+                let field = field.name(db).display(db, edition).to_string();
                 Ok(format!("{strukt}.{field}"))
             }
             Expr::Reference(expr) => {
@@ -269,7 +287,8 @@ impl Expr {
                     return Ok(many_formatter(&expr.ty(db)));
                 }
 
-                let inner = expr.gen_source_code(sema_scope, many_formatter, cfg, edition)?;
+                let inner =
+                    expr.gen_source_code(sema_scope, many_formatter, cfg, display_target)?;
                 Ok(format!("&{inner}"))
             }
             Expr::Many(ty) => Ok(many_formatter(ty)),
@@ -358,6 +377,7 @@ fn container_name(
     sema_scope: &SemanticsScope<'_>,
     cfg: ImportPathConfig,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Result<String, DisplaySourceCodeError> {
     let container_name = match container {
         crate::AssocItemContainer::Trait(trait_) => {
@@ -367,8 +387,8 @@ fn container_name(
             let self_ty = imp.self_ty(sema_scope.db);
             // Should it be guaranteed that `mod_item_path` always exists?
             match self_ty.as_adt().and_then(|adt| mod_item_path(sema_scope, &adt.into(), cfg)) {
-                Some(path) => path.display(sema_scope.db.upcast(), edition).to_string(),
-                None => self_ty.display(sema_scope.db, edition).to_string(),
+                Some(path) => path.display(sema_scope.db, edition).to_string(),
+                None => self_ty.display(sema_scope.db, display_target).to_string(),
             }
         }
     };

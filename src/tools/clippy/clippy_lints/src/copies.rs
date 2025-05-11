@@ -18,7 +18,6 @@ use rustc_session::impl_lint_pass;
 use rustc_span::hygiene::walk_chain;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, Symbol};
-use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -129,11 +128,6 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Duplicate code is less maintainable.
-    ///
-    /// ### Known problems
-    /// * The lint doesn't check if the moved expressions modify values that are being used in
-    ///   the if condition. The suggestion can in that case modify the behavior of the program.
-    ///   See [rust-clippy#7452](https://github.com/rust-lang/rust-clippy/issues/7452)
     ///
     /// ### Example
     /// ```ignore
@@ -248,21 +242,21 @@ fn lint_branches_sharing_code<'tcx>(
         let first_line_span = first_line_of_span(cx, expr.span);
         let replace_span = first_line_span.with_hi(span.hi());
         let cond_span = first_line_span.until(first_block.span);
-        let cond_snippet = reindent_multiline(snippet(cx, cond_span, "_"), false, None);
+        let cond_snippet = reindent_multiline(&snippet(cx, cond_span, "_"), false, None);
         let cond_indent = indent_of(cx, cond_span);
-        let moved_snippet = reindent_multiline(snippet(cx, span, "_"), true, None);
+        let moved_snippet = reindent_multiline(&snippet(cx, span, "_"), true, None);
         let suggestion = moved_snippet.to_string() + "\n" + &cond_snippet + "{";
-        let suggestion = reindent_multiline(Cow::Borrowed(&suggestion), true, cond_indent);
+        let suggestion = reindent_multiline(&suggestion, true, cond_indent);
         (replace_span, suggestion.to_string())
     });
     let end_suggestion = res.end_span(last_block, sm).map(|span| {
-        let moved_snipped = reindent_multiline(snippet(cx, span, "_"), true, None);
+        let moved_snipped = reindent_multiline(&snippet(cx, span, "_"), true, None);
         let indent = indent_of(cx, expr.span.shrink_to_hi());
         let suggestion = "}\n".to_string() + &moved_snipped;
-        let suggestion = reindent_multiline(Cow::Borrowed(&suggestion), true, indent);
+        let suggestion = reindent_multiline(&suggestion, true, indent);
 
         let span = span.with_hi(last_block.span.hi());
-        // Improve formatting if the inner block has indention (i.e. normal Rust formatting)
+        // Improve formatting if the inner block has indentation (i.e. normal Rust formatting)
         let span = span
             .map_range(cx, |src, range| {
                 (range.start > 4 && src.get(range.start - 4..range.start)? == "    ")
@@ -545,10 +539,10 @@ fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbo
                     .filter(|stmt| !ignore_span.overlaps(stmt.span))
                     .try_for_each(|stmt| intravisit::walk_stmt(&mut walker, stmt));
 
-                if let Some(expr) = block.expr {
-                    if res.is_continue() {
-                        res = intravisit::walk_expr(&mut walker, expr);
-                    }
+                if let Some(expr) = block.expr
+                    && res.is_continue()
+                {
+                    res = intravisit::walk_expr(&mut walker, expr);
                 }
 
                 res.is_break()

@@ -3,14 +3,14 @@
 use hir::HirDisplay;
 use ide_db::FxHashMap;
 use syntax::{
-    algo,
+    AstNode, Direction, SyntaxKind, TextRange, TextSize, algo,
     ast::{self, HasModuleItem},
-    match_ast, AstNode, Direction, SyntaxKind, TextRange, TextSize,
+    match_ast,
 };
 
 use crate::{
-    context::{ParamContext, ParamKind, PatternContext},
     CompletionContext, CompletionItem, CompletionItemKind, Completions,
+    context::{ParamContext, ParamKind, PatternContext},
 };
 
 // FIXME: Make this a submodule of [`pattern`]
@@ -167,7 +167,7 @@ fn should_add_self_completions(
         return false;
     }
     match param_list.params().next() {
-        Some(first) => first.pat().map_or(false, |pat| pat.syntax().text_range().contains(cursor)),
+        Some(first) => first.pat().is_some_and(|pat| pat.syntax().text_range().contains(cursor)),
         None => true,
     }
 }

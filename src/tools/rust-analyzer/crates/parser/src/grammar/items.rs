@@ -32,6 +32,9 @@ pub(super) const ITEM_RECOVERY_SET: TokenSet = TokenSet::new(&[
     T![impl],
     T![trait],
     T![const],
+    T![async],
+    T![unsafe],
+    T![extern],
     T![static],
     T![let],
     T![mod],
@@ -132,7 +135,7 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker, is_in_extern: bool) -> Res
         has_mods = true;
     }
 
-    // test_err gen_fn
+    // test_err gen_fn 2021
     // gen fn gen_fn() {}
     // async gen fn async_gen_fn() {}
     if p.at(T![gen]) && p.nth(1) == T![fn] {

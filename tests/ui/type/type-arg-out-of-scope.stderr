@@ -1,5 +1,5 @@
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/type-arg-out-of-scope.rs:3:29
+  --> $DIR/type-arg-out-of-scope.rs:2:29
    |
 LL | fn foo<T>(x: T) {
    |        - type parameter from outer item
@@ -9,7 +9,7 @@ LL |     fn bar(f: Box<dyn FnMut(T) -> T>) { }
    |           help: try introducing a local generic parameter here: `<T>`
 
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/type-arg-out-of-scope.rs:3:35
+  --> $DIR/type-arg-out-of-scope.rs:2:35
    |
 LL | fn foo<T>(x: T) {
    |        - type parameter from outer item

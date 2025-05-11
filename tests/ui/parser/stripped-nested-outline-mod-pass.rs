@@ -5,7 +5,7 @@
 
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 mod foo {
     mod bar {
         mod baz; // This was an error before.

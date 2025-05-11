@@ -1,10 +1,11 @@
 //! Comparison traits for `[T]`.
 
 use super::{from_raw_parts, memchr};
+use crate::ascii;
 use crate::cmp::{self, BytewiseEq, Ordering};
 use crate::intrinsics::compare_bytes;
 use crate::num::NonZero;
-use crate::{ascii, mem};
+use crate::ops::ControlFlow;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, U> PartialEq<[U]> for [T]
@@ -31,11 +32,63 @@ impl<T: Ord> Ord for [T] {
     }
 }
 
+#[inline]
+fn as_underlying(x: ControlFlow<bool>) -> u8 {
+    // SAFETY: This will only compile if `bool` and `ControlFlow<bool>` have the same
+    // size (which isn't guaranteed but this is libcore). Because they have the same
+    // size, it's a niched implementation, which in one byte means there can't be
+    // any uninitialized memory. The callers then only check for `0` or `1` from this,
+    // which must necessarily match the `Break` variant, and we're fine no matter
+    // what ends up getting picked as the value representing `Continue(())`.
+    unsafe { crate::mem::transmute(x) }
+}
+
 /// Implements comparison of slices [lexicographically](Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for [T] {
+    #[inline]
     fn partial_cmp(&self, other: &[T]) -> Option<Ordering> {
         SlicePartialOrd::partial_compare(self, other)
+    }
+    #[inline]
+    fn lt(&self, other: &Self) -> bool {
+        // This is certainly not the obvious way to implement these methods.
+        // Unfortunately, using anything that looks at the discriminant means that
+        // LLVM sees a check for `2` (aka `ControlFlow<bool>::Continue(())`) and
+        // gets very distracted by that, ending up generating extraneous code.
+        // This should be changed to something simpler once either LLVM is smarter,
+        // see <https://github.com/llvm/llvm-project/issues/132678>, or we generate
+        // niche discriminant checks in a way that doesn't trigger it.
+
+        as_underlying(self.__chaining_lt(other)) == 1
+    }
+    #[inline]
+    fn le(&self, other: &Self) -> bool {
+        as_underlying(self.__chaining_le(other)) != 0
+    }
+    #[inline]
+    fn gt(&self, other: &Self) -> bool {
+        as_underlying(self.__chaining_gt(other)) == 1
+    }
+    #[inline]
+    fn ge(&self, other: &Self) -> bool {
+        as_underlying(self.__chaining_ge(other)) != 0
+    }
+    #[inline]
+    fn __chaining_lt(&self, other: &Self) -> ControlFlow<bool> {
+        SliceChain::chaining_lt(self, other)
+    }
+    #[inline]
+    fn __chaining_le(&self, other: &Self) -> ControlFlow<bool> {
+        SliceChain::chaining_le(self, other)
+    }
+    #[inline]
+    fn __chaining_gt(&self, other: &Self) -> ControlFlow<bool> {
+        SliceChain::chaining_gt(self, other)
+    }
+    #[inline]
+    fn __chaining_ge(&self, other: &Self) -> ControlFlow<bool> {
+        SliceChain::chaining_ge(self, other)
     }
 }
 
@@ -87,7 +140,7 @@ where
         // SAFETY: `self` and `other` are references and are thus guaranteed to be valid.
         // The two slices have been checked to have the same size above.
         unsafe {
-            let size = mem::size_of_val(self);
+            let size = size_of_val(self);
             compare_bytes(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size) == 0
         }
     }
@@ -99,24 +152,63 @@ trait SlicePartialOrd: Sized {
     fn partial_compare(left: &[Self], right: &[Self]) -> Option<Ordering>;
 }
 
+#[doc(hidden)]
+// intermediate trait for specialization of slice's PartialOrd chaining methods
+trait SliceChain: Sized {
+    fn chaining_lt(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
+    fn chaining_le(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
+    fn chaining_gt(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
+    fn chaining_ge(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
+}
+
+type AlwaysBreak<B> = ControlFlow<B, crate::convert::Infallible>;
+
 impl<A: PartialOrd> SlicePartialOrd for A {
     default fn partial_compare(left: &[A], right: &[A]) -> Option<Ordering> {
-        let l = cmp::min(left.len(), right.len());
-
-        // Slice to the loop iteration range to enable bound check
-        // elimination in the compiler
-        let lhs = &left[..l];
-        let rhs = &right[..l];
-
-        for i in 0..l {
-            match lhs[i].partial_cmp(&rhs[i]) {
-                Some(Ordering::Equal) => (),
-                non_eq => return non_eq,
-            }
-        }
-
-        left.len().partial_cmp(&right.len())
+        let elem_chain = |a, b| match PartialOrd::partial_cmp(a, b) {
+            Some(Ordering::Equal) => ControlFlow::Continue(()),
+            non_eq => ControlFlow::Break(non_eq),
+        };
+        let len_chain = |a: &_, b: &_| ControlFlow::Break(usize::partial_cmp(a, b));
+        let AlwaysBreak::Break(b) = chaining_impl(left, right, elem_chain, len_chain);
+        b
     }
+}
+
+impl<A: PartialOrd> SliceChain for A {
+    default fn chaining_lt(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+        chaining_impl(left, right, PartialOrd::__chaining_lt, usize::__chaining_lt)
+    }
+    default fn chaining_le(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+        chaining_impl(left, right, PartialOrd::__chaining_le, usize::__chaining_le)
+    }
+    default fn chaining_gt(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+        chaining_impl(left, right, PartialOrd::__chaining_gt, usize::__chaining_gt)
+    }
+    default fn chaining_ge(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+        chaining_impl(left, right, PartialOrd::__chaining_ge, usize::__chaining_ge)
+    }
+}
+
+#[inline]
+fn chaining_impl<'l, 'r, A: PartialOrd, B, C>(
+    left: &'l [A],
+    right: &'r [A],
+    elem_chain: impl Fn(&'l A, &'r A) -> ControlFlow<B>,
+    len_chain: impl for<'a> FnOnce(&'a usize, &'a usize) -> ControlFlow<B, C>,
+) -> ControlFlow<B, C> {
+    let l = cmp::min(left.len(), right.len());
+
+    // Slice to the loop iteration range to enable bound check
+    // elimination in the compiler
+    let lhs = &left[..l];
+    let rhs = &right[..l];
+
+    for i in 0..l {
+        elem_chain(&lhs[i], &rhs[i])?;
+    }
+
+    len_chain(&left.len(), &right.len())
 }
 
 // This is the impl that we would like to have. Unfortunately it's not sound.
@@ -165,21 +257,13 @@ trait SliceOrd: Sized {
 
 impl<A: Ord> SliceOrd for A {
     default fn compare(left: &[Self], right: &[Self]) -> Ordering {
-        let l = cmp::min(left.len(), right.len());
-
-        // Slice to the loop iteration range to enable bound check
-        // elimination in the compiler
-        let lhs = &left[..l];
-        let rhs = &right[..l];
-
-        for i in 0..l {
-            match lhs[i].cmp(&rhs[i]) {
-                Ordering::Equal => (),
-                non_eq => return non_eq,
-            }
-        }
-
-        left.len().cmp(&right.len())
+        let elem_chain = |a, b| match Ord::cmp(a, b) {
+            Ordering::Equal => ControlFlow::Continue(()),
+            non_eq => ControlFlow::Break(non_eq),
+        };
+        let len_chain = |a: &_, b: &_| ControlFlow::Break(usize::cmp(a, b));
+        let AlwaysBreak::Break(b) = chaining_impl(left, right, elem_chain, len_chain);
+        b
     }
 }
 
@@ -191,7 +275,7 @@ impl<A: Ord> SliceOrd for A {
 /// * For every `x` and `y` of this type, `Ord(x, y)` must return the same
 ///   value as `Ord::cmp(transmute::<_, u8>(x), transmute::<_, u8>(y))`.
 #[rustc_specialization_trait]
-unsafe trait UnsignedBytewiseOrd {}
+unsafe trait UnsignedBytewiseOrd: Ord {}
 
 unsafe impl UnsignedBytewiseOrd for bool {}
 unsafe impl UnsignedBytewiseOrd for u8 {}
@@ -222,6 +306,38 @@ impl<A: Ord + UnsignedBytewiseOrd> SliceOrd for A {
             order = diff;
         }
         order.cmp(&0)
+    }
+}
+
+// Don't generate our own chaining loops for `memcmp`-able things either.
+impl<A: PartialOrd + UnsignedBytewiseOrd> SliceChain for A {
+    #[inline]
+    fn chaining_lt(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+        match SliceOrd::compare(left, right) {
+            Ordering::Equal => ControlFlow::Continue(()),
+            ne => ControlFlow::Break(ne.is_lt()),
+        }
+    }
+    #[inline]
+    fn chaining_le(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+        match SliceOrd::compare(left, right) {
+            Ordering::Equal => ControlFlow::Continue(()),
+            ne => ControlFlow::Break(ne.is_le()),
+        }
+    }
+    #[inline]
+    fn chaining_gt(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+        match SliceOrd::compare(left, right) {
+            Ordering::Equal => ControlFlow::Continue(()),
+            ne => ControlFlow::Break(ne.is_gt()),
+        }
+    }
+    #[inline]
+    fn chaining_ge(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+        match SliceOrd::compare(left, right) {
+            Ordering::Equal => ControlFlow::Continue(()),
+            ne => ControlFlow::Break(ne.is_ge()),
+        }
     }
 }
 
@@ -266,7 +382,7 @@ macro_rules! impl_slice_contains {
                 fn slice_contains(&self, arr: &[$t]) -> bool {
                     // Make our LANE_COUNT 4x the normal lane count (aiming for 128 bit vectors).
                     // The compiler will nicely unroll it.
-                    const LANE_COUNT: usize = 4 * (128 / (mem::size_of::<$t>() * 8));
+                    const LANE_COUNT: usize = 4 * (128 / (size_of::<$t>() * 8));
                     // SIMD
                     let mut chunks = arr.chunks_exact(LANE_COUNT);
                     for chunk in &mut chunks {
@@ -282,4 +398,4 @@ macro_rules! impl_slice_contains {
     };
 }
 
-impl_slice_contains!(u16, u32, u64, i16, i32, i64, f32, f64, usize, isize);
+impl_slice_contains!(u16, u32, u64, i16, i32, i64, f32, f64, usize, isize, char);

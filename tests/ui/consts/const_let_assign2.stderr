@@ -1,4 +1,4 @@
-warning: creating a mutable reference to mutable static is discouraged
+warning: creating a mutable reference to mutable static
   --> $DIR/const_let_assign2.rs:18:24
    |
 LL |     let ptr = unsafe { &mut BB };
@@ -10,7 +10,7 @@ LL |     let ptr = unsafe { &mut BB };
 help: use `&raw mut` instead to create a raw pointer
    |
 LL |     let ptr = unsafe { &raw mut BB };
-   |                        ~~~~~~~~
+   |                         +++
 
 warning: 1 warning emitted
 

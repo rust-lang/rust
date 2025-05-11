@@ -2,8 +2,9 @@
 // Alignment of 128 bit types is not currently handled, this will
 // need to be fixed when PowerPC vector support is added.
 
-use crate::abi::call::{Align, ArgAbi, FnAbi, Reg, RegKind, Uniform};
-use crate::abi::{Endian, HasDataLayout, TyAbiInterface};
+use rustc_abi::{Endian, HasDataLayout, TyAbiInterface};
+
+use crate::callconv::{Align, ArgAbi, FnAbi, Reg, RegKind, Uniform};
 use crate::spec::HasTargetSpec;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -58,8 +59,10 @@ where
 
     // The AIX ABI expect byval for aggregates
     // See https://github.com/llvm/llvm-project/blob/main/clang/lib/CodeGen/Targets/PPC.cpp.
+    // The incoming parameter is represented as a pointer in the IR,
+    // the alignment is associated with the size of the register. (align 8 for 64bit)
     if !is_ret && abi == AIX {
-        arg.pass_by_stack_offset(None);
+        arg.pass_by_stack_offset(Some(Align::from_bytes(8).unwrap()));
         return;
     }
 

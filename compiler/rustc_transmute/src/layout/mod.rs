@@ -1,31 +1,80 @@
 use std::fmt::{self, Debug};
 use std::hash::Hash;
+use std::ops::RangeInclusive;
 
 pub(crate) mod tree;
 pub(crate) use tree::Tree;
 
-pub(crate) mod nfa;
-pub(crate) use nfa::Nfa;
-
 pub(crate) mod dfa;
-pub(crate) use dfa::Dfa;
+pub(crate) use dfa::{Dfa, union};
 
 #[derive(Debug)]
 pub(crate) struct Uninhabited;
 
-/// An instance of a byte is either initialized to a particular value, or uninitialized.
-#[derive(Hash, Eq, PartialEq, Clone, Copy)]
-pub(crate) enum Byte {
-    Uninit,
-    Init(u8),
+/// A range of byte values (including an uninit byte value).
+#[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
+pub(crate) struct Byte {
+    // An inclusive-exclusive range. We use this instead of `Range` because `Range: !Copy`.
+    //
+    // Uninit byte value is represented by 256.
+    pub(crate) start: u16,
+    pub(crate) end: u16,
+}
+
+impl Byte {
+    const UNINIT: u16 = 256;
+
+    #[inline]
+    fn new(range: RangeInclusive<u8>) -> Self {
+        let start: u16 = (*range.start()).into();
+        let end: u16 = (*range.end()).into();
+        Byte { start, end: end + 1 }
+    }
+
+    #[inline]
+    fn from_val(val: u8) -> Self {
+        let val: u16 = val.into();
+        Byte { start: val, end: val + 1 }
+    }
+
+    #[inline]
+    fn uninit() -> Byte {
+        Byte { start: 0, end: Self::UNINIT + 1 }
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.start == self.end
+    }
+
+    #[inline]
+    fn contains_uninit(&self) -> bool {
+        self.start <= Self::UNINIT && Self::UNINIT < self.end
+    }
 }
 
 impl fmt::Debug for Byte {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self {
-            Self::Uninit => f.write_str("??u8"),
-            Self::Init(b) => write!(f, "{b:#04x}u8"),
+        if self.start == Self::UNINIT && self.end == Self::UNINIT + 1 {
+            write!(f, "uninit")
+        } else if self.start <= Self::UNINIT && self.end == Self::UNINIT + 1 {
+            write!(f, "{}..{}|uninit", self.start, self.end - 1)
+        } else {
+            write!(f, "{}..{}", self.start, self.end)
         }
+    }
+}
+
+impl From<RangeInclusive<u8>> for Byte {
+    fn from(src: RangeInclusive<u8>) -> Self {
+        Self::new(src)
+    }
+}
+
+impl From<u8> for Byte {
+    #[inline]
+    fn from(src: u8) -> Self {
+        Self::from_val(src)
     }
 }
 
@@ -55,6 +104,21 @@ impl Ref for ! {
     }
     fn is_mutable(&self) -> bool {
         unreachable!()
+    }
+}
+
+#[cfg(test)]
+impl<const N: usize> Ref for [(); N] {
+    fn min_align(&self) -> usize {
+        N
+    }
+
+    fn size(&self) -> usize {
+        N
+    }
+
+    fn is_mutable(&self) -> bool {
+        false
     }
 }
 

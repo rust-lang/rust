@@ -4,12 +4,13 @@
 // Reference: Clang RISC-V ELF psABI lowering code
 // https://github.com/llvm/llvm-project/blob/8e780252a7284be45cf1ba224cabd884847e8e92/clang/lib/CodeGen/TargetInfo.cpp#L9311-L9773
 
-use rustc_abi::{BackendRepr, FieldsShape, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
+use rustc_abi::{
+    BackendRepr, FieldsShape, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface,
+    TyAndLayout, Variants,
+};
 
-use crate::abi;
-use crate::abi::call::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Reg, RegKind, Uniform};
+use crate::callconv::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
 use crate::spec::HasTargetSpec;
-use crate::spec::abi::Abi as SpecAbi;
 
 #[derive(Copy, Clone)]
 enum RegPassKind {
@@ -30,7 +31,7 @@ struct CannotUseFpConv;
 
 fn is_riscv_aggregate<Ty>(arg: &ArgAbi<'_, Ty>) -> bool {
     match arg.layout.backend_repr {
-        BackendRepr::Vector { .. } => true,
+        BackendRepr::SimdVector { .. } => true,
         _ => arg.layout.is_aggregate(),
     }
 }
@@ -48,7 +49,7 @@ where
 {
     match arg_layout.backend_repr {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
-            abi::Int(..) | abi::Pointer(_) => {
+            Primitive::Int(..) | Primitive::Pointer(_) => {
                 if arg_layout.size.bits() > xlen {
                     return Err(CannotUseFpConv);
                 }
@@ -68,7 +69,7 @@ where
                     _ => return Err(CannotUseFpConv),
                 }
             }
-            abi::Float(_) => {
+            Primitive::Float(_) => {
                 if arg_layout.size.bits() > flen {
                     return Err(CannotUseFpConv);
                 }
@@ -85,7 +86,7 @@ where
                 }
             }
         },
-        BackendRepr::Vector { .. } | BackendRepr::Uninhabited => return Err(CannotUseFpConv),
+        BackendRepr::SimdVector { .. } => return Err(CannotUseFpConv),
         BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => match arg_layout.fields {
             FieldsShape::Primitive => {
                 unreachable!("aggregates can't have `FieldsShape::Primitive`")
@@ -121,8 +122,8 @@ where
             }
             FieldsShape::Arbitrary { .. } => {
                 match arg_layout.variants {
-                    abi::Variants::Multiple { .. } => return Err(CannotUseFpConv),
-                    abi::Variants::Single { .. } | abi::Variants::Empty => (),
+                    Variants::Multiple { .. } => return Err(CannotUseFpConv),
+                    Variants::Single { .. } | Variants::Empty => (),
                 }
                 for i in arg_layout.fields.index_by_increasing_offset() {
                     let field = arg_layout.field(cx, i);
@@ -320,7 +321,7 @@ fn classify_arg<'a, Ty, C>(
 
 fn extend_integer_width<Ty>(arg: &mut ArgAbi<'_, Ty>, xlen: u64) {
     if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
-        if let abi::Int(i, _) = scalar.primitive() {
+        if let Primitive::Int(i, _) = scalar.primitive() {
             // 32-bit integers are always sign-extended
             if i.size().bits() == 32 && xlen > 32 {
                 if let PassMode::Direct(ref mut attrs) = arg.mode {
@@ -369,15 +370,11 @@ where
     }
 }
 
-pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, abi: SpecAbi)
+pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    if abi == SpecAbi::RustIntrinsic {
-        return;
-    }
-
     let xlen = cx.data_layout().pointer_size.bits();
 
     for arg in fn_abi.args.iter_mut() {

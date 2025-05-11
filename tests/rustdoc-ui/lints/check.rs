@@ -12,3 +12,5 @@
 pub fn foo() {}
 //~^ WARN
 //~^^ WARN
+
+//~? WARN no documentation found for this crate's top-level module

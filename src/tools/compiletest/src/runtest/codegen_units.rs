@@ -26,9 +26,7 @@ impl TestCx<'_> {
             .stdout
             .lines()
             .filter(|line| line.starts_with(PREFIX))
-            .map(|line| {
-                line.replace(&self.testpaths.file.display().to_string(), "TEST_PATH").to_string()
-            })
+            .map(|line| line.replace(&self.testpaths.file.as_str(), "TEST_PATH").to_string())
             .map(|line| str_to_mono_item(&line, true))
             .collect();
 

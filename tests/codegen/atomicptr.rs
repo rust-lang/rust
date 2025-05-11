@@ -4,7 +4,7 @@
 // ensures that we do not have such a round-trip for AtomicPtr::swap, because LLVM supports pointer
 // arguments to `atomicrmw xchg`.
 
-//@ compile-flags: -O -Cno-prepopulate-passes
+//@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes
 #![crate_type = "lib"]
 #![feature(strict_provenance_atomic_ptr)]
 

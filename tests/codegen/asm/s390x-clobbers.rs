@@ -1,6 +1,6 @@
 //@ add-core-stubs
 //@ revisions: s390x
-//@[s390x] compile-flags: --target s390x-unknown-linux-gnu
+//@[s390x] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z10
 //@[s390x] needs-llvm-components: systemz
 
 #![crate_type = "rlib"]

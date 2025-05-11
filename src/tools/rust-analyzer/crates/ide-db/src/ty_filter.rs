@@ -5,7 +5,7 @@
 use std::iter;
 
 use hir::Semantics;
-use syntax::ast::{self, make, Pat};
+use syntax::ast::{self, Pat, make};
 
 use crate::RootDatabase;
 
@@ -26,7 +26,7 @@ impl TryEnum {
             _ => return None,
         };
         TryEnum::ALL.iter().find_map(|&var| {
-            if enum_.name(sema.db).eq_ident(var.type_name()) {
+            if enum_.name(sema.db).as_str() == var.type_name() {
                 return Some(var);
             }
             None

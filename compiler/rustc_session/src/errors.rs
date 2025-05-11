@@ -1,4 +1,4 @@
-use std::num::NonZero;
+use std::num::{NonZero, ParseIntError};
 
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
@@ -13,6 +13,14 @@ use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTuple};
 
 use crate::config::CrateType;
 use crate::parse::ParseSess;
+
+#[derive(Diagnostic)]
+pub(crate) enum AppleDeploymentTarget {
+    #[diag(session_apple_deployment_target_invalid)]
+    Invalid { env_var: &'static str, error: ParseIntError },
+    #[diag(session_apple_deployment_target_too_low)]
+    TooLow { env_var: &'static str, version: String, os_min: String },
+}
 
 pub(crate) struct FeatureGateError {
     pub(crate) span: MultiSpan,
@@ -148,6 +156,10 @@ pub(crate) struct SanitizerCfiGeneralizePointersRequiresCfi;
 pub(crate) struct SanitizerCfiNormalizeIntegersRequiresCfi;
 
 #[derive(Diagnostic)]
+#[diag(session_sanitizer_kcfi_arity_requires_kcfi)]
+pub(crate) struct SanitizerKcfiArityRequiresKcfi;
+
+#[derive(Diagnostic)]
 #[diag(session_sanitizer_kcfi_requires_panic_abort)]
 pub(crate) struct SanitizerKcfiRequiresPanicAbort;
 
@@ -161,6 +173,7 @@ pub(crate) struct UnstableVirtualFunctionElimination;
 
 #[derive(Diagnostic)]
 #[diag(session_unsupported_dwarf_version)]
+#[help(session_unsupported_dwarf_version_help)]
 pub(crate) struct UnsupportedDwarfVersion {
     pub(crate) dwarf_version: u32,
 }
@@ -212,21 +225,6 @@ pub(crate) struct FileWriteFail<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(session_crate_name_does_not_match)]
-pub(crate) struct CrateNameDoesNotMatch {
-    #[primary_span]
-    pub(crate) span: Span,
-    pub(crate) s: Symbol,
-    pub(crate) name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(session_crate_name_invalid)]
-pub(crate) struct CrateNameInvalid<'a> {
-    pub(crate) s: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag(session_crate_name_empty)]
 pub(crate) struct CrateNameEmpty {
     #[primary_span]
@@ -234,20 +232,14 @@ pub(crate) struct CrateNameEmpty {
 }
 
 #[derive(Diagnostic)]
-#[diag(session_invalid_character_in_create_name)]
+#[diag(session_invalid_character_in_crate_name)]
 pub(crate) struct InvalidCharacterInCrateName {
     #[primary_span]
     pub(crate) span: Option<Span>,
     pub(crate) character: char,
     pub(crate) crate_name: Symbol,
-    #[subdiagnostic]
-    pub(crate) crate_name_help: Option<InvalidCrateNameHelp>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum InvalidCrateNameHelp {
-    #[help(session_invalid_character_in_create_name_help)]
-    AddCrateName,
+    #[help]
+    pub(crate) help: Option<()>,
 }
 
 #[derive(Subdiagnostic)]

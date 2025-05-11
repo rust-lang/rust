@@ -7,7 +7,8 @@
 // For example, `-C target-cpu=cortex-a53`.
 
 use crate::spec::{
-    Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, StackProbeType, Target, TargetOptions,
+    Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, StackProbeType, Target,
+    TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -19,13 +20,14 @@ pub(crate) fn target() -> Target {
         relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(128),
+        supported_sanitizers: SanitizerSet::KCFI | SanitizerSet::KERNELADDRESS,
         stack_probes: StackProbeType::Inline,
         panic_strategy: PanicStrategy::Abort,
         ..Default::default()
     };
     Target {
         llvm_target: "aarch64-unknown-none".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Bare ARM64, softfloat".into()),
             tier: Some(2),
             host_tools: Some(false),

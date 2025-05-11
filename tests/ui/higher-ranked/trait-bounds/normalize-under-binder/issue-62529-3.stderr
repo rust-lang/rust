@@ -6,8 +6,8 @@ LL |         call(f, ());
    |         |
    |         required by a bound introduced by this call
    |
-   = note: expected a closure with arguments `((),)`
-              found a closure with arguments `(<_ as ATC<'a>>::Type,)`
+   = note: expected a closure with signature `for<'a> fn(<_ as ATC<'a>>::Type)`
+              found a closure with signature `fn(())`
 note: this is a known limitation of the trait solver that will be lifted in the future
   --> $DIR/issue-62529-3.rs:25:14
    |

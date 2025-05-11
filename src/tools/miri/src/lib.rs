@@ -1,6 +1,7 @@
 #![feature(rustc_private)]
-#![feature(cell_update)]
+#![feature(cfg_match)]
 #![feature(float_gamma)]
+#![feature(float_erf)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(try_blocks)]
@@ -9,10 +10,11 @@
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
 #![feature(let_chains)]
-#![feature(trait_upcasting)]
 #![feature(strict_overflow_ops)]
 #![feature(pointer_is_aligned_to)]
 #![feature(unqualified_local_imports)]
+#![feature(derive_coerce_pointee)]
+#![feature(arbitrary_self_types)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -34,6 +36,7 @@
     clippy::needless_question_mark,
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
+    // We don't use translatable diagnostics
     rustc::diagnostic_outside_of_impl,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
@@ -67,6 +70,7 @@ extern crate rustc_index;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 // Linking `rustc_driver` pulls in the required  object code as the rest of the rustc crates are
 // shipped only as rmeta files.
@@ -116,7 +120,7 @@ pub use crate::borrow_tracker::stacked_borrows::{
 };
 pub use crate::borrow_tracker::tree_borrows::{EvalContextExt as _, Tree};
 pub use crate::borrow_tracker::{BorTag, BorrowTrackerMethod, EvalContextExt as _, RetagFields};
-pub use crate::clock::{Clock, Instant};
+pub use crate::clock::{Instant, MonotonicClock};
 pub use crate::concurrency::cpu_affinity::MAX_CPUS;
 pub use crate::concurrency::data_race::{
     AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _,
@@ -126,21 +130,22 @@ pub use crate::concurrency::sync::{
     CondvarId, EvalContextExt as _, MutexRef, RwLockId, SynchronizationObjects,
 };
 pub use crate::concurrency::thread::{
-    BlockReason, EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager, TimeoutAnchor,
-    TimeoutClock, UnblockCallback,
+    BlockReason, DynUnblockCallback, EvalContextExt as _, StackEmptyCallback, ThreadId,
+    ThreadManager, TimeoutAnchor, TimeoutClock, UnblockKind,
 };
+pub use crate::concurrency::{GenmcConfig, GenmcCtx};
 pub use crate::diagnostics::{
     EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo, report_error,
 };
 pub use crate::eval::{
-    AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, RejectOpWith, ValidationMode,
-    create_ecx, eval_entry,
+    AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, MiriEntryFnType, RejectOpWith,
+    ValidationMode, create_ecx, eval_entry,
 };
 pub use crate::helpers::{AccessKind, EvalContextExt as _};
 pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::machine::{
-    AllocExtra, FrameExtra, MemoryKind, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
-    PrimitiveLayouts, Provenance, ProvenanceExtra,
+    AllocExtra, DynMachineCallback, FrameExtra, MachineCallback, MemoryKind, MiriInterpCx,
+    MiriInterpCxExt, MiriMachine, MiriMemoryKind, PrimitiveLayouts, Provenance, ProvenanceExtra,
 };
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as _;
@@ -164,9 +169,9 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     "-Zalways-encode-mir",
     "-Zextra-const-ub-checks",
     "-Zmir-emit-retag",
-    "-Zmir-keep-place-mention",
+    "-Zmir-preserve-ub",
     "-Zmir-opt-level=0",
-    "-Zmir-enable-passes=-CheckAlignment",
+    "-Zmir-enable-passes=-CheckAlignment,-CheckNull",
     // Deduplicating diagnostics means we miss events when tracking what happens during an
     // execution. Let's not do that.
     "-Zdeduplicate-diagnostics=no",

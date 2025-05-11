@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 build_helper = { path = "../../build_helper" }
+camino = "1"
 compiletest = { path = "../compiletest" }
 getopts = "0.2"
 walkdir = "2"

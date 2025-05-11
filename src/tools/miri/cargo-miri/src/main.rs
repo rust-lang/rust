@@ -53,7 +53,7 @@ fn main() {
     //     with `RustcPhase::Rustdoc`. There we perform a check-build (needed to get the expected
     //     build failures for `compile_fail` doctests) and then store a JSON file with the
     //     information needed to run this test.
-    //   - We also set `--runtool` to ourselves, which ends up in `phase_runner` with
+    //   - We also set `--test-runtool` to ourselves, which ends up in `phase_runner` with
     //     `RunnerPhase::Rustdoc`. There we parse the JSON file written in `phase_rustc` and invoke
     //     the Miri driver for interpretation.
 

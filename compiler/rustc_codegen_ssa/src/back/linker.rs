@@ -50,8 +50,7 @@ pub(crate) fn get_linker<'a>(
     self_contained: bool,
     target_cpu: &'a str,
 ) -> Box<dyn Linker + 'a> {
-    // FIXME(cc-rs#1265) pass only target arch to find_tool()
-    let msvc_tool = windows_registry::find_tool(sess.opts.target_triple.tuple(), "link.exe");
+    let msvc_tool = windows_registry::find_tool(&sess.target.arch, "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
@@ -112,24 +111,22 @@ pub(crate) fn get_linker<'a>(
     // PATH for the child.
     let mut new_path = sess.get_tools_search_paths(self_contained);
     let mut msvc_changed_path = false;
-    if sess.target.is_like_msvc {
-        if let Some(ref tool) = msvc_tool {
-            cmd.args(tool.args());
-            for (k, v) in tool.env() {
-                if k == "PATH" {
-                    new_path.extend(env::split_paths(v));
-                    msvc_changed_path = true;
-                } else {
-                    cmd.env(k, v);
-                }
+    if sess.target.is_like_msvc
+        && let Some(ref tool) = msvc_tool
+    {
+        cmd.args(tool.args());
+        for (k, v) in tool.env() {
+            if k == "PATH" {
+                new_path.extend(env::split_paths(v));
+                msvc_changed_path = true;
+            } else {
+                cmd.env(k, v);
             }
         }
     }
 
-    if !msvc_changed_path {
-        if let Some(path) = env::var_os("PATH") {
-            new_path.extend(env::split_paths(&path));
-        }
+    if !msvc_changed_path && let Some(path) = env::var_os("PATH") {
+        new_path.extend(env::split_paths(&path));
     }
     cmd.env("PATH", env::join_paths(new_path).unwrap());
 
@@ -154,6 +151,7 @@ pub(crate) fn get_linker<'a>(
             hinted_static: None,
             is_ld: cc == Cc::No,
             is_gnu: flavor.is_gnu(),
+            uses_lld: flavor.uses_lld(),
         }) as Box<dyn Linker>,
         LinkerFlavor::Msvc(..) => Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>,
         LinkerFlavor::EmCc => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
@@ -339,7 +337,12 @@ pub(crate) trait Linker {
     fn debuginfo(&mut self, strip: Strip, natvis_debugger_visualizers: &[PathBuf]);
     fn no_crt_objects(&mut self);
     fn no_default_libraries(&mut self);
-    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]);
+    fn export_symbols(
+        &mut self,
+        tmpdir: &Path,
+        crate_type: CrateType,
+        symbols: &[(String, SymbolExportKind)],
+    );
     fn subsystem(&mut self, subsystem: &str);
     fn linker_plugin_lto(&mut self);
     fn add_eh_frame_header(&mut self) {}
@@ -362,6 +365,7 @@ struct GccLinker<'a> {
     // Link as ld
     is_ld: bool,
     is_gnu: bool,
+    uses_lld: bool,
 }
 
 impl<'a> GccLinker<'a> {
@@ -374,7 +378,7 @@ impl<'a> GccLinker<'a> {
         // * On OSX they have their own linker, not binutils'
         // * For WebAssembly the only functional linker is LLD, which doesn't
         //   support hint flags
-        !self.sess.target.is_like_osx && !self.sess.target.is_like_wasm
+        !self.sess.target.is_like_darwin && !self.sess.target.is_like_wasm
     }
 
     // Some platforms take hints about whether a library is static or dynamic.
@@ -411,7 +415,7 @@ impl<'a> GccLinker<'a> {
         let opt_level = match self.sess.opts.optimize {
             config::OptLevel::No => "O0",
             config::OptLevel::Less => "O1",
-            config::OptLevel::Default | config::OptLevel::Size | config::OptLevel::SizeMin => "O2",
+            config::OptLevel::More | config::OptLevel::Size | config::OptLevel::SizeMin => "O2",
             config::OptLevel::Aggressive => "O3",
         };
 
@@ -426,7 +430,7 @@ impl<'a> GccLinker<'a> {
 
     fn build_dylib(&mut self, crate_type: CrateType, out_filename: &Path) {
         // On mac we need to tell the linker to let this library be rpathed
-        if self.sess.target.is_like_osx {
+        if self.sess.target.is_like_darwin {
             if self.is_cc() {
                 // `-dynamiclib` makes `cc` pass `-dylib` to the linker.
                 self.cc_arg("-dynamiclib");
@@ -451,9 +455,10 @@ impl<'a> GccLinker<'a> {
                     // The output filename already contains `dll_suffix` so
                     // the resulting import library will have a name in the
                     // form of libfoo.dll.a
-                    let mut implib_name = OsString::from(&*self.sess.target.staticlib_prefix);
+                    let (prefix, suffix) = self.sess.staticlib_components(false);
+                    let mut implib_name = OsString::from(prefix);
                     implib_name.push(name);
-                    implib_name.push(&*self.sess.target.staticlib_suffix);
+                    implib_name.push(suffix);
                     let mut out_implib = OsString::from("--out-implib=");
                     out_implib.push(out_filename.with_file_name(implib_name));
                     self.link_arg(out_implib);
@@ -471,7 +476,7 @@ impl<'a> GccLinker<'a> {
 
     fn with_as_needed(&mut self, as_needed: bool, f: impl FnOnce(&mut Self)) {
         if !as_needed {
-            if self.sess.target.is_like_osx {
+            if self.sess.target.is_like_darwin {
                 // FIXME(81490): ld64 doesn't support these flags but macOS 11
                 // has -needed-l{} / -needed_library {}
                 // but we have no way to detect that here.
@@ -486,7 +491,7 @@ impl<'a> GccLinker<'a> {
         f(self);
 
         if !as_needed {
-            if self.sess.target.is_like_osx {
+            if self.sess.target.is_like_darwin {
                 // See above FIXME comment
             } else if self.is_gnu && !self.sess.target.is_like_windows {
                 self.link_arg("--as-needed");
@@ -553,6 +558,7 @@ impl<'a> Linker for GccLinker<'a> {
                 self.link_args(&["--entry", "_initialize"]);
             }
         }
+
         // VxWorks compiler driver introduced `--static-crt` flag specifically for rustc,
         // it switches linking for libc and similar system libraries to static without using
         // any `#[link]` attributes in the `libc` crate, see #72782 for details.
@@ -567,6 +573,15 @@ impl<'a> Linker for GccLinker<'a> {
             )
         {
             self.cc_arg("--static-crt");
+        }
+
+        // avr-none doesn't have default ISA, users must specify which specific
+        // CPU (well, microcontroller) they are targetting using `-Ctarget-cpu`.
+        //
+        // Currently this makes sense only when using avr-gcc as a linker, since
+        // it brings a couple of hand-written important intrinsics from libgcc.
+        if self.sess.target.arch == "avr" && !self.uses_lld {
+            self.verbatim_arg(format!("-mmcu={}", self.target_cpu));
         }
     }
 
@@ -609,7 +624,7 @@ impl<'a> Linker for GccLinker<'a> {
         let colon = if verbatim && self.is_gnu { ":" } else { "" };
         if !whole_archive {
             self.link_or_cc_arg(format!("-l{colon}{name}"));
-        } else if self.sess.target.is_like_osx {
+        } else if self.sess.target.is_like_darwin {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             self.link_arg("-force_load");
@@ -625,7 +640,7 @@ impl<'a> Linker for GccLinker<'a> {
         self.hint_static();
         if !whole_archive {
             self.link_or_cc_arg(path);
-        } else if self.sess.target.is_like_osx {
+        } else if self.sess.target.is_like_darwin {
             self.link_arg("-force_load").link_arg(path);
         } else {
             self.link_arg("--whole-archive").link_arg(path).link_arg("--no-whole-archive");
@@ -660,7 +675,7 @@ impl<'a> Linker for GccLinker<'a> {
         // -dead_strip can't be part of the pre_link_args because it's also used
         // for partial linking when using multiple codegen units (-r). So we
         // insert it here.
-        if self.sess.target.is_like_osx {
+        if self.sess.target.is_like_darwin {
             self.link_arg("-dead_strip");
 
         // If we're building a dylib, we don't use --gc-sections because LLVM
@@ -686,7 +701,7 @@ impl<'a> Linker for GccLinker<'a> {
 
         // GNU-style linkers support optimization with -O. GNU ld doesn't
         // need a numeric argument, but other linkers do.
-        if self.sess.opts.optimize == config::OptLevel::Default
+        if self.sess.opts.optimize == config::OptLevel::More
             || self.sess.opts.optimize == config::OptLevel::Aggressive
         {
             self.link_arg("-O1");
@@ -718,7 +733,7 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
         // MacOS linker doesn't support stripping symbols directly anymore.
-        if self.sess.target.is_like_osx {
+        if self.sess.target.is_like_darwin {
             return;
         }
 
@@ -760,7 +775,12 @@ impl<'a> Linker for GccLinker<'a> {
         }
     }
 
-    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
+    fn export_symbols(
+        &mut self,
+        tmpdir: &Path,
+        crate_type: CrateType,
+        symbols: &[(String, SymbolExportKind)],
+    ) {
         // Symbol visibility in object files typically takes care of this.
         if crate_type == CrateType::Executable {
             let should_export_executable_symbols =
@@ -785,11 +805,11 @@ impl<'a> Linker for GccLinker<'a> {
 
         debug!("EXPORTED SYMBOLS:");
 
-        if self.sess.target.is_like_osx {
+        if self.sess.target.is_like_darwin {
             // Write a plain, newline-separated list of symbols
             let res: io::Result<()> = try {
                 let mut f = File::create_buffered(&path)?;
-                for sym in symbols {
+                for (sym, _) in symbols {
                     debug!("  _{sym}");
                     writeln!(f, "_{sym}")?;
                 }
@@ -804,9 +824,12 @@ impl<'a> Linker for GccLinker<'a> {
                 // .def file similar to MSVC one but without LIBRARY section
                 // because LD doesn't like when it's empty
                 writeln!(f, "EXPORTS")?;
-                for symbol in symbols {
+                for (symbol, kind) in symbols {
+                    let kind_marker = if *kind == SymbolExportKind::Data { " DATA" } else { "" };
                     debug!("  _{symbol}");
-                    writeln!(f, "  {symbol}")?;
+                    // Quote the name in case it's reserved by linker in some way
+                    // (this accounts for names with dots in particular).
+                    writeln!(f, "  \"{symbol}\"{kind_marker}")?;
                 }
             };
             if let Err(error) = res {
@@ -819,7 +842,7 @@ impl<'a> Linker for GccLinker<'a> {
                 writeln!(f, "{{")?;
                 if !symbols.is_empty() {
                     writeln!(f, "  global:")?;
-                    for sym in symbols {
+                    for (sym, _) in symbols {
                         debug!("    {sym};");
                         writeln!(f, "    {sym};")?;
                     }
@@ -831,7 +854,7 @@ impl<'a> Linker for GccLinker<'a> {
             }
         }
 
-        if self.sess.target.is_like_osx {
+        if self.sess.target.is_like_darwin {
             self.link_arg("-exported_symbols_list").link_arg(path);
         } else if self.sess.target.is_like_solaris {
             self.link_arg("-M").link_arg(path);
@@ -949,9 +972,9 @@ impl<'a> Linker for MsvcLinker<'a> {
         if let Some(path) = try_find_native_static_library(self.sess, name, verbatim) {
             self.link_staticlib_by_path(&path, whole_archive);
         } else {
-            let prefix = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
-            let suffix = if verbatim { "" } else { ".lib" };
-            self.link_arg(format!("{prefix}{name}{suffix}"));
+            let opts = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
+            let (prefix, suffix) = self.sess.staticlib_components(verbatim);
+            self.link_arg(format!("{opts}{prefix}{name}{suffix}"));
         }
     }
 
@@ -1086,7 +1109,12 @@ impl<'a> Linker for MsvcLinker<'a> {
     // crates. Upstream rlibs may be linked statically to this dynamic library,
     // in which case they may continue to transitively be used and hence need
     // their symbols exported.
-    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
+    fn export_symbols(
+        &mut self,
+        tmpdir: &Path,
+        crate_type: CrateType,
+        symbols: &[(String, SymbolExportKind)],
+    ) {
         // Symbol visibility takes care of this typically
         if crate_type == CrateType::Executable {
             let should_export_executable_symbols =
@@ -1104,9 +1132,10 @@ impl<'a> Linker for MsvcLinker<'a> {
             // straight to exports.
             writeln!(f, "LIBRARY")?;
             writeln!(f, "EXPORTS")?;
-            for symbol in symbols {
+            for (symbol, kind) in symbols {
+                let kind_marker = if *kind == SymbolExportKind::Data { " DATA" } else { "" };
                 debug!("  _{symbol}");
-                writeln!(f, "  {symbol}")?;
+                writeln!(f, "  {symbol}{kind_marker}")?;
             }
         };
         if let Err(error) = res {
@@ -1214,7 +1243,7 @@ impl<'a> Linker for EmLinker<'a> {
         self.cc_arg(match self.sess.opts.optimize {
             OptLevel::No => "-O0",
             OptLevel::Less => "-O1",
-            OptLevel::Default => "-O2",
+            OptLevel::More => "-O2",
             OptLevel::Aggressive => "-O3",
             OptLevel::Size => "-Os",
             OptLevel::SizeMin => "-Oz",
@@ -1247,14 +1276,19 @@ impl<'a> Linker for EmLinker<'a> {
         self.cc_arg("-nodefaultlibs");
     }
 
-    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
+    fn export_symbols(
+        &mut self,
+        _tmpdir: &Path,
+        _crate_type: CrateType,
+        symbols: &[(String, SymbolExportKind)],
+    ) {
         debug!("EXPORTED SYMBOLS:");
 
         self.cc_arg("-s");
 
         let mut arg = OsString::from("EXPORTED_FUNCTIONS=");
         let encoded = serde_json::to_string(
-            &symbols.iter().map(|sym| "_".to_owned() + sym).collect::<Vec<_>>(),
+            &symbols.iter().map(|(sym, _)| "_".to_owned() + sym).collect::<Vec<_>>(),
         )
         .unwrap();
         debug!("{encoded}");
@@ -1385,7 +1419,7 @@ impl<'a> Linker for WasmLd<'a> {
         self.link_arg(match self.sess.opts.optimize {
             OptLevel::No => "-O0",
             OptLevel::Less => "-O1",
-            OptLevel::Default => "-O2",
+            OptLevel::More => "-O2",
             OptLevel::Aggressive => "-O3",
             // Currently LLD doesn't support `Os` and `Oz`, so pass through `O2`
             // instead.
@@ -1416,8 +1450,13 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn no_default_libraries(&mut self) {}
 
-    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
-        for sym in symbols {
+    fn export_symbols(
+        &mut self,
+        _tmpdir: &Path,
+        _crate_type: CrateType,
+        symbols: &[(String, SymbolExportKind)],
+    ) {
+        for (sym, _) in symbols {
             self.link_args(&["--export", sym]);
         }
 
@@ -1452,7 +1491,7 @@ impl<'a> WasmLd<'a> {
         let opt_level = match self.sess.opts.optimize {
             config::OptLevel::No => "O0",
             config::OptLevel::Less => "O1",
-            config::OptLevel::Default => "O2",
+            config::OptLevel::More => "O2",
             config::OptLevel::Aggressive => "O3",
             // wasm-ld only handles integer LTO opt levels. Use O2
             config::OptLevel::Size | config::OptLevel::SizeMin => "O2",
@@ -1526,7 +1565,7 @@ impl<'a> Linker for L4Bender<'a> {
     fn optimize(&mut self) {
         // GNU-style linkers support optimization with -O. GNU ld doesn't
         // need a numeric argument, but other linkers do.
-        if self.sess.opts.optimize == config::OptLevel::Default
+        if self.sess.opts.optimize == config::OptLevel::More
             || self.sess.opts.optimize == config::OptLevel::Aggressive
         {
             self.link_arg("-O1");
@@ -1551,7 +1590,7 @@ impl<'a> Linker for L4Bender<'a> {
         self.cc_arg("-nostdlib");
     }
 
-    fn export_symbols(&mut self, _: &Path, _: CrateType, _: &[String]) {
+    fn export_symbols(&mut self, _: &Path, _: CrateType, _: &[(String, SymbolExportKind)]) {
         // ToDo, not implemented, copy from GCC
         self.sess.dcx().emit_warn(errors::L4BenderExportingSymbolsUnimplemented);
     }
@@ -1644,9 +1683,9 @@ impl<'a> Linker for AixLinker<'a> {
         }
     }
 
-    fn link_dylib_by_name(&mut self, name: &str, _verbatim: bool, _as_needed: bool) {
+    fn link_dylib_by_name(&mut self, name: &str, verbatim: bool, _as_needed: bool) {
         self.hint_dynamic();
-        self.link_or_cc_arg(format!("-l{name}"));
+        self.link_or_cc_arg(if verbatim { String::from(name) } else { format!("-l{name}") });
     }
 
     fn link_dylib_by_path(&mut self, path: &Path, _as_needed: bool) {
@@ -1657,7 +1696,7 @@ impl<'a> Linker for AixLinker<'a> {
     fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
         self.hint_static();
         if !whole_archive {
-            self.link_or_cc_arg(format!("-l{name}"));
+            self.link_or_cc_arg(if verbatim { String::from(name) } else { format!("-l{name}") });
         } else {
             let mut arg = OsString::from("-bkeepfile:");
             arg.push(find_native_static_library(name, verbatim, self.sess));
@@ -1708,12 +1747,17 @@ impl<'a> Linker for AixLinker<'a> {
 
     fn no_default_libraries(&mut self) {}
 
-    fn export_symbols(&mut self, tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
+    fn export_symbols(
+        &mut self,
+        tmpdir: &Path,
+        _crate_type: CrateType,
+        symbols: &[(String, SymbolExportKind)],
+    ) {
         let path = tmpdir.join("list.exp");
         let res: io::Result<()> = try {
             let mut f = File::create_buffered(&path)?;
             // FIXME: use llvm-nm to generate export list.
-            for symbol in symbols {
+            for (symbol, _) in symbols {
                 debug!("  _{symbol}");
                 writeln!(f, "  {symbol}")?;
             }
@@ -1757,9 +1801,12 @@ fn for_each_exported_symbols_include_dep<'tcx>(
     }
 }
 
-pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
+pub(crate) fn exported_symbols(
+    tcx: TyCtxt<'_>,
+    crate_type: CrateType,
+) -> Vec<(String, SymbolExportKind)> {
     if let Some(ref exports) = tcx.sess.target.override_export_symbols {
-        return exports.iter().map(ToString::to_string).collect();
+        return exports.iter().map(|name| (name.to_string(), SymbolExportKind::Text)).collect();
     }
 
     if let CrateType::ProcMacro = crate_type {
@@ -1769,21 +1816,29 @@ pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<St
     }
 }
 
-fn exported_symbols_for_non_proc_macro(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
+fn exported_symbols_for_non_proc_macro(
+    tcx: TyCtxt<'_>,
+    crate_type: CrateType,
+) -> Vec<(String, SymbolExportKind)> {
     let mut symbols = Vec::new();
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) {
-            symbols.push(symbol_export::exporting_symbol_name_for_instance_in_crate(
-                tcx, symbol, cnum,
+        // Do not export mangled symbols from cdylibs and don't attempt to export compiler-builtins
+        // from any cdylib. The latter doesn't work anyway as we use hidden visibility for
+        // compiler-builtins. Most linkers silently ignore it, but ld64 gives a warning.
+        if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum) {
+            symbols.push((
+                symbol_export::exporting_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
+                info.kind,
             ));
+            symbol_export::extend_exported_symbols(&mut symbols, tcx, symbol, info, cnum);
         }
     });
 
     symbols
 }
 
-fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<String> {
+fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<(String, SymbolExportKind)> {
     // `exported_symbols` will be empty when !should_codegen.
     if !tcx.sess.opts.output_types.should_codegen() {
         return Vec::new();
@@ -1793,7 +1848,10 @@ fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<String> {
     let proc_macro_decls_name = tcx.sess.generate_proc_macro_decls_symbol(stable_crate_id);
     let metadata_symbol_name = exported_symbols::metadata_symbol_name(tcx);
 
-    vec![proc_macro_decls_name, metadata_symbol_name]
+    vec![
+        (proc_macro_decls_name, SymbolExportKind::Text),
+        (metadata_symbol_name, SymbolExportKind::Text),
+    ]
 }
 
 pub(crate) fn linked_symbols(
@@ -1801,7 +1859,7 @@ pub(crate) fn linked_symbols(
     crate_type: CrateType,
 ) -> Vec<(String, SymbolExportKind)> {
     match crate_type {
-        CrateType::Executable | CrateType::Cdylib | CrateType::Dylib => (),
+        CrateType::Executable | CrateType::Cdylib | CrateType::Dylib | CrateType::Sdylib => (),
         CrateType::Staticlib | CrateType::ProcMacro | CrateType::Rlib => {
             return Vec::new();
         }
@@ -1811,9 +1869,13 @@ pub(crate) fn linked_symbols(
 
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) || info.used {
+        if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum)
+            || info.used
+        {
             symbols.push((
-                symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
+                symbol_export::linking_symbol_name_for_instance_in_crate(
+                    tcx, symbol, info.kind, cnum,
+                ),
                 info.kind,
             ));
         }
@@ -1888,7 +1950,13 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn ehcont_guard(&mut self) {}
 
-    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, _symbols: &[String]) {}
+    fn export_symbols(
+        &mut self,
+        _tmpdir: &Path,
+        _crate_type: CrateType,
+        _symbols: &[(String, SymbolExportKind)],
+    ) {
+    }
 
     fn subsystem(&mut self, _subsystem: &str) {}
 
@@ -1927,14 +1995,14 @@ impl<'a> Linker for LlbcLinker<'a> {
     }
 
     fn optimize(&mut self) {
-        match self.sess.opts.optimize {
+        self.link_arg(match self.sess.opts.optimize {
             OptLevel::No => "-O0",
             OptLevel::Less => "-O1",
-            OptLevel::Default => "-O2",
+            OptLevel::More => "-O2",
             OptLevel::Aggressive => "-O3",
             OptLevel::Size => "-Os",
             OptLevel::SizeMin => "-Oz",
-        };
+        });
     }
 
     fn full_relro(&mut self) {}
@@ -1957,10 +2025,15 @@ impl<'a> Linker for LlbcLinker<'a> {
 
     fn ehcont_guard(&mut self) {}
 
-    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
+    fn export_symbols(
+        &mut self,
+        _tmpdir: &Path,
+        _crate_type: CrateType,
+        symbols: &[(String, SymbolExportKind)],
+    ) {
         match _crate_type {
             CrateType::Cdylib => {
-                for sym in symbols {
+                for (sym, _) in symbols {
                     self.link_args(&["--export-symbol", sym]);
                 }
             }
@@ -2007,7 +2080,7 @@ impl<'a> Linker for BpfLinker<'a> {
         self.link_arg(match self.sess.opts.optimize {
             OptLevel::No => "-O0",
             OptLevel::Less => "-O1",
-            OptLevel::Default => "-O2",
+            OptLevel::More => "-O2",
             OptLevel::Aggressive => "-O3",
             OptLevel::Size => "-Os",
             OptLevel::SizeMin => "-Oz",
@@ -2034,11 +2107,16 @@ impl<'a> Linker for BpfLinker<'a> {
 
     fn ehcont_guard(&mut self) {}
 
-    fn export_symbols(&mut self, tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
+    fn export_symbols(
+        &mut self,
+        tmpdir: &Path,
+        _crate_type: CrateType,
+        symbols: &[(String, SymbolExportKind)],
+    ) {
         let path = tmpdir.join("symbols");
         let res: io::Result<()> = try {
             let mut f = File::create_buffered(&path)?;
-            for sym in symbols {
+            for (sym, _) in symbols {
                 writeln!(f, "{sym}")?;
             }
         };

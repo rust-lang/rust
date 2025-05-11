@@ -43,8 +43,7 @@ fn mirrored_exprs(a_expr: &Expr<'_>, a_ident: &Ident, b_expr: &Expr<'_>, b_ident
                 && iter::zip(*left_args, *right_args).all(|(left, right)| mirrored_exprs(left, a_ident, right, b_ident))
         },
         // The two exprs are method calls.
-        // Check to see that the function is the same and the arguments are mirrored
-        // This is enough because the receiver of the method is listed in the arguments
+        // Check to see that the function is the same and the arguments and receivers are mirrored
         (
             ExprKind::MethodCall(left_segment, left_receiver, left_args, _),
             ExprKind::MethodCall(right_segment, right_receiver, right_args, _),
@@ -118,7 +117,7 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
         && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
         && cx.tcx.type_of(impl_id).instantiate_identity().is_slice()
         && let ExprKind::Closure(&Closure { body, .. }) = arg.kind
-        && let closure_body = cx.tcx.hir().body(body)
+        && let closure_body = cx.tcx.hir_body(body)
         && let &[
             Param {
                 pat:

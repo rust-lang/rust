@@ -1,12 +1,12 @@
 // Targets the Cortex-M33 processor (Armv8-M Mainline architecture profile),
 // with the Floating Point extension.
 
-use crate::spec::{Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "thumbv8m.main-none-eabihf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Bare ARMv8-M Mainline, hardfloat".into()),
             tier: Some(2),
             host_tools: Some(false),
@@ -18,6 +18,7 @@ pub(crate) fn target() -> Target {
 
         options: TargetOptions {
             abi: "eabihf".into(),
+            llvm_floatabi: Some(FloatAbi::Hard),
             // If the Floating Point extension is implemented in the Cortex-M33
             // processor, the Cortex-M33 Technical Reference Manual states that
             // the FPU uses the FPv5 architecture, single-precision instructions

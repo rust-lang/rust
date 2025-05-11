@@ -1,9 +1,8 @@
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::sync::OnceLock;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sharded::{self, Sharded};
-use rustc_data_structures::sync::OnceLock;
+use rustc_data_structures::sharded::ShardedHashMap;
 pub use rustc_data_structures::vec_cache::VecCache;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_index::Idx;
@@ -11,20 +10,32 @@ use rustc_span::def_id::{DefId, DefIndex};
 
 use crate::dep_graph::DepNodeIndex;
 
+/// Trait for types that serve as an in-memory cache for query results,
+/// for a given key (argument) type and value (return) type.
+///
+/// Types implementing this trait are associated with actual key/value types
+/// by the `Cache` associated type of the `rustc_middle::query::Key` trait.
 pub trait QueryCache: Sized {
     type Key: Hash + Eq + Copy + Debug;
     type Value: Copy;
 
-    /// Checks if the query is already computed and in the cache.
+    /// Returns the cached value (and other information) associated with the
+    /// given key, if it is present in the cache.
     fn lookup(&self, key: &Self::Key) -> Option<(Self::Value, DepNodeIndex)>;
 
+    /// Adds a key/value entry to this cache.
+    ///
+    /// Called by some part of the query system, after having obtained the
+    /// value by executing the query or loading a cached value from disk.
     fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex);
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex));
 }
 
+/// In-memory cache for queries whose keys aren't suitable for any of the
+/// more specialized kinds of cache. Backed by a sharded hashmap.
 pub struct DefaultCache<K, V> {
-    cache: Sharded<FxHashMap<K, (V, DepNodeIndex)>>,
+    cache: ShardedHashMap<K, (V, DepNodeIndex)>,
 }
 
 impl<K, V> Default for DefaultCache<K, V> {
@@ -43,19 +54,14 @@ where
 
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
-        let key_hash = sharded::make_hash(key);
-        let lock = self.cache.lock_shard_by_hash(key_hash);
-        let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
-
-        if let Some((_, value)) = result { Some(*value) } else { None }
+        self.cache.get(key)
     }
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        let mut lock = self.cache.lock_shard_by_value(&key);
         // We may be overwriting another value. This is all right, since the dep-graph
         // will check that the fingerprint matches.
-        lock.insert(key, (value, index));
+        self.cache.insert(key, (value, index));
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
@@ -67,6 +73,8 @@ where
     }
 }
 
+/// In-memory cache for queries whose key type only has one value (e.g. `()`).
+/// The cache therefore only needs to store one query return value.
 pub struct SingleCache<V> {
     cache: OnceLock<(V, DepNodeIndex)>,
 }
@@ -101,6 +109,10 @@ where
     }
 }
 
+/// In-memory cache for queries whose key is a [`DefId`].
+///
+/// Selects between one of two internal caches, depending on whether the key
+/// is a local ID or foreign-crate ID.
 pub struct DefIdCache<V> {
     /// Stores the local DefIds in a dense map. Local queries are much more often dense, so this is
     /// a win over hashing query keys at marginal memory cost (~5% at most) compared to FxHashMap.

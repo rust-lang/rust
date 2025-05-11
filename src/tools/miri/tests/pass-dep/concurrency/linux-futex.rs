@@ -64,7 +64,7 @@ fn wait_wrong_val() {
             ),
             -1,
         );
-        assert_eq!(*libc::__errno_location(), libc::EAGAIN);
+        assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::EAGAIN);
     }
 }
 
@@ -85,7 +85,7 @@ fn wait_timeout() {
             ),
             -1,
         );
-        assert_eq!(*libc::__errno_location(), libc::ETIMEDOUT);
+        assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::ETIMEDOUT);
     }
 
     assert!((200..1000).contains(&start.elapsed().as_millis()));
@@ -124,7 +124,7 @@ fn wait_absolute_timeout() {
             ),
             -1,
         );
-        assert_eq!(*libc::__errno_location(), libc::ETIMEDOUT);
+        assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::ETIMEDOUT);
     }
 
     assert!((200..1000).contains(&start.elapsed().as_millis()));
@@ -235,7 +235,7 @@ fn concurrent_wait_wake() {
     static mut DATA: i32 = 0;
     static WOKEN: AtomicI32 = AtomicI32::new(0);
 
-    let rounds = 50;
+    let rounds = 64;
     for _ in 0..rounds {
         unsafe { DATA = 0 }; // Reset
         // Suppose the main thread is holding a lock implemented using futex...
@@ -267,8 +267,7 @@ fn concurrent_wait_wake() {
             }
         });
         // Increase the chance that the other thread actually goes to sleep.
-        // (5 yields in a loop seem to make that happen around 40% of the time.)
-        for _ in 0..5 {
+        for _ in 0..6 {
             thread::yield_now();
         }
 

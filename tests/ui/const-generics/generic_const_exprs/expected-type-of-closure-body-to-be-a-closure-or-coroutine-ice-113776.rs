@@ -15,6 +15,7 @@ fn f<T>(
      }],
 ) -> impl Iterator<Item = SubAssign> {
 //~^ ERROR expected a type, found a trait
+//~| ERROR expected a type, found a trait
 //~| ERROR `()` is not an iterator
 }
 

@@ -1,9 +1,9 @@
-use crate::spec::{SanitizerSet, StackProbeType, Target, TargetOptions, base};
+use crate::spec::{SanitizerSet, StackProbeType, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "aarch64-unknown-linux-gnu".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("ARM64 Linux (kernel 4.1, glibc 2.17+)".into()),
             tier: Some(1),
             host_tools: Some(true),

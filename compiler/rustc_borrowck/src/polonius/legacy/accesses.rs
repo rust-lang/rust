@@ -4,16 +4,16 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData};
 use tracing::debug;
 
-use super::{AllFacts, LocationIndex, LocationTable};
+use super::{LocationIndex, PoloniusFacts, PoloniusLocationTable};
 use crate::def_use::{self, DefUse};
 use crate::universal_regions::UniversalRegions;
 
 /// Emit polonius facts for variable defs, uses, drops, and path accesses.
 pub(crate) fn emit_access_facts<'tcx>(
     tcx: TyCtxt<'tcx>,
-    facts: &mut AllFacts,
+    facts: &mut PoloniusFacts,
     body: &Body<'tcx>,
-    location_table: &LocationTable,
+    location_table: &PoloniusLocationTable,
     move_data: &MoveData<'tcx>,
     universal_regions: &UniversalRegions<'tcx>,
 ) {
@@ -31,9 +31,9 @@ pub(crate) fn emit_access_facts<'tcx>(
 
 /// MIR visitor extracting point-wise facts about accesses.
 struct AccessFactsExtractor<'a, 'tcx> {
-    facts: &'a mut AllFacts,
+    facts: &'a mut PoloniusFacts,
     move_data: &'a MoveData<'tcx>,
-    location_table: &'a LocationTable,
+    location_table: &'a PoloniusLocationTable,
 }
 
 impl<'tcx> AccessFactsExtractor<'_, 'tcx> {

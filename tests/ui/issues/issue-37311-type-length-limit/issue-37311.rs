@@ -1,5 +1,4 @@
 //@ build-fail
-//@ normalize-stderr: ".nll/" -> "/"
 
 trait Mirror {
     type Image;

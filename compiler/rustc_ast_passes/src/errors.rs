@@ -2,7 +2,7 @@
 
 use rustc_ast::ParamKindOrd;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
@@ -394,11 +394,7 @@ pub(crate) struct EmptyLabelManySpans(pub Vec<Span>);
 
 // The derive for `Vec<Span>` does multiple calls to `span_label`, adding commas between each
 impl Subdiagnostic for EmptyLabelManySpans {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.span_labels(self.0, "");
     }
 }
@@ -535,7 +531,6 @@ pub(crate) struct WhereClauseBeforeTypeAlias {
 }
 
 #[derive(Subdiagnostic)]
-
 pub(crate) enum WhereClauseBeforeTypeAliasSugg {
     #[suggestion(ast_passes_remove_suggestion, applicability = "machine-applicable", code = "")]
     Remove {
@@ -733,13 +728,6 @@ pub(crate) struct AssociatedSuggestion2 {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_stability_outside_std, code = E0734)]
-pub(crate) struct StabilityOutsideStd {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_feature_on_non_nightly, code = E0554)]
 pub(crate) struct FeatureOnNonNightly {
     #[primary_span]
@@ -757,11 +745,7 @@ pub(crate) struct StableFeature {
 }
 
 impl Subdiagnostic for StableFeature {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("name", self.name);
         diag.arg("since", self.since);
         diag.help(fluent::ast_passes_stable_since);
@@ -804,7 +788,14 @@ pub(crate) struct NegativeBoundWithParentheticalNotation {
 pub(crate) struct MatchArmWithNoBody {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " => todo!(),", applicability = "has-placeholders")]
+    // We include the braces around `todo!()` so that a comma is optional, and we don't have to have
+    // any logic looking at the arm being replaced if there was a comma already or not for the
+    // resulting code to be correct.
+    #[suggestion(
+        code = " => {{ todo!() }}",
+        applicability = "has-placeholders",
+        style = "verbose"
+    )]
     pub suggestion: Span,
 }
 
@@ -823,4 +814,13 @@ pub(crate) struct DuplicatePreciseCapturing {
     pub bound1: Span,
     #[label]
     pub bound2: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_extern_without_abi)]
+#[help]
+pub(crate) struct MissingAbi {
+    #[primary_span]
+    #[suggestion(code = "extern \"<abi>\"", applicability = "has-placeholders")]
+    pub span: Span,
 }

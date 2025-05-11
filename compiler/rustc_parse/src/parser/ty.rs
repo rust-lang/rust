@@ -1,5 +1,5 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw, Token, TokenKind};
+use rustc_ast::token::{self, IdentIsRaw, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnRetTy,
@@ -7,7 +7,7 @@ use rustc_ast::{
     Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
     TyKind, UnsafeBinderTy,
 };
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -18,7 +18,7 @@ use crate::errors::{
     HelpUseLatestEdition, InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
     NestedCVariadicType, ReturnTypesUseThinArrow,
 };
-use crate::{exp, maybe_recover_from_interpolated_ty_qpath, maybe_whole};
+use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
 /// Signals whether parsing a type should allow `+`.
 ///
@@ -86,7 +86,7 @@ enum AllowCVariadic {
 /// Types can also be of the form `IDENT(u8, u8) -> u8`, however this assumes
 /// that `IDENT` is not the ident of a fn trait.
 fn can_continue_type_after_non_fn_ident(t: &Token) -> bool {
-    t == &token::PathSep || t == &token::Lt || t == &token::BinOp(token::Shl)
+    t == &token::PathSep || t == &token::Lt || t == &token::Shl
 }
 
 fn can_begin_dyn_bound_in_edition_2015(t: &Token) -> bool {
@@ -98,7 +98,7 @@ fn can_begin_dyn_bound_in_edition_2015(t: &Token) -> bool {
         || t.is_lifetime()
         || t == &TokenKind::Question
         || t.is_keyword(kw::For)
-        || t == &TokenKind::OpenDelim(Delimiter::Parenthesis)
+        || t == &TokenKind::OpenParen
 }
 
 impl<'a> Parser<'a> {
@@ -183,7 +183,8 @@ impl<'a> Parser<'a> {
         )
     }
 
-    /// Parse a type without recovering `:` as `->` to avoid breaking code such as `where fn() : for<'a>`
+    /// Parse a type without recovering `:` as `->` to avoid breaking code such
+    /// as `where fn() : for<'a>`.
     pub(super) fn parse_ty_for_where_clause(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
@@ -247,13 +248,19 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
-        maybe_whole!(self, NtTy, |ty| ty);
+
+        if let Some(ty) = self.eat_metavar_seq_with_matcher(
+            |mv_kind| matches!(mv_kind, MetaVarKind::Ty { .. }),
+            |this| this.parse_ty_no_question_mark_recover(),
+        ) {
+            return Ok(ty);
+        }
 
         let lo = self.token.span;
         let mut impl_dyn_multi = false;
         let kind = if self.check(exp!(OpenParen)) {
             self.parse_ty_tuple_or_parens(lo, allow_plus)?
-        } else if self.eat(exp!(Not)) {
+        } else if self.eat(exp!(Bang)) {
             // Never type `!`
             TyKind::Never
         } else if self.eat(exp!(Star)) {
@@ -348,7 +355,7 @@ impl<'a> Parser<'a> {
                 }
             }
         } else if self.check_keyword(exp!(Unsafe))
-            && self.look_ahead(1, |tok| matches!(tok.kind, token::Lt))
+            && self.look_ahead(1, |tok| tok.kind == token::Lt)
         {
             self.parse_unsafe_binder_ty()?
         } else {
@@ -392,7 +399,7 @@ impl<'a> Parser<'a> {
         let mut trailing_plus = false;
         let (ts, trailing) = self.parse_paren_comma_seq(|p| {
             let ty = p.parse_ty()?;
-            trailing_plus = p.prev_token == TokenKind::BinOp(token::Plus);
+            trailing_plus = p.prev_token == TokenKind::Plus;
             Ok(ty)
         })?;
 
@@ -404,6 +411,9 @@ impl<'a> Parser<'a> {
                 TyKind::Path(None, path) if maybe_bounds => {
                     self.parse_remaining_bounds_path(ThinVec::new(), path, lo, true)
                 }
+                // For `('a) + …`, we know that `'a` in type position already lead to an error being
+                // emitted. To reduce output, let's indirectly suppress E0178 (bad `+` in type) and
+                // other irrelevant consequential errors.
                 TyKind::TraitObject(bounds, TraitObjectSyntax::None)
                     if maybe_bounds && bounds.len() == 1 && !trailing_plus =>
                 {
@@ -418,12 +428,60 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_bare_trait_object(&mut self, lo: Span, allow_plus: AllowPlus) -> PResult<'a, TyKind> {
-        let lt_no_plus = self.check_lifetime() && !self.look_ahead(1, |t| t.is_like_plus());
-        let bounds = self.parse_generic_bounds_common(allow_plus)?;
-        if lt_no_plus {
-            self.dcx().emit_err(NeedPlusAfterTraitObjectLifetime { span: lo });
+        // A lifetime only begins a bare trait object type if it is followed by `+`!
+        if self.token.is_lifetime() && !self.look_ahead(1, |t| t.is_like_plus()) {
+            // In Rust 2021 and beyond, we assume that the user didn't intend to write a bare trait
+            // object type with a leading lifetime bound since that seems very unlikely given the
+            // fact that `dyn`-less trait objects are *semantically* invalid.
+            if self.psess.edition.at_least_rust_2021() {
+                let lt = self.expect_lifetime();
+                let mut err = self.dcx().struct_span_err(lo, "expected type, found lifetime");
+                err.span_label(lo, "expected type");
+                return Ok(match self.maybe_recover_ref_ty_no_leading_ampersand(lt, lo, err) {
+                    Ok(ref_ty) => ref_ty,
+                    Err(err) => TyKind::Err(err.emit()),
+                });
+            }
+
+            self.dcx().emit_err(NeedPlusAfterTraitObjectLifetime {
+                span: lo,
+                suggestion: lo.shrink_to_hi(),
+            });
         }
-        Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
+        Ok(TyKind::TraitObject(
+            self.parse_generic_bounds_common(allow_plus)?,
+            TraitObjectSyntax::None,
+        ))
+    }
+
+    fn maybe_recover_ref_ty_no_leading_ampersand<'cx>(
+        &mut self,
+        lt: Lifetime,
+        lo: Span,
+        mut err: Diag<'cx>,
+    ) -> Result<TyKind, Diag<'cx>> {
+        if !self.may_recover() {
+            return Err(err);
+        }
+        let snapshot = self.create_snapshot_for_diagnostic();
+        let mutbl = self.parse_mutability();
+        match self.parse_ty_no_plus() {
+            Ok(ty) => {
+                err.span_suggestion_verbose(
+                    lo.shrink_to_lo(),
+                    "you might have meant to write a reference type here",
+                    "&",
+                    Applicability::MaybeIncorrect,
+                );
+                err.emit();
+                Ok(TyKind::Ref(Some(lt), MutTy { ty, mutbl }))
+            }
+            Err(diag) => {
+                diag.cancel();
+                self.restore_snapshot(snapshot);
+                Err(err)
+            }
+        }
     }
 
     fn parse_remaining_bounds_path(
@@ -476,7 +534,7 @@ impl<'a> Parser<'a> {
         let elt_ty = match self.parse_ty() {
             Ok(ty) => ty,
             Err(err)
-                if self.look_ahead(1, |t| *t == token::CloseDelim(Delimiter::Bracket))
+                if self.look_ahead(1, |t| *t == token::CloseBracket)
                     | self.look_ahead(1, |t| *t == token::Semi) =>
             {
                 // Recover from `[LIT; EXPR]` and `[LIT]`
@@ -540,7 +598,7 @@ impl<'a> Parser<'a> {
 
             // Recovery
             mutbl = Mutability::Mut;
-            let (dyn_tok, dyn_tok_sp) = (self.token.clone(), self.token_spacing);
+            let (dyn_tok, dyn_tok_sp) = (self.token, self.token_spacing);
             self.bump();
             self.bump_with((dyn_tok, dyn_tok_sp));
         }
@@ -609,16 +667,58 @@ impl<'a> Parser<'a> {
         let span_start = self.token.span;
         let ast::FnHeader { ext, safety, constness, coroutine_kind } =
             self.parse_fn_front_matter(&inherited_vis, Case::Sensitive)?;
+        let fn_start_lo = self.prev_token.span.lo();
         if self.may_recover() && self.token == TokenKind::Lt {
             self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
         }
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
         let whole_span = lo.to(self.prev_token.span);
-        if let ast::Const::Yes(span) = constness {
-            self.dcx().emit_err(FnPointerCannotBeConst { span: whole_span, qualifier: span });
+
+        // Order/parsing of "front matter" follows:
+        // `<constness> <coroutine_kind> <safety> <extern> fn()`
+        //  ^           ^                ^        ^        ^
+        //  |           |                |        |        fn_start_lo
+        //  |           |                |        ext_sp.lo
+        //  |           |                safety_sp.lo
+        //  |           coroutine_sp.lo
+        //  const_sp.lo
+        if let ast::Const::Yes(const_span) = constness {
+            let next_token_lo = if let Some(
+                ast::CoroutineKind::Async { span, .. }
+                | ast::CoroutineKind::Gen { span, .. }
+                | ast::CoroutineKind::AsyncGen { span, .. },
+            ) = coroutine_kind
+            {
+                span.lo()
+            } else if let ast::Safety::Unsafe(span) | ast::Safety::Safe(span) = safety {
+                span.lo()
+            } else if let ast::Extern::Implicit(span) | ast::Extern::Explicit(_, span) = ext {
+                span.lo()
+            } else {
+                fn_start_lo
+            };
+            let sugg_span = const_span.with_hi(next_token_lo);
+            self.dcx().emit_err(FnPointerCannotBeConst {
+                span: whole_span,
+                qualifier: const_span,
+                suggestion: sugg_span,
+            });
         }
-        if let Some(ast::CoroutineKind::Async { span, .. }) = coroutine_kind {
-            self.dcx().emit_err(FnPointerCannotBeAsync { span: whole_span, qualifier: span });
+        if let Some(ast::CoroutineKind::Async { span: async_span, .. }) = coroutine_kind {
+            let next_token_lo = if let ast::Safety::Unsafe(span) | ast::Safety::Safe(span) = safety
+            {
+                span.lo()
+            } else if let ast::Extern::Implicit(span) | ast::Extern::Explicit(_, span) = ext {
+                span.lo()
+            } else {
+                fn_start_lo
+            };
+            let sugg_span = async_span.with_hi(next_token_lo);
+            self.dcx().emit_err(FnPointerCannotBeAsync {
+                span: whole_span,
+                qualifier: async_span,
+                suggestion: sugg_span,
+            });
         }
         // FIXME(gen_blocks): emit a similar error for `gen fn()`
         let decl_span = span_start.to(self.prev_token.span);
@@ -686,7 +786,7 @@ impl<'a> Parser<'a> {
         // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds()?;
 
-        *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::BinOp(token::Plus);
+        *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::Plus;
 
         Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds))
     }
@@ -698,11 +798,7 @@ impl<'a> Parser<'a> {
         self.expect_lt()?;
         let (args, _, _) = self.parse_seq_to_before_tokens(
             &[exp!(Gt)],
-            &[
-                &TokenKind::Ge,
-                &TokenKind::BinOp(BinOpToken::Shr),
-                &TokenKind::BinOpEq(BinOpToken::Shr),
-            ],
+            &[&TokenKind::Ge, &TokenKind::Shr, &TokenKind::Shr],
             SeqSep::trailing_allowed(exp!(Comma)),
             |self_| {
                 if self_.check_keyword(exp!(SelfUpper)) {
@@ -730,9 +826,9 @@ impl<'a> Parser<'a> {
     /// Is a `dyn B0 + ... + Bn` type allowed here?
     fn is_explicit_dyn_type(&mut self) -> bool {
         self.check_keyword(exp!(Dyn))
-            && (self.token.uninterpolated_span().at_least_rust_2018()
+            && (self.token_uninterpolated_span().at_least_rust_2018()
                 || self.look_ahead(1, |t| {
-                    (can_begin_dyn_bound_in_edition_2015(t) || *t == TokenKind::BinOp(token::Star))
+                    (can_begin_dyn_bound_in_edition_2015(t) || *t == TokenKind::Star)
                         && !can_continue_type_after_non_fn_ident(t)
                 }))
     }
@@ -754,7 +850,7 @@ impl<'a> Parser<'a> {
 
         // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds()?;
-        *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::BinOp(token::Plus);
+        *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::Plus;
         Ok(TyKind::TraitObject(bounds, syntax))
     }
 
@@ -772,7 +868,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, TyKind> {
         // Simple path
         let path = self.parse_path_inner(PathStyle::Type, ty_generics)?;
-        if self.eat(exp!(Not)) {
+        if self.eat(exp!(Bang)) {
             // Macro invocation in type position
             Ok(TyKind::MacCall(P(MacCall { path, args: self.parse_delim_args()? })))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {
@@ -825,7 +921,7 @@ impl<'a> Parser<'a> {
     fn can_begin_bound(&mut self) -> bool {
         self.check_path()
             || self.check_lifetime()
-            || self.check(exp!(Not))
+            || self.check(exp!(Bang))
             || self.check(exp!(Question))
             || self.check(exp!(Tilde))
             || self.check_keyword(exp!(For))
@@ -841,7 +937,7 @@ impl<'a> Parser<'a> {
     /// ```
     fn parse_generic_bound(&mut self) -> PResult<'a, GenericBound> {
         let lo = self.token.span;
-        let leading_token = self.prev_token.clone();
+        let leading_token = self.prev_token;
         let has_parens = self.eat(exp!(OpenParen));
 
         let bound = if self.token.is_lifetime() {
@@ -953,13 +1049,13 @@ impl<'a> Parser<'a> {
             BoundConstness::Never
         };
 
-        let asyncness = if self.token.uninterpolated_span().at_least_rust_2018()
+        let asyncness = if self.token_uninterpolated_span().at_least_rust_2018()
             && self.eat_keyword(exp!(Async))
         {
             self.psess.gated_spans.gate(sym::async_trait_bounds, self.prev_token.span);
             BoundAsyncness::Async(self.prev_token.span)
         } else if self.may_recover()
-            && self.token.uninterpolated_span().is_rust_2015()
+            && self.token_uninterpolated_span().is_rust_2015()
             && self.is_kw_followed_by_ident(kw::Async)
         {
             self.bump(); // eat `async`
@@ -976,7 +1072,7 @@ impl<'a> Parser<'a> {
 
         let polarity = if self.eat(exp!(Question)) {
             BoundPolarity::Maybe(self.prev_token.span)
-        } else if self.eat(exp!(Not)) {
+        } else if self.eat(exp!(Bang)) {
             self.psess.gated_spans.gate(sym::negative_bounds, self.prev_token.span);
             BoundPolarity::Negative(self.prev_token.span)
         } else {
@@ -1058,7 +1154,7 @@ impl<'a> Parser<'a> {
         }
 
         let mut path = if self.token.is_keyword(kw::Fn)
-            && self.look_ahead(1, |t| *t == TokenKind::OpenDelim(Delimiter::Parenthesis))
+            && self.look_ahead(1, |t| *t == TokenKind::OpenParen)
             && let Some(path) = self.recover_path_from_fn()
         {
             path
@@ -1112,7 +1208,7 @@ impl<'a> Parser<'a> {
             self.parse_path(PathStyle::Type)?
         };
 
-        if self.may_recover() && self.token == TokenKind::OpenDelim(Delimiter::Parenthesis) {
+        if self.may_recover() && self.token == TokenKind::OpenParen {
             self.recover_fn_trait_with_lifetime_params(&mut path, &mut lifetime_defs)?;
         }
 

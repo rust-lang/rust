@@ -3,6 +3,8 @@
 #![allow(dead_code)]
 #![allow(clippy::unnecessary_wraps)]
 
+use std::sync::MutexGuard;
+
 fn some_func(a: Option<u32>) -> Option<u32> {
     a?;
 
@@ -141,6 +143,7 @@ fn func_returning_result() -> Result<i32, i32> {
 
 fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
     let _ = x?;
+    //~^ question_mark
 
     x?;
 
@@ -298,6 +301,11 @@ fn pattern() -> Result<(), PatternedError> {
     res
 }
 
+fn expect_expr(a: Option<usize>) -> Option<usize> {
+    #[expect(clippy::needless_question_mark)]
+    Some(a?)
+}
+
 fn main() {}
 
 // `?` is not the same as `return None;` if inside of a try block
@@ -371,5 +379,67 @@ fn issue12412(foo: &Foo, bar: &Bar) -> Option<()> {
     };
     // lint
     let v = bar.foo.owned.clone()?;
+    //~^^^ question_mark
     Some(())
+}
+
+struct StructWithOptionString {
+    opt_x: Option<String>,
+}
+
+struct WrapperStructWithString(String);
+
+#[allow(clippy::disallowed_names)]
+fn issue_13417(foo: &mut StructWithOptionString) -> Option<String> {
+    let x = foo.opt_x.as_ref()?;
+    //~^^^ question_mark
+    let opt_y = Some(x.clone());
+    std::mem::replace(&mut foo.opt_x, opt_y)
+}
+
+#[allow(clippy::disallowed_names)]
+fn issue_13417_mut(foo: &mut StructWithOptionString) -> Option<String> {
+    let x = foo.opt_x.as_mut()?;
+    //~^^^ question_mark
+    let opt_y = Some(x.clone());
+    std::mem::replace(&mut foo.opt_x, opt_y)
+}
+
+#[allow(clippy::disallowed_names)]
+#[allow(unused)]
+fn issue_13417_weirder(foo: &mut StructWithOptionString, mut bar: Option<WrapperStructWithString>) -> Option<()> {
+    let x @ y = foo.opt_x.as_ref()?;
+    //~^^^ question_mark
+    let x @ &WrapperStructWithString(_) = bar.as_ref()?;
+    //~^^^ question_mark
+    let x @ &mut WrapperStructWithString(_) = bar.as_mut()?;
+    //~^^^ question_mark
+    Some(())
+}
+
+#[clippy::msrv = "1.12"]
+fn msrv_1_12(arg: Option<i32>) -> Option<i32> {
+    if arg.is_none() {
+        return None;
+    }
+    let val = match arg {
+        Some(val) => val,
+        None => return None,
+    };
+    println!("{}", val);
+    Some(val)
+}
+
+#[clippy::msrv = "1.13"]
+fn msrv_1_13(arg: Option<i32>) -> Option<i32> {
+    arg?;
+    let val = arg?;
+    println!("{}", val);
+    Some(val)
+}
+
+fn issue_14615(a: MutexGuard<Option<u32>>) -> Option<String> {
+    let a = (*a)?;
+    //~^^^ question_mark
+    Some(format!("{a}"))
 }

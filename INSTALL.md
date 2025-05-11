@@ -6,9 +6,9 @@ If you just want to install Rust, check out the [README.md](README.md) instead.*
 
 The Rust build system uses a Python script called `x.py` to build the compiler,
 which manages the bootstrapping process. It lives at the root of the project.
-It also uses a file named `config.toml` to determine various configuration
+It also uses a file named `bootstrap.toml` to determine various configuration
 settings for the build. You can see a full list of options in
-`config.example.toml`.
+`bootstrap.example.toml`.
 
 The `x.py` command can be run directly on most Unix systems in the following
 format:
@@ -75,8 +75,31 @@ See [the rustc-dev-guide for more info][sysllvm].
 
 2. Configure the build settings:
 
+   If you're unsure which build configurations to use and need a good default, you
+   can run the interactive `x.py setup` command. This will guide you through selecting
+   a config profile, setting up the LSP, configuring a Git hook, etc.
+
+   With `configure` script, you can handle multiple configurations in a single
+   command which is useful to create complex/advanced config files. For example:
+
    ```sh
-   ./configure
+   ./configure --build=aarch64-unknown-linux-gnu \
+      --enable-full-tools \
+      --enable-profiler \
+      --enable-sanitizers \
+      --enable-compiler-docs \
+      --set target.aarch64-unknown-linux-gnu.linker=clang \
+      --set target.aarch64-unknown-linux-gnu.ar=/rustroot/bin/llvm-ar \
+      --set target.aarch64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
+      --set llvm.link-shared=true \
+      --set llvm.thin-lto=true \
+      --set llvm.libzstd=true \
+      --set llvm.ninja=false \
+      --set rust.debug-assertions=false \
+      --set rust.jemalloc \
+      --set rust.use-lld=true \
+      --set rust.lto=thin \
+      --set rust.codegen-units=1
    ```
 
    If you plan to use `x.py install` to create an installation, you can either
@@ -115,7 +138,7 @@ See [the rustc-dev-guide for more info][sysllvm].
 
 This project provides a configure script and makefile (the latter of which just
 invokes `x.py`). `./configure` is the recommended way to programmatically
-generate a `config.toml`. `make` is not recommended (we suggest using `x.py`
+generate a `bootstrap.toml`. `make` is not recommended (we suggest using `x.py`
 directly), but it is supported and we try not to break it unnecessarily.
 
 ```sh
@@ -123,7 +146,7 @@ directly), but it is supported and we try not to break it unnecessarily.
 make && sudo make install
 ```
 
-`configure` generates a `config.toml` which can also be used with normal `x.py`
+`configure` generates a `bootstrap.toml` which can also be used with normal `x.py`
 invocations.
 
 ## Building on Windows
@@ -210,9 +233,13 @@ itself back on after some time).
 
 ### MSVC
 
-MSVC builds of Rust additionally require an installation of Visual Studio 2017
-(or later) so `rustc` can use its linker. The simplest way is to get
-[Visual Studio], check the "C++ build tools" and "Windows 10 SDK" workload.
+MSVC builds of Rust additionally requires an installation of:
+
+- Visual Studio 2022 (or later) build tools so `rustc` can use its linker. Older
+  Visual Studio versions such as 2019 *may* work but aren't actively tested.
+- A recent Windows 10 or 11 SDK.
+
+The simplest way is to get [Visual Studio], check the "C++ build tools".
 
 [Visual Studio]: https://visualstudio.microsoft.com/downloads/
 
@@ -251,7 +278,7 @@ Windows build triples are:
     - `x86_64-pc-windows-msvc`
 
 The build triple can be specified by either specifying `--build=<triple>` when
-invoking `x.py` commands, or by creating a `config.toml` file (as described in
+invoking `x.py` commands, or by creating a `bootstrap.toml` file (as described in
 [Building on a Unix-like system](#building-on-a-unix-like-system)), and passing
 `--set build.build=<triple>` to `./configure`.
 

@@ -9,8 +9,9 @@ LL | fn bar() { }
    |
 help: to annotate the function, change the doc comment from inner to outer style
    |
-LL | /// Misplaced comment...
-   |   ~
+LL - //! Misplaced comment...
+LL + /// Misplaced comment...
+   |
 
 error: an inner attribute is not permitted in this context
   --> $DIR/issue-30318.rs:9:1
@@ -38,8 +39,9 @@ LL | fn bat() { }
    |
 help: to annotate the function, change the doc comment from inner to outer style
    |
-LL | /** Misplaced comment... */
-   |   ~
+LL - /*! Misplaced comment... */
+LL + /** Misplaced comment... */
+   |
 
 error[E0753]: expected outer doc comment
   --> $DIR/issue-30318.rs:19:1

@@ -1,5 +1,5 @@
-//! Check that `vtable_size` gets overridden by llvm backend even if there is no
-//! `rustc_intrinsic_must_be_overridden` attribute on this usage.
+//! Check that `vtable_size` gets overridden by llvm backend even if there is a
+//! fallback body.
 #![feature(intrinsics)]
 //@run-pass
 

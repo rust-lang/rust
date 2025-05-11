@@ -27,7 +27,7 @@ struct Offset {
 }
 
 impl<F> SortedTemplate<F> {
-    /// Generate this template from arbitary text.
+    /// Generate this template from arbitrary text.
     /// Will insert wherever the substring `delimiter` can be found.
     /// Errors if it does not appear exactly once.
     pub(crate) fn from_template(template: &str, delimiter: &str) -> Result<Self, Error> {

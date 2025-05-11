@@ -6,8 +6,9 @@ LL |     x2 = 1;
    |
 help: a local variable with a similar name exists
    |
-LL |     x1 = 1;
-   |     ~~
+LL -     x2 = 1;
+LL +     x1 = 1;
+   |
 help: you might have meant to introduce a new binding
    |
 LL |     let x2 = 1;

@@ -1,12 +1,13 @@
 [package]
 name = "bootstrap"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 build = "build.rs"
 default-run = "bootstrap"
 
 [features]
 build-metrics = ["sysinfo"]
+tracing = ["dep:tracing", "dep:tracing-chrome", "dep:tracing-subscriber", "dep:tracing-tree"]
 
 [lib]
 path = "src/lib.rs"
@@ -27,17 +28,12 @@ name = "rustdoc"
 path = "src/bin/rustdoc.rs"
 test = false
 
-[[bin]]
-name = "sccache-plus-cl"
-path = "src/bin/sccache-plus-cl.rs"
-test = false
-
 [dependencies]
 # Most of the time updating these dependencies requires modifications to the
 # bootstrap codebase(e.g., https://github.com/rust-lang/rust/issues/124565);
 # otherwise, some targets will fail. That's why these dependencies are explicitly pinned.
-cc = "=1.2.0"
-cmake = "=0.1.48"
+cc = "=1.2.17"
+cmake = "=0.1.54"
 
 build_helper = { path = "../build_helper" }
 clap = { version = "4.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
@@ -62,13 +58,19 @@ walkdir = "2.4"
 xz2 = "0.1"
 
 # Dependencies needed by the build-metrics feature
-sysinfo = { version = "0.33.0", default-features = false, optional = true, features = ["system"] }
+sysinfo = { version = "0.35.0", default-features = false, optional = true, features = ["system"] }
+
+# Dependencies needed by the `tracing` feature
+tracing = { version = "0.1", optional = true, features = ["attributes"] }
+tracing-chrome = { version = "0.7", optional = true }
+tracing-subscriber = { version = "0.3", optional = true, features = ["env-filter", "fmt", "registry", "std"] }
+tracing-tree = { version = "0.4.0", optional = true }
 
 [target.'cfg(windows)'.dependencies.junction]
 version = "1.0.0"
 
 [target.'cfg(windows)'.dependencies.windows]
-version = "0.52"
+version = "0.57"
 features = [
     "Win32_Foundation",
     "Win32_Security",
@@ -81,6 +83,7 @@ features = [
 
 [dev-dependencies]
 pretty_assertions = "1.4"
+tempfile = "3.15.0"
 
 # We care a lot about bootstrap's compile times, so don't include debuginfo for
 # dependencies, only bootstrap itself.

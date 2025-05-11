@@ -2,12 +2,6 @@
 
 #![unstable(feature = "thread_local_internals", issue = "none")]
 
-#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
-mod tests;
-
-#[cfg(test)]
-mod dynamic_tests;
-
 use crate::cell::{Cell, RefCell};
 use crate::error::Error;
 use crate::fmt;
@@ -28,11 +22,15 @@ use crate::fmt;
 ///
 /// Initialization is dynamically performed on the first call to a setter (e.g.
 /// [`with`]) within a thread, and values that implement [`Drop`] get
-/// destructed when a thread exits. Some caveats apply, which are explained below.
+/// destructed when a thread exits. Some platform-specific caveats apply, which
+/// are explained below.
+/// Note that, should the destructor panics, the whole process will be [aborted].
 ///
 /// A `LocalKey`'s initializer cannot recursively depend on itself. Using a
 /// `LocalKey` in this way may cause panics, aborts or infinite recursion on
 /// the first call to `with`.
+///
+/// [aborted]: crate::process::abort
 ///
 /// # Single-thread Synchronization
 ///
@@ -56,7 +54,8 @@ use crate::fmt;
 /// use std::cell::Cell;
 /// use std::thread;
 ///
-/// thread_local!(static FOO: Cell<u32> = Cell::new(1));
+/// // explicit `const {}` block enables more efficient initialization
+/// thread_local!(static FOO: Cell<u32> = const { Cell::new(1) });
 ///
 /// assert_eq!(FOO.get(), 1);
 /// FOO.set(2);
@@ -144,7 +143,7 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// use std::cell::{Cell, RefCell};
 ///
 /// thread_local! {
-///     pub static FOO: Cell<u32> = Cell::new(1);
+///     pub static FOO: Cell<u32> = const { Cell::new(1) };
 ///
 ///     static BAR: RefCell<Vec<f32>> = RefCell::new(vec![1.0, 2.0]);
 /// }
@@ -230,6 +229,14 @@ impl fmt::Display for AccessError {
 #[stable(feature = "thread_local_try_with", since = "1.26.0")]
 impl Error for AccessError {}
 
+// This ensures the panicking code is outlined from `with` for `LocalKey`.
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[track_caller]
+#[cold]
+fn panic_access_error(err: AccessError) -> ! {
+    panic!("cannot access a Thread Local Storage value during or after destruction: {err:?}")
+}
+
 impl<T: 'static> LocalKey<T> {
     #[doc(hidden)]
     #[unstable(
@@ -269,10 +276,10 @@ impl<T: 'static> LocalKey<T> {
     where
         F: FnOnce(&T) -> R,
     {
-        self.try_with(f).expect(
-            "cannot access a Thread Local Storage value \
-             during or after destruction",
-        )
+        match self.try_with(f) {
+            Ok(r) => r,
+            Err(err) => panic_access_error(err),
+        }
     }
 
     /// Acquires a reference to the value in this TLS key.
@@ -327,10 +334,10 @@ impl<T: 'static> LocalKey<T> {
         let mut init = Some(init);
 
         let reference = unsafe {
-            (self.inner)(Some(&mut init)).as_ref().expect(
-                "cannot access a Thread Local Storage value \
-                 during or after destruction",
-            )
+            match (self.inner)(Some(&mut init)).as_ref() {
+                Some(r) => r,
+                None => panic_access_error(AccessError),
+            }
         };
 
         f(init, reference)
@@ -392,7 +399,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// use std::cell::Cell;
     ///
     /// thread_local! {
-    ///     static X: Cell<i32> = Cell::new(1);
+    ///     static X: Cell<i32> = const { Cell::new(1) };
     /// }
     ///
     /// assert_eq!(X.get(), 1);
@@ -421,7 +428,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// use std::cell::Cell;
     ///
     /// thread_local! {
-    ///     static X: Cell<Option<i32>> = Cell::new(Some(1));
+    ///     static X: Cell<Option<i32>> = const { Cell::new(Some(1)) };
     /// }
     ///
     /// assert_eq!(X.take(), Some(1));
@@ -451,7 +458,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// use std::cell::Cell;
     ///
     /// thread_local! {
-    ///     static X: Cell<i32> = Cell::new(1);
+    ///     static X: Cell<i32> = const { Cell::new(1) };
     /// }
     ///
     /// assert_eq!(X.replace(2), 1);

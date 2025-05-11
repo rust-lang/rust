@@ -2,16 +2,13 @@
 
 use core::ffi::{c_int, c_void};
 
-#[repr(C)]
-#[derive(Copy, Clone, PartialEq)]
-pub enum _Unwind_Action {
-    _UA_SEARCH_PHASE = 1,
-    _UA_CLEANUP_PHASE = 2,
-    _UA_HANDLER_FRAME = 4,
-    _UA_FORCE_UNWIND = 8,
-    _UA_END_OF_STACK = 16,
-}
-pub use _Unwind_Action::*;
+pub type _Unwind_Action = c_int;
+
+pub const _UA_SEARCH_PHASE: c_int = 1;
+pub const _UA_CLEANUP_PHASE: c_int = 2;
+pub const _UA_HANDLER_FRAME: c_int = 4;
+pub const _UA_FORCE_UNWIND: c_int = 8;
+pub const _UA_END_OF_STACK: c_int = 16;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -39,9 +36,9 @@ pub type _Unwind_Exception_Class = u64;
 pub type _Unwind_Word = *const u8;
 pub type _Unwind_Ptr = *const u8;
 
-pub const unwinder_private_data_size: usize = core::mem::size_of::<UnwindException>()
-    - core::mem::size_of::<_Unwind_Exception_Class>()
-    - core::mem::size_of::<_Unwind_Exception_Cleanup_Fn>();
+pub const unwinder_private_data_size: usize = size_of::<UnwindException>()
+    - size_of::<_Unwind_Exception_Class>()
+    - size_of::<_Unwind_Exception_Cleanup_Fn>();
 
 pub type _Unwind_Exception_Cleanup_Fn =
     Option<extern "C" fn(unwind_code: _Unwind_Reason_Code, exception: *mut _Unwind_Exception)>;

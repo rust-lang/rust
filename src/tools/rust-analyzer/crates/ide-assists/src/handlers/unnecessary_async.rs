@@ -1,13 +1,13 @@
 use ide_db::{
-    assists::{AssistId, AssistKind},
+    EditionedFileId,
+    assists::AssistId,
     defs::Definition,
     search::{FileReference, FileReferenceNode},
     syntax_helpers::node_ext::full_path_of_name_ref,
-    EditionedFileId,
 };
 use syntax::{
-    ast::{self, NameRef},
     AstNode, SyntaxKind, TextRange,
+    ast::{self, NameRef},
 };
 
 use crate::{AssistContext, Assists};
@@ -60,7 +60,7 @@ pub(crate) fn unnecessary_async(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
 
     // Otherwise, we may remove the `async` keyword.
     acc.add(
-        AssistId("unnecessary_async", AssistKind::QuickFix),
+        AssistId::quick_fix("unnecessary_async"),
         "Remove unnecessary async",
         async_range,
         |edit| {

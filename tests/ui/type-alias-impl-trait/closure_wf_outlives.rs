@@ -13,6 +13,7 @@
 mod test1 {
     type Opaque<'a, 'b> = impl Sized + 'a + 'b;
 
+    #[define_opaque(Opaque)]
     fn define<'a, 'b>() -> Opaque<'a, 'b>
     where
         'a: 'b,
@@ -26,6 +27,7 @@ mod test1 {
 mod test2 {
     type Opaque<'a, 'b> = impl Sized + 'a + 'b;
 
+    #[define_opaque(Opaque)]
     fn define<'a, 'b, 'x>() -> Opaque<'a, 'b>
     where
         'a: 'x,
@@ -40,6 +42,7 @@ mod test2 {
 mod test2_fixed {
     type Opaque<'a: 'b, 'b> = impl Sized + 'a + 'b;
 
+    #[define_opaque(Opaque)]
     fn define<'a, 'b, 'x>() -> Opaque<'a, 'b>
     where
         'a: 'x,
@@ -53,6 +56,7 @@ mod test2_fixed {
 mod test3 {
     type Opaque<T> = impl Sized;
 
+    #[define_opaque(Opaque)]
     fn define<T>() -> Opaque<T>
     where
         T: 'static,

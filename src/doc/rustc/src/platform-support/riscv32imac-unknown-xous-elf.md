@@ -6,7 +6,7 @@ Xous microkernel, message-based operating system that powers devices such as Pre
 
 ## Target maintainers
 
-- [@xobs](https://github.com/xobs)
+[@xobs](https://github.com/xobs)
 
 ## Requirements
 
@@ -24,7 +24,7 @@ The target can be built by enabling it for a `rustc` build.
 target = ["riscv32imac-unknown-xous-elf"]
 ```
 
-Make sure your C compiler is included in `$PATH`, then add it to the `config.toml`:
+Make sure your C compiler is included in `$PATH`, then add it to the `bootstrap.toml`:
 
 ```toml
 [target.riscv32imac-unknown-xous-elf]

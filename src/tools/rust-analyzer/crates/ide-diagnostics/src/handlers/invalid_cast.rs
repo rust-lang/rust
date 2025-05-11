@@ -8,7 +8,7 @@ macro_rules! format_ty {
             $fmt,
             $(
                 $arg
-                    .display($ctx.sema.db, $ctx.edition)
+                    .display($ctx.sema.db, $ctx.display_target)
                     .with_closure_style(ClosureStyle::ClosureWithId)
             ),*
         )
@@ -166,7 +166,7 @@ fn main() {
     let _ = ptr as bool;
           //^^^^^^^^^^^ error: cannot cast `*const ()` as `bool`
     let v = "hello" as bool;
-          //^^^^^^^^^^^^^^^ error: casting `&str` as `bool` is invalid: needs casting through a raw pointer first
+          //^^^^^^^^^^^^^^^ error: casting `&'static str` as `bool` is invalid: needs casting through a raw pointer first
 }
 "#,
         );
@@ -440,8 +440,9 @@ fn main() {
     q as *const [i32];
   //^^^^^^^^^^^^^^^^^ error: cannot cast thin pointer `*const i32` to fat pointer `*const [i32]`
 
+    // FIXME: This should emit diagnostics but disabled to prevent many false positives
     let t: *mut (dyn Trait + 'static) = 0 as *mut _;
-                                      //^^^^^^^^^^^ error: cannot cast `usize` to a fat pointer `*mut _`
+
     let mut fail: *const str = 0 as *const str;
                              //^^^^^^^^^^^^^^^ error: cannot cast `usize` to a fat pointer `*const str`
     let mut fail2: *const str = 0isize as *const str;
@@ -955,7 +956,7 @@ fn main() {
 fn main() {
     let pointer: usize = &1_i32 as *const i32 as usize;
     let _reference: &'static i32 = unsafe { pointer as *const i32 as &'static i32 };
-                                          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: non-primitive cast: `*const i32` as `&i32`
+                                          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: non-primitive cast: `*const i32` as `&'static i32`
 }
 "#,
         );
@@ -991,7 +992,7 @@ impl Deref for Foo {
 
 fn main() {
     let _ = "foo" as bool;
-          //^^^^^^^^^^^^^ error: casting `&str` as `bool` is invalid: needs casting through a raw pointer first
+          //^^^^^^^^^^^^^ error: casting `&'static str` as `bool` is invalid: needs casting through a raw pointer first
 
     let _ = Foo as bool;
           //^^^^^^^^^^^ error: non-primitive cast: `Foo` as `bool`
@@ -1127,6 +1128,84 @@ fn main() {
     let _wrap = Wrap(unsafe { &mut *(lparam as *mut _) });
 }
         "#,
+        );
+    }
+
+    #[test]
+    fn regression_18682() {
+        check_diagnostics(
+            r#"
+//- minicore: coerce_unsized
+struct Flexible {
+    body: [u8],
+}
+
+trait Field {
+    type Type: ?Sized;
+}
+
+impl Field for Flexible {
+    type Type = [u8];
+}
+
+trait KnownLayout {
+    type MaybeUninit: ?Sized;
+}
+
+
+impl<T> KnownLayout for [T] {
+    type MaybeUninit = [T];
+}
+
+struct ZerocopyKnownLayoutMaybeUninit(<<Flexible as Field>::Type as KnownLayout>::MaybeUninit);
+
+fn test(ptr: *mut [u8]) -> *mut ZerocopyKnownLayoutMaybeUninit {
+    ptr as *mut _
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn regression_19431() {
+        check_diagnostics(
+            r#"
+//- minicore: coerce_unsized
+struct Dst([u8]);
+
+struct Struct {
+    body: Dst,
+}
+
+trait Field {
+    type Type: ?Sized;
+}
+
+impl Field for Struct {
+    type Type = Dst;
+}
+
+trait KnownLayout {
+    type MaybeUninit: ?Sized;
+    type PointerMetadata;
+}
+
+impl<T> KnownLayout for [T] {
+    type MaybeUninit = [T];
+    type PointerMetadata = usize;
+}
+
+impl KnownLayout for Dst {
+    type MaybeUninit = Dst;
+    type PointerMetadata = <[u8] as KnownLayout>::PointerMetadata;
+}
+
+struct ZerocopyKnownLayoutMaybeUninit(<<Struct as Field>::Type as KnownLayout>::MaybeUninit);
+
+fn test(ptr: *mut ZerocopyKnownLayoutMaybeUninit) -> *mut <<Struct as Field>::Type as KnownLayout>::MaybeUninit {
+    ptr as *mut _
+}
+"#,
         );
     }
 }

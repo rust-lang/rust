@@ -16,21 +16,12 @@ pub mod itron {
     use super::unsupported;
 }
 
-#[path = "../unsupported/args.rs"]
-pub mod args;
-pub mod env;
 // `error` is `pub(crate)` so that it can be accessed by `itron/error.rs` as
 // `crate::sys::error`
 pub(crate) mod error;
-pub mod fs;
-pub mod io;
-pub mod net;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-#[path = "../unsupported/process.rs"]
-pub mod process;
-pub mod stdio;
 pub use self::itron::{thread, thread_parking};
 pub mod time;
 
@@ -51,7 +42,7 @@ pub fn unsupported_err() -> crate::io::Error {
 
 #[inline]
 pub fn is_interrupted(code: i32) -> bool {
-    net::is_interrupted(code)
+    crate::sys::net::is_interrupted(code)
 }
 
 pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {

@@ -2,7 +2,7 @@
 
 /// Number of times to run a benchmarked function
 #[derive(Clone, PartialEq, Eq)]
-pub enum BenchMode {
+pub(crate) enum BenchMode {
     Auto,
     Single,
 }

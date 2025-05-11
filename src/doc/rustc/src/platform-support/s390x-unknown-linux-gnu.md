@@ -6,8 +6,8 @@ IBM z/Architecture (s390x) targets (including IBM Z and LinuxONE) running Linux.
 
 ## Target maintainers
 
-- Ulrich Weigand, <ulrich.weigand@de.ibm.com>, [@uweigand](https://github.com/uweigand)
-- Josh Stone, <jistone@redhat.com>, [@cuviper](https://github.com/cuviper)
+[@uweigand](https://github.com/uweigand)
+[@cuviper](https://github.com/cuviper)
 
 ## Requirements
 
@@ -34,7 +34,7 @@ This target is distributed through `rustup`, and otherwise requires no
 special configuration.
 
 If you need to build your own Rust for some reason though, the target can be
-enabled in `config.toml`. For example:
+enabled in `bootstrap.toml`. For example:
 
 ```toml
 [build]

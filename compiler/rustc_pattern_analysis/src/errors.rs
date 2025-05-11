@@ -1,5 +1,5 @@
-use rustc_errors::{Diag, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic};
-use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_errors::{Diag, EmissionGuarantee, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 
@@ -55,11 +55,7 @@ pub struct Overlap {
 }
 
 impl Subdiagnostic for Overlap {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let Overlap { span, range } = self;
 
         // FIXME(mejrs) unfortunately `#[derive(LintDiagnostic)]`
@@ -103,11 +99,7 @@ pub struct GappedRange {
 }
 
 impl Subdiagnostic for GappedRange {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let GappedRange { span, gap, first_range } = self;
 
         // FIXME(mejrs) unfortunately `#[derive(LintDiagnostic)]`
@@ -140,4 +132,16 @@ pub(crate) struct NonExhaustiveOmittedPatternLintOnArm {
     pub suggest_lint_on_match: Option<Span>,
     pub lint_level: &'static str,
     pub lint_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(pattern_analysis_mixed_deref_pattern_constructors)]
+pub(crate) struct MixedDerefPatternConstructors<'tcx> {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    pub smart_pointer_ty: Ty<'tcx>,
+    #[label(pattern_analysis_deref_pattern_label)]
+    pub deref_pattern_label: Span,
+    #[label(pattern_analysis_normal_constructor_label)]
+    pub normal_constructor_label: Span,
 }

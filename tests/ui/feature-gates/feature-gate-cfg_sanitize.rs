@@ -1,3 +1,3 @@
 #[cfg(not(sanitize = "thread"))]
-//~^ `cfg(sanitize)` is experimental
+//~^ ERROR `cfg(sanitize)` is experimental
 fn main() {}

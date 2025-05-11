@@ -1,4 +1,7 @@
-use crate::spec::{LinkSelfContainedDefault, PanicStrategy, RelroLevel, Target, TargetOptions};
+use crate::spec::{
+    FloatAbi, LinkSelfContainedDefault, PanicStrategy, RelroLevel, Target, TargetMetadata,
+    TargetOptions,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -6,7 +9,7 @@ pub(crate) fn target() -> Target {
         // to determine the calling convention and float ABI, and it doesn't
         // support the "musleabi" value.
         llvm_target: "armv7-unknown-unknown-gnueabi".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Armv7-A Trusty".into()),
             tier: Some(3),
             host_tools: Some(false),
@@ -17,6 +20,7 @@ pub(crate) fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             features: "+v7,+thumb2,+soft-float,-neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),

@@ -2,8 +2,8 @@
 
 #![no_std]
 
-//@ has "$.index[*][?(@.name=='glob')]"
-//@ has "$.index[*][?(@.inner.use)].inner.use.name" \"*\"
+//@ has "$.index[?(@.name=='glob')]"
+//@ has "$.index[?(@.inner.use)].inner.use.name" \"*\"
 
 mod m1 {
     pub fn f() {}

@@ -1,11 +1,12 @@
 use either::Either;
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
+    SyntaxKind, SyntaxNode,
     ast::{self, AstNode, HasAttrs, HasGenericParams, HasVisibility},
-    match_ast, ted, SyntaxKind, SyntaxNode,
+    match_ast, ted,
 };
 
-use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
 
 // Assist: convert_tuple_struct_to_named_struct
 //
@@ -64,7 +65,7 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
     let target = strukt.as_ref().either(|s| s.syntax(), |v| v.syntax()).text_range();
 
     acc.add(
-        AssistId("convert_tuple_struct_to_named_struct", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_tuple_struct_to_named_struct"),
         "Convert to named struct",
         target,
         |edit| {
@@ -94,7 +95,7 @@ fn edit_struct_def(
     let record_fields = ast::make::record_field_list(record_fields);
     let tuple_fields_text_range = tuple_fields.syntax().text_range();
 
-    edit.edit_file(ctx.file_id());
+    edit.edit_file(ctx.vfs_file_id());
 
     if let Either::Left(strukt) = strukt {
         if let Some(w) = strukt.where_clause() {
@@ -140,8 +141,10 @@ fn edit_struct_references(
         match_ast! {
             match node {
                 ast::TupleStructPat(tuple_struct_pat) => {
+                    let file_range = ctx.sema.original_range_opt(&node)?;
+                    edit.edit_file(file_range.file_id.file_id(ctx.db()));
                     edit.replace(
-                        tuple_struct_pat.syntax().text_range(),
+                        file_range.range,
                         ast::make::record_pat_with_fields(
                             tuple_struct_pat.path()?,
                             ast::make::record_pat_field_list(tuple_struct_pat.fields().zip(names).map(
@@ -163,8 +166,8 @@ fn edit_struct_references(
                     // this also includes method calls like Foo::new(42), we should skip them
                     if let Some(name_ref) = path.segment().and_then(|s| s.name_ref()) {
                         match NameRefClass::classify(&ctx.sema, &name_ref) {
-                            Some(NameRefClass::Definition(Definition::SelfType(_))) => {},
-                            Some(NameRefClass::Definition(def)) if def == strukt_def => {},
+                            Some(NameRefClass::Definition(Definition::SelfType(_), _)) => {},
+                            Some(NameRefClass::Definition(def, _)) if def == strukt_def => {},
                             _ => return None,
                         };
                     }
@@ -194,7 +197,7 @@ fn edit_struct_references(
     };
 
     for (file_id, refs) in usages {
-        edit.edit_file(file_id.file_id());
+        edit.edit_file(file_id.file_id(ctx.db()));
         for r in refs {
             for node in r.name.syntax().ancestors() {
                 if edit_node(edit, node).is_some() {
@@ -219,7 +222,7 @@ fn edit_field_references(
         let def = Definition::Field(field);
         let usages = def.usages(&ctx.sema).all();
         for (file_id, refs) in usages {
-            edit.edit_file(file_id.file_id());
+            edit.edit_file(file_id.file_id(ctx.db()));
             for r in refs {
                 if let Some(name_ref) = r.name.as_name_ref() {
                     edit.replace(ctx.sema.original_range(name_ref.syntax()).range, name.text());
@@ -921,6 +924,104 @@ pub struct $0Foo(#[my_custom_attr] u32);
 "#,
             r#"
 pub struct Foo { #[my_custom_attr] field1: u32 }
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_in_macro_pattern_args() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+macro_rules! foo {
+    ($expression:expr, $pattern:pat) => {
+        match $expression {
+            $pattern => true,
+            _ => false
+        }
+    };
+}
+enum Expr {
+    A$0(usize),
+}
+fn main() {
+    let e = Expr::A(0);
+    foo!(e, Expr::A(0));
+}
+"#,
+            r#"
+macro_rules! foo {
+    ($expression:expr, $pattern:pat) => {
+        match $expression {
+            $pattern => true,
+            _ => false
+        }
+    };
+}
+enum Expr {
+    A { field1: usize },
+}
+fn main() {
+    let e = Expr::A { field1: 0 };
+    foo!(e, Expr::A { field1: 0 });
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_in_multi_file_macro_pattern_args() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+//- /main.rs
+mod foo;
+
+enum Test {
+    A$0(i32)
+}
+
+//- /foo.rs
+use crate::Test;
+
+macro_rules! foo {
+    ($expression:expr, $pattern:pat) => {
+        match $expression {
+            $pattern => true,
+            _ => false
+        }
+    };
+}
+
+fn foo() {
+    let a = Test::A(0);
+    foo!(a, Test::A(0));
+}
+"#,
+            r#"
+//- /main.rs
+mod foo;
+
+enum Test {
+    A { field1: i32 }
+}
+
+//- /foo.rs
+use crate::Test;
+
+macro_rules! foo {
+    ($expression:expr, $pattern:pat) => {
+        match $expression {
+            $pattern => true,
+            _ => false
+        }
+    };
+}
+
+fn foo() {
+    let a = Test::A { field1: 0 };
+    foo!(a, Test::A { field1: 0 });
+}
 "#,
         );
     }

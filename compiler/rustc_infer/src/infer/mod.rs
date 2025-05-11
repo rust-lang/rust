@@ -9,13 +9,12 @@ use free_regions::RegionRelations;
 pub use freshen::TypeFreshener;
 use lexical_region_resolve::LexicalRegionResolutions;
 pub use lexical_region_resolve::RegionResolutionError;
-use opaque_types::OpaqueTypeStorage;
+pub use opaque_types::{OpaqueTypeStorage, OpaqueTypeStorageEntries, OpaqueTypeTable};
 use region_constraints::{
     GenericKind, RegionConstraintCollector, RegionConstraintStorage, VarInfos, VerifyBound,
 };
 pub use relate::StructurallyRelateAliases;
 pub use relate::combine::PredicateEmittingRelation;
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::unify as ut;
@@ -26,19 +25,15 @@ use rustc_macros::extension;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
 use rustc_middle::infer::canonical::{CanonicalQueryInput, CanonicalVarValues};
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
-pub use rustc_middle::ty::IntVarValue;
+use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::{
-    BoundVarReplacerDelegate, TypeFoldable, TypeFolder, TypeSuperFoldable, fold_regions,
-};
-use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
-    self, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef,
-    GenericParamDefKind, InferConst, IntVid, PseudoCanonicalInput, Ty, TyCtxt, TyVid,
-    TypeVisitable, TypingEnv, TypingMode,
+    self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
+    GenericArgsRef, GenericParamDefKind, InferConst, IntVid, OpaqueHiddenType, OpaqueTypeKey,
+    PseudoCanonicalInput, Term, TermKind, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
 use rustc_span::{Span, Symbol};
 use snapshot::undo_log::InferCtxtUndoLogs;
@@ -46,6 +41,7 @@ use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
 
 use crate::infer::region_constraints::UndoLog;
+use crate::infer::unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 use crate::traits::{
     self, ObligationCause, ObligationInspector, PredicateObligations, TraitEngine,
 };
@@ -64,6 +60,7 @@ pub mod relate;
 pub mod resolve;
 pub(crate) mod snapshot;
 mod type_variable;
+mod unify_key;
 
 /// `InferOk<'tcx, ()>` is used a lot. It may seem like a useless wrapper
 /// around `PredicateObligations<'tcx>`, but it has one important property:
@@ -201,7 +198,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    fn opaque_types(&mut self) -> opaque_types::OpaqueTypeTable<'_, 'tcx> {
+    pub fn opaque_types(&mut self) -> opaque_types::OpaqueTypeTable<'_, 'tcx> {
         self.opaque_type_storage.with_log(&mut self.undo_log)
     }
 
@@ -226,15 +223,6 @@ impl<'tcx> InferCtxtInner<'tcx> {
             .as_mut()
             .expect("region constraints already solved")
             .with_log(&mut self.undo_log)
-    }
-
-    // Iterates through the opaque type definitions without taking them; this holds the
-    // `InferCtxtInner` lock, so make sure to not do anything with `InferCtxt` side-effects
-    // while looping through this.
-    pub fn iter_opaque_types(
-        &self,
-    ) -> impl Iterator<Item = (ty::OpaqueTypeKey<'tcx>, ty::OpaqueHiddenType<'tcx>)> + '_ {
-        self.opaque_type_storage.opaque_types.iter().map(|(&k, v)| (k, v.hidden_type))
     }
 }
 
@@ -272,7 +260,7 @@ pub struct InferCtxt<'tcx> {
     /// The set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
     pub reported_trait_errors:
-        RefCell<FxIndexMap<Span, (Vec<ty::Predicate<'tcx>>, ErrorGuaranteed)>>,
+        RefCell<FxIndexMap<Span, (Vec<Goal<'tcx, ty::Predicate<'tcx>>>, ErrorGuaranteed)>>,
 
     pub reported_signature_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
 
@@ -949,7 +937,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let inner = self.inner.borrow();
         assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
         let storage = inner.region_constraint_storage.as_ref().expect("regions already resolved");
-        assert!(storage.data.is_empty());
+        assert!(storage.data.is_empty(), "{:#?}", storage.data);
         // We clone instead of taking because borrowck still wants to use the
         // inference context after calling this for diagnostics and the new
         // trait solver.
@@ -957,20 +945,23 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn take_opaque_types(&self) -> opaque_types::OpaqueTypeMap<'tcx> {
-        std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
+    pub fn take_opaque_types(&self) -> Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
+        self.inner.borrow_mut().opaque_type_storage.take_opaque_types().collect()
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn clone_opaque_types(&self) -> opaque_types::OpaqueTypeMap<'tcx> {
-        self.inner.borrow().opaque_type_storage.opaque_types.clone()
+    pub fn clone_opaque_types(&self) -> Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
+        self.inner.borrow_mut().opaque_type_storage.iter_opaque_types().collect()
     }
 
     #[inline(always)]
     pub fn can_define_opaque_ty(&self, id: impl Into<DefId>) -> bool {
         debug_assert!(!self.next_trait_solver());
         match self.typing_mode() {
-            TypingMode::Analysis { defining_opaque_types } => {
+            TypingMode::Analysis {
+                defining_opaque_types_and_generators: defining_opaque_types,
+            }
+            | TypingMode::Borrowck { defining_opaque_types } => {
                 id.into().as_local().is_some_and(|def_id| defining_opaque_types.contains(&def_id))
             }
             // FIXME(#132279): This function is quite weird in post-analysis
@@ -1055,7 +1046,7 @@ impl<'tcx> InferCtxt<'tcx> {
             | ty::ConstKind::Bound(_, _)
             | ty::ConstKind::Placeholder(_)
             | ty::ConstKind::Unevaluated(_)
-            | ty::ConstKind::Value(_, _)
+            | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
             | ty::ConstKind::Expr(_) => ct,
         }
@@ -1264,7 +1255,8 @@ impl<'tcx> InferCtxt<'tcx> {
             // to handle them without proper canonicalization. This means we may cause cycle
             // errors and fail to reveal opaques while inside of bodies. We should rename this
             // function and require explicit comments on all use-sites in the future.
-            ty::TypingMode::Analysis { defining_opaque_types: _ } => {
+            ty::TypingMode::Analysis { defining_opaque_types_and_generators: _ }
+            | ty::TypingMode::Borrowck { defining_opaque_types: _ } => {
                 TypingMode::non_body_analysis()
             }
             mode @ (ty::TypingMode::Coherence
@@ -1295,9 +1287,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// The returned function is used in a fast path. If it returns `true` the variable is
     /// unchanged, `false` indicates that the status is unknown.
     #[inline]
-    pub fn is_ty_infer_var_definitely_unchanged<'a>(
-        &'a self,
-    ) -> (impl Fn(TyOrConstInferVar) -> bool + Captures<'tcx> + 'a) {
+    pub fn is_ty_infer_var_definitely_unchanged(&self) -> impl Fn(TyOrConstInferVar) -> bool {
         // This hoists the borrow/release out of the loop body.
         let inner = self.inner.try_borrow();
 
@@ -1399,6 +1389,16 @@ impl<'tcx> TyOrConstInferVar {
             GenericArgKind::Type(ty) => Self::maybe_from_ty(ty),
             GenericArgKind::Const(ct) => Self::maybe_from_const(ct),
             GenericArgKind::Lifetime(_) => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a type or a constant, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    pub fn maybe_from_term(term: Term<'tcx>) -> Option<Self> {
+        match term.unpack() {
+            TermKind::Ty(ty) => Self::maybe_from_ty(ty),
+            TermKind::Const(ct) => Self::maybe_from_const(ct),
         }
     }
 

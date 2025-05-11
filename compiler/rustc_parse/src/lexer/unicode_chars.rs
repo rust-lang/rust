@@ -5,10 +5,10 @@ use rustc_span::{BytePos, Pos, Span, kw};
 
 use super::Lexer;
 use crate::errors::TokenSubstitution;
-use crate::token::{self, Delimiter};
+use crate::token;
 
 #[rustfmt::skip] // for line breaks
-pub(super) const UNICODE_ARRAY: &[(char, &str, &str)] = &[
+pub(super) static UNICODE_ARRAY: &[(char, &str, &str)] = &[
     (' ', "Line Separator", " "),
     (' ', "Paragraph Separator", " "),
     (' ', "Ogham Space mark", " "),
@@ -308,24 +308,24 @@ pub(super) const UNICODE_ARRAY: &[(char, &str, &str)] = &[
 const ASCII_ARRAY: &[(&str, &str, Option<token::TokenKind>)] = &[
     (" ", "Space", None),
     ("_", "Underscore", Some(token::Ident(kw::Underscore, token::IdentIsRaw::No))),
-    ("-", "Minus/Hyphen", Some(token::BinOp(token::Minus))),
+    ("-", "Minus/Hyphen", Some(token::Minus)),
     (",", "Comma", Some(token::Comma)),
     (";", "Semicolon", Some(token::Semi)),
     (":", "Colon", Some(token::Colon)),
-    ("!", "Exclamation Mark", Some(token::Not)),
+    ("!", "Exclamation Mark", Some(token::Bang)),
     ("?", "Question Mark", Some(token::Question)),
     (".", "Period", Some(token::Dot)),
-    ("(", "Left Parenthesis", Some(token::OpenDelim(Delimiter::Parenthesis))),
-    (")", "Right Parenthesis", Some(token::CloseDelim(Delimiter::Parenthesis))),
-    ("[", "Left Square Bracket", Some(token::OpenDelim(Delimiter::Bracket))),
-    ("]", "Right Square Bracket", Some(token::CloseDelim(Delimiter::Bracket))),
-    ("{", "Left Curly Brace", Some(token::OpenDelim(Delimiter::Brace))),
-    ("}", "Right Curly Brace", Some(token::CloseDelim(Delimiter::Brace))),
-    ("*", "Asterisk", Some(token::BinOp(token::Star))),
-    ("/", "Slash", Some(token::BinOp(token::Slash))),
+    ("(", "Left Parenthesis", Some(token::OpenParen)),
+    (")", "Right Parenthesis", Some(token::CloseParen)),
+    ("[", "Left Square Bracket", Some(token::OpenBracket)),
+    ("]", "Right Square Bracket", Some(token::CloseBracket)),
+    ("{", "Left Curly Brace", Some(token::OpenBrace)),
+    ("}", "Right Curly Brace", Some(token::CloseBrace)),
+    ("*", "Asterisk", Some(token::Star)),
+    ("/", "Slash", Some(token::Slash)),
     ("\\", "Backslash", None),
-    ("&", "Ampersand", Some(token::BinOp(token::And))),
-    ("+", "Plus Sign", Some(token::BinOp(token::Plus))),
+    ("&", "Ampersand", Some(token::And)),
+    ("+", "Plus Sign", Some(token::Plus)),
     ("<", "Less-Than Sign", Some(token::Lt)),
     ("=", "Equals Sign", Some(token::Eq)),
     ("==", "Double Equals Sign", Some(token::EqEq)),
@@ -376,7 +376,7 @@ pub(super) fn check_for_substitution(
             ascii_name,
         })
     };
-    (token.clone(), sugg)
+    (*token, sugg)
 }
 
 /// Extract string if found at current position with given delimiters

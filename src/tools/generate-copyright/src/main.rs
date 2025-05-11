@@ -2,37 +2,51 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::Error;
-use rinja::Template;
+use askama::Template;
 
 mod cargo_metadata;
 
 /// The entry point to the binary.
 ///
-/// You should probably let `bootstrap` execute this program instead of running it directly.
+/// You should probably let `bootstrap` execute this program instead of running
+/// it directly. It assumes that the current working directory is the root of a
+/// Rust git repository checkout, and constructs a bunch of relative paths based
+/// on that assumption.
 ///
 /// Run `x.py run generate-copyright`
 fn main() -> Result<(), Error> {
     let dest_file = env_path("DEST")?;
     let libstd_dest_file = env_path("DEST_LIBSTD")?;
-    let out_dir = env_path("OUT_DIR")?;
+    let src_dir = env_path("SRC_DIR")?;
+    let vendor_dir = env_path("VENDOR_DIR")?;
     let cargo = env_path("CARGO")?;
     let license_metadata = env_path("LICENSE_METADATA")?;
 
-    let root_path = std::path::absolute(".")?;
+    let cargo_manifests = env_string("CARGO_MANIFESTS")?
+        .split(",")
+        .map(|manifest| manifest.into())
+        .collect::<Vec<PathBuf>>();
+    let library_manifests = cargo_manifests
+        .iter()
+        .filter(|path| {
+            if let Ok(stripped) = path.strip_prefix(&src_dir) {
+                stripped.starts_with("library")
+            } else {
+                panic!("manifest {path:?} not relative to source dir {src_dir:?}");
+            }
+        })
+        .cloned()
+        .collect::<Vec<_>>();
 
     // Scan Cargo dependencies
     let mut collected_cargo_metadata =
-        cargo_metadata::get_metadata_and_notices(&cargo, &out_dir.join("vendor"), &root_path, &[
-            Path::new("./Cargo.toml"),
-            Path::new("./src/tools/cargo/Cargo.toml"),
-            Path::new("./library/Cargo.toml"),
-        ])?;
+        cargo_metadata::get_metadata_and_notices(&cargo, &vendor_dir, &src_dir, &cargo_manifests)?;
 
     let library_collected_cargo_metadata = cargo_metadata::get_metadata_and_notices(
         &cargo,
-        &out_dir.join("library-vendor"),
-        &root_path,
-        &[Path::new("./library/Cargo.toml")],
+        &vendor_dir,
+        &src_dir,
+        &library_manifests,
     )?;
 
     for (key, value) in collected_cargo_metadata.iter_mut() {
@@ -47,7 +61,7 @@ fn main() -> Result<(), Error> {
     let library_collected_tree_metadata = Metadata {
         files: collected_tree_metadata
             .files
-            .trim_clone(&Path::new("./library"), &Path::new("."))
+            .trim_clone(&src_dir.join("library"), &src_dir)
             .unwrap(),
     };
 
@@ -103,7 +117,7 @@ struct Metadata {
 }
 
 /// Describes one node in our metadata tree
-#[derive(serde::Deserialize, rinja::Template, Clone, Debug, PartialEq, Eq)]
+#[derive(serde::Deserialize, Template, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case", tag = "type")]
 #[template(path = "Node.html")]
 pub(crate) enum Node {
@@ -184,6 +198,17 @@ impl Node {
 struct License {
     spdx: String,
     copyright: Vec<String>,
+}
+
+/// Grab an environment variable as string, or fail nicely.
+fn env_string(var: &str) -> Result<String, Error> {
+    match std::env::var(var) {
+        Ok(var) => Ok(var),
+        Err(std::env::VarError::NotUnicode(_)) => {
+            anyhow::bail!("environment variable {var} is not utf-8")
+        }
+        Err(std::env::VarError::NotPresent) => anyhow::bail!("missing environment variable {var}"),
+    }
 }
 
 /// Grab an environment variable as a PathBuf, or fail nicely.

@@ -6,7 +6,7 @@
 use crate::os::windows::io::{AsHandle, AsSocket};
 use crate::os::windows::io::{OwnedHandle, OwnedSocket};
 use crate::os::windows::raw;
-use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::{fs, io, net, ptr, sys};
 
 /// Raw HANDLEs.
@@ -262,7 +262,7 @@ impl FromRawSocket for net::TcpStream {
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpStream {
         unsafe {
             let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
-            net::TcpStream::from_inner(sys_common::net::TcpStream::from_inner(sock))
+            net::TcpStream::from_inner(sys::net::TcpStream::from_inner(sock))
         }
     }
 }
@@ -272,7 +272,7 @@ impl FromRawSocket for net::TcpListener {
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpListener {
         unsafe {
             let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
-            net::TcpListener::from_inner(sys_common::net::TcpListener::from_inner(sock))
+            net::TcpListener::from_inner(sys::net::TcpListener::from_inner(sock))
         }
     }
 }
@@ -282,7 +282,7 @@ impl FromRawSocket for net::UdpSocket {
     unsafe fn from_raw_socket(sock: RawSocket) -> net::UdpSocket {
         unsafe {
             let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
-            net::UdpSocket::from_inner(sys_common::net::UdpSocket::from_inner(sock))
+            net::UdpSocket::from_inner(sys::net::UdpSocket::from_inner(sock))
         }
     }
 }
@@ -308,5 +308,47 @@ impl IntoRawSocket for net::UdpSocket {
     #[inline]
     fn into_raw_socket(self) -> RawSocket {
         self.into_inner().into_socket().into_inner().into_raw_socket()
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
+impl AsRawHandle for io::PipeReader {
+    fn as_raw_handle(&self) -> RawHandle {
+        self.0.as_raw_handle()
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
+impl FromRawHandle for io::PipeReader {
+    unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
+        unsafe { Self::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
+impl IntoRawHandle for io::PipeReader {
+    fn into_raw_handle(self) -> RawHandle {
+        self.0.into_raw_handle()
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
+impl AsRawHandle for io::PipeWriter {
+    fn as_raw_handle(&self) -> RawHandle {
+        self.0.as_raw_handle()
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
+impl FromRawHandle for io::PipeWriter {
+    unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
+        unsafe { Self::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
+impl IntoRawHandle for io::PipeWriter {
+    fn into_raw_handle(self) -> RawHandle {
+        self.0.into_raw_handle()
     }
 }

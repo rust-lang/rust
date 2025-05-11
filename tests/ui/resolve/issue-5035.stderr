@@ -1,11 +1,11 @@
 error[E0432]: unresolved import `ImportError`
-  --> $DIR/issue-5035.rs:5:5
+  --> $DIR/issue-5035.rs:7:5
    |
 LL | use ImportError;
    |     ^^^^^^^^^^^ no `ImportError` in the root
 
 error[E0404]: expected trait, found type alias `K`
-  --> $DIR/issue-5035.rs:3:6
+  --> $DIR/issue-5035.rs:5:6
    |
 LL | trait I {}
    | ------- similarly named trait `I` defined here
@@ -15,12 +15,14 @@ LL | impl K for isize {}
    |
 help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
    |
-LL | trait K = dyn I;
+LL - type K = dyn I;
+LL + trait K = dyn I;
    |
 help: a trait with a similar name exists
    |
-LL | impl I for isize {}
-   |      ~
+LL - impl K for isize {}
+LL + impl I for isize {}
+   |
 
 error: aborting due to 2 previous errors
 

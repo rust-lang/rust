@@ -4,7 +4,7 @@ use GenericArgsInfo::*;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, Diagnostic, EmissionGuarantee, MultiSpan, pluralize};
 use rustc_hir as hir;
-use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
+use rustc_middle::ty::{self as ty, AssocItems, TyCtxt};
 use rustc_span::def_id::DefId;
 use tracing::debug;
 
@@ -134,9 +134,9 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             // is from the 'of_trait' field of the enclosing impl
 
             let parent = self.tcx.parent_hir_node(self.path_segment.hir_id);
-            let parent_item = self.tcx.hir_node_by_def_id(
-                self.tcx.hir().get_parent_item(self.path_segment.hir_id).def_id,
-            );
+            let parent_item = self
+                .tcx
+                .hir_node_by_def_id(self.tcx.hir_get_parent_item(self.path_segment.hir_id).def_id);
 
             // Get the HIR id of the trait ref
             let hir::Node::TraitRef(hir::TraitRef { hir_ref_id: trait_ref_id, .. }) = parent else {
@@ -343,7 +343,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
         let mut ret = Vec::new();
         let mut ty_id = None;
-        for (id, node) in self.tcx.hir().parent_iter(path_hir_id) {
+        for (id, node) in self.tcx.hir_parent_iter(path_hir_id) {
             debug!(?id);
             if let hir::Node::Ty(_) = node {
                 ty_id = Some(id);
@@ -437,8 +437,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     ) -> String {
         let is_in_a_method_call = self
             .tcx
-            .hir()
-            .parent_iter(self.path_segment.hir_id)
+            .hir_parent_iter(self.path_segment.hir_id)
             .skip(1)
             .find_map(|(_, node)| match node {
                 hir::Node::Expr(expr) => Some(expr),
@@ -451,7 +450,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 )
             });
 
-        let fn_sig = self.tcx.hir().get_if_local(self.def_id).and_then(hir::Node::fn_sig);
+        let fn_sig = self.tcx.hir_get_if_local(self.def_id).and_then(hir::Node::fn_sig);
         let is_used_in_input = |def_id| {
             fn_sig.is_some_and(|fn_sig| {
                 fn_sig.decl.inputs.iter().any(|ty| match ty.kind {
@@ -487,15 +486,16 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             let items: &AssocItems = self.tcx.associated_items(self.def_id);
             items
                 .in_definition_order()
-                .filter(|item| item.kind == AssocKind::Type)
                 .filter(|item| {
-                    !self
-                        .gen_args
-                        .constraints
-                        .iter()
-                        .any(|constraint| constraint.ident.name == item.name)
+                    item.is_type()
+                        && !item.is_impl_trait_in_trait()
+                        && !self
+                            .gen_args
+                            .constraints
+                            .iter()
+                            .any(|constraint| constraint.ident.name == item.name())
                 })
-                .map(|item| item.name.to_ident_string())
+                .map(|item| self.tcx.item_ident(item.def_id).to_string())
                 .collect()
         } else {
             Vec::default()

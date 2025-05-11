@@ -1,5 +1,6 @@
 // WARNING: This output format is intended for human consumers only
 // and is subject to change without notice. Knock yourself out.
+// HINT: See also -Z dump-mir for MIR at specific points during compilation.
 fn foo() -> i32 {
     let mut _0: i32;
     let mut _1: (i32, bool);

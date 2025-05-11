@@ -1,5 +1,5 @@
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:5:9
+  --> $DIR/recover-pat-exprs.rs:7:9
    |
 LL |         x.y => (),
    |         ^^^ not a pattern
@@ -7,8 +7,9 @@ LL |         x.y => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x.y => (),
-   |         ~~~ +++++++++++++
+LL -         x.y => (),
+LL +         val if val == x.y => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.y;
@@ -16,13 +17,9 @@ LL ~     match 0 {
 LL |         x => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.y } => (),
-   |         +++++++     +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:6:9
+  --> $DIR/recover-pat-exprs.rs:8:9
    |
 LL |         x.0 => (),
    |         ^^^ not a pattern
@@ -30,8 +27,9 @@ LL |         x.0 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x.0 => (),
-   |         ~~~ +++++++++++++
+LL -         x.0 => (),
+LL +         val if val == x.0 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0;
@@ -40,13 +38,9 @@ LL |         x => (),
 LL |         x.y => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.0 } => (),
-   |         +++++++     +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:7:9
+  --> $DIR/recover-pat-exprs.rs:9:9
    |
 LL |         x._0 => (),
    |         ^^^^ not a pattern
@@ -54,8 +48,9 @@ LL |         x._0 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x._0 => (),
-   |         ~~~ ++++++++++++++
+LL -         x._0 => (),
+LL +         val if val == x._0 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x._0;
@@ -65,13 +60,9 @@ LL |         x.y => (),
 LL |         x.0 => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x._0 } => (),
-   |         +++++++      +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:8:9
+  --> $DIR/recover-pat-exprs.rs:10:9
    |
 LL |         x.0.1 => (),
    |         ^^^^^ not a pattern
@@ -79,8 +70,9 @@ LL |         x.0.1 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x.0.1 => (),
-   |         ~~~ +++++++++++++++
+LL -         x.0.1 => (),
+LL +         val if val == x.0.1 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0.1;
@@ -90,13 +82,9 @@ LL |         x => (),
 LL |         x._0 => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.0.1 } => (),
-   |         +++++++       +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:9:9
+  --> $DIR/recover-pat-exprs.rs:11:9
    |
 LL |         x.4.y.17.__z => (),
    |         ^^^^^^^^^^^^ not a pattern
@@ -104,8 +92,9 @@ LL |         x.4.y.17.__z => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x.4.y.17.__z => (),
-   |         ~~~ ++++++++++++++++++++++
+LL -         x.4.y.17.__z => (),
+LL +         val if val == x.4.y.17.__z => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.4.y.17.__z;
@@ -115,43 +104,39 @@ LL |         x => (),
 LL |         x.0.1 => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.4.y.17.__z } => (),
-   |         +++++++              +
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
-  --> $DIR/recover-pat-exprs.rs:12:12
+  --> $DIR/recover-pat-exprs.rs:14:12
    |
 LL |     { let x.0e0; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
-  --> $DIR/recover-pat-exprs.rs:13:12
+  --> $DIR/recover-pat-exprs.rs:15:12
    |
 LL |     { let x.-0.0; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
-  --> $DIR/recover-pat-exprs.rs:14:12
+  --> $DIR/recover-pat-exprs.rs:16:12
    |
 LL |     { let x.-0; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
-  --> $DIR/recover-pat-exprs.rs:16:12
+  --> $DIR/recover-pat-exprs.rs:18:12
    |
 LL |     { let x.0u32; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
-  --> $DIR/recover-pat-exprs.rs:17:12
+  --> $DIR/recover-pat-exprs.rs:19:12
    |
 LL |     { let x.0.0_f64; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:23:9
+  --> $DIR/recover-pat-exprs.rs:25:9
    |
 LL |         x[0] => (),
    |         ^^^^ not a pattern
@@ -159,21 +144,18 @@ LL |         x[0] => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x[0] => (),
-   |         ~~~ ++++++++++++++
+LL -         x[0] => (),
+LL +         val if val == x[0] => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x[0];
 LL ~     match 0 {
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x[0] } => (),
-   |         +++++++      +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:24:9
+  --> $DIR/recover-pat-exprs.rs:26:9
    |
 LL |         x[..] => (),
    |         ^^^^^ not a pattern
@@ -181,8 +163,9 @@ LL |         x[..] => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x[..] => (),
-   |         ~~~ +++++++++++++++
+LL -         x[..] => (),
+LL +         val if val == x[..] => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x[..];
@@ -190,31 +173,27 @@ LL ~     match 0 {
 LL |         x[0] => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x[..] } => (),
-   |         +++++++       +
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
-  --> $DIR/recover-pat-exprs.rs:27:12
+  --> $DIR/recover-pat-exprs.rs:29:12
    |
 LL |     { let x[0, 1, 2]; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
-  --> $DIR/recover-pat-exprs.rs:28:12
+  --> $DIR/recover-pat-exprs.rs:30:12
    |
 LL |     { let x[0; 20]; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
-  --> $DIR/recover-pat-exprs.rs:29:12
+  --> $DIR/recover-pat-exprs.rs:31:12
    |
 LL |     { let x[]; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected one of `)`, `,`, `@`, `if`, or `|`, found `[`
-  --> $DIR/recover-pat-exprs.rs:30:13
+  --> $DIR/recover-pat-exprs.rs:32:13
    |
 LL |     { let (x[]); }
    |             ^
@@ -223,7 +202,7 @@ LL |     { let (x[]); }
    |             help: missing `,`
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:37:9
+  --> $DIR/recover-pat-exprs.rs:39:9
    |
 LL |         x.f() => (),
    |         ^^^^^ not a pattern
@@ -231,21 +210,18 @@ LL |         x.f() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x.f() => (),
-   |         ~~~ +++++++++++++++
+LL -         x.f() => (),
+LL +         val if val == x.f() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.f();
 LL ~     match 0 {
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.f() } => (),
-   |         +++++++       +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:38:9
+  --> $DIR/recover-pat-exprs.rs:40:9
    |
 LL |         x._f() => (),
    |         ^^^^^^ not a pattern
@@ -253,8 +229,9 @@ LL |         x._f() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x._f() => (),
-   |         ~~~ ++++++++++++++++
+LL -         x._f() => (),
+LL +         val if val == x._f() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x._f();
@@ -262,13 +239,9 @@ LL ~     match 0 {
 LL |         x.f() => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x._f() } => (),
-   |         +++++++        +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:39:9
+  --> $DIR/recover-pat-exprs.rs:41:9
    |
 LL |         x? => (),
    |         ^^ not a pattern
@@ -276,8 +249,9 @@ LL |         x? => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x? => (),
-   |         ~~~ ++++++++++++
+LL -         x? => (),
+LL +         val if val == x? => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x?;
@@ -286,13 +260,9 @@ LL |         x.f() => (),
 LL |         x._f() => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x? } => (),
-   |         +++++++    +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:40:9
+  --> $DIR/recover-pat-exprs.rs:42:9
    |
 LL |         ().f() => (),
    |         ^^^^^^ not a pattern
@@ -300,8 +270,9 @@ LL |         ().f() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == ().f() => (),
-   |         ~~~ ++++++++++++++++
+LL -         ().f() => (),
+LL +         val if val == ().f() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = ().f();
@@ -311,13 +282,9 @@ LL |         x._f() => (),
 LL |         x? => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { ().f() } => (),
-   |         +++++++        +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:41:9
+  --> $DIR/recover-pat-exprs.rs:43:9
    |
 LL |         (0, x)?.f() => (),
    |         ^^^^^^^^^^^ not a pattern
@@ -325,8 +292,9 @@ LL |         (0, x)?.f() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == (0, x)?.f() => (),
-   |         ~~~ +++++++++++++++++++++
+LL -         (0, x)?.f() => (),
+LL +         val if val == (0, x)?.f() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = (0, x)?.f();
@@ -336,13 +304,9 @@ LL |         x.f() => (),
 LL |         ().f() => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { (0, x)?.f() } => (),
-   |         +++++++             +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:42:9
+  --> $DIR/recover-pat-exprs.rs:44:9
    |
 LL |         x.f().g() => (),
    |         ^^^^^^^^^ not a pattern
@@ -350,8 +314,9 @@ LL |         x.f().g() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x.f().g() => (),
-   |         ~~~ +++++++++++++++++++
+LL -         x.f().g() => (),
+LL +         val if val == x.f().g() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.f().g();
@@ -361,13 +326,9 @@ LL |         x.f() => (),
 LL |         (0, x)?.f() => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.f().g() } => (),
-   |         +++++++           +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:43:9
+  --> $DIR/recover-pat-exprs.rs:45:9
    |
 LL |         0.f()?.g()?? => (),
    |         ^^^^^^^^^^^^ not a pattern
@@ -375,8 +336,9 @@ LL |         0.f()?.g()?? => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == 0.f()?.g()?? => (),
-   |         ~~~ ++++++++++++++++++++++
+LL -         0.f()?.g()?? => (),
+LL +         val if val == 0.f()?.g()?? => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 0.f()?.g()??;
@@ -386,13 +348,9 @@ LL |         x.f() => (),
 LL |         x.f().g() => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { 0.f()?.g()?? } => (),
-   |         +++++++              +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:50:9
+  --> $DIR/recover-pat-exprs.rs:52:9
    |
 LL |         x as usize => (),
    |         ^^^^^^^^^^ not a pattern
@@ -400,21 +358,18 @@ LL |         x as usize => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x as usize => (),
-   |         ~~~ ++++++++++++++++++++
+LL -         x as usize => (),
+LL +         val if val == x as usize => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x as usize;
 LL ~     match 0 {
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x as usize } => (),
-   |         +++++++            +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:51:9
+  --> $DIR/recover-pat-exprs.rs:53:9
    |
 LL |         0 as usize => (),
    |         ^^^^^^^^^^ not a pattern
@@ -422,8 +377,9 @@ LL |         0 as usize => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == 0 as usize => (),
-   |         ~~~ ++++++++++++++++++++
+LL -         0 as usize => (),
+LL +         val if val == 0 as usize => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 0 as usize;
@@ -431,13 +387,9 @@ LL ~     match 0 {
 LL |         x as usize => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { 0 as usize } => (),
-   |         +++++++            +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:52:9
+  --> $DIR/recover-pat-exprs.rs:54:9
    |
 LL |         x.f().0.4 as f32 => (),
    |         ^^^^^^^^^^^^^^^^ not a pattern
@@ -445,8 +397,9 @@ LL |         x.f().0.4 as f32 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x.f().0.4 as f32 => (),
-   |         ~~~ ++++++++++++++++++++++++++
+LL -         x.f().0.4 as f32 => (),
+LL +         val if val == x.f().0.4 as f32 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.f().0.4 as f32;
@@ -455,13 +408,9 @@ LL |         x as usize => (),
 LL |         0 as usize => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.f().0.4 as f32 } => (),
-   |         +++++++                  +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:59:9
+  --> $DIR/recover-pat-exprs.rs:61:9
    |
 LL |         1 + 1 => (),
    |         ^^^^^ not a pattern
@@ -469,21 +418,18 @@ LL |         1 + 1 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == 1 + 1 => (),
-   |         ~~~ +++++++++++++++
+LL -         1 + 1 => (),
+LL +         val if val == 1 + 1 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 1;
 LL ~     match 0 {
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { 1 + 1 } => (),
-   |         +++++++       +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:60:9
+  --> $DIR/recover-pat-exprs.rs:62:9
    |
 LL |         (1 + 2) * 3 => (),
    |         ^^^^^^^^^^^ not a pattern
@@ -491,8 +437,9 @@ LL |         (1 + 2) * 3 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == (1 + 2) * 3 => (),
-   |         ~~~ +++++++++++++++++++++
+LL -         (1 + 2) * 3 => (),
+LL +         val if val == (1 + 2) * 3 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = (1 + 2) * 3;
@@ -500,13 +447,9 @@ LL ~     match 0 {
 LL |         1 + 1 => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { (1 + 2) * 3 } => (),
-   |         +++++++             +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:63:9
+  --> $DIR/recover-pat-exprs.rs:65:9
    |
 LL |         x.0 > 2 => (),
    |         ^^^^^^^ not a pattern
@@ -514,8 +457,9 @@ LL |         x.0 > 2 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == (x.0 > 2) => (),
-   |         ~~~ +++++++++++++++++++
+LL -         x.0 > 2 => (),
+LL +         val if val == (x.0 > 2) => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0 > 2;
@@ -525,13 +469,9 @@ LL |         1 + 1 => (),
 LL |
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.0 > 2 } => (),
-   |         +++++++         +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:64:9
+  --> $DIR/recover-pat-exprs.rs:66:9
    |
 LL |         x.0 == 2 => (),
    |         ^^^^^^^^ not a pattern
@@ -539,8 +479,9 @@ LL |         x.0 == 2 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == (x.0 == 2) => (),
-   |         ~~~ ++++++++++++++++++++
+LL -         x.0 == 2 => (),
+LL +         val if val == (x.0 == 2) => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0 == 2;
@@ -550,13 +491,9 @@ LL |         1 + 1 => (),
 LL |         x.0 > 2 => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.0 == 2 } => (),
-   |         +++++++          +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:69:13
+  --> $DIR/recover-pat-exprs.rs:71:13
    |
 LL |         (x, y.0 > 2) if x != 0 => (),
    |             ^^^^^^^ not a pattern
@@ -564,21 +501,18 @@ LL |         (x, y.0 > 2) if x != 0 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to the match arm guard
    |
-LL |         (x, val) if x != 0 && val == (y.0 > 2) => (),
-   |             ~~~            +++++++++++++++++++
+LL -         (x, y.0 > 2) if x != 0 => (),
+LL +         (x, val) if x != 0 && val == (y.0 > 2) => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = y.0 > 2;
 LL ~     match (0, 0) {
 LL ~         (x, VAL) if x != 0 => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         (x, const { y.0 > 2 }) if x != 0 => (),
-   |             +++++++         +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:70:13
+  --> $DIR/recover-pat-exprs.rs:72:13
    |
 LL |         (x, y.0 > 2) if x != 0 || x != 1 => (),
    |             ^^^^^^^ not a pattern
@@ -586,8 +520,9 @@ LL |         (x, y.0 > 2) if x != 0 || x != 1 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to the match arm guard
    |
-LL |         (x, val) if (x != 0 || x != 1) && val == (y.0 > 2) => (),
-   |             ~~~     +                +++++++++++++++++++++
+LL -         (x, y.0 > 2) if x != 0 || x != 1 => (),
+LL +         (x, val) if (x != 0 || x != 1) && val == (y.0 > 2) => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = y.0 > 2;
@@ -595,13 +530,9 @@ LL ~     match (0, 0) {
 LL |         (x, y.0 > 2) if x != 0 => (),
 LL ~         (x, VAL) if x != 0 || x != 1 => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         (x, const { y.0 > 2 }) if x != 0 || x != 1 => (),
-   |             +++++++         +
 
 error: left-hand side of `@` must be a binding
-  --> $DIR/recover-pat-exprs.rs:83:9
+  --> $DIR/recover-pat-exprs.rs:85:9
    |
 LL |         x.sqrt() @ .. => (),
    |         --------^^^--
@@ -612,13 +543,13 @@ LL |         x.sqrt() @ .. => (),
    = note: bindings are `x`, `mut x`, `ref x`, and `ref mut x`
 
 error: expected one of `)`, `,`, `if`, or `|`, found `+`
-  --> $DIR/recover-pat-exprs.rs:97:12
+  --> $DIR/recover-pat-exprs.rs:99:12
    |
 LL |         (_ + 1) => (),
    |            ^ expected one of `)`, `,`, `if`, or `|`
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:81:9
+  --> $DIR/recover-pat-exprs.rs:83:9
    |
 LL |         u8::MAX.abs() => (),
    |         ^^^^^^^^^^^^^ not a pattern
@@ -626,21 +557,18 @@ LL |         u8::MAX.abs() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == u8::MAX.abs() => (),
-   |         ~~~ +++++++++++++++++++++++
+LL -         u8::MAX.abs() => (),
+LL +         val if val == u8::MAX.abs() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = u8::MAX.abs();
 LL ~     match u8::MAX {
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { u8::MAX.abs() } => (),
-   |         +++++++               +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:86:17
+  --> $DIR/recover-pat-exprs.rs:88:17
    |
 LL |         z @ w @ v.u() => (),
    |                 ^^^^^ not a pattern
@@ -648,8 +576,9 @@ LL |         z @ w @ v.u() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         z @ w @ val if val == v.u() => (),
-   |                 ~~~ +++++++++++++++
+LL -         z @ w @ v.u() => (),
+LL +         z @ w @ val if val == v.u() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = v.u();
@@ -659,13 +588,9 @@ LL |         u8::MAX.abs() => (),
 LL |
 LL ~         z @ w @ VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         z @ w @ const { v.u() } => (),
-   |                 +++++++       +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:88:9
+  --> $DIR/recover-pat-exprs.rs:90:9
    |
 LL |         y.ilog(3) => (),
    |         ^^^^^^^^^ not a pattern
@@ -673,8 +598,9 @@ LL |         y.ilog(3) => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == y.ilog(3) => (),
-   |         ~~~ +++++++++++++++++++
+LL -         y.ilog(3) => (),
+LL +         val if val == y.ilog(3) => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = y.ilog(3);
@@ -684,13 +610,9 @@ LL |         u8::MAX.abs() => (),
 LL |
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { y.ilog(3) } => (),
-   |         +++++++           +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:90:9
+  --> $DIR/recover-pat-exprs.rs:92:9
    |
 LL |         n + 1 => (),
    |         ^^^^^ not a pattern
@@ -698,8 +620,9 @@ LL |         n + 1 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == n + 1 => (),
-   |         ~~~ +++++++++++++++
+LL -         n + 1 => (),
+LL +         val if val == n + 1 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = n + 1;
@@ -709,13 +632,9 @@ LL |         u8::MAX.abs() => (),
 LL |
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { n + 1 } => (),
-   |         +++++++       +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:92:10
+  --> $DIR/recover-pat-exprs.rs:94:10
    |
 LL |         ("".f() + 14 * 8) => (),
    |          ^^^^^^^^^^^^^^^ not a pattern
@@ -723,8 +642,9 @@ LL |         ("".f() + 14 * 8) => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         (val) if val == "".f() + 14 * 8 => (),
-   |          ~~~  +++++++++++++++++++++++++
+LL -         ("".f() + 14 * 8) => (),
+LL +         (val) if val == "".f() + 14 * 8 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = "".f() + 14 * 8;
@@ -734,13 +654,9 @@ LL |         u8::MAX.abs() => (),
 LL |
 LL ~         (VAL) => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         (const { "".f() + 14 * 8 }) => (),
-   |          +++++++                 +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:95:9
+  --> $DIR/recover-pat-exprs.rs:97:9
    |
 LL |         f?() => (),
    |         ^^^^ not a pattern
@@ -748,8 +664,9 @@ LL |         f?() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == f?() => (),
-   |         ~~~ ++++++++++++++
+LL -         f?() => (),
+LL +         val if val == f?() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = f?();
@@ -759,13 +676,9 @@ LL |         u8::MAX.abs() => (),
 LL |         0 | ((1) | 2) | 3 => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { f?() } => (),
-   |         +++++++      +
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:101:9
+  --> $DIR/recover-pat-exprs.rs:103:9
    |
 LL |     let 1 + 1 = 2;
    |         ^^^^^ not a pattern
@@ -773,7 +686,7 @@ LL |     let 1 + 1 = 2;
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected one of `)`, `,`, `@`, `if`, or `|`, found `*`
-  --> $DIR/recover-pat-exprs.rs:104:28
+  --> $DIR/recover-pat-exprs.rs:106:28
    |
 LL |     let b = matches!(x, (x * x | x.f()) | x[0]);
    |                            ^ expected one of `)`, `,`, `@`, `if`, or `|`
@@ -782,7 +695,7 @@ LL |     let b = matches!(x, (x * x | x.f()) | x[0]);
    = note: while parsing argument for this `pat` macro fragment
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:60:10
+  --> $DIR/recover-pat-exprs.rs:62:10
    |
 LL |         (1 + 2) * 3 => (),
    |          ^^^^^ not a pattern
@@ -790,7 +703,7 @@ LL |         (1 + 2) * 3 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:75:5
+  --> $DIR/recover-pat-exprs.rs:77:5
    |
 LL |     1 + 2 * PI.cos() => 2,
    |     ^^^^^^^^^^^^^^^^ not a pattern
@@ -798,7 +711,7 @@ LL |     1 + 2 * PI.cos() => 2,
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:83:9
+  --> $DIR/recover-pat-exprs.rs:85:9
    |
 LL |         x.sqrt() @ .. => (),
    |         ^^^^^^^^ not a pattern

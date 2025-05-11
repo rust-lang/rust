@@ -1,8 +1,13 @@
-error: lifetime in trait object type must be followed by `+`
+error: lifetimes must be followed by `+` to form a trait object type
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:29
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |                             ^^
+   |
+help: consider adding a trait bound after the potential lifetime bound
+   |
+LL | fn foo<'a>(arg: Box<dyn X<Y('a + /* Trait */) = &'a ()>>) {}
+   |                                +++++++++++++
 
 error: parenthesized generic arguments cannot be used in associated type constraints
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:27
@@ -12,8 +17,9 @@ LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |
 help: use angle brackets instead
    |
-LL | fn foo<'a>(arg: Box<dyn X<Y<'a> = &'a ()>>) {}
-   |                            ~  ~
+LL - fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
+LL + fn foo<'a>(arg: Box<dyn X<Y<'a> = &'a ()>>) {}
+   |
 
 error: parenthesized generic arguments cannot be used in associated type constraints
   --> $DIR/gat-trait-path-parenthesised-args.rs:18:27
@@ -123,17 +129,18 @@ error[E0224]: at least one trait is required for an object type
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |                             ^^
 
-error[E0038]: the trait `X` cannot be made into an object
+error[E0038]: the trait `X` is not dyn compatible
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:21
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
-   |                     ^^^^^^^^^^^^^^^^^^^^^ `X` cannot be made into an object
+   |                     ^^^^^^^^^^^^^^^^^^^^^ `X` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/gat-trait-path-parenthesised-args.rs:2:8
    |
 LL | trait X {
-   |       - this trait cannot be made into an object...
+   |       - this trait is not dyn compatible...
 LL |   type Y<'a>;
    |        ^ ...because it contains the generic associated type `Y`
    = help: consider moving `Y` to another trait
@@ -188,17 +195,18 @@ help: add missing lifetime argument
 LL | fn bar<'a>(arg: Box<dyn X<Y('_) = ()>>) {}
    |                             ++
 
-error[E0038]: the trait `X` cannot be made into an object
+error[E0038]: the trait `X` is not dyn compatible
   --> $DIR/gat-trait-path-parenthesised-args.rs:18:21
    |
 LL | fn bar<'a>(arg: Box<dyn X<Y() = ()>>) {}
-   |                     ^^^^^^^^^^^^^^^ `X` cannot be made into an object
+   |                     ^^^^^^^^^^^^^^^ `X` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/gat-trait-path-parenthesised-args.rs:2:8
    |
 LL | trait X {
-   |       - this trait cannot be made into an object...
+   |       - this trait is not dyn compatible...
 LL |   type Y<'a>;
    |        ^ ...because it contains the generic associated type `Y`
    = help: consider moving `Y` to another trait

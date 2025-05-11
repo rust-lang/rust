@@ -10,7 +10,7 @@ help: add `#![feature(adt_const_params)]` to the crate attributes to enable more
 LL + #![feature(adt_const_params)]
    |
 
-error: `RangeFrom<usize>` is forbidden as the type of a const generic parameter
+error: `std::ops::RangeFrom<usize>` is forbidden as the type of a const generic parameter
   --> $DIR/const-generics-range.rs:13:28
    |
 LL | struct _RangeFrom<const R: std::ops::RangeFrom<usize>>;
@@ -34,7 +34,7 @@ help: add `#![feature(adt_const_params)]` to the crate attributes to enable more
 LL + #![feature(adt_const_params)]
    |
 
-error: `RangeInclusive<usize>` is forbidden as the type of a const generic parameter
+error: `std::ops::RangeInclusive<usize>` is forbidden as the type of a const generic parameter
   --> $DIR/const-generics-range.rs:24:33
    |
 LL | struct _RangeInclusive<const R: std::ops::RangeInclusive<usize>>;

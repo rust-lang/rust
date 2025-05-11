@@ -1,6 +1,6 @@
 //! Test that `RangeTo` and `RangeToInclusive` generate identical
 //! (and optimal) code; #63646
-//@ compile-flags: -O -Zmerge-functions=disabled
+//@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
 #![crate_type = "lib"]
 
 #[no_mangle]

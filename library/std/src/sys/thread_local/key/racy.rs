@@ -6,7 +6,7 @@
 //! should be more lightweight and avoids circular dependencies with the rest of
 //! `std`.
 
-use crate::sync::atomic::{self, AtomicUsize, Ordering};
+use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 
 /// A type for TLS keys that are statically allocated.
 ///
@@ -14,7 +14,7 @@ use crate::sync::atomic::{self, AtomicUsize, Ordering};
 /// dependencies with the rest of `std`.
 pub struct LazyKey {
     /// Inner static TLS key (internals).
-    key: AtomicUsize,
+    key: Atomic<usize>,
     /// Destructor for the TLS value.
     dtor: Option<unsafe extern "C" fn(*mut u8)>,
 }
@@ -31,7 +31,7 @@ const KEY_SENTVAL: usize = libc::PTHREAD_KEYS_MAX + 1;
 
 impl LazyKey {
     pub const fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> LazyKey {
-        LazyKey { key: atomic::AtomicUsize::new(KEY_SENTVAL), dtor }
+        LazyKey { key: AtomicUsize::new(KEY_SENTVAL), dtor }
     }
 
     #[inline]

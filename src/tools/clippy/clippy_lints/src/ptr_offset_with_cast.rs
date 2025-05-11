@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::SpanRangeExt;
+use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::sym;
 use std::fmt;
 
 declare_clippy_lint! {
@@ -77,10 +77,10 @@ impl<'tcx> LateLintPass<'tcx> for PtrOffsetWithCast {
 
 // If the given expression is a cast from a usize, return the lhs of the cast
 fn expr_as_cast_from_usize<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::Cast(cast_lhs_expr, _) = expr.kind {
-        if is_expr_ty_usize(cx, cast_lhs_expr) {
-            return Some(cast_lhs_expr);
-        }
+    if let ExprKind::Cast(cast_lhs_expr, _) = expr.kind
+        && is_expr_ty_usize(cx, cast_lhs_expr)
+    {
+        return Some(cast_lhs_expr);
     }
     None
 }
@@ -91,14 +91,14 @@ fn expr_as_ptr_offset_call<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
 ) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>, Method)> {
-    if let ExprKind::MethodCall(path_segment, arg_0, [arg_1], _) = &expr.kind {
-        if is_expr_ty_raw_ptr(cx, arg_0) {
-            if path_segment.ident.name == sym::offset {
-                return Some((arg_0, arg_1, Method::Offset));
-            }
-            if path_segment.ident.name.as_str() == "wrapping_offset" {
-                return Some((arg_0, arg_1, Method::WrappingOffset));
-            }
+    if let ExprKind::MethodCall(path_segment, arg_0, [arg_1], _) = &expr.kind
+        && is_expr_ty_raw_ptr(cx, arg_0)
+    {
+        if path_segment.ident.name == sym::offset {
+            return Some((arg_0, arg_1, Method::Offset));
+        }
+        if path_segment.ident.name == sym::wrapping_offset {
+            return Some((arg_0, arg_1, Method::WrappingOffset));
         }
     }
     None
@@ -111,7 +111,7 @@ fn is_expr_ty_usize(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 // Is the type of the expression a raw pointer?
 fn is_expr_ty_raw_ptr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    cx.typeck_results().expr_ty(expr).is_unsafe_ptr()
+    cx.typeck_results().expr_ty(expr).is_raw_ptr()
 }
 
 fn build_suggestion(

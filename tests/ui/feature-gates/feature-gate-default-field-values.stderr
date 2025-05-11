@@ -130,7 +130,10 @@ error[E0797]: base expression required after `..`
 LL |     let x = Foo { .. };
    |                     ^
    |
-   = help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+   |
+LL + #![feature(default_field_values)]
+   |
 help: add a base expression here
    |
 LL |     let x = Foo { ../* expr */ };
@@ -142,7 +145,10 @@ error[E0797]: base expression required after `..`
 LL |     let z = Foo { baz: 1, .. };
    |                             ^
    |
-   = help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+   |
+LL + #![feature(default_field_values)]
+   |
 help: add a base expression here
    |
 LL |     let z = Foo { baz: 1, ../* expr */ };
@@ -154,7 +160,10 @@ error[E0797]: base expression required after `..`
 LL |     let x = Bar::Foo { .. };
    |                          ^
    |
-   = help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+   |
+LL + #![feature(default_field_values)]
+   |
 help: add a base expression here
    |
 LL |     let x = Bar::Foo { ../* expr */ };
@@ -166,7 +175,10 @@ error[E0797]: base expression required after `..`
 LL |     let z = Bar::Foo { baz: 1, .. };
    |                                  ^
    |
-   = help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+   |
+LL + #![feature(default_field_values)]
+   |
 help: add a base expression here
    |
 LL |     let z = Bar::Foo { baz: 1, ../* expr */ };
@@ -178,7 +190,10 @@ error[E0797]: base expression required after `..`
 LL |     let x = Qux::<i32, 4> { .. };
    |                               ^
    |
-   = help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+   |
+LL + #![feature(default_field_values)]
+   |
 help: add a base expression here
    |
 LL |     let x = Qux::<i32, 4> { ../* expr */ };
@@ -190,7 +205,10 @@ error[E0797]: base expression required after `..`
 LL |     assert!(matches!(Qux::<i32, 4> { bar: S, baz: 42, bat: 2, bay: 4, .. }, x));
    |                                                                         ^
    |
-   = help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+   |
+LL + #![feature(default_field_values)]
+   |
 help: add a base expression here
    |
 LL |     assert!(matches!(Qux::<i32, 4> { bar: S, baz: 42, bat: 2, bay: 4, ../* expr */ }, x));
@@ -202,7 +220,10 @@ error[E0797]: base expression required after `..`
 LL |     let y = Opt { mandatory: None, .. };
    |                                      ^
    |
-   = help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+   |
+LL + #![feature(default_field_values)]
+   |
 help: add a base expression here
    |
 LL |     let y = Opt { mandatory: None, ../* expr */ };
@@ -214,7 +235,10 @@ error[E0797]: base expression required after `..`
 LL |     assert!(matches!(Opt { mandatory: None, .. }, z));
    |                                               ^
    |
-   = help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+   |
+LL + #![feature(default_field_values)]
+   |
 help: add a base expression here
    |
 LL |     assert!(matches!(Opt { mandatory: None, ../* expr */ }, z));
@@ -260,7 +284,10 @@ error[E0797]: base expression required after `..`
 LL |     let y = OptEnum::Variant { mandatory: None, .. };
    |                                                   ^
    |
-   = help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+   |
+LL + #![feature(default_field_values)]
+   |
 help: add a base expression here
    |
 LL |     let y = OptEnum::Variant { mandatory: None, ../* expr */ };
@@ -272,7 +299,10 @@ error[E0797]: base expression required after `..`
 LL |     assert!(matches!(OptEnum::Variant { mandatory: None, .. }, z));
    |                                                            ^
    |
-   = help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+   |
+LL + #![feature(default_field_values)]
+   |
 help: add a base expression here
    |
 LL |     assert!(matches!(OptEnum::Variant { mandatory: None, ../* expr */ }, z));

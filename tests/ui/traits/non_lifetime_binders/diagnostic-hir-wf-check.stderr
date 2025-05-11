@@ -1,0 +1,65 @@
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/diagnostic-hir-wf-check.rs:4:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0277]: the trait bound `(): B` is not satisfied
+  --> $DIR/diagnostic-hir-wf-check.rs:13:12
+   |
+LL | fn b() -> (W<()>, impl for<C> A<C>) { (W(()), ()) }
+   |            ^^^^^ the trait `B` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/diagnostic-hir-wf-check.rs:10:1
+   |
+LL | trait B {}
+   | ^^^^^^^
+note: required by a bound in `W`
+  --> $DIR/diagnostic-hir-wf-check.rs:11:13
+   |
+LL | struct W<T: B>(T);
+   |             ^ required by this bound in `W`
+
+error[E0277]: the trait bound `(): B` is not satisfied
+  --> $DIR/diagnostic-hir-wf-check.rs:13:42
+   |
+LL | fn b() -> (W<()>, impl for<C> A<C>) { (W(()), ()) }
+   |                                        - ^^ the trait `B` is not implemented for `()`
+   |                                        |
+   |                                        required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/diagnostic-hir-wf-check.rs:10:1
+   |
+LL | trait B {}
+   | ^^^^^^^
+note: required by a bound in `W`
+  --> $DIR/diagnostic-hir-wf-check.rs:11:13
+   |
+LL | struct W<T: B>(T);
+   |             ^ required by this bound in `W`
+
+error[E0277]: the trait bound `(): B` is not satisfied
+  --> $DIR/diagnostic-hir-wf-check.rs:13:40
+   |
+LL | fn b() -> (W<()>, impl for<C> A<C>) { (W(()), ()) }
+   |                                        ^^^^^ the trait `B` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/diagnostic-hir-wf-check.rs:10:1
+   |
+LL | trait B {}
+   | ^^^^^^^
+note: required by a bound in `W`
+  --> $DIR/diagnostic-hir-wf-check.rs:11:13
+   |
+LL | struct W<T: B>(T);
+   |             ^ required by this bound in `W`
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

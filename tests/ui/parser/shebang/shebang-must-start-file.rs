@@ -1,5 +1,5 @@
 // something on the first line for tidy
-#!/bin/bash  //~ expected `[`, found `/`
+#!/bin/bash  //~ ERROR expected `[`, found `/`
 
 //@ reference: input.shebang
 

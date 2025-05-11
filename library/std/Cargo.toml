@@ -6,7 +6,8 @@ version = "0.0.0"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust.git"
 description = "The Rust Standard Library"
-edition = "2021"
+edition = "2024"
+autobenches = false
 
 [lib]
 crate-type = ["dylib", "rlib"]
@@ -17,7 +18,7 @@ cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core", public = true }
-compiler_builtins = { version = "=0.1.140" }
+compiler_builtins = { version = "=0.1.158" }
 unwind = { path = "../unwind" }
 hashbrown = { version = "0.15", default-features = false, features = [
     'rustc-dep-of-std',
@@ -30,11 +31,11 @@ std_detect = { path = "../stdarch/crates/std_detect", default-features = false, 
 rustc-demangle = { version = "0.1.24", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))'.dependencies]
-miniz_oxide = { version = "0.7.0", optional = true, default-features = false }
-addr2line = { version = "0.22.0", optional = true, default-features = false }
+miniz_oxide = { version = "0.8.0", optional = true, default-features = false }
+addr2line = { version = "0.24.0", optional = true, default-features = false }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
-libc = { version = "0.2.169", default-features = false, features = [
+libc = { version = "0.2.172", default-features = false, features = [
     'rustc-dep-of-std',
 ], public = true }
 
@@ -56,12 +57,12 @@ object = { version = "0.36.0", default-features = false, optional = true, featur
     'archive',
 ] }
 
-[target.'cfg(windows)'.dependencies.windows-targets]
+[target.'cfg(any(windows, target_os = "cygwin"))'.dependencies.windows-targets]
 path = "../windows_targets"
 
 [dev-dependencies]
-rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
-rand_xorshift = "0.3.0"
+rand = { version = "0.9.0", default-features = false, features = ["alloc"] }
+rand_xorshift = "0.4.0"
 
 [target.'cfg(any(all(target_family = "wasm", target_os = "unknown"), target_os = "xous", all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
 dlmalloc = { version = "0.2.4", features = ['rustc-dep-of-std'] }
@@ -72,7 +73,7 @@ fortanix-sgx-abi = { version = "0.5.0", features = [
 ], public = true }
 
 [target.'cfg(target_os = "hermit")'.dependencies]
-hermit-abi = { version = "0.4.0", features = [
+hermit-abi = { version = "0.5.0", features = [
     'rustc-dep-of-std',
 ], public = true }
 
@@ -82,8 +83,8 @@ wasi = { version = "0.11.0", features = [
 ], default-features = false }
 
 [target.'cfg(target_os = "uefi")'.dependencies]
-r-efi = { version = "4.5.0", features = ['rustc-dep-of-std'] }
-r-efi-alloc = { version = "1.0.0", features = ['rustc-dep-of-std'] }
+r-efi = { version = "5.2.0", features = ['rustc-dep-of-std'] }
+r-efi-alloc = { version = "2.0.0", features = ['rustc-dep-of-std'] }
 
 [features]
 backtrace = [
@@ -109,11 +110,17 @@ panic_immediate_abort = [
 # Choose algorithms that are optimized for binary size instead of runtime performance
 optimize_for_size = ["core/optimize_for_size", "alloc/optimize_for_size"]
 
+# Make `RefCell` store additional debugging information, which is printed out when
+# a borrow error occurs
+debug_refcell = ["core/debug_refcell"]
+# Make `TypeId` store a reference to the name of the type, so that it can print that name.
+debug_typeid = ["core/debug_typeid"]
+
+
 # Enable std_detect default features for stdarch/crates/std_detect:
 # https://github.com/rust-lang/stdarch/blob/master/crates/std_detect/Cargo.toml
 std_detect_file_io = ["std_detect/std_detect_file_io"]
 std_detect_dlsym_getauxval = ["std_detect/std_detect_dlsym_getauxval"]
-std_detect_env_override = ["std_detect/std_detect_env_override"]
 
 # Enable using raw-dylib for Windows imports.
 # This will eventually be the default.
@@ -130,6 +137,18 @@ name = "pipe-subprocess"
 path = "tests/pipe_subprocess.rs"
 harness = false
 
+[[test]]
+name = "sync"
+path = "tests/sync/lib.rs"
+
+[[test]]
+name = "floats"
+path = "tests/floats/lib.rs"
+
+[[test]]
+name = "thread_local"
+path = "tests/thread_local/lib.rs"
+
 [[bench]]
 name = "stdbenches"
 path = "benches/lib.rs"
@@ -139,9 +158,14 @@ test = true
 level = "warn"
 check-cfg = [
     'cfg(bootstrap)',
-    'cfg(target_arch, values("xtensa"))',
     # std use #[path] imports to portable-simd `std_float` crate
     # and to the `backtrace` crate which messes-up with Cargo list
     # of declared features, we therefor expect any feature cfg
     'cfg(feature, values(any()))',
+    # Internal features aren't marked known config by default, we use these to
+    # gate tests.
+    'cfg(target_has_reliable_f16)',
+    'cfg(target_has_reliable_f16_math)',
+    'cfg(target_has_reliable_f128)',
+    'cfg(target_has_reliable_f128_math)',
 ]

@@ -7,7 +7,7 @@
 //! there is no value in lifting these out into the outline module test since they will either not
 //! show up for normal completions, or they won't show completions other than lifetimes depending
 //! on the fixture input.
-use hir::{sym, Name, ScopeDef};
+use hir::{Name, ScopeDef, sym};
 
 use crate::{
     completions::Completions,
@@ -31,13 +31,13 @@ pub(crate) fn complete_lifetime(
             acc.add_lifetime(ctx, name);
         }
     });
-    acc.add_lifetime(ctx, Name::new_symbol_root(sym::tick_static.clone()));
+    acc.add_lifetime(ctx, Name::new_symbol_root(sym::tick_static));
     if !in_lifetime_param_bound
         && def.is_some_and(|def| {
             !matches!(def, hir::GenericDef::Function(_) | hir::GenericDef::Impl(_))
         })
     {
-        acc.add_lifetime(ctx, Name::new_symbol_root(sym::tick_underscore.clone()));
+        acc.add_lifetime(ctx, Name::new_symbol_root(sym::tick_underscore));
     }
 }
 
@@ -59,14 +59,9 @@ pub(crate) fn complete_label(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
-    use crate::tests::{check_edit, completion_list};
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture);
-        expect.assert_eq(&actual);
-    }
+    use crate::tests::{check, check_edit};
 
     #[test]
     fn check_lifetime_edit() {
@@ -121,13 +116,13 @@ fn foo<'lifetime>(foo: &'a$0) {}
         check(
             r#"
 struct Foo;
-impl<'impl> Foo {
+impl<'r#impl> Foo {
     fn foo<'func>(&'a$0 self) {}
 }
 "#,
             expect![[r#"
                 lt 'func
-                lt 'impl
+                lt 'r#impl
                 lt 'static
             "#]],
         );

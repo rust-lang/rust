@@ -51,10 +51,7 @@ enum Ordering {
 }
 
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-fn three_way_compare<T: Copy>(lhs: T, rhs: T) -> Ordering {
-    loop {}
-}
+fn three_way_compare<T: Copy>(lhs: T, rhs: T) -> Ordering;
 
 // ^^^^^ core
 

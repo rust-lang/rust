@@ -13,7 +13,7 @@ LL | fn projection_bound<T: for<'a> Trait<'a, Assoc = usize>>() {}
    |                                          ^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/candidate-from-env-universe-err-project.rs:53:30
+  --> $DIR/candidate-from-env-universe-err-project.rs:52:30
    |
 LL |     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
@@ -22,7 +22,7 @@ LL |     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
               found associated type `<T as Trait<'a>>::Assoc`
 
 error[E0308]: mismatched types
-  --> $DIR/candidate-from-env-universe-err-project.rs:53:30
+  --> $DIR/candidate-from-env-universe-err-project.rs:52:30
    |
 LL |     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other

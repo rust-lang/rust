@@ -47,8 +47,9 @@ LL |     let _ = t.as_mut_ref();
    |
 help: there is a method `as_mut` with a similar name
    |
-LL |     let _ = t.as_mut();
-   |               ~~~~~~
+LL -     let _ = t.as_mut_ref();
+LL +     let _ = t.as_mut();
+   |
 
 error[E0599]: no method named `as_ref_mut` found for raw pointer `*mut u8` in the current scope
   --> $DIR/suggest-convert-ptr-to-ref.rs:13:15
@@ -58,8 +59,9 @@ LL |     let _ = t.as_ref_mut();
    |
 help: there is a method `as_mut` with a similar name
    |
-LL |     let _ = t.as_mut();
-   |               ~~~~~~
+LL -     let _ = t.as_ref_mut();
+LL +     let _ = t.as_mut();
+   |
 
 error[E0599]: no method named `make_ascii_lowercase` found for raw pointer `*const u8` in the current scope
   --> $DIR/suggest-convert-ptr-to-ref.rs:16:7

@@ -30,6 +30,14 @@ LL |     -> <dyn Iterator<Item = impl Debug> as Iterator>::Item
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
-error: aborting due to 4 previous errors
+error[E0562]: `impl Trait` is not allowed in paths
+  --> $DIR/impl_trait_projections.rs:38:68
+   |
+LL | fn parametrized_value_in_anon_const_is_disallowed() -> [(); None::<impl Sized>] {
+   |                                                                    ^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0562`.

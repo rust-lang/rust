@@ -61,8 +61,7 @@ fn all_read_accesses_commute() {
                 // ... and produce the same final result.
                 assert_eq!(
                     loc12, loc21,
-                    "Read accesses {:?} followed by {:?} do not commute !",
-                    rel1, rel2
+                    "Read accesses {rel1:?} followed by {rel2:?} do not commute !"
                 );
             }
         }
@@ -674,8 +673,8 @@ mod spurious_read {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let (x, y) = self.retag_permissions();
             write!(f, "{}; ", self.xy_rel)?;
-            write!(f, "y: ({}); ", y,)?;
-            write!(f, "retag x ({}); ", x)?;
+            write!(f, "y: ({y}); ")?;
+            write!(f, "retag x ({x}); ")?;
 
             write!(f, "<arbitrary code>; <spurious read x>;")?;
             Ok(())
@@ -730,17 +729,17 @@ mod spurious_read {
                         // protector.
                         final_source
                             .distinguishable::</*X*/ AllowRet, /*Y*/ AllowRet>(&final_target)
-                            .then_some(format!("{}", final_target))
+                            .then_some(format!("{final_target}"))
                     } else {
                         Some(format!("UB"))
                     }
                 };
                 if let Some(final_target) = distinguishable {
                     eprintln!(
-                        "For pattern '{}', inserting a spurious read through x makes the final state '{}' instead of '{}' which is observable",
-                        pat, final_target, final_source
+                        "For pattern '{pat}', inserting a spurious read through x makes the final state '{final_target}' \
+                        instead of '{final_source}' which is observable"
                     );
-                    eprintln!("  (arbitrary code instanciated with '{}')", opaque);
+                    eprintln!("  (arbitrary code instanciated with '{opaque}')");
                     err += 1;
                     // We found an instanciation of the opaque code that makes this Pattern
                     // fail, we don't really need to check the rest.

@@ -21,58 +21,67 @@ impl Trait for Struct {}
 
 fn fn_pointer_to_integer() {
     let _ = foo as i8;
-    //~^ ERROR: casting function pointer `foo` to `i8`
-    //~| NOTE: `-D clippy::fn-to-numeric-cast-any` implied by `-D warnings`
+    //~^ fn_to_numeric_cast_any
+
     let _ = foo as i16;
-    //~^ ERROR: casting function pointer `foo` to `i16`
+    //~^ fn_to_numeric_cast_any
+
     let _ = foo as i32;
-    //~^ ERROR: casting function pointer `foo` to `i32`
+    //~^ fn_to_numeric_cast_any
+
     let _ = foo as i64;
-    //~^ ERROR: casting function pointer `foo` to `i64`
+    //~^ fn_to_numeric_cast_any
+
     let _ = foo as i128;
-    //~^ ERROR: casting function pointer `foo` to `i128`
+    //~^ fn_to_numeric_cast_any
+
     let _ = foo as isize;
-    //~^ ERROR: casting function pointer `foo` to `isize`
+    //~^ fn_to_numeric_cast_any
 
     let _ = foo as u8;
-    //~^ ERROR: casting function pointer `foo` to `u8`
+    //~^ fn_to_numeric_cast_any
+
     let _ = foo as u16;
-    //~^ ERROR: casting function pointer `foo` to `u16`
+    //~^ fn_to_numeric_cast_any
+
     let _ = foo as u32;
-    //~^ ERROR: casting function pointer `foo` to `u32`
+    //~^ fn_to_numeric_cast_any
+
     let _ = foo as u64;
-    //~^ ERROR: casting function pointer `foo` to `u64`
+    //~^ fn_to_numeric_cast_any
+
     let _ = foo as u128;
-    //~^ ERROR: casting function pointer `foo` to `u128`
+    //~^ fn_to_numeric_cast_any
+
     let _ = foo as usize;
-    //~^ ERROR: casting function pointer `foo` to `usize`
+    //~^ fn_to_numeric_cast_any
 }
 
 fn static_method_to_integer() {
     let _ = Struct::static_method as usize;
-    //~^ ERROR: casting function pointer `Struct::static_method` to `usize`
+    //~^ fn_to_numeric_cast_any
 }
 
 fn fn_with_fn_arg(f: fn(i32) -> u32) -> usize {
     f as usize
-    //~^ ERROR: casting function pointer `f` to `usize`
+    //~^ fn_to_numeric_cast_any
 }
 
 fn fn_with_generic_static_trait_method<T: Trait>() -> usize {
     T::static_method as usize
-    //~^ ERROR: casting function pointer `T::static_method` to `usize`
+    //~^ fn_to_numeric_cast_any
 }
 
 fn closure_to_fn_to_integer() {
     let clos = |x| x * 2_u32;
 
     let _ = (clos as fn(u32) -> u32) as usize;
-    //~^ ERROR: casting function pointer `(clos as fn(u32) -> u32)` to `usize`
+    //~^ fn_to_numeric_cast_any
 }
 
 fn fn_to_raw_ptr() {
     let _ = foo as *const ();
-    //~^ ERROR: casting function pointer `foo` to `*const ()`
+    //~^ fn_to_numeric_cast_any
 }
 
 fn cast_fn_to_self() {

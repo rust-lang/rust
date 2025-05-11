@@ -1,19 +1,20 @@
 use hir::{FileRange, Semantics};
 use ide_db::text_edit::TextRange;
 use ide_db::{
+    EditionedFileId, RootDatabase,
     defs::Definition,
     search::{SearchScope, UsageSearchResult},
-    EditionedFileId, RootDatabase,
 };
 use syntax::{
+    AstNode,
     ast::{
-        self, make::impl_trait_type, HasGenericParams, HasName, HasTypeBounds, Name, NameLike,
-        PathType,
+        self, HasGenericParams, HasName, HasTypeBounds, Name, NameLike, PathType,
+        make::impl_trait_type,
     },
-    match_ast, ted, AstNode,
+    match_ast, ted,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: replace_named_generic_with_impl
 //
@@ -69,7 +70,7 @@ pub(crate) fn replace_named_generic_with_impl(
     let target = type_param.syntax().text_range();
 
     acc.add(
-        AssistId("replace_named_generic_with_impl", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("replace_named_generic_with_impl"),
         "Replace named generic with impl trait",
         target,
         |edit| {

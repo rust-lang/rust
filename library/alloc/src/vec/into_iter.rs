@@ -168,7 +168,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
 
         // SAFETY: This allocation originally came from a `Vec`, so it passes
         // all those checks. We have `this.buf` ≤ `this.ptr` ≤ `this.end`,
-        // so the `sub_ptr`s below cannot wrap, and will produce a well-formed
+        // so the `offset_from_unsigned`s below cannot wrap, and will produce a well-formed
         // range. `end` ≤ `buf + cap`, so the range will be in-bounds.
         // Taking `alloc` is ok because nothing else is going to look at it,
         // since our `Drop` impl isn't going to run so there's no more code.
@@ -179,7 +179,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
                 // say that they're all at the beginning of the "allocation".
                 0..this.len()
             } else {
-                this.ptr.sub_ptr(this.buf)..this.end.sub_ptr(buf)
+                this.ptr.offset_from_unsigned(this.buf)..this.end.offset_from_unsigned(buf)
             };
             let cap = this.cap;
             let alloc = ManuallyDrop::take(&mut this.alloc);
@@ -230,7 +230,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         let exact = if T::IS_ZST {
             self.end.addr().wrapping_sub(self.ptr.as_ptr().addr())
         } else {
-            unsafe { non_null!(self.end, T).sub_ptr(self.ptr) }
+            unsafe { non_null!(self.end, T).offset_from_unsigned(self.ptr) }
         };
         (exact, Some(exact))
     }
@@ -256,6 +256,11 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     #[inline]
     fn count(self) -> usize {
         self.len()
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<T> {
+        self.next_back()
     }
 
     #[inline]
@@ -472,13 +477,8 @@ where
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
-    #[cfg(not(test))]
     fn clone(&self) -> Self {
         self.as_slice().to_vec_in(self.alloc.deref().clone()).into_iter()
-    }
-    #[cfg(test)]
-    fn clone(&self) -> Self {
-        crate::slice::to_vec(self.as_slice(), self.alloc.deref().clone()).into_iter()
     }
 }
 

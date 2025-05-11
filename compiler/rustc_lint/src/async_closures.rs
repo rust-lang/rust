@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for AsyncClosureUsage {
             return;
         };
 
-        let mut body = cx.tcx.hir().body(body).value;
+        let mut body = cx.tcx.hir_body(body).value;
 
         // Only peel blocks that have no expressions.
         while let hir::ExprKind::Block(&hir::Block { stmts: [], expr: Some(tail), .. }, None) =

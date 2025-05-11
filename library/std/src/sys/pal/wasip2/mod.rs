@@ -6,29 +6,14 @@
 //! To begin with, this target mirrors the wasi target 1 to 1, but over
 //! time this will change significantly.
 
-#[path = "../wasi/args.rs"]
-pub mod args;
-#[path = "../wasi/env.rs"]
-pub mod env;
-#[path = "../wasi/fd.rs"]
-pub mod fd;
-#[path = "../wasi/fs.rs"]
-pub mod fs;
 #[allow(unused)]
 #[path = "../wasm/atomics/futex.rs"]
 pub mod futex;
-#[path = "../wasi/io.rs"]
-pub mod io;
 
-pub mod net;
 #[path = "../wasi/os.rs"]
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-#[path = "../unsupported/process.rs"]
-pub mod process;
-#[path = "../wasi/stdio.rs"]
-pub mod stdio;
 #[path = "../wasi/thread.rs"]
 pub mod thread;
 #[path = "../wasi/time.rs"]
@@ -48,7 +33,6 @@ mod helpers;
 // import conflict rules. If we glob export `helpers` and `common` together,
 // then the compiler complains about conflicts.
 
-use helpers::err2io;
-pub use helpers::{abort_internal, decode_error_kind, is_interrupted};
+pub(crate) use helpers::{abort_internal, decode_error_kind, err2io, is_interrupted};
 
 mod cabi_realloc;

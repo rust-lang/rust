@@ -4,14 +4,14 @@ if let StmtKind::Let(local) = stmt.kind
     && let ExprKind::Lit(ref lit) = scrutinee.kind
     && let LitKind::Int(42, LitIntType::Unsuffixed) = lit.node
     && arms.len() == 3
-    && let PatKind::Lit(lit_expr) = arms[0].pat.kind
-    && let ExprKind::Lit(ref lit1) = lit_expr.kind
+    && let PatKind::Expr(lit_expr) = arms[0].pat.kind
+    && let PatExprKind::Lit{ref lit1, negated } = lit_expr.kind
     && let LitKind::Int(16, LitIntType::Unsuffixed) = lit1.node
     && arms[0].guard.is_none()
     && let ExprKind::Lit(ref lit2) = arms[0].body.kind
     && let LitKind::Int(5, LitIntType::Unsuffixed) = lit2.node
-    && let PatKind::Lit(lit_expr1) = arms[1].pat.kind
-    && let ExprKind::Lit(ref lit3) = lit_expr1.kind
+    && let PatKind::Expr(lit_expr1) = arms[1].pat.kind
+    && let PatExprKind::Lit{ref lit3, negated1 } = lit_expr1.kind
     && let LitKind::Int(17, LitIntType::Unsuffixed) = lit3.node
     && arms[1].guard.is_none()
     && let ExprKind::Block(block, None) = arms[1].body.kind

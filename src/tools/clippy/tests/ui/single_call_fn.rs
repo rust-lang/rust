@@ -11,7 +11,9 @@ extern crate proc_macros;
 pub fn f() {}
 
 fn i() {}
+//~^ single_call_fn
 fn j() {}
+//~^ single_call_fn
 
 fn h() {
     // Linted
@@ -32,6 +34,7 @@ fn g() {
 }
 
 fn c() {
+    //~^ single_call_fn
     println!("really");
     println!("long");
     println!("function...");
@@ -42,6 +45,7 @@ fn d() {
 }
 
 fn a() {}
+//~^ single_call_fn
 
 fn b() {
     a();
@@ -87,9 +91,10 @@ fn l() {
 
 trait Trait {
     fn default() {}
+    //~^ single_call_fn
     fn foo(&self);
 }
-extern "C" {
+unsafe extern "C" {
     // test some kind of foreign item
     fn rand() -> std::ffi::c_int;
 }
@@ -100,6 +105,7 @@ fn m<T: Trait>(v: T) {
     struct S;
     impl S {
         fn foo() {}
+        //~^ single_call_fn
     }
     T::default();
     S::foo();

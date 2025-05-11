@@ -1,10 +1,10 @@
 //! Error Reporting for `impl` items that do not match the obligations from their `trait`.
 
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def::{Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::{Visitor, walk_ty};
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::ExpectedFound;
@@ -71,7 +71,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for HighlightBuilder<'tcx> {
+        impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for HighlightBuilder<'tcx> {
             fn visit_region(&mut self, r: ty::Region<'tcx>) {
                 if !r.has_name() && self.counter <= 3 {
                     self.highlight.highlighting_region(r, self.counter);
@@ -98,12 +98,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let assoc_item = self.tcx().associated_item(trait_item_def_id);
         let mut visitor = TypeParamSpanVisitor { tcx: self.tcx(), types: vec![] };
         match assoc_item.kind {
-            ty::AssocKind::Fn => {
-                let hir = self.tcx().hir();
+            ty::AssocKind::Fn { .. } => {
                 if let Some(hir_id) =
                     assoc_item.def_id.as_local().map(|id| self.tcx().local_def_id_to_hir_id(id))
                 {
-                    if let Some(decl) = hir.fn_decl_by_hir_id(hir_id) {
+                    if let Some(decl) = self.tcx().hir_fn_decl_by_hir_id(hir_id) {
                         visitor.visit_fn_decl(decl);
                     }
                 }
@@ -133,15 +132,17 @@ struct TypeParamSpanVisitor<'tcx> {
 impl<'tcx> Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
-    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match arg.kind {
             hir::TyKind::Ref(_, ref mut_ty) => {
                 // We don't want to suggest looking into borrowing `&T` or `&Self`.
-                hir::intravisit::walk_ty(self, mut_ty.ty);
+                if let Some(ambig_ty) = mut_ty.ty.try_as_ambig_ty() {
+                    walk_ty(self, ambig_ty);
+                }
                 return;
             }
             hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {

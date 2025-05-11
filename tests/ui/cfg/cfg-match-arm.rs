@@ -11,7 +11,7 @@ fn foo(f: Foo) {
         Foo::Bar => {},
         #[cfg(not(FALSE))]
         Foo::Baz => {},
-        #[cfg(FALSE)]
+        #[cfg(false)]
         Basdfwe => {}
     }
 }

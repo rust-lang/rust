@@ -1,7 +1,7 @@
 error[E0423]: expected value, found struct `remapped_dep::SomeStruct`
   --> $DIR/remap-path-prefix-reverse.rs:16:13
    |
-LL |     let _ = remapped_dep::SomeStruct; // ~ERROR E0423
+LL |     let _ = remapped_dep::SomeStruct;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: use struct literal syntax instead: `remapped_dep::SomeStruct {}`
    |
   ::: remapped-aux/remapped_dep.rs:4:1

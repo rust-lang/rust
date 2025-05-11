@@ -37,7 +37,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match ref_never {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error: unreachable pattern
@@ -100,7 +100,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match res_u32_never {
 LL +         Ok(_) => todo!(),
-LL +     }
+LL ~     }
    |
 
 error: unreachable pattern
@@ -374,7 +374,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match slice_never {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: `&[]` not covered
@@ -415,7 +415,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match *slice_never {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error: unreachable pattern
@@ -462,7 +462,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match array_0_never {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error: unreachable pattern

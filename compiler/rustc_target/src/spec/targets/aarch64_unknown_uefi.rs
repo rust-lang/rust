@@ -1,7 +1,7 @@
 // This defines the aarch64 target for UEFI systems as described in the UEFI specification. See the
 // uefi-base module for generic UEFI options.
 
-use crate::spec::{LinkerFlavor, Lld, Target, base};
+use crate::spec::{LinkerFlavor, Lld, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::uefi_msvc::opts();
@@ -12,7 +12,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "aarch64-unknown-windows".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("ARM64 UEFI".into()),
             tier: Some(2),
             host_tools: Some(false),

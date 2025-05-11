@@ -67,7 +67,6 @@ fn generate_tokens(grammar: &AstSrc) -> String {
         let name = format_ident!("{}", token);
         let kind = format_ident!("{}", to_upper_snake_case(token));
         quote! {
-            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
             pub struct #name {
                 pub(crate) syntax: SyntaxToken,
             }
@@ -83,6 +82,29 @@ fn generate_tokens(grammar: &AstSrc) -> String {
                 }
                 fn syntax(&self) -> &SyntaxToken { &self.syntax }
             }
+
+            impl fmt::Debug for #name {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    f.debug_struct(#token).field("syntax", &self.syntax).finish()
+                }
+            }
+            impl Clone for #name {
+                fn clone(&self) -> Self {
+                    Self { syntax: self.syntax.clone() }
+                }
+            }
+            impl hash::Hash for #name {
+                fn hash<H: hash::Hasher>(&self, state: &mut H) {
+                    self.syntax.hash(state);
+                }
+            }
+
+            impl Eq for #name {}
+            impl PartialEq for #name {
+                fn eq(&self, other: &Self) -> bool {
+                    self.syntax == other.syntax
+                }
+            }
         }
     });
 
@@ -90,7 +112,10 @@ fn generate_tokens(grammar: &AstSrc) -> String {
         crate::flags::CodegenType::Grammar,
         reformat(
             quote! {
+                use std::{fmt, hash};
+
                 use crate::{SyntaxKind::{self, *}, SyntaxToken, ast::AstToken};
+
                 #(#tokens)*
             }
             .to_string(),
@@ -104,6 +129,7 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
         .nodes
         .iter()
         .map(|node| {
+            let node_str_name = &node.name;
             let name = format_ident!("{}", node.name);
             let kind = format_ident!("{}", to_upper_snake_case(&node.name));
             let traits = node
@@ -149,7 +175,6 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
             (
                 quote! {
                     #[pretty_doc_comment_placeholder_workaround]
-                    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                     pub struct #name {
                         pub(crate) syntax: SyntaxNode,
                     }
@@ -163,6 +188,13 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
                 quote! {
                     impl AstNode for #name {
                         #[inline]
+                        fn kind() -> SyntaxKind
+                        where
+                            Self: Sized
+                        {
+                            #kind
+                        }
+                        #[inline]
                         fn can_cast(kind: SyntaxKind) -> bool {
                             kind == #kind
                         }
@@ -172,6 +204,31 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
                         }
                         #[inline]
                         fn syntax(&self) -> &SyntaxNode { &self.syntax }
+                    }
+
+                    impl hash::Hash for #name {
+                        fn hash<H: hash::Hasher>(&self, state: &mut H) {
+                            self.syntax.hash(state);
+                        }
+                    }
+
+                    impl Eq for #name {}
+                    impl PartialEq for #name {
+                        fn eq(&self, other: &Self) -> bool {
+                            self.syntax == other.syntax
+                        }
+                    }
+
+                    impl Clone for #name {
+                        fn clone(&self) -> Self {
+                            Self { syntax: self.syntax.clone() }
+                        }
+                    }
+
+                    impl fmt::Debug for #name {
+                        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                            f.debug_struct(#node_str_name).field("syntax", &self.syntax).finish()
+                        }
                     }
                 },
             )
@@ -258,6 +315,7 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
         .sorted_by_key(|(name, _)| *name)
         .map(|(trait_name, nodes)| {
             let name = format_ident!("Any{}", trait_name);
+            let node_str_name = name.to_string();
             let trait_name = format_ident!("{}", trait_name);
             let kinds: Vec<_> = nodes
                 .iter()
@@ -267,13 +325,9 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
             (
                 quote! {
                     #[pretty_doc_comment_placeholder_workaround]
-                    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                     pub struct #name {
                         pub(crate) syntax: SyntaxNode,
                     }
-                    impl ast::#trait_name for #name {}
-                },
-                quote! {
                     impl #name {
                         #[inline]
                         pub fn new<T: ast::#trait_name>(node: T) -> #name {
@@ -282,6 +336,9 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
                             }
                         }
                     }
+                },
+                quote! {
+                    impl ast::#trait_name for #name {}
                     impl AstNode for #name {
                         #[inline]
                         fn can_cast(kind: SyntaxKind) -> bool {
@@ -294,6 +351,31 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
                         #[inline]
                         fn syntax(&self) -> &SyntaxNode {
                             &self.syntax
+                        }
+                    }
+
+                    impl hash::Hash for #name {
+                        fn hash<H: hash::Hasher>(&self, state: &mut H) {
+                            self.syntax.hash(state);
+                        }
+                    }
+
+                    impl Eq for #name {}
+                    impl PartialEq for #name {
+                        fn eq(&self, other: &Self) -> bool {
+                            self.syntax == other.syntax
+                        }
+                    }
+
+                    impl Clone for #name {
+                        fn clone(&self) -> Self {
+                            Self { syntax: self.syntax.clone() }
+                        }
+                    }
+
+                    impl fmt::Debug for #name {
+                        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                            f.debug_struct(#node_str_name).field("syntax", &self.syntax).finish()
                         }
                     }
 
@@ -332,13 +414,14 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
         .map(|kind| to_pascal_case(kind))
         .filter(|name| !defined_nodes.iter().any(|&it| it == name))
     {
-        drop(node)
-        // FIXME: restore this
-        // eprintln!("Warning: node {} not defined in ast source", node);
+        eprintln!("Warning: node {node} not defined in AST source");
+        drop(node);
     }
 
     let ast = quote! {
         #![allow(non_snake_case)]
+        use std::{fmt, hash};
+
         use crate::{
             SyntaxNode, SyntaxToken, SyntaxKind::{self, *},
             ast::{self, AstNode, AstChildren, support},
@@ -390,6 +473,9 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         if "{}[]()".contains(token) {
             let c = token.chars().next().unwrap();
             quote! { #c }
+            // underscore is an identifier in the proc-macro api
+        } else if *token == "_" {
+            quote! { _ }
         } else {
             let cs = token.chars().map(|c| Punct::new(c, Spacing::Joint));
             quote! { #(#cs)* }
@@ -397,6 +483,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
     });
     let punctuation =
         grammar.punct.iter().map(|(_token, name)| format_ident!("{}", name)).collect::<Vec<_>>();
+    let punctuation_texts = grammar.punct.iter().map(|&(text, _name)| text);
 
     let fmt_kw_as_variant = |&name| match name {
         "Self" => format_ident!("SELF_TYPE_KW"),
@@ -422,6 +509,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
             quote! { #kw if #ed <= edition }
         })
         .collect::<Vec<_>>();
+    let edition_dependent_keywords = grammar.edition_dependent_keywords.iter().map(|&(it, _)| it);
     let edition_dependent_keywords_variants = grammar
         .edition_dependent_keywords
         .iter()
@@ -464,7 +552,6 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
 
     let tokens = grammar.tokens.iter().map(|name| format_ident!("{}", name)).collect::<Vec<_>>();
 
-    // FIXME: This generates enum kinds?
     let nodes = grammar.nodes.iter().map(|name| format_ident!("{}", name)).collect::<Vec<_>>();
 
     let ast = quote! {
@@ -472,7 +559,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         use crate::Edition;
 
         /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT`.
-        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+        #[derive(Debug)]
         #[repr(u16)]
         pub enum SyntaxKind {
             // Technical SyntaxKinds: they appear temporally during parsing,
@@ -495,6 +582,20 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         use self::SyntaxKind::*;
 
         impl SyntaxKind {
+            #[allow(unreachable_patterns)]
+            pub const fn text(self) -> &'static str {
+                match self {
+                    TOMBSTONE | EOF | __LAST
+                    #( | #literals )*
+                    #( | #nodes )*
+                    #( | #tokens )* => panic!("no text for these `SyntaxKind`s"),
+                    #( #punctuation => #punctuation_texts ,)*
+                    #( #strict_keywords_variants => #strict_keywords ,)*
+                    #( #contextual_keywords_variants => #contextual_keywords ,)*
+                    #( #edition_dependent_keywords_variants => #edition_dependent_keywords ,)*
+                }
+            }
+
             /// Checks whether this syntax kind is a strict keyword for the given edition.
             /// Strict keywords are identifiers that are always considered keywords.
             pub fn is_strict_keyword(self, edition: Edition) -> bool {
@@ -559,7 +660,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         }
 
         #[macro_export]
-        macro_rules! T {
+        macro_rules! T_ {
             #([#punctuation_values] => { $crate::SyntaxKind::#punctuation };)*
             #([#strict_keywords_tokens] => { $crate::SyntaxKind::#strict_keywords_variants };)*
             #([#contextual_keywords_tokens] => { $crate::SyntaxKind::#contextual_keywords_variants };)*
@@ -569,6 +670,39 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
             [ident] => { $crate::SyntaxKind::IDENT };
             [string] => { $crate::SyntaxKind::STRING };
             [shebang] => { $crate::SyntaxKind::SHEBANG };
+            [frontmatter] => { $crate::SyntaxKind::FRONTMATTER };
+        }
+
+        impl ::core::marker::Copy for SyntaxKind {}
+        impl ::core::clone::Clone for SyntaxKind {
+            #[inline]
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+        impl ::core::cmp::PartialEq for SyntaxKind {
+            #[inline]
+            fn eq(&self, other: &Self) -> bool {
+                (*self as u16) == (*other as u16)
+            }
+        }
+        impl ::core::cmp::Eq for SyntaxKind {}
+        impl ::core::cmp::PartialOrd for SyntaxKind {
+            #[inline]
+            fn partial_cmp(&self, other: &Self) -> core::option::Option<core::cmp::Ordering> {
+                Some(self.cmp(other))
+            }
+        }
+        impl ::core::cmp::Ord for SyntaxKind {
+            #[inline]
+            fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+                (*self as u16).cmp(&(*other as u16))
+            }
+        }
+        impl ::core::hash::Hash for SyntaxKind {
+            fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+                ::core::mem::discriminant(self).hash(state);
+            }
         }
     };
 
@@ -692,11 +826,7 @@ impl Field {
 
 fn clean_token_name(name: &str) -> String {
     let cleaned = name.trim_start_matches(['@', '#', '?']);
-    if cleaned.is_empty() {
-        name.to_owned()
-    } else {
-        cleaned.to_owned()
-    }
+    if cleaned.is_empty() { name.to_owned() } else { cleaned.to_owned() }
 }
 
 fn lower(grammar: &Grammar) -> AstSrc {
@@ -861,7 +991,7 @@ fn lower_separated_list(
     if !matches!(
         repeat.as_slice(),
         [comma, nt_]
-            if trailing_sep.map_or(true, |it| comma == &**it) && match (nt, nt_) {
+            if trailing_sep.is_none_or(|it| comma == &**it) && match (nt, nt_) {
                 (Either::Left(node), Rule::Node(nt_)) => node == nt_,
                 (Either::Right(token), Rule::Token(nt_)) => token == nt_,
                 _ => false,

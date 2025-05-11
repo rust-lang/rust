@@ -1,11 +1,13 @@
 use std::borrow::Cow;
 
-use crate::spec::{CodeModel, SanitizerSet, SplitDebuginfo, Target, TargetOptions, base};
+use crate::spec::{
+    CodeModel, SanitizerSet, SplitDebuginfo, Target, TargetMetadata, TargetOptions, base,
+};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "riscv64-linux-android".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("RISC-V 64-bit Android".into()),
             tier: Some(3),
             host_tools: Some(false),
@@ -17,7 +19,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             code_model: Some(CodeModel::Medium),
             cpu: "generic-rv64".into(),
-            features: "+m,+a,+f,+d,+c,+zba,+zbb,+zbs,+v".into(),
+            features: "+m,+a,+f,+d,+c,+b,+v,+zicsr,+zifencei".into(),
             llvm_abiname: "lp64d".into(),
             supported_sanitizers: SanitizerSet::ADDRESS,
             max_atomic_width: Some(64),

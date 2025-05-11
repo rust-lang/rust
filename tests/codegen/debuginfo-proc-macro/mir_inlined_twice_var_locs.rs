@@ -1,4 +1,3 @@
-//@ min-llvm-version: 19
 //@ compile-flags: -Cdebuginfo=2 -Copt-level=0 -Zmir-enable-passes=+Inline
 // MSVC is different because of the individual allocas.
 //@ ignore-msvc

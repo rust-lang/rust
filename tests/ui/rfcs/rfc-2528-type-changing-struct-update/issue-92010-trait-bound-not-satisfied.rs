@@ -6,7 +6,7 @@ struct P<T> {
 
 impl<T> P<T> {
     fn y(&self, y: f64) -> Self { P{y, .. self.clone() } }
-                                       //~^ mismatched types [E0308]
+    //~^ ERROR mismatched types [E0308]
 }
 
 fn main() {}

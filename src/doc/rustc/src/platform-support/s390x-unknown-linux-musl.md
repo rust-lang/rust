@@ -6,7 +6,7 @@ IBM z/Architecture (s390x) targets (including IBM Z and LinuxONE) running Linux.
 
 ## Target maintainers
 
-- Ulrich Weigand, <ulrich.weigand@de.ibm.com>, [@uweigand](https://github.com/uweigand)
+[@uweigand](https://github.com/uweigand)
 
 ## Requirements
 
@@ -33,7 +33,7 @@ Because it is Tier 3, Rust does not yet ship pre-compiled artifacts for this
 target.
 
 Therefore, you can build Rust with support for the target by adding it to the
-target list in `config.toml`, a sample configuration is shown below.
+target list in `bootstrap.toml`, a sample configuration is shown below.
 
 ```toml
 [build]

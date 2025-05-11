@@ -51,7 +51,8 @@
 // lldb-check:[...] str_slice = "IAMA string slice!" { [0] = 'I' [1] = 'A' [2] = 'M' [3] = 'A' [4] = ' ' [5] = 's' [6] = 't' [7] = 'r' [8] = 'i' [9] = 'n' [10] = 'g' [11] = ' ' [12] = 's' [13] = 'l' [14] = 'i' [15] = 'c' [16] = 'e' [17] = '!' }
 
 // lldb-command:v string
-// lldb-check:[...] string = "IAMA string!" { vec = size=12 { [0] = 'I' [1] = 'A' [2] = 'M' [3] = 'A' [4] = ' ' [5] = 's' [6] = 't' [7] = 'r' [8] = 'i' [9] = 'n' [10] = 'g' [11] = '!' } }
+// lldb-check:[...] string = "IAMA string!" { [0] = 'I' [1] = 'A' [2] = 'M' [3] = 'A' [4] = ' ' [5] = 's' [6] = 't' [7] = 'r' [8] = 'i' [9] = 'n' [10] = 'g' [11] = '!' }
+
 
 // lldb-command:v some
 // lldb-check:[...] some = Some(8)

@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::path_def_id;
 use clippy_utils::ty::is_c_void;
+use clippy_utils::{path_def_id, sym};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -41,7 +40,7 @@ impl LateLintPass<'_> for FromRawWithVoidPtr {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let ExprKind::Call(box_from_raw, [arg]) = expr.kind
             && let ExprKind::Path(QPath::TypeRelative(ty, seg)) = box_from_raw.kind
-            && seg.ident.name.as_str() == "from_raw"
+            && seg.ident.name == sym::from_raw
             && let Some(type_str) = path_def_id(cx, ty).and_then(|id| def_id_matches_type(cx, id))
             && let arg_kind = cx.typeck_results().expr_ty(arg).kind()
             && let ty::RawPtr(ty, _) = arg_kind

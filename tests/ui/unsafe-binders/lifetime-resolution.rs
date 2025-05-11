@@ -9,7 +9,7 @@ fn foo<'a>() {
 
     fn inner<'b>() {
         let outer: unsafe<> &'a &'b ();
-        //~^ can't use generic parameters from outer item
+        //~^ ERROR can't use generic parameters from outer item
     }
 }
 

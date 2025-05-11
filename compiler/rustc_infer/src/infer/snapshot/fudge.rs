@@ -1,15 +1,16 @@
 use std::ops::Range;
 
 use rustc_data_structures::{snapshot_vec as sv, unify as ut};
-use rustc_middle::infer::unify_key::{ConstVariableValue, ConstVidKey};
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
-use rustc_type_ir::visit::TypeVisitableExt;
+use rustc_middle::ty::{
+    self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt,
+};
 use tracing::instrument;
 use ut::UnifyKey;
 
 use super::VariableLengths;
 use crate::infer::type_variable::TypeVariableOrigin;
+use crate::infer::unify_key::{ConstVariableValue, ConstVidKey};
 use crate::infer::{ConstVariableOrigin, InferCtxt, RegionVariableOrigin, UnificationTable};
 
 fn vars_since_snapshot<'tcx, T>(
@@ -28,11 +29,12 @@ fn const_vars_since_snapshot<'tcx>(
     snapshot_var_len: usize,
 ) -> (Range<ConstVid>, Vec<ConstVariableOrigin>) {
     let range = vars_since_snapshot(table, snapshot_var_len);
+    let range = range.start.vid..range.end.vid;
 
     (
-        range.start.vid..range.end.vid,
-        (range.start.index()..range.end.index())
-            .map(|index| match table.probe_value(ConstVid::from_u32(index)) {
+        range.clone(),
+        range
+            .map(|index| match table.probe_value(index) {
                 ConstVariableValue::Known { value: _ } => {
                     ConstVariableOrigin { param_def_id: None, span: rustc_span::DUMMY_SP }
                 }

@@ -159,19 +159,21 @@ paths for Clippy can be found in [paths.rs][paths]
 To check if our type defines a method called `some_method`:
 
 ```rust
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::return_ty;
+use clippy_utils::ty::is_type_lang_item;
+use clippy_utils::{sym, return_ty};
 
 impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         // Check if item is a method/function
         if let ImplItemKind::Fn(ref signature, _) = impl_item.kind
             // Check the method is named `some_method`
-            && impl_item.ident.name.as_str() == "some_method"
+            //
+            // Add `some_method` to `clippy_utils::sym` if it's not already there
+            && impl_item.ident.name == sym::some_method
             // We can also check it has a parameter `self`
             && signature.decl.implicit_self.has_implicit_self()
             // We can go further and even check if its return type is `String`
-            && is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym!(string_type))
+            && is_type_lang_item(cx, return_ty(cx, impl_item.hir_id), LangItem::String)
         {
             // ...
         }
@@ -218,7 +220,7 @@ functions to deal with macros:
   > context. And so just using `span.from_expansion()` is often good enough.
 
 
-- `in_external_macro(span)`: detect if the given span is from a macro defined in
+- `span.in_external_macro(sm)`: detect if the given span is from a macro defined in
   a foreign crate. If you want the lint to work with macro-generated code, this
   is the next line of defense to avoid macros not defined in the current crate.
   It doesn't make sense to lint code that the coder can't change.
@@ -227,15 +229,13 @@ functions to deal with macros:
   crates
 
   ```rust
-  use rustc_middle::lint::in_external_macro;
-
   use a_crate_with_macros::foo;
 
   // `foo` is defined in `a_crate_with_macros`
   foo!("bar");
 
   // if we lint the `match` of `foo` call and test its span
-  assert_eq!(in_external_macro(cx.sess(), match_span), true);
+  assert_eq!(match_span.in_external_macro(cx.sess().source_map()), true);
   ```
 
 - `span.ctxt()`: the span's context represents whether it is from expansion, and
@@ -265,10 +265,10 @@ functions to deal with macros:
    ```
 
 [Ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
-[TyKind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html
+[TyKind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html
 [TypeckResults]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html
 [expr_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html#method.expr_ty
 [LateContext]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LateContext.html
 [TyCtxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
-[pat_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TypeckResults.html#method.pat_ty
+[pat_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html#method.pat_ty
 [paths]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/paths/index.html

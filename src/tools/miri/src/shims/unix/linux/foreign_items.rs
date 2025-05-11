@@ -133,8 +133,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(ptr, dest)?;
             }
             "mremap" => {
-                let [old_address, old_size, new_size, flags] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let ([old_address, old_size, new_size, flags], _) =
+                    this.check_shim_variadic(abi, Conv::C, link_name, args)?;
                 let ptr = this.mremap(old_address, old_size, new_size, flags)?;
                 this.write_scalar(ptr, dest)?;
             }

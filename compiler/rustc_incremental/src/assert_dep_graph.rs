@@ -38,7 +38,7 @@ use std::fs::{self, File};
 use std::io::Write;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::graph::implementation::{Direction, INCOMING, NodeIndex, OUTGOING};
+use rustc_data_structures::graph::linked_graph::{Direction, INCOMING, NodeIndex, OUTGOING};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::dep_graph::{
@@ -76,7 +76,7 @@ pub(crate) fn assert_dep_graph(tcx: TyCtxt<'_>) {
             let mut visitor =
                 IfThisChanged { tcx, if_this_changed: vec![], then_this_would_need: vec![] };
             visitor.process_attrs(CRATE_DEF_ID);
-            tcx.hir().visit_all_item_likes_in_crate(&mut visitor);
+            tcx.hir_visit_all_item_likes_in_crate(&mut visitor);
             (visitor.if_this_changed, visitor.then_this_would_need)
         };
 
@@ -123,7 +123,7 @@ impl<'tcx> IfThisChanged<'tcx> {
     fn process_attrs(&mut self, def_id: LocalDefId) {
         let def_path_hash = self.tcx.def_path_hash(def_id.to_def_id());
         let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
-        let attrs = self.tcx.hir().attrs(hir_id);
+        let attrs = self.tcx.hir_attrs(hir_id);
         for attr in attrs {
             if attr.has_name(sym::rustc_if_this_changed) {
                 let dep_node_interned = self.argument(attr);
@@ -137,13 +137,13 @@ impl<'tcx> IfThisChanged<'tcx> {
                         match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
                             Ok(n) => n,
                             Err(()) => self.tcx.dcx().emit_fatal(errors::UnrecognizedDepNode {
-                                span: attr.span,
+                                span: attr.span(),
                                 name: n,
                             }),
                         }
                     }
                 };
-                self.if_this_changed.push((attr.span, def_id.to_def_id(), dep_node));
+                self.if_this_changed.push((attr.span(), def_id.to_def_id(), dep_node));
             } else if attr.has_name(sym::rustc_then_this_would_need) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
@@ -151,17 +151,17 @@ impl<'tcx> IfThisChanged<'tcx> {
                         match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
                             Ok(n) => n,
                             Err(()) => self.tcx.dcx().emit_fatal(errors::UnrecognizedDepNode {
-                                span: attr.span,
+                                span: attr.span(),
                                 name: n,
                             }),
                         }
                     }
                     None => {
-                        self.tcx.dcx().emit_fatal(errors::MissingDepNode { span: attr.span });
+                        self.tcx.dcx().emit_fatal(errors::MissingDepNode { span: attr.span() });
                     }
                 };
                 self.then_this_would_need.push((
-                    attr.span,
+                    attr.span(),
                     dep_node_interned.unwrap(),
                     hir_id,
                     dep_node,
@@ -174,8 +174,8 @@ impl<'tcx> IfThisChanged<'tcx> {
 impl<'tcx> Visitor<'tcx> for IfThisChanged<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {

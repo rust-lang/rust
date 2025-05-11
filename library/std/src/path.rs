@@ -67,9 +67,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-#[cfg(test)]
-mod tests;
-
 use core::clone::CloneToUninit;
 
 use crate::borrow::{Borrow, Cow};
@@ -297,11 +294,6 @@ where
     }
 }
 
-// Detect scheme on Redox
-fn has_redox_scheme(s: &[u8]) -> bool {
-    cfg!(target_os = "redox") && s.contains(&b':')
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Cross-platform, iterator-independent parsing
 ////////////////////////////////////////////////////////////////////////////////
@@ -358,6 +350,15 @@ fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
             OsStr::from_encoded_bytes_unchecked(before),
             Some(OsStr::from_encoded_bytes_unchecked(after)),
         )
+    }
+}
+
+/// Checks whether the string is valid as a file extension, or panics otherwise.
+fn validate_extension(extension: &OsStr) {
+    for &b in extension.as_encoded_bytes() {
+        if is_sep_byte(b) {
+            panic!("extension cannot contain path separators: {extension:?}");
+        }
     }
 }
 
@@ -1515,13 +1516,7 @@ impl PathBuf {
     }
 
     fn _set_extension(&mut self, extension: &OsStr) -> bool {
-        for &b in extension.as_encoded_bytes() {
-            if b < 128 {
-                if is_separator(b as char) {
-                    panic!("extension cannot contain path separators: {:?}", extension);
-                }
-            }
-        }
+        validate_extension(extension);
 
         let file_stem = match self.file_stem() {
             None => return false,
@@ -1534,11 +1529,13 @@ impl PathBuf {
         self.inner.truncate(end_file_stem.wrapping_sub(start));
 
         // add the new extension, if any
-        let new = extension;
+        let new = extension.as_encoded_bytes();
         if !new.is_empty() {
             self.inner.reserve_exact(new.len() + 1);
-            self.inner.push(OsStr::new("."));
-            self.inner.push(new);
+            self.inner.push(".");
+            // SAFETY: Since a UTF-8 string was just pushed, it is not possible
+            // for the buffer to end with a surrogate half.
+            unsafe { self.inner.extend_from_slice_unchecked(new) };
         }
 
         true
@@ -1548,6 +1545,11 @@ impl PathBuf {
     ///
     /// Returns `false` and does nothing if [`self.file_name`] is [`None`],
     /// returns `true` and updates the extension otherwise.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the passed extension contains a path separator (see
+    /// [`is_separator`]).
     ///
     /// # Caveats
     ///
@@ -1590,12 +1592,14 @@ impl PathBuf {
     }
 
     fn _add_extension(&mut self, extension: &OsStr) -> bool {
+        validate_extension(extension);
+
         let file_name = match self.file_name() {
             None => return false,
             Some(f) => f.as_encoded_bytes(),
         };
 
-        let new = extension;
+        let new = extension.as_encoded_bytes();
         if !new.is_empty() {
             // truncate until right after the file name
             // this is necessary for trimming the trailing slash
@@ -1605,8 +1609,10 @@ impl PathBuf {
 
             // append the new extension
             self.inner.reserve_exact(new.len() + 1);
-            self.inner.push(OsStr::new("."));
-            self.inner.push(new);
+            self.inner.push(".");
+            // SAFETY: Since a UTF-8 string was just pushed, it is not possible
+            // for the buffer to end with a surrogate half.
+            unsafe { self.inner.extend_from_slice_unchecked(new) };
         }
 
         true
@@ -2155,7 +2161,7 @@ impl Path {
         unsafe { Path::new(OsStr::from_encoded_bytes_unchecked(s)) }
     }
     // The following (private!) function reveals the byte encoding used for OsStr.
-    fn as_u8_slice(&self) -> &[u8] {
+    pub(crate) fn as_u8_slice(&self) -> &[u8] {
         self.inner.as_encoded_bytes()
     }
 
@@ -2323,14 +2329,7 @@ impl Path {
     #[must_use]
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
-        if cfg!(target_os = "redox") {
-            // FIXME: Allow Redox prefixes
-            self.has_root() || has_redox_scheme(self.as_u8_slice())
-        } else {
-            self.has_root()
-                && (cfg!(any(unix, target_os = "hermit", target_os = "wasi"))
-                    || self.prefix().is_some())
-        }
+        sys::path::is_absolute(self)
     }
 
     /// Returns `true` if the `Path` is relative, i.e., not absolute.
@@ -2353,7 +2352,7 @@ impl Path {
         !self.is_absolute()
     }
 
-    fn prefix(&self) -> Option<Prefix<'_>> {
+    pub(crate) fn prefix(&self) -> Option<Prefix<'_>> {
         self.components().prefix
     }
 
@@ -2774,7 +2773,8 @@ impl Path {
         };
 
         let mut new_path = PathBuf::with_capacity(new_capacity);
-        new_path.inner.extend_from_slice(slice_to_copy);
+        // SAFETY: The path is empty, so cannot have surrogate halves.
+        unsafe { new_path.inner.extend_from_slice_unchecked(slice_to_copy) };
         new_path.set_extension(extension);
         new_path
     }
@@ -2844,8 +2844,7 @@ impl Path {
         Components {
             path: self.as_u8_slice(),
             prefix,
-            has_physical_root: has_physical_root(self.as_u8_slice(), prefix)
-                || has_redox_scheme(self.as_u8_slice()),
+            has_physical_root: has_physical_root(self.as_u8_slice(), prefix),
             front: State::Prefix,
             back: State::Body,
         }
@@ -3281,7 +3280,7 @@ impl Hash for Path {
                 if !verbatim {
                     component_start += match tail {
                         [b'.'] => 1,
-                        [b'.', sep @ _, ..] if is_sep_byte(*sep) => 1,
+                        [b'.', sep, ..] if is_sep_byte(*sep) => 1,
                         _ => 0,
                     };
                 }
@@ -3585,7 +3584,7 @@ impl Error for StripPrefixError {
 pub fn absolute<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     let path = path.as_ref();
     if path.as_os_str().is_empty() {
-        Err(io::const_error!(io::ErrorKind::InvalidInput, "cannot make an empty path absolute",))
+        Err(io::const_error!(io::ErrorKind::InvalidInput, "cannot make an empty path absolute"))
     } else {
         sys::path::absolute(path)
     }

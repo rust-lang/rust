@@ -1,8 +1,8 @@
 use crate::methods::DRAIN_COLLECT;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_range_full;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_lang_item;
+use clippy_utils::{is_range_full, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, Path, QPath};
 use rustc_lint::LateContext;
@@ -58,12 +58,13 @@ pub(super) fn check(cx: &LateContext<'_>, args: &[Expr<'_>], expr: &Expr<'_>, re
             .then_some("Vec")
             .or_else(|| check_string(cx, args, expr_ty, recv_ty_no_refs, recv_path).then_some("String"))
             .or_else(|| check_collections(cx, expr_ty, recv_ty_no_refs))
+        && let Some(exec_context) = std_or_core(cx)
     {
         let recv = snippet(cx, recv.span, "<expr>");
         let sugg = if let ty::Ref(..) = recv_ty.kind() {
-            format!("std::mem::take({recv})")
+            format!("{exec_context}::mem::take({recv})")
         } else {
-            format!("std::mem::take(&mut {recv})")
+            format!("{exec_context}::mem::take(&mut {recv})")
         };
 
         span_lint_and_sugg(

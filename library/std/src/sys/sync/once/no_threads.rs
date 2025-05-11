@@ -1,6 +1,6 @@
 use crate::cell::Cell;
 use crate::sync as public;
-use crate::sync::once::ExclusiveState;
+use crate::sync::poison::once::ExclusiveState;
 
 pub struct Once {
     state: Cell<State>,

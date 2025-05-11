@@ -3,15 +3,15 @@
 
 use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
-use smallvec::SmallVec;
 use span::{
-    ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, FIXUP_ERASED_FILE_AST_ID_MARKER,
-    ROOT_ERASED_FILE_AST_ID,
+    ErasedFileAstId, FIXUP_ERASED_FILE_AST_ID_MARKER, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor,
+    SyntaxContext,
 };
 use stdx::never;
 use syntax::{
+    SyntaxElement, SyntaxKind, SyntaxNode, TextRange, TextSize,
     ast::{self, AstNode, HasLoopBody},
-    match_ast, SyntaxElement, SyntaxKind, SyntaxNode, TextRange, TextSize,
+    match_ast,
 };
 use syntax_bridge::DocCommentDesugarMode;
 use triomphe::Arc;
@@ -19,7 +19,7 @@ use tt::Spacing;
 
 use crate::{
     span_map::SpanMapRef,
-    tt::{Ident, Leaf, Punct, Subtree},
+    tt::{self, Ident, Leaf, Punct, TopSubtree},
 };
 
 /// The result of calculating fixes for a syntax node -- a bunch of changes
@@ -36,7 +36,7 @@ pub(crate) struct SyntaxFixups {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SyntaxFixupUndoInfo {
     // FIXME: ThinArc<[Subtree]>
-    original: Option<Arc<Box<[Subtree]>>>,
+    original: Option<Arc<Box<[TopSubtree]>>>,
 }
 
 impl SyntaxFixupUndoInfo {
@@ -82,7 +82,7 @@ pub(crate) fn fixup_syntax(
             original.push(original_tree);
             let span = span_map.span_for_range(node_range);
             let replacement = Leaf::Ident(Ident {
-                sym: sym::__ra_fixup.clone(),
+                sym: sym::__ra_fixup,
                 span: Span {
                     range: TextRange::new(TextSize::new(idx), FIXUP_DUMMY_RANGE_END),
                     anchor: SpanAnchor { ast_id: FIXUP_DUMMY_AST_ID, ..span.anchor },
@@ -102,7 +102,7 @@ pub(crate) fn fixup_syntax(
                         // incomplete field access: some_expr.|
                         append.insert(node.clone().into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -110,7 +110,7 @@ pub(crate) fn fixup_syntax(
                     }
                 },
                 ast::ExprStmt(it) => {
-                    let needs_semi = it.semicolon_token().is_none() && it.expr().map_or(false, |e| e.syntax().kind() != SyntaxKind::BLOCK_EXPR);
+                    let needs_semi = it.semicolon_token().is_none() && it.expr().is_some_and(|e| e.syntax().kind() != SyntaxKind::BLOCK_EXPR);
                     if needs_semi {
                         append.insert(node.clone().into(), vec![
                             Leaf::Punct(Punct {
@@ -141,7 +141,7 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(if_token.into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -149,7 +149,6 @@ pub(crate) fn fixup_syntax(
                     }
                     if it.then_branch().is_none() {
                         append.insert(node.clone().into(), vec![
-                            // FIXME: THis should be a subtree no?
                             Leaf::Punct(Punct {
                                 char: '{',
                                 spacing: Spacing::Alone,
@@ -172,7 +171,7 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(while_token.into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -180,7 +179,6 @@ pub(crate) fn fixup_syntax(
                     }
                     if it.loop_body().is_none() {
                         append.insert(node.clone().into(), vec![
-                            // FIXME: THis should be a subtree no?
                             Leaf::Punct(Punct {
                                 char: '{',
                                 spacing: Spacing::Alone,
@@ -197,7 +195,6 @@ pub(crate) fn fixup_syntax(
                 ast::LoopExpr(it) => {
                     if it.loop_body().is_none() {
                         append.insert(node.clone().into(), vec![
-                            // FIXME: THis should be a subtree no?
                             Leaf::Punct(Punct {
                                 char: '{',
                                 spacing: Spacing::Alone,
@@ -220,7 +217,7 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(match_token.into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -229,7 +226,6 @@ pub(crate) fn fixup_syntax(
                     if it.match_arm_list().is_none() {
                         // No match arms
                         append.insert(node.clone().into(), vec![
-                            // FIXME: THis should be a subtree no?
                             Leaf::Punct(Punct {
                                 char: '{',
                                 spacing: Spacing::Alone,
@@ -250,9 +246,9 @@ pub(crate) fn fixup_syntax(
                     };
 
                     let [pat, in_token, iter] = [
-                         sym::underscore.clone(),
-                         sym::in_.clone(),
-                         sym::__ra_fixup.clone(),
+                         sym::underscore,
+                         sym::in_,
+                         sym::__ra_fixup,
                     ].map(|sym|
                         Leaf::Ident(Ident {
                             sym,
@@ -270,7 +266,6 @@ pub(crate) fn fixup_syntax(
 
                     if it.loop_body().is_none() {
                         append.insert(node.clone().into(), vec![
-                            // FIXME: THis should be a subtree no?
                             Leaf::Punct(Punct {
                                 char: '{',
                                 spacing: Spacing::Alone,
@@ -289,7 +284,7 @@ pub(crate) fn fixup_syntax(
                         if it.name_ref().is_some() && it.expr().is_none() {
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
-                                    sym: sym::__ra_fixup.clone(),
+                                    sym: sym::__ra_fixup,
                                     span: fake_span(node_range),
                                     is_raw: tt::IdentIsRaw::No
                                 })
@@ -302,7 +297,7 @@ pub(crate) fn fixup_syntax(
                         if it.segment().is_none() {
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
-                                    sym: sym::__ra_fixup.clone(),
+                                    sym: sym::__ra_fixup,
                                     span: fake_span(node_range),
                                     is_raw: tt::IdentIsRaw::No
                                 })
@@ -310,33 +305,11 @@ pub(crate) fn fixup_syntax(
                         }
                     }
                 },
-                ast::ArgList(it) => {
-                    if it.r_paren_token().is_none() {
-                        append.insert(node.into(), vec![
-                            Leaf::Punct(Punct {
-                                span: fake_span(node_range),
-                                char: ')',
-                                spacing: Spacing::Alone
-                            })
-                        ]);
-                    }
-                },
-                ast::ArgList(it) => {
-                    if it.r_paren_token().is_none() {
-                        append.insert(node.into(), vec![
-                            Leaf::Punct(Punct {
-                                span: fake_span(node_range),
-                                char: ')',
-                                spacing: Spacing::Alone
-                            })
-                        ]);
-                    }
-                },
                 ast::ClosureExpr(it) => {
                     if it.body().is_none() {
                         append.insert(node.into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             })
@@ -369,73 +342,131 @@ fn has_error_to_handle(node: &SyntaxNode) -> bool {
     has_error(node) || node.children().any(|c| !can_handle_error(&c) && has_error_to_handle(&c))
 }
 
-pub(crate) fn reverse_fixups(tt: &mut Subtree, undo_info: &SyntaxFixupUndoInfo) {
+pub(crate) fn reverse_fixups(tt: &mut TopSubtree, undo_info: &SyntaxFixupUndoInfo) {
     let Some(undo_info) = undo_info.original.as_deref() else { return };
     let undo_info = &**undo_info;
+    let delimiter = tt.top_subtree_delimiter_mut();
     #[allow(deprecated)]
     if never!(
-        tt.delimiter.close.anchor.ast_id == FIXUP_DUMMY_AST_ID
-            || tt.delimiter.open.anchor.ast_id == FIXUP_DUMMY_AST_ID
+        delimiter.close.anchor.ast_id == FIXUP_DUMMY_AST_ID
+            || delimiter.open.anchor.ast_id == FIXUP_DUMMY_AST_ID
     ) {
         let span = |file_id| Span {
             range: TextRange::empty(TextSize::new(0)),
             anchor: SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
-            ctx: SyntaxContextId::ROOT,
+            ctx: SyntaxContext::root(span::Edition::Edition2015),
         };
-        tt.delimiter.open = span(tt.delimiter.open.anchor.file_id);
-        tt.delimiter.close = span(tt.delimiter.close.anchor.file_id);
+        delimiter.open = span(delimiter.open.anchor.file_id);
+        delimiter.close = span(delimiter.close.anchor.file_id);
     }
     reverse_fixups_(tt, undo_info);
 }
 
-fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
-    let tts = std::mem::take(&mut tt.token_trees).into_vec();
-    tt.token_trees = tts
-        .into_iter()
-        // delete all fake nodes
-        .filter(|tt| match tt {
-            tt::TokenTree::Leaf(leaf) => {
-                let span = leaf.span();
-                let is_real_leaf = span.anchor.ast_id != FIXUP_DUMMY_AST_ID;
-                let is_replaced_node = span.range.end() == FIXUP_DUMMY_RANGE_END;
-                is_real_leaf || is_replaced_node
+#[derive(Debug)]
+enum TransformTtAction<'a> {
+    Keep,
+    ReplaceWith(tt::TokenTreesView<'a>),
+}
+
+impl TransformTtAction<'_> {
+    fn remove() -> Self {
+        Self::ReplaceWith(tt::TokenTreesView::new(&[]))
+    }
+}
+
+/// This function takes a token tree, and calls `callback` with each token tree in it.
+/// Then it does what the callback says: keeps the tt or replaces it with a (possibly empty)
+/// tts view.
+fn transform_tt<'a, 'b>(
+    tt: &'a mut Vec<tt::TokenTree>,
+    mut callback: impl FnMut(&mut tt::TokenTree) -> TransformTtAction<'b>,
+) {
+    // We need to keep a stack of the currently open subtrees, because we need to update
+    // them if we change the number of items in them.
+    let mut subtrees_stack = Vec::new();
+    let mut i = 0;
+    while i < tt.len() {
+        'pop_finished_subtrees: while let Some(&subtree_idx) = subtrees_stack.last() {
+            let tt::TokenTree::Subtree(subtree) = &tt[subtree_idx] else {
+                unreachable!("non-subtree on subtrees stack");
+            };
+            if i >= subtree_idx + 1 + subtree.usize_len() {
+                subtrees_stack.pop();
+            } else {
+                break 'pop_finished_subtrees;
             }
-            tt::TokenTree::Subtree(_) => true,
-        })
-        .flat_map(|tt| match tt {
-            tt::TokenTree::Subtree(mut tt) => {
-                if tt.delimiter.close.anchor.ast_id == FIXUP_DUMMY_AST_ID
-                    || tt.delimiter.open.anchor.ast_id == FIXUP_DUMMY_AST_ID
-                {
-                    // Even though fixup never creates subtrees with fixup spans, the old proc-macro server
-                    // might copy them if the proc-macro asks for it, so we need to filter those out
-                    // here as well.
-                    return SmallVec::new_const();
+        }
+
+        let action = callback(&mut tt[i]);
+        match action {
+            TransformTtAction::Keep => {
+                // This cannot be shared with the replaced case, because then we may push the same subtree
+                // twice, and will update it twice which will lead to errors.
+                if let tt::TokenTree::Subtree(_) = &tt[i] {
+                    subtrees_stack.push(i);
                 }
-                reverse_fixups_(&mut tt, undo_info);
-                SmallVec::from_const([tt.into()])
+
+                i += 1;
             }
-            tt::TokenTree::Leaf(leaf) => {
-                if leaf.span().anchor.ast_id == FIXUP_DUMMY_AST_ID {
-                    // we have a fake node here, we need to replace it again with the original
-                    let original = undo_info[u32::from(leaf.span().range.start()) as usize].clone();
-                    if original.delimiter.kind == tt::DelimiterKind::Invisible {
-                        SmallVec::from(original.token_trees.into_vec())
-                    } else {
-                        SmallVec::from_const([original.into()])
-                    }
-                } else {
-                    // just a normal leaf
-                    SmallVec::from_const([leaf.into()])
+            TransformTtAction::ReplaceWith(replacement) => {
+                let old_len = 1 + match &tt[i] {
+                    tt::TokenTree::Leaf(_) => 0,
+                    tt::TokenTree::Subtree(subtree) => subtree.usize_len(),
+                };
+                let len_diff = replacement.len() as i64 - old_len as i64;
+                tt.splice(i..i + old_len, replacement.flat_tokens().iter().cloned());
+                // Skip the newly inserted replacement, we don't want to visit it.
+                i += replacement.len();
+
+                for &subtree_idx in &subtrees_stack {
+                    let tt::TokenTree::Subtree(subtree) = &mut tt[subtree_idx] else {
+                        unreachable!("non-subtree on subtrees stack");
+                    };
+                    subtree.len = (i64::from(subtree.len) + len_diff).try_into().unwrap();
                 }
             }
-        })
-        .collect();
+        }
+    }
+}
+
+fn reverse_fixups_(tt: &mut TopSubtree, undo_info: &[TopSubtree]) {
+    let mut tts = std::mem::take(&mut tt.0).into_vec();
+    transform_tt(&mut tts, |tt| match tt {
+        tt::TokenTree::Leaf(leaf) => {
+            let span = leaf.span();
+            let is_real_leaf = span.anchor.ast_id != FIXUP_DUMMY_AST_ID;
+            let is_replaced_node = span.range.end() == FIXUP_DUMMY_RANGE_END;
+            if !is_real_leaf && !is_replaced_node {
+                return TransformTtAction::remove();
+            }
+
+            if !is_real_leaf {
+                // we have a fake node here, we need to replace it again with the original
+                let original = &undo_info[u32::from(leaf.span().range.start()) as usize];
+                TransformTtAction::ReplaceWith(original.view().strip_invisible())
+            } else {
+                // just a normal leaf
+                TransformTtAction::Keep
+            }
+        }
+        tt::TokenTree::Subtree(tt) => {
+            // fixup should only create matching delimiters, but proc macros
+            // could just copy the span to one of the delimiters. We don't want
+            // to leak the dummy ID, so we remove both.
+            if tt.delimiter.close.anchor.ast_id == FIXUP_DUMMY_AST_ID
+                || tt.delimiter.open.anchor.ast_id == FIXUP_DUMMY_AST_ID
+            {
+                return TransformTtAction::remove();
+            }
+            TransformTtAction::Keep
+        }
+    });
+    tt.0 = tts.into_boxed_slice();
 }
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
     use span::{Edition, EditionedFileId, FileId};
     use syntax::TextRange;
     use syntax_bridge::DocCommentDesugarMode;
@@ -458,22 +489,24 @@ mod tests {
         }
     }
 
-    fn check_subtree_eq(a: &tt::Subtree, b: &tt::Subtree) -> bool {
-        a.delimiter.kind == b.delimiter.kind
-            && a.token_trees.len() == b.token_trees.len()
-            && a.token_trees.iter().zip(b.token_trees.iter()).all(|(a, b)| check_tt_eq(a, b))
+    fn check_subtree_eq(a: &tt::TopSubtree, b: &tt::TopSubtree) -> bool {
+        let a = a.view().as_token_trees().flat_tokens();
+        let b = b.view().as_token_trees().flat_tokens();
+        a.len() == b.len() && std::iter::zip(a, b).all(|(a, b)| check_tt_eq(a, b))
     }
 
     fn check_tt_eq(a: &tt::TokenTree, b: &tt::TokenTree) -> bool {
         match (a, b) {
             (tt::TokenTree::Leaf(a), tt::TokenTree::Leaf(b)) => check_leaf_eq(a, b),
-            (tt::TokenTree::Subtree(a), tt::TokenTree::Subtree(b)) => check_subtree_eq(a, b),
+            (tt::TokenTree::Subtree(a), tt::TokenTree::Subtree(b)) => {
+                a.delimiter.kind == b.delimiter.kind
+            }
             _ => false,
         }
     }
 
     #[track_caller]
-    fn check(ra_fixture: &str, mut expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, mut expect: Expect) {
         let parsed = syntax::SourceFile::parse(ra_fixture, span::Edition::CURRENT);
         let span_map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(EditionedFileId::new(
             FileId::from_raw(0),
@@ -503,6 +536,7 @@ mod tests {
         let (parse, _) = syntax_bridge::token_tree_to_syntax_node(
             &tt,
             syntax_bridge::TopEntryPoint::MacroItems,
+            &mut |_| parser::Edition::CURRENT,
             parser::Edition::CURRENT,
         );
         assert!(
@@ -510,6 +544,17 @@ mod tests {
             "parse has syntax errors. parse tree:\n{:#?}",
             parse.syntax_node()
         );
+
+        // the fixed-up tree should not contain braces as punct
+        // FIXME: should probably instead check that it's a valid punctuation character
+        for x in tt.token_trees().flat_tokens() {
+            match x {
+                ::tt::TokenTree::Leaf(::tt::Leaf::Punct(punct)) => {
+                    assert!(!matches!(punct.char, '{' | '}' | '(' | ')' | '[' | ']'))
+                }
+                _ => (),
+            }
+        }
 
         reverse_fixups(&mut tt, &fixups.undo_info);
 
@@ -536,7 +581,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {for _ in __ra_fixup { }}
+fn foo () {for _ in __ra_fixup {}}
 "#]],
         )
     }
@@ -564,7 +609,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {for bar in qux { }}
+fn foo () {for bar in qux {}}
 "#]],
         )
     }
@@ -595,7 +640,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {match __ra_fixup { }}
+fn foo () {match __ra_fixup {}}
 "#]],
         )
     }
@@ -627,7 +672,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {match __ra_fixup { }}
+fn foo () {match __ra_fixup {}}
 "#]],
         )
     }
@@ -742,7 +787,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {if a { }}
+fn foo () {if a {}}
 "#]],
         )
     }
@@ -756,7 +801,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {if __ra_fixup { }}
+fn foo () {if __ra_fixup {}}
 "#]],
         )
     }
@@ -770,7 +815,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {if __ra_fixup {} { }}
+fn foo () {if __ra_fixup {} {}}
 "#]],
         )
     }
@@ -784,7 +829,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {while __ra_fixup { }}
+fn foo () {while __ra_fixup {}}
 "#]],
         )
     }
@@ -798,7 +843,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {while foo { }}
+fn foo () {while foo {}}
 "#]],
         )
     }
@@ -825,7 +870,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {loop { }}
+fn foo () {loop {}}
 "#]],
         )
     }
@@ -881,7 +926,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () { foo ( a ) }
+fn foo () {foo (a)}
 "#]],
         );
         check(
@@ -891,7 +936,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () { bar . foo ( a ) }
+fn foo () {bar . foo (a)}
 "#]],
         );
     }

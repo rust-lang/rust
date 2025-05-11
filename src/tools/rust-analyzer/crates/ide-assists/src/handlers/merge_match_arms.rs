@@ -2,12 +2,12 @@ use hir::Type;
 use ide_db::FxHashMap;
 use std::iter::successors;
 use syntax::{
+    Direction,
     algo::neighbor,
     ast::{self, AstNode, HasName},
-    Direction,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, TextRange};
+use crate::{AssistContext, AssistId, Assists, TextRange};
 
 // Assist: merge_match_arms
 //
@@ -73,7 +73,7 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     }
 
     acc.add(
-        AssistId("merge_match_arms", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("merge_match_arms"),
         "Merge match arms",
         current_text_range,
         |edit| {

@@ -7,3 +7,5 @@
 #![feature(no_core)]
 #![no_core]
 #![no_main]
+
+//~? ERROR `-Zsanitizer-cfi-generalize-pointers` requires `-Zsanitizer=cfi` or `-Zsanitizer=kcfi`

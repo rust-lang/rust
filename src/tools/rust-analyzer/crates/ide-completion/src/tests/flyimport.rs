@@ -1,12 +1,20 @@
-use expect_test::{expect, Expect};
+use expect_test::{Expect, expect};
 
 use crate::{
+    CompletionConfig,
     context::{CompletionAnalysis, NameContext, NameKind, NameRefKind},
-    tests::{check_edit, check_edit_with_config, TEST_CONFIG},
+    tests::{TEST_CONFIG, check_edit, check_edit_with_config},
 };
 
-fn check(ra_fixture: &str, expect: Expect) {
-    let config = TEST_CONFIG;
+fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
+    check_with_config(TEST_CONFIG, ra_fixture, expect);
+}
+
+fn check_with_config(
+    config: CompletionConfig<'_>,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    expect: Expect,
+) {
     let (db, position) = crate::tests::position(ra_fixture);
     let (ctx, analysis) = crate::context::CompletionContext::new(&db, position, &config).unwrap();
 
@@ -1383,6 +1391,41 @@ pub struct FooStruct {}
 }
 
 #[test]
+fn flyimport_pattern_unstable_path() {
+    check(
+        r#"
+//- /main.rs crate:main deps:std
+fn function() {
+    let foo$0
+}
+//- /std.rs crate:std
+#[unstable]
+pub mod unstable {
+    pub struct FooStruct {}
+}
+"#,
+        expect![""],
+    );
+    check(
+        r#"
+//- toolchain:nightly
+//- /main.rs crate:main deps:std
+fn function() {
+    let foo$0
+}
+//- /std.rs crate:std
+#[unstable]
+pub mod unstable {
+    pub struct FooStruct {}
+}
+"#,
+        expect![[r#"
+            st FooStruct (use std::unstable::FooStruct)
+        "#]],
+    );
+}
+
+#[test]
 fn flyimport_pattern_unstable_item_on_nightly() {
     check(
         r#"
@@ -1738,7 +1781,7 @@ fn intrinsics() {
     fn function() {
             transmute$0
     }
-    "#,
+"#,
         expect![[r#"
             fn transmute(…) (use core::mem::transmute) unsafe fn(Src) -> Dst
         "#]],
@@ -1759,6 +1802,149 @@ fn function() {
         mem::transmute$0
 }
 "#,
+        expect![[r#"
+            fn transmute(…) (use core::mem) unsafe fn(Src) -> Dst
+        "#]],
+    );
+}
+
+#[test]
+fn excluded_trait_item_included_when_exact_match() {
+    // FIXME: This does not work, we need to change the code.
+    check_with_config(
+        CompletionConfig {
+            exclude_traits: &["ra_test_fixture::module2::ExcludedTrait".to_owned()],
+            ..TEST_CONFIG
+        },
+        r#"
+mod module2 {
+    pub trait ExcludedTrait {
+        fn foo(&self) {}
+        fn bar(&self) {}
+        fn baz(&self) {}
+    }
+
+    impl<T> ExcludedTrait for T {}
+}
+
+fn foo() {
+    true.foo$0
+}
+        "#,
+        expect![""],
+    );
+}
+
+#[test]
+fn excluded_via_attr() {
+    check(
+        r#"
+mod module2 {
+    #[rust_analyzer::completions(ignore_flyimport)]
+    pub trait ExcludedTrait {
+        fn foo(&self) {}
+        fn bar(&self) {}
+        fn baz(&self) {}
+    }
+
+    impl<T> ExcludedTrait for T {}
+}
+
+fn foo() {
+    true.$0
+}
+        "#,
+        expect![""],
+    );
+    check(
+        r#"
+mod module2 {
+    #[rust_analyzer::completions(ignore_flyimport_methods)]
+    pub trait ExcludedTrait {
+        fn foo(&self) {}
+        fn bar(&self) {}
+        fn baz(&self) {}
+    }
+
+    impl<T> ExcludedTrait for T {}
+}
+
+fn foo() {
+    true.$0
+}
+        "#,
+        expect![""],
+    );
+    check(
+        r#"
+mod module2 {
+    #[rust_analyzer::completions(ignore_methods)]
+    pub trait ExcludedTrait {
+        fn foo(&self) {}
+        fn bar(&self) {}
+        fn baz(&self) {}
+    }
+
+    impl<T> ExcludedTrait for T {}
+}
+
+fn foo() {
+    true.$0
+}
+        "#,
+        expect![""],
+    );
+    check(
+        r#"
+mod module2 {
+    #[rust_analyzer::completions(ignore_flyimport)]
+    pub trait ExcludedTrait {
+        fn foo(&self) {}
+        fn bar(&self) {}
+        fn baz(&self) {}
+    }
+
+    impl<T> ExcludedTrait for T {}
+}
+
+fn foo() {
+    ExcludedTrait$0
+}
+        "#,
+        expect![""],
+    );
+    check(
+        r#"
+mod module2 {
+    #[rust_analyzer::completions(ignore_methods)]
+    pub trait ExcludedTrait {
+        fn foo(&self) {}
+        fn bar(&self) {}
+        fn baz(&self) {}
+    }
+
+    impl<T> ExcludedTrait for T {}
+}
+
+fn foo() {
+    ExcludedTrait$0
+}
+        "#,
+        expect![[r#"
+            tt ExcludedTrait (use module2::ExcludedTrait)
+        "#]],
+    );
+    check(
+        r#"
+mod module2 {
+    #[rust_analyzer::completions(ignore_flyimport)]
+    pub struct Foo {}
+}
+
+fn foo() {
+    Foo$0
+}
+        "#,
         expect![""],
     );
 }

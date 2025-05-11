@@ -1,7 +1,5 @@
 //@ compile-flags: -Z ui-testing=no
 
-
-#![feature(const_swap_nonoverlapping)]
 use std::{
     mem::{self, MaybeUninit},
     ptr,
@@ -13,7 +11,7 @@ const X: () = {
 
     // Swap them, bytewise.
     unsafe {
-        ptr::swap_nonoverlapping(
+        ptr::swap_nonoverlapping( //~ ERROR evaluation of constant value failed
             &mut ptr1 as *mut _ as *mut MaybeUninit<u8>,
             &mut ptr2 as *mut _ as *mut MaybeUninit<u8>,
             mem::size_of::<&i32>(),

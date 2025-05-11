@@ -1,5 +1,5 @@
 use spam::{ham, eggs}; //~ ERROR unresolved import `spam::eggs` [E0432]
-                       //~^ no `eggs` in `spam`
+                       //~^ NOTE no `eggs` in `spam`
 
 mod spam {
     pub fn ham() { }

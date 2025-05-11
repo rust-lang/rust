@@ -10,11 +10,13 @@ fn main() {
     // OpenOptionsExt::mode
     let mut options = OpenOptions::new();
     options.mode(0o440);
+    //~^ non_octal_unix_permissions
     options.mode(0o400);
     options.mode(permissions);
 
     // PermissionsExt::from_mode
     let _permissions = Permissions::from_mode(0o647);
+    //~^ non_octal_unix_permissions
     let _permissions = Permissions::from_mode(0o000);
     let _permissions = Permissions::from_mode(permissions);
 
@@ -24,6 +26,7 @@ fn main() {
     let mut permissions = metadata.permissions();
 
     permissions.set_mode(0o644);
+    //~^ non_octal_unix_permissions
     permissions.set_mode(0o704);
     // no error
     permissions.set_mode(0b111_000_100);
@@ -31,6 +34,7 @@ fn main() {
     // DirBuilderExt::mode
     let mut builder = DirBuilder::new();
     builder.mode(0o755);
+    //~^ non_octal_unix_permissions
     builder.mode(0o406);
     // no error
     permissions.set_mode(0b111000100);

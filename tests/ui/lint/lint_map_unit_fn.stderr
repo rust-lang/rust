@@ -18,8 +18,9 @@ LL | #![deny(map_unit_fn)]
    |         ^^^^^^^^^^^
 help: you might have meant to use `Iterator::for_each`
    |
-LL |     x.iter_mut().for_each(foo);
-   |                  ~~~~~~~~
+LL -     x.iter_mut().map(foo);
+LL +     x.iter_mut().for_each(foo);
+   |
 
 error: `Iterator::map` call that discard the iterator's values
   --> $DIR/lint_map_unit_fn.rs:11:18
@@ -41,8 +42,9 @@ LL | | |     });
    = note: `Iterator::map`, like many of the methods on `Iterator`, gets executed lazily, meaning that its effects won't be visible until it is iterated
 help: you might have meant to use `Iterator::for_each`
    |
-LL |     x.iter_mut().for_each(|items| {
-   |                  ~~~~~~~~
+LL -     x.iter_mut().map(|items| {
+LL +     x.iter_mut().for_each(|items| {
+   |
 
 error: `Iterator::map` call that discard the iterator's values
   --> $DIR/lint_map_unit_fn.rs:18:18
@@ -59,8 +61,9 @@ LL |     x.iter_mut().map(f);
    = note: `Iterator::map`, like many of the methods on `Iterator`, gets executed lazily, meaning that its effects won't be visible until it is iterated
 help: you might have meant to use `Iterator::for_each`
    |
-LL |     x.iter_mut().for_each(f);
-   |                  ~~~~~~~~
+LL -     x.iter_mut().map(f);
+LL +     x.iter_mut().for_each(f);
+   |
 
 error: aborting due to 3 previous errors
 

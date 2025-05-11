@@ -9,8 +9,8 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_session::config::{
     self, CodegenOptions, CrateType, ErrorOutputType, Externs, Input, JsonUnusedExterns,
-    UnstableOptions, get_cmd_lint_options, nightly_options, parse_crate_types_from_list,
-    parse_externs, parse_target_triple,
+    OptionsTargetModifiers, UnstableOptions, get_cmd_lint_options, nightly_options,
+    parse_crate_types_from_list, parse_externs, parse_target_triple,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -33,6 +33,7 @@ pub(crate) enum OutputFormat {
     Json,
     #[default]
     Html,
+    Doctest,
 }
 
 impl OutputFormat {
@@ -48,6 +49,7 @@ impl TryFrom<&str> for OutputFormat {
         match value {
             "json" => Ok(OutputFormat::Json),
             "html" => Ok(OutputFormat::Html),
+            "doctest" => Ok(OutputFormat::Doctest),
             _ => Err(format!("unknown output format `{value}`")),
         }
     }
@@ -101,6 +103,8 @@ pub(crate) struct Options {
     /// compiling doctests from the crate.
     pub(crate) edition: Edition,
     /// The path to the sysroot. Used during the compilation process.
+    pub(crate) sysroot: PathBuf,
+    /// Has the same value as `sysroot` except is `None` when the user didn't pass `---sysroot`.
     pub(crate) maybe_sysroot: Option<PathBuf>,
     /// Lint information passed over the command-line.
     pub(crate) lint_opts: Vec<(String, Level)>,
@@ -120,13 +124,9 @@ pub(crate) struct Options {
     /// temporary directory if not set.
     pub(crate) persist_doctests: Option<PathBuf>,
     /// Runtool to run doctests with
-    pub(crate) runtool: Option<String>,
+    pub(crate) test_runtool: Option<String>,
     /// Arguments to pass to the runtool
-    pub(crate) runtool_args: Vec<String>,
-    /// Whether to allow ignoring doctests on a per-target basis
-    /// For example, using ignore-foo to ignore running the doctest on any target that
-    /// contains "foo" as a substring
-    pub(crate) enable_per_target_ignores: bool,
+    pub(crate) test_runtool_args: Vec<String>,
     /// Do not run doctests, compile them if should_test is active.
     pub(crate) no_run: bool,
     /// What sources are being mapped.
@@ -174,7 +174,7 @@ pub(crate) struct Options {
     pub(crate) expanded_args: Vec<String>,
 
     /// Arguments to be used when compiling doctests.
-    pub(crate) doctest_compilation_args: Vec<String>,
+    pub(crate) doctest_build_args: Vec<String>,
 }
 
 impl fmt::Debug for Options {
@@ -200,6 +200,7 @@ impl fmt::Debug for Options {
             .field("unstable_options", &"...")
             .field("target", &self.target)
             .field("edition", &self.edition)
+            .field("sysroot", &self.sysroot)
             .field("maybe_sysroot", &self.maybe_sysroot)
             .field("lint_opts", &self.lint_opts)
             .field("describe_lints", &self.describe_lints)
@@ -210,9 +211,8 @@ impl fmt::Debug for Options {
             .field("persist_doctests", &self.persist_doctests)
             .field("show_coverage", &self.show_coverage)
             .field("crate_version", &self.crate_version)
-            .field("runtool", &self.runtool)
-            .field("runtool_args", &self.runtool_args)
-            .field("enable-per-target-ignores", &self.enable_per_target_ignores)
+            .field("test_runtool", &self.test_runtool)
+            .field("test_runtool_args", &self.test_runtool_args)
             .field("run_check", &self.run_check)
             .field("no_run", &self.no_run)
             .field("test_builder_wrappers", &self.test_builder_wrappers)
@@ -303,6 +303,8 @@ pub(crate) struct RenderOptions {
     pub(crate) include_parts_dir: Vec<PathToParts>,
     /// Where to write crate-info
     pub(crate) parts_out_dir: Option<PathToParts>,
+    /// disable minification of CSS/JS
+    pub(crate) disable_minification: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -311,23 +313,30 @@ pub(crate) enum ModuleSorting {
     Alphabetical,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum EmitType {
     Unversioned,
     Toolchain,
     InvocationSpecific,
+    DepInfo(Option<PathBuf>),
 }
 
 impl FromStr for EmitType {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        use EmitType::*;
         match s {
-            "unversioned-shared-resources" => Ok(Unversioned),
-            "toolchain-shared-resources" => Ok(Toolchain),
-            "invocation-specific" => Ok(InvocationSpecific),
-            _ => Err(()),
+            "unversioned-shared-resources" => Ok(Self::Unversioned),
+            "toolchain-shared-resources" => Ok(Self::Toolchain),
+            "invocation-specific" => Ok(Self::InvocationSpecific),
+            "dep-info" => Ok(Self::DepInfo(None)),
+            option => {
+                if let Some(file) = option.strip_prefix("dep-info=") {
+                    Ok(Self::DepInfo(Some(Path::new(file).into())))
+                } else {
+                    Err(())
+                }
+            }
         }
     }
 }
@@ -335,6 +344,15 @@ impl FromStr for EmitType {
 impl RenderOptions {
     pub(crate) fn should_emit_crate(&self) -> bool {
         self.emit.is_empty() || self.emit.contains(&EmitType::InvocationSpecific)
+    }
+
+    pub(crate) fn dep_info(&self) -> Option<Option<&Path>> {
+        for emit in &self.emit {
+            if let EmitType::DepInfo(file) = emit {
+                return Some(file.as_deref());
+            }
+        }
+        None
     }
 }
 
@@ -385,8 +403,9 @@ impl Options {
             config::parse_error_format(early_dcx, matches, color, json_color, json_rendered);
         let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
-        let codegen_options = CodegenOptions::build(early_dcx, matches);
-        let unstable_opts = UnstableOptions::build(early_dcx, matches);
+        let mut target_modifiers = BTreeMap::<OptionsTargetModifiers, String>::new();
+        let codegen_options = CodegenOptions::build(early_dcx, matches, &mut target_modifiers);
+        let unstable_opts = UnstableOptions::build(early_dcx, matches, &mut target_modifiers);
 
         let remap_path_prefix = match parse_remap_path_prefix(matches) {
             Ok(prefix_mappings) => prefix_mappings,
@@ -443,20 +462,48 @@ impl Options {
             }
         }
 
+        let show_coverage = matches.opt_present("show-coverage");
+        let output_format_s = matches.opt_str("output-format");
+        let output_format = match output_format_s {
+            Some(ref s) => match OutputFormat::try_from(s.as_str()) {
+                Ok(out_fmt) => out_fmt,
+                Err(e) => dcx.fatal(e),
+            },
+            None => OutputFormat::default(),
+        };
+
         // check for `--output-format=json`
-        if !matches!(matches.opt_str("output-format").as_deref(), None | Some("html"))
-            && !matches.opt_present("show-coverage")
-            && !nightly_options::is_unstable_enabled(matches)
-        {
-            dcx.fatal(
-                "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/76578)",
-            );
+        match (
+            output_format_s.as_ref().map(|_| output_format),
+            show_coverage,
+            nightly_options::is_unstable_enabled(matches),
+        ) {
+            (None | Some(OutputFormat::Json), true, _) => {}
+            (_, true, _) => {
+                dcx.fatal(format!(
+                    "`--output-format={}` is not supported for the `--show-coverage` option",
+                    output_format_s.unwrap_or_default(),
+                ));
+            }
+            // If `-Zunstable-options` is used, nothing to check after this point.
+            (_, false, true) => {}
+            (None | Some(OutputFormat::Html), false, _) => {}
+            (Some(OutputFormat::Json), false, false) => {
+                dcx.fatal(
+                    "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/76578)",
+                );
+            }
+            (Some(OutputFormat::Doctest), false, false) => {
+                dcx.fatal(
+                    "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/134529)",
+                );
+            }
         }
 
         let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
             let mut content =
-                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.bytes).unwrap();
+                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.src_bytes).unwrap();
             if let Some((_, inside)) = content.split_once("/* Begin theme: light */") {
                 content = inside;
             }
@@ -596,16 +643,16 @@ impl Options {
 
         let extension_css = matches.opt_str("e").map(|s| PathBuf::from(&s));
 
-        if let Some(ref p) = extension_css {
-            if !p.is_file() {
-                dcx.fatal("option --extend-css argument must be a file");
-            }
+        if let Some(ref p) = extension_css
+            && !p.is_file()
+        {
+            dcx.fatal("option --extend-css argument must be a file");
         }
 
         let mut themes = Vec::new();
         if matches.opt_present("theme") {
             let mut content =
-                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.bytes).unwrap();
+                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.src_bytes).unwrap();
             if let Some((_, inside)) = content.split_once("/* Begin theme: light */") {
                 content = inside;
             }
@@ -671,21 +718,16 @@ impl Options {
         }
 
         let index_page = matches.opt_str("index-page").map(|s| PathBuf::from(&s));
-        if let Some(ref index_page) = index_page {
-            if !index_page.is_file() {
-                dcx.fatal("option `--index-page` argument must be a file");
-            }
+        if let Some(ref index_page) = index_page
+            && !index_page.is_file()
+        {
+            dcx.fatal("option `--index-page` argument must be a file");
         }
 
         let target = parse_target_triple(early_dcx, matches);
         let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
 
-        let sysroot = match &maybe_sysroot {
-            Some(s) => s.clone(),
-            None => {
-                rustc_session::filesearch::get_or_default_sysroot().expect("Failed finding sysroot")
-            }
-        };
+        let sysroot = rustc_session::filesearch::materialize_sysroot(maybe_sysroot.clone());
 
         let libs = matches
             .opt_strs("L")
@@ -702,8 +744,6 @@ impl Options {
             })
             .collect();
 
-        let show_coverage = matches.opt_present("show-coverage");
-
         let crate_types = match parse_crate_types_from_list(matches.opt_strs("crate-type")) {
             Ok(types) => types,
             Err(e) => {
@@ -711,20 +751,6 @@ impl Options {
             }
         };
 
-        let output_format = match matches.opt_str("output-format") {
-            Some(s) => match OutputFormat::try_from(s.as_str()) {
-                Ok(out_fmt) => {
-                    if !out_fmt.is_json() && show_coverage {
-                        dcx.fatal(
-                            "html output format isn't supported for the --show-coverage option",
-                        );
-                    }
-                    out_fmt
-                }
-                Err(e) => dcx.fatal(e),
-            },
-            None => OutputFormat::default(),
-        };
         let crate_name = matches.opt_str("crate-name");
         let bin_crate = crate_types.contains(&CrateType::Executable);
         let proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
@@ -748,9 +774,8 @@ impl Options {
         let unstable_opts_strs = matches.opt_strs("Z");
         let lib_strs = matches.opt_strs("L");
         let extern_strs = matches.opt_strs("extern");
-        let runtool = matches.opt_str("runtool");
-        let runtool_args = matches.opt_strs("runtool-arg");
-        let enable_per_target_ignores = matches.opt_present("enable-per-target-ignores");
+        let test_runtool = matches.opt_str("test-runtool");
+        let test_runtool_args = matches.opt_strs("test-runtool-arg");
         let document_private = matches.opt_present("document-private-items");
         let document_hidden = matches.opt_present("document-hidden-items");
         let run_check = matches.opt_present("check");
@@ -777,10 +802,13 @@ impl Options {
         let scrape_examples_options = ScrapeExamplesOptions::new(matches, dcx);
         let with_examples = matches.opt_strs("with-examples");
         let call_locations = crate::scrape_examples::load_call_locations(with_examples, dcx);
-        let doctest_compilation_args = matches.opt_strs("doctest-compilation-args");
+        let doctest_build_args = matches.opt_strs("doctest-build-arg");
 
         let unstable_features =
             rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
+
+        let disable_minification = matches.opt_present("disable-minification");
+
         let options = Options {
             bin_crate,
             proc_macro_crate,
@@ -798,6 +826,7 @@ impl Options {
             unstable_opts_strs,
             target,
             edition,
+            sysroot,
             maybe_sysroot,
             lint_opts,
             describe_lints,
@@ -808,9 +837,8 @@ impl Options {
             crate_version,
             test_run_directory,
             persist_doctests,
-            runtool,
-            runtool_args,
-            enable_per_target_ignores,
+            test_runtool,
+            test_runtool_args,
             test_builder,
             run_check,
             no_run,
@@ -823,7 +851,7 @@ impl Options {
             scrape_examples_options,
             unstable_features,
             expanded_args: args,
-            doctest_compilation_args,
+            doctest_build_args,
         };
         let render_options = RenderOptions {
             output,
@@ -857,6 +885,7 @@ impl Options {
             should_merge,
             include_parts_dir,
             parts_out_dir,
+            disable_minification,
         };
         Some((input, options, render_options))
     }

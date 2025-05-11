@@ -1,12 +1,12 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
 #![feature(if_let_guard)]
-#![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
 #![feature(slice_ptr_get)]
@@ -16,7 +16,6 @@
 #![feature(unqualified_local_imports)]
 #![feature(yeet_expr)]
 #![warn(unqualified_local_imports)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub mod check_consts;
@@ -46,12 +45,13 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.hooks.try_destructure_mir_constant_for_user_output =
         const_eval::try_destructure_mir_constant_for_user_output;
-    providers.valtree_to_const_val = |tcx, (ty, valtree)| {
-        const_eval::valtree_to_const_value(tcx, ty::TypingEnv::fully_monomorphized(), ty, valtree)
-    };
+    providers.valtree_to_const_val =
+        |tcx, cv| const_eval::valtree_to_const_value(tcx, ty::TypingEnv::fully_monomorphized(), cv);
     providers.check_validity_requirement = |tcx, (init_kind, param_env_and_ty)| {
         util::check_validity_requirement(tcx, init_kind, param_env_and_ty)
     };
+    providers.hooks.validate_scalar_in_layout =
+        |tcx, scalar, layout| util::validate_scalar_in_layout(tcx, scalar, layout);
 }
 
 /// `rustc_driver::main` installs a handler that will set this to `true` if

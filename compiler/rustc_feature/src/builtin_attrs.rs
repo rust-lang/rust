@@ -6,6 +6,7 @@ use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_span::edition::Edition;
 use rustc_span::{Symbol, sym};
 
 use crate::{Features, Stability};
@@ -19,6 +20,7 @@ const GATED_CFGS: &[GatedCfg] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
     (sym::overflow_checks, sym::cfg_overflow_checks, Features::cfg_overflow_checks),
     (sym::ub_checks, sym::cfg_ub_checks, Features::cfg_ub_checks),
+    (sym::contract_checks, sym::cfg_contract_checks, Features::cfg_contract_checks),
     (sym::target_thread_local, sym::cfg_target_thread_local, Features::cfg_target_thread_local),
     (
         sym::target_has_atomic_equal_alignment,
@@ -37,6 +39,27 @@ const GATED_CFGS: &[GatedCfg] = &[
     (sym::sanitizer_cfi_normalize_integers, sym::cfg_sanitizer_cfi, Features::cfg_sanitizer_cfi),
     // this is consistent with naming of the compiler flag it's for
     (sym::fmt_debug, sym::fmt_debug, Features::fmt_debug),
+    (sym::emscripten_wasm_eh, sym::cfg_emscripten_wasm_eh, Features::cfg_emscripten_wasm_eh),
+    (
+        sym::target_has_reliable_f16,
+        sym::cfg_target_has_reliable_f16_f128,
+        Features::cfg_target_has_reliable_f16_f128,
+    ),
+    (
+        sym::target_has_reliable_f16_math,
+        sym::cfg_target_has_reliable_f16_f128,
+        Features::cfg_target_has_reliable_f16_f128,
+    ),
+    (
+        sym::target_has_reliable_f128,
+        sym::cfg_target_has_reliable_f16_f128,
+        Features::cfg_target_has_reliable_f16_f128,
+    ),
+    (
+        sym::target_has_reliable_f128_math,
+        sym::cfg_target_has_reliable_f16_f128,
+        Features::cfg_target_has_reliable_f16_f128,
+    ),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
@@ -63,9 +86,12 @@ pub enum AttributeSafety {
     /// Normal attribute that does not need `#[unsafe(...)]`
     Normal,
 
-    /// Unsafe attribute that requires safety obligations
-    /// to be discharged
-    Unsafe,
+    /// Unsafe attribute that requires safety obligations to be discharged.
+    ///
+    /// An error is emitted when `#[unsafe(...)]` is omitted, except when the attribute's edition
+    /// is less than the one stored in `unsafe_since`. This handles attributes that were safe in
+    /// earlier editions, but become unsafe in later ones.
+    Unsafe { unsafe_since: Option<Edition> },
 }
 
 #[derive(Clone, Copy)]
@@ -185,12 +211,23 @@ macro_rules! template {
 }
 
 macro_rules! ungated {
+    (unsafe($edition:ident) $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr $(,)?) => {
+        BuiltinAttribute {
+            name: sym::$attr,
+            encode_cross_crate: $encode_cross_crate,
+            type_: $typ,
+            safety: AttributeSafety::Unsafe { unsafe_since: Some(Edition::$edition) },
+            template: $tpl,
+            gate: Ungated,
+            duplicates: $duplicates,
+        }
+    };
     (unsafe $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
             type_: $typ,
-            safety: AttributeSafety::Unsafe,
+            safety: AttributeSafety::Unsafe { unsafe_since: None },
             template: $tpl,
             gate: Ungated,
             duplicates: $duplicates,
@@ -215,7 +252,7 @@ macro_rules! gated {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
             type_: $typ,
-            safety: AttributeSafety::Unsafe,
+            safety: AttributeSafety::Unsafe { unsafe_since: None },
             template: $tpl,
             duplicates: $duplicates,
             gate: Gated(Stability::Unstable, sym::$gate, $msg, Features::$gate),
@@ -226,7 +263,7 @@ macro_rules! gated {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
             type_: $typ,
-            safety: AttributeSafety::Unsafe,
+            safety: AttributeSafety::Unsafe { unsafe_since: None },
             template: $tpl,
             duplicates: $duplicates,
             gate: Gated(Stability::Unstable, sym::$attr, $msg, Features::$attr),
@@ -316,7 +353,7 @@ pub struct BuiltinAttribute {
 
 /// Attributes that have a special meaning to rustc or rustdoc.
 #[rustfmt::skip]
-pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
+pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
     // Stable attributes:
     // ==========================================================================
@@ -407,11 +444,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         crate_type, CrateLevel, template!(NameValueStr: "bin|lib|..."), DuplicatesOk,
         EncodeCrossCrate::No,
     ),
-    // crate_id is deprecated
-    ungated!(
-        crate_id, CrateLevel, template!(NameValueStr: "ignored"), FutureWarnFollowing,
-        EncodeCrossCrate::No,
-    ),
 
     // ABI, linking, symbols, and FFI
     ungated!(
@@ -426,11 +458,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(no_link, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(repr, Normal, template!(List: "C"), DuplicatesOk, EncodeCrossCrate::No),
-    ungated!(unsafe export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
-    ungated!(unsafe link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
-    ungated!(unsafe no_mangle, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
+    ungated!(unsafe(Edition2024) export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
+    ungated!(unsafe(Edition2024) link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
+    ungated!(unsafe(Edition2024) no_mangle, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing, EncodeCrossCrate::No),
     ungated!(link_ordinal, Normal, template!(List: "ordinal"), ErrorPreceding, EncodeCrossCrate::Yes),
+    ungated!(unsafe naked, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
 
     // Limits:
     ungated!(
@@ -447,8 +480,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Entry point:
-    ungated!(start, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
-    ungated!(no_start, CrateLevel, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(no_main, CrateLevel, template!(Word), WarnFollowing, EncodeCrossCrate::No),
 
     // Modules, prelude, and resolution:
@@ -507,8 +538,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Linking:
     gated!(
-        naked, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
-        naked_functions, experimental!(naked)
+        export_stable, Normal, template!(Word), WarnFollowing,
+        EncodeCrossCrate::No, experimental!(export_stable)
     ),
 
     // Testing:
@@ -532,7 +563,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     // RFC 2412
     gated!(
-        optimize, Normal, template!(List: "size|speed"), ErrorPreceding,
+        optimize, Normal, template!(List: "none|size|speed"), ErrorPreceding,
         EncodeCrossCrate::No, optimize_attribute, experimental!(optimize)
     ),
 
@@ -571,7 +602,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // `#[coroutine]` attribute to be applied to closures to make them coroutines instead
     gated!(
         coroutine, Normal, template!(Word), ErrorFollowing,
-        EncodeCrossCrate::No, coroutines, experimental!(coroutines)
+        EncodeCrossCrate::No, coroutines, experimental!(coroutine)
     ),
 
     // RFC 3543
@@ -579,6 +610,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     gated!(
         patchable_function_entry, Normal, template!(List: "prefix_nops = m, entry_nops = n"), ErrorPreceding,
         EncodeCrossCrate::Yes, experimental!(patchable_function_entry)
+    ),
+
+    // Probably temporary component of min_generic_const_args.
+    // `#[type_const] const ASSOC: usize;`
+    gated!(
+        type_const, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes, min_generic_const_args, experimental!(type_const),
     ),
 
     // ==========================================================================
@@ -622,7 +660,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
     rustc_attr!(
-        rustc_allowed_through_unstable_modules, Normal, template!(Word),
+        rustc_allowed_through_unstable_modules, Normal, template!(NameValueStr: "deprecation message"),
         WarnFollowing, EncodeCrossCrate::No,
         "rustc_allowed_through_unstable_modules special cases accidental stabilizations of stable items \
         through unstable paths"
@@ -742,13 +780,25 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_macro_transparency, Normal,
-        template!(NameValueStr: "transparent|semitransparent|opaque"), ErrorFollowing,
+        template!(NameValueStr: "transparent|semiopaque|opaque"), ErrorFollowing,
         EncodeCrossCrate::Yes, "used internally for testing macro hygiene",
     ),
     rustc_attr!(
         rustc_autodiff, Normal,
         template!(Word, List: r#""...""#), DuplicatesOk,
-        EncodeCrossCrate::No, INTERNAL_UNSTABLE
+        EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+    ),
+    // Traces that are left when `cfg` and `cfg_attr` attributes are expanded.
+    // The attributes are not gated, to avoid stability errors, but they cannot be used in stable
+    // or unstable code directly because `sym::cfg_(attr_)trace` are not valid identifiers, they
+    // can only be generated by the compiler.
+    ungated!(
+        cfg_trace, Normal, template!(Word /* irrelevant */), DuplicatesOk,
+        EncodeCrossCrate::No
+    ),
+    ungated!(
+        cfg_attr_trace, Normal, template!(Word /* irrelevant */), DuplicatesOk,
+        EncodeCrossCrate::No
     ),
 
     // ==========================================================================
@@ -895,6 +945,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_never_returns_null_ptr] is used to mark functions returning non-null pointers."
     ),
     rustc_attr!(
+        rustc_no_implicit_autorefs, AttributeType::Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes,
+        "`#[rustc_no_implicit_autorefs]` is used to mark functions for which an autoref to the dereference of a raw pointer should not be used as an argument."
+    ),
+    rustc_attr!(
         rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
         "#![rustc_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
     ),
@@ -932,11 +986,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorFollowing, EncodeCrossCrate::Yes,
         "#[rustc_has_incoherent_inherent_impls] allows the addition of incoherent inherent impls for \
          the given type by annotating all impl items with #[rustc_allow_incoherent_impl]."
-    ),
-    rustc_attr!(
-        rustc_box, AttributeType::Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
-        "#[rustc_box] allows creating boxes \
-        and it is only intended to be used in `alloc`."
     ),
 
     BuiltinAttribute {
@@ -1013,15 +1062,15 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     gated!(
         rustc_intrinsic, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
-        "the `#[rustc_intrinsic]` attribute is used to declare intrinsics with function bodies",
-    ),
-    gated!(
-        rustc_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
-        "the `#[rustc_intrinsic_must_be_overridden]` attribute is used to declare intrinsics without real bodies",
+        "the `#[rustc_intrinsic]` attribute is used to declare intrinsics as function items",
     ),
     rustc_attr!(
         rustc_no_mir_inline, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
         "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
+    ),
+    rustc_attr!(
+        rustc_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
+        "#[rustc_force_inline] forces a free function to be inlined"
     ),
 
     // ==========================================================================
@@ -1070,9 +1119,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_error, Normal,
-        template!(Word, List: "delayed_bug_from_inside_query"),
-        WarnFollowingWordOnly, EncodeCrossCrate::Yes
+        TEST, rustc_delayed_bug_from_inside_query, Normal,
+        template!(Word),
+        WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
         TEST, rustc_dump_user_args, Normal, template!(Word),
@@ -1143,7 +1192,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         TEST, rustc_dump_vtable, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes
+        WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
         TEST, rustc_dummy, Normal, template!(Word /* doesn't matter*/),
@@ -1155,7 +1204,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite",
     ),
     rustc_attr!(
-        TEST, pattern_complexity, CrateLevel, template!(NameValueStr: "N"),
+        TEST, pattern_complexity_limit, CrateLevel, template!(NameValueStr: "N"),
         ErrorFollowing, EncodeCrossCrate::No,
     ),
 ];

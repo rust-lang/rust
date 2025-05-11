@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ needs-unwind
 #![feature(c_unwind)]
 #![crate_type = "lib"]

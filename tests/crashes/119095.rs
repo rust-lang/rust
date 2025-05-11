@@ -1,5 +1,5 @@
 //@ known-bug: #119095
-//@ compile-flags: --edition=2021
+//@ edition: 2021
 
 fn any<T>() -> T {
     loop {}

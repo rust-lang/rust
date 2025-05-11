@@ -13,46 +13,62 @@
 
 pub fn i64_to_u32(value: i64) {
     let _ = value <= (u32::max_value() as i64) && value >= 0;
+    //~^ checked_conversions
     let _ = value <= (u32::MAX as i64) && value >= 0;
+    //~^ checked_conversions
 }
 
 pub fn i64_to_u16(value: i64) {
     let _ = value <= i64::from(u16::max_value()) && value >= 0;
+    //~^ checked_conversions
     let _ = value <= i64::from(u16::MAX) && value >= 0;
+    //~^ checked_conversions
 }
 
 pub fn isize_to_u8(value: isize) {
     let _ = value <= (u8::max_value() as isize) && value >= 0;
+    //~^ checked_conversions
     let _ = value <= (u8::MAX as isize) && value >= 0;
+    //~^ checked_conversions
 }
 
 // Signed to signed
 
 pub fn i64_to_i32(value: i64) {
     let _ = value <= (i32::max_value() as i64) && value >= (i32::min_value() as i64);
+    //~^ checked_conversions
     let _ = value <= (i32::MAX as i64) && value >= (i32::MIN as i64);
+    //~^ checked_conversions
 }
 
 pub fn i64_to_i16(value: i64) {
     let _ = value <= i64::from(i16::max_value()) && value >= i64::from(i16::min_value());
+    //~^ checked_conversions
     let _ = value <= i64::from(i16::MAX) && value >= i64::from(i16::MIN);
+    //~^ checked_conversions
 }
 
 // Unsigned to X
 
 pub fn u32_to_i32(value: u32) {
     let _ = value <= i32::max_value() as u32;
+    //~^ checked_conversions
     let _ = value <= i32::MAX as u32;
+    //~^ checked_conversions
 }
 
 pub fn usize_to_isize(value: usize) {
     let _ = value <= isize::max_value() as usize && value as i32 == 5;
+    //~^ checked_conversions
     let _ = value <= isize::MAX as usize && value as i32 == 5;
+    //~^ checked_conversions
 }
 
 pub fn u32_to_u16(value: u32) {
     let _ = value <= u16::max_value() as u32 && value as i32 == 5;
+    //~^ checked_conversions
     let _ = value <= u16::MAX as u32 && value as i32 == 5;
+    //~^ checked_conversions
 }
 
 // Negative tests
@@ -86,6 +102,7 @@ fn msrv_1_33() {
 fn msrv_1_34() {
     let value: i64 = 34;
     let _ = value <= (u32::MAX as i64) && value >= 0;
+    //~^ checked_conversions
 }
 
 fn main() {}

@@ -59,7 +59,7 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 
     // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
     // that gets resolved to the `#[panic_handler]` function.
-    extern "Rust" {
+    unsafe extern "Rust" {
         #[lang = "panic_impl"]
         fn panic_impl(pi: &PanicInfo<'_>) -> !;
     }
@@ -100,7 +100,7 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
 
             // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
             // that gets resolved to the `#[panic_handler]` function.
-            extern "Rust" {
+            unsafe extern "Rust" {
                 #[lang = "panic_impl"]
                 fn panic_impl(pi: &PanicInfo<'_>) -> !;
             }
@@ -155,30 +155,26 @@ pub const fn panic(expr: &'static str) -> ! {
 // reducing binary size impact.
 macro_rules! panic_const {
     ($($lang:ident = $message:expr,)+) => {
-        pub mod panic_const {
-            use super::*;
-
-            $(
-                /// This is a panic called with a message that's a result of a MIR-produced Assert.
-                //
-                // never inline unless panic_immediate_abort to avoid code
-                // bloat at the call sites as much as possible
-                #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-                #[cfg_attr(feature = "panic_immediate_abort", inline)]
-                #[track_caller]
-                #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
-                #[lang = stringify!($lang)]
-                pub const fn $lang() -> ! {
-                    // Use Arguments::new_const instead of format_args!("{expr}") to potentially
-                    // reduce size overhead. The format_args! macro uses str's Display trait to
-                    // write expr, which calls Formatter::pad, which must accommodate string
-                    // truncation and padding (even though none is used here). Using
-                    // Arguments::new_const may allow the compiler to omit Formatter::pad from the
-                    // output binary, saving up to a few kilobytes.
-                    panic_fmt(fmt::Arguments::new_const(&[$message]));
-                }
-            )+
-        }
+        $(
+            /// This is a panic called with a message that's a result of a MIR-produced Assert.
+            //
+            // never inline unless panic_immediate_abort to avoid code
+            // bloat at the call sites as much as possible
+            #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+            #[cfg_attr(feature = "panic_immediate_abort", inline)]
+            #[track_caller]
+            #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
+            #[lang = stringify!($lang)]
+            pub const fn $lang() -> ! {
+                // Use Arguments::new_const instead of format_args!("{expr}") to potentially
+                // reduce size overhead. The format_args! macro uses str's Display trait to
+                // write expr, which calls Formatter::pad, which must accommodate string
+                // truncation and padding (even though none is used here). Using
+                // Arguments::new_const may allow the compiler to omit Formatter::pad from the
+                // output binary, saving up to a few kilobytes.
+                panic_fmt(fmt::Arguments::new_const(&[$message]));
+            }
+        )+
     }
 }
 
@@ -186,25 +182,37 @@ macro_rules! panic_const {
 // slightly different forms. It's not clear if there's a good way to deduplicate without adding
 // special cases to the compiler (e.g., a const generic function wouldn't have a single definition
 // shared across crates, which is exactly what we want here).
-panic_const! {
-    panic_const_add_overflow = "attempt to add with overflow",
-    panic_const_sub_overflow = "attempt to subtract with overflow",
-    panic_const_mul_overflow = "attempt to multiply with overflow",
-    panic_const_div_overflow = "attempt to divide with overflow",
-    panic_const_rem_overflow = "attempt to calculate the remainder with overflow",
-    panic_const_neg_overflow = "attempt to negate with overflow",
-    panic_const_shr_overflow = "attempt to shift right with overflow",
-    panic_const_shl_overflow = "attempt to shift left with overflow",
-    panic_const_div_by_zero = "attempt to divide by zero",
-    panic_const_rem_by_zero = "attempt to calculate the remainder with a divisor of zero",
-    panic_const_coroutine_resumed = "coroutine resumed after completion",
-    panic_const_async_fn_resumed = "`async fn` resumed after completion",
-    panic_const_async_gen_fn_resumed = "`async gen fn` resumed after completion",
-    panic_const_gen_fn_none = "`gen fn` should just keep returning `None` after completion",
-    panic_const_coroutine_resumed_panic = "coroutine resumed after panicking",
-    panic_const_async_fn_resumed_panic = "`async fn` resumed after panicking",
-    panic_const_async_gen_fn_resumed_panic = "`async gen fn` resumed after panicking",
-    panic_const_gen_fn_none_panic = "`gen fn` should just keep returning `None` after panicking",
+pub mod panic_const {
+    use super::*;
+    panic_const! {
+        panic_const_add_overflow = "attempt to add with overflow",
+        panic_const_sub_overflow = "attempt to subtract with overflow",
+        panic_const_mul_overflow = "attempt to multiply with overflow",
+        panic_const_div_overflow = "attempt to divide with overflow",
+        panic_const_rem_overflow = "attempt to calculate the remainder with overflow",
+        panic_const_neg_overflow = "attempt to negate with overflow",
+        panic_const_shr_overflow = "attempt to shift right with overflow",
+        panic_const_shl_overflow = "attempt to shift left with overflow",
+        panic_const_div_by_zero = "attempt to divide by zero",
+        panic_const_rem_by_zero = "attempt to calculate the remainder with a divisor of zero",
+        panic_const_coroutine_resumed = "coroutine resumed after completion",
+        panic_const_async_fn_resumed = "`async fn` resumed after completion",
+        panic_const_async_gen_fn_resumed = "`async gen fn` resumed after completion",
+        panic_const_gen_fn_none = "`gen fn` should just keep returning `None` after completion",
+        panic_const_coroutine_resumed_panic = "coroutine resumed after panicking",
+        panic_const_async_fn_resumed_panic = "`async fn` resumed after panicking",
+        panic_const_async_gen_fn_resumed_panic = "`async gen fn` resumed after panicking",
+        panic_const_gen_fn_none_panic = "`gen fn` should just keep returning `None` after panicking",
+    }
+    // Separated panic constants list for async drop feature
+    // (May be joined when the corresponding lang items will be in the bootstrap)
+    #[cfg(not(bootstrap))]
+    panic_const! {
+        panic_const_coroutine_resumed_drop = "coroutine resumed after async drop",
+        panic_const_async_fn_resumed_drop = "`async fn` resumed after async drop",
+        panic_const_async_gen_fn_resumed_drop = "`async gen fn` resumed after async drop",
+        panic_const_gen_fn_none_drop = "`gen fn` resumed after async drop",
+    }
 }
 
 /// Like `panic`, but without unwinding and track_caller to reduce the impact on codesize on the caller.
@@ -287,6 +295,22 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
         format_args!(
             "misaligned pointer dereference: address must be a multiple of {required:#x} but is {found:#x}"
         ),
+        /* force_no_backtrace */ false,
+    )
+}
+
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[track_caller]
+#[lang = "panic_null_pointer_dereference"] // needed by codegen for panic on null pointer deref
+#[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
+fn panic_null_pointer_dereference() -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        super::intrinsics::abort()
+    }
+
+    panic_nounwind_fmt(
+        format_args!("null pointer dereference occurred"),
         /* force_no_backtrace */ false,
     )
 }

@@ -1,5 +1,4 @@
-//@ compile-flags: -O
-//@ min-llvm-version: 19
+//@ compile-flags: -Copt-level=3
 //@ only-x86_64
 
 // Test for #118306.

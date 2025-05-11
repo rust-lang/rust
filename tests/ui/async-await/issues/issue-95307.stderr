@@ -1,8 +1,8 @@
-error: in expressions, `_` can only be used on the left-hand side of an assignment
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/issue-95307.rs:7:28
    |
 LL |     async fn new() -> [u8; _];
-   |                            ^ `_` not allowed here
+   |                            ^ not allowed in type signatures
 
 error[E0658]: using `_` for array lengths is unstable
   --> $DIR/issue-95307.rs:7:28
@@ -16,4 +16,5 @@ LL |     async fn new() -> [u8; _];
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0658`.
+Some errors have detailed explanations: E0121, E0658.
+For more information about an error, try `rustc --explain E0121`.

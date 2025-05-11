@@ -1,7 +1,7 @@
-use crate::sync::atomic::AtomicBool;
 use crate::sync::atomic::Ordering::Relaxed;
+use crate::sync::atomic::{Atomic, AtomicBool};
 
-static RNG_INIT: AtomicBool = AtomicBool::new(false);
+static RNG_INIT: Atomic<bool> = AtomicBool::new(false);
 
 pub fn fill_bytes(mut bytes: &mut [u8]) {
     while !RNG_INIT.load(Relaxed) {

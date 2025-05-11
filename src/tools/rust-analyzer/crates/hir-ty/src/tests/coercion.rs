@@ -22,9 +22,9 @@ struct S<T> { a: T }
 fn f<T>(_: &[T]) -> T { loop {} }
 fn g<T>(_: S<&[T]>) -> T { loop {} }
 
-fn gen<T>() -> *mut [T; 2] { loop {} }
+fn generate<T>() -> *mut [T; 2] { loop {} }
 fn test1<U>() -> *mut [U] {
-    gen()
+    generate()
 }
 
 fn test2() {
@@ -185,11 +185,10 @@ fn test() {
     let t = &mut 1;
     let x = match 1 {
         1 => t as *mut i32,
+           //^^^^^^^^^^^^^ adjustments: Pointer(MutToConstPointer)
         2 => t as &i32,
            //^^^^^^^^^ expected *mut i32, got &'? i32
         _ => t as *const i32,
-          // ^^^^^^^^^^^^^^^ adjustments: Pointer(MutToConstPointer)
-
     };
     x;
   //^ type: *const i32
@@ -562,7 +561,7 @@ trait Foo {}
 fn test(f: impl Foo, g: &(impl Foo + ?Sized)) {
     let _: &dyn Foo = &f;
     let _: &dyn Foo = g;
-                    //^ expected &'? dyn Foo, got &'? impl Foo + ?Sized
+                    //^ expected &'? (dyn Foo + 'static), got &'? impl Foo + ?Sized
 }
         "#,
     );
@@ -828,11 +827,11 @@ struct V<T> { t: T }
 fn main() {
     let a: V<&dyn Tr>;
     (a,) = V { t: &S };
-  //^^^^expected V<&'? S>, got (V<&'? dyn Tr>,)
+  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + '?)>,)
 
     let mut a: V<&dyn Tr> = V { t: &S };
     (a,) = V { t: &S };
-  //^^^^expected V<&'? S>, got (V<&'? dyn Tr>,)
+  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + '?)>,)
 }
         "#,
     );

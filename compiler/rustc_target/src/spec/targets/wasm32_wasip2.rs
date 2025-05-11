@@ -16,7 +16,9 @@
 //! You can see more about wasi at <https://wasi.dev> and the component model at
 //! <https://github.com/WebAssembly/component-model>.
 
-use crate::spec::{LinkSelfContainedDefault, RelocModel, Target, base, crt_objects};
+use crate::spec::{
+    LinkSelfContainedDefault, RelocModel, Target, TargetMetadata, base, crt_objects,
+};
 
 pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
@@ -59,7 +61,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "wasm32-wasip2".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("WebAssembly".into()),
             tier: Some(3),
             host_tools: Some(false),

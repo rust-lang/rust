@@ -6,9 +6,9 @@ macro transparent() {
     let transparent = 0;
 }
 #[rustc_macro_transparency = "semitransparent"]
-macro semitransparent() {
-    struct SemiTransparent;
-    let semitransparent = 0;
+macro semiopaque() {
+    struct SemiOpaque;
+    let semiopaque = 0;
 }
 #[rustc_macro_transparency = "opaque"]
 macro opaque() {
@@ -18,14 +18,14 @@ macro opaque() {
 
 fn main() {
     transparent!();
-    semitransparent!();
+    semiopaque!();
     opaque!();
 
     Transparent; // OK
-    SemiTransparent; // OK
+    SemiOpaque; // OK
     Opaque; //~ ERROR cannot find value `Opaque` in this scope
 
     transparent; // OK
-    semitransparent; //~ ERROR expected value, found macro `semitransparent`
+    semiopaque; //~ ERROR expected value, found macro `semiopaque`
     opaque; //~ ERROR expected value, found macro `opaque`
 }

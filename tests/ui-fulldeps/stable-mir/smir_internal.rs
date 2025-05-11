@@ -5,7 +5,6 @@
 //@ ignore-stage1
 //@ ignore-cross-compile
 //@ ignore-remote
-//@ ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
 //@ edition: 2021
 
 #![feature(rustc_private)]
@@ -27,7 +26,7 @@ const CRATE_NAME: &str = "input";
 
 fn test_translation(tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let main_fn = stable_mir::entry_fn().unwrap();
-    let body = main_fn.body();
+    let body = main_fn.expect_body();
     let orig_ty = body.locals()[0].ty;
     let rustc_ty = rustc_internal::internal(tcx, &orig_ty);
     assert!(rustc_ty.is_unit());
@@ -41,7 +40,7 @@ fn test_translation(tcx: TyCtxt<'_>) -> ControlFlow<()> {
 fn main() {
     let path = "internal_input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

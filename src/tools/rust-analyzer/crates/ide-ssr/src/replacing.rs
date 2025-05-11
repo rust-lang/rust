@@ -5,11 +5,11 @@ use ide_db::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 use parser::Edition;
 use syntax::{
-    ast::{self, AstNode, AstToken},
     SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    ast::{self, AstNode, AstToken},
 };
 
-use crate::{fragments, resolving::ResolvedRule, Match, SsrMatches};
+use crate::{Match, SsrMatches, fragments, resolving::ResolvedRule};
 
 /// Returns a text edit that will replace each match in `matches` with its corresponding replacement
 /// template. Placeholders in the template will have been substituted with whatever they matched to
@@ -34,7 +34,7 @@ fn matches_to_edit_at_offset(
     for m in &matches.matches {
         edit_builder.replace(
             m.range.range.checked_sub(relative_start).unwrap(),
-            render_replace(db, m, file_src, rules, m.range.file_id.edition()),
+            render_replace(db, m, file_src, rules, m.range.file_id.edition(db)),
         );
     }
     edit_builder.finish()

@@ -19,7 +19,7 @@ use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TypeVisitableExt,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::{ErrorGuaranteed, Ident, Span};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, NormalizeExt};
 use tracing::{debug, instrument};
@@ -329,10 +329,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// an obligation for a particular trait with the given self type and checks
     /// whether that trait is implemented.
     #[instrument(level = "debug", skip(self))]
-    pub(super) fn lookup_method_in_trait(
+    pub(super) fn lookup_method_for_operator(
         &self,
         cause: ObligationCause<'tcx>,
-        m_name: Ident,
+        method_name: Symbol,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         opt_rhs_ty: Option<Ty<'tcx>>,
@@ -374,13 +374,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Trait must have a method named `m_name` and it should not have
         // type parameters or early-bound regions.
         let tcx = self.tcx;
-        let Some(method_item) = self.associated_value(trait_def_id, m_name) else {
+        // We use `Ident::with_dummy_span` since no built-in operator methods have
+        // any macro-specific hygeine, so the span's context doesn't really matter.
+        let Some(method_item) =
+            self.associated_value(trait_def_id, Ident::with_dummy_span(method_name))
+        else {
             bug!("expected associated item for operator trait")
         };
 
         let def_id = method_item.def_id;
-        if method_item.kind != ty::AssocKind::Fn {
-            span_bug!(tcx.def_span(def_id), "expected `{m_name}` to be an associated function");
+        if !method_item.is_fn() {
+            span_bug!(
+                tcx.def_span(def_id),
+                "expected `{method_name}` to be an associated function"
+            );
         }
 
         debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
@@ -529,17 +536,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let def_kind = pick.item.kind.as_def_kind();
+        let def_kind = pick.item.as_def_kind();
         tcx.check_stability(pick.item.def_id, Some(expr_id), span, Some(method_name.span));
         Ok((def_kind, pick.item.def_id))
     }
 
-    /// Finds item with name `item_name` defined in impl/trait `def_id`
+    /// Finds item with name `item_ident` defined in impl/trait `def_id`
     /// and return it, or `None`, if no such item was defined there.
-    fn associated_value(&self, def_id: DefId, item_name: Ident) -> Option<ty::AssocItem> {
+    fn associated_value(&self, def_id: DefId, item_ident: Ident) -> Option<ty::AssocItem> {
         self.tcx
             .associated_items(def_id)
-            .find_by_name_and_namespace(self.tcx, item_name, Namespace::ValueNS, def_id)
+            .find_by_ident_and_namespace(self.tcx, item_ident, Namespace::ValueNS, def_id)
             .copied()
     }
 }

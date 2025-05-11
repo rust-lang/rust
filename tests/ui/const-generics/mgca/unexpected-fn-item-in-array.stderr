@@ -1,0 +1,19 @@
+warning: the feature `min_generic_const_args` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/unexpected-fn-item-in-array.rs:3:12
+   |
+LL | #![feature(min_generic_const_args)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: the constant `fn_item` is not of type `usize`
+  --> $DIR/unexpected-fn-item-in-array.rs:8:6
+   |
+LL | impl A<[usize; fn_item]> for () {}
+   |      ^^^^^^^^^^^^^^^^^^^ expected `usize`, found fn item
+   |
+   = note: the length of array `[usize; fn_item]` must be type `usize`
+
+error: aborting due to 1 previous error; 1 warning emitted
+

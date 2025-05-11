@@ -7,6 +7,8 @@
 //! a specific rustup toolchain: this allows testing against older ABIs (e.g.
 //! 1.58) and future ABIs (stage1, nightly)
 
+#![allow(clippy::disallowed_methods)]
+
 use std::{
     env,
     path::{Path, PathBuf},
@@ -108,7 +110,7 @@ fn main() {
     let mut artifact_path = None;
     for message in Message::parse_stream(output.stdout.as_slice()) {
         if let Message::CompilerArtifact(artifact) = message.unwrap() {
-            if artifact.target.kind.contains(&"proc-macro".to_string())
+            if artifact.target.kind.contains(&cargo_metadata::TargetKind::ProcMacro)
                 && (artifact.package_id.repr.starts_with(&repr)
                     || artifact.package_id.repr == pkgid)
             {

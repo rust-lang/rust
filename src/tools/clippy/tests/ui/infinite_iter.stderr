@@ -11,19 +11,19 @@ LL | #[deny(clippy::infinite_iter)]
    |        ^^^^^^^^^^^^^^^^^^^^^
 
 error: infinite iteration detected
-  --> tests/ui/infinite_iter.rs:14:5
+  --> tests/ui/infinite_iter.rs:15:5
    |
 LL |     (0..8_u32).take_while(square_is_lower_64).cycle().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: infinite iteration detected
-  --> tests/ui/infinite_iter.rs:17:5
+  --> tests/ui/infinite_iter.rs:19:5
    |
 LL |     (0..8_u64).chain(0..).max();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: infinite iteration detected
-  --> tests/ui/infinite_iter.rs:25:5
+  --> tests/ui/infinite_iter.rs:28:5
    |
 LL | /     (0..8_u32)
 LL | |
@@ -34,37 +34,37 @@ LL | |         .for_each(|x| println!("{}", x));
    | |________________________________________^
 
 error: infinite iteration detected
-  --> tests/ui/infinite_iter.rs:34:5
+  --> tests/ui/infinite_iter.rs:37:5
    |
 LL |     (0_usize..).flat_map(|x| 0..x).product::<usize>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: infinite iteration detected
-  --> tests/ui/infinite_iter.rs:37:5
+  --> tests/ui/infinite_iter.rs:41:5
    |
 LL |     (0_u64..).filter(|x| x % 2 == 0).last();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: possible infinite iteration detected
-  --> tests/ui/infinite_iter.rs:48:5
+  --> tests/ui/infinite_iter.rs:53:5
    |
 LL |     (0..).zip((0..).take_while(square_is_lower_64)).count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> tests/ui/infinite_iter.rs:45:8
+  --> tests/ui/infinite_iter.rs:50:8
    |
 LL | #[deny(clippy::maybe_infinite_iter)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: possible infinite iteration detected
-  --> tests/ui/infinite_iter.rs:51:5
+  --> tests/ui/infinite_iter.rs:57:5
    |
 LL |     repeat(42).take_while(|x| *x == 42).chain(0..42).max();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: possible infinite iteration detected
-  --> tests/ui/infinite_iter.rs:54:5
+  --> tests/ui/infinite_iter.rs:61:5
    |
 LL | /     (1..)
 LL | |
@@ -76,31 +76,31 @@ LL | |         .min();
    | |______________^
 
 error: possible infinite iteration detected
-  --> tests/ui/infinite_iter.rs:62:5
+  --> tests/ui/infinite_iter.rs:69:5
    |
 LL |     (0..).find(|x| *x == 24);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: possible infinite iteration detected
-  --> tests/ui/infinite_iter.rs:65:5
+  --> tests/ui/infinite_iter.rs:73:5
    |
 LL |     (0..).position(|x| x == 24);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: possible infinite iteration detected
-  --> tests/ui/infinite_iter.rs:68:5
+  --> tests/ui/infinite_iter.rs:77:5
    |
 LL |     (0..).any(|x| x == 24);
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: possible infinite iteration detected
-  --> tests/ui/infinite_iter.rs:71:5
+  --> tests/ui/infinite_iter.rs:81:5
    |
 LL |     (0..).all(|x| x == 24);
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: infinite iteration detected
-  --> tests/ui/infinite_iter.rs:97:31
+  --> tests/ui/infinite_iter.rs:107:31
    |
 LL |         let _: HashSet<i32> = (0..).collect();
    |                               ^^^^^^^^^^^^^^^

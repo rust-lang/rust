@@ -13,10 +13,12 @@
 #![feature(core_intrinsics)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(ptr_sub_ptr)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
+
+// Allows macros to refer to this crate as `::rustc_serialize`.
+#[cfg(test)]
+extern crate self as rustc_serialize;
 
 pub use self::serialize::{Decodable, Decoder, Encodable, Encoder};
 

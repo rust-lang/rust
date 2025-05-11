@@ -73,8 +73,8 @@ impl_lint_pass!(ModStyle => [MOD_MODULE_FILES, SELF_NAMED_MODULE_FILES]);
 
 impl EarlyLintPass for ModStyle {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
-        if cx.builder.lint_level(MOD_MODULE_FILES).0 == Level::Allow
-            && cx.builder.lint_level(SELF_NAMED_MODULE_FILES).0 == Level::Allow
+        if cx.builder.lint_level(MOD_MODULE_FILES).level == Level::Allow
+            && cx.builder.lint_level(SELF_NAMED_MODULE_FILES).level == Level::Allow
         {
             return;
         }
@@ -119,22 +119,22 @@ impl EarlyLintPass for ModStyle {
         }
 
         for folder in &folder_segments {
-            if !mod_folders.contains(folder) {
-                if let Some((file, path)) = file_map.get(folder) {
-                    span_lint_and_then(
-                        cx,
-                        SELF_NAMED_MODULE_FILES,
-                        Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
-                        format!("`mod.rs` files are required, found `{}`", path.display()),
-                        |diag| {
-                            let mut correct = path.to_path_buf();
-                            correct.pop();
-                            correct.push(folder);
-                            correct.push("mod.rs");
-                            diag.help(format!("move `{}` to `{}`", path.display(), correct.display(),));
-                        },
-                    );
-                }
+            if !mod_folders.contains(folder)
+                && let Some((file, path)) = file_map.get(folder)
+            {
+                span_lint_and_then(
+                    cx,
+                    SELF_NAMED_MODULE_FILES,
+                    Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
+                    format!("`mod.rs` files are required, found `{}`", path.display()),
+                    |diag| {
+                        let mut correct = path.to_path_buf();
+                        correct.pop();
+                        correct.push(folder);
+                        correct.push("mod.rs");
+                        diag.help(format!("move `{}` to `{}`", path.display(), correct.display(),));
+                    },
+                );
             }
         }
     }

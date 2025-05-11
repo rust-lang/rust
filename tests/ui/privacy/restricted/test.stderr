@@ -1,10 +1,10 @@
-error[E0433]: failed to resolve: you might be missing crate `bad`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `bad`
   --> $DIR/test.rs:50:12
    |
 LL |     pub(in bad::path) mod m1 {}
-   |            ^^^ you might be missing crate `bad`
+   |            ^^^ use of unresolved module or unlinked crate `bad`
    |
-help: consider importing the `bad` crate
+help: you might be missing a crate named `bad`, add it to your project and import it in your code
    |
 LL + extern crate bad;
    |

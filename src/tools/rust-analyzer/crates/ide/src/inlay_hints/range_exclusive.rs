@@ -5,7 +5,7 @@
 //! ```
 use ide_db::famous_defs::FamousDefs;
 use span::EditionedFileId;
-use syntax::{ast, SyntaxToken, T};
+use syntax::{SyntaxToken, T, ast};
 
 use crate::{InlayHint, InlayHintsConfig};
 
@@ -41,8 +41,8 @@ fn inlay_hint(token: SyntaxToken) -> InlayHint {
 #[cfg(test)]
 mod tests {
     use crate::{
-        inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
         InlayHintsConfig,
+        inlay_hints::tests::{DISABLED_CONFIG, check_with_config},
     };
 
     #[test]

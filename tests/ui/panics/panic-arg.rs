@@ -1,6 +1,6 @@
 //@ run-fail
 //@ error-pattern:woe
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn f(a: isize) {
     println!("{}", a);

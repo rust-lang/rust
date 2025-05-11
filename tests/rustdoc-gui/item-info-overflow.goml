@@ -21,7 +21,7 @@ compare-elements-property: (
 )
 assert-property: (
     "#impl-SimpleTrait-for-LongItemInfo2 .item-info",
-    {"scrollWidth": "916"},
+    {"scrollWidth": "935"},
 )
 // Just to be sure we're comparing the correct "item-info":
 assert-text: (

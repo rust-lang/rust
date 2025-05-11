@@ -155,7 +155,7 @@ impl<'a, 'tcx> LeakCheck<'a, 'tcx> {
             self.scc_universes[scc].take_min(universe, *region);
 
             // Detect those SCCs that directly contain a placeholder
-            if let ty::RePlaceholder(placeholder) = **region {
+            if let ty::RePlaceholder(placeholder) = region.kind() {
                 if self.outer_universe.cannot_name(placeholder.universe) {
                     // Update `scc_placeholders` to account for the fact that `P: S` must hold.
                     match self.scc_placeholders[scc] {

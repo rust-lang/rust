@@ -2,5 +2,5 @@
 
 fn main() {
     let _f = for<'a> |_: &'a ()| {};
-    //~^ implicit types in closure signatures are forbidden when `for<...>` is present
+    //~^ ERROR implicit types in closure signatures are forbidden when `for<...>` is present
 }

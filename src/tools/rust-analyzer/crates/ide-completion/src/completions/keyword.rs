@@ -32,14 +32,9 @@ pub(crate) fn complete_for_and_where(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
-    use crate::tests::{check_edit, completion_list};
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture);
-        expect.assert_eq(&actual)
-    }
+    use crate::tests::{check, check_edit};
 
     #[test]
     fn test_else_edit_after_if() {
@@ -61,6 +56,7 @@ mod tests {
                 kw extern
                 kw fn
                 kw impl
+                kw impl for
                 kw trait
             "#]],
         );
@@ -81,6 +77,7 @@ fn foo(a: A) { a.$0 }
                 kw await                                                           expr.await
                 sn box                                                         Box::new(expr)
                 sn call                                                        function(expr)
+                sn const                                                             const {}
                 sn dbg                                                             dbg!(expr)
                 sn dbgr                                                           dbg!(&expr)
                 sn deref                                                                *expr
@@ -108,6 +105,7 @@ fn foo() {
                 kw await                                                                          expr.await
                 sn box                                                                        Box::new(expr)
                 sn call                                                                       function(expr)
+                sn const                                                                            const {}
                 sn dbg                                                                            dbg!(expr)
                 sn dbgr                                                                          dbg!(&expr)
                 sn deref                                                                               *expr
@@ -137,6 +135,7 @@ fn foo(a: A) { a.$0 }
                 kw await                                                           expr.await
                 sn box                                                         Box::new(expr)
                 sn call                                                        function(expr)
+                sn const                                                             const {}
                 sn dbg                                                             dbg!(expr)
                 sn dbgr                                                           dbg!(&expr)
                 sn deref                                                                *expr
@@ -334,5 +333,125 @@ fn main() {
 }
 ",
         )
+    }
+
+    #[test]
+    fn completes_let_in_block() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    $0
+}
+"#,
+            r#"
+fn main() {
+    let $1 = $0;
+}
+"#,
+        );
+        check_edit(
+            "letm",
+            r#"
+fn main() {
+    $0
+}
+"#,
+            r#"
+fn main() {
+    let mut $1 = $0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn completes_let_in_condition() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    if $0 {}
+}
+"#,
+            r#"
+fn main() {
+    if let $1 = $0 {}
+}
+"#,
+        );
+        check_edit(
+            "letm",
+            r#"
+fn main() {
+    if $0 {}
+}
+"#,
+            r#"
+fn main() {
+    if let mut $1 = $0 {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn completes_let_in_no_empty_condition() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    if $0x {}
+}
+"#,
+            r#"
+fn main() {
+    if let $1 = $0x {}
+}
+"#,
+        );
+        check_edit(
+            "letm",
+            r#"
+fn main() {
+    if $0x {}
+}
+"#,
+            r#"
+fn main() {
+    if let mut $1 = $0x {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn completes_let_in_condition_block() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    if { $0 } {}
+}
+"#,
+            r#"
+fn main() {
+    if { let $1 = $0; } {}
+}
+"#,
+        );
+        check_edit(
+            "letm",
+            r#"
+fn main() {
+    if { $0 } {}
+}
+"#,
+            r#"
+fn main() {
+    if { let mut $1 = $0; } {}
+}
+"#,
+        );
     }
 }

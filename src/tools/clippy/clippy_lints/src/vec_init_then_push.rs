@@ -8,7 +8,6 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, LetStmt, Mutability, PatKind, QPath, Stmt, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
 
@@ -158,7 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
         if let Some(init_expr) = local.init
             && let PatKind::Binding(BindingMode::MUT, id, name, None) = local.pat.kind
-            && !in_external_macro(cx.sess(), local.span)
+            && !local.span.in_external_macro(cx.sess().source_map())
             && let Some(init) = get_vec_init_kind(cx, init_expr)
             && !matches!(init, VecInitKind::WithExprCapacity(_))
         {
@@ -166,8 +165,8 @@ impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
                 local_id: id,
                 init,
                 lhs_is_let: true,
-                name: name.name,
                 let_ty_span: local.ty.map(|ty| ty.span),
+                name: name.name,
                 err_span: local.span,
                 found: 0,
                 last_push_expr: init_expr.hir_id,
@@ -181,7 +180,7 @@ impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
             && let ExprKind::Path(QPath::Resolved(None, path)) = left.kind
             && let [name] = &path.segments
             && let Res::Local(id) = path.res
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.in_external_macro(cx.sess().source_map())
             && let Some(init) = get_vec_init_kind(cx, right)
             && !matches!(init, VecInitKind::WithExprCapacity(_))
         {
@@ -206,8 +205,8 @@ impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
                 && name.ident.as_str() == "push"
             {
                 self.searcher = Some(VecPushSearcher {
-                    found: searcher.found + 1,
                     err_span: searcher.err_span.to(stmt.span),
+                    found: searcher.found + 1,
                     last_push_expr: expr.hir_id,
                     ..searcher
                 });

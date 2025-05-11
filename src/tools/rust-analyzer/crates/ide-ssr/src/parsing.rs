@@ -9,7 +9,7 @@ use std::{fmt::Display, str::FromStr};
 use syntax::{SmolStr, SyntaxKind, SyntaxNode, T};
 
 use crate::errors::bail;
-use crate::{fragments, SsrError, SsrPattern, SsrRule};
+use crate::{SsrError, SsrPattern, SsrRule, fragments};
 
 #[derive(Debug)]
 pub(crate) struct ParsedRule {

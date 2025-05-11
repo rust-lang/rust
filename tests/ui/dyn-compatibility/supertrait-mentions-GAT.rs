@@ -9,7 +9,7 @@ trait GatTrait {
 trait SuperTrait<T>: for<'a> GatTrait<Gat<'a> = T> {
     fn c(&self) -> dyn SuperTrait<T>;
     //~^ ERROR associated item referring to unboxed trait object for its own trait
-    //~| ERROR the trait `SuperTrait` cannot be made into an object
+    //~| ERROR the trait `SuperTrait` is not dyn compatible
 }
 
 fn main() {}

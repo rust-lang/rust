@@ -13,8 +13,8 @@
 #![allow(non_camel_case_types)]
 
 use crate::pin::Pin;
-use crate::sync::atomic::AtomicI8;
 use crate::sync::atomic::Ordering::{Acquire, Release};
+use crate::sync::atomic::{Atomic, AtomicI8};
 use crate::time::Duration;
 
 type dispatch_semaphore_t = *mut crate::ffi::c_void;
@@ -24,7 +24,7 @@ const DISPATCH_TIME_NOW: dispatch_time_t = 0;
 const DISPATCH_TIME_FOREVER: dispatch_time_t = !0;
 
 // Contained in libSystem.dylib, which is linked by default.
-extern "C" {
+unsafe extern "C" {
     fn dispatch_time(when: dispatch_time_t, delta: i64) -> dispatch_time_t;
     fn dispatch_semaphore_create(val: isize) -> dispatch_semaphore_t;
     fn dispatch_semaphore_wait(dsema: dispatch_semaphore_t, timeout: dispatch_time_t) -> isize;
@@ -38,7 +38,7 @@ const PARKED: i8 = -1;
 
 pub struct Parker {
     semaphore: dispatch_semaphore_t,
-    state: AtomicI8,
+    state: Atomic<i8>,
 }
 
 unsafe impl Sync for Parker {}

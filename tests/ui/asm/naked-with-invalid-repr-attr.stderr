@@ -1,41 +1,41 @@
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/naked-with-invalid-repr-attr.rs:7:8
+  --> $DIR/naked-with-invalid-repr-attr.rs:6:8
    |
 LL |   #[repr(C)]
    |          ^
 ...
 LL | / extern "C" fn example1() {
 LL | |
-LL | |     unsafe { naked_asm!("") }
+LL | |     naked_asm!("")
 LL | | }
    | |_- not a struct, enum, or union
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/naked-with-invalid-repr-attr.rs:15:8
+  --> $DIR/naked-with-invalid-repr-attr.rs:14:8
    |
 LL |   #[repr(transparent)]
    |          ^^^^^^^^^^^
 ...
 LL | / extern "C" fn example2() {
 LL | |
-LL | |     unsafe { naked_asm!("") }
+LL | |     naked_asm!("")
 LL | | }
    | |_- not a struct, enum, or union
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/naked-with-invalid-repr-attr.rs:23:19
+  --> $DIR/naked-with-invalid-repr-attr.rs:22:19
    |
 LL |   #[repr(align(16), C)]
    |                     ^
 ...
 LL | / extern "C" fn example3() {
 LL | |
-LL | |     unsafe { naked_asm!("") }
+LL | |     naked_asm!("")
 LL | | }
    | |_- not a struct, enum, or union
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/naked-with-invalid-repr-attr.rs:32:8
+  --> $DIR/naked-with-invalid-repr-attr.rs:31:8
    |
 LL |   #[repr(C, packed)]
    |          ^
@@ -43,12 +43,12 @@ LL |   #[repr(C, packed)]
 LL | / extern "C" fn example4() {
 LL | |
 LL | |
-LL | |     unsafe { naked_asm!("") }
+LL | |     naked_asm!("")
 LL | | }
    | |_- not a struct, enum, or union
 
 error[E0517]: attribute should be applied to a struct or union
-  --> $DIR/naked-with-invalid-repr-attr.rs:32:11
+  --> $DIR/naked-with-invalid-repr-attr.rs:31:11
    |
 LL |   #[repr(C, packed)]
    |             ^^^^^^
@@ -56,19 +56,19 @@ LL |   #[repr(C, packed)]
 LL | / extern "C" fn example4() {
 LL | |
 LL | |
-LL | |     unsafe { naked_asm!("") }
+LL | |     naked_asm!("")
 LL | | }
    | |_- not a struct or union
 
 error[E0517]: attribute should be applied to an enum
-  --> $DIR/naked-with-invalid-repr-attr.rs:42:8
+  --> $DIR/naked-with-invalid-repr-attr.rs:41:8
    |
 LL |   #[repr(u8)]
    |          ^^
 ...
 LL | / extern "C" fn example5() {
 LL | |
-LL | |     unsafe { naked_asm!("") }
+LL | |     naked_asm!("")
 LL | | }
    | |_- not an enum
 

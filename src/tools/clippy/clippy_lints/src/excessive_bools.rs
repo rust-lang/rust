@@ -1,13 +1,13 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{get_parent_as_impl, has_repr_attr, is_bool};
+use rustc_abi::ExternAbi;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, Item, ItemKind, TraitFn, TraitItem, TraitItemKind, Ty};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_target::spec::abi::Abi;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -15,12 +15,17 @@ declare_clippy_lint! {
     /// use of bools in structs.
     ///
     /// ### Why is this bad?
-    /// Excessive bools in a struct
-    /// is often a sign that it's used as a state machine,
-    /// which is much better implemented as an enum.
-    /// If it's not the case, excessive bools usually benefit
-    /// from refactoring into two-variant enums for better
-    /// readability and API.
+    /// Excessive bools in a struct is often a sign that
+    /// the type is being used to represent a state
+    /// machine, which is much better implemented as an
+    /// enum.
+    ///
+    /// The reason an enum is better for state machines
+    /// over structs is that enums more easily forbid
+    /// invalid states.
+    ///
+    /// Structs with too many booleans may benefit from refactoring
+    /// into multi variant enums for better readability and API.
     ///
     /// ### Example
     /// ```no_run
@@ -122,7 +127,7 @@ fn check_fn_decl(cx: &LateContext<'_>, decl: &FnDecl<'_>, sp: Span, max: u64) {
 
 impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if let ItemKind::Struct(variant_data, _) = &item.kind
+        if let ItemKind::Struct(_, variant_data, _) = &item.kind
             && variant_data.fields().len() as u64 > self.max_struct_bools
             && has_n_bools(
                 variant_data.fields().iter().map(|field| field.ty),
@@ -145,7 +150,7 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx TraitItem<'tcx>) {
         // functions with a body are already checked by `check_fn`
         if let TraitItemKind::Fn(fn_sig, TraitFn::Required(_)) = &trait_item.kind
-            && fn_sig.header.abi == Abi::Rust
+            && fn_sig.header.abi == ExternAbi::Rust
             && fn_sig.decl.inputs.len() as u64 > self.max_fn_params_bools
         {
             check_fn_decl(cx, fn_sig.decl, fn_sig.span, self.max_fn_params_bools);
@@ -162,7 +167,7 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
         def_id: LocalDefId,
     ) {
         if let Some(fn_header) = fn_kind.header()
-            && fn_header.abi == Abi::Rust
+            && fn_header.abi == ExternAbi::Rust
             && fn_decl.inputs.len() as u64 > self.max_fn_params_bools
             && get_parent_as_impl(cx.tcx, cx.tcx.local_def_id_to_hir_id(def_id))
                 .is_none_or(|impl_item| impl_item.of_trait.is_none())

@@ -1,6 +1,6 @@
 //@ignore-target: windows # No pthreads on Windows
 // We use `yield` to test specific interleavings, so disable automatic preemption.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency
 #![feature(sync_unsafe_cell)]
 
 use std::cell::SyncUnsafeCell;

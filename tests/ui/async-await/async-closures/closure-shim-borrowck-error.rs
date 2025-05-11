@@ -1,4 +1,5 @@
-//@ compile-flags: -Zvalidate-mir --edition=2018 --crate-type=lib -Copt-level=3
+//@ compile-flags: -Zvalidate-mir --crate-type=lib -Copt-level=3
+//@ edition: 2018
 
 fn main() {}
 

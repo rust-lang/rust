@@ -8,6 +8,7 @@ fn main() {
         for<'a> &'a T: IntoIterator<Item = &'a String>,
     {
         for _ in iterator {}
+        //~^ explicit_into_iter_loop
     }
 
     struct T;
@@ -21,9 +22,11 @@ fn main() {
 
     let mut t = T;
     for _ in &t {}
+    //~^ explicit_into_iter_loop
 
     let r = &t;
     for _ in r {}
+    //~^ explicit_into_iter_loop
 
     // No suggestion for this.
     // We'd have to suggest `for _ in *rr {}` which is less clear.
@@ -32,6 +35,7 @@ fn main() {
 
     let mr = &mut t;
     for _ in &*mr {}
+    //~^ explicit_into_iter_loop
 
     struct U;
     impl IntoIterator for &mut U {
@@ -44,9 +48,11 @@ fn main() {
 
     let mut u = U;
     for _ in &mut u {}
+    //~^ explicit_into_iter_loop
 
     let mr = &mut u;
     for _ in &mut *mr {}
+    //~^ explicit_into_iter_loop
 
     // Issue #6900
     struct S;

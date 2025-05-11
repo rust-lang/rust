@@ -56,7 +56,7 @@ fn foo::{closure#0}::{closure#0}(_1: Pin<&mut {async closure body@$DIR/async-clo
         unreachable;
     }
 }
-fn foo::{closure#0}::{closure#1}(_1: Pin<&mut {async closure body@$DIR/async-closure.rs:9:22: 11:6}>, _2: &mut Context<'_>) -> Poll<()> {
+fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-closure.rs:9:22: 11:6}>, _2: &mut Context<'_>) -> Poll<()> {
     let mut _0: Poll<()>;
     let  _3: i32;
     let mut _4: &i32;

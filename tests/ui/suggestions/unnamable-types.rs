@@ -10,7 +10,7 @@ const A = 5;
 static B: _ = "abc";
 //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for static variables
 //~| NOTE: not allowed in type signatures
-//~| HELP: replace with the correct type
+//~| HELP: replace this with a fully-specified type
 
 
 // FIXME: this should also suggest a function pointer, as the closure is non-capturing

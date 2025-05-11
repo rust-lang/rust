@@ -88,6 +88,7 @@ error: `iter` method without an `IntoIterator` impl for `&S8<T>`
   --> tests/ui/iter_without_into_iter.rs:70:5
    |
 LL | /     pub fn iter(&self) -> std::slice::Iter<'static, T> {
+LL | |
 LL | |         todo!()
 LL | |     }
    | |_____^
@@ -105,7 +106,7 @@ LL + }
    |
 
 error: `iter` method without an `IntoIterator` impl for `&S9<T>`
-  --> tests/ui/iter_without_into_iter.rs:78:5
+  --> tests/ui/iter_without_into_iter.rs:79:5
    |
 LL | /     pub fn iter(&self) -> std::slice::Iter<'_, T> {
 LL | |
@@ -126,7 +127,7 @@ LL + }
    |
 
 error: `iter_mut` method without an `IntoIterator` impl for `&mut S9<T>`
-  --> tests/ui/iter_without_into_iter.rs:82:5
+  --> tests/ui/iter_without_into_iter.rs:83:5
    |
 LL | /     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, T> {
 LL | |
@@ -147,9 +148,10 @@ LL + }
    |
 
 error: `iter` method without an `IntoIterator` impl for `&Issue12037`
-  --> tests/ui/iter_without_into_iter.rs:131:13
+  --> tests/ui/iter_without_into_iter.rs:132:13
    |
 LL | /             fn iter(&self) -> std::slice::Iter<'_, u8> {
+LL | |
 LL | |                 todo!()
 LL | |             }
    | |_____________^

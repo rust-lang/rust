@@ -1,9 +1,9 @@
-use crate::spec::{PanicStrategy, Target, TargetOptions};
+use crate::spec::{PanicStrategy, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "hexagon-unknown-none-elf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Bare Hexagon (v60+, HVX)".into()),
             tier: Some(3),
             host_tools: Some(false),

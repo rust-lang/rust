@@ -3,18 +3,18 @@ use std::iter;
 use either::Either;
 use ide_db::syntax_helpers::node_ext::is_pattern_cond;
 use syntax::{
-    ast::{
-        self,
-        edit::{AstNodeEdit, IndentLevel},
-        make, HasLoopBody,
-    },
     AstNode, T,
+    ast::{
+        self, HasLoopBody,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
+    },
 };
 
 use crate::{
+    AssistId,
     assist_context::{AssistContext, Assists},
-    utils::invert_boolean_expression,
-    AssistId, AssistKind,
+    utils::invert_boolean_expression_legacy,
 };
 
 // Assist: convert_while_to_loop
@@ -47,7 +47,7 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) 
 
     let target = while_expr.syntax().text_range();
     acc.add(
-        AssistId("convert_while_to_loop", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_while_to_loop"),
         "Convert while to loop",
         target,
         |edit| {
@@ -60,10 +60,10 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) 
             .indent(while_indent_level);
             let block_expr = if is_pattern_cond(while_cond.clone()) {
                 let if_expr = make::expr_if(while_cond, while_body, Some(break_block.into()));
-                let stmts = iter::once(make::expr_stmt(if_expr).into());
+                let stmts = iter::once(make::expr_stmt(if_expr.into()).into());
                 make::block_expr(stmts, None)
             } else {
-                let if_cond = invert_boolean_expression(while_cond);
+                let if_cond = invert_boolean_expression_legacy(while_cond);
                 let if_expr = make::expr_if(if_cond, break_block, None).syntax().clone().into();
                 let elements = while_body.stmt_list().map_or_else(
                     || Either::Left(iter::empty()),

@@ -1,9 +1,9 @@
 use std::cell::{Cell, RefCell};
 use std::cmp::max;
-use std::iter;
 use std::ops::Deref;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::HirId;
@@ -14,6 +14,7 @@ use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::elaborate::supertrait_def_ids;
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::{
     self, AssocItem, AssocItemContainer, GenericArgs, GenericArgsRef, GenericParamDefKind,
@@ -225,6 +226,9 @@ pub(crate) struct Pick<'tcx> {
     /// to identify this method. Used only for deshadowing errors.
     /// Only applies for inherent impls.
     pub receiver_steps: Option<usize>,
+
+    /// Candidates that were shadowed by supertraits.
+    pub shadowed_candidates: Vec<ty::AssocItem>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -599,7 +603,7 @@ fn method_autoderef_steps<'tcx>(
                     unsize: false,
                     reachable_via_deref,
                 };
-                if ty.is_unsafe_ptr() {
+                if ty.is_raw_ptr() {
                     // all the subsequent steps will be from_unsafe_deref
                     reached_raw_pointer = true;
                 }
@@ -619,7 +623,7 @@ fn method_autoderef_steps<'tcx>(
                     unsize: false,
                     reachable_via_deref: true,
                 };
-                if ty.is_unsafe_ptr() {
+                if ty.is_raw_ptr() {
                     // all the subsequent steps will be from_unsafe_deref
                     reached_raw_pointer = true;
                 }
@@ -869,7 +873,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn assemble_inherent_candidates_from_object(&mut self, self_ty: Ty<'tcx>) {
         let principal = match self_ty.kind() {
-            ty::Dynamic(ref data, ..) => Some(data),
+            ty::Dynamic(data, ..) => Some(data),
             _ => None,
         }
         .and_then(|data| data.principal())
@@ -988,7 +992,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn matches_return_type(&self, method: ty::AssocItem, expected: Ty<'tcx>) -> bool {
         match method.kind {
-            ty::AssocKind::Fn => self.probe(|_| {
+            ty::AssocKind::Fn { .. } => self.probe(|_| {
                 let args = self.fresh_args_for_item(self.span, method.def_id);
                 let fty = self.tcx.fn_sig(method.def_id).instantiate(self.tcx, args);
                 let fty = self.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, fty);
@@ -1009,11 +1013,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         if self.tcx.is_trait_alias(trait_def_id) {
             // For trait aliases, recursively assume all explicitly named traits are relevant
-            for expansion in traits::expand_trait_aliases(
-                self.tcx,
-                iter::once((ty::Binder::dummy(trait_ref), self.span)),
-            ) {
-                let bound_trait_ref = expansion.trait_ref();
+            for (bound_trait_pred, _) in
+                traits::expand_trait_aliases(self.tcx, [(trait_ref.upcast(self.tcx), self.span)]).0
+            {
+                assert_eq!(bound_trait_pred.polarity(), ty::PredicatePolarity::Positive);
+                let bound_trait_ref = bound_trait_pred.map_bound(|pred| pred.trait_ref);
                 for item in self.impl_or_trait_item(bound_trait_ref.def_id()) {
                     if !self.has_applicable_self(&item) {
                         self.record_static_candidate(CandidateSource::Trait(
@@ -1209,7 +1213,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 debug!("pick_all_method: step={:?}", step);
                 // skip types that are from a type error or that would require dereferencing
                 // a raw pointer
-                !step.self_ty.references_error() && !step.from_unsafe_deref
+                !step.self_ty.value.references_error() && !step.from_unsafe_deref
             })
             .find_map(|step| {
                 let InferOk { value: self_ty, obligations: _ } = self
@@ -1579,7 +1583,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 },
                 None,
             ) {
-                self.private_candidate.set(Some((pick.item.kind.as_def_kind(), pick.item.def_id)));
+                self.private_candidate.set(Some((pick.item.as_def_kind(), pick.item.def_id)));
             }
         }
         None
@@ -1635,6 +1639,17 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
 
         if applicable_candidates.len() > 1 {
+            // We collapse to a subtrait pick *after* filtering unstable candidates
+            // to make sure we don't prefer a unstable subtrait method over a stable
+            // supertrait method.
+            if self.tcx.features().supertrait_item_shadowing() {
+                if let Some(pick) =
+                    self.collapse_candidates_to_subtrait_pick(self_ty, &applicable_candidates)
+                {
+                    return Some(Ok(pick));
+                }
+            }
+
             let sources = candidates.iter().map(|p| self.candidate_source(p, self_ty)).collect();
             return Some(Err(MethodError::Ambiguity(sources)));
         }
@@ -1656,16 +1671,7 @@ impl<'tcx> Pick<'tcx> {
     /// Do not use for type checking.
     pub(crate) fn differs_from(&self, other: &Self) -> bool {
         let Self {
-            item:
-                AssocItem {
-                    def_id,
-                    name: _,
-                    kind: _,
-                    container: _,
-                    trait_item_def_id: _,
-                    fn_has_self_parameter: _,
-                    opt_rpitit_info: _,
-                },
+            item: AssocItem { def_id, kind: _, container: _, trait_item_def_id: _ },
             kind: _,
             import_ids: _,
             autoderefs: _,
@@ -1673,6 +1679,7 @@ impl<'tcx> Pick<'tcx> {
             self_ty,
             unstable_candidates: _,
             receiver_steps: _,
+            shadowed_candidates: _,
         } = *self;
         self_ty != other.self_ty || def_id != other.item.def_id
     }
@@ -1687,7 +1694,7 @@ impl<'tcx> Pick<'tcx> {
         if self.unstable_candidates.is_empty() {
             return;
         }
-        let def_kind = self.item.kind.as_def_kind();
+        let def_kind = self.item.as_def_kind();
         tcx.node_span_lint(lint::builtin::UNSTABLE_NAME_COLLISIONS, scope_expr_id, span, |lint| {
             lint.primary_message(format!(
                 "{} {} with this name may be added to the standard library in the future",
@@ -1696,7 +1703,7 @@ impl<'tcx> Pick<'tcx> {
             ));
 
             match (self.item.kind, self.item.container) {
-                (ty::AssocKind::Fn, _) => {
+                (ty::AssocKind::Fn { .. }, _) => {
                     // FIXME: This should be a `span_suggestion` instead of `help`
                     // However `self.span` only
                     // highlights the method name, so we can't use it. Also consider reusing
@@ -1707,17 +1714,12 @@ impl<'tcx> Pick<'tcx> {
                         tcx.def_path_str(self.item.def_id),
                     ));
                 }
-                (ty::AssocKind::Const, ty::AssocItemContainer::Trait) => {
+                (ty::AssocKind::Const { name }, ty::AssocItemContainer::Trait) => {
                     let def_id = self.item.container_id(tcx);
                     lint.span_suggestion(
                         span,
                         "use the fully qualified path to the associated const",
-                        format!(
-                            "<{} as {}>::{}",
-                            self.self_ty,
-                            tcx.def_path_str(def_id),
-                            self.item.name
-                        ),
+                        format!("<{} as {}>::{}", self.self_ty, tcx.def_path_str(def_id), name),
                         Applicability::MachineApplicable,
                     );
                 }
@@ -1739,8 +1741,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         trait_ref: ty::TraitRef<'tcx>,
     ) -> traits::SelectionResult<'tcx, traits::Selection<'tcx>> {
-        let cause = traits::ObligationCause::misc(self.span, self.body_id);
-        let obligation = traits::Obligation::new(self.tcx, cause, self.param_env, trait_ref);
+        let obligation =
+            traits::Obligation::new(self.tcx, self.misc(self.span), self.param_env, trait_ref);
         traits::SelectionContext::new(self).select(&obligation)
     }
 
@@ -1841,7 +1843,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                 self.scope_expr_id,
                                 idx,
                             );
-                            ObligationCause::new(self.span, self.body_id, code)
+                            self.cause(self.span, code)
                         },
                         self.param_env,
                         impl_bounds,
@@ -2082,6 +2084,83 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             self_ty,
             unstable_candidates: vec![],
             receiver_steps: None,
+            shadowed_candidates: vec![],
+        })
+    }
+
+    /// Much like `collapse_candidates_to_trait_pick`, this method allows us to collapse
+    /// multiple conflicting picks if there is one pick whose trait container is a subtrait
+    /// of the trait containers of all of the other picks.
+    ///
+    /// This implements RFC #3624.
+    fn collapse_candidates_to_subtrait_pick(
+        &self,
+        self_ty: Ty<'tcx>,
+        probes: &[(&Candidate<'tcx>, ProbeResult)],
+    ) -> Option<Pick<'tcx>> {
+        let mut child_candidate = probes[0].0;
+        let mut child_trait = child_candidate.item.trait_container(self.tcx)?;
+        let mut supertraits: SsoHashSet<_> = supertrait_def_ids(self.tcx, child_trait).collect();
+
+        let mut remaining_candidates: Vec<_> = probes[1..].iter().map(|&(p, _)| p).collect();
+        while !remaining_candidates.is_empty() {
+            let mut made_progress = false;
+            let mut next_round = vec![];
+
+            for remaining_candidate in remaining_candidates {
+                let remaining_trait = remaining_candidate.item.trait_container(self.tcx)?;
+                if supertraits.contains(&remaining_trait) {
+                    made_progress = true;
+                    continue;
+                }
+
+                // This pick is not a supertrait of the `child_pick`.
+                // Check if it's a subtrait of the `child_pick`, instead.
+                // If it is, then it must have been a subtrait of every
+                // other pick we've eliminated at this point. It will
+                // take over at this point.
+                let remaining_trait_supertraits: SsoHashSet<_> =
+                    supertrait_def_ids(self.tcx, remaining_trait).collect();
+                if remaining_trait_supertraits.contains(&child_trait) {
+                    child_candidate = remaining_candidate;
+                    child_trait = remaining_trait;
+                    supertraits = remaining_trait_supertraits;
+                    made_progress = true;
+                    continue;
+                }
+
+                // `child_pick` is not a supertrait of this pick.
+                // Don't bail here, since we may be comparing two supertraits
+                // of a common subtrait. These two supertraits won't be related
+                // at all, but we will pick them up next round when we find their
+                // child as we continue iterating in this round.
+                next_round.push(remaining_candidate);
+            }
+
+            if made_progress {
+                // If we've made progress, iterate again.
+                remaining_candidates = next_round;
+            } else {
+                // Otherwise, we must have at least two candidates which
+                // are not related to each other at all.
+                return None;
+            }
+        }
+
+        Some(Pick {
+            item: child_candidate.item,
+            kind: TraitPick,
+            import_ids: child_candidate.import_ids.clone(),
+            autoderefs: 0,
+            autoref_or_ptr_adjustment: None,
+            self_ty,
+            unstable_candidates: vec![],
+            shadowed_candidates: probes
+                .iter()
+                .map(|(c, _)| c.item)
+                .filter(|item| item.def_id != child_candidate.item.def_id)
+                .collect(),
+            receiver_steps: None,
         })
     }
 
@@ -2129,7 +2208,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let best_name = {
                     let names = applicable_close_candidates
                         .iter()
-                        .map(|cand| cand.name)
+                        .map(|cand| cand.name())
                         .collect::<Vec<Symbol>>();
                     find_best_match_for_name_with_substrings(
                         &names,
@@ -2141,10 +2220,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     applicable_close_candidates
                         .iter()
                         .find(|cand| self.matches_by_doc_alias(cand.def_id))
-                        .map(|cand| cand.name)
+                        .map(|cand| cand.name())
                 });
                 Ok(best_name.and_then(|best_name| {
-                    applicable_close_candidates.into_iter().find(|method| method.name == best_name)
+                    applicable_close_candidates
+                        .into_iter()
+                        .find(|method| method.name() == best_name)
                 }))
             }
         })
@@ -2159,10 +2240,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // In Path mode (i.e., resolving a value like `T::next`), consider any
         // associated value (i.e., methods, constants) but not types.
         match self.mode {
-            Mode::MethodCall => item.fn_has_self_parameter,
+            Mode::MethodCall => item.is_method(),
             Mode::Path => match item.kind {
-                ty::AssocKind::Type => false,
-                ty::AssocKind::Fn | ty::AssocKind::Const => true,
+                ty::AssocKind::Type { .. } => false,
+                ty::AssocKind::Fn { .. } | ty::AssocKind::Const { .. } => true,
             },
         }
         // FIXME -- check for types that deref to `Self`,
@@ -2184,7 +2265,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         impl_ty: Ty<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) -> (Ty<'tcx>, Option<Ty<'tcx>>) {
-        if item.kind == ty::AssocKind::Fn && self.mode == Mode::MethodCall {
+        if item.is_fn() && self.mode == Mode::MethodCall {
             let sig = self.xform_method_sig(item.def_id, args);
             (sig.inputs()[0], Some(sig.output()))
         } else {
@@ -2235,8 +2316,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// Determine if the given associated item type is relevant in the current context.
     fn is_relevant_kind_for_mode(&self, kind: ty::AssocKind) -> bool {
         match (self.mode, kind) {
-            (Mode::MethodCall, ty::AssocKind::Fn) => true,
-            (Mode::Path, ty::AssocKind::Const | ty::AssocKind::Fn) => true,
+            (Mode::MethodCall, ty::AssocKind::Fn { .. }) => true,
+            (Mode::Path, ty::AssocKind::Const { .. } | ty::AssocKind::Fn { .. }) => true,
             _ => false,
         }
     }
@@ -2251,10 +2332,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             return false;
         };
         let hir_id = self.fcx.tcx.local_def_id_to_hir_id(local_def_id);
-        let attrs = self.fcx.tcx.hir().attrs(hir_id);
+        let attrs = self.fcx.tcx.hir_attrs(hir_id);
         for attr in attrs {
-            if sym::doc == attr.name_or_empty() {
-            } else if sym::rustc_confusables == attr.name_or_empty() {
+            if attr.has_name(sym::doc) {
+                // do nothing
+            } else if attr.has_name(sym::rustc_confusables) {
                 let Some(confusables) = attr.meta_item_list() else {
                     continue;
                 };
@@ -2274,7 +2356,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 continue;
             };
             for v in values {
-                if v.name_or_empty() != sym::alias {
+                if !v.has_name(sym::alias) {
                     continue;
                 }
                 if let Some(nested) = v.meta_item_list() {
@@ -2318,7 +2400,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         }
                         match edit_distance_with_substrings(
                             name.as_str(),
-                            x.name.as_str(),
+                            x.name().as_str(),
                             max_dist,
                         ) {
                             Some(d) => d > 0,
@@ -2379,6 +2461,7 @@ impl<'tcx> Candidate<'tcx> {
                 InherentImplCandidate { receiver_steps, .. } => Some(receiver_steps),
                 _ => None,
             },
+            shadowed_candidates: vec![],
         }
     }
 }

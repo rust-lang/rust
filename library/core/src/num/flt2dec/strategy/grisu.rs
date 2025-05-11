@@ -196,9 +196,9 @@ pub fn format_shortest_opt<'a>(
     let (minusk, cached) = cached_power(ALPHA - plus.e - 64, GAMMA - plus.e - 64);
 
     // scale fps. this gives the maximal error of 1 ulp (proved from Theorem 5.1).
-    let plus = plus.mul(&cached);
-    let minus = minus.mul(&cached);
-    let v = v.mul(&cached);
+    let plus = plus.mul(cached);
+    let minus = minus.mul(cached);
+    let v = v.mul(cached);
     debug_assert_eq!(plus.e, minus.e);
     debug_assert_eq!(plus.e, v.e);
 
@@ -275,7 +275,7 @@ pub fn format_shortest_opt<'a>(
             let ten_kappa = (ten_kappa as u64) << e; // scale 10^kappa back to the shared exponent
             return round_and_weed(
                 // SAFETY: we initialized that memory above.
-                unsafe { MaybeUninit::slice_assume_init_mut(&mut buf[..i]) },
+                unsafe { buf[..i].assume_init_mut() },
                 exp,
                 plus1rem,
                 delta1,
@@ -324,7 +324,7 @@ pub fn format_shortest_opt<'a>(
             let ten_kappa = 1 << e; // implicit divisor
             return round_and_weed(
                 // SAFETY: we initialized that memory above.
-                unsafe { MaybeUninit::slice_assume_init_mut(&mut buf[..i]) },
+                unsafe { buf[..i].assume_init_mut() },
                 exp,
                 r,
                 threshold,
@@ -480,7 +480,7 @@ pub fn format_exact_opt<'a>(
     // normalize and scale `v`.
     let v = Fp { f: d.mant, e: d.exp }.normalize();
     let (minusk, cached) = cached_power(ALPHA - v.e - 64, GAMMA - v.e - 64);
-    let v = v.mul(&cached);
+    let v = v.mul(cached);
 
     // divide `v` into integral and fractional parts.
     let e = -v.e as usize;
@@ -713,7 +713,7 @@ pub fn format_exact_opt<'a>(
         // `10^kappa` did not overflow after all, the second check is fine.
         if ten_kappa - remainder > remainder && ten_kappa - 2 * remainder >= 2 * ulp {
             // SAFETY: our caller initialized that memory.
-            return Some((unsafe { MaybeUninit::slice_assume_init_ref(&buf[..len]) }, exp));
+            return Some((unsafe { buf[..len].assume_init_ref() }, exp));
         }
 
         //   :<------- remainder ------>|   :
@@ -736,7 +736,7 @@ pub fn format_exact_opt<'a>(
         if remainder > ulp && ten_kappa - (remainder - ulp) <= remainder - ulp {
             if let Some(c) =
                 // SAFETY: our caller must have initialized that memory.
-                round_up(unsafe { MaybeUninit::slice_assume_init_mut(&mut buf[..len]) })
+                round_up(unsafe { buf[..len].assume_init_mut() })
             {
                 // only add an additional digit when we've been requested the fixed precision.
                 // we also need to check that, if the original buffer was empty,
@@ -748,7 +748,7 @@ pub fn format_exact_opt<'a>(
                 }
             }
             // SAFETY: we and our caller initialized that memory.
-            return Some((unsafe { MaybeUninit::slice_assume_init_ref(&buf[..len]) }, exp));
+            return Some((unsafe { buf[..len].assume_init_ref() }, exp));
         }
 
         // otherwise we are doomed (i.e., some values between `v - 1 ulp` and `v + 1 ulp` are

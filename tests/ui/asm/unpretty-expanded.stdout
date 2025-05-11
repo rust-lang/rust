@@ -7,4 +7,5 @@ extern crate std;
 //@ needs-asm-support
 //@ check-pass
 //@ compile-flags: -Zunpretty=expanded
+//@ edition: 2015
 global_asm! ("x: .byte 42");

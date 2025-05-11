@@ -594,7 +594,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<Provenance>> {
         let this = self.eval_context_mut();
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
-        this.check_ptr_access(place.ptr(), size, CheckInAllocMsg::InboundsTest)?;
+        this.check_ptr_access(place.ptr(), size, CheckInAllocMsg::Dereferenceable)?;
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
         let log_creation = |this: &MiriInterpCx<'tcx>,
@@ -740,7 +740,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                 if let Some(access) = access {
                     assert_eq!(access, AccessKind::Write);
                     // Make sure the data race model also knows about this.
-                    if let Some(data_race) = alloc_extra.data_race.as_mut() {
+                    if let Some(data_race) = alloc_extra.data_race.as_vclocks_mut() {
                         data_race.write(
                             alloc_id,
                             range,
@@ -789,7 +789,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                     if let Some(access) = access {
                         assert_eq!(access, AccessKind::Read);
                         // Make sure the data race model also knows about this.
-                        if let Some(data_race) = alloc_extra.data_race.as_ref() {
+                        if let Some(data_race) = alloc_extra.data_race.as_vclocks_ref() {
                             data_race.read(
                                 alloc_id,
                                 range,
@@ -865,7 +865,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let new_perm = NewPermission::from_ref_ty(val.layout.ty, kind, this);
         let cause = match kind {
-            RetagKind::TwoPhase { .. } => RetagCause::TwoPhase,
+            RetagKind::TwoPhase => RetagCause::TwoPhase,
             RetagKind::FnEntry => unreachable!(),
             RetagKind::Raw | RetagKind::Default => RetagCause::Normal,
         };
@@ -880,7 +880,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let retag_fields = this.machine.borrow_tracker.as_mut().unwrap().get_mut().retag_fields;
         let retag_cause = match kind {
-            RetagKind::TwoPhase { .. } => unreachable!(), // can only happen in `retag_ptr_value`
+            RetagKind::TwoPhase => unreachable!(), // can only happen in `retag_ptr_value`
             RetagKind::FnEntry => RetagCause::FnEntry,
             RetagKind::Default | RetagKind::Raw => RetagCause::Normal,
         };
@@ -904,10 +904,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 new_perm: NewPermission,
             ) -> InterpResult<'tcx> {
                 let val = self.ecx.read_immediate(&self.ecx.place_to_op(place)?)?;
-                let val = self.ecx.sb_retag_reference(&val, new_perm, RetagInfo {
-                    cause: self.retag_cause,
-                    in_field: self.in_field,
-                })?;
+                let val = self.ecx.sb_retag_reference(
+                    &val,
+                    new_perm,
+                    RetagInfo { cause: self.retag_cause, in_field: self.in_field },
+                )?;
                 self.ecx.write_immediate(*val, place)?;
                 interp_ok(())
             }
@@ -996,10 +997,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             access: Some(AccessKind::Write),
             protector: Some(ProtectorKind::StrongProtector),
         };
-        this.sb_retag_place(place, new_perm, RetagInfo {
-            cause: RetagCause::InPlaceFnPassing,
-            in_field: false,
-        })
+        this.sb_retag_place(
+            place,
+            new_perm,
+            RetagInfo { cause: RetagCause::InPlaceFnPassing, in_field: false },
+        )
     }
 
     /// Mark the given tag as exposed. It was found on a pointer with the given AllocId.

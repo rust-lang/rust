@@ -1,6 +1,6 @@
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::ptr;
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 use crate::sys::pal::abi::mem as sgx_mem;
 use crate::sys::pal::waitqueue::SpinMutex;
 
@@ -10,8 +10,10 @@ use crate::sys::pal::waitqueue::SpinMutex;
 // The current allocator here is the `dlmalloc` crate which we've got included
 // in the rust-lang/rust repository as a submodule. The crate is a port of
 // dlmalloc.c from C to Rust.
+//
+// Specifying linkage/symbol name is solely to ensure a single instance between this crate and its unit tests
 #[cfg_attr(test, linkage = "available_externally")]
-#[export_name = "_ZN16__rust_internals3std3sys3sgx5alloc8DLMALLOCE"]
+#[unsafe(export_name = "_ZN16__rust_internals3std3sys5alloc3sgx8DLMALLOCE")]
 static DLMALLOC: SpinMutex<dlmalloc::Dlmalloc<Sgx>> =
     SpinMutex::new(dlmalloc::Dlmalloc::new_with_allocator(Sgx {}));
 
@@ -20,7 +22,7 @@ struct Sgx;
 unsafe impl dlmalloc::Allocator for Sgx {
     /// Allocs system resources
     fn alloc(&self, _size: usize) -> (*mut u8, usize, u32) {
-        static INIT: AtomicBool = AtomicBool::new(false);
+        static INIT: Atomic<bool> = AtomicBool::new(false);
 
         // No ordering requirement since this function is protected by the global lock.
         if !INIT.swap(true, Ordering::Relaxed) {
@@ -85,13 +87,13 @@ unsafe impl GlobalAlloc for System {
 // The following functions are needed by libunwind. These symbols are named
 // in pre-link args for the target specification, so keep that in sync.
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn __rust_c_alloc(size: usize, align: usize) -> *mut u8 {
     unsafe { crate::alloc::alloc(Layout::from_size_align_unchecked(size, align)) }
 }
 
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn __rust_c_dealloc(ptr: *mut u8, size: usize, align: usize) {
     unsafe { crate::alloc::dealloc(ptr, Layout::from_size_align_unchecked(size, align)) }
 }

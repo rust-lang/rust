@@ -2,14 +2,15 @@ use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_hir::LangItem;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::{BitSet, GrowableBitSet};
+use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
 use rustc_middle::bug;
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{excluded_locals, iter_fields};
 use tracing::{debug, instrument};
+
+use crate::patch::MirPatch;
 
 pub(super) struct ScalarReplacementOfAggregates;
 
@@ -48,6 +49,10 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
             }
         }
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 /// Identify all locals that are not eligible for SROA.
@@ -60,9 +65,9 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
 fn escaping_locals<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    excluded: &BitSet<Local>,
+    excluded: &DenseBitSet<Local>,
     body: &Body<'tcx>,
-) -> BitSet<Local> {
+) -> DenseBitSet<Local> {
     let is_excluded_ty = |ty: Ty<'tcx>| {
         if ty.is_union() || ty.is_enum() {
             return true;
@@ -97,7 +102,7 @@ fn escaping_locals<'tcx>(
         false
     };
 
-    let mut set = BitSet::new_empty(body.local_decls.len());
+    let mut set = DenseBitSet::new_empty(body.local_decls.len());
     set.insert_range(RETURN_PLACE..=Local::from_usize(body.arg_count));
     for (local, decl) in body.local_decls().iter_enumerated() {
         if excluded.contains(local) || is_excluded_ty(decl.ty) {
@@ -109,7 +114,7 @@ fn escaping_locals<'tcx>(
     return visitor.set;
 
     struct EscapeVisitor {
-        set: BitSet<Local>,
+        set: DenseBitSet<Local>,
     }
 
     impl<'tcx> Visitor<'tcx> for EscapeVisitor {
@@ -180,7 +185,7 @@ impl<'tcx> ReplacementMap<'tcx> {
     fn place_fragments(
         &self,
         place: Place<'tcx>,
-    ) -> Option<impl Iterator<Item = (FieldIdx, Ty<'tcx>, Local)> + '_> {
+    ) -> Option<impl Iterator<Item = (FieldIdx, Ty<'tcx>, Local)>> {
         let local = place.as_local()?;
         let fields = self.fragments[local].as_ref()?;
         Some(fields.iter_enumerated().filter_map(|(field, &opt_ty_local)| {
@@ -198,7 +203,7 @@ fn compute_flattening<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     body: &mut Body<'tcx>,
-    escaping: BitSet<Local>,
+    escaping: DenseBitSet<Local>,
 ) -> ReplacementMap<'tcx> {
     let mut fragments = IndexVec::from_elem(None, &body.local_decls);
 
@@ -226,8 +231,8 @@ fn replace_flattened_locals<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
     replacements: ReplacementMap<'tcx>,
-) -> BitSet<Local> {
-    let mut all_dead_locals = BitSet::new_empty(replacements.fragments.len());
+) -> DenseBitSet<Local> {
+    let mut all_dead_locals = DenseBitSet::new_empty(replacements.fragments.len());
     for (local, replacements) in replacements.fragments.iter_enumerated() {
         if replacements.is_some() {
             all_dead_locals.insert(local);
@@ -267,7 +272,7 @@ struct ReplacementVisitor<'tcx, 'll> {
     /// Work to do.
     replacements: &'ll ReplacementMap<'tcx>,
     /// This is used to check that we are not leaving references to replaced locals behind.
-    all_dead_locals: BitSet<Local>,
+    all_dead_locals: DenseBitSet<Local>,
     patch: MirPatch<'tcx>,
 }
 

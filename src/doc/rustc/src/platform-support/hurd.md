@@ -6,7 +6,7 @@
 
 ## Target maintainers
 
-- Samuel Thibault, `samuel.thibault@ens-lyon.org`, https://github.com/sthibaul/
+[@sthibaul](https://github.com/sthibaul)
 
 ## Requirements
 

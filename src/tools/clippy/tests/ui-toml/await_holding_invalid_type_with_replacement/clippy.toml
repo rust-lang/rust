@@ -1,0 +1,3 @@
+await-holding-invalid-types = [
+    { path = "std::string::String", replacement = "std::net::Ipv4Addr" },
+]

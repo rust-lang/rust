@@ -1,9 +1,9 @@
-use crate::spec::{SanitizerSet, Target, TargetOptions, base};
+use crate::spec::{FloatAbi, SanitizerSet, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "arm-linux-androideabi".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Armv6 Android".into()),
             tier: Some(2),
             host_tools: Some(false),
@@ -14,6 +14,7 @@ pub(crate) fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             // https://developer.android.com/ndk/guides/abis.html#armeabi
             features: "+strict-align,+v5te".into(),
             supported_sanitizers: SanitizerSet::ADDRESS,

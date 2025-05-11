@@ -1,5 +1,5 @@
 // ignore-tidy-linelength
-#![allow(unused)]
+#![allow(unused, unnecessary_transmutes)]
 #![feature(ptr_metadata)]
 
 use std::{ptr, mem};
@@ -9,7 +9,7 @@ use std::{ptr, mem};
 //@ normalize-stderr: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
 //@ normalize-stderr: "offset \d+" -> "offset N"
 //@ normalize-stderr: "size \d+" -> "size N"
-
+//@ dont-require-annotations: NOTE
 
 /// A newtype wrapper to prevent MIR generation from inserting reborrows that would affect the error
 /// message.
@@ -62,7 +62,7 @@ const SLICE_VALID: &[u8] = unsafe { mem::transmute((&42u8, 1usize)) };
 // bad slice: length uninit
 const SLICE_LENGTH_UNINIT: &[u8] = unsafe {
 //~^ ERROR evaluation of constant value failed
-//~| uninitialized
+//~| NOTE uninitialized
     let uninit_len = MaybeUninit::<usize> { uninit: () };
     mem::transmute((42, uninit_len))
 };
@@ -85,18 +85,18 @@ const SLICE_LENGTH_PTR_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, &3)) };
 // bad data *inside* the slice
 const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
 //~^ ERROR it is undefined behavior to use this value
-//~| constant
+//~| NOTE constant
 
 // good MySliceBool
 const MYSLICE_GOOD: &MySliceBool = &MySlice(true, [false]);
 // bad: sized field is not okay
 const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
 //~^ ERROR it is undefined behavior to use this value
-//~| constant
+//~| NOTE constant
 // bad: unsized part is not okay
 const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
 //~^ ERROR it is undefined behavior to use this value
-//~| constant
+//~| NOTE constant
 
 // # raw slice
 const RAW_SLICE_VALID: *const [u8] = unsafe { mem::transmute((&42u8, 1usize)) }; // ok
@@ -104,7 +104,7 @@ const RAW_SLICE_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, 999usize
 const RAW_SLICE_MUCH_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, usize::MAX)) }; // ok because raw
 const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
 //~^ ERROR evaluation of constant value failed
-//~| uninitialized
+//~| NOTE uninitialized
     let uninit_len = MaybeUninit::<usize> { uninit: () };
     mem::transmute((42, uninit_len))
 };
@@ -113,40 +113,40 @@ const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
 // bad trait object
 const TRAIT_OBJ_SHORT_VTABLE_1: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u8))) };
 //~^ ERROR it is undefined behavior to use this value
-//~| vtable
+//~| NOTE vtable
 // bad trait object
 const TRAIT_OBJ_SHORT_VTABLE_2: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u64))) };
 //~^ ERROR it is undefined behavior to use this value
-//~| vtable
+//~| NOTE vtable
 // bad trait object
 const TRAIT_OBJ_INT_VTABLE: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, 4usize))) };
 //~^ ERROR it is undefined behavior to use this value
-//~| vtable
+//~| NOTE vtable
 const TRAIT_OBJ_UNALIGNED_VTABLE: &dyn Trait = unsafe { mem::transmute((&92u8, &[0u8; 128])) };
 //~^ ERROR it is undefined behavior to use this value
-//~| vtable
+//~| NOTE vtable
 const TRAIT_OBJ_BAD_DROP_FN_NULL: &dyn Trait = unsafe { mem::transmute((&92u8, &[0usize; 8])) };
 //~^ ERROR it is undefined behavior to use this value
-//~| vtable
+//~| NOTE vtable
 const TRAIT_OBJ_BAD_DROP_FN_INT: &dyn Trait = unsafe { mem::transmute((&92u8, &[1usize; 8])) };
 //~^ ERROR it is undefined behavior to use this value
-//~| vtable
+//~| NOTE vtable
 const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &[&42u8; 8]))) };
 //~^ ERROR it is undefined behavior to use this value
-//~| vtable
+//~| NOTE vtable
 
 // bad data *inside* the trait object
 const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) };
 //~^ ERROR it is undefined behavior to use this value
-//~| expected a boolean
+//~| NOTE expected a boolean
 
 // # raw trait object
 const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
 //~^ ERROR it is undefined behavior to use this value
-//~| null pointer
+//~| NOTE null pointer
 const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
 //~^ ERROR it is undefined behavior to use this value
-//~| vtable
+//~| NOTE vtable
 const RAW_TRAIT_OBJ_CONTENT_INVALID: *const dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) } as *const dyn Trait; // ok because raw
 // Officially blessed way to get the vtable
 const DYN_METADATA: ptr::DynMetadata<dyn Send> = ptr::metadata::<dyn Send>(ptr::null::<i32>());
@@ -155,12 +155,12 @@ const DYN_METADATA: ptr::DynMetadata<dyn Send> = ptr::metadata::<dyn Send>(ptr::
 static mut RAW_TRAIT_OBJ_VTABLE_NULL_THROUGH_REF: *const dyn Trait = unsafe {
     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
     //~^^ ERROR it is undefined behavior to use this value
-    //~| null pointer
+    //~| NOTE null pointer
 };
 static mut RAW_TRAIT_OBJ_VTABLE_INVALID_THROUGH_REF: *const dyn Trait = unsafe {
     mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
     //~^^ ERROR it is undefined behavior to use this value
-    //~| vtable
+    //~| NOTE vtable
 };
 
 fn main() {}

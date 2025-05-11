@@ -142,7 +142,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Overwrite temp local info if we have something more interesting to record.
                 if !matches!(local_info, LocalInfo::Boring) {
                     let decl_info =
-                        this.local_decls[operand].local_info.as_mut().assert_crate_local();
+                        this.local_decls[operand].local_info.as_mut().unwrap_crate_local();
                     if let LocalInfo::Boring | LocalInfo::BlockTailTemp(_) = **decl_info {
                         **decl_info = local_info;
                     }

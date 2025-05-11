@@ -1,5 +1,5 @@
 use std::assert_matches::debug_assert_matches;
-use std::fmt::Write as _;
+use std::fmt::{self, Display, Write as _};
 use std::mem;
 use std::sync::LazyLock as Lazy;
 
@@ -24,6 +24,7 @@ use crate::clean::{
     clean_middle_ty, inline,
 };
 use crate::core::DocContext;
+use crate::display::Joined as _;
 
 #[cfg(test)]
 mod tests;
@@ -59,7 +60,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let primitives = local_crate.primitives(cx.tcx);
     let keywords = local_crate.keywords(cx.tcx);
     {
-        let ItemKind::ModuleItem(ref mut m) = &mut module.inner.kind else { unreachable!() };
+        let ItemKind::ModuleItem(m) = &mut module.inner.kind else { unreachable!() };
         m.items.extend(primitives.iter().map(|&(def_id, prim)| {
             Item::from_def_id_and_parts(
                 def_id,
@@ -81,11 +82,11 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
     mut has_self: bool,
     owner: DefId,
-) -> Vec<GenericArg> {
+) -> ThinVec<GenericArg> {
     let (args, bound_vars) = (args.skip_binder(), args.bound_vars());
     if args.is_empty() {
         // Fast path which avoids executing the query `generics_of`.
-        return Vec::new();
+        return ThinVec::new();
     }
 
     // If the container is a trait object type, the arguments won't contain the self type but the
@@ -144,7 +145,7 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     };
 
     let offset = if has_self { 1 } else { 0 };
-    let mut clean_args = Vec::with_capacity(args.len().saturating_sub(offset));
+    let mut clean_args = ThinVec::with_capacity(args.len().saturating_sub(offset));
     clean_args.extend(args.iter().enumerate().rev().filter_map(clean_arg));
     clean_args.reverse();
     clean_args
@@ -222,7 +223,7 @@ fn clean_middle_generic_args_with_constraints<'tcx>(
 
     let args = clean_middle_generic_args(cx, args.map_bound(|args| &args[..]), has_self, did);
 
-    GenericArgs::AngleBracketed { args: args.into(), constraints }
+    GenericArgs::AngleBracketed { args, constraints }
 }
 
 pub(super) fn clean_middle_path<'tcx>(
@@ -233,7 +234,7 @@ pub(super) fn clean_middle_path<'tcx>(
     args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);
-    let name = cx.tcx.opt_item_name(did).unwrap_or(kw::Empty);
+    let name = cx.tcx.opt_item_name(did).unwrap_or(sym::dummy);
     Path {
         res: Res::Def(def_kind, did),
         segments: thin_vec![PathSegment {
@@ -250,16 +251,20 @@ pub(crate) fn qpath_to_string(p: &hir::QPath<'_>) -> String {
         hir::QPath::LangItem(lang_item, ..) => return lang_item.name().to_string(),
     };
 
-    let mut s = String::new();
-    for (i, seg) in segments.iter().enumerate() {
-        if i > 0 {
-            s.push_str("::");
-        }
-        if seg.ident.name != kw::PathRoot {
-            s.push_str(seg.ident.as_str());
-        }
-    }
-    s
+    fmt::from_fn(|f| {
+        segments
+            .iter()
+            .map(|seg| {
+                fmt::from_fn(|f| {
+                    if seg.ident.name != kw::PathRoot {
+                        write!(f, "{}", seg.ident)?;
+                    }
+                    Ok(())
+                })
+            })
+            .joined("::", f)
+    })
+    .to_string()
 }
 
 pub(crate) fn build_deref_target_impls(
@@ -297,35 +302,52 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
     use rustc_hir::*;
     debug!("trying to get a name from pattern: {p:?}");
 
-    Symbol::intern(&match p.kind {
-        // FIXME(never_patterns): does this make sense?
-        PatKind::Wild | PatKind::Err(_) | PatKind::Never | PatKind::Struct(..) => {
+    Symbol::intern(&match &p.kind {
+        PatKind::Err(_)
+        | PatKind::Missing // Let's not perpetuate anon params from Rust 2015; use `_` for them.
+        | PatKind::Never
+        | PatKind::Range(..)
+        | PatKind::Struct(..)
+        | PatKind::Wild => {
             return kw::Underscore;
         }
         PatKind::Binding(_, _, ident, _) => return ident.name,
-        PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
-        PatKind::Or(pats) => {
-            pats.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(" | ")
+        PatKind::Box(p) | PatKind::Ref(p, _) | PatKind::Guard(p, _) => return name_from_pat(p),
+        PatKind::TupleStruct(p, ..) | PatKind::Expr(PatExpr { kind: PatExprKind::Path(p), .. }) => {
+            qpath_to_string(p)
         }
-        PatKind::Tuple(elts, _) => format!(
-            "({})",
-            elts.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(", ")
-        ),
-        PatKind::Box(p) => return name_from_pat(p),
+        PatKind::Or(pats) => {
+            fmt::from_fn(|f| pats.iter().map(|p| name_from_pat(p)).joined(" | ", f)).to_string()
+        }
+        PatKind::Tuple(elts, _) => {
+            format!("({})", fmt::from_fn(|f| elts.iter().map(|p| name_from_pat(p)).joined(", ", f)))
+        }
         PatKind::Deref(p) => format!("deref!({})", name_from_pat(p)),
-        PatKind::Ref(p, _) => return name_from_pat(p),
-        PatKind::Lit(..) => {
+        PatKind::Expr(..) => {
             warn!(
-                "tried to get argument name from PatKind::Lit, which is silly in function arguments"
+                "tried to get argument name from PatKind::Expr, which is silly in function arguments"
             );
             return Symbol::intern("()");
         }
-        PatKind::Range(..) => return kw::Underscore,
-        PatKind::Slice(begin, ref mid, end) => {
-            let begin = begin.iter().map(|p| name_from_pat(p).to_string());
-            let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(p))).into_iter();
-            let end = end.iter().map(|p| name_from_pat(p).to_string());
-            format!("[{}]", begin.chain(mid).chain(end).collect::<Vec<_>>().join(", "))
+        PatKind::Slice(begin, mid, end) => {
+            fn print_pat(pat: &Pat<'_>, wild: bool) -> impl Display {
+                fmt::from_fn(move |f| {
+                    if wild {
+                        f.write_str("..")?;
+                    }
+                    name_from_pat(pat).fmt(f)
+                })
+            }
+
+            format!(
+                "[{}]",
+                fmt::from_fn(|f| {
+                    let begin = begin.iter().map(|p| print_pat(p, false));
+                    let mid = mid.map(|p| print_pat(p, true));
+                    let end = end.iter().map(|p| print_pat(p, false));
+                    begin.chain(mid).chain(end).joined(", ", f)
+                })
+            )
         }
     })
 }
@@ -334,7 +356,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
         ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args: _ }) => {
             let s = if let Some(def) = def.as_local() {
-                rendered_const(cx.tcx, cx.tcx.hir().body_owned_by(def), def)
+                rendered_const(cx.tcx, cx.tcx.hir_body_owned_by(def), def)
             } else {
                 inline::print_inlined_const(cx.tcx, def)
             };
@@ -342,10 +364,8 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
             s
         }
         // array lengths are obviously usize
-        ty::ConstKind::Value(ty, ty::ValTree::Leaf(scalar))
-            if *ty.kind() == ty::Uint(ty::UintTy::Usize) =>
-        {
-            scalar.to_string()
+        ty::ConstKind::Value(cv) if *cv.ty.kind() == ty::Uint(ty::UintTy::Usize) => {
+            cv.valtree.unwrap_leaf().to_string()
         }
         _ => n.to_string(),
     }
@@ -374,7 +394,7 @@ pub(crate) fn print_evaluated_const(
 fn format_integer_with_underscore_sep(num: &str) -> String {
     let num_chars: Vec<_> = num.chars().collect();
     let mut num_start_index = if num_chars.first() == Some(&'-') { 1 } else { 0 };
-    let chunk_size = match num[num_start_index..].as_bytes() {
+    let chunk_size = match &num.as_bytes()[num_start_index..] {
         [b'0', b'b' | b'x', ..] => {
             num_start_index += 2;
             4
@@ -474,7 +494,7 @@ pub(crate) fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
 pub(crate) fn synthesize_auto_trait_and_blanket_impls(
     cx: &mut DocContext<'_>,
     item_def_id: DefId,
-) -> impl Iterator<Item = Item> {
+) -> impl Iterator<Item = Item> + use<> {
     let auto_impls = cx
         .sess()
         .prof
@@ -504,7 +524,7 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
             | AssocConst
             | Variant
             | Fn
-            | TyAlias { .. }
+            | TyAlias
             | Enum
             | Trait
             | Struct
@@ -588,9 +608,9 @@ pub(crate) fn attrs_have_doc_flag<'a>(
 /// so that the channel is consistent.
 ///
 /// Set by `bootstrap::Builder::doc_rust_lang_org_channel` in order to keep tests passing on beta/stable.
-pub(crate) const DOC_RUST_LANG_ORG_CHANNEL: &str = env!("DOC_RUST_LANG_ORG_CHANNEL");
-pub(crate) static DOC_CHANNEL: Lazy<&'static str> =
-    Lazy::new(|| DOC_RUST_LANG_ORG_CHANNEL.rsplit('/').find(|c| !c.is_empty()).unwrap());
+pub(crate) const DOC_RUST_LANG_ORG_VERSION: &str = env!("DOC_RUST_LANG_ORG_CHANNEL");
+pub(crate) static RUSTDOC_VERSION: Lazy<&'static str> =
+    Lazy::new(|| DOC_RUST_LANG_ORG_VERSION.rsplit('/').find(|c| !c.is_empty()).unwrap());
 
 /// Render a sequence of macro arms in a format suitable for displaying to the user
 /// as part of an item declaration.

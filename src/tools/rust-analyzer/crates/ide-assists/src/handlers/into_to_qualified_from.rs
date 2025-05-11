@@ -1,9 +1,6 @@
 use hir::{AsAssocItem, HirDisplay};
-use ide_db::{
-    assists::{AssistId, AssistKind},
-    famous_defs::FamousDefs,
-};
-use syntax::{ast, AstNode};
+use ide_db::{assists::AssistId, famous_defs::FamousDefs};
+use syntax::{AstNode, ast};
 
 use crate::assist_context::{AssistContext, Assists};
 
@@ -60,7 +57,7 @@ pub(crate) fn into_to_qualified_from(acc: &mut Assists, ctx: &AssistContext<'_>)
 
         let sc = adjusted_tc.display_source_code(db, scope.module().into(), true).ok()?;
         acc.add(
-            AssistId("into_to_qualified_from", AssistKind::Generate),
+            AssistId::generate("into_to_qualified_from"),
             "Convert `into` to fully qualified `from`",
             nameref.syntax().text_range(),
             |edit| {

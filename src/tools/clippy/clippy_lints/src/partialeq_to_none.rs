@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for PartialeqToNone {
             let sugg = format!(
                 "{}.{}",
                 sugg::Sugg::hir_with_applicability(cx, peel_ref_operators(cx, scrutinee), "..", &mut applicability)
-                    .maybe_par(),
+                    .maybe_paren(),
                 if is_eq { "is_none()" } else { "is_some()" }
             );
 

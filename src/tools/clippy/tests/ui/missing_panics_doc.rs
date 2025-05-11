@@ -11,17 +11,20 @@ fn main() {}
 
 /// This needs to be documented
 pub fn unwrap() {
+    //~^ missing_panics_doc
     let result = Err("Hi");
     result.unwrap()
 }
 
 /// This needs to be documented
 pub fn panic() {
+    //~^ missing_panics_doc
     panic!("This function panics")
 }
 
 /// This needs to be documented
 pub fn inner_body(opt: Option<u32>) {
+    //~^ missing_panics_doc
     opt.map(|x| {
         if x == 10 {
             panic!()
@@ -31,17 +34,20 @@ pub fn inner_body(opt: Option<u32>) {
 
 /// This needs to be documented
 pub fn unreachable_and_panic() {
+    //~^ missing_panics_doc
     if true { unreachable!() } else { panic!() }
 }
 
 /// This needs to be documented
 pub fn assert_eq() {
+    //~^ missing_panics_doc
     let x = 0;
     assert_eq!(x, 0);
 }
 
 /// This needs to be documented
 pub fn assert_ne() {
+    //~^ missing_panics_doc
     let x = 0;
     assert_ne!(x, 0);
 }
@@ -145,34 +151,79 @@ pub fn debug_assertions() {
     debug_assert_ne!(1, 2);
 }
 
+pub fn partially_const<const N: usize>(n: usize) {
+    //~^ missing_panics_doc
+
+    const {
+        assert!(N > 5);
+    }
+
+    assert!(N > n);
+}
+
+pub fn expect_allow(i: Option<isize>) {
+    #[expect(clippy::missing_panics_doc)]
+    i.unwrap();
+
+    #[allow(clippy::missing_panics_doc)]
+    i.unwrap();
+}
+
+pub fn expect_allow_with_error(i: Option<isize>) {
+    //~^ missing_panics_doc
+
+    #[expect(clippy::missing_panics_doc)]
+    i.unwrap();
+
+    #[allow(clippy::missing_panics_doc)]
+    i.unwrap();
+
+    i.unwrap();
+}
+
+pub fn expect_after_error(x: Option<u32>, y: Option<u32>) {
+    //~^ missing_panics_doc
+
+    let x = x.unwrap();
+
+    #[expect(clippy::missing_panics_doc)]
+    let y = y.unwrap();
+}
+
 // all function must be triggered the lint.
 // `pub` is required, because the lint does not consider unreachable items
 pub mod issue10240 {
     pub fn option_unwrap<T>(v: &[T]) -> &T {
+        //~^ missing_panics_doc
         let o: Option<&T> = v.last();
         o.unwrap()
     }
 
     pub fn option_expect<T>(v: &[T]) -> &T {
+        //~^ missing_panics_doc
         let o: Option<&T> = v.last();
         o.expect("passed an empty thing")
     }
 
     pub fn result_unwrap<T>(v: &[T]) -> &T {
+        //~^ missing_panics_doc
         let res: Result<&T, &str> = v.last().ok_or("oh noes");
         res.unwrap()
     }
 
     pub fn result_expect<T>(v: &[T]) -> &T {
+        //~^ missing_panics_doc
         let res: Result<&T, &str> = v.last().ok_or("oh noes");
         res.expect("passed an empty thing")
     }
 
     pub fn last_unwrap(v: &[u32]) -> u32 {
+        //~^ missing_panics_doc
         *v.last().unwrap()
     }
 
     pub fn last_expect(v: &[u32]) -> u32 {
+        //~^ missing_panics_doc
         *v.last().expect("passed an empty thing")
     }
 }

@@ -40,17 +40,14 @@ impl RawWaker {
     /// of the `vtable` as the first parameter.
     ///
     /// It is important to consider that the `data` pointer must point to a
-    /// thread safe type such as an `[Arc]<T: Send + Sync>`
+    /// thread safe type such as an `Arc<T: Send + Sync>`
     /// when used to construct a [`Waker`]. This restriction is lifted when
     /// constructing a [`LocalWaker`], which allows using types that do not implement
-    /// <code>[Send] + [Sync]</code> like `[Rc]<T>`.
+    /// <code>[Send] + [Sync]</code> like `Rc<T>`.
     ///
     /// The `vtable` customizes the behavior of a `Waker` which gets created
     /// from a `RawWaker`. For each operation on the `Waker`, the associated
     /// function in the `vtable` of the underlying `RawWaker` will be called.
-    ///
-    /// [`Arc`]: std::sync::Arc
-    /// [`Rc`]: std::rc::Rc
     #[inline]
     #[rustc_promotable]
     #[stable(feature = "futures_api", since = "1.36.0")]
@@ -60,7 +57,7 @@ impl RawWaker {
         RawWaker { data, vtable }
     }
 
-    #[stable(feature = "noop_waker", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "noop_waker", since = "1.85.0")]
     const NOOP: RawWaker = {
         const VTABLE: RawWakerVTable = RawWakerVTable::new(
             // Cloning just returns a new no-op raw waker
@@ -405,7 +402,7 @@ impl<'a> ContextBuilder<'a> {
 /// [`Wake`]: ../../alloc/task/trait.Wake.html
 #[repr(transparent)]
 #[stable(feature = "futures_api", since = "1.36.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Waker")]
+#[rustc_diagnostic_item = "Waker"]
 pub struct Waker {
     waker: RawWaker,
 }
@@ -564,8 +561,8 @@ impl Waker {
     /// ```
     #[inline]
     #[must_use]
-    #[stable(feature = "noop_waker", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "noop_waker", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "noop_waker", since = "1.85.0")]
+    #[rustc_const_stable(feature = "noop_waker", since = "1.85.0")]
     pub const fn noop() -> &'static Waker {
         const WAKER: &Waker = &Waker { waker: RawWaker::NOOP };
         WAKER

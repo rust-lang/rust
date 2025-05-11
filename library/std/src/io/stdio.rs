@@ -11,7 +11,7 @@ use crate::io::{
     self, BorrowedCursor, BufReader, IoSlice, IoSliceMut, LineWriter, Lines, SpecReadByte,
 };
 use crate::panic::{RefUnwindSafe, UnwindSafe};
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 use crate::sync::{Arc, Mutex, MutexGuard, OnceLock, ReentrantLock, ReentrantLockGuard};
 use crate::sys::stdio;
 use crate::thread::AccessError;
@@ -20,7 +20,7 @@ type LocalStream = Arc<Mutex<Vec<u8>>>;
 
 thread_local! {
     /// Used by the test crate to capture the output of the print macros and panics.
-    static OUTPUT_CAPTURE: Cell<Option<LocalStream>> = {
+    static OUTPUT_CAPTURE: Cell<Option<LocalStream>> = const {
         Cell::new(None)
     }
 }
@@ -37,7 +37,7 @@ thread_local! {
 /// have a consistent order between set_output_capture and print_to *within
 /// the same thread*. Within the same thread, things always have a perfectly
 /// consistent order. So Ordering::Relaxed is fine.
-static OUTPUT_CAPTURE_USED: AtomicBool = AtomicBool::new(false);
+static OUTPUT_CAPTURE_USED: Atomic<bool> = AtomicBool::new(false);
 
 /// A handle to a raw instance of the standard input stream of this process.
 ///
@@ -97,15 +97,15 @@ const fn stderr_raw() -> StderrRaw {
 
 impl Read for StdinRaw {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        handle_ebadf(self.0.read(buf), 0)
+        handle_ebadf(self.0.read(buf), || Ok(0))
     }
 
     fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
-        handle_ebadf(self.0.read_buf(buf), ())
+        handle_ebadf(self.0.read_buf(buf), || Ok(()))
     }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        handle_ebadf(self.0.read_vectored(bufs), 0)
+        handle_ebadf(self.0.read_vectored(bufs), || Ok(0))
     }
 
     #[inline]
@@ -113,23 +113,37 @@ impl Read for StdinRaw {
         self.0.is_read_vectored()
     }
 
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        if buf.is_empty() {
+            return Ok(());
+        }
+        handle_ebadf(self.0.read_exact(buf), || Err(io::Error::READ_EXACT_EOF))
+    }
+
+    fn read_buf_exact(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        if buf.capacity() == 0 {
+            return Ok(());
+        }
+        handle_ebadf(self.0.read_buf_exact(buf), || Err(io::Error::READ_EXACT_EOF))
+    }
+
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        handle_ebadf(self.0.read_to_end(buf), 0)
+        handle_ebadf(self.0.read_to_end(buf), || Ok(0))
     }
 
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-        handle_ebadf(self.0.read_to_string(buf), 0)
+        handle_ebadf(self.0.read_to_string(buf), || Ok(0))
     }
 }
 
 impl Write for StdoutRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        handle_ebadf(self.0.write(buf), buf.len())
+        handle_ebadf(self.0.write(buf), || Ok(buf.len()))
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let total = || bufs.iter().map(|b| b.len()).sum();
-        handle_ebadf_lazy(self.0.write_vectored(bufs), total)
+        let total = || Ok(bufs.iter().map(|b| b.len()).sum());
+        handle_ebadf(self.0.write_vectored(bufs), total)
     }
 
     #[inline]
@@ -138,30 +152,30 @@ impl Write for StdoutRaw {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        handle_ebadf(self.0.flush(), ())
+        handle_ebadf(self.0.flush(), || Ok(()))
     }
 
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        handle_ebadf(self.0.write_all(buf), ())
+        handle_ebadf(self.0.write_all(buf), || Ok(()))
     }
 
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        handle_ebadf(self.0.write_all_vectored(bufs), ())
+        handle_ebadf(self.0.write_all_vectored(bufs), || Ok(()))
     }
 
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
-        handle_ebadf(self.0.write_fmt(fmt), ())
+        handle_ebadf(self.0.write_fmt(fmt), || Ok(()))
     }
 }
 
 impl Write for StderrRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        handle_ebadf(self.0.write(buf), buf.len())
+        handle_ebadf(self.0.write(buf), || Ok(buf.len()))
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let total = || bufs.iter().map(|b| b.len()).sum();
-        handle_ebadf_lazy(self.0.write_vectored(bufs), total)
+        let total = || Ok(bufs.iter().map(|b| b.len()).sum());
+        handle_ebadf(self.0.write_vectored(bufs), total)
     }
 
     #[inline]
@@ -170,32 +184,25 @@ impl Write for StderrRaw {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        handle_ebadf(self.0.flush(), ())
+        handle_ebadf(self.0.flush(), || Ok(()))
     }
 
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        handle_ebadf(self.0.write_all(buf), ())
+        handle_ebadf(self.0.write_all(buf), || Ok(()))
     }
 
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        handle_ebadf(self.0.write_all_vectored(bufs), ())
+        handle_ebadf(self.0.write_all_vectored(bufs), || Ok(()))
     }
 
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
-        handle_ebadf(self.0.write_fmt(fmt), ())
+        handle_ebadf(self.0.write_fmt(fmt), || Ok(()))
     }
 }
 
-fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
+fn handle_ebadf<T>(r: io::Result<T>, default: impl FnOnce() -> io::Result<T>) -> io::Result<T> {
     match r {
-        Err(ref e) if stdio::is_ebadf(e) => Ok(default),
-        r => r,
-    }
-}
-
-fn handle_ebadf_lazy<T>(r: io::Result<T>, default: impl FnOnce() -> T) -> io::Result<T> {
-    match r {
-        Err(ref e) if stdio::is_ebadf(e) => Ok(default()),
+        Err(ref e) if stdio::is_ebadf(e) => default(),
         r => r,
     }
 }
@@ -239,6 +246,7 @@ fn handle_ebadf_lazy<T>(r: io::Result<T>, default: impl FnOnce() -> T) -> io::Re
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Stdin")]
 pub struct Stdin {
     inner: &'static Mutex<BufReader<StdinRaw>>,
 }
@@ -574,6 +582,11 @@ impl fmt::Debug for StdinLock<'_> {
 /// output stream. Access is also synchronized via a lock and explicit control
 /// over locking is available via the [`lock`] method.
 ///
+/// By default, the handle is line-buffered when connected to a terminal, meaning
+/// it flushes automatically when a newline (`\n`) is encountered. For immediate
+/// output, you can manually call the [`flush`] method. When the handle goes out
+/// of scope, the buffer is automatically flushed.
+///
 /// Created by the [`io::stdout`] method.
 ///
 /// ### Note: Windows Portability Considerations
@@ -589,6 +602,7 @@ impl fmt::Debug for StdinLock<'_> {
 /// standard library or via raw Windows API calls, will fail.
 ///
 /// [`lock`]: Stdout::lock
+/// [`flush`]: Write::flush
 /// [`io::stdout`]: stdout
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdout {
@@ -603,6 +617,11 @@ pub struct Stdout {
 /// This handle implements the [`Write`] trait, and is constructed via
 /// the [`Stdout::lock`] method. See its documentation for more.
 ///
+/// By default, the handle is line-buffered when connected to a terminal, meaning
+/// it flushes automatically when a newline (`\n`) is encountered. For immediate
+/// output, you can manually call the [`flush`] method. When the handle goes out
+/// of scope, the buffer is automatically flushed.
+///
 /// ### Note: Windows Portability Considerations
 ///
 /// When operating in a console, the Windows implementation of this stream does not support
@@ -614,6 +633,8 @@ pub struct Stdout {
 /// the contained handle will be null. In such cases, the standard library's `Read` and
 /// `Write` will do nothing and silently succeed. All other I/O operations, via the
 /// standard library or via raw Windows API calls, will fail.
+///
+/// [`flush`]: Write::flush
 #[must_use = "if unused stdout will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdoutLock<'a> {
@@ -627,6 +648,11 @@ static STDOUT: OnceLock<ReentrantLock<RefCell<LineWriter<StdoutRaw>>>> = OnceLoc
 /// Each handle returned is a reference to a shared global buffer whose access
 /// is synchronized via a mutex. If you need more explicit control over
 /// locking, see the [`Stdout::lock`] method.
+///
+/// By default, the handle is line-buffered when connected to a terminal, meaning
+/// it flushes automatically when a newline (`\n`) is encountered. For immediate
+/// output, you can manually call the [`flush`] method. When the handle goes out
+/// of scope, the buffer is automatically flushed.
 ///
 /// ### Note: Windows Portability Considerations
 ///
@@ -668,6 +694,22 @@ static STDOUT: OnceLock<ReentrantLock<RefCell<LineWriter<StdoutRaw>>>> = OnceLoc
 ///     Ok(())
 /// }
 /// ```
+///
+/// Ensuring output is flushed immediately:
+///
+/// ```no_run
+/// use std::io::{self, Write};
+///
+/// fn main() -> io::Result<()> {
+///     let mut stdout = io::stdout();
+///     stdout.write_all(b"hello, ")?;
+///     stdout.flush()?;                // Manual flush
+///     stdout.write_all(b"world!\n")?; // Automatically flushed
+///     Ok(())
+/// }
+/// ```
+///
+/// [`flush`]: Write::flush
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "io_stdout")]

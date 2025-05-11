@@ -1,8 +1,7 @@
-#![deny(clippy::all)]
+//@ check-pass
 
 // Test for https://github.com/rust-lang/rust-clippy/issues/1336
 
-#[allow(dead_code)]
 struct Foo;
 
 impl Iterator for Foo {

@@ -1,35 +1,15 @@
 //! Tests that don't fit into a specific category.
 
-use expect_test::{expect, Expect};
+use expect_test::{Expect, expect};
 use ide_db::SymbolKind;
 
 use crate::{
-    tests::{
-        check_edit, completion_list, completion_list_no_kw, completion_list_with_trigger_character,
-    },
     CompletionItemKind,
+    tests::{
+        TEST_CONFIG, check, check_edit, check_no_kw, check_with_trigger_character,
+        do_completion_with_config,
+    },
 };
-
-use super::{do_completion_with_config, TEST_CONFIG};
-
-fn check_no_kw(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list_no_kw(ra_fixture);
-    expect.assert_eq(&actual)
-}
-
-fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(ra_fixture);
-    expect.assert_eq(&actual)
-}
-
-pub(crate) fn check_with_trigger_character(
-    ra_fixture: &str,
-    trigger_character: Option<char>,
-    expect: Expect,
-) {
-    let actual = completion_list_with_trigger_character(ra_fixture, trigger_character);
-    expect.assert_eq(&actual)
-}
 
 #[test]
 fn completes_if_prefix_is_keyword() {
@@ -125,7 +105,7 @@ mod macros {
 fn completes_std_prelude_if_core_is_defined() {
     check_no_kw(
         r#"
-//- /main.rs crate:main deps:core,std
+//- /main.rs crate:main deps:core,std edition:2021
 fn foo() { let x: $0 }
 
 //- /core/lib.rs crate:core
@@ -1028,7 +1008,9 @@ fn here_we_go() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -1078,7 +1060,9 @@ fn here_we_go() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -1164,6 +1148,7 @@ fn here_we_go() {
             me baz() (alias qux) fn(&self) -> u8
             sn box                Box::new(expr)
             sn call               function(expr)
+            sn const                    const {}
             sn dbg                    dbg!(expr)
             sn dbgr                  dbg!(&expr)
             sn deref                       *expr
@@ -1201,7 +1186,9 @@ fn bar() { qu$0 }
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -1281,6 +1268,7 @@ fn here_we_go() {
             md foo
             st Bar (alias Qux) (use foo::Bar) Bar
             bt u32                            u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -1345,7 +1333,7 @@ struct Foo<T: PartialOrd
 }
 
 fn check_signatures(src: &str, kind: CompletionItemKind, reduced: Expect, full: Expect) {
-    const FULL_SIGNATURES_CONFIG: crate::CompletionConfig = {
+    const FULL_SIGNATURES_CONFIG: crate::CompletionConfig<'_> = {
         let mut x = TEST_CONFIG;
         x.full_function_signatures = true;
         x
@@ -1370,7 +1358,7 @@ pub fn foo<'x, T>(x: &'x mut T) -> u8 where T: Clone, { 0u8 }
 fn main() { fo$0 }
 "#,
         CompletionItemKind::SymbolKind(ide_db::SymbolKind::Function),
-        expect!("fn(&mut T) -> u8"),
+        expect!("fn(&'x mut T) -> u8"),
         expect!("pub fn foo<'x, T>(x: &'x mut T) -> u8 where T: Clone,"),
     );
 
@@ -1403,7 +1391,7 @@ fn main() {
 }
 "#,
         CompletionItemKind::SymbolKind(SymbolKind::Method),
-        expect!("const fn(&'foo mut self, &Foo) -> !"),
+        expect!("const fn(&'foo mut self, &'foo Foo) -> !"),
         expect!("pub const fn baz<'foo>(&'foo mut self, x: &'foo Foo) -> !"),
     );
 }
@@ -1456,7 +1444,9 @@ fn foo() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
+            kw letm
             kw loop
             kw match
             kw mod

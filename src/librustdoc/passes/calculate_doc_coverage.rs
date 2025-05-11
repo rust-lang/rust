@@ -5,7 +5,7 @@ use std::ops;
 
 use rustc_hir as hir;
 use rustc_lint::builtin::MISSING_DOCS;
-use rustc_middle::lint::LintLevelSource;
+use rustc_middle::lint::{LevelAndSource, LintLevelSource};
 use rustc_session::lint;
 use rustc_span::FileName;
 use serde::Serialize;
@@ -212,11 +212,12 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
                 let has_docs = !i.attrs.doc_strings.is_empty();
                 let mut tests = Tests { found_tests: 0 };
 
-                find_testable_code(&i.doc_value(), &mut tests, ErrorCodes::No, false, None);
+                find_testable_code(&i.doc_value(), &mut tests, ErrorCodes::No, None);
 
                 let has_doc_example = tests.found_tests != 0;
                 let hir_id = DocContext::as_local_hir_id(self.ctx.tcx, i.item_id).unwrap();
-                let (level, source) = self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
+                let LevelAndSource { level, src, .. } =
+                    self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
 
                 // In case we have:
                 //
@@ -232,7 +233,7 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
                     .item_id
                     .as_def_id()
                     .and_then(|def_id| self.ctx.tcx.opt_parent(def_id))
-                    .and_then(|def_id| self.ctx.tcx.hir().get_if_local(def_id))
+                    .and_then(|def_id| self.ctx.tcx.hir_get_if_local(def_id))
                     .map(|node| {
                         matches!(
                             node,
@@ -240,7 +241,7 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
                                 data: hir::VariantData::Tuple(_, _, _),
                                 ..
                             }) | hir::Node::Item(hir::Item {
-                                kind: hir::ItemKind::Struct(hir::VariantData::Tuple(_, _, _), _),
+                                kind: hir::ItemKind::Struct(_, hir::VariantData::Tuple(_, _, _), _),
                                 ..
                             })
                         )
@@ -251,7 +252,7 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
                 // unless the user had an explicit `allow`.
                 //
                 let should_have_docs = !should_be_ignored
-                    && (level != lint::Level::Allow || matches!(source, LintLevelSource::Default));
+                    && (level != lint::Level::Allow || matches!(src, LintLevelSource::Default));
 
                 if let Some(span) = i.span(self.ctx.tcx) {
                     let filename = span.filename(self.ctx.sess());

@@ -18,6 +18,7 @@ use crate::lists::{
 use crate::macros::{MacroPosition, rewrite_macro};
 use crate::overflow;
 use crate::pairs::{PairParts, rewrite_pair};
+use crate::patterns::rewrite_range_pat;
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
@@ -462,8 +463,9 @@ impl Rewrite for ast::WherePredicate {
     }
 
     fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        let attrs_str = self.attrs.rewrite_result(context, shape)?;
         // FIXME: dead spans?
-        let result = match self.kind {
+        let pred_str = &match self.kind {
             ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
                 ref bound_generic_params,
                 ref bounded_ty,
@@ -497,6 +499,38 @@ impl Rewrite for ast::WherePredicate {
                 rewrite_assign_rhs(context, lhs_ty_str, &**rhs_ty, &RhsAssignKind::Ty, shape)?
             }
         };
+
+        let mut result = String::with_capacity(attrs_str.len() + pred_str.len() + 1);
+        result.push_str(&attrs_str);
+        let pred_start = self.span.lo();
+        let line_len = last_line_width(&attrs_str) + 1 + first_line_width(&pred_str);
+        if let Some(last_attr) = self.attrs.last().filter(|last_attr| {
+            contains_comment(context.snippet(mk_sp(last_attr.span.hi(), pred_start)))
+        }) {
+            result = combine_strs_with_missing_comments(
+                context,
+                &result,
+                &pred_str,
+                mk_sp(last_attr.span.hi(), pred_start),
+                Shape {
+                    width: shape.width.min(context.config.inline_attribute_width()),
+                    ..shape
+                },
+                !last_attr.is_doc_comment(),
+            )?;
+        } else {
+            if !self.attrs.is_empty() {
+                if context.config.inline_attribute_width() < line_len
+                    || self.attrs.len() > 1
+                    || self.attrs.last().is_some_and(|a| a.is_doc_comment())
+                {
+                    result.push_str(&shape.indent.to_string_with_newline(context.config));
+                } else {
+                    result.push(' ');
+                }
+            }
+            result.push_str(&pred_str);
+        }
 
         Ok(result)
     }
@@ -984,7 +1018,7 @@ impl Rewrite for ast::Ty {
             ast::TyKind::BareFn(ref bare_fn) => rewrite_bare_fn(bare_fn, self.span, context, shape),
             ast::TyKind::Never => Ok(String::from("!")),
             ast::TyKind::MacCall(ref mac) => {
-                rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
+                rewrite_macro(mac, context, shape, MacroPosition::Expression)
             }
             ast::TyKind::ImplicitSelf => Ok(String::from("")),
             ast::TyKind::ImplTrait(_, ref it) => {
@@ -1018,7 +1052,11 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::UnsafeBinder(ref binder) => {
                 let mut result = String::new();
-                if let Some(ref lifetime_str) =
+                if binder.generic_params.is_empty() {
+                    // We always want to write `unsafe<>` since `unsafe<> Ty`
+                    // and `Ty` are distinct types.
+                    result.push_str("unsafe<> ")
+                } else if let Some(ref lifetime_str) =
                     rewrite_bound_params(context, shape, &binder.generic_params)
                 {
                     result.push_str("unsafe<");
@@ -1041,6 +1079,34 @@ impl Rewrite for ast::Ty {
                 result.push_str(&rewrite);
                 Ok(result)
             }
+        }
+    }
+}
+
+impl Rewrite for ast::TyPat {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        match self.kind {
+            ast::TyPatKind::Range(ref lhs, ref rhs, ref end_kind) => {
+                rewrite_range_pat(context, shape, lhs, rhs, end_kind, self.span)
+            }
+            ast::TyPatKind::Or(ref variants) => {
+                let mut first = true;
+                let mut s = String::new();
+                for variant in variants {
+                    if first {
+                        first = false
+                    } else {
+                        s.push_str(" | ");
+                    }
+                    s.push_str(&variant.rewrite_result(context, shape)?);
+                }
+                Ok(s)
+            }
+            ast::TyPatKind::Err(_) => Err(RewriteError::Unknown),
         }
     }
 }

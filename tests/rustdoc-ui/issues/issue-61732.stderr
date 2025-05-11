@@ -1,10 +1,10 @@
-error[E0433]: failed to resolve: you might be missing crate `r#mod`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `r#mod`
   --> $DIR/issue-61732.rs:3:15
    |
 LL | pub(in crate::r#mod) fn main() {}
-   |               ^^^^^ you might be missing crate `r#mod`
+   |               ^^^^^ use of unresolved module or unlinked crate `r#mod`
    |
-help: consider importing the `r#mod` crate
+help: you might be missing a crate named `r#mod`, add it to your project and import it in your code
    |
 LL + extern crate r#mod;
    |

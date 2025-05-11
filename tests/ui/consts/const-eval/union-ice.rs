@@ -13,13 +13,13 @@ const UNION: DummyUnion = DummyUnion { field1: 1065353216 };
 
 const FIELD3: Field3 = unsafe { UNION.field3 };
 //~^ ERROR evaluation of constant value failed
-//~| uninitialized
+//~| NOTE uninitialized
 
 const FIELD_PATH: Struct = Struct {
     a: 42,
     b: unsafe { UNION.field3 },
     //~^ ERROR evaluation of constant value failed
-    //~| uninitialized
+    //~| NOTE uninitialized
 };
 
 struct Struct {
@@ -32,7 +32,7 @@ const FIELD_PATH2: Struct2 = Struct2 {
         21,
         unsafe { UNION.field3 },
         //~^ ERROR evaluation of constant value failed
-        //~| uninitialized
+        //~| NOTE uninitialized
         23,
         24,
     ],

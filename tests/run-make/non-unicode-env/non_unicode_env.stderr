@@ -3,16 +3,12 @@ error: environment variable `NON_UNICODE_VAR` is not a valid Unicode string
   |
 2 |     let _ = env!("NON_UNICODE_VAR");
   |             ^^^^^^^^^^^^^^^^^^^^^^^
-  |
-  = note: this error originates in the macro `env` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: environment variable `NON_UNICODE_VAR` is not a valid Unicode string
  --> non_unicode_env.rs:3:13
   |
 3 |     let _ = option_env!("NON_UNICODE_VAR");
   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |
-  = note: this error originates in the macro `option_env` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

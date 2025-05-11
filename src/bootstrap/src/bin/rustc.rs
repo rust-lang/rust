@@ -349,7 +349,7 @@ fn format_rusage_data(child: Child) -> Option<String> {
     let mut kernel_filetime = Default::default();
     let mut kernel_time = Default::default();
     let mut memory_counters = PROCESS_MEMORY_COUNTERS::default();
-    let memory_counters_size = std::mem::size_of_val(&memory_counters);
+    let memory_counters_size = size_of_val(&memory_counters);
 
     unsafe {
         GetProcessTimes(

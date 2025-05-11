@@ -13,8 +13,8 @@ use crate::{cmp, fmt, hash, mem, num};
 pub struct Alignment(AlignmentEnum);
 
 // Alignment is `repr(usize)`, but via extra steps.
-const _: () = assert!(mem::size_of::<Alignment>() == mem::size_of::<usize>());
-const _: () = assert!(mem::align_of::<Alignment>() == mem::align_of::<usize>());
+const _: () = assert!(size_of::<Alignment>() == size_of::<usize>());
+const _: () = assert!(align_of::<Alignment>() == align_of::<usize>());
 
 fn _alignment_can_be_structurally_matched(a: Alignment) -> bool {
     matches!(a, Alignment::MIN)
@@ -38,13 +38,14 @@ impl Alignment {
 
     /// Returns the alignment for a type.
     ///
-    /// This provides the same numerical value as [`mem::align_of`],
+    /// This provides the same numerical value as [`align_of`],
     /// but in an `Alignment` instead of a `usize`.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
+    #[must_use]
     pub const fn of<T>() -> Self {
-        // SAFETY: rustc ensures that type alignment is always a power of two.
-        unsafe { Alignment::new_unchecked(mem::align_of::<T>()) }
+        // This can't actually panic since type alignment is always a power of two.
+        const { Alignment::new(align_of::<T>()).unwrap() }
     }
 
     /// Creates an `Alignment` from a `usize`, or returns `None` if it's
@@ -95,8 +96,13 @@ impl Alignment {
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const fn as_nonzero(self) -> NonZero<usize> {
+        // This transmutes directly to avoid the UbCheck in `NonZero::new_unchecked`
+        // since there's no way for the user to trip that check anyway -- the
+        // validity invariant of the type would have to have been broken earlier --
+        // and emitting it in an otherwise simple method is bad for compile time.
+
         // SAFETY: All the discriminants are non-zero.
-        unsafe { NonZero::new_unchecked(self.as_usize()) }
+        unsafe { mem::transmute::<Alignment, NonZero<usize>>(self) }
     }
 
     /// Returns the base-2 logarithm of the alignment.

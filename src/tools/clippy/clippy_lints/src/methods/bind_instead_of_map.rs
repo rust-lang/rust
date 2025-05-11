@@ -163,7 +163,7 @@ impl BindInsteadOfMap {
 
         match arg.kind {
             hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) => {
-                let closure_body = cx.tcx.hir().body(body);
+                let closure_body = cx.tcx.hir_body(body);
                 let closure_expr = peel_blocks(closure_body.value);
 
                 if self.lint_closure_autofixable(cx, expr, recv, closure_expr, fn_decl_span) {
@@ -192,10 +192,10 @@ impl BindInsteadOfMap {
     }
 
     fn is_variant(&self, cx: &LateContext<'_>, res: Res) -> bool {
-        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res {
-            if let Some(variant_id) = cx.tcx.lang_items().get(self.variant_lang_item) {
-                return cx.tcx.parent(id) == variant_id;
-            }
+        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res
+            && let Some(variant_id) = cx.tcx.lang_items().get(self.variant_lang_item)
+        {
+            return cx.tcx.parent(id) == variant_id;
         }
         false
     }

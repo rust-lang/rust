@@ -1,13 +1,14 @@
 use ide_db::{famous_defs::FamousDefs, source_change::SourceChangeBuilder};
 use stdx::{format_to, to_lower_snake_case};
 use syntax::{
-    ast::{self, edit_in_place::Indent, make, AstNode, HasName, HasVisibility},
-    ted, TextRange,
+    TextRange,
+    ast::{self, AstNode, HasName, HasVisibility, edit_in_place::Indent, make},
+    ted,
 };
 
 use crate::{
+    AssistContext, AssistId, Assists, GroupLabel,
     utils::{convert_reference_type, find_struct_impl, generate_impl},
-    AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
 
 // Assist: generate_setter
@@ -62,7 +63,7 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
 
     acc.add_group(
         &GroupLabel("Generate getter/setter".to_owned()),
-        AssistId("generate_setter", AssistKind::Generate),
+        AssistId::generate("generate_setter"),
         "Generate a setter method",
         target,
         |builder| build_source_change(builder, ctx, info_of_record_fields, setter_info),
@@ -203,7 +204,7 @@ pub(crate) fn generate_getter_impl(
 
     acc.add_group(
         &GroupLabel("Generate getter/setter".to_owned()),
-        AssistId(id, AssistKind::Generate),
+        AssistId::generate(id),
         label,
         target,
         |builder| build_source_change(builder, ctx, info_of_record_fields, getter_info),
@@ -233,7 +234,7 @@ fn generate_getter_from_info(
                 .map(|conversion| {
                     cov_mark::hit!(convert_reference_type);
                     (
-                        conversion.convert_type(ctx.db(), krate.edition(ctx.db())),
+                        conversion.convert_type(ctx.db(), krate.to_display_target(ctx.db())),
                         conversion.getter(record_field_info.field_name.to_string()),
                     )
                 })
@@ -933,7 +934,7 @@ mod tests_setter {
 
     use super::*;
 
-    fn check_not_applicable(ra_fixture: &str) {
+    fn check_not_applicable(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_assist_not_applicable(generate_setter, ra_fixture)
     }
 

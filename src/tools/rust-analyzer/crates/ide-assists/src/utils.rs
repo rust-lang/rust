@@ -2,29 +2,36 @@
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{
+    DisplayTarget, HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution,
+    Semantics,
     db::{ExpandDatabase, HirDatabase},
-    HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution, Semantics,
 };
 use ide_db::{
+    RootDatabase,
+    assists::ExprFillDefaultMode,
     famous_defs::FamousDefs,
     path_transform::PathTransform,
     syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
-    RootDatabase,
 };
 use stdx::format_to;
 use syntax::{
+    AstNode, AstToken, Direction, NodeOrToken, SourceFile,
+    SyntaxKind::*,
+    SyntaxNode, SyntaxToken, T, TextRange, TextSize, WalkEvent,
     ast::{
-        self,
+        self, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
         edit::{AstNodeEdit, IndentLevel},
         edit_in_place::{AttrsOwnerEdit, Indent, Removable},
-        make, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
+        make,
+        syntax_factory::SyntaxFactory,
     },
-    ted, AstNode, AstToken, Direction, Edition, NodeOrToken, SourceFile,
-    SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, TextSize, WalkEvent, T,
+    ted,
 };
 
-use crate::assist_context::{AssistContext, SourceChangeBuilder};
+use crate::{
+    AssistConfig,
+    assist_context::{AssistContext, SourceChangeBuilder},
+};
 
 mod gen_trait_fn_body;
 pub(crate) mod ref_field_expr;
@@ -79,11 +86,7 @@ pub fn test_related_attribute_syn(fn_def: &ast::Fn) -> Option<ast::Attr> {
     fn_def.attrs().find_map(|attr| {
         let path = attr.path()?;
         let text = path.syntax().text().to_string();
-        if text.starts_with("test") || text.ends_with("test") {
-            Some(attr)
-        } else {
-            None
-        }
+        if text.starts_with("test") || text.ends_with("test") { Some(attr) } else { None }
     })
 }
 
@@ -175,6 +178,7 @@ pub fn filter_assoc_items(
 /// inserted.
 pub fn add_trait_assoc_items_to_impl(
     sema: &Semantics<'_, RootDatabase>,
+    config: &AssistConfig,
     original_items: &[InFile<ast::AssocItem>],
     trait_: hir::Trait,
     impl_: &ast::Impl,
@@ -213,13 +217,21 @@ pub fn add_trait_assoc_items_to_impl(
     });
 
     let assoc_item_list = impl_.get_or_create_assoc_item_list();
+
     let mut first_item = None;
     for item in items {
         first_item.get_or_insert_with(|| item.clone());
         match &item {
             ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
                 let body = AstNodeEdit::indent(
-                    &make::block_expr(None, Some(make::ext::expr_todo())),
+                    &make::block_expr(
+                        None,
+                        Some(match config.expr_fill_default {
+                            ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+                            ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+                            ExprFillDefaultMode::Default => make::ext::expr_todo(),
+                        }),
+                    ),
                     new_indent_level,
                 );
                 ted::replace(fn_.get_or_create_body().syntax(), body.clone_for_update().syntax())
@@ -245,11 +257,79 @@ pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
         .unwrap_or_else(|| node.text_range().start())
 }
 
-pub(crate) fn invert_boolean_expression(expr: ast::Expr) -> ast::Expr {
-    invert_special_case(&expr).unwrap_or_else(|| make::expr_prefix(T![!], expr))
+pub(crate) fn invert_boolean_expression(make: &SyntaxFactory, expr: ast::Expr) -> ast::Expr {
+    invert_special_case(make, &expr).unwrap_or_else(|| make.expr_prefix(T![!], expr).into())
 }
 
-fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
+// FIXME: Migrate usages of this function to the above function and remove this.
+pub(crate) fn invert_boolean_expression_legacy(expr: ast::Expr) -> ast::Expr {
+    invert_special_case_legacy(&expr).unwrap_or_else(|| make::expr_prefix(T![!], expr).into())
+}
+
+fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Expr> {
+    match expr {
+        ast::Expr::BinExpr(bin) => {
+            let op_kind = bin.op_kind()?;
+            let rev_kind = match op_kind {
+                ast::BinaryOp::CmpOp(ast::CmpOp::Eq { negated }) => {
+                    ast::BinaryOp::CmpOp(ast::CmpOp::Eq { negated: !negated })
+                }
+                ast::BinaryOp::CmpOp(ast::CmpOp::Ord { ordering: ast::Ordering::Less, strict }) => {
+                    ast::BinaryOp::CmpOp(ast::CmpOp::Ord {
+                        ordering: ast::Ordering::Greater,
+                        strict: !strict,
+                    })
+                }
+                ast::BinaryOp::CmpOp(ast::CmpOp::Ord {
+                    ordering: ast::Ordering::Greater,
+                    strict,
+                }) => ast::BinaryOp::CmpOp(ast::CmpOp::Ord {
+                    ordering: ast::Ordering::Less,
+                    strict: !strict,
+                }),
+                // Parenthesize other expressions before prefixing `!`
+                _ => {
+                    return Some(
+                        make.expr_prefix(T![!], make.expr_paren(expr.clone()).into()).into(),
+                    );
+                }
+            };
+
+            Some(make.expr_bin(bin.lhs()?, rev_kind, bin.rhs()?).into())
+        }
+        ast::Expr::MethodCallExpr(mce) => {
+            let receiver = mce.receiver()?;
+            let method = mce.name_ref()?;
+            let arg_list = mce.arg_list()?;
+
+            let method = match method.text().as_str() {
+                "is_some" => "is_none",
+                "is_none" => "is_some",
+                "is_ok" => "is_err",
+                "is_err" => "is_ok",
+                _ => return None,
+            };
+
+            Some(make.expr_method_call(receiver, make.name_ref(method), arg_list).into())
+        }
+        ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::UnaryOp::Not => match pe.expr()? {
+            ast::Expr::ParenExpr(parexpr) => {
+                parexpr.expr().map(|e| e.clone_subtree().clone_for_update())
+            }
+            _ => pe.expr().map(|e| e.clone_subtree().clone_for_update()),
+        },
+        ast::Expr::Literal(lit) => match lit.kind() {
+            ast::LiteralKind::Bool(b) => match b {
+                true => Some(ast::Expr::Literal(make.expr_literal("false"))),
+                false => Some(ast::Expr::Literal(make.expr_literal("true"))),
+            },
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
     match expr {
         ast::Expr::BinExpr(bin) => {
             let bin = bin.clone_for_update();
@@ -262,7 +342,11 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
                 T![>] => T![<=],
                 T![>=] => T![<],
                 // Parenthesize other expressions before prefixing `!`
-                _ => return Some(make::expr_prefix(T![!], make::expr_paren(expr.clone()))),
+                _ => {
+                    return Some(
+                        make::expr_prefix(T![!], make::expr_paren(expr.clone()).into()).into(),
+                    );
+                }
             };
             ted::replace(op_token, make::token(rev_token));
             Some(bin.into())
@@ -279,7 +363,7 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
                 "is_err" => "is_ok",
                 _ => return None,
             };
-            Some(make::expr_method_call(receiver, make::name_ref(method), arg_list))
+            Some(make::expr_method_call(receiver, make::name_ref(method), arg_list).into())
         }
         ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::UnaryOp::Not => match pe.expr()? {
             ast::Expr::ParenExpr(parexpr) => parexpr.expr(),
@@ -316,43 +400,73 @@ pub(crate) fn does_pat_match_variant(pat: &ast::Pat, var: &ast::Pat) -> bool {
     pat_head == var_head
 }
 
-pub(crate) fn does_nested_pattern(pat: &ast::Pat) -> bool {
-    let depth = calc_depth(pat, 0);
-
-    if 1 < depth {
-        return true;
-    }
-    false
+pub(crate) fn does_pat_variant_nested_or_literal(ctx: &AssistContext<'_>, pat: &ast::Pat) -> bool {
+    check_pat_variant_nested_or_literal_with_depth(ctx, pat, 0)
 }
 
-fn calc_depth(pat: &ast::Pat, depth: usize) -> usize {
-    match pat {
-        ast::Pat::IdentPat(_)
-        | ast::Pat::BoxPat(_)
-        | ast::Pat::RestPat(_)
-        | ast::Pat::LiteralPat(_)
-        | ast::Pat::MacroPat(_)
-        | ast::Pat::OrPat(_)
-        | ast::Pat::ParenPat(_)
-        | ast::Pat::PathPat(_)
-        | ast::Pat::WildcardPat(_)
-        | ast::Pat::RangePat(_)
-        | ast::Pat::RecordPat(_)
-        | ast::Pat::RefPat(_)
-        | ast::Pat::SlicePat(_)
-        | ast::Pat::TuplePat(_)
-        | ast::Pat::ConstBlockPat(_) => depth,
+fn check_pat_variant_from_enum(ctx: &AssistContext<'_>, pat: &ast::Pat) -> bool {
+    ctx.sema.type_of_pat(pat).is_none_or(|ty: hir::TypeInfo| {
+        ty.adjusted().as_adt().is_some_and(|adt| matches!(adt, hir::Adt::Enum(_)))
+    })
+}
 
-        // FIXME: Other patterns may also be nested. Currently it simply supports only `TupleStructPat`
-        ast::Pat::TupleStructPat(pat) => {
-            let mut max_depth = depth;
-            for p in pat.fields() {
-                let d = calc_depth(&p, depth + 1);
-                if d > max_depth {
-                    max_depth = d
-                }
-            }
-            max_depth
+fn check_pat_variant_nested_or_literal_with_depth(
+    ctx: &AssistContext<'_>,
+    pat: &ast::Pat,
+    depth_after_refutable: usize,
+) -> bool {
+    if depth_after_refutable > 1 {
+        return true;
+    }
+
+    match pat {
+        ast::Pat::RestPat(_) | ast::Pat::WildcardPat(_) | ast::Pat::RefPat(_) => false,
+
+        ast::Pat::LiteralPat(_)
+        | ast::Pat::RangePat(_)
+        | ast::Pat::MacroPat(_)
+        | ast::Pat::PathPat(_)
+        | ast::Pat::BoxPat(_)
+        | ast::Pat::ConstBlockPat(_) => true,
+
+        ast::Pat::IdentPat(ident_pat) => ident_pat.pat().is_some_and(|pat| {
+            check_pat_variant_nested_or_literal_with_depth(ctx, &pat, depth_after_refutable)
+        }),
+        ast::Pat::ParenPat(paren_pat) => paren_pat.pat().is_none_or(|pat| {
+            check_pat_variant_nested_or_literal_with_depth(ctx, &pat, depth_after_refutable)
+        }),
+        ast::Pat::TuplePat(tuple_pat) => tuple_pat.fields().any(|pat| {
+            check_pat_variant_nested_or_literal_with_depth(ctx, &pat, depth_after_refutable)
+        }),
+        ast::Pat::RecordPat(record_pat) => {
+            let adjusted_next_depth =
+                depth_after_refutable + if check_pat_variant_from_enum(ctx, pat) { 1 } else { 0 };
+            record_pat.record_pat_field_list().is_none_or(|pat| {
+                pat.fields().any(|pat| {
+                    pat.pat().is_none_or(|pat| {
+                        check_pat_variant_nested_or_literal_with_depth(
+                            ctx,
+                            &pat,
+                            adjusted_next_depth,
+                        )
+                    })
+                })
+            })
+        }
+        ast::Pat::OrPat(or_pat) => or_pat.pats().any(|pat| {
+            check_pat_variant_nested_or_literal_with_depth(ctx, &pat, depth_after_refutable)
+        }),
+        ast::Pat::TupleStructPat(tuple_struct_pat) => {
+            let adjusted_next_depth =
+                depth_after_refutable + if check_pat_variant_from_enum(ctx, pat) { 1 } else { 0 };
+            tuple_struct_pat.fields().any(|pat| {
+                check_pat_variant_nested_or_literal_with_depth(ctx, &pat, adjusted_next_depth)
+            })
+        }
+        ast::Pat::SlicePat(slice_pat) => {
+            let mut pats = slice_pat.pats();
+            pats.next()
+                .is_none_or(|pat| !matches!(pat, ast::Pat::RestPat(_)) || pats.next().is_some())
         }
     }
 }
@@ -397,11 +511,7 @@ pub(crate) fn find_struct_impl(
         };
         let not_trait_impl = blk.trait_(db).is_none();
 
-        if !(same_ty && not_trait_impl) {
-            None
-        } else {
-            Some(impl_blk)
-        }
+        if !(same_ty && not_trait_impl) { None } else { Some(impl_blk) }
     });
 
     if let Some(ref impl_blk) = block {
@@ -693,31 +803,50 @@ enum ReferenceConversionType {
 }
 
 impl ReferenceConversion {
-    pub(crate) fn convert_type(&self, db: &dyn HirDatabase, edition: Edition) -> ast::Type {
+    pub(crate) fn convert_type(
+        &self,
+        db: &dyn HirDatabase,
+        display_target: DisplayTarget,
+    ) -> ast::Type {
         let ty = match self.conversion {
-            ReferenceConversionType::Copy => self.ty.display(db, edition).to_string(),
+            ReferenceConversionType::Copy => self.ty.display(db, display_target).to_string(),
             ReferenceConversionType::AsRefStr => "&str".to_owned(),
             ReferenceConversionType::AsRefSlice => {
-                let type_argument_name =
-                    self.ty.type_arguments().next().unwrap().display(db, edition).to_string();
+                let type_argument_name = self
+                    .ty
+                    .type_arguments()
+                    .next()
+                    .unwrap()
+                    .display(db, display_target)
+                    .to_string();
                 format!("&[{type_argument_name}]")
             }
             ReferenceConversionType::Dereferenced => {
-                let type_argument_name =
-                    self.ty.type_arguments().next().unwrap().display(db, edition).to_string();
+                let type_argument_name = self
+                    .ty
+                    .type_arguments()
+                    .next()
+                    .unwrap()
+                    .display(db, display_target)
+                    .to_string();
                 format!("&{type_argument_name}")
             }
             ReferenceConversionType::Option => {
-                let type_argument_name =
-                    self.ty.type_arguments().next().unwrap().display(db, edition).to_string();
+                let type_argument_name = self
+                    .ty
+                    .type_arguments()
+                    .next()
+                    .unwrap()
+                    .display(db, display_target)
+                    .to_string();
                 format!("Option<&{type_argument_name}>")
             }
             ReferenceConversionType::Result => {
                 let mut type_arguments = self.ty.type_arguments();
                 let first_type_argument_name =
-                    type_arguments.next().unwrap().display(db, edition).to_string();
+                    type_arguments.next().unwrap().display(db, display_target).to_string();
                 let second_type_argument_name =
-                    type_arguments.next().unwrap().display(db, edition).to_string();
+                    type_arguments.next().unwrap().display(db, display_target).to_string();
                 format!("Result<&{first_type_argument_name}, &{second_type_argument_name}>")
             }
         };
@@ -739,6 +868,7 @@ impl ReferenceConversion {
                     make::expr_ref(expr, false)
                 } else {
                     make::expr_method_call(expr, make::name_ref("as_ref"), make::arg_list([]))
+                        .into()
                 }
             }
         }
@@ -763,8 +893,8 @@ pub(crate) fn convert_reference_type(
 }
 
 fn could_deref_to_target(ty: &hir::Type, target: &hir::Type, db: &dyn HirDatabase) -> bool {
-    let ty_ref = hir::Type::reference(ty, hir::Mutability::Shared);
-    let target_ref = hir::Type::reference(target, hir::Mutability::Shared);
+    let ty_ref = ty.add_reference(hir::Mutability::Shared);
+    let target_ref = target.add_reference(hir::Mutability::Shared);
     ty_ref.could_coerce_to(db, &target_ref)
 }
 
@@ -906,6 +1036,20 @@ fn test_required_hashes() {
     assert_eq!(0, required_hashes("#abc"));
     assert_eq!(3, required_hashes("#ab\"##c"));
     assert_eq!(5, required_hashes("#ab\"##\"####c"));
+}
+
+/// Calculate the string literal suffix length
+pub(crate) fn string_suffix(s: &str) -> Option<&str> {
+    s.rfind(['"', '\'', '#']).map(|i| &s[i + 1..])
+}
+#[test]
+fn test_string_suffix() {
+    assert_eq!(Some(""), string_suffix(r#""abc""#));
+    assert_eq!(Some(""), string_suffix(r#""""#));
+    assert_eq!(Some("a"), string_suffix(r#"""a"#));
+    assert_eq!(Some("i32"), string_suffix(r#"""i32"#));
+    assert_eq!(Some("i32"), string_suffix(r#"r""i32"#));
+    assert_eq!(Some("i32"), string_suffix(r##"r#""#i32"##));
 }
 
 /// Replaces the record expression, handling field shorthands including inside macros.

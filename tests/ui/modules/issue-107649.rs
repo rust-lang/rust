@@ -102,5 +102,5 @@ fn main() {
     ();
     ();
     ();
-    dbg!(lib::Dummy); //~ Error: `Dummy` doesn't implement `Debug`
+    dbg!(lib::Dummy); //~ ERROR `Dummy` doesn't implement `Debug`
 }

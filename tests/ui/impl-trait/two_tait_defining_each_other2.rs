@@ -8,9 +8,9 @@ type B = impl Foo;
 
 trait Foo {}
 
+#[define_opaque(A, B)]
 fn muh(x: A) -> B {
-    //[current]~^ ERROR: item does not constrain `A::{opaque#0}`
-    //[next]~^^ ERROR: cannot satisfy `_ == A`
+    //[next]~^ ERROR: cannot satisfy `_ == A`
     x // B's hidden type is A (opaquely)
     //[current]~^ ERROR opaque type's hidden type cannot be another opaque type
 }

@@ -1,3 +1,5 @@
-//@ compile-flags: --error-format=human --cfg )
-//@ error-pattern: invalid `--cfg` argument: `)` (expected `key` or `key="value"`)
+//@ compile-flags: --cfg )
+
 fn main() {}
+
+//~? ERROR invalid `--cfg` argument: `)` (expected `key` or `key="value"`)

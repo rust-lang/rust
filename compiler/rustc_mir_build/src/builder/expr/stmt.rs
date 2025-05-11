@@ -78,8 +78,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // because AssignOp is only legal for Copy types
                 // (overloaded ops should be desugared into a call).
                 let result = unpack!(
-                    block =
-                        this.build_binary_op(block, op, expr_span, lhs_ty, Operand::Copy(lhs), rhs)
+                    block = this.build_binary_op(
+                        block,
+                        op.into(),
+                        expr_span,
+                        lhs_ty,
+                        Operand::Copy(lhs),
+                        rhs
+                    )
                 );
                 this.cfg.push_assign(block, source_info, lhs, result);
 
@@ -123,11 +129,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     unpack!(block = this.break_for_tail_call(block, &args, source_info));
 
-                    this.cfg.terminate(block, source_info, TerminatorKind::TailCall {
-                        func: fun,
-                        args,
-                        fn_span,
-                    });
+                    this.cfg.terminate(
+                        block,
+                        source_info,
+                        TerminatorKind::TailCall { func: fun, args, fn_span },
+                    );
 
                     this.cfg.start_new_block().unit()
                 })
@@ -164,8 +170,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                     }
                     this.block_context.push(BlockFrame::TailExpr {
-                        tail_result_is_ignored: true,
-                        span: expr.span,
+                        info: BlockTailInfo { tail_result_is_ignored: true, span: expr.span },
                     });
                     Some(expr.span)
                 } else {

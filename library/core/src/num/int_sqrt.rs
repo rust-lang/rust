@@ -37,7 +37,7 @@ const U8_ISQRT_WITH_REMAINDER: [(u8, u8); 256] = {
 #[must_use = "this returns the result of the operation, \
               without modifying the original"]
 #[inline]
-pub const fn u8(n: u8) -> u8 {
+pub(super) const fn u8(n: u8) -> u8 {
     U8_ISQRT_WITH_REMAINDER[n as usize].0
 }
 
@@ -58,7 +58,7 @@ macro_rules! signed_fn {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const unsafe fn $SignedT(n: $SignedT) -> $SignedT {
+        pub(super) const unsafe fn $SignedT(n: $SignedT) -> $SignedT {
             debug_assert!(n >= 0, "Negative input inside `isqrt`.");
             $UnsignedT(n as $UnsignedT) as $SignedT
         }
@@ -83,7 +83,7 @@ macro_rules! unsigned_fn {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn $UnsignedT(mut n: $UnsignedT) -> $UnsignedT {
+        pub(super) const fn $UnsignedT(mut n: $UnsignedT) -> $UnsignedT {
             if n <= <$HalfBitsT>::MAX as $UnsignedT {
                 $HalfBitsT(n as $HalfBitsT) as $UnsignedT
             } else {
@@ -311,6 +311,6 @@ unsigned_fn!(u128, u64, u128_stages);
 /// on every single primitive type.
 #[cold]
 #[track_caller]
-pub const fn panic_for_negative_argument() -> ! {
+pub(super) const fn panic_for_negative_argument() -> ! {
     panic!("argument of integer square root cannot be negative")
 }

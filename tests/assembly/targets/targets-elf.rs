@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 // ignore-tidy-linelength
 //@ revisions: aarch64_be_unknown_linux_gnu
@@ -57,6 +58,12 @@
 //@ revisions: aarch64_unknown_nto_qnx710
 //@ [aarch64_unknown_nto_qnx710] compile-flags: --target aarch64-unknown-nto-qnx710
 //@ [aarch64_unknown_nto_qnx710] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_nto_qnx710_iosock
+//@ [aarch64_unknown_nto_qnx710_iosock] compile-flags: --target aarch64-unknown-nto-qnx710_iosock
+//@ [aarch64_unknown_nto_qnx710_iosock] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_nto_qnx800
+//@ [aarch64_unknown_nto_qnx800] compile-flags: --target aarch64-unknown-nto-qnx800
+//@ [aarch64_unknown_nto_qnx800] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_openbsd
 //@ [aarch64_unknown_openbsd] compile-flags: --target aarch64-unknown-openbsd
 //@ [aarch64_unknown_openbsd] needs-llvm-components: aarch64
@@ -66,6 +73,9 @@
 //@ revisions: aarch64_unknown_teeos
 //@ [aarch64_unknown_teeos] compile-flags: --target aarch64-unknown-teeos
 //@ [aarch64_unknown_teeos] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_nuttx
+//@ [aarch64_unknown_nuttx] compile-flags: --target aarch64-unknown-nuttx
+//@ [aarch64_unknown_nuttx] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_trusty
 //@ [aarch64_unknown_trusty] compile-flags: --target aarch64-unknown-trusty
 //@ [aarch64_unknown_trusty] needs-llvm-components: aarch64
@@ -177,6 +187,12 @@
 //@ revisions: armv7a_none_eabihf
 //@ [armv7a_none_eabihf] compile-flags: --target armv7a-none-eabihf
 //@ [armv7a_none_eabihf] needs-llvm-components: arm
+//@ revisions: armv7a_nuttx_eabi
+//@ [armv7a_nuttx_eabi] compile-flags: --target armv7a-nuttx-eabi
+//@ [armv7a_nuttx_eabi] needs-llvm-components: arm
+//@ revisions: armv7a_nuttx_eabihf
+//@ [armv7a_nuttx_eabihf] compile-flags: --target armv7a-nuttx-eabihf
+//@ [armv7a_nuttx_eabihf] needs-llvm-components: arm
 //@ revisions: armv7r_none_eabi
 //@ [armv7r_none_eabi] compile-flags: --target armv7r-none-eabi
 //@ [armv7r_none_eabi] needs-llvm-components: arm
@@ -201,9 +217,9 @@
 //@ revisions: hexagon_unknown_none_elf
 //@ [hexagon_unknown_none_elf] compile-flags: --target hexagon-unknown-none-elf
 //@ [hexagon_unknown_none_elf] needs-llvm-components: hexagon
-//@ revisions: i586_pc_nto_qnx700
-//@ [i586_pc_nto_qnx700] compile-flags: --target i586-pc-nto-qnx700
-//@ [i586_pc_nto_qnx700] needs-llvm-components: x86
+//@ revisions: i686_pc_nto_qnx700
+//@ [i686_pc_nto_qnx700] compile-flags: --target i686-pc-nto-qnx700
+//@ [i686_pc_nto_qnx700] needs-llvm-components: x86
 //@ revisions: i586_unknown_linux_gnu
 //@ [i586_unknown_linux_gnu] compile-flags: --target i586-unknown-linux-gnu
 //@ [i586_unknown_linux_gnu] needs-llvm-components: x86
@@ -213,6 +229,9 @@
 //@ revisions: i586_unknown_netbsd
 //@ [i586_unknown_netbsd] compile-flags: --target i586-unknown-netbsd
 //@ [i586_unknown_netbsd] needs-llvm-components: x86
+//@ revisions: i586_unknown_redox
+//@ [i586_unknown_redox] compile-flags: --target i586-unknown-redox
+//@ [i586_unknown_redox] needs-llvm-components: x86
 //@ revisions: i686_linux_android
 //@ [i686_linux_android] compile-flags: --target i686-linux-android
 //@ [i686_linux_android] needs-llvm-components: x86
@@ -237,9 +256,6 @@
 //@ revisions: i686_unknown_openbsd
 //@ [i686_unknown_openbsd] compile-flags: --target i686-unknown-openbsd
 //@ [i686_unknown_openbsd] needs-llvm-components: x86
-//@ revisions: i686_unknown_redox
-//@ [i686_unknown_redox] compile-flags: --target i686-unknown-redox
-//@ [i686_unknown_redox] needs-llvm-components: x86
 //@ revisions: i686_wrs_vxworks
 //@ [i686_wrs_vxworks] compile-flags: --target i686-wrs-vxworks
 //@ [i686_wrs_vxworks] needs-llvm-components: x86
@@ -261,6 +277,9 @@
 //@ revisions: m68k_unknown_linux_gnu
 //@ [m68k_unknown_linux_gnu] compile-flags: --target m68k-unknown-linux-gnu
 //@ [m68k_unknown_linux_gnu] needs-llvm-components: m68k
+//@ revisions: m68k_unknown_none_elf
+//@ [m68k_unknown_none_elf] compile-flags: --target m68k-unknown-none-elf
+//@ [m68k_unknown_none_elf] needs-llvm-components: m68k
 //@ revisions: mips64_openwrt_linux_musl
 //@ [mips64_openwrt_linux_musl] compile-flags: --target mips64-openwrt-linux-musl
 //@ [mips64_openwrt_linux_musl] needs-llvm-components: mips
@@ -285,6 +304,12 @@
 //@ revisions: mips_unknown_linux_uclibc
 //@ [mips_unknown_linux_uclibc] compile-flags: --target mips-unknown-linux-uclibc
 //@ [mips_unknown_linux_uclibc] needs-llvm-components: mips
+//@ revisions: mips_mti_none_elf
+//@ [mips_mti_none_elf] compile-flags: --target mips-mti-none-elf
+//@ [mips_mti_none_elf] needs-llvm-components: mips
+//@ revisions: mipsel_mti_none_elf
+//@ [mipsel_mti_none_elf] compile-flags: --target mipsel-mti-none-elf
+//@ [mipsel_mti_none_elf] needs-llvm-components: mips
 //@ revisions: mipsel_sony_psp
 //@ [mipsel_sony_psp] compile-flags: --target mipsel-sony-psp
 //@ [mipsel_sony_psp] needs-llvm-components: mips
@@ -534,6 +559,9 @@
 //@ revisions: wasm32_wasip2
 //@ [wasm32_wasip2] compile-flags: --target wasm32-wasip2
 //@ [wasm32_wasip2] needs-llvm-components: webassembly
+//@ revisions: wasm32_wali_linux_musl
+//@ [wasm32_wali_linux_musl] compile-flags: --target wasm32-wali-linux-musl
+//@ [wasm32_wali_linux_musl] needs-llvm-components: webassembly
 //@ revisions: wasm64_unknown_unknown
 //@ [wasm64_unknown_unknown] compile-flags: --target wasm64-unknown-unknown
 //@ [wasm64_unknown_unknown] needs-llvm-components: webassembly
@@ -543,9 +571,18 @@
 //@ revisions: x86_64_linux_android
 //@ [x86_64_linux_android] compile-flags: --target x86_64-linux-android
 //@ [x86_64_linux_android] needs-llvm-components: x86
+//@ revisions: x86_64_lynx_lynxos178
+//@ [x86_64_lynx_lynxos178] compile-flags: --target x86_64-lynx-lynxos178
+//@ [x86_64_lynx_lynxos178] needs-llvm-components: x86
 //@ revisions: x86_64_pc_nto_qnx710
 //@ [x86_64_pc_nto_qnx710] compile-flags: --target x86_64-pc-nto-qnx710
 //@ [x86_64_pc_nto_qnx710] needs-llvm-components: x86
+//@ revisions: x86_64_pc_nto_qnx710_iosock
+//@ [x86_64_pc_nto_qnx710_iosock] compile-flags: --target x86_64-pc-nto-qnx710_iosock
+//@ [x86_64_pc_nto_qnx710_iosock] needs-llvm-components: x86
+//@ revisions: x86_64_pc_nto_qnx800
+//@ [x86_64_pc_nto_qnx800] compile-flags: --target x86_64-pc-nto-qnx800
+//@ [x86_64_pc_nto_qnx800] needs-llvm-components: x86
 //@ revisions: x86_64_pc_solaris
 //@ [x86_64_pc_solaris] compile-flags: --target x86_64-pc-solaris
 //@ [x86_64_pc_solaris] needs-llvm-components: x86
@@ -612,6 +649,12 @@
 //@ revisions: thumbv6m_nuttx_eabi
 //@ [thumbv6m_nuttx_eabi] compile-flags: --target thumbv6m-nuttx-eabi
 //@ [thumbv6m_nuttx_eabi] needs-llvm-components: arm
+//@ revisions: thumbv7a_nuttx_eabi
+//@ [thumbv7a_nuttx_eabi] compile-flags: --target thumbv7a-nuttx-eabi
+//@ [thumbv7a_nuttx_eabi] needs-llvm-components: arm
+//@ revisions: thumbv7a_nuttx_eabihf
+//@ [thumbv7a_nuttx_eabihf] compile-flags: --target thumbv7a-nuttx-eabihf
+//@ [thumbv7a_nuttx_eabihf] needs-llvm-components: arm
 //@ revisions: thumbv7m_nuttx_eabi
 //@ [thumbv7m_nuttx_eabi] compile-flags: --target thumbv7m-nuttx-eabi
 //@ [thumbv7m_nuttx_eabi] needs-llvm-components: arm
@@ -673,9 +716,11 @@
 #![no_core]
 #![crate_type = "lib"]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
+// Force linkage to ensure code is actually generated
+#[no_mangle]
 pub fn test() -> u8 {
     42
 }

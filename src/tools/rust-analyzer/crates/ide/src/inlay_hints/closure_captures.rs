@@ -1,10 +1,9 @@
-//! Implementation of "closure return type" inlay hints.
+//! Implementation of "closure captures" inlay hints.
 //!
 //! Tests live in [`bind_pat`][super::bind_pat] module.
 use ide_db::famous_defs::FamousDefs;
 use ide_db::text_edit::{TextRange, TextSize};
-use span::EditionedFileId;
-use stdx::{never, TupleExt};
+use stdx::{TupleExt, never};
 use syntax::ast::{self, AstNode};
 
 use crate::{
@@ -15,7 +14,6 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
     closure: ast::ClosureExpr,
 ) -> Option<()> {
     if !config.closure_capture_hints {
@@ -53,10 +51,6 @@ pub(super) fn hints(
     let last = captures.len() - 1;
     for (idx, capture) in captures.into_iter().enumerate() {
         let local = capture.local();
-        let source = local.primary_source(sema.db);
-
-        // force cache the source file, otherwise sema lookup will potentially panic
-        _ = sema.parse_or_expand(source.file());
 
         let label = format!(
             "{}{}",
@@ -73,8 +67,19 @@ pub(super) fn hints(
         }
         hint.label.append_part(InlayHintLabelPart {
             text: label,
-            linked_location: source.name().and_then(|name| {
-                name.syntax().original_file_range_opt(sema.db).map(TupleExt::head).map(Into::into)
+            linked_location: config.lazy_location_opt(|| {
+                let source = local.primary_source(sema.db);
+
+                // force cache the source file, otherwise sema lookup will potentially panic
+                _ = sema.parse_or_expand(source.file());
+                source.name().and_then(|name| {
+                    name.syntax().original_file_range_opt(sema.db).map(TupleExt::head).map(
+                        |frange| ide_db::FileRange {
+                            file_id: frange.file_id.file_id(sema.db),
+                            range: frange.range,
+                        },
+                    )
+                })
             }),
             tooltip: None,
         });
@@ -91,8 +96,8 @@ pub(super) fn hints(
 #[cfg(test)]
 mod tests {
     use crate::{
-        inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
         InlayHintsConfig,
+        inlay_hints::tests::{DISABLED_CONFIG, check_with_config},
     };
 
     #[test]

@@ -8,9 +8,9 @@
 
 ## Target maintainers
 
-- Chris Wailes ([@chriswailes](https://github.com/chriswailes))
-- Matthew Maurer ([@maurer](https://github.com/maurer))
-- Martin Geisler ([@mgeisler](https://github.com/mgeisler))
+[@chriswailes](https://github.com/chriswailes)
+[@maurer](https://github.com/maurer)
+[@mgeisler](https://github.com/mgeisler)
 
 ## Requirements
 

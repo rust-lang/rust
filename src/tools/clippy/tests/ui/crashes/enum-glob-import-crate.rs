@@ -1,5 +1,4 @@
-#![deny(clippy::all)]
-#![allow(unused_imports)]
+//@ check-pass
 
 use std::*;
 

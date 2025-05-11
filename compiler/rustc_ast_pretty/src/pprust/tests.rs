@@ -7,14 +7,14 @@ use super::*;
 fn fun_to_string(
     decl: &ast::FnDecl,
     header: ast::FnHeader,
-    name: Ident,
+    ident: Ident,
     generics: &ast::Generics,
 ) -> String {
     to_string(|s| {
-        s.head("");
-        s.print_fn(decl, header, Some(name), generics);
-        s.end(); // Close the head box.
-        s.end(); // Close the outer box.
+        let (cb, ib) = s.head("");
+        s.print_fn(decl, header, Some(ident), generics);
+        s.end(ib);
+        s.end(cb);
     })
 }
 

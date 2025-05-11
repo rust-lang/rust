@@ -1,0 +1,28 @@
+error: `||` operators are not supported in let chain conditions
+  --> $DIR/or-in-let-chain.rs:6:24
+   |
+LL |     if let true = true || false {}
+   |                        ^^
+
+error: expected expression, found `let` statement
+  --> $DIR/or-in-let-chain.rs:9:9
+   |
+LL |     if (let true = true) || false {}
+   |         ^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: `||` operators are not supported in let chain conditions
+  --> $DIR/or-in-let-chain.rs:12:24
+   |
+LL |     if let true = true || false || true {}
+   |                        ^^
+
+error: `||` operators are not supported in let chain conditions
+  --> $DIR/or-in-let-chain.rs:15:33
+   |
+LL |     if let true = true && false || true {}
+   |                                 ^^
+
+error: aborting due to 4 previous errors
+

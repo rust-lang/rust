@@ -11,7 +11,6 @@ use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -55,9 +54,7 @@ pub struct IfThenSomeElseNone {
 
 impl IfThenSomeElseNone {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -79,11 +76,11 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             && is_res_lang_ctor(cx, path_res(cx, peel_blocks(els)), OptionNone)
             && !is_else_clause(cx.tcx, expr)
             && !is_in_const_context(cx)
-            && !in_external_macro(cx.sess(), expr.span)
-            && self.msrv.meets(msrvs::BOOL_THEN)
+            && !expr.span.in_external_macro(cx.sess().source_map())
+            && self.msrv.meets(cx, msrvs::BOOL_THEN)
             && !contains_return(then_block.stmts)
         {
-            let method_name = if switch_to_eager_eval(cx, expr) && self.msrv.meets(msrvs::BOOL_THEN_SOME) {
+            let method_name = if switch_to_eager_eval(cx, expr) && self.msrv.meets(cx, msrvs::BOOL_THEN_SOME) {
                 "then_some"
             } else {
                 "then"
@@ -95,9 +92,9 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
                 expr.span,
                 format!("this could be simplified with `bool::{method_name}`"),
                 |diag| {
-                    let mut app = Applicability::Unspecified;
+                    let mut app = Applicability::MachineApplicable;
                     let cond_snip = Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "[condition]", &mut app)
-                        .maybe_par()
+                        .maybe_paren()
                         .to_string();
                     let arg_snip = snippet_with_context(cx, then_arg.span, ctxt, "[body]", &mut app).0;
                     let method_body = if let Some(first_stmt) = then_block.stmts.first() {
@@ -121,6 +118,4 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             );
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }

@@ -72,6 +72,23 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
     "//@ normalize-stderr",
 ];
 
+const LINELENGTH_CHECK: &str = "linelength";
+
+// If you edit this, also edit where it gets used in `check` (calling `contains_ignore_directives`)
+const CONFIGURABLE_CHECKS: [&str; 11] = [
+    "cr",
+    "undocumented-unsafe",
+    "tab",
+    LINELENGTH_CHECK,
+    "filelength",
+    "end-whitespace",
+    "trailing-newlines",
+    "leading-newlines",
+    "copyright",
+    "dbg",
+    "odd-backticks",
+];
+
 fn generate_problems<'a>(
     consts: &'a [u32],
     letter_digit: &'a FxHashMap<char, char>,
@@ -220,6 +237,7 @@ fn long_line_is_ok(extension: &str, is_error_code: bool, max_columns: usize, lin
     }
 }
 
+#[derive(Clone, Copy)]
 enum Directive {
     /// By default, tidy always warns against style issues.
     Deny,
@@ -231,20 +249,38 @@ enum Directive {
     Ignore(bool),
 }
 
-fn contains_ignore_directive(can_contain: bool, contents: &str, check: &str) -> Directive {
-    if !can_contain {
-        return Directive::Deny;
+// Use a fixed size array in the return type to catch mistakes with changing `CONFIGURABLE_CHECKS`
+// without changing the code in `check` easier.
+fn contains_ignore_directives<const N: usize>(
+    path_str: &str,
+    can_contain: bool,
+    contents: &str,
+    checks: [&str; N],
+) -> [Directive; N] {
+    // The rustdoc-json test syntax often requires very long lines, so the checks
+    // for long lines aren't really useful.
+    let always_ignore_linelength = path_str.contains("rustdoc-json");
+
+    if !can_contain && !always_ignore_linelength {
+        return [Directive::Deny; N];
     }
-    // Update `can_contain` when changing this
-    if contents.contains(&format!("// ignore-tidy-{check}"))
-        || contents.contains(&format!("# ignore-tidy-{check}"))
-        || contents.contains(&format!("/* ignore-tidy-{check} */"))
-        || contents.contains(&format!("<!-- ignore-tidy-{check} -->"))
-    {
-        Directive::Ignore(false)
-    } else {
-        Directive::Deny
-    }
+
+    checks.map(|check| {
+        if check == LINELENGTH_CHECK && always_ignore_linelength {
+            return Directive::Ignore(false);
+        }
+
+        // Update `can_contain` when changing this
+        if contents.contains(&format!("// ignore-tidy-{check}"))
+            || contents.contains(&format!("# ignore-tidy-{check}"))
+            || contents.contains(&format!("/* ignore-tidy-{check} */"))
+            || contents.contains(&format!("<!-- ignore-tidy-{check} -->"))
+        {
+            Directive::Ignore(false)
+        } else {
+            Directive::Deny
+        }
+    })
 }
 
 macro_rules! suppressible_tidy_err {
@@ -343,6 +379,7 @@ pub fn check(path: &Path, bad: &mut bool) {
 
     walk(path, skip, &mut |entry, contents| {
         let file = entry.path();
+        let path_str = file.to_string_lossy();
         let filename = file.file_name().unwrap().to_string_lossy();
 
         let is_css_file = filename.ends_with(".css");
@@ -370,6 +407,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             COLS
         };
 
+        // When you change this, also change the `directive_line_starts` variable below
         let can_contain = contents.contains("// ignore-tidy-")
             || contents.contains("# ignore-tidy-")
             || contents.contains("/* ignore-tidy-")
@@ -385,22 +423,19 @@ pub fn check(path: &Path, bad: &mut bool) {
                 return;
             }
         }
-        let mut skip_cr = contains_ignore_directive(can_contain, &contents, "cr");
-        let mut skip_undocumented_unsafe =
-            contains_ignore_directive(can_contain, &contents, "undocumented-unsafe");
-        let mut skip_tab = contains_ignore_directive(can_contain, &contents, "tab");
-        let mut skip_line_length = contains_ignore_directive(can_contain, &contents, "linelength");
-        let mut skip_file_length = contains_ignore_directive(can_contain, &contents, "filelength");
-        let mut skip_end_whitespace =
-            contains_ignore_directive(can_contain, &contents, "end-whitespace");
-        let mut skip_trailing_newlines =
-            contains_ignore_directive(can_contain, &contents, "trailing-newlines");
-        let mut skip_leading_newlines =
-            contains_ignore_directive(can_contain, &contents, "leading-newlines");
-        let mut skip_copyright = contains_ignore_directive(can_contain, &contents, "copyright");
-        let mut skip_dbg = contains_ignore_directive(can_contain, &contents, "dbg");
-        let mut skip_odd_backticks =
-            contains_ignore_directive(can_contain, &contents, "odd-backticks");
+        let [
+            mut skip_cr,
+            mut skip_undocumented_unsafe,
+            mut skip_tab,
+            mut skip_line_length,
+            mut skip_file_length,
+            mut skip_end_whitespace,
+            mut skip_trailing_newlines,
+            mut skip_leading_newlines,
+            mut skip_copyright,
+            mut skip_dbg,
+            mut skip_odd_backticks,
+        ] = contains_ignore_directives(&path_str, can_contain, &contents, CONFIGURABLE_CHECKS);
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
         let mut lines = 0;
@@ -440,7 +475,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                 && !trimmed.starts_with("//")
                 && !file.ancestors().any(|a| {
                     (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
-                        || a.ends_with("library/alloc/tests")
+                        || a.ends_with("library/alloctests")
                 })
                 && filename != "tests.rs"
             {
@@ -474,6 +509,22 @@ pub fn check(path: &Path, bad: &mut bool) {
                 suppressible_tidy_err!(err, skip_cr, "CR character");
             }
             if !is_this_file {
+                let directive_line_starts = ["// ", "# ", "/* ", "<!-- "];
+                let possible_line_start =
+                    directive_line_starts.into_iter().any(|s| line.starts_with(s));
+                let contains_potential_directive =
+                    possible_line_start && (line.contains("-tidy") || line.contains("tidy-"));
+                let has_recognized_ignore_directive =
+                    contains_ignore_directives(&path_str, can_contain, line, CONFIGURABLE_CHECKS)
+                        .into_iter()
+                        .any(|directive| matches!(directive, Directive::Ignore(_)));
+                let has_alphabetical_directive = line.contains("tidy-alphabetical-start")
+                    || line.contains("tidy-alphabetical-end");
+                let has_recognized_directive =
+                    has_recognized_ignore_directive || has_alphabetical_directive;
+                if contains_potential_directive && (!has_recognized_directive) {
+                    err("Unrecognized tidy directive")
+                }
                 // Allow using TODO in diagnostic suggestions by marking the
                 // relevant line with `// ignore-tidy-todo`.
                 if trimmed.contains("TODO") && !trimmed.contains("ignore-tidy-todo") {

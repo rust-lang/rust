@@ -32,11 +32,9 @@ pub use rustc_infer::traits::*;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFolder, TypeSuperFoldable,
-    TypeSuperVisitable, TypingMode, Upcast,
+    self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode, Upcast,
 };
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span};
@@ -53,7 +51,7 @@ pub use self::dyn_compatibility::{
 pub use self::engine::{ObligationCtxt, TraitEngineExt};
 pub use self::fulfill::{FulfillmentContext, OldSolverError, PendingPredicateObligation};
 pub use self::normalize::NormalizeExt;
-pub use self::project::{normalize_inherent_projection, normalize_projection_ty};
+pub use self::project::{normalize_inherent_projection, normalize_projection_term};
 pub use self::select::{
     EvaluationCache, EvaluationResult, IntercrateAmbiguityCause, OverflowError, SelectionCache,
     SelectionContext,
@@ -66,9 +64,9 @@ pub use self::specialize::{
 };
 pub use self::structural_normalize::StructurallyNormalizeExt;
 pub use self::util::{
-    BoundVarReplacer, PlaceholderReplacer, TraitAliasExpander, TraitAliasExpansionInfo, elaborate,
-    expand_trait_aliases, impl_item_is_final, supertraits,
-    transitive_bounds_that_define_assoc_item, upcast_choices, with_replaced_escaping_bound_vars,
+    BoundVarReplacer, PlaceholderReplacer, elaborate, expand_trait_aliases, impl_item_is_final,
+    sizedness_fast_path, supertrait_def_ids, supertraits, transitive_bounds_that_define_assoc_item,
+    upcast_choices, with_replaced_escaping_bound_vars,
 };
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::infer::outlives::env::OutlivesEnvironment;
@@ -76,6 +74,7 @@ use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::regions::InferCtxtRegionExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 
+#[derive(Debug)]
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>,
@@ -104,12 +103,6 @@ impl<'tcx> FulfillmentError<'tcx> {
                 false
             }
         }
-    }
-}
-
-impl<'tcx> Debug for FulfillmentError<'tcx> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "FulfillmentError({:?},{:?})", self.obligation, self.code)
     }
 }
 
@@ -290,12 +283,10 @@ fn do_normalize_predicates<'tcx>(
 
     // We can use the `elaborated_env` here; the region code only
     // cares about declarations like `'a: 'b`.
-    let outlives_env = OutlivesEnvironment::new(elaborated_env);
-
     // FIXME: It's very weird that we ignore region obligations but apparently
     // still need to use `resolve_regions` as we need the resolved regions in
     // the normalized predicates.
-    let errors = infcx.resolve_regions(&outlives_env);
+    let errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
     if !errors.is_empty() {
         tcx.dcx().span_delayed_bug(
             span,
@@ -652,7 +643,7 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 ) -> GenericArgsRef<'tcx> {
     struct ReplaceParamAndInferWithPlaceholder<'tcx> {
         tcx: TyCtxt<'tcx>,
-        idx: u32,
+        idx: ty::BoundVar,
     }
 
     impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceParamAndInferWithPlaceholder<'tcx> {
@@ -662,18 +653,15 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 
         fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
             if let ty::Infer(_) = t.kind() {
-                let idx = {
-                    let idx = self.idx;
-                    self.idx += 1;
-                    idx
-                };
-                Ty::new_placeholder(self.tcx, ty::PlaceholderType {
-                    universe: ty::UniverseIndex::ROOT,
-                    bound: ty::BoundTy {
-                        var: ty::BoundVar::from_u32(idx),
-                        kind: ty::BoundTyKind::Anon,
+                let idx = self.idx;
+                self.idx += 1;
+                Ty::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderType {
+                        universe: ty::UniverseIndex::ROOT,
+                        bound: ty::BoundTy { var: idx, kind: ty::BoundTyKind::Anon },
                     },
-                })
+                )
             } else {
                 t.super_fold_with(self)
             }
@@ -681,21 +669,19 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 
         fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
             if let ty::ConstKind::Infer(_) = c.kind() {
-                ty::Const::new_placeholder(self.tcx, ty::PlaceholderConst {
-                    universe: ty::UniverseIndex::ROOT,
-                    bound: ty::BoundVar::from_u32({
-                        let idx = self.idx;
-                        self.idx += 1;
-                        idx
-                    }),
-                })
+                let idx = self.idx;
+                self.idx += 1;
+                ty::Const::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderConst { universe: ty::UniverseIndex::ROOT, bound: idx },
+                )
             } else {
                 c.super_fold_with(self)
             }
         }
     }
 
-    args.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: 0 })
+    args.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: ty::BoundVar::ZERO })
 }
 
 /// Normalizes the predicates and checks whether they hold in an empty environment. If this
@@ -714,9 +700,18 @@ pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause
     }
     let errors = ocx.select_all_or_error();
 
-    let result = !errors.is_empty();
-    debug!("impossible_predicates = {:?}", result);
-    result
+    if !errors.is_empty() {
+        return true;
+    }
+
+    // Leak check for any higher-ranked trait mismatches.
+    // We only need to do this in the old solver, since the new solver already
+    // leak-checks.
+    if !infcx.next_trait_solver() && infcx.leak_check(ty::UniverseIndex::ROOT, None).is_err() {
+        return true;
+    }
+
+    false
 }
 
 fn instantiate_and_check_impossible_predicates<'tcx>(

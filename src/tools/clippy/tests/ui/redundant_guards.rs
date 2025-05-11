@@ -20,12 +20,14 @@ struct FloatWrapper(f32);
 fn issue11304() {
     match 0.1 {
         x if x == 0.0 => todo!(),
+        //~^ redundant_guards
         // Pattern matching NAN is illegal
         x if x == f64::NAN => todo!(),
         _ => todo!(),
     }
     match FloatWrapper(0.1) {
         x if x == FloatWrapper(0.0) => todo!(),
+        //~^ redundant_guards
         _ => todo!(),
     }
 }
@@ -41,19 +43,25 @@ fn main() {
     let c = C(1, 2);
     match c {
         C(x, y) if let 1 = y => ..,
+        //~^ redundant_guards
         _ => todo!(),
     };
 
     let x = Some(Some(1));
     match x {
         Some(x) if matches!(x, Some(1) if true) => ..,
+        //~^ redundant_guards
         Some(x) if matches!(x, Some(1)) => {
+            //~^ redundant_guards
             println!("a");
             ..
         },
         Some(x) if let Some(1) = x => ..,
+        //~^ redundant_guards
         Some(x) if x == Some(2) => ..,
+        //~^ redundant_guards
         Some(x) if Some(2) == x => ..,
+        //~^ redundant_guards
         // Don't lint, since x is used in the body
         Some(x) if let Some(1) = x => {
             x;
@@ -79,6 +87,7 @@ fn main() {
     let b = B { e: Some(A(0)) };
     match b {
         B { e } if matches!(e, Some(A(2))) => ..,
+        //~^ redundant_guards
         _ => todo!(),
     };
     // Do not lint, since we cannot represent this as a pattern (at least, without a conversion)
@@ -116,6 +125,7 @@ fn i() {
         // Do not lint
         E::A(x) | E::B(x) | E::C(x) if x == "from an or pattern" => {},
         E::A(y) if y == "not from an or pattern" => {},
+        //~^ redundant_guards
         _ => {},
     };
 }
@@ -123,6 +133,7 @@ fn i() {
 fn h(v: Option<u32>) {
     match v {
         x if matches!(x, Some(0)) => ..,
+        //~^ redundant_guards
         _ => ..,
     };
 }
@@ -130,7 +141,9 @@ fn h(v: Option<u32>) {
 fn negative_literal(i: i32) {
     match i {
         i if i == -1 => {},
+        //~^ redundant_guards
         i if i == 1 => {},
+        //~^ redundant_guards
         _ => {},
     }
 }
@@ -193,9 +206,13 @@ mod issue11465 {
         let c = Some(1);
         match c {
             Some(ref x) if x == &1 => {},
+            //~^ redundant_guards
             Some(ref x) if &1 == x => {},
+            //~^ redundant_guards
             Some(ref x) if let &2 = x => {},
+            //~^ redundant_guards
             Some(ref x) if matches!(x, &3) => {},
+            //~^ redundant_guards
             _ => {},
         };
 
@@ -216,9 +233,13 @@ mod issue11465 {
             B { ref b, .. } if b == "bar" => {},
             B { ref b, .. } if "bar" == b => {},
             B { ref c, .. } if c == &1 => {},
+            //~^ redundant_guards
             B { ref c, .. } if &1 == c => {},
+            //~^ redundant_guards
             B { ref c, .. } if let &1 = c => {},
+            //~^ redundant_guards
             B { ref c, .. } if matches!(c, &1) => {},
+            //~^ redundant_guards
             _ => {},
         }
     }
@@ -229,6 +250,7 @@ fn issue11807() {
 
     match Some(Some("")) {
         Some(Some(x)) if x.is_empty() => {},
+        //~^ redundant_guards
         _ => {},
     }
 
@@ -240,11 +262,13 @@ fn issue11807() {
 
     match Some(Some(&[] as &[i32])) {
         Some(Some(x)) if x.is_empty() => {},
+        //~^ redundant_guards
         _ => {},
     }
 
     match Some(Some([] as [i32; 0])) {
         Some(Some(x)) if x.is_empty() => {},
+        //~^ redundant_guards
         _ => {},
     }
 
@@ -256,21 +280,25 @@ fn issue11807() {
 
     match Some(Some(&[] as &[i32])) {
         Some(Some(x)) if x.starts_with(&[]) => {},
+        //~^ redundant_guards
         _ => {},
     }
 
     match Some(Some(&[] as &[i32])) {
         Some(Some(x)) if x.starts_with(&[1]) => {},
+        //~^ redundant_guards
         _ => {},
     }
 
     match Some(Some(&[] as &[i32])) {
         Some(Some(x)) if x.starts_with(&[1, 2]) => {},
+        //~^ redundant_guards
         _ => {},
     }
 
     match Some(Some(&[] as &[i32])) {
         Some(Some(x)) if x.ends_with(&[1, 2]) => {},
+        //~^ redundant_guards
         _ => {},
     }
 

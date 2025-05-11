@@ -1,11 +1,12 @@
 //! Checks the licenses of third-party dependencies.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::{File, read_dir};
 use std::io::Write;
 use std::path::Path;
 
 use build_helper::ci::CiEnv;
+use cargo_metadata::semver::Version;
 use cargo_metadata::{Metadata, Package, PackageId};
 
 #[path = "../../../bootstrap/src/utils/proc_macro_deps.rs"]
@@ -18,7 +19,7 @@ const LICENSES: &[&str] = &[
     // tidy-alphabetical-start
     "(MIT OR Apache-2.0) AND Unicode-3.0",                 // unicode_ident (1.0.14)
     "(MIT OR Apache-2.0) AND Unicode-DFS-2016",            // unicode_ident (1.0.12)
-    "0BSD OR MIT OR Apache-2.0",                           // adler license
+    "0BSD OR MIT OR Apache-2.0",                           // adler2 license
     "0BSD",
     "Apache-2.0 / MIT",
     "Apache-2.0 OR ISC OR MIT",
@@ -80,7 +81,6 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>,
     ("src/tools/rust-analyzer", EXCEPTIONS_RUST_ANALYZER, None, &[]),
     ("src/tools/rustbook", EXCEPTIONS_RUSTBOOK, None, &["src/doc/book", "src/doc/reference"]),
     ("src/tools/rustc-perf", EXCEPTIONS_RUSTC_PERF, None, &["src/tools/rustc-perf"]),
-    ("src/tools/x", &[], None, &[]),
     // tidy-alphabetical-end
 ];
 
@@ -99,7 +99,6 @@ const EXCEPTIONS: ExceptionList = &[
     ("dissimilar", "Apache-2.0"),                            // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
     ("fluent-langneg", "Apache-2.0"),                        // rustc (fluent translations)
     ("foldhash", "Zlib"),                                    // rustc
-    ("mdbook", "MPL-2.0"),                                   // mdbook
     ("option-ext", "MPL-2.0"),                               // cargo-miri (via `directories`)
     ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),     // rustc (license is the same as LLVM uses)
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0                       // cargo/... (because of serde)
@@ -124,7 +123,6 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     ("arrayref", "BSD-2-Clause"),
     ("bitmaps", "MPL-2.0+"),
     ("blake3", "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"),
-    ("bytesize", "Apache-2.0"),
     ("ciborium", "Apache-2.0"),
     ("ciborium-io", "Apache-2.0"),
     ("ciborium-ll", "Apache-2.0"),
@@ -132,22 +130,25 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     ("dunce", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
     ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
     ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),
+    ("foldhash", "Zlib"),
     ("im-rc", "MPL-2.0+"),
+    ("libz-rs-sys", "Zlib"),
     ("normalize-line-endings", "Apache-2.0"),
     ("openssl", "Apache-2.0"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
-    ("sha1_smol", "BSD-3-Clause"),
     ("similar", "Apache-2.0"),
     ("sized-chunks", "MPL-2.0+"),
     ("subtle", "BSD-3-Clause"),
     ("supports-hyperlinks", "Apache-2.0"),
     ("unicode-bom", "Apache-2.0"),
+    ("zlib-rs", "Zlib"),
     // tidy-alphabetical-end
 ];
 
 const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     // tidy-alphabetical-start
     ("dissimilar", "Apache-2.0"),
+    ("foldhash", "Zlib"),
     ("notify", "CC0-1.0"),
     ("option-ext", "MPL-2.0"),
     ("pulldown-cmark-to-cmark", "Apache-2.0"),
@@ -165,7 +166,6 @@ const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
     ("brotli-decompressor", "BSD-3-Clause/MIT"),
     ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
     ("inferno", "CDDL-1.0"),
-    ("instant", "BSD-3-Clause"),
     ("ring", NON_STANDARD_LICENSE), // see EXCEPTIONS_NON_STANDARD_LICENSE_DEPS for more.
     ("ryu", "Apache-2.0 OR BSL-1.0"),
     ("snap", "BSD-3-Clause"),
@@ -175,6 +175,9 @@ const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
 
 const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
     // tidy-alphabetical-start
+    ("cssparser", "MPL-2.0"),
+    ("cssparser-macros", "MPL-2.0"),
+    ("dtoa-short", "MPL-2.0"),
     ("mdbook", "MPL-2.0"),
     ("ryu", "Apache-2.0 OR BSL-1.0"),
     // tidy-alphabetical-end
@@ -182,6 +185,8 @@ const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
 
 const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     // tidy-alphabetical-start
+    ("cranelift-assembler-x64", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-assembler-x64-meta", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-bforest", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-bitset", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
@@ -195,6 +200,7 @@ const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     ("cranelift-module", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-native", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-object", "Apache-2.0 WITH LLVM-exception"),
+    ("foldhash", "Zlib"),
     ("mach2", "BSD-2-Clause OR MIT OR Apache-2.0"),
     ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
     ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
@@ -214,7 +220,7 @@ const EXCEPTIONS_BOOTSTRAP: ExceptionList = &[
 ];
 
 const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[
-    ("r-efi", "MIT OR Apache-2.0 OR LGPL-2.1-or-later"), // LGPL is not acceptible, but we use it under MIT OR Apache-2.0
+    ("r-efi", "MIT OR Apache-2.0 OR LGPL-2.1-or-later"), // LGPL is not acceptable, but we use it under MIT OR Apache-2.0
 ];
 
 /// Placeholder for non-standard license file.
@@ -240,7 +246,6 @@ const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
 const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
     "adler2",
-    "ahash",
     "aho-corasick",
     "allocator-api2", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "annotate-snippets",
@@ -252,14 +257,13 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "bitflags",
     "blake3",
     "block-buffer",
-    "byteorder", // via ruzstd in object in thorin-dwp
+    "bstr",
     "cc",
     "cfg-if",
     "cfg_aliases",
     "constant_time_eq",
     "cpufeatures",
     "crc32fast",
-    "crossbeam-channel",
     "crossbeam-deque",
     "crossbeam-epoch",
     "crossbeam-utils",
@@ -269,7 +273,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "darling_core",
     "darling_macro",
     "datafrog",
-    "deranged",
     "derive-where",
     "derive_setters",
     "digest",
@@ -283,7 +286,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
     "fastrand",
-    "field-offset",
     "flate2",
     "fluent-bundle",
     "fluent-langneg",
@@ -296,7 +298,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "gimli",
     "gsgdt",
     "hashbrown",
-    "hermit-abi",
     "icu_list",
     "icu_list_data",
     "icu_locid",
@@ -311,6 +312,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "intl_pluralrules",
     "itertools",
     "itoa",
+    "jiff",
+    "jiff-static",
     "jobserver",
     "lazy_static",
     "leb128",
@@ -325,12 +328,9 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "measureme",
     "memchr",
     "memmap2",
-    "memoffset",
     "miniz_oxide",
     "nix",
     "nu-ansi-term",
-    "num-conv",
-    "num_cpus",
     "object",
     "odht",
     "once_cell",
@@ -342,7 +342,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "pin-project-lite",
     "polonius-engine",
     "portable-atomic", // dependency for platforms doesn't support `AtomicU64` in std
-    "powerfmt",
+    "portable-atomic-util",
     "ppv-lite86",
     "proc-macro-hack",
     "proc-macro2",
@@ -351,6 +351,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "pulldown-cmark-escape",
     "punycode",
     "quote",
+    "r-efi",
     "rand",
     "rand_chacha",
     "rand_core",
@@ -361,18 +362,16 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "regex-syntax",
     "rustc-demangle",
     "rustc-hash",
-    "rustc-rayon",
+    "rustc-literal-escaper",
     "rustc-rayon-core",
     "rustc-stable-hash",
     "rustc_apfloat",
-    "rustc_version",
     "rustix",
     "ruzstd", // via object in thorin-dwp
     "ryu",
     "scoped-tls",
     "scopeguard",
     "self_cell",
-    "semver",
     "serde",
     "serde_derive",
     "serde_json",
@@ -396,9 +395,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "thorin-dwp",
     "thread_local",
     "tikv-jemalloc-sys",
-    "time",
-    "time-core",
-    "time-macros",
     "tinystr",
     "tinyvec",
     "tinyvec_macros",
@@ -436,7 +432,9 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "windows-core",
     "windows-implement",
     "windows-interface",
+    "windows-link",
     "windows-result",
+    "windows-strings",
     "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",
@@ -447,6 +445,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_gnu",
     "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
+    "wit-bindgen-rt@0.39.0", // pinned to a specific version due to using a binary blob: <https://github.com/rust-lang/rust/pull/136395#issuecomment-2692769062>
     "writeable",
     "yoke",
     "yoke-derive",
@@ -462,8 +461,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
 const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
     "addr2line",
-    "adler",
-    "allocator-api2",
+    "adler2",
     "cc",
     "cfg-if",
     "compiler_builtins",
@@ -483,6 +481,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "rand_core",
     "rand_xorshift",
     "rustc-demangle",
+    "rustc-literal-escaper",
     "shlex",
     "unicode-width",
     "unwinding",
@@ -502,12 +501,14 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
 
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
-    "ahash",
+    "allocator-api2",
     "anyhow",
     "arbitrary",
     "bitflags",
     "bumpalo",
     "cfg-if",
+    "cranelift-assembler-x64",
+    "cranelift-assembler-x64-meta",
     "cranelift-bforest",
     "cranelift-bitset",
     "cranelift-codegen",
@@ -524,6 +525,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "crc32fast",
     "equivalent",
     "fallible-iterator",
+    "foldhash",
     "gimli",
     "hashbrown",
     "indexmap",
@@ -533,7 +535,6 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "mach2",
     "memchr",
     "object",
-    "once_cell",
     "proc-macro2",
     "quote",
     "regalloc2",
@@ -541,13 +542,11 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "rustc-hash",
     "serde",
     "serde_derive",
-    "slice-group-by",
     "smallvec",
     "stable_deref_trait",
     "syn",
     "target-lexicon",
     "unicode-ident",
-    "version_check",
     "wasmtime-jit-icache-coherence",
     "windows-sys",
     "windows-targets",
@@ -559,8 +558,6 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_gnu",
     "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
-    "zerocopy",
-    "zerocopy-derive",
     // tidy-alphabetical-end
 ];
 
@@ -622,12 +619,17 @@ fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, bad: &mut b
     }
     // Remove the proc-macro crates themselves
     proc_macro_deps.retain(|pkg| !is_proc_macro_pkg(&metadata[pkg]));
-    let proc_macro_deps_iter = proc_macro_deps.into_iter().map(|dep| metadata[dep].name.clone());
 
-    if bless {
-        let mut proc_macro_deps: Vec<_> = proc_macro_deps_iter.collect();
+    let proc_macro_deps: HashSet<_> =
+        proc_macro_deps.into_iter().map(|dep| metadata[dep].name.clone()).collect();
+    let expected = proc_macro_deps::CRATES.iter().map(|s| s.to_string()).collect::<HashSet<_>>();
+
+    let needs_blessing = proc_macro_deps.difference(&expected).next().is_some()
+        || expected.difference(&proc_macro_deps).next().is_some();
+
+    if needs_blessing && bless {
+        let mut proc_macro_deps: Vec<_> = proc_macro_deps.into_iter().collect();
         proc_macro_deps.sort();
-        proc_macro_deps.dedup();
         let mut file = File::create(root.join("src/bootstrap/src/utils/proc_macro_deps.rs"))
             .expect("`proc_macro_deps` should exist");
         writeln!(
@@ -649,10 +651,8 @@ pub static CRATES: &[&str] = &[
         )
         .unwrap();
     } else {
-        let proc_macro_deps: HashSet<_> = proc_macro_deps_iter.collect();
-        let expected =
-            proc_macro_deps::CRATES.iter().map(|s| s.to_string()).collect::<HashSet<_>>();
         let old_bad = *bad;
+
         for missing in proc_macro_deps.difference(&expected) {
             tidy_error!(
                 bad,
@@ -662,7 +662,7 @@ pub static CRATES: &[&str] = &[
         for extra in expected.difference(&proc_macro_deps) {
             tidy_error!(
                 bad,
-                "`{extra}` is not registered in `src/bootstrap/src/utils/proc_macro_deps.rs`, but is not a proc-macro crate dependency",
+                "`{extra}` is registered in `src/bootstrap/src/utils/proc_macro_deps.rs`, but is not a proc-macro crate dependency",
             );
         }
         if *bad != old_bad {
@@ -677,8 +677,10 @@ pub static CRATES: &[&str] = &[
 pub fn has_missing_submodule(root: &Path, submodules: &[&str]) -> bool {
     !CiEnv::is_ci()
         && submodules.iter().any(|submodule| {
+            let path = root.join(submodule);
+            !path.exists()
             // If the directory is empty, we can consider it as an uninitialized submodule.
-            read_dir(root.join(submodule)).unwrap().next().is_none()
+            || read_dir(path).unwrap().next().is_none()
         })
 }
 
@@ -799,7 +801,17 @@ fn check_permitted_dependencies(
 
     // Check that the PERMITTED_DEPENDENCIES does not have unused entries.
     for permitted in permitted_dependencies {
-        if !deps.iter().any(|dep_id| &pkg_from_id(metadata, dep_id).name == permitted) {
+        fn compare(pkg: &Package, permitted: &str) -> bool {
+            if let Some((name, version)) = permitted.split_once("@") {
+                let Ok(version) = Version::parse(version) else {
+                    return false;
+                };
+                pkg.name == name && pkg.version == version
+            } else {
+                pkg.name == permitted
+            }
+        }
+        if !deps.iter().any(|dep_id| compare(pkg_from_id(metadata, dep_id), permitted)) {
             tidy_error!(
                 bad,
                 "could not find allowed package `{permitted}`\n\
@@ -810,14 +822,30 @@ fn check_permitted_dependencies(
     }
 
     // Get in a convenient form.
-    let permitted_dependencies: HashSet<_> = permitted_dependencies.iter().cloned().collect();
+    let permitted_dependencies: HashMap<_, _> = permitted_dependencies
+        .iter()
+        .map(|s| {
+            if let Some((name, version)) = s.split_once('@') {
+                (name, Version::parse(version).ok())
+            } else {
+                (*s, None)
+            }
+        })
+        .collect();
 
     for dep in deps {
         let dep = pkg_from_id(metadata, dep);
         // If this path is in-tree, we don't require it to be explicitly permitted.
-        if dep.source.is_some() && !permitted_dependencies.contains(dep.name.as_str()) {
-            tidy_error!(bad, "Dependency for {descr} not explicitly permitted: {}", dep.id);
-            has_permitted_dep_error = true;
+        if dep.source.is_some() {
+            let is_eq = if let Some(version) = permitted_dependencies.get(dep.name.as_str()) {
+                if let Some(version) = version { version == &dep.version } else { true }
+            } else {
+                false
+            };
+            if !is_eq {
+                tidy_error!(bad, "Dependency for {descr} not explicitly permitted: {}", dep.id);
+                has_permitted_dep_error = true;
+            }
         }
     }
 

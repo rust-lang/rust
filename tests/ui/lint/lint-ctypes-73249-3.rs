@@ -7,6 +7,7 @@ impl Baz for u32 {}
 
 type Qux = impl Baz;
 
+#[define_opaque(Qux)]
 fn assign() -> Qux {
     3
 }

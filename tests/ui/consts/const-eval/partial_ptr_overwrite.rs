@@ -5,7 +5,7 @@ const PARTIAL_OVERWRITE: () = {
     unsafe {
         let ptr: *mut _ = &mut p;
         *(ptr as *mut u8) = 123; //~ ERROR constant
-        //~| unable to overwrite parts of a pointer
+        //~| NOTE unable to overwrite parts of a pointer
     }
     let x = *p;
 };

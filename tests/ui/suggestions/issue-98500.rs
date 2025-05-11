@@ -9,6 +9,6 @@ pub trait B where
 }
 
 struct S(Box<dyn B>);
-//~^ ERROR the trait `B` cannot be made into an object
+//~^ ERROR the trait `B` is not dyn compatible
 
 fn main() {}

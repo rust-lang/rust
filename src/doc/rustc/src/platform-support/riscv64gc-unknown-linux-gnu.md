@@ -7,10 +7,10 @@ RISC-V targets using the *RV64I* base instruction set with the *G* collection of
 
 ## Target maintainers
 
-- Kito Cheng, <kito.cheng@gmail.com>, [@kito-cheng](https://github.com/kito-cheng)
-- Michael Maitland, <michaeltmaitland@gmail.com>, [@michaelmaitland](https://github.com/michaelmaitland)
-- Robin Randhawa, <robin.randhawa@sifive.com>, [@robin-randhawa-sifive](https://github.com/robin-randhawa-sifive)
-- Craig Topper, <craig.topper@sifive.com>, [@topperc](https://github.com/topperc)
+[@kito-cheng](https://github.com/kito-cheng)
+[@michaelmaitland](https://github.com/michaelmaitland)
+[@robin-randhawa-sifive](https://github.com/robin-randhawa-sifive)
+[@topperc](https://github.com/topperc)
 
 ## Requirements
 
@@ -26,7 +26,7 @@ These targets are distributed through `rustup`, and otherwise require no
 special configuration.
 
 If you need to build your own Rust for some reason though, the targets can be
-enabled in `config.toml`. For example:
+enabled in `bootstrap.toml`. For example:
 
 ```toml
 [build]
@@ -65,7 +65,7 @@ section below.
 
 A RISC-V toolchain can be obtained for Windows/Mac/Linux from the
 [`riscv-gnu-toolchain`](https://github.com/riscv-collab/riscv-gnu-toolchain)
-repostory. Binaries are available via
+repository. Binaries are available via
 [embecosm](https://www.embecosm.com/resources/tool-chain-downloads/#riscv-linux),
 and may also be available from your OS's package manager.
 

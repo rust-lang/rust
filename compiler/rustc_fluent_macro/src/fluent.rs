@@ -25,7 +25,10 @@ fn invocation_relative_path_to_absolute(span: Span, path: &str) -> PathBuf {
         path.to_path_buf()
     } else {
         // `/a/b/c/foo/bar.rs` contains the current macro invocation
+        #[cfg(bootstrap)]
         let mut source_file_path = span.source_file().path();
+        #[cfg(not(bootstrap))]
+        let mut source_file_path = span.local_file().unwrap();
         // `/a/b/c/foo/`
         source_file_path.pop();
         // `/a/b/c/foo/../locales/en-US/example.ftl`
@@ -78,8 +81,8 @@ fn failed(crate_name: &Ident) -> proc_macro::TokenStream {
 
 /// See [rustc_fluent_macro::fluent_messages].
 pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let crate_name = std::env::var("CARGO_PKG_NAME")
-        // If `CARGO_PKG_NAME` is missing, then we're probably running in a test, so use
+    let crate_name = std::env::var("CARGO_CRATE_NAME")
+        // If `CARGO_CRATE_NAME` is missing, then we're probably running in a test, so use
         // `no_crate`.
         .unwrap_or_else(|_| "no_crate".to_string())
         .replace("rustc_", "");

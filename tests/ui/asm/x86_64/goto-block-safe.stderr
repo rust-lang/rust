@@ -1,5 +1,5 @@
 error[E0133]: call to unsafe function `unreachable_unchecked` is unsafe and requires unsafe function or block
-  --> $DIR/goto-block-safe.rs:14:17
+  --> $DIR/goto-block-safe.rs:13:17
    |
 LL |     unsafe {
    |     ------ items do not inherit unsafety from separate enclosing items

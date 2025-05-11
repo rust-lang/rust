@@ -3,9 +3,9 @@ use std::{iter::once, mem};
 use hir::Semantics;
 use ide_db::syntax_helpers::tree_diff::diff;
 use ide_db::text_edit::{TextEdit, TextEditBuilder};
-use ide_db::{helpers::pick_best_token, FileRange, RootDatabase};
+use ide_db::{FileRange, RootDatabase, helpers::pick_best_token};
 use itertools::Itertools;
-use syntax::{ast, match_ast, AstNode, SyntaxElement, SyntaxKind, SyntaxNode, TextRange};
+use syntax::{AstNode, SyntaxElement, SyntaxKind, SyntaxNode, TextRange, ast, match_ast};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Direction {
@@ -17,14 +17,12 @@ pub enum Direction {
 //
 // Move item under cursor or selection up and down.
 //
-// |===
-// | Editor  | Action Name
-//
+// | Editor  | Action Name |
+// |---------|-------------|
 // | VS Code | **rust-analyzer: Move item up**
 // | VS Code | **rust-analyzer: Move item down**
-// |===
 //
-// image::https://user-images.githubusercontent.com/48062697/113065576-04298180-91b1-11eb-91ce-4505e99ed598.gif[]
+// ![Move Item](https://user-images.githubusercontent.com/48062697/113065576-04298180-91b1-11eb-91ce-4505e99ed598.gif)
 pub(crate) fn move_item(
     db: &RootDatabase,
     range: FileRange,
@@ -176,11 +174,15 @@ fn replace_nodes<'a>(
 #[cfg(test)]
 mod tests {
     use crate::fixture;
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
 
     use crate::Direction;
 
-    fn check(ra_fixture: &str, expect: Expect, direction: Direction) {
+    fn check(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+        direction: Direction,
+    ) {
         let (analysis, range) = fixture::range(ra_fixture);
         let edit = analysis.move_item(range, direction).unwrap().unwrap_or_default();
         let mut file = analysis.file_text(range.file_id).unwrap().to_string();

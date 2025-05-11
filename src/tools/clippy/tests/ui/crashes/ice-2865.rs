@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![allow(dead_code, clippy::extra_unused_lifetimes)]
 
 // Test for https://github.com/rust-lang/rust-clippy/issues/2865

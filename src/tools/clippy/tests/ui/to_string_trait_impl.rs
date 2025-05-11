@@ -9,6 +9,7 @@ struct Point {
 }
 
 impl ToString for Point {
+    //~^ to_string_trait_impl
     fn to_string(&self) -> String {
         format!("({}, {})", self.x, self.y)
     }

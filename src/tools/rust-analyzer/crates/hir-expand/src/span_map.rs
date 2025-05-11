@@ -1,15 +1,15 @@
 //! Span maps for real files and macro expansions.
 
-use span::{EditionedFileId, HirFileId, HirFileIdRepr, MacroFileId, Span, SyntaxContextId};
+use span::{Span, SyntaxContext};
 use stdx::TupleExt;
-use syntax::{ast, AstNode, TextRange};
+use syntax::{AstNode, TextRange, ast};
 use triomphe::Arc;
 
 pub use span::RealSpanMap;
 
-use crate::{attrs::collect_attrs, db::ExpandDatabase};
+use crate::{HirFileId, MacroCallId, attrs::collect_attrs, db::ExpandDatabase};
 
-pub type ExpansionSpanMap = span::SpanMap<SyntaxContextId>;
+pub type ExpansionSpanMap = span::SpanMap<SyntaxContext>;
 
 /// Spanmap for a macro file or a real file
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -61,9 +61,9 @@ impl SpanMap {
 
     #[inline]
     pub(crate) fn new(db: &dyn ExpandDatabase, file_id: HirFileId) -> SpanMap {
-        match file_id.repr() {
-            HirFileIdRepr::FileId(file_id) => SpanMap::RealSpanMap(db.real_span_map(file_id)),
-            HirFileIdRepr::MacroFile(m) => {
+        match file_id {
+            HirFileId::FileId(file_id) => SpanMap::RealSpanMap(db.real_span_map(file_id)),
+            HirFileId::MacroFile(m) => {
                 SpanMap::ExpansionSpanMap(db.parse_macro_expansion(m).value.1)
             }
         }
@@ -79,11 +79,15 @@ impl SpanMapRef<'_> {
     }
 }
 
-pub(crate) fn real_span_map(db: &dyn ExpandDatabase, file_id: EditionedFileId) -> Arc<RealSpanMap> {
+pub(crate) fn real_span_map(
+    db: &dyn ExpandDatabase,
+    editioned_file_id: base_db::EditionedFileId,
+) -> Arc<RealSpanMap> {
     use syntax::ast::HasModuleItem;
     let mut pairs = vec![(syntax::TextSize::new(0), span::ROOT_ERASED_FILE_AST_ID)];
-    let ast_id_map = db.ast_id_map(file_id.into());
-    let tree = db.parse(file_id).tree();
+    let ast_id_map = db.ast_id_map(editioned_file_id.into());
+
+    let tree = db.parse(editioned_file_id).tree();
     // This is an incrementality layer. Basically we can't use absolute ranges for our spans as that
     // would mean we'd invalidate everything whenever we type. So instead we make the text ranges
     // relative to some AstIds reducing the risk of invalidation as typing somewhere no longer
@@ -134,7 +138,7 @@ pub(crate) fn real_span_map(db: &dyn ExpandDatabase, file_id: EditionedFileId) -
     });
 
     Arc::new(RealSpanMap::from_file(
-        file_id,
+        editioned_file_id.editioned_file_id(db),
         pairs.into_boxed_slice(),
         tree.syntax().text_range().end(),
     ))
@@ -142,7 +146,7 @@ pub(crate) fn real_span_map(db: &dyn ExpandDatabase, file_id: EditionedFileId) -
 
 pub(crate) fn expansion_span_map(
     db: &dyn ExpandDatabase,
-    file_id: MacroFileId,
+    file_id: MacroCallId,
 ) -> Arc<ExpansionSpanMap> {
     db.parse_macro_expansion(file_id).value.1
 }

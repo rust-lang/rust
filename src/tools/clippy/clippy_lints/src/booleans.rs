@@ -3,6 +3,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::eq_expr_value;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
+use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use rustc_ast::ast::LitKind;
 use rustc_attr_parsing::RustcVersion;
@@ -12,7 +13,7 @@ use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, UnOp};
 use rustc_lint::{LateContext, LateLintPass, Level};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, SyntaxContext, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -84,9 +85,7 @@ pub struct NonminimalBool {
 
 impl NonminimalBool {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -102,7 +101,7 @@ impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
         _: Span,
         _: LocalDefId,
     ) {
-        NonminimalBoolVisitor { cx, msrv: &self.msrv }.visit_body(body);
+        NonminimalBoolVisitor { cx, msrv: self.msrv }.visit_body(body);
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
@@ -119,8 +118,6 @@ impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
             _ => {},
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn inverted_bin_op_eq_str(op: BinOpKind) -> Option<&'static str> {
@@ -197,12 +194,12 @@ fn check_inverted_bool_in_condition(
     );
 }
 
-fn check_simplify_not(cx: &LateContext<'_>, msrv: &Msrv, expr: &Expr<'_>) {
+fn check_simplify_not(cx: &LateContext<'_>, msrv: Msrv, expr: &Expr<'_>) {
     if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind
         && !expr.span.from_expansion()
         && !inner.span.from_expansion()
         && let Some(suggestion) = simplify_not(cx, msrv, inner)
-        && cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
+        && cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).level != Level::Allow
     {
         use clippy_utils::sugg::{Sugg, has_enclosing_paren};
         let maybe_par = if let Some(sug) = Sugg::hir_opt(cx, inner) {
@@ -233,7 +230,7 @@ fn check_simplify_not(cx: &LateContext<'_>, msrv: &Msrv, expr: &Expr<'_>) {
 
 struct NonminimalBoolVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    msrv: &'a Msrv,
+    msrv: Msrv,
 }
 
 use quine_mc_cluskey::Bool;
@@ -245,11 +242,11 @@ struct Hir2Qmm<'a, 'tcx, 'v> {
 impl<'v> Hir2Qmm<'_, '_, 'v> {
     fn extract(&mut self, op: BinOpKind, a: &[&'v Expr<'_>], mut v: Vec<Bool>) -> Result<Vec<Bool>, String> {
         for a in a {
-            if let ExprKind::Binary(binop, lhs, rhs) = &a.kind {
-                if binop.node == op {
-                    v = self.extract(op, &[lhs, rhs], v)?;
-                    continue;
-                }
+            if let ExprKind::Binary(binop, lhs, rhs) = &a.kind
+                && binop.node == op
+            {
+                v = self.extract(op, &[lhs, rhs], v)?;
+                continue;
             }
             v.push(self.run(a)?);
         }
@@ -326,7 +323,7 @@ impl<'v> Hir2Qmm<'_, '_, 'v> {
 struct SuggestContext<'a, 'tcx, 'v> {
     terminals: &'v [&'v Expr<'v>],
     cx: &'a LateContext<'tcx>,
-    msrv: &'a Msrv,
+    msrv: Msrv,
     output: String,
 }
 
@@ -352,8 +349,13 @@ impl SuggestContext<'_, '_, '_> {
                     if let Some(str) = simplify_not(self.cx, self.msrv, terminal) {
                         self.output.push_str(&str);
                     } else {
-                        self.output.push('!');
-                        self.output.push_str(&terminal.span.get_source_text(self.cx)?);
+                        let mut app = Applicability::MachineApplicable;
+                        let snip = Sugg::hir_with_context(self.cx, terminal, SyntaxContext::root(), "", &mut app);
+                        // Ignore the case If the expression is inside a macro expansion, or the default snippet is used
+                        if app != Applicability::MachineApplicable {
+                            return None;
+                        }
+                        self.output.push_str(&(!snip).to_string());
                     }
                 },
                 True | False | Not(_) => {
@@ -396,7 +398,7 @@ impl SuggestContext<'_, '_, '_> {
     }
 }
 
-fn simplify_not(cx: &LateContext<'_>, curr_msrv: &Msrv, expr: &Expr<'_>) -> Option<String> {
+fn simplify_not(cx: &LateContext<'_>, curr_msrv: Msrv, expr: &Expr<'_>) -> Option<String> {
     match &expr.kind {
         ExprKind::Binary(binop, lhs, rhs) => {
             if !implements_ord(cx, lhs) {
@@ -416,12 +418,12 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: &Msrv, expr: &Expr<'_>) -> Opti
                 let lhs_snippet = lhs.span.get_source_text(cx)?;
                 let rhs_snippet = rhs.span.get_source_text(cx)?;
 
-                if !(lhs_snippet.starts_with('(') && lhs_snippet.ends_with(')')) {
-                    if let (ExprKind::Cast(..), BinOpKind::Ge) = (&lhs.kind, binop.node) {
-                        // e.g. `(a as u64) < b`. Without the parens the `<` is
-                        // interpreted as a start of generic arguments for `u64`
-                        return Some(format!("({lhs_snippet}){op}{rhs_snippet}"));
-                    }
+                if !(lhs_snippet.starts_with('(') && lhs_snippet.ends_with(')'))
+                    && let (ExprKind::Cast(..), BinOpKind::Ge) = (&lhs.kind, binop.node)
+                {
+                    // e.g. `(a as u64) < b`. Without the parens the `<` is
+                    // interpreted as a start of generic arguments for `u64`
+                    return Some(format!("({lhs_snippet}){op}{rhs_snippet}"));
                 }
 
                 Some(format!("{lhs_snippet}{op}{rhs_snippet}"))
@@ -438,7 +440,9 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: &Msrv, expr: &Expr<'_>) -> Opti
                 .iter()
                 .copied()
                 .flat_map(|(msrv, a, b)| vec![(msrv, a, b), (msrv, b, a)])
-                .find(|&(msrv, a, _)| msrv.is_none_or(|msrv| curr_msrv.meets(msrv)) && a == path.ident.name.as_str())
+                .find(|&(msrv, a, _)| {
+                    a == path.ident.name.as_str() && msrv.is_none_or(|msrv| curr_msrv.meets(cx, msrv))
+                })
                 .and_then(|(_, _, neg_method)| {
                     let negated_args = args
                         .iter()
@@ -452,7 +456,7 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: &Msrv, expr: &Expr<'_>) -> Opti
                 })
         },
         ExprKind::Closure(closure) => {
-            let body = cx.tcx.hir().body(closure.body);
+            let body = cx.tcx.hir_body(closure.body);
             let params = body
                 .params
                 .iter()
@@ -467,7 +471,7 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: &Msrv, expr: &Expr<'_>) -> Opti
     }
 }
 
-fn suggest(cx: &LateContext<'_>, msrv: &Msrv, suggestion: &Bool, terminals: &[&Expr<'_>]) -> String {
+fn suggest(cx: &LateContext<'_>, msrv: Msrv, suggestion: &Bool, terminals: &[&Expr<'_>]) -> String {
     let mut suggest_context = SuggestContext {
         terminals,
         cx,
@@ -553,7 +557,7 @@ impl<'tcx> NonminimalBoolVisitor<'_, 'tcx> {
                     _ => simplified.push(Bool::Not(Box::new(simple.clone()))),
                 }
                 let simple_negated = simple_negate(simple);
-                if simplified.iter().any(|s| *s == simple_negated) {
+                if simplified.contains(&simple_negated) {
                     continue;
                 }
                 simplified.push(simple_negated);
@@ -605,7 +609,7 @@ impl<'tcx> NonminimalBoolVisitor<'_, 'tcx> {
                 }
             }
             let nonminimal_bool_lint = |mut suggestions: Vec<_>| {
-                if self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, e.hir_id).0 != Level::Allow {
+                if self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, e.hir_id).level != Level::Allow {
                     suggestions.sort();
                     span_lint_hir_and_then(
                         self.cx,

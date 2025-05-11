@@ -96,25 +96,12 @@ pub(crate) fn clif_int_or_float_cast(
                 },
             );
 
-            if fx.tcx.sess.target.is_like_windows {
-                let ret = fx.lib_call(
-                    &name,
-                    vec![AbiParam::new(from_ty)],
-                    vec![AbiParam::new(types::I64X2)],
-                    &[from],
-                )[0];
-                // FIXME(bytecodealliance/wasmtime#6104) use bitcast instead of store to get from i64x2 to i128
-                let ret_ptr = fx.create_stack_slot(16, 16);
-                ret_ptr.store(fx, ret, MemFlags::trusted());
-                ret_ptr.load(fx, types::I128, MemFlags::trusted())
-            } else {
-                fx.lib_call(
-                    &name,
-                    vec![AbiParam::new(from_ty)],
-                    vec![AbiParam::new(types::I128)],
-                    &[from],
-                )[0]
-            }
+            fx.lib_call(
+                &name,
+                vec![AbiParam::new(from_ty)],
+                vec![AbiParam::new(types::I128)],
+                &[from],
+            )[0]
         } else if to_ty == types::I8 || to_ty == types::I16 {
             // FIXME implement fcvt_to_*int_sat.i8/i16
             let val = if to_signed {

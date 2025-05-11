@@ -62,7 +62,7 @@ fn check_and_get_rustc_dir(rustc_path: &str) -> Result<PathBuf, ()> {
                 eprintln!("error: unable to get the absolute path of rustc ({err})");
                 return Err(());
             },
-        };
+        }
     }
 
     let path = path.join("compiler");

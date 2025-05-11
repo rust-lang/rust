@@ -1,0 +1,55 @@
+error[E0658]: binding cannot be both mutable and by-reference
+  --> $DIR/mixed-editions.rs:37:21
+   |
+LL |     let match_ctor!(mut x) = &[0];
+   |                     ^^^^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0596]: cannot borrow as mutable inside an `&` pattern
+  --> $DIR/mixed-editions.rs:110:28
+   |
+LL |     let match_ref!(ref mut x) = &mut 0;
+   |                            ^
+
+error[E0596]: cannot borrow as mutable inside an `&` pattern
+  --> $DIR/mixed-editions.rs:112:24
+   |
+LL |     let &bind_ref_mut!(x) = &mut 0;
+   |         -              ^
+   |         |
+   |         help: replace this `&` with `&mut`: `&mut`
+
+error[E0596]: cannot borrow as mutable inside an `&` pattern
+  --> $DIR/mixed-editions.rs:116:29
+   |
+LL |     let [match_ref!(ref mut x)] = &mut [0];
+   |                             ^
+
+error[E0596]: cannot borrow as mutable inside an `&` pattern
+  --> $DIR/mixed-editions.rs:118:25
+   |
+LL |     let [&bind_ref_mut!(x)] = &mut [0];
+   |          -              ^
+   |          |
+   |          help: replace this `&` with `&mut`: `&mut`
+
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/mixed-editions.rs:26:21
+   |
+LL |     let match_ctor!(ref x) = &[0];
+   |                     ^^^ binding modifier not allowed under `ref` default binding mode
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+  --> $DIR/auxiliary/mixed-editions-macros.rs:11:9
+   |
+LL |         &[$p]
+   |         +
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0596, E0658.
+For more information about an error, try `rustc --explain E0596`.

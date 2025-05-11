@@ -6,8 +6,9 @@ LL | ipml Human {}
    |
 help: there is a keyword `impl` with a similar name
    |
-LL | impl Human {}
-   | ~~~~
+LL - ipml Human {}
+LL + impl Human {}
+   |
 
 error: aborting due to 1 previous error
 

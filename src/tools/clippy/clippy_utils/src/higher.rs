@@ -3,14 +3,14 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::consts::{ConstEvalCtxt, Constant};
-use crate::is_expn_of;
 use crate::ty::is_type_diagnostic_item;
+use crate::{is_expn_of, sym};
 
 use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath, StructTailExpr};
 use rustc_lint::LateContext;
-use rustc_span::{Span, sym, symbol};
+use rustc_span::{Span, symbol};
 
 /// The essential nodes of a desugared for loop as well as the entire span:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`. Returns `(pat, arg, body, span)`.
@@ -117,19 +117,18 @@ impl<'hir> IfLet<'hir> {
             if_else,
         ) = expr.kind
         {
-            let mut iter = cx.tcx.hir().parent_iter(expr.hir_id);
-            if let Some((_, Node::Block(Block { stmts: [], .. }))) = iter.next() {
-                if let Some((
+            let mut iter = cx.tcx.hir_parent_iter(expr.hir_id);
+            if let Some((_, Node::Block(Block { stmts: [], .. }))) = iter.next()
+                && let Some((
                     _,
                     Node::Expr(Expr {
                         kind: ExprKind::Loop(_, _, LoopSource::While, _),
                         ..
                     }),
                 )) = iter.next()
-                {
-                    // while loop desugar
-                    return None;
-                }
+            {
+                // while loop desugar
+                return None;
             }
             return Some(Self {
                 let_pat,
@@ -176,6 +175,12 @@ impl<'hir> IfLetOrMatch<'hir> {
             ),
         }
     }
+
+    pub fn scrutinee(&self) -> &'hir Expr<'hir> {
+        match self {
+            Self::Match(scrutinee, _, _) | Self::IfLet(scrutinee, _, _, _, _) => scrutinee,
+        }
+    }
 }
 
 /// An `if` or `if let` expression
@@ -196,8 +201,8 @@ impl<'hir> IfOrIfLet<'hir> {
             if let ExprKind::DropTemps(new_cond) = cond.kind {
                 return Some(Self {
                     cond: new_cond,
-                    r#else,
                     then,
+                    r#else,
                 });
             }
             if let ExprKind::Let(..) = cond.kind {
@@ -469,13 +474,13 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
                     return Some(VecInitKind::New);
                 } else if name.ident.name == symbol::kw::Default {
                     return Some(VecInitKind::Default);
-                } else if name.ident.name.as_str() == "with_capacity" {
+                } else if name.ident.name == sym::with_capacity {
                     let arg = args.first()?;
                     return match ConstEvalCtxt::new(cx).eval_simple(arg) {
                         Some(Constant::Int(num)) => Some(VecInitKind::WithConstCapacity(num)),
                         _ => Some(VecInitKind::WithExprCapacity(arg.hir_id)),
                     };
-                };
+                }
             },
             ExprKind::Path(QPath::Resolved(_, path))
                 if cx.tcx.is_diagnostic_item(sym::default_fn, path.res.opt_def_id()?)

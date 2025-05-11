@@ -6,62 +6,52 @@
       let mut _0: std::option::Option<i32>;
       let mut _2: &std::option::Option<i32>;
       let mut _3: &std::option::Option<i32>;
-      let _4: &&mut std::option::Option<i32>;
-      let mut _5: isize;
-      let mut _7: !;
-      let mut _8: std::option::Option<i32>;
-      let mut _9: i32;
-      let mut _10: !;
-      let mut _11: &mut std::option::Option<i32>;
+      let mut _4: isize;
+      let mut _6: !;
+      let mut _7: std::option::Option<i32>;
+      let mut _8: i32;
+      let mut _9: !;
       scope 1 {
-          debug col => _6;
-          let _6: i32;
+          debug col => _5;
+          let _5: i32;
       }
   
       bb0: {
--         StorageLive(_2);
-+         nop;
+          StorageLive(_2);
           StorageLive(_3);
-          StorageLive(_4);
-          _4 = &_1;
--         _11 = deref_copy (*_4);
--         _3 = &(*_11);
-+         _11 = copy _1;
-+         _3 = &(*_1);
-          _2 = get(move _3) -> [return: bb1, unwind unreachable];
+          _3 = &(*_1);
+          _2 = get::<Option<i32>>(move _3) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
           StorageDead(_3);
-          _5 = discriminant((*_2));
-          switchInt(move _5) -> [1: bb2, otherwise: bb3];
+          _4 = discriminant((*_2));
+          switchInt(move _4) -> [1: bb2, otherwise: bb3];
       }
   
       bb2: {
--         StorageLive(_6);
+-         StorageLive(_5);
 +         nop;
-          _6 = copy (((*_2) as Some).0: i32);
-          StorageLive(_8);
--         _8 = Option::<i32>::None;
--         (*_1) = move _8;
-+         _8 = const Option::<i32>::None;
+          _5 = copy (((*_2) as Some).0: i32);
+          StorageLive(_7);
+-         _7 = Option::<i32>::None;
+-         (*_1) = move _7;
++         _7 = const Option::<i32>::None;
 +         (*_1) = const Option::<i32>::None;
+          StorageDead(_7);
+          StorageLive(_8);
+          _8 = copy _5;
+-         _0 = Option::<i32>::Some(move _8);
++         _0 = Option::<i32>::Some(copy _5);
           StorageDead(_8);
-          StorageLive(_9);
-          _9 = copy _6;
--         _0 = Option::<i32>::Some(move _9);
-+         _0 = copy (*_2);
-          StorageDead(_9);
--         StorageDead(_6);
+-         StorageDead(_5);
 +         nop;
-          StorageDead(_4);
--         StorageDead(_2);
-+         nop;
+          StorageDead(_2);
           return;
       }
   
       bb3: {
-          StorageLive(_10);
+          StorageLive(_9);
           unreachable;
       }
 + }

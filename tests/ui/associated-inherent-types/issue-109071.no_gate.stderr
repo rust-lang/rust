@@ -28,10 +28,12 @@ LL |     fn T() -> Option<Self::Item> {}
    |
 help: use fully-qualified syntax
    |
-LL |     fn T() -> Option<<Windows<T> as IntoAsyncIterator>::Item> {}
-   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-LL |     fn T() -> Option<<Windows<T> as IntoIterator>::Item> {}
-   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     fn T() -> Option<Self::Item> {}
+LL +     fn T() -> Option<<Windows<T> as IntoAsyncIterator>::Item> {}
+   |
+LL -     fn T() -> Option<Self::Item> {}
+LL +     fn T() -> Option<<Windows<T> as IntoIterator>::Item> {}
+   |
 
 error[E0658]: inherent associated types are unstable
   --> $DIR/issue-109071.rs:8:5

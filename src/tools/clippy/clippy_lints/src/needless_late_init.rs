@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::path_to_local;
-use clippy_utils::source::{SourceText, SpanRangeExt};
+use clippy_utils::source::{SourceText, SpanRangeExt, snippet};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures, is_local_used};
 use core::ops::ControlFlow;
@@ -100,13 +100,16 @@ fn stmt_needs_ordered_drop(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
 #[derive(Debug)]
 struct LocalAssign {
     lhs_id: HirId,
-    lhs_span: Span,
     rhs_span: Span,
     span: Span,
 }
 
 impl LocalAssign {
     fn from_expr(expr: &Expr<'_>, span: Span) -> Option<Self> {
+        if expr.span.from_expansion() {
+            return None;
+        }
+
         if let ExprKind::Assign(lhs, rhs, _) = expr.kind {
             if lhs.span.from_expansion() {
                 return None;
@@ -114,7 +117,6 @@ impl LocalAssign {
 
             Some(Self {
                 lhs_id: path_to_local(lhs)?,
-                lhs_span: lhs.span,
                 rhs_span: rhs.span.source_callsite(),
                 span,
             })
@@ -257,7 +259,7 @@ fn check<'tcx>(
     binding_id: HirId,
 ) -> Option<()> {
     let usage = first_usage(cx, binding_id, local_stmt.hir_id, block)?;
-    let binding_name = cx.tcx.hir().opt_name(binding_id)?;
+    let binding_name = cx.tcx.hir_opt_name(binding_id)?;
     let let_snippet = local_snippet_without_semicolon(cx, local)?;
 
     match usage.expr.kind {
@@ -277,7 +279,10 @@ fn check<'tcx>(
                         format!("move the declaration `{binding_name}` here"),
                         vec![
                             (local_stmt.span, String::new()),
-                            (assign.lhs_span, let_snippet.to_owned()),
+                            (
+                                assign.span,
+                                let_snippet.to_owned() + " = " + &snippet(cx, assign.rhs_span, ".."),
+                            ),
                         ],
                         Applicability::MachineApplicable,
                     );
@@ -336,14 +341,14 @@ fn check<'tcx>(
             );
         },
         _ => {},
-    };
+    }
 
     Some(())
 }
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessLateInit {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
-        let mut parents = cx.tcx.hir().parent_iter(local.hir_id);
+        let mut parents = cx.tcx.hir_parent_iter(local.hir_id);
         if let LetStmt {
             init: None,
             pat:

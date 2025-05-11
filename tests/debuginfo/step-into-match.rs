@@ -1,6 +1,10 @@
 //@ compile-flags: -g
 //@ ignore-android: FIXME(#10381)
 
+// On Arm64 Windows, stepping at the end of a function on goes to the callsite, not the instruction
+// after it.
+//@ ignore-aarch64-pc-windows-msvc: Stepping out of functions behaves differently.
+
 // === GDB TESTS ==============================================================
 
 // gdb-command: r
@@ -117,7 +121,7 @@
 // gdb-check:[...]match (a, b) {
 
 // gdb-command: s
-// gdb-check:[...](_, _) => 5
+// gdb-check:[...](_, _) => 5,
 
 // gdb-command: s
 // gdb-check:[...]}
@@ -300,7 +304,7 @@
 // cdb-check:   [...]:     match (a, b) {
 
 // cdb-command: t
-// cdb-check:   [...]:         (_, _) => 5
+// cdb-check:   [...]:         (_, _) => 5,
 
 // cdb-command: t
 // cdb-check:   [...]: }
@@ -378,6 +382,6 @@ fn match_tuple(a: u8, b: i8) -> u32 {
         (29, _) => 2,
         (5, 12) => 3,
         (_, 9) => 4,
-        (_, _) => 5
+        (_, _) => 5,
     }
 }

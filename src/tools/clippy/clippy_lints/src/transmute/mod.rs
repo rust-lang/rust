@@ -49,7 +49,6 @@ declare_clippy_lint! {
     "transmutes that are confusing at best, undefined behavior at worst and always useless"
 }
 
-// FIXME: Move this to `complexity` again, after #5343 is fixed
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for transmutes to the original type of the object
@@ -599,9 +598,7 @@ impl_lint_pass!(Transmute => [
 ]);
 impl Transmute {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 impl<'tcx> LateLintPass<'tcx> for Transmute {
@@ -633,16 +630,16 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 | crosspointer_transmute::check(cx, e, from_ty, to_ty)
                 | transmuting_null::check(cx, e, arg, to_ty)
                 | transmute_null_to_fn::check(cx, e, arg, to_ty)
-                | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, &self.msrv)
+                | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, self.msrv)
                 | missing_transmute_annotations::check(cx, path, from_ty, to_ty, e.hir_id)
                 | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg, const_context)
                 | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
-                | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg, &self.msrv)
+                | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg, self.msrv)
                 | transmute_int_to_bool::check(cx, e, from_ty, to_ty, arg)
-                | transmute_int_to_float::check(cx, e, from_ty, to_ty, arg, const_context, &self.msrv)
+                | transmute_int_to_float::check(cx, e, from_ty, to_ty, arg, const_context, self.msrv)
                 | transmute_int_to_non_zero::check(cx, e, from_ty, to_ty, arg)
-                | transmute_float_to_int::check(cx, e, from_ty, to_ty, arg, const_context, &self.msrv)
-                | transmute_num_to_bytes::check(cx, e, from_ty, to_ty, arg, const_context, &self.msrv)
+                | transmute_float_to_int::check(cx, e, from_ty, to_ty, arg, const_context, self.msrv)
+                | transmute_num_to_bytes::check(cx, e, from_ty, to_ty, arg, const_context, self.msrv)
                 | (unsound_collection_transmute::check(cx, e, from_ty, to_ty)
                     || transmute_undefined_repr::check(cx, e, from_ty, to_ty))
                 | (eager_transmute::check(cx, e, arg, from_ty, to_ty));
@@ -652,6 +649,4 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
             }
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }

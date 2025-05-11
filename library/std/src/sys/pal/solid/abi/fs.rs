@@ -31,7 +31,7 @@ pub const DT_WHT: c_uchar = 14;
 
 pub type S_DIR = c_int;
 
-extern "C" {
+unsafe extern "C" {
     pub fn SOLID_FS_Open(fd: *mut c_int, path: *const c_char, mode: c_int) -> c_int;
     pub fn SOLID_FS_Close(fd: c_int) -> c_int;
     pub fn SOLID_FS_Read(fd: c_int, buf: *mut u8, size: usize, result: *mut usize) -> c_int;

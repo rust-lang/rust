@@ -10,7 +10,7 @@ fn needs_async(_: impl Future<Output = i32>) {}
 #[cfg(fail)]
 fn main() {
     needs_async(async {});
-    //[fail]~^ ERROR expected `{async block@$DIR/async.rs:12:17: 12:22}` to be a future that resolves to `i32`, but it resolves to `()`
+    //[fail]~^ ERROR type mismatch resolving `() == i32`
 }
 
 #[cfg(pass)]

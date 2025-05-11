@@ -25,7 +25,7 @@ fn main() {
 
 // Check that cfg works right
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn c() {
     #[rustc_dummy]
     5;
@@ -37,7 +37,7 @@ fn j() {
     5;
 }
 
-#[cfg_attr(not(FALSE), cfg(FALSE))]
+#[cfg_attr(not(FALSE), cfg(false))]
 fn d() {
     #[rustc_dummy]
     8;
@@ -57,7 +57,7 @@ macro_rules! item_mac {
             #[rustc_dummy]
             42;
 
-            #[cfg(FALSE)]
+            #[cfg(false)]
             fn f() {
                 #[rustc_dummy]
                 5;
@@ -69,7 +69,7 @@ macro_rules! item_mac {
                 5;
             }
 
-            #[cfg_attr(not(FALSE), cfg(FALSE))]
+            #[cfg_attr(not(FALSE), cfg(false))]
             fn g() {
                 #[rustc_dummy]
                 8;
@@ -90,42 +90,42 @@ item_mac!(e);
 // check that the gate visitor works right:
 
 extern "C" {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     fn x(a: [u8; #[rustc_dummy] 5]);
     fn y(a: [u8; #[rustc_dummy] 5]); //~ ERROR attributes on expressions are experimental
 }
 
 struct Foo;
 impl Foo {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     const X: u8 = #[rustc_dummy] 5;
     const Y: u8 = #[rustc_dummy] 5; //~ ERROR attributes on expressions are experimental
 }
 
 trait Bar {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     const X: [u8; #[rustc_dummy] 5];
     const Y: [u8; #[rustc_dummy] 5]; //~ ERROR attributes on expressions are experimental
 }
 
 struct Joyce {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     field: [u8; #[rustc_dummy] 5],
     field2: [u8; #[rustc_dummy] 5] //~ ERROR attributes on expressions are experimental
 }
 
 struct Walky(
-    #[cfg(FALSE)] [u8; #[rustc_dummy] 5],
+    #[cfg(false)] [u8; #[rustc_dummy] 5],
     [u8; #[rustc_dummy] 5] //~ ERROR attributes on expressions are experimental
 );
 
 enum Mike {
     Happy(
-        #[cfg(FALSE)] [u8; #[rustc_dummy] 5],
+        #[cfg(false)] [u8; #[rustc_dummy] 5],
         [u8; #[rustc_dummy] 5] //~ ERROR attributes on expressions are experimental
     ),
     Angry {
-        #[cfg(FALSE)]
+        #[cfg(false)]
         field: [u8; #[rustc_dummy] 5],
         field2: [u8; #[rustc_dummy] 5] //~ ERROR attributes on expressions are experimental
     }
@@ -133,7 +133,7 @@ enum Mike {
 
 fn pat() {
     match 5 {
-        #[cfg(FALSE)]
+        #[cfg(false)]
         5 => #[rustc_dummy] (),
         6 => #[rustc_dummy] (), //~ ERROR attributes on expressions are experimental
         _ => (),

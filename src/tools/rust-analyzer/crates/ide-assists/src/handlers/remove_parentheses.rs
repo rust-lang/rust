@@ -1,6 +1,10 @@
-use syntax::{ast, AstNode, SyntaxKind, T};
+use syntax::{
+    AstNode, SyntaxKind, T,
+    ast::{self, syntax_factory::SyntaxFactory},
+    syntax_editor::Position,
+};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: remove_parentheses
 //
@@ -30,16 +34,17 @@ pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let expr = parens.expr()?;
 
     let parent = parens.syntax().parent()?;
-    if expr.needs_parens_in(parent) {
+    if expr.needs_parens_in(&parent) {
         return None;
     }
 
     let target = parens.syntax().text_range();
     acc.add(
-        AssistId("remove_parentheses", AssistKind::Refactor),
+        AssistId::refactor("remove_parentheses"),
         "Remove redundant parentheses",
         target,
         |builder| {
+            let mut editor = builder.make_editor(parens.syntax());
             let prev_token = parens.syntax().first_token().and_then(|it| it.prev_token());
             let need_to_add_ws = match prev_token {
                 Some(it) => {
@@ -48,9 +53,13 @@ pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                 }
                 None => false,
             };
-            let expr = if need_to_add_ws { format!(" {expr}") } else { expr.to_string() };
-
-            builder.replace(parens.syntax().text_range(), expr)
+            if need_to_add_ws {
+                let make = SyntaxFactory::with_mappings();
+                editor.insert(Position::before(parens.syntax()), make.whitespace(" "));
+                editor.add_mappings(make.finish_with_mappings());
+            }
+            editor.replace(parens.syntax(), expr.syntax());
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

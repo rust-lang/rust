@@ -1,5 +1,5 @@
 error[E0597]: `c` does not live long enough
-  --> $DIR/regionck-unboxed-closure-lifetimes.rs:8:21
+  --> $DIR/regionck-unboxed-closure-lifetimes.rs:7:21
    |
 LL |         let c = 1;
    |             - binding `c` declared here

@@ -42,11 +42,15 @@ pub enum ToolState {
 
 impl fmt::Display for ToolState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            ToolState::TestFail => "test-fail",
-            ToolState::TestPass => "test-pass",
-            ToolState::BuildFail => "build-fail",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                ToolState::TestFail => "test-fail",
+                ToolState::TestPass => "test-pass",
+                ToolState::BuildFail => "build-fail",
+            }
+        )
     }
 }
 
@@ -76,10 +80,7 @@ static STABLE_TOOLS: &[(&str, &str)] = &[
 // We do require that we checked whether they build or not on the tools builder,
 // though, as otherwise we will be unable to file an issue if they start
 // failing.
-static NIGHTLY_TOOLS: &[(&str, &str)] = &[
-    ("embedded-book", "src/doc/embedded-book"),
-    // ("rustc-dev-guide", "src/doc/rustc-dev-guide"),
-];
+static NIGHTLY_TOOLS: &[(&str, &str)] = &[("embedded-book", "src/doc/embedded-book")];
 
 fn print_error(tool: &str, submodule: &str) {
     eprintln!();
@@ -127,7 +128,7 @@ impl Step for ToolStateCheck {
     /// Checks tool state status.
     ///
     /// This is intended to be used in the `checktools.sh` script. To use
-    /// this, set `save-toolstates` in `config.toml` so that tool status will
+    /// this, set `save-toolstates` in `bootstrap.toml` so that tool status will
     /// be saved to a JSON file. Then, run `x.py test --no-fail-fast` for all
     /// of the tools to populate the JSON file. After that is done, this
     /// command can be run to check for any status failures, and exits with an
@@ -253,7 +254,7 @@ impl Builder<'_> {
     /// Updates the actual toolstate of a tool.
     ///
     /// The toolstates are saved to the file specified by the key
-    /// `rust.save-toolstates` in `config.toml`. If unspecified, nothing will be
+    /// `rust.save-toolstates` in `bootstrap.toml`. If unspecified, nothing will be
     /// done. The file is updated immediately after this function completes.
     pub fn save_toolstate(&self, tool: &str, state: ToolState) {
         use std::io::Write;
@@ -353,12 +354,12 @@ fn read_old_toolstate() -> Vec<RepoState> {
 ///   1. Generate a new Personal access token:
 ///
 ///       * Login to the bot account, and go to Settings -> Developer settings ->
-///           Personal access tokens
+///         Personal access tokens
 ///       * Click "Generate new token"
 ///       * Enable the "public_repo" permission, then click "Generate token"
 ///       * Copy the generated token (should be a 40-digit hexadecimal number).
-///           Save it somewhere secure, as the token would be gone once you leave
-///           the page.
+///         Save it somewhere secure, as the token would be gone once you leave
+///         the page.
 ///
 ///   2. Update the variable group in Azure Pipelines
 ///
@@ -367,7 +368,7 @@ fn read_old_toolstate() -> Vec<RepoState> {
 ///   4. Replace the email address below if the bot account identity is changed
 ///
 ///       * See <https://help.github.com/articles/about-commit-email-addresses/>
-///           if a private email by GitHub is wanted.
+///         if a private email by GitHub is wanted.
 fn commit_toolstate_change(builder: &Builder<'_>, current_toolstate: &ToolstateData) {
     let message = format!("({} CI update)", OS.expect("linux/windows only"));
     let mut success = false;

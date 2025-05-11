@@ -2,6 +2,7 @@
 // overrides another command line library with modifiers.
 
 //@ compile-flags:-lstatic:+whole-archive=foo -lstatic:+whole-archive=foo
-//@ error-pattern: overriding linking modifiers from command line is not supported
 
 fn main() {}
+
+//~? ERROR overriding linking modifiers from command line is not supported

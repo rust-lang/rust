@@ -3,6 +3,7 @@ error: implementation of inherent method `to_string(&self) -> String` for type `
    |
 LL | /     fn to_string(&self) -> String {
 LL | |
+LL | |
 LL | |         "A.to_string()".to_string()
 LL | |     }
    | |_____^
@@ -12,9 +13,10 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::inherent_to_string)]`
 
 error: type `C` implements inherent method `to_string(&self) -> String` which shadows the implementation of `Display`
-  --> tests/ui/inherent_to_string.rs:47:5
+  --> tests/ui/inherent_to_string.rs:48:5
    |
 LL | /     fn to_string(&self) -> String {
+LL | |
 LL | |
 LL | |         "C.to_string()".to_string()
 LL | |     }

@@ -17,13 +17,13 @@ pub trait Fetcher: Send + Sync {
 }
 
 fn fetcher() -> Box<dyn Fetcher> {
-    //~^ ERROR the trait `Fetcher` cannot be made into an object
+    //~^ ERROR the trait `Fetcher` is not dyn compatible
     todo!()
 }
 
 pub fn foo() {
     let fetcher = fetcher();
-    //~^ ERROR the trait `Fetcher` cannot be made into an object
+    //~^ ERROR the trait `Fetcher` is not dyn compatible
     let _ = fetcher.get();
-    //~^ ERROR the trait `Fetcher` cannot be made into an object
+    //~^ ERROR the trait `Fetcher` is not dyn compatible
 }

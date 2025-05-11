@@ -6,8 +6,6 @@ LL |     async {
 LL |         let x: Option<u32> = None;
 LL |         x?;
    |          ^ cannot use the `?` operator in an async block that returns `{integer}`
-   |
-   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `{integer}`
 
 error[E0277]: the `?` operator can only be used in an async closure that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-in-async.rs:16:10
@@ -20,8 +18,6 @@ LL | |         x?;
 LL | |         22_u32
 LL | |     };
    | |_____- this function should return `Result` or `Option` to accept `?`
-   |
-   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
 
 error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-in-async.rs:25:6
@@ -34,8 +30,6 @@ LL | |     x?;
 LL | |     22
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
-   |
-   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
 
 error: aborting due to 3 previous errors
 

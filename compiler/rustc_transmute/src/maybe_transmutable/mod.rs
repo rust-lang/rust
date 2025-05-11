@@ -1,10 +1,11 @@
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use tracing::{debug, instrument, trace};
 
 pub(crate) mod query_context;
 #[cfg(test)]
 mod tests;
 
-use crate::layout::{self, Byte, Def, Dfa, Nfa, Ref, Tree, Uninhabited, dfa};
+use crate::layout::{self, Def, Dfa, Ref, Tree, dfa, union};
 use crate::maybe_transmutable::query_context::QueryContext;
 use crate::{Answer, Condition, Map, Reason};
 
@@ -73,18 +74,18 @@ where
     /// Answers whether a `Tree` is transmutable into another `Tree`.
     ///
     /// This method begins by de-def'ing `src` and `dst`, and prunes private paths from `dst`,
-    /// then converts `src` and `dst` to `Nfa`s, and computes an answer using those NFAs.
+    /// then converts `src` and `dst` to `Dfa`s, and computes an answer using those DFAs.
     #[inline(always)]
     #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
         let Self { src, dst, assume, context } = self;
 
-        // Unconditionally all `Def` nodes from `src`, without pruning away the
+        // Unconditionally remove all `Def` nodes from `src`, without pruning away the
         // branches they appear in. This is valid to do for value-to-value
         // transmutations, but not for `&mut T` to `&mut U`; we will need to be
         // more sophisticated to handle transmutations between mutable
         // references.
-        let src = src.prune(&|def| false);
+        let src = src.prune(&|_def| false);
 
         if src.is_inhabited() && !dst.is_inhabited() {
             return Answer::No(Reason::DstUninhabited);
@@ -96,7 +97,7 @@ where
         let dst = if assume.safety {
             // ...if safety is assumed, don't check if they carry safety
             // invariants; retain all paths.
-            dst.prune(&|def| false)
+            dst.prune(&|_def| false)
         } else {
             // ...otherwise, prune away all paths with safety invariants from
             // the `Dst` layout.
@@ -105,43 +106,26 @@ where
 
         trace!(?dst, "pruned dst");
 
-        // Convert `src` from a tree-based representation to an NFA-based
+        // Convert `src` from a tree-based representation to an DFA-based
         // representation. If the conversion fails because `src` is uninhabited,
         // conclude that the transmutation is acceptable, because instances of
         // the `src` type do not exist.
-        let src = match Nfa::from_tree(src) {
+        let src = match Dfa::from_tree(src) {
             Ok(src) => src,
-            Err(Uninhabited) => return Answer::Yes,
+            Err(layout::Uninhabited) => return Answer::Yes,
         };
 
-        // Convert `dst` from a tree-based representation to an NFA-based
+        // Convert `dst` from a tree-based representation to an DFA-based
         // representation. If the conversion fails because `src` is uninhabited,
         // conclude that the transmutation is unacceptable. Valid instances of
         // the `dst` type do not exist, either because it's genuinely
         // uninhabited, or because there are no branches of the tree that are
         // free of safety invariants.
-        let dst = match Nfa::from_tree(dst) {
+        let dst = match Dfa::from_tree(dst) {
             Ok(dst) => dst,
-            Err(Uninhabited) => return Answer::No(Reason::DstMayHaveSafetyInvariants),
+            Err(layout::Uninhabited) => return Answer::No(Reason::DstMayHaveSafetyInvariants),
         };
 
-        MaybeTransmutableQuery { src, dst, assume, context }.answer()
-    }
-}
-
-impl<C> MaybeTransmutableQuery<Nfa<<C as QueryContext>::Ref>, C>
-where
-    C: QueryContext,
-{
-    /// Answers whether a `Nfa` is transmutable into another `Nfa`.
-    ///
-    /// This method converts `src` and `dst` to DFAs, then computes an answer using those DFAs.
-    #[inline(always)]
-    #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
-    pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
-        let Self { src, dst, assume, context } = self;
-        let src = Dfa::from_nfa(src);
-        let dst = Dfa::from_nfa(dst);
         MaybeTransmutableQuery { src, dst, assume, context }.answer()
     }
 }
@@ -166,146 +150,135 @@ where
         if let Some(answer) = cache.get(&(src_state, dst_state)) {
             answer.clone()
         } else {
-            debug!(?src_state, ?dst_state);
-            debug!(src = ?self.src);
-            debug!(dst = ?self.dst);
-            debug!(
-                src_transitions_len = self.src.transitions.len(),
-                dst_transitions_len = self.dst.transitions.len()
-            );
-            let answer = if dst_state == self.dst.accepting {
-                // truncation: `size_of(Src) >= size_of(Dst)`
-                //
-                // Why is truncation OK to do? Because even though the Src is bigger, all we care about
-                // is whether we have enough data for the Dst to be valid in accordance with what its
-                // type dictates.
-                // For example, in a u8 to `()` transmutation, we have enough data available from the u8
-                // to transmute it to a `()` (though in this case does `()` really need any data to
-                // begin with? It doesn't). Same thing with u8 to fieldless struct.
-                // Now then, why is something like u8 to bool not allowed? That is not because the bool
-                // is smaller in size, but rather because those 2 bits that we are re-interpreting from
-                // the u8 could introduce invalid states for the bool type.
-                //
-                // So, if it's possible to transmute to a smaller Dst by truncating, and we can guarantee
-                // that none of the actually-used data can introduce an invalid state for Dst's type, we
-                // are able to safely transmute, even with truncation.
-                Answer::Yes
-            } else if src_state == self.src.accepting {
-                // extension: `size_of(Src) >= size_of(Dst)`
-                if let Some(dst_state_prime) = self.dst.byte_from(dst_state, Byte::Uninit) {
-                    self.answer_memo(cache, src_state, dst_state_prime)
-                } else {
-                    Answer::No(Reason::DstIsTooBig)
-                }
-            } else {
-                let src_quantifier = if self.assume.validity {
-                    // if the compiler may assume that the programmer is doing additional validity checks,
-                    // (e.g.: that `src != 3u8` when the destination type is `bool`)
-                    // then there must exist at least one transition out of `src_state` such that the transmute is viable...
-                    Quantifier::ThereExists
-                } else {
-                    // if the compiler cannot assume that the programmer is doing additional validity checks,
-                    // then for all transitions out of `src_state`, such that the transmute is viable...
-                    // then there must exist at least one transition out of `dst_state` such that the transmute is viable...
-                    Quantifier::ForAll
-                };
-
-                let bytes_answer = src_quantifier.apply(
-                    // for each of the byte transitions out of the `src_state`...
-                    self.src.bytes_from(src_state).unwrap_or(&Map::default()).into_iter().map(
-                        |(&src_validity, &src_state_prime)| {
-                            // ...try to find a matching transition out of `dst_state`.
-                            if let Some(dst_state_prime) =
-                                self.dst.byte_from(dst_state, src_validity)
-                            {
-                                self.answer_memo(cache, src_state_prime, dst_state_prime)
-                            } else if let Some(dst_state_prime) =
-                                // otherwise, see if `dst_state` has any outgoing `Uninit` transitions
-                                // (any init byte is a valid uninit byte)
-                                self.dst.byte_from(dst_state, Byte::Uninit)
-                            {
-                                self.answer_memo(cache, src_state_prime, dst_state_prime)
-                            } else {
-                                // otherwise, we've exhausted our options.
-                                // the DFAs, from this point onwards, are bit-incompatible.
-                                Answer::No(Reason::DstIsBitIncompatible)
-                            }
-                        },
-                    ),
-                );
-
-                // The below early returns reflect how this code would behave:
-                //   if self.assume.validity {
-                //       or(bytes_answer, refs_answer)
-                //   } else {
-                //       and(bytes_answer, refs_answer)
-                //   }
-                // ...if `refs_answer` was computed lazily. The below early
-                // returns can be deleted without impacting the correctness of
-                // the algorithm; only its performance.
-                debug!(?bytes_answer);
-                match bytes_answer {
-                    Answer::No(_) if !self.assume.validity => return bytes_answer,
-                    Answer::Yes if self.assume.validity => return bytes_answer,
-                    _ => {}
-                };
-
-                let refs_answer = src_quantifier.apply(
-                    // for each reference transition out of `src_state`...
-                    self.src.refs_from(src_state).unwrap_or(&Map::default()).into_iter().map(
-                        |(&src_ref, &src_state_prime)| {
-                            // ...there exists a reference transition out of `dst_state`...
-                            Quantifier::ThereExists.apply(
-                                self.dst
-                                    .refs_from(dst_state)
-                                    .unwrap_or(&Map::default())
-                                    .into_iter()
-                                    .map(|(&dst_ref, &dst_state_prime)| {
-                                        if !src_ref.is_mutable() && dst_ref.is_mutable() {
-                                            Answer::No(Reason::DstIsMoreUnique)
-                                        } else if !self.assume.alignment
-                                            && src_ref.min_align() < dst_ref.min_align()
-                                        {
-                                            Answer::No(Reason::DstHasStricterAlignment {
-                                                src_min_align: src_ref.min_align(),
-                                                dst_min_align: dst_ref.min_align(),
-                                            })
-                                        } else if dst_ref.size() > src_ref.size() {
-                                            Answer::No(Reason::DstRefIsTooBig {
-                                                src: src_ref,
-                                                dst: dst_ref,
-                                            })
-                                        } else {
-                                            // ...such that `src` is transmutable into `dst`, if
-                                            // `src_ref` is transmutability into `dst_ref`.
-                                            and(
-                                                Answer::If(Condition::IfTransmutable {
-                                                    src: src_ref,
-                                                    dst: dst_ref,
-                                                }),
-                                                self.answer_memo(
-                                                    cache,
-                                                    src_state_prime,
-                                                    dst_state_prime,
-                                                ),
-                                            )
-                                        }
-                                    }),
-                            )
-                        },
-                    ),
-                );
-
-                if self.assume.validity {
-                    or(bytes_answer, refs_answer)
-                } else {
-                    and(bytes_answer, refs_answer)
-                }
-            };
+            let answer = ensure_sufficient_stack(|| self.answer_impl(cache, src_state, dst_state));
             if let Some(..) = cache.insert((src_state, dst_state), answer.clone()) {
                 panic!("failed to correctly cache transmutability")
             }
             answer
+        }
+    }
+
+    fn answer_impl(
+        &self,
+        cache: &mut Map<(dfa::State, dfa::State), Answer<<C as QueryContext>::Ref>>,
+        src_state: dfa::State,
+        dst_state: dfa::State,
+    ) -> Answer<<C as QueryContext>::Ref> {
+        debug!(?src_state, ?dst_state);
+        debug!(src = ?self.src);
+        debug!(dst = ?self.dst);
+        debug!(
+            src_transitions_len = self.src.transitions.len(),
+            dst_transitions_len = self.dst.transitions.len()
+        );
+        if dst_state == self.dst.accept {
+            // truncation: `size_of(Src) >= size_of(Dst)`
+            //
+            // Why is truncation OK to do? Because even though the Src is bigger, all we care about
+            // is whether we have enough data for the Dst to be valid in accordance with what its
+            // type dictates.
+            // For example, in a u8 to `()` transmutation, we have enough data available from the u8
+            // to transmute it to a `()` (though in this case does `()` really need any data to
+            // begin with? It doesn't). Same thing with u8 to fieldless struct.
+            // Now then, why is something like u8 to bool not allowed? That is not because the bool
+            // is smaller in size, but rather because those 2 bits that we are re-interpreting from
+            // the u8 could introduce invalid states for the bool type.
+            //
+            // So, if it's possible to transmute to a smaller Dst by truncating, and we can guarantee
+            // that none of the actually-used data can introduce an invalid state for Dst's type, we
+            // are able to safely transmute, even with truncation.
+            Answer::Yes
+        } else if src_state == self.src.accept {
+            // extension: `size_of(Src) <= size_of(Dst)`
+            if let Some(dst_state_prime) = self.dst.get_uninit_edge_dst(dst_state) {
+                self.answer_memo(cache, src_state, dst_state_prime)
+            } else {
+                Answer::No(Reason::DstIsTooBig)
+            }
+        } else {
+            let src_quantifier = if self.assume.validity {
+                // if the compiler may assume that the programmer is doing additional validity checks,
+                // (e.g.: that `src != 3u8` when the destination type is `bool`)
+                // then there must exist at least one transition out of `src_state` such that the transmute is viable...
+                Quantifier::ThereExists
+            } else {
+                // if the compiler cannot assume that the programmer is doing additional validity checks,
+                // then for all transitions out of `src_state`, such that the transmute is viable...
+                // then there must exist at least one transition out of `dst_state` such that the transmute is viable...
+                Quantifier::ForAll
+            };
+
+            let bytes_answer = src_quantifier.apply(
+                union(self.src.bytes_from(src_state), self.dst.bytes_from(dst_state)).filter_map(
+                    |(_range, (src_state_prime, dst_state_prime))| {
+                        match (src_state_prime, dst_state_prime) {
+                            // No matching transitions in `src`. Skip.
+                            (None, _) => None,
+                            // No matching transitions in `dst`. Fail.
+                            (Some(_), None) => Some(Answer::No(Reason::DstIsBitIncompatible)),
+                            // Matching transitions. Continue with successor states.
+                            (Some(src_state_prime), Some(dst_state_prime)) => {
+                                Some(self.answer_memo(cache, src_state_prime, dst_state_prime))
+                            }
+                        }
+                    },
+                ),
+            );
+
+            // The below early returns reflect how this code would behave:
+            //   if self.assume.validity {
+            //       or(bytes_answer, refs_answer)
+            //   } else {
+            //       and(bytes_answer, refs_answer)
+            //   }
+            // ...if `refs_answer` was computed lazily. The below early
+            // returns can be deleted without impacting the correctness of
+            // the algorithm; only its performance.
+            debug!(?bytes_answer);
+            match bytes_answer {
+                Answer::No(_) if !self.assume.validity => return bytes_answer,
+                Answer::Yes if self.assume.validity => return bytes_answer,
+                _ => {}
+            };
+
+            let refs_answer = src_quantifier.apply(
+                // for each reference transition out of `src_state`...
+                self.src.refs_from(src_state).map(|(src_ref, src_state_prime)| {
+                    // ...there exists a reference transition out of `dst_state`...
+                    Quantifier::ThereExists.apply(self.dst.refs_from(dst_state).map(
+                        |(dst_ref, dst_state_prime)| {
+                            if !src_ref.is_mutable() && dst_ref.is_mutable() {
+                                Answer::No(Reason::DstIsMoreUnique)
+                            } else if !self.assume.alignment
+                                && src_ref.min_align() < dst_ref.min_align()
+                            {
+                                Answer::No(Reason::DstHasStricterAlignment {
+                                    src_min_align: src_ref.min_align(),
+                                    dst_min_align: dst_ref.min_align(),
+                                })
+                            } else if dst_ref.size() > src_ref.size() {
+                                Answer::No(Reason::DstRefIsTooBig { src: src_ref, dst: dst_ref })
+                            } else {
+                                // ...such that `src` is transmutable into `dst`, if
+                                // `src_ref` is transmutability into `dst_ref`.
+                                and(
+                                    Answer::If(Condition::IfTransmutable {
+                                        src: src_ref,
+                                        dst: dst_ref,
+                                    }),
+                                    self.answer_memo(cache, src_state_prime, dst_state_prime),
+                                )
+                            }
+                        },
+                    ))
+                }),
+            );
+
+            if self.assume.validity {
+                or(bytes_answer, refs_answer)
+            } else {
+                and(bytes_answer, refs_answer)
+            }
         }
     }
 }

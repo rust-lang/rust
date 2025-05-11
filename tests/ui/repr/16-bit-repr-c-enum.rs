@@ -1,8 +1,9 @@
+//@ add-core-stubs
 //@ build-pass
 //@ revisions: avr msp430
 //
 //@ [avr] needs-llvm-components: avr
-//@ [avr] compile-flags: --target=avr-unknown-gnu-atmega328 --crate-type=rlib
+//@ [avr] compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
 #![feature(no_core, lang_items, intrinsics, staged_api, rustc_attrs)]
@@ -10,6 +11,9 @@
 #![crate_type = "lib"]
 #![stable(feature = "intrinsics_for_test", since = "3.3.3")]
 #![allow(dead_code)]
+
+extern crate minicore;
+use minicore::*;
 
 // Test that the repr(C) attribute doesn't break compilation
 // Previous bad assumption was that 32-bit enum default width is fine on msp430, avr
@@ -24,15 +28,7 @@ enum Foo {
 #[stable(feature = "intrinsics_for_test", since = "3.3.3")]
 #[rustc_const_stable(feature = "intrinsics_for_test", since = "3.3.3")]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-const fn size_of<T>() -> usize {
-    loop {}
-}
-
-#[lang="sized"]
-trait Sized {}
-#[lang="copy"]
-trait Copy {}
+const fn size_of<T>() -> usize;
 
 const EXPECTED: usize = 2;
 const ACTUAL: usize = size_of::<Foo>();

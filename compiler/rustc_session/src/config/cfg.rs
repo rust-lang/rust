@@ -9,7 +9,7 @@
 //!
 //! ## Adding a new cfg
 //!
-//! Adding a new feature requires two new symbols one for the cfg it-self
+//! Adding a new feature requires two new symbols one for the cfg itself
 //! and the second one for the unstable feature gate, those are defined in
 //! `rustc_span::symbol`.
 //!
@@ -29,7 +29,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::EXPLICIT_BUILTIN_CFGS_IN_FLAGS;
 use rustc_span::{Symbol, sym};
-use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, TARGETS, Target, TargetTuple};
+use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, Target};
 
 use crate::Session;
 use crate::config::{CrateType, FmtDebug};
@@ -119,6 +119,7 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             (sym::overflow_checks, None) => disallow(cfg, "-C overflow-checks"),
             (sym::debug_assertions, None) => disallow(cfg, "-C debug-assertions"),
             (sym::ub_checks, None) => disallow(cfg, "-Z ub-checks"),
+            (sym::contract_checks, None) => disallow(cfg, "-Z contract-checks"),
             (sym::sanitize, None | Some(_)) => disallow(cfg, "-Z sanitizer"),
             (
                 sym::sanitizer_cfi_generalize_pointers | sym::sanitizer_cfi_normalize_integers,
@@ -141,8 +142,13 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_has_atomic, Some(_))
             | (sym::target_has_atomic_equal_alignment, Some(_))
             | (sym::target_has_atomic_load_store, Some(_))
+            | (sym::target_has_reliable_f16, None | Some(_))
+            | (sym::target_has_reliable_f16_math, None | Some(_))
+            | (sym::target_has_reliable_f128, None | Some(_))
+            | (sym::target_has_reliable_f128_math, None | Some(_))
             | (sym::target_thread_local, None) => disallow(cfg, "--target"),
             (sym::fmt_debug, None | Some(_)) => disallow(cfg, "-Z fmt-debug"),
+            (sym::emscripten_wasm_eh, None | Some(_)) => disallow(cfg, "-Z emscripten_wasm_eh"),
             _ => {}
         }
     }
@@ -295,6 +301,15 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         ins_none!(sym::ub_checks);
     }
 
+    // Nightly-only implementation detail for the `panic_unwind` and `unwind` crates.
+    if sess.is_nightly_build() && sess.opts.unstable_opts.emscripten_wasm_eh {
+        ins_none!(sym::emscripten_wasm_eh);
+    }
+
+    if sess.contract_checks() {
+        ins_none!(sym::contract_checks);
+    }
+
     ret
 }
 
@@ -331,6 +346,11 @@ impl CheckCfg {
         // NOTE: This should be kept in sync with `default_configuration`.
         // Note that symbols inserted conditionally in `default_configuration`
         // are inserted unconditionally here.
+        //
+        // One exception is the `test` cfg which is consider to be a "user-space"
+        // cfg, despite being also set by in `default_configuration` above.
+        // It allows the build system to "deny" using the config by not marking it
+        // as expected (e.g. `lib.test = false` for Cargo).
         //
         // When adding a new config here you should also update
         // `tests/ui/check-cfg/well-known-values.rs` (in order to test the
@@ -411,16 +431,12 @@ impl CheckCfg {
                     Some(values_target_os),
                     Some(values_target_pointer_width),
                     Some(values_target_vendor),
-                ] = self.expecteds.get_many_mut(VALUES)
+                ] = self.expecteds.get_disjoint_mut(VALUES)
                 else {
                     panic!("unable to get all the check-cfg values buckets");
                 };
 
-                for target in TARGETS
-                    .iter()
-                    .map(|target| Target::expect_builtin(&TargetTuple::from_tuple(target)))
-                    .chain(iter::once(current_target.clone()))
-                {
+                for target in Target::builtins().chain(iter::once(current_target.clone())) {
                     values_target_abi.insert(Symbol::intern(&target.options.abi));
                     values_target_arch.insert(Symbol::intern(&target.arch));
                     values_target_endian.insert(Symbol::intern(target.options.endian.as_str()));
@@ -453,9 +469,8 @@ impl CheckCfg {
 
         ins!(sym::target_thread_local, no_values);
 
-        ins!(sym::test, no_values);
-
         ins!(sym::ub_checks, no_values);
+        ins!(sym::contract_checks, no_values);
 
         ins!(sym::unix, no_values);
         ins!(sym::windows, no_values);

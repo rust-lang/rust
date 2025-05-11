@@ -8,7 +8,6 @@ use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
 use rustc_index::IndexVec;
 use rustc_macros::{TypeFoldable, TypeVisitable};
-use rustc_middle::infer::unify_key::{RegionVariableValue, RegionVidKey};
 use rustc_middle::ty::{self, ReBound, ReStatic, ReVar, Region, RegionVid, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument};
@@ -17,6 +16,7 @@ use self::CombineMapType::*;
 use self::UndoLog::*;
 use super::{MiscVariable, RegionVariableOrigin, Rollback, SubregionOrigin};
 use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, Snapshot};
+use crate::infer::unify_key::{RegionVariableValue, RegionVidKey};
 
 mod leak_check;
 
@@ -463,7 +463,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         // cannot add constraints once regions are resolved
         debug!("origin = {:#?}", origin);
 
-        match (*sub, *sup) {
+        match (sub.kind(), sup.kind()) {
             (ReBound(..), _) | (_, ReBound(..)) => {
                 span_bug!(origin.span(), "cannot relate bound region: {:?} <= {:?}", sub, sup);
             }
@@ -595,7 +595,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     pub fn universe(&mut self, region: Region<'tcx>) -> ty::UniverseIndex {
-        match *region {
+        match region.kind() {
             ty::ReStatic
             | ty::ReErased
             | ty::ReLateParam(..)
@@ -618,9 +618,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             RegionVid::from(value_count)..RegionVid::from(self.storage.unification_table.len());
         (
             range.clone(),
-            (range.start.index()..range.end.index())
-                .map(|index| self.storage.var_infos[ty::RegionVid::from(index)].origin)
-                .collect(),
+            (range.start..range.end).map(|index| self.storage.var_infos[index].origin).collect(),
         )
     }
 

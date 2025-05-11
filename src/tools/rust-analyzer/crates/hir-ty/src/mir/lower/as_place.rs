@@ -1,6 +1,6 @@
 //! MIR lowering for places
 
-use crate::mir::MutBorrowKind;
+use crate::mir::{MutBorrowKind, Operand, OperandKind};
 
 use super::*;
 use hir_def::FunctionId;
@@ -136,10 +136,9 @@ impl MirLowerCtx<'_> {
         match &self.body.exprs[expr_id] {
             Expr::Path(p) => {
                 let resolver_guard =
-                    self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr_id);
+                    self.resolver.update_to_inner_scope(self.db, self.owner, expr_id);
                 let hygiene = self.body.expr_path_hygiene(expr_id);
-                let resolved =
-                    self.resolver.resolve_path_in_value_ns_fully(self.db.upcast(), p, hygiene);
+                let resolved = self.resolver.resolve_path_in_value_ns_fully(self.db, p, hygiene);
                 self.resolver.reset_to_guard(resolver_guard);
                 let Some(pr) = resolved else {
                     return try_rvalue(self);
@@ -156,7 +155,7 @@ impl MirLowerCtx<'_> {
                         self.push_assignment(
                             current,
                             temp,
-                            Operand::Static(s).into(),
+                            Operand { kind: OperandKind::Static(s), span: None }.into(),
                             expr_id.into(),
                         );
                         Ok(Some((
@@ -194,10 +193,10 @@ impl MirLowerCtx<'_> {
                                 if let Some(deref_trait) =
                                     self.resolve_lang_item(LangItem::DerefMut)?.as_trait()
                                 {
-                                    if let Some(deref_fn) =
-                                        self.db.trait_data(deref_trait).method_by_name(
-                                            &Name::new_symbol_root(sym::deref_mut.clone()),
-                                        )
+                                    if let Some(deref_fn) = self
+                                        .db
+                                        .trait_items(deref_trait)
+                                        .method_by_name(&Name::new_symbol_root(sym::deref_mut))
                                     {
                                         break 'b deref_fn == f;
                                     }
@@ -306,7 +305,7 @@ impl MirLowerCtx<'_> {
         );
         let Some(current) = self.lower_call(
             index_fn_op,
-            Box::new([Operand::Copy(place), index_operand]),
+            Box::new([Operand { kind: OperandKind::Copy(place), span: None }, index_operand]),
             result,
             current,
             false,
@@ -332,14 +331,14 @@ impl MirLowerCtx<'_> {
             (
                 Mutability::Not,
                 LangItem::Deref,
-                Name::new_symbol_root(sym::deref.clone()),
+                Name::new_symbol_root(sym::deref),
                 BorrowKind::Shared,
             )
         } else {
             (
                 Mutability::Mut,
                 LangItem::DerefMut,
-                Name::new_symbol_root(sym::deref_mut.clone()),
+                Name::new_symbol_root(sym::deref_mut),
                 BorrowKind::Mut { kind: MutBorrowKind::Default },
             )
         };
@@ -353,7 +352,7 @@ impl MirLowerCtx<'_> {
             .ok_or(MirLowerError::LangItemNotFound(trait_lang_item))?;
         let deref_fn = self
             .db
-            .trait_data(deref_trait)
+            .trait_items(deref_trait)
             .method_by_name(&trait_method_name)
             .ok_or(MirLowerError::LangItemNotFound(trait_lang_item))?;
         let deref_fn_op = Operand::const_zst(
@@ -366,7 +365,7 @@ impl MirLowerCtx<'_> {
         let mut result: Place = self.temp(target_ty_ref, current, span)?.into();
         let Some(current) = self.lower_call(
             deref_fn_op,
-            Box::new([Operand::Copy(ref_place)]),
+            Box::new([Operand { kind: OperandKind::Copy(ref_place), span: None }]),
             result,
             current,
             false,

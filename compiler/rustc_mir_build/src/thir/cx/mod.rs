@@ -16,22 +16,21 @@ use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
 use tracing::instrument;
 
 use crate::thir::pattern::pat_from_hir;
-use crate::thir::util::UserAnnotatedTyHelpers;
 
+/// Query implementation for [`TyCtxt::thir_body`].
 pub(crate) fn thir_body(
     tcx: TyCtxt<'_>,
     owner_def: LocalDefId,
 ) -> Result<(&Steal<Thir<'_>>, ExprId), ErrorGuaranteed> {
-    let hir = tcx.hir();
-    let body = hir.body_owned_by(owner_def);
-    let mut cx = Cx::new(tcx, owner_def);
+    let body = tcx.hir_body_owned_by(owner_def);
+    let mut cx = ThirBuildCx::new(tcx, owner_def);
     if let Some(reported) = cx.typeck_results.tainted_by_errors {
         return Err(reported);
     }
     let expr = cx.mirror_expr(body.value);
 
     let owner_id = tcx.local_def_id_to_hir_id(owner_def);
-    if let Some(fn_decl) = hir.fn_decl_by_hir_id(owner_id) {
+    if let Some(fn_decl) = tcx.hir_fn_decl_by_hir_id(owner_id) {
         let closure_env_param = cx.closure_env_param(owner_def, owner_id);
         let explicit_params = cx.explicit_params(owner_id, fn_decl, &body);
         cx.thir.params = closure_env_param.into_iter().chain(explicit_params).collect();
@@ -52,8 +51,10 @@ pub(crate) fn thir_body(
     Ok((tcx.alloc_steal_thir(cx.thir), expr))
 }
 
-struct Cx<'tcx> {
+/// Context for lowering HIR to THIR for a single function body (or other kind of body).
+struct ThirBuildCx<'tcx> {
     tcx: TyCtxt<'tcx>,
+    /// The THIR data that this context is building.
     thir: Thir<'tcx>,
 
     typing_env: ty::TypingEnv<'tcx>,
@@ -69,32 +70,37 @@ struct Cx<'tcx> {
     body_owner: DefId,
 }
 
-impl<'tcx> Cx<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Cx<'tcx> {
+impl<'tcx> ThirBuildCx<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Self {
         let typeck_results = tcx.typeck(def);
-        let hir = tcx.hir();
         let hir_id = tcx.local_def_id_to_hir_id(def);
 
-        let body_type = if hir.body_owner_kind(def).is_fn_or_closure() {
-            // fetch the fully liberated fn signature (that is, all bound
-            // types/lifetimes replaced)
-            BodyTy::Fn(typeck_results.liberated_fn_sigs()[hir_id])
-        } else {
-            // Get the revealed type of this const. This is *not* the adjusted
-            // type of its body, which may be a subtype of this type. For
-            // example:
-            //
-            // fn foo(_: &()) {}
-            // static X: fn(&'static ()) = foo;
-            //
-            // The adjusted type of the body of X is `for<'a> fn(&'a ())` which
-            // is not the same as the type of X. We need the type of the return
-            // place to be the type of the constant because NLL typeck will
-            // equate them.
-            BodyTy::Const(typeck_results.node_type(hir_id))
+        let body_type = match tcx.hir_body_owner_kind(def) {
+            rustc_hir::BodyOwnerKind::Fn | rustc_hir::BodyOwnerKind::Closure => {
+                // fetch the fully liberated fn signature (that is, all bound
+                // types/lifetimes replaced)
+                BodyTy::Fn(typeck_results.liberated_fn_sigs()[hir_id])
+            }
+            rustc_hir::BodyOwnerKind::Const { .. } | rustc_hir::BodyOwnerKind::Static(_) => {
+                // Get the revealed type of this const. This is *not* the adjusted
+                // type of its body, which may be a subtype of this type. For
+                // example:
+                //
+                // fn foo(_: &()) {}
+                // static X: fn(&'static ()) = foo;
+                //
+                // The adjusted type of the body of X is `for<'a> fn(&'a ())` which
+                // is not the same as the type of X. We need the type of the return
+                // place to be the type of the constant because NLL typeck will
+                // equate them.
+                BodyTy::Const(typeck_results.node_type(hir_id))
+            }
+            rustc_hir::BodyOwnerKind::GlobalAsm => {
+                BodyTy::GlobalAsm(typeck_results.node_type(hir_id))
+            }
         };
 
-        Cx {
+        Self {
             tcx,
             thir: Thir::new(body_type),
             // FIXME(#132279): We're in a body, we should use a typing
@@ -104,16 +110,16 @@ impl<'tcx> Cx<'tcx> {
             typeck_results,
             rvalue_scopes: &typeck_results.rvalue_scopes,
             body_owner: def.to_def_id(),
-            apply_adjustments: hir
-                .attrs(hir_id)
+            apply_adjustments: tcx
+                .hir_attrs(hir_id)
                 .iter()
-                .all(|attr| attr.name_or_empty() != rustc_span::sym::custom_mir),
+                .all(|attr| !attr.has_name(rustc_span::sym::custom_mir)),
         }
     }
 
     #[instrument(level = "debug", skip(self))]
     fn pattern_from_hir(&mut self, p: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
-        pat_from_hir(self.tcx, self.typing_env, self.typeck_results(), p)
+        pat_from_hir(self.tcx, self.typing_env, self.typeck_results, p)
     }
 
     fn closure_env_param(&self, owner_def: LocalDefId, expr_id: HirId) -> Option<Param<'tcx>> {
@@ -158,12 +164,12 @@ impl<'tcx> Cx<'tcx> {
         })
     }
 
-    fn explicit_params<'a>(
-        &'a mut self,
+    fn explicit_params(
+        &mut self,
         owner_id: HirId,
         fn_decl: &'tcx hir::FnDecl<'tcx>,
         body: &'tcx hir::Body<'tcx>,
-    ) -> impl Iterator<Item = Param<'tcx>> + 'a {
+    ) -> impl Iterator<Item = Param<'tcx>> {
         let fn_sig = self.typeck_results.liberated_fn_sigs()[owner_id];
 
         body.params.iter().enumerate().map(move |(index, param)| {
@@ -184,11 +190,9 @@ impl<'tcx> Cx<'tcx> {
             let ty = if fn_decl.c_variadic && index == fn_decl.inputs.len() {
                 let va_list_did = self.tcx.require_lang_item(LangItem::VaList, Some(param.span));
 
-                self.tcx.type_of(va_list_did).instantiate(self.tcx, &[self
-                    .tcx
-                    .lifetimes
-                    .re_erased
-                    .into()])
+                self.tcx
+                    .type_of(va_list_did)
+                    .instantiate(self.tcx, &[self.tcx.lifetimes.re_erased.into()])
             } else {
                 fn_sig.inputs()[index]
             };
@@ -197,15 +201,12 @@ impl<'tcx> Cx<'tcx> {
             Param { pat: Some(pat), ty, ty_span, self_kind, hir_id: Some(param.hir_id) }
         })
     }
-}
 
-impl<'tcx> UserAnnotatedTyHelpers<'tcx> for Cx<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn typeck_results(&self) -> &ty::TypeckResults<'tcx> {
-        self.typeck_results
+    fn user_args_applied_to_ty_of_hir_id(
+        &self,
+        hir_id: HirId,
+    ) -> Option<ty::CanonicalUserType<'tcx>> {
+        crate::thir::util::user_args_applied_to_ty_of_hir_id(self.tcx, self.typeck_results, hir_id)
     }
 }
 

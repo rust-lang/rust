@@ -2,6 +2,7 @@
 //@ revisions: x64 x32
 //@ [x64]only-x86_64
 //@ [x32]only-x86
+//@ [x32]compile-flags: -Ctarget-feature=+sse2
 
 #![feature(abi_vectorcall)]
 

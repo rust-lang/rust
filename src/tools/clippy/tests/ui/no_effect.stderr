@@ -8,139 +8,139 @@ LL |     0;
    = help: to override `-D warnings` add `#[allow(clippy::no_effect)]`
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:117:5
+  --> tests/ui/no_effect.rs:118:5
    |
 LL |     Tuple(0);
    |     ^^^^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:119:5
+  --> tests/ui/no_effect.rs:121:5
    |
 LL |     Struct { field: 0 };
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:121:5
+  --> tests/ui/no_effect.rs:124:5
    |
 LL |     Struct { ..s };
    |     ^^^^^^^^^^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:123:5
+  --> tests/ui/no_effect.rs:127:5
    |
 LL |     Union { a: 0 };
    |     ^^^^^^^^^^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:125:5
+  --> tests/ui/no_effect.rs:130:5
    |
 LL |     Enum::Tuple(0);
    |     ^^^^^^^^^^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:127:5
+  --> tests/ui/no_effect.rs:133:5
    |
 LL |     Enum::Struct { field: 0 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:129:5
+  --> tests/ui/no_effect.rs:136:5
    |
 LL |     5 + 6;
    |     ^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:131:5
+  --> tests/ui/no_effect.rs:139:5
    |
 LL |     *&42;
    |     ^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:133:5
+  --> tests/ui/no_effect.rs:142:5
    |
 LL |     &6;
    |     ^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:135:5
+  --> tests/ui/no_effect.rs:145:5
    |
 LL |     (5, 6, 7);
    |     ^^^^^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:137:5
+  --> tests/ui/no_effect.rs:148:5
    |
 LL |     ..;
    |     ^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:139:5
+  --> tests/ui/no_effect.rs:151:5
    |
 LL |     5..;
    |     ^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:141:5
+  --> tests/ui/no_effect.rs:154:5
    |
 LL |     ..5;
    |     ^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:143:5
+  --> tests/ui/no_effect.rs:157:5
    |
 LL |     5..6;
    |     ^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:145:5
+  --> tests/ui/no_effect.rs:160:5
    |
 LL |     5..=6;
    |     ^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:147:5
+  --> tests/ui/no_effect.rs:163:5
    |
 LL |     [42, 55];
    |     ^^^^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:149:5
+  --> tests/ui/no_effect.rs:166:5
    |
 LL |     [42, 55][1];
    |     ^^^^^^^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:151:5
+  --> tests/ui/no_effect.rs:169:5
    |
 LL |     (42, 55).1;
    |     ^^^^^^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:153:5
+  --> tests/ui/no_effect.rs:172:5
    |
 LL |     [42; 55];
    |     ^^^^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:155:5
+  --> tests/ui/no_effect.rs:175:5
    |
 LL |     [42; 55][13];
    |     ^^^^^^^^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:158:5
+  --> tests/ui/no_effect.rs:179:5
    |
 LL |     || x += 5;
    |     ^^^^^^^^^^
 
 error: statement with no effect
-  --> tests/ui/no_effect.rs:161:5
+  --> tests/ui/no_effect.rs:183:5
    |
 LL |     FooString { s: s };
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: binding to `_` prefixed variable with no side-effect
-  --> tests/ui/no_effect.rs:163:9
+  --> tests/ui/no_effect.rs:186:9
    |
 LL |     let _unused = 1;
    |         ^^^^^^^
@@ -149,19 +149,19 @@ LL |     let _unused = 1;
    = help: to override `-D warnings` add `#[allow(clippy::no_effect_underscore_binding)]`
 
 error: binding to `_` prefixed variable with no side-effect
-  --> tests/ui/no_effect.rs:166:9
+  --> tests/ui/no_effect.rs:189:9
    |
 LL |     let _penguin = || println!("Some helpful closure");
    |         ^^^^^^^^
 
 error: binding to `_` prefixed variable with no side-effect
-  --> tests/ui/no_effect.rs:168:9
+  --> tests/ui/no_effect.rs:192:9
    |
 LL |     let _duck = Struct { field: 0 };
    |         ^^^^^
 
 error: binding to `_` prefixed variable with no side-effect
-  --> tests/ui/no_effect.rs:170:9
+  --> tests/ui/no_effect.rs:195:9
    |
 LL |     let _cat = [2, 4, 6, 8][2];
    |         ^^^^

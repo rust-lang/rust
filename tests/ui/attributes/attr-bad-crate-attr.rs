@@ -3,7 +3,6 @@
 //!
 //! See <https://doc.rust-lang.org/reference/attributes.html>.
 
-//@ error-pattern: expected item
-
 #![attr = "val"]
 #[attr = "val"] // Unterminated
+//~^ ERROR expected item after attributes

@@ -13,8 +13,9 @@ LL |         let c = async |x| {};
    |                        ^
 help: change the type of the numeric literal from `usize` to `i32`
    |
-LL |         c(2i32).await;
-   |            ~~~
+LL -         c(2usize).await;
+LL +         c(2i32).await;
+   |
 
 error: aborting due to 1 previous error
 

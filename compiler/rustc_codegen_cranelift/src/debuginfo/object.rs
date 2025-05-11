@@ -73,16 +73,19 @@ impl WriteDebugInfo for ObjectProduct {
             }
         };
         self.object
-            .add_relocation(from.0, Relocation {
-                offset: u64::from(reloc.offset),
-                symbol,
-                flags: RelocationFlags::Generic {
-                    kind: reloc.kind,
-                    encoding: RelocationEncoding::Generic,
-                    size: reloc.size * 8,
+            .add_relocation(
+                from.0,
+                Relocation {
+                    offset: u64::from(reloc.offset),
+                    symbol,
+                    flags: RelocationFlags::Generic {
+                        kind: reloc.kind,
+                        encoding: RelocationEncoding::Generic,
+                        size: reloc.size * 8,
+                    },
+                    addend: i64::try_from(symbol_offset).unwrap() + reloc.addend,
                 },
-                addend: i64::try_from(symbol_offset).unwrap() + reloc.addend,
-            })
+            )
             .unwrap();
     }
 }

@@ -20,7 +20,7 @@ pub(crate) struct PrettyFormatter<T> {
 }
 
 impl<T: Write> PrettyFormatter<T> {
-    pub fn new(
+    pub(crate) fn new(
         out: OutputLocation<T>,
         use_color: bool,
         max_name_len: usize,
@@ -31,19 +31,19 @@ impl<T: Write> PrettyFormatter<T> {
     }
 
     #[cfg(test)]
-    pub fn output_location(&self) -> &OutputLocation<T> {
+    pub(crate) fn output_location(&self) -> &OutputLocation<T> {
         &self.out
     }
 
-    pub fn write_ok(&mut self) -> io::Result<()> {
+    pub(crate) fn write_ok(&mut self) -> io::Result<()> {
         self.write_short_result("ok", term::color::GREEN)
     }
 
-    pub fn write_failed(&mut self) -> io::Result<()> {
+    pub(crate) fn write_failed(&mut self) -> io::Result<()> {
         self.write_short_result("FAILED", term::color::RED)
     }
 
-    pub fn write_ignored(&mut self, message: Option<&'static str>) -> io::Result<()> {
+    pub(crate) fn write_ignored(&mut self, message: Option<&'static str>) -> io::Result<()> {
         if let Some(message) = message {
             self.write_short_result(&format!("ignored, {message}"), term::color::YELLOW)
         } else {
@@ -51,15 +51,15 @@ impl<T: Write> PrettyFormatter<T> {
         }
     }
 
-    pub fn write_time_failed(&mut self) -> io::Result<()> {
+    pub(crate) fn write_time_failed(&mut self) -> io::Result<()> {
         self.write_short_result("FAILED (time limit exceeded)", term::color::RED)
     }
 
-    pub fn write_bench(&mut self) -> io::Result<()> {
+    pub(crate) fn write_bench(&mut self) -> io::Result<()> {
         self.write_pretty("bench", term::color::CYAN)
     }
 
-    pub fn write_short_result(
+    pub(crate) fn write_short_result(
         &mut self,
         result: &str,
         color: term::color::Color,
@@ -67,7 +67,7 @@ impl<T: Write> PrettyFormatter<T> {
         self.write_pretty(result, color)
     }
 
-    pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
+    pub(crate) fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
         match self.out {
             OutputLocation::Pretty(ref mut term) => {
                 if self.use_color {
@@ -86,7 +86,7 @@ impl<T: Write> PrettyFormatter<T> {
         }
     }
 
-    pub fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
+    pub(crate) fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
         let s = s.as_ref();
         self.out.write_all(s.as_bytes())?;
         self.out.flush()
@@ -154,15 +154,15 @@ impl<T: Write> PrettyFormatter<T> {
         Ok(())
     }
 
-    pub fn write_successes(&mut self, state: &ConsoleTestState) -> io::Result<()> {
+    pub(crate) fn write_successes(&mut self, state: &ConsoleTestState) -> io::Result<()> {
         self.write_results(&state.not_failures, "successes")
     }
 
-    pub fn write_failures(&mut self, state: &ConsoleTestState) -> io::Result<()> {
+    pub(crate) fn write_failures(&mut self, state: &ConsoleTestState) -> io::Result<()> {
         self.write_results(&state.failures, "failures")
     }
 
-    pub fn write_time_failures(&mut self, state: &ConsoleTestState) -> io::Result<()> {
+    pub(crate) fn write_time_failures(&mut self, state: &ConsoleTestState) -> io::Result<()> {
         self.write_results(&state.time_failures, "failures (time limit exceeded)")
     }
 

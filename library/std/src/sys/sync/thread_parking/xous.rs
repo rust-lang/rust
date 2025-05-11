@@ -2,8 +2,8 @@ use crate::os::xous::ffi::{blocking_scalar, scalar};
 use crate::os::xous::services::{TicktimerScalar, ticktimer_server};
 use crate::pin::Pin;
 use crate::ptr;
-use crate::sync::atomic::AtomicI8;
 use crate::sync::atomic::Ordering::{Acquire, Release};
+use crate::sync::atomic::{Atomic, AtomicI8};
 use crate::time::Duration;
 
 const NOTIFIED: i8 = 1;
@@ -11,7 +11,7 @@ const EMPTY: i8 = 0;
 const PARKED: i8 = -1;
 
 pub struct Parker {
-    state: AtomicI8,
+    state: Atomic<i8>,
 }
 
 impl Parker {

@@ -1,4 +1,4 @@
-//@ compile-flags: -Coverflow-checks=no -O
+//@ compile-flags: -Coverflow-checks=no -Copt-level=3
 //@ revisions: YES NO
 //@ [YES]compile-flags: -Zfewer-names=yes
 //@ [NO] compile-flags: -Zfewer-names=no

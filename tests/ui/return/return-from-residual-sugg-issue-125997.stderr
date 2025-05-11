@@ -6,7 +6,6 @@ LL | fn test1() {
 LL |     let mut _file = File::create("foo.txt")?;
    |                                            ^ cannot use the `?` operator in a function that returns `()`
    |
-   = help: the trait `FromResidual<Result<Infallible, std::io::Error>>` is not implemented for `()`
 help: consider adding return type
    |
 LL ~ fn test1() -> Result<(), Box<dyn std::error::Error>> {
@@ -23,7 +22,6 @@ LL | fn test2() {
 LL |     let mut _file = File::create("foo.txt")?;
    |                                            ^ cannot use the `?` operator in a function that returns `()`
    |
-   = help: the trait `FromResidual<Result<Infallible, std::io::Error>>` is not implemented for `()`
 help: consider adding return type
    |
 LL ~ fn test2() -> Result<(), Box<dyn std::error::Error>> {
@@ -41,7 +39,6 @@ LL |     fn test4(&self) {
 LL |         let mut _file = File::create("foo.txt")?;
    |                                                ^ cannot use the `?` operator in a method that returns `()`
    |
-   = help: the trait `FromResidual<Result<Infallible, std::io::Error>>` is not implemented for `()`
 help: consider adding return type
    |
 LL ~     fn test4(&self) -> Result<(), Box<dyn std::error::Error>> {
@@ -59,7 +56,6 @@ LL |     fn test5(&self) {
 LL |         let mut _file = File::create("foo.txt")?;
    |                                                ^ cannot use the `?` operator in a method that returns `()`
    |
-   = help: the trait `FromResidual<Result<Infallible, std::io::Error>>` is not implemented for `()`
 help: consider adding return type
    |
 LL ~     fn test5(&self) -> Result<(), Box<dyn std::error::Error>> {
@@ -78,7 +74,6 @@ LL | fn main() {
 LL |     let mut _file = File::create("foo.txt")?;
    |                                            ^ cannot use the `?` operator in a function that returns `()`
    |
-   = help: the trait `FromResidual<Result<Infallible, std::io::Error>>` is not implemented for `()`
 help: consider adding return type
    |
 LL ~ fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -99,7 +94,6 @@ LL |             let mut _file = File::create("foo.txt")?;
 LL |     mac!();
    |     ------ in this macro invocation
    |
-   = help: the trait `FromResidual<Result<Infallible, std::io::Error>>` is not implemented for `()`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider adding return type
    |

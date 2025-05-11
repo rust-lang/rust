@@ -7,11 +7,10 @@
 
 use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
-// FIXME: Remove this import and import via `traits::solve`.
-pub use rustc_type_ir::solve::NoSolution;
 
 use crate::error::DropCheckOverflow;
 use crate::infer::canonical::{Canonical, CanonicalQueryInput, QueryResponse};
+pub use crate::traits::solve::NoSolution;
 use crate::ty::{self, GenericArg, Ty, TyCtxt};
 
 pub mod type_op {
@@ -42,8 +41,15 @@ pub mod type_op {
         pub predicate: Predicate<'tcx>,
     }
 
+    /// Normalizes, but not in the new solver.
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
     pub struct Normalize<T> {
+        pub value: T,
+    }
+
+    /// Normalizes, and deeply normalizes in the new solver.
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
+    pub struct DeeplyNormalize<T> {
         pub value: T,
     }
 
@@ -69,17 +75,14 @@ pub type CanonicalPredicateGoal<'tcx> =
 pub type CanonicalTypeOpAscribeUserTypeGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::AscribeUserType<'tcx>>>;
 
-pub type CanonicalTypeOpEqGoal<'tcx> =
-    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::Eq<'tcx>>>;
-
-pub type CanonicalTypeOpSubtypeGoal<'tcx> =
-    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::Subtype<'tcx>>>;
-
 pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::ProvePredicate<'tcx>>>;
 
 pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>;
+
+pub type CanonicalTypeOpDeeplyNormalizeGoal<'tcx, T> =
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::DeeplyNormalize<T>>>;
 
 pub type CanonicalImpliedOutlivesBoundsGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::ImpliedOutlivesBounds<'tcx>>>;
@@ -178,7 +181,7 @@ pub struct MethodAutoderefBadTy<'tcx> {
     pub ty: Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
 }
 
-/// Result of the `normalize_canonicalized_{{,inherent_}projection,weak}_ty` queries.
+/// Result of the `normalize_canonicalized_{{,inherent_}projection,free}_ty` queries.
 #[derive(Clone, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct NormalizationResult<'tcx> {
     /// Result of the normalization.

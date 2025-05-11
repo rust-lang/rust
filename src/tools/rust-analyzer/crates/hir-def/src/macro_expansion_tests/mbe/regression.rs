@@ -582,8 +582,8 @@ macro_rules! arbitrary {
 }
 
 impl <A: Arbitrary> $crate::arbitrary::Arbitrary for Vec<A> {
-    type Parameters = RangedParams1<A::Parameters>;
-    type Strategy = VecStrategy<A::Strategy>;
+    type Parameters = RangedParams1<A::Parameters> ;
+    type Strategy = VecStrategy<A::Strategy> ;
     fn arbitrary_with(args: Self::Parameters) -> Self::Strategy { {
             let product_unpack![range, a] = args;
             vec(any_with::<A>(a), range)

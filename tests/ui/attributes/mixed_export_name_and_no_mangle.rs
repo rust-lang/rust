@@ -4,7 +4,7 @@
 
 #![warn(unused_attributes)]
 #[no_mangle]
-//~^ WARN `#[no_mangle]` attribute may not be used in combination with `#[export_name]` [unused_attributes]
+//~^ WARN `#[unsafe(no_mangle)]` attribute may not be used in combination with `#[export_name]` [unused_attributes]
 #[export_name = "foo"]
 pub fn bar() {}
 

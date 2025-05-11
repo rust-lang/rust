@@ -1,12 +1,9 @@
 //@ run-pass
-//@ ignore-sgx not supported
-//@ ignore-emscripten
-// FIXME: test hangs on emscripten
-#![allow(deprecated)]
-#![allow(unused_imports)]
+//@ needs-threads
+//@ ignore-emscripten (FIXME: test hangs on emscripten)
 
-use std::thread;
+#![allow(deprecated)]
 
 fn main() {
-    thread::sleep_ms(250);
+    std::thread::sleep_ms(250);
 }

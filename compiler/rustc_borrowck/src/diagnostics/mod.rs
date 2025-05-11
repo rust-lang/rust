@@ -4,36 +4,37 @@ use std::collections::BTreeMap;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{Applicability, Diag, MultiSpan};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, MultiSpan, listify};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{self as hir, CoroutineKind, LangItem};
 use rustc_index::IndexSlice;
-use rustc_infer::infer::BoundRegionConversionTime;
+use rustc_infer::infer::{BoundRegionConversionTime, NllRegionVariableOrigin};
 use rustc_infer::traits::SelectionError;
 use rustc_middle::bug;
-use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
-    AggregateKind, CallSource, ConstOperand, FakeReadCause, Local, LocalInfo, LocalKind, Location,
-    Operand, Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    AggregateKind, CallSource, ConstOperand, ConstraintCategory, FakeReadCause, Local, LocalInfo,
+    LocalKind, Location, Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, Statement,
+    StatementKind, Terminator, TerminatorKind, find_self_call,
 };
 use rustc_middle::ty::print::Print;
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_middle::util::{CallDesugaringKind, call_kind};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveOutIndex};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::error_reporting::traits::call_kind::{CallDesugaringKind, call_kind};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
-    FulfillmentErrorCode, type_known_to_meet_bound_modulo_regions,
+    FulfillmentError, FulfillmentErrorCode, type_known_to_meet_bound_modulo_regions,
 };
 use tracing::debug;
 
 use super::MirBorrowckCtxt;
 use super::borrow_set::BorrowData;
+use crate::constraints::OutlivesConstraint;
 use crate::fluent_generated as fluent;
+use crate::nll::ConstraintDescription;
 use crate::session_diagnostics::{
     CaptureArgLabel, CaptureReasonLabel, CaptureReasonNote, CaptureReasonSuggest, CaptureVarCause,
     CaptureVarKind, CaptureVarPathUseCause, OnClosureNote,
@@ -59,7 +60,7 @@ pub(crate) use mutability_errors::AccessKind;
 pub(crate) use outlives_suggestion::OutlivesSuggestionBuilder;
 pub(crate) use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
 pub(crate) use region_name::{RegionName, RegionNameSource};
-pub(crate) use rustc_middle::util::CallKind;
+pub(crate) use rustc_trait_selection::error_reporting::traits::call_kind::CallKind;
 
 pub(super) struct DescribePlaceOpt {
     including_downcast: bool,
@@ -300,10 +301,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// End-user visible description of `place` if one can be found.
     /// If the place is a temporary for instance, `None` will be returned.
     pub(super) fn describe_place(&self, place_ref: PlaceRef<'tcx>) -> Option<String> {
-        self.describe_place_with_options(place_ref, DescribePlaceOpt {
-            including_downcast: false,
-            including_tuple_field: true,
-        })
+        self.describe_place_with_options(
+            place_ref,
+            DescribePlaceOpt { including_downcast: false, including_tuple_field: true },
+        )
     }
 
     /// End-user visible description of `place` if one can be found. If the place is a temporary
@@ -316,6 +317,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         opt: DescribePlaceOpt,
     ) -> Option<String> {
         let local = place.local;
+        if self.body.local_decls[local]
+            .source_info
+            .span
+            .in_external_macro(self.infcx.tcx.sess.source_map())
+        {
+            return None;
+        }
+
         let mut autoderef_index = None;
         let mut buf = String::new();
         let mut ok = self.append_local_to_string(local, &mut buf);
@@ -366,6 +375,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 ProjectionElem::Downcast(..) => (),
                 ProjectionElem::OpaqueCast(..) => (),
                 ProjectionElem::Subtype(..) => (),
+                ProjectionElem::UnwrapUnsafeBinder(_) => (),
                 ProjectionElem::Field(field, _ty) => {
                     // FIXME(project-rfc_2229#36): print capture precisely here.
                     if let Some(field) = self.is_upvar_field_projection(PlaceRef {
@@ -446,9 +456,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     PlaceRef { local, projection: proj_base }.ty(self.body, self.infcx.tcx)
                 }
                 ProjectionElem::Downcast(..) => place.ty(self.body, self.infcx.tcx),
-                ProjectionElem::Subtype(ty) | ProjectionElem::OpaqueCast(ty) => {
-                    PlaceTy::from_ty(*ty)
-                }
+                ProjectionElem::Subtype(ty)
+                | ProjectionElem::OpaqueCast(ty)
+                | ProjectionElem::UnwrapUnsafeBinder(ty) => PlaceTy::from_ty(*ty),
                 ProjectionElem::Field(_, field_type) => PlaceTy::from_ty(*field_type),
             },
         };
@@ -501,7 +511,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     let var_id =
                         self.infcx.tcx.closure_captures(def_id)[field.index()].get_root_variable();
 
-                    Some(self.infcx.tcx.hir().name(var_id).to_string())
+                    Some(self.infcx.tcx.hir_name(var_id).to_string())
                 }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented
@@ -565,7 +575,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // If we didn't find an overloaded deref or index, then assume it's a
         // built in deref and check the type of the base.
         let base_ty = deref_base.ty(self.body, tcx).ty;
-        if base_ty.is_unsafe_ptr() {
+        if base_ty.is_raw_ptr() {
             BorrowedContentSource::DerefRawPointer
         } else if base_ty.is_mutable_ptr() {
             BorrowedContentSource::DerefMutableRef
@@ -583,7 +593,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // this by hooking into the pretty printer and telling it to label the
         // lifetimes without names with the value `'0`.
         if let ty::Ref(region, ..) = ty.kind() {
-            match **region {
+            match region.kind() {
                 ty::ReBound(_, ty::BoundRegion { kind: br, .. })
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
@@ -603,7 +613,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, Namespace::TypeNS);
 
         let region = if let ty::Ref(region, ..) = ty.kind() {
-            match **region {
+            match region.kind() {
                 ty::ReBound(_, ty::BoundRegion { kind: br, .. })
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
@@ -618,6 +628,51 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         region.print(&mut printer).unwrap();
         printer.into_buffer()
+    }
+
+    /// Add a note to region errors and borrow explanations when higher-ranked regions in predicates
+    /// implicitly introduce an "outlives `'static`" constraint.
+    fn add_placeholder_from_predicate_note<G: EmissionGuarantee>(
+        &self,
+        err: &mut Diag<'_, G>,
+        path: &[OutlivesConstraint<'tcx>],
+    ) {
+        let predicate_span = path.iter().find_map(|constraint| {
+            let outlived = constraint.sub;
+            if let Some(origin) = self.regioncx.definitions.get(outlived)
+                && let NllRegionVariableOrigin::Placeholder(_) = origin.origin
+                && let ConstraintCategory::Predicate(span) = constraint.category
+            {
+                Some(span)
+            } else {
+                None
+            }
+        });
+
+        if let Some(span) = predicate_span {
+            err.span_note(span, "due to current limitations in the borrow checker, this implies a `'static` lifetime");
+        }
+    }
+
+    /// Add a label to region errors and borrow explanations when outlives constraints arise from
+    /// proving a type implements `Sized` or `Copy`.
+    fn add_sized_or_copy_bound_info<G: EmissionGuarantee>(
+        &self,
+        err: &mut Diag<'_, G>,
+        blamed_category: ConstraintCategory<'tcx>,
+        path: &[OutlivesConstraint<'tcx>],
+    ) {
+        for sought_category in [ConstraintCategory::SizedBound, ConstraintCategory::CopyBound] {
+            if sought_category != blamed_category
+                && let Some(sought_constraint) = path.iter().find(|c| c.category == sought_category)
+            {
+                let label = format!(
+                    "requirement occurs due to {}",
+                    sought_category.description().trim_end()
+                );
+                err.span_label(sought_constraint.span, label);
+            }
+        }
     }
 }
 
@@ -661,9 +716,6 @@ impl UseSpans<'_> {
             UseSpans::ClosureUse { args_span: span, .. }
             | UseSpans::PatUse(span)
             | UseSpans::OtherUse(span) => span,
-            UseSpans::FnSelfUse { fn_call_span, kind: CallKind::DerefCoercion { .. }, .. } => {
-                fn_call_span
-            }
             UseSpans::FnSelfUse { var_span, .. } => var_span,
         }
     }
@@ -674,9 +726,6 @@ impl UseSpans<'_> {
             UseSpans::ClosureUse { path_span: span, .. }
             | UseSpans::PatUse(span)
             | UseSpans::OtherUse(span) => span,
-            UseSpans::FnSelfUse { fn_call_span, kind: CallKind::DerefCoercion { .. }, .. } => {
-                fn_call_span
-            }
             UseSpans::FnSelfUse { var_span, .. } => var_span,
         }
     }
@@ -687,9 +736,6 @@ impl UseSpans<'_> {
             UseSpans::ClosureUse { capture_kind_span: span, .. }
             | UseSpans::PatUse(span)
             | UseSpans::OtherUse(span) => span,
-            UseSpans::FnSelfUse { fn_call_span, kind: CallKind::DerefCoercion { .. }, .. } => {
-                fn_call_span
-            }
             UseSpans::FnSelfUse { var_span, .. } => var_span,
         }
     }
@@ -975,12 +1021,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             kind: TerminatorKind::Call { fn_span, call_source, .. }, ..
         }) = &self.body[location.block].terminator
         {
-            let Some((method_did, method_args)) = rustc_middle::util::find_self_call(
-                self.infcx.tcx,
-                self.body,
-                target_temp,
-                location.block,
-            ) else {
+            let Some((method_did, method_args)) =
+                find_self_call(self.infcx.tcx, self.body, target_temp, location.block)
+            else {
                 return normal_ret;
             };
 
@@ -991,7 +1034,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 method_args,
                 *fn_span,
                 call_source.from_hir_call(),
-                Some(self.infcx.tcx.fn_arg_names(method_did)[0]),
+                self.infcx.tcx.fn_arg_idents(method_did)[0],
             );
 
             return FnSelfUse {
@@ -1001,6 +1044,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 kind,
             };
         }
+
         normal_ret
     }
 
@@ -1085,9 +1129,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             def_id, target_place, places
         );
         let hir_id = self.infcx.tcx.local_def_id_to_hir_id(def_id);
-        let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
+        let expr = &self.infcx.tcx.hir_expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
-        if let hir::ExprKind::Closure(&hir::Closure { kind, fn_decl_span, .. }) = expr {
+        if let &hir::ExprKind::Closure(&hir::Closure { kind, fn_decl_span, .. }) = expr {
             for (captured_place, place) in
                 self.infcx.tcx.closure_captures(def_id).iter().zip(places)
             {
@@ -1180,7 +1224,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             .tcx
                             .typeck_root_def_id(self.mir_def_id().to_def_id())
                             .as_local()
-                            .and_then(|def_id| self.infcx.tcx.hir().get_generics(def_id))
+                            .and_then(|def_id| self.infcx.tcx.hir_get_generics(def_id))
                         && let spans = hir_generics
                             .predicates
                             .iter()
@@ -1394,17 +1438,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                             error.obligation.predicate,
                                         )
                                     }
-                                    [errors @ .., last] => {
+                                    _ => {
                                         format!(
                                             "you could `clone` the value and consume it, if the \
-                                             following trait bounds could be satisfied: \
-                                             {} and `{}`",
-                                            errors
-                                                .iter()
-                                                .map(|e| format!("`{}`", e.obligation.predicate))
-                                                .collect::<Vec<_>>()
-                                                .join(", "),
-                                            last.obligation.predicate,
+                                             following trait bounds could be satisfied: {}",
+                                            listify(&errors, |e: &FulfillmentError<'tcx>| format!(
+                                                "`{}`",
+                                                e.obligation.predicate
+                                            ))
+                                            .unwrap(),
                                         )
                                     }
                                 };

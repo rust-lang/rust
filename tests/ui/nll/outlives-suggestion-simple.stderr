@@ -99,6 +99,10 @@ LL |     fn get_bar(&self) -> Bar2 {
    |                - let's call the lifetime of this reference `'1`
 LL |         Bar2::new(&self)
    |         ^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'a`
+   |
+   = note: requirement occurs because of the type `Foo2<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Foo2<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to 9 previous errors
 

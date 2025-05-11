@@ -6,6 +6,7 @@
 //! for pivot selection. Using this as a fallback ensures O(n) worst case running time with
 //! better performance than one would get using heapsort as fallback.
 
+use crate::cfg_match;
 use crate::mem::{self, SizedTypeProperties};
 #[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::pivot::choose_pivot;
@@ -41,10 +42,11 @@ where
         let min_idx = min_index(v, &mut is_less).unwrap();
         v.swap(min_idx, index);
     } else {
-        cfg_if! {
-            if #[cfg(feature = "optimize_for_size")] {
+        cfg_match! {
+            feature = "optimize_for_size" => {
                 median_of_medians(v, &mut is_less, index);
-            } else {
+            }
+            _ => {
                 partition_at_index_loop(v, index, None, &mut is_less);
             }
         }

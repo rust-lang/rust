@@ -1,0 +1,43 @@
+error[E0277]: `?` couldn't convert the error: `E: std::error::Error` is not satisfied
+  --> $DIR/bad-question-mark-on-trait-object.rs:7:13
+   |
+LL | fn foo() -> Result<(), Box<dyn std::error::Error>> {
+   |             -------------------------------------- required `E: std::error::Error` because of this
+LL |     Ok(bar()?)
+   |        -----^ the trait `std::error::Error` is not implemented for `E`
+   |        |
+   |        this has type `Result<_, E>`
+   |
+note: `E` needs to implement `std::error::Error`
+  --> $DIR/bad-question-mark-on-trait-object.rs:1:1
+   |
+LL | struct E;
+   | ^^^^^^^^
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = note: required for `Box<dyn std::error::Error>` to implement `From<E>`
+
+error[E0277]: `?` couldn't convert the error to `X`
+  --> $DIR/bad-question-mark-on-trait-object.rs:18:13
+   |
+LL | fn bat() -> Result<(), X> {
+   |             ------------- expected `X` because of this
+LL |     Ok(bar()?)
+   |        -----^ the trait `From<E>` is not implemented for `X`
+   |        |
+   |        this can't be annotated with `?` because it has type `Result<_, E>`
+   |
+note: `X` needs to implement `From<E>`
+  --> $DIR/bad-question-mark-on-trait-object.rs:4:1
+   |
+LL | struct X;
+   | ^^^^^^^^
+note: alternatively, `E` needs to implement `Into<X>`
+  --> $DIR/bad-question-mark-on-trait-object.rs:1:1
+   |
+LL | struct E;
+   | ^^^^^^^^
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

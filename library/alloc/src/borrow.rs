@@ -32,7 +32,7 @@ where
 /// implementing the `Clone` trait. But `Clone` works only for going from `&T`
 /// to `T`. The `ToOwned` trait generalizes `Clone` to construct owned data
 /// from any borrow of a given type.
-#[cfg_attr(not(test), rustc_diagnostic_item = "ToOwned")]
+#[rustc_diagnostic_item = "ToOwned"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToOwned {
     /// The resulting type after obtaining ownership.
@@ -54,7 +54,7 @@ pub trait ToOwned {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "cloning is often expensive and is not expected to have side effects"]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "to_owned_method")]
+    #[rustc_diagnostic_item = "to_owned_method"]
     fn to_owned(&self) -> Self::Owned;
 
     /// Uses borrowed data to replace owned data, usually by cloning.
@@ -175,7 +175,7 @@ where
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Cow")]
+#[rustc_diagnostic_item = "Cow"]
 pub enum Cow<'a, B: ?Sized + 'a>
 where
     B: ToOwned,
@@ -340,8 +340,18 @@ where
     }
 }
 
+// `Cow<'_, T>` can only implement `DerefPure` if `<T::Owned as Borrow<T>>` (and `BorrowMut<T>`) is trusted.
+// For now, we restrict `DerefPure for Cow<T>` to `T: Sized` (`T as Borrow<T>` is trusted),
+// `str` (`String as Borrow<str>` is trusted) and `[T]` (`Vec<T> as Borrow<[T]>` is trusted).
+// In the future, a `BorrowPure<T>` trait analogous to `DerefPure` might generalize this.
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
-unsafe impl<B: ?Sized + ToOwned> DerefPure for Cow<'_, B> where B::Owned: Borrow<B> {}
+unsafe impl<T: Clone> DerefPure for Cow<'_, T> {}
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl DerefPure for Cow<'_, str> {}
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<T: Clone> DerefPure for Cow<'_, [T]> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B: ?Sized> Eq for Cow<'_, B> where B: Eq + ToOwned {}

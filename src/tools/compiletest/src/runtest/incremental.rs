@@ -65,7 +65,7 @@ impl TestCx<'_> {
 
         // FIXME(#41968): Move this check to tidy?
         if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("compile-pass tests with expected warnings should be moved to ui/");
+            self.fatal("build-pass tests with expected warnings should be moved to ui/");
         }
     }
 
@@ -100,16 +100,8 @@ impl TestCx<'_> {
         self.check_no_compiler_crash(&proc_res, self.props.should_ice);
 
         let output_to_check = self.get_output(&proc_res);
-        let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
-        if !expected_errors.is_empty() {
-            if !self.props.error_patterns.is_empty() || !self.props.regex_error_patterns.is_empty()
-            {
-                self.fatal("both error pattern and expected errors specified");
-            }
-            self.check_expected_errors(expected_errors, &proc_res);
-        } else {
-            self.check_all_error_patterns(&output_to_check, &proc_res, pm);
-        }
+        self.check_expected_errors(&proc_res);
+        self.check_all_error_patterns(&output_to_check, &proc_res);
         if self.props.should_ice {
             match proc_res.status.code() {
                 Some(101) => (),
@@ -137,6 +129,6 @@ impl TestCx<'_> {
 
         let output_to_check = self.get_output(&proc_res);
         self.check_correct_failure_status(&proc_res);
-        self.check_all_error_patterns(&output_to_check, &proc_res, pm);
+        self.check_all_error_patterns(&output_to_check, &proc_res);
     }
 }

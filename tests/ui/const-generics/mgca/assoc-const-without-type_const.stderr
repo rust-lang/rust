@@ -1,0 +1,18 @@
+error: use of trait associated const without `#[type_const]`
+  --> $DIR/assoc-const-without-type_const.rs:8:35
+   |
+LL | fn mk_array<T: Tr>(_x: T) -> [(); T::SIZE] {
+   |                                   ^^^^^^^
+   |
+   = note: the declaration in the trait must be marked with `#[type_const]`
+
+error: use of trait associated const without `#[type_const]`
+  --> $DIR/assoc-const-without-type_const.rs:10:10
+   |
+LL |     [(); T::SIZE]
+   |          ^^^^^^^
+   |
+   = note: the declaration in the trait must be marked with `#[type_const]`
+
+error: aborting due to 2 previous errors
+

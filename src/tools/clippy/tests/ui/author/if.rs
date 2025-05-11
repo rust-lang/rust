@@ -1,4 +1,6 @@
-#[allow(clippy::all)]
+//@ check-pass
+
+#![allow(clippy::all)]
 
 fn main() {
     #[clippy::author]

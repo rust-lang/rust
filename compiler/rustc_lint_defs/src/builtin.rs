@@ -16,7 +16,6 @@ declare_lint_pass! {
     /// that are used by other parts of the compiler.
     HardwiredLints => [
         // tidy-alphabetical-start
-        ABI_UNSUPPORTED_VECTOR_TYPES,
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
         AMBIGUOUS_GLOB_IMPORTS,
@@ -27,7 +26,6 @@ declare_lint_pass! {
         BARE_TRAIT_OBJECTS,
         BINDINGS_WITH_VARIANT_NAME,
         BREAK_WITH_LABEL_AND_LOOP,
-        CENUM_IMPL_DROP_CAST,
         COHERENCE_LEAK_CHECK,
         CONFLICTING_REPR_HINTS,
         CONST_EVALUATABLE_UNCHECKED,
@@ -60,6 +58,7 @@ declare_lint_pass! {
         LARGE_ASSIGNMENTS,
         LATE_BOUND_LIFETIME_ARGUMENTS,
         LEGACY_DERIVE_HELPERS,
+        LINKER_MESSAGES,
         LONG_RUNNING_CONST_EVAL,
         LOSSY_PROVENANCE_CASTS,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
@@ -73,14 +72,12 @@ declare_lint_pass! {
         NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
         NON_CONTIGUOUS_RANGE_ENDPOINTS,
         NON_EXHAUSTIVE_OMITTED_PATTERNS,
-        ORDER_DEPENDENT_TRAIT_OBJECTS,
         OUT_OF_SCOPE_MACRO_CALLS,
         OVERLAPPING_RANGE_ENDPOINTS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
         PRIVATE_BOUNDS,
         PRIVATE_INTERFACES,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-        PTR_CAST_ADD_AUTO_TO_OBJECT,
         PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         REDUNDANT_IMPORTS,
@@ -101,6 +98,8 @@ declare_lint_pass! {
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
+        SUPERTRAIT_ITEM_SHADOWING_DEFINITION,
+        SUPERTRAIT_ITEM_SHADOWING_USAGE,
         TAIL_EXPR_DROP_ORDER,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
@@ -110,7 +109,6 @@ declare_lint_pass! {
         UNCONDITIONAL_PANIC,
         UNCONDITIONAL_RECURSION,
         UNCOVERED_PARAM_IN_PROJECTION,
-        UNDEFINED_NAKED_FUNCTION_ABI,
         UNEXPECTED_CFGS,
         UNFULFILLED_LINT_EXPECTATIONS,
         UNINHABITED_STATIC,
@@ -119,6 +117,7 @@ declare_lint_pass! {
         UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
         UNNAMEABLE_TEST_ITEMS,
         UNNAMEABLE_TYPES,
+        UNNECESSARY_TRANSMUTES,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
         UNSAFE_ATTR_OUTSIDE_UNSAFE,
@@ -1425,7 +1424,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,compile_fail,edition2021
     /// macro_rules! foo {
     ///    () => {};
     ///    ($name) => { };
@@ -1498,42 +1497,6 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #42868 <https://github.com/rust-lang/rust/issues/42868>",
-    };
-}
-
-declare_lint! {
-    /// The `order_dependent_trait_objects` lint detects a trait coherency
-    /// violation that would allow creating two trait impls for the same
-    /// dynamic trait object involving marker traits.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// pub trait Trait {}
-    ///
-    /// impl Trait for dyn Send + Sync { }
-    /// impl Trait for dyn Sync + Send { }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// A previous bug caused the compiler to interpret traits with different
-    /// orders (such as `Send + Sync` and `Sync + Send`) as distinct types
-    /// when they were intended to be treated the same. This allowed code to
-    /// define separate trait implementations when there should be a coherence
-    /// error. This is a [future-incompatible] lint to transition this to a
-    /// hard error in the future. See [issue #56484] for more details.
-    ///
-    /// [issue #56484]: https://github.com/rust-lang/rust/issues/56484
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub ORDER_DEPENDENT_TRAIT_OBJECTS,
-    Deny,
-    "trait-object types were treated as different depending on marker-trait order",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #56484 <https://github.com/rust-lang/rust/issues/56484>",
     };
 }
 
@@ -2389,37 +2352,11 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `soft_unstable` lint detects unstable features that were
-    /// unintentionally allowed on stable.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #[cfg(test)]
-    /// extern crate test;
-    ///
-    /// #[bench]
-    /// fn name(b: &mut test::Bencher) {
-    ///     b.iter(|| 123)
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The [`bench` attribute] was accidentally allowed to be specified on
-    /// the [stable release channel]. Turning this to a hard error would have
-    /// broken some projects. This lint allows those projects to continue to
-    /// build correctly when [`--cap-lints`] is used, but otherwise signal an
-    /// error that `#[bench]` should not be used on the stable channel. This
-    /// is a [future-incompatible] lint to transition this to a hard error in
-    /// the future. See [issue #64266] for more details.
+    /// The `soft_unstable` lint detects unstable features that were unintentionally allowed on
+    /// stable. This is a [future-incompatible] lint to transition this to a hard error in the
+    /// future. See [issue #64266] for more details.
     ///
     /// [issue #64266]: https://github.com/rust-lang/rust/issues/64266
-    /// [`bench` attribute]: https://doc.rust-lang.org/nightly/unstable-book/library-features/test.html
-    /// [stable release channel]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
-    /// [`--cap-lints`]: https://doc.rust-lang.org/rustc/lints/levels.html#capping-lints
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub SOFT_UNSTABLE,
     Deny,
@@ -2613,64 +2550,13 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `cenum_impl_drop_cast` lint detects an `as` cast of a field-less
-    /// `enum` that implements [`Drop`].
-    ///
-    /// [`Drop`]: https://doc.rust-lang.org/std/ops/trait.Drop.html
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// # #![allow(unused)]
-    /// enum E {
-    ///     A,
-    /// }
-    ///
-    /// impl Drop for E {
-    ///     fn drop(&mut self) {
-    ///         println!("Drop");
-    ///     }
-    /// }
-    ///
-    /// fn main() {
-    ///     let e = E::A;
-    ///     let i = e as u32;
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Casting a field-less `enum` that does not implement [`Copy`] to an
-    /// integer moves the value without calling `drop`. This can result in
-    /// surprising behavior if it was expected that `drop` should be called.
-    /// Calling `drop` automatically would be inconsistent with other move
-    /// operations. Since neither behavior is clear or consistent, it was
-    /// decided that a cast of this nature will no longer be allowed.
-    ///
-    /// This is a [future-incompatible] lint to transition this to a hard error
-    /// in the future. See [issue #73333] for more details.
-    ///
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    /// [issue #73333]: https://github.com/rust-lang/rust/issues/73333
-    /// [`Copy`]: https://doc.rust-lang.org/std/marker/trait.Copy.html
-    pub CENUM_IMPL_DROP_CAST,
-    Deny,
-    "a C-like enum implementing Drop is cast",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #73333 <https://github.com/rust-lang/rust/issues/73333>",
-    };
-}
-
-declare_lint! {
     /// The `fuzzy_provenance_casts` lint detects an `as` cast between an integer
     /// and a pointer.
     ///
     /// ### Example
     ///
     /// ```rust
+    /// #![feature(strict_provenance_lints)]
     /// #![warn(fuzzy_provenance_casts)]
     ///
     /// fn main() {
@@ -2714,6 +2600,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// #![feature(strict_provenance_lints)]
     /// #![warn(lossy_provenance_casts)]
     ///
     /// fn main() {
@@ -2760,7 +2647,7 @@ declare_lint! {
     ///
     /// ```rust
     /// const fn foo<T>() -> usize {
-    ///     if std::mem::size_of::<*mut T>() < 8 { // size of *mut T does not depend on T
+    ///     if size_of::<*mut T>() < 8 { // size of *mut T does not depend on T
     ///         4
     ///     } else {
     ///         8
@@ -2829,7 +2716,7 @@ declare_lint! {
     ///
     /// ```rust
     /// enum Void {}
-    /// extern {
+    /// unsafe extern {
     ///     static EXTERN: Void;
     /// }
     /// ```
@@ -2914,39 +2801,6 @@ declare_lint! {
     pub USELESS_DEPRECATED,
     Deny,
     "detects deprecation attributes with no effect",
-}
-
-declare_lint! {
-    /// The `undefined_naked_function_abi` lint detects naked function definitions that
-    /// either do not specify an ABI or specify the Rust ABI.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #![feature(asm_experimental_arch, naked_functions)]
-    ///
-    /// use std::arch::naked_asm;
-    ///
-    /// #[naked]
-    /// pub fn default_abi() -> u32 {
-    ///     unsafe { naked_asm!(""); }
-    /// }
-    ///
-    /// #[naked]
-    /// pub extern "Rust" fn rust_abi() -> u32 {
-    ///     unsafe { naked_asm!(""); }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The Rust ABI is currently undefined. Therefore, naked functions should
-    /// specify a non-Rust ABI.
-    pub UNDEFINED_NAKED_FUNCTION_ABI,
-    Warn,
-    "undefined naked function ABI"
 }
 
 declare_lint! {
@@ -3595,7 +3449,7 @@ declare_lint! {
     ///
     /// [Other ABIs]: https://doc.rust-lang.org/reference/items/external-blocks.html#abi
     pub MISSING_ABI,
-    Allow,
+    Warn,
     "No declared ABI for extern declaration"
 }
 
@@ -3831,7 +3685,7 @@ declare_lint! {
     Warn,
     "use of unsupported calling convention for function pointer",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #130260 <https://github.com/rust-lang/rust/issues/130260>",
     };
 }
@@ -4033,6 +3887,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// // This lint is intentionally used to test the compiler's behavior
+    /// // when an unstable lint is enabled without the corresponding feature gate.
     /// #![allow(test_unstable_lint)]
     /// ```
     ///
@@ -4058,7 +3914,7 @@ declare_lint! {
     /// ```rust
     /// #![warn(ffi_unwind_calls)]
     ///
-    /// extern "C-unwind" {
+    /// unsafe extern "C-unwind" {
     ///     fn foo();
     /// }
     ///
@@ -4079,6 +3935,47 @@ declare_lint! {
     pub FFI_UNWIND_CALLS,
     Allow,
     "call to foreign functions or function pointers with FFI-unwind ABI"
+}
+
+declare_lint! {
+    /// The `linker_messages` lint forwards warnings from the linker.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs CLI args, platform-specific)
+    /// #[warn(linker_messages)]
+    /// extern "C" {
+    ///   fn foo();
+    /// }
+    /// fn main () { unsafe { foo(); } }
+    /// ```
+    ///
+    /// On Linux, using `gcc -Wl,--warn-unresolved-symbols` as a linker, this will produce
+    ///
+    /// ```text
+    /// warning: linker stderr: rust-lld: undefined symbol: foo
+    ///          >>> referenced by rust_out.69edbd30df4ae57d-cgu.0
+    ///          >>>               rust_out.rust_out.69edbd30df4ae57d-cgu.0.rcgu.o:(rust_out::main::h3a90094b06757803)
+    ///   |
+    /// note: the lint level is defined here
+    ///  --> warn.rs:1:9
+    ///   |
+    /// 1 | #![warn(linker_messages)]
+    ///   |         ^^^^^^^^^^^^^^^
+    /// warning: 1 warning emitted
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Linkers emit platform-specific and program-specific warnings that cannot be predicted in
+    /// advance by the Rust compiler. Such messages are ignored by default for now. While linker
+    /// warnings could be very useful they have been ignored for many years by essentially all
+    /// users, so we need to do a bit more work than just surfacing their text to produce a clear
+    /// and actionable warning of similar quality to our other diagnostics. See this tracking
+    /// issue for more details: <https://github.com/rust-lang/rust/issues/136096>.
+    pub LINKER_MESSAGES,
+    Allow,
+    "warnings emitted at runtime by the target-specific linker program"
 }
 
 declare_lint! {
@@ -4205,7 +4102,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,compile_fail,edition2021
     /// #![deny(dependency_on_unit_never_type_fallback)]
     /// fn main() {
     ///     if true {
@@ -4362,7 +4259,7 @@ declare_lint! {
     /// ### Explanation
     ///
     /// It is often expected that if you can obtain an object of type `T`, then
-    /// you can name the type `T` as well, this lint attempts to enforce this rule.
+    /// you can name the type `T` as well; this lint attempts to enforce this rule.
     /// The recommended action is to either reexport the type properly to make it nameable,
     /// or document that users are not supposed to be able to name it for one reason or another.
     ///
@@ -4644,44 +4541,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `wasm_c_abi` lint detects crate dependencies that are incompatible
-    /// with future versions of Rust that will emit spec-compliant C ABI.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (needs extern crate)
-    /// #![deny(wasm_c_abi)]
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// error: the following packages contain code that will be rejected by a future version of Rust: wasm-bindgen v0.2.87
-    ///   |
-    /// note: the lint level is defined here
-    ///  --> src/lib.rs:1:9
-    ///   |
-    /// 1 | #![deny(wasm_c_abi)]
-    ///   |         ^^^^^^^^^^
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// Rust has historically emitted non-spec-compliant C ABI. This has caused
-    /// incompatibilities between other compilers and Wasm targets. In a future
-    /// version of Rust this will be fixed and therefore dependencies relying
-    /// on the non-spec-compliant C ABI will stop functioning.
-    pub WASM_C_ABI,
-    Deny,
-    "detects dependencies that are incompatible with the Wasm C ABI",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #71871 <https://github.com/rust-lang/rust/issues/71871>",
-    };
-    crate_level_only
-}
-
-declare_lint! {
     /// The `uncovered_param_in_projection` lint detects a violation of one of Rust's orphan rules for
     /// foreign trait implementations that concerns the use of type parameters inside trait associated
     /// type paths ("projections") whose output may not be a local type that is mistakenly considered
@@ -4799,7 +4658,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,edition2021
     /// #![warn(missing_unsafe_on_extern)]
     /// #![allow(dead_code)]
     ///
@@ -4836,7 +4695,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,edition2021
     /// #![warn(unsafe_attr_outside_unsafe)]
     ///
     /// #[no_mangle]
@@ -4868,58 +4727,6 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
         reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-attributes.html>",
-    };
-}
-
-declare_lint! {
-    /// The `ptr_cast_add_auto_to_object` lint detects casts of raw pointers to trait
-    /// objects, which add auto traits.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,edition2021,compile_fail
-    /// let ptr: *const dyn core::any::Any = &();
-    /// _ = ptr as *const dyn core::any::Any + Send;
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Adding an auto trait can make the vtable invalid, potentially causing
-    /// UB in safe code afterwards. For example:
-    ///
-    /// ```ignore (causes a warning)
-    /// #![feature(arbitrary_self_types)]
-    ///
-    /// trait Trait {
-    ///     fn f(self: *const Self)
-    ///     where
-    ///         Self: Send;
-    /// }
-    ///
-    /// impl Trait for *const () {
-    ///     fn f(self: *const Self) {
-    ///         unreachable!()
-    ///     }
-    /// }
-    ///
-    /// fn main() {
-    ///     let unsend: *const () = &();
-    ///     let unsend: *const dyn Trait = &unsend;
-    ///     let send_bad: *const (dyn Trait + Send) = unsend as _;
-    ///     send_bad.f(); // this crashes, since vtable for `*const ()` does not have an entry for `f`
-    /// }
-    /// ```
-    ///
-    /// Generally you must ensure that vtable is right for the pointer's type,
-    /// before passing the pointer to safe code.
-    pub PTR_CAST_ADD_AUTO_TO_OBJECT,
-    Warn,
-    "detects `as` casts from pointers to `dyn Trait` to pointers to `dyn Trait + Auto`",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #127323 <https://github.com/rust-lang/rust/issues/127323>",
     };
 }
 
@@ -4963,6 +4770,87 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `supertrait_item_shadowing_usage` lint detects when the
+    /// usage of an item that is provided by both a subtrait and supertrait
+    /// is shadowed, preferring the subtrait.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(supertrait_item_shadowing)]
+    /// #![deny(supertrait_item_shadowing_usage)]
+    ///
+    /// trait Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Upstream for T {}
+    ///
+    /// trait Downstream: Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Downstream for T {}
+    ///
+    /// struct MyType;
+    /// MyType.hello();
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// RFC 3624 specified a heuristic in which a supertrait item would be
+    /// shadowed by a subtrait item when ambiguity occurs during item
+    /// selection. In order to mitigate side-effects of this happening
+    /// silently, this lint detects these cases when users want to deny them
+    /// or fix the call sites.
+    pub SUPERTRAIT_ITEM_SHADOWING_USAGE,
+    // FIXME(supertrait_item_shadowing): It is not decided if this should
+    // warn by default at the call site.
+    Allow,
+    "detects when a supertrait item is shadowed by a subtrait item",
+    @feature_gate = supertrait_item_shadowing;
+}
+
+declare_lint! {
+    /// The `supertrait_item_shadowing_definition` lint detects when the
+    /// definition of an item that is provided by both a subtrait and
+    /// supertrait is shadowed, preferring the subtrait.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(supertrait_item_shadowing)]
+    /// #![deny(supertrait_item_shadowing_definition)]
+    ///
+    /// trait Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Upstream for T {}
+    ///
+    /// trait Downstream: Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Downstream for T {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// RFC 3624 specified a heuristic in which a supertrait item would be
+    /// shadowed by a subtrait item when ambiguity occurs during item
+    /// selection. In order to mitigate side-effects of this happening
+    /// silently, this lint detects these cases when users want to deny them
+    /// or fix their trait definitions.
+    pub SUPERTRAIT_ITEM_SHADOWING_DEFINITION,
+    // FIXME(supertrait_item_shadowing): It is not decided if this should
+    // warn by default at the usage site.
+    Allow,
+    "detects when a supertrait item is shadowed by a subtrait item",
+    @feature_gate = supertrait_item_shadowing;
+}
+
+declare_lint! {
     /// The `ptr_to_integer_transmute_in_consts` lint detects pointer to integer
     /// transmute in const functions and associated constants.
     ///
@@ -4994,6 +4882,30 @@ declare_lint! {
     pub PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
     Warn,
     "detects pointer to integer transmutes in const functions and associated constants",
+}
+
+declare_lint! {
+    /// The `unnecessary_transmutes` lint detects transmutations that have safer alternatives.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn bytes_at_home(x: [u8; 4]) -> u32 {
+    ///   unsafe { std::mem::transmute(x) }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Using an explicit method is preferable over calls to
+    /// [`transmute`](https://doc.rust-lang.org/std/mem/fn.transmute.html) as
+    /// they more clearly communicate the intent, are easier to review, and
+    /// are less likely to accidentally result in unsoundness.
+    pub UNNECESSARY_TRANSMUTES,
+    Warn,
+    "detects transmutes that are shadowed by std methods"
 }
 
 declare_lint! {
@@ -5114,67 +5026,44 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `abi_unsupported_vector_types` lint detects function definitions and calls
-    /// whose ABI depends on enabling certain target features, but those features are not enabled.
+    /// The `wasm_c_abi` lint detects usage of the `extern "C"` ABI of wasm that is affected
+    /// by a planned ABI change that has the goal of aligning Rust with the standard C ABI
+    /// of this target.
     ///
     /// ### Example
     ///
-    /// ```rust,ignore (fails on non-x86_64)
-    /// extern "C" fn missing_target_feature(_: std::arch::x86_64::__m256) {
-    ///   todo!()
-    /// }
+    /// ```rust,ignore (needs wasm32-unknown-unknown)
+    /// #[repr(C)]
+    /// struct MyType(i32, i32);
     ///
-    /// #[target_feature(enable = "avx")]
-    /// unsafe extern "C" fn with_target_feature(_: std::arch::x86_64::__m256) {
-    ///   todo!()
-    /// }
-    ///
-    /// fn main() {
-    ///   let v = unsafe { std::mem::zeroed() };
-    ///   unsafe { with_target_feature(v); }
-    /// }
+    /// extern "C" my_fun(x: MyType) {}
     /// ```
+    ///
+    /// This will produce:
     ///
     /// ```text
-    /// warning: ABI error: this function call uses a avx vector type, which is not enabled in the caller
-    ///  --> lint_example.rs:18:12
-    ///   |
-    ///   |   unsafe { with_target_feature(v); }
-    ///   |            ^^^^^^^^^^^^^^^^^^^^^^ function called here
-    ///   |
-    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    ///   = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
-    ///   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
-    ///   = note: `#[warn(abi_unsupported_vector_types)]` on by default
-    ///
-    ///
-    /// warning: ABI error: this function definition uses a avx vector type, which is not enabled
-    ///  --> lint_example.rs:3:1
-    ///   |
-    ///   | pub extern "C" fn with_target_feature(_: std::arch::x86_64::__m256) {
-    ///   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
-    ///   |
-    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    ///   = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
-    ///   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+    /// error: this function function definition is affected by the wasm ABI transition: it passes an argument of non-scalar type `MyType`
+    /// --> $DIR/wasm_c_abi_transition.rs:17:1
+    ///  |
+    ///  | pub extern "C" fn my_fun(_x: MyType) {}
+    ///  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///  |
+    ///  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///  = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
+    ///  = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
     /// ```
-    ///
-    ///
     ///
     /// ### Explanation
     ///
-    /// The C ABI for `__m256` requires the value to be passed in an AVX register,
-    /// which is only possible when the `avx` target feature is enabled.
-    /// Therefore, `missing_target_feature` cannot be compiled without that target feature.
-    /// A similar (but complementary) message is triggered when `with_target_feature` is called
-    /// by a function that does not enable the `avx` target feature.
-    ///
-    /// Note that this lint is very similar to the `-Wpsabi` warning in `gcc`/`clang`.
-    pub ABI_UNSUPPORTED_VECTOR_TYPES,
+    /// Rust has historically implemented a non-spec-compliant C ABI on wasm32-unknown-unknown. This
+    /// has caused incompatibilities with other compilers and Wasm targets. In a future version
+    /// of Rust, this will be fixed, and therefore code relying on the non-spec-compliant C ABI will
+    /// stop functioning.
+    pub WASM_C_ABI,
     Warn,
-    "this function call or definition uses a vector type which is not enabled",
+    "detects code relying on rustc's non-spec-compliant wasm C ABI",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #116558 <https://github.com/rust-lang/rust/issues/116558>",
+        reference: "issue #138762 <https://github.com/rust-lang/rust/issues/138762>",
     };
 }

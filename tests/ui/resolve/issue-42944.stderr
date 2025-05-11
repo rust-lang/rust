@@ -23,8 +23,9 @@ LL |     pub struct Bx(pub(in crate::foo) ());
    |                   ^^^^^^^^^^^^^^^^^^^^^ private field
 help: consider making the field publicly accessible
    |
-LL |     pub struct Bx(pub ());
-   |                   ~~~
+LL -     pub struct Bx(pub(in crate::foo) ());
+LL +     pub struct Bx(pub ());
+   |
 
 error: aborting due to 2 previous errors
 

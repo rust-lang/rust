@@ -10,11 +10,17 @@ note: the lint level is defined here
 LL | #![cfg_attr(deny, deny(invalid_macro_export_arguments))]
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `not_local_inner_macros` isn't a valid `#[macro_export]` argument
+error: invalid `#[macro_export]` argument
   --> $DIR/invalid_macro_export_argument.rs:13:16
    |
 LL | #[macro_export(not_local_inner_macros)]
    |                ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: invalid `#[macro_export]` argument
+  --> $DIR/invalid_macro_export_argument.rs:33:16
+   |
+LL | #[macro_export("blah")]
+   |                ^^^^^^
+
+error: aborting due to 3 previous errors
 

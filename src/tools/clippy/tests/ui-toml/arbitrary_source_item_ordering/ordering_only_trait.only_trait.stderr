@@ -13,25 +13,25 @@ LL |     const B: bool;
    = help: to override `-D warnings` add `#[allow(clippy::arbitrary_source_item_ordering)]`
 
 error: incorrect ordering of items (must be alphabetically ordered)
-  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:37:8
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:38:8
    |
 LL |     fn a();
    |        ^
    |
 note: should be placed before `b`
-  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:36:8
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:37:8
    |
 LL |     fn b();
    |        ^
 
 error: incorrect ordering of trait items (defined order: [Const, Type, Fn])
-  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:43:5
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:45:5
    |
 LL |     const A: bool;
    |     ^^^^^^^^^^^^^^
    |
 note: should be placed before `SomeType`
-  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:41:5
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:43:5
    |
 LL |     type SomeType;
    |     ^^^^^^^^^^^^^^

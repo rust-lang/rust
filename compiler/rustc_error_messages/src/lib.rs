@@ -4,13 +4,12 @@
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(type_alias_impl_trait)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::borrow::Cow;
 use std::error::Error;
 use std::path::{Path, PathBuf};
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::{fmt, fs, io};
 
 use fluent_bundle::FluentResource;
@@ -19,7 +18,7 @@ pub use fluent_bundle::{self, FluentArgs, FluentError, FluentValue};
 use fluent_syntax::parser::ParserError;
 use icu_provider_adapters::fallback::{LocaleFallbackProvider, LocaleFallbacker};
 use intl_memoizer::concurrent::IntlLangMemoizer;
-use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
+use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::Span;
 use tracing::{instrument, trace};
@@ -107,12 +106,12 @@ impl From<Vec<FluentError>> for TranslationBundleError {
 /// (overriding any conflicting messages).
 #[instrument(level = "trace")]
 pub fn fluent_bundle(
-    mut user_provided_sysroot: Option<PathBuf>,
-    mut sysroot_candidates: Vec<PathBuf>,
+    sysroot: PathBuf,
+    sysroot_candidates: Vec<PathBuf>,
     requested_locale: Option<LanguageIdentifier>,
     additional_ftl_path: Option<&Path>,
     with_directionality_markers: bool,
-) -> Result<Option<Lrc<FluentBundle>>, TranslationBundleError> {
+) -> Result<Option<Arc<FluentBundle>>, TranslationBundleError> {
     if requested_locale.is_none() && additional_ftl_path.is_none() {
         return Ok(None);
     }
@@ -142,7 +141,7 @@ pub fn fluent_bundle(
     // If the user requests the default locale then don't try to load anything.
     if let Some(requested_locale) = requested_locale {
         let mut found_resources = false;
-        for sysroot in user_provided_sysroot.iter_mut().chain(sysroot_candidates.iter_mut()) {
+        for mut sysroot in Some(sysroot).into_iter().chain(sysroot_candidates.into_iter()) {
             sysroot.push("share");
             sysroot.push("locale");
             sysroot.push(requested_locale.to_string());
@@ -190,7 +189,7 @@ pub fn fluent_bundle(
         bundle.add_resource_overriding(resource);
     }
 
-    let bundle = Lrc::new(bundle);
+    let bundle = Arc::new(bundle);
     Ok(Some(bundle))
 }
 
@@ -205,15 +204,16 @@ fn register_functions(bundle: &mut FluentBundle) {
 
 /// Type alias for the result of `fallback_fluent_bundle` - a reference-counted pointer to a lazily
 /// evaluated fluent bundle.
-pub type LazyFallbackBundle = Lrc<LazyLock<FluentBundle, impl FnOnce() -> FluentBundle>>;
+pub type LazyFallbackBundle = Arc<LazyLock<FluentBundle, impl FnOnce() -> FluentBundle>>;
 
 /// Return the default `FluentBundle` with standard "en-US" diagnostic messages.
 #[instrument(level = "trace", skip(resources))]
+#[define_opaque(LazyFallbackBundle)]
 pub fn fallback_fluent_bundle(
     resources: Vec<&'static str>,
     with_directionality_markers: bool,
 ) -> LazyFallbackBundle {
-    Lrc::new(LazyLock::new(move || {
+    Arc::new(LazyLock::new(move || {
         let mut fallback_bundle = new_bundle(vec![langid!("en-US")]);
 
         register_functions(&mut fallback_bundle);
@@ -357,9 +357,9 @@ impl From<Cow<'static, str>> for DiagMessage {
 /// subdiagnostic derive refers to typed identifiers that are `DiagMessage`s, so need to be
 /// able to convert between these, as much as they'll be converted back into `DiagMessage`
 /// using `with_subdiagnostic_message` eventually. Don't use this other than for the derive.
-impl Into<SubdiagMessage> for DiagMessage {
-    fn into(self) -> SubdiagMessage {
-        match self {
+impl From<DiagMessage> for SubdiagMessage {
+    fn from(val: DiagMessage) -> Self {
+        match val {
             DiagMessage::Str(s) => SubdiagMessage::Str(s),
             DiagMessage::Translated(s) => SubdiagMessage::Translated(s),
             DiagMessage::FluentIdentifier(id, None) => SubdiagMessage::FluentIdentifier(id),

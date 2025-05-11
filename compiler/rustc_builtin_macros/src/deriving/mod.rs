@@ -23,9 +23,7 @@ pub(crate) mod bounds;
 pub(crate) mod clone;
 pub(crate) mod coerce_pointee;
 pub(crate) mod debug;
-pub(crate) mod decodable;
 pub(crate) mod default;
-pub(crate) mod encodable;
 pub(crate) mod hash;
 
 #[path = "cmp/eq.rs"]
@@ -112,7 +110,6 @@ fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> P<ast::Expr> {
         rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
         span,
         tokens: None,
-        could_be_bare_literal: false,
     }))
 }
 

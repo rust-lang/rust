@@ -1,5 +1,4 @@
 //@ aux-build:my_lib.rs
-//@ error-pattern: error: linking with
 //@ revisions:cfail1 cfail2
 //@ compile-flags:-Z query-dep-graph
 
@@ -10,3 +9,5 @@
 extern crate my_lib;
 
 fn main() {}
+
+//~? ERROR linking with

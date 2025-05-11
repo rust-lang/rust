@@ -1,12 +1,11 @@
 use syntax::{
-    ast,
-    ast::IsString,
     AstToken,
     SyntaxKind::{CHAR, STRING},
-    TextRange, TextSize,
+    TextRange, TextSize, ast,
+    ast::IsString,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists, utils::string_suffix};
 
 // Assist: replace_string_with_char
 //
@@ -34,14 +33,16 @@ pub(crate) fn replace_string_with_char(acc: &mut Assists, ctx: &AssistContext<'_
     let quote_offsets = token.quote_offsets()?;
 
     acc.add(
-        AssistId("replace_string_with_char", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("replace_string_with_char"),
         "Replace string with char",
         target,
         |edit| {
             let (left, right) = quote_offsets.quotes;
+            let suffix = TextSize::of(string_suffix(token.text()).unwrap_or_default());
+            let right = TextRange::new(right.start(), right.end() - suffix);
             edit.replace(left, '\'');
             edit.replace(right, '\'');
-            if value == "'" {
+            if token.text_without_quotes() == "'" {
                 edit.insert(left.end(), '\\');
             }
         },
@@ -68,16 +69,18 @@ pub(crate) fn replace_char_with_string(acc: &mut Assists, ctx: &AssistContext<'_
     let target = token.text_range();
 
     acc.add(
-        AssistId("replace_char_with_string", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("replace_char_with_string"),
         "Replace char with string",
         target,
         |edit| {
-            if token.text() == "'\"'" {
-                edit.replace(token.text_range(), r#""\"""#);
+            let suffix = string_suffix(token.text()).unwrap_or_default();
+            if token.text().starts_with("'\"'") {
+                edit.replace(token.text_range(), format!(r#""\""{suffix}"#));
             } else {
                 let len = TextSize::of('\'');
+                let suffix = TextSize::of(suffix);
                 edit.replace(TextRange::at(target.start(), len), '"');
-                edit.replace(TextRange::at(target.end() - len, len), '"');
+                edit.replace(TextRange::at(target.end() - suffix - len, len), '"');
             }
         },
     )
@@ -101,6 +104,23 @@ fn f() {
             r##"
 fn f() {
     let s = 'c';
+}
+"##,
+        )
+    }
+
+    #[test]
+    fn replace_string_with_char_has_suffix() {
+        check_assist(
+            replace_string_with_char,
+            r#"
+fn f() {
+    let s = "$0c"i32;
+}
+"#,
+            r##"
+fn f() {
+    let s = 'c'i32;
 }
 "##,
         )
@@ -289,6 +309,40 @@ fn f() {
     }
 
     #[test]
+    fn replace_char_with_string_quote_has_suffix() {
+        check_assist(
+            replace_char_with_string,
+            r#"
+fn f() {
+    find($0'"'i32);
+}
+"#,
+            r#"
+fn f() {
+    find("\""i32);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_char_with_string_escaped_quote_has_suffix() {
+        check_assist(
+            replace_char_with_string,
+            r#"
+fn f() {
+    find($0'\"'i32);
+}
+"#,
+            r#"
+fn f() {
+    find("\""i32);
+}
+"#,
+        )
+    }
+
+    #[test]
     fn replace_string_with_char_quote() {
         check_assist(
             replace_string_with_char,
@@ -300,6 +354,91 @@ fn f() {
             r#"
 fn f() {
     find('\'');
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_string_with_escaped_char_quote() {
+        check_assist(
+            replace_string_with_char,
+            r#"
+fn f() {
+    find($0"\'");
+}
+"#,
+            r#"
+fn f() {
+    find('\'');
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_string_with_char_quote_has_suffix() {
+        check_assist(
+            replace_string_with_char,
+            r#"
+fn f() {
+    find($0"'"i32);
+}
+"#,
+            r#"
+fn f() {
+    find('\''i32);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_string_with_escaped_char_quote_has_suffix() {
+        check_assist(
+            replace_string_with_char,
+            r#"
+fn f() {
+    find($0"\'"i32);
+}
+"#,
+            r#"
+fn f() {
+    find('\''i32);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_raw_string_with_char_quote() {
+        check_assist(
+            replace_string_with_char,
+            r#"
+fn f() {
+    find($0r"'");
+}
+"#,
+            r#"
+fn f() {
+    find('\'');
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_string_with_code_escaped_char_quote() {
+        check_assist(
+            replace_string_with_char,
+            r#"
+fn f() {
+    find($0"\x27");
+}
+"#,
+            r#"
+fn f() {
+    find('\x27');
 }
 "#,
         )

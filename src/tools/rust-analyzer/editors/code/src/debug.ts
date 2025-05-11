@@ -6,10 +6,8 @@ import type * as ra from "./lsp_ext";
 import { Cargo } from "./toolchain";
 import type { Ctx } from "./ctx";
 import { createTaskFromRunnable, prepareEnv } from "./run";
-import { execute, isCargoRunnableArgs, unwrapUndefinable } from "./util";
+import { execute, isCargoRunnableArgs, unwrapUndefinable, log, normalizeDriveLetter } from "./util";
 import type { Config } from "./config";
-
-const debugOutput = vscode.window.createOutputChannel("Debug");
 
 // Here we want to keep track on everything that's currently running
 const activeDebugSessionIds: string[] = [];
@@ -22,6 +20,7 @@ export async function makeDebugConfig(ctx: Ctx, runnable: ra.Runnable): Promise<
     if (!debugConfig) return;
 
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", scope);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const configurations = wsLaunchSection.get<any[]>("configurations") || [];
 
     const index = configurations.findIndex((c) => c.name === debugConfig.name);
@@ -46,6 +45,7 @@ export async function startDebugSession(ctx: Ctx, runnable: ra.Runnable): Promis
     let message = "";
 
     const wsLaunchSection = vscode.workspace.getConfiguration("launch");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const configurations = wsLaunchSection.get<any[]>("configurations") || [];
 
     // The runnable label is the name of the test with the "test prefix"
@@ -54,15 +54,14 @@ export async function startDebugSession(ctx: Ctx, runnable: ra.Runnable): Promis
     if (-1 !== index) {
         debugConfig = configurations[index];
         message = " (from launch.json)";
-        debugOutput.clear();
     } else {
         debugConfig = await getDebugConfiguration(ctx.config, runnable);
     }
 
     if (!debugConfig) return false;
 
-    debugOutput.appendLine(`Launching debug configuration${message}:`);
-    debugOutput.appendLine(JSON.stringify(debugConfig, null, 2));
+    log.debug(`Launching debug configuration${message}:`);
+    log.debug(JSON.stringify(debugConfig, null, 2));
     return vscode.debug.startDebugging(undefined, debugConfig);
 }
 
@@ -116,12 +115,8 @@ async function getDebugConfiguration(
         return;
     }
 
-    debugOutput.clear();
-    if (config.debug.openDebugPane) {
-        debugOutput.show(true);
-    }
     // folder exists or RA is not active.
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+
     const workspaceFolders = vscode.workspace.workspaceFolders!;
     const isMultiFolderWorkspace = workspaceFolders.length > 1;
     const firstWorkspace = workspaceFolders[0];
@@ -132,20 +127,14 @@ async function getDebugConfiguration(
               firstWorkspace;
 
     const workspace = unwrapUndefinable(maybeWorkspace);
-    let wsFolder = path.normalize(workspace.uri.fsPath);
-    if (os.platform() === "win32") {
-        // in windows, the drive letter can vary in casing for VSCode, so we gotta normalize that first
-        wsFolder = wsFolder.replace(/^[a-z]:\\/, (c) => c.toUpperCase());
-    }
+    const wsFolder = normalizeDriveLetter(path.normalize(workspace.uri.fsPath));
 
     const workspaceQualifier = isMultiFolderWorkspace ? `:${workspace.name}` : "";
     function simplifyPath(p: string): string {
         // in windows, the drive letter can vary in casing for VSCode, so we gotta normalize that first
-        if (os.platform() === "win32") {
-            p = p.replace(/^[a-z]:\\/, (c) => c.toUpperCase());
-        }
+        p = normalizeDriveLetter(path.normalize(p));
         // see https://github.com/rust-lang/rust-analyzer/pull/5513#issuecomment-663458818 for why this is needed
-        return path.normalize(p).replace(wsFolder, `\${workspaceFolder${workspaceQualifier}}`);
+        return p.replace(wsFolder, `\${workspaceFolder${workspaceQualifier}}`);
     }
 
     const executable = await getDebugExecutable(
@@ -189,8 +178,9 @@ async function getDebugConfiguration(
         sourceFileMap,
     );
     if (debugConfig.type in debugOptions.engineSettings) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const settingsMap = (debugOptions.engineSettings as any)[debugConfig.type];
-        for (var key in settingsMap) {
+        for (const key in settingsMap) {
             debugConfig[key] = settingsMap[key];
         }
     }
@@ -229,7 +219,7 @@ async function discoverSourceFileMap(
         const commitHash = rx.exec(data)?.[1];
         if (commitHash) {
             const rustlib = path.normalize(sysroot + "/lib/rustlib/src/rust");
-            return { source: rustlib, destination: rustlib };
+            return { source: "/rustc/" + commitHash, destination: rustlib };
         }
     }
 
@@ -318,7 +308,7 @@ async function getDebugExecutable(
     runnableArgs: ra.CargoRunnableArgs,
     env: Record<string, string>,
 ): Promise<string> {
-    const cargo = new Cargo(runnableArgs.workspaceRoot || ".", debugOutput, env);
+    const cargo = new Cargo(runnableArgs.workspaceRoot || ".", env);
     const executable = await cargo.executableFromArgs(runnableArgs);
 
     // if we are here, there were no compilation errors.
@@ -409,7 +399,7 @@ function quote(xs: string[]) {
                 return "'" + s.replace(/(['\\])/g, "\\$1") + "'";
             }
             if (/["'\s]/.test(s)) {
-                return '"' + s.replace(/(["\\$`!])/g, "\\$1") + '"';
+                return `"${s.replace(/(["\\$`!])/g, "\\$1")}"`;
             }
             return s.replace(/([A-Za-z]:)?([#!"$&'()*,:;<=>?@[\\\]^`{|}])/g, "$1\\$2");
         })

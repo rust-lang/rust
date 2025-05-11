@@ -173,7 +173,7 @@ fn read_le_u32(r: &mut dyn io::Read) -> io::Result<u32> {
 fn read_byte(r: &mut dyn io::Read) -> io::Result<u8> {
     match r.bytes().next() {
         Some(s) => s,
-        None => Err(io::Error::new(io::ErrorKind::Other, "end of file")),
+        None => Err(io::const_error!(io::ErrorKind::Other, "end of file")),
     }
 }
 

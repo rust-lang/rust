@@ -311,9 +311,6 @@ passes_duplicate_lang_item_crate_depends =
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
-passes_empty_confusables =
-    expected at least one confusable name
-
 passes_export_name =
     attribute should be applied to a free function, impl method or static
     .label = not a free function, impl method or static
@@ -359,14 +356,13 @@ passes_ignored_derived_impls =
 passes_implied_feature_not_exist =
     feature `{$implied_by}` implying `{$feature}` does not exist
 
+passes_incorrect_crate_type = lang items are not allowed in stable dylibs
+
 passes_incorrect_do_not_recommend_args =
     `#[diagnostic::do_not_recommend]` does not expect any arguments
 
 passes_incorrect_do_not_recommend_location =
     `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
-
-passes_incorrect_meta_item = expected a quoted string literal
-passes_incorrect_meta_item_suggestion = consider surrounding this with quotes
 
 passes_incorrect_target =
     `{$name}` lang item must be applied to a {$kind} with {$at_least ->
@@ -389,6 +385,10 @@ passes_inline_ignored_constants =
     .warn = {-passes_previously_accepted}
     .note = {-passes_see_issue(issue: "65833")}
 
+passes_inline_ignored_for_exported =
+    `#[inline]` is ignored on externally exported functions
+    .help = externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`
+
 passes_inline_ignored_function_prototype =
     `#[inline]` is ignored on function prototypes
 
@@ -406,7 +406,7 @@ passes_invalid_attr_at_crate_level =
 passes_invalid_attr_at_crate_level_item =
     the inner attribute doesn't annotate this {$kind}
 
-passes_invalid_macro_export_arguments = `{$name}` isn't a valid `#[macro_export]` argument
+passes_invalid_macro_export_arguments = invalid `#[macro_export]` argument
 
 passes_invalid_macro_export_arguments_too_many_items = `#[macro_export]` can only take 1 or 0 arguments
 
@@ -502,11 +502,6 @@ passes_multiple_rustc_main =
     .first = first `#[rustc_main]` function
     .additional = additional `#[rustc_main]` function
 
-passes_multiple_start_functions =
-    multiple `start` functions
-    .label = multiple `start` functions
-    .previous = previous `#[start]` function here
-
 passes_must_not_suspend =
     `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
     .label = is not a struct, enum, union, or trait
@@ -515,7 +510,7 @@ passes_must_use_no_effect =
     `#[must_use]` has no effect when applied to {$article} {$target}
 
 passes_naked_asm_outside_naked_fn =
-    the `naked_asm!` macro can only be used in functions marked with `#[naked]`
+    the `naked_asm!` macro can only be used in functions marked with `#[unsafe(naked)]`
 
 passes_naked_functions_asm_block =
     naked functions must contain a single `naked_asm!` invocation
@@ -523,9 +518,9 @@ passes_naked_functions_asm_block =
     .label_non_asm = not allowed in naked functions
 
 passes_naked_functions_incompatible_attribute =
-    attribute incompatible with `#[naked]`
-    .label = the `{$attr}` attribute is incompatible with `#[naked]`
-    .naked_attribute = function marked with `#[naked]` here
+    attribute incompatible with `#[unsafe(naked)]`
+    .label = the `{$attr}` attribute is incompatible with `#[unsafe(naked)]`
+    .naked_attribute = function marked with `#[unsafe(naked)]` here
 
 passes_naked_functions_must_naked_asm =
     the `asm!` macro is not allowed in naked functions
@@ -646,15 +641,22 @@ passes_repr_align_greater_than_target_max =
 passes_repr_conflicting =
     conflicting representation hints
 
-passes_repr_ident =
-    meta item in `repr` must be an identifier
-
 passes_rustc_allow_const_fn_unstable =
     attribute should be applied to `const fn`
     .label = not a `const fn`
 
+passes_rustc_const_stable_indirect_pairing =
+    `const_stable_indirect` attribute does not make sense on `rustc_const_stable` function, its behavior is already implied
 passes_rustc_dirty_clean =
     attribute requires -Z query-dep-graph to be enabled
+
+passes_rustc_force_inline =
+    attribute should be applied to a function
+    .label = not a function definition
+
+passes_rustc_force_inline_coro =
+    attribute cannot be applied to a `async`, `gen` or `async gen` function
+    .label = `async`, `gen` or `async gen` function
 
 passes_rustc_layout_scalar_valid_range_arg =
     expected exactly one integer literal argument
@@ -729,6 +731,12 @@ passes_target_feature_on_statement =
     .warn = {-passes_previously_accepted}
     .label = {passes_should_be_applied_to_fn.label}
 
+passes_trait_impl_const_stability_mismatch = const stability on the impl does not match the const stability on the trait
+passes_trait_impl_const_stability_mismatch_impl_stable = this impl is (implicitly) stable...
+passes_trait_impl_const_stability_mismatch_impl_unstable = this impl is unstable...
+passes_trait_impl_const_stability_mismatch_trait_stable = ...but the trait is stable
+passes_trait_impl_const_stability_mismatch_trait_unstable = ...but the trait is unstable
+
 passes_trait_impl_const_stable =
     trait implementations cannot be const stable yet
     .note = see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
@@ -736,8 +744,22 @@ passes_trait_impl_const_stable =
 passes_transparent_incompatible =
     transparent {$target} cannot have other repr hints
 
-passes_undefined_naked_function_abi =
-    Rust ABI is unsupported in naked functions
+passes_unexportable_adt_with_private_fields = ADT types with private fields are not exportable
+    .note = `{$field_name}` is private
+
+passes_unexportable_fn_abi = only functions with "C" ABI are exportable
+
+passes_unexportable_generic_fn = generic functions are not exportable
+
+passes_unexportable_item = {$descr}'s are not exportable
+
+passes_unexportable_priv_item = private items are not exportable
+    .note = is only usable at visibility `{$vis_descr}`
+
+passes_unexportable_type_in_interface = {$desc} with `#[export_stable]` attribute uses type `{$ty}`, which is not exportable
+    .label = not exportable
+
+passes_unexportable_type_repr = types with unstable layout are not exportable
 
 passes_unknown_external_lang_item =
     unknown external lang item: `{$lang_item}`
@@ -768,18 +790,18 @@ passes_unreachable_due_to_uninhabited = unreachable {$descr}
     .label_orig = any code following this expression is unreachable
     .note = this expression has type `{$ty}`, which is uninhabited
 
-passes_unrecognized_field =
-    unrecognized field name `{$name}`
-
-passes_unrecognized_repr_hint =
-    unrecognized representation hint
-    .help = valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+passes_unrecognized_argument =
+    unrecognized argument
 
 passes_unstable_attr_for_already_stable_feature =
     can't mark as unstable using an already stable feature
     .label = this feature is already stable
     .item = the stability attribute annotates this item
     .help = consider removing the attribute
+
+passes_unsupported_attributes_in_where =
+    most attributes are not supported in `where` clauses
+    .help = only `#[cfg]` and `#[cfg_attr]` are supported
 
 passes_unused =
     unused attribute
@@ -790,6 +812,9 @@ passes_unused_assign = value assigned to `{$name}` is never read
 
 passes_unused_assign_passed = value passed to `{$name}` is never read
     .help = maybe it is overwritten before being read?
+
+passes_unused_assign_suggestion =
+    you might have meant to mutate the pointed at value being passed in, instead of changing the reference in the local binding
 
 passes_unused_capture_maybe_capture_ref = value captured by `{$name}` is never read
     .help = did you mean to capture by reference instead?
@@ -805,6 +830,9 @@ passes_unused_duplicate =
 
 passes_unused_empty_lints_note =
     attribute `{$name}` with an empty list has no effect
+
+passes_unused_linker_messages_note =
+    the `linker_messages` lint can only be controlled at the root of a crate that needs to be linked
 
 passes_unused_multiple =
     multiple `{$name}` attributes

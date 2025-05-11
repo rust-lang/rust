@@ -12,7 +12,7 @@ LL |     fn g(mut x: impl Iterator<Item = &()>) -> Option<&'static ()> { x.next(
 help: consider introducing a named lifetime parameter
    |
 LL |     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()> { x.next() }
-   |         ++++                             ~~~                ~~~
+   |         ++++                              ++                 ++
 help: alternatively, you might want to return an owned value
    |
 LL -     fn g(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
@@ -33,7 +33,7 @@ LL |     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&'static ()> { x
 help: consider introducing a named lifetime parameter
    |
 LL |     async fn i<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()> { x.next() }
-   |               ++++                             ~~~                ~~~
+   |               ++++                              ++                 ++
 help: alternatively, you might want to return an owned value
    |
 LL -     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
@@ -41,7 +41,7 @@ LL +     async fn i(mut x: impl Iterator<Item = &()>) -> Option<()> { x.next() }
    |
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:28:58
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:27:58
    |
 LL |     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
    |                                                          ^^ expected named lifetime parameter
@@ -49,12 +49,14 @@ LL |     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() 
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
    |
-LL |     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'static ()> { x.next() }
-   |                                                          ~~~~~~~
+LL -     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
+LL +     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'static ()> { x.next() }
+   |
 help: consider introducing a named lifetime parameter
    |
-LL |     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()> { x.next() }
-   |         ++++                             ~~~                ~~~
+LL -     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
+LL +     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()> { x.next() }
+   |
 help: alternatively, you might want to return an owned value
    |
 LL -     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
@@ -62,7 +64,7 @@ LL +     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<()> { x.next() }
    |
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:38:64
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:37:64
    |
 LL |     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
    |                                                                ^^ expected named lifetime parameter
@@ -70,12 +72,14 @@ LL |     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.n
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
    |
-LL |     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'static ()> { x.next() }
-   |                                                                ~~~~~~~
+LL -     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
+LL +     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'static ()> { x.next() }
+   |
 help: consider introducing a named lifetime parameter
    |
-LL |     async fn i<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()> { x.next() }
-   |               ++++                             ~~~                ~~~
+LL -     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
+LL +     async fn i<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()> { x.next() }
+   |
 help: alternatively, you might want to return an owned value
    |
 LL -     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
@@ -83,7 +87,7 @@ LL +     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<()> { x.next(
    |
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:49:37
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:47:37
    |
 LL |     fn g(mut x: impl Foo) -> Option<&()> { x.next() }
    |                                     ^ expected named lifetime parameter
@@ -96,7 +100,7 @@ LL |     fn g(mut x: impl Foo) -> Option<&'static ()> { x.next() }
 help: consider introducing a named lifetime parameter
    |
 LL |     fn g<'a>(mut x: impl Foo) -> Option<&'a ()> { x.next() }
-   |         ++++                            ~~~
+   |         ++++                             ++
 help: alternatively, you might want to return an owned value
    |
 LL -     fn g(mut x: impl Foo) -> Option<&()> { x.next() }
@@ -104,7 +108,28 @@ LL +     fn g(mut x: impl Foo) -> Option<()> { x.next() }
    |
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:60:41
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:58:39
+   |
+LL |     fn g(mut x: impl Foo<>) -> Option<&()> { x.next() }
+   |                                       ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+   |
+LL |     fn g(mut x: impl Foo<>) -> Option<&'static ()> { x.next() }
+   |                                        +++++++
+help: consider introducing a named lifetime parameter
+   |
+LL |     fn g<'a>(mut x: impl Foo<>) -> Option<&'a ()> { x.next() }
+   |         ++++                               ++
+help: alternatively, you might want to return an owned value
+   |
+LL -     fn g(mut x: impl Foo<>) -> Option<&()> { x.next() }
+LL +     fn g(mut x: impl Foo<>) -> Option<()> { x.next() }
+   |
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:69:41
    |
 LL |     fn g(mut x: impl Foo<()>) -> Option<&()> { x.next() }
    |                                         ^ expected named lifetime parameter
@@ -117,7 +142,7 @@ LL |     fn g(mut x: impl Foo<()>) -> Option<&'static ()> { x.next() }
 help: consider introducing a named lifetime parameter
    |
 LL |     fn g<'a>(mut x: impl Foo<()>) -> Option<&'a ()> { x.next() }
-   |         ++++                                ~~~
+   |         ++++                                 ++
 help: alternatively, you might want to return an owned value
    |
 LL -     fn g(mut x: impl Foo<()>) -> Option<&()> { x.next() }
@@ -125,7 +150,7 @@ LL +     fn g(mut x: impl Foo<()>) -> Option<()> { x.next() }
    |
 
 warning: elided lifetime has a name
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:66:57
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:75:57
    |
 LL | fn resolved_anonymous<'a, T: 'a>(f: impl Fn(&'a str) -> &T) {
    |                       -- lifetime `'a` declared here    ^ this elided lifetime gets resolved as `'a`
@@ -158,16 +183,8 @@ help: consider introducing a named lifetime parameter
 LL |     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&()> { x.next() }
    |         ++++                              ++
 
-error: lifetime may not live long enough
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:19:67
-   |
-LL |     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
-   |     -----------------------------------------------------------   ^^^^^^^^ returning this value requires that `'1` must outlive `'static`
-   |     |
-   |     return type `impl Future<Output = Option<&'static ()>>` contains a lifetime `'1`
-
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:25:35
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:24:35
    |
 LL |     fn f(_: impl Iterator<Item = &'_ ()>) {}
    |                                   ^^ expected named lifetime parameter
@@ -176,11 +193,12 @@ LL |     fn f(_: impl Iterator<Item = &'_ ()>) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
-LL |     fn f<'a>(_: impl Iterator<Item = &'a ()>) {}
-   |         ++++                          ~~
+LL -     fn f(_: impl Iterator<Item = &'_ ()>) {}
+LL +     fn f<'a>(_: impl Iterator<Item = &'a ()>) {}
+   |
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:28:39
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:27:39
    |
 LL |     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
    |                                       ^^ expected named lifetime parameter
@@ -189,19 +207,12 @@ LL |     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() 
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
-LL |     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'_ ()> { x.next() }
-   |         ++++                              ~~
-
-error: lifetime may not live long enough
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:38:73
+LL -     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
+LL +     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'_ ()> { x.next() }
    |
-LL |     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
-   |     -----------------------------------------------------------------   ^^^^^^^^ returning this value requires that `'1` must outlive `'static`
-   |     |
-   |     return type `impl Future<Output = Option<&'static ()>>` contains a lifetime `'1`
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:46:18
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:44:18
    |
 LL |     fn f(_: impl Foo) {}
    |                  ^^^ expected named lifetime parameter
@@ -214,7 +225,7 @@ LL |     fn f<'a>(_: impl Foo<'a>) {}
    |         ++++            ++++
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:49:22
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:47:22
    |
 LL |     fn g(mut x: impl Foo) -> Option<&()> { x.next() }
    |                      ^^^ expected named lifetime parameter
@@ -227,7 +238,33 @@ LL |     fn g<'a>(mut x: impl Foo<'a>) -> Option<&()> { x.next() }
    |         ++++                ++++
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:57:22
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:55:22
+   |
+LL |     fn f(_: impl Foo<>) {}
+   |                      ^ expected named lifetime parameter
+   |
+   = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+help: consider introducing a named lifetime parameter
+   |
+LL |     fn f<'a>(_: impl Foo<'a>) {}
+   |         ++++             ++
+
+error[E0658]: anonymous lifetimes in `impl Trait` are unstable
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:58:26
+   |
+LL |     fn g(mut x: impl Foo<>) -> Option<&()> { x.next() }
+   |                          ^ expected named lifetime parameter
+   |
+   = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+help: consider introducing a named lifetime parameter
+   |
+LL |     fn g<'a>(mut x: impl Foo<'a>) -> Option<&()> { x.next() }
+   |         ++++                 ++
+
+error[E0658]: anonymous lifetimes in `impl Trait` are unstable
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:66:22
    |
 LL |     fn f(_: impl Foo<()>) {}
    |                      ^ expected named lifetime parameter
@@ -240,7 +277,7 @@ LL |     fn f<'a>(_: impl Foo<'a, ()>) {}
    |         ++++             +++
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:60:26
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:69:26
    |
 LL |     fn g(mut x: impl Foo<()>) -> Option<&()> { x.next() }
    |                          ^ expected named lifetime parameter
@@ -252,7 +289,7 @@ help: consider introducing a named lifetime parameter
 LL |     fn g<'a>(mut x: impl Foo<'a, ()>) -> Option<&()> { x.next() }
    |         ++++                 +++
 
-error: aborting due to 16 previous errors; 1 warning emitted
+error: aborting due to 17 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0106, E0658.
 For more information about an error, try `rustc --explain E0106`.

@@ -1,7 +1,7 @@
-use super::once::ExclusiveState;
+use super::poison::once::ExclusiveState;
 use crate::cell::UnsafeCell;
 use crate::mem::ManuallyDrop;
-use crate::ops::Deref;
+use crate::ops::{Deref, DerefMut};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::Once;
 use crate::{fmt, ptr};
@@ -31,7 +31,7 @@ union Data<T, F> {
 /// ```
 /// use std::sync::LazyLock;
 ///
-/// // n.b. static items do not call [`Drop`] on program termination, so this won't be deallocated.
+/// // Note: static items do not call [`Drop`] on program termination, so this won't be deallocated.
 /// // this is fine, as the OS can deallocate the terminated program faster than we can free memory
 /// // but tools like valgrind might report "memory leaks" as it isn't obvious this is intentional.
 /// static DEEP_THOUGHT: LazyLock<String> = LazyLock::new(|| {
@@ -63,6 +63,7 @@ union Data<T, F> {
 /// ```
 #[stable(feature = "lazy_cell", since = "1.80.0")]
 pub struct LazyLock<T, F = fn() -> T> {
+    // FIXME(nonpoison_once): if possible, switch to nonpoison version once it is available
     once: Once,
     data: UnsafeCell<Data<T, F>>,
 }
@@ -312,6 +313,14 @@ impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
     }
 }
 
+#[stable(feature = "lazy_deref_mut", since = "CURRENT_RUSTC_VERSION")]
+impl<T, F: FnOnce() -> T> DerefMut for LazyLock<T, F> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut T {
+        LazyLock::force_mut(self)
+    }
+}
+
 #[stable(feature = "lazy_cell", since = "1.80.0")]
 impl<T: Default> Default for LazyLock<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
@@ -349,6 +358,3 @@ unsafe impl<T: Sync + Send, F: Send> Sync for LazyLock<T, F> {}
 impl<T: RefUnwindSafe + UnwindSafe, F: UnwindSafe> RefUnwindSafe for LazyLock<T, F> {}
 #[stable(feature = "lazy_cell", since = "1.80.0")]
 impl<T: UnwindSafe, F: UnwindSafe> UnwindSafe for LazyLock<T, F> {}
-
-#[cfg(test)]
-mod tests;

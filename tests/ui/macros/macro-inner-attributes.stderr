@@ -1,13 +1,14 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `a`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `a`
   --> $DIR/macro-inner-attributes.rs:17:5
    |
 LL |     a::bar();
-   |     ^ use of undeclared crate or module `a`
+   |     ^ use of unresolved module or unlinked crate `a`
    |
 help: there is a crate or module with a similar name
    |
-LL |     b::bar();
-   |     ~
+LL -     a::bar();
+LL +     b::bar();
+   |
 
 error: aborting due to 1 previous error
 

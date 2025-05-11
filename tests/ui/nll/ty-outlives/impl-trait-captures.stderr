@@ -4,14 +4,14 @@ error[E0700]: hidden type for `Opaque(DefId(0:11 ~ impl_trait_captures[aeb9]::fo
 LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> {
    |                  --     ------------ opaque type defined here
    |                  |
-   |                  hidden type `&ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:13 ~ impl_trait_captures[aeb9]::foo::'_), '_)) T` captures the anonymous lifetime defined here
+   |                  hidden type `&ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), LateNamed(DefId(0:13 ~ impl_trait_captures[aeb9]::foo::'_), '_)) T` captures the anonymous lifetime defined here
 LL |     x
    |     ^
    |
-help: add a `use<...>` bound to explicitly capture `ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:13 ~ impl_trait_captures[aeb9]::foo::'_), '_))`
+help: add a `use<...>` bound to explicitly capture `ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), LateNamed(DefId(0:13 ~ impl_trait_captures[aeb9]::foo::'_), '_))`
    |
-LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> + use<'a, ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:13 ~ impl_trait_captures[aeb9]::foo::'_), '_)), T> {
-   |                                      +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> + use<'a, ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), LateNamed(DefId(0:13 ~ impl_trait_captures[aeb9]::foo::'_), '_)), T> {
+   |                                      +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

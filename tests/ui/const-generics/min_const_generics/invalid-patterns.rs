@@ -1,4 +1,6 @@
 //@ stderr-per-bitwidth
+//@ dont-require-annotations: NOTE
+
 use std::mem::transmute;
 
 fn get_flag<const FlagSet: bool, const ShortName: char>() -> Option<char> {
@@ -37,11 +39,11 @@ fn main() {
 
   get_flag::<false, { unsafe { char_raw.character } }>();
   //~^ ERROR evaluation of constant value failed
-  //~| uninitialized
+  //~| NOTE uninitialized
   get_flag::<{ unsafe { bool_raw.boolean } }, 'z'>();
   //~^ ERROR it is undefined behavior
   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
   //~^ ERROR evaluation of constant value failed
-  //~| uninitialized
+  //~| NOTE uninitialized
   //~| ERROR it is undefined behavior
 }

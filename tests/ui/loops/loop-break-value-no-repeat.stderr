@@ -8,8 +8,9 @@ LL |         break 22
    |
 help: use `break` on its own without a value inside this `for` loop
    |
-LL |         break
-   |         ~~~~~
+LL -         break 22
+LL +         break
+   |
 
 error: aborting due to 1 previous error
 

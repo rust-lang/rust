@@ -5,9 +5,8 @@ use std::mem;
 
 use cargo_metadata::PackageId;
 use ide::FileId;
-use ide_db::FxHashMap;
+use ide_db::{FxHashMap, base_db::DbPanicContext};
 use itertools::Itertools;
-use nohash_hasher::{IntMap, IntSet};
 use rustc_hash::FxHashSet;
 use stdx::iter_eq_by;
 use triomphe::Arc;
@@ -15,7 +14,7 @@ use triomphe::Arc;
 use crate::{global_state::GlobalStateSnapshot, lsp, lsp_ext, main_loop::DiagnosticsTaskKind};
 
 pub(crate) type CheckFixes =
-    Arc<IntMap<usize, FxHashMap<Option<Arc<PackageId>>, IntMap<FileId, Vec<Fix>>>>>;
+    Arc<Vec<FxHashMap<Option<Arc<PackageId>>, FxHashMap<FileId, Vec<Fix>>>>>;
 
 #[derive(Debug, Default, Clone)]
 pub struct DiagnosticsMapConfig {
@@ -29,16 +28,16 @@ pub(crate) type DiagnosticsGeneration = usize;
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DiagnosticCollection {
-    // FIXME: should be IntMap<FileId, Vec<ra_id::Diagnostic>>
-    pub(crate) native_syntax: IntMap<FileId, (DiagnosticsGeneration, Vec<lsp_types::Diagnostic>)>,
-    pub(crate) native_semantic: IntMap<FileId, (DiagnosticsGeneration, Vec<lsp_types::Diagnostic>)>,
+    // FIXME: should be FxHashMap<FileId, Vec<ra_id::Diagnostic>>
+    pub(crate) native_syntax:
+        FxHashMap<FileId, (DiagnosticsGeneration, Vec<lsp_types::Diagnostic>)>,
+    pub(crate) native_semantic:
+        FxHashMap<FileId, (DiagnosticsGeneration, Vec<lsp_types::Diagnostic>)>,
     // FIXME: should be Vec<flycheck::Diagnostic>
-    pub(crate) check: IntMap<
-        usize,
-        FxHashMap<Option<Arc<PackageId>>, IntMap<FileId, Vec<lsp_types::Diagnostic>>>,
-    >,
+    pub(crate) check:
+        Vec<FxHashMap<Option<Arc<PackageId>>, FxHashMap<FileId, Vec<lsp_types::Diagnostic>>>>,
     pub(crate) check_fixes: CheckFixes,
-    changes: IntSet<FileId>,
+    changes: FxHashSet<FileId>,
     /// Counter for supplying a new generation number for diagnostics.
     /// This is used to keep track of when to clear the diagnostics for a given file as we compute
     /// diagnostics on multiple worker threads simultaneously which may result in multiple diagnostics
@@ -55,11 +54,11 @@ pub(crate) struct Fix {
 
 impl DiagnosticCollection {
     pub(crate) fn clear_check(&mut self, flycheck_id: usize) {
-        let Some(check) = self.check.get_mut(&flycheck_id) else {
+        let Some(check) = self.check.get_mut(flycheck_id) else {
             return;
         };
         self.changes.extend(check.drain().flat_map(|(_, v)| v.into_keys()));
-        if let Some(fixes) = Arc::make_mut(&mut self.check_fixes).get_mut(&flycheck_id) {
+        if let Some(fixes) = Arc::make_mut(&mut self.check_fixes).get_mut(flycheck_id) {
             fixes.clear();
         }
     }
@@ -67,7 +66,7 @@ impl DiagnosticCollection {
     pub(crate) fn clear_check_all(&mut self) {
         Arc::make_mut(&mut self.check_fixes).clear();
         self.changes.extend(
-            self.check.values_mut().flat_map(|it| it.drain().flat_map(|(_, v)| v.into_keys())),
+            self.check.iter_mut().flat_map(|it| it.drain().flat_map(|(_, v)| v.into_keys())),
         )
     }
 
@@ -76,14 +75,14 @@ impl DiagnosticCollection {
         flycheck_id: usize,
         package_id: Arc<PackageId>,
     ) {
-        let Some(check) = self.check.get_mut(&flycheck_id) else {
+        let Some(check) = self.check.get_mut(flycheck_id) else {
             return;
         };
         let package_id = Some(package_id);
         if let Some(checks) = check.remove(&package_id) {
             self.changes.extend(checks.into_keys());
         }
-        if let Some(fixes) = Arc::make_mut(&mut self.check_fixes).get_mut(&flycheck_id) {
+        if let Some(fixes) = Arc::make_mut(&mut self.check_fixes).get_mut(flycheck_id) {
             fixes.remove(&package_id);
         }
     }
@@ -102,10 +101,10 @@ impl DiagnosticCollection {
         diagnostic: lsp_types::Diagnostic,
         fix: Option<Box<Fix>>,
     ) {
-        let diagnostics = self
-            .check
-            .entry(flycheck_id)
-            .or_default()
+        if self.check.len() <= flycheck_id {
+            self.check.resize_with(flycheck_id + 1, Default::default);
+        }
+        let diagnostics = self.check[flycheck_id]
             .entry(package_id.clone())
             .or_default()
             .entry(file_id)
@@ -118,9 +117,10 @@ impl DiagnosticCollection {
 
         if let Some(fix) = fix {
             let check_fixes = Arc::make_mut(&mut self.check_fixes);
-            check_fixes
-                .entry(flycheck_id)
-                .or_default()
+            if check_fixes.len() <= flycheck_id {
+                check_fixes.resize_with(flycheck_id + 1, Default::default);
+            }
+            check_fixes[flycheck_id]
                 .entry(package_id.clone())
                 .or_default()
                 .entry(file_id)
@@ -176,14 +176,14 @@ impl DiagnosticCollection {
         let native_semantic = self.native_semantic.get(&file_id).into_iter().flat_map(|(_, d)| d);
         let check = self
             .check
-            .values()
+            .iter()
             .flat_map(|it| it.values())
             .filter_map(move |it| it.get(&file_id))
             .flatten();
         native_syntax.chain(native_semantic).chain(check)
     }
 
-    pub(crate) fn take_changes(&mut self) -> Option<IntSet<FileId>> {
+    pub(crate) fn take_changes(&mut self) -> Option<FxHashSet<FileId>> {
         if self.changes.is_empty() {
             return None;
         }
@@ -215,7 +215,7 @@ pub(crate) fn fetch_native_diagnostics(
     kind: NativeDiagnosticsFetchKind,
 ) -> Vec<(FileId, Vec<lsp_types::Diagnostic>)> {
     let _p = tracing::info_span!("fetch_native_diagnostics").entered();
-    let _ctx = stdx::panic_context::enter("fetch_native_diagnostics".to_owned());
+    let _ctx = DbPanicContext::enter("fetch_native_diagnostics".to_owned());
 
     // the diagnostics produced may point to different files not requested by the concrete request,
     // put those into here and filter later
@@ -258,7 +258,7 @@ pub(crate) fn fetch_native_diagnostics(
     for (file_id, group) in odd_ones
         .into_iter()
         .sorted_by_key(|it| it.range.file_id)
-        .group_by(|it| it.range.file_id)
+        .chunk_by(|it| it.range.file_id)
         .into_iter()
     {
         if !subscriptions.contains(&file_id) {

@@ -9,6 +9,7 @@ use stable_mir::ty::{Allocation, ConstantKind, MirConst};
 use stable_mir::{Error, opaque};
 
 use crate::rustc_smir::{Stable, Tables, alloc};
+use crate::stable_mir;
 
 impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
     type T = stable_mir::mir::Body;
@@ -181,6 +182,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
             RawPtr(mutability, place) => {
                 stable_mir::mir::Rvalue::AddressOf(mutability.stable(tables), place.stable(tables))
             }
+            Len(place) => stable_mir::mir::Rvalue::Len(place.stable(tables)),
             Cast(cast_kind, op, ty) => stable_mir::mir::Rvalue::Cast(
                 cast_kind.stable(tables),
                 op.stable(tables),
@@ -216,6 +218,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 stable_mir::mir::Rvalue::ShallowInitBox(op.stable(tables), ty.stable(tables))
             }
             CopyForDeref(place) => stable_mir::mir::Rvalue::CopyForDeref(place.stable(tables)),
+            WrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
         }
     }
 }
@@ -227,6 +230,18 @@ impl<'tcx> Stable<'tcx> for mir::Mutability {
         match *self {
             Not => stable_mir::mir::Mutability::Not,
             Mut => stable_mir::mir::Mutability::Mut,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::RawPtrKind {
+    type T = stable_mir::mir::RawPtrKind;
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
+        use mir::RawPtrKind::*;
+        match *self {
+            Const => stable_mir::mir::RawPtrKind::Const,
+            Mut => stable_mir::mir::RawPtrKind::Mut,
+            FakeForPtrMetadata => stable_mir::mir::RawPtrKind::FakeForPtrMetadata,
         }
     }
 }
@@ -277,6 +292,7 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
                 indices.iter().map(|idx| idx.stable(tables)).collect(),
             ),
             UbChecks => stable_mir::mir::NullOp::UbChecks,
+            ContractChecks => stable_mir::mir::NullOp::ContractChecks,
         }
     }
 }
@@ -382,6 +398,7 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
             Downcast(_, idx) => stable_mir::mir::ProjectionElem::Downcast(idx.stable(tables)),
             OpaqueCast(ty) => stable_mir::mir::ProjectionElem::OpaqueCast(ty.stable(tables)),
             Subtype(ty) => stable_mir::mir::ProjectionElem::Subtype(ty.stable(tables)),
+            UnwrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
         }
     }
 }
@@ -477,11 +494,17 @@ impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
             AssertKind::ResumedAfterPanic(coroutine) => {
                 stable_mir::mir::AssertMessage::ResumedAfterPanic(coroutine.stable(tables))
             }
+            AssertKind::ResumedAfterDrop(coroutine) => {
+                stable_mir::mir::AssertMessage::ResumedAfterDrop(coroutine.stable(tables))
+            }
             AssertKind::MisalignedPointerDereference { required, found } => {
                 stable_mir::mir::AssertMessage::MisalignedPointerDereference {
                     required: required.stable(tables),
                     found: found.stable(tables),
                 }
+            }
+            AssertKind::NullPointerDereference => {
+                stable_mir::mir::AssertMessage::NullPointerDereference
             }
         }
     }
@@ -628,13 +651,18 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
             mir::TerminatorKind::UnwindTerminate(_) => TerminatorKind::Abort,
             mir::TerminatorKind::Return => TerminatorKind::Return,
             mir::TerminatorKind::Unreachable => TerminatorKind::Unreachable,
-            mir::TerminatorKind::Drop { place, target, unwind, replace: _ } => {
-                TerminatorKind::Drop {
-                    place: place.stable(tables),
-                    target: target.as_usize(),
-                    unwind: unwind.stable(tables),
-                }
-            }
+            mir::TerminatorKind::Drop {
+                place,
+                target,
+                unwind,
+                replace: _,
+                drop: _,
+                async_fut: _,
+            } => TerminatorKind::Drop {
+                place: place.stable(tables),
+                target: target.as_usize(),
+                unwind: unwind.stable(tables),
+            },
             mir::TerminatorKind::Call {
                 func,
                 args,

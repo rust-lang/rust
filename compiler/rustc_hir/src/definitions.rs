@@ -7,8 +7,9 @@
 use std::fmt::{self, Write};
 use std::hash::Hash;
 
-use rustc_data_structures::stable_hasher::{Hash64, StableHasher};
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::unord::UnordMap;
+use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::{Symbol, kw, sym};
@@ -46,12 +47,9 @@ impl DefPathTable {
         debug_assert_eq!(self.stable_crate_id, def_path_hash.stable_crate_id());
         let local_hash = def_path_hash.local_hash();
 
-        let index = {
-            let index = DefIndex::from(self.index_to_key.len());
-            debug!("DefPathTable::insert() - {:?} <-> {:?}", key, index);
-            self.index_to_key.push(key);
-            index
-        };
+        let index = self.index_to_key.push(key);
+        debug!("DefPathTable::insert() - {key:?} <-> {index:?}");
+
         self.def_path_hashes.push(local_hash);
         debug_assert!(self.def_path_hashes.len() == self.index_to_key.len());
 
@@ -70,7 +68,7 @@ impl DefPathTable {
             //
             // See the documentation for DefPathHash for more information.
             panic!(
-                "found DefPathHash collision between {def_path1:?} and {def_path2:?}. \
+                "found DefPathHash collision between {def_path1:#?} and {def_path2:#?}. \
                     Compilation cannot continue."
             );
         }
@@ -92,10 +90,29 @@ impl DefPathTable {
 
     pub fn enumerated_keys_and_path_hashes(
         &self,
-    ) -> impl Iterator<Item = (DefIndex, &DefKey, DefPathHash)> + ExactSizeIterator + '_ {
+    ) -> impl Iterator<Item = (DefIndex, &DefKey, DefPathHash)> + ExactSizeIterator {
         self.index_to_key
             .iter_enumerated()
             .map(move |(index, key)| (index, key, self.def_path_hash(index)))
+    }
+}
+
+#[derive(Debug)]
+pub struct DisambiguatorState {
+    next: UnordMap<(LocalDefId, DefPathData), u32>,
+}
+
+impl DisambiguatorState {
+    pub fn new() -> Self {
+        Self { next: Default::default() }
+    }
+
+    /// Creates a `DisambiguatorState` where the next allocated `(LocalDefId, DefPathData)` pair
+    /// will have `index` as the disambiguator.
+    pub fn with(def_id: LocalDefId, data: DefPathData, index: u32) -> Self {
+        let mut this = Self::new();
+        this.next.insert((def_id, data), index);
+        this
     }
 }
 
@@ -105,7 +122,6 @@ impl DefPathTable {
 #[derive(Debug)]
 pub struct Definitions {
     table: DefPathTable,
-    next_disambiguator: UnordMap<(LocalDefId, DefPathData), u32>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -129,7 +145,7 @@ impl DefKey {
         let DisambiguatedDefPathData { ref data, disambiguator } = self.disambiguated_data;
 
         std::mem::discriminant(data).hash(&mut hasher);
-        if let Some(name) = data.get_opt_name() {
+        if let Some(name) = data.hashed_symbol() {
             // Get a stable hash by considering the symbol chars rather than
             // the symbol index.
             name.as_str().hash(&mut hasher);
@@ -175,7 +191,11 @@ impl DisambiguatedDefPathData {
                 }
             }
             DefPathDataName::Anon { namespace } => {
-                write!(writer, "{{{}#{}}}", namespace, self.disambiguator)
+                if let DefPathData::AnonAssocTy(method) = self.data {
+                    write!(writer, "{}::{{{}#{}}}", method, namespace, self.disambiguator)
+                } else {
+                    write!(writer, "{{{}#{}}}", namespace, self.disambiguator)
+                }
             }
         }
     }
@@ -289,6 +309,15 @@ pub enum DefPathData {
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
+    /// Used for remapped captured lifetimes in an existential `impl Trait` type node.
+    OpaqueLifetime(Symbol),
+    /// An anonymous associated type from an RPITIT. The symbol refers to the name of the method
+    /// that defined the type.
+    AnonAssocTy(Symbol),
+    /// A synthetic body for a coroutine's by-move body.
+    SyntheticCoroutineBody,
+    /// Additional static data referred to by a static.
+    NestedStatic,
 }
 
 impl Definitions {
@@ -340,11 +369,20 @@ impl Definitions {
         let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash) };
         assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
-        Definitions { table, next_disambiguator: Default::default() }
+        Definitions { table }
     }
 
-    /// Adds a definition with a parent definition.
-    pub fn create_def(&mut self, parent: LocalDefId, data: DefPathData) -> LocalDefId {
+    /// Creates a definition with a parent definition.
+    /// If there are multiple definitions with the same DefPathData and the same parent, use
+    /// `disambiguator` to differentiate them. Distinct `DisambiguatorState` instances are not
+    /// guaranteed to generate unique disambiguators and should instead ensure that the `parent`
+    /// and `data` pair is distinct from other instances.
+    pub fn create_def(
+        &mut self,
+        parent: LocalDefId,
+        data: DefPathData,
+        disambiguator: &mut DisambiguatorState,
+    ) -> LocalDefId {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
         debug!(
@@ -352,12 +390,12 @@ impl Definitions {
             self.def_path(parent).to_string_no_crate_verbose(),
         );
 
-        // The root node must be created with `create_root_def()`.
+        // The root node must be created in `new()`.
         assert!(data != DefPathData::CrateRoot);
 
         // Find the next free disambiguator for this key.
         let disambiguator = {
-            let next_disamb = self.next_disambiguator.entry((parent, data)).or_insert(0);
+            let next_disamb = disambiguator.next.entry((parent, data)).or_insert(0);
             let disambiguator = *next_disamb;
             *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
             disambiguator
@@ -409,23 +447,49 @@ impl DefPathData {
     pub fn get_opt_name(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) if name == kw::Empty => None,
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
+            | OpaqueLifetime(name) => Some(name),
 
-            Impl | ForeignMod | CrateRoot | Use | GlobalAsm | Closure | Ctor | AnonConst
-            | OpaqueTy => None,
+            Impl
+            | ForeignMod
+            | CrateRoot
+            | Use
+            | GlobalAsm
+            | Closure
+            | Ctor
+            | AnonConst
+            | OpaqueTy
+            | AnonAssocTy(..)
+            | SyntheticCoroutineBody
+            | NestedStatic => None,
+        }
+    }
+
+    fn hashed_symbol(&self) -> Option<Symbol> {
+        use self::DefPathData::*;
+        match *self {
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) | AnonAssocTy(name)
+            | OpaqueLifetime(name) => Some(name),
+
+            Impl
+            | ForeignMod
+            | CrateRoot
+            | Use
+            | GlobalAsm
+            | Closure
+            | Ctor
+            | AnonConst
+            | OpaqueTy
+            | SyntheticCoroutineBody
+            | NestedStatic => None,
         }
     }
 
     pub fn name(&self) -> DefPathDataName {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) if name == kw::Empty => {
-                DefPathDataName::Anon { namespace: sym::synthetic }
-            }
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => {
-                DefPathDataName::Named(name)
-            }
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
+            | OpaqueLifetime(name) => DefPathDataName::Named(name),
             // Note that this does not show up in user print-outs.
             CrateRoot => DefPathDataName::Anon { namespace: kw::Crate },
             Impl => DefPathDataName::Anon { namespace: kw::Impl },
@@ -436,6 +500,9 @@ impl DefPathData {
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
             OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },
+            AnonAssocTy(..) => DefPathDataName::Anon { namespace: sym::anon_assoc },
+            SyntheticCoroutineBody => DefPathDataName::Anon { namespace: sym::synthetic },
+            NestedStatic => DefPathDataName::Anon { namespace: sym::nested },
         }
     }
 }

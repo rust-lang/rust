@@ -1,5 +1,5 @@
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/nested-ty-params.rs:3:16
+  --> $DIR/nested-ty-params.rs:2:16
    |
 LL | fn hd<U>(v: Vec<U> ) -> U {
    |       - type parameter from outer item
@@ -9,7 +9,7 @@ LL |     fn hd1(w: [U]) -> U { return w[0]; }
    |           help: try introducing a local generic parameter here: `<U>`
 
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/nested-ty-params.rs:3:23
+  --> $DIR/nested-ty-params.rs:2:23
    |
 LL | fn hd<U>(v: Vec<U> ) -> U {
    |       - type parameter from outer item

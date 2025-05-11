@@ -1,7 +1,7 @@
 use super::sealed::Sealed;
 use crate::simd::{
-    cmp::{SimdPartialEq, SimdPartialOrd},
     LaneCount, Mask, Simd, SimdCast, SimdElement, SupportedLaneCount,
+    cmp::{SimdPartialEq, SimdPartialOrd},
 };
 
 /// Operations on SIMD vectors of floats.
@@ -255,11 +255,40 @@ macro_rules! impl_trait {
             type Bits = Simd<$bits_ty, N>;
             type Cast<T: SimdElement> = Simd<T, N>;
 
+            #[cfg(not(target_arch = "aarch64"))]
             #[inline]
             fn cast<T: SimdCast>(self) -> Self::Cast<T>
             {
                 // Safety: supported types are guaranteed by SimdCast
                 unsafe { core::intrinsics::simd::simd_as(self) }
+            }
+
+            // workaround for https://github.com/llvm/llvm-project/issues/94694 (fixed in LLVM 20)
+            // tracked in: https://github.com/rust-lang/rust/issues/135982
+            #[cfg(target_arch = "aarch64")]
+            #[inline]
+            fn cast<T: SimdCast>(self) -> Self::Cast<T>
+            {
+                const { assert!(N <= 64) };
+                if N <= 2 || N == 4 || N == 8 || N == 16 || N == 32 || N == 64 {
+                    // Safety: supported types are guaranteed by SimdCast
+                    unsafe { core::intrinsics::simd::simd_as(self) }
+                } else if N < 4 {
+                    let x = self.resize::<4>(Default::default()).cast();
+                    x.resize::<N>(x[0])
+                } else if N < 8 {
+                    let x = self.resize::<8>(Default::default()).cast();
+                    x.resize::<N>(x[0])
+                } else if N < 16 {
+                    let x = self.resize::<16>(Default::default()).cast();
+                    x.resize::<N>(x[0])
+                } else if N < 32 {
+                    let x = self.resize::<32>(Default::default()).cast();
+                    x.resize::<N>(x[0])
+                } else {
+                    let x = self.resize::<64>(Default::default()).cast();
+                    x.resize::<N>(x[0])
+                }
             }
 
             #[inline]
@@ -274,14 +303,14 @@ macro_rules! impl_trait {
 
             #[inline]
             fn to_bits(self) -> Simd<$bits_ty, N> {
-                assert_eq!(core::mem::size_of::<Self>(), core::mem::size_of::<Self::Bits>());
+                assert_eq!(size_of::<Self>(), size_of::<Self::Bits>());
                 // Safety: transmuting between vector types is safe
                 unsafe { core::mem::transmute_copy(&self) }
             }
 
             #[inline]
             fn from_bits(bits: Simd<$bits_ty, N>) -> Self {
-                assert_eq!(core::mem::size_of::<Self>(), core::mem::size_of::<Self::Bits>());
+                assert_eq!(size_of::<Self>(), size_of::<Self::Bits>());
                 // Safety: transmuting between vector types is safe
                 unsafe { core::mem::transmute_copy(&bits) }
             }
@@ -343,7 +372,6 @@ macro_rules! impl_trait {
             }
 
             #[inline]
-            #[must_use = "method returns a new mask and does not mutate the original value"]
             fn is_normal(self) -> Self::Mask {
                 !(self.abs().simd_eq(Self::splat(0.0)) | self.is_nan() | self.is_subnormal() | self.is_infinite())
             }
@@ -391,7 +419,7 @@ macro_rules! impl_trait {
                     self.as_array().iter().sum()
                 } else {
                     // Safety: `self` is a float vector
-                    unsafe { core::intrinsics::simd::simd_reduce_add_ordered(self, 0.) }
+                    unsafe { core::intrinsics::simd::simd_reduce_add_ordered(self, -0.) }
                 }
             }
 

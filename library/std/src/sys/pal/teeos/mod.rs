@@ -6,22 +6,9 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
-#[path = "../unsupported/args.rs"]
-pub mod args;
-#[path = "../unsupported/env.rs"]
-pub mod env;
-//pub mod fd;
-#[path = "../unsupported/fs.rs"]
-pub mod fs;
-#[path = "../unsupported/io.rs"]
-pub mod io;
-pub mod net;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-#[path = "../unsupported/process.rs"]
-pub mod process;
-pub mod stdio;
 pub mod thread;
 #[allow(non_upper_case_globals)]
 #[path = "../unix/time.rs"]
@@ -151,5 +138,5 @@ pub fn unsupported<T>() -> std_io::Result<T> {
 }
 
 pub fn unsupported_err() -> std_io::Error {
-    std_io::Error::new(std_io::ErrorKind::Unsupported, "operation not supported on this platform")
+    std_io::Error::UNSUPPORTED_PLATFORM
 }

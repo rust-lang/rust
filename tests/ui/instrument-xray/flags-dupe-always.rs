@@ -2,6 +2,7 @@
 //
 //@ needs-xray
 //@ compile-flags: -Z instrument-xray=always,always
-//@ error-pattern: incorrect value `always,always` for unstable option `instrument-xray`
 
 fn main() {}
+
+//~? ERROR incorrect value `always,always` for unstable option `instrument-xray`

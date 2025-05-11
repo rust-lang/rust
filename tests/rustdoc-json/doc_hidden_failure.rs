@@ -11,8 +11,8 @@ mod auto {
     }
 }
 
-//@ count "$.index[*][?(@.name=='builders')]" 1
-//@ has "$.index[*][?(@.name == 'ActionRowBuilder')"]
+//@ count "$.index[?(@.name=='builders')]" 1
+//@ has "$.index[?(@.name == 'ActionRowBuilder')"]
 pub use auto::*;
 
 pub mod builders {

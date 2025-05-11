@@ -8,61 +8,71 @@ fn main() {
     unsafe {
         // wrong size
         let _ = transmute::<_, Vec<u32>>(vec![0u8]);
-        //~^ ERROR: transmute from `std::vec::Vec<u8>` to `std::vec::Vec<u32>` with mismat
-        //~| NOTE: `-D clippy::unsound-collection-transmute` implied by `-D warnings`
+        //~^ unsound_collection_transmute
+
         // wrong layout
         let _ = transmute::<_, Vec<[u8; 4]>>(vec![1234u32]);
-        //~^ ERROR: transmute from `std::vec::Vec<u32>` to `std::vec::Vec<[u8; 4]>` with m
+        //~^ unsound_collection_transmute
 
         // wrong size
         let _ = transmute::<_, VecDeque<u32>>(VecDeque::<u8>::new());
-        //~^ ERROR: transmute from `std::collections::VecDeque<u8>` to `std::collections::
+        //~^ unsound_collection_transmute
+
         // wrong layout
         let _ = transmute::<_, VecDeque<u32>>(VecDeque::<[u8; 4]>::new());
-        //~^ ERROR: transmute from `std::collections::VecDeque<[u8; 4]>` to `std::collecti
+        //~^ unsound_collection_transmute
 
         // wrong size
         let _ = transmute::<_, BinaryHeap<u32>>(BinaryHeap::<u8>::new());
-        //~^ ERROR: transmute from `std::collections::BinaryHeap<u8>` to `std::collections
+        //~^ unsound_collection_transmute
+
         // wrong layout
         let _ = transmute::<_, BinaryHeap<u32>>(BinaryHeap::<[u8; 4]>::new());
-        //~^ ERROR: transmute from `std::collections::BinaryHeap<[u8; 4]>` to `std::collec
+        //~^ unsound_collection_transmute
 
         // wrong size
         let _ = transmute::<_, BTreeSet<u32>>(BTreeSet::<u8>::new());
-        //~^ ERROR: transmute from `std::collections::BTreeSet<u8>` to `std::collections::
+        //~^ unsound_collection_transmute
+
         // wrong layout
         let _ = transmute::<_, BTreeSet<u32>>(BTreeSet::<[u8; 4]>::new());
-        //~^ ERROR: transmute from `std::collections::BTreeSet<[u8; 4]>` to `std::collecti
+        //~^ unsound_collection_transmute
 
         // wrong size
         let _ = transmute::<_, HashSet<u32>>(HashSet::<u8>::new());
-        //~^ ERROR: transmute from `std::collections::HashSet<u8>` to `std::collections::H
+        //~^ unsound_collection_transmute
+
         // wrong layout
         let _ = transmute::<_, HashSet<u32>>(HashSet::<[u8; 4]>::new());
-        //~^ ERROR: transmute from `std::collections::HashSet<[u8; 4]>` to `std::collectio
+        //~^ unsound_collection_transmute
 
         // wrong size
         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u8, u8>::new());
-        //~^ ERROR: transmute from `std::collections::BTreeMap<u8, u8>` to `std::collectio
+        //~^ unsound_collection_transmute
+
         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u32, u32>::new());
-        //~^ ERROR: transmute from `std::collections::BTreeMap<u32, u32>` to `std::collect
+        //~^ unsound_collection_transmute
+
         // wrong layout
         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u8, [u8; 4]>::new());
-        //~^ ERROR: transmute from `std::collections::BTreeMap<u8, [u8; 4]>` to `std::coll
+        //~^ unsound_collection_transmute
+
         let _ = transmute::<_, BTreeMap<u32, u32>>(BTreeMap::<[u8; 4], u32>::new());
-        //~^ ERROR: transmute from `std::collections::BTreeMap<[u8; 4], u32>` to `std::col
+        //~^ unsound_collection_transmute
 
         // wrong size
         let _ = transmute::<_, HashMap<u8, u32>>(HashMap::<u8, u8>::new());
-        //~^ ERROR: transmute from `std::collections::HashMap<u8, u8>` to `std::collection
+        //~^ unsound_collection_transmute
+
         let _ = transmute::<_, HashMap<u8, u32>>(HashMap::<u32, u32>::new());
-        //~^ ERROR: transmute from `std::collections::HashMap<u32, u32>` to `std::collecti
+        //~^ unsound_collection_transmute
+
         // wrong layout
         let _ = transmute::<_, HashMap<u8, u32>>(HashMap::<u8, [u8; 4]>::new());
-        //~^ ERROR: transmute from `std::collections::HashMap<u8, [u8; 4]>` to `std::colle
+        //~^ unsound_collection_transmute
+
         let _ = transmute::<_, HashMap<u32, u32>>(HashMap::<[u8; 4], u32>::new());
-        //~^ ERROR: transmute from `std::collections::HashMap<[u8; 4], u32>` to `std::coll
+        //~^ unsound_collection_transmute
 
         let _ = transmute::<_, Vec<u8>>(Vec::<MaybeUninit<u8>>::new());
         let _ = transmute::<_, Vec<*mut u32>>(Vec::<Box<u32>>::new());

@@ -35,23 +35,45 @@ fn main() {
     {
         // Test `get().unwrap()`
         let _ = boxed_slice.get(1).unwrap();
+        //~^ get_unwrap
+        //~| unwrap_used
         let _ = some_slice.get(0).unwrap();
+        //~^ get_unwrap
+        //~| unwrap_used
         let _ = some_vec.get(0).unwrap();
+        //~^ get_unwrap
+        //~| unwrap_used
         let _ = some_vecdeque.get(0).unwrap();
+        //~^ get_unwrap
+        //~| unwrap_used
         let _ = some_hashmap.get(&1).unwrap();
+        //~^ get_unwrap
+        //~| unwrap_used
         let _ = some_btreemap.get(&1).unwrap();
+        //~^ get_unwrap
+        //~| unwrap_used
         #[allow(clippy::unwrap_used)]
         let _ = false_positive.get(0).unwrap();
         // Test with deref
         let _: u8 = *boxed_slice.get(1).unwrap();
+        //~^ get_unwrap
+        //~| unwrap_used
     }
 
     {
         // Test `get_mut().unwrap()`
         *boxed_slice.get_mut(0).unwrap() = 1;
+        //~^ get_unwrap
+        //~| unwrap_used
         *some_slice.get_mut(0).unwrap() = 1;
+        //~^ get_unwrap
+        //~| unwrap_used
         *some_vec.get_mut(0).unwrap() = 1;
+        //~^ get_unwrap
+        //~| unwrap_used
         *some_vecdeque.get_mut(0).unwrap() = 1;
+        //~^ get_unwrap
+        //~| unwrap_used
         // Check false positives
         #[allow(clippy::unwrap_used)]
         {
@@ -64,7 +86,11 @@ fn main() {
     {
         // Test `get().unwrap().foo()` and `get_mut().unwrap().bar()`
         let _ = some_vec.get(0..1).unwrap().to_vec();
+        //~^ get_unwrap
+        //~| unwrap_used
         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
+        //~^ get_unwrap
+        //~| unwrap_used
     }
 }
 mod issue9909 {
@@ -76,12 +102,15 @@ mod issue9909 {
 
         // include a borrow in the suggestion, even if the argument is not just a numeric literal
         let _x: &i32 = f.get(1 + 2).unwrap();
+        //~^ get_unwrap
 
         // don't include a borrow here
         let _x = f.get(1 + 2).unwrap().to_string();
+        //~^ get_unwrap
 
         // don't include a borrow here
         let _x = f.get(1 + 2).unwrap().abs();
+        //~^ get_unwrap
     }
 
     // original code:
@@ -99,6 +128,7 @@ mod issue9909 {
                         let (x, rest) = mat.split_at_mut(linidx(i, k) + 1);
                         let a = x.last_mut().unwrap();
                         let b = rest.get_mut(linidx(j, k) - linidx(i, k) - 1).unwrap();
+                        //~^ get_unwrap
                         ::std::mem::swap(a, b);
                     }
                 }

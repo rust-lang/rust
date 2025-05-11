@@ -6,10 +6,10 @@ use rustfix::{Filter, apply_suggestions, get_suggestions_from_json};
 use tracing::debug;
 
 use super::{
-    AllowUnused, Emit, ErrorKind, FailMode, LinkToAux, PassMode, TargetLocation, TestCx,
-    TestOutput, Truncated, UI_FIXED, WillExecute,
+    AllowUnused, Emit, FailMode, LinkToAux, PassMode, TargetLocation, TestCx, TestOutput,
+    Truncated, UI_FIXED, WillExecute,
 };
-use crate::{errors, json};
+use crate::json;
 
 impl TestCx<'_> {
     pub(super) fn run_ui_test(&self) {
@@ -66,9 +66,9 @@ impl TestCx<'_> {
                 && !self.props.run_rustfix
                 && !self.props.rustfix_only_machine_applicable
             {
-                let mut coverage_file_path = self.config.build_base.clone();
+                let mut coverage_file_path = self.config.build_test_suite_root.clone();
                 coverage_file_path.push("rustfix_missing_coverage.txt");
-                debug!("coverage_file_path: {}", coverage_file_path.display());
+                debug!("coverage_file_path: {}", coverage_file_path);
 
                 let mut file = OpenOptions::new()
                     .create(true)
@@ -76,8 +76,8 @@ impl TestCx<'_> {
                     .open(coverage_file_path.as_path())
                     .expect("could not create or open file");
 
-                if let Err(e) = writeln!(file, "{}", self.testpaths.file.display()) {
-                    panic!("couldn't write to {}: {e:?}", coverage_file_path.display());
+                if let Err(e) = writeln!(file, "{}", self.testpaths.file) {
+                    panic!("couldn't write to {}: {e:?}", coverage_file_path);
                 }
             }
         } else if self.props.run_rustfix {
@@ -119,7 +119,7 @@ impl TestCx<'_> {
                 self.testpaths.relative_dir.join(self.testpaths.file.file_name().unwrap());
             println!(
                 "To only update this specific test, also pass `--test-args {}`",
-                relative_path_to_file.display(),
+                relative_path_to_file,
             );
             self.fatal_proc_rec(
                 &format!("{} errors occurred comparing output.", errors),
@@ -127,9 +127,7 @@ impl TestCx<'_> {
             );
         }
 
-        let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
-
-        if let WillExecute::Yes = should_run {
+        let output_to_check = if let WillExecute::Yes = should_run {
             let proc_res = self.exec_compiled_test();
             let run_output_errors = if self.props.check_run_results {
                 self.load_compare_outputs(&proc_res, TestOutput::Run, explicit)
@@ -150,48 +148,19 @@ impl TestCx<'_> {
                 self.fatal_proc_rec("test run succeeded!", &proc_res);
             }
 
-            let output_to_check = self.get_output(&proc_res);
-            if !self.props.error_patterns.is_empty() || !self.props.regex_error_patterns.is_empty()
-            {
-                // "// error-pattern" comments
-                self.check_all_error_patterns(&output_to_check, &proc_res, pm);
-            }
-            self.check_forbid_output(&output_to_check, &proc_res)
-        }
+            self.get_output(&proc_res)
+        } else {
+            self.get_output(&proc_res)
+        };
 
         debug!(
-            "run_ui_test: explicit={:?} config.compare_mode={:?} expected_errors={:?} \
+            "run_ui_test: explicit={:?} config.compare_mode={:?} \
                proc_res.status={:?} props.error_patterns={:?}",
-            explicit,
-            self.config.compare_mode,
-            expected_errors,
-            proc_res.status,
-            self.props.error_patterns
+            explicit, self.config.compare_mode, proc_res.status, self.props.error_patterns
         );
 
-        let check_patterns = should_run == WillExecute::No
-            && (!self.props.error_patterns.is_empty()
-                || !self.props.regex_error_patterns.is_empty());
-        if !explicit && self.config.compare_mode.is_none() {
-            let check_annotations = !check_patterns || !expected_errors.is_empty();
-
-            if check_annotations {
-                // "//~ERROR comments"
-                self.check_expected_errors(expected_errors, &proc_res);
-            }
-        } else if explicit && !expected_errors.is_empty() {
-            let msg = format!(
-                "line {}: cannot combine `--error-format` with {} annotations; use `error-pattern` instead",
-                expected_errors[0].line_num,
-                expected_errors[0].kind.unwrap_or(ErrorKind::Error),
-            );
-            self.fatal(&msg);
-        }
-        let output_to_check = self.get_output(&proc_res);
-        if check_patterns {
-            // "// error-pattern" comments
-            self.check_all_error_patterns(&output_to_check, &proc_res, pm);
-        }
+        self.check_expected_errors(&proc_res);
+        self.check_all_error_patterns(&output_to_check, &proc_res);
         self.check_forbid_output(&output_to_check, &proc_res);
 
         if self.props.run_rustfix && self.config.compare_mode.is_none() {
@@ -215,8 +184,6 @@ impl TestCx<'_> {
                 let crate_name =
                     self.testpaths.file.file_stem().expect("test must have a file stem");
                 // crate name must be alphanumeric or `_`.
-                let crate_name =
-                    crate_name.to_str().expect("crate name implies file name must be valid UTF-8");
                 // replace `a.foo` -> `a__foo` for crate name purposes.
                 // replace `revision-name-with-dashes` -> `revision_name_with_underscore`
                 let crate_name = crate_name.replace('.', "__");

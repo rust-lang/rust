@@ -1,10 +1,10 @@
 use ide_db::syntax_helpers::suggest_name;
 use syntax::{
-    ast::{self, make, AstNode},
+    ast::{self, AstNode, make},
     ted,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: replace_is_some_with_if_let_some
 //
@@ -20,7 +20,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // fn main() {
 //     let x = Some(1);
-//     if let Some(${0:x}) = x {}
+//     if let Some(${0:x1}) = x {}
 // }
 // ```
 pub(crate) fn replace_is_method_with_if_let_method(
@@ -40,10 +40,13 @@ pub(crate) fn replace_is_method_with_if_let_method(
         "is_some" | "is_ok" => {
             let receiver = call_expr.receiver()?;
 
+            let mut name_generator = suggest_name::NameGenerator::new_from_scope_locals(
+                ctx.sema.scope(if_expr.syntax()),
+            );
             let var_name = if let ast::Expr::PathExpr(path_expr) = receiver.clone() {
-                path_expr.path()?.to_string()
+                name_generator.suggest_name(&path_expr.path()?.to_string())
             } else {
-                suggest_name::for_variable(&receiver, &ctx.sema)
+                name_generator.for_variable(&receiver, &ctx.sema)
             };
 
             let (assist_id, message, text) = if name_ref.text() == "is_some" {
@@ -53,7 +56,7 @@ pub(crate) fn replace_is_method_with_if_let_method(
             };
 
             acc.add(
-                AssistId(assist_id, AssistKind::RefactorRewrite),
+                AssistId::refactor_rewrite(assist_id),
                 message,
                 call_expr.syntax().text_range(),
                 |edit| {
@@ -98,7 +101,7 @@ fn main() {
             r#"
 fn main() {
     let x = Some(1);
-    if let Some(${0:x}) = x {}
+    if let Some(${0:x1}) = x {}
 }
 "#,
         );
@@ -150,7 +153,7 @@ fn main() {
             r#"
 fn main() {
     let x = Ok(1);
-    if let Ok(${0:x}) = x {}
+    if let Ok(${0:x1}) = x {}
 }
 "#,
         );

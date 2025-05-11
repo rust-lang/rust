@@ -1,6 +1,6 @@
 // Test range syntax - borrow errors.
-#![feature(rustc_attrs)]
-pub fn main() { #![rustc_error] // rust-lang/rust#49855
+
+pub fn main() {
     let r = {
         let a = 42;
         let b = 42;

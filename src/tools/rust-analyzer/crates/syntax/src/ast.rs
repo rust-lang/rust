@@ -17,8 +17,8 @@ use std::marker::PhantomData;
 use either::Either;
 
 use crate::{
-    syntax_node::{SyntaxNode, SyntaxNodeChildren, SyntaxToken},
     SyntaxKind,
+    syntax_node::{SyntaxNode, SyntaxNodeChildren, SyntaxToken},
 };
 
 pub use self::{
@@ -42,6 +42,14 @@ pub use self::{
 /// the same representation: a pointer to the tree root and a pointer to the
 /// node itself.
 pub trait AstNode {
+    /// This panics if the `SyntaxKind` is not statically known.
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        panic!("dynamic `SyntaxKind` for `AstNode::kind()`")
+    }
+
     fn can_cast(kind: SyntaxKind) -> bool
     where
         Self: Sized;

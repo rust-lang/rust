@@ -1,14 +1,12 @@
 //! Reports references in code that the IDE layer cannot resolve.
-use hir::{db::HirDatabase, AnyDiagnostic, Crate, HirFileIdExt as _, Module, Semantics};
+use hir::{AnyDiagnostic, Crate, Module, Semantics, db::HirDatabase, sym};
 use ide::{AnalysisHost, RootDatabase, TextRange};
 use ide_db::{
-    base_db::{SourceDatabase, SourceRootDatabase},
-    defs::NameRefClass,
-    EditionedFileId, FxHashSet, LineIndexDatabase as _,
+    EditionedFileId, FxHashSet, LineIndexDatabase as _, base_db::SourceDatabase, defs::NameRefClass,
 };
-use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
+use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 use parser::SyntaxKind;
-use syntax::{ast, AstNode, WalkEvent};
+use syntax::{AstNode, WalkEvent, ast};
 use vfs::FileId;
 
 use crate::cli::flags;
@@ -17,11 +15,13 @@ impl flags::UnresolvedReferences {
     pub fn run(self) -> anyhow::Result<()> {
         const STACK_SIZE: usize = 1024 * 1024 * 8;
 
-        let handle = stdx::thread::Builder::new(stdx::thread::ThreadIntent::LatencySensitive)
-            .name("BIG_STACK_THREAD".into())
-            .stack_size(STACK_SIZE)
-            .spawn(|| self.run_())
-            .unwrap();
+        let handle = stdx::thread::Builder::new(
+            stdx::thread::ThreadIntent::LatencySensitive,
+            "BIG_STACK_THREAD",
+        )
+        .stack_size(STACK_SIZE)
+        .spawn(|| self.run_())
+        .unwrap();
 
         handle.join()
     }
@@ -30,7 +30,7 @@ impl flags::UnresolvedReferences {
         let root =
             vfs::AbsPathBuf::assert_utf8(std::env::current_dir()?.join(&self.path)).normalize();
         let config = crate::config::Config::new(
-            root.clone(),
+            root,
             lsp_types::ClientCapabilities::default(),
             vec![],
             None,
@@ -57,27 +57,28 @@ impl flags::UnresolvedReferences {
 
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source_file_id(db).original_file(db);
-            let source_root = db.file_source_root(file_id.into());
-            let source_root = db.source_root(source_root);
+            let source_root = db.file_source_root(file_id.file_id(db)).source_root_id(db);
+            let source_root = db.source_root(source_root).source_root(db);
             !source_root.is_library
         });
 
         for module in work {
             let file_id = module.definition_source_file_id(db).original_file(db);
+            let file_id = file_id.file_id(db);
             if !visited_files.contains(&file_id) {
                 let crate_name =
-                    module.krate().display_name(db).as_deref().unwrap_or("unknown").to_owned();
-                let file_path = vfs.file_path(file_id.into());
+                    module.krate().display_name(db).as_deref().unwrap_or(&sym::unknown).to_owned();
+                let file_path = vfs.file_path(file_id);
                 eprintln!("processing crate: {crate_name}, module: {file_path}",);
 
-                let line_index = db.line_index(file_id.into());
-                let file_text = db.file_text(file_id.into());
+                let line_index = db.line_index(file_id);
+                let file_text = db.file_text(file_id);
 
-                for range in find_unresolved_references(db, &sema, file_id.into(), &module) {
+                for range in find_unresolved_references(db, &sema, file_id, &module) {
                     let line_col = line_index.line_col(range.start());
                     let line = line_col.line + 1;
                     let col = line_col.col + 1;
-                    let text = &file_text[range];
+                    let text = &file_text.text(db)[range];
                     println!("{file_path}:{line}:{col}: {text}");
                 }
 
@@ -124,7 +125,7 @@ fn find_unresolved_references(
         let node = inactive_code.node;
         let range = node.map(|it| it.text_range()).original_node_file_range_rooted(db);
 
-        if range.file_id != file_id {
+        if range.file_id.file_id(db) != file_id {
             continue;
         }
 
@@ -140,7 +141,7 @@ fn all_unresolved_references(
 ) -> Vec<TextRange> {
     let file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(sema.db, file_id));
     let file = sema.parse(file_id);
     let root = file.syntax();
 

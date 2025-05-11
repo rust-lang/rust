@@ -1,9 +1,8 @@
-use rustc_hir as hir;
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::{PrintTraitPredicateExt as _, TraitPredPrintModifiersAndPath};
-use rustc_middle::ty::{self, Ty, TypeFoldable};
+use rustc_middle::ty::{self, BottomUpFolder, Ty, TypeFoldable};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, kw};
 use rustc_trait_selection::traits::{self, ObligationCtxt};
@@ -43,6 +42,7 @@ declare_lint! {
     ///
     /// type Tait = impl Sized;
     ///
+    /// #[define_opaque(Tait)]
     /// fn test() -> impl Trait<Assoc = Tait> {
     ///     42
     /// }
@@ -67,7 +67,7 @@ declare_lint! {
 declare_lint_pass!(OpaqueHiddenInferredBound => [OPAQUE_HIDDEN_INFERRED_BOUND]);
 
 impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
-    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'tcx>) {
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         let hir::TyKind::OpaqueDef(opaque) = &ty.kind else {
             return;
         };
@@ -113,10 +113,13 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 // return type is well-formed in traits even when `Self` isn't sized.
                 if let ty::Param(param_ty) = *proj_term.kind()
                     && param_ty.name == kw::SelfUpper
-                    && matches!(opaque.origin, hir::OpaqueTyOrigin::AsyncFn {
-                        in_trait_or_impl: Some(hir::RpitContext::Trait),
-                        ..
-                    })
+                    && matches!(
+                        opaque.origin,
+                        hir::OpaqueTyOrigin::AsyncFn {
+                            in_trait_or_impl: Some(hir::RpitContext::Trait),
+                            ..
+                        }
+                    )
                 {
                     return;
                 }

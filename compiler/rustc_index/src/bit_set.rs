@@ -1,11 +1,13 @@
 use std::marker::PhantomData;
+#[cfg(not(feature = "nightly"))]
+use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Bound, Not, Range, RangeBounds, Shl};
 use std::rc::Rc;
-use std::{fmt, iter, mem, slice};
+use std::{fmt, iter, slice};
 
 use Chunk::*;
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_Generic, Encodable_Generic};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 use smallvec::{SmallVec, smallvec};
 
 use crate::{Idx, IndexVec};
@@ -14,7 +16,7 @@ use crate::{Idx, IndexVec};
 mod tests;
 
 type Word = u64;
-const WORD_BYTES: usize = mem::size_of::<Word>();
+const WORD_BYTES: usize = size_of::<Word>();
 const WORD_BITS: usize = WORD_BYTES * 8;
 
 // The choice of chunk size has some trade-offs.
@@ -97,7 +99,13 @@ macro_rules! bit_relations_inherent_impls {
 
 /// A fixed-size bitset type with a dense representation.
 ///
-/// NOTE: Use [`GrowableBitSet`] if you need support for resizing after creation.
+/// Note 1: Since this bitset is dense, if your domain is big, and/or relatively
+/// homogeneous (for example, with long runs of bits set or unset), then it may
+/// be preferable to instead use a [MixedBitSet], or an
+/// [IntervalSet](crate::interval::IntervalSet). They should be more suited to
+/// sparse, or highly-compressible, domains.
+///
+/// Note 2: Use [`GrowableBitSet`] if you need support for resizing after creation.
 ///
 /// `T` is an index type, typically a newtyped `usize` wrapper, but it can also
 /// just be `usize`.
@@ -106,35 +114,35 @@ macro_rules! bit_relations_inherent_impls {
 /// to or greater than the domain size. All operations that involve two bitsets
 /// will panic if the bitsets have differing domain sizes.
 ///
-#[cfg_attr(feature = "nightly", derive(Decodable_Generic, Encodable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext))]
 #[derive(Eq, PartialEq, Hash)]
-pub struct BitSet<T> {
+pub struct DenseBitSet<T> {
     domain_size: usize,
     words: SmallVec<[Word; 2]>,
     marker: PhantomData<T>,
 }
 
-impl<T> BitSet<T> {
+impl<T> DenseBitSet<T> {
     /// Gets the domain size.
     pub fn domain_size(&self) -> usize {
         self.domain_size
     }
 }
 
-impl<T: Idx> BitSet<T> {
+impl<T: Idx> DenseBitSet<T> {
     /// Creates a new, empty bitset with a given `domain_size`.
     #[inline]
-    pub fn new_empty(domain_size: usize) -> BitSet<T> {
+    pub fn new_empty(domain_size: usize) -> DenseBitSet<T> {
         let num_words = num_words(domain_size);
-        BitSet { domain_size, words: smallvec![0; num_words], marker: PhantomData }
+        DenseBitSet { domain_size, words: smallvec![0; num_words], marker: PhantomData }
     }
 
     /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
-    pub fn new_filled(domain_size: usize) -> BitSet<T> {
+    pub fn new_filled(domain_size: usize) -> DenseBitSet<T> {
         let num_words = num_words(domain_size);
         let mut result =
-            BitSet { domain_size, words: smallvec![!0; num_words], marker: PhantomData };
+            DenseBitSet { domain_size, words: smallvec![!0; num_words], marker: PhantomData };
         result.clear_excess_bits();
         result
     }
@@ -165,7 +173,7 @@ impl<T: Idx> BitSet<T> {
 
     /// Is `self` is a (non-strict) superset of `other`?
     #[inline]
-    pub fn superset(&self, other: &BitSet<T>) -> bool {
+    pub fn superset(&self, other: &DenseBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         self.words.iter().zip(&other.words).all(|(a, b)| (a & b) == *b)
     }
@@ -275,35 +283,57 @@ impl<T: Idx> BitSet<T> {
     }
 
     bit_relations_inherent_impls! {}
+
+    /// Sets `self = self | !other`.
+    ///
+    /// FIXME: Incorporate this into [`BitRelations`] and fill out
+    /// implementations for other bitset types, if needed.
+    pub fn union_not(&mut self, other: &DenseBitSet<T>) {
+        assert_eq!(self.domain_size, other.domain_size);
+
+        // FIXME(Zalathar): If we were to forcibly _set_ all excess bits before
+        // the bitwise update, and then clear them again afterwards, we could
+        // quickly and accurately detect whether the update changed anything.
+        // But that's only worth doing if there's an actual use-case.
+
+        bitwise(&mut self.words, &other.words, |a, b| a | !b);
+        // The bitwise update `a | !b` can result in the last word containing
+        // out-of-domain bits, so we need to clear them.
+        self.clear_excess_bits();
+    }
 }
 
 // dense REL dense
-impl<T: Idx> BitRelations<BitSet<T>> for BitSet<T> {
-    fn union(&mut self, other: &BitSet<T>) -> bool {
+impl<T: Idx> BitRelations<DenseBitSet<T>> for DenseBitSet<T> {
+    fn union(&mut self, other: &DenseBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         bitwise(&mut self.words, &other.words, |a, b| a | b)
     }
 
-    fn subtract(&mut self, other: &BitSet<T>) -> bool {
+    fn subtract(&mut self, other: &DenseBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         bitwise(&mut self.words, &other.words, |a, b| a & !b)
     }
 
-    fn intersect(&mut self, other: &BitSet<T>) -> bool {
+    fn intersect(&mut self, other: &DenseBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         bitwise(&mut self.words, &other.words, |a, b| a & b)
     }
 }
 
-impl<T: Idx> From<GrowableBitSet<T>> for BitSet<T> {
+impl<T: Idx> From<GrowableBitSet<T>> for DenseBitSet<T> {
     fn from(bit_set: GrowableBitSet<T>) -> Self {
         bit_set.bit_set
     }
 }
 
-impl<T> Clone for BitSet<T> {
+impl<T> Clone for DenseBitSet<T> {
     fn clone(&self) -> Self {
-        BitSet { domain_size: self.domain_size, words: self.words.clone(), marker: PhantomData }
+        DenseBitSet {
+            domain_size: self.domain_size,
+            words: self.words.clone(),
+            marker: PhantomData,
+        }
     }
 
     fn clone_from(&mut self, from: &Self) {
@@ -312,13 +342,13 @@ impl<T> Clone for BitSet<T> {
     }
 }
 
-impl<T: Idx> fmt::Debug for BitSet<T> {
+impl<T: Idx> fmt::Debug for DenseBitSet<T> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         w.debug_list().entries(self.iter()).finish()
     }
 }
 
-impl<T: Idx> ToString for BitSet<T> {
+impl<T: Idx> ToString for DenseBitSet<T> {
     fn to_string(&self) -> String {
         let mut result = String::new();
         let mut sep = '[';
@@ -695,7 +725,7 @@ impl<T: Idx> ChunkedBitSet<T> {
         match self.chunks.get(chunk_index) {
             Some(Zeros(_chunk_domain_size)) => ChunkIter::Zeros,
             Some(Ones(chunk_domain_size)) => ChunkIter::Ones(0..*chunk_domain_size as usize),
-            Some(Mixed(chunk_domain_size, _, ref words)) => {
+            Some(Mixed(chunk_domain_size, _, words)) => {
                 let num_words = num_words(*chunk_domain_size as usize);
                 ChunkIter::Mixed(BitIter::new(&words[0..num_words]))
             }
@@ -724,11 +754,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     changed = true;
                 }
                 (
-                    Mixed(
-                        self_chunk_domain_size,
-                        ref mut self_chunk_count,
-                        ref mut self_chunk_words,
-                    ),
+                    Mixed(self_chunk_domain_size, self_chunk_count, self_chunk_words),
                     Mixed(_other_chunk_domain_size, _other_chunk_count, other_chunk_words),
                 ) => {
                     // First check if the operation would change
@@ -808,11 +834,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                         Mixed(*self_chunk_domain_size, self_chunk_count, Rc::new(self_chunk_words));
                 }
                 (
-                    Mixed(
-                        self_chunk_domain_size,
-                        ref mut self_chunk_count,
-                        ref mut self_chunk_words,
-                    ),
+                    Mixed(self_chunk_domain_size, self_chunk_count, self_chunk_words),
                     Mixed(_other_chunk_domain_size, _other_chunk_count, other_chunk_words),
                 ) => {
                     // See [`<Self as BitRelations<ChunkedBitSet<T>>>::union`] for the explanation
@@ -863,11 +885,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     *self_chunk = other_chunk.clone();
                 }
                 (
-                    Mixed(
-                        self_chunk_domain_size,
-                        ref mut self_chunk_count,
-                        ref mut self_chunk_words,
-                    ),
+                    Mixed(self_chunk_domain_size, self_chunk_count, self_chunk_words),
                     Mixed(_other_chunk_domain_size, _other_chunk_count, other_chunk_words),
                 ) => {
                     // See [`<Self as BitRelations<ChunkedBitSet<T>>>::union`] for the explanation
@@ -902,7 +920,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
     }
 }
 
-impl<T: Idx> BitRelations<ChunkedBitSet<T>> for BitSet<T> {
+impl<T: Idx> BitRelations<ChunkedBitSet<T>> for DenseBitSet<T> {
     fn union(&mut self, other: &ChunkedBitSet<T>) -> bool {
         sequential_update(|elem| self.insert(elem), other.iter())
     }
@@ -1077,6 +1095,18 @@ impl<T: Idx> fmt::Debug for ChunkedBitSet<T> {
     }
 }
 
+/// Sets `out_vec[i] = op(out_vec[i], in_vec[i])` for each index `i` in both
+/// slices. The slices must have the same length.
+///
+/// Returns true if at least one bit in `out_vec` was changed.
+///
+/// ## Warning
+/// Some bitwise operations (e.g. union-not, xor) can set output bits that were
+/// unset in in both inputs. If this happens in the last word/chunk of a bitset,
+/// it can cause the bitset to contain out-of-domain values, which need to
+/// be cleared with `clear_excess_bits_in_final_word`. This also makes the
+/// "changed" return value unreliable, because the change might have only
+/// affected excess bits.
 #[inline]
 fn bitwise<Op>(out_vec: &mut [Word], in_vec: &[Word], op: Op) -> bool
 where
@@ -1114,10 +1144,10 @@ where
     false
 }
 
-/// A bitset with a mixed representation, using `BitSet` for small and medium
-/// bitsets, and `ChunkedBitSet` for large bitsets, i.e. those with enough bits
-/// for at least two chunks. This is a good choice for many bitsets that can
-/// have large domain sizes (e.g. 5000+).
+/// A bitset with a mixed representation, using `DenseBitSet` for small and
+/// medium bitsets, and `ChunkedBitSet` for large bitsets, i.e. those with
+/// enough bits for at least two chunks. This is a good choice for many bitsets
+/// that can have large domain sizes (e.g. 5000+).
 ///
 /// `T` is an index type, typically a newtyped `usize` wrapper, but it can also
 /// just be `usize`.
@@ -1127,7 +1157,7 @@ where
 /// will panic if the bitsets have differing domain sizes.
 #[derive(PartialEq, Eq)]
 pub enum MixedBitSet<T> {
-    Small(BitSet<T>),
+    Small(DenseBitSet<T>),
     Large(ChunkedBitSet<T>),
 }
 
@@ -1144,7 +1174,7 @@ impl<T: Idx> MixedBitSet<T> {
     #[inline]
     pub fn new_empty(domain_size: usize) -> MixedBitSet<T> {
         if domain_size <= CHUNK_BITS {
-            MixedBitSet::Small(BitSet::new_empty(domain_size))
+            MixedBitSet::Small(DenseBitSet::new_empty(domain_size))
         } else {
             MixedBitSet::Large(ChunkedBitSet::new_empty(domain_size))
         }
@@ -1283,7 +1313,7 @@ impl<'a, T: Idx> Iterator for MixedBitIter<'a, T> {
 /// to or greater than the domain size.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GrowableBitSet<T: Idx> {
-    bit_set: BitSet<T>,
+    bit_set: DenseBitSet<T>,
 }
 
 impl<T: Idx> Default for GrowableBitSet<T> {
@@ -1306,11 +1336,11 @@ impl<T: Idx> GrowableBitSet<T> {
     }
 
     pub fn new_empty() -> GrowableBitSet<T> {
-        GrowableBitSet { bit_set: BitSet::new_empty(0) }
+        GrowableBitSet { bit_set: DenseBitSet::new_empty(0) }
     }
 
     pub fn with_capacity(capacity: usize) -> GrowableBitSet<T> {
-        GrowableBitSet { bit_set: BitSet::new_empty(capacity) }
+        GrowableBitSet { bit_set: DenseBitSet::new_empty(capacity) }
     }
 
     /// Returns `true` if the set has changed.
@@ -1349,8 +1379,8 @@ impl<T: Idx> GrowableBitSet<T> {
     }
 }
 
-impl<T: Idx> From<BitSet<T>> for GrowableBitSet<T> {
-    fn from(bit_set: BitSet<T>) -> Self {
+impl<T: Idx> From<DenseBitSet<T>> for GrowableBitSet<T> {
+    fn from(bit_set: DenseBitSet<T>) -> Self {
         Self { bit_set }
     }
 }
@@ -1362,7 +1392,7 @@ impl<T: Idx> From<BitSet<T>> for GrowableBitSet<T> {
 ///
 /// All operations that involve a row and/or column index will panic if the
 /// index exceeds the relevant bound.
-#[cfg_attr(feature = "nightly", derive(Decodable_Generic, Encodable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext))]
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct BitMatrix<R: Idx, C: Idx> {
     num_rows: usize,
@@ -1386,7 +1416,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     }
 
     /// Creates a new matrix, with `row` used as the value for every row.
-    pub fn from_row_n(row: &BitSet<C>, num_rows: usize) -> BitMatrix<R, C> {
+    pub fn from_row_n(row: &DenseBitSet<C>, num_rows: usize) -> BitMatrix<R, C> {
         let num_columns = row.domain_size();
         let words_per_row = num_words(num_columns);
         assert_eq!(words_per_row, row.words.len());
@@ -1484,7 +1514,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
 
     /// Adds the bits from `with` to the bits from row `write`, and
     /// returns `true` if anything changed.
-    pub fn union_row_with(&mut self, with: &BitSet<C>, write: R) -> bool {
+    pub fn union_row_with(&mut self, with: &DenseBitSet<C>, write: R) -> bool {
         assert!(write.index() < self.num_rows);
         assert_eq!(with.domain_size(), self.num_columns);
         let (write_start, write_end) = self.range(write);
@@ -1541,8 +1571,8 @@ impl<R: Idx, C: Idx> fmt::Debug for BitMatrix<R, C> {
 /// A fixed-column-size, variable-row-size 2D bit matrix with a moderately
 /// sparse representation.
 ///
-/// Initially, every row has no explicit representation. If any bit within a
-/// row is set, the entire row is instantiated as `Some(<BitSet>)`.
+/// Initially, every row has no explicit representation. If any bit within a row
+/// is set, the entire row is instantiated as `Some(<DenseBitSet>)`.
 /// Furthermore, any previously uninstantiated rows prior to it will be
 /// instantiated as `None`. Those prior rows may themselves become fully
 /// instantiated later on if any of their bits are set.
@@ -1556,7 +1586,7 @@ where
     C: Idx,
 {
     num_columns: usize,
-    rows: IndexVec<R, Option<BitSet<C>>>,
+    rows: IndexVec<R, Option<DenseBitSet<C>>>,
 }
 
 impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
@@ -1565,10 +1595,10 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         Self { num_columns, rows: IndexVec::new() }
     }
 
-    fn ensure_row(&mut self, row: R) -> &mut BitSet<C> {
-        // Instantiate any missing rows up to and including row `row` with an empty `BitSet`.
-        // Then replace row `row` with a full `BitSet` if necessary.
-        self.rows.get_or_insert_with(row, || BitSet::new_empty(self.num_columns))
+    fn ensure_row(&mut self, row: R) -> &mut DenseBitSet<C> {
+        // Instantiate any missing rows up to and including row `row` with an empty `DenseBitSet`.
+        // Then replace row `row` with a full `DenseBitSet` if necessary.
+        self.rows.get_or_insert_with(row, || DenseBitSet::new_empty(self.num_columns))
     }
 
     /// Sets the cell at `(row, column)` to true. Put another way, insert
@@ -1638,21 +1668,21 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
 
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
-    pub fn iter(&self, row: R) -> impl Iterator<Item = C> + '_ {
+    pub fn iter(&self, row: R) -> impl Iterator<Item = C> {
         self.row(row).into_iter().flat_map(|r| r.iter())
     }
 
-    pub fn row(&self, row: R) -> Option<&BitSet<C>> {
+    pub fn row(&self, row: R) -> Option<&DenseBitSet<C>> {
         self.rows.get(row)?.as_ref()
     }
 
-    /// Intersects `row` with `set`. `set` can be either `BitSet` or
+    /// Intersects `row` with `set`. `set` can be either `DenseBitSet` or
     /// `ChunkedBitSet`. Has no effect if `row` does not exist.
     ///
     /// Returns true if the row was changed.
     pub fn intersect_row<Set>(&mut self, row: R, set: &Set) -> bool
     where
-        BitSet<C>: BitRelations<Set>,
+        DenseBitSet<C>: BitRelations<Set>,
     {
         match self.rows.get_mut(row) {
             Some(Some(row)) => row.intersect(set),
@@ -1660,13 +1690,13 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         }
     }
 
-    /// Subtracts `set` from `row`. `set` can be either `BitSet` or
+    /// Subtracts `set` from `row`. `set` can be either `DenseBitSet` or
     /// `ChunkedBitSet`. Has no effect if `row` does not exist.
     ///
     /// Returns true if the row was changed.
     pub fn subtract_row<Set>(&mut self, row: R, set: &Set) -> bool
     where
-        BitSet<C>: BitRelations<Set>,
+        DenseBitSet<C>: BitRelations<Set>,
     {
         match self.rows.get_mut(row) {
             Some(Some(row)) => row.subtract(set),
@@ -1674,13 +1704,13 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         }
     }
 
-    /// Unions `row` with `set`. `set` can be either `BitSet` or
+    /// Unions `row` with `set`. `set` can be either `DenseBitSet` or
     /// `ChunkedBitSet`.
     ///
     /// Returns true if the row was changed.
     pub fn union_row<Set>(&mut self, row: R, set: &Set) -> bool
     where
-        BitSet<C>: BitRelations<Set>,
+        DenseBitSet<C>: BitRelations<Set>,
     {
         self.ensure_row(row).union(set)
     }
@@ -1786,7 +1816,7 @@ impl std::fmt::Debug for FiniteBitSet<u32> {
 
 /// A fixed-sized bitset type represented by an integer type. Indices outwith than the range
 /// representable by `T` are considered set.
-#[cfg_attr(feature = "nightly", derive(Decodable_Generic, Encodable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext))]
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct FiniteBitSet<T: FiniteBitSetTy>(pub T);
 

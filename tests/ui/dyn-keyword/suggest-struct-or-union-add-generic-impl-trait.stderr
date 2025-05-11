@@ -1,0 +1,74 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-struct-or-union-add-generic-impl-trait.rs:5:8
+   |
+LL |     a: Trait,
+   |        ^^^^^
+   |
+help: you might be missing a type parameter
+   |
+LL ~ struct Foo1<T: Trait> {
+LL ~     a: T,
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-struct-or-union-add-generic-impl-trait.rs:12:8
+   |
+LL |     b: Trait,
+   |        ^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |     b: dyn Trait,
+   |        +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-struct-or-union-add-generic-impl-trait.rs:17:7
+   |
+LL |     A(Trait),
+   |       ^^^^^
+   |
+help: you might be missing a type parameter
+   |
+LL ~ enum Enum1<T: Trait> {
+LL ~     A(T),
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-struct-or-union-add-generic-impl-trait.rs:24:7
+   |
+LL |     B(Trait),
+   |       ^^^^^
+   |
+help: you might be missing a type parameter
+   |
+LL ~ enum Enum2<T: Trait> {
+LL |     A(u32),
+LL ~     B(T),
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-struct-or-union-add-generic-impl-trait.rs:35:8
+   |
+LL |     f: Trait,
+   |        ^^^^^
+   |
+help: you might be missing a type parameter
+   |
+LL ~ struct HasGenerics<T, U: Trait> {
+LL ~     f: U,
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-struct-or-union-add-generic-impl-trait.rs:31:5
+   |
+LL |     Trait:, {}
+   |     ^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |     dyn Trait:, {}
+   |     +++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0782`.

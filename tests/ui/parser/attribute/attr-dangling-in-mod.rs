@@ -1,6 +1,4 @@
-//@ error-pattern:expected item
-
 fn main() {
 }
 
-#[foo = "bar"]
+#[foo = "bar"] //~ ERROR expected item after attributes

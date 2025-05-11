@@ -16,13 +16,17 @@
 fn main() {
 
     let s : String = 1;  // Error in the middle of line.
+    //~^ ERROR mismatched types
 
     let s : String = 1
     ;  // Error before the newline.
+    //~^^ ERROR mismatched types
 
     let s : String =
 1;  // Error after the newline.
+    //~^ ERROR mismatched types
 
     let s : String = (
     );  // Error spanning the newline.
+    //~^^ ERROR mismatched types
 }

@@ -30,17 +30,20 @@ enum EnumUnordered {
 trait TraitUnordered {
     const B: bool;
     const A: bool;
+    //~^ arbitrary_source_item_ordering
 
     type SomeType;
 
     fn b();
     fn a();
+    //~^ arbitrary_source_item_ordering
 }
 
 trait TraitUnorderedItemKinds {
     type SomeType;
 
     const A: bool;
+    //~^ arbitrary_source_item_ordering
 
     fn a();
 }

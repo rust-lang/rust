@@ -53,9 +53,13 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
         //
         //     #[const_mutation_allowed]
         //     pub const LOG: Log = Log { msg: "" };
-        match self.tcx.calculate_dtor(def_id, |_, _| Ok(())) {
-            Some(_) => None,
-            None => Some(def_id),
+        // FIXME: this should not be checking for `Drop` impls,
+        // but whether it or any field has a Drop impl (`needs_drop`)
+        // as fields' Drop impls may make this observable, too.
+        match self.tcx.type_of(def_id).skip_binder().ty_adt_def().map(|adt| adt.has_dtor(self.tcx))
+        {
+            Some(true) => None,
+            Some(false) | None => Some(def_id),
         }
     }
 
@@ -79,7 +83,7 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
             let lint_root = self.body.source_scopes[source_info.scope]
                 .local_data
                 .as_ref()
-                .assert_crate_local()
+                .unwrap_crate_local()
                 .lint_root;
 
             Some((lint_root, source_info.span, self.tcx.def_span(const_item)))
@@ -133,7 +137,7 @@ impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
                 // the `self` parameter of a method call (as the terminator of our current
                 // BasicBlock). If so, we emit a more specific lint.
                 let method_did = self.target_local.and_then(|target_local| {
-                    rustc_middle::util::find_self_call(self.tcx, self.body, target_local, loc.block)
+                    find_self_call(self.tcx, self.body, target_local, loc.block)
                 });
                 let lint_loc =
                     if method_did.is_some() { self.body.terminator_loc(loc.block) } else { loc };

@@ -1,0 +1,12 @@
+- // MIR for `equal_referents` before InstSimplify-after-simplifycfg
++ // MIR for `equal_referents` after InstSimplify-after-simplifycfg
+  
+  fn equal_referents() -> [&u8; 5] {
+      let mut _0: [&u8; 5];
+  
+      bb0: {
+          _0 = [const equal_referents::A, const equal_referents::B, const equal_referents::C, const equal_referents::D, const equal_referents::E];
+          return;
+      }
+  }
+  

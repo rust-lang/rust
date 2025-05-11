@@ -1,5 +1,5 @@
 error[E0015]: cannot call non-const operator in constant functions
-  --> $DIR/issue-94675.rs:11:17
+  --> $DIR/issue-94675.rs:9:17
    |
 LL |         self.bar[0] = baz.len();
    |                 ^^^

@@ -14,7 +14,7 @@ pub(super) fn check<'tcx>(
     map_recv: &'tcx rustc_hir::Expr<'_>,
     map_arg: &'tcx rustc_hir::Expr<'_>,
     map_span: Span,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     // Don't lint if:
 
@@ -36,7 +36,7 @@ pub(super) fn check<'tcx>(
     }
 
     // 4. msrv doesn't meet `OPTION_RESULT_IS_VARIANT_AND`
-    if !msrv.meets(msrvs::OPTION_RESULT_IS_VARIANT_AND) {
+    if !msrv.meets(cx, msrvs::OPTION_RESULT_IS_VARIANT_AND) {
         return;
     }
 

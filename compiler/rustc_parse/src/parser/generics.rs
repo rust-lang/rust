@@ -1,10 +1,9 @@
-use ast::token::Delimiter;
 use rustc_ast::{
     self as ast, AttrVec, DUMMY_NODE_ID, GenericBounds, GenericParam, GenericParamKind, TyKind,
     WhereClause, token,
 };
 use rustc_errors::{Applicability, PResult};
-use rustc_span::{Ident, Span, kw};
+use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::ThinVec;
 
 use super::{ForceCollect, Parser, Trailing, UsePreAttrPos};
@@ -297,6 +296,32 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Parses an experimental fn contract
+    /// (`contract_requires(WWW) contract_ensures(ZZZ)`)
+    pub(super) fn parse_contract(
+        &mut self,
+    ) -> PResult<'a, Option<rustc_ast::ptr::P<ast::FnContract>>> {
+        let requires = if self.eat_keyword_noexpect(exp!(ContractRequires).kw) {
+            self.psess.gated_spans.gate(sym::contracts_internals, self.prev_token.span);
+            let precond = self.parse_expr()?;
+            Some(precond)
+        } else {
+            None
+        };
+        let ensures = if self.eat_keyword_noexpect(exp!(ContractEnsures).kw) {
+            self.psess.gated_spans.gate(sym::contracts_internals, self.prev_token.span);
+            let postcond = self.parse_expr()?;
+            Some(postcond)
+        } else {
+            None
+        };
+        if requires.is_none() && ensures.is_none() {
+            Ok(None)
+        } else {
+            Ok(Some(rustc_ast::ptr::P(ast::FnContract { requires, ensures })))
+        }
+    }
+
     /// Parses an optional where-clause.
     ///
     /// ```ignore (only-for-syntax-highlight)
@@ -341,34 +366,47 @@ impl<'a> Parser<'a> {
 
         loop {
             let where_sp = where_lo.to(self.prev_token.span);
+            let attrs = self.parse_outer_attributes()?;
             let pred_lo = self.token.span;
-            let kind = if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
-                let lifetime = self.expect_lifetime();
-                // Bounds starting with a colon are mandatory, but possibly empty.
-                self.expect(exp!(Colon))?;
-                let bounds = self.parse_lt_param_bounds();
-                ast::WherePredicateKind::RegionPredicate(ast::WhereRegionPredicate {
-                    lifetime,
-                    bounds,
-                })
-            } else if self.check_type() {
-                match self.parse_ty_where_predicate_kind_or_recover_tuple_struct_body(
-                    struct_, pred_lo, where_sp,
-                )? {
-                    PredicateKindOrStructBody::PredicateKind(kind) => kind,
-                    PredicateKindOrStructBody::StructBody(body) => {
-                        tuple_struct_body = Some(body);
-                        break;
-                    }
+            let predicate = self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
+                for attr in &attrs {
+                    self.psess.gated_spans.gate(sym::where_clause_attrs, attr.span);
                 }
-            } else {
-                break;
-            };
-            where_clause.predicates.push(ast::WherePredicate {
-                kind,
-                id: DUMMY_NODE_ID,
-                span: pred_lo.to(self.prev_token.span),
-            });
+                let kind = if this.check_lifetime() && this.look_ahead(1, |t| !t.is_like_plus()) {
+                    let lifetime = this.expect_lifetime();
+                    // Bounds starting with a colon are mandatory, but possibly empty.
+                    this.expect(exp!(Colon))?;
+                    let bounds = this.parse_lt_param_bounds();
+                    Some(ast::WherePredicateKind::RegionPredicate(ast::WhereRegionPredicate {
+                        lifetime,
+                        bounds,
+                    }))
+                } else if this.check_type() {
+                    match this.parse_ty_where_predicate_kind_or_recover_tuple_struct_body(
+                        struct_, pred_lo, where_sp,
+                    )? {
+                        PredicateKindOrStructBody::PredicateKind(kind) => Some(kind),
+                        PredicateKindOrStructBody::StructBody(body) => {
+                            tuple_struct_body = Some(body);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                };
+                let predicate = kind.map(|kind| ast::WherePredicate {
+                    attrs,
+                    kind,
+                    id: DUMMY_NODE_ID,
+                    span: pred_lo.to(this.prev_token.span),
+                    is_placeholder: false,
+                });
+                Ok((predicate, Trailing::No, UsePreAttrPos::No))
+            })?;
+            match predicate {
+                Some(predicate) => where_clause.predicates.push(predicate),
+                None => break,
+            }
 
             let prev_token = self.prev_token.span;
             let ate_comma = self.eat(exp!(Comma));
@@ -398,7 +436,7 @@ impl<'a> Parser<'a> {
 
         if let Some(struct_) = struct_
             && self.may_recover()
-            && self.token == token::OpenDelim(Delimiter::Parenthesis)
+            && self.token == token::OpenParen
         {
             snapshot = Some((struct_, self.create_snapshot_for_diagnostic()));
         };
@@ -509,7 +547,7 @@ impl<'a> Parser<'a> {
                         matches!(t.kind, token::Gt | token::Comma | token::Colon | token::Eq)
                         // Recovery-only branch -- this could be removed,
                         // since it only affects diagnostics currently.
-                            || matches!(t.kind, token::Question)
+                            || t.kind == token::Question
                     })
                 || self.is_keyword_ahead(start + 1, &[kw::Const]))
     }

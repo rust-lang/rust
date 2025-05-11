@@ -48,6 +48,7 @@ use crate::{error, fmt, result, sys};
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), doc(search_unbox))]
 pub type Result<T> = result::Result<T, Error>;
 
 /// The error type for I/O operations of the [`Read`], [`Write`], [`Seek`], and
@@ -83,7 +84,7 @@ impl Error {
 
     pub(crate) const UNKNOWN_THREAD_COUNT: Self = const_error!(
         ErrorKind::NotFound,
-        "The number of hardware threads is not known for the target platform"
+        "the number of hardware threads is not known for the target platform",
     );
 
     pub(crate) const UNSUPPORTED_PLATFORM: Self =
@@ -339,7 +340,7 @@ pub enum ErrorKind {
     #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     NotSeekable,
     /// Filesystem quota or some other kind of quota was exceeded.
-    #[stable(feature = "io_error_quota_exceeded", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "io_error_quota_exceeded", since = "1.85.0")]
     QuotaExceeded,
     /// File larger than allowed or supported.
     ///
@@ -364,7 +365,7 @@ pub enum ErrorKind {
     #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     Deadlock,
     /// Cross-device or cross-filesystem (hard) link or rename.
-    #[stable(feature = "io_error_crosses_devices", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "io_error_crosses_devices", since = "1.85.0")]
     CrossesDevices,
     /// Too many (hard) links to the same filesystem object.
     ///
@@ -373,8 +374,8 @@ pub enum ErrorKind {
     TooManyLinks,
     /// A filename was invalid.
     ///
-    /// This error can also cause if it exceeded the filename length limit.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    /// This error can also occur if a length limit for a name was exceeded.
+    #[stable(feature = "io_error_invalid_filename", since = "1.87.0")]
     InvalidFilename,
     /// Program argument list too long.
     ///

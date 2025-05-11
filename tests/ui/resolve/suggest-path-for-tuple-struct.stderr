@@ -6,8 +6,9 @@ LL |     let _ = SomeTupleStruct.new();
    |
 help: use the path separator to refer to an item
    |
-LL |     let _ = SomeTupleStruct::new();
-   |                            ~~
+LL -     let _ = SomeTupleStruct.new();
+LL +     let _ = SomeTupleStruct::new();
+   |
 
 error[E0423]: expected value, found struct `SomeRegularStruct`
   --> $DIR/suggest-path-for-tuple-struct.rs:24:13
@@ -17,8 +18,9 @@ LL |     let _ = SomeRegularStruct.new();
    |
 help: use the path separator to refer to an item
    |
-LL |     let _ = SomeRegularStruct::new();
-   |                              ~~
+LL -     let _ = SomeRegularStruct.new();
+LL +     let _ = SomeRegularStruct::new();
+   |
 
 error: aborting due to 2 previous errors
 

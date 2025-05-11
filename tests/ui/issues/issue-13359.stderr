@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-13359.rs:6:9
+  --> $DIR/issue-13359.rs:8:9
    |
 LL |     foo(1*(1 as isize));
    |     --- ^^^^^^^^^^^^^^ expected `i16`, found `isize`
@@ -7,7 +7,7 @@ LL |     foo(1*(1 as isize));
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/issue-13359.rs:1:4
+  --> $DIR/issue-13359.rs:3:4
    |
 LL | fn foo(_s: i16) { }
    |    ^^^ -------
@@ -17,7 +17,7 @@ LL |     foo((1*(1 as isize)).try_into().unwrap());
    |         +              +++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/issue-13359.rs:10:9
+  --> $DIR/issue-13359.rs:12:9
    |
 LL |     bar(1*(1 as usize));
    |     --- ^^^^^^^^^^^^^^ expected `u32`, found `usize`
@@ -25,7 +25,7 @@ LL |     bar(1*(1 as usize));
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/issue-13359.rs:3:4
+  --> $DIR/issue-13359.rs:5:4
    |
 LL | fn bar(_s: u32) { }
    |    ^^^ -------

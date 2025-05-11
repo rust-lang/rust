@@ -13,11 +13,12 @@ help: replace the binding and indexed access with a slice pattern
    |
 LL ~     if let Some([slice_0, ..]) = slice {
 LL |
+LL |
 LL ~         println!("{}", slice_0);
    |
 
 error: this binding can be a slice pattern to avoid indexing
-  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:21:17
+  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:22:17
    |
 LL |     if let Some(slice) = slice {
    |                 ^^^^^
@@ -26,11 +27,12 @@ help: replace the binding and indexed access with a slice pattern
    |
 LL ~     if let Some([slice_0, ..]) = slice {
 LL |
+LL |
 LL ~         println!("{}", slice_0);
    |
 
 error: this binding can be a slice pattern to avoid indexing
-  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:28:17
+  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:30:17
    |
 LL |     if let Some(slice) = slice {
    |                 ^^^^^
@@ -39,12 +41,13 @@ help: replace the binding and indexed access with a slice pattern
    |
 LL ~     if let Some([slice_0, _, slice_2, ..]) = slice {
 LL |
+LL |
 LL ~         println!("{}", slice_2);
 LL ~         println!("{}", slice_0);
    |
 
 error: this binding can be a slice pattern to avoid indexing
-  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:36:26
+  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:39:26
    |
 LL |     if let SomeEnum::One(slice) | SomeEnum::Three(slice) = slice_wrapped {
    |                          ^^^^^
@@ -53,11 +56,12 @@ help: replace the binding and indexed access with a slice pattern
    |
 LL ~     if let SomeEnum::One([slice_0, ..]) | SomeEnum::Three([slice_0, ..]) = slice_wrapped {
 LL |
+LL |
 LL ~         println!("{}", slice_0);
    |
 
 error: this binding can be a slice pattern to avoid indexing
-  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:44:29
+  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:48:29
    |
 LL |     if let (SomeEnum::Three(a), Some(b)) = (a_wrapped, b_wrapped) {
    |                             ^
@@ -67,11 +71,12 @@ help: replace the binding and indexed access with a slice pattern
 LL ~     if let (SomeEnum::Three([_, _, a_2, ..]), Some(b)) = (a_wrapped, b_wrapped) {
 LL |
 LL |
+LL |
 LL ~         println!("{} -> {}", a_2, b[1]);
    |
 
 error: this binding can be a slice pattern to avoid indexing
-  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:44:38
+  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:48:38
    |
 LL |     if let (SomeEnum::Three(a), Some(b)) = (a_wrapped, b_wrapped) {
    |                                      ^
@@ -81,11 +86,12 @@ help: replace the binding and indexed access with a slice pattern
 LL ~     if let (SomeEnum::Three(a), Some([_, b_1, ..])) = (a_wrapped, b_wrapped) {
 LL |
 LL |
+LL |
 LL ~         println!("{} -> {}", a[2], b_1);
    |
 
 error: this binding can be a slice pattern to avoid indexing
-  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:53:21
+  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:58:21
    |
 LL |     if let Some(ref slice) = slice {
    |                     ^^^^^
@@ -94,11 +100,12 @@ help: replace the binding and indexed access with a slice pattern
    |
 LL ~     if let Some([_, ref slice_1, ..]) = slice {
 LL |
+LL |
 LL ~         println!("{:?}", slice_1);
    |
 
 error: this binding can be a slice pattern to avoid indexing
-  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:62:17
+  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:68:17
    |
 LL |     if let Some(slice) = &slice {
    |                 ^^^^^
@@ -107,11 +114,12 @@ help: replace the binding and indexed access with a slice pattern
    |
 LL ~     if let Some([slice_0, ..]) = &slice {
 LL |
+LL |
 LL ~         println!("{:?}", slice_0);
    |
 
 error: this binding can be a slice pattern to avoid indexing
-  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:132:17
+  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:139:17
    |
 LL |     if let Some(slice) = wrap.inner {
    |                 ^^^^^
@@ -120,12 +128,13 @@ help: replace the binding and indexed access with a slice pattern
    |
 LL ~     if let Some([slice_0, ..]) = wrap.inner {
 LL |
+LL |
 LL |         if wrap.is_awesome {
 LL ~             println!("This is awesome! {}", slice_0);
    |
 
 error: this binding can be a slice pattern to avoid indexing
-  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:140:17
+  --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:148:17
    |
 LL |     if let Some(slice) = wrap.inner {
    |                 ^^^^^
@@ -133,6 +142,7 @@ LL |     if let Some(slice) = wrap.inner {
 help: replace the binding and indexed access with a slice pattern
    |
 LL ~     if let Some([slice_0, ..]) = wrap.inner {
+LL |
 LL |
 LL |         if wrap.is_super_awesome() {
 LL ~             println!("This is super awesome! {}", slice_0);

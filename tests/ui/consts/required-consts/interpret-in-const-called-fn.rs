@@ -6,6 +6,7 @@
 struct Fail<T>(T);
 impl<T> Fail<T> {
     const C: () = panic!(); //~ERROR evaluation of `Fail::<i32>::C` failed
+                            //~| NOTE in this expansion of panic!
 }
 
 #[inline(never)]
@@ -14,7 +15,7 @@ const fn no_codegen<T>() {
         // This bad constant is only used in dead code in a no-codegen function... and yet we still
         // must make sure that the build fails.
         // This relies on const-eval evaluating all `required_consts` of `const fn`.
-        Fail::<T>::C; //~ constant
+        Fail::<T>::C; //~ NOTE constant
     }
 }
 

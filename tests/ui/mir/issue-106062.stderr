@@ -6,10 +6,12 @@ LL |     async fn connection_handler(handler: impl Sized) -> Result<Ok, std::io:
    |
 help: try using the variant's enum
    |
-LL |     async fn connection_handler(handler: impl Sized) -> Result<core::result::Result, std::io::Error> {
-   |                                                                ~~~~~~~~~~~~~~~~~~~~
-LL |     async fn connection_handler(handler: impl Sized) -> Result<std::result::Result, std::io::Error> {
-   |                                                                ~~~~~~~~~~~~~~~~~~~
+LL -     async fn connection_handler(handler: impl Sized) -> Result<Ok, std::io::Error> {
+LL +     async fn connection_handler(handler: impl Sized) -> Result<core::result::Result, std::io::Error> {
+   |
+LL -     async fn connection_handler(handler: impl Sized) -> Result<Ok, std::io::Error> {
+LL +     async fn connection_handler(handler: impl Sized) -> Result<std::result::Result, std::io::Error> {
+   |
 
 error: aborting due to 1 previous error
 

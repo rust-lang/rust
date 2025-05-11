@@ -2,7 +2,7 @@
 //! neither within a crate nor cross-crate.
 //@ aux-build:unstable_intrinsic.rs
 #![feature(staged_api, rustc_attrs, intrinsics)]
-#![stable(since="1.0.0", feature = "stable")]
+#![stable(since = "1.0.0", feature = "stable")]
 #![feature(local)]
 
 extern crate unstable_intrinsic;
@@ -30,14 +30,12 @@ const fn const_main() {
 
 #[unstable(feature = "local", issue = "42")]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-pub const unsafe fn size_of_val<T>(x: *const T) -> usize { 42 }
+pub const unsafe fn size_of_val<T>(x: *const T) -> usize;
 
 #[unstable(feature = "local", issue = "42")]
 #[rustc_const_unstable(feature = "local", issue = "42")]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-pub const unsafe fn min_align_of_val<T>(x: *const T) -> usize { 42 }
+pub const unsafe fn min_align_of_val<T>(x: *const T) -> usize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
@@ -45,10 +43,7 @@ pub const unsafe fn min_align_of_val<T>(x: *const T) -> usize { 42 }
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     // Const stability attributes are not inherited from parent items.
     #[rustc_intrinsic]
-    #[rustc_intrinsic_must_be_overridden]
-    const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
-        unimplemented!()
-    }
+    const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
 
     unsafe { copy(src, dst, count) }
     //~^ ERROR cannot be (indirectly) exposed to stable

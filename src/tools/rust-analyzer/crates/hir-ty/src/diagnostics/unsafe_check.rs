@@ -5,41 +5,51 @@ use std::mem;
 
 use either::Either;
 use hir_def::{
-    body::Body,
+    AdtId, DefWithBodyId, FieldId, FunctionId, VariantId,
+    expr_store::{Body, path::Path},
     hir::{Expr, ExprId, ExprOrPatId, Pat, PatId, Statement, UnaryOp},
-    path::Path,
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
+    signatures::StaticFlags,
     type_ref::Rawness,
-    AdtId, DefWithBodyId, FieldId, VariantId,
 };
+use span::Edition;
 
 use crate::{
-    db::HirDatabase, utils::is_fn_unsafe_to_call, InferenceResult, Interner, TyExt, TyKind,
+    InferenceResult, Interner, TargetFeatures, TyExt, TyKind, db::HirDatabase,
+    utils::is_fn_unsafe_to_call,
 };
 
-/// Returns `(unsafe_exprs, fn_is_unsafe)`.
-///
-/// If `fn_is_unsafe` is false, `unsafe_exprs` are hard errors. If true, they're `unsafe_op_in_unsafe_fn`.
-pub fn missing_unsafe(
-    db: &dyn HirDatabase,
-    def: DefWithBodyId,
-) -> (Vec<(ExprOrPatId, UnsafetyReason)>, bool) {
+#[derive(Debug, Default)]
+pub struct MissingUnsafeResult {
+    pub unsafe_exprs: Vec<(ExprOrPatId, UnsafetyReason)>,
+    /// If `fn_is_unsafe` is false, `unsafe_exprs` are hard errors. If true, they're `unsafe_op_in_unsafe_fn`.
+    pub fn_is_unsafe: bool,
+    pub deprecated_safe_calls: Vec<ExprId>,
+}
+
+pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> MissingUnsafeResult {
     let _p = tracing::info_span!("missing_unsafe").entered();
 
-    let mut res = Vec::new();
     let is_unsafe = match def {
-        DefWithBodyId::FunctionId(it) => db.function_data(it).is_unsafe(),
-        DefWithBodyId::StaticId(_)
-        | DefWithBodyId::ConstId(_)
-        | DefWithBodyId::VariantId(_)
-        | DefWithBodyId::InTypeConstId(_) => false,
+        DefWithBodyId::FunctionId(it) => db.function_signature(it).is_unsafe(),
+        DefWithBodyId::StaticId(_) | DefWithBodyId::ConstId(_) | DefWithBodyId::VariantId(_) => {
+            false
+        }
     };
 
+    let mut res = MissingUnsafeResult { fn_is_unsafe: is_unsafe, ..MissingUnsafeResult::default() };
     let body = db.body(def);
     let infer = db.infer(def);
-    let mut callback = |node, inside_unsafe_block, reason| {
-        if inside_unsafe_block == InsideUnsafeBlock::No {
-            res.push((node, reason));
+    let mut callback = |diag| match diag {
+        UnsafeDiagnostic::UnsafeOperation { node, inside_unsafe_block, reason } => {
+            if inside_unsafe_block == InsideUnsafeBlock::No {
+                res.unsafe_exprs.push((node, reason));
+            }
+        }
+        UnsafeDiagnostic::DeprecatedSafe2024 { node, inside_unsafe_block } => {
+            if inside_unsafe_block == InsideUnsafeBlock::No {
+                res.deprecated_safe_calls.push(node)
+            }
         }
     };
     let mut visitor = UnsafeVisitor::new(db, &infer, &body, def, &mut callback);
@@ -54,7 +64,7 @@ pub fn missing_unsafe(
         }
     }
 
-    (res, is_unsafe)
+    res
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -73,16 +83,51 @@ pub enum InsideUnsafeBlock {
     Yes,
 }
 
-pub fn unsafe_expressions(
+#[derive(Debug)]
+enum UnsafeDiagnostic {
+    UnsafeOperation {
+        node: ExprOrPatId,
+        inside_unsafe_block: InsideUnsafeBlock,
+        reason: UnsafetyReason,
+    },
+    /// A lint.
+    DeprecatedSafe2024 { node: ExprId, inside_unsafe_block: InsideUnsafeBlock },
+}
+
+pub fn unsafe_operations_for_body(
+    db: &dyn HirDatabase,
+    infer: &InferenceResult,
+    def: DefWithBodyId,
+    body: &Body,
+    callback: &mut dyn FnMut(ExprOrPatId),
+) {
+    let mut visitor_callback = |diag| {
+        if let UnsafeDiagnostic::UnsafeOperation { node, .. } = diag {
+            callback(node);
+        }
+    };
+    let mut visitor = UnsafeVisitor::new(db, infer, body, def, &mut visitor_callback);
+    visitor.walk_expr(body.body_expr);
+    for &param in &body.params {
+        visitor.walk_pat(param);
+    }
+}
+
+pub fn unsafe_operations(
     db: &dyn HirDatabase,
     infer: &InferenceResult,
     def: DefWithBodyId,
     body: &Body,
     current: ExprId,
-    unsafe_expr_cb: &mut dyn FnMut(ExprOrPatId, InsideUnsafeBlock, UnsafetyReason),
+    callback: &mut dyn FnMut(InsideUnsafeBlock),
 ) {
-    let mut visitor = UnsafeVisitor::new(db, infer, body, def, unsafe_expr_cb);
-    _ = visitor.resolver.update_to_inner_scope(db.upcast(), def, current);
+    let mut visitor_callback = |diag| {
+        if let UnsafeDiagnostic::UnsafeOperation { inside_unsafe_block, .. } = diag {
+            callback(inside_unsafe_block);
+        }
+    };
+    let mut visitor = UnsafeVisitor::new(db, infer, body, def, &mut visitor_callback);
+    _ = visitor.resolver.update_to_inner_scope(db, def, current);
     visitor.walk_expr(current);
 }
 
@@ -95,7 +140,10 @@ struct UnsafeVisitor<'a> {
     inside_unsafe_block: InsideUnsafeBlock,
     inside_assignment: bool,
     inside_union_destructure: bool,
-    unsafe_expr_cb: &'a mut dyn FnMut(ExprOrPatId, InsideUnsafeBlock, UnsafetyReason),
+    callback: &'a mut dyn FnMut(UnsafeDiagnostic),
+    def_target_features: TargetFeatures,
+    // FIXME: This needs to be the edition of the span of each call.
+    edition: Edition,
 }
 
 impl<'a> UnsafeVisitor<'a> {
@@ -104,9 +152,14 @@ impl<'a> UnsafeVisitor<'a> {
         infer: &'a InferenceResult,
         body: &'a Body,
         def: DefWithBodyId,
-        unsafe_expr_cb: &'a mut dyn FnMut(ExprOrPatId, InsideUnsafeBlock, UnsafetyReason),
+        unsafe_expr_cb: &'a mut dyn FnMut(UnsafeDiagnostic),
     ) -> Self {
-        let resolver = def.resolver(db.upcast());
+        let resolver = def.resolver(db);
+        let def_target_features = match def {
+            DefWithBodyId::FunctionId(func) => TargetFeatures::from_attrs(&db.attrs(func.into())),
+            _ => TargetFeatures::default(),
+        };
+        let edition = resolver.module().krate().data(db).edition;
         Self {
             db,
             infer,
@@ -116,16 +169,38 @@ impl<'a> UnsafeVisitor<'a> {
             inside_unsafe_block: InsideUnsafeBlock::No,
             inside_assignment: false,
             inside_union_destructure: false,
-            unsafe_expr_cb,
+            callback: unsafe_expr_cb,
+            def_target_features,
+            edition,
         }
     }
 
-    fn call_cb(&mut self, node: ExprOrPatId, reason: UnsafetyReason) {
-        (self.unsafe_expr_cb)(node, self.inside_unsafe_block, reason);
+    fn on_unsafe_op(&mut self, node: ExprOrPatId, reason: UnsafetyReason) {
+        (self.callback)(UnsafeDiagnostic::UnsafeOperation {
+            node,
+            inside_unsafe_block: self.inside_unsafe_block,
+            reason,
+        });
+    }
+
+    fn check_call(&mut self, node: ExprId, func: FunctionId) {
+        let unsafety = is_fn_unsafe_to_call(self.db, func, &self.def_target_features, self.edition);
+        match unsafety {
+            crate::utils::Unsafety::Safe => {}
+            crate::utils::Unsafety::Unsafe => {
+                self.on_unsafe_op(node.into(), UnsafetyReason::UnsafeFnCall)
+            }
+            crate::utils::Unsafety::DeprecatedSafe2024 => {
+                (self.callback)(UnsafeDiagnostic::DeprecatedSafe2024 {
+                    node,
+                    inside_unsafe_block: self.inside_unsafe_block,
+                })
+            }
+        }
     }
 
     fn walk_pats_top(&mut self, pats: impl Iterator<Item = PatId>, parent_expr: ExprId) {
-        let guard = self.resolver.update_to_inner_scope(self.db.upcast(), self.def, parent_expr);
+        let guard = self.resolver.update_to_inner_scope(self.db, self.def, parent_expr);
         pats.for_each(|pat| self.walk_pat(pat));
         self.resolver.reset_to_guard(guard);
     }
@@ -146,7 +221,9 @@ impl<'a> UnsafeVisitor<'a> {
                 | Pat::Ref { .. }
                 | Pat::Box { .. }
                 | Pat::Expr(..)
-                | Pat::ConstBlock(..) => self.call_cb(current.into(), UnsafetyReason::UnionField),
+                | Pat::ConstBlock(..) => {
+                    self.on_unsafe_op(current.into(), UnsafetyReason::UnionField)
+                }
                 // `Or` only wraps other patterns, and `Missing`/`Wild` do not constitute a read.
                 Pat::Missing | Pat::Wild | Pat::Or(_) => {}
             }
@@ -180,15 +257,18 @@ impl<'a> UnsafeVisitor<'a> {
         let inside_assignment = mem::replace(&mut self.inside_assignment, false);
         match expr {
             &Expr::Call { callee, .. } => {
-                if let Some(func) = self.infer[callee].as_fn_def(self.db) {
-                    if is_fn_unsafe_to_call(self.db, func) {
-                        self.call_cb(current.into(), UnsafetyReason::UnsafeFnCall);
+                let callee = &self.infer[callee];
+                if let Some(func) = callee.as_fn_def(self.db) {
+                    self.check_call(current, func);
+                }
+                if let TyKind::Function(fn_ptr) = callee.kind(Interner) {
+                    if fn_ptr.sig.safety == chalk_ir::Safety::Unsafe {
+                        self.on_unsafe_op(current.into(), UnsafetyReason::UnsafeFnCall);
                     }
                 }
             }
             Expr::Path(path) => {
-                let guard =
-                    self.resolver.update_to_inner_scope(self.db.upcast(), self.def, current);
+                let guard = self.resolver.update_to_inner_scope(self.db, self.def, current);
                 self.mark_unsafe_path(current.into(), path);
                 self.resolver.reset_to_guard(guard);
             }
@@ -209,33 +289,21 @@ impl<'a> UnsafeVisitor<'a> {
                 }
             }
             Expr::MethodCall { .. } => {
-                if self
-                    .infer
-                    .method_resolution(current)
-                    .map(|(func, _)| is_fn_unsafe_to_call(self.db, func))
-                    .unwrap_or(false)
-                {
-                    self.call_cb(current.into(), UnsafetyReason::UnsafeFnCall);
+                if let Some((func, _)) = self.infer.method_resolution(current) {
+                    self.check_call(current, func);
                 }
             }
             Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
                 if let TyKind::Raw(..) = &self.infer[*expr].kind(Interner) {
-                    self.call_cb(current.into(), UnsafetyReason::RawPtrDeref);
+                    self.on_unsafe_op(current.into(), UnsafetyReason::RawPtrDeref);
                 }
-            }
-            Expr::Unsafe { .. } => {
-                let old_inside_unsafe_block =
-                    mem::replace(&mut self.inside_unsafe_block, InsideUnsafeBlock::Yes);
-                self.body.walk_child_exprs_without_pats(current, |child| self.walk_expr(child));
-                self.inside_unsafe_block = old_inside_unsafe_block;
-                return;
             }
             &Expr::Assignment { target, value: _ } => {
                 let old_inside_assignment = mem::replace(&mut self.inside_assignment, true);
                 self.walk_pats_top(std::iter::once(target), current);
                 self.inside_assignment = old_inside_assignment;
             }
-            Expr::InlineAsm(_) => self.call_cb(current.into(), UnsafetyReason::InlineAsm),
+            Expr::InlineAsm(_) => self.on_unsafe_op(current.into(), UnsafetyReason::InlineAsm),
             // rustc allows union assignment to propagate through field accesses and casts.
             Expr::Cast { .. } => self.inside_assignment = inside_assignment,
             Expr::Field { .. } => {
@@ -244,9 +312,23 @@ impl<'a> UnsafeVisitor<'a> {
                     if let Some(Either::Left(FieldId { parent: VariantId::UnionId(_), .. })) =
                         self.infer.field_resolution(current)
                     {
-                        self.call_cb(current.into(), UnsafetyReason::UnionField);
+                        self.on_unsafe_op(current.into(), UnsafetyReason::UnionField);
                     }
                 }
+            }
+            Expr::Unsafe { statements, .. } => {
+                let old_inside_unsafe_block =
+                    mem::replace(&mut self.inside_unsafe_block, InsideUnsafeBlock::Yes);
+                self.walk_pats_top(
+                    statements.iter().filter_map(|statement| match statement {
+                        &Statement::Let { pat, .. } => Some(pat),
+                        _ => None,
+                    }),
+                    current,
+                );
+                self.body.walk_child_exprs_without_pats(current, |child| self.walk_expr(child));
+                self.inside_unsafe_block = old_inside_unsafe_block;
+                return;
             }
             Expr::Block { statements, .. } | Expr::Async { statements, .. } => {
                 self.walk_pats_top(
@@ -266,6 +348,7 @@ impl<'a> UnsafeVisitor<'a> {
             Expr::Closure { args, .. } => {
                 self.walk_pats_top(args.iter().copied(), current);
             }
+            Expr::Const(e) => self.walk_expr(*e),
             _ => {}
         }
 
@@ -274,14 +357,15 @@ impl<'a> UnsafeVisitor<'a> {
 
     fn mark_unsafe_path(&mut self, node: ExprOrPatId, path: &Path) {
         let hygiene = self.body.expr_or_pat_path_hygiene(node);
-        let value_or_partial =
-            self.resolver.resolve_path_in_value_ns(self.db.upcast(), path, hygiene);
+        let value_or_partial = self.resolver.resolve_path_in_value_ns(self.db, path, hygiene);
         if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id), _)) = value_or_partial {
-            let static_data = self.db.static_data(id);
-            if static_data.mutable {
-                self.call_cb(node, UnsafetyReason::MutableStatic);
-            } else if static_data.is_extern && !static_data.has_safe_kw {
-                self.call_cb(node, UnsafetyReason::ExternStatic);
+            let static_data = self.db.static_signature(id);
+            if static_data.flags.contains(StaticFlags::MUTABLE) {
+                self.on_unsafe_op(node, UnsafetyReason::MutableStatic);
+            } else if static_data.flags.contains(StaticFlags::EXTERN)
+                && !static_data.flags.contains(StaticFlags::EXPLICIT_SAFE)
+            {
+                self.on_unsafe_op(node, UnsafetyReason::ExternStatic);
             }
         }
     }

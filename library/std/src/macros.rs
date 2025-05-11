@@ -41,7 +41,7 @@ macro_rules! panic {
 /// Use `print!` only for the primary output of your program. Use
 /// [`eprint!`] instead to print error and progress messages.
 ///
-/// See [the formatting documentation in `std::fmt`](../std/fmt/index.html)
+/// See the formatting documentation in [`std::fmt`](crate::fmt)
 /// for details of the macro argument syntax.
 ///
 /// [flush]: crate::io::Write::flush
@@ -106,7 +106,7 @@ macro_rules! print {
 /// Use `println!` only for the primary output of your program. Use
 /// [`eprintln!`] instead to print error and progress messages.
 ///
-/// See [the formatting documentation in `std::fmt`](../std/fmt/index.html)
+/// See the formatting documentation in [`std::fmt`](crate::fmt)
 /// for details of the macro argument syntax.
 ///
 /// [`std::fmt`]: crate::fmt
@@ -156,7 +156,7 @@ macro_rules! println {
 /// [`io::stderr`]: crate::io::stderr
 /// [`io::stdout`]: crate::io::stdout
 ///
-/// See [the formatting documentation in `std::fmt`](../std/fmt/index.html)
+/// See the formatting documentation in [`std::fmt`](crate::fmt)
 /// for details of the macro argument syntax.
 ///
 /// # Panics
@@ -190,7 +190,7 @@ macro_rules! eprint {
 /// Use `eprintln!` only for error and progress messages. Use `println!`
 /// instead for the primary output of your program.
 ///
-/// See [the formatting documentation in `std::fmt`](../std/fmt/index.html)
+/// See the formatting documentation in [`std::fmt`](crate::fmt)
 /// for details of the macro argument syntax.
 ///
 /// [`io::stderr`]: crate::io::stderr
@@ -371,19 +371,4 @@ macro_rules! dbg {
     ($($val:expr),+ $(,)?) => {
         ($($crate::dbg!($val)),+,)
     };
-}
-
-/// Verify that floats are within a tolerance of each other, 1.0e-6 by default.
-#[cfg(test)]
-macro_rules! assert_approx_eq {
-    ($a:expr, $b:expr) => {{ assert_approx_eq!($a, $b, 1.0e-6) }};
-    ($a:expr, $b:expr, $lim:expr) => {{
-        let (a, b) = (&$a, &$b);
-        let diff = (*a - *b).abs();
-        assert!(
-            diff < $lim,
-            "{a:?} is not approximately equal to {b:?} (threshold {lim:?}, difference {diff:?})",
-            lim = $lim
-        );
-    }};
 }

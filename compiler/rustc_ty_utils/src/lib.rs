@@ -6,6 +6,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -13,10 +14,8 @@
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iterator_try_collect)]
-#![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use rustc_middle::query::Providers;
@@ -30,6 +29,7 @@ mod implied_bounds;
 mod instance;
 mod layout;
 mod needs_drop;
+mod nested_bodies;
 mod opaque_types;
 mod representability;
 pub mod sig_types;
@@ -51,4 +51,5 @@ pub fn provide(providers: &mut Providers) {
     ty::provide(providers);
     instance::provide(providers);
     structural_match::provide(providers);
+    nested_bodies::provide(providers);
 }

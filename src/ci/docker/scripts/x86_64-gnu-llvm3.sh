@@ -2,8 +2,6 @@
 
 set -ex
 
-/tmp/add_dummy_commit.sh
-
 ##### Test stage 1 #####
 
 ../x.py --stage 1 test --skip src/tools/tidy

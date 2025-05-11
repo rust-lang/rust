@@ -90,7 +90,7 @@ pub fn attr_error(args: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(DeriveEmpty)]
 pub fn derive_empty(_item: TokenStream) -> TokenStream {
-    TokenStream::new()
+    TokenStream::default()
 }
 
 #[proc_macro_derive(DerivePanic)]

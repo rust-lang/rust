@@ -2,15 +2,15 @@
 //@normalize-stderr-test: "OS `.*`" -> "$$OS"
 // Make sure we pretend the allocation symbols don't exist when there is no allocator
 
-#![feature(start)]
 #![no_std]
+#![no_main]
 
 extern "Rust" {
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
 }
 
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+#[no_mangle]
+fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
     unsafe {
         __rust_alloc(1, 1); //~ERROR: unsupported operation: can't call foreign function `__rust_alloc`
     }

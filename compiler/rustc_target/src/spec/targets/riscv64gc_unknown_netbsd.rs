@@ -1,9 +1,9 @@
-use crate::spec::{CodeModel, Target, TargetOptions, base};
+use crate::spec::{CodeModel, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "riscv64-unknown-netbsd".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("RISC-V NetBSD".into()),
             tier: Some(3),
             host_tools: Some(true),
@@ -15,7 +15,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             code_model: Some(CodeModel::Medium),
             cpu: "generic-rv64".into(),
-            features: "+m,+a,+f,+d,+c".into(),
+            features: "+m,+a,+f,+d,+c,+zicsr,+zifencei".into(),
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
             mcount: "__mcount".into(),

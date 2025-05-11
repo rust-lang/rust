@@ -1,16 +1,17 @@
-use hir::{db::ExpandDatabase, AssocItem, FileRange, HirDisplay, InFile};
+use hir::{FileRange, HirDisplay, InFile, db::ExpandDatabase};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
-    assists::{Assist, AssistId, AssistKind},
+    assists::{Assist, AssistId},
     label::Label,
     source_change::SourceChange,
 };
 use syntax::{
-    ast::{self, make, HasArgList},
-    format_smolstr, AstNode, SmolStr, TextRange, ToSmolStr,
+    AstNode, SmolStr, TextRange, ToSmolStr,
+    ast::{self, HasArgList, make},
+    format_smolstr,
 };
 
-use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_range};
 
 // Diagnostic: unresolved-method
 //
@@ -31,11 +32,11 @@ pub(crate) fn unresolved_method(
         format!(
             "no method `{}` on type `{}`{suffix}",
             d.name.display(ctx.sema.db, ctx.edition),
-            d.receiver.display(ctx.sema.db, ctx.edition)
+            d.receiver.display(ctx.sema.db, ctx.display_target)
         ),
         adjusted_display_range(ctx, d.expr, &|expr| {
             Some(
-                match expr {
+                match expr.left()? {
                     ast::Expr::MethodCallExpr(it) => it.name_ref(),
                     ast::Expr::FieldExpr(it) => it.name_ref(),
                     _ => None,
@@ -67,11 +68,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -> Option<
         fixes.push(assoc_func_fix);
     }
 
-    if fixes.is_empty() {
-        None
-    } else {
-        Some(fixes)
-    }
+    if fixes.is_empty() { None } else { Some(fixes) }
 }
 
 fn field_fix(
@@ -85,7 +82,7 @@ fn field_fix(
     let expr_ptr = &d.expr;
     let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
-    let (file_id, range) = match expr {
+    let (file_id, range) = match expr.left()? {
         ast::Expr::MethodCallExpr(mcall) => {
             let FileRange { range, file_id } =
                 ctx.sema.original_range_opt(mcall.receiver()?.syntax())?;
@@ -99,25 +96,25 @@ fn field_fix(
         _ => return None,
     };
     Some(Assist {
-        id: AssistId("expected-method-found-field-fix", AssistKind::QuickFix),
+        id: AssistId::quick_fix("expected-method-found-field-fix"),
         label: Label::new("Use parentheses to call the value of the field".to_owned()),
         group: None,
         target: range,
         source_change: Some(SourceChange::from_iter([
-            (file_id.into(), TextEdit::insert(range.start(), "(".to_owned())),
-            (file_id.into(), TextEdit::insert(range.end(), ")".to_owned())),
+            (file_id.file_id(ctx.sema.db), TextEdit::insert(range.start(), "(".to_owned())),
+            (file_id.file_id(ctx.sema.db), TextEdit::insert(range.end(), ")".to_owned())),
         ])),
         command: None,
     })
 }
 
 fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -> Option<Assist> {
-    if let Some(assoc_item_id) = d.assoc_func_with_same_name {
+    if let Some(f) = d.assoc_func_with_same_name {
         let db = ctx.sema.db;
 
         let expr_ptr = &d.expr;
         let root = db.parse_or_expand(expr_ptr.file_id);
-        let expr: ast::Expr = expr_ptr.value.to_node(&root);
+        let expr: ast::Expr = expr_ptr.value.to_node(&root).left()?;
 
         let call = ast::MethodCallExpr::cast(expr.syntax().clone())?;
         let range = InFile::new(expr_ptr.file_id, call.syntax().text_range())
@@ -127,37 +124,32 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         let receiver = call.receiver()?;
         let receiver_type = &ctx.sema.type_of_expr(&receiver)?.original;
 
-        let need_to_take_receiver_as_first_arg = match hir::AssocItem::from(assoc_item_id) {
-            AssocItem::Function(f) => {
-                let assoc_fn_params = f.assoc_fn_params(db);
-                if assoc_fn_params.is_empty() {
-                    false
-                } else {
-                    assoc_fn_params
-                        .first()
-                        .map(|first_arg| {
-                            // For generic type, say `Box`, take `Box::into_raw(b: Self)` as example,
-                            // type of `b` is `Self`, which is `Box<T, A>`, containing unspecified generics.
-                            // However, type of `receiver` is specified, it could be `Box<i32, Global>` or something like that,
-                            // so `first_arg.ty() == receiver_type` evaluate to `false` here.
-                            // Here add `first_arg.ty().as_adt() == receiver_type.as_adt()` as guard,
-                            // apply `.as_adt()` over `Box<T, A>` or `Box<i32, Global>` gets `Box`, so we get `true` here.
+        let assoc_fn_params = f.assoc_fn_params(db);
+        let need_to_take_receiver_as_first_arg = if assoc_fn_params.is_empty() {
+            false
+        } else {
+            assoc_fn_params
+                .first()
+                .map(|first_arg| {
+                    // For generic type, say `Box`, take `Box::into_raw(b: Self)` as example,
+                    // type of `b` is `Self`, which is `Box<T, A>`, containing unspecified generics.
+                    // However, type of `receiver` is specified, it could be `Box<i32, Global>` or something like that,
+                    // so `first_arg.ty() == receiver_type` evaluate to `false` here.
+                    // Here add `first_arg.ty().as_adt() == receiver_type.as_adt()` as guard,
+                    // apply `.as_adt()` over `Box<T, A>` or `Box<i32, Global>` gets `Box`, so we get `true` here.
 
-                            // FIXME: it fails when type of `b` is `Box` with other generic param different from `receiver`
-                            first_arg.ty() == receiver_type
-                                || first_arg.ty().as_adt() == receiver_type.as_adt()
-                        })
-                        .unwrap_or(false)
-                }
-            }
-            _ => false,
+                    // FIXME: it fails when type of `b` is `Box` with other generic param different from `receiver`
+                    first_arg.ty() == receiver_type
+                        || first_arg.ty().as_adt() == receiver_type.as_adt()
+                })
+                .unwrap_or(false)
         };
 
         let mut receiver_type_adt_name =
             receiver_type.as_adt()?.name(db).display_no_db(ctx.edition).to_smolstr();
 
         let generic_parameters: Vec<SmolStr> =
-            receiver_type.generic_parameters(db, ctx.edition).collect();
+            receiver_type.generic_parameters(db, ctx.display_target).collect();
         // if receiver should be pass as first arg in the assoc func,
         // we could omit generic parameters cause compiler can deduce it automatically
         if !need_to_take_receiver_as_first_arg && !generic_parameters.is_empty() {
@@ -183,14 +175,14 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         let file_id = ctx.sema.original_range_opt(call.receiver()?.syntax())?.file_id;
 
         Some(Assist {
-            id: AssistId("method_call_to_assoc_func_call_fix", AssistKind::QuickFix),
+            id: AssistId::quick_fix("method_call_to_assoc_func_call_fix"),
             label: Label::new(format!(
                 "Use associated func call instead: `{assoc_func_call_expr_string}`"
             )),
             group: None,
             target: range,
             source_change: Some(SourceChange::from_text_edit(
-                file_id,
+                file_id.file_id(ctx.sema.db),
                 TextEdit::replace(range, assoc_func_call_expr_string),
             )),
             command: None,
@@ -277,7 +269,7 @@ impl<T, U> A<T, U> {
 }
 fn main() {
     let a = A {a: 0, b: ""};
-    A::<i32, &str>::foo();
+    A::<i32, &'static str>::foo();
 }
 "#,
         );

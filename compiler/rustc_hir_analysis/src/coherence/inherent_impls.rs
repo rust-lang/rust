@@ -25,7 +25,7 @@ pub(crate) fn crate_inherent_impls(
     let mut collect = InherentCollect { tcx, impls_map: Default::default() };
 
     let mut res = Ok(());
-    for id in tcx.hir().items() {
+    for id in tcx.hir_free_items() {
         res = res.and(collect.check_item(id));
     }
 
@@ -113,7 +113,7 @@ impl<'tcx> InherentCollect<'tcx> {
         ty: Ty<'tcx>,
     ) -> Result<(), ErrorGuaranteed> {
         let items = self.tcx.associated_item_def_ids(impl_def_id);
-        if !self.tcx.hir().rustc_coherence_is_core() {
+        if !self.tcx.hir_rustc_coherence_is_core() {
             if self.tcx.features().rustc_attrs() {
                 for &impl_item in items {
                     if !self.tcx.has_attr(impl_item, sym::rustc_allow_incoherent_impl) {
@@ -150,7 +150,7 @@ impl<'tcx> InherentCollect<'tcx> {
         let id = id.owner_id.def_id;
         let item_span = self.tcx.def_span(id);
         let self_ty = self.tcx.type_of(id).instantiate_identity();
-        let mut self_ty = self.tcx.peel_off_weak_alias_tys(self_ty);
+        let mut self_ty = self.tcx.peel_off_free_alias_tys(self_ty);
         // We allow impls on pattern types exactly when we allow impls on the base type.
         // FIXME(pattern_types): Figure out the exact coherence rules we want here.
         while let ty::Pat(base, _) = *self_ty.kind() {
@@ -188,7 +188,7 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
-            | ty::Alias(ty::Weak, _)
+            | ty::Alias(ty::Free, _)
             | ty::Bound(..)
             | ty::Placeholder(_)
             | ty::Infer(_) => {

@@ -1,0 +1,84 @@
+error[E0308]: mismatched types
+  --> $DIR/arrays-and-slices.rs:18:9
+   |
+LL | const BSTR_SIZED: &'static [u8; 3] = b"012";
+   | ---------------------------------- constant defined here
+...
+LL |     match BSTR_UNSIZED {
+   |           ------------ this expression has type `&[u8]`
+LL |         BSTR_SIZED => {}
+   |         ^^^^^^^^^^
+   |         |
+   |         expected `&[u8]`, found `&[u8; 3]`
+   |         `BSTR_SIZED` is interpreted as a constant, not a new binding
+   |         help: introduce a new binding instead: `other_bstr_sized`
+   |
+   = note: expected reference `&[u8]`
+              found reference `&'static [u8; 3]`
+
+error[E0308]: mismatched types
+  --> $DIR/arrays-and-slices.rs:23:9
+   |
+LL | const STRUCT_SIZED: &'static SomeStruct<[u8; 3]> = &SomeStruct(*BSTR_SIZED);
+   | ------------------------------------------------ constant defined here
+...
+LL |     match STRUCT_UNSIZED {
+   |           -------------- this expression has type `&SomeStruct<[u8]>`
+LL |         STRUCT_SIZED => {}
+   |         ^^^^^^^^^^^^
+   |         |
+   |         expected `&SomeStruct<[u8]>`, found `&SomeStruct<[u8; 3]>`
+   |         `STRUCT_SIZED` is interpreted as a constant, not a new binding
+   |         help: introduce a new binding instead: `other_struct_sized`
+   |
+   = note: expected reference `&SomeStruct<[u8]>`
+              found reference `&'static SomeStruct<[u8; 3]>`
+
+error[E0308]: mismatched types
+  --> $DIR/arrays-and-slices.rs:30:9
+   |
+LL | const BSTR_SIZED: &'static [u8; 3] = b"012";
+   | ---------------------------------- constant defined here
+...
+LL |     match BSTR_UNSIZED {
+   |           ------------ this expression has type `&[u8]`
+LL |         BSTR_SIZED => {}
+   |         ^^^^^^^^^^
+   |         |
+   |         expected `&[u8]`, found `&[u8; 3]`
+   |         `BSTR_SIZED` is interpreted as a constant, not a new binding
+   |         help: introduce a new binding instead: `other_bstr_sized`
+   |
+   = note: expected reference `&[u8]`
+              found reference `&'static [u8; 3]`
+
+error[E0308]: mismatched types
+  --> $DIR/arrays-and-slices.rs:37:9
+   |
+LL | const STRUCT_SIZED: &'static SomeStruct<[u8; 3]> = &SomeStruct(*BSTR_SIZED);
+   | ------------------------------------------------ constant defined here
+...
+LL |     match STRUCT_UNSIZED {
+   |           -------------- this expression has type `&SomeStruct<[u8]>`
+LL |         STRUCT_SIZED => {}
+   |         ^^^^^^^^^^^^
+   |         |
+   |         expected `&SomeStruct<[u8]>`, found `&SomeStruct<[u8; 3]>`
+   |         `STRUCT_SIZED` is interpreted as a constant, not a new binding
+   |         help: introduce a new binding instead: `other_struct_sized`
+   |
+   = note: expected reference `&SomeStruct<[u8]>`
+              found reference `&'static SomeStruct<[u8; 3]>`
+
+error: cannot use unsized non-slice type `SomeStruct<[u8]>` in constant patterns
+  --> $DIR/arrays-and-slices.rs:47:9
+   |
+LL | const STRUCT_UNSIZED: &'static SomeStruct<[u8]> = STRUCT_SIZED;
+   | ----------------------------------------------- constant defined here
+...
+LL |         STRUCT_UNSIZED => {}
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

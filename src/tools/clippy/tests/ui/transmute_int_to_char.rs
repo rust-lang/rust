@@ -1,12 +1,12 @@
 #![warn(clippy::transmute_int_to_char)]
-#![allow(clippy::missing_transmute_annotations)]
+#![allow(clippy::missing_transmute_annotations, unnecessary_transmutes)]
 
 fn int_to_char() {
     let _: char = unsafe { std::mem::transmute(0_u32) };
-    //~^ ERROR: transmute from a `u32` to a `char`
-    //~| NOTE: `-D clippy::transmute-int-to-char` implied by `-D warnings`
+    //~^ transmute_int_to_char
+
     let _: char = unsafe { std::mem::transmute(0_i32) };
-    //~^ ERROR: transmute from a `i32` to a `char`
+    //~^ transmute_int_to_char
 
     // These shouldn't warn
     const _: char = unsafe { std::mem::transmute(0_u32) };

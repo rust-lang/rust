@@ -10,10 +10,10 @@ extern crate test_macros;
 
 #[derive(Print)]
 struct Foo {
-    #[cfg(FALSE)] removed: bool,
+    #[cfg(false)] removed: bool,
     my_array: [bool; {
         struct Inner {
-            #[cfg(FALSE)] removed_inner_field: u8,
+            #[cfg(false)] removed_inner_field: u8,
             non_removed_inner_field: usize
         }
         0

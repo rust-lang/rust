@@ -9,57 +9,55 @@
 fn main() {
     // Lint when both sides are const and of the opposite sign
     -1 % 2;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `-1 % 2`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     1 % -2;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `1 % -2`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     (1 - 2) % (1 + 2);
-    //~^ ERROR: you are using modulo operator on constants with different signs: `-1 % 3`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     (1 + 2) % (1 - 2);
-    //~^ ERROR: you are using modulo operator on constants with different signs: `3 % -1`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     35 * (7 - 4 * 2) % (-500 * -600);
-    //~^ ERROR: you are using modulo operator on constants with different signs: `-35 % 30
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
 
     -1i8 % 2i8;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `-1 % 2`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     1i8 % -2i8;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `1 % -2`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     -1i16 % 2i16;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `-1 % 2`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     1i16 % -2i16;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `1 % -2`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     -1i32 % 2i32;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `-1 % 2`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     1i32 % -2i32;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `1 % -2`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     -1i64 % 2i64;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `-1 % 2`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     1i64 % -2i64;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `1 % -2`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     -1i128 % 2i128;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `-1 % 2`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     1i128 % -2i128;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `1 % -2`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     -1isize % 2isize;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `-1 % 2`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     1isize % -2isize;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `1 % -2`
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
 
     // No lint when both sides are const and of the same sign
     1 % 2;

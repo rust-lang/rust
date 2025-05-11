@@ -6,8 +6,9 @@ LL |     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, || ());
    |
 help: try using a const generic argument instead
    |
-LL |     std::arch::x86_64::_mm_blend_ps::<{ || () }>(loop {}, loop {});
-   |                                    +++++++++++++ ~~~~~~~~~~~~~~~~
+LL -     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, || ());
+LL +     std::arch::x86_64::_mm_blend_ps::<{ || () }>(loop {}, loop {});
+   |
 
 error: invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
   --> $DIR/invalid-rustc_legacy_const_generics-issue-123077.rs:11:59
@@ -17,8 +18,9 @@ LL |     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, 5 + || ());
    |
 help: try using a const generic argument instead
    |
-LL |     std::arch::x86_64::_mm_blend_ps::<{ 5 + (|| ()) }>(loop {}, loop {});
-   |                                    +++++++++++++++++++ ~~~~~~~~~~~~~~~~
+LL -     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, 5 + || ());
+LL +     std::arch::x86_64::_mm_blend_ps::<{ 5 + (|| ()) }>(loop {}, loop {});
+   |
 
 error: invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
   --> $DIR/invalid-rustc_legacy_const_generics-issue-123077.rs:14:61
@@ -28,8 +30,9 @@ LL |     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, foo::<{ 1 + 2 }>());
    |
 help: try using a const generic argument instead
    |
-LL |     std::arch::x86_64::_mm_blend_ps::<{ foo::<{ 1 + 2 }>() }>(loop {}, loop {});
-   |                                    ++++++++++++++++++++++++++ ~~~~~~~~~~~~~~~~
+LL -     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, foo::<{ 1 + 2 }>());
+LL +     std::arch::x86_64::_mm_blend_ps::<{ foo::<{ 1 + 2 }>() }>(loop {}, loop {});
+   |
 
 error: invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
   --> $DIR/invalid-rustc_legacy_const_generics-issue-123077.rs:17:61
@@ -39,8 +42,9 @@ LL |     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, foo::<3>());
    |
 help: try using a const generic argument instead
    |
-LL |     std::arch::x86_64::_mm_blend_ps::<{ foo::<3>() }>(loop {}, loop {});
-   |                                    ++++++++++++++++++ ~~~~~~~~~~~~~~~~
+LL -     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, foo::<3>());
+LL +     std::arch::x86_64::_mm_blend_ps::<{ foo::<3>() }>(loop {}, loop {});
+   |
 
 error: invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
   --> $DIR/invalid-rustc_legacy_const_generics-issue-123077.rs:20:56
@@ -50,8 +54,9 @@ LL |     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, &const {});
    |
 help: try using a const generic argument instead
    |
-LL |     std::arch::x86_64::_mm_blend_ps::<{ &const {} }>(loop {}, loop {});
-   |                                    +++++++++++++++++ ~~~~~~~~~~~~~~~~
+LL -     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, &const {});
+LL +     std::arch::x86_64::_mm_blend_ps::<{ &const {} }>(loop {}, loop {});
+   |
 
 error: invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
   --> $DIR/invalid-rustc_legacy_const_generics-issue-123077.rs:24:9
@@ -75,8 +80,9 @@ LL |     std::arch::x86_64::_mm_inserti_si64(loop {}, loop {}, || (), 1 + || ())
    |
 help: try using a const generic argument instead
    |
-LL |     std::arch::x86_64::_mm_inserti_si64::<{ || () }, { 1 + (|| ()) }>(loop {}, loop {});
-   |                                        ++++++++++++++++++++++++++++++ ~~~~~~~~~~~~~~~~
+LL -     std::arch::x86_64::_mm_inserti_si64(loop {}, loop {}, || (), 1 + || ());
+LL +     std::arch::x86_64::_mm_inserti_si64::<{ || () }, { 1 + (|| ()) }>(loop {}, loop {});
+   |
 
 error: aborting due to 7 previous errors
 

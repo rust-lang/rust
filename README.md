@@ -67,11 +67,11 @@ See [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), and
 trademarks and logos (the "Rust Trademarks").
 
 If you want to use these names or brands, please read the
-[media guide][media-guide].
+[Rust language trademark policy][trademark-policy].
 
 Third-party logos may be subject to third-party copyrights and trademarks. See
 [Licenses][policies-licenses] for details.
 
-[rust-foundation]: https://foundation.rust-lang.org/
-[media-guide]: https://foundation.rust-lang.org/policies/logo-policy-and-media-guide/
+[rust-foundation]: https://rustfoundation.org/
+[trademark-policy]: https://rustfoundation.org/policy/rust-trademark-policy/
 [policies-licenses]: https://www.rust-lang.org/policies/licenses

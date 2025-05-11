@@ -23,14 +23,13 @@ LL +     drop(lock);
    |
 
 error: temporary with significant `Drop` can be early dropped
-  --> tests/ui/significant_drop_tightening.rs:104:13
+  --> tests/ui/significant_drop_tightening.rs:105:13
    |
 LL | /     {
 LL | |         let mutex = Mutex::new(1i32);
 LL | |         let lock = mutex.lock().unwrap();
    | |             ^^^^
-LL | |         let rslt0 = lock.abs();
-LL | |         let rslt1 = lock.is_positive();
+...  |
 LL | |         do_heavy_computation_that_takes_time((rslt0, rslt1));
 LL | |     }
    | |_____- temporary `lock` is currently being dropped at the end of its contained scope
@@ -43,13 +42,13 @@ LL +         drop(lock);
    |
 
 error: temporary with significant `Drop` can be early dropped
-  --> tests/ui/significant_drop_tightening.rs:125:13
+  --> tests/ui/significant_drop_tightening.rs:127:13
    |
 LL | /     {
 LL | |         let mutex = Mutex::new(1i32);
 LL | |         let lock = mutex.lock().unwrap();
    | |             ^^^^
-LL | |         let rslt0 = lock.abs();
+...  |
 LL | |         do_heavy_computation_that_takes_time(rslt0);
 LL | |     }
    | |_____- temporary `lock` is currently being dropped at the end of its contained scope
@@ -59,17 +58,18 @@ help: merge the temporary construction with its single usage
    |
 LL ~         
 LL +         let rslt0 = mutex.lock().unwrap().abs();
+LL |
 LL ~         
    |
 
 error: temporary with significant `Drop` can be early dropped
-  --> tests/ui/significant_drop_tightening.rs:131:17
+  --> tests/ui/significant_drop_tightening.rs:134:17
    |
 LL | /     {
 LL | |         let mutex = Mutex::new(vec![1i32]);
 LL | |         let mut lock = mutex.lock().unwrap();
    | |                 ^^^^
-LL | |         lock.clear();
+...  |
 LL | |         do_heavy_computation_that_takes_time(());
 LL | |     }
    | |_____- temporary `lock` is currently being dropped at the end of its contained scope
@@ -79,6 +79,7 @@ help: merge the temporary construction with its single usage
    |
 LL ~         
 LL +         mutex.lock().unwrap().clear();
+LL |
 LL ~         
    |
 

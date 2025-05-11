@@ -62,7 +62,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let callee_ty = instance.ty(bx.tcx(), bx.typing_env());
 
         let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
-            bug!("expected fn item type, found {}", callee_ty);
+            span_bug!(span, "expected fn item type, found {}", callee_ty);
         };
 
         let sig = callee_ty.fn_sig(bx.tcx());
@@ -225,6 +225,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 args[1].val.unaligned_volatile_store(bx, dst);
                 return Ok(());
             }
+            sym::disjoint_bitor => {
+                let a = args[0].immediate();
+                let b = args[1].immediate();
+                bx.or_disjoint(a, b)
+            }
             sym::exact_div => {
                 let ty = arg_tys[0];
                 match int_type_width_signed(ty, bx.tcx()) {
@@ -320,14 +325,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            sym::discriminant_value => {
-                if ret_ty.is_integral() {
-                    args[0].deref(bx.cx()).codegen_get_discr(bx, ret_ty)
-                } else {
-                    span_bug!(span, "Invalid discriminant type for `{:?}`", arg_tys[0])
-                }
-            }
-
             // This requires that atomic intrinsics follow a specific naming pattern:
             // "atomic_<operation>[_<ordering>]"
             name if let Some(atomic) = name_str.strip_prefix("atomic_") => {
@@ -339,7 +336,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
 
                 let parse_ordering = |bx: &Bx, s| match s {
-                    "unordered" => Unordered,
                     "relaxed" => Relaxed,
                     "acquire" => Acquire,
                     "release" => Release,
@@ -362,7 +358,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bx.sess().dcx().emit_fatal(errors::AtomicCompareExchange);
                         };
                         let ty = fn_args.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
                             let weak = instruction == "cxchgweak";
                             let dst = args[0].immediate();
                             let cmp = args[1].immediate();
@@ -390,7 +386,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     "load" => {
                         let ty = fn_args.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
                             let layout = bx.layout_of(ty);
                             let size = layout.size;
                             let source = args[0].immediate();
@@ -408,7 +404,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     "store" => {
                         let ty = fn_args.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
                             let size = bx.layout_of(ty).size;
                             let val = args[1].immediate();
                             let ptr = args[0].immediate();
@@ -436,6 +432,40 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
 
                     // These are all AtomicRMW ops
+                    "max" | "min" => {
+                        let atom_op = if instruction == "max" {
+                            AtomicRmwBinOp::AtomicMax
+                        } else {
+                            AtomicRmwBinOp::AtomicMin
+                        };
+
+                        let ty = fn_args.type_at(0);
+                        if matches!(ty.kind(), ty::Int(_)) {
+                            let ptr = args[0].immediate();
+                            let val = args[1].immediate();
+                            bx.atomic_rmw(atom_op, ptr, val, parse_ordering(bx, ordering))
+                        } else {
+                            invalid_monomorphization(ty);
+                            return Ok(());
+                        }
+                    }
+                    "umax" | "umin" => {
+                        let atom_op = if instruction == "umax" {
+                            AtomicRmwBinOp::AtomicUMax
+                        } else {
+                            AtomicRmwBinOp::AtomicUMin
+                        };
+
+                        let ty = fn_args.type_at(0);
+                        if matches!(ty.kind(), ty::Uint(_)) {
+                            let ptr = args[0].immediate();
+                            let val = args[1].immediate();
+                            bx.atomic_rmw(atom_op, ptr, val, parse_ordering(bx, ordering))
+                        } else {
+                            invalid_monomorphization(ty);
+                            return Ok(());
+                        }
+                    }
                     op => {
                         let atom_op = match op {
                             "xchg" => AtomicRmwBinOp::AtomicXchg,
@@ -445,15 +475,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             "nand" => AtomicRmwBinOp::AtomicNand,
                             "or" => AtomicRmwBinOp::AtomicOr,
                             "xor" => AtomicRmwBinOp::AtomicXor,
-                            "max" => AtomicRmwBinOp::AtomicMax,
-                            "min" => AtomicRmwBinOp::AtomicMin,
-                            "umax" => AtomicRmwBinOp::AtomicUMax,
-                            "umin" => AtomicRmwBinOp::AtomicUMin,
                             _ => bx.sess().dcx().emit_fatal(errors::UnknownAtomicOperation),
                         };
 
                         let ty = fn_args.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
                             let ptr = args[0].immediate();
                             let val = args[1].immediate();
                             bx.atomic_rmw(atom_op, ptr, val, parse_ordering(bx, ordering))

@@ -10,6 +10,6 @@ fn bar(bar: &usize) {
 }
 
 fn main() {
-    foo(Default::default()); //~ the trait bound `&mut usize: Default` is not satisfied
-    bar(Default::default()); //~ the trait bound `&usize: Default` is not satisfied
+    foo(Default::default()); //~ ERROR the trait bound `&mut usize: Default` is not satisfied
+    bar(Default::default()); //~ ERROR the trait bound `&usize: Default` is not satisfied
 }

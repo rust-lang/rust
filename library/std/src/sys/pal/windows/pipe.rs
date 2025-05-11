@@ -3,8 +3,8 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::os::windows::prelude::*;
 use crate::path::Path;
 use crate::random::{DefaultRandomSource, Random};
-use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::Relaxed;
+use crate::sync::atomic::{Atomic, AtomicUsize};
 use crate::sys::c;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
@@ -74,7 +74,6 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
         let ours;
         let mut name;
         let mut tries = 0;
-        let mut reject_remote_clients_flag = c::PIPE_REJECT_REMOTE_CLIENTS;
         loop {
             tries += 1;
             name = format!(
@@ -96,7 +95,7 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
                 c::PIPE_TYPE_BYTE
                     | c::PIPE_READMODE_BYTE
                     | c::PIPE_WAIT
-                    | reject_remote_clients_flag,
+                    | c::PIPE_REJECT_REMOTE_CLIENTS,
                 1,
                 PIPE_BUFFER_CAPACITY,
                 PIPE_BUFFER_CAPACITY,
@@ -112,30 +111,15 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
             //
             // Don't try again too much though as this could also perhaps be a
             // legit error.
-            // If `ERROR_INVALID_PARAMETER` is returned, this probably means we're
-            // running on pre-Vista version where `PIPE_REJECT_REMOTE_CLIENTS` is
-            // not supported, so we continue retrying without it. This implies
-            // reduced security on Windows versions older than Vista by allowing
-            // connections to this pipe from remote machines.
-            // Proper fix would increase the number of FFI imports and introduce
-            // significant amount of Windows XP specific code with no clean
-            // testing strategy
-            // For more info, see https://github.com/rust-lang/rust/pull/37677.
             if handle == c::INVALID_HANDLE_VALUE {
                 let error = api::get_last_error();
-                if tries < 10 {
-                    if error == WinError::ACCESS_DENIED {
-                        continue;
-                    } else if reject_remote_clients_flag != 0
-                        && error == WinError::INVALID_PARAMETER
-                    {
-                        reject_remote_clients_flag = 0;
-                        tries -= 1;
-                        continue;
-                    }
+                if tries < 10 && error == WinError::ACCESS_DENIED {
+                    continue;
+                } else {
+                    return Err(io::Error::from_raw_os_error(error.code as i32));
                 }
-                return Err(io::Error::from_raw_os_error(error.code as i32));
             }
+
             ours = Handle::from_raw_handle(handle);
             break;
         }
@@ -151,7 +135,7 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
         opts.write(ours_readable);
         opts.read(!ours_readable);
         opts.share_mode(0);
-        let size = mem::size_of::<c::SECURITY_ATTRIBUTES>();
+        let size = size_of::<c::SECURITY_ATTRIBUTES>();
         let mut sa = c::SECURITY_ATTRIBUTES {
             nLength: size as u32,
             lpSecurityDescriptor: ptr::null_mut(),
@@ -159,7 +143,6 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
         };
         opts.security_attributes(&mut sa);
         let theirs = File::open(Path::new(&name), &opts)?;
-        let theirs = AnonPipe { inner: theirs.into_inner() };
 
         Ok(Pipes {
             ours: AnonPipe { inner: ours },
@@ -209,7 +192,7 @@ pub fn spawn_pipe_relay(
 }
 
 fn random_number() -> usize {
-    static N: AtomicUsize = AtomicUsize::new(0);
+    static N: Atomic<usize> = AtomicUsize::new(0);
     loop {
         if N.load(Relaxed) != 0 {
             return N.fetch_add(1, Relaxed);

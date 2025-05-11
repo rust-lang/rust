@@ -9,14 +9,14 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
+#![feature(debug_closure_helpers)]
 #![feature(iter_intersperse)]
-#![feature(let_chains)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::path::{Path, PathBuf};
@@ -30,16 +30,7 @@ pub mod target_features;
 #[cfg(test)]
 mod tests;
 
-pub mod abi {
-    pub(crate) use Float::*;
-    pub(crate) use Primitive::*;
-    // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
-    pub use rustc_abi::{Float, *};
-
-    pub use crate::callconv as call;
-}
-
-pub use rustc_abi::HashStableContext;
+use rustc_abi::HashStableContext;
 
 /// The name of rustc's own place to organize libraries.
 ///

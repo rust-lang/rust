@@ -1,10 +1,13 @@
+use std::sync::Arc;
+
 use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir as hir;
-use rustc_hir::def::Res;
-use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::{self as hir, LangItem};
+use rustc_middle::span_bug;
+use rustc_span::source_map::{Spanned, respan};
+use rustc_span::{DesugaringKind, Ident, Span};
 
 use super::errors::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
@@ -23,6 +26,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let pat_hir_id = self.lower_node_id(pattern.id);
             let node = loop {
                 match &pattern.kind {
+                    PatKind::Missing => break hir::PatKind::Missing,
                     PatKind::Wild => break hir::PatKind::Wild,
                     PatKind::Never => break hir::PatKind::Never,
                     PatKind::Ident(binding_mode, ident, sub) => {
@@ -35,8 +39,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             lower_sub,
                         );
                     }
-                    PatKind::Lit(e) => {
-                        break hir::PatKind::Lit(self.lower_expr_within_pat(e, false));
+                    PatKind::Expr(e) => {
+                        break hir::PatKind::Expr(self.lower_expr_within_pat(e, false));
                     }
                     PatKind::TupleStruct(qself, path, pats) => {
                         let qpath = self.lower_qpath(
@@ -66,7 +70,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             None,
                         );
-                        break hir::PatKind::Path(qpath);
+                        let kind = hir::PatExprKind::Path(qpath);
+                        let span = self.lower_span(pattern.span);
+                        let expr = hir::PatExpr { hir_id: pat_hir_id, span, kind };
+                        let expr = self.arena.alloc(expr);
+                        return hir::Pat {
+                            hir_id: self.next_id(),
+                            kind: hir::PatKind::Expr(expr),
+                            span,
+                            default_binding_modes: true,
+                        };
                     }
                     PatKind::Struct(qself, path, fields, etc) => {
                         let qpath = self.lower_qpath(
@@ -81,7 +94,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                         let fs = self.arena.alloc_from_iter(fields.iter().map(|f| {
                             let hir_id = self.lower_node_id(f.id);
-                            self.lower_attrs(hir_id, &f.attrs);
+                            self.lower_attrs(hir_id, &f.attrs, f.span);
 
                             hir::PatField {
                                 hir_id,
@@ -120,8 +133,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             self.lower_range_end(end, e2.is_some()),
                         );
                     }
-                    // FIXME(guard_patterns): lower pattern guards to HIR
-                    PatKind::Guard(inner, _) => pattern = inner,
+                    PatKind::Guard(inner, cond) => {
+                        break hir::PatKind::Guard(self.lower_pat(inner), self.lower_expr(cond));
+                    }
                     PatKind::Slice(pats) => break self.lower_pat_slice(pats),
                     PatKind::Rest => {
                         // If we reach here the `..` pattern is not semantically allowed.
@@ -300,16 +314,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 )
             }
             Some(res) => {
-                let hir_id = self.next_id();
                 let res = self.lower_res(res);
-                hir::PatKind::Path(hir::QPath::Resolved(
-                    None,
-                    self.arena.alloc(hir::Path {
-                        span: self.lower_span(ident.span),
-                        res,
-                        segments: arena_vec![self; hir::PathSegment::new(self.lower_ident(ident), hir_id, res)],
-                    }),
-            ))
+                let span = self.lower_span(ident.span);
+                hir::PatKind::Expr(self.arena.alloc(hir::PatExpr {
+                    kind: hir::PatExprKind::Path(hir::QPath::Resolved(
+                        None,
+                        self.arena.alloc(hir::Path {
+                            span,
+                            res,
+                            segments: arena_vec![self; hir::PathSegment::new(self.lower_ident(ident), self.next_id(), res)],
+                        }),
+                    )),
+                    hir_id: self.next_id(),
+                    span,
+                }))
             }
         }
     }
@@ -366,24 +384,175 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // }
     // m!(S);
     // ```
-    fn lower_expr_within_pat(&mut self, expr: &Expr, allow_paths: bool) -> &'hir hir::Expr<'hir> {
-        match &expr.kind {
-            ExprKind::Lit(..)
-            | ExprKind::ConstBlock(..)
-            | ExprKind::IncludedBytes(..)
-            | ExprKind::Err(_)
-            | ExprKind::Dummy => {}
-            ExprKind::Path(..) if allow_paths => {}
-            ExprKind::Unary(UnOp::Neg, inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
+    fn lower_expr_within_pat(
+        &mut self,
+        expr: &Expr,
+        allow_paths: bool,
+    ) -> &'hir hir::PatExpr<'hir> {
+        let span = self.lower_span(expr.span);
+        let err = |guar| hir::PatExprKind::Lit {
+            lit: self.arena.alloc(respan(span, LitKind::Err(guar))),
+            negated: false,
+        };
+        let kind = match &expr.kind {
+            ExprKind::Lit(lit) => {
+                hir::PatExprKind::Lit { lit: self.lower_lit(lit, span), negated: false }
+            }
+            ExprKind::ConstBlock(c) => hir::PatExprKind::ConstBlock(self.lower_const_block(c)),
+            ExprKind::IncludedBytes(bytes) => hir::PatExprKind::Lit {
+                lit: self
+                    .arena
+                    .alloc(respan(span, LitKind::ByteStr(Arc::clone(bytes), StrStyle::Cooked))),
+                negated: false,
+            },
+            ExprKind::Err(guar) => err(*guar),
+            ExprKind::Dummy => span_bug!(span, "lowered ExprKind::Dummy"),
+            ExprKind::Path(qself, path) if allow_paths => hir::PatExprKind::Path(self.lower_qpath(
+                expr.id,
+                qself,
+                path,
+                ParamMode::Optional,
+                AllowReturnTypeNotation::No,
+                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                None,
+            )),
+            ExprKind::Unary(UnOp::Neg, inner) if let ExprKind::Lit(lit) = &inner.kind => {
+                hir::PatExprKind::Lit { lit: self.lower_lit(lit, span), negated: true }
+            }
             _ => {
                 let pattern_from_macro = expr.is_approximately_pattern();
                 let guar = self.dcx().emit_err(ArbitraryExpressionInPattern {
-                    span: expr.span,
+                    span,
                     pattern_from_macro_note: pattern_from_macro,
                 });
-                return self.arena.alloc(self.expr_err(expr.span, guar));
+                err(guar)
             }
-        }
-        self.lower_expr(expr)
+        };
+        self.arena.alloc(hir::PatExpr { hir_id: self.lower_node_id(expr.id), span, kind })
+    }
+
+    pub(crate) fn lower_ty_pat(
+        &mut self,
+        pattern: &TyPat,
+        base_type: Span,
+    ) -> &'hir hir::TyPat<'hir> {
+        self.arena.alloc(self.lower_ty_pat_mut(pattern, base_type))
+    }
+
+    fn lower_ty_pat_mut(&mut self, pattern: &TyPat, base_type: Span) -> hir::TyPat<'hir> {
+        // loop here to avoid recursion
+        let pat_hir_id = self.lower_node_id(pattern.id);
+        let node = match &pattern.kind {
+            TyPatKind::Range(e1, e2, Spanned { node: end, span }) => hir::TyPatKind::Range(
+                e1.as_deref().map(|e| self.lower_anon_const_to_const_arg(e)).unwrap_or_else(|| {
+                    self.lower_ty_pat_range_end(
+                        hir::LangItem::RangeMin,
+                        span.shrink_to_lo(),
+                        base_type,
+                    )
+                }),
+                e2.as_deref()
+                    .map(|e| match end {
+                        RangeEnd::Included(..) => self.lower_anon_const_to_const_arg(e),
+                        RangeEnd::Excluded => self.lower_excluded_range_end(e),
+                    })
+                    .unwrap_or_else(|| {
+                        self.lower_ty_pat_range_end(
+                            hir::LangItem::RangeMax,
+                            span.shrink_to_hi(),
+                            base_type,
+                        )
+                    }),
+            ),
+            TyPatKind::Or(variants) => {
+                hir::TyPatKind::Or(self.arena.alloc_from_iter(
+                    variants.iter().map(|pat| self.lower_ty_pat_mut(pat, base_type)),
+                ))
+            }
+            TyPatKind::Err(guar) => hir::TyPatKind::Err(*guar),
+        };
+
+        hir::TyPat { hir_id: pat_hir_id, kind: node, span: self.lower_span(pattern.span) }
+    }
+
+    /// Lowers the range end of an exclusive range (`2..5`) to an inclusive range 2..=(5 - 1).
+    /// This way the type system doesn't have to handle the distinction between inclusive/exclusive ranges.
+    fn lower_excluded_range_end(&mut self, e: &AnonConst) -> &'hir hir::ConstArg<'hir> {
+        let span = self.lower_span(e.value.span);
+        let unstable_span = self.mark_span_with_reason(
+            DesugaringKind::PatTyRange,
+            span,
+            Some(Arc::clone(&self.allow_pattern_type)),
+        );
+        let anon_const = self.with_new_scopes(span, |this| {
+            let def_id = this.local_def_id(e.id);
+            let hir_id = this.lower_node_id(e.id);
+            let body = this.lower_body(|this| {
+                // Need to use a custom function as we can't just subtract `1` from a `char`.
+                let kind = hir::ExprKind::Path(this.make_lang_item_qpath(
+                    hir::LangItem::RangeSub,
+                    unstable_span,
+                    None,
+                ));
+                let fn_def = this.arena.alloc(hir::Expr { hir_id: this.next_id(), kind, span });
+                let args = this.arena.alloc([this.lower_expr_mut(&e.value)]);
+                (
+                    &[],
+                    hir::Expr {
+                        hir_id: this.next_id(),
+                        kind: hir::ExprKind::Call(fn_def, args),
+                        span,
+                    },
+                )
+            });
+            hir::AnonConst { def_id, hir_id, body, span }
+        });
+        self.arena.alloc(hir::ConstArg {
+            hir_id: self.next_id(),
+            kind: hir::ConstArgKind::Anon(self.arena.alloc(anon_const)),
+        })
+    }
+
+    /// When a range has no end specified (`1..` or `1..=`) or no start specified (`..5` or `..=5`),
+    /// we instead use a constant of the MAX/MIN of the type.
+    /// This way the type system does not have to handle the lack of a start/end.
+    fn lower_ty_pat_range_end(
+        &mut self,
+        lang_item: LangItem,
+        span: Span,
+        base_type: Span,
+    ) -> &'hir hir::ConstArg<'hir> {
+        let node_id = self.next_node_id();
+
+        // Add a definition for the in-band const def.
+        // We're generating a range end that didn't exist in the AST,
+        // so the def collector didn't create the def ahead of time. That's why we have to do
+        // it here.
+        let def_id = self.create_def(node_id, None, DefKind::AnonConst, span);
+        let hir_id = self.lower_node_id(node_id);
+
+        let unstable_span = self.mark_span_with_reason(
+            DesugaringKind::PatTyRange,
+            self.lower_span(span),
+            Some(Arc::clone(&self.allow_pattern_type)),
+        );
+        let span = self.lower_span(base_type);
+
+        let path_expr = hir::Expr {
+            hir_id: self.next_id(),
+            kind: hir::ExprKind::Path(self.make_lang_item_qpath(lang_item, unstable_span, None)),
+            span,
+        };
+
+        let ct = self.with_new_scopes(span, |this| {
+            self.arena.alloc(hir::AnonConst {
+                def_id,
+                hir_id,
+                body: this.lower_body(|_this| (&[], path_expr)),
+                span,
+            })
+        });
+        let hir_id = self.next_id();
+        self.arena.alloc(hir::ConstArg { kind: hir::ConstArgKind::Anon(ct), hir_id })
     }
 }

@@ -6,7 +6,7 @@ Freestanding x86-64 linux binary with no dependency on libc.
 
 ## Target maintainers
 
-- [morr0ne](https://github.com/morr0ne/)
+[@morr0ne](https://github.com/morr0ne)
 
 ## Requirements
 

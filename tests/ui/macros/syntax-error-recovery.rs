@@ -5,14 +5,14 @@ macro_rules! values {
             $(
                 #[$attr]
                 $token $($inner)? = $value,
+                //~^ ERROR expected one of `!` or `::`, found `<eof>`
             )*
         }
     };
 }
-//~^^^^^ ERROR expected one of `(`, `,`, `=`, `{`, or `}`, found type `(String)`
-//~| ERROR macro expansion ignores type `(String)` and any tokens following
+//~^^^^^^ ERROR expected one of `(`, `,`, `=`, `{`, or `}`, found `ty` metavariable
+//~| ERROR macro expansion ignores `ty` metavariable and any tokens following
 
 values!(STRING(1) as (String) => cfg(test),);
-//~^ ERROR expected one of `!` or `::`, found `<eof>`
 
 fn main() {}

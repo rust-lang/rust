@@ -12,18 +12,15 @@
 
 #![feature(type_alias_impl_trait)]
 
-mod helper {
-    pub type Opaque = impl Sized;
+pub type Opaque = impl Sized;
 
-    pub fn get_rpit() -> impl Clone {}
+pub fn get_rpit() -> impl Clone {}
 
-    fn test() -> Opaque {
-        super::query(get_rpit);
-        get_rpit()
-    }
+#[define_opaque(Opaque)]
+fn test() -> Opaque {
+    query(get_rpit);
+    get_rpit()
 }
-
-use helper::*;
 
 fn query(_: impl FnOnce() -> Opaque) {}
 

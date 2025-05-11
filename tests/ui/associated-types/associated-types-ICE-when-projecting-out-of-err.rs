@@ -1,3 +1,4 @@
+//@ add-core-stubs
 // Test that we do not ICE when the self type is `ty::err`, but rather
 // just propagate the error.
 
@@ -6,17 +7,8 @@
 #![feature(no_core)]
 #![no_core]
 
-#[lang="sized"]
-pub trait Sized {
-    // Empty.
-}
-
-#[lang = "add"]
-trait Add<RHS=Self> {
-    type Output;
-
-    fn add(self, _: RHS) -> Self::Output;
-}
+extern crate minicore;
+use minicore::*;
 
 fn ice<A>(a: A) {
     let r = loop {};

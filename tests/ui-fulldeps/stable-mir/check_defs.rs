@@ -4,7 +4,6 @@
 //@ ignore-stage1
 //@ ignore-cross-compile
 //@ ignore-remote
-//@ ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
 //@ edition: 2021
 
 #![feature(rustc_private)]
@@ -20,7 +19,6 @@ extern crate stable_mir;
 use std::assert_matches::assert_matches;
 use mir::{mono::Instance, TerminatorKind::*};
 use stable_mir::mir::mono::InstanceKind;
-use rustc_smir::rustc_internal;
 use stable_mir::ty::{RigidTy, TyKind, Ty, UintTy};
 use stable_mir::*;
 use std::io::Write;
@@ -114,7 +112,7 @@ fn get_instances(body: mir::Body) -> Vec<Instance> {
 fn main() {
     let path = "defs_input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),

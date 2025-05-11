@@ -46,7 +46,6 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         T!['['],
         T![|],
         T![async],
-        T![box],
         T![break],
         T![const],
         T![continue],
@@ -68,7 +67,8 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         LIFETIME_IDENT,
     ]));
 
-pub(super) const EXPR_RECOVERY_SET: TokenSet = TokenSet::new(&[T![')'], T![']']]);
+pub(in crate::grammar) const EXPR_RECOVERY_SET: TokenSet =
+    TokenSet::new(&[T!['}'], T![')'], T![']'], T![,]]);
 
 pub(super) fn atom_expr(
     p: &mut Parser<'_>,
@@ -258,6 +258,15 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         p.expect(T!['(']);
         type_(p);
         p.expect(T![,]);
+        // Due to our incomplete handling of macro groups, especially
+        // those with empty delimiters, we wrap `expr` fragments in
+        // parentheses sometimes. Since `offset_of` is a macro, and takes
+        // `expr`, the field names could be wrapped in parentheses.
+        let wrapped_in_parens = p.eat(T!['(']);
+        // test offset_of_parens
+        // fn foo() {
+        //     builtin#offset_of(Foo, (bar.baz.0));
+        // }
         while !p.at(EOF) && !p.at(T![')']) {
             name_ref_mod_path_or_index(p);
             if !p.at(T![')']) {
@@ -265,6 +274,9 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
             }
         }
         p.expect(T![')']);
+        if wrapped_in_parens {
+            p.expect(T![')']);
+        }
         Some(m.complete(p, OFFSET_OF_EXPR))
     } else if p.at_contextual_kw(T![format_args]) {
         p.bump_remap(T![format_args]);

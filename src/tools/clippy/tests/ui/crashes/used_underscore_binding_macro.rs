@@ -1,3 +1,5 @@
+//@ check-pass
+
 use serde::Deserialize;
 
 /// Tests that we do not lint for unused underscores in a `MacroAttribute`

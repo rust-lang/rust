@@ -3,10 +3,10 @@
 //!
 //! It can be viewed as a dual for `Change`.
 
-use std::{collections::hash_map::Entry, iter, mem};
+use std::{collections::hash_map::Entry, fmt, iter, mem};
 
 use crate::text_edit::{TextEdit, TextEditBuilder};
-use crate::{assists::Command, syntax_helpers::tree_diff::diff, SnippetCap};
+use crate::{SnippetCap, assists::Command, syntax_helpers::tree_diff::diff};
 use base_db::AnchoredPathBuf;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
@@ -14,32 +14,49 @@ use rustc_hash::FxHashMap;
 use span::FileId;
 use stdx::never;
 use syntax::{
-    syntax_editor::{SyntaxAnnotation, SyntaxEditor},
     AstNode, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
+    syntax_editor::{SyntaxAnnotation, SyntaxEditor},
 };
+
+/// An annotation ID associated with an indel, to describe changes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ChangeAnnotationId(u32);
+
+impl fmt::Display for ChangeAnnotationId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ChangeAnnotation {
+    pub label: String,
+    pub needs_confirmation: bool,
+    pub description: Option<String>,
+}
 
 #[derive(Default, Debug, Clone)]
 pub struct SourceChange {
     pub source_file_edits: IntMap<FileId, (TextEdit, Option<SnippetEdit>)>,
     pub file_system_edits: Vec<FileSystemEdit>,
     pub is_snippet: bool,
+    pub annotations: FxHashMap<ChangeAnnotationId, ChangeAnnotation>,
+    next_annotation_id: u32,
 }
 
 impl SourceChange {
-    /// Creates a new SourceChange with the given label
-    /// from the edits.
-    pub fn from_edits(
-        source_file_edits: IntMap<FileId, (TextEdit, Option<SnippetEdit>)>,
-        file_system_edits: Vec<FileSystemEdit>,
-    ) -> Self {
-        SourceChange { source_file_edits, file_system_edits, is_snippet: false }
-    }
-
     pub fn from_text_edit(file_id: impl Into<FileId>, edit: TextEdit) -> Self {
         SourceChange {
             source_file_edits: iter::once((file_id.into(), (edit, None))).collect(),
             ..Default::default()
         }
+    }
+
+    pub fn insert_annotation(&mut self, annotation: ChangeAnnotation) -> ChangeAnnotationId {
+        let id = ChangeAnnotationId(self.next_annotation_id);
+        self.next_annotation_id += 1;
+        self.annotations.insert(id, annotation);
+        id
     }
 
     /// Inserts a [`TextEdit`] for the given [`FileId`]. This properly handles merging existing
@@ -120,7 +137,12 @@ impl From<IntMap<FileId, TextEdit>> for SourceChange {
     fn from(source_file_edits: IntMap<FileId, TextEdit>) -> SourceChange {
         let source_file_edits =
             source_file_edits.into_iter().map(|(file_id, edit)| (file_id, (edit, None))).collect();
-        SourceChange { source_file_edits, file_system_edits: Vec::new(), is_snippet: false }
+        SourceChange {
+            source_file_edits,
+            file_system_edits: Vec::new(),
+            is_snippet: false,
+            ..SourceChange::default()
+        }
     }
 }
 
@@ -447,7 +469,7 @@ impl SourceChangeBuilder {
     }
 
     fn add_snippet_annotation(&mut self, kind: AnnotationSnippet) -> SyntaxAnnotation {
-        let annotation = SyntaxAnnotation::new();
+        let annotation = SyntaxAnnotation::default();
         self.snippet_annotations.push((kind, annotation));
         self.source_change.is_snippet = true;
         annotation
@@ -457,13 +479,14 @@ impl SourceChangeBuilder {
         self.commit();
 
         // Only one file can have snippet edits
-        stdx::never!(self
-            .source_change
-            .source_file_edits
-            .iter()
-            .filter(|(_, (_, snippet_edit))| snippet_edit.is_some())
-            .at_most_one()
-            .is_err());
+        stdx::never!(
+            self.source_change
+                .source_file_edits
+                .iter()
+                .filter(|(_, (_, snippet_edit))| snippet_edit.is_some())
+                .at_most_one()
+                .is_err()
+        );
 
         mem::take(&mut self.source_change)
     }
@@ -482,6 +505,7 @@ impl From<FileSystemEdit> for SourceChange {
             source_file_edits: Default::default(),
             file_system_edits: vec![edit],
             is_snippet: false,
+            ..SourceChange::default()
         }
     }
 }
@@ -493,7 +517,7 @@ pub enum Snippet {
     Placeholder(TextRange),
     /// A group of placeholder snippets, e.g.
     ///
-    /// ```no_run
+    /// ```ignore
     /// let ${0:new_var} = 4;
     /// fun(1, 2, 3, ${0:new_var});
     /// ```

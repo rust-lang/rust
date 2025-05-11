@@ -23,101 +23,127 @@ fn main() {
     // Test clippy::cast_precision_loss
     let x0 = 1i32;
     x0 as f32;
-    //~^ ERROR: casting `i32` to `f32` causes a loss of precision (`i32` is 32 bits wide,
-    //~| NOTE: `-D clippy::cast-precision-loss` implied by `-D warnings`
+    //~^ cast_precision_loss
+
     let x1 = 1i64;
     x1 as f32;
-    //~^ ERROR: casting `i64` to `f32` causes a loss of precision (`i64` is 64 bits wide,
+    //~^ cast_precision_loss
+
     x1 as f64;
-    //~^ ERROR: casting `i64` to `f64` causes a loss of precision (`i64` is 64 bits wide,
+    //~^ cast_precision_loss
+
     let x2 = 1u32;
     x2 as f32;
-    //~^ ERROR: casting `u32` to `f32` causes a loss of precision (`u32` is 32 bits wide,
+    //~^ cast_precision_loss
+
     let x3 = 1u64;
     x3 as f32;
-    //~^ ERROR: casting `u64` to `f32` causes a loss of precision (`u64` is 64 bits wide,
+    //~^ cast_precision_loss
+
     x3 as f64;
-    //~^ ERROR: casting `u64` to `f64` causes a loss of precision (`u64` is 64 bits wide,
+    //~^ cast_precision_loss
+
     // Test clippy::cast_possible_truncation
     1f32 as i32;
-    //~^ ERROR: casting `f32` to `i32` may truncate the value
+    //~^ cast_possible_truncation
+
     1f32 as u32;
-    //~^ ERROR: casting `f32` to `u32` may truncate the value
-    //~| ERROR: casting `f32` to `u32` may lose the sign of the value
-    //~| NOTE: `-D clippy::cast-sign-loss` implied by `-D warnings`
+    //~^ cast_possible_truncation
+    //~| cast_sign_loss
+
     1f64 as f32;
-    //~^ ERROR: casting `f64` to `f32` may truncate the value
+    //~^ cast_possible_truncation
+
     1i32 as i8;
-    //~^ ERROR: casting `i32` to `i8` may truncate the value
+    //~^ cast_possible_truncation
+
     1i32 as u8;
-    //~^ ERROR: casting `i32` to `u8` may truncate the value
+    //~^ cast_possible_truncation
+
     1f64 as isize;
-    //~^ ERROR: casting `f64` to `isize` may truncate the value
+    //~^ cast_possible_truncation
+
     1f64 as usize;
-    //~^ ERROR: casting `f64` to `usize` may truncate the value
-    //~| ERROR: casting `f64` to `usize` may lose the sign of the value
+    //~^ cast_possible_truncation
+    //~| cast_sign_loss
+
     1f32 as u32 as u16;
-    //~^ ERROR: casting `u32` to `u16` may truncate the value
-    //~| ERROR: casting `f32` to `u32` may truncate the value
-    //~| ERROR: casting `f32` to `u32` may lose the sign of the value
+    //~^ cast_possible_truncation
+    //~| cast_possible_truncation
+    //~| cast_sign_loss
+
     {
         let _x: i8 = 1i32 as _;
-        //~^ ERROR: casting `i32` to `i8` may truncate the value
+        //~^ cast_possible_truncation
+
         1f32 as i32;
-        //~^ ERROR: casting `f32` to `i32` may truncate the value
+        //~^ cast_possible_truncation
+
         1f64 as i32;
-        //~^ ERROR: casting `f64` to `i32` may truncate the value
+        //~^ cast_possible_truncation
+
         1f32 as u8;
-        //~^ ERROR: casting `f32` to `u8` may truncate the value
-        //~| ERROR: casting `f32` to `u8` may lose the sign of the value
+        //~^ cast_possible_truncation
+        //~| cast_sign_loss
     }
     // Test clippy::cast_possible_wrap
     1u8 as i8;
-    //~^ ERROR: casting `u8` to `i8` may wrap around the value
-    //~| NOTE: `-D clippy::cast-possible-wrap` implied by `-D warnings`
+    //~^ cast_possible_wrap
+
     1u16 as i16;
-    //~^ ERROR: casting `u16` to `i16` may wrap around the value
+    //~^ cast_possible_wrap
+
     1u32 as i32;
-    //~^ ERROR: casting `u32` to `i32` may wrap around the value
+    //~^ cast_possible_wrap
+
     1u64 as i64;
-    //~^ ERROR: casting `u64` to `i64` may wrap around the value
+    //~^ cast_possible_wrap
+
     1usize as isize;
-    //~^ ERROR: casting `usize` to `isize` may wrap around the value
+    //~^ cast_possible_wrap
+
     // should not wrap, usize is never 8 bits
     1usize as i8;
-    //~^ ERROR: casting `usize` to `i8` may truncate the value
+    //~^ cast_possible_truncation
+
     // wraps on 16 bit ptr size
     1usize as i16;
-    //~^ ERROR: casting `usize` to `i16` may truncate the value
-    //~| ERROR: casting `usize` to `i16` may wrap around the value on targets with 16-bit
-    //~| NOTE: `usize` and `isize` may be as small as 16 bits on some platforms
+    //~^ cast_possible_truncation
+    //~| cast_possible_wrap
+
     // wraps on 32 bit ptr size
     1usize as i32;
-    //~^ ERROR: casting `usize` to `i32` may truncate the value on targets with 64-bit wid
-    //~| ERROR: casting `usize` to `i32` may wrap around the value on targets with 32-bit
+    //~^ cast_possible_truncation
+    //~| cast_possible_wrap
+
     // wraps on 64 bit ptr size
     1usize as i64;
-    //~^ ERROR: casting `usize` to `i64` may wrap around the value on targets with 64-bit
+    //~^ cast_possible_wrap
+
     // should not wrap, isize is never 8 bits
     1u8 as isize;
     // wraps on 16 bit ptr size
     1u16 as isize;
-    //~^ ERROR: casting `u16` to `isize` may wrap around the value on targets with 16-bit
-    //~| NOTE: `usize` and `isize` may be as small as 16 bits on some platforms
+    //~^ cast_possible_wrap
+
     // wraps on 32 bit ptr size
     1u32 as isize;
-    //~^ ERROR: casting `u32` to `isize` may wrap around the value on targets with 32-bit
+    //~^ cast_possible_wrap
+
     // wraps on 64 bit ptr size
     1u64 as isize;
-    //~^ ERROR: casting `u64` to `isize` may truncate the value on targets with 32-bit wid
-    //~| ERROR: casting `u64` to `isize` may wrap around the value on targets with 64-bit
+    //~^ cast_possible_truncation
+    //~| cast_possible_wrap
+
     // Test clippy::cast_sign_loss
     1i32 as u32;
     -1i32 as u32;
-    //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+    //~^ cast_sign_loss
+
     1isize as usize;
     -1isize as usize;
-    //~^ ERROR: casting `isize` to `usize` may lose the sign of the value
+    //~^ cast_sign_loss
+
     0i8 as u8;
     i8::MAX as u8;
     i16::MAX as u16;
@@ -128,11 +154,14 @@ fn main() {
     (-1i8).saturating_abs() as u8;
     // abs() can return a negative value in release builds
     (i8::MIN).abs() as u8;
-    //~^ ERROR: casting `i8` to `u8` may lose the sign of the value
+    //~^ cast_sign_loss
+
     (-1i16).saturating_abs() as u16;
     (-1i32).saturating_abs() as u32;
     (-1i64).abs() as u64;
+    //~^ cast_sign_loss
     (-1isize).abs() as usize;
+    //~^ cast_sign_loss
 
     (-1i8).checked_abs().unwrap() as u8;
     (i8::MIN).checked_abs().unwrap() as u8;
@@ -140,6 +169,7 @@ fn main() {
     (-1i32).checked_abs().unwrap() as u32;
     // SAFETY: -1 is a small number which will always return Some
     (unsafe { (-1i64).checked_abs().unwrap_unchecked() }) as u64;
+    //~^ cast_sign_loss
     (-1isize).checked_abs().expect("-1 is a small number") as usize;
 
     (-1i8).isqrt() as u8;
@@ -155,6 +185,7 @@ fn main() {
     (-1i32).checked_isqrt().unwrap() as u32;
     // SAFETY: -1 is a small number which will always return Some
     (unsafe { (-1i64).checked_isqrt().unwrap_unchecked() }) as u64;
+    //~^ cast_sign_loss
     (-1isize).checked_isqrt().expect("-1 is a small number") as usize;
 
     (-1i8).rem_euclid(1i8) as u8;
@@ -206,7 +237,7 @@ fn main() {
     // Test for signed min
     // should be linted because signed
     (-99999999999i64).min(1) as i8;
-    //~^ ERROR: casting `i64` to `i8` may truncate the value
+    //~^ cast_possible_truncation
 
     // Test for various operations that remove enough bits for the result to fit
     (999999u64 & 1) as u8;
@@ -220,7 +251,7 @@ fn main() {
     999999u64.clamp(0, 255) as u8;
     // should still be linted
     999999u64.clamp(0, 256) as u8;
-    //~^ ERROR: casting `u64` to `u8` may truncate the value
+    //~^ cast_possible_truncation
 
     #[derive(Clone, Copy)]
     enum E1 {
@@ -243,10 +274,11 @@ fn main() {
     impl E2 {
         fn test(self) {
             let _ = self as u8;
-            //~^ ERROR: casting `main::E2` to `u8` may truncate the value
+            //~^ cast_possible_truncation
+
             let _ = Self::B as u8;
-            //~^ ERROR: casting `main::E2::B` to `u8` will truncate the value
-            //~| NOTE: `-D clippy::cast-enum-truncation` implied by `-D warnings`
+            //~^ cast_enum_truncation
+
             // Don't lint. `255..=256` fits in i16
             let _ = self as i16;
             // Don't lint.
@@ -287,9 +319,11 @@ fn main() {
     impl E5 {
         fn test(self) {
             let _ = self as i8;
-            //~^ ERROR: casting `main::E5` to `i8` may truncate the value
+            //~^ cast_possible_truncation
+
             let _ = Self::A as i8;
-            //~^ ERROR: casting `main::E5::A` to `i8` will truncate the value
+            //~^ cast_enum_truncation
+
             // Don't lint. `-129..=127` fits in i16
             let _ = self as i16;
             // Don't lint.
@@ -306,7 +340,8 @@ fn main() {
     impl E6 {
         fn test(self) {
             let _ = self as i16;
-            //~^ ERROR: casting `main::E6` to `i16` may truncate the value
+            //~^ cast_possible_truncation
+
             // Don't lint. `2^16-1` fits in u16
             let _ = Self::A as u16;
             // Don't lint. `2^16-1..=2^16` fits in u32
@@ -325,7 +360,8 @@ fn main() {
     impl E7 {
         fn test(self) {
             let _ = self as usize;
-            //~^ ERROR: casting `main::E7` to `usize` may truncate the value on targets wi
+            //~^ cast_possible_truncation
+
             // Don't lint.
             let _ = Self::A as usize;
             // Don't lint. `2^32-1..=2^32` fits in u64
@@ -372,7 +408,8 @@ fn main() {
     impl E10 {
         fn test(self) {
             let _ = self as u16;
-            //~^ ERROR: casting `main::E10` to `u16` may truncate the value
+            //~^ cast_possible_truncation
+
             // Don't lint.
             let _ = Self::B as u32;
             // Don't lint.
@@ -383,11 +420,13 @@ fn main() {
 
 fn avoid_subtract_overflow(q: u32) {
     let c = (q >> 16) as u8;
-    //~^ ERROR: casting `u32` to `u8` may truncate the value
+    //~^ cast_possible_truncation
+
     c as usize;
 
     let c = (q / 1000) as u8;
-    //~^ ERROR: casting `u32` to `u8` may truncate the value
+    //~^ cast_possible_truncation
+
     c as usize;
 }
 
@@ -399,70 +438,93 @@ fn issue11642() {
     fn square(x: i16) -> u32 {
         let x = x as i32;
         (x * x) as u32;
+        //~^ cast_sign_loss
         x.pow(2) as u32;
         (-2_i32).saturating_pow(2) as u32
     }
 
     let _a = |x: i32| -> u32 { (x * x * x * x) as u32 };
+    //~^ cast_sign_loss
 
     (2_i32).checked_pow(3).unwrap() as u32;
+    //~^ cast_sign_loss
     (-2_i32).pow(3) as u32;
-    //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+    //~^ cast_sign_loss
 
     (3_i32 % 2) as u32;
     (3_i32 % -2) as u32;
     (-5_i32 % 2) as u32;
-    //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+    //~^ cast_sign_loss
+
     (-5_i32 % -2) as u32;
-    //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+    //~^ cast_sign_loss
+
     (2_i32 >> 1) as u32;
     (-2_i32 >> 1) as u32;
-    //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+    //~^ cast_sign_loss
 
     let x: i32 = 10;
     (x * x) as u32;
+    //~^ cast_sign_loss
     (x * x * x) as u32;
-    //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+    //~^ cast_sign_loss
 
     let y: i16 = -2;
     (y * y * y * y * -2) as u16;
-    //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
+    //~^ cast_sign_loss
+
     (y * y * y / y * 2) as u16;
+    //~^ cast_sign_loss
     (y * y / y * 2) as u16;
-    //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
+    //~^ cast_sign_loss
+
     (y / y * y * -2) as u16;
-    //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
+    //~^ cast_sign_loss
+    //~| eq_op
 
     (y + y + y + -2) as u16;
-    //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
+    //~^ cast_sign_loss
+
     (y + y + y + 2) as u16;
-    //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
+    //~^ cast_sign_loss
 
     let z: i16 = 2;
     (z + -2) as u16;
-    //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
+    //~^ cast_sign_loss
+
     (z + z + 2) as u16;
+    //~^ cast_sign_loss
 
     fn foo(a: i32, b: i32, c: i32) -> u32 {
         (a * a * b * b * c * c) as u32;
+        //~^ cast_sign_loss
         (a * b * c) as u32;
-        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        //~^ cast_sign_loss
+
         (a * -b * c) as u32;
-        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        //~^ cast_sign_loss
+
         (a * b * c * c) as u32;
+        //~^ cast_sign_loss
         (a * -2) as u32;
-        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        //~^ cast_sign_loss
+
         (a * b * c * -2) as u32;
-        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        //~^ cast_sign_loss
+
         (a / b) as u32;
+        //~^ cast_sign_loss
         (a / b * c) as u32;
-        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        //~^ cast_sign_loss
+
         (a / b + b * c) as u32;
-        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        //~^ cast_sign_loss
+
         a.saturating_pow(3) as u32;
-        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        //~^ cast_sign_loss
+
         (a.abs() * b.pow(2) / c.abs()) as u32
-        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        //~^ cast_sign_loss
     }
 }
 
@@ -470,8 +532,14 @@ fn issue11738() {
     macro_rules! m {
         () => {
             let _ = i32::MIN as u32; // cast_sign_loss
+            //
+            //~^^ cast_sign_loss
             let _ = u32::MAX as u8; // cast_possible_truncation
+            //
+            //~^^ cast_possible_truncation
             let _ = std::f64::consts::PI as f32; // cast_possible_truncation
+            //
+            //~^^ cast_possible_truncation
             let _ = 0i8 as i32; // cast_lossless
         };
     }
@@ -481,6 +549,8 @@ fn issue11738() {
 fn issue12506() -> usize {
     let bar: Result<Option<i64>, u32> = Ok(Some(10));
     bar.unwrap().unwrap() as usize
+    //~^ cast_possible_truncation
+    //~| cast_sign_loss
 }
 
 fn issue12721() {
@@ -496,7 +566,8 @@ fn issue12721() {
     let _ = (999999 & (x() & 255)) as u8;
 
     (256 & 999999u64) as u8;
-    //~^ ERROR: casting `u64` to `u8` may truncate the value
+    //~^ cast_possible_truncation
+
     (255 % 999999u64) as u8;
-    //~^ ERROR: casting `u64` to `u8` may truncate the value
+    //~^ cast_possible_truncation
 }

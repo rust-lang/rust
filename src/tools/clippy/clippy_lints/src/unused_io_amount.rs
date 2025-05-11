@@ -182,7 +182,7 @@ fn check_expr<'a>(cx: &LateContext<'a>, expr: &'a hir::Expr<'a>) {
             emit_lint(cx, expr.span, expr.hir_id, op, &[]);
         },
         _ => {},
-    };
+    }
 }
 
 fn should_lint<'a>(cx: &LateContext<'a>, mut inner: &'a hir::Expr<'a>) -> Option<IoOp> {
@@ -224,7 +224,7 @@ fn is_unreachable_or_panic(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
         return false;
     };
     if is_panic(cx, macro_call.def_id) {
-        return !cx.tcx.hir().is_inside_const_context(expr.hir_id);
+        return !cx.tcx.hir_is_inside_const_context(expr.hir_id);
     }
     matches!(cx.tcx.item_name(macro_call.def_id).as_str(), "unreachable")
 }
@@ -265,15 +265,14 @@ fn unpack_match<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
 /// If `expr` is an (e).await, return the inner expression "e" that's being
 /// waited on.  Otherwise return None.
 fn unpack_await<'a>(expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
-    if let ExprKind::Match(expr, _, hir::MatchSource::AwaitDesugar) = expr.kind {
-        if let ExprKind::Call(func, [arg_0]) = expr.kind {
-            if matches!(
-                func.kind,
-                ExprKind::Path(hir::QPath::LangItem(hir::LangItem::IntoFutureIntoFuture, ..))
-            ) {
-                return arg_0;
-            }
-        }
+    if let ExprKind::Match(expr, _, hir::MatchSource::AwaitDesugar) = expr.kind
+        && let ExprKind::Call(func, [arg_0]) = expr.kind
+        && matches!(
+            func.kind,
+            ExprKind::Path(hir::QPath::LangItem(hir::LangItem::IntoFutureIntoFuture, ..))
+        )
+    {
+        return arg_0;
     }
     expr
 }

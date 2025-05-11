@@ -7,7 +7,7 @@ struct Foo(u32);
 
 fn main() {
     assert_ne!(
-        Foo(5), // Make sure this expression's span isn't lost.
+        black_box(Foo(5)), // Make sure this expression's span isn't lost.
         if black_box(false) {
             Foo(0) //
         } else {

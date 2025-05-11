@@ -1,5 +1,5 @@
 error[E0277]: a value of type `Bar` cannot be built from an iterator over elements of type `_`
-  --> $DIR/branches.rs:19:28
+  --> $DIR/branches.rs:17:28
    |
 LL |         std::iter::empty().collect()
    |                            ^^^^^^^ value of type `Bar` cannot be built from `std::iter::Iterator<Item=_>`

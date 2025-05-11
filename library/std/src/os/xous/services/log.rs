@@ -1,4 +1,4 @@
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{Atomic, AtomicU32, Ordering};
 
 use crate::os::xous::ffi::Connection;
 
@@ -7,8 +7,8 @@ use crate::os::xous::ffi::Connection;
 /// `group_or_null([1,2,3,4,5,6,7,8], 1)` on a 32-bit system will return a
 /// `usize` with 5678 packed into it.
 fn group_or_null(data: &[u8], offset: usize) -> usize {
-    let start = offset * core::mem::size_of::<usize>();
-    let mut out_array = [0u8; core::mem::size_of::<usize>()];
+    let start = offset * size_of::<usize>();
+    let mut out_array = [0u8; size_of::<usize>()];
     if start < data.len() {
         for (dest, src) in out_array.iter_mut().zip(&data[start..]) {
             *dest = *src;
@@ -64,7 +64,7 @@ impl Into<usize> for LogLend {
 /// running. It is safe to call this multiple times, because the address is
 /// shared among all threads in a process.
 pub(crate) fn log_server() -> Connection {
-    static LOG_SERVER_CONNECTION: AtomicU32 = AtomicU32::new(0);
+    static LOG_SERVER_CONNECTION: Atomic<u32> = AtomicU32::new(0);
 
     let cid = LOG_SERVER_CONNECTION.load(Ordering::Relaxed);
     if cid != 0 {

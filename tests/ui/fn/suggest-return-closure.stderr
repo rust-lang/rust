@@ -21,7 +21,7 @@ LL | fn fn_mut() -> _ {
    = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
-  --> $DIR/suggest-return-closure.rs:32:13
+  --> $DIR/suggest-return-closure.rs:33:13
    |
 LL | fn fun() -> _ {
    |             ^
@@ -32,7 +32,7 @@ LL | fn fun() -> _ {
    = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/suggest-return-closure.rs:23:9
+  --> $DIR/suggest-return-closure.rs:24:9
    |
 LL |         x.push(c);
    |         ^ cannot borrow as mutable
@@ -43,7 +43,7 @@ LL |     let mut x = String::new();
    |         +++
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/suggest-return-closure.rs:23:9
+  --> $DIR/suggest-return-closure.rs:24:9
    |
 LL |     let x = String::new();
    |         - binding `x` declared here

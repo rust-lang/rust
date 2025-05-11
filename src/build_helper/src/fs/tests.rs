@@ -14,7 +14,7 @@ mod recursive_remove_tests {
         let tmpdir = env::temp_dir();
         let path = tmpdir.join("__INTERNAL_BOOTSTRAP_nonexistent_path");
         assert!(fs::symlink_metadata(&path).is_err_and(|e| e.kind() == io::ErrorKind::NotFound));
-        assert!(recursive_remove(&path).is_err_and(|e| e.kind() == io::ErrorKind::NotFound));
+        assert!(recursive_remove(&path).is_ok());
     }
 
     #[test]

@@ -14,6 +14,7 @@ use stable_mir::target::MachineSize as Size;
 use stable_mir::ty::{Align, IndexedVal, VariantIdx};
 
 use crate::rustc_smir::{Stable, Tables};
+use crate::stable_mir;
 
 impl<'tcx> Stable<'tcx> for rustc_abi::VariantIdx {
     type T = VariantIdx;
@@ -105,7 +106,6 @@ impl<'tcx> Stable<'tcx> for callconv::Conv {
             Conv::CCmseNonSecureCall => CallConvention::CCmseNonSecureCall,
             Conv::CCmseNonSecureEntry => CallConvention::CCmseNonSecureEntry,
             Conv::Msp430Intr => CallConvention::Msp430Intr,
-            Conv::PtxKernel => CallConvention::PtxKernel,
             Conv::X86Fastcall => CallConvention::X86Fastcall,
             Conv::X86Intr => CallConvention::X86Intr,
             Conv::X86Stdcall => CallConvention::X86Stdcall,
@@ -113,6 +113,7 @@ impl<'tcx> Stable<'tcx> for callconv::Conv {
             Conv::X86VectorCall => CallConvention::X86VectorCall,
             Conv::X86_64SysV => CallConvention::X86_64SysV,
             Conv::X86_64Win64 => CallConvention::X86_64Win64,
+            Conv::GpuKernel => CallConvention::GpuKernel,
             Conv::AvrInterrupt => CallConvention::AvrInterrupt,
             Conv::AvrNonBlockingInterrupt => CallConvention::AvrNonBlockingInterrupt,
             Conv::RiscvInterrupt { .. } => CallConvention::RiscvInterrupt,
@@ -202,12 +203,11 @@ impl<'tcx> Stable<'tcx> for rustc_abi::BackendRepr {
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match *self {
-            rustc_abi::BackendRepr::Uninhabited => ValueAbi::Uninhabited,
             rustc_abi::BackendRepr::Scalar(scalar) => ValueAbi::Scalar(scalar.stable(tables)),
             rustc_abi::BackendRepr::ScalarPair(first, second) => {
                 ValueAbi::ScalarPair(first.stable(tables), second.stable(tables))
             }
-            rustc_abi::BackendRepr::Vector { element, count } => {
+            rustc_abi::BackendRepr::SimdVector { element, count } => {
                 ValueAbi::Vector { element: element.stable(tables), count }
             }
             rustc_abi::BackendRepr::Memory { sized } => ValueAbi::Aggregate { sized },

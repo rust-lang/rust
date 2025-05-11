@@ -1,7 +1,7 @@
 use crate::io;
 use crate::os::fd::{AsRawFd, FromRawFd, RawFd};
 use crate::sys::cvt;
-use crate::sys::pal::unix::fd::FileDesc;
+use crate::sys::fd::FileDesc;
 use crate::sys::process::ExitStatus;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 

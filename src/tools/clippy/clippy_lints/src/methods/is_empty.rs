@@ -4,7 +4,6 @@ use clippy_utils::macros::{is_assert_macro, root_macro_call};
 use clippy_utils::{find_binding_init, get_parent_expr, is_inside_always_const_context, path_to_local};
 use rustc_hir::{Expr, HirId};
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_span::sym;
 
 use super::CONST_IS_EMPTY;
@@ -12,18 +11,16 @@ use super::CONST_IS_EMPTY;
 /// Expression whose initialization depend on a constant conditioned by a `#[cfg(…)]` directive will
 /// not trigger the lint.
 pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, receiver: &Expr<'_>) {
-    if in_external_macro(cx.sess(), expr.span) || !receiver.span.eq_ctxt(expr.span) {
+    if expr.span.in_external_macro(cx.sess().source_map()) || !receiver.span.eq_ctxt(expr.span) {
         return;
     }
-    if let Some(parent) = get_parent_expr(cx, expr) {
-        if let Some(parent) = get_parent_expr(cx, parent) {
-            if is_inside_always_const_context(cx.tcx, expr.hir_id)
-                && let Some(macro_call) = root_macro_call(parent.span)
-                && is_assert_macro(cx, macro_call.def_id)
-            {
-                return;
-            }
-        }
+    if let Some(parent) = get_parent_expr(cx, expr)
+        && let Some(parent) = get_parent_expr(cx, parent)
+        && is_inside_always_const_context(cx.tcx, expr.hir_id)
+        && let Some(macro_call) = root_macro_call(parent.span)
+        && is_assert_macro(cx, macro_call.def_id)
+    {
+        return;
     }
     let init_expr = expr_or_init(cx, receiver);
     if !receiver.span.eq_ctxt(init_expr.span) {
@@ -41,9 +38,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, receiver: &Expr<'_
 
 fn is_under_cfg(cx: &LateContext<'_>, id: HirId) -> bool {
     cx.tcx
-        .hir()
-        .parent_id_iter(id)
-        .any(|id| cx.tcx.hir().attrs(id).iter().any(|attr| attr.has_name(sym::cfg)))
+        .hir_parent_id_iter(id)
+        .any(|id| cx.tcx.hir_attrs(id).iter().any(|attr| attr.has_name(sym::cfg_trace)))
 }
 
 /// Similar to [`clippy_utils::expr_or_init`], but does not go up the chain if the initialization

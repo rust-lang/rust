@@ -27,10 +27,10 @@ pub type _Unwind_Trace_Fn =
 #[cfg(target_arch = "x86")]
 pub const unwinder_private_data_size: usize = 5;
 
-#[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
+#[cfg(all(target_arch = "x86_64", not(any(target_os = "windows", target_os = "cygwin"))))]
 pub const unwinder_private_data_size: usize = 2;
 
-#[cfg(all(target_arch = "x86_64", target_os = "windows"))]
+#[cfg(all(target_arch = "x86_64", any(target_os = "windows", target_os = "cygwin")))]
 pub const unwinder_private_data_size: usize = 6;
 
 #[cfg(all(target_arch = "arm", not(target_vendor = "apple")))]
@@ -72,8 +72,11 @@ pub const unwinder_private_data_size: usize = 2;
 #[cfg(any(target_arch = "riscv64", target_arch = "riscv32"))]
 pub const unwinder_private_data_size: usize = 2;
 
-#[cfg(target_os = "emscripten")]
+#[cfg(all(target_arch = "wasm32", target_os = "emscripten"))]
 pub const unwinder_private_data_size: usize = 20;
+
+#[cfg(all(target_arch = "wasm32", target_os = "linux"))]
+pub const unwinder_private_data_size: usize = 2;
 
 #[cfg(all(target_arch = "hexagon", target_os = "linux"))]
 pub const unwinder_private_data_size: usize = 35;
@@ -108,10 +111,10 @@ pub type _Unwind_Exception_Cleanup_Fn =
     ),
     link(name = "unwind", kind = "static", modifiers = "-bundle")
 )]
-extern "C-unwind" {
+unsafe extern "C-unwind" {
     pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
 }
-extern "C" {
+unsafe extern "C" {
     pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
     pub fn _Unwind_GetLanguageSpecificData(ctx: *mut _Unwind_Context) -> *mut c_void;
     pub fn _Unwind_GetRegionStart(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
@@ -125,22 +128,19 @@ if #[cfg(any(target_vendor = "apple", target_os = "netbsd", not(target_arch = "a
     //
     // 32-bit ARM on iOS/tvOS/watchOS use either DWARF/Compact unwinding or
     // "setjmp-longjmp" / SjLj unwinding.
-    #[repr(C)]
-    #[derive(Copy, Clone, PartialEq)]
-    pub enum _Unwind_Action {
-        _UA_SEARCH_PHASE = 1,
-        _UA_CLEANUP_PHASE = 2,
-        _UA_HANDLER_FRAME = 4,
-        _UA_FORCE_UNWIND = 8,
-        _UA_END_OF_STACK = 16,
-    }
-    pub use _Unwind_Action::*;
+    pub type _Unwind_Action = c_int;
+
+    pub const _UA_SEARCH_PHASE: c_int = 1;
+    pub const _UA_CLEANUP_PHASE: c_int = 2;
+    pub const _UA_HANDLER_FRAME: c_int = 4;
+    pub const _UA_FORCE_UNWIND: c_int = 8;
+    pub const _UA_END_OF_STACK: c_int = 16;
 
     #[cfg_attr(
         all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux", target_os = "xous")),
         link(name = "unwind", kind = "static", modifiers = "-bundle")
     )]
-    extern "C" {
+    unsafe extern "C" {
         pub fn _Unwind_GetGR(ctx: *mut _Unwind_Context, reg_index: c_int) -> _Unwind_Word;
         pub fn _Unwind_SetGR(ctx: *mut _Unwind_Context, reg_index: c_int, value: _Unwind_Word);
         pub fn _Unwind_GetIP(ctx: *mut _Unwind_Context) -> _Unwind_Word;
@@ -198,7 +198,7 @@ if #[cfg(any(target_vendor = "apple", target_os = "netbsd", not(target_arch = "a
         all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux", target_os = "xous")),
         link(name = "unwind", kind = "static", modifiers = "-bundle")
     )]
-    extern "C" {
+    unsafe extern "C" {
         fn _Unwind_VRS_Get(ctx: *mut _Unwind_Context,
                            regclass: _Unwind_VRS_RegClass,
                            regno: _Unwind_Word,
@@ -218,36 +218,38 @@ if #[cfg(any(target_vendor = "apple", target_os = "netbsd", not(target_arch = "a
 
     pub unsafe fn _Unwind_GetGR(ctx: *mut _Unwind_Context, reg_index: c_int) -> _Unwind_Word {
         let mut val: _Unwind_Word = core::ptr::null();
-        _Unwind_VRS_Get(ctx, _UVRSC_CORE, reg_index as _Unwind_Word, _UVRSD_UINT32,
-                        (&raw mut val) as *mut c_void);
+        unsafe { _Unwind_VRS_Get(ctx, _UVRSC_CORE, reg_index as _Unwind_Word, _UVRSD_UINT32,
+                        (&raw mut val) as *mut c_void); }
         val
     }
 
     pub unsafe fn _Unwind_SetGR(ctx: *mut _Unwind_Context, reg_index: c_int, value: _Unwind_Word) {
         let mut value = value;
-        _Unwind_VRS_Set(ctx, _UVRSC_CORE, reg_index as _Unwind_Word, _UVRSD_UINT32,
-                        (&raw mut value) as *mut c_void);
+        unsafe { _Unwind_VRS_Set(ctx, _UVRSC_CORE, reg_index as _Unwind_Word, _UVRSD_UINT32,
+                        (&raw mut value) as *mut c_void); }
     }
 
     pub unsafe fn _Unwind_GetIP(ctx: *mut _Unwind_Context)
                                 -> _Unwind_Word {
-        let val = _Unwind_GetGR(ctx, UNWIND_IP_REG);
+        let val = unsafe { _Unwind_GetGR(ctx, UNWIND_IP_REG) };
         val.map_addr(|v| v & !1)
     }
 
     pub unsafe fn _Unwind_SetIP(ctx: *mut _Unwind_Context,
                                 value: _Unwind_Word) {
         // Propagate thumb bit to instruction pointer
-        let thumb_state = _Unwind_GetGR(ctx, UNWIND_IP_REG).addr() & 1;
+        let thumb_state = unsafe { _Unwind_GetGR(ctx, UNWIND_IP_REG).addr() & 1 };
         let value = value.map_addr(|v| v | thumb_state);
-        _Unwind_SetGR(ctx, UNWIND_IP_REG, value);
+        unsafe { _Unwind_SetGR(ctx, UNWIND_IP_REG, value); }
     }
 
     pub unsafe fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context,
                                     ip_before_insn: *mut c_int)
                                     -> _Unwind_Word {
-        *ip_before_insn = 0;
-        _Unwind_GetIP(ctx)
+        unsafe {
+            *ip_before_insn = 0;
+            _Unwind_GetIP(ctx)
+        }
     }
 
     // This function also doesn't exist on Android or ARM/Linux, so make it a no-op
@@ -261,7 +263,7 @@ cfg_if::cfg_if! {
 if #[cfg(all(target_vendor = "apple", not(target_os = "watchos"), target_arch = "arm"))] {
     // 32-bit ARM Apple (except for watchOS armv7k specifically) uses SjLj and
     // does not provide _Unwind_Backtrace()
-    extern "C-unwind" {
+    unsafe extern "C-unwind" {
         pub fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
     }
 
@@ -271,14 +273,14 @@ if #[cfg(all(target_vendor = "apple", not(target_os = "watchos"), target_arch = 
         all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux", target_os = "xous")),
         link(name = "unwind", kind = "static", modifiers = "-bundle")
     )]
-    extern "C-unwind" {
+    unsafe extern "C-unwind" {
         pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
     }
     #[cfg_attr(
         all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux", target_os = "xous")),
         link(name = "unwind", kind = "static", modifiers = "-bundle")
     )]
-    extern "C" {
+    unsafe extern "C" {
         pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
                                  trace_argument: *mut c_void)
                                  -> _Unwind_Reason_Code;
@@ -287,7 +289,10 @@ if #[cfg(all(target_vendor = "apple", not(target_os = "watchos"), target_arch = 
 } // cfg_if!
 
 cfg_if::cfg_if! {
-if #[cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"))] {
+if #[cfg(any(
+        all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"),
+        target_os = "cygwin",
+    ))] {
     // We declare these as opaque types. This is fine since you just need to
     // pass them to _GCC_specific_handler and forget about them.
     pub enum EXCEPTION_RECORD {}
@@ -302,7 +307,7 @@ if #[cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), targ
                                               context: *mut _Unwind_Context)
                                               -> _Unwind_Reason_Code;
 
-    extern "C" {
+    unsafe extern "C" {
         pub fn _GCC_specific_handler(exceptionRecord: *mut EXCEPTION_RECORD,
                                 establisherFrame: LPVOID,
                                 contextRecord: *mut CONTEXT,

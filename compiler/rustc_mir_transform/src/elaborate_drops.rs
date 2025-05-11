@@ -2,22 +2,21 @@ use std::fmt;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::patch::MirPatch;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_mir_dataflow::elaborate_drops::{
-    DropElaborator, DropFlagMode, DropFlagState, DropStyle, Unwind, elaborate_drop,
-};
 use rustc_mir_dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{
-    Analysis, MoveDataTypingEnv, ResultsCursor, on_all_children_bits, on_lookup_result_bits,
+    Analysis, DropFlagState, MoveDataTypingEnv, ResultsCursor, on_all_children_bits,
+    on_lookup_result_bits,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
 use crate::deref_separator::deref_finder;
+use crate::elaborate_drop::{DropElaborator, DropFlagMode, DropStyle, Unwind, elaborate_drop};
+use crate::patch::MirPatch;
 
 /// During MIR building, Drop terminators are inserted in every place where a drop may occur.
 /// However, in this phase, the presence of these terminators does not guarantee that a destructor
@@ -88,6 +87,10 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
         elaborate_patch.apply(body);
         deref_finder(tcx, body);
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 /// Records unwind edges which are known to be unreachable, because they are in `drop` terminators
@@ -96,10 +99,10 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
 fn compute_dead_unwinds<'a, 'tcx>(
     body: &'a Body<'tcx>,
     flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
-) -> BitSet<BasicBlock> {
+) -> DenseBitSet<BasicBlock> {
     // We only need to do this pass once, because unwind edges can only
     // reach cleanup blocks, which can't have unwind edges themselves.
-    let mut dead_unwinds = BitSet::new_empty(body.basic_blocks.len());
+    let mut dead_unwinds = DenseBitSet::new_empty(body.basic_blocks.len());
     for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
         let TerminatorKind::Drop { place, unwind: UnwindAction::Cleanup(_), .. } =
             bb_data.terminator().kind
@@ -135,6 +138,10 @@ impl InitializationData<'_, '_> {
 impl<'a, 'tcx> DropElaborator<'a, 'tcx> for ElaborateDropsCtxt<'a, 'tcx> {
     type Path = MovePathIndex;
 
+    fn patch_ref(&self) -> &MirPatch<'tcx> {
+        &self.patch
+    }
+
     fn patch(&mut self) -> &mut MirPatch<'tcx> {
         &mut self.patch
     }
@@ -149,6 +156,14 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for ElaborateDropsCtxt<'a, 'tcx> {
 
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
         self.env.typing_env
+    }
+
+    fn allow_async_drops(&self) -> bool {
+        true
+    }
+
+    fn terminator_loc(&self, bb: BasicBlock) -> Location {
+        self.patch.terminator_loc(self.body, bb)
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -321,7 +336,9 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
         // This function should mirror what `collect_drop_flags` does.
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
             let terminator = data.terminator();
-            let TerminatorKind::Drop { place, target, unwind, replace } = terminator.kind else {
+            let TerminatorKind::Drop { place, target, unwind, replace, drop, async_fut: _ } =
+                terminator.kind
+            else {
                 continue;
             };
 
@@ -357,7 +374,16 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                         }
                     };
                     self.init_data.seek_before(self.body.terminator_loc(bb));
-                    elaborate_drop(self, terminator.source_info, place, path, target, unwind, bb)
+                    elaborate_drop(
+                        self,
+                        terminator.source_info,
+                        place,
+                        path,
+                        target,
+                        unwind,
+                        bb,
+                        drop,
+                    )
                 }
                 LookupResult::Parent(None) => {}
                 LookupResult::Parent(Some(_)) => {
@@ -410,7 +436,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                 ..
             } = data.terminator().kind
             {
-                assert!(!self.patch.is_patched(bb));
+                assert!(!self.patch.is_term_patched(bb));
 
                 let loc = Location { block: tgt, statement_index: 0 };
                 let path = self.move_data().rev_lookup.find(destination.as_ref());
@@ -455,7 +481,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                             // a Goto; see `MirPatch::new`).
                         }
                         _ => {
-                            assert!(!self.patch.is_patched(bb));
+                            assert!(!self.patch.is_term_patched(bb));
                         }
                     }
                 }
@@ -479,7 +505,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                 ..
             } = data.terminator().kind
             {
-                assert!(!self.patch.is_patched(bb));
+                assert!(!self.patch.is_term_patched(bb));
 
                 let loc = Location { block: bb, statement_index: data.statements.len() };
                 let path = self.move_data().rev_lookup.find(destination.as_ref());

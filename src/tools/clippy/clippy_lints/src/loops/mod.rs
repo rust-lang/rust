@@ -1,3 +1,4 @@
+mod char_indices_as_byte_indices;
 mod empty_loop;
 mod explicit_counter_loop;
 mod explicit_into_iter_loop;
@@ -8,6 +9,7 @@ mod iter_next_loop;
 mod manual_find;
 mod manual_flatten;
 mod manual_memcpy;
+mod manual_slice_fill;
 mod manual_while_let_some;
 mod missing_spin_loop;
 mod mut_range_bound;
@@ -468,7 +470,7 @@ declare_clippy_lint! {
     /// let item2 = 3;
     /// let mut vec: Vec<u8> = Vec::new();
     /// for _ in 0..20 {
-    ///    vec.push(item1);
+    ///     vec.push(item1);
     /// }
     /// for _ in 0..30 {
     ///     vec.push(item2);
@@ -714,6 +716,74 @@ declare_clippy_lint! {
     "possibly unintended infinite loop"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for manually filling a slice with a value.
+    ///
+    /// ### Why is this bad?
+    /// Using the `fill` method is more idiomatic and concise.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let mut some_slice = [1, 2, 3, 4, 5];
+    /// for i in 0..some_slice.len() {
+    ///     some_slice[i] = 0;
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let mut some_slice = [1, 2, 3, 4, 5];
+    /// some_slice.fill(0);
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MANUAL_SLICE_FILL,
+    style,
+    "manually filling a slice with a value"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of a character position yielded by `.chars().enumerate()` in a context where a **byte index** is expected,
+    /// such as an argument to a specific `str` method or indexing into a `str` or `String`.
+    ///
+    /// ### Why is this bad?
+    /// A character (more specifically, a Unicode scalar value) that is yielded by `str::chars` can take up multiple bytes,
+    /// so a character position does not necessarily have the same byte index at which the character is stored.
+    /// Thus, using the character position where a byte index is expected can unexpectedly return wrong values
+    /// or panic when the string consists of multibyte characters.
+    ///
+    /// For example, the character `a` in `äa` is stored at byte index 2 but has the character position 1.
+    /// Using the character position 1 to index into the string will lead to a panic as it is in the middle of the first character.
+    ///
+    /// Instead of `.chars().enumerate()`, the correct iterator to use is `.char_indices()`, which yields byte indices.
+    ///
+    /// This pattern is technically fine if the strings are known to only use the ASCII subset,
+    /// though in those cases it would be better to use `bytes()` directly to make the intent clearer,
+    /// but there is also no downside to just using `.char_indices()` directly and supporting non-ASCII strings.
+    ///
+    /// You may also want to read the [chapter on strings in the Rust Book](https://doc.rust-lang.org/book/ch08-02-strings.html)
+    /// which goes into this in more detail.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let s = "...";
+    /// for (idx, c) in s.chars().enumerate() {
+    ///     let _ = s[idx..]; // ⚠️ Panics for strings consisting of multibyte characters
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # let s = "...";
+    /// for (idx, c) in s.char_indices() {
+    ///     let _ = s[idx..];
+    /// }
+    /// ```
+    #[clippy::version = "1.83.0"]
+    pub CHAR_INDICES_AS_BYTE_INDICES,
+    correctness,
+    "using the character position yielded by `.chars().enumerate()` in a context where a byte index is expected"
+}
+
 pub struct Loops {
     msrv: Msrv,
     enforce_iter_loop_reborrow: bool,
@@ -721,7 +791,7 @@ pub struct Loops {
 impl Loops {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
             enforce_iter_loop_reborrow: conf.enforce_iter_loop_reborrow,
         }
     }
@@ -750,6 +820,8 @@ impl_lint_pass!(Loops => [
     MANUAL_WHILE_LET_SOME,
     UNUSED_ENUMERATE_INDEX,
     INFINITE_LOOP,
+    MANUAL_SLICE_FILL,
+    CHAR_INDICES_AS_BYTE_INDICES,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -805,8 +877,6 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
             manual_while_let_some::check(cx, condition, body, span);
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 impl Loops {
@@ -823,6 +893,7 @@ impl Loops {
     ) {
         let is_manual_memcpy_triggered = manual_memcpy::check(cx, pat, arg, body, expr);
         if !is_manual_memcpy_triggered {
+            manual_slice_fill::check(cx, pat, arg, body, expr, self.msrv);
             needless_range_loop::check(cx, pat, arg, body, expr);
             explicit_counter_loop::check(cx, pat, arg, body, expr, label);
         }
@@ -830,17 +901,18 @@ impl Loops {
         for_kv_map::check(cx, pat, arg, body);
         mut_range_bound::check(cx, arg, body);
         single_element_loop::check(cx, pat, arg, body, expr);
-        same_item_push::check(cx, pat, arg, body, expr);
-        manual_flatten::check(cx, pat, arg, body, span);
+        same_item_push::check(cx, pat, arg, body, expr, self.msrv);
+        manual_flatten::check(cx, pat, arg, body, span, self.msrv);
         manual_find::check(cx, pat, arg, body, span, expr);
         unused_enumerate_index::check(cx, pat, arg, body);
+        char_indices_as_byte_indices::check(cx, pat, arg, body);
     }
 
     fn check_for_loop_arg(&self, cx: &LateContext<'_>, _: &Pat<'_>, arg: &Expr<'_>) {
         if let ExprKind::MethodCall(method, self_arg, [], _) = arg.kind {
             match method.ident.as_str() {
                 "iter" | "iter_mut" => {
-                    explicit_iter_loop::check(cx, self_arg, arg, &self.msrv, self.enforce_iter_loop_reborrow);
+                    explicit_iter_loop::check(cx, self_arg, arg, self.msrv, self.enforce_iter_loop_reborrow);
                 },
                 "into_iter" => {
                     explicit_into_iter_loop::check(cx, self_arg, arg);

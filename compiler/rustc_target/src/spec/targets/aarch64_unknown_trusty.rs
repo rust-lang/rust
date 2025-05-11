@@ -1,11 +1,13 @@
 // Trusty OS target for AArch64.
 
-use crate::spec::{LinkSelfContainedDefault, PanicStrategy, RelroLevel, Target, TargetOptions};
+use crate::spec::{
+    LinkSelfContainedDefault, PanicStrategy, RelroLevel, Target, TargetMetadata, TargetOptions,
+};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "aarch64-unknown-unknown-musl".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("ARM64 Trusty".into()),
             tier: Some(3),
             host_tools: Some(false),

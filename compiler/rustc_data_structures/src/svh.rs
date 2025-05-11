@@ -7,12 +7,12 @@
 
 use std::fmt;
 
-use rustc_macros::{Decodable_Generic, Encodable_Generic};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
 use crate::fingerprint::Fingerprint;
 use crate::stable_hasher;
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable_Generic, Decodable_Generic, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable_NoContext, Decodable_NoContext, Hash)]
 pub struct Svh {
     hash: Fingerprint,
 }

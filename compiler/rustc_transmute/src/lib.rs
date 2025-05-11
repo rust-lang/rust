@@ -1,8 +1,6 @@
 // tidy-alphabetical-start
-#![allow(unused_variables)]
-#![feature(alloc_layout_extra)]
+#![cfg_attr(test, feature(test))]
 #![feature(never_type)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};
@@ -81,15 +79,12 @@ pub enum Reason<T> {
 #[cfg(feature = "rustc")]
 mod rustc {
     use rustc_hir::lang_items::LangItem;
-    use rustc_infer::infer::InferCtxt;
-    use rustc_macros::TypeVisitable;
-    use rustc_middle::traits::ObligationCause;
-    use rustc_middle::ty::{Const, ParamEnv, Ty, TyCtxt, ValTree};
+    use rustc_middle::ty::{Const, Ty, TyCtxt};
 
     use super::*;
 
     /// The source and destination types of a transmutation.
-    #[derive(TypeVisitable, Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy)]
     pub struct Types<'tcx> {
         /// The source type.
         pub src: Ty<'tcx>,
@@ -97,27 +92,22 @@ mod rustc {
         pub dst: Ty<'tcx>,
     }
 
-    pub struct TransmuteTypeEnv<'cx, 'tcx> {
-        infcx: &'cx InferCtxt<'tcx>,
+    pub struct TransmuteTypeEnv<'tcx> {
+        tcx: TyCtxt<'tcx>,
     }
 
-    impl<'cx, 'tcx> TransmuteTypeEnv<'cx, 'tcx> {
-        pub fn new(infcx: &'cx InferCtxt<'tcx>) -> Self {
-            Self { infcx }
+    impl<'tcx> TransmuteTypeEnv<'tcx> {
+        pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+            Self { tcx }
         }
 
-        #[allow(unused)]
         pub fn is_transmutable(
             &mut self,
-            cause: ObligationCause<'tcx>,
             types: Types<'tcx>,
             assume: crate::Assume,
         ) -> crate::Answer<crate::layout::rustc::Ref<'tcx>> {
             crate::maybe_transmutable::MaybeTransmutableQuery::new(
-                types.src,
-                types.dst,
-                assume,
-                self.infcx.tcx,
+                types.src, types.dst, assume, self.tcx,
             )
             .answer()
         }
@@ -125,39 +115,31 @@ mod rustc {
 
     impl Assume {
         /// Constructs an `Assume` from a given const-`Assume`.
-        pub fn from_const<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            param_env: ParamEnv<'tcx>,
-            c: Const<'tcx>,
-        ) -> Option<Self> {
+        pub fn from_const<'tcx>(tcx: TyCtxt<'tcx>, ct: Const<'tcx>) -> Option<Self> {
             use rustc_middle::ty::ScalarInt;
             use rustc_span::sym;
 
-            let Some((cv, ty)) = c.try_to_valtree() else {
+            let Some(cv) = ct.try_to_value() else {
                 return None;
             };
 
-            let adt_def = ty.ty_adt_def()?;
+            let adt_def = cv.ty.ty_adt_def()?;
 
-            assert_eq!(
-                tcx.require_lang_item(LangItem::TransmuteOpts, None),
-                adt_def.did(),
-                "The given `Const` was not marked with the `{}` lang item.",
-                LangItem::TransmuteOpts.name(),
-            );
+            if !tcx.is_lang_item(adt_def.did(), LangItem::TransmuteOpts) {
+                tcx.dcx().delayed_bug(format!(
+                    "The given `const` was not marked with the `{}` lang item.",
+                    LangItem::TransmuteOpts.name()
+                ));
+                return Some(Self {
+                    alignment: true,
+                    lifetimes: true,
+                    safety: true,
+                    validity: true,
+                });
+            }
 
             let variant = adt_def.non_enum_variant();
-            let fields = match cv {
-                ValTree::Branch(branch) => branch,
-                _ => {
-                    return Some(Self {
-                        alignment: true,
-                        lifetimes: true,
-                        safety: true,
-                        validity: true,
-                    });
-                }
-            };
+            let fields = cv.valtree.unwrap_branch();
 
             let get_field = |name| {
                 let (field_idx, _) = variant

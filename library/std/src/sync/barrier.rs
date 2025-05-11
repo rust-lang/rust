@@ -1,7 +1,5 @@
-#[cfg(test)]
-mod tests;
-
 use crate::fmt;
+// FIXME(nonpoison_mutex,nonpoison_condvar): switch to nonpoison versions once they are available
 use crate::sync::{Condvar, Mutex};
 
 /// A barrier enables multiple threads to synchronize the beginning

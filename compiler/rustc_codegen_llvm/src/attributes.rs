@@ -1,5 +1,4 @@
 //! Set and unset common attributes on LLVM values.
-
 use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
@@ -28,6 +27,22 @@ pub(crate) fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[
     }
 }
 
+pub(crate) fn has_attr(llfn: &Value, idx: AttributePlace, attr: AttributeKind) -> bool {
+    llvm::HasAttributeAtIndex(llfn, idx, attr)
+}
+
+pub(crate) fn has_string_attr(llfn: &Value, name: &str) -> bool {
+    llvm::HasStringAttribute(llfn, name)
+}
+
+pub(crate) fn remove_from_llfn(llfn: &Value, place: AttributePlace, kind: AttributeKind) {
+    llvm::RemoveRustEnumAttributeAtIndex(llfn, place, kind);
+}
+
+pub(crate) fn remove_string_attr_from_llfn(llfn: &Value, name: &str) {
+    llvm::RemoveStringAttrFromFn(llfn, name);
+}
+
 /// Get LLVM attribute for the provided inline heuristic.
 #[inline]
 fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll Attribute> {
@@ -37,7 +52,9 @@ fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll 
     }
     match inline {
         InlineAttr::Hint => Some(AttributeKind::InlineHint.create_attr(cx.llcx)),
-        InlineAttr::Always => Some(AttributeKind::AlwaysInline.create_attr(cx.llcx)),
+        InlineAttr::Always | InlineAttr::Force { .. } => {
+            Some(AttributeKind::AlwaysInline.create_attr(cx.llcx))
+        }
         InlineAttr::Never => {
             if cx.sess().target.arch != "amdgpu" {
                 Some(AttributeKind::NoInline.create_attr(cx.llcx))
@@ -331,8 +348,11 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     let mut to_add = SmallVec::<[_; 16]>::new();
 
     match codegen_fn_attrs.optimize {
-        OptimizeAttr::None => {
+        OptimizeAttr::Default => {
             to_add.extend(default_optimisation_attrs(cx));
+        }
+        OptimizeAttr::DoNotOptimize => {
+            to_add.push(llvm::AttributeKind::OptimizeNone.create_attr(cx.llcx));
         }
         OptimizeAttr::Size => {
             to_add.push(llvm::AttributeKind::MinSize.create_attr(cx.llcx));
@@ -341,12 +361,12 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         OptimizeAttr::Speed => {}
     }
 
-    let inline =
-        if codegen_fn_attrs.inline == InlineAttr::None && instance.def.requires_inline(cx.tcx) {
-            InlineAttr::Hint
-        } else {
-            codegen_fn_attrs.inline
-        };
+    // `optnone` requires `noinline`
+    let inline = match (codegen_fn_attrs.inline, &codegen_fn_attrs.optimize) {
+        (_, OptimizeAttr::DoNotOptimize) => InlineAttr::Never,
+        (InlineAttr::None, _) if instance.def.requires_inline(cx.tcx) => InlineAttr::Hint,
+        (inline, _) => inline,
+    };
     to_add.extend(inline_attr(cx, inline));
 
     // The `uwtable` attribute according to LLVM is:
@@ -402,30 +422,28 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         // Do not set sanitizer attributes for naked functions.
         to_add.extend(sanitize_attrs(cx, codegen_fn_attrs.no_sanitize));
 
-        if llvm_util::get_version() >= (19, 0, 0) {
-            // For non-naked functions, set branch protection attributes on aarch64.
-            if let Some(BranchProtection { bti, pac_ret }) =
-                cx.sess().opts.unstable_opts.branch_protection
-            {
-                assert!(cx.sess().target.arch == "aarch64");
-                if bti {
-                    to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));
+        // For non-naked functions, set branch protection attributes on aarch64.
+        if let Some(BranchProtection { bti, pac_ret }) =
+            cx.sess().opts.unstable_opts.branch_protection
+        {
+            assert!(cx.sess().target.arch == "aarch64");
+            if bti {
+                to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));
+            }
+            if let Some(PacRet { leaf, pc, key }) = pac_ret {
+                if pc {
+                    to_add.push(llvm::CreateAttrString(cx.llcx, "branch-protection-pauth-lr"));
                 }
-                if let Some(PacRet { leaf, pc, key }) = pac_ret {
-                    if pc {
-                        to_add.push(llvm::CreateAttrString(cx.llcx, "branch-protection-pauth-lr"));
-                    }
-                    to_add.push(llvm::CreateAttrStringValue(
-                        cx.llcx,
-                        "sign-return-address",
-                        if leaf { "all" } else { "non-leaf" },
-                    ));
-                    to_add.push(llvm::CreateAttrStringValue(
-                        cx.llcx,
-                        "sign-return-address-key",
-                        if key == PAuthKey::A { "a_key" } else { "b_key" },
-                    ));
-                }
+                to_add.push(llvm::CreateAttrStringValue(
+                    cx.llcx,
+                    "sign-return-address",
+                    if leaf { "all" } else { "non-leaf" },
+                ));
+                to_add.push(llvm::CreateAttrStringValue(
+                    cx.llcx,
+                    "sign-return-address-key",
+                    if key == PAuthKey::A { "a_key" } else { "b_key" },
+                ));
             }
         }
     }
@@ -472,7 +490,11 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         let allocated_pointer = AttributeKind::AllocatedPointer.create_attr(cx.llcx);
         attributes::apply_to_llfn(llfn, AttributePlace::Argument(0), &[allocated_pointer]);
     }
-    if let Some(align) = codegen_fn_attrs.alignment {
+    // function alignment can be set globally with the `-Zmin-function-alignment=<n>` flag;
+    // the alignment from a `#[repr(align(<n>))]` is used if it specifies a higher alignment.
+    if let Some(align) =
+        Ord::max(cx.tcx.sess.opts.unstable_opts.min_function_alignment, codegen_fn_attrs.alignment)
+    {
         llvm::set_alignment(llfn, align);
     }
     if let Some(backchain) = backchain_attr(cx) {
@@ -501,12 +523,6 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
             InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),
             InstructionSetAttr::ArmT32 => "+thumb-mode".to_string(),
         }))
-        // HACK: LLVM versions 19+ do not have the FPMR feature and treat it as always enabled
-        // It only exists as a feature in LLVM 18, cannot be passed down for any other version
-        .chain(match &*cx.tcx.sess.target.arch {
-            "aarch64" if llvm_util::get_version().0 == 18 => vec!["+fpmr".to_string()],
-            _ => vec![],
-        })
         .collect::<Vec<String>>();
 
     if cx.tcx.sess.target.is_like_wasm {

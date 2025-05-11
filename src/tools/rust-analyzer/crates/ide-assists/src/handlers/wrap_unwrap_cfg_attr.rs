@@ -1,13 +1,12 @@
 use ide_db::source_change::SourceChangeBuilder;
 use itertools::Itertools;
 use syntax::{
-    algo,
-    ast::{self, make, AstNode},
+    NodeOrToken, SyntaxToken, T, TextRange, algo,
+    ast::{self, AstNode, make},
     ted::{self, Position},
-    NodeOrToken, SyntaxToken, TextRange, T,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: wrap_unwrap_cfg_attr
 //
@@ -117,7 +116,7 @@ pub(crate) fn wrap_unwrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>) -
             (Some(attr), Some(ident))
                 if attr.simple_name().map(|v| v.eq("derive")).unwrap_or_default() =>
             {
-                Some(attempt_get_derive(attr.clone(), ident))
+                Some(attempt_get_derive(attr, ident))
             }
 
             (Some(attr), _) => Some(WrapUnwrapOption::WrapAttr(attr)),
@@ -129,7 +128,7 @@ pub(crate) fn wrap_unwrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>) -
             NodeOrToken::Node(node) => ast::Attr::cast(node).map(WrapUnwrapOption::WrapAttr),
             NodeOrToken::Token(ident) if ident.kind() == syntax::T![ident] => {
                 let attr = ident.parent_ancestors().find_map(ast::Attr::cast)?;
-                Some(attempt_get_derive(attr.clone(), ident))
+                Some(attempt_get_derive(attr, ident))
             }
             _ => None,
         }
@@ -211,7 +210,7 @@ fn wrap_derive(
     };
 
     acc.add(
-        AssistId("wrap_unwrap_cfg_attr", AssistKind::Refactor),
+        AssistId::refactor("wrap_unwrap_cfg_attr"),
         format!("Wrap #[derive({path_text})] in `cfg_attr`",),
         range,
         handle_source_change,
@@ -234,7 +233,7 @@ fn wrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>, attr: ast::Attr) ->
         if let Some(meta) = attr.meta() {
             if let (Some(eq), Some(expr)) = (meta.eq_token(), meta.expr()) {
                 raw_tokens.push(NodeOrToken::Token(make::tokens::whitespace(" ")));
-                raw_tokens.push(NodeOrToken::Token(eq.clone()));
+                raw_tokens.push(NodeOrToken::Token(eq));
                 raw_tokens.push(NodeOrToken::Token(make::tokens::whitespace(" ")));
 
                 expr.syntax().descendants_with_tokens().for_each(|it| {
@@ -268,7 +267,7 @@ fn wrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>, attr: ast::Attr) ->
         }
     };
     acc.add(
-        AssistId("wrap_unwrap_cfg_attr", AssistKind::Refactor),
+        AssistId::refactor("wrap_unwrap_cfg_attr"),
         "Convert to `cfg_attr`",
         range,
         handle_source_change,
@@ -296,11 +295,7 @@ fn unwrap_cfg_attr(acc: &mut Assists, attr: ast::Attr) -> Option<()> {
             continue;
         }
         let Some(attr_name) = tt.into_token().and_then(|token| {
-            if token.kind() == T![ident] {
-                Some(make::ext::ident_path(token.text()))
-            } else {
-                None
-            }
+            if token.kind() == T![ident] { Some(make::ext::ident_path(token.text())) } else { None }
         }) else {
             continue;
         };
@@ -341,7 +336,7 @@ fn unwrap_cfg_attr(acc: &mut Assists, attr: ast::Attr) -> Option<()> {
         f.replace(range, inner_attrs);
     };
     acc.add(
-        AssistId("wrap_unwrap_cfg_attr", AssistKind::Refactor),
+        AssistId::refactor("wrap_unwrap_cfg_attr"),
         "Extract Inner Attributes from `cfg_attr`",
         range,
         handle_source_change,

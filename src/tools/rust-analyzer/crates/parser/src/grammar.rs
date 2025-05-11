@@ -39,9 +39,9 @@ mod patterns;
 mod types;
 
 use crate::{
-    parser::{CompletedMarker, Marker, Parser},
     SyntaxKind::{self, *},
-    TokenSet, T,
+    T, TokenSet,
+    parser::{CompletedMarker, Marker, Parser},
 };
 
 pub(crate) mod entry {

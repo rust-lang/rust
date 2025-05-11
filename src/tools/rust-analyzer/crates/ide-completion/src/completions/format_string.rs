@@ -1,11 +1,11 @@
 //! Completes identifiers in format string literals.
 
 use hir::{ModuleDef, ScopeDef};
-use ide_db::{syntax_helpers::format_string::is_format_string, SymbolKind};
+use ide_db::{SymbolKind, syntax_helpers::format_string::is_format_string};
 use itertools::Itertools;
-use syntax::{ast, AstToken, TextRange, TextSize, ToSmolStr};
+use syntax::{AstToken, TextRange, TextSize, ToSmolStr, ast};
 
-use crate::{context::CompletionContext, CompletionItem, CompletionItemKind, Completions};
+use crate::{CompletionItem, CompletionItemKind, Completions, context::CompletionContext};
 
 /// Complete identifiers in format strings.
 pub(crate) fn format_string(
@@ -61,18 +61,13 @@ pub(crate) fn format_string(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
-    use crate::tests::{check_edit, completion_list_no_kw};
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list_no_kw(ra_fixture);
-        expect.assert_eq(&actual);
-    }
+    use crate::tests::{check_edit, check_no_kw};
 
     #[test]
     fn works_when_wrapped() {
-        check(
+        check_no_kw(
             r#"
 //- minicore: fmt
 macro_rules! print {
@@ -89,7 +84,7 @@ fn main() {
 
     #[test]
     fn no_completion_without_brace() {
-        check(
+        check_no_kw(
             r#"
 //- minicore: fmt
 fn main() {

@@ -69,14 +69,17 @@ lint_builtin_const_no_mangle = const items should never be `#[no_mangle]`
 
 lint_builtin_decl_unsafe_fn = declaration of an `unsafe` function
 lint_builtin_decl_unsafe_method = declaration of an `unsafe` method
-lint_builtin_deprecated_attr_default_suggestion = remove this attribute
 
 lint_builtin_deprecated_attr_link = use of deprecated attribute `{$name}`: {$reason}. See {$link}
     .msg_suggestion = {$msg}
     .default_suggestion = remove this attribute
-lint_builtin_deprecated_attr_used = use of deprecated attribute `{$name}`: no longer used
 lint_builtin_deref_nullptr = dereferencing a null pointer
     .label = this code causes undefined behavior when executed
+
+lint_builtin_double_negations = use of a double negation
+    .note = the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+    .note_decrement = use `-= 1` if you meant to decrement the value
+    .add_parens_suggestion = add parentheses for clarity
 
 lint_builtin_ellipsis_inclusive_range_patterns = `...` range patterns are deprecated
     .suggestion = use `..=` for an inclusive range
@@ -209,7 +212,9 @@ lint_dangling_pointers_from_temporaries = a dangling pointer will be produced be
     .label_ptr = this pointer will immediately be invalid
     .label_temporary = this `{$ty}` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
     .note = pointers do not have a lifetime; when calling `{$callee}` the `{$ty}` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
-    .help = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+    .help_bind = you must make sure that the variable you bind the `{$ty}` to lives at least as long as the pointer returned by the call to `{$callee}`
+    .help_returned = in particular, if this pointer is returned from the current function, binding the `{$ty}` inside the function will not suffice
+    .help_visit = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 lint_default_hash_types = prefer `{$preferred}` over `{$used}`, it has better performance
     .note = a `use rustc_data_structures::fx::{$preferred}` may be necessary
@@ -266,7 +271,7 @@ lint_expectation = this lint expectation is unfulfilled
 lint_extern_crate_not_idiomatic = `extern crate` is not idiomatic in the new edition
     .suggestion = convert it to a `use`
 
-lint_extern_without_abi = extern declarations without an explicit ABI are deprecated
+lint_extern_without_abi = `extern` declarations without an explicit ABI are deprecated
     .label = ABI should be specified here
     .suggestion = explicitly specify the {$default_abi} ABI
 
@@ -328,6 +333,11 @@ lint_identifier_uncommon_codepoints = identifier contains {$codepoints_len ->
         *[other] {" "}{$identifier_type}
     } Unicode general security profile
 
+lint_if_let_dtor = {$dtor_kind ->
+    [dyn] value may invoke a custom destructor because it contains a trait object
+    *[concrete] value invokes this custom destructor
+    }
+
 lint_if_let_rescope = `if let` assigns a shorter lifetime since Edition 2024
     .label = this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
     .help = the value is now dropped here in Edition 2024
@@ -349,6 +359,10 @@ lint_impl_trait_overcaptures = `{$self_ty}` will capture more lifetimes than pos
 
 lint_impl_trait_redundant_captures = all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
     .suggestion = remove the `use<...>` syntax
+
+lint_implicit_unsafe_autorefs = implicit autoref creates a reference to the dereference of a raw pointer
+    .note = creating a reference requires the pointer target to be valid and imposes aliasing requirements
+    .suggestion = try using a raw pointer method instead; or if this reference is intentional, make it explicit
 
 lint_improper_ctypes = `extern` {$desc} uses type `{$ty}`, which is not FFI-safe
     .label = not FFI-safe
@@ -385,9 +399,6 @@ lint_improper_ctypes_only_phantomdata = composed only of `PhantomData`
 
 lint_improper_ctypes_opaque = opaque types have no C equivalent
 
-lint_improper_ctypes_pat_help = consider using the base type instead
-
-lint_improper_ctypes_pat_reason = pattern types have no C equivalent
 lint_improper_ctypes_slice_help = consider using a raw pointer instead
 
 lint_improper_ctypes_slice_reason = slices have no C equivalent
@@ -437,17 +448,21 @@ lint_invalid_crate_type_value = invalid `crate_type` value
     .suggestion = did you mean
 
 # FIXME: we should ordinalize $valid_up_to when we add support for doing so
-lint_invalid_from_utf8_checked = calls to `{$method}` with a invalid literal always return an error
+lint_invalid_from_utf8_checked = calls to `{$method}` with an invalid literal always return an error
     .label = the literal was valid UTF-8 up to the {$valid_up_to} bytes
 
 # FIXME: we should ordinalize $valid_up_to when we add support for doing so
-lint_invalid_from_utf8_unchecked = calls to `{$method}` with a invalid literal are undefined behavior
+lint_invalid_from_utf8_unchecked = calls to `{$method}` with an invalid literal are undefined behavior
     .label = the literal was valid UTF-8 up to the {$valid_up_to} bytes
 
 lint_invalid_nan_comparisons_eq_ne = incorrect NaN comparison, NaN cannot be directly compared to itself
     .suggestion = use `f32::is_nan()` or `f64::is_nan()` instead
 
 lint_invalid_nan_comparisons_lt_le_gt_ge = incorrect NaN comparison, NaN is not orderable
+
+lint_invalid_null_arguments = calling this function with a null pointer is undefined behavior, even if the result of the function is unused
+    .origin = null pointer originates from here
+    .doc = for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
 
 lint_invalid_reference_casting_assign_to_ref = assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
     .label = casting happened here
@@ -628,7 +643,8 @@ lint_opaque_hidden_inferred_bound_sugg = add this bound
 lint_or_patterns_back_compat = the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
     .suggestion = use pat_param to preserve semantics
 
-lint_out_of_scope_macro_calls = cannot find macro `{$path}` in this scope
+lint_out_of_scope_macro_calls = cannot find macro `{$path}` in the current scope when looking from {$location}
+    .label = not found from {$location}
     .help = import `macro_rules` with `use` to make it callable above its definition
 
 lint_overflowing_bin_hex = literal out of range for `{$ty}`
@@ -671,15 +687,6 @@ lint_private_extern_crate_reexport = extern crate `{$ident}` is private and cann
 
 lint_proc_macro_derive_resolution_fallback = cannot find {$ns} `{$ident}` in this scope
     .label = names from parent modules are not accessible without an explicit import
-
-lint_ptr_null_checks_fn_ptr = function pointers are not nullable, so checking them for null will always return false
-    .help = wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
-    .label = expression has type `{$orig_ty}`
-
-lint_ptr_null_checks_fn_ret = returned pointer of `{$fn_name}` call is never null, so checking it for null will always return false
-
-lint_ptr_null_checks_ref = references are not nullable, so checking them for null will always return false
-    .label = expression has type `{$orig_ty}`
 
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
@@ -754,7 +761,7 @@ lint_single_use_lifetime = lifetime parameter `{$ident}` only used once
 
 lint_span_use_eq_ctxt = use `.eq_ctxt()` instead of `.ctxt() == .ctxt()`
 
-lint_static_mut_refs_lint = creating a {$shared_label}reference to mutable static is discouraged
+lint_static_mut_refs_lint = creating a {$shared_label}reference to mutable static
     .label = {$shared_label}reference to mutable static
     .suggestion = use `&raw const` instead to create a raw pointer
     .suggestion_mut = use `&raw mut` instead to create a raw pointer
@@ -789,6 +796,9 @@ lint_tykind_kind = usage of `ty::TyKind::<kind>`
     .suggestion = try using `ty::<kind>` directly
 
 lint_type_ir_inherent_usage = do not use `rustc_type_ir::inherent` unless you're inside of the trait solver
+    .note = the method or struct you're looking for is likely defined somewhere else downstream in the compiler
+
+lint_type_ir_trait_usage = do not use `rustc_type_ir::Interner` or `rustc_type_ir::InferCtxtLike` unless you're inside of the trait solver
     .note = the method or struct you're looking for is likely defined somewhere else downstream in the compiler
 
 lint_undropped_manually_drops = calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing
@@ -970,8 +980,16 @@ lint_unused_result = unused result of type `{$ty}`
 
 lint_use_let_underscore_ignore_suggestion = use `let _ = ...` to ignore the expression or result
 
+lint_useless_ptr_null_checks_fn_ptr = function pointers are not nullable, so checking them for null will always return false
+    .help = wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
+    .label = expression has type `{$orig_ty}`
+
+lint_useless_ptr_null_checks_fn_ret = returned pointer of `{$fn_name}` call is never null, so checking it for null will always return false
+
+lint_useless_ptr_null_checks_ref = references are not nullable, so checking them for null will always return false
+    .label = expression has type `{$orig_ty}`
+
+lint_uses_power_alignment = repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
+
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest
-
-lint_wasm_c_abi =
-    older versions of the `wasm-bindgen` crate will be incompatible with future versions of Rust; please update to `wasm-bindgen` v0.2.88

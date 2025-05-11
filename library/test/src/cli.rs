@@ -1,7 +1,7 @@
 //! Module converting command-line arguments into test configuration.
 
 use std::env;
-use std::io::{self, IsTerminal};
+use std::io::{self, IsTerminal, Write};
 use std::path::PathBuf;
 
 use super::options::{ColorConfig, Options, OutputFormat, RunIgnored};
@@ -44,7 +44,7 @@ impl TestOpts {
 }
 
 /// Result of parsing the options.
-pub type OptRes = Result<TestOpts, String>;
+pub(crate) type OptRes = Result<TestOpts, String>;
 /// Result of parsing the option part.
 type OptPartRes<T> = Result<T, String>;
 
@@ -58,10 +58,10 @@ fn optgroups() -> getopts::Options {
         .optflag("", "bench", "Run benchmarks instead of tests")
         .optflag("", "list", "List all tests and benchmarks")
         .optflag("h", "help", "Display this message")
-        .optopt("", "logfile", "Write logs to the specified file", "PATH")
+        .optopt("", "logfile", "Write logs to the specified file (deprecated)", "PATH")
         .optflag(
             "",
-            "nocapture",
+            "no-capture",
             "don't capture stdout/stderr of each \
              task, allow printing directly",
         )
@@ -172,7 +172,7 @@ tests in the same order again. Note that --shuffle and --shuffle-seed do not
 affect whether the tests are run in parallel.
 
 All tests have their standard output and standard error captured by default.
-This can be overridden with the --nocapture flag or setting RUST_TEST_NOCAPTURE
+This can be overridden with the --no-capture flag or setting RUST_TEST_NOCAPTURE
 environment variable to a value other than "0". Logging is not captured by default.
 
 Test Attributes:
@@ -199,7 +199,10 @@ Test Attributes:
 /// otherwise creates a `TestOpts` object and returns it.
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     // Parse matches.
-    let opts = optgroups();
+    let mut opts = optgroups();
+    // Flags hidden from `usage`
+    opts.optflag("", "nocapture", "Deprecated, use `--no-capture`");
+
     let binary = args.first().map(|c| &**c).unwrap_or("...");
     let args = args.get(1..).unwrap_or(args);
     let matches = match opts.parse(args) {
@@ -210,7 +213,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     // Check if help was requested.
     if matches.opt_present("h") {
         // Show help and do nothing more.
-        usage(binary, &opts);
+        usage(binary, &optgroups());
         return None;
     }
 
@@ -280,6 +283,10 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     let format = get_format(&matches, quiet, allow_unstable)?;
 
     let options = Options::new().display_output(matches.opt_present("show-output"));
+
+    if logfile.is_some() {
+        let _ = write!(io::stderr(), "warning: `--logfile` is deprecated");
+    }
 
     let test_opts = TestOpts {
         list,
@@ -443,7 +450,7 @@ fn get_color_config(matches: &getopts::Matches) -> OptPartRes<ColorConfig> {
 }
 
 fn get_nocapture(matches: &getopts::Matches) -> OptPartRes<bool> {
-    let mut nocapture = matches.opt_present("nocapture");
+    let mut nocapture = matches.opt_present("nocapture") || matches.opt_present("no-capture");
     if !nocapture {
         nocapture = match env::var("RUST_TEST_NOCAPTURE") {
             Ok(val) => &val != "0",

@@ -12,7 +12,7 @@ LL | #![deny(unknown_or_malformed_diagnostic_attributes)]
 help: an attribute with a similar name exists
    |
 LL | #[diagnostic::on_unimplemented]
-   |               ~~~~~~~~~~~~~~~~
+   |                 +
 
 error: unknown diagnostic attribute
   --> $DIR/suggest_typos.rs:9:15
@@ -22,8 +22,9 @@ LL | #[diagnostic::un_onimplemented]
    |
 help: an attribute with a similar name exists
    |
-LL | #[diagnostic::on_unimplemented]
-   |               ~~~~~~~~~~~~~~~~
+LL - #[diagnostic::un_onimplemented]
+LL + #[diagnostic::on_unimplemented]
+   |
 
 error: unknown diagnostic attribute
   --> $DIR/suggest_typos.rs:14:15
@@ -34,7 +35,19 @@ LL | #[diagnostic::on_implemented]
 help: an attribute with a similar name exists
    |
 LL | #[diagnostic::on_unimplemented]
-   |               ~~~~~~~~~~~~~~~~
+   |                  ++
 
-error: aborting due to 3 previous errors
+error: unknown diagnostic attribute
+  --> $DIR/suggest_typos.rs:19:15
+   |
+LL | #[diagnostic::dont_recommend]
+   |               ^^^^^^^^^^^^^^
+   |
+help: an attribute with a similar name exists
+   |
+LL - #[diagnostic::dont_recommend]
+LL + #[diagnostic::do_not_recommend]
+   |
+
+error: aborting due to 4 previous errors
 

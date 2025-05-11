@@ -1,4 +1,32 @@
 error[E0107]: function takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/no-explicit-const-params.rs:15:5
+   |
+LL |     foo::<true>();
+   |     ^^^-------- help: remove the unnecessary generics
+   |     |
+   |     expected 0 generic arguments
+   |
+note: function defined here, with 0 generic parameters
+  --> $DIR/no-explicit-const-params.rs:3:10
+   |
+LL | const fn foo() {}
+   |          ^^^
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/no-explicit-const-params.rs:17:12
+   |
+LL |     <() as Bar<true>>::bar();
+   |            ^^^------ help: remove the unnecessary generics
+   |            |
+   |            expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/no-explicit-const-params.rs:6:7
+   |
+LL | trait Bar {
+   |       ^^^
+
+error[E0107]: function takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/no-explicit-const-params.rs:22:5
    |
 LL |     foo::<false>();
@@ -31,34 +59,6 @@ error[E0277]: the trait bound `(): const Bar` is not satisfied
    |
 LL |     <() as Bar<false>>::bar();
    |      ^^
-
-error[E0107]: function takes 0 generic arguments but 1 generic argument was supplied
-  --> $DIR/no-explicit-const-params.rs:15:5
-   |
-LL |     foo::<true>();
-   |     ^^^-------- help: remove the unnecessary generics
-   |     |
-   |     expected 0 generic arguments
-   |
-note: function defined here, with 0 generic parameters
-  --> $DIR/no-explicit-const-params.rs:3:10
-   |
-LL | const fn foo() {}
-   |          ^^^
-
-error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
-  --> $DIR/no-explicit-const-params.rs:17:12
-   |
-LL |     <() as Bar<true>>::bar();
-   |            ^^^------ help: remove the unnecessary generics
-   |            |
-   |            expected 0 generic arguments
-   |
-note: trait defined here, with 0 generic parameters
-  --> $DIR/no-explicit-const-params.rs:6:7
-   |
-LL | trait Bar {
-   |       ^^^
 
 error: aborting due to 5 previous errors
 

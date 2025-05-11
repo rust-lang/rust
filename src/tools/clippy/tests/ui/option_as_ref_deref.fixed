@@ -9,25 +9,38 @@ fn main() {
     let mut opt = Some(String::from("123"));
 
     let _ = opt.clone().as_deref().map(str::len);
+    //~^ option_as_ref_deref
 
     #[rustfmt::skip]
     let _ = opt.clone().as_deref()
         .map(str::len);
 
     let _ = opt.as_deref_mut();
+    //~^ option_as_ref_deref
 
     let _ = opt.as_deref();
+    //~^ option_as_ref_deref
     let _ = opt.as_deref();
+    //~^ option_as_ref_deref
     let _ = opt.as_deref_mut();
+    //~^ option_as_ref_deref
     let _ = opt.as_deref_mut();
+    //~^ option_as_ref_deref
     let _ = Some(CString::new(vec![]).unwrap()).as_deref();
+    //~^ option_as_ref_deref
     let _ = Some(OsString::new()).as_deref();
+    //~^ option_as_ref_deref
     let _ = Some(PathBuf::new()).as_deref();
+    //~^ option_as_ref_deref
     let _ = Some(Vec::<()>::new()).as_deref();
+    //~^ option_as_ref_deref
     let _ = Some(Vec::<()>::new()).as_deref_mut();
+    //~^ option_as_ref_deref
 
     let _ = opt.as_deref();
+    //~^ option_as_ref_deref
     let _ = opt.clone().as_deref_mut().map(|x| x.len());
+    //~^ option_as_ref_deref
 
     let vc = vec![String::new()];
     let _ = Some(1_usize).as_ref().map(|x| vc[*x].as_str()); // should not be linted
@@ -35,10 +48,13 @@ fn main() {
     let _: Option<&str> = Some(&String::new()).as_ref().map(|x| x.as_str()); // should not be linted
 
     let _ = opt.as_deref();
+    //~^ option_as_ref_deref
     let _ = opt.as_deref_mut();
+    //~^ option_as_ref_deref
 
     // Issue #5927
     let _ = opt.as_deref();
+    //~^ option_as_ref_deref
 }
 
 #[clippy::msrv = "1.39"]
@@ -51,4 +67,5 @@ fn msrv_1_39() {
 fn msrv_1_40() {
     let opt = Some(String::from("123"));
     let _ = opt.as_deref();
+    //~^ option_as_ref_deref
 }

@@ -1,4 +1,4 @@
-/// Dealing with sting indices can be hard, this struct ensures that both the
+/// Dealing with string indices can be hard, this struct ensures that both the
 /// character and byte index are provided for correct indexing.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct StrIndex {
@@ -165,7 +165,7 @@ pub fn camel_case_split(s: &str) -> Vec<&str> {
     offsets.windows(2).map(|w| &s[w[0]..w[1]]).collect()
 }
 
-/// Dealing with sting comparison can be complicated, this struct ensures that both the
+/// Dealing with string comparison can be complicated, this struct ensures that both the
 /// character and byte count are provided for correct indexing.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct StrCount {
@@ -370,11 +370,9 @@ mod test {
         assert_eq!(camel_case_split("AbcDef"), vec!["Abc", "Def"]);
         assert_eq!(camel_case_split("Abc"), vec!["Abc"]);
         assert_eq!(camel_case_split("abcDef"), vec!["abc", "Def"]);
-        assert_eq!(camel_case_split("\u{f6}\u{f6}AabABcd"), vec![
-            "\u{f6}\u{f6}",
-            "Aab",
-            "A",
-            "Bcd"
-        ]);
+        assert_eq!(
+            camel_case_split("\u{f6}\u{f6}AabABcd"),
+            vec!["\u{f6}\u{f6}", "Aab", "A", "Bcd"]
+        );
     }
 }

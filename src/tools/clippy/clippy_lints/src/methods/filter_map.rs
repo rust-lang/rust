@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::macros::{is_panic, matching_root_macro_call, root_macro_call};
 use clippy_utils::source::{indent_of, reindent_multiline, snippet};
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{SpanlessEq, higher, is_trait_method, path_to_local_id, peel_blocks};
+use clippy_utils::{SpanlessEq, higher, is_trait_method, path_to_local_id, peel_blocks, sym};
 use hir::{Body, HirId, MatchSource, Pat};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -11,8 +11,7 @@ use rustc_hir::{Closure, Expr, ExprKind, PatKind, PathSegment, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::Span;
-use rustc_span::symbol::{Ident, Symbol, sym};
-use std::borrow::Cow;
+use rustc_span::symbol::{Ident, Symbol};
 
 use super::{MANUAL_FILTER_MAP, MANUAL_FIND_MAP, OPTION_FILTER_MAP, RESULT_FILTER_MAP};
 
@@ -22,7 +21,7 @@ fn is_method(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol) -> bool
         ExprKind::Path(QPath::Resolved(_, segments)) => segments.segments.last().unwrap().ident.name == method_name,
         ExprKind::MethodCall(segment, _, _, _) => segment.ident.name == method_name,
         ExprKind::Closure(Closure { body, .. }) => {
-            let body = cx.tcx.hir().body(*body);
+            let body = cx.tcx.hir_body(*body);
             let closure_expr = peel_blocks(body.value);
             match closure_expr.kind {
                 ExprKind::MethodCall(PathSegment { ident, .. }, receiver, ..) => {
@@ -44,10 +43,10 @@ fn is_method(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol) -> bool
 }
 
 fn is_option_filter_map(cx: &LateContext<'_>, filter_arg: &Expr<'_>, map_arg: &Expr<'_>) -> bool {
-    is_method(cx, map_arg, sym::unwrap) && is_method(cx, filter_arg, sym!(is_some))
+    is_method(cx, map_arg, sym::unwrap) && is_method(cx, filter_arg, sym::is_some)
 }
 fn is_ok_filter_map(cx: &LateContext<'_>, filter_arg: &Expr<'_>, map_arg: &Expr<'_>) -> bool {
-    is_method(cx, map_arg, sym::unwrap) && is_method(cx, filter_arg, sym!(is_ok))
+    is_method(cx, map_arg, sym::unwrap) && is_method(cx, filter_arg, sym::is_ok)
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -234,12 +233,12 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
             // the latter only calls `effect` once
             let side_effect_expr_span = receiver.can_have_side_effects().then_some(receiver.span);
 
-            if cx.tcx.is_diagnostic_item(sym::Option, recv_ty.did()) && path.ident.name.as_str() == "is_some" {
+            if cx.tcx.is_diagnostic_item(sym::Option, recv_ty.did()) && path.ident.name == sym::is_some {
                 Some(Self::IsSome {
                     receiver,
                     side_effect_expr_span,
                 })
-            } else if cx.tcx.is_diagnostic_item(sym::Result, recv_ty.did()) && path.ident.name.as_str() == "is_ok" {
+            } else if cx.tcx.is_diagnostic_item(sym::Result, recv_ty.did()) && path.ident.name == sym::is_ok {
                 Some(Self::IsOk {
                     receiver,
                     side_effect_expr_span,
@@ -302,7 +301,7 @@ pub(super) fn check(
             filter_span.with_hi(expr.span.hi()),
             "`filter` for `Some` followed by `unwrap`",
             "consider using `flatten` instead",
-            reindent_multiline(Cow::Borrowed("flatten()"), true, indent_of(cx, map_span)).into_owned(),
+            reindent_multiline("flatten()", true, indent_of(cx, map_span)),
             Applicability::MachineApplicable,
         );
 
@@ -316,7 +315,7 @@ pub(super) fn check(
             filter_span.with_hi(expr.span.hi()),
             "`filter` for `Ok` followed by `unwrap`",
             "consider using `flatten` instead",
-            reindent_multiline(Cow::Borrowed("flatten()"), true, indent_of(cx, map_span)).into_owned(),
+            reindent_multiline("flatten()", true, indent_of(cx, map_span)),
             Applicability::MachineApplicable,
         );
 
@@ -404,7 +403,7 @@ fn is_find_or_filter<'a>(
     if is_trait_method(cx, map_recv, sym::Iterator)
         // filter(|x| ...is_some())...
         && let ExprKind::Closure(&Closure { body: filter_body_id, .. }) = filter_arg.kind
-        && let filter_body = cx.tcx.hir().body(filter_body_id)
+        && let filter_body = cx.tcx.hir_body(filter_body_id)
         && let [filter_param] = filter_body.params
         // optional ref pattern: `filter(|&x| ..)`
         && let (filter_pat, is_filter_param_ref) = if let PatKind::Ref(ref_pat, _) = filter_param.pat.kind {
@@ -417,7 +416,7 @@ fn is_find_or_filter<'a>(
         && let Some(mut offending_expr) = OffendingFilterExpr::hir(cx, filter_body.value, filter_param_id)
 
         && let ExprKind::Closure(&Closure { body: map_body_id, .. }) = map_arg.kind
-        && let map_body = cx.tcx.hir().body(map_body_id)
+        && let map_body = cx.tcx.hir_body(map_body_id)
         && let [map_param] = map_body.params
         && let PatKind::Binding(_, map_param_id, map_param_ident, None) = map_param.pat.kind
 
@@ -430,16 +429,15 @@ fn is_find_or_filter<'a>(
 }
 
 fn acceptable_methods(method: &PathSegment<'_>) -> bool {
-    let methods: [Symbol; 8] = [
-        sym::clone,
-        sym::as_ref,
-        sym!(copied),
-        sym!(cloned),
-        sym!(as_deref),
-        sym!(as_mut),
-        sym!(as_deref_mut),
-        sym!(to_owned),
-    ];
-
-    methods.contains(&method.ident.name)
+    matches!(
+        method.ident.name,
+        sym::clone
+            | sym::as_ref
+            | sym::copied
+            | sym::cloned
+            | sym::as_deref
+            | sym::as_mut
+            | sym::as_deref_mut
+            | sym::to_owned
+    )
 }

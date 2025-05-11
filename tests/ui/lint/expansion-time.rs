@@ -9,13 +9,6 @@ macro_rules! foo {
 macro_rules! m { ($i) => {} } //~ WARN missing fragment specifier
                               //~| WARN this was previously accepted
 
-#[warn(soft_unstable)]
-mod benches {
-    #[bench] //~ WARN use of unstable library feature `test`
-             //~| WARN this was previously accepted
-    fn foo() {}
-}
-
 #[deprecated = "reason"]
 macro_rules! deprecated {
     () => {}
@@ -31,3 +24,5 @@ fn main() {
     // WARN see in the stderr file, the warning points to the included file.
     include!("expansion-time-include.rs");
 }
+
+//~? WARN include macro expected single expression in source

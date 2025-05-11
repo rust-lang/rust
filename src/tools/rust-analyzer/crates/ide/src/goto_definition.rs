@@ -1,24 +1,28 @@
 use std::{iter, mem::discriminant};
 
 use crate::{
+    FilePosition, NavigationTarget, RangeInfo, TryToNav, UpmappingResult,
     doc_links::token_as_doc_comment,
     navigation_target::{self, ToNav},
-    FilePosition, NavigationTarget, RangeInfo, TryToNav, UpmappingResult,
 };
-use hir::{AsAssocItem, AssocItem, FileRange, InFile, MacroFileIdExt, ModuleDef, Semantics};
+use hir::{
+    AsAssocItem, AssocItem, CallableKind, FileRange, HasCrate, InFile, ModuleDef, Semantics, sym,
+};
 use ide_db::{
-    base_db::{AnchoredPath, FileLoader, SourceDatabase},
-    defs::{Definition, IdentClass},
-    helpers::pick_best_token,
     RootDatabase, SymbolKind,
+    base_db::{AnchoredPath, SourceDatabase},
+    defs::{Definition, IdentClass},
+    famous_defs::FamousDefs,
+    helpers::pick_best_token,
 };
 use itertools::Itertools;
 use span::{Edition, FileId};
 use syntax::{
-    ast::{self, HasLoopBody},
-    match_ast, AstNode, AstToken,
+    AstNode, AstToken,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, T,
+    SyntaxNode, SyntaxToken, T, TextRange,
+    ast::{self, HasLoopBody},
+    match_ast,
 };
 
 // Feature: Go to Definition
@@ -27,13 +31,11 @@ use syntax::{
 //
 // For outline modules, this will navigate to the source file of the module.
 //
-// |===
-// | Editor  | Shortcut
+// | Editor  | Shortcut |
+// |---------|----------|
+// | VS Code | <kbd>F12</kbd> |
 //
-// | VS Code | kbd:[F12]
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113065563-025fbe00-91b1-11eb-83e4-a5a703610b23.gif[]
+// ![Go to Definition](https://user-images.githubusercontent.com/48062697/113065563-025fbe00-91b1-11eb-83e4-a5a703610b23.gif)
 pub(crate) fn goto_definition(
     db: &RootDatabase,
     FilePosition { file_id, offset }: FilePosition,
@@ -41,7 +43,7 @@ pub(crate) fn goto_definition(
     let sema = &Semantics::new(db);
     let file = sema.parse_guess_edition(file_id).syntax().clone();
     let edition =
-        sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
+        sema.attach_first_edition(file_id).map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
     let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT
         | INT_NUMBER
@@ -81,20 +83,27 @@ pub(crate) fn goto_definition(
         return Some(RangeInfo::new(original_token.text_range(), navs));
     }
 
+    if let Some(navs) = find_definition_for_known_blanket_dual_impls(sema, &original_token) {
+        return Some(RangeInfo::new(original_token.text_range(), navs));
+    }
+
     let navs = sema
         .descend_into_macros_no_opaque(original_token.clone())
         .into_iter()
         .filter_map(|token| {
-            let parent = token.parent()?;
+            let parent = token.value.parent()?;
 
-            if let Some(token) = ast::String::cast(token.clone()) {
-                if let Some(x) = try_lookup_include_path(sema, token, file_id) {
+            let token_file_id = token.file_id;
+            if let Some(token) = ast::String::cast(token.value.clone()) {
+                if let Some(x) =
+                    try_lookup_include_path(sema, InFile::new(token_file_id, token), file_id)
+                {
                     return Some(vec![x]);
                 }
             }
 
             if ast::TokenTree::can_cast(parent.kind()) {
-                if let Some(x) = try_lookup_macro_def_in_macro_use(sema, token) {
+                if let Some(x) = try_lookup_macro_def_in_macro_use(sema, token.value) {
                     return Some(vec![x]);
                 }
             }
@@ -103,7 +112,7 @@ pub(crate) fn goto_definition(
                 IdentClass::classify_node(sema, &parent)?
                     .definitions()
                     .into_iter()
-                    .flat_map(|def| {
+                    .flat_map(|(def, _)| {
                         if let Definition::ExternCrateDecl(crate_def) = def {
                             return crate_def
                                 .resolved_crate(db)
@@ -125,22 +134,95 @@ pub(crate) fn goto_definition(
     Some(RangeInfo::new(original_token.text_range(), navs))
 }
 
+// If the token is into(), try_into(), search the definition of From, TryFrom.
+fn find_definition_for_known_blanket_dual_impls(
+    sema: &Semantics<'_, RootDatabase>,
+    original_token: &SyntaxToken,
+) -> Option<Vec<NavigationTarget>> {
+    let method_call = ast::MethodCallExpr::cast(original_token.parent()?.parent()?)?;
+    let callable = sema.resolve_method_call_as_callable(&method_call)?;
+    let CallableKind::Function(f) = callable.kind() else { return None };
+    let assoc = f.as_assoc_item(sema.db)?;
+
+    let return_type = callable.return_type();
+    let fd = FamousDefs(sema, return_type.krate(sema.db));
+
+    let t = match assoc.container(sema.db) {
+        hir::AssocItemContainer::Trait(t) => t,
+        hir::AssocItemContainer::Impl(impl_)
+            if impl_.self_ty(sema.db).is_str() && f.name(sema.db) == sym::parse =>
+        {
+            let t = fd.core_convert_FromStr()?;
+            let t_f = t.function(sema.db, &sym::from_str)?;
+            return sema
+                .resolve_trait_impl_method(
+                    return_type.clone(),
+                    t,
+                    t_f,
+                    [return_type.type_arguments().next()?],
+                )
+                .map(|f| def_to_nav(sema.db, f.into()));
+        }
+        hir::AssocItemContainer::Impl(_) => return None,
+    };
+
+    let fn_name = f.name(sema.db);
+    let f = if fn_name == sym::into && fd.core_convert_Into() == Some(t) {
+        let dual = fd.core_convert_From()?;
+        let dual_f = dual.function(sema.db, &sym::from)?;
+        sema.resolve_trait_impl_method(
+            return_type.clone(),
+            dual,
+            dual_f,
+            [return_type, callable.receiver_param(sema.db)?.1],
+        )?
+    } else if fn_name == sym::try_into && fd.core_convert_TryInto() == Some(t) {
+        let dual = fd.core_convert_TryFrom()?;
+        let dual_f = dual.function(sema.db, &sym::try_from)?;
+        sema.resolve_trait_impl_method(
+            return_type.clone(),
+            dual,
+            dual_f,
+            // Extract the `T` from `Result<T, ..>`
+            [return_type.type_arguments().next()?, callable.receiver_param(sema.db)?.1],
+        )?
+    } else if fn_name == sym::to_string && fd.alloc_string_ToString() == Some(t) {
+        let dual = fd.core_fmt_Display()?;
+        let dual_f = dual.function(sema.db, &sym::fmt)?;
+        sema.resolve_trait_impl_method(
+            return_type.clone(),
+            dual,
+            dual_f,
+            [callable.receiver_param(sema.db)?.1.strip_reference()],
+        )?
+    } else {
+        return None;
+    };
+    // Assert that we got a trait impl function, if we are back in a trait definition we didn't
+    // succeed
+    let _t = f.as_assoc_item(sema.db)?.implemented_trait(sema.db)?;
+    let def = Definition::from(f);
+    Some(def_to_nav(sema.db, def))
+}
+
 fn try_lookup_include_path(
     sema: &Semantics<'_, RootDatabase>,
-    token: ast::String,
+    token: InFile<ast::String>,
     file_id: FileId,
 ) -> Option<NavigationTarget> {
-    let file = sema.hir_file_for(&token.syntax().parent()?).macro_file()?;
+    let file = token.file_id.macro_file()?;
+
+    // Check that we are in the eager argument expansion of an include macro
+    // that is we are the string input of it
     if !iter::successors(Some(file), |file| file.parent(sema.db).macro_file())
-        // Check that we are in the eager argument expansion of an include macro
         .any(|file| file.is_include_like_macro(sema.db) && file.eager_arg(sema.db).is_none())
     {
         return None;
     }
-    let path = token.value().ok()?;
+    let path = token.value.value().ok()?;
 
     let file_id = sema.db.resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
-    let size = sema.db.file_text(file_id).len().try_into().ok()?;
+    let size = sema.db.file_text(file_id).text(sema.db).len().try_into().ok()?;
     Some(NavigationTarget {
         file_id,
         full_range: TextRange::new(0.into(), size),
@@ -281,7 +363,7 @@ fn nav_for_exit_points(
 
                         if let Some(FileRange { file_id, range }) = focus_frange {
                             let contains_frange = |nav: &NavigationTarget| {
-                                nav.file_id == file_id && nav.full_range.contains_range(range)
+                                nav.file_id == file_id.file_id(db) && nav.full_range.contains_range(range)
                             };
 
                             if let Some(def_site) = nav.def_site.as_mut() {
@@ -424,7 +506,7 @@ mod tests {
     use syntax::SmolStr;
 
     #[track_caller]
-    fn check(ra_fixture: &str) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
 
@@ -443,14 +525,14 @@ mod tests {
         assert_eq!(expected, navs);
     }
 
-    fn check_unresolved(ra_fixture: &str) {
+    fn check_unresolved(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position) = fixture::position(ra_fixture);
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
 
         assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {navs:?}")
     }
 
-    fn check_name(expected_name: &str, ra_fixture: &str) {
+    fn check_name(expected_name: &str, #[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, _) = fixture::annotations(ra_fixture);
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
         assert!(navs.len() < 2, "expected single navigation target but encountered {}", navs.len());
@@ -1970,7 +2052,10 @@ fn main() {
         );
     }
 
+    // macros in this position are not yet supported
     #[test]
+    // FIXME
+    #[should_panic]
     fn goto_doc_include_str() {
         check(
             r#"
@@ -2113,8 +2198,8 @@ where T : Bound
 struct A;
 impl Bound for A{}
 fn f() {
-    let gen = Gen::<A>(A);
-    gen.g$0();
+    let g = Gen::<A>(A);
+    g.g$0();
 }
                 "#,
             );
@@ -2139,8 +2224,8 @@ where T : Bound
 struct A;
 impl Bound for A{}
 fn f() {
-    let gen = Gen::<A>(A);
-    gen.g$0();
+    let g = Gen::<A>(A);
+    g.g$0();
 }
 "#,
             );
@@ -3020,6 +3105,445 @@ fn foo() {
     }
 }
 "#,
+        );
+    }
+    #[test]
+    fn into_call_to_from_definition() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl From<A> for B {
+    fn from(value: A) -> Self {
+     //^^^^
+        B
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: B = a.into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn into_call_to_from_definition_with_trait_bounds() {
+        check(
+            r#"
+//- minicore: from, iterator
+struct A;
+
+impl<T> From<T> for A
+where
+    T: IntoIterator<Item = i64>,
+{
+    fn from(value: T) -> Self {
+     //^^^^
+        A
+    }
+}
+
+fn f() {
+    let a: A = [1, 2, 3].into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn goto_into_definition_if_exists() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl Into<B> for A {
+    fn into(self) -> B {
+     //^^^^
+        B
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: B = a.into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn try_into_call_to_try_from_definition() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl TryFrom<A> for B {
+    type Error = String;
+
+    fn try_from(value: A) -> Result<Self, Self::Error> {
+     //^^^^^^^^
+        Ok(B)
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: Result<B, _> = a.try_into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn goto_try_into_definition_if_exists() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl TryInto<B> for A {
+    type Error = String;
+
+    fn try_into(self) -> Result<B, Self::Error> {
+     //^^^^^^^^
+        Ok(B)
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: Result<B, _> = a.try_into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn parse_call_to_from_str_definition() {
+        check(
+            r#"
+//- minicore: from, str
+struct A;
+impl FromStr for A {
+    type Error = String;
+    fn from_str(value: &str) -> Result<Self, Self::Error> {
+     //^^^^^^^^
+        Ok(A)
+    }
+}
+fn f() {
+    let a: Result<A, _> = "aaaaaa".parse$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn to_string_call_to_display_definition() {
+        check(
+            r#"
+//- minicore:fmt
+//- /alloc.rs crate:alloc
+pub mod string {
+    pub struct String;
+    pub trait ToString {
+        fn to_string(&self) -> String;
+    }
+
+    impl<T: core::fmt::Display> ToString for T {
+        fn to_string(&self) -> String { String }
+    }
+}
+//- /lib.rs crate:lib deps:alloc
+use alloc::string::ToString;
+struct A;
+impl core::fmt::Display for A {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {}
+    // ^^^
+}
+fn f() {
+    A.to_string$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn use_inside_body() {
+        check(
+            r#"
+fn main() {
+    mod nice_module {
+        pub(super) struct NiceStruct;
+                       // ^^^^^^^^^^
+    }
+
+    use nice_module::NiceStruct$0;
+
+    let _ = NiceStruct;
+}
+    "#,
+        );
+    }
+
+    #[test]
+    fn shadow_builtin_type_by_module() {
+        check(
+            r#"
+mod Foo{
+pub mod str {
+     // ^^^
+    pub fn foo() {}
+}
+}
+
+fn main() {
+    use Foo::str;
+    let s = st$0r::foo();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn not_goto_module_because_str_is_builtin_type() {
+        check(
+            r#"
+mod str {
+pub fn foo() {}
+}
+
+fn main() {
+    let s = st$0r::f();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn struct_shadow_by_module() {
+        check(
+            r#"
+mod foo {
+    pub mod bar {
+         // ^^^
+        pub type baz = usize;
+    }
+}
+struct bar;
+fn main() {
+    use foo::bar;
+    let x: ba$0r::baz = 5;
+
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn type_alias_shadow_by_module() {
+        check(
+            r#"
+mod foo {
+    pub mod bar {
+         // ^^^
+        pub fn baz() {}
+    }
+}
+
+trait Qux {}
+
+fn item<bar: Qux>() {
+    use foo::bar;
+    ba$0r::baz();
+}
+}
+"#,
+        );
+
+        check(
+            r#"
+mod foo {
+    pub mod bar {
+         // ^^^
+        pub fn baz() {}
+    }
+}
+
+fn item<bar>(x: bar) {
+    use foo::bar;
+    let x: bar$0 = x;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn trait_shadow_by_module() {
+        check(
+            r#"
+pub mod foo {
+    pub mod Bar {}
+         // ^^^
+}
+
+trait Bar {}
+
+fn main() {
+    use foo::Bar;
+    fn f<Qux: B$0ar>() {}
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn const_shadow_by_module() {
+        check(
+            r#"
+pub mod foo {
+    pub struct u8 {}
+    pub mod bar {
+        pub mod u8 {}
+    }
+}
+
+fn main() {
+    use foo::u8;
+    {
+        use foo::bar::u8;
+
+        fn f1<const N: u$08>() {}
+    }
+    fn f2<const N: u8>() {}
+}
+"#,
+        );
+
+        check(
+            r#"
+pub mod foo {
+    pub struct u8 {}
+            // ^^
+    pub mod bar {
+        pub mod u8 {}
+    }
+}
+
+fn main() {
+    use foo::u8;
+    {
+        use foo::bar::u8;
+
+        fn f1<const N: u8>() {}
+    }
+    fn f2<const N: u$08>() {}
+}
+"#,
+        );
+
+        check(
+            r#"
+pub mod foo {
+    pub struct buz {}
+    pub mod bar {
+        pub mod buz {}
+             // ^^^
+    }
+}
+
+fn main() {
+    use foo::buz;
+    {
+        use foo::bar::buz;
+
+        fn f1<const N: buz$0>() {}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn offset_of() {
+        check(
+            r#"
+//- minicore: offset_of
+struct Foo {
+    field: i32,
+ // ^^^^^
+}
+
+fn foo() {
+    let _ = core::mem::offset_of!(Foo, fiel$0d);
+}
+        "#,
+        );
+
+        check(
+            r#"
+//- minicore: offset_of
+struct Bar(Foo);
+struct Foo {
+    field: i32,
+ // ^^^^^
+}
+
+fn foo() {
+    let _ = core::mem::offset_of!(Bar, 0.fiel$0d);
+}
+        "#,
+        );
+
+        check(
+            r#"
+//- minicore: offset_of
+struct Bar(Baz);
+enum Baz {
+    Abc(Foo),
+    None,
+}
+struct Foo {
+    field: i32,
+ // ^^^^^
+}
+
+fn foo() {
+    let _ = core::mem::offset_of!(Bar, 0.Abc.0.fiel$0d);
+}
+        "#,
+        );
+
+        check(
+            r#"
+//- minicore: offset_of
+struct Bar(Baz);
+enum Baz {
+    Abc(Foo),
+ // ^^^
+    None,
+}
+struct Foo {
+    field: i32,
+}
+
+fn foo() {
+    let _ = core::mem::offset_of!(Bar, 0.Ab$0c.0.field);
+}
+        "#,
         );
     }
 }

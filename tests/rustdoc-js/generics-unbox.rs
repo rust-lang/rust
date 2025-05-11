@@ -42,3 +42,15 @@ pub fn beta<T, U>(_: Inside<T>) -> Out<Out3<T, U>, Out4<U, T>> {
 pub fn gamma<T, U>(_: Inside<T>) -> Out<Out3<U, T>, Out4<T, U>> {
     loop {}
 }
+
+pub fn delta(_: i32) -> Epsilon<Sigma> {
+    loop {}
+}
+
+#[doc(search_unbox)]
+pub struct Theta<T>(T);
+
+#[doc(search_unbox)]
+pub type Epsilon<T> = Theta<T>;
+
+pub struct Sigma;

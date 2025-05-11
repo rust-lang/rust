@@ -7,8 +7,9 @@ LL | static FOO: AtomicIsize = ATOMIC_ISIZE_INIT;
    = note: `#[warn(deprecated)]` on by default
 help: replace the use of the deprecated constant
    |
-LL | static FOO: AtomicIsize = AtomicIsize::new(0);
-   |                           ~~~~~~~~~~~~~~~~~~~
+LL - static FOO: AtomicIsize = ATOMIC_ISIZE_INIT;
+LL + static FOO: AtomicIsize = AtomicIsize::new(0);
+   |
 
 warning: 1 warning emitted
 

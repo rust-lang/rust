@@ -1,0 +1,25 @@
+warning: the feature `generic_const_parameter_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/references-parent-generics.rs:3:27
+   |
+LL | #![cfg_attr(feat, feature(generic_const_parameter_types))]
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #137626 <https://github.com/rust-lang/rust/issues/137626> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: `Self` is forbidden as the type of a const generic parameter
+  --> $DIR/references-parent-generics.rs:7:25
+   |
+LL |     type Assoc<const N: Self>;
+   |                         ^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: anonymous constants referencing generics are not yet supported
+  --> $DIR/references-parent-generics.rs:15:21
+   |
+LL |     let x: T::Assoc<3>;
+   |                     ^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

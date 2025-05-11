@@ -49,24 +49,18 @@ error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
    |
 LL |     let _ = 0i32: i32: i32.count_ones();
    |                 ^ expected one of `.`, `;`, `?`, `else`, or an operator
-   |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: expected one of `!`, `(`, `.`, `::`, `;`, `<`, `?`, or `else`, found `:`
   --> $DIR/issue-35813-postfix-after-cast.rs:43:21
    |
 LL |     let _ = 0 as i32: i32.count_ones();
    |                     ^ expected one of 8 possible tokens
-   |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
   --> $DIR/issue-35813-postfix-after-cast.rs:47:17
    |
 LL |     let _ = 0i32: i32 as i32.count_ones();
    |                 ^ expected one of `.`, `;`, `?`, `else`, or an operator
-   |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: cast cannot be followed by a method call
   --> $DIR/issue-35813-postfix-after-cast.rs:51:13
@@ -84,16 +78,12 @@ error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
    |
 LL |     let _ = 0i32: i32: i32 as u32 as i32.count_ones();
    |                 ^ expected one of `.`, `;`, `?`, `else`, or an operator
-   |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
   --> $DIR/issue-35813-postfix-after-cast.rs:60:17
    |
 LL |     let _ = 0i32: i32.count_ones(): u32;
    |                 ^ expected one of `.`, `;`, `?`, `else`, or an operator
-   |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: cast cannot be followed by a method call
   --> $DIR/issue-35813-postfix-after-cast.rs:64:13
@@ -111,16 +101,12 @@ error: expected one of `.`, `;`, `?`, or `else`, found `:`
    |
 LL |     let _ = 0 as i32.count_ones(): u32;
    |                                  ^ expected one of `.`, `;`, `?`, or `else`
-   |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
   --> $DIR/issue-35813-postfix-after-cast.rs:69:17
    |
 LL |     let _ = 0i32: i32.count_ones() as u32;
    |                 ^ expected one of `.`, `;`, `?`, `else`, or an operator
-   |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: cast cannot be followed by a method call
   --> $DIR/issue-35813-postfix-after-cast.rs:73:13
@@ -138,8 +124,6 @@ error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
    |
 LL |     let _ = 0i32: i32: i32.count_ones() as u32 as i32;
    |                 ^ expected one of `.`, `;`, `?`, `else`, or an operator
-   |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: cast cannot be followed by a method call
   --> $DIR/issue-35813-postfix-after-cast.rs:82:13
@@ -262,8 +246,6 @@ error: expected identifier, found `:`
    |
 LL |     drop_ptr: F();
    |             ^ expected identifier
-   |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `:`
   --> $DIR/issue-35813-postfix-after-cast.rs:160:13

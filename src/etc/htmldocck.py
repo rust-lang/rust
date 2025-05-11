@@ -297,10 +297,24 @@ LINE_PATTERN = re.compile(
     re.X | re.UNICODE,
 )
 
+DEPRECATED_LINE_PATTERN = re.compile(
+    r"""
+    //\s+@
+""",
+    re.X | re.UNICODE,
+)
+
 
 def get_commands(template):
     with io.open(template, encoding="utf-8") as f:
         for lineno, line in concat_multi_lines(f):
+            if DEPRECATED_LINE_PATTERN.search(line):
+                print_err(
+                    lineno,
+                    line,
+                    "Deprecated command syntax, replace `// @` with `//@ `",
+                )
+                continue
             m = LINE_PATTERN.search(line)
             if not m:
                 continue

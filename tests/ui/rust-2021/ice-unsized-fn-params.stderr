@@ -1,21 +1,22 @@
 error[E0782]: expected a type, found a trait
-  --> $DIR/ice-unsized-fn-params.rs:13:13
+  --> $DIR/ice-unsized-fn-params.rs:12:13
    |
 LL |     fn g(b: B) -> B;
    |             ^
    |
-   = note: `B` it is dyn-incompatible, so it can't be `dyn`
+   = note: `B` is dyn-incompatible, otherwise a trait object could be used
 help: use a new generic type parameter, constrained by `B`
    |
-LL |     fn g<T: B>(b: T) -> B;
-   |         ++++++    ~
+LL -     fn g(b: B) -> B;
+LL +     fn g<T: B>(b: T) -> B;
+   |
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
 LL |     fn g(b: impl B) -> B;
    |             ++++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/ice-unsized-fn-params.rs:13:19
+  --> $DIR/ice-unsized-fn-params.rs:12:19
    |
 LL |     fn g(b: B) -> B;
    |                   ^
@@ -26,23 +27,24 @@ LL |     fn g(b: B) -> impl B;
    |                   ++++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/ice-unsized-fn-params.rs:7:13
+  --> $DIR/ice-unsized-fn-params.rs:6:13
    |
 LL |     fn f(a: A) -> A;
    |             ^
    |
-   = note: `A` it is dyn-incompatible, so it can't be `dyn`
+   = note: `A` is dyn-incompatible, otherwise a trait object could be used
 help: use a new generic type parameter, constrained by `A`
    |
-LL |     fn f<T: A>(a: T) -> A;
-   |         ++++++    ~
+LL -     fn f(a: A) -> A;
+LL +     fn f<T: A>(a: T) -> A;
+   |
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
 LL |     fn f(a: impl A) -> A;
    |             ++++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/ice-unsized-fn-params.rs:7:19
+  --> $DIR/ice-unsized-fn-params.rs:6:19
    |
 LL |     fn f(a: A) -> A;
    |                   ^

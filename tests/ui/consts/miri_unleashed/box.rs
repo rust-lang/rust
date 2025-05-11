@@ -9,3 +9,5 @@ static TEST_BAD: &mut i32 = {
     //~^ ERROR could not evaluate static initializer
     //~| NOTE calling non-const function `Box::<i32>::new`
 };
+
+//~? WARN skipping const checks

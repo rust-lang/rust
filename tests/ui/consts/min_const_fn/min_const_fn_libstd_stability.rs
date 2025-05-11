@@ -1,4 +1,4 @@
-//@ compile-flags: --edition 2018
+//@ edition: 2018
 #![unstable(feature = "humans",
             reason = "who ever let humans program computers,
             we're apparently really bad at it",

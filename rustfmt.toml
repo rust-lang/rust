@@ -19,6 +19,7 @@ ignore = [
     "/tests/debuginfo/",              # These tests are somewhat sensitive to source code layout.
     "/tests/incremental/",            # These tests are somewhat sensitive to source code layout.
     "/tests/pretty/",                 # These tests are very sensitive to source code layout.
+    "/tests/run-make/export",         # These tests contain syntax errors.
     "/tests/run-make/translation/test.rs", # This test contains syntax errors.
     "/tests/rustdoc/",                # Some have syntax errors, some are whitespace-sensitive.
     "/tests/rustdoc-gui/",            # Some tests are sensitive to source code layout.
@@ -49,9 +50,12 @@ ignore = [
 
     # These are ignored by a standard cargo fmt run.
     "compiler/rustc_codegen_cranelift/scripts",
-    "compiler/rustc_codegen_cranelift/example/gen_block_iterate.rs", # uses edition 2024
     "compiler/rustc_codegen_gcc/tests",
     # Code automatically generated and included.
     "compiler/rustc_codegen_gcc/src/intrinsic/archs.rs",
     "compiler/rustc_codegen_gcc/example",
+
+    # Rustfmt doesn't support use closures yet
+    "tests/mir-opt/ergonomic-clones/closure.rs",
+    "tests/codegen/ergonomic-clones/closure.rs",
 ]

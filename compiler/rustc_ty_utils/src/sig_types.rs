@@ -1,14 +1,11 @@
 //! This module contains helpers for walking all types of
 //! a signature, while preserving spans as much as possible
 
-use rustc_ast_ir::try_visit;
-use rustc_ast_ir::visit::VisitorResult;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitable, VisitorResult, try_visit};
 use rustc_span::Span;
-use rustc_type_ir::visit::TypeVisitable;
 use tracing::{instrument, trace};
 
 pub trait SpannedTypeVisitor<'tcx> {
@@ -31,7 +28,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
             // If the type of the item uses `_`, we're gonna error out anyway, but
             // typeck (which type_of invokes below), will call back into opaque_types_defined_by
             // causing a cycle. So we just bail out in this case.
-            if hir_sig.output.get_infer_ret_ty().is_some() {
+            if hir_sig.output.is_suggestable_infer_ty().is_some() {
                 return V::Result::output();
             }
             let ty_sig = tcx.fn_sig(item).instantiate_identity();
@@ -119,7 +116,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
                 "{kind:?} has not seen any uses of `walk_types` yet, ping oli-obk if you'd like any help"
             )
         }
-        // These don't have any types.
+        // These don't have any types, but are visited during privacy checking.
         | DefKind::ExternCrate
         | DefKind::ForeignMod
         | DefKind::ForeignTy

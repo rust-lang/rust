@@ -7,33 +7,33 @@
    LL|       |
    LL|       |#[rustfmt::skip]
    LL|      1|fn main() {
-   LL|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
-   LL|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
-   LL|      1|    // dependent conditions.
+   LL|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   LL|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   LL|       |    // dependent conditions.
    LL|      1|    let is_true = std::env::args().len() == 1;
    LL|      1|    let is_false = !is_true;
-   LL|      1|
+   LL|       |
    LL|      1|    let mut some_string = Some(String::from("the string content"));
    LL|      1|    println!(
    LL|      1|        "The string or alt: {}"
-   LL|      1|        ,
+   LL|       |        ,
    LL|      1|        some_string
-   LL|      1|            .
+   LL|       |            .
    LL|      1|            unwrap_or_else
-   LL|      1|        (
-   LL|      1|            ||
+   LL|       |        (
+   LL|       |            ||
    LL|      0|            {
    LL|      0|                let mut countdown = 0;
    LL|      0|                if is_false {
    LL|      0|                    countdown = 10;
    LL|      0|                }
    LL|      0|                "alt string 1".to_owned()
-   LL|      1|            }
-   LL|      1|        )
-   LL|      1|    );
-   LL|      1|
+   LL|      0|            }
+   LL|       |        )
+   LL|       |    );
+   LL|       |
    LL|      1|    some_string = Some(String::from("the string content"));
-   LL|      1|    let
+   LL|       |    let
    LL|      1|        a
    LL|       |    =
    LL|       |        ||
@@ -46,24 +46,24 @@
    LL|      0|    };
    LL|      1|    println!(
    LL|      1|        "The string or alt: {}"
-   LL|      1|        ,
+   LL|       |        ,
    LL|      1|        some_string
-   LL|      1|            .
+   LL|       |            .
    LL|      1|            unwrap_or_else
-   LL|      1|        (
+   LL|       |        (
    LL|      1|            a
-   LL|      1|        )
-   LL|      1|    );
-   LL|      1|
+   LL|       |        )
+   LL|       |    );
+   LL|       |
    LL|      1|    some_string = None;
    LL|      1|    println!(
    LL|      1|        "The string or alt: {}"
-   LL|      1|        ,
+   LL|       |        ,
    LL|      1|        some_string
-   LL|      1|            .
+   LL|       |            .
    LL|      1|            unwrap_or_else
-   LL|      1|        (
-   LL|      1|            ||
+   LL|       |        (
+   LL|       |            ||
    LL|      1|            {
    LL|      1|                let mut countdown = 0;
    LL|      1|                if is_false {
@@ -71,11 +71,11 @@
    LL|      1|                }
    LL|      1|                "alt string 3".to_owned()
    LL|      1|            }
-   LL|      1|        )
-   LL|      1|    );
-   LL|      1|
+   LL|       |        )
+   LL|       |    );
+   LL|       |
    LL|      1|    some_string = None;
-   LL|      1|    let
+   LL|       |    let
    LL|      1|        a
    LL|       |    =
    LL|       |        ||
@@ -88,16 +88,16 @@
    LL|      1|    };
    LL|      1|    println!(
    LL|      1|        "The string or alt: {}"
-   LL|      1|        ,
+   LL|       |        ,
    LL|      1|        some_string
-   LL|      1|            .
+   LL|       |            .
    LL|      1|            unwrap_or_else
-   LL|      1|        (
+   LL|       |        (
    LL|      1|            a
-   LL|      1|        )
-   LL|      1|    );
-   LL|      1|
-   LL|      1|    let
+   LL|       |        )
+   LL|       |    );
+   LL|       |
+   LL|       |    let
    LL|      1|        quote_closure
    LL|       |    =
    LL|       |        |val|
@@ -110,17 +110,17 @@
    LL|      5|    };
    LL|      1|    println!(
    LL|      1|        "Repeated, quoted string: {:?}"
-   LL|      1|        ,
+   LL|       |        ,
    LL|      1|        std::iter::repeat("repeat me")
    LL|      1|            .take(5)
    LL|      1|            .map
-   LL|      1|        (
+   LL|       |        (
    LL|      1|            quote_closure
-   LL|      1|        )
+   LL|       |        )
    LL|      1|            .collect::<Vec<_>>()
-   LL|      1|    );
-   LL|      1|
-   LL|      1|    let
+   LL|       |    );
+   LL|       |
+   LL|       |    let
    LL|      1|        _unused_closure
    LL|       |    =
    LL|       |        |
@@ -135,22 +135,22 @@
    LL|       |
    LL|      1|    let mut countdown = 10;
    LL|      1|    let _short_unused_closure = | _unused_arg: u8 | countdown += 1;
-                                                                  ^0
    LL|       |
    LL|       |
    LL|      1|    let short_used_covered_closure_macro = | used_arg: u8 | println!("called");
    LL|      1|    let short_used_not_covered_closure_macro = | used_arg: u8 | println!("not called");
-                                                                              ^0
+                                                                                       ^0
    LL|      1|    let _short_unused_closure_macro = | _unused_arg: u8 | println!("not called");
-                                                                        ^0
+                                                                                 ^0
    LL|       |
    LL|       |
    LL|       |
    LL|       |
    LL|      1|    let _short_unused_closure_block = | _unused_arg: u8 | { println!("not called") };
-                                                                        ^0
+                                                                        ^0^0       ^0            ^0
    LL|       |
    LL|      1|    let _shortish_unused_closure = | _unused_arg: u8 | {
+                                                                     ^0
    LL|      0|        println!("not called")
    LL|      0|    };
    LL|       |
@@ -173,14 +173,14 @@
    LL|       |
    LL|      1|    let _short_unused_closure_line_break_no_block2 =
    LL|       |        | _unused_arg: u8 |
-   LL|      0|            println!(
+   LL|       |            println!(
    LL|      0|                "not called"
-   LL|      0|            )
+   LL|       |            )
    LL|       |    ;
    LL|       |
    LL|      1|    let short_used_not_covered_closure_line_break_no_block_embedded_branch =
    LL|       |        | _unused_arg: u8 |
-   LL|      0|            println!(
+   LL|       |            println!(
    LL|      0|                "not called: {}",
    LL|      0|                if is_true { "check" } else { "me" }
    LL|       |            )
@@ -198,7 +198,7 @@
    LL|       |
    LL|      1|    let short_used_covered_closure_line_break_no_block_embedded_branch =
    LL|       |        | _unused_arg: u8 |
-   LL|      1|            println!(
+   LL|       |            println!(
    LL|      1|                "not called: {}",
    LL|      1|                if is_true { "check" } else { "me" }
                                                             ^0

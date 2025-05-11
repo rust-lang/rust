@@ -230,9 +230,8 @@ If you want to know more about inlining rules, take a look at the
 
 <span id="dochidden"></span>
 
-Any item annotated with `#[doc(hidden)]` will not appear in the documentation, unless
-the `strip-hidden` pass is removed. Re-exported items where one of its ancestors has
-`#[doc(hidden)]` will be considered the same as private.
+Any item annotated with `#[doc(hidden)]` will not appear in the documentation,
+unless the [`--document-hidden-items`](../unstable-features.md#document-hidden-items) flag is used.
 
 You can find more information in the [`re-exports` chapter](./re-exports.md).
 

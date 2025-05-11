@@ -21,6 +21,7 @@
 //! <https://github.com/rust-lang/rust/pull/13903>.
 
 //@ ignore-cross-compile
+//@ needs-symlink
 
 use run_make_support::{bare_rustc, cwd, path, rfs, rust_lib_name};
 

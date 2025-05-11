@@ -1,0 +1,11 @@
+error: a never pattern is always unreachable
+  --> $DIR/ICE-133063-never-arm-no-otherwise-block.rs:10:31
+   |
+LL |             (!|!) if false => {}
+   |                               ^^
+   |                               |
+   |                               this will never be executed
+   |                               help: remove this expression
+
+error: aborting due to 1 previous error
+

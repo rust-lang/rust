@@ -10,18 +10,18 @@ macro_rules! format_args_from_macro {
 fn main() {
     // prints `.`, not `     .`
     println!("{:5}.", format_args!(""));
-    //~^ ERROR: format specifiers have no effect on `format_args!()`
-    //~| NOTE: `-D clippy::unused-format-specs` implied by `-D warnings`
+    //~^ unused_format_specs
+
     //prints `abcde`, not `abc`
     println!("{:.3}", format_args!("abcde"));
-    //~^ ERROR: format specifiers have no effect on `format_args!()`
+    //~^ unused_format_specs
 
     println!("{:5}.", format_args_from_macro!());
-    //~^ ERROR: format specifiers have no effect on `format_args!()`
+    //~^ unused_format_specs
 
     let args = format_args!("");
     println!("{args:5}");
-    //~^ ERROR: format specifiers have no effect on `format_args!()`
+    //~^ unused_format_specs
 }
 
 fn should_not_lint() {
@@ -46,17 +46,18 @@ macro_rules! usr_println {
 fn should_lint_user() {
     // prints `.`, not `     .`
     usr_println!(true, "{:5}.", format_args!(""));
-    //~^ ERROR: format specifiers have no effect on `format_args!()`
+    //~^ unused_format_specs
+
     //prints `abcde`, not `abc`
     usr_println!(true, "{:.3}", format_args!("abcde"));
-    //~^ ERROR: format specifiers have no effect on `format_args!()`
+    //~^ unused_format_specs
 
     usr_println!(true, "{:5}.", format_args_from_macro!());
-    //~^ ERROR: format specifiers have no effect on `format_args!()`
+    //~^ unused_format_specs
 
     let args = format_args!("");
     usr_println!(true, "{args:5}");
-    //~^ ERROR: format specifiers have no effect on `format_args!()`
+    //~^ unused_format_specs
 }
 
 fn should_not_lint_user() {

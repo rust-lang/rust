@@ -1,1 +1,1 @@
-//@ ignore-test (auxiliary, used by other tests)
+//@ ignore-auxiliary (used by `../attributes-on-modules-fail.rs`)

@@ -1,7 +1,8 @@
 use crate::fmt;
 use crate::iter::{FusedIterator, TrustedLen, UncheckedIterator};
-use crate::mem::{self, MaybeUninit};
+use crate::mem::MaybeUninit;
 use crate::num::NonZero;
+use crate::ops::{NeverShortCircuit, Try};
 
 /// Creates a new iterator that repeats a single element a given number of times.
 ///
@@ -95,10 +96,10 @@ impl<A> RepeatN<A> {
     fn take_element(&mut self) -> Option<A> {
         if self.count > 0 {
             self.count = 0;
-            let element = mem::replace(&mut self.element, MaybeUninit::uninit());
             // SAFETY: We just set count to zero so it won't be dropped again,
             // and it used to be non-zero so it hasn't already been dropped.
-            unsafe { Some(element.assume_init()) }
+            let element = unsafe { self.element.assume_init_read() };
+            Some(element)
         } else {
             None
         }
@@ -169,6 +170,39 @@ impl<A: Clone> Iterator for RepeatN<A> {
         }
     }
 
+    fn try_fold<B, F, R>(&mut self, mut acc: B, mut f: F) -> R
+    where
+        F: FnMut(B, A) -> R,
+        R: Try<Output = B>,
+    {
+        if self.count > 0 {
+            while self.count > 1 {
+                self.count -= 1;
+                // SAFETY: the count was larger than 1, so the element is
+                // initialized and hasn't been dropped.
+                acc = f(acc, unsafe { self.element.assume_init_ref().clone() })?;
+            }
+
+            // We could just set the count to zero directly, but doing it this
+            // way should make it easier for the optimizer to fold this tail
+            // into the loop when `clone()` is equivalent to copying.
+            self.count -= 1;
+            // SAFETY: we just set the count to zero from one, so the element
+            // is still initialized, has not been dropped yet and will not be
+            // accessed by future calls.
+            f(acc, unsafe { self.element.assume_init_read() })
+        } else {
+            try { acc }
+        }
+    }
+
+    fn fold<B, F>(mut self, init: B, f: F) -> B
+    where
+        F: FnMut(B, A) -> B,
+    {
+        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).0
+    }
+
     #[inline]
     fn last(mut self) -> Option<A> {
         self.take_element()
@@ -203,6 +237,23 @@ impl<A: Clone> DoubleEndedIterator for RepeatN<A> {
     fn nth_back(&mut self, n: usize) -> Option<A> {
         self.nth(n)
     }
+
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, A) -> R,
+        R: Try<Output = B>,
+    {
+        self.try_fold(init, f)
+    }
+
+    #[inline]
+    fn rfold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, A) -> B,
+    {
+        self.fold(init, f)
+    }
 }
 
 #[stable(feature = "iter_repeat_n", since = "1.82.0")]
@@ -220,7 +271,7 @@ impl<A: Clone> UncheckedIterator for RepeatN<A> {
             // SAFETY: the check above ensured that the count used to be non-zero,
             // so element hasn't been dropped yet, and we just lowered the count to
             // zero so it won't be dropped later, and thus it's okay to take it here.
-            unsafe { mem::replace(&mut self.element, MaybeUninit::uninit()).assume_init() }
+            unsafe { self.element.assume_init_read() }
         } else {
             // SAFETY: the count is non-zero, so it must have not been dropped yet.
             let element = unsafe { self.element.assume_init_ref() };

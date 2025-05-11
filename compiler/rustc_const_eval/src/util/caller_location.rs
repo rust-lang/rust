@@ -1,7 +1,6 @@
 use rustc_hir::LangItem;
-use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Symbol;
 use tracing::trace;
@@ -48,15 +47,15 @@ fn alloc_caller_location<'tcx>(
 }
 
 pub(crate) fn const_caller_location_provider(
-    tcx: TyCtxtAt<'_>,
+    tcx: TyCtxt<'_>,
     file: Symbol,
     line: u32,
     col: u32,
 ) -> mir::ConstValue<'_> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
     let mut ecx = mk_eval_cx_to_read_const_val(
-        tcx.tcx,
-        tcx.span,
+        tcx,
+        rustc_span::DUMMY_SP, // FIXME: use a proper span here?
         ty::TypingEnv::fully_monomorphized(),
         CanAccessMutGlobal::No,
     );

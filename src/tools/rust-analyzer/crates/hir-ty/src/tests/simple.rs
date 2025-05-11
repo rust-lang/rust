@@ -1784,6 +1784,8 @@ impl Foo for u8 {
 }
 
 #[test]
+// FIXME
+#[should_panic]
 fn const_eval_in_function_signature() {
     check_types(
         r#"
@@ -2739,11 +2741,11 @@ impl B for Astruct {}
             715..744 '#[rust...1i32])': Box<[i32; 1], Global>
             737..743 '[1i32]': [i32; 1]
             738..742 '1i32': i32
-            755..756 'v': Vec<Box<dyn B, Global>, Global>
-            776..793 '<[_]> ...to_vec': fn into_vec<Box<dyn B, Global>, Global>(Box<[Box<dyn B, Global>], Global>) -> Vec<Box<dyn B, Global>, Global>
-            776..850 '<[_]> ...ct)]))': Vec<Box<dyn B, Global>, Global>
-            794..849 '#[rust...uct)])': Box<[Box<dyn B, Global>; 1], Global>
-            816..848 '[#[rus...ruct)]': [Box<dyn B, Global>; 1]
+            755..756 'v': Vec<Box<dyn B + 'static, Global>, Global>
+            776..793 '<[_]> ...to_vec': fn into_vec<Box<dyn B + 'static, Global>, Global>(Box<[Box<dyn B + 'static, Global>], Global>) -> Vec<Box<dyn B + 'static, Global>, Global>
+            776..850 '<[_]> ...ct)]))': Vec<Box<dyn B + 'static, Global>, Global>
+            794..849 '#[rust...uct)])': Box<[Box<dyn B + 'static, Global>; 1], Global>
+            816..848 '[#[rus...ruct)]': [Box<dyn B + 'static, Global>; 1]
             817..847 '#[rust...truct)': Box<Astruct, Global>
             839..846 'Astruct': Astruct
         "#]],
@@ -3800,5 +3802,103 @@ fn foo() {
     }
 }
         "#,
+    );
+}
+
+#[test]
+fn tool_attr_skip() {
+    check_no_mismatches(
+        r#"
+#[rust_analyzer::skip]
+async fn foo(a: (), b: i32) -> u32 {
+    0 + 1 + b()
+}
+        "#,
+    );
+}
+
+#[test]
+fn irrefutable_slices() {
+    check_infer(
+        r#"
+//- minicore: from
+struct A;
+
+impl From<A> for [u8; 2] {
+    fn from(a: A) -> Self {
+        [0; 2]
+    }
+}
+impl From<A> for [u8; 3] {
+    fn from(a: A) -> Self {
+        [0; 3]
+    }
+}
+
+
+fn main() {
+    let a = A;
+    let [b, c] = a.into();
+}
+"#,
+        expect![[r#"
+            50..51 'a': A
+            64..86 '{     ...     }': [u8; 2]
+            74..80 '[0; 2]': [u8; 2]
+            75..76 '0': u8
+            78..79 '2': usize
+            128..129 'a': A
+            142..164 '{     ...     }': [u8; 3]
+            152..158 '[0; 3]': [u8; 3]
+            153..154 '0': u8
+            156..157 '3': usize
+            179..224 '{     ...o(); }': ()
+            189..190 'a': A
+            193..194 'A': A
+            204..210 '[b, c]': [u8; 2]
+            205..206 'b': u8
+            208..209 'c': u8
+            213..214 'a': A
+            213..221 'a.into()': [u8; 2]
+        "#]],
+    );
+}
+
+#[test]
+fn regression_19196() {
+    check_infer(
+        r#"
+//- minicore: async_fn
+fn async_closure<F: AsyncFnOnce(i32)>(f: F) {}
+fn closure<F: FnOnce(i32)>(f: F) {}
+
+fn main() {
+    async_closure(async |arg| {
+        arg;
+    });
+    closure(|arg| {
+        arg;
+    });
+}
+"#,
+        expect![[r#"
+            38..39 'f': F
+            44..46 '{}': ()
+            74..75 'f': F
+            80..82 '{}': ()
+            94..191 '{     ... }); }': ()
+            100..113 'async_closure': fn async_closure<impl AsyncFnOnce(i32) -> impl Future<Output = ()>>(impl AsyncFnOnce(i32) -> impl Future<Output = ()>)
+            100..147 'async_...    })': ()
+            114..146 'async ...     }': impl AsyncFnOnce(i32) -> impl Future<Output = ()>
+            121..124 'arg': i32
+            126..146 '{     ...     }': ()
+            136..139 'arg': i32
+            153..160 'closure': fn closure<impl FnOnce(i32)>(impl FnOnce(i32))
+            153..188 'closur...    })': ()
+            161..187 '|arg| ...     }': impl FnOnce(i32)
+            162..165 'arg': i32
+            167..187 '{     ...     }': ()
+            177..180 'arg': i32
+        "#]],
     );
 }

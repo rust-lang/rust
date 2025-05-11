@@ -20,7 +20,6 @@ pub struct Stage0Config {
     pub artifacts_server: String,
     pub artifacts_with_llvm_assertions_server: String,
     pub git_merge_commit_email: String,
-    pub git_repository: String,
     pub nightly_branch: String,
 }
 
@@ -49,7 +48,6 @@ pub fn parse_stage0_file() -> Stage0 {
                 stage0.config.artifacts_with_llvm_assertions_server = value.to_owned()
             }
             "git_merge_commit_email" => stage0.config.git_merge_commit_email = value.to_owned(),
-            "git_repository" => stage0.config.git_repository = value.to_owned(),
             "nightly_branch" => stage0.config.nightly_branch = value.to_owned(),
 
             "compiler_date" => stage0.compiler.date = value.to_owned(),

@@ -30,10 +30,10 @@ pub fn clippy_project_root() -> PathBuf {
     let current_dir = std::env::current_dir().unwrap();
     for path in current_dir.ancestors() {
         let result = fs::read_to_string(path.join("Cargo.toml"));
-        if let Err(err) = &result {
-            if err.kind() == io::ErrorKind::NotFound {
-                continue;
-            }
+        if let Err(err) = &result
+            && err.kind() == io::ErrorKind::NotFound
+        {
+            continue;
         }
 
         let content = result.unwrap();

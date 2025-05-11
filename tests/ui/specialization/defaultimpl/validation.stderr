@@ -26,22 +26,20 @@ LL | default unsafe impl Send for S {}
    | |
    | default because of this
 
-error[E0277]: `S` cannot be sent between threads safely
-  --> $DIR/validation.rs:9:1
+error[E0367]: `!Send` impl requires `Z: Send` but the struct it is implemented for does not
+  --> $DIR/validation.rs:12:1
    |
-LL | default unsafe impl Send for S {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `S` cannot be sent between threads safely
+LL | default impl !Send for Z {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: the trait `Send` is not implemented for `S`
-   = help: the trait `Send` is implemented for `S`
-   = help: see issue #48214
-help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+note: the implementor must specify the same requirement
+  --> $DIR/validation.rs:5:1
    |
-LL + #![feature(trivial_bounds)]
-   |
+LL | struct Z;
+   | ^^^^^^^^
 
 error: impls of auto traits cannot be default
-  --> $DIR/validation.rs:11:15
+  --> $DIR/validation.rs:12:15
    |
 LL | default impl !Send for Z {}
    | -------       ^^^^ auto trait
@@ -49,18 +47,18 @@ LL | default impl !Send for Z {}
    | default because of this
 
 error[E0750]: negative impls cannot be default impls
-  --> $DIR/validation.rs:11:1
+  --> $DIR/validation.rs:12:1
    |
 LL | default impl !Send for Z {}
    | ^^^^^^^      ^
 
 error[E0750]: negative impls cannot be default impls
-  --> $DIR/validation.rs:15:1
+  --> $DIR/validation.rs:19:1
    |
 LL | default impl !Tr for S {}
    | ^^^^^^^      ^
 
 error: aborting due to 6 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0277, E0750.
-For more information about an error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0367, E0750.
+For more information about an error, try `rustc --explain E0367`.

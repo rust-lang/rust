@@ -1,70 +1,70 @@
 //@ compile-flags: -C no-prepopulate-passes
-//
 
 #![crate_type = "lib"]
-
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
 #![deny(unused)]
 
-// signed integer types
+use std::intrinsics::simd::{simd_saturating_add, simd_saturating_sub};
 
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i8x2([i8; 2]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i8x4([i8; 4]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i8x8([i8; 8]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i8x16([i8; 16]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i8x32([i8; 32]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i8x64([i8; 64]);
+#[rustfmt::skip]
+mod types {
+    // signed integer types
 
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i16x2([i16; 2]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i16x4([i16; 4]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i16x8([i16; 8]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i16x16([i16; 16]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i16x32([i16; 32]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i8x2([i8; 2]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i8x4([i8; 4]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i8x8([i8; 8]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i8x16([i8; 16]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i8x32([i8; 32]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i8x64([i8; 64]);
 
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i32x2([i32; 2]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i32x4([i32; 4]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i32x8([i32; 8]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i32x16([i32; 16]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i16x2([i16; 2]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i16x4([i16; 4]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i16x8([i16; 8]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i16x16([i16; 16]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i16x32([i16; 32]);
 
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i64x2([i64; 2]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i64x4([i64; 4]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i64x8([i64; 8]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i32x2([i32; 2]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i32x4([i32; 4]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i32x8([i32; 8]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i32x16([i32; 16]);
 
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i128x2([i128; 2]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct i128x4([i128; 4]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i64x2([i64; 2]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i64x4([i64; 4]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i64x8([i64; 8]);
 
-// unsigned integer types
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i128x2([i128; 2]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct i128x4([i128; 4]);
 
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u8x2([u8; 2]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u8x4([u8; 4]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u8x8([u8; 8]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u8x16([u8; 16]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u8x32([u8; 32]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u8x64([u8; 64]);
+    // unsigned integer types
 
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u16x2([u16; 2]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u16x4([u16; 4]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u16x8([u16; 8]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u16x16([u16; 16]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u16x32([u16; 32]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u8x2([u8; 2]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u8x4([u8; 4]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u8x8([u8; 8]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u8x16([u8; 16]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u8x32([u8; 32]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u8x64([u8; 64]);
 
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u32x2([u32; 2]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u32x4([u32; 4]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u32x8([u32; 8]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u32x16([u32; 16]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u16x2([u16; 2]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u16x4([u16; 4]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u16x8([u16; 8]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u16x16([u16; 16]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u16x32([u16; 32]);
 
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u64x2([u64; 2]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u64x4([u64; 4]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u64x8([u64; 8]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u32x2([u32; 2]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u32x4([u32; 4]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u32x8([u32; 8]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u32x16([u32; 16]);
 
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u128x2([u128; 2]);
-#[repr(simd)] #[derive(Copy, Clone)] pub struct u128x4([u128; 4]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u64x2([u64; 2]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u64x4([u64; 4]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u64x8([u64; 8]);
 
-extern "rust-intrinsic" {
-    fn simd_saturating_add<T>(x: T, y: T) -> T;
-    fn simd_saturating_sub<T>(x: T, y: T) -> T;
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u128x2([u128; 2]);
+    #[repr(simd)] #[derive(Copy, Clone)] pub struct u128x4([u128; 4]);
 }
+
+use types::*;
 
 // NOTE(eddyb) `%{{x|0}}` is used because on some targets (e.g. WASM)
 // SIMD vectors are passed directly, resulting in `%x` being a vector,
@@ -213,8 +213,6 @@ pub unsafe fn sadd_i128x4(x: i128x4, y: i128x4) -> i128x4 {
     simd_saturating_add(x, y)
 }
 
-
-
 // CHECK-LABEL: @uadd_u8x2
 #[no_mangle]
 pub unsafe fn uadd_u8x2(x: u8x2, y: u8x2) -> u8x2 {
@@ -355,10 +353,6 @@ pub unsafe fn uadd_u128x4(x: u128x4, y: u128x4) -> u128x4 {
     simd_saturating_add(x, y)
 }
 
-
-
-
-
 // CHECK-LABEL: @ssub_i8x2
 #[no_mangle]
 pub unsafe fn ssub_i8x2(x: i8x2, y: i8x2) -> i8x2 {
@@ -498,8 +492,6 @@ pub unsafe fn ssub_i128x4(x: i128x4, y: i128x4) -> i128x4 {
     // CHECK: %{{[0-9]+}} = call <4 x i128> @llvm.ssub.sat.v4i128(<4 x i128> %{{x|0}}, <4 x i128> %{{y|1}})
     simd_saturating_sub(x, y)
 }
-
-
 
 // CHECK-LABEL: @usub_u8x2
 #[no_mangle]

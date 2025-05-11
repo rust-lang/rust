@@ -1,6 +1,6 @@
-#![warn(clippy::all)]
-#![allow(clippy::disallowed_names, clippy::equatable_if_let, clippy::needless_if)]
-#![allow(unused)]
+//@ check-pass
+
+#![expect(clippy::disallowed_names)]
 
 // Test for https://github.com/rust-lang/rust-clippy/issues/3462
 

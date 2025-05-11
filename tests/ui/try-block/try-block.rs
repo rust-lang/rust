@@ -2,7 +2,7 @@
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
-//@ compile-flags: --edition 2018
+//@ edition: 2018
 
 #![feature(try_blocks)]
 

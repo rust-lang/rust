@@ -3,7 +3,7 @@ fn main() {
     let arr = &[0, 1, 2, 3];
     for _i in 0..arr.len().rev() {
         //~^ ERROR can't call method
-        //~| surround the range in parentheses
+        //~| HELP surround the range in parentheses
         // The above error used to say “the method `rev` exists for type `usize`”.
         // This regression test ensures it doesn't say that any more.
     }

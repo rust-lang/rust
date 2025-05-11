@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/overwrite-anon-late-param-regions.rs:10:9
+  --> $DIR/overwrite-anon-late-param-regions.rs:11:9
    |
 LL |     |x| x
    |      -  ^ closure was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
@@ -8,7 +8,7 @@ LL |     |x| x
    |      has type `(&'2 str, &str)`
 
 error[E0792]: expected generic lifetime parameter, found `'a`
-  --> $DIR/overwrite-anon-late-param-regions.rs:10:5
+  --> $DIR/overwrite-anon-late-param-regions.rs:11:5
    |
 LL | type Opaque2<'a> = impl Sized + 'a;
    |              -- this generic parameter must be used with a generic lifetime parameter

@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use rustc_index::Idx;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 
 /// A work queue is a handy data structure for tracking work left to
 /// do. (For example, basic blocks left to process.) It is basically a
@@ -11,14 +11,14 @@ use rustc_index::bit_set::BitSet;
 /// and also use a bit set to track occupancy.
 pub struct WorkQueue<T: Idx> {
     deque: VecDeque<T>,
-    set: BitSet<T>,
+    set: DenseBitSet<T>,
 }
 
 impl<T: Idx> WorkQueue<T> {
     /// Creates a new work queue that starts empty, where elements range from (0..len).
     #[inline]
     pub fn with_none(len: usize) -> Self {
-        WorkQueue { deque: VecDeque::with_capacity(len), set: BitSet::new_empty(len) }
+        WorkQueue { deque: VecDeque::with_capacity(len), set: DenseBitSet::new_empty(len) }
     }
 
     /// Attempt to enqueue `element` in the work queue. Returns false if it was already present.

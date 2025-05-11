@@ -6,8 +6,9 @@ LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
    |
 help: `impl` items mention the trait being implemented first and the type it is being implemented for second
    |
-LL | impl<'a, T> Trait<'a, T> for Struct<T> {}
-   |             ~~~~~~~~~~~~     ~~~~~~~~~
+LL - impl<'a, T> Struct<T> for Trait<'a, T> {}
+LL + impl<'a, T> Trait<'a, T> for Struct<T> {}
+   |
 
 error[E0404]: expected trait, found enum `Enum`
   --> $DIR/suggest-swapping-self-ty-and-trait.rs:18:13
@@ -17,8 +18,9 @@ LL | impl<'a, T> Enum<T> for Trait<'a, T> {}
    |
 help: `impl` items mention the trait being implemented first and the type it is being implemented for second
    |
-LL | impl<'a, T> Trait<'a, T> for Enum<T> {}
-   |             ~~~~~~~~~~~~     ~~~~~~~
+LL - impl<'a, T> Enum<T> for Trait<'a, T> {}
+LL + impl<'a, T> Trait<'a, T> for Enum<T> {}
+   |
 
 error[E0404]: expected trait, found union `Union`
   --> $DIR/suggest-swapping-self-ty-and-trait.rs:23:13
@@ -28,8 +30,9 @@ LL | impl<'a, T> Union<T> for Trait<'a, T> {}
    |
 help: `impl` items mention the trait being implemented first and the type it is being implemented for second
    |
-LL | impl<'a, T> Trait<'a, T> for Union<T> {}
-   |             ~~~~~~~~~~~~     ~~~~~~~~
+LL - impl<'a, T> Union<T> for Trait<'a, T> {}
+LL + impl<'a, T> Trait<'a, T> for Union<T> {}
+   |
 
 error[E0392]: type parameter `T` is never used
   --> $DIR/suggest-swapping-self-ty-and-trait.rs:3:19

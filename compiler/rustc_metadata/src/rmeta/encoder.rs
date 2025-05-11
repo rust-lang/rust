@@ -3,12 +3,14 @@ use std::collections::hash_map::Entry;
 use std::fs::File;
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
-use rustc_data_structures::sync::{Lrc, join, par_for_each_in};
+use rustc_data_structures::sync::{join, par_for_each_in};
 use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_data_structures::thousands::format_with_underscores;
 use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
@@ -22,10 +24,9 @@ use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::{AssocItemContainer, SymbolName};
-use rustc_middle::util::common::to_readable_str;
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
-use rustc_session::config::{CrateType, OptLevel};
+use rustc_session::config::{CrateType, OptLevel, TargetModifier};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
     ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
@@ -52,7 +53,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     // This is used to speed up Span encoding.
     // The `usize` is an index into the `MonotonicVec`
     // that stores the `SourceFile`
-    source_file_cache: (Lrc<SourceFile>, usize),
+    source_file_cache: (Arc<SourceFile>, usize),
     // The indices (into the `SourceMap`'s `MonotonicVec`)
     // of all of the `SourceFiles` that we need to serialize.
     // When we serialize a `Span`, we insert the index of its
@@ -200,9 +201,9 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_symbol(&mut self, symbol: Symbol) {
-        // if symbol preinterned, emit tag and symbol index
-        if symbol.is_preinterned() {
-            self.opaque.emit_u8(SYMBOL_PREINTERNED);
+        // if symbol predefined, emit tag and symbol index
+        if symbol.is_predefined() {
+            self.opaque.emit_u8(SYMBOL_PREDEFINED);
             self.opaque.emit_u32(symbol.as_u32());
         } else {
             // otherwise write it as string or as offset to it
@@ -278,7 +279,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
             let source_map = s.tcx.sess.source_map();
             let source_file_index = source_map.lookup_source_file_idx(self.lo);
             s.source_file_cache =
-                (Lrc::clone(&source_map.files()[source_file_index]), source_file_index);
+                (Arc::clone(&source_map.files()[source_file_index]), source_file_index);
         }
         let (ref source_file, source_file_index) = s.source_file_cache;
         debug_assert!(source_file.contains(self.lo));
@@ -377,10 +378,8 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for [u8] {
     }
 }
 
-impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
-
-    type I = TyCtxt<'tcx>;
 
     fn position(&self) -> usize {
         self.opaque.position()
@@ -552,8 +551,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             match source_file.name {
                 FileName::Real(ref original_file_name) => {
-                    // FIXME: This should probably to conditionally remapped under
-                    // a RemapPathScopeComponents but which one?
                     let adapted_file_name = source_map
                         .path_mapping()
                         .to_embeddable_absolute_path(original_file_name.clone(), working_directory);
@@ -674,6 +671,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let debugger_visualizers =
             stat!("debugger-visualizers", || self.encode_debugger_visualizers());
 
+        let exportable_items = stat!("exportable-items", || self.encode_exportable_items());
+
+        let stable_order_of_exportable_impls =
+            stat!("exportable-items", || self.encode_stable_order_of_exportable_impls());
+
         // Encode exported symbols info. This is prefetched in `encode_metadata`.
         let exported_symbols = stat!("exported-symbols", || {
             self.encode_exported_symbols(tcx.exported_symbols(LOCAL_CRATE))
@@ -692,15 +694,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode source_map. This needs to be done last, because encoding `Span`s tells us which
         // `SourceFiles` we actually need to encode.
         let source_map = stat!("source-map", || self.encode_source_map());
+        let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
 
         let root = stat!("final", || {
-            let attrs = tcx.hir().krate_attrs();
+            let attrs = tcx.hir_krate_attrs();
             self.lazy(CrateRoot {
                 header: CrateHeader {
                     name: tcx.crate_name(LOCAL_CRATE),
                     triple: tcx.sess.opts.target_triple.clone(),
                     hash: tcx.crate_hash(LOCAL_CRATE),
                     is_proc_macro_crate: proc_macro_data.is_some(),
+                    is_stub: false,
                 },
                 extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
                 stable_crate_id: tcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(),
@@ -735,9 +739,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 native_libraries,
                 foreign_modules,
                 source_map,
+                target_modifiers,
                 traits,
                 impls,
                 incoherent_impls,
+                exportable_items,
+                stable_order_of_exportable_impls,
                 exported_symbols,
                 interpret_alloc_index,
                 tables,
@@ -782,7 +789,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     "{} {:<23}{:>10} ({:4.1}%)",
                     prefix,
                     label,
-                    to_readable_str(size),
+                    format_with_underscores(size),
                     perc(size)
                 );
             }
@@ -791,7 +798,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 "{} {:<23}{:>10} (of which {:.1}% are zero bytes)",
                 prefix,
                 "Total",
-                to_readable_str(total_bytes),
+                format_with_underscores(total_bytes),
                 perc(zero_bytes)
             );
             eprintln!("{prefix}");
@@ -819,7 +826,9 @@ struct AnalyzeAttrState<'a> {
 #[inline]
 fn analyze_attr(attr: &impl AttributeExt, state: &mut AnalyzeAttrState<'_>) -> bool {
     let mut should_encode = false;
-    if !rustc_feature::encode_cross_crate(attr.name_or_empty()) {
+    if let Some(name) = attr.name()
+        && !rustc_feature::encode_cross_crate(name)
+    {
         // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
     } else if attr.doc_str().is_some() {
         // We keep all doc comments reachable to rustdoc because they might be "imported" into
@@ -842,9 +851,8 @@ fn analyze_attr(attr: &impl AttributeExt, state: &mut AnalyzeAttrState<'_>) -> b
                 }
             }
         }
-    } else if attr.path().starts_with(&[sym::diagnostic]) && attr.path().len() == 2 {
-        should_encode =
-            rustc_feature::is_stable_diagnostic_attribute(attr.path()[1], state.features);
+    } else if let &[sym::diagnostic, seg] = &*attr.path() {
+        should_encode = rustc_feature::is_stable_diagnostic_attribute(seg, state.features);
     } else {
         should_encode = true;
     }
@@ -1098,7 +1106,6 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         DefKind::Struct
         | DefKind::Union
         | DefKind::Enum
-        | DefKind::Variant
         | DefKind::OpaqueTy
         | DefKind::Fn
         | DefKind::Ctor(..)
@@ -1108,6 +1115,7 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
             matches!(tcx.opt_rpitit_info(def_id), Some(ty::ImplTraitInTraitData::Trait { .. }))
         }
         DefKind::Mod
+        | DefKind::Variant
         | DefKind::Field
         | DefKind::AssocConst
         | DefKind::TyParam
@@ -1337,7 +1345,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
 fn should_encode_fn_impl_trait_in_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     if let Some(assoc_item) = tcx.opt_associated_item(def_id)
         && assoc_item.container == ty::AssocItemContainer::Trait
-        && assoc_item.kind == ty::AssocKind::Fn
+        && assoc_item.is_fn()
     {
         true
     } else {
@@ -1354,8 +1362,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             features: &tcx.features(),
         };
         let attr_iter = tcx
-            .hir()
-            .attrs(tcx.local_def_id_to_hir_id(def_id))
+            .hir_attrs(tcx.local_def_id_to_hir_id(def_id))
             .iter()
             .filter(|attr| analyze_attr(*attr, &mut state));
 
@@ -1469,7 +1476,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
                 self.tables.asyncness.set_some(def_id.index, tcx.asyncness(def_id));
-                record_array!(self.tables.fn_arg_names[def_id] <- tcx.fn_arg_names(def_id));
+                record_array!(self.tables.fn_arg_idents[def_id] <- tcx.fn_arg_idents(def_id));
             }
             if let Some(name) = tcx.intrinsic(def_id) {
                 record!(self.tables.intrinsic[def_id] <- name);
@@ -1554,7 +1561,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::OpaqueTy = def_kind {
                 self.encode_explicit_item_bounds(def_id);
-                self.encode_explicit_item_super_predicates(def_id);
+                self.encode_explicit_item_self_bounds(def_id);
                 record!(self.tables.opaque_ty_origin[def_id] <- self.tcx.opaque_ty_origin(def_id));
                 self.encode_precise_capturing_args(def_id);
                 if tcx.is_conditionally_const(def_id) {
@@ -1634,6 +1641,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.fn_sig[variant.def_id] <- fn_sig);
             }
         }
+
+        if let Some(destructor) = tcx.adt_destructor(local_def_id) {
+            record!(self.tables.adt_destructor[def_id] <- destructor);
+        }
+
+        if let Some(destructor) = tcx.adt_async_destructor(local_def_id) {
+            record!(self.tables.adt_async_destructor[def_id] <- destructor);
+        }
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1667,10 +1682,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds);
     }
 
-    fn encode_explicit_item_super_predicates(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_explicit_item_super_predicates({:?})", def_id);
-        let bounds = self.tcx.explicit_item_super_predicates(def_id).skip_binder();
-        record_defaulted_array!(self.tables.explicit_item_super_predicates[def_id] <- bounds);
+    fn encode_explicit_item_self_bounds(&mut self, def_id: DefId) {
+        debug!("EncodeContext::encode_explicit_item_self_bounds({:?})", def_id);
+        let bounds = self.tcx.explicit_item_self_bounds(def_id).skip_binder();
+        record_defaulted_array!(self.tables.explicit_item_self_bounds[def_id] <- bounds);
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1683,9 +1698,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         match item.container {
             AssocItemContainer::Trait => {
-                if let ty::AssocKind::Type = item.kind {
+                if item.is_type() {
                     self.encode_explicit_item_bounds(def_id);
-                    self.encode_explicit_item_super_predicates(def_id);
+                    self.encode_explicit_item_self_bounds(def_id);
                     if tcx.is_conditionally_const(def_id) {
                         record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
                             <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
@@ -1698,7 +1713,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
         }
-        if let Some(rpitit_info) = item.opt_rpitit_info {
+        if let ty::AssocKind::Type { data: ty::AssocTypeData::Rpitit(rpitit_info) } = item.kind {
             record!(self.tables.opt_rpitit_info[def_id] <- rpitit_info);
             if matches!(rpitit_info, ty::ImplTraitInTraitData::Trait { .. }) {
                 record_array!(
@@ -1760,7 +1775,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 if should_encode_const(tcx.def_kind(def_id)) {
                     let qualifs = tcx.mir_const_qualif(def_id);
                     record!(self.tables.mir_const_qualif[def_id.to_def_id()] <- qualifs);
-                    let body = tcx.hir().maybe_body_owned_by(def_id);
+                    let body = tcx.hir_maybe_body_owned_by(def_id);
                     if let Some(body) = body {
                         let const_data = rendered_const(self.tcx, &body, def_id);
                         record!(self.tables.rendered_const[def_id.to_def_id()] <- const_data);
@@ -1836,7 +1851,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_macro(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
 
-        let hir::ItemKind::Macro(macro_def, _) = tcx.hir().expect_item(def_id).kind else { bug!() };
+        let (_, macro_def, _) = tcx.hir_expect_item(def_id).expect_macro();
         self.tables.is_macro_rules.set(def_id.local_def_index, macro_def.macro_rules);
         record!(self.tables.macro_definition[def_id.to_def_id()] <- &*macro_def.body);
     }
@@ -1882,8 +1897,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let is_proc_macro = self.tcx.crate_types().contains(&CrateType::ProcMacro);
         if is_proc_macro {
             let tcx = self.tcx;
-            let hir = tcx.hir();
-
             let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap().local_def_index;
             let stability = tcx.lookup_stability(CRATE_DEF_ID);
             let macros =
@@ -1915,11 +1928,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             for &proc_macro in &tcx.resolutions(()).proc_macros {
                 let id = proc_macro;
                 let proc_macro = tcx.local_def_id_to_hir_id(proc_macro);
-                let mut name = hir.name(proc_macro);
-                let span = hir.span(proc_macro);
+                let mut name = tcx.hir_name(proc_macro);
+                let span = tcx.hir_span(proc_macro);
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
-                let attrs = hir.attrs(proc_macro);
+                let attrs = tcx.hir_attrs(proc_macro);
                 let macro_kind = if ast::attr::contains_name(attrs, sym::proc_macro) {
                     MacroKind::Bang
                 } else if ast::attr::contains_name(attrs, sym::proc_macro_attribute) {
@@ -1937,7 +1950,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     bug!("Unknown proc-macro type for item {:?}", id);
                 };
 
-                let mut def_key = self.tcx.hir().def_key(id);
+                let mut def_key = self.tcx.hir_def_key(id);
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
 
                 let def_id = id.to_def_id();
@@ -2009,6 +2022,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_array(deps.iter().map(|(_, dep)| dep))
     }
 
+    fn encode_target_modifiers(&mut self) -> LazyArray<TargetModifier> {
+        empty_proc_macro!(self);
+        let tcx = self.tcx;
+        self.lazy_array(tcx.sess.opts.gather_target_modifiers())
+    }
+
     fn encode_lib_features(&mut self) -> LazyArray<(Symbol, FeatureStability)> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
@@ -2067,7 +2086,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let mut trait_impls: FxIndexMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
             FxIndexMap::default();
 
-        for id in tcx.hir().items() {
+        for id in tcx.hir_free_items() {
             let DefKind::Impl { of_trait } = tcx.def_kind(id.owner_id) else {
                 continue;
             };
@@ -2135,6 +2154,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_array(&all_impls)
     }
 
+    fn encode_exportable_items(&mut self) -> LazyArray<DefIndex> {
+        empty_proc_macro!(self);
+        self.lazy_array(self.tcx.exportable_items(LOCAL_CRATE).iter().map(|def_id| def_id.index))
+    }
+
+    fn encode_stable_order_of_exportable_impls(&mut self) -> LazyArray<(DefIndex, usize)> {
+        empty_proc_macro!(self);
+        let stable_order_of_exportable_impls =
+            self.tcx.stable_order_of_exportable_impls(LOCAL_CRATE);
+        self.lazy_array(
+            stable_order_of_exportable_impls.iter().map(|(def_id, idx)| (def_id.index, *idx)),
+        )
+    }
+
     // Encodes all symbols exported from this crate into the metadata.
     //
     // This pass is seeded off the reachability list calculated in the
@@ -2187,17 +2220,17 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
     }
 
     let reachable_set = tcx.reachable_set(());
-    par_for_each_in(tcx.mir_keys(()), |&def_id| {
+    par_for_each_in(tcx.mir_keys(()), |&&def_id| {
         let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
 
         if encode_const {
-            tcx.ensure_with_value().mir_for_ctfe(def_id);
+            tcx.ensure_done().mir_for_ctfe(def_id);
         }
         if encode_opt {
-            tcx.ensure_with_value().optimized_mir(def_id);
+            tcx.ensure_done().optimized_mir(def_id);
         }
         if encode_opt || encode_const {
-            tcx.ensure_with_value().promoted_mir(def_id);
+            tcx.ensure_done().promoted_mir(def_id);
         }
     })
 }
@@ -2226,8 +2259,12 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
 // generated regardless of trailing bytes that end up in it.
 
 pub struct EncodedMetadata {
-    // The declaration order matters because `mmap` should be dropped before `_temp_dir`.
-    mmap: Option<Mmap>,
+    // The declaration order matters because `full_metadata` should be dropped
+    // before `_temp_dir`.
+    full_metadata: Option<Mmap>,
+    // This is an optional stub metadata containing only the crate header.
+    // The header should be very small, so we load it directly into memory.
+    stub_metadata: Option<Vec<u8>>,
     // We need to carry MaybeTempDir to avoid deleting the temporary
     // directory while accessing the Mmap.
     _temp_dir: Option<MaybeTempDir>,
@@ -2235,48 +2272,62 @@ pub struct EncodedMetadata {
 
 impl EncodedMetadata {
     #[inline]
-    pub fn from_path(path: PathBuf, temp_dir: Option<MaybeTempDir>) -> std::io::Result<Self> {
+    pub fn from_path(
+        path: PathBuf,
+        stub_path: Option<PathBuf>,
+        temp_dir: Option<MaybeTempDir>,
+    ) -> std::io::Result<Self> {
         let file = std::fs::File::open(&path)?;
         let file_metadata = file.metadata()?;
         if file_metadata.len() == 0 {
-            return Ok(Self { mmap: None, _temp_dir: None });
+            return Ok(Self { full_metadata: None, stub_metadata: None, _temp_dir: None });
         }
-        let mmap = unsafe { Some(Mmap::map(file)?) };
-        Ok(Self { mmap, _temp_dir: temp_dir })
+        let full_mmap = unsafe { Some(Mmap::map(file)?) };
+
+        let stub =
+            if let Some(stub_path) = stub_path { Some(std::fs::read(stub_path)?) } else { None };
+
+        Ok(Self { full_metadata: full_mmap, stub_metadata: stub, _temp_dir: temp_dir })
     }
 
     #[inline]
-    pub fn raw_data(&self) -> &[u8] {
-        self.mmap.as_deref().unwrap_or_default()
+    pub fn full(&self) -> &[u8] {
+        &self.full_metadata.as_deref().unwrap_or_default()
+    }
+
+    #[inline]
+    pub fn stub_or_full(&self) -> &[u8] {
+        self.stub_metadata.as_deref().unwrap_or(self.full())
     }
 }
 
 impl<S: Encoder> Encodable<S> for EncodedMetadata {
     fn encode(&self, s: &mut S) {
-        let slice = self.raw_data();
+        self.stub_metadata.encode(s);
+
+        let slice = self.full();
         slice.encode(s)
     }
 }
 
 impl<D: Decoder> Decodable<D> for EncodedMetadata {
     fn decode(d: &mut D) -> Self {
+        let stub = <Option<Vec<u8>>>::decode(d);
+
         let len = d.read_usize();
-        let mmap = if len > 0 {
+        let full_metadata = if len > 0 {
             let mut mmap = MmapMut::map_anon(len).unwrap();
-            for _ in 0..len {
-                (&mut mmap[..]).write_all(&[d.read_u8()]).unwrap();
-            }
-            mmap.flush().unwrap();
+            mmap.copy_from_slice(d.read_raw_bytes(len));
             Some(mmap.make_read_only().unwrap())
         } else {
             None
         };
 
-        Self { mmap, _temp_dir: None }
+        Self { full_metadata, stub_metadata: stub, _temp_dir: None }
     }
 }
 
-pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
+pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
 
     // Since encoding metadata is not in a query, and nothing is cached,
@@ -2290,6 +2341,42 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
         join(|| prefetch_mir(tcx), || tcx.exported_symbols(LOCAL_CRATE));
     }
 
+    with_encode_metadata_header(tcx, path, |ecx| {
+        // Encode all the entries and extra information in the crate,
+        // culminating in the `CrateRoot` which points to all of it.
+        let root = ecx.encode_crate_root();
+
+        // Flush buffer to ensure backing file has the correct size.
+        ecx.opaque.flush();
+        // Record metadata size for self-profiling
+        tcx.prof.artifact_size(
+            "crate_metadata",
+            "crate_metadata",
+            ecx.opaque.file().metadata().unwrap().len(),
+        );
+
+        root.position.get()
+    });
+
+    if let Some(ref_path) = ref_path {
+        with_encode_metadata_header(tcx, ref_path, |ecx| {
+            let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
+                name: tcx.crate_name(LOCAL_CRATE),
+                triple: tcx.sess.opts.target_triple.clone(),
+                hash: tcx.crate_hash(LOCAL_CRATE),
+                is_proc_macro_crate: false,
+                is_stub: true,
+            });
+            header.position.get()
+        });
+    }
+}
+
+fn with_encode_metadata_header(
+    tcx: TyCtxt<'_>,
+    path: &Path,
+    f: impl FnOnce(&mut EncodeContext<'_, '_>) -> usize,
+) {
     let mut encoder = opaque::FileEncoder::new(path)
         .unwrap_or_else(|err| tcx.dcx().emit_fatal(FailCreateFileEncoder { err }));
     encoder.emit_raw_bytes(METADATA_HEADER);
@@ -2298,7 +2385,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     encoder.emit_raw_bytes(&0u64.to_le_bytes());
 
     let source_map_files = tcx.sess.source_map().files();
-    let source_file_cache = (Lrc::clone(&source_map_files[0]), 0);
+    let source_file_cache = (Arc::clone(&source_map_files[0]), 0);
     let required_source_files = Some(FxIndexSet::default());
     drop(source_map_files);
 
@@ -2324,9 +2411,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     // Encode the rustc version string in a predictable location.
     rustc_version(tcx.sess.cfg_version).encode(&mut ecx);
 
-    // Encode all the entries and extra information in the crate,
-    // culminating in the `CrateRoot` which points to all of it.
-    let root = ecx.encode_crate_root();
+    let root_position = f(&mut ecx);
 
     // Make sure we report any errors from writing to the file.
     // If we forget this, compilation can succeed with an incomplete rmeta file,
@@ -2336,12 +2421,9 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     }
 
     let file = ecx.opaque.file();
-    if let Err(err) = encode_root_position(file, root.position.get()) {
+    if let Err(err) = encode_root_position(file, root_position) {
         tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
     }
-
-    // Record metadata size for self-profiling
-    tcx.prof.artifact_size("crate_metadata", "crate_metadata", file.metadata().unwrap().len());
 }
 
 fn encode_root_position(mut file: &File, pos: usize) -> Result<(), std::io::Error> {
@@ -2404,7 +2486,6 @@ pub(crate) fn provide(providers: &mut Providers) {
 /// use a different method for pretty-printing. Ideally this function
 /// should only ever be used as a fallback.
 pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: LocalDefId) -> String {
-    let hir = tcx.hir();
     let value = body.value;
 
     #[derive(PartialEq, Eq)]
@@ -2461,7 +2542,7 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: Loc
 
         // Otherwise we prefer pretty-printing to get rid of extraneous whitespace, comments and
         // other formatting artifacts.
-        Literal | Simple => id_to_string(&hir, body.id().hir_id),
+        Literal | Simple => id_to_string(&tcx, body.id().hir_id),
 
         // FIXME: Omit the curly braces if the enclosing expression is an array literal
         //        with a repeated element (an `ExprKind::Repeat`) as in such case it

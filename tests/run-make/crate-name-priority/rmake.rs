@@ -4,6 +4,8 @@
 // and the compiler flags, and checks that the flag is favoured each time.
 // See https://github.com/rust-lang/rust/pull/15518
 
+//@ ignore-cross-compile (relocations in generic ELF against `arm-unknown-linux-gnueabihf`)
+
 use run_make_support::{bin_name, rfs, rustc};
 
 fn main() {

@@ -1,6 +1,7 @@
 // Verifies that when compiling with -Zsanitizer=option,
 // the `#[cfg(sanitize = "option")]` attribute is configured.
 
+//@ add-core-stubs
 //@ check-pass
 //@ revisions: address cfi kcfi leak memory thread
 //@compile-flags: -Ctarget-feature=-crt-static
@@ -23,10 +24,8 @@
 #![crate_type="lib"]
 #![no_core]
 
-#[lang="sized"]
-trait Sized { }
-#[lang="copy"]
-trait Copy { }
+extern crate minicore;
+use minicore::*;
 
 #[cfg(all(sanitize = "address", address))]
 fn main() {}

@@ -6,20 +6,19 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(exact_size_is_empty)]
 #![feature(extern_types)]
 #![feature(file_buffered)]
-#![feature(hash_raw_entry)]
+#![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
-#![feature(let_chains)]
 #![feature(rustdoc_internals)]
 #![feature(slice_as_array)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::any::Any;
@@ -28,15 +27,17 @@ use std::mem::ManuallyDrop;
 
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
-use errors::ParseTargetMachineConfig;
-pub use llvm_util::target_features_cfg;
+use context::SimpleCx;
+use errors::{AutoDiffWithoutLTO, ParseTargetMachineConfig};
+use llvm_util::target_config;
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryConfig, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
+use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{DiagCtxtHandle, FatalError};
 use rustc_metadata::EncodedMetadata;
@@ -44,7 +45,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
-use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::config::{Lto, OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_span::Symbol;
 
 mod back {
@@ -70,14 +71,7 @@ mod debuginfo;
 mod declare;
 mod errors;
 mod intrinsic;
-
-// The following is a workaround that replaces `pub mod llvm;` and that fixes issue 53912.
-#[path = "llvm/mod.rs"]
-mod llvm_;
-pub mod llvm {
-    pub use super::llvm_::*;
-}
-
+mod llvm;
 mod llvm_util;
 mod mono_item;
 mod type_;
@@ -119,9 +113,11 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         kind: AllocatorKind,
         alloc_error_handler_kind: AllocatorKind,
     ) -> ModuleLlvm {
-        let mut module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
+        let module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
+        let cx =
+            SimpleCx::new(module_llvm.llmod(), &module_llvm.llcx, tcx.data_layout.pointer_size);
         unsafe {
-            allocator::codegen(tcx, &mut module_llvm, module_name, kind, alloc_error_handler_kind);
+            allocator::codegen(tcx, cx, module_name, kind, alloc_error_handler_kind);
         }
         module_llvm
     }
@@ -197,7 +193,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     unsafe fn optimize(
         cgcx: &CodegenContext<Self>,
         dcx: DiagCtxtHandle<'_>,
-        module: &ModuleCodegen<Self::Module>,
+        module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
         unsafe { back::write::optimize(cgcx, dcx, module, config) }
@@ -233,10 +229,20 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
         (module.name, back::lto::ModuleBuffer::new(module.module_llvm.llmod()))
     }
+    /// Generate autodiff rules
+    fn autodiff(
+        cgcx: &CodegenContext<Self>,
+        module: &ModuleCodegen<Self::Module>,
+        diff_fncs: Vec<AutoDiffItem>,
+        config: &ModuleConfig,
+    ) -> Result<(), FatalError> {
+        if cgcx.lto != Lto::Fat {
+            let dcx = cgcx.create_dcx();
+            return Err(dcx.handle().emit_almost_fatal(AutoDiffWithoutLTO));
+        }
+        builder::autodiff::differentiate(module, cgcx, diff_fncs, config)
+    }
 }
-
-unsafe impl Send for LlvmCodegenBackend {} // Llvm is on a per-thread basis
-unsafe impl Sync for LlvmCodegenBackend {}
 
 impl LlvmCodegenBackend {
     pub fn new() -> Box<dyn CodegenBackend> {
@@ -332,8 +338,8 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm_util::print_version();
     }
 
-    fn target_features_cfg(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
-        target_features_cfg(sess, allow_unstable)
+    fn target_config(&self, sess: &Session) -> TargetConfig {
+        target_config(sess)
     }
 
     fn codegen_crate<'tcx>(

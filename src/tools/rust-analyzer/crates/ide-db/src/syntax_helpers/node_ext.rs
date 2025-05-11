@@ -1,10 +1,12 @@
 //! Various helper functions to work with SyntaxNodes.
+use std::ops::ControlFlow;
+
 use itertools::Itertools;
 use parser::T;
 use span::Edition;
 use syntax::{
-    ast::{self, HasLoopBody, MacroCall, PathSegmentKind, VisibilityKind},
     AstNode, AstToken, Preorder, RustLanguage, WalkEvent,
+    ast::{self, HasLoopBody, MacroCall, PathSegmentKind, VisibilityKind},
 };
 
 pub fn expr_as_name_ref(expr: &ast::Expr) -> Option<ast::NameRef> {
@@ -119,7 +121,10 @@ pub fn walk_patterns_in_expr(start: &ast::Expr, cb: &mut dyn FnMut(ast::Pat)) {
         match ast::Stmt::cast(node.clone()) {
             Some(ast::Stmt::LetStmt(l)) => {
                 if let Some(pat) = l.pat() {
-                    walk_pat(&pat, cb);
+                    _ = walk_pat(&pat, &mut |pat| {
+                        cb(pat);
+                        ControlFlow::<(), ()>::Continue(())
+                    });
                 }
                 if let Some(expr) = l.initializer() {
                     walk_patterns_in_expr(&expr, cb);
@@ -154,7 +159,10 @@ pub fn walk_patterns_in_expr(start: &ast::Expr, cb: &mut dyn FnMut(ast::Pat)) {
                     }
                 } else if let Some(pat) = ast::Pat::cast(node) {
                     preorder.skip_subtree();
-                    walk_pat(&pat, cb);
+                    _ = walk_pat(&pat, &mut |pat| {
+                        cb(pat);
+                        ControlFlow::<(), ()>::Continue(())
+                    });
                 }
             }
         }
@@ -162,7 +170,10 @@ pub fn walk_patterns_in_expr(start: &ast::Expr, cb: &mut dyn FnMut(ast::Pat)) {
 }
 
 /// Preorder walk all the pattern's sub patterns.
-pub fn walk_pat(pat: &ast::Pat, cb: &mut dyn FnMut(ast::Pat)) {
+pub fn walk_pat<T>(
+    pat: &ast::Pat,
+    cb: &mut dyn FnMut(ast::Pat) -> ControlFlow<T>,
+) -> ControlFlow<T> {
     let mut preorder = pat.syntax().preorder();
     while let Some(event) = preorder.next() {
         let node = match event {
@@ -173,10 +184,10 @@ pub fn walk_pat(pat: &ast::Pat, cb: &mut dyn FnMut(ast::Pat)) {
         match ast::Pat::cast(node) {
             Some(pat @ ast::Pat::ConstBlockPat(_)) => {
                 preorder.skip_subtree();
-                cb(pat);
+                cb(pat)?;
             }
             Some(pat) => {
-                cb(pat);
+                cb(pat)?;
             }
             // skip const args
             None if ast::GenericArg::can_cast(kind) => {
@@ -185,6 +196,7 @@ pub fn walk_pat(pat: &ast::Pat, cb: &mut dyn FnMut(ast::Pat)) {
             None => (),
         }
     }
+    ControlFlow::Continue(())
 }
 
 /// Preorder walk all the type's sub types.
@@ -220,7 +232,7 @@ pub fn vis_eq(this: &ast::Visibility, other: &ast::Visibility) -> bool {
     match (this.kind(), other.kind()) {
         (VisibilityKind::In(this), VisibilityKind::In(other)) => {
             stdx::iter_eq_by(this.segments(), other.segments(), |lhs, rhs| {
-                lhs.kind().zip(rhs.kind()).map_or(false, |it| match it {
+                lhs.kind().zip(rhs.kind()).is_some_and(|it| match it {
                     (PathSegmentKind::CrateKw, PathSegmentKind::CrateKw)
                     | (PathSegmentKind::SelfKw, PathSegmentKind::SelfKw)
                     | (PathSegmentKind::SuperKw, PathSegmentKind::SuperKw) => true,
@@ -259,7 +271,7 @@ pub fn is_pattern_cond(expr: ast::Expr) -> bool {
                 .or_else(|| expr.rhs().map(is_pattern_cond))
                 .unwrap_or(false)
         }
-        ast::Expr::ParenExpr(expr) => expr.expr().map_or(false, is_pattern_cond),
+        ast::Expr::ParenExpr(expr) => expr.expr().is_some_and(is_pattern_cond),
         ast::Expr::LetExpr(_) => true,
         _ => false,
     }
@@ -408,7 +420,7 @@ fn for_each_break_expr(
 }
 
 pub fn eq_label_lt(lt1: &Option<ast::Lifetime>, lt2: &Option<ast::Lifetime>) -> bool {
-    lt1.as_ref().zip(lt2.as_ref()).map_or(false, |(lt, lbl)| lt.text() == lbl.text())
+    lt1.as_ref().zip(lt2.as_ref()).is_some_and(|(lt, lbl)| lt.text() == lbl.text())
 }
 
 struct TreeWithDepthIterator {
@@ -472,7 +484,7 @@ pub fn parse_tt_as_comma_sep_paths(
             None => None,
             Some(tok) => Some(tok),
         });
-    let input_expressions = tokens.group_by(|tok| tok.kind() == T![,]);
+    let input_expressions = tokens.chunk_by(|tok| tok.kind() == T![,]);
     let paths = input_expressions
         .into_iter()
         .filter_map(|(is_sep, group)| (!is_sep).then_some(group))

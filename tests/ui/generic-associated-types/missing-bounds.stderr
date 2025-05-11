@@ -7,8 +7,9 @@ LL | impl<B: Add> Add for E<B> where <B as Add>::Output = B {
    = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
 help: if `Output` is an associated type you're trying to set, use the associated type binding syntax
    |
-LL | impl<B: Add> Add for E<B> where B: Add<Output = B> {
-   |                                 ~~~~~~~~~~~~~~~~~~
+LL - impl<B: Add> Add for E<B> where <B as Add>::Output = B {
+LL + impl<B: Add> Add for E<B> where B: Add<Output = B> {
+   |
 
 error[E0308]: mismatched types
   --> $DIR/missing-bounds.rs:11:11

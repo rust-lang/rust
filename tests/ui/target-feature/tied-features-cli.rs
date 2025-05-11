@@ -18,3 +18,7 @@
 trait Sized {}
 
 fn main() {}
+
+//[one]~? ERROR the target features paca, pacg must all be either enabled or disabled together
+//[two]~? ERROR the target features paca, pacg must all be either enabled or disabled together
+//[three]~? ERROR the target features paca, pacg must all be either enabled or disabled together

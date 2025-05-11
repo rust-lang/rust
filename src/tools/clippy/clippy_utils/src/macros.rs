@@ -1,12 +1,13 @@
 #![allow(clippy::similar_names)] // `expr` and `expn`
 
+use std::sync::{Arc, OnceLock};
+
 use crate::get_unique_attr;
 use crate::visitors::{Descend, for_each_expr_without_closures};
 
 use arrayvec::ArrayVec;
 use rustc_ast::{FormatArgs, FormatArgument, FormatPlaceholder};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::{Lrc, OnceLock};
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_span::def_id::DefId;
@@ -28,6 +29,8 @@ const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
     sym::print_macro,
     sym::println_macro,
     sym::std_panic_macro,
+    sym::todo_macro,
+    sym::unimplemented_macro,
     sym::write_macro,
     sym::writeln_macro,
 ];
@@ -175,8 +178,7 @@ pub fn first_node_in_macro(cx: &LateContext<'_>, node: &impl HirNode) -> Option<
 
     // get the parent node, possibly skipping over a statement
     // if the parent is not found, it is sensible to return `Some(root)`
-    let hir = cx.tcx.hir();
-    let mut parent_iter = hir.parent_iter(node.hir_id());
+    let mut parent_iter = cx.tcx.hir_parent_iter(node.hir_id());
     let (parent_id, _) = match parent_iter.next() {
         None => return Some(ExpnId::root()),
         Some((_, Node::Stmt(_))) => match parent_iter.next() {
@@ -187,7 +189,7 @@ pub fn first_node_in_macro(cx: &LateContext<'_>, node: &impl HirNode) -> Option<
     };
 
     // get the macro expansion of the parent node
-    let parent_span = hir.span(parent_id);
+    let parent_span = cx.tcx.hir_span(parent_id);
     let Some(parent_macro_call) = macro_backtrace(parent_span).next() else {
         // the parent node is not in a macro
         return Some(ExpnId::root());
@@ -251,7 +253,7 @@ impl<'a> PanicExpn<'a> {
         // This has no argument
         if name == "panic_cold_explicit" {
             return Some(Self::Empty);
-        };
+        }
 
         let [arg, rest @ ..] = args else {
             return None;
@@ -393,7 +395,7 @@ fn is_assert_arg(cx: &LateContext<'_>, expr: &Expr<'_>, assert_expn: ExpnId) -> 
 /// Stores AST [`FormatArgs`] nodes for use in late lint passes, as they are in a desugared form in
 /// the HIR
 #[derive(Default, Clone)]
-pub struct FormatArgsStorage(Lrc<OnceLock<FxHashMap<Span, FormatArgs>>>);
+pub struct FormatArgsStorage(Arc<OnceLock<FxHashMap<Span, FormatArgs>>>);
 
 impl FormatArgsStorage {
     /// Returns an AST [`FormatArgs`] node if a `format_args` expansion is found as a descendant of

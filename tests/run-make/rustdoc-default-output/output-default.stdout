@@ -11,7 +11,7 @@ Options:
     -o, --out-dir PATH  which directory to place the output
         --crate-name NAME
                         specify the name of this crate
-        --crate-type [bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]
+        --crate-type <bin|lib|rlib|dylib|cdylib|staticlib|proc-macro>
                         Comma separated list of types of crates
                         for the compiler to emit
     -L, --library-path DIR
@@ -138,12 +138,9 @@ Options:
         --show-coverage 
                         calculate percentage of public items with
                         documentation
-        --enable-per-target-ignores 
-                        parse ignore-foo for ignoring doctests on a per-target
-                        basis
-        --runtool The tool to run tests with when building for a different target than host
+        --test-runtool The tool to run tests with when building for a different target than host
                         
-        --runtool-arg One (of possibly many) arguments to pass to the runtool
+        --test-runtool-arg One argument (of possibly many) to pass to the runtool
                         
         --test-builder PATH
                         The rustc-like binary to use as the test builder
@@ -153,7 +150,7 @@ Options:
         --generate-redirect-map 
                         Generate JSON file at the top level instead of
                         generating HTML redirection files
-        --emit [unversioned-shared-resources,toolchain-shared-resources,invocation-specific]
+        --emit [unversioned-shared-resources,toolchain-shared-resources,invocation-specific,dep-info]
                         Comma separated list of types of output for rustdoc to
                         emit
         --no-run        Compile doctests without running them
@@ -191,10 +188,12 @@ Options:
                         from provided path. Only use with --merge=finalize
         --html-no-source 
                         Disable HTML source code pages generation
-        --doctest-compilation-args add arguments to be used when compiling doctests
-                        
+        --doctest-build-arg ARG
+                        One argument (of possibly many) to be used when
+                        compiling doctests
         --disable-minification 
-                        removed
+                        disable the minification of CSS/JS files
+                        (perma-unstable, do not use with cached files)
         --plugin-path DIR
                         removed, see issue #44136
                         <https://github.com/rust-lang/rust/issues/44136> for

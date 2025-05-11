@@ -22,6 +22,7 @@ impl Foo {
 #[stable(feature = "stable", since = "1.0.0")]
 #[const_trait]
 pub trait Bar {
+//~^ ERROR trait has missing const stability attribute
     #[stable(feature = "stable", since = "1.0.0")]
     fn fun();
 }

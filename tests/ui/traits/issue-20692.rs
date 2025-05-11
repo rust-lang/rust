@@ -2,10 +2,10 @@ trait Array: Sized + Copy {}
 
 fn f<T: Array>(x: &T) {
     let _ = x
-    //~^ ERROR `Array` cannot be made into an object
+    //~^ ERROR `Array` is not dyn compatible
     as
     &dyn Array;
-    //~^ ERROR `Array` cannot be made into an object
+    //~^ ERROR `Array` is not dyn compatible
 }
 
 fn main() {}

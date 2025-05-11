@@ -35,11 +35,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// returns a corresponding [`ty::ClosureKind`].
     /// For any other [`DefId`] return `None`.
     pub fn fn_trait_kind_from_def_id(self, id: DefId) -> Option<ty::ClosureKind> {
-        let items = self.lang_items();
-        match Some(id) {
-            x if x == items.fn_trait() => Some(ty::ClosureKind::Fn),
-            x if x == items.fn_mut_trait() => Some(ty::ClosureKind::FnMut),
-            x if x == items.fn_once_trait() => Some(ty::ClosureKind::FnOnce),
+        match self.as_lang_item(id)? {
+            LangItem::Fn => Some(ty::ClosureKind::Fn),
+            LangItem::FnMut => Some(ty::ClosureKind::FnMut),
+            LangItem::FnOnce => Some(ty::ClosureKind::FnOnce),
             _ => None,
         }
     }
@@ -48,11 +47,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// returns a corresponding [`ty::ClosureKind`].
     /// For any other [`DefId`] return `None`.
     pub fn async_fn_trait_kind_from_def_id(self, id: DefId) -> Option<ty::ClosureKind> {
-        let items = self.lang_items();
-        match Some(id) {
-            x if x == items.async_fn_trait() => Some(ty::ClosureKind::Fn),
-            x if x == items.async_fn_mut_trait() => Some(ty::ClosureKind::FnMut),
-            x if x == items.async_fn_once_trait() => Some(ty::ClosureKind::FnOnce),
+        match self.as_lang_item(id)? {
+            LangItem::AsyncFn => Some(ty::ClosureKind::Fn),
+            LangItem::AsyncFnMut => Some(ty::ClosureKind::FnMut),
+            LangItem::AsyncFnOnce => Some(ty::ClosureKind::FnOnce),
             _ => None,
         }
     }

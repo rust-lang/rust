@@ -5,6 +5,7 @@ import * as ra from "./lsp_ext";
 import { Config, prepareVSCodeConfig } from "./config";
 import { createClient } from "./client";
 import {
+    isCargoTomlEditor,
     isDocumentInWorkspace,
     isRustDocument,
     isRustEditor,
@@ -19,6 +20,7 @@ import {
     RustDependenciesProvider,
     type DependencyId,
 } from "./dependencies_provider";
+import { SyntaxTreeProvider, type SyntaxElement } from "./syntax_tree_provider";
 import { execRevealDependency } from "./commands";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
@@ -33,13 +35,8 @@ import type { RustAnalyzerExtensionApi } from "./main";
 
 export type Workspace =
     | { kind: "Empty" }
-    | {
-          kind: "Workspace Folder";
-      }
-    | {
-          kind: "Detached Files";
-          files: vscode.TextDocument[];
-      };
+    | { kind: "Workspace Folder" }
+    | { kind: "Detached Files"; files: vscode.TextDocument[] };
 
 export function fetchWorkspace(): Workspace {
     const folders = (vscode.workspace.workspaceFolders || []).filter(
@@ -52,10 +49,7 @@ export function fetchWorkspace(): Workspace {
     return folders.length === 0
         ? rustDocuments.length === 0
             ? { kind: "Empty" }
-            : {
-                  kind: "Detached Files",
-                  files: rustDocuments,
-              }
+            : { kind: "Detached Files", files: rustDocuments }
         : { kind: "Workspace Folder" };
 }
 
@@ -84,8 +78,13 @@ export class Ctx implements RustAnalyzerExtensionApi {
     private commandFactories: Record<string, CommandFactory>;
     private commandDisposables: Disposable[];
     private unlinkedFiles: vscode.Uri[];
-    private _dependencies: RustDependenciesProvider | undefined;
-    private _treeView: vscode.TreeView<Dependency | DependencyFile | DependencyId> | undefined;
+    private _dependenciesProvider: RustDependenciesProvider | undefined;
+    private _dependencyTreeView:
+        | vscode.TreeView<Dependency | DependencyFile | DependencyId>
+        | undefined;
+
+    private _syntaxTreeProvider: SyntaxTreeProvider | undefined;
+    private _syntaxTreeView: vscode.TreeView<SyntaxElement> | undefined;
     private lastStatus: ServerStatusParams | { health: "stopped" } = { health: "stopped" };
     private _serverVersion: string;
     private statusBarActiveEditorListener: Disposable;
@@ -102,12 +101,20 @@ export class Ctx implements RustAnalyzerExtensionApi {
         return this._client;
     }
 
-    get treeView() {
-        return this._treeView;
+    get dependencyTreeView() {
+        return this._dependencyTreeView;
     }
 
-    get dependencies() {
-        return this._dependencies;
+    get dependenciesProvider() {
+        return this._dependenciesProvider;
+    }
+
+    get syntaxTreeView() {
+        return this._syntaxTreeView;
+    }
+
+    get syntaxTreeProvider() {
+        return this._syntaxTreeProvider;
     }
 
     constructor(
@@ -183,11 +190,11 @@ export class Ctx implements RustAnalyzerExtensionApi {
         }
 
         if (!this.traceOutputChannel) {
-            this.traceOutputChannel = new LazyOutputChannel("Rust Analyzer Language Server Trace");
+            this.traceOutputChannel = new LazyOutputChannel("rust-analyzer LSP Trace");
             this.pushExtCleanup(this.traceOutputChannel);
         }
         if (!this.outputChannel) {
-            this.outputChannel = vscode.window.createOutputChannel("Rust Analyzer Language Server");
+            this.outputChannel = vscode.window.createOutputChannel("rust-analyzer Language Server");
             this.pushExtCleanup(this.outputChannel);
         }
 
@@ -206,7 +213,14 @@ export class Ctx implements RustAnalyzerExtensionApi {
                     this.refreshServerStatus();
                 },
             );
-            const newEnv = Object.assign({}, process.env, this.config.serverExtraEnv);
+            const newEnv = { ...process.env };
+            for (const [k, v] of Object.entries(this.config.serverExtraEnv)) {
+                if (v) {
+                    newEnv[k] = v;
+                } else if (k in newEnv) {
+                    delete newEnv[k];
+                }
+            }
             const run: lc.Executable = {
                 command: this._serverPath,
                 options: { env: newEnv },
@@ -254,7 +268,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
             let message = "bootstrap error. ";
 
             message +=
-                'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
+                'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically).';
             message +=
                 'To enable verbose logs, click the gear icon in the "OUTPUT" tab and select "Debug".';
 
@@ -278,6 +292,9 @@ export class Ctx implements RustAnalyzerExtensionApi {
         if (this.config.showDependenciesExplorer) {
             this.prepareTreeDependenciesView(client);
         }
+        if (this.config.showSyntaxTree) {
+            this.prepareSyntaxTreeView(client);
+        }
     }
 
     private prepareTreeDependenciesView(client: lc.LanguageClient) {
@@ -285,13 +302,13 @@ export class Ctx implements RustAnalyzerExtensionApi {
             ...this,
             client: client,
         };
-        this._dependencies = new RustDependenciesProvider(ctxInit);
-        this._treeView = vscode.window.createTreeView("rustDependencies", {
-            treeDataProvider: this._dependencies,
+        this._dependenciesProvider = new RustDependenciesProvider(ctxInit);
+        this._dependencyTreeView = vscode.window.createTreeView("rustDependencies", {
+            treeDataProvider: this._dependenciesProvider,
             showCollapseAll: true,
         });
 
-        this.pushExtCleanup(this._treeView);
+        this.pushExtCleanup(this._dependencyTreeView);
         vscode.window.onDidChangeActiveTextEditor(async (e) => {
             // we should skip documents that belong to the current workspace
             if (this.shouldRevealDependency(e)) {
@@ -303,7 +320,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
             }
         });
 
-        this.treeView?.onDidChangeVisibility(async (e) => {
+        this.dependencyTreeView?.onDidChangeVisibility(async (e) => {
             if (e.visible) {
                 const activeEditor = vscode.window.activeTextEditor;
                 if (this.shouldRevealDependency(activeEditor)) {
@@ -322,8 +339,63 @@ export class Ctx implements RustAnalyzerExtensionApi {
             e !== undefined &&
             isRustEditor(e) &&
             !isDocumentInWorkspace(e.document) &&
-            (this.treeView?.visible || false)
+            (this.dependencyTreeView?.visible || false)
         );
+    }
+
+    private prepareSyntaxTreeView(client: lc.LanguageClient) {
+        const ctxInit: CtxInit = {
+            ...this,
+            client: client,
+        };
+        this._syntaxTreeProvider = new SyntaxTreeProvider(ctxInit);
+        this._syntaxTreeView = vscode.window.createTreeView("rustSyntaxTree", {
+            treeDataProvider: this._syntaxTreeProvider,
+            showCollapseAll: true,
+        });
+
+        this.pushExtCleanup(this._syntaxTreeView);
+
+        vscode.window.onDidChangeActiveTextEditor(async () => {
+            if (this.syntaxTreeView?.visible) {
+                await this.syntaxTreeProvider?.refresh();
+            }
+        });
+
+        vscode.workspace.onDidChangeTextDocument(async (e) => {
+            if (
+                vscode.window.activeTextEditor?.document !== e.document ||
+                e.contentChanges.length === 0
+            ) {
+                return;
+            }
+
+            if (this.syntaxTreeView?.visible) {
+                await this.syntaxTreeProvider?.refresh();
+            }
+        });
+
+        vscode.window.onDidChangeTextEditorSelection(async (e) => {
+            if (!this.syntaxTreeView?.visible || !isRustEditor(e.textEditor)) {
+                return;
+            }
+
+            const selection = e.selections[0];
+            if (selection === undefined) {
+                return;
+            }
+
+            const result = this.syntaxTreeProvider?.getElementByRange(selection);
+            if (result !== undefined) {
+                await this.syntaxTreeView?.reveal(result);
+            }
+        });
+
+        this._syntaxTreeView.onDidChangeVisibility(async (e) => {
+            if (e.visible) {
+                await this.syntaxTreeProvider?.refresh();
+            }
+        });
     }
 
     async restart() {
@@ -363,6 +435,11 @@ export class Ctx implements RustAnalyzerExtensionApi {
     get activeRustEditor(): RustEditor | undefined {
         const editor = vscode.window.activeTextEditor;
         return editor && isRustEditor(editor) ? editor : undefined;
+    }
+
+    get activeCargoTomlEditor(): RustEditor | undefined {
+        const editor = vscode.window.activeTextEditor;
+        return editor && isCargoTomlEditor(editor) ? editor : undefined;
     }
 
     get extensionPath(): string {
@@ -405,9 +482,11 @@ export class Ctx implements RustAnalyzerExtensionApi {
         this.lastStatus = status;
         this.updateStatusBarItem();
     }
+
     refreshServerStatus() {
         this.updateStatusBarItem();
     }
+
     private updateStatusBarItem() {
         let icon = "";
         const status = this.lastStatus;
@@ -423,7 +502,8 @@ export class Ctx implements RustAnalyzerExtensionApi {
                 } else {
                     statusBar.command = "rust-analyzer.openLogs";
                 }
-                this.dependencies?.refresh();
+                this.dependenciesProvider?.refresh();
+                void this.syntaxTreeProvider?.refresh();
                 break;
             case "warning":
                 statusBar.color = new vscode.ThemeColor("statusBarItem.warningForeground");
@@ -461,33 +541,33 @@ export class Ctx implements RustAnalyzerExtensionApi {
 
         const toggleCheckOnSave = this.config.checkOnSave ? "Disable" : "Enable";
         statusBar.tooltip.appendMarkdown(
-            `[Extension Info](command:rust-analyzer.serverVersion "Show version and server binary info"): Version ${this.version}, Server Version ${this._serverVersion}` +
-                "\n\n---\n\n" +
-                '[$(terminal) Open Logs](command:rust-analyzer.openLogs "Open the server logs")' +
-                "\n\n" +
-                `[$(settings) ${toggleCheckOnSave} Check on Save](command:rust-analyzer.toggleCheckOnSave "Temporarily ${toggleCheckOnSave.toLowerCase()} check on save functionality")` +
-                "\n\n" +
-                '[$(refresh) Reload Workspace](command:rust-analyzer.reloadWorkspace "Reload and rediscover workspaces")' +
-                "\n\n" +
-                '[$(symbol-property) Rebuild Build Dependencies](command:rust-analyzer.rebuildProcMacros "Rebuild build scripts and proc-macros")' +
-                "\n\n" +
-                '[$(stop-circle) Stop server](command:rust-analyzer.stopServer "Stop the server")' +
-                "\n\n" +
-                '[$(debug-restart) Restart server](command:rust-analyzer.restartServer "Restart the server")',
+            `[Extension Info](command:rust-analyzer.serverVersion "Show version and server binary info"): Version ${this.version}, Server Version ${this._serverVersion}\n\n` +
+                `---\n\n` +
+                `[$(terminal) Open Logs](command:rust-analyzer.openLogs "Open the server logs")\n\n` +
+                `[$(settings) ${toggleCheckOnSave} Check on Save](command:rust-analyzer.toggleCheckOnSave "Temporarily ${toggleCheckOnSave.toLowerCase()} check on save functionality")\n\n` +
+                `[$(refresh) Reload Workspace](command:rust-analyzer.reloadWorkspace "Reload and rediscover workspaces")\n\n` +
+                `[$(symbol-property) Rebuild Build Dependencies](command:rust-analyzer.rebuildProcMacros "Rebuild build scripts and proc-macros")\n\n` +
+                `[$(stop-circle) Stop server](command:rust-analyzer.stopServer "Stop the server")\n\n` +
+                `[$(debug-restart) Restart server](command:rust-analyzer.restartServer "Restart the server")`,
         );
         if (!status.quiescent) icon = "$(loading~spin) ";
         statusBar.text = `${icon}rust-analyzer`;
     }
 
     private updateStatusBarVisibility(editor: vscode.TextEditor | undefined) {
-        const documentSelector = this.config.statusBarDocumentSelector;
-        if (documentSelector != null) {
+        const showStatusBar = this.config.statusBarShowStatusBar;
+        if (showStatusBar == null || showStatusBar === "never") {
+            this.statusBar.hide();
+        } else if (showStatusBar === "always") {
+            this.statusBar.show();
+        } else {
+            const documentSelector = showStatusBar.documentSelector;
             if (editor != null && vscode.languages.match(documentSelector, editor.document) > 0) {
                 this.statusBar.show();
-                return;
+            } else {
+                this.statusBar.hide();
             }
         }
-        this.statusBar.hide();
     }
 
     pushExtCleanup(d: Disposable) {
@@ -503,4 +583,5 @@ export interface Disposable {
     dispose(): void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Cmd = (...args: any[]) => unknown;

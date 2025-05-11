@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of `x` which is behind a mutable reference
-  --> $DIR/closure-shim-borrowck-error.rs:10:18
+  --> $DIR/closure-shim-borrowck-error.rs:11:18
    |
 LL |     needs_fn_mut(async || {
    |                  ^^^^^^^^ `x` is moved here
@@ -11,7 +11,7 @@ LL |         x.hello();
    |         move occurs because `x` has type `Ty`, which does not implement the `Copy` trait
    |
 note: if `Ty` implemented `Clone`, you could clone the value
-  --> $DIR/closure-shim-borrowck-error.rs:16:1
+  --> $DIR/closure-shim-borrowck-error.rs:17:1
    |
 LL |         x.hello();
    |         - you could clone this value

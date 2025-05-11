@@ -1,11 +1,11 @@
 error: use of deprecated function `deprecation_lint::deprecated`: text
-  --> $DIR/deprecation-lint-2.rs:12:5
+  --> $DIR/deprecation-lint-2.rs:11:5
    |
 LL |     macro_test!();
    |     ^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/deprecation-lint-2.rs:4:9
+  --> $DIR/deprecation-lint-2.rs:3:9
    |
 LL | #![deny(deprecated)]
    |         ^^^^^^^^^^

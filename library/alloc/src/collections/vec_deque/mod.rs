@@ -645,6 +645,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// initialized rather than only supporting `0..len`.  Requires that
     /// `initialized.start` ≤ `initialized.end` ≤ `capacity`.
     #[inline]
+    #[cfg(not(test))]
     pub(crate) unsafe fn from_contiguous_raw_parts_in(
         ptr: *mut T,
         initialized: Range<usize>,
@@ -823,6 +824,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_reserve")]
     #[track_caller]
     pub fn reserve(&mut self, additional: usize) {
         let new_cap = self.len.checked_add(additional).expect("capacity overflow");
@@ -1176,6 +1178,73 @@ impl<T, A: Allocator> VecDeque<T, A> {
             } else {
                 let drop_back = back as *mut _;
                 let drop_front = front.get_unchecked_mut(len..) as *mut _;
+                self.len = len;
+
+                // Make sure the second half is dropped even when a destructor
+                // in the first one panics.
+                let _back_dropper = Dropper(&mut *drop_back);
+                ptr::drop_in_place(drop_front);
+            }
+        }
+    }
+
+    /// Shortens the deque, keeping the last `len` elements and dropping
+    /// the rest.
+    ///
+    /// If `len` is greater or equal to the deque's current length, this has
+    /// no effect.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(vec_deque_truncate_front)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::new();
+    /// buf.push_front(5);
+    /// buf.push_front(10);
+    /// buf.push_front(15);
+    /// assert_eq!(buf, [15, 10, 5]);
+    /// assert_eq!(buf.as_slices(), (&[15, 10, 5][..], &[][..]));
+    /// buf.truncate_front(1);
+    /// assert_eq!(buf.as_slices(), (&[5][..], &[][..]));
+    /// ```
+    #[unstable(feature = "vec_deque_truncate_front", issue = "140667")]
+    pub fn truncate_front(&mut self, len: usize) {
+        /// Runs the destructor for all items in the slice when it gets dropped (normally or
+        /// during unwinding).
+        struct Dropper<'a, T>(&'a mut [T]);
+
+        impl<'a, T> Drop for Dropper<'a, T> {
+            fn drop(&mut self) {
+                unsafe {
+                    ptr::drop_in_place(self.0);
+                }
+            }
+        }
+
+        unsafe {
+            if len >= self.len {
+                // No action is taken
+                return;
+            }
+
+            let (front, back) = self.as_mut_slices();
+            if len > back.len() {
+                // The 'back' slice remains unchanged.
+                // front.len() + back.len() == self.len, so 'end' is non-negative
+                // and end < front.len()
+                let end = front.len() - (len - back.len());
+                let drop_front = front.get_unchecked_mut(..end) as *mut _;
+                self.head += end;
+                self.len = len;
+                ptr::drop_in_place(drop_front);
+            } else {
+                let drop_front = front as *mut _;
+                // 'end' is non-negative by the condition above
+                let end = back.len() - len;
+                let drop_back = back.get_unchecked_mut(..end) as *mut _;
+                self.head = self.to_physical_idx(self.len - len);
                 self.len = len;
 
                 // Make sure the second half is dropped even when a destructor
@@ -1733,6 +1802,52 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 Some(self.buffer_read(self.to_physical_idx(self.len)))
             }
         }
+    }
+
+    /// Removes and returns the first element from the deque if the predicate
+    /// returns `true`, or [`None`] if the predicate returns false or the deque
+    /// is empty (the predicate will not be called in that case).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_deque_pop_if)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque: VecDeque<i32> = vec![0, 1, 2, 3, 4].into();
+    /// let pred = |x: &mut i32| *x % 2 == 0;
+    ///
+    /// assert_eq!(deque.pop_front_if(pred), Some(0));
+    /// assert_eq!(deque, [1, 2, 3, 4]);
+    /// assert_eq!(deque.pop_front_if(pred), None);
+    /// ```
+    #[unstable(feature = "vec_deque_pop_if", issue = "135889")]
+    pub fn pop_front_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
+        let first = self.front_mut()?;
+        if predicate(first) { self.pop_front() } else { None }
+    }
+
+    /// Removes and returns the last element from the deque if the predicate
+    /// returns `true`, or [`None`] if the predicate returns false or the deque
+    /// is empty (the predicate will not be called in that case).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_deque_pop_if)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque: VecDeque<i32> = vec![0, 1, 2, 3, 4].into();
+    /// let pred = |x: &mut i32| *x % 2 == 0;
+    ///
+    /// assert_eq!(deque.pop_back_if(pred), Some(4));
+    /// assert_eq!(deque, [0, 1, 2, 3]);
+    /// assert_eq!(deque.pop_back_if(pred), None);
+    /// ```
+    #[unstable(feature = "vec_deque_pop_if", issue = "135889")]
+    pub fn pop_back_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
+        let first = self.back_mut()?;
+        if predicate(first) { self.pop_back() } else { None }
     }
 
     /// Prepends an element to the deque.

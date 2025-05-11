@@ -3,15 +3,15 @@
 //! These methods should only do simple, shallow tasks related to the syntax of the node itself.
 
 use crate::{
-    ast::{
-        self,
-        operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
-        support, ArgList, AstChildren, AstNode, BlockExpr, ClosureExpr, Const, Expr, Fn,
-        FormatArgsArg, FormatArgsExpr, MacroDef, Static, TokenTree,
-    },
     AstToken,
-    SyntaxKind::*,
+    SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, T,
+    ast::{
+        self, ArgList, AstChildren, AstNode, BlockExpr, ClosureExpr, Const, Expr, Fn,
+        FormatArgsArg, FormatArgsExpr, MacroDef, Static, TokenTree,
+        operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
+        support,
+    },
 };
 
 use super::RangeItem;
@@ -47,6 +47,27 @@ impl From<ast::BlockExpr> for ElseBranch {
 impl From<ast::IfExpr> for ElseBranch {
     fn from(if_expr: ast::IfExpr) -> Self {
         Self::IfExpr(if_expr)
+    }
+}
+
+impl AstNode for ElseBranch {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        ast::BlockExpr::can_cast(kind) || ast::IfExpr::can_cast(kind)
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if let Some(block_expr) = ast::BlockExpr::cast(syntax.clone()) {
+            Some(Self::Block(block_expr))
+        } else {
+            ast::IfExpr::cast(syntax).map(Self::IfExpr)
+        }
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            ElseBranch::Block(block_expr) => block_expr.syntax(),
+            ElseBranch::IfExpr(if_expr) => if_expr.syntax(),
+        }
     }
 }
 
@@ -393,7 +414,7 @@ impl ast::BlockExpr {
             FOR_EXPR | IF_EXPR => parent
                 .children()
                 .find(|it| ast::Expr::can_cast(it.kind()))
-                .map_or(true, |it| it == *self.syntax()),
+                .is_none_or(|it| it == *self.syntax()),
             LET_ELSE | FN | WHILE_EXPR | LOOP_EXPR | CONST_BLOCK_PAT => false,
             _ => true,
         }

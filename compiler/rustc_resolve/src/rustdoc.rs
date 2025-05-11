@@ -1,6 +1,7 @@
 use std::mem;
 use std::ops::Range;
 
+use itertools::Itertools;
 use pulldown_cmark::{
     BrokenLink, BrokenLinkCallback, CowStr, Event, LinkType, Options, Parser, Tag,
 };
@@ -8,6 +9,7 @@ use rustc_ast as ast;
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::unord::UnordSet;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, InnerSpan, Span, Symbol, kw, sym};
@@ -347,13 +349,10 @@ pub fn strip_generics_from_path(path_str: &str) -> Result<Box<str>, MalformedGen
 
 /// Returns whether the first doc-comment is an inner attribute.
 ///
-//// If there are no doc-comments, return true.
+/// If there are no doc-comments, return true.
 /// FIXME(#78591): Support both inner and outer attributes on the same item.
 pub fn inner_docs(attrs: &[impl AttributeExt]) -> bool {
-    attrs
-        .iter()
-        .find(|a| a.doc_str().is_some())
-        .map_or(true, |a| a.style() == ast::AttrStyle::Inner)
+    attrs.iter().find(|a| a.doc_str().is_some()).is_none_or(|a| a.style() == ast::AttrStyle::Inner)
 }
 
 /// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]`.
@@ -425,9 +424,11 @@ fn parse_links<'md>(doc: &'md str) -> Vec<Box<str>> {
     );
     let mut links = Vec::new();
 
+    let mut refids = UnordSet::default();
+
     while let Some(event) = event_iter.next() {
         match event {
-            Event::Start(Tag::Link { link_type, dest_url, title: _, id: _ })
+            Event::Start(Tag::Link { link_type, dest_url, title: _, id })
                 if may_be_doc_link(link_type) =>
             {
                 if matches!(
@@ -442,10 +443,22 @@ fn parse_links<'md>(doc: &'md str) -> Vec<Box<str>> {
                         links.push(display_text);
                     }
                 }
+                if matches!(
+                    link_type,
+                    LinkType::Reference | LinkType::Shortcut | LinkType::Collapsed
+                ) {
+                    refids.insert(id);
+                }
 
                 links.push(preprocess_link(&dest_url));
             }
             _ => {}
+        }
+    }
+
+    for (label, refdef) in event_iter.reference_definitions().iter().sorted_by_key(|x| x.0) {
+        if !refids.contains(label) {
+            links.push(preprocess_link(&refdef.dest));
         }
     }
 

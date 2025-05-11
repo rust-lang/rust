@@ -23,7 +23,7 @@
   <text xml:space="preserve" class="container fg">
     <tspan x="10px" y="28px"><tspan class="fg-ansi256-009 bold">error[E0106]</tspan><tspan class="bold">: missing lifetime specifier</tspan>
 </tspan>
-    <tspan x="10px" y="46px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:4:34</tspan>
+    <tspan x="10px" y="46px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:3:34</tspan>
 </tspan>
     <tspan x="10px" y="64px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>
@@ -47,7 +47,7 @@
 </tspan>
     <tspan x="10px" y="244px"><tspan class="fg-ansi256-009 bold">error[E0106]</tspan><tspan class="bold">: missing lifetime specifier</tspan>
 </tspan>
-    <tspan x="10px" y="262px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:11:6</tspan>
+    <tspan x="10px" y="262px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:10:6</tspan>
 </tspan>
     <tspan x="10px" y="280px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>
@@ -83,7 +83,7 @@
 </tspan>
     <tspan x="10px" y="568px"><tspan class="fg-ansi256-009 bold">error[E0106]</tspan><tspan class="bold">: missing lifetime specifier</tspan>
 </tspan>
-    <tspan x="10px" y="586px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:16:29</tspan>
+    <tspan x="10px" y="586px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:15:29</tspan>
 </tspan>
     <tspan x="10px" y="604px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>
