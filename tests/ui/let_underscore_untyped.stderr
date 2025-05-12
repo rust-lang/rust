@@ -1,11 +1,11 @@
 error: non-binding `let` without a type annotation
-  --> tests/ui/let_underscore_untyped.rs:51:5
+  --> tests/ui/let_underscore_untyped.rs:50:5
    |
 LL |     let _ = a();
    |     ^^^^^^^^^^^^
    |
 help: consider adding a type annotation
-  --> tests/ui/let_underscore_untyped.rs:51:10
+  --> tests/ui/let_underscore_untyped.rs:50:10
    |
 LL |     let _ = a();
    |          ^
@@ -13,49 +13,49 @@ LL |     let _ = a();
    = help: to override `-D warnings` add `#[allow(clippy::let_underscore_untyped)]`
 
 error: non-binding `let` without a type annotation
-  --> tests/ui/let_underscore_untyped.rs:53:5
+  --> tests/ui/let_underscore_untyped.rs:52:5
    |
 LL |     let _ = b(1);
    |     ^^^^^^^^^^^^^
    |
 help: consider adding a type annotation
-  --> tests/ui/let_underscore_untyped.rs:53:10
+  --> tests/ui/let_underscore_untyped.rs:52:10
    |
 LL |     let _ = b(1);
    |          ^
 
 error: non-binding `let` without a type annotation
-  --> tests/ui/let_underscore_untyped.rs:56:5
+  --> tests/ui/let_underscore_untyped.rs:55:5
    |
 LL |     let _ = d(&1);
    |     ^^^^^^^^^^^^^^
    |
 help: consider adding a type annotation
-  --> tests/ui/let_underscore_untyped.rs:56:10
+  --> tests/ui/let_underscore_untyped.rs:55:10
    |
 LL |     let _ = d(&1);
    |          ^
 
 error: non-binding `let` without a type annotation
-  --> tests/ui/let_underscore_untyped.rs:58:5
+  --> tests/ui/let_underscore_untyped.rs:57:5
    |
 LL |     let _ = e();
    |     ^^^^^^^^^^^^
    |
 help: consider adding a type annotation
-  --> tests/ui/let_underscore_untyped.rs:58:10
+  --> tests/ui/let_underscore_untyped.rs:57:10
    |
 LL |     let _ = e();
    |          ^
 
 error: non-binding `let` without a type annotation
-  --> tests/ui/let_underscore_untyped.rs:60:5
+  --> tests/ui/let_underscore_untyped.rs:59:5
    |
 LL |     let _ = f();
    |     ^^^^^^^^^^^^
    |
 help: consider adding a type annotation
-  --> tests/ui/let_underscore_untyped.rs:60:10
+  --> tests/ui/let_underscore_untyped.rs:59:10
    |
 LL |     let _ = f();
    |          ^
