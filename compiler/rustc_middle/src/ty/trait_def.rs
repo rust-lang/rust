@@ -239,37 +239,33 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
 
 /// Query provider for `incoherent_impls`.
 pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -> &[DefId] {
-    let mut impls = Vec::new();
-    for cnum in iter::once(LOCAL_CRATE).chain(tcx.crates(()).iter().copied()) {
-        for &impl_def_id in tcx.crate_incoherent_impls((cnum, simp)) {
-            impls.push(impl_def_id)
-        }
-    }
-    debug!(?impls);
+    let impls = iter::once(&LOCAL_CRATE)
+        .chain(tcx.crates(()))
+        .flat_map(|&cnum| tcx.crate_incoherent_impls((cnum, simp)))
+        .copied();
 
-    tcx.arena.alloc_slice(&impls)
+    debug!(impls = ?impls.clone().collect::<Vec<_>>());
+
+    tcx.arena.alloc_from_iter(impls)
 }
 
 pub(super) fn traits_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
-    let mut traits = Vec::new();
-    for id in tcx.hir_free_items() {
-        if matches!(tcx.def_kind(id.owner_id), DefKind::Trait | DefKind::TraitAlias) {
-            traits.push(id.owner_id.to_def_id())
-        }
-    }
+    let traits = tcx
+        .hir_free_items()
+        .filter(|id| matches!(tcx.def_kind(id.owner_id), DefKind::Trait | DefKind::TraitAlias))
+        .map(|id| id.owner_id.to_def_id());
 
-    tcx.arena.alloc_slice(&traits)
+    tcx.arena.alloc_from_iter(traits)
 }
 
 pub(super) fn trait_impls_in_crate_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
-    let mut trait_impls = Vec::new();
-    for id in tcx.hir_free_items() {
-        if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. })
-            && tcx.impl_trait_ref(id.owner_id).is_some()
-        {
-            trait_impls.push(id.owner_id.to_def_id())
-        }
-    }
+    let trait_impls = tcx
+        .hir_free_items()
+        .filter(|id| {
+            matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. })
+                && tcx.impl_trait_ref(id.owner_id).is_some()
+        })
+        .map(|id| id.owner_id.to_def_id());
 
-    tcx.arena.alloc_slice(&trait_impls)
+    tcx.arena.alloc_from_iter(trait_impls)
 }
