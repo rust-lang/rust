@@ -747,14 +747,21 @@ fn generate_impl_inner(
     .clone_for_update();
 
     // Copy any cfg attrs from the original adt
-    let cfg_attrs = adt
-        .attrs()
-        .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false));
-    for attr in cfg_attrs {
-        impl_.add_attr(attr.clone_for_update());
-    }
+    add_cfg_attrs_to(adt, &impl_);
 
     impl_
+}
+
+pub(crate) fn add_cfg_attrs_to<T, U>(from: &T, to: &U)
+where
+    T: HasAttrs,
+    U: AttrsOwnerEdit,
+{
+    let cfg_attrs =
+        from.attrs().filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
+    for attr in cfg_attrs {
+        to.add_attr(attr.clone_for_update());
+    }
 }
 
 pub(crate) fn add_method_to_adt(

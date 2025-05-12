@@ -1954,6 +1954,34 @@ impl Person {
 }
 
 #[test]
+fn doctest_generate_single_field_struct_from() {
+    check_doc_test(
+        "generate_single_field_struct_from",
+        r#####"
+//- minicore: from, phantom_data
+use core::marker::PhantomData;
+struct $0Foo<T> {
+    id: i32,
+    _phantom_data: PhantomData<T>,
+}
+"#####,
+        r#####"
+use core::marker::PhantomData;
+struct Foo<T> {
+    id: i32,
+    _phantom_data: PhantomData<T>,
+}
+
+impl<T> From<i32> for Foo<T> {
+    fn from(id: i32) -> Self {
+        Self { id, _phantom_data: PhantomData }
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_trait_from_impl() {
     check_doc_test(
         "generate_trait_from_impl",
