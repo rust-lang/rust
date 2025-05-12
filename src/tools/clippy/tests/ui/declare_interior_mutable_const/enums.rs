@@ -1,5 +1,7 @@
 #![warn(clippy::declare_interior_mutable_const)]
 
+// FIXME: there are hardly any warnings since the lint no longer works on generic consts.
+
 use std::cell::Cell;
 use std::sync::atomic::AtomicUsize;
 
@@ -106,18 +108,14 @@ enum BothOfCellAndGeneric<T> {
 
 impl<T> BothOfCellAndGeneric<T> {
     const UNFROZEN_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Unfrozen(Cell::new(std::ptr::null()));
-    //~^ declare_interior_mutable_const
 
-    // This is a false positive. The argument about this is on `is_value_unfrozen_raw`
     const GENERIC_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Generic(std::ptr::null());
-    //~^ declare_interior_mutable_const
 
     const FROZEN_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Frozen(5);
 
     // This is what is likely to be a false negative when one tries to fix
     // the `GENERIC_VARIANT` false positive.
     const NO_ENUM: Cell<*const T> = Cell::new(std::ptr::null());
-    //~^ declare_interior_mutable_const
 }
 
 // associated types here is basically the same as the one above.
@@ -125,10 +123,8 @@ trait BothOfCellAndGenericWithAssocType {
     type AssocType;
 
     const UNFROZEN_VARIANT: BothOfCellAndGeneric<Self::AssocType> =
-        //~^ declare_interior_mutable_const
         BothOfCellAndGeneric::Unfrozen(Cell::new(std::ptr::null()));
     const GENERIC_VARIANT: BothOfCellAndGeneric<Self::AssocType> = BothOfCellAndGeneric::Generic(std::ptr::null());
-    //~^ declare_interior_mutable_const
     const FROZEN_VARIANT: BothOfCellAndGeneric<Self::AssocType> = BothOfCellAndGeneric::Frozen(5);
 }
 

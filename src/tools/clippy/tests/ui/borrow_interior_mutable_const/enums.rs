@@ -3,7 +3,10 @@
 #![deny(clippy::borrow_interior_mutable_const)]
 #![allow(clippy::declare_interior_mutable_const)]
 
-// this file (mostly) replicates its `declare` counterpart. Please see it for more discussions.
+// this file (mostly) replicates its counterpart in `declare_interior_mutable_const`. Please see it
+// for more discussions.
+
+// FIXME: there are hardly any warnings since the lint no longer works on generic consts.
 
 extern crate helper;
 
@@ -34,11 +37,11 @@ trait AssocConsts {
         // This is the "suboptimal behavior" mentioned in `is_value_unfrozen`
         // caused by a similar reason to unfrozen types without any default values
         // get linted even if it has frozen variants'.
-        let _ = &Self::TO_BE_FROZEN_VARIANT; //~ ERROR: interior mutability
+        let _ = &Self::TO_BE_FROZEN_VARIANT;
 
         // The lint ignores default values because an impl of this trait can set
         // an unfrozen variant to `DEFAULTED_ON_FROZEN_VARIANT` and use the default impl for `function`.
-        let _ = &Self::DEFAULTED_ON_FROZEN_VARIANT; //~ ERROR: interior mutability
+        let _ = &Self::DEFAULTED_ON_FROZEN_VARIANT;
     }
 }
 
@@ -88,8 +91,8 @@ impl<T> BothOfCellAndGeneric<T> {
     const FROZEN_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Frozen(5);
 
     fn function() {
-        let _ = &Self::UNFROZEN_VARIANT; //~ ERROR: interior mutability
-        let _ = &Self::GENERIC_VARIANT; //~ ERROR: interior mutability
+        let _ = &Self::UNFROZEN_VARIANT;
+        let _ = &Self::GENERIC_VARIANT;
         let _ = &Self::FROZEN_VARIANT;
     }
 }

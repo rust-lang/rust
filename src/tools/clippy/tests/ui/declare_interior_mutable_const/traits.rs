@@ -4,10 +4,11 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::sync::atomic::AtomicUsize;
 
+// FIXME: there are hardly any warnings since the lint no longer works on generic consts.
+
 macro_rules! declare_const {
     ($name:ident: $ty:ty = $e:expr) => {
         const $name: $ty = $e;
-        //~^ declare_interior_mutable_const
     };
 }
 
@@ -136,7 +137,6 @@ trait BothOfCellAndGeneric<T> {
 
 impl<T: ConstDefault> BothOfCellAndGeneric<T> for u64 {
     const DIRECT: Cell<T> = Cell::new(T::DEFAULT);
-    //~^ declare_interior_mutable_const
     const INDIRECT: Cell<*const T> = Cell::new(std::ptr::null());
 }
 

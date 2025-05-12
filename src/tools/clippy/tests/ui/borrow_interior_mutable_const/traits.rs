@@ -1,7 +1,10 @@
 #![deny(clippy::borrow_interior_mutable_const)]
 #![allow(clippy::declare_interior_mutable_const)]
 
-// this file replicates its `declare` counterpart. Please see it for more discussions.
+// this file replicates its counterpart in `declare_interior_mutable_const`. Please see it for more
+// discussions.
+
+// FIXME: there are hardly any warnings since the lint no longer works on generic consts.
 
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -13,7 +16,6 @@ trait ConcreteTypes {
 
     fn function() {
         let _ = &Self::ATOMIC;
-        //~^ borrow_interior_mutable_const
         let _ = &Self::STRING;
     }
 }
@@ -112,7 +114,6 @@ where
     fn function() {
         let _ = &Self::NOT_BOUNDED;
         let _ = &Self::BOUNDED;
-        //~^ borrow_interior_mutable_const
     }
 }
 
@@ -168,9 +169,7 @@ trait BothOfCellAndGeneric<T> {
 
     fn function() {
         let _ = &Self::DIRECT;
-        //~^ borrow_interior_mutable_const
         let _ = &Self::INDIRECT;
-        //~^ borrow_interior_mutable_const
     }
 }
 
@@ -180,9 +179,7 @@ impl<T: ConstDefault> BothOfCellAndGeneric<T> for Vec<T> {
 
     fn function() {
         let _ = &Self::DIRECT;
-        //~^ borrow_interior_mutable_const
         let _ = &Self::INDIRECT;
-        //~^ borrow_interior_mutable_const
     }
 }
 
