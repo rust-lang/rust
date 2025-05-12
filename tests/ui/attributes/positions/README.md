@@ -20,7 +20,7 @@ Or perhaps you've seen a discussion get derailed by a [comment](https://github.c
 > fn main() {
 >     f(#[cold] || {});
 > }
-> 
+>
 > fn f(_: impl Fn()) {}
 > ```
 
@@ -105,9 +105,6 @@ pub mod module {
 
     #[ATTRIBUTE] //~ WARN
     impl<'lt, T> Struct<'lt, T> {
-        #![ATTRIBUTE] //~ WARN
-        //~^ WARN unused attribute
-        //~^^ WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
         #[ATTRIBUTE] //~ WARN
         pub fn method(#[ATTRIBUTE] &mut self) { //~ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
@@ -158,6 +155,14 @@ pub mod module {
 
 pub mod inner_module {
     #![ATTRIBUTE] //~ WARN
+
+    impl<'lt, T> super::module::Struct<'lt, T> {
+        #![ATTRIBUTE] //~ WARN
+
+        pub fn inner_method(&mut self) {
+            #![ATTRIBUTE] //~ ERROR
+        }
+    }
 
     fn x() {
         const {

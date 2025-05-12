@@ -66,8 +66,6 @@ pub mod module {
 
     #[no_link] //~ ERROR
     impl<'lt, T> Struct<'lt, T> {
-        #![no_link] //~ ERROR
-        //~^ WARN unused attribute
 
 
         #[no_link] //~ ERROR
@@ -121,6 +119,13 @@ pub mod module {
 pub mod inner_module {
     #![no_link] //~ ERROR
 
+    impl<'lt, T> super::module::Struct<'lt, T> {
+        #![no_link] //~ ERROR
+
+        pub fn inner_method(&mut self) {
+            #![no_link] //~ ERROR
+        }
+    }
     fn x(){
         const {
             #![no_link] //~ ERROR

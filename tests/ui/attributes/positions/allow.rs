@@ -65,7 +65,7 @@ pub mod module {
 
     #[allow()] // OK
     impl<'lt, T> Struct<'lt, T> {
-        #![allow()] // OK
+
         #[allow()] // OK
         pub fn method(#[allow()] &mut self) {  // OK
 
@@ -111,6 +111,14 @@ pub mod module {
 
 pub mod inner_module {
     #![allow()] // OK
+
+    impl<'lt, T> super::module::Struct<'lt, T> {
+        #![allow()] // OK
+
+        pub fn inner_method(&mut self) {
+            #![allow()] // OK
+        }
+    }
 
     fn x() {
         const {

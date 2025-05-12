@@ -9,7 +9,7 @@ LL |             #[allow()]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/allow.rs:124:20
+  --> $DIR/allow.rs:132:20
    |
 LL |     let _closure = #[allow()]
    |                    ^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     let _closure = #[allow()]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/allow.rs:127:25
+  --> $DIR/allow.rs:135:25
    |
 LL |     let _move_closure = #[allow()]
    |                         ^^^^^^^^^^
@@ -29,7 +29,7 @@ LL |     let _move_closure = #[allow()]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/allow.rs:137:22
+  --> $DIR/allow.rs:145:22
    |
 LL |         let _array = #[allow()]
    |                      ^^^^^^^^^^
@@ -39,7 +39,7 @@ LL |         let _array = #[allow()]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/allow.rs:143:22
+  --> $DIR/allow.rs:151:22
    |
 LL |         let _tuple = #[allow()]
    |                      ^^^^^^^^^^

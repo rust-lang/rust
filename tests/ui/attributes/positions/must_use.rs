@@ -66,9 +66,6 @@ pub mod module {
 
     #[must_use] //~ WARN
     impl<'lt, T> Struct<'lt, T> {
-        #![must_use] //~ WARN
-        //~^ WARN unused attribute
-        //~^^ WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
         #[must_use] // OK
         pub fn method(#[must_use] &mut self) { //~ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
@@ -120,6 +117,14 @@ pub mod module {
 
 pub mod inner_module {
     #![must_use] //~ WARN
+
+    impl<'lt, T> super::module::Struct<'lt, T> {
+        #![must_use] //~ WARN
+
+        pub fn inner_method(&mut self) {
+            #![must_use] // OK
+        }
+    }
 
     fn x() {
         const {
