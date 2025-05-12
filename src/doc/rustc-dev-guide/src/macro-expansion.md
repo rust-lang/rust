@@ -2,9 +2,6 @@
 
 <!-- toc -->
 
-> N.B. [`rustc_ast`], [`rustc_expand`], and [`rustc_builtin_macros`] are all
-> undergoing refactoring, so some of the links in this chapter may be broken.
-
 Rust has a very powerful macro system. In the previous chapter, we saw how
 the parser sets aside macros to be expanded (using temporary [placeholders]).
 This chapter is about the process of expanding those macros iteratively until
