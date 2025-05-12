@@ -47,7 +47,6 @@ pulldown-cmark = { version = "0.11", default-features = false, features = ["html
 askama = { version = "0.13", default-features = false, features = ["alloc", "config", "derive"] }
 
 # UI test dependencies
-clippy_utils = { path = "clippy_utils" }
 if_chain = "1.0"
 quote = "1.0.25"
 syn = { version = "2.0", features = ["full"] }
