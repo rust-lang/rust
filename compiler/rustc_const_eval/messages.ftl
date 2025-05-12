@@ -207,8 +207,6 @@ const_eval_long_running =
     .label = the const evaluator is currently interpreting this expression
     .help = the constant being evaluated
 
-const_eval_max_num_nodes_in_const = maximum number of nodes exceeded in constant {$global_const_id}
-
 const_eval_memory_exhausted =
     tried to allocate more memory than available to compiler
 
@@ -437,9 +435,6 @@ const_eval_unwind_past_top =
 ## (We'd love to sort this differently to make that more clear but tidy won't let us...)
 const_eval_validation_box_to_uninhabited = {$front_matter}: encountered a box pointing to uninhabited type {$ty}
 
-const_eval_validation_const_ref_to_extern = {$front_matter}: encountered reference to `extern` static in `const`
-const_eval_validation_const_ref_to_mutable = {$front_matter}: encountered reference to mutable memory in `const`
-
 const_eval_validation_dangling_box_no_provenance = {$front_matter}: encountered a dangling box ({$pointer} has no provenance)
 const_eval_validation_dangling_box_out_of_bounds = {$front_matter}: encountered a dangling box (going beyond the bounds of its allocation)
 const_eval_validation_dangling_box_use_after_free = {$front_matter}: encountered a dangling box (use-after-free)
@@ -479,6 +474,7 @@ const_eval_validation_invalid_ref_meta = {$front_matter}: encountered invalid re
 const_eval_validation_invalid_ref_slice_meta = {$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object
 const_eval_validation_invalid_vtable_ptr = {$front_matter}: encountered {$value}, but expected a vtable pointer
 const_eval_validation_invalid_vtable_trait = {$front_matter}: wrong trait in wide pointer vtable: expected `{$expected_dyn_type}`, but encountered `{$vtable_dyn_type}`
+const_eval_validation_mutable_ref_in_const = {$front_matter}: encountered mutable reference in `const` value
 const_eval_validation_mutable_ref_to_immutable = {$front_matter}: encountered mutable reference or box pointing to read-only memory
 const_eval_validation_never_val = {$front_matter}: encountered a value of the never type `!`
 const_eval_validation_null_box = {$front_matter}: encountered a null box

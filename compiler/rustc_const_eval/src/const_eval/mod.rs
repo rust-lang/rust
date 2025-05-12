@@ -26,13 +26,6 @@ pub(crate) use self::valtrees::{eval_to_valtree, valtree_to_const_value};
 // We forbid type-level constants that contain more than `VALTREE_MAX_NODES` nodes.
 const VALTREE_MAX_NODES: usize = 100000;
 
-pub(crate) enum ValTreeCreationError<'tcx> {
-    NodesOverflow,
-    /// Values of this type, or this particular value, are not supported as valtrees.
-    NonSupportedType(Ty<'tcx>),
-}
-pub(crate) type ValTreeCreationResult<'tcx> = Result<ty::ValTree<'tcx>, ValTreeCreationError<'tcx>>;
-
 #[instrument(skip(tcx), level = "debug")]
 pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
     tcx: TyCtxt<'tcx>,

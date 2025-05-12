@@ -5,7 +5,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 
 use super::ScalarInt;
-use crate::mir::interpret::Scalar;
+use crate::mir::interpret::{ErrorHandled, Scalar};
 use crate::ty::{self, Ty, TyCtxt};
 
 /// This datastructure is used to represent the value of constants used in the type system.
@@ -123,6 +123,12 @@ impl fmt::Debug for ValTree<'_> {
         (**self).fmt(f)
     }
 }
+
+/// `Ok(Err(ty))` indicates the constant was fine, but the valtree couldn't be constructed
+/// because the value contains something of type `ty` that is not valtree-compatible.
+/// The caller can then show an appropriate error; the query does not have the
+/// necessary context to give good user-facing errors for this case.
+pub type ConstToValTreeResult<'tcx> = Result<Result<ValTree<'tcx>, Ty<'tcx>>, ErrorHandled>;
 
 /// A type-level constant value.
 ///

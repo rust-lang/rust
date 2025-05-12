@@ -570,6 +570,8 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     };
                     let (size, _align) =
                         global_alloc.size_and_align(*self.ecx.tcx, self.ecx.typing_env);
+                    let alloc_actual_mutbl =
+                        global_alloc.mutability(*self.ecx.tcx, self.ecx.typing_env);
 
                     if let GlobalAlloc::Static(did) = global_alloc {
                         let DefKind::Static { nested, .. } = self.ecx.tcx.def_kind(did) else {
@@ -597,9 +599,11 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                                 skip_recursive_check = !nested;
                             }
                             CtfeValidationMode::Const { .. } => {
-                                // We can't recursively validate `extern static`, so we better reject them.
-                                if self.ecx.tcx.is_foreign_item(did) {
-                                    throw_validation_failure!(self.path, ConstRefToExtern);
+                                // If this is mutable memory or an `extern static`, there's no point in checking it -- we'd
+                                // just get errors trying to read the value.
+                                if alloc_actual_mutbl.is_mut() || self.ecx.tcx.is_foreign_item(did)
+                                {
+                                    skip_recursive_check = true;
                                 }
                             }
                         }
@@ -618,9 +622,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                                 mutbl
                             }
                         };
-                        // Determine what it actually points to.
-                        let alloc_actual_mutbl =
-                            global_alloc.mutability(*self.ecx.tcx, self.ecx.typing_env);
                         // Mutable pointer to immutable memory is no good.
                         if ptr_expected_mutbl == Mutability::Mut
                             && alloc_actual_mutbl == Mutability::Not
@@ -628,12 +629,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                             // This can actually occur with transmutes.
                             throw_validation_failure!(self.path, MutableRefToImmutable);
                         }
-                        // In a const, everything must be completely immutable.
+                        // In a const, any kind of mutable reference is not good.
                         if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. })) {
-                            if ptr_expected_mutbl == Mutability::Mut
-                                || alloc_actual_mutbl == Mutability::Mut
-                            {
-                                throw_validation_failure!(self.path, ConstRefToMutable);
+                            if ptr_expected_mutbl == Mutability::Mut {
+                                throw_validation_failure!(self.path, MutableRefInConst);
                             }
                         }
                     }
