@@ -1,3 +1,4 @@
+//@ min-llvm-version: 20
 //@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
 #![crate_type = "lib"]
 
@@ -24,7 +25,7 @@ pub fn non_zero_signed_eq(l: Option<NonZero<i64>>, r: Option<NonZero<i64>>) -> b
     l == r
 }
 
-// Test for #49892
+// FIXME(#49892)
 // This currently relies on a manual implementation of `PartialOrd`/`Ord` for `Option`
 // Once LLVM is better able to optimize this pattern, we can return to using a derive.
 // CHECK-LABEL: @non_zero_ord
@@ -73,13 +74,3 @@ pub fn niche_eq(l: Option<EnumWithNiche>, r: Option<EnumWithNiche>) -> bool {
     // CHECK-NEXT: ret i1
     l == r
 }
-
-// FIXME: This should work too
-// // FIXME-CHECK-LABEL: @bool_eq
-// #[no_mangle]
-// pub fn bool_eq(l: Option<bool>, r: Option<bool>) -> bool {
-//     // FIXME-CHECK: start:
-//     // FIXME-CHECK-NEXT: icmp eq i8
-//     // FIXME-CHECK-NEXT: ret i1
-//     l == r
-// }
