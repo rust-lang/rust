@@ -919,7 +919,7 @@ fn conv_to_externabi(conv: &Conv) -> ExternAbi {
         Conv::AvrNonBlockingInterrupt => ExternAbi::AvrNonBlockingInterrupt,
         Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine } => ExternAbi::RiscvInterruptM,
         Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor } => ExternAbi::RiscvInterruptS,
-        Conv::Cold | Conv::PreserveAll => panic!("This is deadcode"),
+        Conv::Cold | Conv::PreserveAll => unreachable!(),
     }
 }
 
