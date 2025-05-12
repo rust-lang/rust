@@ -1,5 +1,5 @@
 error: attribute must be applied to a `static` variable
-  --> $DIR/used.rs:4:1
+  --> $DIR/used.rs:7:1
    |
 LL | #[used]
    | ^^^^^^^
@@ -7,7 +7,7 @@ LL | fn foo() {}
    | ----------- but this is a function
 
 error: attribute must be applied to a `static` variable
-  --> $DIR/used.rs:7:1
+  --> $DIR/used.rs:10:1
    |
 LL | #[used]
    | ^^^^^^^
@@ -15,7 +15,7 @@ LL | struct Foo {}
    | ------------- but this is a struct
 
 error: attribute must be applied to a `static` variable
-  --> $DIR/used.rs:10:1
+  --> $DIR/used.rs:13:1
    |
 LL | #[used]
    | ^^^^^^^
@@ -23,12 +23,20 @@ LL | trait Bar {}
    | ------------ but this is a trait
 
 error: attribute must be applied to a `static` variable
-  --> $DIR/used.rs:13:1
+  --> $DIR/used.rs:16:1
    |
 LL | #[used]
    | ^^^^^^^
 LL | impl Bar for Foo {}
    | ------------------- but this is a implementation block
 
-error: aborting due to 4 previous errors
+error: attribute must be applied to a `static` variable
+  --> $DIR/used.rs:21:5
+   |
+LL |     #[used]
+   |     ^^^^^^^
+LL |     static BAR: i32;
+   |     ---------------- but this is a foreign static item
+
+error: aborting due to 5 previous errors
 
