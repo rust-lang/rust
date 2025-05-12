@@ -13,12 +13,16 @@ or:
 // FIXME: This can be used on stable but shouldn't.
 ```
 
-Or perhaps you've seen discussions getting derailed by comments like:
+Or perhaps you've seen a discussion get derailed by a [comment](https://github.com/rust-lang/rust/issues/127436#issuecomment-2576134477) like:
 
-```text
-I discovered today that the following code already compiles on stable since at least Rust 1.31
-...
-```
+> Amanieu and I discovered today that the following code already compiles on stable since at least Rust 1.31. I suspect that the `#[cold]` attribute is getting picked up as an argument-level attribute (similar to `#[cfg(…)]` being supported on arguments) and not as an expression attribute on the closure expression, and consequently being ignored as opposed to actually making the closure cold. If that's indeed what is happening, consider whether this case needs to be fixed before stabilizing attribute syntax on closures.
+> ```rust
+> fn main() {
+>     f(#[cold] || {});
+> }
+> 
+> fn f(_: impl Fn()) {}
+> ```
 
 This is largely because our coverage of attributes and where they're allowed is very poor.
 This test suite attempts to consistently and exhaustively check attributes in various positions.
