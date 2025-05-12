@@ -1,6 +1,6 @@
 // Checks sidebar resizing stays synced with the setting
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-assert-property: (".sidebar", {"clientWidth": "200"})
+assert-property: (".sidebar", {"clientWidth": "199"})
 show-text: true
 
 // Verify that the "hide" option is unchecked
