@@ -2274,9 +2274,9 @@ impl Step for LlvmTools {
 
         let target = self.target;
 
-        /* run only if llvm-config isn't used */
+        // Run only if a custom llvm-config is not used
         if let Some(config) = builder.config.target_config.get(&target) {
-            if let Some(ref _s) = config.llvm_config {
+            if !builder.config.llvm_from_ci && config.llvm_config.is_some() {
                 builder.info(&format!("Skipping LlvmTools ({target}): external LLVM"));
                 return None;
             }
@@ -2294,6 +2294,12 @@ impl Step for LlvmTools {
             let dst_bindir = format!("lib/rustlib/{}/bin", target.triple);
             for tool in tools_to_install(&builder.paths) {
                 let exe = src_bindir.join(exe(tool, target));
+                // When using `download-ci-llvm`, some of the tools may not exist, so skip trying to copy them.
+                if !exe.exists() && builder.config.llvm_from_ci {
+                    eprintln!("{} does not exist; skipping copy", exe.display());
+                    continue;
+                }
+
                 tarball.add_file(&exe, &dst_bindir, FileType::Executable);
             }
         }
