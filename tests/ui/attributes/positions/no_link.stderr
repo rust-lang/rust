@@ -1,0 +1,730 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/no_link.rs:79:13
+   |
+LL |             #[no_link]
+   |             ^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/no_link.rs:119:20
+   |
+LL |     let _closure = #[no_link]
+   |                    ^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/no_link.rs:123:25
+   |
+LL |     let _move_closure = #[no_link]
+   |                         ^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/no_link.rs:136:22
+   |
+LL |         let _array = #[no_link]
+   |                      ^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/no_link.rs:143:22
+   |
+LL |         let _tuple = #[no_link]
+   |                      ^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/no_link.rs:77:23
+   |
+LL | ...   pub fn method(#[no_link] &mut self) {
+   |                     ^^^^^^^^^^
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/no_link.rs:85:30
+   |
+LL | ...   pub fn static_method(#[no_link] _arg: u32) {}
+   |                            ^^^^^^^^^^
+
+error[E0658]: trait aliases are experimental
+  --> $DIR/no_link.rs:35:5
+   |
+LL |     trait TraitAlias = Debug;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #41517 <https://github.com/rust-lang/rust/issues/41517> for more information
+   = help: add `#![feature(trait_alias)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:13:1
+   |
+LL | #[no_link]
+   | ^^^^^^^^^^
+LL | pub mod empty_crate;
+   | -------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:16:1
+   |
+LL |   #[no_link]
+   |   ^^^^^^^^^^
+LL | / pub mod module {
+LL | |     #![no_link]
+...  |
+LL | | }
+   | |_- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:18:5
+   |
+LL | / pub mod module {
+LL | |     #![no_link]
+   | |     ^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- not an `extern crate` item
+
+warning: unused attribute
+  --> $DIR/no_link.rs:18:5
+   |
+LL |     #![no_link]
+   |     ^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/no_link.rs:16:1
+   |
+LL | #[no_link]
+   | ^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/no_link.rs:4:9
+   |
+LL | #![warn(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:117:1
+   |
+LL |   #[no_link]
+   |   ^^^^^^^^^^
+LL | / fn main() {
+LL | |     let _closure = #[no_link]
+LL | |
+LL | |     | _arg: u32| {};
+...  |
+LL | | }
+   | |_- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:119:20
+   |
+LL |     let _closure = #[no_link]
+   |                    ^^^^^^^^^^
+LL |
+LL |     | _arg: u32| {};
+   |     --------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:123:25
+   |
+LL |     let _move_closure = #[no_link]
+   |                         ^^^^^^^^^^
+LL |
+LL |     move | _arg: u32| {};
+   |     -------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:127:5
+   |
+LL |       #[no_link]
+   |       ^^^^^^^^^^
+LL | /     {
+LL | |         #![no_link]
+...  |
+LL | |         tail
+LL | |     }
+   | |_____- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:129:9
+   |
+LL | /     {
+LL | |         #![no_link]
+   | |         ^^^^^^^^^^^
+...  |
+LL | |         tail
+LL | |     }
+   | |_____- not an `extern crate` item
+
+warning: unused attribute
+  --> $DIR/no_link.rs:129:9
+   |
+LL |         #![no_link]
+   |         ^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/no_link.rs:127:5
+   |
+LL |     #[no_link]
+   |     ^^^^^^^^^^
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:133:9
+   |
+LL |         #[no_link]
+   |         ^^^^^^^^^^
+LL |         let variable = 42_u32;
+   |         ---------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:136:22
+   |
+LL |           let _array = #[no_link]
+   |                        ^^^^^^^^^^
+LL |
+LL | /         [
+LL | |             #[no_link]
+LL | |             1,
+LL | |             2,
+LL | |         ];
+   | |_________- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:139:13
+   |
+LL |             #[no_link]
+   |             ^^^^^^^^^^
+LL |             1,
+   |             - not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:143:22
+   |
+LL |           let _tuple = #[no_link]
+   |                        ^^^^^^^^^^
+LL |
+LL | /         (
+LL | |             #[no_link]
+LL | |             1,
+LL | |             2,
+LL | |         );
+   | |_________- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:146:13
+   |
+LL |             #[no_link]
+   |             ^^^^^^^^^^
+LL |             1,
+   |             - not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:151:13
+   |
+LL |             #[no_link]
+   |             ^^^^^^^^^^
+LL |             2,
+   |             - not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:155:13
+   |
+LL |             #[no_link]
+   |             ^^^^^^^^^^
+LL |             struct_field: 42,
+   |             ---------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:161:13
+   |
+LL |             #[no_link]
+   |             ^^^^^^^^^^
+LL |             field: 42,
+   |             --------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:166:13
+   |
+LL |             #[no_link]
+   |             ^^^^^^^^^^
+LL |             42,
+   |             -- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:170:9
+   |
+LL |           #[no_link]
+   |           ^^^^^^^^^^
+LL | /         match variable {
+LL | |             #[no_link]
+LL | |             _match_arm => {}
+LL | |         }
+   | |_________- not an `extern crate` item
+
+warning: `#[no_link]` is ignored on struct fields, match arms and macro defs
+  --> $DIR/no_link.rs:172:13
+   |
+LL |             #[no_link]
+   |             ^^^^^^^^^^
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:178:9
+   |
+LL |         #[no_link]
+   |         ^^^^^^^^^^
+LL |         tail
+   |         ---- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:186:13
+   |
+LL |             #[no_link]
+   |             ^^^^^^^^^^
+LL |             || {},
+   |             ----- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:191:5
+   |
+LL |       #[no_link]
+   |       ^^^^^^^^^^
+LL | /     unsafe {
+LL | |         let _x = [1, 2, 3].get_unchecked(1);
+LL | |     }
+   | |_____- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:197:1
+   |
+LL |   #[no_link]
+   |   ^^^^^^^^^^
+LL | / unsafe extern "C" {
+LL | |     #![no_link]
+...  |
+LL | |     pub static mut EXTERNAL_STATIC_MUT: *mut u32;
+LL | | }
+   | |_- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:199:5
+   |
+LL | / unsafe extern "C" {
+LL | |     #![no_link]
+   | |     ^^^^^^^^^^^
+...  |
+LL | |     pub static mut EXTERNAL_STATIC_MUT: *mut u32;
+LL | | }
+   | |_- not an `extern crate` item
+
+warning: unused attribute
+  --> $DIR/no_link.rs:199:5
+   |
+LL |     #![no_link]
+   |     ^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/no_link.rs:197:1
+   |
+LL | #[no_link]
+   | ^^^^^^^^^^
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:216:1
+   |
+LL | #[no_link]
+   | ^^^^^^^^^^
+LL | pub unsafe extern "C" fn abi_function(_: u32) {}
+   | ------------------------------------------------ not an `extern crate` item
+
+warning: `#[no_link]` is ignored on struct fields, match arms and macro defs
+  --> $DIR/no_link.rs:219:1
+   |
+LL | #[no_link]
+   | ^^^^^^^^^^
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:203:5
+   |
+LL |       #[no_link]
+   |       ^^^^^^^^^^
+LL | /     pub fn external_function(
+LL | |         arg: *mut u8,
+LL | |         ...
+LL | |     );
+   | |______- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:209:5
+   |
+LL |     #[no_link]
+   |     ^^^^^^^^^^
+LL |     pub static EXTERNAL_STATIC: *const u32;
+   |     --------------------------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:212:5
+   |
+LL |     #[no_link]
+   |     ^^^^^^^^^^
+LL |     pub static mut EXTERNAL_STATIC_MUT: *mut u32;
+   |     --------------------------------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:6:1
+   |
+LL | #![no_link]
+   | ^^^^^^^^^^^ not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:22:5
+   |
+LL |     #[no_link]
+   |     ^^^^^^^^^^
+LL |     pub static GLOBAL: u32 = 42;
+   |     ---------------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:25:5
+   |
+LL |     #[no_link]
+   |     ^^^^^^^^^^
+LL |     pub static mut GLOBAL_MUT: u32 = 42;
+   |     ------------------------------------ not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:28:5
+   |
+LL |     #[no_link]
+   |     ^^^^^^^^^^
+LL |     pub const CONST: u32 = 42;
+   |     -------------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:31:5
+   |
+LL |     #[no_link]
+   |     ^^^^^^^^^^
+LL |     use ::core::fmt::Debug;
+   |     ----------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:34:5
+   |
+LL |     #[no_link]
+   |     ^^^^^^^^^^
+LL |     trait TraitAlias = Debug;
+   |     ------------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:37:5
+   |
+LL |     #[no_link]
+   |     ^^^^^^^^^^
+LL |     pub type TypeAlias = u32;
+   |     ------------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:40:5
+   |
+LL |       #[no_link]
+   |       ^^^^^^^^^^
+LL | /     pub struct Struct<
+LL | |         #[no_link] 'lt,
+LL | |         #[no_link] T>
+...  |
+LL | |         pub generic_field: &'lt T,
+LL | |     }
+   | |_____- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:42:9
+   |
+LL |         #[no_link] 'lt,
+   |         ^^^^^^^^^^ --- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:43:9
+   |
+LL |         #[no_link] T>
+   |         ^^^^^^^^^^ - not an `extern crate` item
+
+warning: `#[no_link]` is ignored on struct fields, match arms and macro defs
+  --> $DIR/no_link.rs:45:9
+   |
+LL |         #[no_link]
+   |         ^^^^^^^^^^
+
+warning: `#[no_link]` is ignored on struct fields, match arms and macro defs
+  --> $DIR/no_link.rs:47:9
+   |
+LL |         #[no_link]
+   |         ^^^^^^^^^^
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:51:5
+   |
+LL |     #[no_link]
+   |     ^^^^^^^^^^
+LL |     pub struct TupleStruct(#[no_link] pub u32);
+   |     ------------------------------------------- not an `extern crate` item
+
+warning: `#[no_link]` is ignored on struct fields, match arms and macro defs
+  --> $DIR/no_link.rs:52:28
+   |
+LL |     pub struct TupleStruct(#[no_link] pub u32);
+   |                            ^^^^^^^^^^
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:54:5
+   |
+LL |       #[no_link]
+   |       ^^^^^^^^^^
+LL | /     pub enum Enum {
+LL | |         #[no_link]
+LL | |         FieldVariant {
+LL | |             #[no_link]
+...  |
+LL | |         TupleVariant(#[no_link] u32),
+LL | |     }
+   | |_____- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:56:9
+   |
+LL |           #[no_link]
+   |           ^^^^^^^^^^
+LL | /         FieldVariant {
+LL | |             #[no_link]
+LL | |             field: u32,
+LL | |         },
+   | |_________- not an `extern crate` item
+
+warning: `#[no_link]` is ignored on struct fields, match arms and macro defs
+  --> $DIR/no_link.rs:58:13
+   |
+LL |             #[no_link]
+   |             ^^^^^^^^^^
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:61:9
+   |
+LL |         #[no_link]
+   |         ^^^^^^^^^^
+LL |         TupleVariant(#[no_link] u32),
+   |         ---------------------------- not an `extern crate` item
+
+warning: `#[no_link]` is ignored on struct fields, match arms and macro defs
+  --> $DIR/no_link.rs:62:22
+   |
+LL |         TupleVariant(#[no_link] u32),
+   |                      ^^^^^^^^^^
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:64:5
+   |
+LL |       #[no_link]
+   |       ^^^^^^^^^^
+LL | /     pub union Union {
+LL | |         #[no_link]
+LL | |         pub field: u32,
+LL | |     }
+   | |_____- not an `extern crate` item
+
+warning: `#[no_link]` is ignored on struct fields, match arms and macro defs
+  --> $DIR/no_link.rs:66:9
+   |
+LL |         #[no_link]
+   |         ^^^^^^^^^^
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:70:5
+   |
+LL |       #[no_link]
+   |       ^^^^^^^^^^
+LL | /     impl<'lt, T> Struct<'lt, T> {
+LL | |         #![no_link]
+...  |
+LL | |     }
+   | |_____- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:72:9
+   |
+LL | /     impl<'lt, T> Struct<'lt, T> {
+LL | |         #![no_link]
+   | |         ^^^^^^^^^^^
+...  |
+LL | |     }
+   | |_____- not an `extern crate` item
+
+warning: unused attribute
+  --> $DIR/no_link.rs:72:9
+   |
+LL |         #![no_link]
+   |         ^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/no_link.rs:70:5
+   |
+LL |     #[no_link]
+   |     ^^^^^^^^^^
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:89:5
+   |
+LL |       #[no_link]
+   |       ^^^^^^^^^^
+LL | /     impl<
+LL | |         #[no_link] 'lt,
+LL | |         #[no_link] T
+LL | |     > Drop for Struct<'lt, T> {
+...  |
+LL | |     }
+   | |_____- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:91:9
+   |
+LL |         #[no_link] 'lt,
+   |         ^^^^^^^^^^ --- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:92:9
+   |
+LL |         #[no_link] T
+   |         ^^^^^^^^^^ - not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:100:5
+   |
+LL |       #[no_link]
+   |       ^^^^^^^^^^
+LL | /     pub fn function<
+LL | |         #[no_link] const N: usize
+LL | |     >(arg: u32) -> u32 {
+LL | |         #![no_link]
+...  |
+LL | |         arg
+LL | |     }
+   | |_____- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:104:9
+   |
+LL | /     pub fn function<
+LL | |         #[no_link] const N: usize
+LL | |     >(arg: u32) -> u32 {
+LL | |         #![no_link]
+   | |         ^^^^^^^^^^^
+...  |
+LL | |         arg
+LL | |     }
+   | |_____- not an `extern crate` item
+
+warning: unused attribute
+  --> $DIR/no_link.rs:104:9
+   |
+LL |         #![no_link]
+   |         ^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/no_link.rs:100:5
+   |
+LL |     #[no_link]
+   |     ^^^^^^^^^^
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:102:9
+   |
+LL |         #[no_link] const N: usize
+   |         ^^^^^^^^^^ -------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:110:5
+   |
+LL |       #[no_link]
+   |       ^^^^^^^^^^
+LL | /     pub trait Trait {
+LL | |         #[no_link]
+LL | |         fn trait_method() {}
+LL | |     }
+   | |_____- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:112:9
+   |
+LL |         #[no_link]
+   |         ^^^^^^^^^^
+LL |         fn trait_method() {}
+   |         -------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:76:9
+   |
+LL |   ...   #[no_link]
+   |         ^^^^^^^^^^
+LL | / ...   pub fn method(#[no_link] &mut self) {
+LL | | ...
+LL | | ...       #[no_link]
+...  |
+LL | | ...   }
+   | |_______- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:77:23
+   |
+LL | ...   pub fn method(#[no_link] &mut self) {
+   |                     ^^^^^^^^^^ --------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:79:13
+   |
+LL |             #[no_link]
+   |             ^^^^^^^^^^
+LL |
+LL |             self.struct_field = 73;
+   |             ----------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:84:9
+   |
+LL | ...   #[no_link]
+   |       ^^^^^^^^^^
+LL | ...   pub fn static_method(#[no_link] _arg: u32) {}
+   |       --------------------------------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:85:30
+   |
+LL | ...   pub fn static_method(#[no_link] _arg: u32) {}
+   |                            ^^^^^^^^^^----------
+   |                            |
+   |                            not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:94:9
+   |
+LL |           #[no_link]
+   |           ^^^^^^^^^^
+LL | /         fn drop(&mut self) {
+LL | |             // ..
+LL | |         }
+   | |_________- not an `extern crate` item
+
+error: aborting due to 66 previous errors; 13 warnings emitted
+
+For more information about this error, try `rustc --explain E0658`.
