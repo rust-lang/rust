@@ -1,4 +1,6 @@
-/* When static files are updated, their suffixes need to be updated.
+/* ignore-tidy-filelength */
+/*
+	When static files are updated, their suffixes need to be updated.
 	1. In the top directory run:
 		./x.py doc --stage 1 library/core
 	2. Find the directory containing files named with updated suffixes:
@@ -496,12 +498,13 @@ img {
 	top: 0;
 	left: 0;
 	z-index: var(--desktop-sidebar-z-index);
+	/* resize indicator: hide this when on touch or mobile */
+	border-right: solid 1px var(--sidebar-border-color);
 }
 
 .rustdoc.src .sidebar {
 	flex-basis: 50px;
 	width: 50px;
-	border-right: 1px solid;
 	overflow-x: hidden;
 	/* The sidebar is by default hidden  */
 	overflow-y: hidden;
@@ -515,12 +518,27 @@ img {
 .sidebar-resizer {
 	touch-action: none;
 	width: 9px;
-	cursor: col-resize;
+	cursor: ew-resize;
 	z-index: calc(var(--desktop-sidebar-z-index) + 1);
 	position: fixed;
 	height: 100%;
-	/* make sure there's a 1px gap between the scrollbar and resize handle */
-	left: calc(var(--desktop-sidebar-width) + 1px);
+	left: var(--desktop-sidebar-width);
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	color: var(--right-side-color);
+}
+.sidebar-resizer::before {
+	content: "";
+	border-right: dotted 2px currentColor;
+	width: 2px;
+	height: 12px;
+}
+.sidebar-resizer::after {
+	content: "";
+	border-right: dotted 2px currentColor;
+	width: 2px;
+	height: 16px;
 }
 
 .rustdoc.src .sidebar-resizer {
@@ -543,11 +561,12 @@ img {
 }
 
 .sidebar-resizing * {
-	cursor: col-resize !important;
+	cursor: ew-resize !important;
 }
 
 .sidebar-resizing .sidebar {
 	position: fixed;
+	border-right: solid 2px var(--sidebar-resizer-active);
 }
 .sidebar-resizing > body {
 	padding-left: var(--resizing-sidebar-width);
@@ -561,8 +580,9 @@ img {
 	margin: 0;
 	/* when active or hovered, place resizer glow on top of the sidebar (right next to, or even
 	   on top of, the scrollbar) */
-	left: var(--desktop-sidebar-width);
+	left: calc(var(--desktop-sidebar-width) - 1px);
 	border-left: solid 1px var(--sidebar-resizer-hover);
+	color: var(--sidebar-resizer-hover);
 }
 
 .src-sidebar-expanded .rustdoc.src .sidebar-resizer:hover,
@@ -578,21 +598,20 @@ img {
 		/* too easy to hit the resizer while trying to hit the [-] toggle */
 		display: none !important;
 	}
+	.sidebar {
+		/* resize indicator: hide this when on touch or mobile */
+		border-right: none;
+	}
 }
 
 .sidebar-resizer.active {
 	/* make the resize tool bigger when actually resizing, to avoid :hover styles on other stuff
 		while resizing */
 	padding: 0 140px;
-	width: 2px;
+	width: calc(140px + 140px + 9px + 2px);
 	margin-left: -140px;
 	border-left: none;
-}
-.sidebar-resizer.active::before {
-	border-left: solid 2px var(--sidebar-resizer-active);
-	display: block;
-	height: 100%;
-	content: "";
+	color: var(--sidebar-resizer-active);
 }
 
 .sidebar, .mobile-topbar, .sidebar-menu-toggle,
@@ -2509,6 +2528,8 @@ in src-script.js and main.js
 		/* Reduce height slightly to account for mobile topbar. */
 		height: calc(100vh - 45px);
 		width: 200px;
+		/* resize indicator: hide this when on touch or mobile */
+		border-right: none;
 	}
 
 	/* The source view uses a different design for the sidebar toggle, and doesn't have a topbar,
@@ -2897,6 +2918,7 @@ by default.
 	--settings-button-border-focus: #717171;
 	--sidebar-background-color: #f5f5f5;
 	--sidebar-background-color-hover: #e0e0e0;
+	--sidebar-border-color: #ddd;
 	--code-block-background-color: #f5f5f5;
 	--scrollbar-track-background-color: #dcdcdc;
 	--scrollbar-thumb-background-color: rgba(36, 37, 39, 0.6);
@@ -3002,6 +3024,7 @@ by default.
 	--settings-button-border-focus: #ffb900;
 	--sidebar-background-color: #505050;
 	--sidebar-background-color-hover: #676767;
+	--sidebar-border-color: #999;
 	--code-block-background-color: #2A2A2A;
 	--scrollbar-track-background-color: #717171;
 	--scrollbar-thumb-background-color: rgba(32, 34, 37, .6);
@@ -3114,6 +3137,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--settings-button-border-focus: #e0e0e0;
 	--sidebar-background-color: #14191f;
 	--sidebar-background-color-hover: rgba(70, 70, 70, 0.33);
+	--sidebar-border-color: #5c6773;
 	--code-block-background-color: #191f26;
 	--scrollbar-track-background-color: transparent;
 	--scrollbar-thumb-background-color: #5c6773;

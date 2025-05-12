@@ -5,6 +5,7 @@ use rustc_ast::{
     self as ast, CRATE_NODE_ID, Crate, ItemKind, MetaItemInner, MetaItemKind, ModKind, NodeId, Path,
 };
 use rustc_ast_pretty::pprust;
+use rustc_attr_data_structures::{self as attr, Stability};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
@@ -110,6 +111,7 @@ pub(crate) struct ImportSuggestion {
     pub via_import: bool,
     /// An extra note that should be issued if this item is suggested
     pub note: Option<String>,
+    pub is_stable: bool,
 }
 
 /// Adjust the impl span so that just the `impl` keyword is taken by removing
@@ -1172,13 +1174,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ThinVec::<ast::PathSegment>::new(),
             true,
             start_did.is_local() || !self.tcx.is_doc_hidden(start_did),
+            true,
         )];
         let mut worklist_via_import = vec![];
 
-        while let Some((in_module, path_segments, accessible, doc_visible)) = match worklist.pop() {
-            None => worklist_via_import.pop(),
-            Some(x) => Some(x),
-        } {
+        while let Some((in_module, path_segments, accessible, doc_visible, is_stable)) =
+            match worklist.pop() {
+                None => worklist_via_import.pop(),
+                Some(x) => Some(x),
+            }
+        {
             let in_module_is_extern = !in_module.def_id().is_local();
             in_module.for_each_child(self, |this, ident, ns, name_binding| {
                 // Avoid non-importable candidates.
@@ -1258,6 +1263,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         candidates.remove(idx);
                     }
 
+                    let is_stable = if is_stable
+                        && let Some(did) = did
+                        && this.is_stable(did, path.span)
+                    {
+                        true
+                    } else {
+                        false
+                    };
+
+                    // Rreplace unstable suggestions if we meet a new stable one,
+                    // and do nothing if any other situation. For example, if we
+                    // meet `std::ops::Range` after `std::range::legacy::Range`,
+                    // we will remove the latter and then insert the former.
+                    if is_stable
+                        && let Some(idx) = candidates
+                            .iter()
+                            .position(|v: &ImportSuggestion| v.did == did && !v.is_stable)
+                    {
+                        candidates.remove(idx);
+                    }
+
                     if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
                         // See if we're recommending TryFrom, TryInto, or FromIterator and add
                         // a note about editions
@@ -1289,6 +1315,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             doc_visible: child_doc_visible,
                             note,
                             via_import,
+                            is_stable,
                         });
                     }
                 }
@@ -1315,8 +1342,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     if !is_extern_crate_that_also_appears_in_prelude || alias_import {
                         // add the module to the lookup
                         if seen_modules.insert(module.def_id()) {
-                            if via_import { &mut worklist_via_import } else { &mut worklist }
-                                .push((module, path_segments, child_accessible, child_doc_visible));
+                            if via_import { &mut worklist_via_import } else { &mut worklist }.push(
+                                (
+                                    module,
+                                    path_segments,
+                                    child_accessible,
+                                    child_doc_visible,
+                                    is_stable && this.is_stable(module.def_id(), name_binding.span),
+                                ),
+                            );
                         }
                     }
                 }
@@ -1324,6 +1358,34 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         candidates
+    }
+
+    fn is_stable(&self, did: DefId, span: Span) -> bool {
+        if did.is_local() {
+            return true;
+        }
+
+        match self.tcx.lookup_stability(did) {
+            Some(Stability {
+                level: attr::StabilityLevel::Unstable { implied_by, .. },
+                feature,
+                ..
+            }) => {
+                if span.allows_unstable(feature) {
+                    true
+                } else if self.tcx.features().enabled(feature) {
+                    true
+                } else if let Some(implied_by) = implied_by
+                    && self.tcx.features().enabled(implied_by)
+                {
+                    true
+                } else {
+                    false
+                }
+            }
+            Some(_) => true,
+            None => false,
+        }
     }
 
     /// When name resolution fails, this method can be used to look up candidate

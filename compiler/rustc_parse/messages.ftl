@@ -690,8 +690,8 @@ parse_nul_in_c_str = null characters in C string literals are not supported
 
 parse_or_in_let_chain = `||` operators are not supported in let chain conditions
 
-parse_or_pattern_not_allowed_in_fn_parameters = top-level or-patterns are not allowed in function parameters
-parse_or_pattern_not_allowed_in_let_binding = top-level or-patterns are not allowed in `let` bindings
+parse_or_pattern_not_allowed_in_fn_parameters = function parameters require top-level or-patterns in parentheses
+parse_or_pattern_not_allowed_in_let_binding = `let` bindings require top-level or-patterns in parentheses
 parse_out_of_range_hex_escape = out of range hex escape
     .label = must be a character in the range [\x00-\x7f]
 

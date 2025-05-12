@@ -944,15 +944,7 @@ impl f32 {
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
     pub const fn maximum(self, other: f32) -> f32 {
-        if self > other {
-            self
-        } else if other > self {
-            other
-        } else if self == other {
-            if self.is_sign_positive() && other.is_sign_negative() { self } else { other }
-        } else {
-            self + other
-        }
+        intrinsics::maximumf32(self, other)
     }
 
     /// Returns the minimum of the two numbers, propagating NaN.
@@ -979,16 +971,7 @@ impl f32 {
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
     pub const fn minimum(self, other: f32) -> f32 {
-        if self < other {
-            self
-        } else if other < self {
-            other
-        } else if self == other {
-            if self.is_sign_negative() && other.is_sign_positive() { self } else { other }
-        } else {
-            // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
-            self + other
-        }
+        intrinsics::minimumf32(self, other)
     }
 
     /// Calculates the midpoint (average) between `self` and `rhs`.

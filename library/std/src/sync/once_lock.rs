@@ -279,7 +279,7 @@ impl<T> OnceLock<T> {
     ///
     /// Many threads may call `get_or_init` concurrently with different
     /// initializing functions, but it is guaranteed that only one function
-    /// will be executed.
+    /// will be executed if the function doesn't panic.
     ///
     /// # Panics
     ///
