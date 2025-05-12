@@ -60,6 +60,36 @@ error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed
 LL | ...   pub fn static_method(#[no_link] _arg: u32) {}
    |                            ^^^^^^^^^^
 
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/no_link.rs:121:7
+   |
+LL |     | #[no_link] _arg: u32| {};
+   |       ^^^^^^^^^^
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/no_link.rs:125:12
+   |
+LL |     move | #[no_link] _arg: u32| {};
+   |            ^^^^^^^^^^
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/no_link.rs:205:9
+   |
+LL |         #[no_link] arg: *mut u8,
+   |         ^^^^^^^^^^
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/no_link.rs:206:9
+   |
+LL |         #[no_link] ...
+   |         ^^^^^^^^^^
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/no_link.rs:217:39
+   |
+LL | pub unsafe extern "C" fn abi_function(#[no_link] _: u32) {}
+   |                                       ^^^^^^^^^^
+
 error[E0658]: trait aliases are experimental
   --> $DIR/no_link.rs:35:5
    |
@@ -124,7 +154,7 @@ LL |   #[no_link]
 LL | / fn main() {
 LL | |     let _closure = #[no_link]
 LL | |
-LL | |     | _arg: u32| {};
+LL | |     | #[no_link] _arg: u32| {};
 ...  |
 LL | | }
    | |_- not an `extern crate` item
@@ -135,8 +165,16 @@ error: attribute should be applied to an `extern crate` item
 LL |     let _closure = #[no_link]
    |                    ^^^^^^^^^^
 LL |
-LL |     | _arg: u32| {};
-   |     --------------- not an `extern crate` item
+LL |     | #[no_link] _arg: u32| {};
+   |     -------------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:121:7
+   |
+LL |     | #[no_link] _arg: u32| {};
+   |       ^^^^^^^^^^----------
+   |       |
+   |       not an `extern crate` item
 
 error: attribute should be applied to an `extern crate` item
   --> $DIR/no_link.rs:123:25
@@ -144,8 +182,16 @@ error: attribute should be applied to an `extern crate` item
 LL |     let _move_closure = #[no_link]
    |                         ^^^^^^^^^^
 LL |
-LL |     move | _arg: u32| {};
-   |     -------------------- not an `extern crate` item
+LL |     move | #[no_link] _arg: u32| {};
+   |     ------------------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:125:12
+   |
+LL |     move | #[no_link] _arg: u32| {};
+   |            ^^^^^^^^^^----------
+   |            |
+   |            not an `extern crate` item
 
 error: attribute should be applied to an `extern crate` item
   --> $DIR/no_link.rs:127:5
@@ -347,8 +393,16 @@ error: attribute should be applied to an `extern crate` item
    |
 LL | #[no_link]
    | ^^^^^^^^^^
-LL | pub unsafe extern "C" fn abi_function(_: u32) {}
-   | ------------------------------------------------ not an `extern crate` item
+LL | pub unsafe extern "C" fn abi_function(#[no_link] _: u32) {}
+   | ----------------------------------------------------------- not an `extern crate` item
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/no_link.rs:217:39
+   |
+LL | pub unsafe extern "C" fn abi_function(#[no_link] _: u32) {}
+   |                                       ^^^^^^^^^^-------
+   |                                       |
+   |                                       not an `extern crate` item
 
 warning: `#[no_link]` is ignored on struct fields, match arms and macro defs
   --> $DIR/no_link.rs:219:1
@@ -362,8 +416,8 @@ error: attribute should be applied to an `extern crate` item
 LL |       #[no_link]
    |       ^^^^^^^^^^
 LL | /     pub fn external_function(
-LL | |         arg: *mut u8,
-LL | |         ...
+LL | |         #[no_link] arg: *mut u8,
+LL | |         #[no_link] ...
 LL | |     );
    | |______- not an `extern crate` item
 
@@ -725,6 +779,6 @@ LL | |             // ..
 LL | |         }
    | |_________- not an `extern crate` item
 
-error: aborting due to 66 previous errors; 13 warnings emitted
+error: aborting due to 74 previous errors; 13 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.

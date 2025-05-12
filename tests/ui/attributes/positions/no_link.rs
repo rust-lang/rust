@@ -118,12 +118,12 @@ pub mod module {
 fn main() {
     let _closure = #[no_link] //~ ERROR attributes on expressions are experimental
     //~^ ERROR
-    | _arg: u32| {};
-
+    | #[no_link] _arg: u32| {}; //~ ERROR
+    //~^ ERROR
     let _move_closure = #[no_link] //~ ERROR attributes on expressions are experimental
     //~^ ERROR
-    move | _arg: u32| {};
-
+    move | #[no_link] _arg: u32| {}; //~ ERROR
+    //~^ ERROR
     #[no_link] //~ ERROR
     {
         #![no_link] //~ ERROR
@@ -202,8 +202,8 @@ unsafe extern "C" {
 
     #[no_link] //~ ERROR
     pub fn external_function(
-        arg: *mut u8,
-        ...
+        #[no_link] arg: *mut u8, //~ ERROR
+        #[no_link] ... //~ ERROR
     );
 
     #[no_link] //~ ERROR
@@ -214,8 +214,8 @@ unsafe extern "C" {
 }
 
 #[no_link] //~ ERROR
-pub unsafe extern "C" fn abi_function(_: u32) {}
-
+pub unsafe extern "C" fn abi_function(#[no_link] _: u32) {} //~ ERROR
+//~^ ERROR
 #[no_link] //~ WARN
 #[macro_export]
 macro_rules! my_macro {

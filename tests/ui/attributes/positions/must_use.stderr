@@ -60,6 +60,36 @@ error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed
 LL | ...   pub fn static_method(#[must_use] _arg: u32) {}
    |                            ^^^^^^^^^^^
 
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/must_use.rs:121:7
+   |
+LL |     | #[must_use] _arg: u32| {};
+   |       ^^^^^^^^^^^
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/must_use.rs:125:12
+   |
+LL |     move | #[must_use] _arg: u32| {};
+   |            ^^^^^^^^^^^
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/must_use.rs:205:9
+   |
+LL |         #[must_use] arg: *mut u8,
+   |         ^^^^^^^^^^^
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/must_use.rs:206:9
+   |
+LL |         #[must_use] ...
+   |         ^^^^^^^^^^^
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/must_use.rs:217:39
+   |
+LL | pub unsafe extern "C" fn abi_function(#[must_use] _: u32) {}
+   |                                       ^^^^^^^^^^^
+
 error[E0658]: trait aliases are experimental
   --> $DIR/must_use.rs:35:5
    |
@@ -119,11 +149,23 @@ warning: `#[must_use]` has no effect when applied to a closure
 LL |     let _closure = #[must_use]
    |                    ^^^^^^^^^^^
 
+warning: `#[must_use]` has no effect when applied to a function param
+  --> $DIR/must_use.rs:121:7
+   |
+LL |     | #[must_use] _arg: u32| {};
+   |       ^^^^^^^^^^^
+
 warning: `#[must_use]` has no effect when applied to a closure
   --> $DIR/must_use.rs:123:25
    |
 LL |     let _move_closure = #[must_use]
    |                         ^^^^^^^^^^^
+
+warning: `#[must_use]` has no effect when applied to a function param
+  --> $DIR/must_use.rs:125:12
+   |
+LL |     move | #[must_use] _arg: u32| {};
+   |            ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an expression
   --> $DIR/must_use.rs:127:5
@@ -258,6 +300,12 @@ note: attribute also specified here
 LL | #[must_use]
    | ^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: `#[must_use]` has no effect when applied to a function param
+  --> $DIR/must_use.rs:217:39
+   |
+LL | pub unsafe extern "C" fn abi_function(#[must_use] _: u32) {}
+   |                                       ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a macro def
   --> $DIR/must_use.rs:219:1
@@ -465,6 +513,6 @@ warning: `#[must_use]` has no effect when applied to a provided trait method
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
-error: aborting due to 8 previous errors; 59 warnings emitted
+error: aborting due to 13 previous errors; 62 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.

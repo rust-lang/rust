@@ -152,12 +152,12 @@ pub mod module {
 fn main() {
     let _closure = #[ATTRIBUTE] //~ ERROR attributes on expressions are experimental
     //~^ WARN
-    | _arg: u32| {};
-
+    |  #[ATTRIBUTE] _arg: u32| {}; //~ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+    //~^ ERROR
     let _move_closure = #[ATTRIBUTE] //~ ERROR attributes on expressions are experimental
     //~^ WARN
-    move | _arg: u32| {};
-
+    move |  #[ATTRIBUTE] _arg: u32| {}; //~ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+    //~^ ERROR
     #[ATTRIBUTE] //~ WARN
     {
         #![ATTRIBUTE] //~ WARN
@@ -236,8 +236,8 @@ unsafe extern "C" {
 
     #[ATTRIBUTE] //~ WARN
     pub fn external_function(
-        arg: *mut u8,
-        ...
+        #[ATTRIBUTE] arg: *mut u8, //~ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+        #[ATTRIBUTE] ... //~ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
     );
 
     #[ATTRIBUTE] //~ WARN
@@ -248,8 +248,8 @@ unsafe extern "C" {
 }
 
 #[ATTRIBUTE] //~ WARN
-pub unsafe extern "C" fn abi_function(_: u32) {}
-
+pub unsafe extern "C" fn abi_function(#[ATTRIBUTE] _: u32) {} //~ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+//~^ ERROR
 #[ATTRIBUTE] //~ WARN
 #[macro_export]
 macro_rules! my_macro {
