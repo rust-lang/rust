@@ -441,3 +441,11 @@ pub(crate) fn set_dso_local<'ll>(v: &'ll Value) {
         LLVMRustSetDSOLocal(v, true);
     }
 }
+
+/// Safe wrapper for `LLVMAppendModuleInlineAsm`, which delegates to
+/// `Module::appendModuleInlineAsm`.
+pub(crate) fn append_module_inline_asm<'ll>(llmod: &'ll Module, asm: &[u8]) {
+    unsafe {
+        LLVMAppendModuleInlineAsm(llmod, asm.as_ptr(), asm.len());
+    }
+}
