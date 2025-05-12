@@ -1230,8 +1230,7 @@ fn supported_sanitizers(
             .iter()
             .map(move |c| SanitizerRuntime {
                 cmake_target: format!("clang_rt.{c}_{os}_dynamic"),
-                path: out_dir
-                    .join(format!("build/lib/darwin/libclang_rt.{c}_{os}_dynamic.dylib")),
+                path: out_dir.join(format!("build/lib/darwin/libclang_rt.{c}_{os}_dynamic.dylib")),
                 name: format!("librustc-{channel}_rt.{c}.dylib"),
             })
             .collect()
