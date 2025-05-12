@@ -64,10 +64,10 @@ LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
    |                                   ^^^^^^^^^^^^^
    = note: ...which again requires evaluating type-level constant, completing the cycle
 note: cycle used when checking that `accept0` is well-formed
-  --> $DIR/unsatisfied-const-trait-bound.rs:29:1
+  --> $DIR/unsatisfied-const-trait-bound.rs:29:35
    |
 LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                   ^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error[E0391]: cycle detected when caching mir of `accept1::{constant#0}` for CTFE

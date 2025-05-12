@@ -20,7 +20,7 @@ static mut MUTABLE: u32 = 0;
 const READ_MUT: u32 = unsafe { MUTABLE }; //~ERROR constant accesses mutable global memory
 
 // Evaluating this does not read anything mutable, but validation does, so this should error.
-const REF_INTERIOR_MUT: &usize = { //~ ERROR encountered reference to mutable memory
+const REF_INTERIOR_MUT: &usize = {
     static FOO: AtomicUsize = AtomicUsize::new(0);
     unsafe { &*(&FOO as *const _ as *const usize) }
 };
@@ -29,6 +29,13 @@ const REF_INTERIOR_MUT: &usize = { //~ ERROR encountered reference to mutable me
 static MY_STATIC: u8 = 4;
 const REF_IMMUT: &u8 = &MY_STATIC;
 const READ_IMMUT: u8 = *REF_IMMUT;
+
+fn foo() {
+    match &0 {
+        REF_INTERIOR_MUT => {}, //~ ERROR cannot be used as pattern
+        _ => {},
+    }
+}
 
 fn main() {}
 

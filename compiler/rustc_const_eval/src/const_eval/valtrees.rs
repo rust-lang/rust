@@ -1,17 +1,16 @@
 use rustc_abi::{BackendRepr, FieldIdx, VariantIdx};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ReportedErrorInfo};
+use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ValTreeCreationError};
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, instrument, trace};
 
+use super::VALTREE_MAX_NODES;
 use super::eval_queries::{mk_eval_cx_to_read_const_val, op_to_const};
 use super::machine::CompileTimeInterpCx;
-use super::{VALTREE_MAX_NODES, ValTreeCreationError, ValTreeCreationResult};
 use crate::const_eval::CanAccessMutGlobal;
-use crate::errors::MaxNumNodesInConstErr;
 use crate::interpret::{
     ImmTy, Immediate, InternKind, MPlaceTy, MemPlaceMeta, MemoryKind, PlaceTy, Projectable, Scalar,
     intern_const_alloc_recursive,
@@ -24,7 +23,7 @@ fn branches<'tcx>(
     field_count: usize,
     variant: Option<VariantIdx>,
     num_nodes: &mut usize,
-) -> ValTreeCreationResult<'tcx> {
+) -> EvalToValTreeResult<'tcx> {
     let place = match variant {
         Some(variant) => ecx.project_downcast(place, variant).unwrap(),
         None => place.clone(),
@@ -58,7 +57,7 @@ fn slice_branches<'tcx>(
     ecx: &CompileTimeInterpCx<'tcx>,
     place: &MPlaceTy<'tcx>,
     num_nodes: &mut usize,
-) -> ValTreeCreationResult<'tcx> {
+) -> EvalToValTreeResult<'tcx> {
     let n = place.len(ecx).unwrap_or_else(|_| panic!("expected to use len of place {place:?}"));
 
     let mut elems = Vec::with_capacity(n as usize);
@@ -76,7 +75,7 @@ fn const_to_valtree_inner<'tcx>(
     ecx: &CompileTimeInterpCx<'tcx>,
     place: &MPlaceTy<'tcx>,
     num_nodes: &mut usize,
-) -> ValTreeCreationResult<'tcx> {
+) -> EvalToValTreeResult<'tcx> {
     let tcx = *ecx.tcx;
     let ty = place.layout.ty;
     debug!("ty kind: {:?}", ty.kind());
@@ -91,7 +90,7 @@ fn const_to_valtree_inner<'tcx>(
             Ok(ty::ValTree::zst(tcx))
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
-            let val = ecx.read_immediate(place).unwrap();
+            let val = ecx.read_immediate(place).report_err()?;
             let val = val.to_scalar_int().unwrap();
             *num_nodes += 1;
 
@@ -113,7 +112,7 @@ fn const_to_valtree_inner<'tcx>(
             // equality at compile-time (see `ptr_guaranteed_cmp`).
             // However we allow those that are just integers in disguise.
             // First, get the pointer. Remember it might be wide!
-            let val = ecx.read_immediate(place).unwrap();
+            let val = ecx.read_immediate(place).report_err()?;
             // We could allow wide raw pointers where both sides are integers in the future,
             // but for now we reject them.
             if matches!(val.layout.backend_repr, BackendRepr::ScalarPair(..)) {
@@ -134,7 +133,7 @@ fn const_to_valtree_inner<'tcx>(
         ty::FnPtr(..) => Err(ValTreeCreationError::NonSupportedType(ty)),
 
         ty::Ref(_, _, _)  => {
-            let derefd_place = ecx.deref_pointer(place).unwrap();
+            let derefd_place = ecx.deref_pointer(place).report_err()?;
             const_to_valtree_inner(ecx, &derefd_place, num_nodes)
         }
 
@@ -158,7 +157,7 @@ fn const_to_valtree_inner<'tcx>(
                 bug!("uninhabited types should have errored and never gotten converted to valtree")
             }
 
-            let variant = ecx.read_discriminant(place).unwrap();
+            let variant = ecx.read_discriminant(place).report_err()?;
             branches(ecx, place, def.variant(variant).fields.len(), def.is_enum().then_some(variant), num_nodes)
         }
 
@@ -249,24 +248,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
     debug!(?place);
 
     let mut num_nodes = 0;
-    let valtree_result = const_to_valtree_inner(&ecx, &place, &mut num_nodes);
-
-    match valtree_result {
-        Ok(valtree) => Ok(Ok(valtree)),
-        Err(err) => {
-            let did = cid.instance.def_id();
-            let global_const_id = cid.display(tcx);
-            let span = tcx.hir_span_if_local(did);
-            match err {
-                ValTreeCreationError::NodesOverflow => {
-                    let handled =
-                        tcx.dcx().emit_err(MaxNumNodesInConstErr { span, global_const_id });
-                    Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
-                }
-                ValTreeCreationError::NonSupportedType(ty) => Ok(Err(ty)),
-            }
-        }
-    }
+    const_to_valtree_inner(&ecx, &place, &mut num_nodes)
 }
 
 /// Converts a `ValTree` to a `ConstValue`, which is needed after mir

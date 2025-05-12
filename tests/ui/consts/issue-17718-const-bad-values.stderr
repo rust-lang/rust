@@ -4,7 +4,7 @@ error[E0764]: mutable references are not allowed in the final value of constants
 LL | const C1: &'static mut [usize] = &mut [];
    |                                  ^^^^^^^
 
-error[E0080]: constructing invalid value: encountered reference to mutable memory in `const`
+error[E0080]: constructing invalid value: encountered mutable reference in `const` value
   --> $DIR/issue-17718-const-bad-values.rs:11:1
    |
 LL | const C2: &'static mut i32 = unsafe { &mut S };

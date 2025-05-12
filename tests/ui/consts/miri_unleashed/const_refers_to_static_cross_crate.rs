@@ -11,18 +11,15 @@ extern crate static_cross_crate;
 // Sneaky: reference to a mutable static.
 // Allowing this would be a disaster for pattern matching, we could violate exhaustiveness checking!
 const SLICE_MUT: &[u8; 1] = {
-    //~^ ERROR encountered reference to mutable memory
     unsafe { &static_cross_crate::ZERO }
 };
 
 const U8_MUT: &u8 = {
-    //~^ ERROR encountered reference to mutable memory
     unsafe { &static_cross_crate::ZERO[0] }
 };
 
 // Also test indirection that reads from other static.
 const U8_MUT2: &u8 = {
-    //~^ ERROR encountered reference to mutable memory
     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
 };
 const U8_MUT3: &u8 = {
@@ -37,14 +34,14 @@ const U8_MUT3: &u8 = {
 
 pub fn test(x: &[u8; 1]) -> bool {
     match x {
-        SLICE_MUT => true, // ok, `const` error already emitted
+        SLICE_MUT => true, //~ ERROR cannot be used as pattern
         &[1..] => false,
     }
 }
 
 pub fn test2(x: &u8) -> bool {
     match x {
-        U8_MUT => true, // ok, `const` error already emitted
+        U8_MUT => true, //~ ERROR cannot be used as pattern
         &(1..) => false,
     }
 }
@@ -53,7 +50,7 @@ pub fn test2(x: &u8) -> bool {
 // the errors above otherwise stop compilation too early?
 pub fn test3(x: &u8) -> bool {
     match x {
-        U8_MUT2 => true, // ok, `const` error already emitted
+        U8_MUT2 => true, //~ ERROR cannot be used as pattern
         &(1..) => false,
     }
 }
