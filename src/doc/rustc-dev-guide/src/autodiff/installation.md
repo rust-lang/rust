@@ -1,6 +1,6 @@
 # Installation
 
-In the near future, `std::autodiff` should become available in nightly builds for users. As a contribute however, you will still need to build rustc from source. Please be aware that the msvc target is not supported at the moment, all other tier 1 targets should work. Please open an issue if you encounter any problems on a supported tier 1 target, or if you succesfully build this project on a tier2/tier3 target.
+In the near future, `std::autodiff` should become available in nightly builds for users. As a contributor however, you will still need to build rustc from source. Please be aware that the msvc target is not supported at the moment, all other tier 1 targets should work. Please open an issue if you encounter any problems on a supported tier 1 target, or if you successfully build this project on a tier2/tier3 target.
 
 ## Build instructions
 
