@@ -14,7 +14,6 @@ pub mod empty_crate;
 
 #[allow()] // OK
 pub mod module {
-    #![allow()] // OK
 
     #[allow()] // OK
     pub static GLOBAL: u32 = 42;
@@ -100,6 +99,23 @@ pub mod module {
     pub trait Trait {
         #[allow()] // OK
         fn trait_method() {}
+    }
+
+    fn x() {
+        #[allow()] // OK
+        const {
+            // ..
+        }
+    }
+}
+
+pub mod inner_module {
+    #![allow()] // OK
+
+    fn x() {
+        const {
+            #![allow()] // OK
+        }
     }
 }
 

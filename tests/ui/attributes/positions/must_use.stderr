@@ -1,5 +1,5 @@
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/must_use.rs:79:13
+  --> $DIR/must_use.rs:76:13
    |
 LL |             #[must_use]
    |             ^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |             #[must_use]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/must_use.rs:119:20
+  --> $DIR/must_use.rs:133:20
    |
 LL |     let _closure = #[must_use]
    |                    ^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     let _closure = #[must_use]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/must_use.rs:123:25
+  --> $DIR/must_use.rs:137:25
    |
 LL |     let _move_closure = #[must_use]
    |                         ^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL |     let _move_closure = #[must_use]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/must_use.rs:136:22
+  --> $DIR/must_use.rs:150:22
    |
 LL |         let _array = #[must_use]
    |                      ^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL |         let _array = #[must_use]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/must_use.rs:143:22
+  --> $DIR/must_use.rs:157:22
    |
 LL |         let _tuple = #[must_use]
    |                      ^^^^^^^^^^^
@@ -49,49 +49,49 @@ LL |         let _tuple = #[must_use]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/must_use.rs:77:23
+  --> $DIR/must_use.rs:74:23
    |
 LL | ...   pub fn method(#[must_use] &mut self) {
    |                     ^^^^^^^^^^^
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/must_use.rs:85:30
+  --> $DIR/must_use.rs:82:30
    |
 LL | ...   pub fn static_method(#[must_use] _arg: u32) {}
    |                            ^^^^^^^^^^^
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/must_use.rs:121:7
+  --> $DIR/must_use.rs:135:7
    |
 LL |     | #[must_use] _arg: u32| {};
    |       ^^^^^^^^^^^
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/must_use.rs:125:12
+  --> $DIR/must_use.rs:139:12
    |
 LL |     move | #[must_use] _arg: u32| {};
    |            ^^^^^^^^^^^
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/must_use.rs:205:9
+  --> $DIR/must_use.rs:219:9
    |
 LL |         #[must_use] arg: *mut u8,
    |         ^^^^^^^^^^^
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/must_use.rs:206:9
+  --> $DIR/must_use.rs:220:9
    |
 LL |         #[must_use] ...
    |         ^^^^^^^^^^^
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/must_use.rs:217:39
+  --> $DIR/must_use.rs:231:39
    |
 LL | pub unsafe extern "C" fn abi_function(#[must_use] _: u32) {}
    |                                       ^^^^^^^^^^^
 
 error[E0658]: trait aliases are experimental
-  --> $DIR/must_use.rs:35:5
+  --> $DIR/must_use.rs:32:5
    |
 LL |     trait TraitAlias = Debug;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -125,202 +125,189 @@ LL | #[must_use]
    | ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a module
-  --> $DIR/must_use.rs:18:5
+  --> $DIR/must_use.rs:122:5
    |
 LL |     #![must_use]
    |     ^^^^^^^^^^^^
 
-warning: unused attribute
-  --> $DIR/must_use.rs:18:5
-   |
-LL |     #![must_use]
-   |     ^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/must_use.rs:16:1
-   |
-LL | #[must_use]
-   | ^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
 warning: `#[must_use]` has no effect when applied to a closure
-  --> $DIR/must_use.rs:119:20
+  --> $DIR/must_use.rs:133:20
    |
 LL |     let _closure = #[must_use]
    |                    ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a function param
-  --> $DIR/must_use.rs:121:7
+  --> $DIR/must_use.rs:135:7
    |
 LL |     | #[must_use] _arg: u32| {};
    |       ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a closure
-  --> $DIR/must_use.rs:123:25
+  --> $DIR/must_use.rs:137:25
    |
 LL |     let _move_closure = #[must_use]
    |                         ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a function param
-  --> $DIR/must_use.rs:125:12
+  --> $DIR/must_use.rs:139:12
    |
 LL |     move | #[must_use] _arg: u32| {};
    |            ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an expression
-  --> $DIR/must_use.rs:127:5
+  --> $DIR/must_use.rs:141:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an expression
-  --> $DIR/must_use.rs:129:9
+  --> $DIR/must_use.rs:143:9
    |
 LL |         #![must_use]
    |         ^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/must_use.rs:129:9
+  --> $DIR/must_use.rs:143:9
    |
 LL |         #![must_use]
    |         ^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/must_use.rs:127:5
+  --> $DIR/must_use.rs:141:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[must_use]` has no effect when applied to a statement
-  --> $DIR/must_use.rs:133:9
+  --> $DIR/must_use.rs:147:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an expression
-  --> $DIR/must_use.rs:136:22
+  --> $DIR/must_use.rs:150:22
    |
 LL |         let _array = #[must_use]
    |                      ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an expression
-  --> $DIR/must_use.rs:139:13
+  --> $DIR/must_use.rs:153:13
    |
 LL |             #[must_use]
    |             ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an expression
-  --> $DIR/must_use.rs:143:22
+  --> $DIR/must_use.rs:157:22
    |
 LL |         let _tuple = #[must_use]
    |                      ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an expression
-  --> $DIR/must_use.rs:146:13
+  --> $DIR/must_use.rs:160:13
    |
 LL |             #[must_use]
    |             ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an expression
-  --> $DIR/must_use.rs:151:13
+  --> $DIR/must_use.rs:165:13
    |
 LL |             #[must_use]
    |             ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a struct field
-  --> $DIR/must_use.rs:155:13
+  --> $DIR/must_use.rs:169:13
    |
 LL |             #[must_use]
    |             ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a struct field
-  --> $DIR/must_use.rs:161:13
+  --> $DIR/must_use.rs:175:13
    |
 LL |             #[must_use]
    |             ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an expression
-  --> $DIR/must_use.rs:166:13
+  --> $DIR/must_use.rs:180:13
    |
 LL |             #[must_use]
    |             ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an expression
-  --> $DIR/must_use.rs:170:9
+  --> $DIR/must_use.rs:184:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an match arm
-  --> $DIR/must_use.rs:172:13
-   |
-LL |             #[must_use]
-   |             ^^^^^^^^^^^
-
-warning: `#[must_use]` has no effect when applied to an expression
-  --> $DIR/must_use.rs:178:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
-
-warning: `#[must_use]` has no effect when applied to a closure
   --> $DIR/must_use.rs:186:13
    |
 LL |             #[must_use]
    |             ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an expression
-  --> $DIR/must_use.rs:191:5
+  --> $DIR/must_use.rs:192:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+
+warning: `#[must_use]` has no effect when applied to a closure
+  --> $DIR/must_use.rs:200:13
+   |
+LL |             #[must_use]
+   |             ^^^^^^^^^^^
+
+warning: `#[must_use]` has no effect when applied to an expression
+  --> $DIR/must_use.rs:205:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a foreign module
-  --> $DIR/must_use.rs:197:1
+  --> $DIR/must_use.rs:211:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a foreign module
-  --> $DIR/must_use.rs:199:5
+  --> $DIR/must_use.rs:213:5
    |
 LL |     #![must_use]
    |     ^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/must_use.rs:199:5
+  --> $DIR/must_use.rs:213:5
    |
 LL |     #![must_use]
    |     ^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/must_use.rs:197:1
+  --> $DIR/must_use.rs:211:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[must_use]` has no effect when applied to a function param
-  --> $DIR/must_use.rs:217:39
+  --> $DIR/must_use.rs:231:39
    |
 LL | pub unsafe extern "C" fn abi_function(#[must_use] _: u32) {}
    |                                       ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a macro def
-  --> $DIR/must_use.rs:219:1
+  --> $DIR/must_use.rs:233:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a foreign static item
-  --> $DIR/must_use.rs:209:5
+  --> $DIR/must_use.rs:223:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a foreign static item
-  --> $DIR/must_use.rs:212:5
+  --> $DIR/must_use.rs:226:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
@@ -332,187 +319,199 @@ LL | #![must_use]
    | ^^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a static item
-  --> $DIR/must_use.rs:22:5
+  --> $DIR/must_use.rs:19:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a static item
-  --> $DIR/must_use.rs:25:5
+  --> $DIR/must_use.rs:22:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a constant item
-  --> $DIR/must_use.rs:28:5
+  --> $DIR/must_use.rs:25:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a use
-  --> $DIR/must_use.rs:31:5
+  --> $DIR/must_use.rs:28:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a trait alias
-  --> $DIR/must_use.rs:34:5
+  --> $DIR/must_use.rs:31:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a type alias
-  --> $DIR/must_use.rs:37:5
+  --> $DIR/must_use.rs:34:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a lifetime parameter
-  --> $DIR/must_use.rs:42:9
+  --> $DIR/must_use.rs:39:9
    |
 LL |         #[must_use] 'lt,
    |         ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a type parameter
-  --> $DIR/must_use.rs:43:9
+  --> $DIR/must_use.rs:40:9
    |
 LL |         #[must_use] T>
    |         ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a struct field
-  --> $DIR/must_use.rs:45:9
+  --> $DIR/must_use.rs:42:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a struct field
-  --> $DIR/must_use.rs:47:9
+  --> $DIR/must_use.rs:44:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a struct field
-  --> $DIR/must_use.rs:52:28
+  --> $DIR/must_use.rs:49:28
    |
 LL |     pub struct TupleStruct(#[must_use] pub u32);
    |                            ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a enum variant
-  --> $DIR/must_use.rs:56:9
+  --> $DIR/must_use.rs:53:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a struct field
-  --> $DIR/must_use.rs:58:13
+  --> $DIR/must_use.rs:55:13
    |
 LL |             #[must_use]
    |             ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a enum variant
-  --> $DIR/must_use.rs:61:9
+  --> $DIR/must_use.rs:58:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a struct field
-  --> $DIR/must_use.rs:62:22
+  --> $DIR/must_use.rs:59:22
    |
 LL |         TupleVariant(#[must_use] u32),
    |                      ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a struct field
-  --> $DIR/must_use.rs:66:9
+  --> $DIR/must_use.rs:63:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an implementation block
-  --> $DIR/must_use.rs:70:5
+  --> $DIR/must_use.rs:67:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an implementation block
-  --> $DIR/must_use.rs:72:9
+  --> $DIR/must_use.rs:69:9
    |
 LL |         #![must_use]
    |         ^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/must_use.rs:72:9
+  --> $DIR/must_use.rs:69:9
    |
 LL |         #![must_use]
    |         ^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/must_use.rs:70:5
+  --> $DIR/must_use.rs:67:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[must_use]` has no effect when applied to an implementation block
-  --> $DIR/must_use.rs:89:5
+  --> $DIR/must_use.rs:86:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a lifetime parameter
-  --> $DIR/must_use.rs:91:9
+  --> $DIR/must_use.rs:88:9
    |
 LL |         #[must_use] 'lt,
    |         ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a type parameter
-  --> $DIR/must_use.rs:92:9
+  --> $DIR/must_use.rs:89:9
    |
 LL |         #[must_use] T
    |         ^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/must_use.rs:104:9
+  --> $DIR/must_use.rs:101:9
    |
 LL |         #![must_use]
    |         ^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/must_use.rs:100:5
+  --> $DIR/must_use.rs:97:5
    |
 LL |     #[must_use] // OK
    |     ^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[must_use]` has no effect when applied to a const parameter
-  --> $DIR/must_use.rs:102:9
+  --> $DIR/must_use.rs:99:9
    |
 LL |         #[must_use] const N: usize
    |         ^^^^^^^^^^^
 
+warning: `#[must_use]` has no effect when applied to an expression
+  --> $DIR/must_use.rs:114:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+
 warning: `#[must_use]` has no effect when applied to a function param
-  --> $DIR/must_use.rs:77:23
+  --> $DIR/must_use.rs:74:23
    |
 LL | ...   pub fn method(#[must_use] &mut self) {
    |                     ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to an expression
-  --> $DIR/must_use.rs:79:13
+  --> $DIR/must_use.rs:76:13
    |
 LL |             #[must_use]
    |             ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a function param
-  --> $DIR/must_use.rs:85:30
+  --> $DIR/must_use.rs:82:30
    |
 LL | ...   pub fn static_method(#[must_use] _arg: u32) {}
    |                            ^^^^^^^^^^^
 
 warning: `#[must_use]` has no effect when applied to a provided trait method
-  --> $DIR/must_use.rs:94:9
+  --> $DIR/must_use.rs:91:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
-error: aborting due to 13 previous errors; 62 warnings emitted
+warning: `#[must_use]` has no effect when applied to an expression
+  --> $DIR/must_use.rs:126:13
+   |
+LL |             #![must_use]
+   |             ^^^^^^^^^^^^
+
+error: aborting due to 13 previous errors; 63 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.

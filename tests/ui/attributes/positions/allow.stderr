@@ -1,5 +1,5 @@
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/allow.rs:73:13
+  --> $DIR/allow.rs:72:13
    |
 LL |             #[allow()]
    |             ^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |             #[allow()]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/allow.rs:108:20
+  --> $DIR/allow.rs:124:20
    |
 LL |     let _closure = #[allow()]
    |                    ^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     let _closure = #[allow()]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/allow.rs:111:25
+  --> $DIR/allow.rs:127:25
    |
 LL |     let _move_closure = #[allow()]
    |                         ^^^^^^^^^^
@@ -29,7 +29,7 @@ LL |     let _move_closure = #[allow()]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/allow.rs:121:22
+  --> $DIR/allow.rs:137:22
    |
 LL |         let _array = #[allow()]
    |                      ^^^^^^^^^^
@@ -39,7 +39,7 @@ LL |         let _array = #[allow()]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/allow.rs:127:22
+  --> $DIR/allow.rs:143:22
    |
 LL |         let _tuple = #[allow()]
    |                      ^^^^^^^^^^
@@ -49,7 +49,7 @@ LL |         let _tuple = #[allow()]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: trait aliases are experimental
-  --> $DIR/allow.rs:32:5
+  --> $DIR/allow.rs:31:5
    |
 LL |     trait TraitAlias = Debug;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^

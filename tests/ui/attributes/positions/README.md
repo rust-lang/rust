@@ -50,9 +50,6 @@ pub mod empty_crate;
 
 #[ATTRIBUTE] //~ WARN
 pub mod module {
-    #![ATTRIBUTE] //~ WARN
-    //~^ WARN unused attribute
-    //~^^ WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
     #[ATTRIBUTE] //~ WARN
     pub static GLOBAL: u32 = 42;
@@ -146,7 +143,25 @@ pub mod module {
         #[ATTRIBUTE] //~ WARN
         fn trait_method() {}
     }
+
+    fn x() {
+        #[ATTRIBUTE] //~ WARN
+        const {
+            // ..
+        }
+    }
 }
+
+pub mod inner_module {
+    #![ATTRIBUTE] //~ WARN
+
+    fn x() {
+        const {
+            #![ATTRIBUTE] //~ WARN
+        }
+    }
+}
+
 
 #[ATTRIBUTE] //~ WARN
 fn main() {

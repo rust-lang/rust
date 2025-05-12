@@ -15,9 +15,6 @@ pub mod empty_crate;
 
 #[no_link] //~ ERROR
 pub mod module {
-    #![no_link] //~ ERROR
-    //~^ WARN unused attribute
-
 
     #[no_link] //~ ERROR
     pub static GLOBAL: u32 = 42;
@@ -111,6 +108,23 @@ pub mod module {
     pub trait Trait {
         #[no_link] //~ ERROR
         fn trait_method() {}
+    }
+
+    fn x() {
+        #[no_link] //~ ERROR
+        const {
+            // ..
+        }
+    }
+}
+
+pub mod inner_module {
+    #![no_link] //~ ERROR
+
+    fn x(){
+        const {
+            #![no_link] //~ ERROR
+        }
     }
 }
 
