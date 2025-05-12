@@ -12,7 +12,7 @@ use rustc_hir::{
     BodyId, Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId, ReportedErrorInfo};
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
@@ -262,49 +262,19 @@ impl<'tcx> NonCopyConst<'tcx> {
 
     fn is_value_unfrozen_poly(cx: &LateContext<'tcx>, body_id: BodyId, ty: Ty<'tcx>) -> bool {
         let def_id = body_id.hir_id.owner.to_def_id();
-        let args = ty::GenericArgs::identity_for_item(cx.tcx, def_id);
-        let instance = ty::Instance::new_raw(def_id, args);
-        let cid = GlobalId {
-            instance,
-            promoted: None,
-        };
         let typing_env = ty::TypingEnv::post_analysis(cx.tcx, def_id);
-        let result = cx.tcx.const_eval_global_id_for_typeck(typing_env, cid, DUMMY_SP);
+
+        let args = ty::GenericArgs::identity_for_item(cx.tcx, def_id);
+        let const_ = ty::UnevaluatedConst::new(def_id, args);
+        let result = cx.tcx.const_eval_resolve_for_typeck(typing_env, const_, DUMMY_SP);
         Self::is_value_unfrozen_raw(cx, result, ty)
     }
 
     fn is_value_unfrozen_expr(cx: &LateContext<'tcx>, hir_id: HirId, def_id: DefId, ty: Ty<'tcx>) -> bool {
         let args = cx.typeck_results().node_args(hir_id);
-
-        let result = Self::const_eval_resolve(
-            cx.tcx,
-            cx.typing_env(),
-            ty::UnevaluatedConst::new(def_id, args),
-            DUMMY_SP,
-        );
+        let const_ = ty::UnevaluatedConst::new(def_id, args);
+        let result = cx.tcx.const_eval_resolve_for_typeck(cx.typing_env(), const_, DUMMY_SP);
         Self::is_value_unfrozen_raw(cx, result, ty)
-    }
-
-    pub fn const_eval_resolve(
-        tcx: TyCtxt<'tcx>,
-        typing_env: ty::TypingEnv<'tcx>,
-        ct: ty::UnevaluatedConst<'tcx>,
-        span: Span,
-    ) -> EvalToValTreeResult<'tcx> {
-        match ty::Instance::try_resolve(tcx, typing_env, ct.def, ct.args) {
-            Ok(Some(instance)) => {
-                let cid = GlobalId {
-                    instance,
-                    promoted: None,
-                };
-                tcx.const_eval_global_id_for_typeck(typing_env, cid, span)
-            },
-            Ok(None) => Err(ErrorHandled::TooGeneric(span)),
-            Err(err) => Err(ErrorHandled::Reported(
-                ReportedErrorInfo::non_const_eval_error(err),
-                span,
-            )),
-        }
     }
 }
 

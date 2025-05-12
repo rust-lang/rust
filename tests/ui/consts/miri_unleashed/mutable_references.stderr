@@ -47,7 +47,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/mutable_references.rs:31:1
    |
 LL | const SUBTLE: &mut i32 = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
+   | ^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference in `const` value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
@@ -98,49 +98,38 @@ LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const 
                HEX_DUMP
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references.rs:76:1
-   |
-LL | const POINTS_TO_MUTABLE: &i32 = unsafe { &MUTABLE };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
-
 error[E0080]: evaluation of constant value failed
-  --> $DIR/mutable_references.rs:79:43
+  --> $DIR/mutable_references.rs:81:43
    |
 LL | const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
    |                                           ^^^^^^^^^^^^^ constant accesses mutable global memory
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references.rs:83:1
+  --> $DIR/mutable_references.rs:85:1
    |
 LL | const POINTS_TO_MUTABLE_INNER: *const i32 = &mut 42 as *mut _ as *const _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references.rs:86:1
+  --> $DIR/mutable_references.rs:88:1
    |
 LL | const POINTS_TO_MUTABLE_INNER2: *const i32 = &mut 42 as *const _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references.rs:106:1
+  --> $DIR/mutable_references.rs:108:1
    |
 LL | const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x: &mut 42 as *mut _ as *const _ };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references.rs:109:1
+  --> $DIR/mutable_references.rs:111:1
    |
 LL | const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0594]: cannot assign to `*OH_YES`, as `OH_YES` is an immutable static item
-  --> $DIR/mutable_references.rs:116:5
+  --> $DIR/mutable_references.rs:118:5
    |
 LL |     *OH_YES = 99;
    |     ^^^^^^^^^^^^ cannot assign
@@ -188,37 +177,37 @@ help: skipping check that does not even have a feature gate
 LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:83:45
+  --> $DIR/mutable_references.rs:85:45
    |
 LL | const POINTS_TO_MUTABLE_INNER: *const i32 = &mut 42 as *mut _ as *const _;
    |                                             ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:86:46
+  --> $DIR/mutable_references.rs:88:46
    |
 LL | const POINTS_TO_MUTABLE_INNER2: *const i32 = &mut 42 as *const _;
    |                                              ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:91:47
+  --> $DIR/mutable_references.rs:93:47
    |
 LL | const INTERIOR_MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
    |                                               ^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:103:51
+  --> $DIR/mutable_references.rs:105:51
    |
 LL | const RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
    |                                                   ^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:106:49
+  --> $DIR/mutable_references.rs:108:49
    |
 LL | const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x: &mut 42 as *mut _ as *const _ };
    |                                                 ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:109:51
+  --> $DIR/mutable_references.rs:111:51
    |
 LL | const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    |                                                   ^^^^^^
 
-error: aborting due to 17 previous errors; 1 warning emitted
+error: aborting due to 16 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0080, E0594.
 For more information about an error, try `rustc --explain E0080`.

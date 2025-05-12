@@ -35,7 +35,7 @@ impl From<ReportedErrorInfo> for ErrorHandled {
 }
 
 impl ErrorHandled {
-    pub fn with_span(self, span: Span) -> Self {
+    pub(crate) fn with_span(self, span: Span) -> Self {
         match self {
             ErrorHandled::Reported(err, _span) => ErrorHandled::Reported(err, span),
             ErrorHandled::TooGeneric(_span) => ErrorHandled::TooGeneric(span),
@@ -94,14 +94,51 @@ impl From<ReportedErrorInfo> for ErrorGuaranteed {
     }
 }
 
+/// An error type for the `const_to_valtree` query. Some error should be reported with a "use-site span",
+/// which means the query cannot emit the error, so those errors are represented as dedicated variants here.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+pub enum ValTreeCreationError<'tcx> {
+    /// The constant is too big to be valtree'd.
+    NodesOverflow,
+    /// The constant references mutable or external memory, so it cannot be valtree'd.
+    InvalidConst,
+    /// Values of this type, or this particular value, are not supported as valtrees.
+    NonSupportedType(Ty<'tcx>),
+    /// The error has already been handled by const evaluation.
+    ErrorHandled(ErrorHandled),
+}
+
+impl<'tcx> From<ErrorHandled> for ValTreeCreationError<'tcx> {
+    fn from(err: ErrorHandled) -> Self {
+        ValTreeCreationError::ErrorHandled(err)
+    }
+}
+
+impl<'tcx> From<InterpErrorInfo<'tcx>> for ValTreeCreationError<'tcx> {
+    fn from(err: InterpErrorInfo<'tcx>) -> Self {
+        // An error ocurred outside the const-eval query, as part of constructing the valtree. We
+        // don't currently preserve the details of this error, since `InterpErrorInfo` cannot be put
+        // into a query result and it can only be access of some mutable or external memory.
+        let (_kind, backtrace) = err.into_parts();
+        backtrace.print_backtrace();
+        ValTreeCreationError::InvalidConst
+    }
+}
+
+impl<'tcx> ValTreeCreationError<'tcx> {
+    pub(crate) fn with_span(self, span: Span) -> Self {
+        use ValTreeCreationError::*;
+        match self {
+            ErrorHandled(handled) => ErrorHandled(handled.with_span(span)),
+            other => other,
+        }
+    }
+}
+
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalStaticInitializerRawResult<'tcx> = Result<ConstAllocation<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
-/// `Ok(Err(ty))` indicates the constant was fine, but the valtree couldn't be constructed
-/// because the value contains something of type `ty` that is not valtree-compatible.
-/// The caller can then show an appropriate error; the query does not have the
-/// necessary context to give good user-facing errors for this case.
-pub type EvalToValTreeResult<'tcx> = Result<Result<ValTree<'tcx>, Ty<'tcx>>, ErrorHandled>;
+pub type EvalToValTreeResult<'tcx> = Result<ValTree<'tcx>, ValTreeCreationError<'tcx>>;
 
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(InterpErrorInfo<'_>, 8);
@@ -450,10 +487,9 @@ pub enum ValidationErrorKind<'tcx> {
         ptr_kind: PointerKind,
         ty: Ty<'tcx>,
     },
-    ConstRefToMutable,
-    ConstRefToExtern,
     MutableRefToImmutable,
     UnsafeCellInImmutable,
+    MutableRefInConst,
     NullFnPtr,
     NeverVal,
     NullablePtrOutOfRange {
