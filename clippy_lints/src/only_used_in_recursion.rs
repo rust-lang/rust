@@ -24,6 +24,33 @@ declare_clippy_lint! {
     /// the calculations have no side-effects (function calls or mutating dereference)
     /// and the assigned variables are also only in recursion, it is useless.
     ///
+    /// ### Example
+    /// ```no_run
+    /// fn f(a: usize, b: usize) -> usize {
+    ///     if a == 0 {
+    ///         1
+    ///     } else {
+    ///         f(a - 1, b + 1)
+    ///     }
+    /// }
+    /// # fn main() {
+    /// #     print!("{}", f(1, 1));
+    /// # }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn f(a: usize) -> usize {
+    ///     if a == 0 {
+    ///         1
+    ///     } else {
+    ///         f(a - 1)
+    ///     }
+    /// }
+    /// # fn main() {
+    /// #     print!("{}", f(1));
+    /// # }
+    /// ```
+    ///
     /// ### Known problems
     /// Too many code paths in the linting code are currently untested and prone to produce false
     /// positives or are prone to have performance implications.
@@ -51,39 +78,90 @@ declare_clippy_lint! {
     /// - struct pattern binding
     ///
     /// Also, when you recurse the function name with path segments, it is not possible to detect.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// fn f(a: usize, b: usize) -> usize {
-    ///     if a == 0 {
-    ///         1
-    ///     } else {
-    ///         f(a - 1, b + 1)
-    ///     }
-    /// }
-    /// # fn main() {
-    /// #     print!("{}", f(1, 1));
-    /// # }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// fn f(a: usize) -> usize {
-    ///     if a == 0 {
-    ///         1
-    ///     } else {
-    ///         f(a - 1)
-    ///     }
-    /// }
-    /// # fn main() {
-    /// #     print!("{}", f(1));
-    /// # }
-    /// ```
     #[clippy::version = "1.61.0"]
     pub ONLY_USED_IN_RECURSION,
     complexity,
     "arguments that is only used in recursion can be removed"
 }
-impl_lint_pass!(OnlyUsedInRecursion => [ONLY_USED_IN_RECURSION]);
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `self` receiver that is only used in recursion with no side-effects.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// It may be possible to remove the `self` argument, allowing the function to be
+    /// used without an object of type `Self`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// struct Foo;
+    /// impl Foo {
+    ///     fn f(&self, n: u32) -> u32 {
+    ///         if n == 0 {
+    ///             1
+    ///         } else {
+    ///             n * self.f(n - 1)
+    ///         }
+    ///     }
+    /// }
+    /// # fn main() {
+    /// #     print!("{}", Foo.f(10));
+    /// # }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// struct Foo;
+    /// impl Foo {
+    ///     fn f(n: u32) -> u32 {
+    ///         if n == 0 {
+    ///             1
+    ///         } else {
+    ///             n * Self::f(n - 1)
+    ///         }
+    ///     }
+    /// }
+    /// # fn main() {
+    /// #     print!("{}", Foo::f(10));
+    /// # }
+    /// ```
+    ///
+    /// ### Known problems
+    /// Too many code paths in the linting code are currently untested and prone to produce false
+    /// positives or are prone to have performance implications.
+    ///
+    /// In some cases, this would not catch all useless arguments.
+    ///
+    /// ```no_run
+    /// struct Foo;
+    /// impl Foo {
+    ///     fn foo(&self, a: usize) -> usize {
+    ///         let f = |x| x;
+    ///
+    ///         if a == 0 {
+    ///             1
+    ///         } else {
+    ///             f(self).foo(a)
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// For example, here `self` is only used in recursion, but the lint would not catch it.
+    ///
+    /// List of some examples that can not be caught:
+    /// - binary operation of non-primitive types
+    /// - closure usage
+    /// - some `break` relative operations
+    /// - struct pattern binding
+    ///
+    /// Also, when you recurse the function name with path segments, it is not possible to detect.
+    #[clippy::version = "1.92.0"]
+    pub SELF_ONLY_USED_IN_RECURSION,
+    pedantic,
+    "self receiver only used to recursively call method can be removed"
+}
+impl_lint_pass!(OnlyUsedInRecursion => [ONLY_USED_IN_RECURSION, SELF_ONLY_USED_IN_RECURSION]);
 
 #[derive(Clone, Copy)]
 enum FnKind {
@@ -355,26 +433,39 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
             self.params.flag_for_linting();
             for param in &self.params.params {
                 if param.apply_lint.get() {
-                    span_lint_and_then(
-                        cx,
-                        ONLY_USED_IN_RECURSION,
-                        param.ident.span,
-                        "parameter is only used in recursion",
-                        |diag| {
-                            if param.ident.name != kw::SelfLower {
+                    if param.ident.name == kw::SelfLower {
+                        span_lint_and_then(
+                            cx,
+                            SELF_ONLY_USED_IN_RECURSION,
+                            param.ident.span,
+                            "`self` is only used in recursion",
+                            |diag| {
+                                diag.span_note(
+                                    param.uses.iter().map(|x| x.span).collect::<Vec<_>>(),
+                                    "`self` used here",
+                                );
+                            },
+                        );
+                    } else {
+                        span_lint_and_then(
+                            cx,
+                            ONLY_USED_IN_RECURSION,
+                            param.ident.span,
+                            "parameter is only used in recursion",
+                            |diag| {
                                 diag.span_suggestion(
                                     param.ident.span,
                                     "if this is intentional, prefix it with an underscore",
                                     format!("_{}", param.ident.name),
                                     Applicability::MaybeIncorrect,
                                 );
-                            }
-                            diag.span_note(
-                                param.uses.iter().map(|x| x.span).collect::<Vec<_>>(),
-                                "parameter used here",
-                            );
-                        },
-                    );
+                                diag.span_note(
+                                    param.uses.iter().map(|x| x.span).collect::<Vec<_>>(),
+                                    "parameter used here",
+                                );
+                            },
+                        );
+                    }
                 }
             }
             self.params.clear();
