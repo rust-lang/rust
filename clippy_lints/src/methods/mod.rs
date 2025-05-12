@@ -4428,7 +4428,7 @@ declare_clippy_lint! {
     /// let file = BufReader::new(std::fs::File::open("./bytes.txt").unwrap());
     /// file.bytes();
     /// ```
-    #[clippy::version = "1.86.0"]
+    #[clippy::version = "1.87.0"]
     pub UNBUFFERED_BYTES,
     perf,
     "calling .bytes() is very inefficient when data is not in memory"
@@ -4453,7 +4453,7 @@ declare_clippy_lint! {
     ///     values.contains(&10)
     /// }
     /// ```
-    #[clippy::version = "1.86.0"]
+    #[clippy::version = "1.87.0"]
     pub MANUAL_CONTAINS,
     perf,
     "unnecessary `iter().any()` on slices that can be replaced with `contains()`"
