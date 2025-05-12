@@ -42,7 +42,9 @@ use tracing_core::{Event, Subscriber};
 use tracing_subscriber::filter::{Directive, EnvFilter, LevelFilter};
 use tracing_subscriber::fmt::FmtContext;
 use tracing_subscriber::fmt::format::{self, FormatEvent, FormatFields};
-use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::layer::{Identity, SubscriberExt};
+// Re-export tracing_subscriber items so rustc_driver_impl doesn't need to depend on it.
+pub use tracing_subscriber::{Layer, Registry};
 
 /// The values of all the environment variables that matter for configuring a logger.
 /// Errors are explicitly preserved so that we can share error handling.
@@ -72,6 +74,15 @@ impl LoggerConfig {
 
 /// Initialize the logger with the given values for the filter, coloring, and other options env variables.
 pub fn init_logger(cfg: LoggerConfig) -> Result<(), Error> {
+    init_logger_with_additional_layer(cfg, Identity::new())
+}
+
+/// Initialize the logger with the given values for the filter, coloring, and other options env variables.
+/// Additionally add a custom layer to collect logging and tracing events.
+pub fn init_logger_with_additional_layer(
+    cfg: LoggerConfig,
+    additional_tracing_layer: impl Layer<Registry> + Send + Sync,
+) -> Result<(), Error> {
     let filter = match cfg.filter {
         Ok(env) => EnvFilter::new(env),
         _ => EnvFilter::default().add_directive(Directive::from(LevelFilter::WARN)),
@@ -104,7 +115,7 @@ pub fn init_logger(cfg: LoggerConfig) -> Result<(), Error> {
     };
 
     let mut layer = tracing_tree::HierarchicalLayer::default()
-        .with_writer(io::stderr)
+        .with_writer(io::stderr as fn() -> io::Stderr)
         .with_ansi(color_logs)
         .with_targets(true)
         .with_verbose_exit(verbose_entry_exit)
@@ -124,7 +135,8 @@ pub fn init_logger(cfg: LoggerConfig) -> Result<(), Error> {
         Err(_) => {} // no wraptree
     }
 
-    let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
+    let subscriber =
+        Registry::default().with(additional_tracing_layer).with(layer.with_filter(filter));
     match cfg.backtrace {
         Ok(backtrace_target) => {
             let fmt_layer = tracing_subscriber::fmt::layer()
