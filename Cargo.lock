@@ -3809,6 +3809,7 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_attr_data_structures",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",

@@ -2,6 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::cmp::max;
 use std::ops::Deref;
 
+use rustc_attr_parsing::is_doc_alias_attrs_contain_symbol;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::Applicability;
@@ -2333,10 +2334,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         };
         let hir_id = self.fcx.tcx.local_def_id_to_hir_id(local_def_id);
         let attrs = self.fcx.tcx.hir_attrs(hir_id);
+
+        if is_doc_alias_attrs_contain_symbol(attrs.into_iter(), method.name) {
+            return true;
+        }
+
         for attr in attrs {
-            if attr.has_name(sym::doc) {
-                // do nothing
-            } else if attr.has_name(sym::rustc_confusables) {
+            if attr.has_name(sym::rustc_confusables) {
                 let Some(confusables) = attr.meta_item_list() else {
                     continue;
                 };
@@ -2347,33 +2351,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     {
                         return true;
                     }
-                }
-                continue;
-            } else {
-                continue;
-            };
-            let Some(values) = attr.meta_item_list() else {
-                continue;
-            };
-            for v in values {
-                if !v.has_name(sym::alias) {
-                    continue;
-                }
-                if let Some(nested) = v.meta_item_list() {
-                    // #[doc(alias("foo", "bar"))]
-                    for n in nested {
-                        if let Some(lit) = n.lit()
-                            && method.name == lit.symbol
-                        {
-                            return true;
-                        }
-                    }
-                } else if let Some(meta) = v.meta_item()
-                    && let Some(lit) = meta.name_value_literal()
-                    && method.name == lit.symbol
-                {
-                    // #[doc(alias = "foo")]
-                    return true;
                 }
             }
         }
