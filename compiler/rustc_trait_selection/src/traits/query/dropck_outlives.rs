@@ -196,6 +196,14 @@ where
                 debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);
                 ty
             } else {
+                // Flush errors b/c `deeply_normalize` doesn't expect pending
+                // obligations, and we may have pending obligations from the
+                // branch above (from other types).
+                let errors = ocx.select_all_or_error();
+                if !errors.is_empty() {
+                    return Err(errors);
+                }
+
                 ocx.deeply_normalize(&cause, param_env, ty)?;
 
                 let errors = ocx.select_where_possible();
