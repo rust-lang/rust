@@ -1,0 +1,11 @@
+error: queries overflow the depth limit!
+  --> $DIR/query_depth.rs:28:1
+   |
+LL | fn main() {
+   | ^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "128"]` attribute to your crate (`query_depth`)
+   = note: query depth increased by 65 when computing layout of `core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<core::option::Option<alloc::boxed::Box<alloc::string::String>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>`
+
+error: aborting due to 1 previous error
+

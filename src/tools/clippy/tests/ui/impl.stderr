@@ -1,0 +1,70 @@
+error: multiple implementations of this structure
+  --> tests/ui/impl.rs:10:1
+   |
+LL | / impl MyStruct {
+LL | |
+LL | |
+LL | |     fn second() {}
+LL | | }
+   | |_^
+   |
+note: first implementation here
+  --> tests/ui/impl.rs:6:1
+   |
+LL | / impl MyStruct {
+LL | |     fn first() {}
+LL | | }
+   | |_^
+   = note: `-D clippy::multiple-inherent-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::multiple_inherent_impl)]`
+
+error: multiple implementations of this structure
+  --> tests/ui/impl.rs:26:5
+   |
+LL | /     impl super::MyStruct {
+LL | |
+LL | |
+LL | |         fn third() {}
+LL | |     }
+   | |_____^
+   |
+note: first implementation here
+  --> tests/ui/impl.rs:6:1
+   |
+LL | / impl MyStruct {
+LL | |     fn first() {}
+LL | | }
+   | |_^
+
+error: multiple implementations of this structure
+  --> tests/ui/impl.rs:48:1
+   |
+LL | / impl WithArgs<u64> {
+LL | |
+LL | |
+LL | |     fn f3() {}
+LL | | }
+   | |_^
+   |
+note: first implementation here
+  --> tests/ui/impl.rs:45:1
+   |
+LL | / impl WithArgs<u64> {
+LL | |     fn f2() {}
+LL | | }
+   | |_^
+
+error: multiple implementations of this structure
+  --> tests/ui/impl.rs:71:1
+   |
+LL | impl OneAllowedImpl {} // Lint, only one of the three blocks is allowed.
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first implementation here
+  --> tests/ui/impl.rs:68:1
+   |
+LL | impl OneAllowedImpl {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

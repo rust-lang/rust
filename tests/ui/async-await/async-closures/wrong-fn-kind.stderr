@@ -1,0 +1,41 @@
+error[E0525]: expected a closure that implements the `AsyncFn` trait, but this closure only implements `AsyncFnOnce`
+  --> $DIR/wrong-fn-kind.rs:15:20
+   |
+LL |       needs_async_fn(move || async move {
+   |       -------------- -^^^^^^
+   |       |              |
+   |  _____|______________this closure implements `AsyncFnOnce`, not `AsyncFn`
+   | |     |
+   | |     required by a bound introduced by this call
+LL | |
+LL | |         println!("{x}");
+   | |                    - closure is `AsyncFnOnce` because it moves the variable `x` out of its environment
+LL | |     });
+   | |_____- the requirement to implement `AsyncFn` derives from here
+   |
+note: required by a bound in `needs_async_fn`
+  --> $DIR/wrong-fn-kind.rs:3:27
+   |
+LL | fn needs_async_fn(_: impl AsyncFn()) {}
+   |                           ^^^^^^^^^ required by this bound in `needs_async_fn`
+
+error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
+  --> $DIR/wrong-fn-kind.rs:7:20
+   |
+LL | fn needs_async_fn(_: impl AsyncFn()) {}
+   |                      -------------- change this to accept `FnMut` instead of `Fn`
+...
+LL |     needs_async_fn(async || {
+   |     -------------- ^^^^^^^^
+   |     |              |
+   |     |              cannot borrow as mutable
+   |     |              in this closure
+   |     expects `Fn` instead of `FnMut`
+LL |
+LL |         x += 1;
+   |         - mutable borrow occurs due to use of `x` in closure
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0525, E0596.
+For more information about an error, try `rustc --explain E0525`.

@@ -1,0 +1,16 @@
+CHECK: define void @call_a_bunch_of_functions({{.*}} {
+
+# Make sure that indirect call promotion inserted a check against the most
+# frequently called function.
+CHECK: %{{.*}} = icmp eq ptr %{{.*}}, @function_called_always
+
+# Check that the call to `function_called_always` was inlined, so that we
+# directly call `opaque_f1` from the upstream crate.
+CHECK: call void @opaque_f1()
+
+
+# Same checks as above, repeated for the trait object case
+
+CHECK: define void @call_a_bunch_of_trait_methods({{.*}}
+CHECK: %{{.*}} = icmp eq ptr %{{.*}}, {{.*}}@foo
+CHECK: tail call void @opaque_f2()

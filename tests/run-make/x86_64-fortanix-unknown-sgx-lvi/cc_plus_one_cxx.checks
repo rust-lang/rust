@@ -1,0 +1,6 @@
+CHECK: cc_plus_one_cxx
+CHECK:      lfence
+CHECK:      popq
+CHECK-NEXT: popq [[REGISTER:%[a-z]+]]
+CHECK-NEXT: lfence
+CHECK-NEXT: jmpq *[[REGISTER]]

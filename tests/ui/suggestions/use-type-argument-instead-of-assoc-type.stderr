@@ -1,0 +1,19 @@
+error[E0107]: trait takes 2 generic arguments but 4 generic arguments were supplied
+  --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:16
+   |
+LL |     i: Box<dyn T<usize, usize, usize, usize, B=usize>>,
+   |                ^ expected 2 generic arguments
+   |
+note: trait defined here, with 2 generic parameters: `X`, `Y`
+  --> $DIR/use-type-argument-instead-of-assoc-type.rs:1:11
+   |
+LL | pub trait T<X, Y> {
+   |           ^ -  -
+help: replace the generic bounds with the associated types
+   |
+LL |     i: Box<dyn T<usize, usize, A = usize, C = usize, B=usize>>,
+   |                                +++        +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

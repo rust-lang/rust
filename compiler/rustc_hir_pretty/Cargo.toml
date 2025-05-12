@@ -1,0 +1,14 @@
+[package]
+name = "rustc_hir_pretty"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+rustc_abi = { path = "../rustc_abi" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_ast_pretty = { path = "../rustc_ast_pretty" }
+rustc_attr_data_structures = { path = "../rustc_attr_data_structures" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_span = { path = "../rustc_span" }
+# tidy-alphabetical-end

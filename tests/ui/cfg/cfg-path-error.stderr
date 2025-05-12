@@ -1,0 +1,26 @@
+error: `cfg` predicate key must be an identifier
+  --> $DIR/cfg-path-error.rs:5:16
+   |
+LL | #[cfg(any(foo, foo::bar))]
+   |                ^^^^^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/cfg-path-error.rs:9:11
+   |
+LL | #[cfg(any(foo::bar, foo))]
+   |           ^^^^^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/cfg-path-error.rs:13:16
+   |
+LL | #[cfg(all(foo, foo::bar))]
+   |                ^^^^^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/cfg-path-error.rs:17:11
+   |
+LL | #[cfg(all(foo::bar, foo))]
+   |           ^^^^^^^^
+
+error: aborting due to 4 previous errors
+

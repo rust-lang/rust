@@ -1,0 +1,25 @@
+error[E0659]: `std` is ambiguous
+  --> $DIR/ambiguity-macros-nested.rs:8:13
+   |
+LL |     pub use std::io;
+   |             ^^^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
+   = note: `std` could refer to a built-in crate
+   = help: use `::std` to refer to this crate unambiguously
+note: `std` could also refer to the module defined here
+  --> $DIR/ambiguity-macros-nested.rs:13:13
+   |
+LL | /             mod std {
+LL | |                 pub struct io;
+LL | |             }
+   | |_____________^
+...
+LL |       m!();
+   |       ---- in this macro invocation
+   = help: use `self::std` to refer to this module unambiguously
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

@@ -1,0 +1,100 @@
+error: usage of `Box<&T>`
+  --> tests/ui/redundant_allocation_fixable.rs:21:30
+   |
+LL |     pub fn box_test1<T>(foo: Box<&T>) {}
+   |                              ^^^^^^^ help: try: `&T`
+   |
+   = note: `&T` is already a pointer, `Box<&T>` allocates a pointer on the heap
+   = note: `-D clippy::redundant-allocation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_allocation)]`
+
+error: usage of `Box<&MyStruct>`
+  --> tests/ui/redundant_allocation_fixable.rs:24:27
+   |
+LL |     pub fn box_test2(foo: Box<&MyStruct>) {}
+   |                           ^^^^^^^^^^^^^^ help: try: `&MyStruct`
+   |
+   = note: `&MyStruct` is already a pointer, `Box<&MyStruct>` allocates a pointer on the heap
+
+error: usage of `Box<&MyEnum>`
+  --> tests/ui/redundant_allocation_fixable.rs:27:27
+   |
+LL |     pub fn box_test3(foo: Box<&MyEnum>) {}
+   |                           ^^^^^^^^^^^^ help: try: `&MyEnum`
+   |
+   = note: `&MyEnum` is already a pointer, `Box<&MyEnum>` allocates a pointer on the heap
+
+error: usage of `Box<Box<T>>`
+  --> tests/ui/redundant_allocation_fixable.rs:32:30
+   |
+LL |     pub fn box_test5<T>(foo: Box<Box<T>>) {}
+   |                              ^^^^^^^^^^^ help: try: `Box<T>`
+   |
+   = note: `Box<T>` is already on the heap, `Box<Box<T>>` makes an extra allocation
+
+error: usage of `Rc<&T>`
+  --> tests/ui/redundant_allocation_fixable.rs:42:29
+   |
+LL |     pub fn rc_test1<T>(foo: Rc<&T>) {}
+   |                             ^^^^^^ help: try: `&T`
+   |
+   = note: `&T` is already a pointer, `Rc<&T>` allocates a pointer on the heap
+
+error: usage of `Rc<&MyStruct>`
+  --> tests/ui/redundant_allocation_fixable.rs:45:26
+   |
+LL |     pub fn rc_test2(foo: Rc<&MyStruct>) {}
+   |                          ^^^^^^^^^^^^^ help: try: `&MyStruct`
+   |
+   = note: `&MyStruct` is already a pointer, `Rc<&MyStruct>` allocates a pointer on the heap
+
+error: usage of `Rc<&MyEnum>`
+  --> tests/ui/redundant_allocation_fixable.rs:48:26
+   |
+LL |     pub fn rc_test3(foo: Rc<&MyEnum>) {}
+   |                          ^^^^^^^^^^^ help: try: `&MyEnum`
+   |
+   = note: `&MyEnum` is already a pointer, `Rc<&MyEnum>` allocates a pointer on the heap
+
+error: usage of `Rc<Rc<bool>>`
+  --> tests/ui/redundant_allocation_fixable.rs:53:24
+   |
+LL |     pub fn rc_test6(a: Rc<Rc<bool>>) {}
+   |                        ^^^^^^^^^^^^ help: try: `Rc<bool>`
+   |
+   = note: `Rc<bool>` is already on the heap, `Rc<Rc<bool>>` makes an extra allocation
+
+error: usage of `Arc<&T>`
+  --> tests/ui/redundant_allocation_fixable.rs:63:30
+   |
+LL |     pub fn arc_test1<T>(foo: Arc<&T>) {}
+   |                              ^^^^^^^ help: try: `&T`
+   |
+   = note: `&T` is already a pointer, `Arc<&T>` allocates a pointer on the heap
+
+error: usage of `Arc<&MyStruct>`
+  --> tests/ui/redundant_allocation_fixable.rs:66:27
+   |
+LL |     pub fn arc_test2(foo: Arc<&MyStruct>) {}
+   |                           ^^^^^^^^^^^^^^ help: try: `&MyStruct`
+   |
+   = note: `&MyStruct` is already a pointer, `Arc<&MyStruct>` allocates a pointer on the heap
+
+error: usage of `Arc<&MyEnum>`
+  --> tests/ui/redundant_allocation_fixable.rs:69:27
+   |
+LL |     pub fn arc_test3(foo: Arc<&MyEnum>) {}
+   |                           ^^^^^^^^^^^^ help: try: `&MyEnum`
+   |
+   = note: `&MyEnum` is already a pointer, `Arc<&MyEnum>` allocates a pointer on the heap
+
+error: usage of `Arc<Arc<bool>>`
+  --> tests/ui/redundant_allocation_fixable.rs:74:25
+   |
+LL |     pub fn arc_test7(a: Arc<Arc<bool>>) {}
+   |                         ^^^^^^^^^^^^^^ help: try: `Arc<bool>`
+   |
+   = note: `Arc<bool>` is already on the heap, `Arc<Arc<bool>>` makes an extra allocation
+
+error: aborting due to 12 previous errors
+

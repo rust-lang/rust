@@ -1,0 +1,23 @@
+warning: unknown lint: `multiple_supertrait_upcastable`
+  --> $DIR/feature-gate-multiple_supertrait_upcastable.rs:3:9
+   |
+LL | #![deny(multiple_supertrait_upcastable)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `multiple_supertrait_upcastable` lint is unstable
+   = help: add `#![feature(multiple_supertrait_upcastable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: `#[warn(unknown_lints)]` on by default
+
+warning: unknown lint: `multiple_supertrait_upcastable`
+  --> $DIR/feature-gate-multiple_supertrait_upcastable.rs:5:9
+   |
+LL | #![warn(multiple_supertrait_upcastable)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `multiple_supertrait_upcastable` lint is unstable
+   = help: add `#![feature(multiple_supertrait_upcastable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+warning: 2 warnings emitted
+

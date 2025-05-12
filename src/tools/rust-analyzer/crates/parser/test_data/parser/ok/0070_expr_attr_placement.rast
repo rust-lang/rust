@@ -1,0 +1,59 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        PAREN_EXPR
+          L_PAREN "("
+          BIN_EXPR
+            TRY_EXPR
+              ATTR
+                POUND "#"
+                L_BRACK "["
+                META
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "a"
+                R_BRACK "]"
+              WHITESPACE " "
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "lhs"
+              QUESTION "?"
+            WHITESPACE " "
+            PLUS "+"
+            WHITESPACE " "
+            AWAIT_EXPR
+              ATTR
+                POUND "#"
+                L_BRACK "["
+                META
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "b"
+                R_BRACK "]"
+              WHITESPACE " "
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "rhs"
+              DOT "."
+              AWAIT_KW "await"
+          R_PAREN ")"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: there are too many leading `super` keywords
+  --> $DIR/keyword-super.rs:2:9
+   |
+LL |     let super: isize;
+   |         ^^^^^ there are too many leading `super` keywords
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

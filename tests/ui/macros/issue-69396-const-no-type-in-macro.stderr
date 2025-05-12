@@ -1,0 +1,47 @@
+error[E0428]: the name `A` is defined multiple times
+  --> $DIR/issue-69396-const-no-type-in-macro.rs:4:13
+   |
+LL |               const A = "A".$fn();
+   |               ^^^^^^^^^^^^^^^^^^^^ `A` redefined here
+...
+LL | / suite! {
+LL | |     len;
+LL | |     is_empty;
+LL | | }
+   | |_- in this macro invocation
+   |
+   = note: `A` must be defined only once in the value namespace of this module
+   = note: this error originates in the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: missing type for `const` item
+  --> $DIR/issue-69396-const-no-type-in-macro.rs:4:20
+   |
+LL |               const A = "A".$fn();
+   |                      ^ help: provide a type for the constant: `: usize`
+...
+LL | / suite! {
+LL | |     len;
+LL | |     is_empty;
+LL | | }
+   | |_- in this macro invocation
+   |
+   = note: this error originates in the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0121]: missing type for item
+  --> $DIR/issue-69396-const-no-type-in-macro.rs:4:20
+   |
+LL |               const A = "A".$fn();
+   |                      ^ not allowed in type signatures
+...
+LL | / suite! {
+LL | |     len;
+LL | |     is_empty;
+LL | | }
+   | |_- in this macro invocation
+   |
+   = note: this error originates in the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0121, E0428.
+For more information about an error, try `rustc --explain E0121`.

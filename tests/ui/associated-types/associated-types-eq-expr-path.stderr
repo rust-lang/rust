@@ -1,0 +1,9 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/associated-types-eq-expr-path.rs:16:26
+   |
+LL |     let x: isize = Foo::<A = usize>::bar();
+   |                          ^^^^^^^^^ associated item constraint not allowed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0229`.

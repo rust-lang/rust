@@ -1,0 +1,14 @@
+error[E0603]: module `sys` is private
+  --> $DIR/stability-in-private-module.rs:2:18
+   |
+LL |     let _ = std::sys::os::errno();
+   |                  ^^^      ----- function `errno` is not publicly re-exported
+   |                  |
+   |                  private module
+   |
+note: the module `sys` is defined here
+  --> $SRC_DIR/std/src/lib.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

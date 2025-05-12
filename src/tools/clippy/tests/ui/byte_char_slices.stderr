@@ -1,0 +1,38 @@
+error: can be more succinctly written as a byte str
+  --> tests/ui/byte_char_slices.rs:5:15
+   |
+LL |     let bad = &[b'a', b'b', b'c'];
+   |               ^^^^^^^^^^^^^^^^^^^ help: try: `b"abc"`
+   |
+   = note: `-D clippy::byte-char-slices` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::byte_char_slices)]`
+
+error: can be more succinctly written as a byte str
+  --> tests/ui/byte_char_slices.rs:7:18
+   |
+LL |     let quotes = &[b'"', b'H', b'i'];
+   |                  ^^^^^^^^^^^^^^^^^^^ help: try: `b"\"Hi"`
+
+error: can be more succinctly written as a byte str
+  --> tests/ui/byte_char_slices.rs:9:18
+   |
+LL |     let quotes = &[b'\'', b'S', b'u', b'p'];
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b"'Sup"`
+
+error: can be more succinctly written as a byte str
+  --> tests/ui/byte_char_slices.rs:11:19
+   |
+LL |     let escapes = &[b'\x42', b'E', b's', b'c'];
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b"\x42Esc"`
+
+error: useless use of `vec!`
+  --> tests/ui/byte_char_slices.rs:15:16
+   |
+LL |     let good = vec![b'a', b'a'];
+   |                ^^^^^^^^^^^^^^^^ help: you can use an array directly: `[b'a', b'a']`
+   |
+   = note: `-D clippy::useless-vec` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::useless_vec)]`
+
+error: aborting due to 5 previous errors
+

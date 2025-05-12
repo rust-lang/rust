@@ -1,0 +1,79 @@
+error[E0599]: no variant named `Squareee` found for enum `Shape`
+  --> $DIR/suggest-variants.rs:12:41
+   |
+LL | enum Shape {
+   | ---------- variant `Squareee` not found here
+...
+LL |     println!("My shape is {:?}", Shape::Squareee { size: 5});
+   |                                         ^^^^^^^^
+   |
+help: there is a variant with a similar name
+   |
+LL -     println!("My shape is {:?}", Shape::Squareee { size: 5});
+LL +     println!("My shape is {:?}", Shape::Square { size: 5});
+   |
+
+error[E0599]: no variant named `Circl` found for enum `Shape`
+  --> $DIR/suggest-variants.rs:13:41
+   |
+LL | enum Shape {
+   | ---------- variant `Circl` not found here
+...
+LL |     println!("My shape is {:?}", Shape::Circl { size: 5});
+   |                                         ^^^^^
+   |
+help: there is a variant with a similar name
+   |
+LL |     println!("My shape is {:?}", Shape::Circle { size: 5});
+   |                                              +
+
+error[E0599]: no variant named `Rombus` found for enum `Shape`
+  --> $DIR/suggest-variants.rs:14:41
+   |
+LL | enum Shape {
+   | ---------- variant `Rombus` not found here
+...
+LL |     println!("My shape is {:?}", Shape::Rombus{ size: 5});
+   |                                         ^^^^^^ variant not found in `Shape`
+
+error[E0599]: no variant or associated item named `Squareee` found for enum `Shape` in the current scope
+  --> $DIR/suggest-variants.rs:15:12
+   |
+LL | enum Shape {
+   | ---------- variant or associated item `Squareee` not found for this enum
+...
+LL |     Shape::Squareee;
+   |            ^^^^^^^^ variant or associated item not found in `Shape`
+   |
+help: there is a variant with a similar name
+   |
+LL -     Shape::Squareee;
+LL +     Shape::Square { size: /* value */ };
+   |
+
+error[E0599]: no variant or associated item named `Circl` found for enum `Shape` in the current scope
+  --> $DIR/suggest-variants.rs:16:12
+   |
+LL | enum Shape {
+   | ---------- variant or associated item `Circl` not found for this enum
+...
+LL |     Shape::Circl;
+   |            ^^^^^ variant or associated item not found in `Shape`
+   |
+help: there is a variant with a similar name
+   |
+LL |     Shape::Circle { radius: /* value */ };
+   |                 +++++++++++++++++++++++++
+
+error[E0599]: no variant or associated item named `Rombus` found for enum `Shape` in the current scope
+  --> $DIR/suggest-variants.rs:17:12
+   |
+LL | enum Shape {
+   | ---------- variant or associated item `Rombus` not found for this enum
+...
+LL |     Shape::Rombus;
+   |            ^^^^^^ variant or associated item not found in `Shape`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

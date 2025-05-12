@@ -1,0 +1,39 @@
+error[E0412]: cannot find type `Nonexistent` in this scope
+  --> $DIR/type-path-err-node-types.rs:7:12
+   |
+LL |     let _: Nonexistent<u8, Assoc = u16>;
+   |            ^^^^^^^^^^^ not found in this scope
+
+error[E0576]: cannot find method or associated constant `nonexistent` in trait `Tr`
+  --> $DIR/type-path-err-node-types.rs:11:21
+   |
+LL |     <u8 as Tr<u8>>::nonexistent();
+   |                     ^^^^^^^^^^^ not found in `Tr`
+
+error[E0425]: cannot find value `nonexistent` in this scope
+  --> $DIR/type-path-err-node-types.rs:19:5
+   |
+LL |     nonexistent.nonexistent::<u8>();
+   |     ^^^^^^^^^^^ not found in this scope
+
+error[E0433]: failed to resolve: use of undeclared type `NonExistent`
+  --> $DIR/type-path-err-node-types.rs:15:5
+   |
+LL |     NonExistent::Assoc::<u8>;
+   |     ^^^^^^^^^^^ use of undeclared type `NonExistent`
+
+error[E0282]: type annotations needed
+  --> $DIR/type-path-err-node-types.rs:23:14
+   |
+LL |     let _ = |a, b: _| -> _ { 0 };
+   |              ^
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |     let _ = |a: /* Type */, b: _| -> _ { 0 };
+   |               ++++++++++++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0282, E0412, E0425, E0433, E0576.
+For more information about an error, try `rustc --explain E0282`.

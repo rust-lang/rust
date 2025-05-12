@@ -1,0 +1,14 @@
+error[E0119]: conflicting implementations of trait `Foo` for type `&_`
+  --> $DIR/feature-gate-with_negative_coherence.rs:5:1
+   |
+LL | impl<T: std::ops::DerefMut> Foo for T { }
+   | ------------------------------------- first implementation here
+LL |
+LL | impl<T> Foo for &T { }
+   | ^^^^^^^^^^^^^^^^^^ conflicting implementation for `&_`
+   |
+   = note: downstream crates may implement trait `std::ops::DerefMut` for type `&_`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

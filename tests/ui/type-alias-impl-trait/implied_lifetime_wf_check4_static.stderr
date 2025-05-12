@@ -1,0 +1,36 @@
+error[E0310]: the parameter type `A` may not live long enough
+  --> $DIR/implied_lifetime_wf_check4_static.rs:6:5
+   |
+LL |     s
+   |     ^
+   |     |
+   |     the parameter type `A` must be valid for the static lifetime...
+   |     ...so that the type `A` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/implied_lifetime_wf_check4_static.rs:3:31
+   |
+LL | pub type Ty<A> = impl Sized + 'static;
+   |                               ^^^^^^^
+help: consider adding an explicit lifetime bound
+   |
+LL | pub type Ty<A: 'static> = impl Sized + 'static;
+   |              +++++++++
+
+error[E0310]: the parameter type `A` may not live long enough
+  --> $DIR/implied_lifetime_wf_check4_static.rs:15:5
+   |
+LL |     assert_static::<A>()
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `A` must be valid for the static lifetime...
+   |     ...so that the type `A` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn test<A: 'static>()
+   |          +++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0310`.

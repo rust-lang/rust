@@ -1,0 +1,53 @@
+error: this looks like you are trying to use `.. -= ..`, but you really are doing `.. = (- ..)`
+  --> tests/ui/formatting.rs:13:6
+   |
+LL |     a =- 35;
+   |      ^^^^
+   |
+   = note: to remove this lint, use either `-=` or `= -`
+   = note: `-D clippy::suspicious-assignment-formatting` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_assignment_formatting)]`
+
+error: this looks like you are trying to use `.. *= ..`, but you really are doing `.. = (* ..)`
+  --> tests/ui/formatting.rs:17:6
+   |
+LL |     a =* &191;
+   |      ^^^^
+   |
+   = note: to remove this lint, use either `*=` or `= *`
+
+error: this looks like you are trying to use `.. != ..`, but you really are doing `.. = (! ..)`
+  --> tests/ui/formatting.rs:23:6
+   |
+LL |     b =! false;
+   |      ^^^^
+   |
+   = note: to remove this lint, use either `!=` or `= !`
+
+error: possibly missing a comma here
+  --> tests/ui/formatting.rs:35:19
+   |
+LL |         -1, -2, -3 // <= no comma here
+   |                   ^
+   |
+   = note: to remove this lint, add a comma or write the expr in a single line
+   = note: `#[deny(clippy::possible_missing_comma)]` on by default
+
+error: possibly missing a comma here
+  --> tests/ui/formatting.rs:42:19
+   |
+LL |         -1, -2, -3 // <= no comma here
+   |                   ^
+   |
+   = note: to remove this lint, add a comma or write the expr in a single line
+
+error: possibly missing a comma here
+  --> tests/ui/formatting.rs:82:11
+   |
+LL |         -1
+   |           ^
+   |
+   = note: to remove this lint, add a comma or write the expr in a single line
+
+error: aborting due to 6 previous errors
+

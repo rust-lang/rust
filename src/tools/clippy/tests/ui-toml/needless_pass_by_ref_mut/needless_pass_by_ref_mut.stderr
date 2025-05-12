@@ -1,0 +1,12 @@
+error: this argument is a mutable reference, but not used mutably
+  --> tests/ui-toml/needless_pass_by_ref_mut/needless_pass_by_ref_mut.rs:5:19
+   |
+LL | pub fn pub_foo(s: &mut Vec<u32>, b: &u32, x: &mut u32) {
+   |                   ^^^^^^^^^^^^^ help: consider changing to: `&Vec<u32>`
+   |
+   = warning: changing this function will impact semver compatibility
+   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_ref_mut)]`
+
+error: aborting due to 1 previous error
+

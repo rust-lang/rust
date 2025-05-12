@@ -1,0 +1,47 @@
+- // MIR for `match_sext_i8_i16_failed` before MatchBranchSimplification
++ // MIR for `match_sext_i8_i16_failed` after MatchBranchSimplification
+  
+  fn match_sext_i8_i16_failed(_1: EnumAi8) -> i16 {
+      debug i => _1;
+      let mut _0: i16;
+      let mut _2: i8;
+  
+      bb0: {
+          _2 = discriminant(_1);
+          switchInt(move _2) -> [128: bb6, 255: bb5, 0: bb4, 1: bb3, 127: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          _0 = const 127_i16;
+          goto -> bb7;
+      }
+  
+      bb3: {
+          _0 = const 1_i16;
+          goto -> bb7;
+      }
+  
+      bb4: {
+          _0 = const 0_i16;
+          goto -> bb7;
+      }
+  
+      bb5: {
+          _0 = const 255_i16;
+          goto -> bb7;
+      }
+  
+      bb6: {
+          _0 = const -128_i16;
+          goto -> bb7;
+      }
+  
+      bb7: {
+          return;
+      }
+  }
+  

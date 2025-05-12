@@ -1,0 +1,206 @@
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:44:18
+   |
+LL |     Pointer::fmt(&zst_ref, f)
+   |                  ^^^^^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+   |
+note: the lint level is defined here
+  --> $DIR/function-item-references.rs:3:9
+   |
+LL | #![warn(function_item_references)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:81:22
+   |
+LL |     println!("{:p}", &foo);
+   |                      ^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:83:20
+   |
+LL |     print!("{:p}", &foo);
+   |                    ^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:85:21
+   |
+LL |     format!("{:p}", &foo);
+   |                     ^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:88:22
+   |
+LL |     println!("{:p}", &foo as *const _);
+   |                      ^^^^^^^^^^^^^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:90:22
+   |
+LL |     println!("{:p}", zst_ref);
+   |                      ^^^^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:92:22
+   |
+LL |     println!("{:p}", cast_zst_ptr);
+   |                      ^^^^^^^^^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:94:22
+   |
+LL |     println!("{:p}", coerced_zst_ptr);
+   |                      ^^^^^^^^^^^^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:97:22
+   |
+LL |     println!("{:p}", &fn_item);
+   |                      ^^^^^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:99:22
+   |
+LL |     println!("{:p}", indirect_ref);
+   |                      ^^^^^^^^^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:102:22
+   |
+LL |     println!("{:p}", &nop);
+   |                      ^^^^ help: cast `nop` to obtain a function pointer: `nop as fn()`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:104:22
+   |
+LL |     println!("{:p}", &bar);
+   |                      ^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:106:22
+   |
+LL |     println!("{:p}", &baz);
+   |                      ^^^^ help: cast `baz` to obtain a function pointer: `baz as fn(_, _) -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:108:22
+   |
+LL |     println!("{:p}", &unsafe_fn);
+   |                      ^^^^^^^^^^ help: cast `unsafe_fn` to obtain a function pointer: `unsafe_fn as unsafe fn()`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:110:22
+   |
+LL |     println!("{:p}", &c_fn);
+   |                      ^^^^^ help: cast `c_fn` to obtain a function pointer: `c_fn as extern "C" fn()`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:112:22
+   |
+LL |     println!("{:p}", &unsafe_c_fn);
+   |                      ^^^^^^^^^^^^ help: cast `unsafe_c_fn` to obtain a function pointer: `unsafe_c_fn as unsafe extern "C" fn()`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:114:22
+   |
+LL |     println!("{:p}", &variadic);
+   |                      ^^^^^^^^^ help: cast `variadic` to obtain a function pointer: `variadic as unsafe extern "C" fn(_, ...)`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:116:22
+   |
+LL |     println!("{:p}", &take_generic_ref::<u32>);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ help: cast `take_generic_ref` to obtain a function pointer: `take_generic_ref::<u32> as fn(_)`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:118:22
+   |
+LL |     println!("{:p}", &take_generic_array::<u32, 4>);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: cast `take_generic_array` to obtain a function pointer: `take_generic_array::<u32, 4> as fn(_)`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:120:22
+   |
+LL |     println!("{:p}", &multiple_generic::<u32, f32>);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: cast `multiple_generic` to obtain a function pointer: `multiple_generic::<u32, f32> as fn(_, _)`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:122:22
+   |
+LL |     println!("{:p}", &multiple_generic_arrays::<u32, f32, 4, 8>);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: cast `multiple_generic_arrays` to obtain a function pointer: `multiple_generic_arrays::<u32, f32, 4, 8> as fn(_, _)`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:124:22
+   |
+LL |     println!("{:p}", &std::env::var::<String>);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ help: cast `var` to obtain a function pointer: `var::<String> as fn(_) -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:127:32
+   |
+LL |     println!("{:p} {:p} {:p}", &nop, &foo, &bar);
+   |                                ^^^^ help: cast `nop` to obtain a function pointer: `nop as fn()`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:127:38
+   |
+LL |     println!("{:p} {:p} {:p}", &nop, &foo, &bar);
+   |                                      ^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:127:44
+   |
+LL |     println!("{:p} {:p} {:p}", &nop, &foo, &bar);
+   |                                            ^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:142:41
+   |
+LL |         std::mem::transmute::<_, usize>(&foo);
+   |                                         ^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:144:50
+   |
+LL |         std::mem::transmute::<_, (usize, usize)>((&foo, &bar));
+   |                                                  ^^^^^^^^^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:144:50
+   |
+LL |         std::mem::transmute::<_, (usize, usize)>((&foo, &bar));
+   |                                                  ^^^^^^^^^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:147:41
+   |
+LL |         std::mem::transmute::<_, usize>(&take_generic_ref::<u32>);
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^ help: cast `take_generic_ref` to obtain a function pointer: `take_generic_ref::<u32> as fn(_)`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:156:15
+   |
+LL |     print_ptr(&bar);
+   |               ^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:158:24
+   |
+LL |     bound_by_ptr_trait(&bar);
+   |                        ^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:160:30
+   |
+LL |     bound_by_ptr_trait_tuple((&foo, &bar));
+   |                              ^^^^^^^^^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:160:30
+   |
+LL |     bound_by_ptr_trait_tuple((&foo, &bar));
+   |                              ^^^^^^^^^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: 33 warnings emitted
+

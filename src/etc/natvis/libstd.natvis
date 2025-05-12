@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <!--
+    std::collection::Hash* container visualizers
+
+    Current std impls:
+      std::collections::hash::set::HashSet<K, S>      is implemented in terms of...
+      hashbrown::set::HashSet<K, S>                   is implemented in terms of...
+      hashbrown::map::HashMap<K, V, S>                is implemented in terms of...
+      hashbrown::raw::RawTable<(K, V)>
+
+    Ideally, we'd teach rustc to scan dependencies/crates for .natvis files so
+    the bulk of this could live alongside the hashbrown crate implementation,
+    and std would just forward using e.g. <ExpandedItem>base</ExpandedItem>.
+
+    However, Given that std...Hash*Set* is currently implemented in terms of
+    hashbrown...Hash*Map*, which would visualize poorly, we want to customize the
+    look/feel at the std type level *anyways*...
+
+    References:
+      https://github.com/rust-lang/rust/blob/master/src/libstd/collections/hash/map.rs
+      https://github.com/rust-lang/rust/blob/master/src/libstd/collections/hash/set.rs
+      https://github.com/rust-lang/hashbrown/blob/master/src/map.rs
+      https://github.com/rust-lang/hashbrown/blob/master/src/set.rs
+      https://github.com/rust-lang/hashbrown/blob/master/src/raw/mod.rs
+  -->
+
+  <Type Name="std::collections::hash::map::HashMap&lt;*,*,*&gt;">
+    <DisplayString>{{ len={base.table.table.items} }}</DisplayString>
+    <Expand>
+      <Item Name="[len]">base.table.table.items</Item>
+      <Item Name="[capacity]">base.table.table.items + base.table.table.growth_left</Item>
+      <Item Name="[state]">base.hash_builder</Item>
+
+      <CustomListItems>
+        <Variable Name="i" InitialValue="0" />
+        <Variable Name="n" InitialValue="base.table.table.items" />
+        <Size>base.table.table.items</Size>
+        <Loop>
+          <Break Condition="n == 0" />
+          <If Condition="(base.table.table.ctrl.pointer[i] &amp; 0x80) == 0">
+            <!-- Bucket is populated -->
+            <Exec>n--</Exec>
+            <Item Name="{((tuple$&lt;$T1,$T2&gt;*)base.table.table.ctrl.pointer)[-(i + 1)].__0}">((tuple$&lt;$T1,$T2&gt;*)base.table.table.ctrl.pointer)[-(i + 1)].__1</Item>
+          </If>
+          <Exec>i++</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="std::collections::hash::set::HashSet&lt;*,*&gt;">
+    <DisplayString>{{ len={base.map.table.table.items} }}</DisplayString>
+    <Expand>
+      <Item Name="[len]">base.map.table.table.items</Item>
+      <Item Name="[capacity]">base.map.table.table.items + base.map.table.table.growth_left</Item>
+      <Item Name="[state]">base.map.hash_builder</Item>
+
+      <CustomListItems>
+        <Variable Name="i" InitialValue="0" />
+        <Variable Name="n" InitialValue="base.map.table.table.items" />
+        <Size>base.map.table.table.items</Size>
+        <Loop>
+          <Break Condition="n == 0" />
+          <If Condition="(base.map.table.table.ctrl.pointer[i] &amp; 0x80) == 0">
+            <!-- Bucket is populated -->
+            <Exec>n--</Exec>
+            <Item>(($T1*)base.map.table.table.ctrl.pointer)[-(i + 1)]</Item>
+          </If>
+          <Exec>i++</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="std::ffi::c_str::CString">
+    <DisplayString>{(char*)inner.data_ptr}</DisplayString>
+    <Expand>
+      <Synthetic Name="[chars]">
+        <DisplayString>{(char*)inner.data_ptr}</DisplayString>
+        <Expand>
+          <ArrayItems>
+            <Size>inner.length</Size>
+            <ValuePointer>(char*)inner.data_ptr</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="std::ffi::c_str::CStr">
+    <DisplayString>{(char*) inner}</DisplayString>
+    <Expand>
+      <Synthetic Name="[chars]">
+        <DisplayString>{(char*) inner}</DisplayString>
+        <Expand>
+          <ArrayItems>
+            <Size>strlen((char *) inner) + 1</Size>
+            <ValuePointer>(char*)inner</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="std::ffi::os_str::OsString">
+    <DisplayString>{(char*)inner.inner.bytes.buf.inner.ptr.pointer.pointer,[inner.inner.bytes.len]}</DisplayString>
+    <Expand>
+      <Synthetic Name="[chars]">
+        <DisplayString>{(char*)inner.inner.bytes.buf.inner.ptr.pointer.pointer,[inner.inner.bytes.len]}</DisplayString>
+        <Expand>
+          <ArrayItems>
+            <Size>inner.inner.bytes.len</Size>
+            <ValuePointer>(char*)inner.inner.bytes.buf.inner.ptr.pointer.pointer</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+</AutoVisualizer>

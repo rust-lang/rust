@@ -1,0 +1,84 @@
+error[E0432]: unresolved import `qux::bar`
+  --> $DIR/unresolved-imports-used.rs:10:5
+   |
+LL | use qux::bar;
+   |     ^^^^^^^^ no `bar` in `qux`
+
+error[E0432]: unresolved import `qux::bar2`
+  --> $DIR/unresolved-imports-used.rs:13:5
+   |
+LL | use qux::bar2;
+   |     ^^^^^^^^^ no `bar2` in `qux`
+
+error[E0432]: unresolved import `foo`
+  --> $DIR/unresolved-imports-used.rs:11:5
+   |
+LL | use foo::bar;
+   |     ^^^ use of unresolved module or unlinked crate `foo`
+   |
+help: you might be missing a crate named `foo`, add it to your project and import it in your code
+   |
+LL + extern crate foo;
+   |
+
+error[E0432]: unresolved import `baz`
+  --> $DIR/unresolved-imports-used.rs:12:5
+   |
+LL | use baz::*;
+   |     ^^^ use of unresolved module or unlinked crate `baz`
+   |
+help: you might be missing a crate named `baz`, add it to your project and import it in your code
+   |
+LL + extern crate baz;
+   |
+
+error[E0432]: unresolved import `foo2`
+  --> $DIR/unresolved-imports-used.rs:14:5
+   |
+LL | use foo2::bar2;
+   |     ^^^^ use of unresolved module or unlinked crate `foo2`
+   |
+help: you might be missing a crate named `foo2`, add it to your project and import it in your code
+   |
+LL + extern crate foo2;
+   |
+
+error[E0432]: unresolved import `baz2`
+  --> $DIR/unresolved-imports-used.rs:15:5
+   |
+LL | use baz2::*;
+   |     ^^^^ use of unresolved module or unlinked crate `baz2`
+   |
+help: you might be missing a crate named `baz2`, add it to your project and import it in your code
+   |
+LL + extern crate baz2;
+   |
+
+error[E0603]: function `quz` is private
+  --> $DIR/unresolved-imports-used.rs:9:10
+   |
+LL | use qux::quz;
+   |          ^^^ private function
+   |
+note: the function `quz` is defined here
+  --> $DIR/unresolved-imports-used.rs:5:4
+   |
+LL |    fn quz() {}
+   |    ^^^^^^^^
+
+error: unused import: `qux::quy`
+  --> $DIR/unresolved-imports-used.rs:16:5
+   |
+LL | use qux::quy;
+   |     ^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unresolved-imports-used.rs:2:9
+   |
+LL | #![deny(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0432, E0603.
+For more information about an error, try `rustc --explain E0432`.

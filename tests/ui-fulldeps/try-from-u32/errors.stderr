@@ -1,0 +1,32 @@
+error: type is not an enum (TryFromU32)
+  --> $DIR/errors.rs:11:1
+   |
+LL | struct MyStruct {}
+   | ^^^^^^
+
+error: enum variant cannot have fields (TryFromU32)
+  --> $DIR/errors.rs:18:7
+   |
+LL |     D(bool),
+   |       ^^^^
+
+error: enum variant cannot have fields (TryFromU32)
+  --> $DIR/errors.rs:19:7
+   |
+LL |     E(bool, bool),
+   |       ^^^^
+
+error: enum variant cannot have fields (TryFromU32)
+  --> $DIR/errors.rs:20:9
+   |
+LL |     F { x: bool },
+   |         ^
+
+error: enum variant cannot have fields (TryFromU32)
+  --> $DIR/errors.rs:21:9
+   |
+LL |     G { x: bool, y: bool },
+   |         ^
+
+error: aborting due to 5 previous errors
+

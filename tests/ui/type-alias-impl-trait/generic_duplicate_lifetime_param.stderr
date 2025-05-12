@@ -1,0 +1,14 @@
+error: non-defining opaque type use in defining scope
+  --> $DIR/generic_duplicate_lifetime_param.rs:9:5
+   |
+LL |     t
+   |     ^
+   |
+note: lifetime used multiple times
+  --> $DIR/generic_duplicate_lifetime_param.rs:5:10
+   |
+LL | type Two<'a, 'b> = impl std::fmt::Debug;
+   |          ^^  ^^
+
+error: aborting due to 1 previous error
+

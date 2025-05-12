@@ -1,0 +1,10 @@
+error: rustc_outlives
+  --> $DIR/explicit-projection.rs:8:1
+   |
+LL | struct Foo<'a, A, B> where A: Trait<'a, B>
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: B: 'a
+
+error: aborting due to 1 previous error
+

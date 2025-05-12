@@ -1,0 +1,12 @@
+error[E0499]: cannot borrow `*s` as mutable more than once at a time
+  --> $DIR/issue-18566.rs:23:19
+   |
+LL |     MyPtr(s).poke(s);
+   |           -  ---- ^ second mutable borrow occurs here
+   |           |  |
+   |           |  first borrow later used by call
+   |           first mutable borrow occurs here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.

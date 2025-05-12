@@ -1,0 +1,9 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/issue-43431.rs:9:27
+   |
+LL |         <Self as Fn(A) -> B>::call(self, (a,))
+   |                           ^ associated item constraint not allowed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0229`.

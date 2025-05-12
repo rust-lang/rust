@@ -1,0 +1,77 @@
+error[E0412]: cannot find type `Apple` in this scope
+  --> $DIR/issue-35675.rs:7:29
+   |
+LL | fn should_return_fruit() -> Apple {
+   |                             ^^^^^ not found in this scope
+   |
+help: there is an enum variant `Fruit::Apple`; try using the variant's enum
+   |
+LL - fn should_return_fruit() -> Apple {
+LL + fn should_return_fruit() -> Fruit {
+   |
+
+error[E0425]: cannot find function, tuple struct or tuple variant `Apple` in this scope
+  --> $DIR/issue-35675.rs:9:5
+   |
+LL |     Apple(5)
+   |     ^^^^^ not found in this scope
+   |
+help: consider importing this tuple variant
+   |
+LL + use Fruit::Apple;
+   |
+
+error[E0573]: expected type, found variant `Fruit::Apple`
+  --> $DIR/issue-35675.rs:13:33
+   |
+LL | fn should_return_fruit_too() -> Fruit::Apple {
+   |                                 ^^^^^^^^^^^^
+   |                                 |
+   |                                 not a type
+   |                                 help: try using the variant's enum: `Fruit`
+
+error[E0425]: cannot find function, tuple struct or tuple variant `Apple` in this scope
+  --> $DIR/issue-35675.rs:15:5
+   |
+LL |     Apple(5)
+   |     ^^^^^ not found in this scope
+   |
+help: consider importing this tuple variant
+   |
+LL + use Fruit::Apple;
+   |
+
+error[E0573]: expected type, found variant `Ok`
+  --> $DIR/issue-35675.rs:19:13
+   |
+LL | fn foo() -> Ok {
+   |             ^^
+   |             |
+   |             not a type
+   |             help: try using the variant's enum: `std::result::Result`
+
+error[E0412]: cannot find type `Variant3` in this scope
+  --> $DIR/issue-35675.rs:24:13
+   |
+LL | fn bar() -> Variant3 {
+   |             ^^^^^^^^ not found in this scope
+   |
+help: there is an enum variant `x::Enum::Variant3`; try using the variant's enum
+   |
+LL - fn bar() -> Variant3 {
+LL + fn bar() -> x::Enum {
+   |
+
+error[E0573]: expected type, found variant `Some`
+  --> $DIR/issue-35675.rs:28:13
+   |
+LL | fn qux() -> Some {
+   |             ^^^^
+   |             |
+   |             not a type
+   |             help: try using the variant's enum: `std::option::Option`
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0412, E0425, E0573.
+For more information about an error, try `rustc --explain E0412`.

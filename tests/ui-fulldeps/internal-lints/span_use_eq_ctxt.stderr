@@ -1,0 +1,14 @@
+error: use `.eq_ctxt()` instead of `.ctxt() == .ctxt()`
+  --> $DIR/span_use_eq_ctxt.rs:12:5
+   |
+LL |     s.ctxt() == t.ctxt()
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/span_use_eq_ctxt.rs:5:9
+   |
+LL | #![deny(rustc::span_use_eq_ctxt)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,16 @@
+warning: `extern` block uses type `TransparentCustomZst`, which is not FFI-safe
+  --> $DIR/repr-transparent-issue-87496.rs:8:18
+   |
+LL |     fn good17(p: TransparentCustomZst);
+   |                  ^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this struct contains only zero-sized fields
+note: the type is defined here
+  --> $DIR/repr-transparent-issue-87496.rs:6:1
+   |
+LL | struct TransparentCustomZst(());
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(improper_ctypes)]` on by default
+
+warning: 1 warning emitted
+

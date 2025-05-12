@@ -1,0 +1,11 @@
+error: implementation of `Coroutine` is not general enough
+  --> $DIR/resume-arg-late-bound.rs:15:5
+   |
+LL |     test(gen);
+   |     ^^^^^^^^^ implementation of `Coroutine` is not general enough
+   |
+   = note: `{coroutine@$DIR/resume-arg-late-bound.rs:11:28: 11:44}` must implement `Coroutine<&'1 mut bool>`, for any lifetime `'1`...
+   = note: ...but it actually implements `Coroutine<&'2 mut bool>`, for some specific lifetime `'2`
+
+error: aborting due to 1 previous error
+

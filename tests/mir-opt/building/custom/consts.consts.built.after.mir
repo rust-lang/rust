@@ -1,0 +1,19 @@
+// MIR for `consts` after built
+
+fn consts() -> () {
+    let mut _0: ();
+    let mut _1: u8;
+    let mut _2: i8;
+    let mut _3: u32;
+    let mut _4: i32;
+    let mut _5: fn() {consts::<10>};
+
+    bb0: {
+        _1 = const 5_u8;
+        _2 = const consts::<C>::{constant#0};
+        _3 = const C;
+        _4 = const D;
+        _5 = consts::<10>;
+        return;
+    }
+}

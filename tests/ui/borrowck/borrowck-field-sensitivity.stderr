@@ -1,0 +1,158 @@
+error[E0382]: use of moved value: `x.b`
+  --> $DIR/borrowck-field-sensitivity.rs:8:10
+   |
+LL |     drop(x.b);
+   |          --- value moved here
+LL |     drop(*x.b);
+   |          ^^^^ value used here after move
+   |
+   = note: move occurs because `x.b` has type `Box<isize>`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `x.b`
+  --> $DIR/borrowck-field-sensitivity.rs:14:10
+   |
+LL |     let y = A { a: 3, .. x };
+   |             ---------------- value moved here
+LL |     drop(*x.b);
+   |          ^^^^ value used here after move
+   |
+   = note: move occurs because `x.b` has type `Box<isize>`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `x.b`
+  --> $DIR/borrowck-field-sensitivity.rs:20:13
+   |
+LL |     drop(x.b);
+   |          --- value moved here
+LL |     let p = &x.b;
+   |             ^^^^ value borrowed here after move
+   |
+   = note: move occurs because `x.b` has type `Box<isize>`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `x.b`
+  --> $DIR/borrowck-field-sensitivity.rs:27:13
+   |
+LL |     let _y = A { a: 3, .. x };
+   |              ---------------- value moved here
+LL |     let p = &x.b;
+   |             ^^^^ value borrowed here after move
+   |
+   = note: move occurs because `x.b` has type `Box<isize>`, which does not implement the `Copy` trait
+
+error[E0505]: cannot move out of `x.b` because it is borrowed
+  --> $DIR/borrowck-field-sensitivity.rs:34:10
+   |
+LL |     let x = A { a: 1, b: Box::new(2) };
+   |         - binding `x` declared here
+LL |     let p = &x.b;
+   |             ---- borrow of `x.b` occurs here
+LL |     drop(x.b);
+   |          ^^^ move out of `x.b` occurs here
+LL |     drop(**p);
+   |          --- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let p = &x.b.clone();
+   |                 ++++++++
+
+error[E0505]: cannot move out of `x.b` because it is borrowed
+  --> $DIR/borrowck-field-sensitivity.rs:41:14
+   |
+LL |     let x = A { a: 1, b: Box::new(2) };
+   |         - binding `x` declared here
+LL |     let p = &x.b;
+   |             ---- borrow of `x.b` occurs here
+LL |     let _y = A { a: 3, .. x };
+   |              ^^^^^^^^^^^^^^^^ move out of `x.b` occurs here
+LL |     drop(**p);
+   |          --- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let p = &x.b.clone();
+   |                 ++++++++
+
+error[E0499]: cannot borrow `x.a` as mutable more than once at a time
+  --> $DIR/borrowck-field-sensitivity.rs:48:13
+   |
+LL |     let p = &mut x.a;
+   |             -------- first mutable borrow occurs here
+LL |     let q = &mut x.a;
+   |             ^^^^^^^^ second mutable borrow occurs here
+LL |     drop(*p);
+   |          -- first borrow later used here
+
+error[E0382]: use of moved value: `x.b`
+  --> $DIR/borrowck-field-sensitivity.rs:56:10
+   |
+LL |     drop(x.b);
+   |          --- value moved here
+LL |     drop(x.b);
+   |          ^^^ value used here after move
+   |
+   = note: move occurs because `x.b` has type `Box<isize>`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `x.b`
+  --> $DIR/borrowck-field-sensitivity.rs:62:10
+   |
+LL |     let _y = A { a: 3, .. x };
+   |              ---------------- value moved here
+LL |     drop(x.b);
+   |          ^^^ value used here after move
+   |
+   = note: move occurs because `x.b` has type `Box<isize>`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `x.b`
+  --> $DIR/borrowck-field-sensitivity.rs:68:14
+   |
+LL |     drop(x.b);
+   |          --- value moved here
+LL |     let _z = A { a: 3, .. x };
+   |              ^^^^^^^^^^^^^^^^ value used here after move
+   |
+   = note: move occurs because `x.b` has type `Box<isize>`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `x.b`
+  --> $DIR/borrowck-field-sensitivity.rs:74:14
+   |
+LL |     let _y = A { a: 3, .. x };
+   |              ---------------- value moved here
+LL |     let _z = A { a: 4, .. x };
+   |              ^^^^^^^^^^^^^^^^ value used here after move
+   |
+   = note: move occurs because `x.b` has type `Box<isize>`, which does not implement the `Copy` trait
+
+error[E0381]: partially assigned binding `x` isn't fully initialized
+  --> $DIR/borrowck-field-sensitivity.rs:81:5
+   |
+LL |     let mut x: A;
+   |         ----- binding declared here but left uninitialized
+LL |     x.a = 1;
+   |     ^^^^^^^ `x` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `x` isn't fully initialized
+  --> $DIR/borrowck-field-sensitivity.rs:87:5
+   |
+LL |     let mut x: A;
+   |         ----- binding declared here but left uninitialized
+LL |     x.a = 1;
+   |     ^^^^^^^ `x` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `x` isn't fully initialized
+  --> $DIR/borrowck-field-sensitivity.rs:94:5
+   |
+LL |     let mut x: A;
+   |         ----- binding declared here but left uninitialized
+LL |     x.b = Box::new(1);
+   |     ^^^ `x` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0381, E0382, E0499, E0505.
+For more information about an error, try `rustc --explain E0381`.

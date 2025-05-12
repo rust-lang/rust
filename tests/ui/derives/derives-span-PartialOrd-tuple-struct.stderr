@@ -1,0 +1,19 @@
+error[E0277]: can't compare `Error` with `Error`
+  --> $DIR/derives-span-PartialOrd-tuple-struct.rs:8:5
+   |
+LL | #[derive(PartialOrd,PartialEq)]
+   |          ---------- in this derive macro expansion
+LL | struct Struct(
+LL |     Error
+   |     ^^^^^ no implementation for `Error < Error` and `Error > Error`
+   |
+   = help: the trait `PartialOrd` is not implemented for `Error`
+help: consider annotating `Error` with `#[derive(PartialOrd)]`
+   |
+LL + #[derive(PartialOrd)]
+LL | struct Error;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

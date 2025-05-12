@@ -1,0 +1,11 @@
+error: implementation of `Foo` is not general enough
+  --> $DIR/issue-97997.rs:13:5
+   |
+LL |     <fn(&u8) as Foo>::ASSOC;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+   |
+   = note: `Foo` would have to be implemented for the type `for<'a> fn(&'a u8)`
+   = note: ...but `Foo` is actually implemented for the type `fn(&'0 u8)`, for some specific lifetime `'0`
+
+error: aborting due to 1 previous error
+

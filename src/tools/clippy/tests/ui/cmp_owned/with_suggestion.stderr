@@ -1,0 +1,53 @@
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/with_suggestion.rs:5:14
+   |
+LL |         x != "foo".to_string();
+   |              ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
+   |
+   = note: `-D clippy::cmp-owned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/with_suggestion.rs:8:9
+   |
+LL |         "foo".to_string() != x;
+   |         ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/with_suggestion.rs:16:10
+   |
+LL |     x != "foo".to_owned();
+   |          ^^^^^^^^^^^^^^^^ help: try: `"foo"`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/with_suggestion.rs:19:10
+   |
+LL |     x != String::from("foo");
+   |          ^^^^^^^^^^^^^^^^^^^ help: try: `"foo"`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/with_suggestion.rs:24:5
+   |
+LL |     Foo.to_owned() == Foo;
+   |     ^^^^^^^^^^^^^^ help: try: `Foo`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/with_suggestion.rs:27:30
+   |
+LL |     "abc".chars().filter(|c| c.to_owned() != 'X');
+   |                              ^^^^^^^^^^^^ help: try: `*c`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/with_suggestion.rs:80:21
+   |
+LL |     let _ = foo1 == "foo".to_owned();
+   |                     ^^^^^^^^^^^^^^^^ help: try: `"foo"`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/with_suggestion.rs:83:21
+   |
+LL |     let _ = foo1 == foo2.to_owned();
+   |                     ^^^^^^^^^^^^^^^ help: try: `foo2`
+
+error: aborting due to 8 previous errors
+

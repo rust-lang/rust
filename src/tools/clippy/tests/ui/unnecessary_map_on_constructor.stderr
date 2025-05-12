@@ -1,0 +1,53 @@
+error: unnecessary map on constructor Some(_)
+  --> tests/ui/unnecessary_map_on_constructor.rs:32:13
+   |
+LL |     let a = Some(x).map(fun);
+   |             ^^^^^^^^^^^^^^^^ help: try: `Some(fun(x))`
+   |
+   = note: `-D clippy::unnecessary-map-on-constructor` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_on_constructor)]`
+
+error: unnecessary map on constructor Ok(_)
+  --> tests/ui/unnecessary_map_on_constructor.rs:34:27
+   |
+LL |     let b: SimpleResult = Ok(x).map(fun);
+   |                           ^^^^^^^^^^^^^^ help: try: `Ok(fun(x))`
+
+error: unnecessary map_err on constructor Err(_)
+  --> tests/ui/unnecessary_map_on_constructor.rs:36:27
+   |
+LL |     let c: SimpleResult = Err(err).map_err(notfun);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Err(notfun(err))`
+
+error: unnecessary map on constructor Option::Some(_)
+  --> tests/ui/unnecessary_map_on_constructor.rs:39:13
+   |
+LL |     let a = Option::Some(x).map(fun);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Option::Some(fun(x))`
+
+error: unnecessary map on constructor SimpleResult::Ok(_)
+  --> tests/ui/unnecessary_map_on_constructor.rs:41:27
+   |
+LL |     let b: SimpleResult = SimpleResult::Ok(x).map(fun);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `SimpleResult::Ok(fun(x))`
+
+error: unnecessary map_err on constructor SimpleResult::Err(_)
+  --> tests/ui/unnecessary_map_on_constructor.rs:43:27
+   |
+LL |     let c: SimpleResult = SimpleResult::Err(err).map_err(notfun);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `SimpleResult::Err(notfun(err))`
+
+error: unnecessary map on constructor Ok(_)
+  --> tests/ui/unnecessary_map_on_constructor.rs:45:52
+   |
+LL |     let b: std::result::Result<i32, SimpleError> = Ok(x).map(fun);
+   |                                                    ^^^^^^^^^^^^^^ help: try: `Ok(fun(x))`
+
+error: unnecessary map_err on constructor Err(_)
+  --> tests/ui/unnecessary_map_on_constructor.rs:47:52
+   |
+LL |     let c: std::result::Result<i32, SimpleError> = Err(err).map_err(notfun);
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Err(notfun(err))`
+
+error: aborting due to 8 previous errors
+

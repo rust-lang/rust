@@ -1,0 +1,411 @@
+error[E0277]: the size for values of type `W` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:23:8
+   |
+LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
+   |        - this type parameter needs to be `Sized`
+LL |     // parameter
+LL |     VA(W),
+   |        ^ doesn't have a size known at compile-time
+   |
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
+LL + enum E<W, X: ?Sized, Y: ?Sized, Z: ?Sized> {
+   |
+help: borrowed types always have a statically known size
+   |
+LL |     VA(&W),
+   |        +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VA(Box<W>),
+   |        ++++ +
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:25:11
+   |
+LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
+   |                   - this type parameter needs to be `Sized`
+...
+LL |     VB{x: X},
+   |           ^ doesn't have a size known at compile-time
+   |
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
+LL + enum E<W: ?Sized, X, Y: ?Sized, Z: ?Sized> {
+   |
+help: borrowed types always have a statically known size
+   |
+LL |     VB{x: &X},
+   |           +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VB{x: Box<X>},
+   |           ++++ +
+
+error[E0277]: the size for values of type `Y` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:27:15
+   |
+LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
+   |                              - this type parameter needs to be `Sized`
+...
+LL |     VC(isize, Y),
+   |               ^ doesn't have a size known at compile-time
+   |
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
+LL + enum E<W: ?Sized, X: ?Sized, Y, Z: ?Sized> {
+   |
+help: borrowed types always have a statically known size
+   |
+LL |     VC(isize, &Y),
+   |               +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VC(isize, Box<Y>),
+   |               ++++ +
+
+error[E0277]: the size for values of type `Z` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:29:21
+   |
+LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
+   |                                         - this type parameter needs to be `Sized`
+...
+LL |     VD{u: isize, x: Z},
+   |                     ^ doesn't have a size known at compile-time
+   |
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
+LL + enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z> {
+   |
+help: borrowed types always have a statically known size
+   |
+LL |     VD{u: isize, x: &Z},
+   |                     +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VD{u: isize, x: Box<Z>},
+   |                     ++++ +
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:33:8
+   |
+LL |     VE([u8]),
+   |        ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VE(&[u8]),
+   |        +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VE(Box<[u8]>),
+   |        ++++    +
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:35:11
+   |
+LL |     VF{x: str},
+   |           ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VF{x: &str},
+   |           +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VF{x: Box<str>},
+   |           ++++   +
+
+error[E0277]: the size for values of type `[f32]` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:37:15
+   |
+LL |     VG(isize, [f32]),
+   |               ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[f32]`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VG(isize, &[f32]),
+   |               +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VG(isize, Box<[f32]>),
+   |               ++++     +
+
+error[E0277]: the size for values of type `[u32]` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:39:21
+   |
+LL |     VH{u: isize, x: [u32]},
+   |                     ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u32]`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VH{u: isize, x: &[u32]},
+   |                     +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VH{u: isize, x: Box<[u32]>},
+   |                     ++++     +
+
+error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:53:8
+   |
+LL |     VM(dyn Foo),
+   |        ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VM(&dyn Foo),
+   |        +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VM(Box<dyn Foo>),
+   |        ++++       +
+
+error[E0277]: the size for values of type `(dyn Bar + 'static)` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:55:11
+   |
+LL |     VN{x: dyn Bar},
+   |           ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Bar + 'static)`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VN{x: &dyn Bar},
+   |           +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VN{x: Box<dyn Bar>},
+   |           ++++       +
+
+error[E0277]: the size for values of type `(dyn FooBar + 'static)` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:57:15
+   |
+LL |     VO(isize, dyn FooBar),
+   |               ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn FooBar + 'static)`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VO(isize, &dyn FooBar),
+   |               +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VO(isize, Box<dyn FooBar>),
+   |               ++++          +
+
+error[E0277]: the size for values of type `(dyn BarFoo + 'static)` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:59:21
+   |
+LL |     VP{u: isize, x: dyn BarFoo},
+   |                     ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn BarFoo + 'static)`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VP{u: isize, x: &dyn BarFoo},
+   |                     +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VP{u: isize, x: Box<dyn BarFoo>},
+   |                     ++++          +
+
+error[E0277]: the size for values of type `[i8]` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:63:8
+   |
+LL |     VQ(<&'static [i8] as Deref>::Target),
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[i8]`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VQ(&<&'static [i8] as Deref>::Target),
+   |        +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VQ(Box<<&'static [i8] as Deref>::Target>),
+   |        ++++                                +
+
+error[E0277]: the size for values of type `[char]` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:65:11
+   |
+LL |     VR{x: <&'static [char] as Deref>::Target},
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[char]`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VR{x: &<&'static [char] as Deref>::Target},
+   |           +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VR{x: Box<<&'static [char] as Deref>::Target>},
+   |           ++++                                  +
+
+error[E0277]: the size for values of type `[f64]` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:67:15
+   |
+LL |     VS(isize, <&'static [f64] as Deref>::Target),
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[f64]`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VS(isize, &<&'static [f64] as Deref>::Target),
+   |               +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VS(isize, Box<<&'static [f64] as Deref>::Target>),
+   |               ++++                                 +
+
+error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:69:21
+   |
+LL |     VT{u: isize, x: <&'static [i32] as Deref>::Target},
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[i32]`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VT{u: isize, x: &<&'static [i32] as Deref>::Target},
+   |                     +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VT{u: isize, x: Box<<&'static [i32] as Deref>::Target>},
+   |                     ++++                                 +
+
+error[E0277]: the size for values of type `(dyn PathHelper1 + 'static)` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:43:8
+   |
+LL |     VI(Path1),
+   |        ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Path1`, the trait `Sized` is not implemented for `(dyn PathHelper1 + 'static)`
+note: required because it appears within the type `Path1`
+  --> $DIR/unsized-enum2.rs:16:8
+   |
+LL | struct Path1(dyn PathHelper1);
+   |        ^^^^^
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VI(&Path1),
+   |        +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VI(Box<Path1>),
+   |        ++++     +
+
+error[E0277]: the size for values of type `(dyn PathHelper2 + 'static)` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:45:11
+   |
+LL |     VJ{x: Path2},
+   |           ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Path2`, the trait `Sized` is not implemented for `(dyn PathHelper2 + 'static)`
+note: required because it appears within the type `Path2`
+  --> $DIR/unsized-enum2.rs:17:8
+   |
+LL | struct Path2(dyn PathHelper2);
+   |        ^^^^^
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VJ{x: &Path2},
+   |           +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VJ{x: Box<Path2>},
+   |           ++++     +
+
+error[E0277]: the size for values of type `(dyn PathHelper3 + 'static)` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:47:15
+   |
+LL |     VK(isize, Path3),
+   |               ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Path3`, the trait `Sized` is not implemented for `(dyn PathHelper3 + 'static)`
+note: required because it appears within the type `Path3`
+  --> $DIR/unsized-enum2.rs:18:8
+   |
+LL | struct Path3(dyn PathHelper3);
+   |        ^^^^^
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VK(isize, &Path3),
+   |               +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VK(isize, Box<Path3>),
+   |               ++++     +
+
+error[E0277]: the size for values of type `(dyn PathHelper4 + 'static)` cannot be known at compilation time
+  --> $DIR/unsized-enum2.rs:49:21
+   |
+LL |     VL{u: isize, x: Path4},
+   |                     ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Path4`, the trait `Sized` is not implemented for `(dyn PathHelper4 + 'static)`
+note: required because it appears within the type `Path4`
+  --> $DIR/unsized-enum2.rs:19:8
+   |
+LL | struct Path4(dyn PathHelper4);
+   |        ^^^^^
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     VL{u: isize, x: &Path4},
+   |                     +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     VL{u: isize, x: Box<Path4>},
+   |                     ++++     +
+
+error: aborting due to 20 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,263 @@
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:23:21
+   |
+LL |         fn new() -> Foo {
+   |                     ^^^ help: use the applicable keyword: `Self`
+   |
+   = note: `-D clippy::use-self` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::use_self)]`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:25:13
+   |
+LL |             Foo {}
+   |             ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:28:22
+   |
+LL |         fn test() -> Foo {
+   |                      ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:30:13
+   |
+LL |             Foo::new()
+   |             ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:36:25
+   |
+LL |         fn default() -> Foo {
+   |                         ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:38:13
+   |
+LL |             Foo::new()
+   |             ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:80:28
+   |
+LL |         fn clone(&self) -> Foo<'a> {
+   |                            ^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:114:24
+   |
+LL |         fn bad(foos: &[Foo]) -> impl Iterator<Item = &Foo> {
+   |                        ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:114:55
+   |
+LL |         fn bad(foos: &[Foo]) -> impl Iterator<Item = &Foo> {
+   |                                                       ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:131:13
+   |
+LL |             TS(0)
+   |             ^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:167:29
+   |
+LL |                 fn bar() -> Bar {
+   |                             ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:169:21
+   |
+LL |                     Bar { foo: Foo {} }
+   |                     ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:181:21
+   |
+LL |         fn baz() -> Foo {
+   |                     ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:183:13
+   |
+LL |             Foo {}
+   |             ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:201:21
+   |
+LL |             let _ = Enum::B(42);
+   |                     ^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:203:21
+   |
+LL |             let _ = Enum::C { field: true };
+   |                     ^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:205:21
+   |
+LL |             let _ = Enum::A;
+   |                     ^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:248:13
+   |
+LL |             nested::A::fun_1();
+   |             ^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:250:13
+   |
+LL |             nested::A::A;
+   |             ^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:253:13
+   |
+LL |             nested::A {};
+   |             ^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:273:13
+   |
+LL |             TestStruct::from_something()
+   |             ^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:288:25
+   |
+LL |         async fn g() -> S {
+   |                         ^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:290:13
+   |
+LL |             S {}
+   |             ^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:295:16
+   |
+LL |             &p[S::A..S::B]
+   |                ^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:295:22
+   |
+LL |             &p[S::A..S::B]
+   |                      ^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:320:29
+   |
+LL |         fn foo(value: T) -> Foo<T> {
+   |                             ^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:322:13
+   |
+LL |             Foo::<T> { value }
+   |             ^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:495:13
+   |
+LL |             A::new::<submod::B>(submod::B {})
+   |             ^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:533:13
+   |
+LL |             S2::new()
+   |             ^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:571:17
+   |
+LL |                 Foo::Bar => unimplemented!(),
+   |                 ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:573:17
+   |
+LL |                 Foo::Baz => unimplemented!(),
+   |                 ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:580:20
+   |
+LL |             if let Foo::Bar = self {
+   |                    ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:605:17
+   |
+LL |                 Something::Num(n) => *n,
+   |                 ^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:607:17
+   |
+LL |                 Something::TupleNums(n, _m) => *n,
+   |                 ^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:609:17
+   |
+LL |                 Something::StructNums { one, two: _ } => *one,
+   |                 ^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:616:17
+   |
+LL |                 crate::issue8845::Something::Num(n) => *n,
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:618:17
+   |
+LL |                 crate::issue8845::Something::TupleNums(n, _m) => *n,
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:620:17
+   |
+LL |                 crate::issue8845::Something::StructNums { one, two: _ } => *one,
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:637:17
+   |
+LL |             let Foo(x) = self;
+   |                 ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:643:17
+   |
+LL |             let crate::issue8845::Foo(x) = self;
+   |                 ^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:651:17
+   |
+LL |             let Bar { x, .. } = self;
+   |                 ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:657:17
+   |
+LL |             let crate::issue8845::Bar { x, .. } = self;
+   |                 ^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self.rs:697:17
+   |
+LL |                 E::A => {},
+   |                 ^ help: use the applicable keyword: `Self`
+
+error: aborting due to 43 previous errors
+

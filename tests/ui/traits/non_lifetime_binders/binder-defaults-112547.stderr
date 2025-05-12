@@ -1,0 +1,40 @@
+error[E0412]: cannot find type `V` in this scope
+  --> $DIR/binder-defaults-112547.rs:10:4
+   |
+LL | }> V: IntoIterator
+   |    ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | pub fn bar<V>()
+   |           +++
+
+error: late-bound const parameters cannot be used currently
+  --> $DIR/binder-defaults-112547.rs:6:15
+   |
+LL |     for<const N: usize = {
+   |               ^
+
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/binder-defaults-112547.rs:1:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: defaults for generic parameters are not allowed in `for<...>` binders
+  --> $DIR/binder-defaults-112547.rs:6:9
+   |
+LL |       for<const N: usize = {
+   |  _________^
+LL | |
+LL | |
+LL | |     (||1usize)()
+LL | | }> V: IntoIterator
+   | |_^
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0412`.

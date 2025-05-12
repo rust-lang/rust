@@ -1,0 +1,14 @@
+warning: `auto` traits are unstable
+  --> $DIR/pre-cfg.rs:4:1
+   |
+LL | auto trait Foo {}
+   | ^^^^
+   |
+   = note: see issue #13231 <https://github.com/rust-lang/rust/issues/13231> for more information
+   = help: add `#![feature(auto_traits)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = warning: unstable syntax can change at any point in the future, causing a hard error!
+   = note: for more information, see issue #65860 <https://github.com/rust-lang/rust/issues/65860>
+
+warning: 1 warning emitted
+

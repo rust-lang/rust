@@ -1,0 +1,39 @@
+error[E0369]: binary operation `==` cannot be applied to type `NoCloneOrEq`
+  --> $DIR/deriving-no-inner-impl-error-message.rs:5:5
+   |
+LL | #[derive(PartialEq)]
+   |          --------- in this derive macro expansion
+LL | struct E {
+LL |     x: NoCloneOrEq
+   |     ^^^^^^^^^^^^^^
+   |
+note: an implementation of `PartialEq` might be missing for `NoCloneOrEq`
+  --> $DIR/deriving-no-inner-impl-error-message.rs:1:1
+   |
+LL | struct NoCloneOrEq;
+   | ^^^^^^^^^^^^^^^^^^ must implement `PartialEq`
+help: consider annotating `NoCloneOrEq` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct NoCloneOrEq;
+   |
+
+error[E0277]: the trait bound `NoCloneOrEq: Clone` is not satisfied
+  --> $DIR/deriving-no-inner-impl-error-message.rs:9:5
+   |
+LL | #[derive(Clone)]
+   |          ----- in this derive macro expansion
+LL | struct C {
+LL |     x: NoCloneOrEq
+   |     ^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `NoCloneOrEq`
+   |
+help: consider annotating `NoCloneOrEq` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NoCloneOrEq;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0369.
+For more information about an error, try `rustc --explain E0277`.

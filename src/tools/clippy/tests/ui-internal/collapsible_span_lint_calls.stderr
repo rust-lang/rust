@@ -1,0 +1,53 @@
+error: this call is collapsible
+  --> tests/ui-internal/collapsible_span_lint_calls.rs:35:9
+   |
+LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+LL | |
+LL | |             db.span_suggestion(expr.span, help_msg, sugg.to_string(), Applicability::MachineApplicable);
+LL | |         });
+   | |__________^ help: collapse into: `span_lint_and_sugg(cx, TEST_LINT, expr.span, lint_msg, help_msg, sugg.to_string(), Applicability::MachineApplicable)`
+   |
+note: the lint level is defined here
+  --> tests/ui-internal/collapsible_span_lint_calls.rs:1:9
+   |
+LL | #![deny(clippy::collapsible_span_lint_calls)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call is collapsible
+  --> tests/ui-internal/collapsible_span_lint_calls.rs:39:9
+   |
+LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+LL | |
+LL | |             db.span_help(expr.span, help_msg);
+LL | |         });
+   | |__________^ help: collapse into: `span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, Some(expr.span), help_msg)`
+
+error: this call is collapsible
+  --> tests/ui-internal/collapsible_span_lint_calls.rs:43:9
+   |
+LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+LL | |
+LL | |             db.help(help_msg);
+LL | |         });
+   | |__________^ help: collapse into: `span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, None, help_msg)`
+
+error: this call is collapsible
+  --> tests/ui-internal/collapsible_span_lint_calls.rs:47:9
+   |
+LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+LL | |
+LL | |             db.span_note(expr.span, note_msg);
+LL | |         });
+   | |__________^ help: collapse into: `span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, Some(expr.span), note_msg)`
+
+error: this call is collapsible
+  --> tests/ui-internal/collapsible_span_lint_calls.rs:51:9
+   |
+LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+LL | |
+LL | |             db.note(note_msg);
+LL | |         });
+   | |__________^ help: collapse into: `span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, None, note_msg)`
+
+error: aborting due to 5 previous errors
+

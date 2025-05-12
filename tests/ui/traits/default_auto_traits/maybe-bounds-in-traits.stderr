@@ -1,0 +1,71 @@
+error[E0277]: the trait bound `NonLeakS: Leak` is not satisfied
+  --> $DIR/maybe-bounds-in-traits.rs:61:22
+   |
+LL |         type Leak2 = NonLeakS;
+   |                      ^^^^^^^^ the trait `Leak` is not implemented for `NonLeakS`
+   |
+note: required by a bound in `Test3::Leak2`
+  --> $DIR/maybe-bounds-in-traits.rs:61:9
+   |
+LL |         type Leak2 = NonLeakS;
+   |         ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Test3::Leak2`
+
+error[E0277]: the trait bound `Self: Leak` is not satisfied
+  --> $DIR/maybe-bounds-in-traits.rs:49:29
+   |
+LL |         type MaybeLeakSelf: TestBase1<Self> where Self: ?Leak;
+   |                             ^^^^^^^^^^^^^^^ the trait `Leak` is not implemented for `Self`
+   |
+note: required by a bound in `TestBase1`
+  --> $DIR/maybe-bounds-in-traits.rs:45:21
+   |
+LL |     trait TestBase1<T: ?Sized> {}
+   |                     ^ required by this bound in `TestBase1`
+help: consider further restricting `Self`
+   |
+LL |     trait Test1<T>: Leak {
+   |                   ++++++
+
+error[E0658]: `&mut Self` cannot be used as the type of `self` without the `arbitrary_self_types` feature
+  --> $DIR/maybe-bounds-in-traits.rs:99:31
+   |
+LL |         fn mut_maybe_leak_foo(&mut self) where Self: ?Leak {}
+   |                               ^^^^^^^^^
+   |
+   = note: see issue #44874 <https://github.com/rust-lang/rust/issues/44874> for more information
+   = help: add `#![feature(arbitrary_self_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+
+error[E0277]: the trait bound `Self: Leak` is not satisfied
+  --> $DIR/maybe-bounds-in-traits.rs:86:43
+   |
+LL |         const CNonLeak: usize = size_of::<Self>() where Self: ?Leak;
+   |                                           ^^^^ the trait `Leak` is not implemented for `Self`
+   |
+note: required by a bound in `size_of`
+  --> $DIR/maybe-bounds-in-traits.rs:80:22
+   |
+LL |     const fn size_of<T: ?Sized>() -> usize {
+   |                      ^ required by this bound in `size_of`
+help: consider further restricting `Self`
+   |
+LL |     trait Trait: Leak {
+   |                ++++++
+
+error[E0277]: the trait bound `NonLeakS: Leak` is not satisfied
+  --> $DIR/maybe-bounds-in-traits.rs:109:18
+   |
+LL |         NonLeakS.leak_foo();
+   |                  ^^^^^^^^ the trait `Leak` is not implemented for `NonLeakS`
+   |
+note: required by a bound in `methods::Trait::leak_foo`
+  --> $DIR/maybe-bounds-in-traits.rs:95:9
+   |
+LL |         fn leak_foo(&self) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Trait::leak_foo`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0658.
+For more information about an error, try `rustc --explain E0277`.

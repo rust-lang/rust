@@ -1,0 +1,8 @@
+error: -v8plus,-v9
+  --> $DIR/sparcv8plus-llvm19.rs:28:1
+   |
+LL | compile_error!("-v8plus,-v9");
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

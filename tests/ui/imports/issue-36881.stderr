@@ -1,0 +1,14 @@
+error[E0432]: unresolved import `issue_36881_aux`
+  --> $DIR/issue-36881.rs:5:9
+   |
+LL |     use issue_36881_aux::Foo;
+   |         ^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `issue_36881_aux`
+   |
+help: you might be missing a crate named `issue_36881_aux`, add it to your project and import it in your code
+   |
+LL + extern crate issue_36881_aux;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

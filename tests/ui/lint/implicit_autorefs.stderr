@@ -1,0 +1,219 @@
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:10:13
+   |
+LL |     let _ = (*ptr)[..16];
+   |             ^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+   = note: `#[warn(dangerous_implicit_autorefs)]` on by default
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr))[..16];
+   |             ++      +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:19:13
+   |
+LL |     let l = (*ptr).field.len();
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let l = (&(*ptr).field).len();
+   |             ++            +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:22:16
+   |
+LL |     &raw const (*ptr).field[..l - 1]
+   |                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     &raw const (&(*ptr).field)[..l - 1]
+   |                ++            +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:27:9
+   |
+LL |     _ = (*a)[0].len();
+   |         ^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     _ = (&(*a)[0]).len();
+   |         ++       +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:30:9
+   |
+LL |     _ = (*a)[..1][0].len();
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     _ = (&(*a)[..1][0]).len();
+   |         ++            +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:30:9
+   |
+LL |     _ = (*a)[..1][0].len();
+   |         ^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     _ = (&(*a))[..1][0].len();
+   |         ++    +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:36:13
+   |
+LL |     let _ = (*ptr).field;
+   |             ^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr)).field;
+   |             ++      +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:38:24
+   |
+LL |     let _ = &raw const (*ptr).field;
+   |                        ^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = &raw const (&(*ptr)).field;
+   |                        ++      +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:43:13
+   |
+LL |     let _ = (*ptr).field;
+   |             ^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr)).field;
+   |             ++      +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:48:13
+   |
+LL |     let _ = (*ptr).field;
+   |             ^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr)).field;
+   |             ++      +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:62:26
+   |
+LL |     let _p: *const i32 = &raw const **w;
+   |                          ^^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _p: *const i32 = &raw const *(&**w);
+   |                                      +++  +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:72:14
+   |
+LL |     unsafe { (*ptr).field.len() }
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     unsafe { (&(*ptr).field).len() }
+   |              ++            +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:82:13
+   |
+LL |     let _ = (*ptr).get(0);
+   |             ^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr)).get(0);
+   |             ++      +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:84:13
+   |
+LL |     let _ = (*ptr).get_unchecked(0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr)).get_unchecked(0);
+   |             ++      +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:86:13
+   |
+LL |     let _ = (*ptr).get_mut(0);
+   |             ^^^^^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&mut (*ptr)).get_mut(0);
+   |             +++++       +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:88:13
+   |
+LL |     let _ = (*ptr).get_unchecked_mut(0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&mut (*ptr)).get_unchecked_mut(0);
+   |             +++++       +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:93:13
+   |
+LL |     let _ = (*ptr).len();
+   |             ^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr)).len();
+   |             ++      +
+
+warning: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:95:13
+   |
+LL |     let _ = (*ptr).is_empty();
+   |             ^^^^^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr)).is_empty();
+   |             ++      +
+
+warning: 18 warnings emitted
+

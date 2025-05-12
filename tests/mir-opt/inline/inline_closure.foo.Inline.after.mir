@@ -1,0 +1,47 @@
+// MIR for `foo` after Inline
+
+fn foo(_1: T, _2: i32) -> i32 {
+    debug _t => _1;
+    debug q => _2;
+    let mut _0: i32;
+    let _3: {closure@foo<T>::{closure#0}};
+    let mut _4: &{closure@foo<T>::{closure#0}};
+    let mut _5: (i32, i32);
+    let mut _6: i32;
+    let mut _7: i32;
+    let mut _8: i32;
+    let mut _9: i32;
+    scope 1 {
+        debug x => _3;
+        scope 2 (inlined foo::<T>::{closure#0}) {
+            debug _t => _8;
+            debug _q => _9;
+        }
+    }
+
+    bb0: {
+        StorageLive(_3);
+        _3 = {closure@foo::<T>::{closure#0}};
+        StorageLive(_4);
+        _4 = &_3;
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = copy _2;
+        StorageLive(_7);
+        _7 = copy _2;
+        _5 = (move _6, move _7);
+        StorageLive(_8);
+        _8 = move (_5.0: i32);
+        StorageLive(_9);
+        _9 = move (_5.1: i32);
+        _0 = copy _8;
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_3);
+        return;
+    }
+}

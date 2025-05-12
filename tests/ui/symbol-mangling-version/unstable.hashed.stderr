@@ -1,0 +1,2 @@
+error: `-C symbol-mangling-version=hashed` requires `-Z unstable-options`
+

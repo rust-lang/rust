@@ -1,0 +1,65 @@
+error: unknown byte escape: `f`
+  --> $DIR/byte-literals.rs:3:21
+   |
+LL | static FOO: u8 = b'\f';
+   |                     ^ unknown byte escape
+   |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
+
+error: unknown byte escape: `f`
+  --> $DIR/byte-literals.rs:6:8
+   |
+LL |     b'\f';
+   |        ^ unknown byte escape
+   |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
+
+error: invalid character in numeric character escape: `Z`
+  --> $DIR/byte-literals.rs:7:10
+   |
+LL |     b'\x0Z';
+   |          ^ invalid character in numeric character escape
+
+error: byte constant must be escaped: `\t`
+  --> $DIR/byte-literals.rs:8:7
+   |
+LL |     b'    ';
+   |       ^^^^
+   |
+help: escape the character
+   |
+LL |     b'\t';
+   |       ++
+
+error: byte constant must be escaped: `'`
+  --> $DIR/byte-literals.rs:9:7
+   |
+LL |     b''';
+   |       ^
+   |
+help: escape the character
+   |
+LL |     b'\'';
+   |       +
+
+error: non-ASCII character in byte literal
+  --> $DIR/byte-literals.rs:10:7
+   |
+LL |     b'é';
+   |       ^ must be ASCII
+   |
+help: if you meant to use the unicode code point for 'é', use a \xHH escape
+   |
+LL -     b'é';
+LL +     b'\xE9';
+   |
+
+error[E0763]: unterminated byte constant
+  --> $DIR/byte-literals.rs:11:6
+   |
+LL |     b'a
+   |      ^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0763`.

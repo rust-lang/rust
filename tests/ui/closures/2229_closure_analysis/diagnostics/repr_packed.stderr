@@ -1,0 +1,14 @@
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/repr_packed.rs:21:24
+   |
+LL |         println!("{}", foo.x);
+   |                        ^^^^^
+   |
+   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0793`.

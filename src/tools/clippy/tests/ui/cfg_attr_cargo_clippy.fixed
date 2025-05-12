@@ -1,0 +1,20 @@
+#![warn(clippy::deprecated_clippy_cfg_attr)]
+#![allow(clippy::non_minimal_cfg)]
+#![cfg_attr(clippy, doc = "a")]
+//~^ deprecated_clippy_cfg_attr
+
+#[cfg_attr(clippy, derive(Debug))]
+//~^ deprecated_clippy_cfg_attr
+#[cfg_attr(not(clippy), derive(Debug))]
+//~^ deprecated_clippy_cfg_attr
+#[cfg(clippy)]
+//~^ deprecated_clippy_cfg_attr
+#[cfg(not(clippy))]
+//~^ deprecated_clippy_cfg_attr
+#[cfg(any(clippy))]
+//~^ deprecated_clippy_cfg_attr
+#[cfg(all(clippy))]
+//~^ deprecated_clippy_cfg_attr
+pub struct Bar;
+
+fn main() {}

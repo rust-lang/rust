@@ -1,0 +1,8 @@
+error: expected identifier, found `!`
+  --> $DIR/ice-issue-127600.rs:1:6
+   |
+LL | const!(&raw mut a);
+   |      ^ expected identifier
+
+error: aborting due to 1 previous error
+

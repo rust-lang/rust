@@ -1,0 +1,220 @@
+
+<style>
+body                { margin: 0; }
+pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padding: 0.4em; }
+
+.lifetime           { color: #DFAF8F; font-style: italic; }
+.label              { color: #DFAF8F; font-style: italic; }
+.comment            { color: #7F9F7F; }
+.documentation      { color: #629755; }
+.intra_doc_link     { font-style: italic; }
+.injected           { opacity: 0.65 ; }
+.struct, .enum      { color: #7CB8BB; }
+.enum_variant       { color: #BDE0F3; }
+.string_literal     { color: #CC9393; }
+.field              { color: #94BFF3; }
+.function           { color: #93E0E3; }
+.parameter          { color: #94BFF3; }
+.text               { color: #DCDCCC; }
+.type               { color: #7CB8BB; }
+.builtin_type       { color: #8CD0D3; }
+.type_param         { color: #DFAF8F; }
+.attribute          { color: #94BFF3; }
+.numeric_literal    { color: #BFEBBF; }
+.bool_literal       { color: #BFE6EB; }
+.macro              { color: #94BFF3; }
+.proc_macro         { color: #94BFF3; text-decoration: underline; }
+.derive             { color: #94BFF3; font-style: italic; }
+.module             { color: #AFD8AF; }
+.value_param        { color: #DCDCCC; }
+.variable           { color: #DCDCCC; }
+.format_specifier   { color: #CC696B; }
+.mutable            { text-decoration: underline; }
+.escape_sequence    { color: #94BFF3; }
+.keyword            { color: #F0DFAF; font-weight: bold; }
+.control            { font-style: italic; }
+.reference          { font-style: italic; font-weight: bold; }
+.const              { font-weight: bolder; }
+.unsafe             { color: #BC8383; }
+
+.invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
+.unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
+</style>
+<pre><code><span class="keyword">use</span> <span class="module">inner</span><span class="operator">::</span><span class="brace">{</span><span class="self_keyword">self</span> <span class="keyword">as</span> <span class="module declaration">inner_mod</span><span class="brace">}</span><span class="semicolon">;</span>
+<span class="keyword">mod</span> <span class="module declaration">inner</span> <span class="brace">{</span><span class="brace">}</span>
+
+<span class="keyword">struct</span> <span class="struct declaration">Foo</span> <span class="brace">{</span>
+    <span class="field declaration">x</span><span class="colon">:</span> <span class="builtin_type">u32</span><span class="comma">,</span>
+<span class="brace">}</span>
+
+<span class="keyword">trait</span> <span class="trait declaration">Bar</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="method associated declaration reference trait">bar</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span><span class="semicolon">;</span>
+<span class="brace">}</span>
+
+<span class="keyword">impl</span> <span class="trait">Bar</span> <span class="keyword">for</span> <span class="struct">Foo</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="method associated declaration reference trait">bar</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
+        <span class="self_keyword reference">self</span><span class="operator">.</span><span class="field">x</span>
+    <span class="brace">}</span>
+<span class="brace">}</span>
+
+<span class="keyword">impl</span> <span class="struct">Foo</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="method associated consuming declaration">baz</span><span class="parenthesis">(</span><span class="keyword">mut</span> <span class="self_keyword declaration mutable">self</span><span class="comma">,</span> <span class="value_param declaration">f</span><span class="colon">:</span> <span class="struct">Foo</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
+        <span class="value_param">f</span><span class="operator">.</span><span class="method consuming">baz</span><span class="parenthesis">(</span><span class="self_keyword consuming mutable">self</span><span class="parenthesis">)</span>
+    <span class="brace">}</span>
+
+    <span class="keyword">fn</span> <span class="method associated declaration mutable reference">qux</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="keyword">mut</span> <span class="self_keyword declaration mutable reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span>
+        <span class="self_keyword mutable reference">self</span><span class="operator">.</span><span class="field">x</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="semicolon">;</span>
+    <span class="brace">}</span>
+
+    <span class="keyword">fn</span> <span class="method associated declaration reference">quop</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
+        <span class="self_keyword reference">self</span><span class="operator">.</span><span class="field">x</span>
+    <span class="brace">}</span>
+<span class="brace">}</span>
+
+<span class="keyword">use</span> <span class="self_keyword crate_root public">self</span><span class="operator">::</span><span class="struct">FooCopy</span><span class="operator">::</span><span class="brace">{</span><span class="self_keyword">self</span> <span class="keyword">as</span> <span class="struct declaration">BarCopy</span><span class="brace">}</span><span class="semicolon">;</span>
+
+<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="attribute attribute default_library library">derive</span><span class="parenthesis attribute">(</span><span class="derive attribute default_library library macro">Copy</span><span class="parenthesis attribute">)</span><span class="attribute_bracket attribute">]</span>
+<span class="keyword">struct</span> <span class="struct declaration">FooCopy</span> <span class="brace">{</span>
+    <span class="field declaration">x</span><span class="colon">:</span> <span class="builtin_type">u32</span><span class="comma">,</span>
+<span class="brace">}</span>
+
+<span class="keyword">impl</span> <span class="struct">FooCopy</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="method associated consuming declaration">baz</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="comma">,</span> <span class="value_param declaration">f</span><span class="colon">:</span> <span class="struct">FooCopy</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">u32</span> <span class="brace">{</span>
+        <span class="value_param">f</span><span class="operator">.</span><span class="method">baz</span><span class="parenthesis">(</span><span class="self_keyword">self</span><span class="parenthesis">)</span>
+    <span class="brace">}</span>
+
+    <span class="keyword">fn</span> <span class="method associated declaration mutable reference">qux</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="keyword">mut</span> <span class="self_keyword declaration mutable reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span>
+        <span class="self_keyword mutable reference">self</span><span class="operator">.</span><span class="field">x</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="semicolon">;</span>
+    <span class="brace">}</span>
+
+    <span class="keyword">fn</span> <span class="method associated declaration reference">quop</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">u32</span> <span class="brace">{</span>
+        <span class="self_keyword reference">self</span><span class="operator">.</span><span class="field">x</span>
+    <span class="brace">}</span>
+<span class="brace">}</span>
+
+<span class="keyword">fn</span> <span class="function declaration">str</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="function">str</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+<span class="brace">}</span>
+
+<span class="keyword">fn</span> <span class="function declaration">foo</span><span class="angle">&lt;</span><span class="lifetime declaration">'a</span><span class="comma">,</span> <span class="type_param declaration">T</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="type_param">T</span> <span class="brace">{</span>
+    <span class="function">foo</span><span class="operator">::</span><span class="angle">&lt;</span><span class="lifetime">'a</span><span class="comma">,</span> <span class="builtin_type">i32</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="parenthesis">)</span>
+<span class="brace">}</span>
+
+<span class="keyword">fn</span> <span class="function declaration">never</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">!</span> <span class="brace">{</span>
+    <span class="keyword control">loop</span> <span class="brace">{</span><span class="brace">}</span>
+<span class="brace">}</span>
+
+<span class="keyword">fn</span> <span class="function declaration">const_param</span><span class="angle">&lt;</span><span class="keyword const">const</span> <span class="const_param const declaration">FOO</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">usize</span> <span class="brace">{</span>
+    <span class="function">const_param</span><span class="operator">::</span><span class="angle">&lt;</span><span class="brace">{</span> <span class="const_param const">FOO</span> <span class="brace">}</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="const_param const">FOO</span>
+<span class="brace">}</span>
+
+<span class="keyword">use</span> <span class="module crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">ops</span><span class="operator">::</span><span class="trait default_library library">Fn</span><span class="semicolon">;</span>
+<span class="keyword">fn</span> <span class="function declaration">baz</span><span class="angle">&lt;</span><span class="type_param declaration">F</span><span class="colon">:</span> <span class="trait default_library library">Fn</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="value_param callable declaration">f</span><span class="colon">:</span> <span class="type_param">F</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="value_param callable">f</span><span class="parenthesis">(</span><span class="parenthesis">)</span>
+<span class="brace">}</span>
+
+<span class="keyword">fn</span> <span class="function declaration">foobar</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="keyword">impl</span> <span class="trait default_library library">Copy</span> <span class="brace">{</span><span class="brace">}</span>
+
+<span class="keyword">fn</span> <span class="function declaration">foo</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword">let</span> <span class="variable declaration">bar</span> <span class="operator">=</span> <span class="function">foobar</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+<span class="brace">}</span>
+
+<span class="comment">// comment</span>
+<span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">x</span> <span class="operator">=</span> <span class="numeric_literal">42</span><span class="semicolon">;</span>
+    <span class="variable mutable">x</span> <span class="arithmetic mutable">+=</span> <span class="numeric_literal">1</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration mutable reference">y</span> <span class="operator">=</span> <span class="operator">&</span><span class="keyword">mut</span> <span class="variable mutable">x</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration reference">z</span> <span class="operator">=</span> <span class="operator">&</span><span class="variable mutable reference">y</span><span class="semicolon">;</span>
+
+    <span class="keyword">let</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="colon">:</span> <span class="variable declaration">z</span><span class="comma">,</span> <span class="variable declaration">y</span> <span class="brace">}</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="colon">:</span> <span class="variable reference">z</span><span class="comma">,</span> <span class="variable mutable reference">y</span> <span class="brace">}</span><span class="semicolon">;</span>
+
+    <span class="variable">y</span><span class="semicolon">;</span>
+
+    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">foo</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="comma">,</span> <span class="unresolved_reference">y</span><span class="colon">:</span> <span class="variable mutable">x</span> <span class="brace">}</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">foo2</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="comma">,</span> <span class="unresolved_reference">y</span><span class="colon">:</span> <span class="variable mutable">x</span> <span class="brace">}</span><span class="semicolon">;</span>
+    <span class="variable mutable">foo</span><span class="operator">.</span><span class="method reference">quop</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="variable mutable">foo</span><span class="operator">.</span><span class="method mutable reference">qux</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="variable mutable">foo</span><span class="operator">.</span><span class="method consuming">baz</span><span class="parenthesis">(</span><span class="variable consuming">foo2</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+
+    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">copy</span> <span class="operator">=</span> <span class="struct">FooCopy</span> <span class="brace">{</span> <span class="field">x</span> <span class="brace">}</span><span class="semicolon">;</span>
+    <span class="variable mutable">copy</span><span class="operator">.</span><span class="method reference">quop</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="variable mutable">copy</span><span class="operator">.</span><span class="method mutable reference">qux</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="variable mutable">copy</span><span class="operator">.</span><span class="method">baz</span><span class="parenthesis">(</span><span class="variable mutable">copy</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+
+    <span class="keyword">let</span> <span class="variable callable declaration">a</span> <span class="operator">=</span> <span class="punctuation">|</span><span class="value_param declaration">x</span><span class="punctuation">|</span> <span class="value_param">x</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable callable declaration">bar</span> <span class="operator">=</span> <span class="struct">Foo</span><span class="operator">::</span><span class="method associated consuming">baz</span><span class="semicolon">;</span>
+
+    <span class="keyword">let</span> <span class="variable declaration">baz</span> <span class="operator">=</span> <span class="parenthesis">(</span><span class="numeric_literal">-</span><span class="numeric_literal">42</span><span class="comma">,</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">baz</span> <span class="operator">=</span> <span class="operator">-</span><span class="variable">baz</span><span class="operator">.</span><span class="field library">0</span><span class="semicolon">;</span>
+
+    <span class="keyword">let</span> <span class="punctuation">_</span> <span class="operator">=</span> <span class="logical">!</span><span class="bool_literal">true</span><span class="semicolon">;</span>
+
+    <span class="label declaration">'foo</span><span class="colon">:</span> <span class="keyword control">loop</span> <span class="brace">{</span>
+        <span class="keyword control">break</span> <span class="label">'foo</span><span class="semicolon">;</span>
+        <span class="keyword control">continue</span> <span class="label">'foo</span><span class="semicolon">;</span>
+    <span class="brace">}</span>
+<span class="brace">}</span>
+
+<span class="keyword">enum</span> <span class="enum declaration">Option</span><span class="angle">&lt;</span><span class="type_param declaration">T</span><span class="angle">&gt;</span> <span class="brace">{</span>
+    <span class="enum_variant declaration">Some</span><span class="parenthesis">(</span><span class="type_param">T</span><span class="parenthesis">)</span><span class="comma">,</span>
+    <span class="enum_variant declaration">None</span><span class="comma">,</span>
+<span class="brace">}</span>
+<span class="keyword">use</span> <span class="enum">Option</span><span class="operator">::</span><span class="punctuation">*</span><span class="semicolon">;</span>
+
+<span class="keyword">impl</span><span class="angle">&lt;</span><span class="type_param declaration">T</span><span class="angle">&gt;</span> <span class="enum">Option</span><span class="angle">&lt;</span><span class="type_param">T</span><span class="angle">&gt;</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="method associated consuming declaration">and</span><span class="angle">&lt;</span><span class="type_param declaration">U</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="comma">,</span> <span class="value_param declaration">other</span><span class="colon">:</span> <span class="enum">Option</span><span class="angle">&lt;</span><span class="type_param">U</span><span class="angle">&gt;</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="enum">Option</span><span class="angle">&lt;</span><span class="parenthesis">(</span><span class="type_param">T</span><span class="comma">,</span> <span class="type_param">U</span><span class="parenthesis">)</span><span class="angle">&gt;</span> <span class="brace">{</span>
+        <span class="keyword control">match</span> <span class="value_param">other</span> <span class="brace">{</span>
+            <span class="enum_variant">None</span> <span class="operator">=&gt;</span> <span class="unresolved_reference">unimplemented</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="comma">,</span>
+            <span class="variable declaration">Nope</span> <span class="operator">=&gt;</span> <span class="variable">Nope</span><span class="comma">,</span>
+        <span class="brace">}</span>
+    <span class="brace">}</span>
+<span class="brace">}</span>
+
+<span class="keyword async">async</span> <span class="keyword">fn</span> <span class="function async declaration">learn_and_sing</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword">let</span> <span class="variable declaration">song</span> <span class="operator">=</span> <span class="unresolved_reference">learn_song</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="operator">.</span><span class="keyword async control">await</span><span class="semicolon">;</span>
+    <span class="unresolved_reference">sing_song</span><span class="parenthesis">(</span><span class="variable consuming">song</span><span class="parenthesis">)</span><span class="operator">.</span><span class="keyword async control">await</span><span class="semicolon">;</span>
+<span class="brace">}</span>
+
+<span class="keyword async">async</span> <span class="keyword">fn</span> <span class="function async declaration">async_main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword">let</span> <span class="variable declaration">f1</span> <span class="operator">=</span> <span class="function async">learn_and_sing</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">f2</span> <span class="operator">=</span> <span class="unresolved_reference">dance</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="unresolved_reference">futures</span><span class="operator">::</span><span class="unresolved_reference">join</span><span class="macro_bang">!</span><span class="parenthesis">(</span>f1<span class="comma">,</span> f2<span class="parenthesis">)</span><span class="semicolon">;</span>
+<span class="brace">}</span>
+
+<span class="keyword">fn</span> <span class="function declaration">use_foo_items</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword">let</span> <span class="variable declaration">bob</span> <span class="operator">=</span> <span class="module crate_root library">foo</span><span class="operator">::</span><span class="struct library">Person</span> <span class="brace">{</span>
+        <span class="field library">name</span><span class="colon">:</span> <span class="string_literal">"Bob"</span><span class="comma">,</span>
+        <span class="field library">age</span><span class="colon">:</span> <span class="module crate_root library">foo</span><span class="operator">::</span><span class="module library">consts</span><span class="operator">::</span><span class="constant const library">NUMBER</span><span class="comma">,</span>
+    <span class="brace">}</span><span class="semicolon">;</span>
+
+    <span class="keyword">let</span> <span class="variable declaration">control_flow</span> <span class="operator">=</span> <span class="module crate_root library">foo</span><span class="operator">::</span><span class="function library">identity</span><span class="parenthesis">(</span><span class="module crate_root library">foo</span><span class="operator">::</span><span class="enum library">ControlFlow</span><span class="operator">::</span><span class="enum_variant library">Continue</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+
+    <span class="keyword control">if</span> <span class="variable">control_flow</span><span class="operator">.</span><span class="method consuming library">should_die</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+        <span class="module crate_root library">foo</span><span class="operator">::</span><span class="unresolved_reference">die</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="brace">}</span>
+<span class="brace">}</span>
+
+<span class="keyword">pub</span> <span class="keyword">enum</span> <span class="enum declaration public">Bool</span> <span class="brace">{</span> <span class="enum_variant declaration public">True</span><span class="comma">,</span> <span class="enum_variant declaration public">False</span> <span class="brace">}</span>
+
+<span class="keyword">impl</span> <span class="enum public">Bool</span> <span class="brace">{</span>
+    <span class="keyword">pub</span> <span class="keyword const">const</span> <span class="keyword">fn</span> <span class="method associated const consuming declaration public">to_primitive</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
+        <span class="bool_literal">true</span>
+    <span class="brace">}</span>
+<span class="brace">}</span>
+<span class="keyword const">const</span> <span class="constant const declaration">USAGE_OF_BOOL</span><span class="colon">:</span> <span class="builtin_type">bool</span> <span class="operator">=</span> <span class="enum public">Bool</span><span class="operator">::</span><span class="enum_variant public">True</span><span class="operator">.</span><span class="method const consuming public">to_primitive</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+
+<span class="keyword">trait</span> <span class="trait declaration">Baz</span> <span class="brace">{</span>
+    <span class="keyword">type</span> <span class="type_alias associated declaration static trait">Qux</span><span class="semicolon">;</span>
+<span class="brace">}</span>
+
+<span class="keyword">fn</span> <span class="function declaration">baz</span><span class="angle">&lt;</span><span class="type_param declaration">T</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="value_param declaration">t</span><span class="colon">:</span> <span class="type_param">T</span><span class="parenthesis">)</span>
+<span class="keyword">where</span>
+    <span class="type_param">T</span><span class="colon">:</span> <span class="trait">Baz</span><span class="comma">,</span>
+    <span class="angle">&lt;</span><span class="type_param">T</span> <span class="keyword">as</span> <span class="trait">Baz</span><span class="angle">&gt;</span><span class="operator">::</span><span class="type_alias associated static trait">Qux</span><span class="colon">:</span> <span class="trait">Bar</span> <span class="brace">{</span><span class="brace">}</span>
+
+<span class="keyword">fn</span> <span class="function declaration">gp_shadows_trait</span><span class="angle">&lt;</span><span class="type_param declaration">Baz</span><span class="colon">:</span> <span class="trait">Bar</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="type_param">Baz</span><span class="operator">::</span><span class="method associated reference trait">bar</span><span class="semicolon">;</span>
+<span class="brace">}</span>
+
+</code></pre>

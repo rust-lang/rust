@@ -1,0 +1,14 @@
+error: the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/illegal-proc-macro-derive-use.rs:3:1
+   |
+LL | #[proc_macro_derive(Foo)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `#[proc_macro_derive]` attribute may only be used on bare functions
+  --> $DIR/illegal-proc-macro-derive-use.rs:10:1
+   |
+LL | #[proc_macro_derive(Foo)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

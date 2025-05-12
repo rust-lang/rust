@@ -1,0 +1,95 @@
+- // MIR for `make_pointers` before LowerIntrinsics
++ // MIR for `make_pointers` after LowerIntrinsics
+  
+  fn make_pointers(_1: *const u8, _2: *mut (), _3: usize) -> () {
+      debug a => _1;
+      debug b => _2;
+      debug n => _3;
+      let mut _0: ();
+      let _4: *const i32;
+      let mut _5: *const u8;
+      let mut _6: ();
+      let mut _8: *mut ();
+      let mut _9: ();
+      let mut _11: *const u8;
+      let mut _12: usize;
+      let mut _14: *mut ();
+      let mut _15: usize;
+      scope 1 {
+          debug _thin_const => _4;
+          let _7: *mut u8;
+          scope 2 {
+              debug _thin_mut => _7;
+              let _10: *const [u16];
+              scope 3 {
+                  debug _slice_const => _10;
+                  let _13: *mut [u64];
+                  scope 4 {
+                      debug _slice_mut => _13;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy _1;
+          StorageLive(_6);
+          _6 = ();
+-         _4 = aggregate_raw_ptr::<*const i32, *const u8, ()>(move _5, move _6) -> [return: bb1, unwind unreachable];
++         _4 = *const i32 from (move _5, move _6);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageLive(_7);
+          StorageLive(_8);
+          _8 = copy _2;
+          StorageLive(_9);
+          _9 = ();
+-         _7 = aggregate_raw_ptr::<*mut u8, *mut (), ()>(move _8, move _9) -> [return: bb2, unwind unreachable];
++         _7 = *mut u8 from (move _8, move _9);
++         goto -> bb2;
+      }
+  
+      bb2: {
+          StorageDead(_9);
+          StorageDead(_8);
+          StorageLive(_10);
+          StorageLive(_11);
+          _11 = copy _1;
+          StorageLive(_12);
+          _12 = copy _3;
+-         _10 = aggregate_raw_ptr::<*const [u16], *const u8, usize>(move _11, move _12) -> [return: bb3, unwind unreachable];
++         _10 = *const [u16] from (move _11, move _12);
++         goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_12);
+          StorageDead(_11);
+          StorageLive(_13);
+          StorageLive(_14);
+          _14 = copy _2;
+          StorageLive(_15);
+          _15 = copy _3;
+-         _13 = aggregate_raw_ptr::<*mut [u64], *mut (), usize>(move _14, move _15) -> [return: bb4, unwind unreachable];
++         _13 = *mut [u64] from (move _14, move _15);
++         goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_15);
+          StorageDead(_14);
+          _0 = const ();
+          StorageDead(_13);
+          StorageDead(_10);
+          StorageDead(_7);
+          StorageDead(_4);
+          return;
+      }
+  }
+  

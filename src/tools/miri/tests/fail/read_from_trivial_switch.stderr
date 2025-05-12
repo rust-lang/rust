@@ -1,0 +1,15 @@
+error: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
+  --> tests/fail/read_from_trivial_switch.rs:LL:CC
+   |
+LL |     let &(0 | _) = bad_ref;
+   |         ^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at tests/fail/read_from_trivial_switch.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

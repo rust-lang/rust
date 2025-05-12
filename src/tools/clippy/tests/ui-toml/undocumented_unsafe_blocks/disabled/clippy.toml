@@ -1,0 +1,3 @@
+# test with these options disabled
+accept-comment-above-statement = false
+accept-comment-above-attributes = false

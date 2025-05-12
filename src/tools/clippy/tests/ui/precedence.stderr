@@ -1,0 +1,47 @@
+error: operator precedence might not be obvious
+  --> tests/ui/precedence.rs:16:5
+   |
+LL |     1 << 2 + 3;
+   |     ^^^^^^^^^^ help: consider parenthesizing your expression: `1 << (2 + 3)`
+   |
+   = note: `-D clippy::precedence` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::precedence)]`
+
+error: operator precedence might not be obvious
+  --> tests/ui/precedence.rs:18:5
+   |
+LL |     1 + 2 << 3;
+   |     ^^^^^^^^^^ help: consider parenthesizing your expression: `(1 + 2) << 3`
+
+error: operator precedence might not be obvious
+  --> tests/ui/precedence.rs:20:5
+   |
+LL |     4 >> 1 + 1;
+   |     ^^^^^^^^^^ help: consider parenthesizing your expression: `4 >> (1 + 1)`
+
+error: operator precedence might not be obvious
+  --> tests/ui/precedence.rs:22:5
+   |
+LL |     1 + 3 >> 2;
+   |     ^^^^^^^^^^ help: consider parenthesizing your expression: `(1 + 3) >> 2`
+
+error: operator precedence might not be obvious
+  --> tests/ui/precedence.rs:24:5
+   |
+LL |     1 ^ 1 - 1;
+   |     ^^^^^^^^^ help: consider parenthesizing your expression: `1 ^ (1 - 1)`
+
+error: operator precedence might not be obvious
+  --> tests/ui/precedence.rs:26:5
+   |
+LL |     3 | 2 - 1;
+   |     ^^^^^^^^^ help: consider parenthesizing your expression: `3 | (2 - 1)`
+
+error: operator precedence might not be obvious
+  --> tests/ui/precedence.rs:28:5
+   |
+LL |     3 & 5 - 2;
+   |     ^^^^^^^^^ help: consider parenthesizing your expression: `3 & (5 - 2)`
+
+error: aborting due to 7 previous errors
+

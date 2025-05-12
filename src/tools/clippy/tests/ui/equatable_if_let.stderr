@@ -1,0 +1,107 @@
+error: this pattern matching can be expressed using equality
+  --> tests/ui/equatable_if_let.rs:64:8
+   |
+LL |     if let 2 = a {}
+   |        ^^^^^^^^^ help: try: `a == 2`
+   |
+   = note: `-D clippy::equatable-if-let` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::equatable_if_let)]`
+
+error: this pattern matching can be expressed using equality
+  --> tests/ui/equatable_if_let.rs:66:8
+   |
+LL |     if let Ordering::Greater = a.cmp(&b) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `a.cmp(&b) == Ordering::Greater`
+
+error: this pattern matching can be expressed using equality
+  --> tests/ui/equatable_if_let.rs:68:8
+   |
+LL |     if let Some(2) = c {}
+   |        ^^^^^^^^^^^^^^^ help: try: `c == Some(2)`
+
+error: this pattern matching can be expressed using equality
+  --> tests/ui/equatable_if_let.rs:70:8
+   |
+LL |     if let Struct { a: 2, b: false } = d {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `d == (Struct { a: 2, b: false })`
+
+error: this pattern matching can be expressed using equality
+  --> tests/ui/equatable_if_let.rs:72:8
+   |
+LL |     if let Enum::TupleVariant(32, 64) = e {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `e == Enum::TupleVariant(32, 64)`
+
+error: this pattern matching can be expressed using equality
+  --> tests/ui/equatable_if_let.rs:74:8
+   |
+LL |     if let Enum::RecordVariant { a: 64, b: 32 } = e {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `e == (Enum::RecordVariant { a: 64, b: 32 })`
+
+error: this pattern matching can be expressed using equality
+  --> tests/ui/equatable_if_let.rs:76:8
+   |
+LL |     if let Enum::UnitVariant = e {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `e == Enum::UnitVariant`
+
+error: this pattern matching can be expressed using equality
+  --> tests/ui/equatable_if_let.rs:78:8
+   |
+LL |     if let (Enum::UnitVariant, &Struct { a: 2, b: false }) = (e, &d) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(e, &d) == (Enum::UnitVariant, &Struct { a: 2, b: false })`
+
+error: this pattern matching can be expressed using `matches!`
+  --> tests/ui/equatable_if_let.rs:88:8
+   |
+LL |     if let NotPartialEq::A = f {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(f, NotPartialEq::A)`
+
+error: this pattern matching can be expressed using equality
+  --> tests/ui/equatable_if_let.rs:90:8
+   |
+LL |     if let NotStructuralEq::A = g {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `g == NotStructuralEq::A`
+
+error: this pattern matching can be expressed using `matches!`
+  --> tests/ui/equatable_if_let.rs:92:8
+   |
+LL |     if let Some(NotPartialEq::A) = Some(f) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(Some(f), Some(NotPartialEq::A))`
+
+error: this pattern matching can be expressed using equality
+  --> tests/ui/equatable_if_let.rs:94:8
+   |
+LL |     if let Some(NotStructuralEq::A) = Some(g) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(g) == Some(NotStructuralEq::A)`
+
+error: this pattern matching can be expressed using `matches!`
+  --> tests/ui/equatable_if_let.rs:96:8
+   |
+LL |     if let NoPartialEqStruct { a: 2, b: false } = h {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(h, NoPartialEqStruct { a: 2, b: false })`
+
+error: this pattern matching can be expressed using equality
+  --> tests/ui/equatable_if_let.rs:99:8
+   |
+LL |     if let inline!("abc") = "abc" {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"abc" == inline!("abc")`
+
+error: this pattern matching can be expressed using `matches!`
+  --> tests/ui/equatable_if_let.rs:109:12
+   |
+LL |         if let Some('i') = cs.iter().next() {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(cs.iter().next(), Some('i'))`
+
+error: this pattern matching can be expressed using `matches!`
+  --> tests/ui/equatable_if_let.rs:117:12
+   |
+LL |         if let Some(1) = cs.iter().next() {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(cs.iter().next(), Some(1))`
+
+error: this pattern matching can be expressed using `matches!`
+  --> tests/ui/equatable_if_let.rs:135:12
+   |
+LL |         if let Some(MyEnum::B) = get_enum() {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(get_enum(), Some(MyEnum::B))`
+
+error: aborting due to 17 previous errors
+

@@ -1,0 +1,47 @@
+error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `&()`
+  --> $DIR/sum.rs:4:31
+   |
+LL |     vec![(), ()].iter().sum::<i32>();
+   |                         ---   ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=&()>`
+   |                         |
+   |                         required by a bound introduced by this call
+   |
+   = help: the trait `Sum<&()>` is not implemented for `i32`
+   = help: the following other types implement trait `Sum<A>`:
+             `i32` implements `Sum<&i32>`
+             `i32` implements `Sum`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/sum.rs:4:18
+   |
+LL |     vec![(), ()].iter().sum::<i32>();
+   |     ------------ ^^^^^^ `Iterator::Item` is `&()` here
+   |     |
+   |     this expression has type `Vec<()>`
+note: required by a bound in `std::iter::Iterator::sum`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error[E0277]: a value of type `i32` cannot be made by multiplying all elements of type `&()` from an iterator
+  --> $DIR/sum.rs:7:35
+   |
+LL |     vec![(), ()].iter().product::<i32>();
+   |                         -------   ^^^ value of type `i32` cannot be made by multiplying all elements from a `std::iter::Iterator<Item=&()>`
+   |                         |
+   |                         required by a bound introduced by this call
+   |
+   = help: the trait `Product<&()>` is not implemented for `i32`
+   = help: the following other types implement trait `Product<A>`:
+             `i32` implements `Product<&i32>`
+             `i32` implements `Product`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/sum.rs:7:18
+   |
+LL |     vec![(), ()].iter().product::<i32>();
+   |     ------------ ^^^^^^ `Iterator::Item` is `&()` here
+   |     |
+   |     this expression has type `Vec<()>`
+note: required by a bound in `std::iter::Iterator::product`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,30 @@
+error[E0412]: cannot find type `Missing` in this scope
+  --> $DIR/issue-110157.rs:6:12
+   |
+LL |     F: Fn(&Missing) -> Result<I, ()>,
+   |            ^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `Missing` in this scope
+  --> $DIR/issue-110157.rs:8:24
+   |
+LL |     I: Iterator<Item = Missing>,
+   |                        ^^^^^^^ not found in this scope
+
+error[E0046]: not all trait items implemented, missing: `Item`, `next`
+  --> $DIR/issue-110157.rs:3:1
+   |
+LL | / impl<'tcx, F, I> Iterator for NeedsDropTypes<'tcx, F>
+LL | |
+LL | | where
+LL | |     F: Fn(&Missing) -> Result<I, ()>,
+LL | |
+LL | |     I: Iterator<Item = Missing>,
+   | |________________________________^ missing `Item`, `next` in implementation
+   |
+   = help: implement the missing item: `type Item = /* Type */;`
+   = help: implement the missing item: `fn next(&mut self) -> Option<<Self as Iterator>::Item> { todo!() }`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0046, E0412.
+For more information about an error, try `rustc --explain E0046`.

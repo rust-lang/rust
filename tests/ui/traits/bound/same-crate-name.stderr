@@ -1,0 +1,75 @@
+error[E0277]: the trait bound `Foo: main::a::Bar` is not satisfied
+  --> $DIR/same-crate-name.rs:33:20
+   |
+LL |         a::try_foo(foo);
+   |         ---------- ^^^ the trait `main::a::Bar` is not implemented for `Foo`
+   |         |
+   |         required by a bound introduced by this call
+   |
+help: trait impl with same name found
+  --> $DIR/auxiliary/crate_a2.rs:5:1
+   |
+LL | impl Bar for Foo {}
+   | ^^^^^^^^^^^^^^^^
+   = note: perhaps two different versions of crate `crate_a2` are being used?
+   = help: the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
+note: required by a bound in `try_foo`
+  --> $DIR/auxiliary/crate_a1.rs:3:24
+   |
+LL | pub fn try_foo(x: impl Bar) {}
+   |                        ^^^ required by this bound in `try_foo`
+
+error[E0277]: the trait bound `DoesNotImplementTrait: main::a::Bar` is not satisfied
+  --> $DIR/same-crate-name.rs:40:20
+   |
+LL |         a::try_foo(implements_no_traits);
+   |         ---------- ^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `DoesNotImplementTrait`
+   |         |
+   |         required by a bound introduced by this call
+   |
+   = help: the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
+note: required by a bound in `try_foo`
+  --> $DIR/auxiliary/crate_a1.rs:3:24
+   |
+LL | pub fn try_foo(x: impl Bar) {}
+   |                        ^^^ required by this bound in `try_foo`
+
+error[E0277]: the trait bound `ImplementsWrongTraitConditionally<isize>: main::a::Bar` is not satisfied
+  --> $DIR/same-crate-name.rs:47:20
+   |
+LL |         a::try_foo(other_variant_implements_mismatched_trait);
+   |         ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `ImplementsWrongTraitConditionally<isize>`
+   |         |
+   |         required by a bound introduced by this call
+   |
+help: trait impl with same name found
+  --> $DIR/auxiliary/crate_a2.rs:13:1
+   |
+LL | impl Bar for ImplementsWrongTraitConditionally<isize> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: perhaps two different versions of crate `crate_a2` are being used?
+   = help: the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
+note: required by a bound in `try_foo`
+  --> $DIR/auxiliary/crate_a1.rs:3:24
+   |
+LL | pub fn try_foo(x: impl Bar) {}
+   |                        ^^^ required by this bound in `try_foo`
+
+error[E0277]: the trait bound `ImplementsTraitForUsize<isize>: main::a::Bar` is not satisfied
+  --> $DIR/same-crate-name.rs:53:20
+   |
+LL |         a::try_foo(other_variant_implements_correct_trait);
+   |         ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `ImplementsTraitForUsize<isize>`
+   |         |
+   |         required by a bound introduced by this call
+   |
+   = help: the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
+note: required by a bound in `try_foo`
+  --> $DIR/auxiliary/crate_a1.rs:3:24
+   |
+LL | pub fn try_foo(x: impl Bar) {}
+   |                        ^^^ required by this bound in `try_foo`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

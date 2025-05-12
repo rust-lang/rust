@@ -1,0 +1,21 @@
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/ice-bad-input-type-for-cast-83056.rs:5:11
+   |
+LL | struct S([bool; f as usize]);
+   | ----------------------------- similarly named struct `S` defined here
+LL | fn f() -> T {}
+   |           ^
+   |
+help: a struct with a similar name exists
+   |
+LL - fn f() -> T {}
+LL + fn f() -> S {}
+   |
+help: you might be missing a type parameter
+   |
+LL | fn f<T>() -> T {}
+   |     +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

@@ -1,0 +1,39 @@
+error[E0204]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/E0204.rs:5:15
+   |
+LL |     foo: Vec<u32>,
+   |     ------------- this field does not implement `Copy`
+...
+LL | impl Copy for Foo { }
+   |               ^^^
+
+error[E0204]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/E0204.rs:7:10
+   |
+LL | #[derive(Copy)]
+   |          ^^^^
+LL | struct Foo2<'a> {
+LL |     ty: &'a mut bool,
+   |     ---------------- this field does not implement `Copy`
+
+error[E0204]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/E0204.rs:17:15
+   |
+LL |     Bar { x: Vec<u32> },
+   |           ----------- this field does not implement `Copy`
+...
+LL | impl Copy for EFoo { }
+   |               ^^^^
+
+error[E0204]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/E0204.rs:19:10
+   |
+LL | #[derive(Copy)]
+   |          ^^^^
+LL | enum EFoo2<'a> {
+LL |     Bar(&'a mut bool),
+   |         ------------ this field does not implement `Copy`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0204`.

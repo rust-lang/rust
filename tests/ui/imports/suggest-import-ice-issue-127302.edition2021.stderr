@@ -1,0 +1,41 @@
+error[E0583]: file not found for module `config`
+  --> $DIR/suggest-import-ice-issue-127302.rs:3:1
+   |
+LL | mod config;
+   | ^^^^^^^^^^^
+   |
+   = help: to create the module `config`, create file "$DIR/config.rs" or "$DIR/config/mod.rs"
+   = note: if there is a `mod config` elsewhere in the crate already, import it with `use crate::...` instead
+
+error: format argument must be a string literal
+  --> $DIR/suggest-import-ice-issue-127302.rs:10:14
+   |
+LL |     println!(args.ctx.compiler.display());
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     println!("{}", args.ctx.compiler.display());
+   |              +++++
+
+error[E0425]: cannot find value `args` in this scope
+  --> $DIR/suggest-import-ice-issue-127302.rs:6:12
+   |
+LL |     match &args.cmd {
+   |            ^^^^ not found in this scope
+   |
+help: consider importing this function
+   |
+LL + use std::env::args;
+   |
+
+error[E0532]: expected unit struct, unit variant or constant, found module `crate::config`
+  --> $DIR/suggest-import-ice-issue-127302.rs:7:9
+   |
+LL |         crate::config => {}
+   |         ^^^^^^^^^^^^^ not a unit struct, unit variant or constant
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0425, E0532, E0583.
+For more information about an error, try `rustc --explain E0425`.

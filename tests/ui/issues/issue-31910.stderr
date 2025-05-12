@@ -1,0 +1,18 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-31910.rs:4:9
+   |
+LL |     X = Trait::Number,
+   |         ^^^^^^^^^^^^^ expected `isize`, found `i32`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/issue-31910.rs:1:11
+   |
+LL | enum Enum<T: Trait> {
+   |           ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0392.
+For more information about an error, try `rustc --explain E0308`.

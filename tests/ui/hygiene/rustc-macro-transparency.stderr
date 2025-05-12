@@ -1,0 +1,28 @@
+error[E0425]: cannot find value `Opaque` in this scope
+  --> $DIR/rustc-macro-transparency.rs:26:5
+   |
+LL |     Opaque;
+   |     ^^^^^^ not found in this scope
+
+error[E0423]: expected value, found macro `semiopaque`
+  --> $DIR/rustc-macro-transparency.rs:29:5
+   |
+LL |     struct SemiOpaque;
+   |     ------------------ similarly named unit struct `SemiOpaque` defined here
+...
+LL |     semiopaque;
+   |     ^^^^^^^^^^
+   |     |
+   |     not a value
+   |     help: a unit struct with a similar name exists (notice the capitalization): `SemiOpaque`
+
+error[E0423]: expected value, found macro `opaque`
+  --> $DIR/rustc-macro-transparency.rs:30:5
+   |
+LL |     opaque;
+   |     ^^^^^^ not a value
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0423, E0425.
+For more information about an error, try `rustc --explain E0423`.

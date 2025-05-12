@@ -1,0 +1,135 @@
+PRINT-ATTR INPUT (DISPLAY): fn main() { &|_: u8| {}; mul_2!(1 + 1); }
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): fn main() { &| _ : u8 | {}; mul_2! (1 + 1); }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "fn",
+        span: $DIR/issue-75734-pp-paren.rs:23:1: 23:3 (#0),
+    },
+    Ident {
+        ident: "main",
+        span: $DIR/issue-75734-pp-paren.rs:23:4: 23:8 (#0),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [],
+        span: $DIR/issue-75734-pp-paren.rs:23:8: 23:10 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '&',
+                spacing: Joint,
+                span: $DIR/issue-75734-pp-paren.rs:24:5: 24:6 (#0),
+            },
+            Punct {
+                ch: '|',
+                spacing: Alone,
+                span: $DIR/issue-75734-pp-paren.rs:24:6: 24:7 (#0),
+            },
+            Ident {
+                ident: "_",
+                span: $DIR/issue-75734-pp-paren.rs:24:7: 24:8 (#0),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/issue-75734-pp-paren.rs:24:8: 24:9 (#0),
+            },
+            Ident {
+                ident: "u8",
+                span: $DIR/issue-75734-pp-paren.rs:24:10: 24:12 (#0),
+            },
+            Punct {
+                ch: '|',
+                spacing: Alone,
+                span: $DIR/issue-75734-pp-paren.rs:24:12: 24:13 (#0),
+            },
+            Group {
+                delimiter: Brace,
+                stream: TokenStream [],
+                span: $DIR/issue-75734-pp-paren.rs:24:14: 24:16 (#0),
+            },
+            Punct {
+                ch: ';',
+                spacing: Alone,
+                span: $DIR/issue-75734-pp-paren.rs:24:16: 24:17 (#0),
+            },
+            Ident {
+                ident: "mul_2",
+                span: $DIR/issue-75734-pp-paren.rs:25:5: 25:10 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/issue-75734-pp-paren.rs:25:10: 25:11 (#0),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [
+                    Literal {
+                        kind: Integer,
+                        symbol: "1",
+                        suffix: None,
+                        span: $DIR/issue-75734-pp-paren.rs:25:12: 25:13 (#0),
+                    },
+                    Punct {
+                        ch: '+',
+                        spacing: Alone,
+                        span: $DIR/issue-75734-pp-paren.rs:25:14: 25:15 (#0),
+                    },
+                    Literal {
+                        kind: Integer,
+                        symbol: "1",
+                        suffix: None,
+                        span: $DIR/issue-75734-pp-paren.rs:25:16: 25:17 (#0),
+                    },
+                ],
+                span: $DIR/issue-75734-pp-paren.rs:25:11: 25:18 (#0),
+            },
+            Punct {
+                ch: ';',
+                spacing: Alone,
+                span: $DIR/issue-75734-pp-paren.rs:25:18: 25:19 (#0),
+            },
+        ],
+        span: $DIR/issue-75734-pp-paren.rs:23:11: 26:2 (#0),
+    },
+]
+PRINT-BANG INPUT (DISPLAY): 1 + 1 * 2
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/issue-75734-pp-paren.rs:25:12: 25:13 (#0),
+            },
+            Punct {
+                ch: '+',
+                spacing: Alone,
+                span: $DIR/issue-75734-pp-paren.rs:25:14: 25:15 (#0),
+            },
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/issue-75734-pp-paren.rs:25:16: 25:17 (#0),
+            },
+        ],
+        span: $DIR/issue-75734-pp-paren.rs:17:21: 17:25 (#6),
+    },
+    Punct {
+        ch: '*',
+        spacing: Alone,
+        span: $DIR/issue-75734-pp-paren.rs:17:26: 17:27 (#6),
+    },
+    Literal {
+        kind: Integer,
+        symbol: "2",
+        suffix: None,
+        span: $DIR/issue-75734-pp-paren.rs:17:28: 17:29 (#6),
+    },
+]

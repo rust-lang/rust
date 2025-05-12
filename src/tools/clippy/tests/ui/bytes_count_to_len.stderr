@@ -1,0 +1,29 @@
+error: using long and hard to read `.bytes().count()`
+  --> tests/ui/bytes_count_to_len.rs:7:13
+   |
+LL |     let _ = String::from("foo").bytes().count();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.len()` instead: `String::from("foo").len()`
+   |
+   = note: `-D clippy::bytes-count-to-len` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bytes_count_to_len)]`
+
+error: using long and hard to read `.bytes().count()`
+  --> tests/ui/bytes_count_to_len.rs:11:13
+   |
+LL |     let _ = s1.bytes().count();
+   |             ^^^^^^^^^^^^^^^^^^ help: consider calling `.len()` instead: `s1.len()`
+
+error: using long and hard to read `.bytes().count()`
+  --> tests/ui/bytes_count_to_len.rs:15:13
+   |
+LL |     let _ = "foo".bytes().count();
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.len()` instead: `"foo".len()`
+
+error: using long and hard to read `.bytes().count()`
+  --> tests/ui/bytes_count_to_len.rs:19:13
+   |
+LL |     let _ = s2.bytes().count();
+   |             ^^^^^^^^^^^^^^^^^^ help: consider calling `.len()` instead: `s2.len()`
+
+error: aborting due to 4 previous errors
+

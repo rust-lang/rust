@@ -1,0 +1,27 @@
+digraph G {
+    Operand -> Constant
+    Operand -> Place [taillabel="read"]
+    Place -> Projection
+    Projection -> Place
+    Place -> LocalId
+    Rvalue -> "Rvalue\nAggregate"
+    Rvalue -> "Rvalue\nBinaryOp"
+    Rvalue -> "Rvalue\nUnaryOp"
+    Rvalue -> "Rvalue\n..."
+    "Rvalue\nAggregate" -> Operand [headlabel="*"]
+    "Rvalue\nBinaryOp" -> Operand [headlabel="2"]
+    "Rvalue\nUnaryOp" -> Operand
+    "Statement\nAssignment" -> Place [taillabel="write"]
+    "Statement\nAssignment" -> Rvalue
+    Statement -> "Statement\nAssignment"
+    Statement -> "Statement\n..."
+    Block -> Statement [headlabel="*"]
+    Block -> Terminator
+    Terminator -> "Terminator\nSwitchInt"
+    "Terminator\nSwitchInt" -> Operand
+    "Terminator\nSwitchInt" -> Constant [headlabel="*"]
+    "Terminator\nSwitchInt" -> BlockId [headlabel="*"]
+    Terminator -> "Terminator\n..."
+    Mir -> Block [headlabel="*"]
+    Mir -> Local [headlabel="*"]
+}

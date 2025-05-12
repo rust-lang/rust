@@ -1,0 +1,21 @@
+error[E0107]: function takes 2 generic arguments but 1 generic argument was supplied
+  --> $DIR/not-enough-args.rs:4:5
+   |
+LL |     f::<[u8]>("a", b"a");
+   |     ^   ---- supplied 1 generic argument
+   |     |
+   |     expected 2 generic arguments
+   |
+note: function defined here, with 2 generic parameters: `T`, `U`
+  --> $DIR/not-enough-args.rs:1:4
+   |
+LL | fn f<T: ?Sized, U: ?Sized>(_: impl AsRef<T>, _: impl AsRef<U>) {}
+   |    ^ -          -
+help: add missing generic argument
+   |
+LL |     f::<[u8], U>("a", b"a");
+   |             +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

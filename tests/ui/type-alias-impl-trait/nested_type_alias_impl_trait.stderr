@@ -1,0 +1,32 @@
+error: item does not constrain `Foo::{opaque#0}`
+  --> $DIR/nested_type_alias_impl_trait.rs:14:8
+   |
+LL | pub fn get_foot(_: Foo) -> Foot {
+   |        ^^^^^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/nested_type_alias_impl_trait.rs:5:16
+   |
+LL | pub type Foo = impl Debug;
+   |                ^^^^^^^^^^
+
+error: opaque type's hidden type cannot be another opaque type from the same scope
+  --> $DIR/nested_type_alias_impl_trait.rs:16:5
+   |
+LL |     get_foo()
+   |     ^^^^^^^^^ one of the two opaque types used here has to be outside its defining scope
+   |
+note: opaque type whose hidden type is being assigned
+  --> $DIR/nested_type_alias_impl_trait.rs:6:17
+   |
+LL | pub type Foot = impl Debug;
+   |                 ^^^^^^^^^^
+note: opaque type being used as hidden type
+  --> $DIR/nested_type_alias_impl_trait.rs:5:16
+   |
+LL | pub type Foo = impl Debug;
+   |                ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

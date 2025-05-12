@@ -1,0 +1,27 @@
+error[E0428]: the name `Dealigned` is defined multiple times
+  --> $DIR/multiple_definitions_attribute_merging.rs:17:1
+   |
+LL | struct Dealigned<T>(u8, T);
+   | --------------------------- previous definition of the type `Dealigned` here
+...
+LL | struct Dealigned<T>(u8, T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Dealigned` redefined here
+   |
+   = error: internal compiler error: compiler/rustc_mir_transform/src/check_packed_ref.rs:LL:CC: builtin derive created an unaligned reference
+  --> $DIR/multiple_definitions_attribute_merging.rs:17:25
+   |
+LL | #[derive(PartialEq)]
+   |          --------- in this derive macro expansion
+LL | #[repr(C)]
+LL | struct Dealigned<T>(u8, T);
+   |                         ^
+
+
+Box<dyn Any>
+query stack during panic:
+#0 [mir_built] building MIR for `<impl at $DIR/multiple_definitions_attribute_merging.rs:15:10: 15:19>::eq`
+#1 [check_unsafety] unsafety-checking `<impl at $DIR/multiple_definitions_attribute_merging.rs:15:10: 15:19>::eq`
+... and 1 other queries... use `env RUST_BACKTRACE=1` to see the full query stack
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0428`.

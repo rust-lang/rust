@@ -1,0 +1,8 @@
+error: `#[doc(alias = "...")]` is the same as the item's name
+  --> $DIR/doc-alias-same-name.rs:3:7
+   |
+LL | #[doc(alias = "Foo")]
+   |       ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

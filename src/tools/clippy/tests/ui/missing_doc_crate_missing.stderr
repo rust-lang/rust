@@ -1,0 +1,13 @@
+error: missing documentation for the crate
+  --> tests/ui/missing_doc_crate_missing.rs:1:1
+   |
+LL | / #![warn(clippy::missing_docs_in_private_items)]
+...  |
+LL | | fn main() {}
+   | |____________^
+   |
+   = note: `-D clippy::missing-docs-in-private-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_docs_in_private_items)]`
+
+error: aborting due to 1 previous error
+

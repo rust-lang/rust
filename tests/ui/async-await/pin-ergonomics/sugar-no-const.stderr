@@ -1,0 +1,16 @@
+error: expected one of `!`, `(`, `::`, `;`, `<`, or `=`, found `i32`
+  --> $DIR/sugar-no-const.rs:7:18
+   |
+LL |     let _x: &pin i32 = todo!();
+   |           -      ^^^ expected one of `!`, `(`, `::`, `;`, `<`, or `=`
+   |           |
+   |           while parsing the type for `_x`
+   |
+help: there is a keyword `in` with a similar name
+   |
+LL -     let _x: &pin i32 = todo!();
+LL +     let _x: &in i32 = todo!();
+   |
+
+error: aborting due to 1 previous error
+

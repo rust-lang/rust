@@ -1,0 +1,95 @@
+error[E0275]: overflow evaluating the requirement `SalsaStorage: RefUnwindSafe`
+  --> $DIR/cycle-cache-err-60010.rs:27:13
+   |
+LL |     _parse: <ParseQuery as Query<RootDatabase>>::Data,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: required because it appears within the type `PhantomData<SalsaStorage>`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+note: required because it appears within the type `Unique<SalsaStorage>`
+  --> $SRC_DIR/core/src/ptr/unique.rs:LL:COL
+note: required because it appears within the type `Box<SalsaStorage>`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+note: required because it appears within the type `Runtime<RootDatabase>`
+  --> $DIR/cycle-cache-err-60010.rs:23:8
+   |
+LL | struct Runtime<DB: Database> {
+   |        ^^^^^^^
+note: required because it appears within the type `RootDatabase`
+  --> $DIR/cycle-cache-err-60010.rs:20:8
+   |
+LL | struct RootDatabase {
+   |        ^^^^^^^^^^^^
+note: required for `RootDatabase` to implement `SourceDatabase`
+  --> $DIR/cycle-cache-err-60010.rs:43:9
+   |
+LL | impl<T> SourceDatabase for T
+   |         ^^^^^^^^^^^^^^     ^
+LL | where
+LL |     T: RefUnwindSafe,
+   |        ------------- unsatisfied trait bound introduced here
+note: required for `ParseQuery` to implement `Query<RootDatabase>`
+  --> $DIR/cycle-cache-err-60010.rs:36:10
+   |
+LL | impl<DB> Query<DB> for ParseQuery
+   |          ^^^^^^^^^     ^^^^^^^^^^
+LL | where
+LL |     DB: SourceDatabase,
+   |         -------------- unsatisfied trait bound introduced here
+
+error[E0275]: overflow evaluating the requirement `SalsaStorage: RefUnwindSafe`
+  --> $DIR/cycle-cache-err-60010.rs:32:20
+   |
+LL |     type Storage = SalsaStorage;
+   |                    ^^^^^^^^^^^^
+   |
+note: required because it appears within the type `PhantomData<SalsaStorage>`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+note: required because it appears within the type `Unique<SalsaStorage>`
+  --> $SRC_DIR/core/src/ptr/unique.rs:LL:COL
+note: required because it appears within the type `Box<SalsaStorage>`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+note: required because it appears within the type `Runtime<RootDatabase>`
+  --> $DIR/cycle-cache-err-60010.rs:23:8
+   |
+LL | struct Runtime<DB: Database> {
+   |        ^^^^^^^
+note: required because it appears within the type `RootDatabase`
+  --> $DIR/cycle-cache-err-60010.rs:20:8
+   |
+LL | struct RootDatabase {
+   |        ^^^^^^^^^^^^
+note: required for `RootDatabase` to implement `SourceDatabase`
+  --> $DIR/cycle-cache-err-60010.rs:43:9
+   |
+LL | impl<T> SourceDatabase for T
+   |         ^^^^^^^^^^^^^^     ^
+LL | where
+LL |     T: RefUnwindSafe,
+   |        ------------- unsatisfied trait bound introduced here
+note: required for `ParseQuery` to implement `Query<RootDatabase>`
+  --> $DIR/cycle-cache-err-60010.rs:36:10
+   |
+LL | impl<DB> Query<DB> for ParseQuery
+   |          ^^^^^^^^^     ^^^^^^^^^^
+LL | where
+LL |     DB: SourceDatabase,
+   |         -------------- unsatisfied trait bound introduced here
+note: required because it appears within the type `SalsaStorage`
+  --> $DIR/cycle-cache-err-60010.rs:26:8
+   |
+LL | struct SalsaStorage {
+   |        ^^^^^^^^^^^^
+note: required by a bound in `Database::Storage`
+  --> $DIR/cycle-cache-err-60010.rs:7:5
+   |
+LL |     type Storage;
+   |     ^^^^^^^^^^^^^ required by this bound in `Database::Storage`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Storage: ?Sized;
+   |                 ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

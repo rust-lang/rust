@@ -1,0 +1,75 @@
+error[E0573]: expected type, found variant `CompileFlag::A`
+  --> $DIR/invalid-enum.rs:23:12
+   |
+LL |   test_1::<CompileFlag::A>();
+   |            ^^^^^^^^^^^^^^
+   |            |
+   |            not a type
+   |            help: try using the variant's enum: `CompileFlag`
+
+error[E0573]: expected type, found variant `CompileFlag::A`
+  --> $DIR/invalid-enum.rs:27:15
+   |
+LL |   test_2::<_, CompileFlag::A>(0);
+   |               ^^^^^^^^^^^^^^
+   |               |
+   |               not a type
+   |               help: try using the variant's enum: `CompileFlag`
+
+error[E0573]: expected type, found variant `CompileFlag::A`
+  --> $DIR/invalid-enum.rs:31:18
+   |
+LL |   let _: Example<CompileFlag::A, _> = Example { x: 0 };
+   |                  ^^^^^^^^^^^^^^
+   |                  |
+   |                  not a type
+   |                  help: try using the variant's enum: `CompileFlag`
+
+error[E0747]: unresolved item provided when a constant was expected
+  --> $DIR/invalid-enum.rs:23:12
+   |
+LL |   test_1::<CompileFlag::A>();
+   |            ^^^^^^^^^^^^^^
+   |
+help: if this generic argument was intended as a const parameter, surround it with braces
+   |
+LL |   test_1::<{ CompileFlag::A }>();
+   |            +                +
+
+error[E0747]: unresolved item provided when a constant was expected
+  --> $DIR/invalid-enum.rs:27:15
+   |
+LL |   test_2::<_, CompileFlag::A>(0);
+   |               ^^^^^^^^^^^^^^
+   |
+help: if this generic argument was intended as a const parameter, surround it with braces
+   |
+LL |   test_2::<_, { CompileFlag::A }>(0);
+   |               +                +
+
+error[E0747]: unresolved item provided when a constant was expected
+  --> $DIR/invalid-enum.rs:31:18
+   |
+LL |   let _: Example<CompileFlag::A, _> = Example { x: 0 };
+   |                  ^^^^^^^^^^^^^^
+   |
+help: if this generic argument was intended as a const parameter, surround it with braces
+   |
+LL |   let _: Example<{ CompileFlag::A }, _> = Example { x: 0 };
+   |                  +                +
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/invalid-enum.rs:35:18
+   |
+LL |   let _: Example<Example::ASSOC_FLAG, _> = Example { x: 0 };
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |
+help: if this generic argument was intended as a const parameter, surround it with braces
+   |
+LL |   let _: Example<{ Example::ASSOC_FLAG }, _> = Example { x: 0 };
+   |                  +                     +
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0573, E0747.
+For more information about an error, try `rustc --explain E0573`.

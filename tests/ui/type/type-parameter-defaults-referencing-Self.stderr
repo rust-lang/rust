@@ -1,0 +1,18 @@
+error[E0393]: the type parameter `T` must be explicitly specified
+  --> $DIR/type-parameter-defaults-referencing-Self.rs:8:16
+   |
+LL | trait Foo<T=Self> {
+   | ----------------- type parameter `T` must be specified for this
+...
+LL | fn foo(x: &dyn Foo) { }
+   |                ^^^
+   |
+   = note: because the parameter default references `Self`, the parameter must be specified on the object type
+help: set the type parameter to the desired type
+   |
+LL | fn foo(x: &dyn Foo<T>) { }
+   |                   +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0393`.

@@ -1,0 +1,21 @@
+error[E0277]: the trait bound `((),): Into<Bar>` is not satisfied
+  --> $DIR/suggest-similar-impls-for-root-obligation.rs:14:24
+   |
+LL |     let _: Bar = ((),).into();
+   |                        ^^^^ the trait `Foo<'_>` is not implemented for `((),)`
+   |
+   = help: the trait `Foo<'_>` is not implemented for `((),)`
+           but it is implemented for `()`
+   = help: for that trait implementation, expected `()`, found `((),)`
+note: required for `Bar` to implement `From<((),)>`
+  --> $DIR/suggest-similar-impls-for-root-obligation.rs:7:22
+   |
+LL | impl<'s, T: Foo<'s>> From<T> for Bar {
+   |             -------  ^^^^^^^     ^^^
+   |             |
+   |             unsatisfied trait bound introduced here
+   = note: required for `((),)` to implement `Into<Bar>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

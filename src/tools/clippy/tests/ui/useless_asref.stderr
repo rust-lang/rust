@@ -1,0 +1,116 @@
+error: this call to `as_ref` does nothing
+  --> tests/ui/useless_asref.rs:51:18
+   |
+LL |         foo_rstr(rstr.as_ref());
+   |                  ^^^^^^^^^^^^^ help: try: `rstr`
+   |
+note: the lint level is defined here
+  --> tests/ui/useless_asref.rs:1:9
+   |
+LL | #![deny(clippy::useless_asref)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `as_ref` does nothing
+  --> tests/ui/useless_asref.rs:54:20
+   |
+LL |         foo_rslice(rslice.as_ref());
+   |                    ^^^^^^^^^^^^^^^ help: try: `rslice`
+
+error: this call to `as_mut` does nothing
+  --> tests/ui/useless_asref.rs:59:21
+   |
+LL |         foo_mrslice(mrslice.as_mut());
+   |                     ^^^^^^^^^^^^^^^^ help: try: `mrslice`
+
+error: this call to `as_ref` does nothing
+  --> tests/ui/useless_asref.rs:62:20
+   |
+LL |         foo_rslice(mrslice.as_ref());
+   |                    ^^^^^^^^^^^^^^^^ help: try: `mrslice`
+
+error: this call to `as_ref` does nothing
+  --> tests/ui/useless_asref.rs:70:20
+   |
+LL |         foo_rslice(rrrrrslice.as_ref());
+   |                    ^^^^^^^^^^^^^^^^^^^ help: try: `rrrrrslice`
+
+error: this call to `as_ref` does nothing
+  --> tests/ui/useless_asref.rs:73:18
+   |
+LL |         foo_rstr(rrrrrstr.as_ref());
+   |                  ^^^^^^^^^^^^^^^^^ help: try: `rrrrrstr`
+
+error: this call to `as_mut` does nothing
+  --> tests/ui/useless_asref.rs:79:21
+   |
+LL |         foo_mrslice(mrrrrrslice.as_mut());
+   |                     ^^^^^^^^^^^^^^^^^^^^ help: try: `mrrrrrslice`
+
+error: this call to `as_ref` does nothing
+  --> tests/ui/useless_asref.rs:82:20
+   |
+LL |         foo_rslice(mrrrrrslice.as_ref());
+   |                    ^^^^^^^^^^^^^^^^^^^^ help: try: `mrrrrrslice`
+
+error: this call to `as_ref` does nothing
+  --> tests/ui/useless_asref.rs:87:16
+   |
+LL |     foo_rrrrmr((&&&&MoreRef).as_ref());
+   |                ^^^^^^^^^^^^^^^^^^^^^^ help: try: `(&&&&MoreRef)`
+
+error: this call to `as_mut` does nothing
+  --> tests/ui/useless_asref.rs:138:13
+   |
+LL |     foo_mrt(mrt.as_mut());
+   |             ^^^^^^^^^^^^ help: try: `mrt`
+
+error: this call to `as_ref` does nothing
+  --> tests/ui/useless_asref.rs:141:12
+   |
+LL |     foo_rt(mrt.as_ref());
+   |            ^^^^^^^^^^^^ help: try: `mrt`
+
+error: this call to `as_ref.map(...)` does nothing
+  --> tests/ui/useless_asref.rs:153:13
+   |
+LL |     let z = x.as_ref().map(String::clone);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.clone()`
+
+error: this call to `as_ref.map(...)` does nothing
+  --> tests/ui/useless_asref.rs:156:13
+   |
+LL |     let z = x.as_ref().map(|z| z.clone());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.clone()`
+
+error: this call to `as_ref.map(...)` does nothing
+  --> tests/ui/useless_asref.rs:159:13
+   |
+LL |     let z = x.as_ref().map(|z| String::clone(z));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.clone()`
+
+error: this call to `as_ref.map(...)` does nothing
+  --> tests/ui/useless_asref.rs:183:9
+   |
+LL |         x.field.as_ref().map(|v| v.clone());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.field.clone()`
+
+error: this call to `as_ref.map(...)` does nothing
+  --> tests/ui/useless_asref.rs:186:9
+   |
+LL |         x.field.as_ref().map(Clone::clone);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.field.clone()`
+
+error: this call to `as_ref.map(...)` does nothing
+  --> tests/ui/useless_asref.rs:189:9
+   |
+LL |         x.field.as_ref().map(|v| Clone::clone(v));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.field.clone()`
+
+error: this call to `as_ref.map(...)` does nothing
+  --> tests/ui/useless_asref.rs:194:9
+   |
+LL |         Some(1).as_ref().map(|&x| x.clone());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(1).clone()`
+
+error: aborting due to 18 previous errors
+

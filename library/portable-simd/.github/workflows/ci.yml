@@ -1,0 +1,254 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+env:
+  CARGO_NET_RETRY: 10
+  RUSTUP_MAX_RETRIES: 10
+  PROPTEST_CASES: 64
+
+jobs:
+  rustfmt:
+    name: "rustfmt"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run rustfmt
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: "clippy on ${{ matrix.target }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          # We shouldn't really have any OS-specific code, so think of this as a list of architectures
+          - x86_64-unknown-linux-gnu
+          - i686-unknown-linux-gnu
+          - i586-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - arm64ec-pc-windows-msvc
+          - armv7-unknown-linux-gnueabihf
+          - loongarch64-unknown-linux-gnu
+          # non-nightly since https://github.com/rust-lang/rust/pull/113274
+          # - mips-unknown-linux-gnu
+          # - mips64-unknown-linux-gnuabi64
+          - powerpc-unknown-linux-gnu
+          - powerpc64-unknown-linux-gnu
+          - riscv64gc-unknown-linux-gnu
+          - s390x-unknown-linux-gnu
+          - sparc64-unknown-linux-gnu
+          - wasm32-unknown-unknown
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Rust
+        run: rustup target add ${{ matrix.target }}
+      - name: Run Clippy
+        run: cargo clippy --all-targets --target ${{ matrix.target }}
+
+  x86-tests:
+    name: "${{ matrix.target_feature }} on ${{ matrix.target }}"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc, i586-pc-windows-msvc, x86_64-unknown-linux-gnu]
+        # `default` means we use the default target config for the target,
+        # `native` means we run with `-Ctarget-cpu=native`, and anything else is
+        # an arg to `-Ctarget-feature`
+        target_feature: [default, native, +sse3, +ssse3, +sse4.1, +sse4.2, +avx, +avx2]
+
+        exclude:
+          # -Ctarget-cpu=native sounds like bad-news if target != host
+          - { target: i686-pc-windows-msvc, target_feature: native }
+          - { target: i586-pc-windows-msvc, target_feature: native }
+
+        include:
+          # Populate the `matrix.os` field
+          - { target: x86_64-unknown-linux-gnu, os: ubuntu-latest }
+          - { target: x86_64-pc-windows-msvc,   os: windows-latest }
+          - { target: i686-pc-windows-msvc,     os: windows-latest }
+          - { target: i586-pc-windows-msvc,     os: windows-latest }
+
+          # These are globally available on all the other targets.
+          - { target: i586-pc-windows-msvc, target_feature: +sse, os: windows-latest }
+          - { target: i586-pc-windows-msvc, target_feature: +sse2, os: windows-latest }
+
+          # Annoyingly, the x86_64-unknown-linux-gnu runner *almost* always has
+          # avx512vl, but occasionally doesn't.  Maybe one day we can enable it.
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Rust
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Configure RUSTFLAGS
+        shell: bash
+        run: |
+          case "${{ matrix.target_feature }}" in
+            default)
+              echo "RUSTFLAGS=-Dwarnings" >> $GITHUB_ENV;;
+            native)
+              echo "RUSTFLAGS=-Dwarnings -Ctarget-cpu=native" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "RUSTFLAGS=-Dwarnings -Ctarget-feature=${{ matrix.target_feature }}" >> $GITHUB_ENV
+              ;;
+          esac
+
+      # Super useful for debugging why a SIGILL occurred.
+      - name: Dump target configuration and support
+        run: |
+          rustc -Vv
+
+          echo "Caveat: not all target features are expected to be logged"
+
+          echo "## Requested target configuration (RUSTFLAGS=$RUSTFLAGS)"
+          rustc --print=cfg --target=${{ matrix.target }} $RUSTFLAGS
+
+          echo "## Supported target configuration for --target=${{ matrix.target }}"
+          rustc --print=cfg --target=${{ matrix.target }} -Ctarget-cpu=native
+
+          echo "## Natively supported target configuration"
+          rustc --print=cfg -Ctarget-cpu=native
+
+      - name: Test (debug)
+        run: cargo test --verbose --target=${{ matrix.target }}
+
+      - name: Test (release)
+        run: cargo test --verbose --target=${{ matrix.target }} --release
+
+      - name: Generate docs
+        run: cargo doc --verbose --target=${{ matrix.target }}
+        env:
+          RUSTDOCFLAGS: -Dwarnings
+    
+  macos-tests:
+    name: ${{ matrix.target }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-apple-darwin
+          - x86_64-apple-darwin
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Rust
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Configure RUSTFLAGS
+        shell: bash
+        run: echo "RUSTFLAGS=-Dwarnings" >> $GITHUB_ENV
+
+      - name: Test (debug)
+        run: cargo test --verbose --target=${{ matrix.target }}
+
+      - name: Test (release)
+        run: cargo test --verbose --target=${{ matrix.target }} --release
+
+      - name: Generate docs
+        run: cargo doc --verbose --target=${{ matrix.target }}
+        env:
+          RUSTDOCFLAGS: -Dwarnings
+
+  wasm-tests:
+    name: "wasm (firefox, ${{ matrix.name }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { name: default, RUSTFLAGS: "" }
+          - { name: simd128, RUSTFLAGS: "-C target-feature=+simd128" }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Test (debug)
+        run: wasm-pack test --firefox --headless crates/core_simd
+        env:
+            RUSTFLAGS: ${{ matrix.rustflags }}
+      - name: Test (release)
+        run: wasm-pack test --firefox --headless crates/core_simd --release
+        env:
+            RUSTFLAGS: ${{ matrix.rustflags }}
+
+  cross-tests:
+    name: "${{ matrix.target_feature }} on ${{ matrix.target }} (via cross)"
+    runs-on: ubuntu-latest
+    env:
+      PROPTEST_CASES: 16
+    strategy:
+      fail-fast: false
+
+      matrix:
+        target:
+          - armv7-unknown-linux-gnueabihf
+          - thumbv7neon-unknown-linux-gnueabihf # includes neon by default
+          - aarch64-unknown-linux-gnu           # includes neon by default
+          - powerpc-unknown-linux-gnu
+          - powerpc64le-unknown-linux-gnu       # includes altivec by default
+          - riscv64gc-unknown-linux-gnu
+          - loongarch64-unknown-linux-gnu
+          # MIPS uses a nonstandard binary representation for NaNs which makes it worth testing
+          # non-nightly since https://github.com/rust-lang/rust/pull/113274
+          # - mips-unknown-linux-gnu
+          # - mips64-unknown-linux-gnuabi64
+          # Lots of errors in QEMU and no real hardware to test on. Not clear if it's QEMU or bad codegen.
+          # - powerpc64-unknown-linux-gnu
+        target_feature: [default]
+        include:
+          - { target: powerpc64le-unknown-linux-gnu, target_feature: "+vsx" }
+          # Fails due to QEMU floating point errors, probably handling subnormals incorrectly.
+          # This target is somewhat redundant, since ppc64le has altivec as well.
+          # - { target: powerpc-unknown-linux-gnu, target_feature: "+altivec" }
+          # We should test this, but cross currently can't run it
+          # - { target: riscv64gc-unknown-linux-gnu, target_feature: "+v,+zvl128b" }
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Rust
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Install Cross
+        # Install the latest git version for newer targets.
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross --rev 4090beca3cfffa44371a5bba524de3a578aa46c3
+
+      - name: Configure Emulated CPUs
+        run: |
+          echo "CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_RUNNER=qemu-ppc -cpu e600" >> $GITHUB_ENV
+          # echo "CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUNNER=qemu-riscv64 -cpu rv64,zba=true,zbb=true,v=true,vlen=256,vext_spec=v1.0" >> $GITHUB_ENV
+
+      - name: Configure RUSTFLAGS
+        shell: bash
+        run: |
+          case "${{ matrix.target_feature }}" in
+            default)
+              echo "RUSTFLAGS=" >> $GITHUB_ENV;;
+            *)
+              echo "RUSTFLAGS=-Ctarget-feature=${{ matrix.target_feature }}" >> $GITHUB_ENV
+              ;;
+          esac
+
+      - name: Test (debug)
+        run: cross test --verbose --target=${{ matrix.target }}
+
+      - name: Test (release)
+        run: cross test --verbose --target=${{ matrix.target }} --release
+
+  miri:
+    runs-on: ubuntu-latest
+    env:
+      PROPTEST_CASES: 16
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test (Miri)
+        run: cargo miri test

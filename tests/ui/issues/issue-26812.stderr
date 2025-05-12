@@ -1,0 +1,30 @@
+error[E0128]: generic parameter defaults cannot reference parameters before they are declared
+  --> $DIR/issue-26812.rs:1:10
+   |
+LL | fn avg<T=T::Item>(_: T) {}
+   |          ^^^^^^^ cannot reference `T` before it is declared
+
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/issue-26812.rs:1:8
+   |
+LL | fn avg<T=T::Item>(_: T) {}
+   |        ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
+   = note: `#[deny(invalid_type_param_default)]` on by default
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0128`.
+Future incompatibility report: Future breakage diagnostic:
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/issue-26812.rs:1:8
+   |
+LL | fn avg<T=T::Item>(_: T) {}
+   |        ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
+   = note: `#[deny(invalid_type_param_default)]` on by default
+

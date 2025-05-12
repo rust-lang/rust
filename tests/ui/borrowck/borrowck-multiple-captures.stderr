@@ -1,0 +1,143 @@
+error[E0505]: cannot move out of `x1` because it is borrowed
+  --> $DIR/borrowck-multiple-captures.rs:12:19
+   |
+LL |     let x1: Box<_> = Box::new(1);
+   |         -- binding `x1` declared here
+LL |     let p1 = &x1;
+   |              --- borrow of `x1` occurs here
+...
+LL |     thread::spawn(move|| {
+   |                   ^^^^^^ move out of `x1` occurs here
+...
+LL |         drop(x1);
+   |              -- move occurs due to use in closure
+...
+LL |     borrow(&*p1);
+   |            ---- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let p1 = &x1.clone();
+   |                 ++++++++
+
+error[E0505]: cannot move out of `x2` because it is borrowed
+  --> $DIR/borrowck-multiple-captures.rs:12:19
+   |
+LL |     let x2: Box<_> = Box::new(2);
+   |         -- binding `x2` declared here
+LL |     let p2 = &x2;
+   |              --- borrow of `x2` occurs here
+LL |     thread::spawn(move|| {
+   |                   ^^^^^^ move out of `x2` occurs here
+...
+LL |         drop(x2);
+   |              -- move occurs due to use in closure
+...
+LL |     borrow(&*p2);
+   |            ---- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let p2 = &x2.clone();
+   |                 ++++++++
+
+error[E0382]: use of moved value: `x1`
+  --> $DIR/borrowck-multiple-captures.rs:27:19
+   |
+LL |     let x1: Box<_> = Box::new(1);
+   |         -- move occurs because `x1` has type `Box<i32>`, which does not implement the `Copy` trait
+LL |     drop(x1);
+   |          -- value moved here
+...
+LL |     thread::spawn(move|| {
+   |                   ^^^^^^ value used here after move
+...
+LL |         drop(x1);
+   |              -- use occurs due to use in closure
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     drop(x1.clone());
+   |            ++++++++
+
+error[E0382]: use of moved value: `x2`
+  --> $DIR/borrowck-multiple-captures.rs:27:19
+   |
+LL |     let x2: Box<_> = Box::new(2);
+   |         -- move occurs because `x2` has type `Box<i32>`, which does not implement the `Copy` trait
+LL |     drop(x2);
+   |          -- value moved here
+LL |     thread::spawn(move|| {
+   |                   ^^^^^^ value used here after move
+...
+LL |         drop(x2);
+   |              -- use occurs due to use in closure
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     drop(x2.clone());
+   |            ++++++++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/borrowck-multiple-captures.rs:41:14
+   |
+LL |         drop(x);
+   |              - value moved here
+LL |         drop(x);
+   |              ^ value used here after move
+   |
+   = note: move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/borrowck-multiple-captures.rs:38:19
+   |
+LL |     let x: Box<_> = Box::new(1);
+   |         - binding `x` declared here
+LL |     let p = &x;
+   |             -- borrow of `x` occurs here
+LL |     thread::spawn(move|| {
+   |                   ^^^^^^ move out of `x` occurs here
+LL |
+LL |         drop(x);
+   |              - move occurs due to use in closure
+...
+LL |     borrow(&*p);
+   |            --- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let p = &x.clone();
+   |               ++++++++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/borrowck-multiple-captures.rs:52:14
+   |
+LL |         drop(x);
+   |              - value moved here
+LL |         drop(x);
+   |              ^ value used here after move
+   |
+   = note: move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/borrowck-multiple-captures.rs:49:19
+   |
+LL |     let x: Box<_> = Box::new(1);
+   |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+LL |     drop(x);
+   |          - value moved here
+LL |     thread::spawn(move|| {
+   |                   ^^^^^^ value used here after move
+LL |
+LL |         drop(x);
+   |              - use occurs due to use in closure
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     drop(x.clone());
+   |           ++++++++
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0382, E0505.
+For more information about an error, try `rustc --explain E0382`.

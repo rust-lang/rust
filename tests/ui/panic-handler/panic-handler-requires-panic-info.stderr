@@ -1,0 +1,8 @@
+error: requires `panic_info` lang_item
+  --> $DIR/panic-handler-requires-panic-info.rs:9:1
+   |
+LL | fn panic() -> ! {
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

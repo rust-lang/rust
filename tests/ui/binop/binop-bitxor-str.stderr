@@ -1,0 +1,16 @@
+error[E0369]: no implementation for `String ^ String`
+  --> $DIR/binop-bitxor-str.rs:1:37
+   |
+LL | fn main() { let x = "a".to_string() ^ "b".to_string(); }
+   |                     --------------- ^ --------------- String
+   |                     |
+   |                     String
+   |
+note: the foreign item type `String` doesn't implement `BitXor`
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+   |
+   = note: not implement `BitXor`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

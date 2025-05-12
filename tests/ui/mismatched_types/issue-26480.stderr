@@ -1,0 +1,37 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-26480.rs:16:19
+   |
+LL |             write(stdout, $arr.as_ptr() as *const i8,
+   |             ----- arguments to this function are incorrect
+LL |                   $arr.len() * size_of($arr[0]));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `u64`, found `usize`
+...
+LL |     write!(hello);
+   |     ------------- in this macro invocation
+   |
+note: function defined here
+  --> $DIR/issue-26480.rs:2:8
+   |
+LL |     fn write(fildes: i32, buf: *const i8, nbyte: u64) -> i64;
+   |        ^^^^^                              -----
+   = note: this error originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you can convert a `usize` to a `u64` and panic if the converted value doesn't fit
+   |
+LL |                   ($arr.len() * size_of($arr[0])).try_into().unwrap());
+   |                   +                             +++++++++++++++++++++
+
+error[E0605]: non-primitive cast: `{integer}` as `()`
+  --> $DIR/issue-26480.rs:22:19
+   |
+LL |     ($x:expr) => ($x as ())
+   |                   ^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+...
+LL |     cast!(2);
+   |     -------- in this macro invocation
+   |
+   = note: this error originates in the macro `cast` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0605.
+For more information about an error, try `rustc --explain E0308`.

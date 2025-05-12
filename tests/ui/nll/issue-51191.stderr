@@ -1,0 +1,72 @@
+warning: function cannot return without recursing
+  --> $DIR/issue-51191.rs:4:5
+   |
+LL |     fn bar(self: &mut Self) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+...
+LL |         (&mut self).bar();
+   |         ----------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+  --> $DIR/issue-51191.rs:7:9
+   |
+LL |         (&mut self).bar();
+   |         ^^^^^^^^^^^ cannot borrow as mutable
+   |
+note: the binding is already a mutable borrow
+  --> $DIR/issue-51191.rs:4:18
+   |
+LL |     fn bar(self: &mut Self) {
+   |                  ^^^^^^^^^
+help: try removing `&mut` here
+  --> $DIR/issue-51191.rs:7:9
+   |
+LL |         (&mut self).bar();
+   |         ^^^^^^^^^^^
+
+error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+  --> $DIR/issue-51191.rs:13:9
+   |
+LL |         (&mut self).bar();
+   |         ^^^^^^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     fn imm(mut self) {
+   |            +++
+
+error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+  --> $DIR/issue-51191.rs:22:9
+   |
+LL |         (&mut self).bar();
+   |         ^^^^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/issue-51191.rs:22:9
+   |
+LL |         (&mut self).bar();
+   |         ^^^^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+  --> $DIR/issue-51191.rs:28:9
+   |
+LL |         (&mut self).bar();
+   |         ^^^^^^^^^^^ cannot borrow as mutable
+   |
+note: the binding is already a mutable borrow
+  --> $DIR/issue-51191.rs:27:16
+   |
+LL |     fn mtblref(&mut self) {
+   |                ^^^^^^^^^
+help: try removing `&mut` here
+  --> $DIR/issue-51191.rs:28:9
+   |
+LL |         (&mut self).bar();
+   |         ^^^^^^^^^^^
+
+error: aborting due to 5 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0596`.

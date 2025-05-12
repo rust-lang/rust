@@ -1,0 +1,8 @@
+error: cannot load a crate with a non-ascii name `ьаг`
+  --> $DIR/crate_name_nonascii_forbidden.rs:1:1
+   |
+LL | extern crate ьаг;
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

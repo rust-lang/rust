@@ -1,0 +1,60 @@
+error[E0310]: the associated type `<T as Iter>::Item` may not live long enough
+  --> $DIR/regions-close-associated-type-into-object.rs:15:5
+   |
+LL |     Box::new(item)
+   |     ^^^^^^^^^^^^^^
+   |     |
+   |     the associated type `<T as Iter>::Item` must be valid for the static lifetime...
+   |     ...so that the type `<T as Iter>::Item` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn bad1<T: Iter>(v: T) -> Box<dyn X + 'static> where <T as Iter>::Item: 'static
+   |                                                ++++++++++++++++++++++++++++++++
+
+error[E0310]: the associated type `<T as Iter>::Item` may not live long enough
+  --> $DIR/regions-close-associated-type-into-object.rs:22:5
+   |
+LL |     Box::new(item)
+   |     ^^^^^^^^^^^^^^
+   |     |
+   |     the associated type `<T as Iter>::Item` must be valid for the static lifetime...
+   |     ...so that the type `<T as Iter>::Item` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     where Box<T::Item> : X, <T as Iter>::Item: 'static
+   |                           ++++++++++++++++++++++++++++
+
+error[E0309]: the associated type `<T as Iter>::Item` may not live long enough
+  --> $DIR/regions-close-associated-type-into-object.rs:28:5
+   |
+LL | fn bad3<'a, T: Iter>(v: T) -> Box<dyn X + 'a>
+   |         -- the associated type `<T as Iter>::Item` must be valid for the lifetime `'a` as defined here...
+...
+LL |     Box::new(item)
+   |     ^^^^^^^^^^^^^^ ...so that the type `<T as Iter>::Item` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn bad3<'a, T: Iter>(v: T) -> Box<dyn X + 'a> where <T as Iter>::Item: 'a
+   |                                               +++++++++++++++++++++++++++
+
+error[E0309]: the associated type `<T as Iter>::Item` may not live long enough
+  --> $DIR/regions-close-associated-type-into-object.rs:35:5
+   |
+LL | fn bad4<'a, T: Iter>(v: T) -> Box<dyn X + 'a>
+   |         -- the associated type `<T as Iter>::Item` must be valid for the lifetime `'a` as defined here...
+...
+LL |     Box::new(item)
+   |     ^^^^^^^^^^^^^^ ...so that the type `<T as Iter>::Item` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     where Box<T::Item> : X, <T as Iter>::Item: 'a
+   |                           +++++++++++++++++++++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0309, E0310.
+For more information about an error, try `rustc --explain E0309`.

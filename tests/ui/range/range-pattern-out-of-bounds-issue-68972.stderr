@@ -1,0 +1,14 @@
+error: literal out of range for `u8`
+  --> $DIR/range-pattern-out-of-bounds-issue-68972.rs:4:14
+   |
+LL |         251..257 => {}
+   |              ^^^ this value does not fit into the type `u8` whose range is `0..=255`
+
+error: literal out of range for `u8`
+  --> $DIR/range-pattern-out-of-bounds-issue-68972.rs:6:15
+   |
+LL |         251..=256 => {}
+   |               ^^^ this value does not fit into the type `u8` whose range is `0..=255`
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,16 @@
+error[E0596]: cannot borrow `tick` as mutable, as it is not declared as mutable
+  --> $DIR/unboxed-closures-infer-fnmut-move-missing-mut.rs:7:5
+   |
+LL |     let tick = move || counter += 1;
+   |                        ------- calling `tick` requires mutable binding due to possible mutation of `counter`
+LL |     tick();
+   |     ^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut tick = move || counter += 1;
+   |         +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

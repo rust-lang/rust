@@ -1,0 +1,90 @@
+DefId(0:3 ~ box[efb9]::main):
+params: [
+]
+body:
+    Expr {
+        ty: ()
+        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(11)), backwards_incompatible: None }
+        span: $DIR/box.rs:6:11: 8:2 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(11)
+                lint_level: Explicit(HirId(DefId(0:3 ~ box[efb9]::main).11))
+                value:
+                    Expr {
+                        ty: ()
+                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(11)), backwards_incompatible: None }
+                        span: $DIR/box.rs:6:11: 8:2 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/box.rs:6:11: 8:2 (#0)
+                                region_scope: Node(1)
+                                safety_mode: Safe
+                                stmts: [
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 1, first_statement_index: 0}
+                                            init_scope: Node(2)
+                                            pattern: 
+                                                Pat: {
+                                                    ty: std::boxed::Box<i32, std::alloc::Global>
+                                                    span: $DIR/box.rs:7:9: 7:10 (#0)
+                                                    kind: PatKind {
+                                                        Wild
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: std::boxed::Box<i32, std::alloc::Global>
+                                                    temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+                                                    span: $DIR/box.rs:7:13: 7:35 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(3)
+                                                            lint_level: Explicit(HirId(DefId(0:3 ~ box[efb9]::main).3))
+                                                            value:
+                                                                Expr {
+                                                                    ty: std::boxed::Box<i32, std::alloc::Global>
+                                                                    temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+                                                                    span: $DIR/box.rs:7:13: 7:35 (#0)
+                                                                    kind: 
+                                                                        Box {
+                                                                            Expr {
+                                                                                ty: i32
+                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+                                                                                span: $DIR/box.rs:7:33: 7:34 (#0)
+                                                                                kind: 
+                                                                                    Scope {
+                                                                                        region_scope: Node(8)
+                                                                                        lint_level: Explicit(HirId(DefId(0:3 ~ box[efb9]::main).8))
+                                                                                        value:
+                                                                                            Expr {
+                                                                                                ty: i32
+                                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+                                                                                                span: $DIR/box.rs:7:33: 7:34 (#0)
+                                                                                                kind: 
+                                                                                                    Literal( lit: Spanned { node: Int(Pu128(1), Unsuffixed), span: $DIR/box.rs:7:33: 7:34 (#0) }, neg: false)
+
+                                                                                            }
+                                                                                    }
+                                                                            }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            lint_level: Explicit(HirId(DefId(0:3 ~ box[efb9]::main).9))
+                                            span: $DIR/box.rs:7:5: 7:35 (#0)
+                                        }
+                                    }
+                                ]
+                                expr: []
+                            }
+                    }
+            }
+    }
+
+

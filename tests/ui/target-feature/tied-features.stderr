@@ -1,0 +1,26 @@
+error: the target features paca, pacg must all be either enabled or disabled together
+  --> $DIR/tied-features.rs:11:5
+   |
+LL |     #[target_feature(enable = "pacg")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add the missing features in a `target_feature` attribute
+
+error: the target features paca, pacg must all be either enabled or disabled together
+  --> $DIR/tied-features.rs:23:1
+   |
+LL | #[target_feature(enable = "paca")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add the missing features in a `target_feature` attribute
+
+error: the target features paca, pacg must all be either enabled or disabled together
+  --> $DIR/tied-features.rs:36:1
+   |
+LL | #[target_feature(enable = "paca")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add the missing features in a `target_feature` attribute
+
+error: aborting due to 3 previous errors
+

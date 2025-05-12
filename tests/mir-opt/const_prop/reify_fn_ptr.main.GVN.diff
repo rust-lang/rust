@@ -1,0 +1,26 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: *const fn();
+      let mut _2: usize;
+      let mut _3: fn();
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = main as fn() (PointerCoercion(ReifyFnPointer, AsCast));
+          _2 = move _3 as usize (PointerExposeProvenance);
+          StorageDead(_3);
+          _1 = move _2 as *const fn() (PointerWithExposedProvenance);
+          StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  }
+  

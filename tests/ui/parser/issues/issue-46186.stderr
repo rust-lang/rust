@@ -1,0 +1,15 @@
+error: expected item, found `;`
+  --> $DIR/issue-46186.rs:5:2
+   |
+LL | };
+   |  ^
+   |
+   = help: braced struct declarations are not followed by a semicolon
+help: remove this semicolon
+   |
+LL - };
+LL + }
+   |
+
+error: aborting due to 1 previous error
+

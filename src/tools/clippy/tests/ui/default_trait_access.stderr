@@ -1,0 +1,56 @@
+error: calling `String::default()` is more clear than this expression
+  --> tests/ui/default_trait_access.rs:13:22
+   |
+LL |     let s1: String = Default::default();
+   |                      ^^^^^^^^^^^^^^^^^^ help: try: `String::default()`
+   |
+note: the lint level is defined here
+  --> tests/ui/default_trait_access.rs:2:9
+   |
+LL | #![deny(clippy::default_trait_access)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: calling `String::default()` is more clear than this expression
+  --> tests/ui/default_trait_access.rs:18:22
+   |
+LL |     let s3: String = D2::default();
+   |                      ^^^^^^^^^^^^^ help: try: `String::default()`
+
+error: calling `String::default()` is more clear than this expression
+  --> tests/ui/default_trait_access.rs:21:22
+   |
+LL |     let s4: String = std::default::Default::default();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `String::default()`
+
+error: calling `String::default()` is more clear than this expression
+  --> tests/ui/default_trait_access.rs:26:22
+   |
+LL |     let s6: String = default::Default::default();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `String::default()`
+
+error: calling `GenericDerivedDefault::default()` is more clear than this expression
+  --> tests/ui/default_trait_access.rs:37:46
+   |
+LL |     let s11: GenericDerivedDefault<String> = Default::default();
+   |                                              ^^^^^^^^^^^^^^^^^^ help: try: `GenericDerivedDefault::default()`
+
+error: calling `TupleDerivedDefault::default()` is more clear than this expression
+  --> tests/ui/default_trait_access.rs:44:36
+   |
+LL |     let s14: TupleDerivedDefault = Default::default();
+   |                                    ^^^^^^^^^^^^^^^^^^ help: try: `TupleDerivedDefault::default()`
+
+error: calling `ArrayDerivedDefault::default()` is more clear than this expression
+  --> tests/ui/default_trait_access.rs:47:36
+   |
+LL |     let s15: ArrayDerivedDefault = Default::default();
+   |                                    ^^^^^^^^^^^^^^^^^^ help: try: `ArrayDerivedDefault::default()`
+
+error: calling `TupleStructDerivedDefault::default()` is more clear than this expression
+  --> tests/ui/default_trait_access.rs:52:42
+   |
+LL |     let s17: TupleStructDerivedDefault = Default::default();
+   |                                          ^^^^^^^^^^^^^^^^^^ help: try: `TupleStructDerivedDefault::default()`
+
+error: aborting due to 8 previous errors
+

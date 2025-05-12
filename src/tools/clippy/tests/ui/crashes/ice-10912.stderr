@@ -1,0 +1,8 @@
+error: expected at least one digit in exponent
+  --> tests/ui/crashes/ice-10912.rs:3:28
+   |
+LL | fn f2() -> impl Sized { && 3.14159265358979323846E }
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

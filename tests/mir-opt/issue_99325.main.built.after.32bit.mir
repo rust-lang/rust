@@ -1,0 +1,286 @@
+// MIR for `main` after built
+
+| User Type Annotations
+| 0: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[d56d]::function_with_bytes), UserArgs { args: [&*b"AAAA"], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/issue_99325.rs:13:16: 13:46, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
+| 1: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[d56d]::function_with_bytes), UserArgs { args: [UnevaluatedConst { def: DefId(0:8 ~ issue_99325[d56d]::main::{constant#1}), args: [] }], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/issue_99325.rs:14:16: 14:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
+|
+fn main() -> () {
+    let mut _0: ();
+    let _1: ();
+    let mut _2: (&&[u8], &&[u8; 4]);
+    let mut _3: &&[u8];
+    let _4: &[u8];
+    let mut _5: &&[u8; 4];
+    let _6: &[u8; 4];
+    let _7: [u8; 4];
+    let _8: &&[u8];
+    let _9: &&[u8; 4];
+    let mut _10: bool;
+    let mut _11: &&[u8];
+    let mut _12: &&[u8; 4];
+    let mut _13: !;
+    let _15: !;
+    let mut _16: core::panicking::AssertKind;
+    let mut _17: &&[u8];
+    let _18: &&[u8];
+    let mut _19: &&[u8; 4];
+    let _20: &&[u8; 4];
+    let mut _21: std::option::Option<std::fmt::Arguments<'_>>;
+    let _22: ();
+    let mut _23: (&&[u8], &&[u8; 4]);
+    let mut _24: &&[u8];
+    let _25: &[u8];
+    let mut _26: &&[u8; 4];
+    let _27: &[u8; 4];
+    let _28: &&[u8];
+    let _29: &&[u8; 4];
+    let mut _30: bool;
+    let mut _31: &&[u8];
+    let mut _32: &&[u8; 4];
+    let mut _33: !;
+    let _35: !;
+    let mut _36: core::panicking::AssertKind;
+    let mut _37: &&[u8];
+    let _38: &&[u8];
+    let mut _39: &&[u8; 4];
+    let _40: &&[u8; 4];
+    let mut _41: std::option::Option<std::fmt::Arguments<'_>>;
+    scope 1 {
+        debug left_val => _8;
+        debug right_val => _9;
+        let _14: core::panicking::AssertKind;
+        scope 2 {
+            debug kind => _14;
+        }
+    }
+    scope 3 {
+        debug left_val => _28;
+        debug right_val => _29;
+        let _34: core::panicking::AssertKind;
+        scope 4 {
+            debug kind => _34;
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = function_with_bytes::<&*b"AAAA">() -> [return: bb1, unwind: bb23];
+    }
+
+    bb1: {
+        _3 = &_4;
+        StorageLive(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = [const 65_u8, const 65_u8, const 65_u8, const 65_u8];
+        _6 = &_7;
+        _5 = &_6;
+        _2 = (move _3, move _5);
+        StorageDead(_5);
+        StorageDead(_3);
+        PlaceMention(_2);
+        StorageLive(_8);
+        _8 = copy (_2.0: &&[u8]);
+        StorageLive(_9);
+        _9 = copy (_2.1: &&[u8; 4]);
+        StorageLive(_10);
+        StorageLive(_11);
+        _11 = &(*_8);
+        StorageLive(_12);
+        _12 = &(*_9);
+        _10 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _11, move _12) -> [return: bb3, unwind: bb23];
+    }
+
+    bb2: {
+        FakeRead(ForMatchedPlace(None), _2);
+        unreachable;
+    }
+
+    bb3: {
+        switchInt(move _10) -> [0: bb5, otherwise: bb4];
+    }
+
+    bb4: {
+        StorageDead(_12);
+        StorageDead(_11);
+        goto -> bb9;
+    }
+
+    bb5: {
+        goto -> bb6;
+    }
+
+    bb6: {
+        StorageDead(_12);
+        StorageDead(_11);
+        StorageLive(_14);
+        _14 = core::panicking::AssertKind::Eq;
+        FakeRead(ForLet(None), _14);
+        StorageLive(_15);
+        StorageLive(_16);
+        _16 = move _14;
+        StorageLive(_17);
+        StorageLive(_18);
+        _18 = &(*_8);
+        _17 = &(*_18);
+        StorageLive(_19);
+        StorageLive(_20);
+        _20 = &(*_9);
+        _19 = &(*_20);
+        StorageLive(_21);
+        _21 = Option::<Arguments<'_>>::None;
+        _15 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _16, move _17, move _19, move _21) -> bb23;
+    }
+
+    bb7: {
+        StorageDead(_21);
+        StorageDead(_19);
+        StorageDead(_17);
+        StorageDead(_16);
+        StorageDead(_20);
+        StorageDead(_18);
+        StorageDead(_15);
+        StorageDead(_14);
+        unreachable;
+    }
+
+    bb8: {
+        goto -> bb10;
+    }
+
+    bb9: {
+        _1 = const ();
+        goto -> bb10;
+    }
+
+    bb10: {
+        StorageDead(_10);
+        StorageDead(_9);
+        StorageDead(_8);
+        goto -> bb11;
+    }
+
+    bb11: {
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageDead(_4);
+        StorageDead(_2);
+        StorageDead(_1);
+        StorageLive(_22);
+        StorageLive(_23);
+        StorageLive(_24);
+        StorageLive(_25);
+        _25 = function_with_bytes::<&*b"AAAA">() -> [return: bb12, unwind: bb23];
+    }
+
+    bb12: {
+        _24 = &_25;
+        StorageLive(_26);
+        StorageLive(_27);
+        _27 = const b"AAAA";
+        _26 = &_27;
+        _23 = (move _24, move _26);
+        StorageDead(_26);
+        StorageDead(_24);
+        PlaceMention(_23);
+        StorageLive(_28);
+        _28 = copy (_23.0: &&[u8]);
+        StorageLive(_29);
+        _29 = copy (_23.1: &&[u8; 4]);
+        StorageLive(_30);
+        StorageLive(_31);
+        _31 = &(*_28);
+        StorageLive(_32);
+        _32 = &(*_29);
+        _30 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _31, move _32) -> [return: bb14, unwind: bb23];
+    }
+
+    bb13: {
+        FakeRead(ForMatchedPlace(None), _23);
+        unreachable;
+    }
+
+    bb14: {
+        switchInt(move _30) -> [0: bb16, otherwise: bb15];
+    }
+
+    bb15: {
+        StorageDead(_32);
+        StorageDead(_31);
+        goto -> bb20;
+    }
+
+    bb16: {
+        goto -> bb17;
+    }
+
+    bb17: {
+        StorageDead(_32);
+        StorageDead(_31);
+        StorageLive(_34);
+        _34 = core::panicking::AssertKind::Eq;
+        FakeRead(ForLet(None), _34);
+        StorageLive(_35);
+        StorageLive(_36);
+        _36 = move _34;
+        StorageLive(_37);
+        StorageLive(_38);
+        _38 = &(*_28);
+        _37 = &(*_38);
+        StorageLive(_39);
+        StorageLive(_40);
+        _40 = &(*_29);
+        _39 = &(*_40);
+        StorageLive(_41);
+        _41 = Option::<Arguments<'_>>::None;
+        _35 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _36, move _37, move _39, move _41) -> bb23;
+    }
+
+    bb18: {
+        StorageDead(_41);
+        StorageDead(_39);
+        StorageDead(_37);
+        StorageDead(_36);
+        StorageDead(_40);
+        StorageDead(_38);
+        StorageDead(_35);
+        StorageDead(_34);
+        unreachable;
+    }
+
+    bb19: {
+        goto -> bb21;
+    }
+
+    bb20: {
+        _22 = const ();
+        goto -> bb21;
+    }
+
+    bb21: {
+        StorageDead(_30);
+        StorageDead(_29);
+        StorageDead(_28);
+        goto -> bb22;
+    }
+
+    bb22: {
+        StorageDead(_27);
+        StorageDead(_25);
+        StorageDead(_23);
+        StorageDead(_22);
+        _0 = const ();
+        return;
+    }
+
+    bb23 (cleanup): {
+        resume;
+    }
+}
+
+ALLOC0 (size: 4, align: 1) {
+    41 41 41 41                                     │ AAAA
+}

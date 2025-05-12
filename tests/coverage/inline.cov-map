@@ -1,0 +1,137 @@
+Function name: inline::display::<char>
+Raw bytes (36): 0x[01, 01, 01, 05, 01, 06, 01, 29, 01, 00, 21, 02, 01, 09, 00, 0a, 05, 00, 0e, 00, 10, 02, 00, 11, 02, 06, 01, 03, 05, 00, 0d, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/inline.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(1), rhs = Counter(0)
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 41, 1) to (start + 0, 33)
+- Code(Expression(0, Sub)) at (prev + 1, 9) to (start + 0, 10)
+    = (c1 - c0)
+- Code(Counter(1)) at (prev + 0, 14) to (start + 0, 16)
+- Code(Expression(0, Sub)) at (prev + 0, 17) to (start + 2, 6)
+    = (c1 - c0)
+- Code(Counter(0)) at (prev + 3, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: inline::error
+Raw bytes (14): 0x[01, 01, 00, 02, 01, 31, 01, 00, 0b, 01, 01, 05, 00, 0b]
+Number of files: 1
+- file 0 => $DIR/inline.rs
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 49, 1) to (start + 0, 11)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 11)
+Highest counter ID seen: c0
+
+Function name: inline::length::<char>
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 1e, 01, 00, 20, 01, 01, 05, 00, 07, 01, 00, 08, 00, 0b, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/inline.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 30, 1) to (start + 0, 32)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 7)
+- Code(Counter(0)) at (prev + 0, 8) to (start + 0, 11)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: inline::main
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 05, 01, 00, 0a, 01, 01, 05, 00, 11, 01, 00, 12, 00, 22, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/inline.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 5, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 0, 18) to (start + 0, 34)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: inline::permutate::<char>
+Raw bytes (142): 0x[01, 01, 0e, 01, 05, 0d, 09, 0d, 09, 0d, 09, 0d, 09, 0d, 09, 0d, 09, 0d, 09, 0d, 09, 0d, 09, 0d, 09, 0d, 09, 01, 37, 05, 09, 16, 01, 0f, 01, 00, 38, 01, 01, 09, 00, 0a, 01, 00, 0d, 00, 13, 01, 00, 14, 00, 16, 01, 01, 08, 00, 0e, 05, 00, 0f, 02, 06, 02, 02, 0f, 00, 14, 2e, 01, 0d, 00, 0e, 09, 00, 12, 00, 13, 09, 00, 15, 00, 16, 2e, 00, 17, 04, 0a, 2e, 01, 0d, 00, 11, 2e, 00, 12, 00, 14, 2e, 00, 16, 00, 17, 2e, 00, 19, 00, 1a, 2e, 01, 0d, 00, 16, 2e, 00, 17, 00, 19, 2e, 00, 1b, 00, 20, 2e, 01, 0d, 00, 11, 2e, 00, 12, 00, 14, 32, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/inline.rs
+Number of expressions: 14
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 2 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 3 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 4 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 5 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 6 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 7 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 8 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 9 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 10 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 11 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 12 operands: lhs = Counter(0), rhs = Expression(13, Add)
+- expression 13 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 22
+- Code(Counter(0)) at (prev + 15, 1) to (start + 0, 56)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 0, 13) to (start + 0, 19)
+- Code(Counter(0)) at (prev + 0, 20) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 14)
+- Code(Counter(1)) at (prev + 0, 15) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 2, 15) to (start + 0, 20)
+    = (c0 - c1)
+- Code(Expression(11, Sub)) at (prev + 1, 13) to (start + 0, 14)
+    = (c3 - c2)
+- Code(Counter(2)) at (prev + 0, 18) to (start + 0, 19)
+- Code(Counter(2)) at (prev + 0, 21) to (start + 0, 22)
+- Code(Expression(11, Sub)) at (prev + 0, 23) to (start + 4, 10)
+    = (c3 - c2)
+- Code(Expression(11, Sub)) at (prev + 1, 13) to (start + 0, 17)
+    = (c3 - c2)
+- Code(Expression(11, Sub)) at (prev + 0, 18) to (start + 0, 20)
+    = (c3 - c2)
+- Code(Expression(11, Sub)) at (prev + 0, 22) to (start + 0, 23)
+    = (c3 - c2)
+- Code(Expression(11, Sub)) at (prev + 0, 25) to (start + 0, 26)
+    = (c3 - c2)
+- Code(Expression(11, Sub)) at (prev + 1, 13) to (start + 0, 22)
+    = (c3 - c2)
+- Code(Expression(11, Sub)) at (prev + 0, 23) to (start + 0, 25)
+    = (c3 - c2)
+- Code(Expression(11, Sub)) at (prev + 0, 27) to (start + 0, 32)
+    = (c3 - c2)
+- Code(Expression(11, Sub)) at (prev + 1, 13) to (start + 0, 17)
+    = (c3 - c2)
+- Code(Expression(11, Sub)) at (prev + 0, 18) to (start + 0, 20)
+    = (c3 - c2)
+- Code(Expression(12, Sub)) at (prev + 2, 12) to (start + 2, 6)
+    = (c0 - (c1 + c2))
+- Code(Counter(0)) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c2
+
+Function name: inline::permutations::<char>
+Raw bytes (39): 0x[01, 01, 00, 07, 01, 0a, 01, 00, 2d, 01, 01, 09, 00, 0f, 01, 00, 12, 00, 14, 01, 00, 15, 00, 1d, 01, 01, 05, 00, 0e, 01, 00, 0f, 00, 16, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/inline.rs
+Number of expressions: 0
+Number of file 0 mappings: 7
+- Code(Counter(0)) at (prev + 10, 1) to (start + 0, 45)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 0, 18) to (start + 0, 20)
+- Code(Counter(0)) at (prev + 0, 21) to (start + 0, 29)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: inline::swap::<char>
+Raw bytes (34): 0x[01, 01, 00, 06, 01, 23, 01, 00, 33, 01, 01, 09, 00, 0a, 01, 00, 0d, 00, 12, 01, 01, 05, 00, 12, 01, 01, 05, 00, 0e, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/inline.rs
+Number of expressions: 0
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 35, 1) to (start + 0, 51)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 0, 13) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+

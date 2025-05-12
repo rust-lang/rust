@@ -1,0 +1,64 @@
+error: parameter is only used in recursion
+  --> tests/ui/only_used_in_recursion2.rs:3:35
+   |
+LL | fn _with_inner(flag: u32, a: u32, b: u32) -> usize {
+   |                                   ^ help: if this is intentional, prefix it with an underscore: `_b`
+   |
+note: parameter used here
+  --> tests/ui/only_used_in_recursion2.rs:13:52
+   |
+LL |     if flag == 0 { 0 } else { _with_inner(flag, a, b + x) }
+   |                                                    ^
+   = note: `-D clippy::only-used-in-recursion` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::only_used_in_recursion)]`
+
+error: parameter is only used in recursion
+  --> tests/ui/only_used_in_recursion2.rs:6:25
+   |
+LL |     fn inner(flag: u32, a: u32) -> u32 {
+   |                         ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: parameter used here
+  --> tests/ui/only_used_in_recursion2.rs:9:47
+   |
+LL |         if flag == 0 { 0 } else { inner(flag, a) }
+   |                                               ^
+
+error: parameter is only used in recursion
+  --> tests/ui/only_used_in_recursion2.rs:16:34
+   |
+LL | fn _with_closure(a: Option<u32>, b: u32, f: impl Fn(u32, u32) -> Option<u32>) -> u32 {
+   |                                  ^ help: if this is intentional, prefix it with an underscore: `_b`
+   |
+note: parameter used here
+  --> tests/ui/only_used_in_recursion2.rs:20:32
+   |
+LL |         _with_closure(Some(x), b, f)
+   |                                ^
+
+error: parameter is only used in recursion
+  --> tests/ui/only_used_in_recursion2.rs:68:37
+   |
+LL | fn overwritten_param(flag: u32, mut a: usize) -> usize {
+   |                                     ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: parameter used here
+  --> tests/ui/only_used_in_recursion2.rs:78:29
+   |
+LL |     overwritten_param(flag, a)
+   |                             ^
+
+error: parameter is only used in recursion
+  --> tests/ui/only_used_in_recursion2.rs:81:32
+   |
+LL | fn field_direct(flag: u32, mut a: (usize,)) -> usize {
+   |                                ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: parameter used here
+  --> tests/ui/only_used_in_recursion2.rs:88:32
+   |
+LL |         field_direct(flag - 1, a)
+   |                                ^
+
+error: aborting due to 5 previous errors
+

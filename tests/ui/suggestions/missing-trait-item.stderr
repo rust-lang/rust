@@ -1,0 +1,25 @@
+error[E0046]: not all trait items implemented, missing: `foo`, `bar`
+  --> $DIR/missing-trait-item.rs:11:5
+   |
+LL |     unsafe fn foo(a: &usize, b: &usize) -> usize;
+   |     --------------------------------------------- `foo` from trait
+LL |     fn bar(&self, a: &usize, b: &usize) -> usize;
+   |     --------------------------------------------- `bar` from trait
+...
+LL |     impl T for () {}
+   |     ^^^^^^^^^^^^^ missing `foo`, `bar` in implementation
+
+error[E0046]: not all trait items implemented, missing: `foo`, `bar`
+  --> $DIR/missing-trait-item.rs:13:5
+   |
+LL |     unsafe fn foo(a: &usize, b: &usize) -> usize;
+   |     --------------------------------------------- `foo` from trait
+LL |     fn bar(&self, a: &usize, b: &usize) -> usize;
+   |     --------------------------------------------- `bar` from trait
+...
+LL |     impl T for usize {
+   |     ^^^^^^^^^^^^^^^^ missing `foo`, `bar` in implementation
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0046`.

@@ -1,0 +1,17 @@
+error[E0391]: cycle detected when computing the bounds for type parameter `T`
+  --> $DIR/issue-21177.rs:6:21
+   |
+LL | fn foo<T: Trait<A = T::B>>() { }
+   |                     ^^^^
+   |
+   = note: ...which immediately requires computing the bounds for type parameter `T` again
+note: cycle used when computing explicit predicates of `foo`
+  --> $DIR/issue-21177.rs:6:21
+   |
+LL | fn foo<T: Trait<A = T::B>>() { }
+   |                     ^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

@@ -1,0 +1,13 @@
+error[E0152]: found duplicate lang item `owned_box`
+  --> $DIR/E0152.rs:5:1
+   |
+LL | struct Foo<T>(T);
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: the lang item is first defined in crate `alloc` (which `std` depends on)
+   = note: first definition in `alloc` loaded from SYSROOT/liballoc-*.rlib
+   = note: second definition in the local crate (`E0152`)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0152`.

@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `N`
+  --> $DIR/issue-98629.rs:8:1
+   |
+LL |     const N: usize;
+   |     -------------- `N` from trait
+...
+LL | impl const Trait for i32 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ missing `N` in implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

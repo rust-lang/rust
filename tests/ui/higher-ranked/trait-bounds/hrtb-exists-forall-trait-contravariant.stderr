@@ -1,0 +1,11 @@
+error: implementation of `Trait` is not general enough
+  --> $DIR/hrtb-exists-forall-trait-contravariant.rs:34:5
+   |
+LL |     foo::<()>();
+   |     ^^^^^^^^^^^ implementation of `Trait` is not general enough
+   |
+   = note: `()` must implement `Trait<for<'b> fn(&'b u32)>`
+   = note: ...but it actually implements `Trait<fn(&'0 u32)>`, for some specific lifetime `'0`
+
+error: aborting due to 1 previous error
+

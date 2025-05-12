@@ -1,0 +1,17 @@
+error: unknown lint: `test_unstable_lint`
+  --> $DIR/deny-unstable-lint-inline.rs:4:10
+   |
+LL | #![allow(test_unstable_lint)]
+   |          ^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `test_unstable_lint` lint is unstable
+   = help: add `#![feature(test_unstable_lint)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+note: the lint level is defined here
+  --> $DIR/deny-unstable-lint-inline.rs:3:9
+   |
+LL | #![deny(unknown_lints)]
+   |         ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,26 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `x`
+  --> $DIR/issue-82865.rs:5:5
+   |
+LL | use x::y::z;
+   |     ^ use of unresolved module or unlinked crate `x`
+   |
+help: you might be missing a crate named `x`, add it to your project and import it in your code
+   |
+LL + extern crate x;
+   |
+
+error[E0599]: no function or associated item named `z` found for struct `Box<_, _>` in the current scope
+  --> $DIR/issue-82865.rs:8:10
+   |
+LL |     Box::z
+   |          ^ function or associated item not found in `Box<_, _>`
+...
+LL |     mac!();
+   |     ------ in this macro invocation
+   |
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0433, E0599.
+For more information about an error, try `rustc --explain E0433`.

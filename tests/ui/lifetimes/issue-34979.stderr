@@ -1,0 +1,20 @@
+error[E0283]: type annotations needed: cannot satisfy `&'a (): Foo`
+  --> $DIR/issue-34979.rs:6:13
+   |
+LL |     &'a (): Foo,
+   |             ^^^
+   |
+note: multiple `impl`s or `where` clauses satisfying `&'a (): Foo` found
+  --> $DIR/issue-34979.rs:2:1
+   |
+LL | impl<'a, T> Foo for &'a T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     &'a (): Foo,
+   |             ^^^
+LL |     &'static (): Foo;
+   |                  ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

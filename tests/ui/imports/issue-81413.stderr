@@ -1,0 +1,14 @@
+error[E0432]: unresolved import `doesnt_exist`
+  --> $DIR/issue-81413.rs:7:9
+   |
+LL | pub use doesnt_exist::*;
+   |         ^^^^^^^^^^^^ use of unresolved module or unlinked crate `doesnt_exist`
+   |
+help: you might be missing a crate named `doesnt_exist`, add it to your project and import it in your code
+   |
+LL + extern crate doesnt_exist;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

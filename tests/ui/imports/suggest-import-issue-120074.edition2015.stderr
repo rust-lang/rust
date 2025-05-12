@@ -1,0 +1,23 @@
+error[E0433]: failed to resolve: unresolved import
+  --> $DIR/suggest-import-issue-120074.rs:12:35
+   |
+LL |     println!("Hello, {}!", crate::bar::do_the_thing);
+   |                                   ^^^ unresolved import
+   |
+help: a similar path exists
+   |
+LL |     println!("Hello, {}!", crate::foo::bar::do_the_thing);
+   |                                   +++++
+help: consider importing this module
+   |
+LL + use foo::bar;
+   |
+help: if you import `bar`, refer to it directly
+   |
+LL -     println!("Hello, {}!", crate::bar::do_the_thing);
+LL +     println!("Hello, {}!", bar::do_the_thing);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

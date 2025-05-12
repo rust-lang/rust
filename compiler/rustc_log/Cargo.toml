@@ -1,0 +1,17 @@
+[package]
+name = "rustc_log"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+tracing = "0.1.28"
+tracing-core = "=0.1.30" # FIXME(Nilstrieb) tracing has a deadlock: https://github.com/tokio-rs/tracing/issues/2635
+tracing-subscriber = { version = "0.3.3", default-features = false, features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"] }
+tracing-tree = "0.3.1"
+# tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+max_level_info = ['tracing/max_level_info']
+# tidy-alphabetical-end

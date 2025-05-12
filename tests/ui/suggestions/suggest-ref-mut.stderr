@@ -1,0 +1,47 @@
+error[E0594]: cannot assign to `self.0`, which is behind a `&` reference
+  --> $DIR/suggest-ref-mut.rs:9:9
+   |
+LL |         self.0 = 32;
+   |         ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     fn zap(&mut self) {
+   |             +++
+
+error[E0594]: cannot assign to `*foo`, which is behind a `&` reference
+  --> $DIR/suggest-ref-mut.rs:17:5
+   |
+LL |     *foo = 32;
+   |     ^^^^^^^^^ `foo` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     let ref mut foo = 16;
+   |             +++
+
+error[E0594]: cannot assign to `*bar`, which is behind a `&` reference
+  --> $DIR/suggest-ref-mut.rs:21:9
+   |
+LL |         *bar = 32;
+   |         ^^^^^^^^^ `bar` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     if let Some(ref mut bar) = Some(16) {
+   |                     +++
+
+error[E0594]: cannot assign to `*quo`, which is behind a `&` reference
+  --> $DIR/suggest-ref-mut.rs:25:22
+   |
+LL |         ref quo => { *quo = 32; },
+   |                      ^^^^^^^^^ `quo` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |         ref mut quo => { *quo = 32; },
+   |             +++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0594`.

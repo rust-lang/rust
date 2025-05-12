@@ -1,0 +1,74 @@
+error: this match could be written as a `let` statement
+  --> tests/ui/match_single_binding2.rs:17:36
+   |
+LL |               Some((iter, _item)) => match iter.size_hint() {
+   |  ____________________________________^
+LL | |
+LL | |                 (min, max) => (min.saturating_add(1), max.and_then(|max| max.checked_add(1))),
+LL | |             },
+   | |_____________^
+   |
+   = note: `-D clippy::match-single-binding` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_single_binding)]`
+help: consider using a `let` statement
+   |
+LL ~             Some((iter, _item)) => {
+LL +                 let (min, max) = iter.size_hint();
+LL +                 (min.saturating_add(1), max.and_then(|max| max.checked_add(1)))
+LL ~             },
+   |
+
+error: this match could be written as a `let` statement
+  --> tests/ui/match_single_binding2.rs:31:13
+   |
+LL | /             match get_tup() {
+LL | |
+LL | |                 (a, b) => println!("a {:?} and b {:?}", a, b),
+LL | |             }
+   | |_____________^
+   |
+help: consider using a `let` statement
+   |
+LL ~             let (a, b) = get_tup();
+LL +             println!("a {:?} and b {:?}", a, b)
+   |
+
+error: this match could be replaced by its scrutinee and body
+  --> tests/ui/match_single_binding2.rs:43:5
+   |
+LL | /     match side_effects() {
+LL | |
+LL | |         _ => println!("Side effects"),
+LL | |     }
+   | |_____^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL ~     side_effects();
+LL +     println!("Side effects");
+   |
+
+error: this match could be replaced by its scrutinee and body
+  --> tests/ui/match_single_binding2.rs:51:5
+   |
+LL | /     match match x {
+LL | |
+LL | |         0 => 1,
+LL | |         _ => 2,
+LL | |     } {
+LL | |         _ => println!("Single branch"),
+LL | |     }
+   | |_____^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL ~     match x {
+LL +
+LL +         0 => 1,
+LL +         _ => 2,
+LL +     };
+LL +     println!("Single branch")
+   |
+
+error: aborting due to 4 previous errors
+

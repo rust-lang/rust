@@ -1,0 +1,19 @@
+error[E0507]: cannot move out of dereference of `S`
+  --> $DIR/needs-clone-through-deref.rs:15:18
+   |
+LL |         for _ in self.clone().into_iter() {}
+   |                  ^^^^^^^^^^^^ ----------- value moved due to this method call
+   |                  |
+   |                  move occurs because value has type `Vec<usize>`, which does not implement the `Copy` trait
+   |
+note: `into_iter` takes ownership of the receiver `self`, which moves value
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL -         for _ in self.clone().into_iter() {}
+LL +         for _ in <Vec<usize> as Clone>::clone(&self).into_iter() {}
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

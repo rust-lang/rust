@@ -1,0 +1,59 @@
+error: use of / has been disallowed in this context
+  --> tests/ui/integer_division_remainder_used.rs:10:14
+   |
+LL |         Self(self.0 / rhs.0)
+   |              ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::integer-division-remainder-used` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::integer_division_remainder_used)]`
+
+error: use of % has been disallowed in this context
+  --> tests/ui/integer_division_remainder_used.rs:18:14
+   |
+LL |         Self(self.0 % rhs.0)
+   |              ^^^^^^^^^^^^^^
+
+error: use of / has been disallowed in this context
+  --> tests/ui/integer_division_remainder_used.rs:27:13
+   |
+LL |     let c = a / b;
+   |             ^^^^^
+
+error: use of % has been disallowed in this context
+  --> tests/ui/integer_division_remainder_used.rs:29:13
+   |
+LL |     let d = a % b;
+   |             ^^^^^
+
+error: use of / has been disallowed in this context
+  --> tests/ui/integer_division_remainder_used.rs:31:13
+   |
+LL |     let e = &a / b;
+   |             ^^^^^^
+
+error: use of % has been disallowed in this context
+  --> tests/ui/integer_division_remainder_used.rs:33:13
+   |
+LL |     let f = a % &b;
+   |             ^^^^^^
+
+error: use of / has been disallowed in this context
+  --> tests/ui/integer_division_remainder_used.rs:35:13
+   |
+LL |     let g = &a / &b;
+   |             ^^^^^^^
+
+error: use of % has been disallowed in this context
+  --> tests/ui/integer_division_remainder_used.rs:37:13
+   |
+LL |     let h = &10 % b;
+   |             ^^^^^^^
+
+error: use of / has been disallowed in this context
+  --> tests/ui/integer_division_remainder_used.rs:39:13
+   |
+LL |     let i = a / &4;
+   |             ^^^^^^
+
+error: aborting due to 9 previous errors
+

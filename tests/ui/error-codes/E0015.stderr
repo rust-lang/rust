@@ -1,0 +1,11 @@
+error[E0015]: cannot call non-const function `create_some` in constants
+  --> $DIR/E0015.rs:5:25
+   |
+LL | const FOO: Option<u8> = create_some();
+   |                         ^^^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0015`.

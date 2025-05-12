@@ -1,0 +1,35 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
+  --> $DIR/main.rs:10:20
+   |
+LL |     () => { syntax error };
+   |                    ^^^^^ expected one of 8 possible tokens
+...
+LL |     pong!();
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `pong` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
+  --> $DIR/main.rs:10:20
+   |
+LL |     () => { syntax error };
+   |                    ^^^^^ expected one of 8 possible tokens
+...
+LL |     ping!();
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `pong` which comes from the expansion of the macro `ping` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
+  --> $DIR/main.rs:10:20
+   |
+LL |     () => { syntax error };
+   |                    ^^^^^ expected one of 8 possible tokens
+...
+LL |     deep!();
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `pong` which comes from the expansion of the macro `deep` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+

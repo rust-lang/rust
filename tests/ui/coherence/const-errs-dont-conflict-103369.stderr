@@ -1,0 +1,27 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-errs-dont-conflict-103369.rs:5:25
+   |
+LL | impl ConstGenericTrait<{my_fn(1)}> for () {}
+   |                         ^^^^^^^^ evaluation panicked: Some error occurred
+   |
+note: inside `my_fn`
+  --> $DIR/const-errs-dont-conflict-103369.rs:10:5
+   |
+LL |     panic!("Some error occurred");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-errs-dont-conflict-103369.rs:7:25
+   |
+LL | impl ConstGenericTrait<{my_fn(2)}> for () {}
+   |                         ^^^^^^^^ evaluation panicked: Some error occurred
+   |
+note: inside `my_fn`
+  --> $DIR/const-errs-dont-conflict-103369.rs:10:5
+   |
+LL |     panic!("Some error occurred");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

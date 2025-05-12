@@ -1,0 +1,11 @@
+error[E0005]: refutable pattern in `for` loop binding
+  --> $DIR/E0297.rs:4:9
+   |
+LL |     for Some(x) in xs {}
+   |         ^^^^^^^ pattern `None` not covered
+   |
+   = note: the matched value is of type `Option<i32>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0005`.

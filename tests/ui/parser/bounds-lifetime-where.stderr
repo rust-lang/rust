@@ -1,0 +1,8 @@
+error: expected one of `#`, `;`, `=`, `where`, lifetime, or type, found `,`
+  --> $DIR/bounds-lifetime-where.rs:8:14
+   |
+LL | type A where , = u8;
+   |              ^ expected one of `#`, `;`, `=`, `where`, lifetime, or type
+
+error: aborting due to 1 previous error
+

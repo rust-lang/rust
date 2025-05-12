@@ -1,0 +1,28 @@
+error[E0507]: cannot move out of `*cb` which is behind a mutable reference
+  --> $DIR/suggest-as-ref-on-mut-closure.rs:7:5
+   |
+LL |     cb.map(|cb| cb());
+   |     ^^ -------------- `*cb` moved due to this method call
+   |     |
+   |     help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
+   |     move occurs because `*cb` has type `Option<&mut dyn FnMut()>`, which does not implement the `Copy` trait
+   |
+note: `Option::<T>::map` takes ownership of the receiver `self`, which moves `*cb`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: you could `clone` the value and consume it, if the `&mut dyn FnMut(): Clone` trait bound could be satisfied
+   |
+LL |     <Option<&mut dyn FnMut()> as Clone>::clone(&cb).map(|cb| cb());
+   |     ++++++++++++++++++++++++++++++++++++++++++++  +
+
+error[E0596]: cannot borrow `*cb` as mutable, as it is behind a `&` reference
+  --> $DIR/suggest-as-ref-on-mut-closure.rs:12:26
+   |
+LL |     cb.as_ref().map(|cb| cb());
+   |                      --  ^^ `cb` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                      |
+   |                      consider changing this binding's type to be: `&mut &mut dyn FnMut()`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0507, E0596.
+For more information about an error, try `rustc --explain E0507`.

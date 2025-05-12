@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/recursive-tait-conflicting-defn-2.rs:15:13
+   |
+LL | fn bad() -> Op {
+   |             ^^ expected `&&str`, got `impl std::fmt::Display`
+   |
+note: previous use here
+  --> $DIR/recursive-tait-conflicting-defn-2.rs:7:13
+   |
+LL | fn foo() -> Op {
+   |             ^^
+
+error: aborting due to 1 previous error
+

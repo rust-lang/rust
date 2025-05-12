@@ -1,0 +1,41 @@
+note: external requirements
+  --> $DIR/propagate-from-trait-match.rs:32:36
+   |
+LL |     establish_relationships(value, |value| {
+   |                                    ^^^^^^^
+   |
+   = note: defining type: supply::<'?1, T>::{closure#0} with closure args [
+               i32,
+               extern "rust-call" fn((T,)),
+               (),
+           ]
+   = note: number of external vids: 2
+   = note: where T: '?1
+
+note: no external requirements
+  --> $DIR/propagate-from-trait-match.rs:28:1
+   |
+LL | / fn supply<'a, T>(value: T)
+LL | | where
+LL | |     T: Trait<'a>,
+   | |_________________^
+   |
+   = note: defining type: supply::<'?1, T>
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/propagate-from-trait-match.rs:43:9
+   |
+LL | fn supply<'a, T>(value: T)
+   |           -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
+LL |         require(value);
+   |         ^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     T: Trait<'a> + 'a,
+   |                  ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0309`.

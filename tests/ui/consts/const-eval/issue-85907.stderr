@@ -1,0 +1,8 @@
+error: argument to `panic!()` in a const context must have type `&str`
+  --> $DIR/issue-85907.rs:2:5
+   |
+LL |     panic!(123);
+   |     ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

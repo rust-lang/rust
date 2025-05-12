@@ -1,0 +1,23 @@
+error: #[allow] attribute found
+  --> tests/ui/allow_attributes.rs:13:3
+   |
+LL | #[allow(dead_code)]
+   |   ^^^^^ help: replace it with: `expect`
+   |
+   = note: `-D clippy::allow-attributes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::allow_attributes)]`
+
+error: #[allow] attribute found
+  --> tests/ui/allow_attributes.rs:23:30
+   |
+LL | #[cfg_attr(panic = "unwind", allow(dead_code))]
+   |                              ^^^^^ help: replace it with: `expect`
+
+error: #[allow] attribute found
+  --> tests/ui/allow_attributes.rs:55:7
+   |
+LL |     #[allow(unused)]
+   |       ^^^^^ help: replace it with: `expect`
+
+error: aborting due to 3 previous errors
+

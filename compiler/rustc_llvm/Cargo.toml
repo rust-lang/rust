@@ -1,0 +1,16 @@
+[package]
+name = "rustc_llvm"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+libc = "0.2.73"
+# tidy-alphabetical-end
+
+[build-dependencies]
+# tidy-alphabetical-start
+# Pinned so `cargo update` bumps don't cause breakage. Please also update the
+# pinned `cc` in `rustc_codegen_ssa` if you update `cc` here.
+cc = "=1.2.16"
+# tidy-alphabetical-end

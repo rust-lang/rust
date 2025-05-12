@@ -1,0 +1,11 @@
+error[E0369]: cannot add `()` to `()`
+  --> $DIR/for-loop-type-error.rs:2:16
+   |
+LL |     let x = () + ();
+   |             -- ^ -- ()
+   |             |
+   |             ()
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

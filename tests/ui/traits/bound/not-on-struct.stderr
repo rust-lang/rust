@@ -1,0 +1,176 @@
+error[E0226]: only a single explicit lifetime bound is permitted
+  --> $DIR/not-on-struct.rs:25:25
+   |
+LL | fn e() -> 'static + A + 'static {
+   |                         ^^^^^^^
+
+error[E0226]: only a single explicit lifetime bound is permitted
+  --> $DIR/not-on-struct.rs:29:53
+   |
+LL | fn f<'a,T,E>(iter: Iterator<Item='a + Result<T,E> + 'a>) {
+   |                                                     ^^
+
+error[E0404]: expected trait, found struct `Foo`
+  --> $DIR/not-on-struct.rs:8:16
+   |
+LL | fn foo(_x: Box<Foo + Send>) { }
+   |                ^^^ not a trait
+   |
+help: `+` is used to constrain a "trait object" type with lifetimes or auto-traits; structs and enums can't be bound in that way
+  --> $DIR/not-on-struct.rs:8:22
+   |
+LL | fn foo(_x: Box<Foo + Send>) { }
+   |                ---   ^^^^ ...because of this bound
+   |                |
+   |                expected this type to be a trait...
+
+error[E0404]: expected trait, found struct `Vec`
+  --> $DIR/not-on-struct.rs:10:29
+   |
+LL | type TypeAlias<T> = Box<dyn Vec<T>>;
+   |                             ^^^^^^ not a trait
+
+error[E0404]: expected trait, found struct `A`
+  --> $DIR/not-on-struct.rs:13:11
+   |
+LL | fn a() -> A + 'static {
+   |           ^ not a trait
+   |
+help: `+` is used to constrain a "trait object" type with lifetimes or auto-traits; structs and enums can't be bound in that way
+  --> $DIR/not-on-struct.rs:13:15
+   |
+LL | fn a() -> A + 'static {
+   |           -   ^^^^^^^ ...because of this bound
+   |           |
+   |           expected this type to be a trait...
+help: if you meant to use a type and not a trait here, remove the bounds
+   |
+LL - fn a() -> A + 'static {
+LL + fn a() -> A {
+   |
+
+error[E0404]: expected trait, found enum `Result`
+  --> $DIR/not-on-struct.rs:16:34
+   |
+LL | fn b<'a,T,E>(iter: Iterator<Item=Result<T,E> + 'a>) {
+   |                                  ^^^^^^^^^^^ not a trait
+   |
+help: `+` is used to constrain a "trait object" type with lifetimes or auto-traits; structs and enums can't be bound in that way
+  --> $DIR/not-on-struct.rs:16:48
+   |
+LL | fn b<'a,T,E>(iter: Iterator<Item=Result<T,E> + 'a>) {
+   |                                  -----------   ^^ ...because of this bound
+   |                                  |
+   |                                  expected this type to be a trait...
+help: if you meant to use a type and not a trait here, remove the bounds
+   |
+LL - fn b<'a,T,E>(iter: Iterator<Item=Result<T,E> + 'a>) {
+LL + fn b<'a,T,E>(iter: Iterator<Item=Result<T,E>>) {
+   |
+
+error[E0404]: expected trait, found struct `A`
+  --> $DIR/not-on-struct.rs:19:21
+   |
+LL | fn c() -> 'static + A {
+   |                     ^ not a trait
+   |
+help: `+` is used to constrain a "trait object" type with lifetimes or auto-traits; structs and enums can't be bound in that way
+  --> $DIR/not-on-struct.rs:19:11
+   |
+LL | fn c() -> 'static + A {
+   |           ^^^^^^^   - expected this type to be a trait...
+   |           |
+   |           ...because of this bound
+help: if you meant to use a type and not a trait here, remove the bounds
+   |
+LL - fn c() -> 'static + A {
+LL + fn c() -> A {
+   |
+
+error[E0404]: expected trait, found enum `Result`
+  --> $DIR/not-on-struct.rs:22:39
+   |
+LL | fn d<'a,T,E>(iter: Iterator<Item='a + Result<T,E>>) {
+   |                                       ^^^^^^^^^^^ not a trait
+   |
+help: `+` is used to constrain a "trait object" type with lifetimes or auto-traits; structs and enums can't be bound in that way
+  --> $DIR/not-on-struct.rs:22:34
+   |
+LL | fn d<'a,T,E>(iter: Iterator<Item='a + Result<T,E>>) {
+   |                                  ^^   ----------- expected this type to be a trait...
+   |                                  |
+   |                                  ...because of this bound
+help: if you meant to use a type and not a trait here, remove the bounds
+   |
+LL - fn d<'a,T,E>(iter: Iterator<Item='a + Result<T,E>>) {
+LL + fn d<'a,T,E>(iter: Iterator<Item=Result<T,E>>) {
+   |
+
+error[E0404]: expected trait, found struct `A`
+  --> $DIR/not-on-struct.rs:25:21
+   |
+LL | fn e() -> 'static + A + 'static {
+   |                     ^ not a trait
+   |
+help: `+` is used to constrain a "trait object" type with lifetimes or auto-traits; structs and enums can't be bound in that way
+  --> $DIR/not-on-struct.rs:25:11
+   |
+LL | fn e() -> 'static + A + 'static {
+   |           ^^^^^^^   -   ^^^^^^^ ...because of these bounds
+   |                     |
+   |                     expected this type to be a trait...
+help: if you meant to use a type and not a trait here, remove the bounds
+   |
+LL - fn e() -> 'static + A + 'static {
+LL + fn e() -> A {
+   |
+
+error[E0404]: expected trait, found enum `Result`
+  --> $DIR/not-on-struct.rs:29:39
+   |
+LL | fn f<'a,T,E>(iter: Iterator<Item='a + Result<T,E> + 'a>) {
+   |                                       ^^^^^^^^^^^ not a trait
+   |
+help: `+` is used to constrain a "trait object" type with lifetimes or auto-traits; structs and enums can't be bound in that way
+  --> $DIR/not-on-struct.rs:29:34
+   |
+LL | fn f<'a,T,E>(iter: Iterator<Item='a + Result<T,E> + 'a>) {
+   |                                  ^^   -----------   ^^ ...because of these bounds
+   |                                       |
+   |                                       expected this type to be a trait...
+help: if you meant to use a type and not a trait here, remove the bounds
+   |
+LL - fn f<'a,T,E>(iter: Iterator<Item='a + Result<T,E> + 'a>) {
+LL + fn f<'a,T,E>(iter: Iterator<Item=Result<T,E>>) {
+   |
+
+error[E0404]: expected trait, found struct `Traitor`
+  --> $DIR/not-on-struct.rs:35:11
+   |
+LL | trait Trait {}
+   | ----------- similarly named trait `Trait` defined here
+LL | fn g() -> Traitor + 'static {
+   |           ^^^^^^^ not a trait
+   |
+help: `+` is used to constrain a "trait object" type with lifetimes or auto-traits; structs and enums can't be bound in that way
+  --> $DIR/not-on-struct.rs:35:21
+   |
+LL | fn g() -> Traitor + 'static {
+   |           -------   ^^^^^^^ ...because of this bound
+   |           |
+   |           expected this type to be a trait...
+help: if you meant to use a type and not a trait here, remove the bounds
+   |
+LL - fn g() -> Traitor + 'static {
+LL + fn g() -> Traitor {
+   |
+help: a trait with a similar name exists
+   |
+LL - fn g() -> Traitor + 'static {
+LL + fn g() -> Trait + 'static {
+   |
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0226, E0404.
+For more information about an error, try `rustc --explain E0226`.

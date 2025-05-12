@@ -1,0 +1,101 @@
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:19:18
+   |
+LL |     fn refs(p1: &Bad) -> &Bad {
+   |                  ^^^ help: use the applicable keyword: `Self`
+   |
+   = note: `-D clippy::use-self` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::use_self)]`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:19:27
+   |
+LL |     fn refs(p1: &Bad) -> &Bad {
+   |                           ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:25:33
+   |
+LL |     fn ref_refs<'a>(p1: &'a &'a Bad) -> &'a &'a Bad {
+   |                                 ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:25:49
+   |
+LL |     fn ref_refs<'a>(p1: &'a &'a Bad) -> &'a &'a Bad {
+   |                                                 ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:31:26
+   |
+LL |     fn mut_refs(p1: &mut Bad) -> &mut Bad {
+   |                          ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:31:39
+   |
+LL |     fn mut_refs(p1: &mut Bad) -> &mut Bad {
+   |                                       ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:37:24
+   |
+LL |     fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {}
+   |                        ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:37:42
+   |
+LL |     fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {}
+   |                                          ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:41:16
+   |
+LL |     fn vals(_: Bad) -> Bad {
+   |                ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:41:24
+   |
+LL |     fn vals(_: Bad) -> Bad {
+   |                        ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:44:9
+   |
+LL |         Bad
+   |         ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:50:19
+   |
+LL |     type Output = Bad;
+   |                   ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:53:23
+   |
+LL |     fn mul(self, rhs: Bad) -> Bad {
+   |                       ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:53:31
+   |
+LL |     fn mul(self, rhs: Bad) -> Bad {
+   |                               ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:62:9
+   |
+LL |         Bad
+   |         ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_trait.rs:160:13
+   |
+LL |             std::fmt::Error // Should lint
+   |             ^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: aborting due to 16 previous errors
+

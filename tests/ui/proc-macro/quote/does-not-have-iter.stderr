@@ -1,0 +1,10 @@
+error: proc macro panicked
+  --> $DIR/does-not-have-iter.rs:12:5
+   |
+LL |     quote!($(a b)*);
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: message: `$` must be followed by an ident or `$` in `quote!`
+
+error: aborting due to 1 previous error
+

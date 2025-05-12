@@ -1,0 +1,16 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `rect`
+  --> $DIR/issue-101749.rs:17:13
+   |
+LL |     let _ = rect::area();
+   |             ^^^^ use of unresolved module or unlinked crate `rect`
+   |
+   = help: you might be missing a crate named `rect`
+help: you may have meant to call an instance method
+   |
+LL -     let _ = rect::area();
+LL +     let _ = rect.area();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

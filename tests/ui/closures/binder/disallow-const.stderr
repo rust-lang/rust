@@ -1,0 +1,13 @@
+error[E0658]: only lifetime parameters can be used in this context
+  --> $DIR/disallow-const.rs:4:15
+   |
+LL |     for<const N: i32> || -> () {};
+   |               ^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

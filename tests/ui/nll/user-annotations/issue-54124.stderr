@@ -1,0 +1,20 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-54124.rs:2:22
+   |
+LL | fn test<'a>() {
+   |         -- lifetime `'a` defined here
+LL |     let _:fn(&()) = |_:&'a ()| {};
+   |                      ^ - let's call the lifetime of this reference `'1`
+   |                      |
+   |                      requires that `'1` must outlive `'a`
+
+error: lifetime may not live long enough
+  --> $DIR/issue-54124.rs:2:22
+   |
+LL | fn test<'a>() {
+   |         -- lifetime `'a` defined here
+LL |     let _:fn(&()) = |_:&'a ()| {};
+   |                      ^ requires that `'a` must outlive `'static`
+
+error: aborting due to 2 previous errors
+

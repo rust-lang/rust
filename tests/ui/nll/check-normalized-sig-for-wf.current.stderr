@@ -1,0 +1,47 @@
+error[E0597]: `s` does not live long enough
+  --> $DIR/check-normalized-sig-for-wf.rs:11:7
+   |
+LL |     s: String,
+   |     - binding `s` declared here
+...
+LL |     f(&s).0
+   |     --^^-
+   |     | |
+   |     | borrowed value does not live long enough
+   |     argument requires that `s` is borrowed for `'static`
+LL |
+LL | }
+   | - `s` dropped here while still borrowed
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/check-normalized-sig-for-wf.rs:19:5
+   |
+LL | fn extend<T>(input: &T) -> &'static T {
+   |              -----  - let's call the lifetime of this reference `'1`
+   |              |
+   |              `input` is a reference that is only valid in the function body
+...
+LL |     n(input).0
+   |     ^^^^^^^^
+   |     |
+   |     `input` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/check-normalized-sig-for-wf.rs:27:5
+   |
+LL | fn extend_mut<'a, T>(input: &'a mut T) -> &'static mut T {
+   |               --     ----- `input` is a reference that is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
+...
+LL |     n(input).0
+   |     ^^^^^^^^
+   |     |
+   |     `input` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0521, E0597.
+For more information about an error, try `rustc --explain E0521`.

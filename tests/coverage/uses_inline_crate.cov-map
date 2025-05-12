@@ -1,0 +1,88 @@
+Function name: used_inline_crate::used_from_bin_crate_and_lib_crate_generic_function::<alloc::vec::Vec<i32>>
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 2c, 01, 00, 4c, 01, 01, 05, 00, 0d, 01, 00, 0e, 00, 4f, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/auxiliary/used_inline_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 44, 1) to (start + 0, 76)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 0, 14) to (start + 0, 79)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: used_inline_crate::used_inline_function
+Raw bytes (56): 0x[01, 01, 01, 01, 05, 0a, 01, 14, 01, 00, 1e, 01, 04, 09, 00, 10, 01, 00, 13, 00, 2e, 01, 01, 09, 00, 16, 01, 00, 19, 00, 1a, 01, 01, 08, 00, 0f, 05, 00, 10, 02, 06, 02, 02, 05, 00, 06, 01, 01, 05, 00, 17, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/auxiliary/used_inline_crate.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 10
+- Code(Counter(0)) at (prev + 20, 1) to (start + 0, 30)
+- Code(Counter(0)) at (prev + 4, 9) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 0, 19) to (start + 0, 46)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 0, 25) to (start + 0, 26)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 15)
+- Code(Counter(1)) at (prev + 0, 16) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 2, 5) to (start + 0, 6)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 23)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: used_inline_crate::used_only_from_bin_crate_generic_function::<&alloc::vec::Vec<i32>>
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 21, 01, 00, 43, 01, 01, 05, 00, 0d, 01, 00, 0e, 00, 46, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/auxiliary/used_inline_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 33, 1) to (start + 0, 67)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 0, 14) to (start + 0, 70)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: used_inline_crate::used_only_from_bin_crate_generic_function::<&str>
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 21, 01, 00, 43, 01, 01, 05, 00, 0d, 01, 00, 0e, 00, 46, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/auxiliary/used_inline_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 33, 1) to (start + 0, 67)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 0, 14) to (start + 0, 70)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: used_inline_crate::used_with_same_type_from_bin_crate_and_lib_crate_generic_function::<&str>
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 31, 01, 00, 5b, 01, 01, 05, 00, 0d, 01, 00, 0e, 00, 5e, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/auxiliary/used_inline_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 49, 1) to (start + 0, 91)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 0, 14) to (start + 0, 94)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: uses_inline_crate::main
+Raw bytes (64): 0x[01, 02, 00, 0c, 01, 0c, 01, 00, 0a, 01, 01, 05, 00, 25, 01, 01, 05, 00, 2c, 01, 01, 09, 00, 11, 01, 00, 14, 00, 18, 01, 01, 05, 00, 41, 01, 00, 42, 00, 4b, 01, 01, 05, 00, 41, 01, 01, 05, 00, 4a, 01, 00, 4b, 00, 53, 01, 01, 05, 00, 59, 01, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/uses_inline_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 12
+- Code(Counter(0)) at (prev + 12, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 37)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 44)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 0, 20) to (start + 0, 24)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 65)
+- Code(Counter(0)) at (prev + 0, 66) to (start + 0, 75)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 65)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 74)
+- Code(Counter(0)) at (prev + 0, 75) to (start + 0, 83)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 89)
+- Code(Counter(0)) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+

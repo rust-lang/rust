@@ -1,0 +1,52 @@
+warning: variable does not need to be mutable
+  --> $DIR/expect_nested_lint_levels.rs:35:13
+   |
+LL |         let mut v = 0;
+   |             ----^
+   |             |
+   |             help: remove this `mut`
+   |
+   = note: this overrides the previous `expect` lint level and warns about the `unused_mut` lint here
+note: the lint level is defined here
+  --> $DIR/expect_nested_lint_levels.rs:30:9
+   |
+LL |         unused_mut,
+   |         ^^^^^^^^^^
+
+error: unused variable: `this_is_my_function`
+  --> $DIR/expect_nested_lint_levels.rs:47:9
+   |
+LL |     let this_is_my_function = 3;
+   |         ^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_this_is_my_function`
+   |
+note: the lint level is defined here
+  --> $DIR/expect_nested_lint_levels.rs:44:10
+   |
+LL | #[forbid(unused_variables)]
+   |          ^^^^^^^^^^^^^^^^
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_nested_lint_levels.rs:6:5
+   |
+LL |     unused_mut,
+   |     ^^^^^^^^^^
+   |
+   = note: this `expect` is overridden by a `allow` attribute before the `unused_mut` lint is triggered
+   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_nested_lint_levels.rs:23:5
+   |
+LL |     unused_mut,
+   |     ^^^^^^^^^^
+   |
+   = note: this `expect` is overridden by a `warn` attribute before the `unused_mut` lint is triggered
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_nested_lint_levels.rs:42:10
+   |
+LL | #[expect(unused_variables)]
+   |          ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error; 4 warnings emitted
+

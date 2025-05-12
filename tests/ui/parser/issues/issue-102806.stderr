@@ -1,0 +1,53 @@
+error: expected `..`, found `...`
+  --> $DIR/issue-102806.rs:11:26
+   |
+LL |     let _ = V3 { z: 0.0, ...v};
+   |                          ^^^
+   |
+help: use `..` to fill in the rest of the fields
+   |
+LL -     let _ = V3 { z: 0.0, ...v};
+LL +     let _ = V3 { z: 0.0, ..v};
+   |
+
+error: expected `..`, found `...`
+  --> $DIR/issue-102806.rs:14:26
+   |
+LL |     let _ = V3 { z: 0.0, ...Default::default() };
+   |                          ^^^
+   |
+help: use `..` to fill in the rest of the fields
+   |
+LL -     let _ = V3 { z: 0.0, ...Default::default() };
+LL +     let _ = V3 { z: 0.0, ..Default::default() };
+   |
+
+error: expected identifier, found `...`
+  --> $DIR/issue-102806.rs:17:26
+   |
+LL |     let _ = V3 { z: 0.0, ... };
+   |             --           ^^^ expected identifier
+   |             |
+   |             while parsing this struct
+
+error: expected field pattern, found `...`
+  --> $DIR/issue-102806.rs:21:22
+   |
+LL |     let V3 { z: val, ... } = v;
+   |                      ^^^
+   |
+help: to omit remaining fields, use `..`
+   |
+LL -     let V3 { z: val, ... } = v;
+LL +     let V3 { z: val, .. } = v;
+   |
+
+error[E0063]: missing fields `x` and `y` in initializer of `V3`
+  --> $DIR/issue-102806.rs:17:13
+   |
+LL |     let _ = V3 { z: 0.0, ... };
+   |             ^^ missing `x` and `y`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0063`.

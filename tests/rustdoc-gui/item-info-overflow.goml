@@ -1,0 +1,31 @@
+// This test ensures that the "item-info" elements don't overflow.
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.LongItemInfo.html"
+// We set a fixed size so there is no chance of "random" resize.
+set-window-size: (1200, 870)
+// Logically, the "item-decl" and the "item-info" should have the same scroll width.
+compare-elements-property: (".item-decl", ".item-info", ["scrollWidth"])
+assert-property: (".item-info", {"scrollWidth": "940"})
+// Just to be sure we're comparing the correct "item-info":
+assert-text: (
+    ".item-info",
+    "Available on Android or Linux or Emscripten or DragonFly BSD",
+    STARTS_WITH,
+)
+
+// Checking the "item-info" on an impl block as well:
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.LongItemInfo2.html"
+compare-elements-property: (
+    "#impl-SimpleTrait-for-LongItemInfo2 .item-info",
+    "#impl-SimpleTrait-for-LongItemInfo2 .docblock",
+    ["scrollWidth"],
+)
+assert-property: (
+    "#impl-SimpleTrait-for-LongItemInfo2 .item-info",
+    {"scrollWidth": "935"},
+)
+// Just to be sure we're comparing the correct "item-info":
+assert-text: (
+    "#impl-SimpleTrait-for-LongItemInfo2 .item-info",
+    "Available on Android or Linux or Emscripten or DragonFly BSD",
+    STARTS_WITH,
+)

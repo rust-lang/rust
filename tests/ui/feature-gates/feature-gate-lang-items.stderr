@@ -1,0 +1,19 @@
+error[E0658]: lang items are subject to change
+  --> $DIR/feature-gate-lang-items.rs:1:1
+   |
+LL | #[lang = "foo"]
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(lang_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0522]: definition of an unknown lang item: `foo`
+  --> $DIR/feature-gate-lang-items.rs:1:1
+   |
+LL | #[lang = "foo"]
+   | ^^^^^^^^^^^^^^^ definition of unknown lang item `foo`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0522, E0658.
+For more information about an error, try `rustc --explain E0522`.

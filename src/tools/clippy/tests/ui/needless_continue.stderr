@@ -1,0 +1,224 @@
+error: this `else` block is redundant
+  --> tests/ui/needless_continue.rs:30:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |
+LL | |
+LL | |             continue;
+LL | |         }
+   | |_________^
+   |
+   = help: consider dropping the `else` clause and merging the code that follows (in the loop) with the `if` block
+                   if i % 2 == 0 && i % 3 == 0 {
+                       println!("{}", i);
+                       println!("{}", i + 1);
+                       if i % 5 == 0 {
+                           println!("{}", i + 2);
+                       }
+                       let i = 0;
+                       println!("bar {} ", i);
+                       // merged code follows:
+                       println!("bleh");
+                       {
+                           println!("blah");
+                       }
+                       if !(!(i == 2) || !(i == 5)) {
+                           println!("lama");
+                       }
+                       if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
+
+                       
+                           continue;
+                       } else {
+                           println!("Blabber");
+                           println!("Jabber");
+                       }
+                       println!("bleh");
+                   }
+   = note: `-D clippy::needless-continue` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_continue)]`
+
+error: there is no need for an explicit `else` block for this `if` expression
+  --> tests/ui/needless_continue.rs:47:9
+   |
+LL | /         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
+LL | |
+LL | |
+LL | |             continue;
+...  |
+LL | |             println!("Jabber");
+LL | |         }
+   | |_________^
+   |
+   = help: consider dropping the `else` clause
+                   if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
+
+           
+                       continue;
+                   }
+                   {
+                       println!("Blabber");
+                       println!("Jabber");
+                   }
+
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:62:9
+   |
+LL |         continue;
+   |         ^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:70:9
+   |
+LL |         continue;
+   |         ^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:78:9
+   |
+LL |         continue
+   |         ^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:88:9
+   |
+LL |         continue
+   |         ^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:97:11
+   |
+LL |         { continue }
+   |           ^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: this `else` block is redundant
+  --> tests/ui/needless_continue.rs:148:24
+   |
+LL |                   } else {
+   |  ________________________^
+LL | |
+LL | |
+LL | |                     continue 'inner;
+LL | |                 }
+   | |_________________^
+   |
+   = help: consider dropping the `else` clause and merging the code that follows (in the loop) with the `if` block
+                           if condition() {
+                               println!("bar-3");
+                               // merged code follows:
+                               println!("bar-4");
+                               update_condition();
+                               if condition() {
+
+                               
+                                   continue;
+                               } else {
+                                   println!("bar-5");
+                               }
+                               println!("bar-6");
+                           }
+
+error: there is no need for an explicit `else` block for this `if` expression
+  --> tests/ui/needless_continue.rs:156:17
+   |
+LL | /                 if condition() {
+LL | |
+LL | |
+LL | |                     continue;
+LL | |                 } else {
+LL | |                     println!("bar-5");
+LL | |                 }
+   | |_________________^
+   |
+   = help: consider dropping the `else` clause
+                           if condition() {
+
+           
+                               continue;
+                           }
+                           {
+                               println!("bar-5");
+                           }
+
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:180:13
+   |
+LL |             continue 'b;
+   |             ^^^^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:196:21
+   |
+LL |                     continue 'inner;
+   |                     ^^^^^^^^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:200:21
+   |
+LL |                     continue 'inner;
+   |                     ^^^^^^^^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:211:21
+   |
+LL |                     continue;
+   |                     ^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: this `else` block is redundant
+  --> tests/ui/needless_continue.rs:219:20
+   |
+LL |               } else {
+   |  ____________________^
+LL | |
+LL | |                 // redundant `else`
+LL | |                 continue; // redundant `continue`
+LL | |             }
+   | |_____________^
+   |
+   = help: consider dropping the `else` clause and merging the code that follows (in the loop) with the `if` block
+                       if true {
+           // merged code follows:
+           
+                       }
+
+error: there is no need for an explicit `else` block for this `if` expression
+  --> tests/ui/needless_continue.rs:227:13
+   |
+LL | /             if some_expr() {
+LL | |
+LL | |                 continue;
+LL | |             } else {
+LL | |                 do_something();
+LL | |             }
+   | |_____________^
+   |
+   = help: consider dropping the `else` clause
+                       if some_expr() {
+
+                           continue;
+                       }
+                       {
+                           do_something();
+                       }
+
+error: aborting due to 15 previous errors
+

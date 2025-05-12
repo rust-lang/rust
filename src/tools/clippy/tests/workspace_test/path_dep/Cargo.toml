@@ -1,0 +1,6 @@
+[package]
+name = "path_dep"
+version = "0.1.0"
+
+[features]
+primary_package_test = []

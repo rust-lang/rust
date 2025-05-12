@@ -1,0 +1,13 @@
+error: path separator must be a double colon
+  --> $DIR/type-ascription-instead-of-path.rs:2:8
+   |
+LL |     std:io::stdin();
+   |        ^
+   |
+help: use a double colon instead
+   |
+LL |     std::io::stdin();
+   |         +
+
+error: aborting due to 1 previous error
+

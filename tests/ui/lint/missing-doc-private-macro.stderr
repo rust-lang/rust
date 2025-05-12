@@ -1,0 +1,20 @@
+error: missing documentation for a macro
+  --> $DIR/missing-doc-private-macro.rs:37:1
+   |
+LL | pub macro top_level_pub_macro {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/missing-doc-private-macro.rs:5:9
+   |
+LL | #![deny(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+error: missing documentation for a macro
+  --> $DIR/missing-doc-private-macro.rs:31:5
+   |
+LL |     macro_rules! exported_to_top_level {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,21 @@
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:8:26
+   |
+LL |       let _some_variable = vec![
+   |  __________________________^
+LL | |
+LL | |         1, 2, // i'm here to stay
+LL | |         3, 4, // but this one going away ;-;
+LL | |     ]; // that is life anyways
+   | |_____^
+   |
+   = note: `-D clippy::useless-vec` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::useless_vec)]`
+help: you can use an array directly
+   |
+LL ~     let _some_variable = [1, 2, // i'm here to stay
+LL ~         3, 4]; // that is life anyways
+   |
+
+error: aborting due to 1 previous error
+

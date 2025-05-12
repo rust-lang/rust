@@ -1,0 +1,18 @@
+error: missing trait in a trait impl
+  --> $DIR/issue-88818.rs:5:5
+   |
+LL | impl for S { }
+   |     ^
+   |
+help: add a trait here
+   |
+LL | impl Trait for S { }
+   |      +++++
+help: for an inherent impl, drop this `for`
+   |
+LL - impl for S { }
+LL + impl S { }
+   |
+
+error: aborting due to 1 previous error
+

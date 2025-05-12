@@ -1,0 +1,39 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ reference: attributes.coverage.nesting
+   LL|       |
+   LL|       |// Checks that `#[coverage(..)]` can be applied to modules, and is inherited
+   LL|       |// by any enclosed functions.
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |mod off {
+   LL|       |    fn inherit() {}
+   LL|       |
+   LL|       |    #[coverage(on)]
+   LL|      0|    fn on() {}
+   LL|       |
+   LL|       |    #[coverage(off)]
+   LL|       |    fn off() {}
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(on)]
+   LL|       |mod on {
+   LL|      0|    fn inherit() {}
+   LL|       |
+   LL|       |    #[coverage(on)]
+   LL|      0|    fn on() {}
+   LL|       |
+   LL|       |    #[coverage(off)]
+   LL|       |    fn off() {}
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |mod nested_a {
+   LL|       |    mod nested_b {
+   LL|       |        fn inner() {}
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {}
+

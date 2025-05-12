@@ -1,0 +1,63 @@
+- // MIR for `generic` before GVN
++ // MIR for `generic` after GVN
+  
+  fn generic() -> () {
+      let mut _0: ();
+      let _1: usize;
+      scope 1 {
+          debug gx => _1;
+          let _2: usize;
+          scope 2 {
+              debug gy => _2;
+              let _3: usize;
+              scope 3 {
+                  debug dx => _3;
+                  let _4: usize;
+                  scope 4 {
+                      debug dy => _4;
+                      let _5: usize;
+                      scope 5 {
+                          debug zA0 => _5;
+                          let _6: usize;
+                          scope 6 {
+                              debug zA1 => _6;
+                              let _7: usize;
+                              scope 7 {
+                                  debug zB => _7;
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = OffsetOf(Gamma<T>, [(0, 0)]);
+          StorageLive(_2);
+          _2 = OffsetOf(Gamma<T>, [(0, 1)]);
+          StorageLive(_3);
+-         _3 = OffsetOf(Delta<T>, [(0, 1)]);
++         _3 = const 0_usize;
+          StorageLive(_4);
+-         _4 = OffsetOf(Delta<T>, [(0, 2)]);
++         _4 = const 2_usize;
+          StorageLive(_5);
+          _5 = OffsetOf(Zeta<T>, [(0, 0)]);
+          StorageLive(_6);
+          _6 = OffsetOf(Zeta<T>, [(0, 1)]);
+          StorageLive(_7);
+          _7 = OffsetOf(Zeta<T>, [(1, 0)]);
+          _0 = const ();
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

@@ -1,0 +1,28 @@
+error: unnecessary use of `..` pattern in struct binding. All fields were already bound
+  --> tests/ui/rest_pat_in_fully_bound_structs.rs:23:9
+   |
+LL |         A { a: 5, b: 42, c: "", .. } => {}, // Lint
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing `..` from this binding
+   = note: `-D clippy::rest-pat-in-fully-bound-structs` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::rest_pat_in_fully_bound_structs)]`
+
+error: unnecessary use of `..` pattern in struct binding. All fields were already bound
+  --> tests/ui/rest_pat_in_fully_bound_structs.rs:25:9
+   |
+LL |         A { a: 0, b: 0, c: "", .. } => {}, // Lint
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing `..` from this binding
+
+error: unnecessary use of `..` pattern in struct binding. All fields were already bound
+  --> tests/ui/rest_pat_in_fully_bound_structs.rs:32:9
+   |
+LL |         A { a: 0, b: 0, c: "", .. } => {}, // Lint
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing `..` from this binding
+
+error: aborting due to 3 previous errors
+

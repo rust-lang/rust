@@ -1,0 +1,17 @@
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recursive-types-are-not-uninhabited.rs:6:9
+   |
+LL |     let Ok(x) = res;
+   |         ^^^^^ pattern `Err(_)` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `Result<u32, &R<'_>>`
+help: you might want to use `let else` to handle the variant that isn't matched
+   |
+LL |     let Ok(x) = res else { todo!() };
+   |                     ++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0005`.

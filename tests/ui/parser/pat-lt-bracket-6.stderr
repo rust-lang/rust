@@ -1,0 +1,32 @@
+error: expected a pattern, found an expression
+  --> $DIR/pat-lt-bracket-6.rs:5:14
+   |
+LL |     let Test(&desc[..]) = x;
+   |              ^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 2 fields
+  --> $DIR/pat-lt-bracket-6.rs:5:14
+   |
+LL |     struct Test(&'static u8, [u8; 0]);
+   |                 -----------  ------- tuple struct has 2 fields
+...
+LL |     let Test(&desc[..]) = x;
+   |              ^^^^^^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |     let Test(&desc[..], _) = x;
+   |                       +++
+
+error[E0308]: mismatched types
+  --> $DIR/pat-lt-bracket-6.rs:10:30
+   |
+LL | const RECOVERY_WITNESS: () = 0;
+   |                              ^ expected `()`, found integer
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0023, E0308.
+For more information about an error, try `rustc --explain E0023`.

@@ -1,0 +1,23 @@
+error[E0658]: postfix match is experimental
+  --> $DIR/feature-gate-postfix_match.rs:6:9
+   |
+LL |     val.match {
+   |         ^^^^^
+   |
+   = note: see issue #121618 <https://github.com/rust-lang/rust/issues/121618> for more information
+   = help: add `#![feature(postfix_match)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: postfix match is experimental
+  --> $DIR/feature-gate-postfix_match.rs:13:9
+   |
+LL |     val.match {
+   |         ^^^^^
+   |
+   = note: see issue #121618 <https://github.com/rust-lang/rust/issues/121618> for more information
+   = help: add `#![feature(postfix_match)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `Error: Eq` is not satisfied
+  --> $DIR/derives-span-Eq-enum.rs:9:6
+   |
+LL | #[derive(Eq,PartialEq)]
+   |          -- in this derive macro expansion
+...
+LL |      Error
+   |      ^^^^^ the trait `Eq` is not implemented for `Error`
+   |
+note: required by a bound in `AssertParamIsEq`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+help: consider annotating `Error` with `#[derive(Eq)]`
+   |
+LL + #[derive(Eq)]
+LL | struct Error;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

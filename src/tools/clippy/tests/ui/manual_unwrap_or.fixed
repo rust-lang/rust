@@ -1,0 +1,253 @@
+#![allow(dead_code)]
+#![allow(
+    unused_variables,
+    clippy::unnecessary_wraps,
+    clippy::unnecessary_literal_unwrap,
+    clippy::manual_unwrap_or_default
+)]
+
+fn option_unwrap_or() {
+    // int case
+    Some(1).unwrap_or(42);
+
+    // int case reversed
+    Some(1).unwrap_or(42);
+
+    // richer none expr
+    Some(1).unwrap_or(1 + 42);
+
+    // multiline case
+    #[rustfmt::skip]
+    Some(1).unwrap_or(42 + 42
+    + 42 + 42 + 42
+    + 42 + 42 + 42);
+
+    // string case
+    Some("Bob").unwrap_or("Alice");
+
+    // don't lint
+    match Some(1) {
+        Some(i) => i + 2,
+        None => 42,
+    };
+    match Some(1) {
+        Some(i) => i,
+        None => return,
+    };
+    for j in 0..4 {
+        match Some(j) {
+            Some(i) => i,
+            None => continue,
+        };
+        match Some(j) {
+            Some(i) => i,
+            None => break,
+        };
+    }
+
+    // cases where the none arm isn't a constant expression
+    // are not linted due to potential ownership issues
+
+    // ownership issue example, don't lint
+    struct NonCopyable;
+    let mut option: Option<NonCopyable> = None;
+    match option {
+        Some(x) => x,
+        None => {
+            option = Some(NonCopyable);
+            // some more code ...
+            option.unwrap()
+        },
+    };
+
+    // ownership issue example, don't lint
+    let option: Option<&str> = None;
+    match option {
+        Some(s) => s,
+        None => &format!("{} {}!", "hello", "world"),
+    };
+
+    Some(1).unwrap_or(42);
+
+    //don't lint
+    if let Some(x) = Some(1) {
+        x + 1
+    } else {
+        42
+    };
+    if let Some(x) = Some(1) {
+        x
+    } else {
+        return;
+    };
+    for j in 0..4 {
+        if let Some(x) = Some(j) {
+            x
+        } else {
+            continue;
+        };
+        if let Some(x) = Some(j) {
+            x
+        } else {
+            break;
+        };
+    }
+}
+
+fn result_unwrap_or() {
+    // int case
+    Ok::<i32, &str>(1).unwrap_or(42);
+
+    // int case, scrutinee is a binding
+    let a = Ok::<i32, &str>(1);
+    a.unwrap_or(42);
+
+    // int case, suggestion must surround Result expr with parentheses
+    (Ok(1) as Result<i32, &str>).unwrap_or(42);
+
+    // method call case, suggestion must not surround Result expr `s.method()` with parentheses
+    struct S;
+    impl S {
+        fn method(self) -> Option<i32> {
+            Some(42)
+        }
+    }
+    let s = S {};
+    s.method().unwrap_or(42);
+
+    // int case reversed
+    Ok::<i32, &str>(1).unwrap_or(42);
+
+    // richer none expr
+    Ok::<i32, &str>(1).unwrap_or(1 + 42);
+
+    // multiline case
+    #[rustfmt::skip]
+    Ok::<i32, &str>(1).unwrap_or(42 + 42
+    + 42 + 42 + 42
+    + 42 + 42 + 42);
+
+    // string case
+    Ok::<&str, &str>("Bob").unwrap_or("Alice");
+
+    // don't lint
+    match Ok::<i32, &str>(1) {
+        Ok(i) => i + 2,
+        Err(_) => 42,
+    };
+    match Ok::<i32, &str>(1) {
+        Ok(i) => i,
+        Err(_) => return,
+    };
+    for j in 0..4 {
+        match Ok::<i32, &str>(j) {
+            Ok(i) => i,
+            Err(_) => continue,
+        };
+        match Ok::<i32, &str>(j) {
+            Ok(i) => i,
+            Err(_) => break,
+        };
+    }
+
+    // don't lint, Err value is used
+    match Ok::<&str, &str>("Alice") {
+        Ok(s) => s,
+        Err(s) => s,
+    };
+    Ok::<&str, &str>("Alice").unwrap_or("Bob");
+
+    Ok::<i32, i32>(1).unwrap_or(42);
+
+    //don't lint
+    if let Ok(x) = Ok::<i32, i32>(1) {
+        x + 1
+    } else {
+        42
+    };
+    if let Ok(x) = Ok::<i32, i32>(1) {
+        x
+    } else {
+        return;
+    };
+    for j in 0..4 {
+        if let Ok(x) = Ok::<i32, i32>(j) {
+            x
+        } else {
+            continue;
+        };
+        if let Ok(x) = Ok::<i32, i32>(j) {
+            x
+        } else {
+            break;
+        };
+    }
+}
+
+// don't lint in const fn
+const fn const_fn_option_unwrap_or() {
+    match Some(1) {
+        Some(s) => s,
+        None => 0,
+    };
+}
+
+const fn const_fn_result_unwrap_or() {
+    match Ok::<&str, &str>("Alice") {
+        Ok(s) => s,
+        Err(_) => "Bob",
+    };
+}
+
+mod issue6965 {
+    macro_rules! some_macro {
+        () => {
+            if 1 > 2 { Some(1) } else { None }
+        };
+    }
+
+    fn test() {
+        let _ = some_macro!().unwrap_or(0);
+    }
+}
+
+use std::rc::Rc;
+fn format_name(name: Option<&Rc<str>>) -> &str {
+    match name {
+        None => "<anon>",
+        Some(name) => name,
+    }
+}
+
+fn implicit_deref_ref() {
+    let _: &str = match Some(&"bye") {
+        None => "hi",
+        Some(s) => s,
+    };
+}
+
+mod issue_13018 {
+    use std::collections::HashMap;
+
+    type RefName = i32;
+    pub fn get(index: &HashMap<usize, Vec<RefName>>, id: usize) -> &[RefName] {
+        if let Some(names) = index.get(&id) { names } else { &[] }
+    }
+
+    pub fn get_match(index: &HashMap<usize, Vec<RefName>>, id: usize) -> &[RefName] {
+        match index.get(&id) {
+            Some(names) => names,
+            None => &[],
+        }
+    }
+}
+
+fn implicit_deref(v: Vec<String>) {
+    let _ = if let Some(s) = v.first() { s } else { "" };
+}
+
+fn allowed_manual_unwrap_or_zero() -> u32 {
+    Some(42).unwrap_or(0)
+}
+
+fn main() {}

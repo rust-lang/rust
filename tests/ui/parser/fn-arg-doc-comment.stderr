@@ -1,0 +1,57 @@
+error: attributes cannot be applied to a function parameter's type
+  --> $DIR/fn-arg-doc-comment.rs:12:12
+   |
+LL | fn bar(id: #[allow(dead_code)] i32) {}
+   |            ^^^^^^^^^^^^^^^^^^^ attributes are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/fn-arg-doc-comment.rs:2:5
+   |
+LL |     /// Comment
+   |     ^^^^^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/fn-arg-doc-comment.rs:6:5
+   |
+LL |     /// Other
+   |     ^^^^^^^^^ doc comments are not allowed here
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/fn-arg-doc-comment.rs:19:5
+   |
+LL |     f("", "");
+   |     ^ --  -- expected `u8`, found `&str`
+   |       |
+   |       expected `u8`, found `&str`
+   |
+note: function defined here
+  --> $DIR/fn-arg-doc-comment.rs:1:8
+   |
+LL |   pub fn f(
+   |          ^
+LL | /     /// Comment
+...  |
+LL | |     id: u8,
+   | |__________-
+LL | /     /// Other
+...  |
+LL | |     a: u8,
+   | |_________-
+
+error[E0308]: mismatched types
+  --> $DIR/fn-arg-doc-comment.rs:23:9
+   |
+LL |     bar("");
+   |     --- ^^ expected `i32`, found `&str`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/fn-arg-doc-comment.rs:12:4
+   |
+LL | fn bar(id: #[allow(dead_code)] i32) {}
+   |    ^^^ ---------------------------
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

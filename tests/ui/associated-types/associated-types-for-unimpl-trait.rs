@@ -1,0 +1,16 @@
+//@ run-rustfix
+#![allow(dead_code)]
+#![allow(unused_variables)]
+
+trait Get {
+    type Value;
+    fn get(&self) -> <Self as Get>::Value;
+}
+
+trait Other {
+    fn uhoh<U: Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Sized {}
+    //~^ ERROR the trait bound `Self: Get` is not satisfied
+    //~| ERROR the trait bound `Self: Get` is not satisfied
+}
+
+fn main() {}

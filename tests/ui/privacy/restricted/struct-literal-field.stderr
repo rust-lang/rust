@@ -1,0 +1,9 @@
+error[E0451]: field `x` of struct `S` is private
+  --> $DIR/struct-literal-field.rs:18:9
+   |
+LL |     S { x: 0 };
+   |         ^ private field
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0451`.

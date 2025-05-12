@@ -1,0 +1,358 @@
+warning: label name `'a` shadows a label name that is already in scope
+  --> $DIR/loop-break-value.rs:140:17
+   |
+LL |     'a: loop {
+   |     -- first declared here
+LL |         break;
+LL |         let _ = 'a: loop {
+   |                 ^^ label `'a` already in scope
+
+warning: label name `'a` shadows a label name that is already in scope
+  --> $DIR/loop-break-value.rs:152:17
+   |
+LL |     'a: loop {
+   |     -- first declared here
+LL |         break;
+LL |         let _ = 'a: loop {
+   |                 ^^ label `'a` already in scope
+
+error[E0425]: cannot find value `LOOP` in this scope
+  --> $DIR/loop-break-value.rs:99:15
+   |
+LL |     'LOOP: for _ in 0 .. 9 {
+   |     ----- a label with a similar name exists
+LL |         break LOOP;
+   |               ^^^^
+   |               |
+   |               not found in this scope
+   |               help: use the similarly named label: `'LOOP`
+
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/loop-break-value.rs:30:5
+   |
+LL |     'while_loop: while true {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
+   |
+   = note: `#[warn(while_true)]` on by default
+
+error[E0571]: `break` with value from a `while` loop
+  --> $DIR/loop-break-value.rs:32:9
+   |
+LL |     'while_loop: while true {
+   |     ----------------------- you can't `break` with a value in a `while` loop
+LL |         break;
+LL |         break ();
+   |         ^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
+help: use `break` on its own without a value inside this `while` loop
+   |
+LL -         break ();
+LL +         break;
+   |
+help: alternatively, you might have meant to use the available loop label
+   |
+LL -         break ();
+LL +         break 'while_loop;
+   |
+
+error[E0571]: `break` with value from a `while` loop
+  --> $DIR/loop-break-value.rs:34:13
+   |
+LL |     'while_loop: while true {
+   |     ----------------------- you can't `break` with a value in a `while` loop
+...
+LL |             break 'while_loop 123;
+   |             ^^^^^^^^^^^^^^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
+help: use `break` on its own without a value inside this `while` loop
+   |
+LL -             break 'while_loop 123;
+LL +             break 'while_loop;
+   |
+
+error[E0571]: `break` with value from a `while` loop
+  --> $DIR/loop-break-value.rs:42:12
+   |
+LL |     while let Some(_) = Some(()) {
+   |     ---------------------------- you can't `break` with a value in a `while` loop
+LL |         if break () {
+   |            ^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
+help: use `break` on its own without a value inside this `while` loop
+   |
+LL -         if break () {
+LL +         if break {
+   |
+
+error[E0571]: `break` with value from a `while` loop
+  --> $DIR/loop-break-value.rs:47:9
+   |
+LL |     while let Some(_) = Some(()) {
+   |     ---------------------------- you can't `break` with a value in a `while` loop
+LL |         break None;
+   |         ^^^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
+help: use `break` on its own without a value inside this `while` loop
+   |
+LL -         break None;
+LL +         break;
+   |
+
+error[E0571]: `break` with value from a `while` loop
+  --> $DIR/loop-break-value.rs:53:13
+   |
+LL |     'while_let_loop: while let Some(_) = Some(()) {
+   |     --------------------------------------------- you can't `break` with a value in a `while` loop
+LL |         loop {
+LL |             break 'while_let_loop "nope";
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
+help: use `break` on its own without a value inside this `while` loop
+   |
+LL -             break 'while_let_loop "nope";
+LL +             break 'while_let_loop;
+   |
+
+error[E0571]: `break` with value from a `for` loop
+  --> $DIR/loop-break-value.rs:60:9
+   |
+LL |     for _ in &[1,2,3] {
+   |     ----------------- you can't `break` with a value in a `for` loop
+LL |         break ();
+   |         ^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
+help: use `break` on its own without a value inside this `for` loop
+   |
+LL -         break ();
+LL +         break;
+   |
+
+error[E0571]: `break` with value from a `for` loop
+  --> $DIR/loop-break-value.rs:61:9
+   |
+LL |     for _ in &[1,2,3] {
+   |     ----------------- you can't `break` with a value in a `for` loop
+LL |         break ();
+LL |         break [()];
+   |         ^^^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
+help: use `break` on its own without a value inside this `for` loop
+   |
+LL -         break [()];
+LL +         break;
+   |
+
+error[E0571]: `break` with value from a `for` loop
+  --> $DIR/loop-break-value.rs:68:13
+   |
+LL |     'for_loop: for _ in &[1,2,3] {
+   |     ---------------------------- you can't `break` with a value in a `for` loop
+...
+LL |             break 'for_loop Some(17);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
+help: use `break` on its own without a value inside this `for` loop
+   |
+LL -             break 'for_loop Some(17);
+LL +             break 'for_loop;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:4:31
+   |
+LL |     let val: ! = loop { break break; };
+   |         ---      ----         ^^^^^ expected `!`, found `()`
+   |         |        |
+   |         |        this loop is expected to be of type `!`
+   |         expected because of this assignment
+   |
+   = note:   expected type `!`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:11:19
+   |
+LL |             break "asdf";
+   |             ------------ expected because of this `break`
+LL |         } else {
+LL |             break 123;
+   |                   ^^^ expected `&str`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:16:15
+   |
+LL |     let _: i32 = loop {
+   |         -        ---- this loop is expected to be of type `i32`
+   |         |
+   |         expected because of this assignment
+LL |         break "asdf";
+   |               ^^^^^^ expected `i32`, found `&str`
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:21:31
+   |
+LL |     let _: i32 = 'outer_loop: loop {
+   |         -                     ---- this loop is expected to be of type `i32`
+   |         |
+   |         expected because of this assignment
+LL |         loop {
+LL |             break 'outer_loop "nope";
+   |                               ^^^^^^ expected `i32`, found `&str`
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:27:9
+   |
+LL |     let _: Option<String> = loop {
+   |         -                   ---- this loop is expected to be of type `Option<String>`
+   |         |
+   |         expected because of this assignment
+LL |         break;
+   |         ^^^^^ expected `Option<String>`, found `()`
+   |
+   = note:   expected enum `Option<String>`
+           found unit type `()`
+help: give the `break` a value of the expected type
+   |
+LL |         break None;
+   |               ++++
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:77:26
+   |
+LL |                 break;
+   |                 ----- expected because of this `break`
+LL |                 break 'c 123;
+   |                          ^^^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:84:15
+   |
+LL |         break (break, break);
+   |               ^-----^^-----^
+   |               ||      |
+   |               ||      expected because of this `break`
+   |               |expected because of this `break`
+   |               expected `()`, found `(!, !)`
+   |
+   = note: expected unit type `()`
+                  found tuple `(!, !)`
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:89:15
+   |
+LL |         break;
+   |         ----- expected because of this `break`
+LL |         break 2;
+   |               ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:94:9
+   |
+LL |         break 2;
+   |         ------- expected because of this `break`
+LL |         break;
+   |         ^^^^^ expected integer, found `()`
+   |
+help: give the `break` a value of the expected type
+   |
+LL |         break /* value */;
+   |               +++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:112:9
+   |
+LL |                     break 'a 1;
+   |                     ---------- expected because of this `break`
+...
+LL |         break;
+   |         ^^^^^ expected integer, found `()`
+   |
+help: give the `break` a value of the expected type
+   |
+LL |         break /* value */;
+   |               +++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:124:9
+   |
+LL |                     break 'a 1;
+   |                     ---------- expected because of this `break`
+...
+LL |         break 'a;
+   |         ^^^^^^^^ expected integer, found `()`
+   |
+help: give the `break` a value of the expected type
+   |
+LL |         break 'a /* value */;
+   |                  +++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:135:15
+   |
+LL |         break;
+   |         ----- expected because of this `break`
+...
+LL |         break 2;
+   |               ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:144:17
+   |
+LL |             break 2;
+   |             ------- expected because of this `break`
+LL |             loop {
+LL |                 break 'a;
+   |                 ^^^^^^^^ expected integer, found `()`
+   |
+help: give the `break` a value of the expected type
+   |
+LL |                 break 'a /* value */;
+   |                          +++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:147:15
+   |
+LL |         break;
+   |         ----- expected because of this `break`
+...
+LL |         break 2;
+   |               ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:156:17
+   |
+LL |             break 'a 2;
+   |             ---------- expected because of this `break`
+LL |             loop {
+LL |                 break 'a;
+   |                 ^^^^^^^^ expected integer, found `()`
+   |
+help: give the `break` a value of the expected type
+   |
+LL |                 break 'a /* value */;
+   |                          +++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:159:15
+   |
+LL |         break;
+   |         ----- expected because of this `break`
+...
+LL |         break 2;
+   |               ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:163:15
+   |
+LL | fn main() {
+   |          - expected `()` because of this return type
+...
+LL |     loop { // point at the return type
+   |     ---- this loop is expected to be of type `()`
+LL |         break 2;
+   |               ^ expected `()`, found integer
+
+error: aborting due to 26 previous errors; 3 warnings emitted
+
+Some errors have detailed explanations: E0308, E0425, E0571.
+For more information about an error, try `rustc --explain E0308`.

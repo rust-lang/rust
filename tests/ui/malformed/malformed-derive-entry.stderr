@@ -1,0 +1,49 @@
+error: traits in `#[derive(...)]` don't accept arguments
+  --> $DIR/malformed-derive-entry.rs:1:14
+   |
+LL | #[derive(Copy(Bad))]
+   |              ^^^^^ help: remove the arguments
+
+error: traits in `#[derive(...)]` don't accept values
+  --> $DIR/malformed-derive-entry.rs:6:14
+   |
+LL | #[derive(Copy="bad")]
+   |              ^^^^^^ help: remove the value
+
+error: malformed `derive` attribute input
+  --> $DIR/malformed-derive-entry.rs:11:1
+   |
+LL | #[derive]
+   | ^^^^^^^^^ help: must be of the form: `#[derive(Trait1, Trait2, ...)]`
+
+error[E0277]: the trait bound `Test1: Clone` is not satisfied
+  --> $DIR/malformed-derive-entry.rs:1:10
+   |
+LL | #[derive(Copy(Bad))]
+   |          ^^^^ the trait `Clone` is not implemented for `Test1`
+   |
+note: required by a bound in `Copy`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+help: consider annotating `Test1` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct Test1;
+   |
+
+error[E0277]: the trait bound `Test2: Clone` is not satisfied
+  --> $DIR/malformed-derive-entry.rs:6:10
+   |
+LL | #[derive(Copy="bad")]
+   |          ^^^^ the trait `Clone` is not implemented for `Test2`
+   |
+note: required by a bound in `Copy`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+help: consider annotating `Test2` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct Test2;
+   |
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

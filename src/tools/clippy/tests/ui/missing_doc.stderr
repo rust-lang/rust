@@ -1,0 +1,102 @@
+error: missing documentation for a type alias
+  --> tests/ui/missing_doc.rs:19:1
+   |
+LL | type Typedef = String;
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::missing-docs-in-private-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_docs_in_private_items)]`
+
+error: missing documentation for a module
+  --> tests/ui/missing_doc.rs:23:1
+   |
+LL | mod module_no_dox {}
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a function
+  --> tests/ui/missing_doc.rs:30:1
+   |
+LL | fn foo3() {}
+   | ^^^^^^^^^^^^
+
+error: missing documentation for an enum
+  --> tests/ui/missing_doc.rs:45:1
+   |
+LL | / enum Baz {
+LL | |
+LL | |     BazA { a: isize, b: isize },
+...  |
+LL | | }
+   | |_^
+
+error: missing documentation for a variant
+  --> tests/ui/missing_doc.rs:47:5
+   |
+LL |     BazA { a: isize, b: isize },
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a struct field
+  --> tests/ui/missing_doc.rs:47:12
+   |
+LL |     BazA { a: isize, b: isize },
+   |            ^^^^^^^^
+
+error: missing documentation for a struct field
+  --> tests/ui/missing_doc.rs:47:22
+   |
+LL |     BazA { a: isize, b: isize },
+   |                      ^^^^^^^^
+
+error: missing documentation for a variant
+  --> tests/ui/missing_doc.rs:51:5
+   |
+LL |     BarB,
+   |     ^^^^
+
+error: missing documentation for a constant
+  --> tests/ui/missing_doc.rs:76:1
+   |
+LL | const FOO: u32 = 0;
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a static
+  --> tests/ui/missing_doc.rs:86:1
+   |
+LL | static BAR: u32 = 0;
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a module
+  --> tests/ui/missing_doc.rs:96:1
+   |
+LL | / mod internal_impl {
+LL | |
+LL | |     /// dox
+LL | |     pub fn documented() {}
+...  |
+LL | | }
+   | |_^
+
+error: missing documentation for a function
+  --> tests/ui/missing_doc.rs:102:5
+   |
+LL |     fn undocumented3() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a function
+  --> tests/ui/missing_doc.rs:109:9
+   |
+LL |         fn also_undocumented2() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a function
+  --> tests/ui/missing_doc.rs:135:1
+   |
+LL | / fn issue13298() {
+LL | |
+LL | |     // Rustdoc doesn't generate documentation for items within other items like fns or consts
+LL | |     const MSG: &str = "Hello, world!";
+LL | | }
+   | |_^
+
+error: aborting due to 14 previous errors
+

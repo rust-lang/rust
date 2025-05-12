@@ -1,0 +1,199 @@
+error: casts from `bool` to `u8` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:8:13
+   |
+LL |     let _ = true as u8;
+   |             ^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+   = note: `-D clippy::cast-lossless` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
+help: use `u8::from` instead
+   |
+LL -     let _ = true as u8;
+LL +     let _ = u8::from(true);
+   |
+
+error: casts from `bool` to `u16` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:10:13
+   |
+LL |     let _ = true as u16;
+   |             ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u16::from` instead
+   |
+LL -     let _ = true as u16;
+LL +     let _ = u16::from(true);
+   |
+
+error: casts from `bool` to `u32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:12:13
+   |
+LL |     let _ = true as u32;
+   |             ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u32::from` instead
+   |
+LL -     let _ = true as u32;
+LL +     let _ = u32::from(true);
+   |
+
+error: casts from `bool` to `u64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:14:13
+   |
+LL |     let _ = true as u64;
+   |             ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u64::from` instead
+   |
+LL -     let _ = true as u64;
+LL +     let _ = u64::from(true);
+   |
+
+error: casts from `bool` to `u128` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:16:13
+   |
+LL |     let _ = true as u128;
+   |             ^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u128::from` instead
+   |
+LL -     let _ = true as u128;
+LL +     let _ = u128::from(true);
+   |
+
+error: casts from `bool` to `usize` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:18:13
+   |
+LL |     let _ = true as usize;
+   |             ^^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `usize::from` instead
+   |
+LL -     let _ = true as usize;
+LL +     let _ = usize::from(true);
+   |
+
+error: casts from `bool` to `i8` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:21:13
+   |
+LL |     let _ = true as i8;
+   |             ^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i8::from` instead
+   |
+LL -     let _ = true as i8;
+LL +     let _ = i8::from(true);
+   |
+
+error: casts from `bool` to `i16` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:23:13
+   |
+LL |     let _ = true as i16;
+   |             ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i16::from` instead
+   |
+LL -     let _ = true as i16;
+LL +     let _ = i16::from(true);
+   |
+
+error: casts from `bool` to `i32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:25:13
+   |
+LL |     let _ = true as i32;
+   |             ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i32::from` instead
+   |
+LL -     let _ = true as i32;
+LL +     let _ = i32::from(true);
+   |
+
+error: casts from `bool` to `i64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:27:13
+   |
+LL |     let _ = true as i64;
+   |             ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i64::from` instead
+   |
+LL -     let _ = true as i64;
+LL +     let _ = i64::from(true);
+   |
+
+error: casts from `bool` to `i128` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:29:13
+   |
+LL |     let _ = true as i128;
+   |             ^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i128::from` instead
+   |
+LL -     let _ = true as i128;
+LL +     let _ = i128::from(true);
+   |
+
+error: casts from `bool` to `isize` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:31:13
+   |
+LL |     let _ = true as isize;
+   |             ^^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `isize::from` instead
+   |
+LL -     let _ = true as isize;
+LL +     let _ = isize::from(true);
+   |
+
+error: casts from `bool` to `u16` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:35:13
+   |
+LL |     let _ = (true | false) as u16;
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u16::from` instead
+   |
+LL -     let _ = (true | false) as u16;
+LL +     let _ = u16::from(true | false);
+   |
+
+error: casts from `bool` to `u8` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:38:13
+   |
+LL |     let _ = true as U8;
+   |             ^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `U8::from` instead
+   |
+LL -     let _ = true as U8;
+LL +     let _ = U8::from(true);
+   |
+
+error: casts from `bool` to `u8` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_bool.rs:67:13
+   |
+LL |     let _ = true as u8;
+   |             ^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u8::from` instead
+   |
+LL -     let _ = true as u8;
+LL +     let _ = u8::from(true);
+   |
+
+error: aborting due to 15 previous errors
+

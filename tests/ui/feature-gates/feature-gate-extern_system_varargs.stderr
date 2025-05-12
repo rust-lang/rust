@@ -1,0 +1,13 @@
+error[E0658]: using calling conventions other than `C` or `cdecl` for varargs functions is unstable
+  --> $DIR/feature-gate-extern_system_varargs.rs:1:14
+   |
+LL | fn system(f: extern "system" fn(usize, ...)) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #136946 <https://github.com/rust-lang/rust/issues/136946> for more information
+   = help: add `#![feature(extern_system_varargs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

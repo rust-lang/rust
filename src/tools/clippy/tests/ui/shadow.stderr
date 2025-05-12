@@ -1,0 +1,320 @@
+error: `x` is shadowed by itself in `x`
+  --> tests/ui/shadow.rs:24:9
+   |
+LL |     let x = x;
+   |         ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:23:9
+   |
+LL |     let x = 1;
+   |         ^
+   = note: `-D clippy::shadow-same` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::shadow_same)]`
+
+error: `mut x` is shadowed by itself in `&x`
+  --> tests/ui/shadow.rs:26:13
+   |
+LL |     let mut x = &x;
+   |             ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:24:9
+   |
+LL |     let x = x;
+   |         ^
+
+error: `x` is shadowed by itself in `&mut x`
+  --> tests/ui/shadow.rs:28:9
+   |
+LL |     let x = &mut x;
+   |         ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:26:9
+   |
+LL |     let mut x = &x;
+   |         ^^^^^
+
+error: `x` is shadowed by itself in `*x`
+  --> tests/ui/shadow.rs:30:9
+   |
+LL |     let x = *x;
+   |         ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:28:9
+   |
+LL |     let x = &mut x;
+   |         ^
+
+error: `x` is shadowed
+  --> tests/ui/shadow.rs:36:9
+   |
+LL |     let x = x.0;
+   |         ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:35:9
+   |
+LL |     let x = ([[0]], ());
+   |         ^
+   = note: `-D clippy::shadow-reuse` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::shadow_reuse)]`
+
+error: `x` is shadowed
+  --> tests/ui/shadow.rs:38:9
+   |
+LL |     let x = x[0];
+   |         ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:36:9
+   |
+LL |     let x = x.0;
+   |         ^
+
+error: `x` is shadowed
+  --> tests/ui/shadow.rs:40:10
+   |
+LL |     let [x] = x;
+   |          ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:38:9
+   |
+LL |     let x = x[0];
+   |         ^
+
+error: `x` is shadowed
+  --> tests/ui/shadow.rs:42:9
+   |
+LL |     let x = Some(x);
+   |         ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:40:10
+   |
+LL |     let [x] = x;
+   |          ^
+
+error: `x` is shadowed
+  --> tests/ui/shadow.rs:44:9
+   |
+LL |     let x = foo(x);
+   |         ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:42:9
+   |
+LL |     let x = Some(x);
+   |         ^
+
+error: `x` is shadowed
+  --> tests/ui/shadow.rs:46:9
+   |
+LL |     let x = || x;
+   |         ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:44:9
+   |
+LL |     let x = foo(x);
+   |         ^
+
+error: `x` is shadowed
+  --> tests/ui/shadow.rs:48:9
+   |
+LL |     let x = Some(1).map(|_| x)?;
+   |         ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:46:9
+   |
+LL |     let x = || x;
+   |         ^
+
+error: `y` is shadowed
+  --> tests/ui/shadow.rs:51:9
+   |
+LL |     let y = match y {
+   |         ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:50:9
+   |
+LL |     let y = 1;
+   |         ^
+
+error: `x` shadows a previous, unrelated binding
+  --> tests/ui/shadow.rs:67:9
+   |
+LL |     let x = 2;
+   |         ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:66:9
+   |
+LL |     let x = 1;
+   |         ^
+   = note: `-D clippy::shadow-unrelated` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::shadow_unrelated)]`
+
+error: `x` shadows a previous, unrelated binding
+  --> tests/ui/shadow.rs:73:13
+   |
+LL |         let x = 1;
+   |             ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:72:10
+   |
+LL |     fn f(x: u32) {
+   |          ^
+
+error: `x` shadows a previous, unrelated binding
+  --> tests/ui/shadow.rs:79:14
+   |
+LL |         Some(x) => {
+   |              ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:76:9
+   |
+LL |     let x = 1;
+   |         ^
+
+error: `x` shadows a previous, unrelated binding
+  --> tests/ui/shadow.rs:81:17
+   |
+LL |             let x = 1;
+   |                 ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:79:14
+   |
+LL |         Some(x) => {
+   |              ^
+
+error: `x` shadows a previous, unrelated binding
+  --> tests/ui/shadow.rs:86:17
+   |
+LL |     if let Some(x) = Some(1) {}
+   |                 ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:76:9
+   |
+LL |     let x = 1;
+   |         ^
+
+error: `x` shadows a previous, unrelated binding
+  --> tests/ui/shadow.rs:88:20
+   |
+LL |     while let Some(x) = Some(1) {}
+   |                    ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:76:9
+   |
+LL |     let x = 1;
+   |         ^
+
+error: `x` shadows a previous, unrelated binding
+  --> tests/ui/shadow.rs:90:15
+   |
+LL |     let _ = |[x]: [u32; 1]| {
+   |               ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:76:9
+   |
+LL |     let x = 1;
+   |         ^
+
+error: `x` shadows a previous, unrelated binding
+  --> tests/ui/shadow.rs:92:13
+   |
+LL |         let x = 1;
+   |             ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:90:15
+   |
+LL |     let _ = |[x]: [u32; 1]| {
+   |               ^
+
+error: `y` is shadowed
+  --> tests/ui/shadow.rs:96:17
+   |
+LL |     if let Some(y) = y {}
+   |                 ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:95:9
+   |
+LL |     let y = Some(1);
+   |         ^
+
+error: `_b` shadows a previous, unrelated binding
+  --> tests/ui/shadow.rs:133:9
+   |
+LL |     let _b = _a;
+   |         ^^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:132:28
+   |
+LL | pub async fn foo2(_a: i32, _b: i64) {
+   |                            ^^
+
+error: `x` shadows a previous, unrelated binding
+  --> tests/ui/shadow.rs:140:21
+   |
+LL |         if let Some(x) = Some(1) { x } else { 1 }
+   |                     ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:139:13
+   |
+LL |         let x = 1;
+   |             ^
+
+error: `x` is shadowed
+  --> tests/ui/shadow.rs:151:20
+   |
+LL |     let z = x.map(|x| x + 1);
+   |                    ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:148:9
+   |
+LL |     let x = Some(1);
+   |         ^
+
+error: `i` is shadowed
+  --> tests/ui/shadow.rs:156:25
+   |
+LL |         .map(|i| i.map(|i| i - 10))
+   |                         ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:156:15
+   |
+LL |         .map(|i| i.map(|i| i - 10))
+   |               ^
+
+error: `value` is shadowed by itself in `value`
+  --> tests/ui/shadow.rs:166:22
+   |
+LL |     let Issue13795 { value, .. } = value;
+   |                      ^^^^^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:165:15
+   |
+LL | fn issue13795(value: Issue13795) {
+   |               ^^^^^
+
+error: aborting due to 26 previous errors
+

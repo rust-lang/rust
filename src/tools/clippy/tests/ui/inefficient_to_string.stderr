@@ -1,0 +1,55 @@
+error: calling `to_string` on `&&str`
+  --> tests/ui/inefficient_to_string.rs:10:21
+   |
+LL |     let _: String = rrstr.to_string();
+   |                     ^^^^^^^^^^^^^^^^^ help: try dereferencing the receiver: `(*rrstr).to_string()`
+   |
+   = help: `&str` implements `ToString` through a slower blanket impl, but `str` has a fast specialization of `ToString`
+note: the lint level is defined here
+  --> tests/ui/inefficient_to_string.rs:1:9
+   |
+LL | #![deny(clippy::inefficient_to_string)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: calling `to_string` on `&&&str`
+  --> tests/ui/inefficient_to_string.rs:12:21
+   |
+LL |     let _: String = rrrstr.to_string();
+   |                     ^^^^^^^^^^^^^^^^^^ help: try dereferencing the receiver: `(**rrrstr).to_string()`
+   |
+   = help: `&&str` implements `ToString` through a slower blanket impl, but `str` has a fast specialization of `ToString`
+
+error: calling `to_string` on `&&std::string::String`
+  --> tests/ui/inefficient_to_string.rs:21:21
+   |
+LL |     let _: String = rrstring.to_string();
+   |                     ^^^^^^^^^^^^^^^^^^^^ help: try dereferencing the receiver: `(*rrstring).to_string()`
+   |
+   = help: `&std::string::String` implements `ToString` through a slower blanket impl, but `std::string::String` has a fast specialization of `ToString`
+
+error: calling `to_string` on `&&&std::string::String`
+  --> tests/ui/inefficient_to_string.rs:23:21
+   |
+LL |     let _: String = rrrstring.to_string();
+   |                     ^^^^^^^^^^^^^^^^^^^^^ help: try dereferencing the receiver: `(**rrrstring).to_string()`
+   |
+   = help: `&&std::string::String` implements `ToString` through a slower blanket impl, but `std::string::String` has a fast specialization of `ToString`
+
+error: calling `to_string` on `&&std::borrow::Cow<'_, str>`
+  --> tests/ui/inefficient_to_string.rs:32:21
+   |
+LL |     let _: String = rrcow.to_string();
+   |                     ^^^^^^^^^^^^^^^^^ help: try dereferencing the receiver: `(*rrcow).to_string()`
+   |
+   = help: `&std::borrow::Cow<'_, str>` implements `ToString` through a slower blanket impl, but `std::borrow::Cow<'_, str>` has a fast specialization of `ToString`
+
+error: calling `to_string` on `&&&std::borrow::Cow<'_, str>`
+  --> tests/ui/inefficient_to_string.rs:34:21
+   |
+LL |     let _: String = rrrcow.to_string();
+   |                     ^^^^^^^^^^^^^^^^^^ help: try dereferencing the receiver: `(**rrrcow).to_string()`
+   |
+   = help: `&&std::borrow::Cow<'_, str>` implements `ToString` through a slower blanket impl, but `std::borrow::Cow<'_, str>` has a fast specialization of `ToString`
+
+error: aborting due to 6 previous errors
+

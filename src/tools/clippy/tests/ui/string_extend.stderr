@@ -1,0 +1,29 @@
+error: calling `.extend(_.chars())`
+  --> tests/ui/string_extend.rs:16:5
+   |
+LL |     s.extend(abc.chars());
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `s.push_str(abc)`
+   |
+   = note: `-D clippy::string-extend-chars` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::string_extend_chars)]`
+
+error: calling `.extend(_.chars())`
+  --> tests/ui/string_extend.rs:20:5
+   |
+LL |     s.extend("abc".chars());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.push_str("abc")`
+
+error: calling `.extend(_.chars())`
+  --> tests/ui/string_extend.rs:24:5
+   |
+LL |     s.extend(def.chars());
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `s.push_str(&def)`
+
+error: calling `.extend(_.chars())`
+  --> tests/ui/string_extend.rs:35:5
+   |
+LL |     s.extend(abc[0..2].chars());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.push_str(&abc[0..2])`
+
+error: aborting due to 4 previous errors
+

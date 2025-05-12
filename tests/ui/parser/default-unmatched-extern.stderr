@@ -1,0 +1,28 @@
+error: `default` is not followed by an item
+  --> $DIR/default-unmatched-extern.rs:5:5
+   |
+LL |     default do
+   |     ^^^^^^^ the `default` qualifier
+   |
+   = note: only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`
+
+error: non-item in item list
+  --> $DIR/default-unmatched-extern.rs:5:13
+   |
+LL | extern "C" {
+   |            - item list starts here
+LL |     default!();
+LL |     default do
+   |             ^^ non-item starts here
+...
+LL | }
+   | - item list ends here
+
+error: cannot find macro `default` in this scope
+  --> $DIR/default-unmatched-extern.rs:4:5
+   |
+LL |     default!();
+   |     ^^^^^^^
+
+error: aborting due to 3 previous errors
+

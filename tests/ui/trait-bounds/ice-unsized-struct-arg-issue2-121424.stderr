@@ -1,0 +1,30 @@
+error[E0277]: the trait bound `[bool]: Copy` is not satisfied
+  --> $DIR/ice-unsized-struct-arg-issue2-121424.rs:5:22
+   |
+LL | const MYSLICE_GOOD: &MySliceBool = &MySlice(true, [false]);
+   |                      ^^^^^^^^^^^ the trait `Copy` is not implemented for `[bool]`
+   |
+   = help: the trait `Copy` is implemented for `[T; N]`
+note: required by a bound in `MySlice`
+  --> $DIR/ice-unsized-struct-arg-issue2-121424.rs:3:19
+   |
+LL | struct MySlice<T: Copy>(bool, T);
+   |                   ^^^^ required by this bound in `MySlice`
+
+error[E0277]: the trait bound `[bool]: Copy` is not satisfied
+  --> $DIR/ice-unsized-struct-arg-issue2-121424.rs:5:22
+   |
+LL | const MYSLICE_GOOD: &MySliceBool = &MySlice(true, [false]);
+   |                      ^^^^^^^^^^^ the trait `Copy` is not implemented for `[bool]`
+   |
+   = help: the trait `Copy` is implemented for `[T; N]`
+note: required by a bound in `MySlice`
+  --> $DIR/ice-unsized-struct-arg-issue2-121424.rs:3:19
+   |
+LL | struct MySlice<T: Copy>(bool, T);
+   |                   ^^^^ required by this bound in `MySlice`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

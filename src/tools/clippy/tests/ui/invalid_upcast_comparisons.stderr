@@ -1,0 +1,167 @@
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:21:5
+   |
+LL |     (u8 as u32) > 300;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::invalid-upcast-comparisons` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::invalid_upcast_comparisons)]`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:24:5
+   |
+LL |     (u8 as i32) > 300;
+   |     ^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:27:5
+   |
+LL |     (u8 as u32) == 300;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:30:5
+   |
+LL |     (u8 as i32) == 300;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:33:5
+   |
+LL |     300 < (u8 as u32);
+   |     ^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:36:5
+   |
+LL |     300 < (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:39:5
+   |
+LL |     300 == (u8 as u32);
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:42:5
+   |
+LL |     300 == (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> tests/ui/invalid_upcast_comparisons.rs:46:5
+   |
+LL |     (u8 as u32) <= 300;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> tests/ui/invalid_upcast_comparisons.rs:49:5
+   |
+LL |     (u8 as i32) <= 300;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> tests/ui/invalid_upcast_comparisons.rs:52:5
+   |
+LL |     (u8 as u32) != 300;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> tests/ui/invalid_upcast_comparisons.rs:55:5
+   |
+LL |     (u8 as i32) != 300;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> tests/ui/invalid_upcast_comparisons.rs:58:5
+   |
+LL |     300 >= (u8 as u32);
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> tests/ui/invalid_upcast_comparisons.rs:61:5
+   |
+LL |     300 >= (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> tests/ui/invalid_upcast_comparisons.rs:64:5
+   |
+LL |     300 != (u8 as u32);
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> tests/ui/invalid_upcast_comparisons.rs:67:5
+   |
+LL |     300 != (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:71:5
+   |
+LL |     (u8 as i32) < 0;
+   |     ^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> tests/ui/invalid_upcast_comparisons.rs:74:5
+   |
+LL |     -5 != (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> tests/ui/invalid_upcast_comparisons.rs:78:5
+   |
+LL |     (u8 as i32) >= 0;
+   |     ^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:81:5
+   |
+LL |     -5 == (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:85:5
+   |
+LL |     1337 == (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:88:5
+   |
+LL |     1337 == (u8 as u32);
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> tests/ui/invalid_upcast_comparisons.rs:92:5
+   |
+LL |     1337 != (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> tests/ui/invalid_upcast_comparisons.rs:95:5
+   |
+LL |     1337 != (u8 as u32);
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> tests/ui/invalid_upcast_comparisons.rs:110:5
+   |
+LL |     (u8 as i32) > -1;
+   |     ^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:113:5
+   |
+LL |     (u8 as i32) < -1;
+   |     ^^^^^^^^^^^^^^^^
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:131:5
+   |
+LL |     -5 >= (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 27 previous errors
+

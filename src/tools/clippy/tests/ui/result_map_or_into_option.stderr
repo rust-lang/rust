@@ -1,0 +1,23 @@
+error: called `map_or(None, Some)` on a `Result` value
+  --> tests/ui/result_map_or_into_option.rs:5:13
+   |
+LL |     let _ = opt.map_or(None, Some);
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using `ok`: `opt.ok()`
+   |
+   = note: `-D clippy::result-map-or-into-option` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::result_map_or_into_option)]`
+
+error: called `map_or_else(|_| None, Some)` on a `Result` value
+  --> tests/ui/result_map_or_into_option.rs:8:13
+   |
+LL |     let _ = opt.map_or_else(|_| None, Some);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `ok`: `opt.ok()`
+
+error: called `map_or_else(|_| None, Some)` on a `Result` value
+  --> tests/ui/result_map_or_into_option.rs:12:13
+   |
+LL |     let _ = opt.map_or_else(|_| { None }, Some);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `ok`: `opt.ok()`
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,230 @@
+[workspace]
+members = ["xtask/", "lib/*", "crates/*"]
+exclude = ["crates/proc-macro-srv/proc-macro-test/imp"]
+resolver = "2"
+
+[workspace.package]
+rust-version = "1.86"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer team"]
+repository = "https://github.com/rust-lang/rust-analyzer"
+
+[profile.dev]
+debug = 1
+
+[profile.dev.package]
+# These speed up local tests.
+rowan.opt-level = 3
+rustc-hash.opt-level = 3
+smol_str.opt-level = 3
+text-size.opt-level = 3
+serde.opt-level = 3
+salsa.opt-level = 3
+# This speeds up `cargo xtask dist`.
+miniz_oxide.opt-level = 3
+
+[profile.release]
+# Set this to 1 or 2 to get more useful backtraces in debugger.
+debug = 0
+
+[profile.dev-rel]
+inherits = "release"
+debug = 2
+
+[patch.'crates-io']
+# rowan = { path = "../rowan" }
+
+# chalk-solve = { path = "../chalk/chalk-solve" }
+# chalk-ir = { path = "../chalk/chalk-ir" }
+# chalk-recursive = { path = "../chalk/chalk-recursive" }
+# chalk-derive = { path = "../chalk/chalk-derive" }
+# line-index = { path = "lib/line-index" }
+# la-arena = { path = "lib/la-arena" }
+# lsp-server = { path = "lib/lsp-server" }
+
+
+# ungrammar = { path = "../ungrammar" }
+
+# salsa = { path = "../salsa" }
+
+[workspace.dependencies]
+# local crates
+base-db = { path = "./crates/base-db", version = "0.0.0" }
+cfg = { path = "./crates/cfg", version = "0.0.0", features = ["tt"] }
+hir = { path = "./crates/hir", version = "0.0.0" }
+hir-def = { path = "./crates/hir-def", version = "0.0.0" }
+hir-expand = { path = "./crates/hir-expand", version = "0.0.0" }
+hir-ty = { path = "./crates/hir-ty", version = "0.0.0" }
+ide = { path = "./crates/ide", version = "0.0.0" }
+ide-assists = { path = "./crates/ide-assists", version = "0.0.0" }
+ide-completion = { path = "./crates/ide-completion", version = "0.0.0" }
+ide-db = { path = "./crates/ide-db", version = "0.0.0" }
+ide-diagnostics = { path = "./crates/ide-diagnostics", version = "0.0.0" }
+ide-ssr = { path = "./crates/ide-ssr", version = "0.0.0" }
+intern = { path = "./crates/intern", version = "0.0.0" }
+load-cargo = { path = "./crates/load-cargo", version = "0.0.0" }
+mbe = { path = "./crates/mbe", version = "0.0.0" }
+parser = { path = "./crates/parser", version = "0.0.0" }
+paths = { path = "./crates/paths", version = "0.0.0" }
+proc-macro-api = { path = "./crates/proc-macro-api", version = "0.0.0" }
+proc-macro-srv = { path = "./crates/proc-macro-srv", version = "0.0.0" }
+proc-macro-srv-cli = { path = "./crates/proc-macro-srv-cli", version = "0.0.0" }
+profile = { path = "./crates/profile", version = "0.0.0" }
+project-model = { path = "./crates/project-model", version = "0.0.0" }
+query-group = { package = "query-group-macro", path = "./crates/query-group-macro", version = "0.0.0" }
+span = { path = "./crates/span", version = "0.0.0" }
+stdx = { path = "./crates/stdx", version = "0.0.0" }
+syntax = { path = "./crates/syntax", version = "0.0.0" }
+syntax-bridge = { path = "./crates/syntax-bridge", version = "0.0.0" }
+test-fixture = { path = "./crates/test-fixture", version = "0.0.0" }
+test-utils = { path = "./crates/test-utils", version = "0.0.0" }
+toolchain = { path = "./crates/toolchain", version = "0.0.0" }
+tt = { path = "./crates/tt", version = "0.0.0" }
+vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
+vfs = { path = "./crates/vfs", version = "0.0.0" }
+edition = { path = "./crates/edition", version = "0.0.0" }
+
+ra-ap-rustc_lexer = { version = "0.110", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.110", default-features = false }
+ra-ap-rustc_index = { version = "0.110", default-features = false }
+ra-ap-rustc_abi = { version = "0.110", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.110", default-features = false }
+
+# local crates that aren't published to crates.io. These should not have versions.
+
+# in-tree crates that are published separately and follow semver. See lib/README.md
+line-index = { version = "0.1.2" }
+la-arena = { version = "0.3.1" }
+lsp-server = { version = "0.7.8" }
+
+# non-local crates
+anyhow = "1.0.97"
+arrayvec = "0.7.6"
+bitflags = "2.9.0"
+cargo_metadata = "0.19.2"
+camino = "1.1.9"
+chalk-solve = { version = "0.102.0", default-features = false }
+chalk-ir = "0.102.0"
+chalk-recursive = { version = "0.102.0", default-features = false }
+chalk-derive = "0.102.0"
+crossbeam-channel = "0.5.15"
+dissimilar = "1.0.10"
+dot = "0.1.4"
+either = "1.15.0"
+expect-test = "1.5.1"
+indexmap = { version = "2.8.0", features = ["serde"] }
+itertools = "0.14.0"
+libc = "0.2.171"
+libloading = "0.8.6"
+memmap2 = "0.9.5"
+nohash-hasher = "0.2.0"
+oorandom = "11.1.5"
+object = { version = "0.36.7", default-features = false, features = [
+  "std",
+  "read_core",
+  "elf",
+  "macho",
+  "pe",
+] }
+process-wrap = { version = "8.2.0", features = ["std"] }
+pulldown-cmark-to-cmark = "10.0.4"
+pulldown-cmark = { version = "0.9.6", default-features = false }
+rayon = "1.10.0"
+rowan = "=0.15.15"
+salsa = { version = "0.21.1", default-features = false, features = ["rayon","salsa_unstable"] }
+salsa-macros = "0.21.1"
+semver = "1.0.26"
+serde = { version = "1.0.219" }
+serde_derive = { version = "1.0.219" }
+serde_json = "1.0.140"
+rustc-hash = "2.1.1"
+rustc-literal-escaper = "0.0.2"
+smallvec = { version = "1.14.0", features = [
+  "const_new",
+  "union",
+  "const_generics",
+] }
+smol_str = "0.3.2"
+text-size = "1.1.1"
+tracing = "0.1.41"
+tracing-tree = "0.4.0"
+tracing-subscriber = { version = "0.3.19", default-features = false, features = [
+  "registry",
+  "fmt",
+  "local-time",
+  "std",
+  "time",
+  "tracing-log",
+] }
+triomphe = { version = "0.1.14", default-features = false, features = ["std"] }
+url = "2.5.4"
+xshell = "0.2.7"
+
+# We need to freeze the version of the crate, as the raw-api feature is considered unstable
+dashmap = { version = "=6.1.0", features = ["raw-api", "inline"] }
+# We need to freeze the version of the crate, as it needs to match with dashmap
+hashbrown = { version = "0.14.0", features = [
+  "inline-more",
+], default-features = false }
+
+[workspace.lints.rust]
+# remember to update RUSTFLAGS in ci.yml if you add something here
+
+elided_lifetimes_in_paths = "warn"
+explicit_outlives_requirements = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)'] }
+unused_extern_crates = "warn"
+unused_lifetimes = "warn"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+# FIXME Remove the tidy test once the lint table is stable
+
+## lint groups
+complexity = { level = "warn", priority = -1 }
+correctness = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+restriction = { level = "allow", priority = -1 }
+style = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+
+## allow following lints
+too_long_first_doc_paragraph = "allow"
+# subjective
+single_match = "allow"
+# () makes a fine error in most cases
+result_unit_err = "allow"
+# We don't expose public APIs that matter like this
+len_without_is_empty = "allow"
+# We have macros that rely on this currently
+enum_variant_names = "allow"
+# Builder pattern disagrees
+new_ret_no_self = "allow"
+# Has a bunch of false positives
+useless_asref = "allow"
+# Has false positives
+assigning_clones = "allow"
+# Does not work with macros
+vec_init_then_push = "allow"
+# Our tests have a lot of these
+literal_string_with_formatting_args = "allow"
+# This lint has been empowered but now also triggers on cases where its invalid to do so
+# due to it ignoring move analysis
+unnecessary_map_or = "allow"
+
+## Following lints should be tackled at some point
+too_many_arguments = "allow"
+type_complexity = "allow"
+wrong_self_convention = "allow"
+
+## warn at following lints
+# CI raises these to deny
+dbg_macro = "warn"
+todo = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+
+rc_buffer = "warn"
+str_to_string = "warn"

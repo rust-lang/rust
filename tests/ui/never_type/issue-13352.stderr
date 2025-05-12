@@ -1,0 +1,16 @@
+error[E0277]: cannot add `()` to `usize`
+  --> $DIR/issue-13352.rs:7:13
+   |
+LL |     2_usize + (loop {});
+   |             ^ no implementation for `usize + ()`
+   |
+   = help: the trait `Add<()>` is not implemented for `usize`
+   = help: the following other types implement trait `Add<Rhs>`:
+             `&usize` implements `Add<usize>`
+             `&usize` implements `Add`
+             `usize` implements `Add<&usize>`
+             `usize` implements `Add`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

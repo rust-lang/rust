@@ -1,0 +1,15 @@
+error[E0700]: hidden type for `Opaque<'static>` captures lifetime that does not appear in bounds
+  --> $DIR/different_args_considered_equal2.rs:10:9
+   |
+LL | pub type Opaque<'a> = impl Sized;
+   |                       ---------- opaque type defined here
+...
+LL | fn get_one<'a>(a: *mut &'a str) -> impl IntoIterator<Item = Opaque<'a>> {
+   |            -- hidden type `*mut &'a str` captures the lifetime `'a` as defined here
+...
+LL |         None::<Opaque<'static>>
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.

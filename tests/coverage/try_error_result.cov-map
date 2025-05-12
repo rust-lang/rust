@@ -1,0 +1,248 @@
+Function name: <try_error_result::Thing1>::get_thing_2
+Raw bytes (31): 0x[01, 01, 01, 01, 05, 05, 01, 29, 05, 00, 44, 01, 01, 0c, 00, 18, 05, 01, 0d, 00, 14, 02, 02, 0d, 00, 1a, 01, 02, 05, 00, 06]
+Number of files: 1
+- file 0 => $DIR/try_error_result.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 41, 5) to (start + 0, 68)
+- Code(Counter(0)) at (prev + 1, 12) to (start + 0, 24)
+- Code(Counter(1)) at (prev + 1, 13) to (start + 0, 20)
+- Code(Expression(0, Sub)) at (prev + 2, 13) to (start + 0, 26)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 2, 5) to (start + 0, 6)
+Highest counter ID seen: c1
+
+Function name: <try_error_result::Thing2>::call
+Raw bytes (31): 0x[01, 01, 01, 01, 05, 05, 01, 34, 05, 00, 3a, 01, 01, 0c, 00, 18, 05, 01, 0d, 00, 14, 02, 02, 0d, 00, 13, 01, 02, 05, 00, 06]
+Number of files: 1
+- file 0 => $DIR/try_error_result.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 52, 5) to (start + 0, 58)
+- Code(Counter(0)) at (prev + 1, 12) to (start + 0, 24)
+- Code(Counter(1)) at (prev + 1, 13) to (start + 0, 20)
+- Code(Expression(0, Sub)) at (prev + 2, 13) to (start + 0, 19)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 2, 5) to (start + 0, 6)
+Highest counter ID seen: c1
+
+Function name: try_error_result::call
+Raw bytes (31): 0x[01, 01, 01, 01, 05, 05, 01, 05, 01, 00, 2e, 01, 01, 08, 00, 14, 05, 01, 09, 00, 10, 02, 02, 09, 00, 0f, 01, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/try_error_result.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 5, 1) to (start + 0, 46)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 20)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 16)
+- Code(Expression(0, Sub)) at (prev + 2, 9) to (start + 0, 15)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: try_error_result::main
+Raw bytes (46): 0x[01, 01, 01, 01, 05, 08, 01, 71, 01, 00, 1c, 01, 01, 05, 00, 0a, 01, 00, 0d, 00, 17, 01, 00, 18, 00, 2b, 01, 01, 05, 00, 0a, 05, 01, 05, 00, 06, 02, 02, 05, 00, 0b, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/try_error_result.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 8
+- Code(Counter(0)) at (prev + 113, 1) to (start + 0, 28)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 0, 13) to (start + 0, 23)
+- Code(Counter(0)) at (prev + 0, 24) to (start + 0, 43)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 10)
+- Code(Counter(1)) at (prev + 1, 5) to (start + 0, 6)
+- Code(Expression(0, Sub)) at (prev + 2, 5) to (start + 0, 11)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: try_error_result::test1
+Raw bytes (82): 0x[01, 01, 04, 07, 05, 01, 09, 05, 01, 05, 09, 0e, 01, 0d, 01, 00, 1d, 01, 01, 09, 01, 12, 01, 01, 15, 00, 17, 05, 05, 09, 00, 0e, 09, 02, 09, 01, 11, 09, 04, 0d, 00, 1a, 02, 02, 0d, 00, 11, 02, 00, 29, 00, 2a, 00, 01, 0d, 00, 11, 00, 00, 2a, 00, 2b, 0a, 04, 0d, 00, 11, 00, 00, 2a, 00, 2b, 0e, 03, 05, 00, 0b, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/try_error_result.rs
+Number of expressions: 4
+- expression 0 operands: lhs = Expression(1, Add), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(0), rhs = Counter(2)
+- expression 2 operands: lhs = Counter(1), rhs = Counter(0)
+- expression 3 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 14
+- Code(Counter(0)) at (prev + 13, 1) to (start + 0, 29)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 1, 18)
+- Code(Counter(0)) at (prev + 1, 21) to (start + 0, 23)
+- Code(Counter(1)) at (prev + 5, 9) to (start + 0, 14)
+- Code(Counter(2)) at (prev + 2, 9) to (start + 1, 17)
+- Code(Counter(2)) at (prev + 4, 13) to (start + 0, 26)
+- Code(Expression(0, Sub)) at (prev + 2, 13) to (start + 0, 17)
+    = ((c0 + c2) - c1)
+- Code(Expression(0, Sub)) at (prev + 0, 41) to (start + 0, 42)
+    = ((c0 + c2) - c1)
+- Code(Zero) at (prev + 1, 13) to (start + 0, 17)
+- Code(Zero) at (prev + 0, 42) to (start + 0, 43)
+- Code(Expression(2, Sub)) at (prev + 4, 13) to (start + 0, 17)
+    = (c1 - c0)
+- Code(Zero) at (prev + 0, 42) to (start + 0, 43)
+- Code(Expression(3, Sub)) at (prev + 3, 5) to (start + 0, 11)
+    = (c1 - c2)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c2
+
+Function name: try_error_result::test2
+Raw bytes (443): 0x[01, 01, 3d, 0d, 11, 0d, 57, 11, 15, 0d, 57, 11, 15, 0d, 57, 11, 15, 0d, 4f, 53, 1d, 57, 19, 11, 15, 0d, 57, 11, 15, 0d, 57, 11, 15, 0d, 53, 57, 19, 11, 15, 0d, 4f, 53, 1d, 57, 19, 11, 15, 41, 6b, 21, 25, 41, 21, 41, 6b, 21, 25, 09, 8f, 01, 93, 01, 2d, 0d, 29, 09, 0d, 09, 0d, 09, 93, 01, 0d, 29, 09, 8f, 01, 93, 01, 2d, 0d, 29, 45, a7, 01, 31, 35, 45, 31, 45, a7, 01, 31, 35, 49, bb, 01, 39, 3d, 49, 39, 49, bb, 01, 39, 3d, 05, 09, c7, 01, 09, cb, 01, 3d, cf, 01, 39, d3, 01, 35, d7, 01, 31, db, 01, 2d, df, 01, 29, e3, 01, 25, e7, 01, 21, eb, 01, 1d, ef, 01, 19, f3, 01, 15, 05, 11, 39, 01, 3d, 01, 00, 1d, 01, 01, 09, 00, 0f, 01, 00, 12, 00, 1a, 01, 01, 09, 01, 12, 01, 01, 15, 00, 17, 05, 05, 09, 00, 0e, 09, 02, 09, 01, 11, 09, 04, 0d, 00, 1a, 0d, 02, 0d, 00, 13, 0d, 00, 14, 00, 1f, 11, 00, 2f, 00, 30, 02, 00, 31, 00, 35, 02, 00, 45, 00, 4f, 02, 00, 50, 00, 62, 02, 01, 0d, 00, 13, 02, 02, 11, 00, 1c, 15, 01, 11, 00, 12, 36, 02, 11, 00, 15, 36, 02, 11, 00, 1b, 36, 01, 15, 00, 27, 4a, 02, 11, 00, 14, 36, 00, 17, 00, 1d, 36, 00, 1e, 00, 29, 19, 00, 41, 00, 42, 3e, 00, 43, 00, 47, 1d, 00, 5f, 00, 60, 4a, 01, 0d, 00, 17, 66, 01, 11, 00, 14, 41, 00, 17, 00, 1d, 41, 00, 1e, 00, 29, 21, 00, 41, 00, 42, 62, 00, 43, 00, 47, 25, 00, 60, 00, 61, 66, 01, 0d, 00, 17, 8a, 01, 04, 11, 00, 14, 7e, 00, 17, 00, 1d, 7e, 00, 1e, 00, 29, 29, 00, 42, 00, 43, 82, 01, 00, 44, 00, 48, 2d, 00, 61, 00, 62, 8a, 01, 01, 0d, 00, 17, a2, 01, 01, 11, 00, 14, 45, 00, 17, 00, 1d, 45, 01, 12, 00, 1d, 31, 00, 36, 00, 37, 9e, 01, 01, 12, 00, 16, 35, 00, 2f, 00, 30, a2, 01, 01, 0d, 00, 17, b6, 01, 01, 11, 00, 14, 49, 00, 17, 00, 1d, 49, 01, 12, 00, 1d, 39, 01, 11, 00, 12, b2, 01, 01, 12, 00, 16, 3d, 01, 11, 00, 12, b6, 01, 02, 0d, 00, 17, be, 01, 03, 05, 00, 0b, c2, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/try_error_result.rs
+Number of expressions: 61
+- expression 0 operands: lhs = Counter(3), rhs = Counter(4)
+- expression 1 operands: lhs = Counter(3), rhs = Expression(21, Add)
+- expression 2 operands: lhs = Counter(4), rhs = Counter(5)
+- expression 3 operands: lhs = Counter(3), rhs = Expression(21, Add)
+- expression 4 operands: lhs = Counter(4), rhs = Counter(5)
+- expression 5 operands: lhs = Counter(3), rhs = Expression(21, Add)
+- expression 6 operands: lhs = Counter(4), rhs = Counter(5)
+- expression 7 operands: lhs = Counter(3), rhs = Expression(19, Add)
+- expression 8 operands: lhs = Expression(20, Add), rhs = Counter(7)
+- expression 9 operands: lhs = Expression(21, Add), rhs = Counter(6)
+- expression 10 operands: lhs = Counter(4), rhs = Counter(5)
+- expression 11 operands: lhs = Counter(3), rhs = Expression(21, Add)
+- expression 12 operands: lhs = Counter(4), rhs = Counter(5)
+- expression 13 operands: lhs = Counter(3), rhs = Expression(21, Add)
+- expression 14 operands: lhs = Counter(4), rhs = Counter(5)
+- expression 15 operands: lhs = Counter(3), rhs = Expression(20, Add)
+- expression 16 operands: lhs = Expression(21, Add), rhs = Counter(6)
+- expression 17 operands: lhs = Counter(4), rhs = Counter(5)
+- expression 18 operands: lhs = Counter(3), rhs = Expression(19, Add)
+- expression 19 operands: lhs = Expression(20, Add), rhs = Counter(7)
+- expression 20 operands: lhs = Expression(21, Add), rhs = Counter(6)
+- expression 21 operands: lhs = Counter(4), rhs = Counter(5)
+- expression 22 operands: lhs = Counter(16), rhs = Expression(26, Add)
+- expression 23 operands: lhs = Counter(8), rhs = Counter(9)
+- expression 24 operands: lhs = Counter(16), rhs = Counter(8)
+- expression 25 operands: lhs = Counter(16), rhs = Expression(26, Add)
+- expression 26 operands: lhs = Counter(8), rhs = Counter(9)
+- expression 27 operands: lhs = Counter(2), rhs = Expression(35, Add)
+- expression 28 operands: lhs = Expression(36, Add), rhs = Counter(11)
+- expression 29 operands: lhs = Counter(3), rhs = Counter(10)
+- expression 30 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 31 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 32 operands: lhs = Counter(2), rhs = Expression(36, Add)
+- expression 33 operands: lhs = Counter(3), rhs = Counter(10)
+- expression 34 operands: lhs = Counter(2), rhs = Expression(35, Add)
+- expression 35 operands: lhs = Expression(36, Add), rhs = Counter(11)
+- expression 36 operands: lhs = Counter(3), rhs = Counter(10)
+- expression 37 operands: lhs = Counter(17), rhs = Expression(41, Add)
+- expression 38 operands: lhs = Counter(12), rhs = Counter(13)
+- expression 39 operands: lhs = Counter(17), rhs = Counter(12)
+- expression 40 operands: lhs = Counter(17), rhs = Expression(41, Add)
+- expression 41 operands: lhs = Counter(12), rhs = Counter(13)
+- expression 42 operands: lhs = Counter(18), rhs = Expression(46, Add)
+- expression 43 operands: lhs = Counter(14), rhs = Counter(15)
+- expression 44 operands: lhs = Counter(18), rhs = Counter(14)
+- expression 45 operands: lhs = Counter(18), rhs = Expression(46, Add)
+- expression 46 operands: lhs = Counter(14), rhs = Counter(15)
+- expression 47 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 48 operands: lhs = Expression(49, Add), rhs = Counter(2)
+- expression 49 operands: lhs = Expression(50, Add), rhs = Counter(15)
+- expression 50 operands: lhs = Expression(51, Add), rhs = Counter(14)
+- expression 51 operands: lhs = Expression(52, Add), rhs = Counter(13)
+- expression 52 operands: lhs = Expression(53, Add), rhs = Counter(12)
+- expression 53 operands: lhs = Expression(54, Add), rhs = Counter(11)
+- expression 54 operands: lhs = Expression(55, Add), rhs = Counter(10)
+- expression 55 operands: lhs = Expression(56, Add), rhs = Counter(9)
+- expression 56 operands: lhs = Expression(57, Add), rhs = Counter(8)
+- expression 57 operands: lhs = Expression(58, Add), rhs = Counter(7)
+- expression 58 operands: lhs = Expression(59, Add), rhs = Counter(6)
+- expression 59 operands: lhs = Expression(60, Add), rhs = Counter(5)
+- expression 60 operands: lhs = Counter(1), rhs = Counter(4)
+Number of file 0 mappings: 57
+- Code(Counter(0)) at (prev + 61, 1) to (start + 0, 29)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 0, 18) to (start + 0, 26)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 1, 18)
+- Code(Counter(0)) at (prev + 1, 21) to (start + 0, 23)
+- Code(Counter(1)) at (prev + 5, 9) to (start + 0, 14)
+- Code(Counter(2)) at (prev + 2, 9) to (start + 1, 17)
+- Code(Counter(2)) at (prev + 4, 13) to (start + 0, 26)
+- Code(Counter(3)) at (prev + 2, 13) to (start + 0, 19)
+- Code(Counter(3)) at (prev + 0, 20) to (start + 0, 31)
+- Code(Counter(4)) at (prev + 0, 47) to (start + 0, 48)
+- Code(Expression(0, Sub)) at (prev + 0, 49) to (start + 0, 53)
+    = (c3 - c4)
+- Code(Expression(0, Sub)) at (prev + 0, 69) to (start + 0, 79)
+    = (c3 - c4)
+- Code(Expression(0, Sub)) at (prev + 0, 80) to (start + 0, 98)
+    = (c3 - c4)
+- Code(Expression(0, Sub)) at (prev + 1, 13) to (start + 0, 19)
+    = (c3 - c4)
+- Code(Expression(0, Sub)) at (prev + 2, 17) to (start + 0, 28)
+    = (c3 - c4)
+- Code(Counter(5)) at (prev + 1, 17) to (start + 0, 18)
+- Code(Expression(13, Sub)) at (prev + 2, 17) to (start + 0, 21)
+    = (c3 - (c4 + c5))
+- Code(Expression(13, Sub)) at (prev + 2, 17) to (start + 0, 27)
+    = (c3 - (c4 + c5))
+- Code(Expression(13, Sub)) at (prev + 1, 21) to (start + 0, 39)
+    = (c3 - (c4 + c5))
+- Code(Expression(18, Sub)) at (prev + 2, 17) to (start + 0, 20)
+    = (c3 - (((c4 + c5) + c6) + c7))
+- Code(Expression(13, Sub)) at (prev + 0, 23) to (start + 0, 29)
+    = (c3 - (c4 + c5))
+- Code(Expression(13, Sub)) at (prev + 0, 30) to (start + 0, 41)
+    = (c3 - (c4 + c5))
+- Code(Counter(6)) at (prev + 0, 65) to (start + 0, 66)
+- Code(Expression(15, Sub)) at (prev + 0, 67) to (start + 0, 71)
+    = (c3 - ((c4 + c5) + c6))
+- Code(Counter(7)) at (prev + 0, 95) to (start + 0, 96)
+- Code(Expression(18, Sub)) at (prev + 1, 13) to (start + 0, 23)
+    = (c3 - (((c4 + c5) + c6) + c7))
+- Code(Expression(25, Sub)) at (prev + 1, 17) to (start + 0, 20)
+    = (c16 - (c8 + c9))
+- Code(Counter(16)) at (prev + 0, 23) to (start + 0, 29)
+- Code(Counter(16)) at (prev + 0, 30) to (start + 0, 41)
+- Code(Counter(8)) at (prev + 0, 65) to (start + 0, 66)
+- Code(Expression(24, Sub)) at (prev + 0, 67) to (start + 0, 71)
+    = (c16 - c8)
+- Code(Counter(9)) at (prev + 0, 96) to (start + 0, 97)
+- Code(Expression(25, Sub)) at (prev + 1, 13) to (start + 0, 23)
+    = (c16 - (c8 + c9))
+- Code(Expression(34, Sub)) at (prev + 4, 17) to (start + 0, 20)
+    = (c2 - ((c3 + c10) + c11))
+- Code(Expression(31, Sub)) at (prev + 0, 23) to (start + 0, 29)
+    = (c2 - c3)
+- Code(Expression(31, Sub)) at (prev + 0, 30) to (start + 0, 41)
+    = (c2 - c3)
+- Code(Counter(10)) at (prev + 0, 66) to (start + 0, 67)
+- Code(Expression(32, Sub)) at (prev + 0, 68) to (start + 0, 72)
+    = (c2 - (c3 + c10))
+- Code(Counter(11)) at (prev + 0, 97) to (start + 0, 98)
+- Code(Expression(34, Sub)) at (prev + 1, 13) to (start + 0, 23)
+    = (c2 - ((c3 + c10) + c11))
+- Code(Expression(40, Sub)) at (prev + 1, 17) to (start + 0, 20)
+    = (c17 - (c12 + c13))
+- Code(Counter(17)) at (prev + 0, 23) to (start + 0, 29)
+- Code(Counter(17)) at (prev + 1, 18) to (start + 0, 29)
+- Code(Counter(12)) at (prev + 0, 54) to (start + 0, 55)
+- Code(Expression(39, Sub)) at (prev + 1, 18) to (start + 0, 22)
+    = (c17 - c12)
+- Code(Counter(13)) at (prev + 0, 47) to (start + 0, 48)
+- Code(Expression(40, Sub)) at (prev + 1, 13) to (start + 0, 23)
+    = (c17 - (c12 + c13))
+- Code(Expression(45, Sub)) at (prev + 1, 17) to (start + 0, 20)
+    = (c18 - (c14 + c15))
+- Code(Counter(18)) at (prev + 0, 23) to (start + 0, 29)
+- Code(Counter(18)) at (prev + 1, 18) to (start + 0, 29)
+- Code(Counter(14)) at (prev + 1, 17) to (start + 0, 18)
+- Code(Expression(44, Sub)) at (prev + 1, 18) to (start + 0, 22)
+    = (c18 - c14)
+- Code(Counter(15)) at (prev + 1, 17) to (start + 0, 18)
+- Code(Expression(45, Sub)) at (prev + 2, 13) to (start + 0, 23)
+    = (c18 - (c14 + c15))
+- Code(Expression(47, Sub)) at (prev + 3, 5) to (start + 0, 11)
+    = (c1 - c2)
+- Code(Expression(48, Sub)) at (prev + 1, 1) to (start + 0, 2)
+    = (((((((((((((c1 + c4) + c5) + c6) + c7) + c8) + c9) + c10) + c11) + c12) + c13) + c14) + c15) - c2)
+Highest counter ID seen: c18
+

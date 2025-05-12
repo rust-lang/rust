@@ -1,0 +1,10 @@
+error: invalid infostring for frontmatter
+  --> $DIR/dot-in-infostring-leading.rs:1:4
+   |
+LL | ---.toml
+   |    ^^^^^
+   |
+   = note: frontmatter infostrings must be a single identifier immediately following the opening
+
+error: aborting due to 1 previous error
+

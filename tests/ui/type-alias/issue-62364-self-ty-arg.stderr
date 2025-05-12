@@ -1,0 +1,11 @@
+error[E0411]: cannot find type `Self` in this scope
+  --> $DIR/issue-62364-self-ty-arg.rs:5:29
+   |
+LL | type Alias<'a> = Struct<&'a Self>;
+   |      -----                  ^^^^ `Self` is only available in impls, traits, and type definitions
+   |      |
+   |      `Self` not allowed in a type alias
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0411`.

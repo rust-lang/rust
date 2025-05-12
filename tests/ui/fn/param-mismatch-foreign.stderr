@@ -1,0 +1,19 @@
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+  --> $DIR/param-mismatch-foreign.rs:7:5
+   |
+LL |     foo(1i32, 2i32);
+   |     ^^^       ---- argument #2 of type `u32` is missing
+   |
+note: function defined here
+  --> $DIR/param-mismatch-foreign.rs:2:8
+   |
+LL |     fn foo(x: i32, y: u32, z: i32);
+   |        ^^^         -
+help: provide the argument
+   |
+LL |     foo(1i32, /* u32 */, 2i32);
+   |               ++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.

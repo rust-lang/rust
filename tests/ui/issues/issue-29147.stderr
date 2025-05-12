@@ -1,0 +1,17 @@
+error[E0283]: type annotations needed
+  --> $DIR/issue-29147.rs:22:14
+   |
+LL |     let _ = <S5<_>>::xxx;
+   |              ^^^^^ cannot infer type for struct `S5<_>`
+   |
+note: multiple `impl`s satisfying `S5<_>: Foo` found
+  --> $DIR/issue-29147.rs:18:1
+   |
+LL | impl Foo for S5<u32> { fn xxx(&self) {} }
+   | ^^^^^^^^^^^^^^^^^^^^
+LL | impl Foo for S5<u64> { fn xxx(&self) {} }
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

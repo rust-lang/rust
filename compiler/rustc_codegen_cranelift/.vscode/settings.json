@@ -1,0 +1,47 @@
+{
+    "editor.formatOnSave": true,
+    // in case rustc.source is disabled for performance reasons; disable the errors about this
+    "rust-analyzer.diagnostics.disabled": [
+        "unresolved-extern-crate",
+        "unresolved-macro-call"
+    ],
+    "rust-analyzer.rustc.source": "discover",
+    "rust-analyzer.imports.granularity.enforce": true,
+    "rust-analyzer.imports.granularity.group": "module",
+    "rust-analyzer.imports.prefix": "crate",
+    "rust-analyzer.cargo.features": [
+        "unstable-features"
+    ],
+    "rust-analyzer.linkedProjects": [
+        "./Cargo.toml",
+        "./build_system/Cargo.toml",
+        {
+            "sysroot_src": "./build/stdlib/library",
+            "crates": [
+                {
+                    "root_module": "./example/mini_core.rs",
+                    "edition": "2015",
+                    "deps": [],
+                    "cfg": [],
+                },
+                {
+                    "root_module": "./example/mini_core_hello_world.rs",
+                    "edition": "2015",
+                    "deps": [
+                        {
+                            "crate": 0,
+                            "name": "mini_core"
+                        }
+                    ],
+                    "cfg": [],
+                },
+                {
+                    "root_module": "./example/std_example.rs",
+                    "edition": "2015",
+                    "deps": [],
+                    "cfg": [],
+                },
+            ]
+        }
+    ]
+}

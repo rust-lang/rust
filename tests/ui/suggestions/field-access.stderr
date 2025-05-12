@@ -1,0 +1,68 @@
+error[E0308]: mismatched types
+  --> $DIR/field-access.rs:20:12
+   |
+LL |     Fst,
+   |     --- unit variant defined here
+...
+LL |     if let B::Fst = a {};
+   |            ^^^^^^   - this expression has type `A`
+   |            |
+   |            expected `A`, found `B`
+   |
+help: you might have meant to use field `b` whose type is `B`
+   |
+LL |     if let B::Fst = a.b {};
+   |                      ++
+
+error[E0308]: mismatched types
+  --> $DIR/field-access.rs:25:9
+   |
+LL |     Fst,
+   |     --- unit variant defined here
+...
+LL |     match a {
+   |           - this expression has type `A`
+...
+LL |         B::Fst => (),
+   |         ^^^^^^ expected `A`, found `B`
+   |
+help: you might have meant to use field `b` whose type is `B`
+   |
+LL |     match a.b {
+   |            ++
+
+error[E0308]: mismatched types
+  --> $DIR/field-access.rs:26:9
+   |
+LL |     Snd,
+   |     --- unit variant defined here
+...
+LL |     match a {
+   |           - this expression has type `A`
+...
+LL |         B::Snd => (),
+   |         ^^^^^^ expected `A`, found `B`
+   |
+help: you might have meant to use field `b` whose type is `B`
+   |
+LL |     match a.b {
+   |            ++
+
+error[E0308]: mismatched types
+  --> $DIR/field-access.rs:32:9
+   |
+LL |     match foo {
+   |           --- this expression has type `Foo`
+LL |
+LL |         1u32 => (),
+   |         ^^^^ expected `Foo`, found `u32`
+   |
+help: you might have meant to use field `bar` whose type is `u32`
+   |
+LL -     match foo {
+LL +     match unsafe { foo.bar } {
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,114 @@
+error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
+  --> $DIR/trait-path-type-error-once-implemented.rs:6:29
+   |
+LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+   |                             ^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/trait-path-type-error-once-implemented.rs:2:10
+   |
+LL |     type Y<'a>;
+   |          ^ --
+help: add missing lifetime argument
+   |
+LL |   fn f2<'a>(arg : Box<dyn X<Y<'_, 1> = &'a ()>>) {}
+   |                               +++
+
+error[E0107]: associated type takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/trait-path-type-error-once-implemented.rs:6:29
+   |
+LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+   |                             ^--- help: remove the unnecessary generics
+   |                             |
+   |                             expected 0 generic arguments
+   |
+note: associated type defined here, with 0 generic parameters
+  --> $DIR/trait-path-type-error-once-implemented.rs:2:10
+   |
+LL |     type Y<'a>;
+   |          ^
+
+error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
+  --> $DIR/trait-path-type-error-once-implemented.rs:6:29
+   |
+LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+   |                             ^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/trait-path-type-error-once-implemented.rs:2:10
+   |
+LL |     type Y<'a>;
+   |          ^ --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing lifetime argument
+   |
+LL |   fn f2<'a>(arg : Box<dyn X<Y<'_, 1> = &'a ()>>) {}
+   |                               +++
+
+error[E0107]: associated type takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/trait-path-type-error-once-implemented.rs:6:29
+   |
+LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+   |                             ^--- help: remove the unnecessary generics
+   |                             |
+   |                             expected 0 generic arguments
+   |
+note: associated type defined here, with 0 generic parameters
+  --> $DIR/trait-path-type-error-once-implemented.rs:2:10
+   |
+LL |     type Y<'a>;
+   |          ^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
+  --> $DIR/trait-path-type-error-once-implemented.rs:6:29
+   |
+LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+   |                             ^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/trait-path-type-error-once-implemented.rs:2:10
+   |
+LL |     type Y<'a>;
+   |          ^ --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing lifetime argument
+   |
+LL |   fn f2<'a>(arg : Box<dyn X<Y<'_, 1> = &'a ()>>) {}
+   |                               +++
+
+error[E0107]: associated type takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/trait-path-type-error-once-implemented.rs:6:29
+   |
+LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+   |                             ^--- help: remove the unnecessary generics
+   |                             |
+   |                             expected 0 generic arguments
+   |
+note: associated type defined here, with 0 generic parameters
+  --> $DIR/trait-path-type-error-once-implemented.rs:2:10
+   |
+LL |     type Y<'a>;
+   |          ^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0038]: the trait `X` is not dyn compatible
+  --> $DIR/trait-path-type-error-once-implemented.rs:6:23
+   |
+LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+   |                       ^^^^^^^^^^^^^^^^^^^^ `X` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/trait-path-type-error-once-implemented.rs:2:10
+   |
+LL | trait X {
+   |       - this trait is not dyn compatible...
+LL |     type Y<'a>;
+   |          ^ ...because it contains the generic associated type `Y`
+   = help: consider moving `Y` to another trait
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0038, E0107.
+For more information about an error, try `rustc --explain E0038`.

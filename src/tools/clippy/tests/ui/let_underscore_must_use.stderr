@@ -1,0 +1,100 @@
+error: non-binding `let` on a result of a `#[must_use]` function
+  --> tests/ui/let_underscore_must_use.rs:67:5
+   |
+LL |     let _ = f();
+   |     ^^^^^^^^^^^^
+   |
+   = help: consider explicitly using function result
+   = note: `-D clippy::let-underscore-must-use` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::let_underscore_must_use)]`
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> tests/ui/let_underscore_must_use.rs:70:5
+   |
+LL |     let _ = g();
+   |     ^^^^^^^^^^^^
+   |
+   = help: consider explicitly using expression value
+
+error: non-binding `let` on a result of a `#[must_use]` function
+  --> tests/ui/let_underscore_must_use.rs:74:5
+   |
+LL |     let _ = l(0_u32);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider explicitly using function result
+
+error: non-binding `let` on a result of a `#[must_use]` function
+  --> tests/ui/let_underscore_must_use.rs:79:5
+   |
+LL |     let _ = s.f();
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: consider explicitly using function result
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> tests/ui/let_underscore_must_use.rs:82:5
+   |
+LL |     let _ = s.g();
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: consider explicitly using expression value
+
+error: non-binding `let` on a result of a `#[must_use]` function
+  --> tests/ui/let_underscore_must_use.rs:87:5
+   |
+LL |     let _ = S::h();
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: consider explicitly using function result
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> tests/ui/let_underscore_must_use.rs:90:5
+   |
+LL |     let _ = S::p();
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: consider explicitly using expression value
+
+error: non-binding `let` on a result of a `#[must_use]` function
+  --> tests/ui/let_underscore_must_use.rs:93:5
+   |
+LL |     let _ = S::a();
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: consider explicitly using function result
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> tests/ui/let_underscore_must_use.rs:96:5
+   |
+LL |     let _ = if true { Ok(()) } else { Err(()) };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider explicitly using expression value
+
+error: non-binding `let` on a result of a `#[must_use]` function
+  --> tests/ui/let_underscore_must_use.rs:101:5
+   |
+LL |     let _ = a.is_ok();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider explicitly using function result
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> tests/ui/let_underscore_must_use.rs:104:5
+   |
+LL |     let _ = a.map(|_| ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider explicitly using expression value
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> tests/ui/let_underscore_must_use.rs:107:5
+   |
+LL |     let _ = a;
+   |     ^^^^^^^^^^
+   |
+   = help: consider explicitly using expression value
+
+error: aborting due to 12 previous errors
+

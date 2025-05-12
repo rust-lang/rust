@@ -1,0 +1,4 @@
+error[E0765]: unterminated double quote string
+  |
+  = note: this error occurred on the command line: `--cfg=a"`
+

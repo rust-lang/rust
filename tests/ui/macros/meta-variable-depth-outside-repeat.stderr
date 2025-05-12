@@ -1,0 +1,8 @@
+error: meta-variable expression `len` with depth parameter must be called inside of a macro repetition
+  --> $DIR/meta-variable-depth-outside-repeat.rs:5:10
+   |
+LL |         ${len(0)}
+   |          ^^^^^^^^
+
+error: aborting due to 1 previous error
+

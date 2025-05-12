@@ -1,0 +1,65 @@
+error[E0618]: expected function, found struct `Empty2`
+  --> $DIR/empty-struct-unit-expr.rs:15:14
+   |
+LL | struct Empty2;
+   | ------------- struct `Empty2` defined here
+...
+LL |     let e2 = Empty2();
+   |              ^^^^^^--
+   |              |
+   |              call expression requires function
+   |
+help: `Empty2` is a unit struct, and does not take parentheses to be constructed
+   |
+LL -     let e2 = Empty2();
+LL +     let e2 = Empty2;
+   |
+
+error[E0618]: expected function, found enum variant `E::Empty4`
+  --> $DIR/empty-struct-unit-expr.rs:16:14
+   |
+LL |     Empty4
+   |     ------ enum variant `E::Empty4` defined here
+...
+LL |     let e4 = E::Empty4();
+   |              ^^^^^^^^^--
+   |              |
+   |              call expression requires function
+   |
+help: `E::Empty4` is a unit enum variant, and does not take parentheses to be constructed
+   |
+LL -     let e4 = E::Empty4();
+LL +     let e4 = E::Empty4;
+   |
+
+error[E0618]: expected function, found struct `XEmpty2`
+  --> $DIR/empty-struct-unit-expr.rs:18:15
+   |
+LL |     let xe2 = XEmpty2();
+   |               ^^^^^^^--
+   |               |
+   |               call expression requires function
+   |
+help: `XEmpty2` is a unit struct, and does not take parentheses to be constructed
+   |
+LL -     let xe2 = XEmpty2();
+LL +     let xe2 = XEmpty2;
+   |
+
+error[E0618]: expected function, found enum variant `XE::XEmpty4`
+  --> $DIR/empty-struct-unit-expr.rs:19:15
+   |
+LL |     let xe4 = XE::XEmpty4();
+   |               ^^^^^^^^^^^--
+   |               |
+   |               call expression requires function
+   |
+help: `XE::XEmpty4` is a unit enum variant, and does not take parentheses to be constructed
+   |
+LL -     let xe4 = XE::XEmpty4();
+LL +     let xe4 = XE::XEmpty4;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0618`.

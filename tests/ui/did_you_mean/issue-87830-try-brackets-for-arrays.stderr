@@ -1,0 +1,50 @@
+error: this is a block expression, not an array
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:3:22
+   |
+LL |   const FOO: [u8; 3] = {
+   |  ______________________^
+LL | |
+LL | |     1, 2, 3
+LL | | };
+   | |_^
+   |
+help: to make an array, use square brackets instead of curly braces
+   |
+LL ~ const FOO: [u8; 3] = [
+LL |
+LL |     1, 2, 3
+LL ~ ];
+   |
+
+error: this is a block expression, not an array
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:8:24
+   |
+LL | const BAR: [&str; 3] = {"one", "two", "three"};
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: to make an array, use square brackets instead of curly braces
+   |
+LL - const BAR: [&str; 3] = {"one", "two", "three"};
+LL + const BAR: [&str; 3] = ["one", "two", "three"];
+   |
+
+error: this is a block expression, not an array
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:12:5
+   |
+LL |     {1, 2, 3};
+   |     ^^^^^^^^^
+   |
+help: to make an array, use square brackets instead of curly braces
+   |
+LL -     {1, 2, 3};
+LL +     [1, 2, 3];
+   |
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:17:6
+   |
+LL |     1, 2, 3
+   |      ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: aborting due to 4 previous errors
+

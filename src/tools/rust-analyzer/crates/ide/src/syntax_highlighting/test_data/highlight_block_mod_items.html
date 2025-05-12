@@ -1,0 +1,60 @@
+
+<style>
+body                { margin: 0; }
+pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padding: 0.4em; }
+
+.lifetime           { color: #DFAF8F; font-style: italic; }
+.label              { color: #DFAF8F; font-style: italic; }
+.comment            { color: #7F9F7F; }
+.documentation      { color: #629755; }
+.intra_doc_link     { font-style: italic; }
+.injected           { opacity: 0.65 ; }
+.struct, .enum      { color: #7CB8BB; }
+.enum_variant       { color: #BDE0F3; }
+.string_literal     { color: #CC9393; }
+.field              { color: #94BFF3; }
+.function           { color: #93E0E3; }
+.parameter          { color: #94BFF3; }
+.text               { color: #DCDCCC; }
+.type               { color: #7CB8BB; }
+.builtin_type       { color: #8CD0D3; }
+.type_param         { color: #DFAF8F; }
+.attribute          { color: #94BFF3; }
+.numeric_literal    { color: #BFEBBF; }
+.bool_literal       { color: #BFE6EB; }
+.macro              { color: #94BFF3; }
+.proc_macro         { color: #94BFF3; text-decoration: underline; }
+.derive             { color: #94BFF3; font-style: italic; }
+.module             { color: #AFD8AF; }
+.value_param        { color: #DCDCCC; }
+.variable           { color: #DCDCCC; }
+.format_specifier   { color: #CC696B; }
+.mutable            { text-decoration: underline; }
+.escape_sequence    { color: #94BFF3; }
+.keyword            { color: #F0DFAF; font-weight: bold; }
+.control            { font-style: italic; }
+.reference          { font-style: italic; font-weight: bold; }
+.const              { font-weight: bolder; }
+.unsafe             { color: #BC8383; }
+
+.invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
+.unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
+</style>
+<pre><code><span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration public">foo</span> <span class="brace">{</span>
+    <span class="parenthesis">(</span><span class="punctuation">$</span>foo<span class="colon">:</span>ident<span class="parenthesis">)</span> <span class="operator">=</span><span class="operator">&gt;</span> <span class="brace">{</span>
+        <span class="keyword">mod</span> y <span class="brace">{</span>
+            <span class="keyword">pub</span> <span class="keyword">struct</span> <span class="punctuation">$</span>foo<span class="semicolon">;</span>
+        <span class="brace">}</span>
+    <span class="brace">}</span><span class="semicolon">;</span>
+<span class="brace">}</span>
+<span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="macro public">foo</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="struct declaration macro public">Foo</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="keyword">mod</span> <span class="module declaration">module</span> <span class="brace">{</span>
+        <span class="macro public">foo</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="struct declaration macro public">Bar</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+        <span class="keyword">fn</span> <span class="function declaration">func</span><span class="parenthesis">(</span><span class="punctuation">_</span><span class="colon">:</span> <span class="module">y</span><span class="operator">::</span><span class="struct public">Bar</span><span class="parenthesis">)</span> <span class="brace">{</span>
+            <span class="keyword">mod</span> <span class="module declaration">inner</span> <span class="brace">{</span>
+                <span class="keyword">struct</span> <span class="struct declaration">Innerest</span><span class="angle">&lt;</span><span class="keyword const">const</span> <span class="const_param const declaration">C</span><span class="colon">:</span> <span class="unresolved_reference">usize</span><span class="angle">&gt;</span> <span class="brace">{</span> <span class="field declaration">field</span><span class="colon">:</span> <span class="bracket">[</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span> <span class="brace">{</span><span class="const_param const">C</span><span class="brace">}</span><span class="bracket">]</span> <span class="brace">}</span>
+            <span class="brace">}</span>
+        <span class="brace">}</span>
+    <span class="brace">}</span>
+<span class="brace">}</span></code></pre>

@@ -1,0 +1,41 @@
+error[E0277]: the trait bound `U1: Copy` is not satisfied
+  --> $DIR/union-derive-clone.rs:3:10
+   |
+LL | #[derive(Clone)]
+   |          ^^^^^ the trait `Copy` is not implemented for `U1`
+   |
+note: required by a bound in `AssertParamIsCopy`
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
+help: consider annotating `U1` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | union U1 {
+   |
+
+error[E0599]: the method `clone` exists for union `U5<CloneNoCopy>`, but its trait bounds were not satisfied
+  --> $DIR/union-derive-clone.rs:35:15
+   |
+LL | union U5<T> {
+   | ----------- method `clone` not found for this union because it doesn't satisfy `U5<CloneNoCopy>: Clone`
+...
+LL | struct CloneNoCopy;
+   | ------------------ doesn't satisfy `CloneNoCopy: Copy`
+...
+LL |     let w = u.clone();
+   |               ^^^^^ method cannot be called on `U5<CloneNoCopy>` due to unsatisfied trait bounds
+   |
+note: trait bound `CloneNoCopy: Copy` was not satisfied
+  --> $DIR/union-derive-clone.rs:25:10
+   |
+LL | #[derive(Clone, Copy)]
+   |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+help: consider annotating `CloneNoCopy` with `#[derive(Clone, Copy)]`
+   |
+LL + #[derive(Clone, Copy)]
+LL | struct CloneNoCopy;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

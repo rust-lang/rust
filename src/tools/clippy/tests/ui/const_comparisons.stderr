@@ -1,0 +1,230 @@
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:45:5
+   |
+LL |     status_code <= 400 && status_code > 500;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `400` < `500`, the expression evaluates to false for any value of `status_code`
+   = note: `-D clippy::impossible-comparisons` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::impossible_comparisons)]`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:48:5
+   |
+LL |     status_code > 500 && status_code < 400;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `500` > `400`, the expression evaluates to false for any value of `status_code`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:51:5
+   |
+LL |     status_code < 500 && status_code > 500;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `status_code` cannot simultaneously be greater than and less than `500`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:55:5
+   |
+LL |     status_code < { 400 } && status_code > { 500 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `{ 400 }` < `{ 500 }`, the expression evaluates to false for any value of `status_code`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:58:5
+   |
+LL |     status_code < STATUS_BAD_REQUEST && status_code > STATUS_SERVER_ERROR;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `STATUS_BAD_REQUEST` < `STATUS_SERVER_ERROR`, the expression evaluates to false for any value of `status_code`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:61:5
+   |
+LL |     status_code <= u16::MIN + 1 && status_code > STATUS_SERVER_ERROR;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `u16::MIN + 1` < `STATUS_SERVER_ERROR`, the expression evaluates to false for any value of `status_code`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:64:5
+   |
+LL |     status_code < STATUS_SERVER_ERROR && status_code > STATUS_SERVER_ERROR;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `status_code` cannot simultaneously be greater than and less than `STATUS_SERVER_ERROR`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:68:5
+   |
+LL |     status < { 400 } && status > { 500 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `{ 400 }` < `{ 500 }`, the expression evaluates to false for any value of `status`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:71:5
+   |
+LL |     status < STATUS_BAD_REQUEST && status > STATUS_SERVER_ERROR;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `STATUS_BAD_REQUEST` < `STATUS_SERVER_ERROR`, the expression evaluates to false for any value of `status`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:74:5
+   |
+LL |     status <= u16::MIN + 1 && status > STATUS_SERVER_ERROR;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `u16::MIN + 1` < `STATUS_SERVER_ERROR`, the expression evaluates to false for any value of `status`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:77:5
+   |
+LL |     status < STATUS_SERVER_ERROR && status > STATUS_SERVER_ERROR;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `status` cannot simultaneously be greater than and less than `STATUS_SERVER_ERROR`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:86:5
+   |
+LL |     500 >= status_code && 600 < status_code;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `500` < `600`, the expression evaluates to false for any value of `status_code`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:90:5
+   |
+LL |     500 >= status_code && status_code > 600;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `500` < `600`, the expression evaluates to false for any value of `status_code`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:99:5
+   |
+LL |     500 >= status && 600 < status;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `500` < `600`, the expression evaluates to false for any value of `status`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:103:5
+   |
+LL |     500 >= status && status > 600;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `500` < `600`, the expression evaluates to false for any value of `status`
+
+error: right-hand side of `&&` operator has no effect
+  --> tests/ui/const_comparisons.rs:107:5
+   |
+LL |     status_code < 200 && status_code <= 299;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `if `status_code < 200` evaluates to true, status_code <= 299` will always evaluate to true as well
+  --> tests/ui/const_comparisons.rs:107:23
+   |
+LL |     status_code < 200 && status_code <= 299;
+   |                       ^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::redundant-comparisons` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_comparisons)]`
+
+error: left-hand side of `&&` operator has no effect
+  --> tests/ui/const_comparisons.rs:110:5
+   |
+LL |     status_code > 200 && status_code >= 299;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `if `status_code >= 299` evaluates to true, status_code > 200` will always evaluate to true as well
+  --> tests/ui/const_comparisons.rs:110:5
+   |
+LL |     status_code > 200 && status_code >= 299;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: left-hand side of `&&` operator has no effect
+  --> tests/ui/const_comparisons.rs:114:5
+   |
+LL |     status_code >= 500 && status_code > 500;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `if `status_code > 500` evaluates to true, status_code >= 500` will always evaluate to true as well
+  --> tests/ui/const_comparisons.rs:114:5
+   |
+LL |     status_code >= 500 && status_code > 500;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: right-hand side of `&&` operator has no effect
+  --> tests/ui/const_comparisons.rs:118:5
+   |
+LL |     status_code > 500 && status_code >= 500;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `if `status_code > 500` evaluates to true, status_code >= 500` will always evaluate to true as well
+  --> tests/ui/const_comparisons.rs:118:23
+   |
+LL |     status_code > 500 && status_code >= 500;
+   |                       ^^^^^^^^^^^^^^^^^^^^^
+
+error: left-hand side of `&&` operator has no effect
+  --> tests/ui/const_comparisons.rs:122:5
+   |
+LL |     status_code <= 500 && status_code < 500;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `if `status_code < 500` evaluates to true, status_code <= 500` will always evaluate to true as well
+  --> tests/ui/const_comparisons.rs:122:5
+   |
+LL |     status_code <= 500 && status_code < 500;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: right-hand side of `&&` operator has no effect
+  --> tests/ui/const_comparisons.rs:126:5
+   |
+LL |     status_code < 500 && status_code <= 500;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `if `status_code < 500` evaluates to true, status_code <= 500` will always evaluate to true as well
+  --> tests/ui/const_comparisons.rs:126:23
+   |
+LL |     status_code < 500 && status_code <= 500;
+   |                       ^^^^^^^^^^^^^^^^^^^^^
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:131:5
+   |
+LL |     name < "Jennifer" && name > "Shannon";
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `"Jennifer"` < `"Shannon"`, the expression evaluates to false for any value of `name`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:135:5
+   |
+LL |     numbers < [3, 4] && numbers > [5, 6];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `[3, 4]` < `[5, 6]`, the expression evaluates to false for any value of `numbers`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:139:5
+   |
+LL |     letter < 'b' && letter > 'c';
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `'b'` < `'c'`, the expression evaluates to false for any value of `letter`
+
+error: boolean expression will never evaluate to 'true'
+  --> tests/ui/const_comparisons.rs:143:5
+   |
+LL |     area < std::f32::consts::E && area > std::f32::consts::PI;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `std::f32::consts::E` < `std::f32::consts::PI`, the expression evaluates to false for any value of `area`
+
+error: aborting due to 25 previous errors
+

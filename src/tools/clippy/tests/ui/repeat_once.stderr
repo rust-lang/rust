@@ -1,0 +1,41 @@
+error: calling `repeat(1)` on slice
+  --> tests/ui/repeat_once.rs:9:13
+   |
+LL |     let a = [1; 5].repeat(1);
+   |             ^^^^^^^^^^^^^^^^ help: consider using `.to_vec()` instead: `[1; 5].to_vec()`
+   |
+   = note: `-D clippy::repeat-once` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::repeat_once)]`
+
+error: calling `repeat(1)` on slice
+  --> tests/ui/repeat_once.rs:11:13
+   |
+LL |     let b = slice.repeat(1);
+   |             ^^^^^^^^^^^^^^^ help: consider using `.to_vec()` instead: `slice.to_vec()`
+
+error: calling `repeat(1)` on str
+  --> tests/ui/repeat_once.rs:13:13
+   |
+LL |     let c = "hello".repeat(N);
+   |             ^^^^^^^^^^^^^^^^^ help: consider using `.to_string()` instead: `"hello".to_string()`
+
+error: calling `repeat(1)` on str
+  --> tests/ui/repeat_once.rs:15:13
+   |
+LL |     let d = "hi".repeat(1);
+   |             ^^^^^^^^^^^^^^ help: consider using `.to_string()` instead: `"hi".to_string()`
+
+error: calling `repeat(1)` on str
+  --> tests/ui/repeat_once.rs:17:13
+   |
+LL |     let e = s.repeat(1);
+   |             ^^^^^^^^^^^ help: consider using `.to_string()` instead: `s.to_string()`
+
+error: calling `repeat(1)` on a string literal
+  --> tests/ui/repeat_once.rs:19:13
+   |
+LL |     let f = string.repeat(1);
+   |             ^^^^^^^^^^^^^^^^ help: consider using `.clone()` instead: `string.clone()`
+
+error: aborting due to 6 previous errors
+

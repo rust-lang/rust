@@ -1,0 +1,107 @@
+[package]
+name = "rust-analyzer"
+version = "0.0.0"
+homepage = "https://rust-analyzer.github.io/"
+repository.workspace = true
+description = "A language server for the Rust programming language"
+documentation = "https://rust-analyzer.github.io/book/"
+autobins = false
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+
+[[bin]]
+name = "rust-analyzer"
+path = "src/bin/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+base64 = "0.22"
+crossbeam-channel.workspace = true
+dirs = "6.0.0"
+dissimilar.workspace = true
+ide-completion.workspace = true
+indexmap.workspace = true
+itertools.workspace = true
+scip = "0.5.2"
+lsp-types = { version = "=0.95.0", features = ["proposed"] }
+parking_lot = "0.12.3"
+xflags = "0.3.2"
+oorandom = "11.1.5"
+rayon.workspace = true
+rustc-hash.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+serde.workspace = true
+serde_derive.workspace = true
+tenthash = "1.0.0"
+num_cpus = "1.16.0"
+mimalloc = { version = "0.1.44", default-features = false, optional = true }
+lsp-server.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-tree.workspace = true
+triomphe.workspace = true
+toml = "0.8.20"
+nohash-hasher.workspace = true
+walkdir = "2.5.0"
+semver.workspace = true
+memchr = "2.7.4"
+cargo_metadata.workspace = true
+process-wrap.workspace = true
+
+cfg.workspace = true
+hir-def.workspace = true
+hir-ty.workspace = true
+hir.workspace = true
+ide-db.workspace = true
+intern.workspace = true
+# This should only be used in CLI
+ide-ssr.workspace = true
+ide.workspace = true
+load-cargo.workspace = true
+proc-macro-api.workspace = true
+profile.workspace = true
+project-model.workspace = true
+stdx.workspace = true
+syntax.workspace = true
+parser.workspace = true
+toolchain.workspace = true
+vfs-notify.workspace = true
+vfs.workspace = true
+paths.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+  "Win32_System_Diagnostics_Debug",
+  "Win32_System_Threading",
+] }
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+jemallocator = { version = "0.5.4", package = "tikv-jemallocator", optional = true }
+
+[dev-dependencies]
+expect-test = "1.5.1"
+xshell.workspace = true
+
+test-utils.workspace = true
+test-fixture.workspace = true
+syntax-bridge.workspace = true
+
+[features]
+jemalloc = ["jemallocator", "profile/jemalloc"]
+force-always-assert = ["stdx/force-always-assert"]
+in-rust-tree = [
+  "syntax/in-rust-tree",
+  "parser/in-rust-tree",
+  "hir/in-rust-tree",
+  "hir-def/in-rust-tree",
+  "hir-ty/in-rust-tree",
+  "load-cargo/in-rust-tree",
+]
+
+[lints]
+workspace = true

@@ -1,0 +1,14 @@
+error: cannot evaluate SIMD vector length `C`
+  --> $DIR/generic_const_simd_vec_len.rs:10:32
+   |
+LL | pub struct Foo<const C: usize>([u8; C]);
+   |                                ^^^^^^^
+   |
+note: SIMD vector length needs to be known statically for use in `asm!`
+  --> $DIR/generic_const_simd_vec_len.rs:16:27
+   |
+LL |         src = in(xmm_reg) a,
+   |                           ^
+
+error: aborting due to 1 previous error
+

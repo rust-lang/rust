@@ -1,0 +1,41 @@
+error: `callee` is incompatible with `#[rustc_force_inline]`
+  --> $DIR/deny-async.rs:10:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | pub fn callee() {
+   | --------------- `callee` defined here
+   |
+   = note: incompatible due to: #[rustc_no_mir_inline]
+
+error: `callee_justified` is incompatible with `#[rustc_force_inline]`
+  --> $DIR/deny-async.rs:16:1
+   |
+LL | #[rustc_force_inline = "the test requires it"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | pub fn callee_justified() {
+   | ------------------------- `callee_justified` defined here
+   |
+   = note: incompatible due to: #[rustc_no_mir_inline]
+
+error: `callee` could not be inlined into `async_caller::{closure#0}` but is required to be inlined
+  --> $DIR/deny-async.rs:22:5
+   |
+LL |     callee();
+   |     ^^^^^^^^ ...`callee` called here
+   |
+   = note: could not be inlined due to: #[rustc_no_mir_inline]
+
+error: `callee_justified` could not be inlined into `async_caller::{closure#0}` but is required to be inlined
+  --> $DIR/deny-async.rs:24:5
+   |
+LL |     callee_justified();
+   |     ^^^^^^^^^^^^^^^^^^ ...`callee_justified` called here
+   |
+   = note: could not be inlined due to: #[rustc_no_mir_inline]
+   = note: `callee_justified` is required to be inlined to: the test requires it
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,59 @@
+error: use `Option::as_slice`
+  --> tests/ui/manual_option_as_slice.rs:5:9
+   |
+LL |       _ = match x.as_ref() {
+   |  _________^
+LL | |
+LL | |         Some(f) => std::slice::from_ref(f),
+LL | |         None => &[],
+LL | |     };
+   | |_____^ help: use: `x.as_slice()`
+   |
+   = note: `-D clippy::manual-option-as-slice` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_option_as_slice)]`
+
+error: use `Option::as_slice`
+  --> tests/ui/manual_option_as_slice.rs:11:9
+   |
+LL |       _ = if let Some(f) = x.as_ref() {
+   |  _________^
+LL | |
+LL | |
+LL | |         std::slice::from_ref(f)
+LL | |     } else {
+LL | |         &[]
+LL | |     };
+   | |_____^ help: use: `x.as_slice()`
+
+error: use `Option::as_slice`
+  --> tests/ui/manual_option_as_slice.rs:19:9
+   |
+LL |     _ = x.as_ref().map_or(&[][..], std::slice::from_ref);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `x.as_slice()`
+
+error: use `Option::as_slice`
+  --> tests/ui/manual_option_as_slice.rs:22:9
+   |
+LL |     _ = x.as_ref().map_or_else(Default::default, std::slice::from_ref);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `x.as_slice()`
+
+error: use `Option::as_slice`
+  --> tests/ui/manual_option_as_slice.rs:25:9
+   |
+LL |     _ = x.as_ref().map(std::slice::from_ref).unwrap_or_default();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `x.as_slice()`
+
+error: use `Option::as_slice`
+  --> tests/ui/manual_option_as_slice.rs:28:9
+   |
+LL |     _ = x.as_ref().map_or_else(|| &[42][..0], std::slice::from_ref);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `x.as_slice()`
+
+error: use `Option::as_slice`
+  --> tests/ui/manual_option_as_slice.rs:33:13
+   |
+LL |         _ = x.as_ref().map_or_else(<&[_]>::default, from_ref);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `x.as_slice()`
+
+error: aborting due to 7 previous errors
+

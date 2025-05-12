@@ -1,0 +1,44 @@
+error: consider bringing this path into scope with the `use` keyword
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:14:13
+   |
+LL |     let _ = std::path::is_separator(' ');
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:7:9
+   |
+LL | #![deny(clippy::absolute_paths)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: consider bringing this path into scope with the `use` keyword
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:20:13
+   |
+LL |     let _ = ::std::path::MAIN_SEPARATOR;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: consider bringing this path into scope with the `use` keyword
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:25:13
+   |
+LL |     let _ = std::collections::hash_map::HashMap::<i32, i32>::new();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: consider bringing this path into scope with the `use` keyword
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:28:31
+   |
+LL |     let _: &std::path::Path = std::path::Path::new("");
+   |                               ^^^^^^^^^^^^^^^
+
+error: consider bringing this path into scope with the `use` keyword
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:28:13
+   |
+LL |     let _: &std::path::Path = std::path::Path::new("");
+   |             ^^^^^^^^^^^^^^^
+
+error: consider bringing this path into scope with the `use` keyword
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:43:13
+   |
+LL |     let _ = std::option::Option::None::<i32>;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

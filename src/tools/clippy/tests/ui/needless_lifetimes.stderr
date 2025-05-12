@@ -1,0 +1,509 @@
+error: the following explicit lifetimes could be elided: 'a, 'b
+  --> tests/ui/needless_lifetimes.rs:19:23
+   |
+LL | fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) {}
+   |                       ^^  ^^       ^^          ^^
+   |
+   = note: `-D clippy::needless-lifetimes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_lifetimes)]`
+help: elide the lifetimes
+   |
+LL - fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) {}
+LL + fn distinct_lifetimes(_x: &u8, _y: &u8, _z: u8) {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a, 'b
+  --> tests/ui/needless_lifetimes.rs:22:24
+   |
+LL | fn distinct_and_static<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: &'static u8) {}
+   |                        ^^  ^^       ^^          ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn distinct_and_static<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: &'static u8) {}
+LL + fn distinct_and_static(_x: &u8, _y: &u8, _z: &'static u8) {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:33:15
+   |
+LL | fn in_and_out<'a>(x: &'a u8, _y: u8) -> &'a u8 {
+   |               ^^      ^^                 ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn in_and_out<'a>(x: &'a u8, _y: u8) -> &'a u8 {
+LL + fn in_and_out(x: &u8, _y: u8) -> &u8 {
+   |
+
+error: the following explicit lifetimes could be elided: 'b
+  --> tests/ui/needless_lifetimes.rs:46:31
+   |
+LL | fn multiple_in_and_out_2a<'a, 'b>(x: &'a u8, _y: &'b u8) -> &'a u8 {
+   |                               ^^                  ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn multiple_in_and_out_2a<'a, 'b>(x: &'a u8, _y: &'b u8) -> &'a u8 {
+LL + fn multiple_in_and_out_2a<'a>(x: &'a u8, _y: &u8) -> &'a u8 {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:54:27
+   |
+LL | fn multiple_in_and_out_2b<'a, 'b>(_x: &'a u8, y: &'b u8) -> &'b u8 {
+   |                           ^^           ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn multiple_in_and_out_2b<'a, 'b>(_x: &'a u8, y: &'b u8) -> &'b u8 {
+LL + fn multiple_in_and_out_2b<'b>(_x: &u8, y: &'b u8) -> &'b u8 {
+   |
+
+error: the following explicit lifetimes could be elided: 'b
+  --> tests/ui/needless_lifetimes.rs:72:26
+   |
+LL | fn deep_reference_1a<'a, 'b>(x: &'a u8, _y: &'b u8) -> Result<&'a u8, ()> {
+   |                          ^^                  ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn deep_reference_1a<'a, 'b>(x: &'a u8, _y: &'b u8) -> Result<&'a u8, ()> {
+LL + fn deep_reference_1a<'a>(x: &'a u8, _y: &u8) -> Result<&'a u8, ()> {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:80:22
+   |
+LL | fn deep_reference_1b<'a, 'b>(_x: &'a u8, y: &'b u8) -> Result<&'b u8, ()> {
+   |                      ^^           ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn deep_reference_1b<'a, 'b>(_x: &'a u8, y: &'b u8) -> Result<&'b u8, ()> {
+LL + fn deep_reference_1b<'b>(_x: &u8, y: &'b u8) -> Result<&'b u8, ()> {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:90:21
+   |
+LL | fn deep_reference_3<'a>(x: &'a u8, _y: u8) -> Result<&'a u8, ()> {
+   |                     ^^      ^^                        ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn deep_reference_3<'a>(x: &'a u8, _y: u8) -> Result<&'a u8, ()> {
+LL + fn deep_reference_3(x: &u8, _y: u8) -> Result<&u8, ()> {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:96:28
+   |
+LL | fn where_clause_without_lt<'a, T>(x: &'a u8, _y: u8) -> Result<&'a u8, ()>
+   |                            ^^         ^^                        ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn where_clause_without_lt<'a, T>(x: &'a u8, _y: u8) -> Result<&'a u8, ()>
+LL + fn where_clause_without_lt<T>(x: &u8, _y: u8) -> Result<&u8, ()>
+   |
+
+error: the following explicit lifetimes could be elided: 's
+  --> tests/ui/needless_lifetimes.rs:127:21
+   |
+LL |     fn self_and_out<'s>(&'s self) -> &'s u8 {
+   |                     ^^   ^^           ^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn self_and_out<'s>(&'s self) -> &'s u8 {
+LL +     fn self_and_out(&self) -> &u8 {
+   |
+
+error: the following explicit lifetimes could be elided: 't
+  --> tests/ui/needless_lifetimes.rs:135:30
+   |
+LL |     fn self_and_in_out_1<'s, 't>(&'s self, _x: &'t u8) -> &'s u8 {
+   |                              ^^                 ^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn self_and_in_out_1<'s, 't>(&'s self, _x: &'t u8) -> &'s u8 {
+LL +     fn self_and_in_out_1<'s>(&'s self, _x: &u8) -> &'s u8 {
+   |
+
+error: the following explicit lifetimes could be elided: 's
+  --> tests/ui/needless_lifetimes.rs:143:26
+   |
+LL |     fn self_and_in_out_2<'s, 't>(&'s self, x: &'t u8) -> &'t u8 {
+   |                          ^^       ^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn self_and_in_out_2<'s, 't>(&'s self, x: &'t u8) -> &'t u8 {
+LL +     fn self_and_in_out_2<'t>(&self, x: &'t u8) -> &'t u8 {
+   |
+
+error: the following explicit lifetimes could be elided: 's, 't
+  --> tests/ui/needless_lifetimes.rs:148:29
+   |
+LL |     fn distinct_self_and_in<'s, 't>(&'s self, _x: &'t u8) {}
+   |                             ^^  ^^   ^^            ^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn distinct_self_and_in<'s, 't>(&'s self, _x: &'t u8) {}
+LL +     fn distinct_self_and_in(&self, _x: &u8) {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:172:21
+   |
+LL | fn struct_with_lt4b<'a, 'b>(_foo: &'a Foo<'b>) -> &'b str {
+   |                     ^^             ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn struct_with_lt4b<'a, 'b>(_foo: &'a Foo<'b>) -> &'b str {
+LL + fn struct_with_lt4b<'b>(_foo: &Foo<'b>) -> &'b str {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:188:22
+   |
+LL | fn trait_obj_elided2<'a>(_arg: &'a dyn Drop) -> &'a str {
+   |                      ^^         ^^               ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn trait_obj_elided2<'a>(_arg: &'a dyn Drop) -> &'a str {
+LL + fn trait_obj_elided2(_arg: &dyn Drop) -> &str {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:199:20
+   |
+LL | fn alias_with_lt4b<'a, 'b>(_foo: &'a FooAlias<'b>) -> &'b str {
+   |                    ^^             ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn alias_with_lt4b<'a, 'b>(_foo: &'a FooAlias<'b>) -> &'b str {
+LL + fn alias_with_lt4b<'b>(_foo: &FooAlias<'b>) -> &'b str {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:204:30
+   |
+LL | fn named_input_elided_output<'a>(_arg: &'a str) -> &str {
+   |                              ^^         ^^          ^
+   |
+help: elide the lifetimes
+   |
+LL - fn named_input_elided_output<'a>(_arg: &'a str) -> &str {
+LL + fn named_input_elided_output(_arg: &str) -> &str {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:213:19
+   |
+LL | fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) {
+   |                   ^^                                ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) {
+LL + fn trait_bound_ok<T: WithLifetime<'static>>(_: &u8, _: T) {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:249:24
+   |
+LL |         fn needless_lt<'a>(x: &'a u8) {}
+   |                        ^^      ^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn needless_lt<'a>(x: &'a u8) {}
+LL +         fn needless_lt(x: &u8) {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:254:24
+   |
+LL |         fn needless_lt<'a>(_x: &'a u8) {}
+   |                        ^^       ^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn needless_lt<'a>(_x: &'a u8) {}
+LL +         fn needless_lt(_x: &u8) {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:285:55
+   |
+LL |     fn impl_trait_elidable_nested_anonymous_lifetimes<'a>(i: &'a i32, f: impl Fn(&i32) -> &i32) -> &'a i32 {
+   |                                                       ^^      ^^                                    ^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn impl_trait_elidable_nested_anonymous_lifetimes<'a>(i: &'a i32, f: impl Fn(&i32) -> &i32) -> &'a i32 {
+LL +     fn impl_trait_elidable_nested_anonymous_lifetimes(i: &i32, f: impl Fn(&i32) -> &i32) -> &i32 {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:295:26
+   |
+LL |     fn generics_elidable<'a, T: Fn(&i32) -> &i32>(i: &'a i32, f: T) -> &'a i32 {
+   |                          ^^                           ^^                ^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn generics_elidable<'a, T: Fn(&i32) -> &i32>(i: &'a i32, f: T) -> &'a i32 {
+LL +     fn generics_elidable<T: Fn(&i32) -> &i32>(i: &i32, f: T) -> &i32 {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:308:30
+   |
+LL |     fn where_clause_elidable<'a, T>(i: &'a i32, f: T) -> &'a i32
+   |                              ^^         ^^                ^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn where_clause_elidable<'a, T>(i: &'a i32, f: T) -> &'a i32
+LL +     fn where_clause_elidable<T>(i: &i32, f: T) -> &i32
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:324:28
+   |
+LL |     fn pointer_fn_elidable<'a>(i: &'a i32, f: fn(&i32) -> &i32) -> &'a i32 {
+   |                            ^^      ^^                               ^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn pointer_fn_elidable<'a>(i: &'a i32, f: fn(&i32) -> &i32) -> &'a i32 {
+LL +     fn pointer_fn_elidable(i: &i32, f: fn(&i32) -> &i32) -> &i32 {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:338:28
+   |
+LL |     fn nested_fn_pointer_3<'a>(_: &'a i32) -> fn(fn(&i32) -> &i32) -> i32 {
+   |                            ^^      ^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn nested_fn_pointer_3<'a>(_: &'a i32) -> fn(fn(&i32) -> &i32) -> i32 {
+LL +     fn nested_fn_pointer_3(_: &i32) -> fn(fn(&i32) -> &i32) -> i32 {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:342:28
+   |
+LL |     fn nested_fn_pointer_4<'a>(_: &'a i32) -> impl Fn(fn(&i32)) {
+   |                            ^^      ^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn nested_fn_pointer_4<'a>(_: &'a i32) -> impl Fn(fn(&i32)) {
+LL +     fn nested_fn_pointer_4(_: &i32) -> impl Fn(fn(&i32)) {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:365:21
+   |
+LL |         fn implicit<'a>(&'a self) -> &'a () {
+   |                     ^^   ^^           ^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn implicit<'a>(&'a self) -> &'a () {
+LL +         fn implicit(&self) -> &() {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:369:25
+   |
+LL |         fn implicit_mut<'a>(&'a mut self) -> &'a () {
+   |                         ^^   ^^               ^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn implicit_mut<'a>(&'a mut self) -> &'a () {
+LL +         fn implicit_mut(&mut self) -> &() {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:374:21
+   |
+LL |         fn explicit<'a>(self: &'a Arc<Self>) -> &'a () {
+   |                     ^^         ^^                ^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn explicit<'a>(self: &'a Arc<Self>) -> &'a () {
+LL +         fn explicit(self: &Arc<Self>) -> &() {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:379:25
+   |
+LL |         fn explicit_mut<'a>(self: &'a mut Rc<Self>) -> &'a () {
+   |                         ^^         ^^                   ^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn explicit_mut<'a>(self: &'a mut Rc<Self>) -> &'a () {
+LL +         fn explicit_mut(self: &mut Rc<Self>) -> &() {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:392:31
+   |
+LL |         fn lifetime_elsewhere<'a>(self: Box<Self>, here: &'a ()) -> &'a () {
+   |                               ^^                          ^^         ^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn lifetime_elsewhere<'a>(self: Box<Self>, here: &'a ()) -> &'a () {
+LL +         fn lifetime_elsewhere(self: Box<Self>, here: &()) -> &() {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:399:21
+   |
+LL |         fn implicit<'a>(&'a self) -> &'a ();
+   |                     ^^   ^^           ^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn implicit<'a>(&'a self) -> &'a ();
+LL +         fn implicit(&self) -> &();
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:401:30
+   |
+LL |         fn implicit_provided<'a>(&'a self) -> &'a () {
+   |                              ^^   ^^           ^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn implicit_provided<'a>(&'a self) -> &'a () {
+LL +         fn implicit_provided(&self) -> &() {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:407:21
+   |
+LL |         fn explicit<'a>(self: &'a Arc<Self>) -> &'a ();
+   |                     ^^         ^^                ^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn explicit<'a>(self: &'a Arc<Self>) -> &'a ();
+LL +         fn explicit(self: &Arc<Self>) -> &();
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:410:30
+   |
+LL |         fn explicit_provided<'a>(self: &'a Arc<Self>) -> &'a () {
+   |                              ^^         ^^                ^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn explicit_provided<'a>(self: &'a Arc<Self>) -> &'a () {
+LL +         fn explicit_provided(self: &Arc<Self>) -> &() {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:421:31
+   |
+LL |         fn lifetime_elsewhere<'a>(self: Box<Self>, here: &'a ()) -> &'a ();
+   |                               ^^                          ^^         ^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn lifetime_elsewhere<'a>(self: Box<Self>, here: &'a ()) -> &'a ();
+LL +         fn lifetime_elsewhere(self: Box<Self>, here: &()) -> &();
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:423:40
+   |
+LL |         fn lifetime_elsewhere_provided<'a>(self: Box<Self>, here: &'a ()) -> &'a () {
+   |                                        ^^                          ^^         ^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn lifetime_elsewhere_provided<'a>(self: Box<Self>, here: &'a ()) -> &'a () {
+LL +         fn lifetime_elsewhere_provided(self: Box<Self>, here: &()) -> &() {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:433:12
+   |
+LL |     fn foo<'a>(x: &'a u8, y: &'_ u8) {}
+   |            ^^      ^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn foo<'a>(x: &'a u8, y: &'_ u8) {}
+LL +     fn foo(x: &u8, y: &'_ u8) {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:436:12
+   |
+LL |     fn bar<'a>(x: &'a u8, y: &'_ u8, z: &'_ u8) {}
+   |            ^^      ^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn bar<'a>(x: &'a u8, y: &'_ u8, z: &'_ u8) {}
+LL +     fn bar(x: &u8, y: &'_ u8, z: &'_ u8) {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:444:18
+   |
+LL |     fn one_input<'a>(x: &'a u8) -> &'a u8 {
+   |                  ^^      ^^         ^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn one_input<'a>(x: &'a u8) -> &'a u8 {
+LL +     fn one_input(x: &u8) -> &u8 {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:450:42
+   |
+LL |     fn multiple_inputs_output_not_elided<'a, 'b>(x: &'a u8, y: &'b u8, z: &'b u8) -> &'b u8 {
+   |                                          ^^          ^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn multiple_inputs_output_not_elided<'a, 'b>(x: &'a u8, y: &'b u8, z: &'b u8) -> &'b u8 {
+LL +     fn multiple_inputs_output_not_elided<'b>(x: &u8, y: &'b u8, z: &'b u8) -> &'b u8 {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:467:22
+   |
+LL |         fn one_input<'a>(x: &'a u8) -> &'a u8 {
+   |                      ^^      ^^         ^^
+   |
+   = note: this error originates in the macro `__inline_mac_mod_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: elide the lifetimes
+   |
+LL -         fn one_input<'a>(x: &'a u8) -> &'a u8 {
+LL +         fn one_input(x: &u8) -> &u8 {
+   |
+
+error: aborting due to 42 previous errors
+

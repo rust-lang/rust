@@ -1,0 +1,26 @@
+warning: box pattern syntax is experimental
+  --> $DIR/rest-pat-syntactic.rs:21:9
+   |
+LL |     let box ..;
+   |         ^^^^^^
+   |
+   = note: see issue #29641 <https://github.com/rust-lang/rust/issues/29641> for more information
+   = help: add `#![feature(box_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = warning: unstable syntax can change at any point in the future, causing a hard error!
+   = note: for more information, see issue #65860 <https://github.com/rust-lang/rust/issues/65860>
+
+warning: box pattern syntax is experimental
+  --> $DIR/rest-pat-syntactic.rs:62:17
+   |
+LL |                 box ..,
+   |                 ^^^^^^
+   |
+   = note: see issue #29641 <https://github.com/rust-lang/rust/issues/29641> for more information
+   = help: add `#![feature(box_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = warning: unstable syntax can change at any point in the future, causing a hard error!
+   = note: for more information, see issue #65860 <https://github.com/rust-lang/rust/issues/65860>
+
+warning: 2 warnings emitted
+

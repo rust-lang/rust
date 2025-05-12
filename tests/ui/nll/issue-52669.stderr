@@ -1,0 +1,14 @@
+error[E0382]: borrow of moved value: `a.b`
+  --> $DIR/issue-52669.rs:13:5
+   |
+LL | fn bar(mut a: A) -> B {
+   |        ----- move occurs because `a` has type `A`, which does not implement the `Copy` trait
+LL |     a.b = B;
+LL |     foo(a);
+   |         - value moved here
+LL |     a.b.clone()
+   |     ^^^ value borrowed here after move
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

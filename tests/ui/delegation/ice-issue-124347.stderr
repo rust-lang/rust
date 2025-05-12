@@ -1,0 +1,17 @@
+error[E0391]: cycle detected when computing generics of `foo`
+  --> $DIR/ice-issue-124347.rs:9:7
+   |
+LL | reuse foo;
+   |       ^^^
+   |
+   = note: ...which immediately requires computing generics of `foo` again
+note: cycle used when checking that `foo` is well-formed
+  --> $DIR/ice-issue-124347.rs:9:7
+   |
+LL | reuse foo;
+   |       ^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

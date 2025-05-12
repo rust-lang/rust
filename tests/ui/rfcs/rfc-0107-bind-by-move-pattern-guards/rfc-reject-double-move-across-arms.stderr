@@ -1,0 +1,27 @@
+error[E0507]: cannot move out of `v` in pattern guard
+  --> $DIR/rfc-reject-double-move-across-arms.rs:7:36
+   |
+LL |         VecWrapper::A(v) if { drop(v); false } => 1,
+   |                                    ^ move occurs because `v` has type `Vec<i32>`, which does not implement the `Copy` trait
+   |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         VecWrapper::A(v) if { drop(v.clone()); false } => 1,
+   |                                     ++++++++
+
+error[E0507]: cannot move out of `v` in pattern guard
+  --> $DIR/rfc-reject-double-move-across-arms.rs:15:51
+   |
+LL |         VecWrapper::A(v) if let Some(()) = { drop(v); None } => 1,
+   |                                                   ^ move occurs because `v` has type `Vec<i32>`, which does not implement the `Copy` trait
+   |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         VecWrapper::A(v) if let Some(()) = { drop(v.clone()); None } => 1,
+   |                                                    ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

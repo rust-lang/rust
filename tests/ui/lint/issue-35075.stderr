@@ -1,0 +1,27 @@
+error[E0412]: cannot find type `Foo` in this scope
+  --> $DIR/issue-35075.rs:2:12
+   |
+LL |     inner: Foo<T>
+   |            ^^^ not found in this scope
+   |
+help: there is an enum variant `Baz::Foo`; try using the variant's enum
+   |
+LL -     inner: Foo<T>
+LL +     inner: Baz
+   |
+
+error[E0412]: cannot find type `Foo` in this scope
+  --> $DIR/issue-35075.rs:6:9
+   |
+LL |     Foo(Foo<T>)
+   |         ^^^ not found in this scope
+   |
+help: there is an enum variant `Baz::Foo`; try using the variant's enum
+   |
+LL -     Foo(Foo<T>)
+LL +     Foo(Baz)
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

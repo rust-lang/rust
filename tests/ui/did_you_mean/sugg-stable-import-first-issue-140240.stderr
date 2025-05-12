@@ -1,0 +1,20 @@
+error[E0412]: cannot find type `Range` in this scope
+  --> $DIR/sugg-stable-import-first-issue-140240.rs:2:14
+   |
+LL |     const _: Range = 0..1;
+   |              ^^^^^ not found in this scope
+   |
+help: consider importing one of these structs
+   |
+LL + use std::collections::btree_map::Range;
+   |
+LL + use std::collections::btree_set::Range;
+   |
+LL + use std::ops::Range;
+   |
+LL + use std::range::Range;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

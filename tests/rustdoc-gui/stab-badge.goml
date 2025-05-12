@@ -1,0 +1,42 @@
+// All stability badges should have rounded corners and colored backgrounds.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+show-text: true
+define-function: (
+    "check-badge",
+    [theme, background, color],
+    block {
+        go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert: ".docblock .stab"
+        assert: ".item-table .stab"
+        assert-css: (".stab", {
+            "border-radius": "3px",
+            "color": |color|,
+            "background-color": |background|,
+        })
+        go-to: "file://" + |DOC_PATH| + "/test_docs/fn.replaced_function.html"
+        assert: (".item-info .stab")
+        assert-css: (".stab", {
+            "border-radius": "3px",
+            "color": |color|,
+            "background-color": |background|,
+        })
+    },
+)
+
+call-function: ("check-badge", {
+    "theme": "ayu",
+    "color": "#c5c5c5",
+    "background": "#314559",
+})
+call-function: ("check-badge", {
+    "theme": "dark",
+    "color": "#ddd",
+    "background": "#314559",
+})
+call-function: ("check-badge", {
+    "theme": "light",
+    "color": "black",
+    "background": "#fff5d6",
+})

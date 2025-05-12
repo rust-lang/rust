@@ -1,0 +1,119 @@
+- // MIR for `unwind` before EarlyOtherwiseBranch
++ // MIR for `unwind` after EarlyOtherwiseBranch
+  
+  fn unwind(_1: Option<Option<Option<T>>>) -> () {
+      debug val => _1;
+      let mut _0: ();
+      let mut _2: isize;
+      let mut _3: isize;
+      let mut _4: isize;
+      let _5: T;
+      let mut _6: bool;
+      let mut _7: bool;
+      let mut _8: isize;
+      scope 1 {
+          debug _v => _5;
+      }
+  
+      bb0: {
+          _6 = const false;
+          _7 = const false;
+          _6 = const true;
+          _7 = const true;
+          _4 = discriminant(_1);
+          switchInt(copy _4) -> [0: bb4, 1: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          _3 = discriminant(((_1 as Some).0: std::option::Option<std::option::Option<T>>));
+          switchInt(copy _3) -> [0: bb5, 1: bb3, otherwise: bb1];
+      }
+  
+      bb3: {
+          _2 = discriminant(((((_1 as Some).0: std::option::Option<std::option::Option<T>>) as Some).0: std::option::Option<T>));
+          switchInt(copy _2) -> [0: bb6, 1: bb7, otherwise: bb1];
+      }
+  
+      bb4: {
+          _0 = const ();
+          goto -> bb17;
+      }
+  
+      bb5: {
+          _0 = const ();
+          goto -> bb17;
+      }
+  
+      bb6: {
+          _0 = const ();
+          goto -> bb17;
+      }
+  
+      bb7: {
+          StorageLive(_5);
+          _5 = move ((((((_1 as Some).0: std::option::Option<std::option::Option<T>>) as Some).0: std::option::Option<T>) as Some).0: T);
+          _0 = const ();
+          drop(_5) -> [return: bb8, unwind: bb20];
+      }
+  
+      bb8: {
+          StorageDead(_5);
+          goto -> bb17;
+      }
+  
+      bb9 (cleanup): {
+          resume;
+      }
+  
+      bb10: {
+          return;
+      }
+  
+      bb11: {
+          switchInt(copy _6) -> [0: bb12, otherwise: bb16];
+      }
+  
+      bb12: {
+          _6 = const false;
+          goto -> bb10;
+      }
+  
+      bb13: {
+          switchInt(copy _7) -> [0: bb14, otherwise: bb15];
+      }
+  
+      bb14: {
+          _7 = const false;
+          goto -> bb12;
+      }
+  
+      bb15: {
+          goto -> bb14;
+      }
+  
+      bb16: {
+          _8 = discriminant(((_1 as Some).0: std::option::Option<std::option::Option<T>>));
+          switchInt(move _8) -> [1: bb13, otherwise: bb12];
+      }
+  
+      bb17: {
+          switchInt(copy _4) -> [1: bb11, otherwise: bb10];
+      }
+  
+      bb18 (cleanup): {
+          switchInt(copy _3) -> [1: bb19, otherwise: bb9];
+      }
+  
+      bb19 (cleanup): {
+          goto -> bb9;
+      }
+  
+      bb20 (cleanup): {
+          switchInt(copy _4) -> [1: bb18, otherwise: bb9];
+      }
+  }
+  

@@ -1,0 +1,30 @@
+SOURCE_FILE
+  ENUM
+    ENUM_KW "enum"
+    WHITESPACE " "
+    NAME
+      IDENT "E"
+    WHITESPACE " "
+    VARIANT_LIST
+      L_CURLY "{"
+      WHITESPACE " "
+      VARIANT
+        NAME
+          IDENT "X"
+        TUPLE_FIELD_LIST
+          L_PAREN "("
+          TUPLE_FIELD
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "i32"
+          R_PAREN ")"
+        WHITESPACE " "
+        EQ "="
+        WHITESPACE " "
+        LITERAL
+          INT_NUMBER "10"
+      WHITESPACE " "
+      R_CURLY "}"
+  WHITESPACE "\n"

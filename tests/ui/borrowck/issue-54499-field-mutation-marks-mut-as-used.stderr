@@ -1,0 +1,33 @@
+error[E0381]: partially assigned binding `t` isn't fully initialized
+  --> $DIR/issue-54499-field-mutation-marks-mut-as-used.rs:12:9
+   |
+LL |         let mut t: Tuple;
+   |             ----- binding declared here but left uninitialized
+LL |         t.0 = S(1);
+   |         ^^^^^^^^^^ `t` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `u` isn't fully initialized
+  --> $DIR/issue-54499-field-mutation-marks-mut-as-used.rs:20:9
+   |
+LL |         let mut u: Tpair;
+   |             ----- binding declared here but left uninitialized
+LL |         u.0 = S(1);
+   |         ^^^^^^^^^^ `u` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `v` isn't fully initialized
+  --> $DIR/issue-54499-field-mutation-marks-mut-as-used.rs:28:9
+   |
+LL |         let mut v: Spair;
+   |             ----- binding declared here but left uninitialized
+LL |         v.x = S(1);
+   |         ^^^^^^^^^^ `v` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

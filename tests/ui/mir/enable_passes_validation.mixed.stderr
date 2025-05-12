@@ -1,0 +1,8 @@
+warning: MIR pass `ThisPassDoesNotExist` is unknown and will be ignored
+
+warning: MIR pass `ThisPassDoesNotExist` is unknown and will be ignored
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: 2 warnings emitted
+

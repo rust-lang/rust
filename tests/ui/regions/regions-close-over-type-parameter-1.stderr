@@ -1,0 +1,31 @@
+error[E0310]: the parameter type `A` may not live long enough
+  --> $DIR/regions-close-over-type-parameter-1.rs:11:5
+   |
+LL |     Box::new(v) as Box<dyn SomeTrait + 'static>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `A` must be valid for the static lifetime...
+   |     ...so that the type `A` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn make_object1<A: SomeTrait + 'static>(v: A) -> Box<dyn SomeTrait + 'static> {
+   |                              +++++++++
+
+error[E0309]: the parameter type `A` may not live long enough
+  --> $DIR/regions-close-over-type-parameter-1.rs:20:5
+   |
+LL | fn make_object3<'a, 'b, A: SomeTrait + 'a>(v: A) -> Box<dyn SomeTrait + 'b> {
+   |                     -- the parameter type `A` must be valid for the lifetime `'b` as defined here...
+LL |     Box::new(v) as Box<dyn SomeTrait + 'b>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn make_object3<'a, 'b, A: SomeTrait + 'a + 'b>(v: A) -> Box<dyn SomeTrait + 'b> {
+   |                                           ++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0309, E0310.
+For more information about an error, try `rustc --explain E0309`.

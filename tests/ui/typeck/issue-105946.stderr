@@ -1,0 +1,46 @@
+error[E0425]: cannot find value `_y` in this scope
+  --> $DIR/issue-105946.rs:7:10
+   |
+LL |     let [_y..] = [Box::new(1), Box::new(2)];
+   |          ^^ not found in this scope
+   |
+help: if you meant to collect the rest of the slice in `_y`, use the at operator
+   |
+LL |     let [_y @ ..] = [Box::new(1), Box::new(2)];
+   |             +
+
+error[E0658]: `X..` patterns in slices are experimental
+  --> $DIR/issue-105946.rs:7:10
+   |
+LL |     let [_y..] = [Box::new(1), Box::new(2)];
+   |          ^^^^
+   |
+   = note: see issue #67264 <https://github.com/rust-lang/rust/issues/67264> for more information
+   = help: add `#![feature(half_open_range_patterns_in_slices)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/issue-105946.rs:1:15
+   |
+LL | fn digit() -> str {
+   |               ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: the return type of a function must have a statically known size
+
+error[E0308]: mismatched types
+  --> $DIR/issue-105946.rs:3:12
+   |
+LL |     return {};
+   |            ^^ expected `str`, found `()`
+
+error[E0527]: pattern requires 1 element but array has 2
+  --> $DIR/issue-105946.rs:7:9
+   |
+LL |     let [_y..] = [Box::new(1), Box::new(2)];
+   |         ^^^^^^ expected 2 elements
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0425, E0527, E0658.
+For more information about an error, try `rustc --explain E0277`.

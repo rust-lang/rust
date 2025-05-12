@@ -1,0 +1,21 @@
+#![allow(clippy::match_single_binding)]
+
+fn main() {
+    println!();
+    println!("");
+    //~^ println_empty_string
+
+    match "a" {
+        _ => println!(""),
+        //~^ println_empty_string
+    }
+
+    eprintln!();
+    eprintln!("");
+    //~^ println_empty_string
+
+    match "a" {
+        _ => eprintln!(""),
+        //~^ println_empty_string
+    }
+}

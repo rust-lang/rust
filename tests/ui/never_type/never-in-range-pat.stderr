@@ -1,0 +1,11 @@
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/never-in-range-pat.rs:13:12
+   |
+LL |         0..x => {}
+   |         -  ^ this is of type `!` but it should be `char` or numeric
+   |         |
+   |         this is of type `{integer}`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0029`.

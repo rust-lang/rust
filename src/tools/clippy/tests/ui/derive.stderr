@@ -1,0 +1,114 @@
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> tests/ui/derive.rs:16:1
+   |
+LL | / impl Clone for Qux {
+LL | |
+LL | |
+LL | |     fn clone(&self) -> Self {
+...  |
+LL | | }
+   | |_^
+   |
+note: consider deriving `Clone` or removing `Copy`
+  --> tests/ui/derive.rs:16:1
+   |
+LL | / impl Clone for Qux {
+LL | |
+LL | |
+LL | |     fn clone(&self) -> Self {
+...  |
+LL | | }
+   | |_^
+   = note: `-D clippy::expl-impl-clone-on-copy` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::expl_impl_clone_on_copy)]`
+
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> tests/ui/derive.rs:42:1
+   |
+LL | / impl<'a> Clone for Lt<'a> {
+LL | |
+LL | |
+LL | |     fn clone(&self) -> Self {
+...  |
+LL | | }
+   | |_^
+   |
+note: consider deriving `Clone` or removing `Copy`
+  --> tests/ui/derive.rs:42:1
+   |
+LL | / impl<'a> Clone for Lt<'a> {
+LL | |
+LL | |
+LL | |     fn clone(&self) -> Self {
+...  |
+LL | | }
+   | |_^
+
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> tests/ui/derive.rs:55:1
+   |
+LL | / impl Clone for BigArray {
+LL | |
+LL | |
+LL | |     fn clone(&self) -> Self {
+...  |
+LL | | }
+   | |_^
+   |
+note: consider deriving `Clone` or removing `Copy`
+  --> tests/ui/derive.rs:55:1
+   |
+LL | / impl Clone for BigArray {
+LL | |
+LL | |
+LL | |     fn clone(&self) -> Self {
+...  |
+LL | | }
+   | |_^
+
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> tests/ui/derive.rs:68:1
+   |
+LL | / impl Clone for FnPtr {
+LL | |
+LL | |
+LL | |     fn clone(&self) -> Self {
+...  |
+LL | | }
+   | |_^
+   |
+note: consider deriving `Clone` or removing `Copy`
+  --> tests/ui/derive.rs:68:1
+   |
+LL | / impl Clone for FnPtr {
+LL | |
+LL | |
+LL | |     fn clone(&self) -> Self {
+...  |
+LL | | }
+   | |_^
+
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> tests/ui/derive.rs:90:1
+   |
+LL | / impl<T: Clone> Clone for Generic2<T> {
+LL | |
+LL | |
+LL | |     fn clone(&self) -> Self {
+...  |
+LL | | }
+   | |_^
+   |
+note: consider deriving `Clone` or removing `Copy`
+  --> tests/ui/derive.rs:90:1
+   |
+LL | / impl<T: Clone> Clone for Generic2<T> {
+LL | |
+LL | |
+LL | |     fn clone(&self) -> Self {
+...  |
+LL | | }
+   | |_^
+
+error: aborting due to 5 previous errors
+

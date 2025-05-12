@@ -1,0 +1,12 @@
+
+running 7 tests
+test $DIR/no-run-flag.rs - f (line 11) - compile ... ok
+test $DIR/no-run-flag.rs - f (line 14) ... ignored
+test $DIR/no-run-flag.rs - f (line 17) - compile ... ok
+test $DIR/no-run-flag.rs - f (line 23) - compile fail ... ok
+test $DIR/no-run-flag.rs - f (line 28) - compile ... ok
+test $DIR/no-run-flag.rs - f (line 32) - compile ... ok
+test $DIR/no-run-flag.rs - f (line 8) - compile ... ok
+
+test result: ok. 6 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in $TIME
+

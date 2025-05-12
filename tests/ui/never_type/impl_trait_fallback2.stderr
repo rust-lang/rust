@@ -1,0 +1,25 @@
+error[E0277]: the trait bound `(): T` is not satisfied
+  --> $DIR/impl_trait_fallback2.rs:8:25
+   |
+LL | fn should_ret_unit() -> impl T {
+   |                         ^^^^^^ the trait `T` is not implemented for `()`
+LL |
+LL |     panic!()
+   |     -------- return type was inferred to be `_` here
+   |
+   = help: the trait `T` is implemented for `i32`
+
+error[E0277]: the trait bound `(): T` is not satisfied
+  --> $DIR/impl_trait_fallback2.rs:16:11
+   |
+LL | fn a() -> Foo {
+   |           ^^^ the trait `T` is not implemented for `()`
+LL |
+LL |     panic!()
+   |     -------- return type was inferred to be `_` here
+   |
+   = help: the trait `T` is implemented for `i32`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

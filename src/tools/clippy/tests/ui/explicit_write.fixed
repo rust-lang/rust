@@ -1,0 +1,78 @@
+#![warn(clippy::explicit_write)]
+#![allow(unused_imports)]
+#![allow(clippy::uninlined_format_args)]
+
+fn stdout() -> String {
+    String::new()
+}
+
+fn stderr() -> String {
+    String::new()
+}
+
+macro_rules! one {
+    () => {
+        1
+    };
+}
+
+fn main() {
+    // these should warn
+    {
+        use std::io::Write;
+        print!("test");
+        //~^ explicit_write
+        eprint!("test");
+        //~^ explicit_write
+        println!("test");
+        //~^ explicit_write
+        eprintln!("test");
+        //~^ explicit_write
+        print!("test");
+        //~^ explicit_write
+        eprint!("test");
+        //~^ explicit_write
+
+        // including newlines
+        println!("test\ntest");
+        //~^ explicit_write
+        eprintln!("test\ntest");
+        //~^ explicit_write
+
+        let value = 1;
+        eprintln!("with {}", value);
+        //~^ explicit_write
+        eprintln!("with {} {}", 2, value);
+        //~^ explicit_write
+        eprintln!("with {value}");
+        //~^ explicit_write
+        eprintln!("macro arg {}", one!());
+        //~^ explicit_write
+        let width = 2;
+        eprintln!("{:w$}", value, w = width);
+        //~^ explicit_write
+    }
+    // these should not warn, different destination
+    {
+        use std::fmt::Write;
+        let mut s = String::new();
+        write!(s, "test").unwrap();
+        write!(s, "test").unwrap();
+        writeln!(s, "test").unwrap();
+        writeln!(s, "test").unwrap();
+        s.write_fmt(format_args!("test")).unwrap();
+        s.write_fmt(format_args!("test")).unwrap();
+        write!(stdout(), "test").unwrap();
+        write!(stderr(), "test").unwrap();
+        writeln!(stdout(), "test").unwrap();
+        writeln!(stderr(), "test").unwrap();
+        stdout().write_fmt(format_args!("test")).unwrap();
+        stderr().write_fmt(format_args!("test")).unwrap();
+    }
+    // these should not warn, no unwrap
+    {
+        use std::io::Write;
+        std::io::stdout().write_fmt(format_args!("test")).expect("no stdout");
+        std::io::stderr().write_fmt(format_args!("test")).expect("no stderr");
+    }
+}

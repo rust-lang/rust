@@ -1,0 +1,47 @@
+error[E0261]: use of undeclared lifetime name `'db`
+  --> $DIR/nested-impl-trait-in-tait.rs:3:40
+   |
+LL | pub type Tait = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;
+   |                                        ^^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'db` lifetime
+   |
+LL | pub type Tait = impl for<'db> Iterator<Item = (&'db LocalKey, impl Iterator)>;
+   |                      ++++++++
+help: consider introducing lifetime `'db` here
+   |
+LL | pub type Tait<'db> = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;
+   |              +++++
+
+error[E0412]: cannot find type `LocalKey` in this scope
+  --> $DIR/nested-impl-trait-in-tait.rs:3:44
+   |
+LL | pub type Tait = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;
+   |                                            ^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use std::thread::LocalKey;
+   |
+
+error: unconstrained opaque type
+  --> $DIR/nested-impl-trait-in-tait.rs:3:17
+   |
+LL | pub type Tait = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Tait` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/nested-impl-trait-in-tait.rs:3:54
+   |
+LL | pub type Tait = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;
+   |                                                      ^^^^^^^^^^^^^
+   |
+   = note: `Tait` must be used in combination with a concrete type within the same crate
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0261, E0412.
+For more information about an error, try `rustc --explain E0261`.

@@ -1,0 +1,41 @@
+if let StmtKind::Let(local) = stmt.kind
+    && let Some(init) = local.init
+    && let ExprKind::Closure { capture_clause: CaptureBy::Ref, fn_decl: fn_decl, body: body_id, closure_kind: ClosureKind::Closure, .. } = init.kind
+    && let FnRetTy::DefaultReturn(_) = fn_decl.output
+    && expr = &cx.tcx.hir_body(body_id).value
+    && let ExprKind::Block(block, None) = expr.kind
+    && block.stmts.len() == 1
+    && let StmtKind::Semi(e) = block.stmts[0].kind
+    && let ExprKind::Call(func, args) = e.kind
+    && let ExprKind::Path(ref qpath) = func.kind
+    && match_qpath(qpath, &["$crate", "io", "_print"])
+    && args.len() == 1
+    && let ExprKind::Call(func1, args1) = args[0].kind
+    && let ExprKind::Path(ref qpath1) = func1.kind
+    && match_qpath(qpath1, &["format_arguments", "new_v1"])
+    && args1.len() == 2
+    && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = args1[0].kind
+    && let ExprKind::Array(elements) = inner.kind
+    && elements.len() == 2
+    && let ExprKind::Lit(ref lit) = elements[0].kind
+    && let LitKind::Str(s, _) = lit.node
+    && s.as_str() == ""
+    && let ExprKind::Lit(ref lit1) = elements[1].kind
+    && let LitKind::Str(s1, _) = lit1.node
+    && s1.as_str() == "\n"
+    && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner1) = args1[1].kind
+    && let ExprKind::Array(elements1) = inner1.kind
+    && elements1.len() == 1
+    && let ExprKind::Call(func2, args2) = elements1[0].kind
+    && let ExprKind::Path(ref qpath2) = func2.kind
+    && match_qpath(qpath2, &["format_argument", "new_display"])
+    && args2.len() == 1
+    && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner2) = args2[0].kind
+    && let ExprKind::Path(ref qpath3) = inner2.kind
+    && match_qpath(qpath3, &["x"])
+    && block.expr.is_none()
+    && let PatKind::Binding(BindingMode::NONE, _, name, None) = local.pat.kind
+    && name.as_str() == "print_text"
+{
+    // report your lint here
+}

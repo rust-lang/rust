@@ -1,0 +1,61 @@
+- // MIR for `opt_multiple_ifs` before SimplifyComparisonIntegral
++ // MIR for `opt_multiple_ifs` after SimplifyComparisonIntegral
+  
+  fn opt_multiple_ifs(_1: u32) -> u32 {
+      debug x => _1;
+      let mut _0: u32;
+      let mut _2: bool;
+      let mut _3: u32;
+      let mut _4: bool;
+      let mut _5: u32;
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+-         _2 = Eq(move _3, const 42_u32);
+-         switchInt(move _2) -> [0: bb2, otherwise: bb1];
++         nop;
++         switchInt(move _3) -> [42: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          _0 = const 0_u32;
+          goto -> bb6;
+      }
+  
+      bb2: {
+          StorageDead(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy _1;
+-         _4 = Ne(move _5, const 21_u32);
+-         switchInt(move _4) -> [0: bb4, otherwise: bb3];
++         nop;
++         switchInt(move _5) -> [21: bb4, otherwise: bb3];
+      }
+  
+      bb3: {
+          StorageDead(_5);
+          _0 = const 1_u32;
+          goto -> bb5;
+      }
+  
+      bb4: {
+          StorageDead(_5);
+          _0 = const 2_u32;
+          goto -> bb5;
+      }
+  
+      bb5: {
+          StorageDead(_4);
+          goto -> bb6;
+      }
+  
+      bb6: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

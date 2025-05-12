@@ -1,0 +1,8 @@
+error: `register_tool` only accepts identifiers
+  --> $DIR/invalid-tool.rs:3:18
+   |
+LL | #![register_tool(1)]
+   |                  ^ not an identifier
+
+error: aborting due to 1 previous error
+

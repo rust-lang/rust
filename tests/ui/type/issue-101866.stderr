@@ -1,0 +1,18 @@
+error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
+  --> $DIR/issue-101866.rs:12:5
+   |
+LL |     fn func();
+   |     ---------- `TraitA::func` defined here
+...
+LL |     TraitA::<i32>::func();
+   |     ^^^^^^^^^^^^^^^^^^^^^ cannot call associated function of trait
+   |
+help: use the fully-qualified path to the only available implementation
+   |
+LL -     TraitA::<i32>::func();
+LL +     <StructA as TraitA<i32>>::func();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0790`.

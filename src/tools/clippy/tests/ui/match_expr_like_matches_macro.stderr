@@ -1,0 +1,148 @@
+error: match expression looks like `matches!` macro
+  --> tests/ui/match_expr_like_matches_macro.rs:14:14
+   |
+LL |       let _y = match x {
+   |  ______________^
+LL | |         Some(0) => true,
+LL | |         _ => false,
+LL | |     };
+   | |_____^ help: try: `matches!(x, Some(0))`
+   |
+   = note: `-D clippy::match-like-matches-macro` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_like_matches_macro)]`
+
+error: redundant pattern matching, consider using `is_some()`
+  --> tests/ui/match_expr_like_matches_macro.rs:21:14
+   |
+LL |       let _w = match x {
+   |  ______________^
+LL | |         Some(_) => true,
+LL | |         _ => false,
+LL | |     };
+   | |_____^ help: try: `x.is_some()`
+   |
+   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
+
+error: redundant pattern matching, consider using `is_none()`
+  --> tests/ui/match_expr_like_matches_macro.rs:28:14
+   |
+LL |       let _z = match x {
+   |  ______________^
+LL | |         Some(_) => false,
+LL | |         None => true,
+LL | |     };
+   | |_____^ help: try: `x.is_none()`
+
+error: match expression looks like `matches!` macro
+  --> tests/ui/match_expr_like_matches_macro.rs:35:15
+   |
+LL |       let _zz = match x {
+   |  _______________^
+LL | |         Some(r) if r == 0 => false,
+LL | |         _ => true,
+LL | |     };
+   | |_____^ help: try: `!matches!(x, Some(r) if r == 0)`
+
+error: if let .. else expression looks like `matches!` macro
+  --> tests/ui/match_expr_like_matches_macro.rs:42:16
+   |
+LL |     let _zzz = if let Some(5) = x { true } else { false };
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(x, Some(5))`
+
+error: match expression looks like `matches!` macro
+  --> tests/ui/match_expr_like_matches_macro.rs:67:20
+   |
+LL |           let _ans = match x {
+   |  ____________________^
+LL | |             E::A(_) => true,
+LL | |             E::B(_) => true,
+LL | |             _ => false,
+LL | |         };
+   | |_________^ help: try: `matches!(x, E::A(_) | E::B(_))`
+
+error: match expression looks like `matches!` macro
+  --> tests/ui/match_expr_like_matches_macro.rs:78:20
+   |
+LL |           let _ans = match x {
+   |  ____________________^
+LL | |             E::A(_) => {
+LL | |                 true
+...  |
+LL | |             _ => false,
+LL | |         };
+   | |_________^ help: try: `matches!(x, E::A(_) | E::B(_))`
+
+error: match expression looks like `matches!` macro
+  --> tests/ui/match_expr_like_matches_macro.rs:89:20
+   |
+LL |           let _ans = match x {
+   |  ____________________^
+LL | |             E::B(_) => false,
+LL | |             E::C => false,
+LL | |             _ => true,
+LL | |         };
+   | |_________^ help: try: `!matches!(x, E::B(_) | E::C)`
+
+error: match expression looks like `matches!` macro
+  --> tests/ui/match_expr_like_matches_macro.rs:150:18
+   |
+LL |           let _z = match &z {
+   |  __________________^
+LL | |             Some(3) => true,
+LL | |             _ => false,
+LL | |         };
+   | |_________^ help: try: `matches!(z, Some(3))`
+
+error: match expression looks like `matches!` macro
+  --> tests/ui/match_expr_like_matches_macro.rs:160:18
+   |
+LL |           let _z = match &z {
+   |  __________________^
+LL | |             Some(3) => true,
+LL | |             _ => false,
+LL | |         };
+   | |_________^ help: try: `matches!(&z, Some(3))`
+
+error: match expression looks like `matches!` macro
+  --> tests/ui/match_expr_like_matches_macro.rs:178:21
+   |
+LL |               let _ = match &z {
+   |  _____________________^
+LL | |                 AnEnum::X => true,
+LL | |                 _ => false,
+LL | |             };
+   | |_____________^ help: try: `matches!(&z, AnEnum::X)`
+
+error: match expression looks like `matches!` macro
+  --> tests/ui/match_expr_like_matches_macro.rs:193:20
+   |
+LL |           let _res = match &val {
+   |  ____________________^
+LL | |             &Some(ref _a) => true,
+LL | |             _ => false,
+LL | |         };
+   | |_________^ help: try: `matches!(&val, &Some(ref _a))`
+
+error: match expression looks like `matches!` macro
+  --> tests/ui/match_expr_like_matches_macro.rs:206:20
+   |
+LL |           let _res = match &val {
+   |  ____________________^
+LL | |             &Some(ref _a) => true,
+LL | |             _ => false,
+LL | |         };
+   | |_________^ help: try: `matches!(&val, &Some(ref _a))`
+
+error: match expression looks like `matches!` macro
+  --> tests/ui/match_expr_like_matches_macro.rs:265:14
+   |
+LL |       let _y = match Some(5) {
+   |  ______________^
+LL | |         Some(0) => true,
+LL | |         _ => false,
+LL | |     };
+   | |_____^ help: try: `matches!(Some(5), Some(0))`
+
+error: aborting due to 14 previous errors
+

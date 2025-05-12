@@ -1,0 +1,100 @@
+- // MIR for `identity` before JumpThreading
++ // MIR for `identity` after JumpThreading
+  
+  fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
+      debug x => _1;
+      let mut _0: std::result::Result<i32, i32>;
+      let mut _2: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, i32>, i32>;
+      let mut _3: isize;
+      let _4: std::result::Result<std::convert::Infallible, i32>;
+      let _5: i32;
+      scope 1 {
+          debug residual => _4;
+          scope 2 {
+              scope 8 (inlined #[track_caller] <Result<i32, i32> as FromResidual<Result<Infallible, i32>>>::from_residual) {
+                  let _10: i32;
+                  scope 9 {
+                      scope 10 (inlined <i32 as From<i32>>::from) {
+                      }
+                  }
+              }
+          }
+      }
+      scope 3 {
+          debug val => _5;
+          scope 4 {
+          }
+      }
+      scope 5 (inlined <Result<i32, i32> as Try>::branch) {
+          let mut _6: isize;
+          let _7: i32;
+          let _8: i32;
+          let mut _9: std::result::Result<std::convert::Infallible, i32>;
+          scope 6 {
+          }
+          scope 7 {
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+          _6 = discriminant(_1);
+          switchInt(move _6) -> [0: bb6, 1: bb5, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          _5 = copy ((_2 as Continue).0: i32);
+          _0 = Result::<i32, i32>::Ok(copy _5);
+          StorageDead(_2);
+          return;
+      }
+  
+      bb3: {
+          _4 = copy ((_2 as Break).0: std::result::Result<std::convert::Infallible, i32>);
+          _10 = copy ((_4 as Err).0: i32);
+          _0 = Result::<i32, i32>::Err(copy _10);
+          StorageDead(_2);
+          return;
+      }
+  
+      bb4: {
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageDead(_6);
+          _3 = discriminant(_2);
+-         switchInt(move _3) -> [0: bb2, 1: bb3, otherwise: bb1];
++         goto -> bb2;
+      }
+  
+      bb5: {
+          _8 = copy ((_1 as Err).0: i32);
+          StorageLive(_9);
+          _9 = Result::<Infallible, i32>::Err(copy _8);
+          _2 = ControlFlow::<Result<Infallible, i32>, i32>::Break(move _9);
+          StorageDead(_9);
+-         goto -> bb4;
++         goto -> bb7;
+      }
+  
+      bb6: {
+          _7 = copy ((_1 as Ok).0: i32);
+          _2 = ControlFlow::<Result<Infallible, i32>, i32>::Continue(copy _7);
+          goto -> bb4;
++     }
++ 
++     bb7: {
++         StorageDead(_8);
++         StorageDead(_7);
++         StorageDead(_6);
++         _3 = discriminant(_2);
++         goto -> bb3;
+      }
+  }
+  

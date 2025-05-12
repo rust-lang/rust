@@ -1,0 +1,114 @@
+
+<style>
+body                { margin: 0; }
+pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padding: 0.4em; }
+
+.lifetime           { color: #DFAF8F; font-style: italic; }
+.label              { color: #DFAF8F; font-style: italic; }
+.comment            { color: #7F9F7F; }
+.documentation      { color: #629755; }
+.intra_doc_link     { font-style: italic; }
+.injected           { opacity: 0.65 ; }
+.struct, .enum      { color: #7CB8BB; }
+.enum_variant       { color: #BDE0F3; }
+.string_literal     { color: #CC9393; }
+.field              { color: #94BFF3; }
+.function           { color: #93E0E3; }
+.parameter          { color: #94BFF3; }
+.text               { color: #DCDCCC; }
+.type               { color: #7CB8BB; }
+.builtin_type       { color: #8CD0D3; }
+.type_param         { color: #DFAF8F; }
+.attribute          { color: #94BFF3; }
+.numeric_literal    { color: #BFEBBF; }
+.bool_literal       { color: #BFE6EB; }
+.macro              { color: #94BFF3; }
+.proc_macro         { color: #94BFF3; text-decoration: underline; }
+.derive             { color: #94BFF3; font-style: italic; }
+.module             { color: #AFD8AF; }
+.value_param        { color: #DCDCCC; }
+.variable           { color: #DCDCCC; }
+.format_specifier   { color: #CC696B; }
+.mutable            { text-decoration: underline; }
+.escape_sequence    { color: #94BFF3; }
+.keyword            { color: #F0DFAF; font-weight: bold; }
+.control            { font-style: italic; }
+.reference          { font-style: italic; font-weight: bold; }
+.const              { font-weight: bolder; }
+.unsafe             { color: #BC8383; }
+
+.invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
+.unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
+</style>
+<pre><code><span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword unsafe">unsafe</span> <span class="brace">{</span>
+        <span class="keyword">let</span> <span class="variable declaration">foo</span> <span class="operator">=</span> <span class="numeric_literal">1</span><span class="semicolon">;</span>
+        <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">o</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="semicolon">;</span>
+        <span class="module crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">arch</span><span class="operator">::</span><span class="macro default_library library unsafe">asm</span><span class="macro_bang unsafe">!</span><span class="parenthesis unsafe">(</span>
+            <span class="string_literal macro">"%input = OpLoad _ {</span><span class="variable">0</span><span class="string_literal macro">}"</span><span class="comma macro">,</span>
+            <span class="macro default_library library macro">concat</span><span class="macro_bang macro">!</span><span class="parenthesis macro">(</span><span class="string_literal macro">"%result = "</span><span class="comma macro">,</span> <span class="string_literal macro">"bar"</span><span class="comma macro">,</span> <span class="string_literal macro">" _ %input"</span><span class="parenthesis macro">)</span><span class="comma macro">,</span>
+            <span class="string_literal macro">"OpStore {</span><span class="variable">1</span><span class="string_literal macro">} %result"</span><span class="comma macro">,</span>
+            <span class="keyword control macro">in</span><span class="parenthesis macro">(</span><span class="reg library macro">reg</span><span class="parenthesis macro">)</span> <span class="operator macro">&</span><span class="variable macro">foo</span><span class="comma macro">,</span>
+            <span class="keyword control macro">in</span><span class="parenthesis macro">(</span><span class="reg library macro">reg</span><span class="parenthesis macro">)</span> <span class="operator macro">&</span><span class="keyword macro">mut</span> <span class="variable macro mutable">o</span><span class="comma macro">,</span>
+        <span class="parenthesis unsafe">)</span><span class="semicolon">;</span>
+
+        <span class="keyword">let</span> <span class="variable declaration">thread_id</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="semicolon">;</span>
+        <span class="module crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">arch</span><span class="operator">::</span><span class="macro default_library library unsafe">asm</span><span class="macro_bang unsafe">!</span><span class="parenthesis unsafe">(</span><span class="string_literal macro">"
+            mov {</span><span class="variable">0</span><span class="string_literal macro">}, gs:[0x30]
+            mov {</span><span class="variable">0</span><span class="string_literal macro">}, [{</span><span class="variable">0</span><span class="string_literal macro">}+0x48]
+        "</span><span class="comma macro">,</span> <span class="keyword macro">out</span><span class="parenthesis macro">(</span><span class="reg library macro">reg</span><span class="parenthesis macro">)</span> <span class="variable macro">thread_id</span><span class="comma macro">,</span> <span class="keyword macro">options</span><span class="parenthesis macro">(</span><span class="keyword macro">pure</span><span class="comma macro">,</span> <span class="keyword macro">readonly</span><span class="comma macro">,</span> <span class="keyword macro">nostack</span><span class="parenthesis macro">)</span><span class="parenthesis unsafe">)</span><span class="semicolon">;</span>
+
+        <span class="keyword">static</span> <span class="static declaration">UNMAP_BASE</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="semicolon">;</span>
+        <span class="keyword const">const</span> <span class="constant const declaration">MEM_RELEASE</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="semicolon">;</span>
+        <span class="keyword">static</span> <span class="static declaration">VirtualFree</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="semicolon">;</span>
+        <span class="keyword const">const</span> <span class="constant const declaration">OffPtr</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="semicolon">;</span>
+        <span class="keyword const">const</span> <span class="constant const declaration">OffFn</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="semicolon">;</span>
+        <span class="module crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">arch</span><span class="operator">::</span><span class="macro default_library library unsafe">asm</span><span class="macro_bang unsafe">!</span><span class="parenthesis unsafe">(</span><span class="string_literal macro">"
+            push {</span><span class="variable">free_type</span><span class="string_literal macro">}
+            push {</span><span class="variable">free_size</span><span class="string_literal macro">}
+            push {</span><span class="variable">base</span><span class="string_literal macro">}
+
+            mov eax, fs:[30h]
+            mov eax, [eax+8h]
+            add eax, {</span><span class="variable">off_fn</span><span class="string_literal macro">}
+            mov [eax-{</span><span class="variable">off_fn</span><span class="string_literal macro">}+{</span><span class="variable">off_ptr</span><span class="string_literal macro">}], eax
+
+            push eax
+
+            jmp {</span><span class="variable">virtual_free</span><span class="string_literal macro">}
+            "</span><span class="comma macro">,</span>
+            <span class="variable declaration macro">off_ptr</span> <span class="operator macro">=</span> <span class="keyword const macro">const</span> <span class="constant const macro">OffPtr</span><span class="comma macro">,</span>
+            <span class="variable declaration macro">off_fn</span>  <span class="operator macro">=</span> <span class="keyword const macro">const</span> <span class="constant const macro">OffFn</span><span class="comma macro">,</span>
+
+            <span class="variable declaration macro">free_size</span> <span class="operator macro">=</span> <span class="keyword const macro">const</span> <span class="numeric_literal macro">0</span><span class="comma macro">,</span>
+            <span class="variable declaration macro">free_type</span> <span class="operator macro">=</span> <span class="keyword const macro">const</span> <span class="constant const macro">MEM_RELEASE</span><span class="comma macro">,</span>
+
+            <span class="variable declaration macro">virtual_free</span> <span class="operator macro">=</span> <span class="keyword macro">sym</span> <span class="static macro">VirtualFree</span><span class="comma macro">,</span>
+
+            <span class="variable declaration macro">base</span> <span class="operator macro">=</span> <span class="keyword macro">sym</span> <span class="static macro">UNMAP_BASE</span><span class="comma macro">,</span>
+            <span class="keyword macro">options</span><span class="parenthesis macro">(</span><span class="keyword macro">noreturn</span><span class="parenthesis macro">)</span><span class="comma macro">,</span>
+        <span class="parenthesis unsafe">)</span><span class="semicolon">;</span>
+    <span class="brace">}</span>
+<span class="brace">}</span>
+<span class="comment">// taken from https://github.com/rust-embedded/cortex-m/blob/47921b51f8b960344fcfa1255a50a0d19efcde6d/cortex-m/src/asm.rs#L254-L274</span>
+<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute">inline</span><span class="attribute_bracket attribute">]</span>
+<span class="keyword">pub</span> <span class="keyword unsafe">unsafe</span> <span class="keyword">fn</span> <span class="function declaration public unsafe">bootstrap</span><span class="parenthesis">(</span><span class="value_param declaration">msp</span><span class="colon">:</span> <span class="keyword">*</span><span class="keyword const">const</span> <span class="builtin_type">u32</span><span class="comma">,</span> <span class="value_param declaration">rv</span><span class="colon">:</span> <span class="keyword">*</span><span class="keyword const">const</span> <span class="builtin_type">u32</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">!</span> <span class="brace">{</span>
+    <span class="comment">// Ensure thumb mode is set.</span>
+    <span class="keyword">let</span> <span class="variable declaration">rv</span> <span class="operator">=</span> <span class="parenthesis">(</span><span class="value_param">rv</span> <span class="keyword">as</span> <span class="builtin_type">u32</span><span class="parenthesis">)</span> <span class="bitwise">|</span> <span class="numeric_literal">1</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">msp</span> <span class="operator">=</span> <span class="value_param">msp</span> <span class="keyword">as</span> <span class="builtin_type">u32</span><span class="semicolon">;</span>
+    <span class="module crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">arch</span><span class="operator">::</span><span class="macro default_library library unsafe">asm</span><span class="macro_bang unsafe">!</span><span class="parenthesis unsafe">(</span>
+        <span class="string_literal macro">"mrs {</span><span class="variable">tmp</span><span class="string_literal macro">}, CONTROL"</span><span class="comma macro">,</span>
+        <span class="string_literal macro">"bics {</span><span class="variable">tmp</span><span class="string_literal macro">}, {</span><span class="variable">spsel</span><span class="string_literal macro">}"</span><span class="comma macro">,</span>
+        <span class="string_literal macro">"msr CONTROL, {</span><span class="variable">tmp</span><span class="string_literal macro">}"</span><span class="comma macro">,</span>
+        <span class="string_literal macro">"isb"</span><span class="comma macro">,</span>
+        <span class="string_literal macro">"msr MSP, {</span><span class="variable">msp</span><span class="string_literal macro">}"</span><span class="comma macro">,</span>
+        <span class="string_literal macro">"bx {</span><span class="variable">rv</span><span class="string_literal macro">}"</span><span class="comma macro">,</span>
+        <span class="comment">// `out(reg) _` is not permitted in a `noreturn` asm! call,</span>
+        <span class="comment">// so instead use `in(reg) 0` and don't restore it afterwards.</span>
+        <span class="variable declaration macro">tmp</span> <span class="operator macro">=</span> <span class="keyword control macro">in</span><span class="parenthesis macro">(</span><span class="reg library macro">reg</span><span class="parenthesis macro">)</span> <span class="numeric_literal macro">0</span><span class="comma macro">,</span>
+        <span class="variable declaration macro">spsel</span> <span class="operator macro">=</span> <span class="keyword control macro">in</span><span class="parenthesis macro">(</span><span class="reg library macro">reg</span><span class="parenthesis macro">)</span> <span class="numeric_literal macro">2</span><span class="comma macro">,</span>
+        <span class="variable declaration macro">msp</span> <span class="operator macro">=</span> <span class="keyword control macro">in</span><span class="parenthesis macro">(</span><span class="reg library macro">reg</span><span class="parenthesis macro">)</span> <span class="variable macro">msp</span><span class="comma macro">,</span>
+        <span class="variable declaration macro">rv</span> <span class="operator macro">=</span> <span class="keyword control macro">in</span><span class="parenthesis macro">(</span><span class="reg library macro">reg</span><span class="parenthesis macro">)</span> <span class="variable macro">rv</span><span class="comma macro">,</span>
+        <span class="keyword macro">options</span><span class="parenthesis macro">(</span><span class="keyword macro">noreturn</span><span class="comma macro">,</span> <span class="keyword macro">nomem</span><span class="comma macro">,</span> <span class="keyword macro">nostack</span><span class="parenthesis macro">)</span><span class="comma macro">,</span>
+    <span class="parenthesis unsafe">)</span><span class="semicolon">;</span>
+<span class="brace">}</span></code></pre>

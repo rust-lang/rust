@@ -1,0 +1,34 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/struct-pattern-on-non-struct-resolve-error.rs:8:9
+   |
+LL |         x
+   |         ^ not found in this scope
+
+error[E0658]: usage of qualified paths in this context is experimental
+  --> $DIR/struct-pattern-on-non-struct-resolve-error.rs:4:12
+   |
+LL |     if let <Vec<()> as Iterator>::Item { .. } = 1 {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #86935 <https://github.com/rust-lang/rust/issues/86935> for more information
+   = help: add `#![feature(more_qualified_paths)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0071]: expected struct, variant or union type, found inferred type
+  --> $DIR/struct-pattern-on-non-struct-resolve-error.rs:4:12
+   |
+LL |     if let <Vec<()> as Iterator>::Item { .. } = 1 {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a struct
+
+error[E0277]: `Vec<()>` is not an iterator
+  --> $DIR/struct-pattern-on-non-struct-resolve-error.rs:4:12
+   |
+LL |     if let <Vec<()> as Iterator>::Item { .. } = 1 {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Vec<()>` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `Vec<()>`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0071, E0277, E0425, E0658.
+For more information about an error, try `rustc --explain E0071`.

@@ -1,0 +1,51 @@
+error[E0599]: no function or associated item named `new` found for struct `TcpStream` in the current scope
+  --> $DIR/suggest-builder-fn.rs:52:29
+   |
+LL |    let _stream = TcpStream::new();
+   |                             ^^^ function or associated item not found in `TcpStream`
+   |
+note: if you're trying to build a new `TcpStream` consider using one of the following associated functions:
+      TcpStream::connect
+      TcpStream::connect_timeout
+  --> $SRC_DIR/std/src/net/tcp.rs:LL:COL
+
+error[E0599]: the function or associated item `new` exists for struct `Foo<u8>`, but its trait bounds were not satisfied
+  --> $DIR/suggest-builder-fn.rs:57:27
+   |
+LL | struct Foo<T> {
+   | ------------- function or associated item `new` not found for this struct
+...
+LL |     let _foo = Foo::<u8>::new();
+   |                           ^^^ function or associated item cannot be called on `Foo<u8>` due to unsatisfied trait bounds
+   |
+note: trait bound `u8: SomeTrait` was not satisfied
+  --> $DIR/suggest-builder-fn.rs:12:9
+   |
+LL | impl<T: SomeTrait + Default> Foo<T> {
+   |         ^^^^^^^^^            ------
+   |         |
+   |         unsatisfied trait bound introduced here
+
+error[E0599]: no function or associated item named `new` found for struct `Bar` in the current scope
+  --> $DIR/suggest-builder-fn.rs:62:21
+   |
+LL | struct Bar;
+   | ---------- function or associated item `new` not found for this struct
+...
+LL |     let _bar = Bar::new();
+   |                     ^^^ function or associated item not found in `Bar`
+   |
+note: if you're trying to build a new `Bar` consider using one of the following associated functions:
+      Bar::build
+      SomeMod::<impl Bar>::build_public
+  --> $DIR/suggest-builder-fn.rs:23:5
+   |
+LL |     fn build() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^
+...
+LL |         pub fn build_public() -> Self {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,36 @@
+error: by not having a space between `>` and `-` it looks like `>-` is a single operator
+  --> tests/ui/suspicious_unary_op_formatting.rs:9:9
+   |
+LL |     if a >- 30 {}
+   |         ^^^^
+   |
+   = help: put a space between `>` and `-` and remove the space after `-`
+   = note: `-D clippy::suspicious-unary-op-formatting` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_unary_op_formatting)]`
+
+error: by not having a space between `>=` and `-` it looks like `>=-` is a single operator
+  --> tests/ui/suspicious_unary_op_formatting.rs:12:9
+   |
+LL |     if a >=- 30 {}
+   |         ^^^^^
+   |
+   = help: put a space between `>=` and `-` and remove the space after `-`
+
+error: by not having a space between `&&` and `!` it looks like `&&!` is a single operator
+  --> tests/ui/suspicious_unary_op_formatting.rs:19:9
+   |
+LL |     if b &&! c {}
+   |         ^^^^^
+   |
+   = help: put a space between `&&` and `!` and remove the space after `!`
+
+error: by not having a space between `>` and `-` it looks like `>-` is a single operator
+  --> tests/ui/suspicious_unary_op_formatting.rs:23:9
+   |
+LL |     if a >-   30 {}
+   |         ^^^^^^
+   |
+   = help: put a space between `>` and `-` and remove the space after `-`
+
+error: aborting due to 4 previous errors
+

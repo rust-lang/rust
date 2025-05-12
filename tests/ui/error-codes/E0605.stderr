@@ -1,0 +1,21 @@
+error[E0605]: non-primitive cast: `u8` as `Vec<u8>`
+  --> $DIR/E0605.rs:3:5
+   |
+LL |     x as Vec<u8>;
+   |     ^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+
+error[E0605]: non-primitive cast: `*const u8` as `&u8`
+  --> $DIR/E0605.rs:6:5
+   |
+LL |     v as &u8;
+   |     ^^^^^^^^ invalid cast
+   |
+help: consider borrowing the value
+   |
+LL -     v as &u8;
+LL +     &*v;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0605`.

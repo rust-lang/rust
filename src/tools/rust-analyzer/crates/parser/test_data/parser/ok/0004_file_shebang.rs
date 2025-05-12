@@ -1,0 +1,1 @@
+#!/use/bin/env rusti

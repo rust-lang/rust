@@ -1,0 +1,20 @@
+error: memory leaked: ALLOC (Rust heap, SIZE, ALIGN), allocated here:
+  --> RUSTLIB/alloc/src/rc.rs:LL:CC
+   |
+LL |                 Box::leak(Box::new(RcInner { strong: Cell::new(1), weak: Cell::new(1), value }))
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: BACKTRACE:
+   = note: inside `std::rc::Rc::<std::cell::RefCell<std::option::Option<Dummy>>>::new` at RUSTLIB/alloc/src/rc.rs:LL:CC
+note: inside `main`
+  --> tests/fail/memleak_rc.rs:LL:CC
+   |
+LL |     let x = Dummy(Rc::new(RefCell::new(None)));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+note: set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check
+
+error: aborting due to 1 previous error
+

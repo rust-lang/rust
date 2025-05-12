@@ -1,0 +1,126 @@
+error: impl for `HashMap` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:15:35
+   |
+LL | impl<K: Hash + Eq, V> Foo<i8> for HashMap<K, V> {
+   |                                   ^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui/implicit_hasher.rs:2:9
+   |
+LL | #![deny(clippy::implicit_hasher)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+help: add a type parameter for `BuildHasher`
+   |
+LL ~ impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<i8> for HashMap<K, V, S> {
+LL |
+...
+LL |
+LL ~         (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
+   |
+
+error: impl for `HashMap` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:25:36
+   |
+LL | impl<K: Hash + Eq, V> Foo<i8> for (HashMap<K, V>,) {
+   |                                    ^^^^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL ~ impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<i8> for (HashMap<K, V, S>,) {
+LL |
+LL |     fn make() -> (Self, Self) {
+LL ~         ((HashMap::default(),), (HashMap::with_capacity_and_hasher(10, Default::default()),))
+   |
+
+error: impl for `HashMap` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:31:19
+   |
+LL | impl Foo<i16> for HashMap<String, String> {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL ~ impl<S: ::std::hash::BuildHasher + Default> Foo<i16> for HashMap<String, String, S> {
+LL |
+LL |     fn make() -> (Self, Self) {
+LL ~         (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
+   |
+
+error: impl for `HashSet` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:49:32
+   |
+LL | impl<T: Hash + Eq> Foo<i8> for HashSet<T> {
+   |                                ^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL ~ impl<T: Hash + Eq, S: ::std::hash::BuildHasher + Default> Foo<i8> for HashSet<T, S> {
+LL |
+LL |     fn make() -> (Self, Self) {
+LL ~         (HashSet::default(), HashSet::with_capacity_and_hasher(10, Default::default()))
+   |
+
+error: impl for `HashSet` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:55:19
+   |
+LL | impl Foo<i16> for HashSet<String> {
+   |                   ^^^^^^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL ~ impl<S: ::std::hash::BuildHasher + Default> Foo<i16> for HashSet<String, S> {
+LL |
+LL |     fn make() -> (Self, Self) {
+LL ~         (HashSet::default(), HashSet::with_capacity_and_hasher(10, Default::default()))
+   |
+
+error: parameter of type `HashMap` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:73:22
+   |
+LL | pub fn map(map: &mut HashMap<i32, i32>) {}
+   |                      ^^^^^^^^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL | pub fn map<S: ::std::hash::BuildHasher>(map: &mut HashMap<i32, i32, S>) {}
+   |           +++++++++++++++++++++++++++++                           +++
+
+error: parameter of type `HashSet` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:76:22
+   |
+LL | pub fn set(set: &mut HashSet<i32>) {}
+   |                      ^^^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL | pub fn set<S: ::std::hash::BuildHasher>(set: &mut HashSet<i32, S>) {}
+   |           +++++++++++++++++++++++++++++                      +++
+
+error: impl for `HashMap` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:83:43
+   |
+LL |         impl<K: Hash + Eq, V> Foo<u8> for HashMap<K, V> {
+   |                                           ^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `__inline_mac_mod_gen_` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: add a type parameter for `BuildHasher`
+   |
+LL ~         impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<u8> for HashMap<K, V, S> {
+LL |
+LL |             fn make() -> (Self, Self) {
+LL ~                 (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
+   |
+
+error: parameter of type `HashMap` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:108:35
+   |
+LL | pub async fn election_vote(_data: HashMap<i32, i32>) {}
+   |                                   ^^^^^^^^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL | pub async fn election_vote<S: ::std::hash::BuildHasher>(_data: HashMap<i32, i32, S>) {}
+   |                           +++++++++++++++++++++++++++++                        +++
+
+error: aborting due to 9 previous errors
+

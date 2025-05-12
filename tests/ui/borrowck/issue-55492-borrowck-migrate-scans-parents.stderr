@@ -1,0 +1,70 @@
+error[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:9:46
+   |
+LL |         let mut c1 = |y: &'static mut isize| x = y;
+   |                                              ^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     pub fn e(mut x: &'static mut isize) {
+   |              +++
+
+error[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:21:50
+   |
+LL |             let mut c2 = |y: &'static mut isize| x = y;
+   |                                                  ^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     pub fn ee(mut x: &'static mut isize) {
+   |               +++
+
+error[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:35:13
+   |
+LL |             x = (1,);
+   |             ^^^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     pub fn capture_assign_whole(mut x: (i32,)) {
+   |                                 +++
+
+error[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:41:13
+   |
+LL |             x.0 = 1;
+   |             ^^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     pub fn capture_assign_part(mut x: (i32,)) {
+   |                                +++
+
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:47:13
+   |
+LL |             &mut x;
+   |             ^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     pub fn capture_reborrow_whole(mut x: (i32,)) {
+   |                                   +++
+
+error[E0596]: cannot borrow `x.0` as mutable, as `x` is not declared as mutable
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:53:13
+   |
+LL |             &mut x.0;
+   |             ^^^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     pub fn capture_reborrow_part(mut x: (i32,)) {
+   |                                  +++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

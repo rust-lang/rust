@@ -1,0 +1,28 @@
+error: expected one of `extern` or `fn`, found keyword `const`
+  --> $DIR/recovery.rs:6:12
+   |
+LL |     unsafe const fn from_u32(val: u32) {}
+   |     -------^^^^^
+   |     |      |
+   |     |      expected one of `extern` or `fn`
+   |     help: `const` must come before `unsafe`: `const unsafe`
+   |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+
+error: expected one of `extern` or `fn`, found keyword `unsafe`
+  --> $DIR/recovery.rs:14:12
+   |
+LL |     unsafe unsafe fn from_u32(val: u32) {}
+   |            ^^^^^^
+   |            |
+   |            expected one of `extern` or `fn`
+   |            help: `unsafe` already used earlier, remove this one
+   |
+note: `unsafe` first seen here
+  --> $DIR/recovery.rs:14:5
+   |
+LL |     unsafe unsafe fn from_u32(val: u32) {}
+   |     ^^^^^^
+
+error: aborting due to 2 previous errors
+

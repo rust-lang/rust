@@ -1,0 +1,22 @@
+error: Undefined Behavior: Race condition detected between (1) 2-byte atomic store on thread `unnamed-ID` and (2) 1-byte atomic store on thread `unnamed-ID` at ALLOC. (2) just happened here
+  --> tests/fail/data_race/mixed_size_write_write.rs:LL:CC
+   |
+LL |             a8[0].store(1, Ordering::SeqCst);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Race condition detected between (1) 2-byte atomic store on thread `unnamed-ID` and (2) 1-byte atomic store on thread `unnamed-ID` at ALLOC. (2) just happened here
+   |
+help: and (1) occurred earlier here
+  --> tests/fail/data_race/mixed_size_write_write.rs:LL:CC
+   |
+LL |             a16.store(1, Ordering::SeqCst);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: overlapping unsynchronized atomic accesses must use the same access size
+   = help: see https://doc.rust-lang.org/nightly/std/sync/atomic/index.html#memory-model-for-atomic-accesses for more information about the Rust memory model
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
+   = note: inside closure at tests/fail/data_race/mixed_size_write_write.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

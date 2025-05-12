@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/assert.rs:5:15
+   |
+LL | const _: () = assert!(false);
+   |               ^^^^^^^^^^^^^^ evaluation panicked: assertion failed: false
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

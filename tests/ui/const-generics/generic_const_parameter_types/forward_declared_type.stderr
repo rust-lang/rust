@@ -1,0 +1,14 @@
+error: const parameter types cannot reference parameters before they are declared
+  --> $DIR/forward_declared_type.rs:6:32
+   |
+LL | struct UsesConst<const N: [u8; M], const M: usize>;
+   |                                ^ const parameter type cannot reference `M` before it is declared
+
+error: const parameter types cannot reference parameters before they are declared
+  --> $DIR/forward_declared_type.rs:8:27
+   |
+LL | struct UsesType<const N: [T; 2], T>(PhantomData<T>);
+   |                           ^ const parameter type cannot reference `T` before it is declared
+
+error: aborting due to 2 previous errors
+

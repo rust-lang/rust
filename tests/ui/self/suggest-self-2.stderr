@@ -1,0 +1,40 @@
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/suggest-self-2.rs:5:9
+   |
+LL |         bar(self);
+   |         ^^^------
+   |         |
+   |         help: try calling `bar` as a method: `self.bar()`
+
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/suggest-self-2.rs:9:9
+   |
+LL |         bar(&&self, 102);
+   |         ^^^-------------
+   |         |
+   |         help: try calling `bar` as a method: `self.bar(102)`
+
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/suggest-self-2.rs:13:9
+   |
+LL |         bar(&mut self, 102, &"str");
+   |         ^^^------------------------
+   |         |
+   |         help: try calling `bar` as a method: `self.bar(102, &"str")`
+
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/suggest-self-2.rs:17:9
+   |
+LL |         bar();
+   |         ^^^ not found in this scope
+
+error[E0599]: no method named `bar` found for reference `&Foo` in the current scope
+  --> $DIR/suggest-self-2.rs:20:14
+   |
+LL |         self.bar();
+   |              ^^^ method not found in `&Foo`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0425, E0599.
+For more information about an error, try `rustc --explain E0425`.

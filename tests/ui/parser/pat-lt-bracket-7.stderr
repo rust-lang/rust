@@ -1,0 +1,18 @@
+error: expected one of `)`, `,`, `@`, `if`, or `|`, found `[`
+  --> $DIR/pat-lt-bracket-7.rs:5:16
+   |
+LL |     for Thing(x[]) in foo {}
+   |                ^
+   |                |
+   |                expected one of `)`, `,`, `@`, `if`, or `|`
+   |                help: missing `,`
+
+error[E0308]: mismatched types
+  --> $DIR/pat-lt-bracket-7.rs:9:30
+   |
+LL | const RECOVERY_WITNESS: () = 0;
+   |                              ^ expected `()`, found integer
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

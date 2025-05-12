@@ -1,0 +1,30 @@
+error[E0204]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/issue-27340.rs:2:10
+   |
+LL | #[derive(Copy, Clone)]
+   |          ^^^^
+LL |
+LL | struct Bar(Foo);
+   |            --- this field does not implement `Copy`
+
+error[E0277]: the trait bound `Foo: Clone` is not satisfied
+  --> $DIR/issue-27340.rs:4:12
+   |
+LL | #[derive(Copy, Clone)]
+   |                ----- in this derive macro expansion
+LL |
+LL | struct Bar(Foo);
+   |            ^^^ the trait `Clone` is not implemented for `Foo`
+   |
+note: required by a bound in `AssertParamIsClone`
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
+help: consider annotating `Foo` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct Foo;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0204, E0277.
+For more information about an error, try `rustc --explain E0204`.

@@ -1,0 +1,97 @@
+- // MIR for `copies` before ScalarReplacementOfAggregates
++ // MIR for `copies` after ScalarReplacementOfAggregates
+  
+  fn copies(_1: Foo) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: Foo;
++     let _11: u8;
++     let _12: ();
++     let _13: &str;
++     let _14: std::option::Option<isize>;
+      scope 1 {
+-         debug y => _2;
++         debug ((y: Foo).0: u8) => _11;
++         debug ((y: Foo).1: ()) => _12;
++         debug ((y: Foo).2: &str) => _13;
++         debug ((y: Foo).3: std::option::Option<isize>) => _14;
+          let _3: u8;
+          scope 2 {
+              debug t => _3;
+              let _4: &str;
+              scope 3 {
+                  debug u => _4;
+                  let _5: Foo;
++                 let _7: u8;
++                 let _8: ();
++                 let _9: &str;
++                 let _10: std::option::Option<isize>;
+                  scope 4 {
+-                     debug z => _5;
++                     debug ((z: Foo).0: u8) => _7;
++                     debug ((z: Foo).1: ()) => _8;
++                     debug ((z: Foo).2: &str) => _9;
++                     debug ((z: Foo).3: std::option::Option<isize>) => _10;
+                      let _6: ();
+                      scope 5 {
+                          debug a => _6;
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         _2 = copy _1;
++         StorageLive(_11);
++         StorageLive(_12);
++         StorageLive(_13);
++         StorageLive(_14);
++         nop;
++         _11 = copy (_1.0: u8);
++         _12 = copy (_1.1: ());
++         _13 = copy (_1.2: &str);
++         _14 = copy (_1.3: std::option::Option<isize>);
++         nop;
+          StorageLive(_3);
+-         _3 = copy (_2.0: u8);
++         _3 = copy _11;
+          StorageLive(_4);
+-         _4 = copy (_2.2: &str);
+-         StorageLive(_5);
+-         _5 = copy _2;
++         _4 = copy _13;
++         StorageLive(_7);
++         StorageLive(_8);
++         StorageLive(_9);
++         StorageLive(_10);
++         nop;
++         _7 = copy _11;
++         _8 = copy _12;
++         _9 = copy _13;
++         _10 = copy _14;
++         nop;
+          StorageLive(_6);
+-         _6 = copy (_5.1: ());
++         _6 = copy _8;
+          _0 = const ();
+          StorageDead(_6);
+-         StorageDead(_5);
++         StorageDead(_7);
++         StorageDead(_8);
++         StorageDead(_9);
++         StorageDead(_10);
++         nop;
+          StorageDead(_4);
+          StorageDead(_3);
+-         StorageDead(_2);
++         StorageDead(_11);
++         StorageDead(_12);
++         StorageDead(_13);
++         StorageDead(_14);
++         nop;
+          return;
+      }
+  }
+  

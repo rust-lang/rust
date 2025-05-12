@@ -1,0 +1,70 @@
+error[E0308]: mismatched types
+  --> $DIR/const-scope.rs:1:16
+   |
+LL | const C: i32 = 1i8;
+   |                ^^^ expected `i32`, found `i8`
+   |
+help: change the type of the numeric literal from `i8` to `i32`
+   |
+LL - const C: i32 = 1i8;
+LL + const C: i32 = 1i32;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/const-scope.rs:2:15
+   |
+LL | const D: i8 = C;
+   |               ^ expected `i8`, found `i32`
+
+error[E0308]: mismatched types
+  --> $DIR/const-scope.rs:5:18
+   |
+LL |     let c: i32 = 1i8;
+   |            ---   ^^^ expected `i32`, found `i8`
+   |            |
+   |            expected due to this
+   |
+help: change the type of the numeric literal from `i8` to `i32`
+   |
+LL -     let c: i32 = 1i8;
+LL +     let c: i32 = 1i32;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/const-scope.rs:6:17
+   |
+LL |     let d: i8 = c;
+   |            --   ^ expected `i8`, found `i32`
+   |            |
+   |            expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/const-scope.rs:10:18
+   |
+LL |     let c: i32 = 1i8;
+   |            ---   ^^^ expected `i32`, found `i8`
+   |            |
+   |            expected due to this
+   |
+help: change the type of the numeric literal from `i8` to `i32`
+   |
+LL -     let c: i32 = 1i8;
+LL +     let c: i32 = 1i32;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/const-scope.rs:11:17
+   |
+LL |     let d: i8 = c;
+   |            --   ^ expected `i8`, found `i32`
+   |            |
+   |            expected due to this
+   |
+help: you can convert an `i32` to an `i8` and panic if the converted value doesn't fit
+   |
+LL |     let d: i8 = c.try_into().unwrap();
+   |                  ++++++++++++++++++++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

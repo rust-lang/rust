@@ -1,0 +1,32 @@
+error: no rules expected keyword `const`
+  --> $DIR/expr_2021_inline_const.rs:23:12
+   |
+LL | macro_rules! m2021 {
+   | ------------------ when calling this macro
+...
+LL |     m2021!(const { 1 });
+   |            ^^^^^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$e:expr_2021`
+  --> $DIR/expr_2021_inline_const.rs:7:6
+   |
+LL |     ($e:expr_2021) => {
+   |      ^^^^^^^^^^^^
+
+error: no rules expected keyword `const`
+  --> $DIR/expr_2021_inline_const.rs:24:12
+   |
+LL | macro_rules! m2024 {
+   | ------------------ when calling this macro
+...
+LL |     m2024!(const { 1 });
+   |            ^^^^^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$e:expr`
+  --> $DIR/expr_2021_inline_const.rs:13:6
+   |
+LL |     ($e:expr) => {
+   |      ^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,67 @@
+error[E0391]: cycle detected when computing type of `Bug::{opaque#0}`
+  --> $DIR/issue-53092-2.rs:4:18
+   |
+LL | type Bug<T, U> = impl Fn(T) -> U + Copy;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing type of opaque `Bug::{opaque#0}`...
+  --> $DIR/issue-53092-2.rs:4:18
+   |
+LL | type Bug<T, U> = impl Fn(T) -> U + Copy;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires borrow-checking `CONST_BUG`...
+  --> $DIR/issue-53092-2.rs:8:1
+   |
+LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires promoting constants in MIR for `CONST_BUG`...
+  --> $DIR/issue-53092-2.rs:8:1
+   |
+LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires const checking `CONST_BUG`...
+  --> $DIR/issue-53092-2.rs:8:1
+   |
+LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires building MIR for `CONST_BUG`...
+  --> $DIR/issue-53092-2.rs:8:1
+   |
+LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires match-checking `CONST_BUG`...
+  --> $DIR/issue-53092-2.rs:8:1
+   |
+LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires type-checking `CONST_BUG`...
+  --> $DIR/issue-53092-2.rs:8:1
+   |
+LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which requires computing layout of `Bug<u8, ()>`...
+   = note: ...which requires normalizing `Bug<u8, ()>`...
+   = note: ...which again requires computing type of `Bug::{opaque#0}`, completing the cycle
+note: cycle used when checking that `Bug::{opaque#0}` is well-formed
+  --> $DIR/issue-53092-2.rs:4:18
+   |
+LL | type Bug<T, U> = impl Fn(T) -> U + Copy;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: item does not constrain `Bug::{opaque#0}`
+  --> $DIR/issue-53092-2.rs:8:7
+   |
+LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
+   |       ^^^^^^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/issue-53092-2.rs:4:18
+   |
+LL | type Bug<T, U> = impl Fn(T) -> U + Copy;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

@@ -1,0 +1,22 @@
+error[E0599]: no method named `f` found for unit type `()` in the current scope
+  --> $DIR/trait_items.rs:17:24
+   |
+LL |         fn f(&self) {}
+   |            - the method is available for `()` here
+...
+LL |     fn f() { ::baz::m!(); }
+   |              ----------- in this macro invocation
+...
+LL |     pub macro m() { ().f() }
+   |                        ^ method not found in `()`
+   |
+   = help: items from traits can only be used if the trait is in scope
+   = note: this error originates in the macro `::baz::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: trait `T` which provides `f` is implemented but not in scope; perhaps you want to import it
+   |
+LL +     use foo::T;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

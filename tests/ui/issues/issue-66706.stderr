@@ -1,0 +1,45 @@
+error: expected one of `,` or `|`, found `&`
+  --> $DIR/issue-66706.rs:2:16
+   |
+LL |     [0; [|_: _ &_| ()].len()]
+   |               -^ expected one of `,` or `|`
+   |               |
+   |               help: missing `,`
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/issue-66706.rs:8:20
+   |
+LL |     [0; [|f @ &ref _| {} ; 0 ].len() ];
+   |                    ^ expected identifier, found reserved identifier
+
+error: expected one of `,` or `|`, found `&`
+  --> $DIR/issue-66706.rs:13:17
+   |
+LL |     [0; [|&_: _ &_| {}; 0 ].len()]
+   |                -^ expected one of `,` or `|`
+   |                |
+   |                help: missing `,`
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/issue-66706.rs:19:26
+   |
+LL |     [0; match [|f @ &ref _| () ] {} ]
+   |         -----            ^ expected identifier, found reserved identifier
+   |         |
+   |         while parsing this `match` expression
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-66706.rs:2:14
+   |
+LL |     [0; [|_: _ &_| ()].len()]
+   |              ^ cannot infer type
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-66706.rs:13:11
+   |
+LL |     [0; [|&_: _ &_| {}; 0 ].len()]
+   |           ^^^^^ cannot infer type
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

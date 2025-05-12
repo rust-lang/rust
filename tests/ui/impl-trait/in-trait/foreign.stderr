@@ -1,0 +1,41 @@
+warning: impl trait in impl method signature does not match trait method signature
+  --> $DIR/foreign.rs:21:21
+   |
+LL |     fn bar(self) -> Arc<String> {
+   |                     ^^^^^^^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+note: the lint level is defined here
+  --> $DIR/foreign.rs:20:12
+   |
+LL |     #[warn(refining_impl_trait)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(refining_impl_trait_internal)]` implied by `#[warn(refining_impl_trait)]`
+help: replace the return type so that it matches the trait
+   |
+LL -     fn bar(self) -> Arc<String> {
+LL +     fn bar(self) -> impl Deref<Target = impl Sized> {
+   |
+
+warning: impl trait in impl method signature does not match trait method signature
+  --> $DIR/foreign.rs:31:21
+   |
+LL |     fn bar(self) -> Arc<String> {
+   |                     ^^^^^^^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+note: the lint level is defined here
+  --> $DIR/foreign.rs:29:12
+   |
+LL |     #[warn(refining_impl_trait)]
+   |            ^^^^^^^^^^^^^^^^^^^
+help: replace the return type so that it matches the trait
+   |
+LL -     fn bar(self) -> Arc<String> {
+LL +     fn bar(self) -> impl Deref<Target = impl Sized> {
+   |
+
+warning: 2 warnings emitted
+

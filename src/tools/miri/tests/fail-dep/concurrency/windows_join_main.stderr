@@ -1,0 +1,34 @@
+error: deadlock: the evaluated program deadlocked
+  --> tests/fail-dep/concurrency/windows_join_main.rs:LL:CC
+   |
+LL |             assert_eq!(WaitForSingleObject(MAIN_THREAD, INFINITE), WAIT_OBJECT_0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program deadlocked
+   |
+   = note: BACKTRACE on thread `unnamed-ID`:
+   = note: inside closure at RUSTLIB/core/src/macros/mod.rs:LL:CC
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: deadlock: the evaluated program deadlocked
+  --> RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
+   |
+LL |         let rc = unsafe { c::WaitForSingleObject(self.handle.as_raw_handle(), c::INFINITE) };
+   |                                                                                          ^ the evaluated program deadlocked
+   |
+   = note: BACKTRACE:
+   = note: inside `std::sys::pal::PLATFORM::thread::Thread::join` at RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
+   = note: inside `std::thread::JoinInner::<'_, ()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside `std::thread::JoinHandle::<()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
+note: inside `main`
+  --> tests/fail-dep/concurrency/windows_join_main.rs:LL:CC
+   |
+LL | /     thread::spawn(|| {
+LL | |         unsafe {
+LL | |             assert_eq!(WaitForSingleObject(MAIN_THREAD, INFINITE), WAIT_OBJECT_0);
+...  |
+LL | |     .join()
+   | |___________^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 2 previous errors
+

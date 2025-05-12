@@ -1,0 +1,171 @@
+error: this function can be simplified using the `async fn` syntax
+  --> tests/ui/manual_async_fn.rs:6:1
+   |
+LL | fn fut() -> impl Future<Output = i32> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::manual-async-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_async_fn)]`
+help: make the function `async` and return the output of the future directly
+   |
+LL - fn fut() -> impl Future<Output = i32> {
+LL + async fn fut() -> i32 { 42 }
+   |
+
+error: this function can be simplified using the `async fn` syntax
+  --> tests/ui/manual_async_fn.rs:12:1
+   |
+LL | fn fut2() ->impl Future<Output = i32> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL - fn fut2() ->impl Future<Output = i32> {
+LL + async fn fut2() -> i32 { 42 }
+   |
+
+error: this function can be simplified using the `async fn` syntax
+  --> tests/ui/manual_async_fn.rs:18:1
+   |
+LL | fn fut3()-> impl Future<Output = i32> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL - fn fut3()-> impl Future<Output = i32> {
+LL + async fn fut3() -> i32 { 42 }
+   |
+
+error: this function can be simplified using the `async fn` syntax
+  --> tests/ui/manual_async_fn.rs:23:1
+   |
+LL | fn empty_fut() -> impl Future<Output = ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL - fn empty_fut() -> impl Future<Output = ()> {
+LL + async fn empty_fut() {}
+   |
+
+error: this function can be simplified using the `async fn` syntax
+  --> tests/ui/manual_async_fn.rs:29:1
+   |
+LL | fn empty_fut2() ->impl Future<Output = ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL - fn empty_fut2() ->impl Future<Output = ()> {
+LL + async fn empty_fut2() {}
+   |
+
+error: this function can be simplified using the `async fn` syntax
+  --> tests/ui/manual_async_fn.rs:35:1
+   |
+LL | fn empty_fut3()-> impl Future<Output = ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL - fn empty_fut3()-> impl Future<Output = ()> {
+LL + async fn empty_fut3() {}
+   |
+
+error: this function can be simplified using the `async fn` syntax
+  --> tests/ui/manual_async_fn.rs:40:1
+   |
+LL | fn core_fut() -> impl core::future::Future<Output = i32> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL - fn core_fut() -> impl core::future::Future<Output = i32> {
+LL + async fn core_fut() -> i32 { 42 }
+   |
+
+error: this function can be simplified using the `async fn` syntax
+  --> tests/ui/manual_async_fn.rs:63:5
+   |
+LL |     fn inh_fut() -> impl Future<Output = i32> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL ~     async fn inh_fut() -> i32 {
+LL +         // NOTE: this code is here just to check that the indentation is correct in the suggested fix
+LL +         let a = 42;
+LL +         let b = 21;
+LL +         if a < b {
+LL +             let c = 21;
+LL +             let d = 42;
+LL +             if c < d {
+LL +                 let _ = 42;
+LL +             }
+LL +         }
+LL +         42
+LL +     }
+   |
+
+error: this function can be simplified using the `async fn` syntax
+  --> tests/ui/manual_async_fn.rs:99:1
+   |
+LL | fn elided(_: &i32) -> impl Future<Output = i32> + '_ {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL - fn elided(_: &i32) -> impl Future<Output = i32> + '_ {
+LL + async fn elided(_: &i32) -> i32 { 42 }
+   |
+
+error: this function can be simplified using the `async fn` syntax
+  --> tests/ui/manual_async_fn.rs:110:1
+   |
+LL | fn explicit<'a, 'b>(_: &'a i32, _: &'b i32) -> impl Future<Output = i32> + 'a + 'b {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL - fn explicit<'a, 'b>(_: &'a i32, _: &'b i32) -> impl Future<Output = i32> + 'a + 'b {
+LL + async fn explicit<'a, 'b>(_: &'a i32, _: &'b i32) -> i32 { 42 }
+   |
+
+error: this function can be simplified using the `async fn` syntax
+  --> tests/ui/manual_async_fn.rs:140:1
+   |
+LL | pub fn issue_10450() -> impl Future<Output = i32> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL - pub fn issue_10450() -> impl Future<Output = i32> {
+LL + pub async fn issue_10450() -> i32 { 42 }
+   |
+
+error: this function can be simplified using the `async fn` syntax
+  --> tests/ui/manual_async_fn.rs:145:1
+   |
+LL | pub(crate) fn issue_10450_2() -> impl Future<Output = i32> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL - pub(crate) fn issue_10450_2() -> impl Future<Output = i32> {
+LL + pub(crate) async fn issue_10450_2() -> i32 { 42 }
+   |
+
+error: this function can be simplified using the `async fn` syntax
+  --> tests/ui/manual_async_fn.rs:150:1
+   |
+LL | pub(self) fn issue_10450_3() -> impl Future<Output = i32> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL - pub(self) fn issue_10450_3() -> impl Future<Output = i32> {
+LL + pub(self) async fn issue_10450_3() -> i32 { 42 }
+   |
+
+error: aborting due to 13 previous errors
+

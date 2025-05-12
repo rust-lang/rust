@@ -1,0 +1,22 @@
+error[E0428]: the name `TestSome` is defined multiple times
+  --> $DIR/duplicated-fields-issue-124464.rs:6:5
+   |
+LL |     TestSome(T),
+   |     ----------- previous definition of the type `TestSome` here
+LL |     TestSome(T),
+   |     ^^^^^^^^^^^ `TestSome` redefined here
+   |
+   = note: `TestSome` must be defined only once in the type namespace of this enum
+
+error[E0124]: field `bar` is already declared
+  --> $DIR/duplicated-fields-issue-124464.rs:12:5
+   |
+LL |     bar: TestOption<u64>,
+   |     -------------------- `bar` first declared here
+LL |     bar: u8,
+   |     ^^^^^^^ field already declared
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0124, E0428.
+For more information about an error, try `rustc --explain E0124`.

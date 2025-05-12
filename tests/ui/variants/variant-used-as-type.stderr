@@ -1,0 +1,33 @@
+error[E0573]: expected type, found variant `Ty::A`
+  --> $DIR/variant-used-as-type.rs:7:7
+   |
+LL |     B(Ty::A),
+   |       ^^^^^ not a type
+   |
+help: try using the variant's enum
+   |
+LL -     B(Ty::A),
+LL +     B(E),
+   |
+LL -     B(Ty::A),
+LL +     B(Ty),
+   |
+
+error[E0573]: expected type, found variant `E::A`
+  --> $DIR/variant-used-as-type.rs:17:6
+   |
+LL | impl E::A {}
+   |      ^^^^ not a type
+   |
+help: try using the variant's enum
+   |
+LL - impl E::A {}
+LL + impl E {}
+   |
+LL - impl E::A {}
+LL + impl Ty {}
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0573`.

@@ -1,0 +1,46 @@
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/liveness-move-in-while.rs:8:9
+   |
+LL |         while true { while true { while true { x = y; x.clone(); } } }
+   |         ^^^^^^^^^^ help: use `loop`
+   |
+   = note: `#[warn(while_true)]` on by default
+
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/liveness-move-in-while.rs:8:22
+   |
+LL |         while true { while true { while true { x = y; x.clone(); } } }
+   |                      ^^^^^^^^^^ help: use `loop`
+
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/liveness-move-in-while.rs:8:35
+   |
+LL |         while true { while true { while true { x = y; x.clone(); } } }
+   |                                   ^^^^^^^^^^ help: use `loop`
+
+error[E0382]: borrow of moved value: `y`
+  --> $DIR/liveness-move-in-while.rs:7:24
+   |
+LL |     let y: Box<isize> = 42.into();
+   |         - move occurs because `y` has type `Box<isize>`, which does not implement the `Copy` trait
+...
+LL |     loop {
+   |     ---- inside of this loop
+LL |         println!("{}", y);
+   |                        ^ value borrowed here after move
+LL |         while true { while true { while true { x = y; x.clone(); } } }
+   |         ----------   ----------   ----------       - value moved here, in previous iteration of loop
+   |         |            |            |
+   |         |            |            inside of this loop
+   |         |            inside of this loop
+   |         inside of this loop
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         while true { while true { while true { x = y.clone(); x.clone(); } } }
+   |                                                     ++++++++
+
+error: aborting due to 1 previous error; 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0382`.

@@ -1,0 +1,21 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/cannot-call-unsized-via-ptr-2.rs:5:24
+   |
+LL |     let f = if true { |_a| {} } else { |_b| {} };
+   |                        ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: all function arguments must have a statically known size
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/cannot-call-unsized-via-ptr-2.rs:5:41
+   |
+LL |     let f = if true { |_a| {} } else { |_b| {} };
+   |                                         ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: all function arguments must have a statically known size
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,19 @@
+error[E0015]: cannot call non-const function `regular_in_block` in constant functions
+  --> $DIR/const-extern-fn-call-extern-fn.rs:7:9
+   |
+LL |         regular_in_block();
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot call non-const function `regular` in constant functions
+  --> $DIR/const-extern-fn-call-extern-fn.rs:16:9
+   |
+LL |         regular();
+   |         ^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

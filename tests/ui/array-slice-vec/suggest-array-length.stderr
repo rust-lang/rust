@@ -1,0 +1,102 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/suggest-array-length.rs:5:22
+   |
+LL |     const Foo: [i32; _] = [1, 2, 3];
+   |                      ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL -     const Foo: [i32; _] = [1, 2, 3];
+LL +     const Foo: [i32; 3] = [1, 2, 3];
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/suggest-array-length.rs:7:26
+   |
+LL |     const REF_FOO: &[u8; _] = &[1];
+   |                          ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL -     const REF_FOO: &[u8; _] = &[1];
+LL +     const REF_FOO: &[u8; 1] = &[1];
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
+  --> $DIR/suggest-array-length.rs:9:26
+   |
+LL |     static Statik: [i32; _] = [1, 2, 3];
+   |                          ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL -     static Statik: [i32; _] = [1, 2, 3];
+LL +     static Statik: [i32; 3] = [1, 2, 3];
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
+  --> $DIR/suggest-array-length.rs:11:30
+   |
+LL |     static REF_STATIK: &[u8; _] = &[1];
+   |                              ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL -     static REF_STATIK: &[u8; _] = &[1];
+LL +     static REF_STATIK: &[u8; 1] = &[1];
+   |
+
+error[E0658]: using `_` for array lengths is unstable
+  --> $DIR/suggest-array-length.rs:13:20
+   |
+LL |     let foo: [i32; _] = [1, 2, 3];
+   |                    ^ help: consider specifying the array length: `3`
+   |
+   = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
+   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: using `_` for array lengths is unstable
+  --> $DIR/suggest-array-length.rs:15:20
+   |
+LL |     let bar: [i32; _] = [0; 3];
+   |                    ^ help: consider specifying the array length: `3`
+   |
+   = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
+   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: using `_` for array lengths is unstable
+  --> $DIR/suggest-array-length.rs:17:25
+   |
+LL |     let ref_foo: &[i32; _] = &[1, 2, 3];
+   |                         ^ help: consider specifying the array length: `3`
+   |
+   = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
+   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: using `_` for array lengths is unstable
+  --> $DIR/suggest-array-length.rs:19:25
+   |
+LL |     let ref_bar: &[i32; _] = &[0; 3];
+   |                         ^ help: consider specifying the array length: `3`
+   |
+   = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
+   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: using `_` for array lengths is unstable
+  --> $DIR/suggest-array-length.rs:21:35
+   |
+LL |     let multiple_ref_foo: &&[i32; _] = &&[1, 2, 3];
+   |                                   ^ help: consider specifying the array length: `3`
+   |
+   = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
+   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0121, E0658.
+For more information about an error, try `rustc --explain E0121`.

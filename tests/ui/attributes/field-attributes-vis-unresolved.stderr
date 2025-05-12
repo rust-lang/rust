@@ -1,0 +1,25 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `nonexistent`
+  --> $DIR/field-attributes-vis-unresolved.rs:17:12
+   |
+LL |     pub(in nonexistent) field: u8
+   |            ^^^^^^^^^^^ use of unresolved module or unlinked crate `nonexistent`
+   |
+help: you might be missing a crate named `nonexistent`, add it to your project and import it in your code
+   |
+LL + extern crate nonexistent;
+   |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `nonexistent`
+  --> $DIR/field-attributes-vis-unresolved.rs:22:12
+   |
+LL |     pub(in nonexistent) u8
+   |            ^^^^^^^^^^^ use of unresolved module or unlinked crate `nonexistent`
+   |
+help: you might be missing a crate named `nonexistent`, add it to your project and import it in your code
+   |
+LL + extern crate nonexistent;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

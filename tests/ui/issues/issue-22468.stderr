@@ -1,0 +1,16 @@
+error[E0618]: expected function, found `&str`
+  --> $DIR/issue-22468.rs:3:13
+   |
+LL |     let foo = "bar";
+   |         --- `foo` has type `&str`
+LL |     let x = foo("baz");
+   |             ^^^-------
+   |             |
+   |             call expression requires function
+...
+LL | fn foo(file: &str) -> bool {
+   | -------------------------- this function of the same name is available here, but it's shadowed by the local binding
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0618`.

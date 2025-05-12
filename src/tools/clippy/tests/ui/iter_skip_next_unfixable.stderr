@@ -1,0 +1,40 @@
+error: called `skip(..).next()` on an iterator
+  --> tests/ui/iter_skip_next_unfixable.rs:9:26
+   |
+LL |     let _: Vec<&str> = sp.skip(1).next().unwrap().split(' ').collect();
+   |                          ^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(1)`
+   |
+help: for this change `sp` has to be mutable
+  --> tests/ui/iter_skip_next_unfixable.rs:8:9
+   |
+LL |     let sp = test_string.split('|').map(|s| s.trim());
+   |         ^^
+   = note: `-D clippy::iter-skip-next` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_skip_next)]`
+
+error: called `skip(..).next()` on an iterator
+  --> tests/ui/iter_skip_next_unfixable.rs:13:29
+   |
+LL |         let _: Vec<&str> = s.skip(1).next().unwrap().split(' ').collect();
+   |                             ^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(1)`
+   |
+help: for this change `s` has to be mutable
+  --> tests/ui/iter_skip_next_unfixable.rs:12:17
+   |
+LL |     if let Some(s) = Some(test_string.split('|').map(|s| s.trim())) {
+   |                 ^
+
+error: called `skip(..).next()` on an iterator
+  --> tests/ui/iter_skip_next_unfixable.rs:20:29
+   |
+LL |         let _: Vec<&str> = s.skip(1).next().unwrap().split(' ').collect();
+   |                             ^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(1)`
+   |
+help: for this change `s` has to be mutable
+  --> tests/ui/iter_skip_next_unfixable.rs:16:17
+   |
+LL |     fn check<T>(s: T)
+   |                 ^
+
+error: aborting due to 3 previous errors
+

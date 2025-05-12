@@ -1,0 +1,97 @@
+error[E0283]: type annotations needed
+  --> $DIR/issue-77982.rs:11:10
+   |
+LL |     opts.get(opt.as_ref());
+   |          ^^^ ------------ type must be known at this point
+   |          |
+   |          cannot infer type of the type parameter `Q` declared on the method `get`
+   |
+   = note: multiple `impl`s satisfying `String: Borrow<_>` found in the following crates: `alloc`, `core`:
+           - impl Borrow<str> for String;
+           - impl<T> Borrow<T> for T
+             where T: ?Sized;
+note: required by a bound in `HashMap::<K, V, S>::get`
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+help: consider specifying the generic argument
+   |
+LL |     opts.get::<Q>(opt.as_ref());
+   |             +++++
+
+error[E0283]: type annotations needed
+  --> $DIR/issue-77982.rs:11:10
+   |
+LL |     opts.get(opt.as_ref());
+   |          ^^^     ------ type must be known at this point
+   |          |
+   |          cannot infer type of the type parameter `Q` declared on the method `get`
+   |
+   = note: multiple `impl`s satisfying `String: AsRef<_>` found in the following crates: `alloc`, `std`:
+           - impl AsRef<OsStr> for String;
+           - impl AsRef<Path> for String;
+           - impl AsRef<[u8]> for String;
+           - impl AsRef<str> for String;
+help: consider specifying the generic argument
+   |
+LL |     opts.get::<Q>(opt.as_ref());
+   |             +++++
+
+error[E0283]: type annotations needed
+  --> $DIR/issue-77982.rs:16:59
+   |
+LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect();
+   |                                            ---            ^^^^
+   |                                            |
+   |                                            type must be known at this point
+   |
+   = note: multiple `impl`s satisfying `u32: From<_>` found in the `core` crate:
+           - impl From<Char> for u32;
+           - impl From<Ipv4Addr> for u32;
+           - impl From<bool> for u32;
+           - impl From<char> for u32;
+           - impl From<u16> for u32;
+           - impl From<u8> for u32;
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect();
+LL +     let ips: Vec<_> = (0..100_000).map(|_| u32::from(<u32 as Into<T>>::into(0u32))).collect();
+   |
+
+error[E0283]: type annotations needed for `Box<_>`
+  --> $DIR/issue-77982.rs:39:9
+   |
+LL |     let _ = ().foo();
+   |         ^      --- type must be known at this point
+   |
+note: multiple `impl`s satisfying `(): Foo<'_, _>` found
+  --> $DIR/issue-77982.rs:32:1
+   |
+LL | impl Foo<'static, u32> for () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<'a> Foo<'a, i16> for () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider giving this pattern a type, where the type for type parameter `T` is specified
+   |
+LL |     let _: Box<T> = ().foo();
+   |          ++++++++
+
+error[E0283]: type annotations needed for `Box<_>`
+  --> $DIR/issue-77982.rs:43:9
+   |
+LL |     let _ = (&()).bar();
+   |         ^         --- type must be known at this point
+   |
+note: multiple `impl`s satisfying `&(): Bar<'_, _>` found
+  --> $DIR/issue-77982.rs:35:1
+   |
+LL | impl<'a> Bar<'static, u32> for &'a () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<'a> Bar<'a, i16> for &'a () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider giving this pattern a type, where the type for type parameter `T` is specified
+   |
+LL |     let _: Box<T> = (&()).bar();
+   |          ++++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0283`.

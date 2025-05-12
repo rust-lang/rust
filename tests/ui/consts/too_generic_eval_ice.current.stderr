@@ -1,0 +1,45 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/too_generic_eval_ice.rs:11:13
+   |
+LL |         [5; Self::HOST_SIZE] == [6; 0]
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/too_generic_eval_ice.rs:11:9
+   |
+LL |         [5; Self::HOST_SIZE] == [6; 0]
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/too_generic_eval_ice.rs:11:30
+   |
+LL |         [5; Self::HOST_SIZE] == [6; 0]
+   |                              ^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error[E0277]: can't compare `[{integer}; Self::HOST_SIZE]` with `[{integer}; 0]`
+  --> $DIR/too_generic_eval_ice.rs:11:30
+   |
+LL |         [5; Self::HOST_SIZE] == [6; 0]
+   |                              ^^ no implementation for `[{integer}; Self::HOST_SIZE] == [{integer}; 0]`
+   |
+   = help: the trait `PartialEq<[{integer}; 0]>` is not implemented for `[{integer}; Self::HOST_SIZE]`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             `&[T]` implements `PartialEq<Vec<U, A>>`
+             `&[T]` implements `PartialEq<[U; N]>`
+             `&[u8; N]` implements `PartialEq<ByteStr>`
+             `&[u8; N]` implements `PartialEq<ByteString>`
+             `&[u8]` implements `PartialEq<ByteStr>`
+             `&[u8]` implements `PartialEq<ByteString>`
+             `&mut [T]` implements `PartialEq<Vec<U, A>>`
+             `&mut [T]` implements `PartialEq<[U; N]>`
+           and 11 others
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

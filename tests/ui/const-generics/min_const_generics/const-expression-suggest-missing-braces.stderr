@@ -1,0 +1,143 @@
+error: expected one of `,` or `>`, found `3`
+  --> $DIR/const-expression-suggest-missing-braces.rs:6:17
+   |
+LL |     foo::<BAR + 3>();
+   |                 ^ expected one of `,` or `>`
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     foo::<{ BAR + 3 }>();
+   |           +         +
+
+error: expressions must be enclosed in braces to be used as const generic arguments
+  --> $DIR/const-expression-suggest-missing-braces.rs:17:11
+   |
+LL |     foo::<3 + 3>();
+   |           ^^^^^
+   |
+help: enclose the `const` expression in braces
+   |
+LL |     foo::<{ 3 + 3 }>();
+   |           +       +
+
+error: expected one of `,` or `>`, found `-`
+  --> $DIR/const-expression-suggest-missing-braces.rs:20:15
+   |
+LL |     foo::<BAR - 3>();
+   |               ^ expected one of `,` or `>`
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     foo::<{ BAR - 3 }>();
+   |           +         +
+
+error: expected one of `,` or `>`, found `-`
+  --> $DIR/const-expression-suggest-missing-braces.rs:23:15
+   |
+LL |     foo::<BAR - BAR>();
+   |               ^ expected one of `,` or `>`
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     foo::<{ BAR - BAR }>();
+   |           +           +
+
+error: expressions must be enclosed in braces to be used as const generic arguments
+  --> $DIR/const-expression-suggest-missing-braces.rs:26:11
+   |
+LL |     foo::<100 - BAR>();
+   |           ^^^^^^^^^
+   |
+help: enclose the `const` expression in braces
+   |
+LL |     foo::<{ 100 - BAR }>();
+   |           +           +
+
+error: expected one of `,` or `>`, found `(`
+  --> $DIR/const-expression-suggest-missing-braces.rs:29:19
+   |
+LL |     foo::<bar<i32>()>();
+   |                   ^ expected one of `,` or `>`
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     foo::<{ bar<i32>() }>();
+   |           +            +
+
+error: expected one of `,` or `>`, found `(`
+  --> $DIR/const-expression-suggest-missing-braces.rs:32:21
+   |
+LL |     foo::<bar::<i32>()>();
+   |                     ^ expected one of `,` or `>`
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     foo::<{ bar::<i32>() }>();
+   |           +              +
+
+error: expected one of `,` or `>`, found `(`
+  --> $DIR/const-expression-suggest-missing-braces.rs:35:21
+   |
+LL |     foo::<bar::<i32>() + BAR>();
+   |                     ^ expected one of `,` or `>`
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     foo::<{ bar::<i32>() + BAR }>();
+   |           +                    +
+
+error: expected one of `,` or `>`, found `(`
+  --> $DIR/const-expression-suggest-missing-braces.rs:38:21
+   |
+LL |     foo::<bar::<i32>() - BAR>();
+   |                     ^ expected one of `,` or `>`
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     foo::<{ bar::<i32>() - BAR }>();
+   |           +                    +
+
+error: expected one of `,` or `>`, found `-`
+  --> $DIR/const-expression-suggest-missing-braces.rs:41:15
+   |
+LL |     foo::<BAR - bar::<i32>()>();
+   |               ^ expected one of `,` or `>`
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     foo::<{ BAR - bar::<i32>() }>();
+   |           +                    +
+
+error: expected one of `,` or `>`, found `-`
+  --> $DIR/const-expression-suggest-missing-braces.rs:44:15
+   |
+LL |     foo::<BAR - bar::<i32>()>();
+   |               ^ expected one of `,` or `>`
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     foo::<{ BAR - bar::<i32>() }>();
+   |           +                    +
+
+error[E0404]: expected trait, found constant `BAR`
+  --> $DIR/const-expression-suggest-missing-braces.rs:11:11
+   |
+LL |     foo::<BAR + BAR>();
+   |           ^^^ not a trait
+
+error[E0404]: expected trait, found constant `BAR`
+  --> $DIR/const-expression-suggest-missing-braces.rs:11:17
+   |
+LL |     foo::<BAR + BAR>();
+   |                 ^^^ not a trait
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/const-expression-suggest-missing-braces.rs:11:11
+   |
+LL |     foo::<BAR + BAR>();
+   |           ^^^^^^^^^
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0404, E0747.
+For more information about an error, try `rustc --explain E0404`.

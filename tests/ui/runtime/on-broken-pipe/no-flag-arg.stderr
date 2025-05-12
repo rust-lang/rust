@@ -1,0 +1,2 @@
+error: unstable option `on-broken-pipe` requires either `kill`, `error`, or `inherit` (Z on-broken-pipe=<value>)
+

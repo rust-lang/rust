@@ -1,0 +1,16 @@
+error: borrow of moved value
+  --> $DIR/borrowck-pat-by-move-and-ref-inverse-promotion.rs:6:9
+   |
+LL |     let a @ ref b = U;
+   |         ^   ----- value borrowed here after move
+   |         |
+   |         value moved into `a` here
+   |         move occurs because `a` has type `U`, which does not implement the `Copy` trait
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let ref a @ ref b = U;
+   |         +++
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,55 @@
+error: unused `async` for function with no await statements
+  --> tests/ui/unused_async.rs:12:5
+   |
+LL | /     async fn async_block_await() {
+LL | |
+LL | |
+LL | |         async {
+LL | |             ready(()).await;
+LL | |         };
+LL | |     }
+   | |_____^
+   |
+   = help: consider removing the `async` from this function
+note: `await` used in an async block, which does not require the enclosing function to be `async`
+  --> tests/ui/unused_async.rs:16:23
+   |
+LL |             ready(()).await;
+   |                       ^^^^^
+   = note: `-D clippy::unused-async` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_async)]`
+
+error: unused `async` for function with no await statements
+  --> tests/ui/unused_async.rs:46:5
+   |
+LL |     async fn f3() {}
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing the `async` from this function
+
+error: unused `async` for function with no await statements
+  --> tests/ui/unused_async.rs:75:1
+   |
+LL | / async fn foo() -> i32 {
+LL | |
+LL | |
+LL | |     4
+LL | | }
+   | |_^
+   |
+   = help: consider removing the `async` from this function
+
+error: unused `async` for function with no await statements
+  --> tests/ui/unused_async.rs:88:5
+   |
+LL | /     async fn unused(&self) -> i32 {
+LL | |
+LL | |
+LL | |         1
+LL | |     }
+   | |_____^
+   |
+   = help: consider removing the `async` from this function
+
+error: aborting due to 4 previous errors
+

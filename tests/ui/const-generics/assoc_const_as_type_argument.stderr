@@ -1,0 +1,21 @@
+error[E0575]: expected associated type, found associated constant `Trait::ASSOC`
+  --> $DIR/assoc_const_as_type_argument.rs:8:11
+   |
+LL |     bar::<<T as Trait>::ASSOC>();
+   |           ^^^^^^^^^^^^^^^^^^^ not a associated type
+
+error[E0747]: unresolved item provided when a constant was expected
+  --> $DIR/assoc_const_as_type_argument.rs:8:11
+   |
+LL |     bar::<<T as Trait>::ASSOC>();
+   |           ^^^^^^^^^^^^^^^^^^^
+   |
+help: if this generic argument was intended as a const parameter, surround it with braces
+   |
+LL |     bar::<{ <T as Trait>::ASSOC }>();
+   |           +                     +
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0575, E0747.
+For more information about an error, try `rustc --explain E0575`.

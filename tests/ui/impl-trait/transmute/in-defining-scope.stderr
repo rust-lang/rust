@@ -1,0 +1,66 @@
+error[E0391]: cycle detected when computing type of `foo::{opaque#0}`
+  --> $DIR/in-defining-scope.rs:6:13
+   |
+LL | fn foo() -> impl Sized {
+   |             ^^^^^^^^^^
+   |
+note: ...which requires computing type of opaque `foo::{opaque#0}`...
+  --> $DIR/in-defining-scope.rs:6:13
+   |
+LL | fn foo() -> impl Sized {
+   |             ^^^^^^^^^^
+note: ...which requires borrow-checking `foo`...
+  --> $DIR/in-defining-scope.rs:6:1
+   |
+LL | fn foo() -> impl Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires promoting constants in MIR for `foo`...
+  --> $DIR/in-defining-scope.rs:6:1
+   |
+LL | fn foo() -> impl Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires checking if `foo` contains FFI-unwind calls...
+  --> $DIR/in-defining-scope.rs:6:1
+   |
+LL | fn foo() -> impl Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires building MIR for `foo`...
+  --> $DIR/in-defining-scope.rs:6:1
+   |
+LL | fn foo() -> impl Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires match-checking `foo`...
+  --> $DIR/in-defining-scope.rs:6:1
+   |
+LL | fn foo() -> impl Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires type-checking `foo`...
+  --> $DIR/in-defining-scope.rs:6:1
+   |
+LL | fn foo() -> impl Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which requires computing layout of `foo::{opaque#0}`...
+   = note: ...which requires normalizing `foo::{opaque#0}`...
+   = note: ...which again requires computing type of `foo::{opaque#0}`, completing the cycle
+note: cycle used when checking that `foo::{opaque#0}` is well-formed
+  --> $DIR/in-defining-scope.rs:6:13
+   |
+LL | fn foo() -> impl Sized {
+   |             ^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+warning: function cannot return without recursing
+  --> $DIR/in-defining-scope.rs:6:1
+   |
+LL | fn foo() -> impl Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+...
+LL |         transmute::<_, u8>(foo());
+   |                            ----- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0391`.

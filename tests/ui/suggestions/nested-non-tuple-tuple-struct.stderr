@@ -1,0 +1,124 @@
+error[E0560]: struct `S` has no field named `x`
+  --> $DIR/nested-non-tuple-tuple-struct.rs:8:19
+   |
+LL | pub struct S(f32, f32);
+   |            - `S` defined here
+...
+LL |     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
+   |                   ^ field does not exist
+   |
+help: `S` is a tuple struct, use the appropriate syntax
+   |
+LL -     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
+LL +     let _x = (S(/* f32 */, /* f32 */), S { x: 3.0, y: 4.0 });
+   |
+
+error[E0560]: struct `S` has no field named `y`
+  --> $DIR/nested-non-tuple-tuple-struct.rs:8:27
+   |
+LL | pub struct S(f32, f32);
+   |            - `S` defined here
+...
+LL |     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
+   |                           ^ field does not exist
+   |
+help: `S` is a tuple struct, use the appropriate syntax
+   |
+LL -     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
+LL +     let _x = (S(/* f32 */, /* f32 */), S { x: 3.0, y: 4.0 });
+   |
+
+error[E0560]: struct `S` has no field named `x`
+  --> $DIR/nested-non-tuple-tuple-struct.rs:8:41
+   |
+LL | pub struct S(f32, f32);
+   |            - `S` defined here
+...
+LL |     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
+   |                                         ^ field does not exist
+   |
+help: `S` is a tuple struct, use the appropriate syntax
+   |
+LL -     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
+LL +     let _x = (S { x: 1.0, y: 2.0 }, S(/* f32 */, /* f32 */));
+   |
+
+error[E0560]: struct `S` has no field named `y`
+  --> $DIR/nested-non-tuple-tuple-struct.rs:8:49
+   |
+LL | pub struct S(f32, f32);
+   |            - `S` defined here
+...
+LL |     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
+   |                                                 ^ field does not exist
+   |
+help: `S` is a tuple struct, use the appropriate syntax
+   |
+LL -     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
+LL +     let _x = (S { x: 1.0, y: 2.0 }, S(/* f32 */, /* f32 */));
+   |
+
+error[E0559]: variant `E::V` has no field named `x`
+  --> $DIR/nested-non-tuple-tuple-struct.rs:13:22
+   |
+LL |     V(f32, f32),
+   |     - `E::V` defined here
+...
+LL |     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
+   |                      ^ field does not exist
+   |
+help: `E::V` is a tuple variant, use the appropriate syntax
+   |
+LL -     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
+LL +     let _y = (E::V(/* f32 */, /* f32 */), E::V { x: 3.0, y: 4.0 });
+   |
+
+error[E0559]: variant `E::V` has no field named `y`
+  --> $DIR/nested-non-tuple-tuple-struct.rs:13:30
+   |
+LL |     V(f32, f32),
+   |     - `E::V` defined here
+...
+LL |     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
+   |                              ^ field does not exist
+   |
+help: `E::V` is a tuple variant, use the appropriate syntax
+   |
+LL -     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
+LL +     let _y = (E::V(/* f32 */, /* f32 */), E::V { x: 3.0, y: 4.0 });
+   |
+
+error[E0559]: variant `E::V` has no field named `x`
+  --> $DIR/nested-non-tuple-tuple-struct.rs:13:47
+   |
+LL |     V(f32, f32),
+   |     - `E::V` defined here
+...
+LL |     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
+   |                                               ^ field does not exist
+   |
+help: `E::V` is a tuple variant, use the appropriate syntax
+   |
+LL -     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
+LL +     let _y = (E::V { x: 1.0, y: 2.0 }, E::V(/* f32 */, /* f32 */));
+   |
+
+error[E0559]: variant `E::V` has no field named `y`
+  --> $DIR/nested-non-tuple-tuple-struct.rs:13:55
+   |
+LL |     V(f32, f32),
+   |     - `E::V` defined here
+...
+LL |     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
+   |                                                       ^ field does not exist
+   |
+help: `E::V` is a tuple variant, use the appropriate syntax
+   |
+LL -     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
+LL +     let _y = (E::V { x: 1.0, y: 2.0 }, E::V(/* f32 */, /* f32 */));
+   |
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0559, E0560.
+For more information about an error, try `rustc --explain E0559`.

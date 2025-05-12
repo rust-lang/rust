@@ -1,0 +1,18 @@
+error[E0599]: no method named `quux` found for struct `Foo` in the current scope
+  --> $DIR/method-not-found-but-doc-alias.rs:9:9
+   |
+LL | struct Foo;
+   | ---------- method `quux` not found for this struct
+...
+LL |     Foo.quux();
+   |         ^^^^
+   |
+help: there is a method `bar` with a similar name
+   |
+LL -     Foo.quux();
+LL +     Foo.bar();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

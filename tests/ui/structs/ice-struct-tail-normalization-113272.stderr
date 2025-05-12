@@ -1,0 +1,28 @@
+error[E0412]: cannot find type `Missing` in this scope
+  --> $DIR/ice-struct-tail-normalization-113272.rs:5:25
+   |
+LL | impl Trait for () where Missing: Trait {}
+   |                         ^^^^^^^ not found in this scope
+
+error[E0046]: not all trait items implemented, missing: `RefTarget`
+  --> $DIR/ice-struct-tail-normalization-113272.rs:5:1
+   |
+LL |     type RefTarget;
+   |     -------------- `RefTarget` from trait
+...
+LL | impl Trait for () where Missing: Trait {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `RefTarget` in implementation
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/ice-struct-tail-normalization-113272.rs:15:9
+   |
+LL |         std::mem::transmute::<Option<()>, Option<&Other>>(None);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `Option<()>` (8 bits)
+   = note: target type: `Option<&Other>` (unable to determine layout for `Other` because `<() as Trait>::RefTarget` cannot be normalized)
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0046, E0412, E0512.
+For more information about an error, try `rustc --explain E0046`.

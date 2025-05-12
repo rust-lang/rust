@@ -1,0 +1,31 @@
+error[E0308]: mismatched types
+  --> $DIR/try-operator-dont-suggest-semicolon.rs:6:9
+   |
+LL |         b()
+   |         ^^^- help: consider using a semicolon here: `;`
+   |         |
+   |         expected `()`, found `i32`
+
+error[E0308]: mismatched types
+  --> $DIR/try-operator-dont-suggest-semicolon.rs:16:9
+   |
+LL | /     if true {
+LL | |
+LL | |         x?
+   | |         ^^ expected `()`, found integer
+...  |
+LL | |     }
+   | |_____- expected this to be `()`
+   |
+help: consider using a semicolon here
+   |
+LL |         x?;
+   |           +
+help: consider using a semicolon here
+   |
+LL |     };
+   |      +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

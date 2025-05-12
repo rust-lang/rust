@@ -1,0 +1,149 @@
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:17:9
+   |
+LL |         <Self as FromIterator<bool>>::from_iter(iter.into_iter().copied())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.into_iter().copied().collect::<Self>()`
+   |
+   = note: `-D clippy::from-iter-instead-of-collect` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::from_iter_instead_of_collect)]`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:24:13
+   |
+LL |     let _ = Vec::from_iter(iter_expr);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter_expr.collect::<Vec<_>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:27:13
+   |
+LL |     let _ = HashMap::<usize, &i8>::from_iter(vec![5, 5, 5, 5].iter().enumerate());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `vec![5, 5, 5, 5].iter().enumerate().collect::<HashMap<usize, &i8>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:33:19
+   |
+LL |     assert_eq!(a, Vec::from_iter(0..3));
+   |                   ^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<Vec<_>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:35:19
+   |
+LL |     assert_eq!(a, Vec::<i32>::from_iter(0..3));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<Vec<i32>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:38:17
+   |
+LL |     let mut b = VecDeque::from_iter(0..3);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<VecDeque<_>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:42:17
+   |
+LL |     let mut b = VecDeque::<i32>::from_iter(0..3);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<VecDeque<i32>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:48:21
+   |
+LL |         let mut b = collections::VecDeque::<i32>::from_iter(0..3);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<collections::VecDeque<i32>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:54:14
+   |
+LL |     let bm = BTreeMap::from_iter(values.iter().cloned());
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `values.iter().cloned().collect::<BTreeMap<_, _>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:56:19
+   |
+LL |     let mut bar = BTreeMap::from_iter(bm.range(0..2));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `bm.range(0..2).collect::<BTreeMap<_, _>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:60:19
+   |
+LL |     let mut bts = BTreeSet::from_iter(0..3);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<BTreeSet<_>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:65:17
+   |
+LL |         let _ = collections::BTreeSet::from_iter(0..3);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<collections::BTreeSet<_>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:67:17
+   |
+LL |         let _ = collections::BTreeSet::<u32>::from_iter(0..3);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<collections::BTreeSet<u32>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:71:15
+   |
+LL |     for _i in Vec::from_iter([1, 2, 3].iter()) {}
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `[1, 2, 3].iter().collect::<Vec<_>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:73:15
+   |
+LL |     for _i in Vec::<&i32>::from_iter([1, 2, 3].iter()) {}
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `[1, 2, 3].iter().collect::<Vec<&i32>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:79:14
+   |
+LL |     let _ = &String::from_iter(nums.iter().map(|&num| char::from_u32(num).unwrap()));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `nums.iter().map(|&num| char::from_u32(num).unwrap()).collect::<String>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:95:13
+   |
+LL |     let _ = <S<'static, i32, 7>>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S<'static, i32, 7>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:98:13
+   |
+LL |     let _ = <S<'static, i32>>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S<'static, i32>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:101:13
+   |
+LL |     let _ = <S<'static, _, 7>>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S<'static, _, 7>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:104:13
+   |
+LL |     let _ = <S<'static, _, 7, 8>>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S<'static, _, 7, 8>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:107:13
+   |
+LL |     let _ = <S<'_, _, 7, 8>>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S<_, 7, 8>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:110:13
+   |
+LL |     let _ = <S<i32>>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S<i32>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:113:13
+   |
+LL |     let _ = <S<'_, i32>>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S<i32>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:116:13
+   |
+LL |     let _ = <S>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S>()`
+
+error: aborting due to 24 previous errors
+

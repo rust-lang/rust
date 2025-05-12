@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: use of undeclared type `NonExistingMap`
+  --> $DIR/E0433.rs:2:15
+   |
+LL |     let map = NonExistingMap::new();
+   |               ^^^^^^^^^^^^^^ use of undeclared type `NonExistingMap`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

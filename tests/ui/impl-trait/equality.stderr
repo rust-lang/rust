@@ -1,0 +1,42 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/equality.rs:3:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/equality.rs:17:5
+   |
+LL | fn two(x: bool) -> impl Foo {
+   |                    -------- expected `i32` because of return type
+...
+LL |     0_u32
+   |     ^^^^^ expected `i32`, found `u32`
+   |
+help: change the type of the numeric literal from `u32` to `i32`
+   |
+LL -     0_u32
+LL +     0_i32
+   |
+
+error[E0277]: cannot add `impl Foo` to `u32`
+  --> $DIR/equality.rs:26:11
+   |
+LL |         n + sum_to(n - 1)
+   |           ^ no implementation for `u32 + impl Foo`
+   |
+   = help: the trait `Add<impl Foo>` is not implemented for `u32`
+   = help: the following other types implement trait `Add<Rhs>`:
+             `&u32` implements `Add<u32>`
+             `&u32` implements `Add`
+             `u32` implements `Add<&u32>`
+             `u32` implements `Add`
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

@@ -1,0 +1,26 @@
+SOURCE_FILE
+  MACRO_RULES
+    COMMENT "// 2015"
+    WHITESPACE "\n"
+    MACRO_RULES_KW "macro_rules"
+    BANG "!"
+    WHITESPACE " "
+    NAME
+      IDENT "try"
+    WHITESPACE " "
+    TOKEN_TREE
+      L_CURLY "{"
+      WHITESPACE " "
+      TOKEN_TREE
+        L_PAREN "("
+        R_PAREN ")"
+      WHITESPACE " "
+      EQ "="
+      R_ANGLE ">"
+      WHITESPACE " "
+      TOKEN_TREE
+        L_CURLY "{"
+        R_CURLY "}"
+      WHITESPACE " "
+      R_CURLY "}"
+  WHITESPACE "\n"

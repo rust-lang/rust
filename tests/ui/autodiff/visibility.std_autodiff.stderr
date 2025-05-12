@@ -1,0 +1,24 @@
+error[E0252]: the name `autodiff` is defined multiple times
+  --> $DIR/visibility.rs:12:5
+   |
+LL | use std::autodiff::autodiff;
+   |     ----------------------- previous import of the macro `autodiff` here
+...
+LL | use my_macro::autodiff; // bring `autodiff` in scope
+   |     ^^^^^^^^^^^^^^^^^^ `autodiff` reimported here
+   |
+   = note: `autodiff` must be defined only once in the macro namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | use my_macro::autodiff as other_autodiff; // bring `autodiff` in scope
+   |                        +++++++++++++++++
+
+error: this rustc version does not support autodiff
+  --> $DIR/visibility.rs:14:1
+   |
+LL | #[autodiff]
+   | ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0252`.

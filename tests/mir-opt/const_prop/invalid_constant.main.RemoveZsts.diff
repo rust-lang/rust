@@ -1,0 +1,70 @@
+- // MIR for `main` before RemoveZsts
++ // MIR for `main` after RemoveZsts
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: char;
+      let mut _2: main::InvalidChar;
+      let mut _4: E;
+      let mut _5: main::InvalidTag;
+      let mut _7: Empty;
+      let mut _8: main::NoVariants;
+      scope 1 {
+          debug _invalid_char => _1;
+          let _3: [E; 1];
+          scope 2 {
+              debug _invalid_tag => _3;
+              let _6: [Empty; 1];
+              scope 3 {
+-                 debug _enum_without_variants => _6;
++                 debug _enum_without_variants => const [ZeroSized: Empty];
+                  let _9: main::Str<"���">;
+                  scope 4 {
+-                     debug _non_utf8_str => _9;
++                     debug _non_utf8_str => const Str::<"���">;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = InvalidChar { int: const 1114113_u32 };
+          _1 = copy (_2.1: char);
+          StorageDead(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = InvalidTag { int: const 4_u32 };
+          _4 = copy (_5.1: E);
+          _3 = [move _4];
+          StorageDead(_4);
+          StorageDead(_5);
+-         StorageLive(_6);
+-         StorageLive(_7);
++         nop;
++         nop;
+          StorageLive(_8);
+          _8 = NoVariants { int: const 0_u32 };
+-         _7 = copy (_8.1: Empty);
+-         _6 = [move _7];
+-         StorageDead(_7);
++         nop;
++         nop;
++         nop;
+          StorageDead(_8);
+-         StorageLive(_9);
+-         _0 = const ();
+-         StorageDead(_9);
+-         StorageDead(_6);
++         nop;
++         nop;
++         nop;
++         nop;
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

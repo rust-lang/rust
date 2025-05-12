@@ -1,0 +1,16 @@
+warning: bounds on generic parameters in type aliases are not enforced
+  --> $DIR/issue-67690-type-alias-bound-diagnostic-crash.rs:5:15
+   |
+LL | pub type T<P: Send + Send + Send> = P;
+   |             --^^^^---^^^^---^^^^
+   |             |               |
+   |             |               will not be checked at usage sites of the type alias
+   |             help: remove this bound
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+   = note: `#[warn(type_alias_bounds)]` on by default
+
+warning: 1 warning emitted
+

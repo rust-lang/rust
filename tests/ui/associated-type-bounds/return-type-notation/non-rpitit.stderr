@@ -1,0 +1,24 @@
+error: return type notation used on function that is not `async` and does not return `impl Trait`
+  --> $DIR/non-rpitit.rs:7:19
+   |
+LL |     fn method() {}
+   |     ----------- this function must be `async` or return `impl Trait`
+...
+LL | fn bound<T: Trait<method(..): Send>>() {}
+   |                   ^^^^^^^^^^^^^^^^
+   |
+   = note: function returns `()`, which is not compatible with associated type return bounds
+
+error: return type notation used on function that is not `async` and does not return `impl Trait`
+  --> $DIR/non-rpitit.rs:10:30
+   |
+LL |     fn method() {}
+   |     ----------- this function must be `async` or return `impl Trait`
+...
+LL | fn path<T>() where T: Trait, T::method(..): Send {}
+   |                              ^^^^^^^^^^^^^
+   |
+   = note: function returns `()`, which is not compatible with associated type return bounds
+
+error: aborting due to 2 previous errors
+

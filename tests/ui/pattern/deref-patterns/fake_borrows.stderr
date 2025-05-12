@@ -1,0 +1,44 @@
+error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
+  --> $DIR/fake_borrows.rs:9:16
+   |
+LL |     match v {
+   |           - immutable borrow occurs here
+LL |         deref!([true]) => {}
+LL |         _ if { v[0] = true; false } => {}
+   |                ^                  - immutable borrow later used here
+   |                |
+   |                mutable borrow occurs here
+
+error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
+  --> $DIR/fake_borrows.rs:16:16
+   |
+LL |     match v {
+   |           - immutable borrow occurs here
+LL |         [true] => {}
+LL |         _ if { v[0] = true; false } => {}
+   |                ^                  - immutable borrow later used here
+   |                |
+   |                mutable borrow occurs here
+
+error[E0510]: cannot assign `*b` in match guard
+  --> $DIR/fake_borrows.rs:26:16
+   |
+LL |     match b {
+   |           - value is immutable in match guard
+LL |         deref!(true) => {}
+LL |         _ if { *b = true; false } => {}
+   |                ^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `*b` in match guard
+  --> $DIR/fake_borrows.rs:33:16
+   |
+LL |     match b {
+   |           - value is immutable in match guard
+LL |         true => {}
+LL |         _ if { *b = true; false } => {}
+   |                ^^^^^^^^^ cannot assign
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0502, E0510.
+For more information about an error, try `rustc --explain E0502`.

@@ -1,0 +1,48 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/ref-suggestion.rs:4:5
+   |
+LL |     let x = vec![1];
+   |         - move occurs because `x` has type `Vec<i32>`, which does not implement the `Copy` trait
+LL |     let y = x;
+   |             - value moved here
+LL |     x;
+   |     ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let y = x.clone();
+   |              ++++++++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/ref-suggestion.rs:8:5
+   |
+LL |     let x = vec![1];
+   |         - move occurs because `x` has type `Vec<i32>`, which does not implement the `Copy` trait
+LL |     let mut y = x;
+   |                 - value moved here
+LL |     x;
+   |     ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let mut y = x.clone();
+   |                  ++++++++
+
+error[E0382]: use of partially moved value: `x`
+  --> $DIR/ref-suggestion.rs:16:5
+   |
+LL |         (Some(y), ()) => {},
+   |               - value partially moved here
+...
+LL |     x;
+   |     ^ value used here after partial move
+   |
+   = note: partial move occurs because value has type `Vec<i32>`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         (Some(ref y), ()) => {},
+   |               +++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

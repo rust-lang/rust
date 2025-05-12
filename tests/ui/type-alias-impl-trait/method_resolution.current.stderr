@@ -1,0 +1,15 @@
+error[E0599]: no method named `bar` found for struct `Bar<u32>` in the current scope
+  --> $DIR/method_resolution.rs:22:14
+   |
+LL | struct Bar<T>(T);
+   | ------------- method `bar` not found for this struct
+...
+LL |         self.bar()
+   |              ^^^ method not found in `Bar<u32>`
+   |
+   = note: the method was found for
+           - `Bar<Foo>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

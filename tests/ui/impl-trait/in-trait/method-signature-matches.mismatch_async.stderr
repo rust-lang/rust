@@ -1,0 +1,22 @@
+error[E0053]: method `owo` has an incompatible type for trait
+  --> $DIR/method-signature-matches.rs:22:21
+   |
+LL |     async fn owo(_: u8) {}
+   |                     ^^ expected `()`, found `u8`
+   |
+note: type in trait
+  --> $DIR/method-signature-matches.rs:17:21
+   |
+LL |     async fn owo(x: ()) {}
+   |                     ^^
+   = note: expected signature `fn(()) -> _`
+              found signature `fn(u8) -> _`
+help: change the parameter type to match the trait
+   |
+LL -     async fn owo(_: u8) {}
+LL +     async fn owo(_: ()) {}
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0053`.

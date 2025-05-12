@@ -1,0 +1,100 @@
+error: some ranges overlap
+  --> tests/ui/match_overlapping_arm.rs:9:9
+   |
+LL |         0..=10 => println!("0..=10"),
+   |         ^^^^^^
+   |
+note: overlaps with this
+  --> tests/ui/match_overlapping_arm.rs:11:9
+   |
+LL |         0..=11 => println!("0..=11"),
+   |         ^^^^^^
+   = note: `-D clippy::match-overlapping-arm` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_overlapping_arm)]`
+
+error: some ranges overlap
+  --> tests/ui/match_overlapping_arm.rs:16:9
+   |
+LL |         0..=5 => println!("0..=5"),
+   |         ^^^^^
+   |
+note: overlaps with this
+  --> tests/ui/match_overlapping_arm.rs:19:9
+   |
+LL |         FOO..=11 => println!("FOO..=11"),
+   |         ^^^^^^^^
+
+error: some ranges overlap
+  --> tests/ui/match_overlapping_arm.rs:54:9
+   |
+LL |         0..11 => println!("0..11"),
+   |         ^^^^^
+   |
+note: overlaps with this
+  --> tests/ui/match_overlapping_arm.rs:56:9
+   |
+LL |         0..=11 => println!("0..=11"),
+   |         ^^^^^^
+
+error: some ranges overlap
+  --> tests/ui/match_overlapping_arm.rs:80:9
+   |
+LL |         0..=10 => println!("0..=10"),
+   |         ^^^^^^
+   |
+note: overlaps with this
+  --> tests/ui/match_overlapping_arm.rs:79:9
+   |
+LL |         5..14 => println!("5..14"),
+   |         ^^^^^
+
+error: some ranges overlap
+  --> tests/ui/match_overlapping_arm.rs:86:9
+   |
+LL |         0..7 => println!("0..7"),
+   |         ^^^^
+   |
+note: overlaps with this
+  --> tests/ui/match_overlapping_arm.rs:88:9
+   |
+LL |         0..=10 => println!("0..=10"),
+   |         ^^^^^^
+
+error: some ranges overlap
+  --> tests/ui/match_overlapping_arm.rs:99:9
+   |
+LL |         ..=23 => println!("..=23"),
+   |         ^^^^^
+   |
+note: overlaps with this
+  --> tests/ui/match_overlapping_arm.rs:101:9
+   |
+LL |         ..26 => println!("..26"),
+   |         ^^^^
+
+error: some ranges overlap
+  --> tests/ui/match_overlapping_arm.rs:109:9
+   |
+LL |         21..=30 => (),
+   |         ^^^^^^^
+   |
+note: overlaps with this
+  --> tests/ui/match_overlapping_arm.rs:111:9
+   |
+LL |         21..=40 => (),
+   |         ^^^^^^^
+
+error: some ranges overlap
+  --> tests/ui/match_overlapping_arm.rs:124:9
+   |
+LL |         0..=0x0000_0000_0000_00ff => (),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: overlaps with this
+  --> tests/ui/match_overlapping_arm.rs:126:9
+   |
+LL |         0..=0x0000_0000_0000_ffff => (),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

@@ -1,0 +1,29 @@
+error[E0308]: mismatched types
+  --> $DIR/let-else-deref-coercion.rs:37:13
+   |
+LL |         let Bar::Present(z) = self else {
+   |             ^^^^^^^^^^^^^^^   ---- this expression has type `&mut Foo`
+   |             |
+   |             expected `Foo`, found `Bar`
+   |
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |         let Bar::Present(z) = &**self else {
+   |                               +++
+
+error[E0308]: mismatched types
+  --> $DIR/let-else-deref-coercion.rs:68:13
+   |
+LL |         let Bar(z) = x;
+   |             ^^^^^^   - this expression has type `&mut irrefutable::Foo`
+   |             |
+   |             expected `Foo`, found `Bar`
+   |
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |         let Bar(z) = &**x;
+   |                      +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

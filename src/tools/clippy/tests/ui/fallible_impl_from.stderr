@@ -1,0 +1,88 @@
+error: consider implementing `TryFrom` instead
+  --> tests/ui/fallible_impl_from.rs:6:1
+   |
+LL | / impl From<String> for Foo {
+LL | |
+LL | |
+LL | |     fn from(s: String) -> Self {
+...  |
+LL | | }
+   | |_^
+   |
+   = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
+note: potential failure(s)
+  --> tests/ui/fallible_impl_from.rs:10:13
+   |
+LL |         Foo(s.parse().unwrap())
+   |             ^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> tests/ui/fallible_impl_from.rs:1:9
+   |
+LL | #![deny(clippy::fallible_impl_from)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: consider implementing `TryFrom` instead
+  --> tests/ui/fallible_impl_from.rs:29:1
+   |
+LL | / impl From<usize> for Invalid {
+LL | |
+LL | |
+LL | |     fn from(i: usize) -> Invalid {
+...  |
+LL | | }
+   | |_^
+   |
+   = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
+note: potential failure(s)
+  --> tests/ui/fallible_impl_from.rs:34:13
+   |
+LL |             panic!();
+   |             ^^^^^^^^
+
+error: consider implementing `TryFrom` instead
+  --> tests/ui/fallible_impl_from.rs:40:1
+   |
+LL | / impl From<Option<String>> for Invalid {
+LL | |
+LL | |
+LL | |     fn from(s: Option<String>) -> Invalid {
+...  |
+LL | | }
+   | |_^
+   |
+   = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
+note: potential failure(s)
+  --> tests/ui/fallible_impl_from.rs:44:17
+   |
+LL |         let s = s.unwrap();
+   |                 ^^^^^^^^^^
+LL |         if !s.is_empty() {
+LL |             panic!("42");
+   |             ^^^^^^^^^^^^
+LL |         } else if s.parse::<u32>().unwrap() != 42 {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             panic!("{:?}", s);
+   |             ^^^^^^^^^^^^^^^^^
+
+error: consider implementing `TryFrom` instead
+  --> tests/ui/fallible_impl_from.rs:60:1
+   |
+LL | / impl<'a> From<&'a mut <Box<u32> as ProjStrTrait>::ProjString> for Invalid {
+LL | |
+LL | |
+LL | |     fn from(s: &'a mut <Box<u32> as ProjStrTrait>::ProjString) -> Invalid {
+...  |
+LL | | }
+   | |_^
+   |
+   = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
+note: potential failure(s)
+  --> tests/ui/fallible_impl_from.rs:64:12
+   |
+LL |         if s.parse::<u32>().ok().unwrap() != 42 {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             panic!("{:?}", s);
+   |             ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

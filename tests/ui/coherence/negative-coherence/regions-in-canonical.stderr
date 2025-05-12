@@ -1,0 +1,11 @@
+warning: the feature `unsized_const_params` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/regions-in-canonical.rs:3:30
+   |
+LL | #![feature(adt_const_params, unsized_const_params)]
+   |                              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: 1 warning emitted
+

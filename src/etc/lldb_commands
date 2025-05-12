@@ -1,0 +1,80 @@
+# Forces test-compliant formatting to all other types
+type synthetic add -l lldb_lookup.synthetic_lookup -x ".*" --category Rust
+type summary add -F _ -e -x -h "^.*$" --category Rust
+# Std String
+type synthetic add -l lldb_lookup.StdStringSyntheticProvider -x "^(alloc::([a-z_]+::)+)String$" --category Rust
+type summary add -F lldb_lookup.StdStringSummaryProvider  -e -x -h "^(alloc::([a-z_]+::)+)String$" --category Rust
+# Std str
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^&(mut )?str$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&(mut )?str$" --category Rust
+## MSVC
+type synthetic add -l lldb_lookup.MSVCStrSyntheticProvider -x "^ref(_mut)?\$<str\$>$" --category Rust
+type summary add -F lldb_lookup.StdStrSummaryProvider -e -h -x "^ref(_mut)?\$<str\$>$" --category Rust
+# Array
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^&(mut )?\\[.+\\]$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&(mut )?\\[.+\\]$" --category Rust
+# Slice
+## MSVC
+type synthetic add -l lldb_lookup.MSVCStdSliceSyntheticProvider -x "^ref(_mut)?\$<slice2\$<.+> >" --category Rust
+type summary add -F lldb_lookup.StdSliceSummaryProvider -e -x -h "^ref(_mut)?\$<slice2\$<.+> >" --category Rust
+# OsString
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(std::ffi::([a-z_]+::)+)OsString$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(std::ffi::([a-z_]+::)+)OsString$" --category Rust
+# Vec
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(alloc::([a-z_]+::)+)Vec<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)Vec<.+>$" --category Rust
+# VecDeque
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(alloc::([a-z_]+::)+)VecDeque<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)VecDeque<.+>$" --category Rust
+# BTreeSet
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(alloc::([a-z_]+::)+)BTreeSet<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)BTreeSet<.+>$" --category Rust
+# BTreeMap
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(alloc::([a-z_]+::)+)BTreeMap<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)BTreeMap<.+>$" --category Rust
+# HashMap
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(std::collections::([a-z_]+::)+)HashMap<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(std::collections::([a-z_]+::)+)HashMap<.+>$" --category Rust
+# HashSet
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(std::collections::([a-z_]+::)+)HashSet<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(std::collections::([a-z_]+::)+)HashSet<.+>$" --category Rust
+# Rc
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(alloc::([a-z_]+::)+)Rc<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)Rc<.+>$" --category Rust
+# Arc
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(alloc::([a-z_]+::)+)Arc<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)Arc<.+>$" --category Rust
+# Cell
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(core::([a-z_]+::)+)Cell<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(core::([a-z_]+::)+)Cell<.+>$" --category Rust
+# RefCell
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(core::([a-z_]+::)+)Ref<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(core::([a-z_]+::)+)RefMut<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(core::([a-z_]+::)+)RefCell<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(core::([a-z_]+::)+)Ref<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(core::([a-z_]+::)+)RefMut<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(core::([a-z_]+::)+)RefCell<.+>$" --category Rust
+# NonZero
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(core::([a-z_]+::)+)NonZero<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^core::num::([a-z_]+::)*NonZero.+$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(core::([a-z_]+::)+)NonZero<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^core::num::([a-z_]+::)*NonZero.+$" --category Rust
+# PathBuf
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(std::([a-z_]+::)+)PathBuf$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(std::([a-z_]+::)+)PathBuf$" --category Rust
+# Path
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^&(mut )?(std::([a-z_]+::)+)Path$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&(mut )?(std::([a-z_]+::)+)Path$" --category Rust
+# Enum
+## MSVC
+type synthetic add -l lldb_lookup.MSVCEnumSyntheticProvider -x "^enum2\$<.+>$" --category Rust
+type summary add -F lldb_lookup.MSVCEnumSummaryProvider -e -x -h "^enum2\$<.+>$" --category Rust
+## MSVC Variants
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^enum2\$<.+>::.*$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^enum2\$<.+>::.*$" --category Rust
+# Tuple
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^\(.*\)$" --category Rust
+## MSVC
+type synthetic add -l lldb_lookup.MSVCTupleSyntheticProvider -x "^tuple\$<.+>$" --category Rust
+type summary add -F lldb_lookup.TupleSummaryProvider -e -x -h "^tuple\$<.+>$" --category Rust
+type category enable Rust

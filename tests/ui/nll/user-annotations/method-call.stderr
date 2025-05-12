@@ -1,0 +1,48 @@
+error[E0597]: `c` does not live long enough
+  --> $DIR/method-call.rs:36:34
+   |
+LL |     let c = 66;
+   |         - binding `c` declared here
+LL |     a.method::<&'static u32>(b,  &c);
+   |     -----------------------------^^-
+   |     |                            |
+   |     |                            borrowed value does not live long enough
+   |     argument requires that `c` is borrowed for `'static`
+LL | }
+   | - `c` dropped here while still borrowed
+
+error[E0597]: `c` does not live long enough
+  --> $DIR/method-call.rs:43:29
+   |
+LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
+   |                                   -- lifetime `'a` defined here
+...
+LL |     let c = 66;
+   |         - binding `c` declared here
+LL |     a.method::<&'a u32>(b,  &c);
+   |     ------------------------^^-
+   |     |                       |
+   |     |                       borrowed value does not live long enough
+   |     argument requires that `c` is borrowed for `'a`
+LL | }
+   | - `c` dropped here while still borrowed
+
+error[E0597]: `c` does not live long enough
+  --> $DIR/method-call.rs:57:33
+   |
+LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
+   |                                              -- lifetime `'a` defined here
+...
+LL |         let c = 66;
+   |             - binding `c` declared here
+LL |         a.method::<&'a u32>(b,  &c);
+   |         ------------------------^^-
+   |         |                       |
+   |         |                       borrowed value does not live long enough
+   |         argument requires that `c` is borrowed for `'a`
+LL |     };
+   |     - `c` dropped here while still borrowed
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

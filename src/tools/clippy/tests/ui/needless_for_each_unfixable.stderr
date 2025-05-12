@@ -1,0 +1,33 @@
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_unfixable.rs:8:5
+   |
+LL | /     v.iter().for_each(|v| {
+LL | |
+LL | |
+LL | |         if *v == 10 {
+...  |
+LL | |     });
+   | |_______^
+   |
+   = note: `-D clippy::needless-for-each` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_for_each)]`
+help: try
+   |
+LL ~     for v in v.iter() {
+LL +
+LL + 
+LL +         if *v == 10 {
+LL +             return;
+LL +         } else {
+LL +             println!("{}", v);
+LL +         }
+LL +     }
+   |
+help: ...and replace `return` with `continue`
+   |
+LL -             return;
+LL +             continue;
+   |
+
+error: aborting due to 1 previous error
+

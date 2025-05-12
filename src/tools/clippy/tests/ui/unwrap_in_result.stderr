@@ -1,0 +1,55 @@
+error: used unwrap or expect in a function that returns result or option
+  --> tests/ui/unwrap_in_result.rs:22:5
+   |
+LL | /     fn bad_divisible_by_3(i_str: String) -> Result<bool, String> {
+...  |
+LL | |     }
+   | |_____^
+   |
+   = help: unwrap and expect should not be used in a function that returns result or option
+note: potential non-recoverable error(s)
+  --> tests/ui/unwrap_in_result.rs:26:17
+   |
+LL |         let i = i_str.parse::<i32>().unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::unwrap-in-result` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unwrap_in_result)]`
+
+error: used unwrap or expect in a function that returns result or option
+  --> tests/ui/unwrap_in_result.rs:34:5
+   |
+LL | /     fn example_option_expect(i_str: String) -> Option<bool> {
+LL | |
+LL | |
+LL | |         let i = i_str.parse::<i32>().expect("not a number");
+...  |
+LL | |         None
+LL | |     }
+   | |_____^
+   |
+   = help: unwrap and expect should not be used in a function that returns result or option
+note: potential non-recoverable error(s)
+  --> tests/ui/unwrap_in_result.rs:37:17
+   |
+LL |         let i = i_str.parse::<i32>().expect("not a number");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used unwrap or expect in a function that returns result or option
+  --> tests/ui/unwrap_in_result.rs:44:5
+   |
+LL | /     fn in_closure(a: Option<bool>) -> Option<bool> {
+LL | |
+LL | |         let c = || a.unwrap();
+LL | |         Some(c())
+LL | |     }
+   | |_____^
+   |
+   = help: unwrap and expect should not be used in a function that returns result or option
+note: potential non-recoverable error(s)
+  --> tests/ui/unwrap_in_result.rs:46:20
+   |
+LL |         let c = || a.unwrap();
+   |                    ^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

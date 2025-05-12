@@ -1,0 +1,127 @@
+SOURCE_FILE@0..350
+  FN@0..349
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..8
+      IDENT@3..8 "block"
+    PARAM_LIST@8..10
+      L_PAREN@8..9 "("
+      R_PAREN@9..10 ")"
+    WHITESPACE@10..11 " "
+    BLOCK_EXPR@11..349
+      STMT_LIST@11..349
+        L_CURLY@11..12 "{"
+        WHITESPACE@12..17 "\n    "
+        LET_STMT@17..129
+          LET_KW@17..20 "let"
+          WHITESPACE@20..21 " "
+          IDENT_PAT@21..26
+            NAME@21..26
+              IDENT@21..26 "inner"
+          WHITESPACE@26..27 " "
+          EQ@27..28 "="
+          WHITESPACE@28..29 " "
+          BLOCK_EXPR@29..128
+            STMT_LIST@29..128
+              L_CURLY@29..30 "{"
+              WHITESPACE@30..39 "\n        "
+              ATTR@39..83
+                POUND@39..40 "#"
+                BANG@40..41 "!"
+                L_BRACK@41..42 "["
+                META@42..82
+                  PATH@42..45
+                    PATH_SEGMENT@42..45
+                      NAME_REF@42..45
+                        IDENT@42..45 "doc"
+                  TOKEN_TREE@45..82
+                    L_PAREN@45..46 "("
+                    STRING@46..81 "\"Inner attributes not ..."
+                    R_PAREN@81..82 ")"
+                R_BRACK@82..83 "]"
+              WHITESPACE@83..92 "\n        "
+              COMMENT@92..122 "//! Nor are ModuleDoc ..."
+              WHITESPACE@122..127 "\n    "
+              R_CURLY@127..128 "}"
+          SEMICOLON@128..129 ";"
+        WHITESPACE@129..134 "\n    "
+        EXPR_STMT@134..257
+          IF_EXPR@134..257
+            IF_KW@134..136 "if"
+            WHITESPACE@136..137 " "
+            LITERAL@137..141
+              TRUE_KW@137..141 "true"
+            WHITESPACE@141..142 " "
+            BLOCK_EXPR@142..257
+              STMT_LIST@142..257
+                L_CURLY@142..143 "{"
+                WHITESPACE@143..152 "\n        "
+                ATTR@152..171
+                  POUND@152..153 "#"
+                  BANG@153..154 "!"
+                  L_BRACK@154..155 "["
+                  META@155..170
+                    PATH@155..158
+                      PATH_SEGMENT@155..158
+                        NAME_REF@155..158
+                          IDENT@155..158 "doc"
+                    TOKEN_TREE@158..170
+                      L_PAREN@158..159 "("
+                      STRING@159..169 "\"Nor here\""
+                      R_PAREN@169..170 ")"
+                  R_BRACK@170..171 "]"
+                WHITESPACE@171..180 "\n        "
+                ATTR@180..212
+                  POUND@180..181 "#"
+                  BANG@181..182 "!"
+                  L_BRACK@182..183 "["
+                  META@183..211
+                    PATH@183..186
+                      PATH_SEGMENT@183..186
+                        NAME_REF@183..186
+                          IDENT@183..186 "doc"
+                    TOKEN_TREE@186..211
+                      L_PAREN@186..187 "("
+                      STRING@187..210 "\"We error on each attr\""
+                      R_PAREN@210..211 ")"
+                  R_BRACK@211..212 "]"
+                WHITESPACE@212..221 "\n        "
+                COMMENT@221..251 "//! Nor are ModuleDoc ..."
+                WHITESPACE@251..256 "\n    "
+                R_CURLY@256..257 "}"
+        WHITESPACE@257..262 "\n    "
+        WHILE_EXPR@262..347
+          WHILE_KW@262..267 "while"
+          WHITESPACE@267..268 " "
+          LITERAL@268..272
+            TRUE_KW@268..272 "true"
+          WHITESPACE@272..273 " "
+          BLOCK_EXPR@273..347
+            STMT_LIST@273..347
+              L_CURLY@273..274 "{"
+              WHITESPACE@274..283 "\n        "
+              ATTR@283..302
+                POUND@283..284 "#"
+                BANG@284..285 "!"
+                L_BRACK@285..286 "["
+                META@286..301
+                  PATH@286..289
+                    PATH_SEGMENT@286..289
+                      NAME_REF@286..289
+                        IDENT@286..289 "doc"
+                  TOKEN_TREE@289..301
+                    L_PAREN@289..290 "("
+                    STRING@290..300 "\"Nor here\""
+                    R_PAREN@300..301 ")"
+                R_BRACK@301..302 "]"
+              WHITESPACE@302..311 "\n        "
+              COMMENT@311..341 "//! Nor are ModuleDoc ..."
+              WHITESPACE@341..346 "\n    "
+              R_CURLY@346..347 "}"
+        WHITESPACE@347..348 "\n"
+        R_CURLY@348..349 "}"
+  WHITESPACE@349..350 "\n"
+error 39..83: A block in this position cannot accept inner attributes
+error 152..171: A block in this position cannot accept inner attributes
+error 180..212: A block in this position cannot accept inner attributes
+error 283..302: A block in this position cannot accept inner attributes

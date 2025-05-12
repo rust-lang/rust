@@ -1,0 +1,47 @@
+error[E0261]: use of undeclared lifetime name `'missing`
+  --> $DIR/lifetime-resolution.rs:7:28
+   |
+LL |     let missing: unsafe<> &'missing ();
+   |                            ^^^^^^^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the type lifetime-generic with a new `'missing` lifetime
+   |
+LL |     let missing: unsafe<'missing, > &'missing ();
+   |                         +++++++++
+help: consider introducing lifetime `'missing` here
+   |
+LL | fn foo<'missing, 'a>() {
+   |        +++++++++
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/lifetime-resolution.rs:11:30
+   |
+LL | fn foo<'a>() {
+   |        -- lifetime parameter from outer item
+...
+LL |         let outer: unsafe<> &'a &'b ();
+   |                              ^^ use of generic parameter from outer item
+   |
+help: consider making the type lifetime-generic with a new `'a` lifetime
+   |
+LL |         let outer: unsafe<'a, > &'a &'b ();
+   |                           +++
+help: consider introducing lifetime `'a` here
+   |
+LL |     fn inner<'a, 'b>() {
+   |              +++
+
+warning: the feature `unsafe_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/lifetime-resolution.rs:1:12
+   |
+LL | #![feature(unsafe_binders)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #130516 <https://github.com/rust-lang/rust/issues/130516> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0261, E0401.
+For more information about an error, try `rustc --explain E0261`.

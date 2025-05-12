@@ -1,0 +1,36 @@
+error[E0277]: the type `[{integer}]` cannot be indexed by `u8`
+  --> $DIR/indexing-requires-a-uint.rs:6:9
+   |
+LL |     [0][0u8];
+   |         ^^^ slice indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `SliceIndex<[{integer}]>` is not implemented for `u8`
+   = help: the following other types implement trait `SliceIndex<T>`:
+             `usize` implements `SliceIndex<ByteStr>`
+             `usize` implements `SliceIndex<[T]>`
+   = note: required for `[{integer}]` to implement `Index<u8>`
+   = note: 1 redundant requirement hidden
+   = note: required for `[{integer}; 1]` to implement `Index<u8>`
+
+error[E0308]: mismatched types
+  --> $DIR/indexing-requires-a-uint.rs:12:18
+   |
+LL |     bar::<isize>(i);  // i should not be re-coerced back to an isize
+   |     ------------ ^ expected `isize`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/indexing-requires-a-uint.rs:5:8
+   |
+LL |     fn bar<T>(_: T) {}
+   |        ^^^    ----
+help: you can convert a `usize` to an `isize` and panic if the converted value doesn't fit
+   |
+LL |     bar::<isize>(i.try_into().unwrap());  // i should not be re-coerced back to an isize
+   |                   ++++++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

@@ -1,0 +1,45 @@
+[package]
+name = "rustc_codegen_llvm"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+test = false
+
+[dependencies]
+# tidy-alphabetical-start
+bitflags = "2.4.1"
+# To avoid duplicate dependencies, this should match the version of gimli used
+# by `rustc_codegen_ssa` via its `thorin-dwp` dependency.
+gimli = "0.31"
+itertools = "0.12"
+libc = "0.2"
+measureme = "12.0.1"
+object = { version = "0.36.3", default-features = false, features = ["std", "read"] }
+rustc-demangle = "0.1.21"
+rustc_abi = { path = "../rustc_abi" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_attr_parsing = { path = "../rustc_attr_parsing" }
+rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_fs_util = { path = "../rustc_fs_util" }
+rustc_hashes = { path = "../rustc_hashes" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
+rustc_llvm = { path = "../rustc_llvm" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_metadata = { path = "../rustc_metadata" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_query_system = { path = "../rustc_query_system" }
+rustc_sanitizers = { path = "../rustc_sanitizers" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
+rustc_target = { path = "../rustc_target" }
+serde = { version = "1", features = [ "derive" ]}
+serde_json = "1"
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+tracing = "0.1"
+# tidy-alphabetical-end

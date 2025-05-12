@@ -1,0 +1,20 @@
+error: invalid `?` in type
+  --> $DIR/issue-84148-1.rs:1:14
+   |
+LL | fn f(t:for<>t?)
+   |              ^ `?` is only allowed on expressions, not types
+   |
+help: if you meant to express that the type might not contain a value, use the `Option` wrapper type
+   |
+LL - fn f(t:for<>t?)
+LL + fn f(t:Option<for<>t>)
+   |
+
+error: expected one of `->`, `where`, or `{`, found `<eof>`
+  --> $DIR/issue-84148-1.rs:1:15
+   |
+LL | fn f(t:for<>t?)
+   |               ^ expected one of `->`, `where`, or `{`
+
+error: aborting due to 2 previous errors
+

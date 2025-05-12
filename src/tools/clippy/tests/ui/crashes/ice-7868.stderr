@@ -1,0 +1,12 @@
+error: unsafe block missing a safety comment
+  --> tests/ui/crashes/auxiliary/ice-7868-aux.rs:2:5
+   |
+LL |     unsafe { 0 };
+   |     ^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+   = note: `-D clippy::undocumented-unsafe-blocks` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::undocumented_unsafe_blocks)]`
+
+error: aborting due to 1 previous error
+

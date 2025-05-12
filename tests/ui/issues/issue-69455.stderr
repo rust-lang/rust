@@ -1,0 +1,39 @@
+error[E0284]: type annotations needed
+  --> $DIR/issue-69455.rs:29:41
+   |
+LL |     println!("{}", 23u64.test(xs.iter().sum()));
+   |                          ----           ^^^ cannot infer type of the type parameter `S` declared on the method `sum`
+   |                          |
+   |                          type must be known at this point
+   |
+   = note: cannot satisfy `<u64 as Test<_>>::Output == _`
+help: consider specifying the generic argument
+   |
+LL |     println!("{}", 23u64.test(xs.iter().sum::<S>()));
+   |                                            +++++
+
+error[E0283]: type annotations needed
+  --> $DIR/issue-69455.rs:29:41
+   |
+LL |     println!("{}", 23u64.test(xs.iter().sum()));
+   |                          ----           ^^^ cannot infer type of the type parameter `S` declared on the method `sum`
+   |                          |
+   |                          required by a bound introduced by this call
+   |
+note: multiple `impl`s satisfying `u64: Test<_>` found
+  --> $DIR/issue-69455.rs:11:1
+   |
+LL | impl Test<u32> for u64 {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl Test<u64> for u64 {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+help: consider specifying the generic argument
+   |
+LL |     println!("{}", 23u64.test(xs.iter().sum::<S>()));
+   |                                            +++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0283, E0284.
+For more information about an error, try `rustc --explain E0283`.

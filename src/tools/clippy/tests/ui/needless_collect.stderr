@@ -1,0 +1,119 @@
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:15:29
+   |
+LL |     let len = sample.iter().collect::<Vec<_>>().len();
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `count()`
+   |
+   = note: `-D clippy::needless-collect` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_collect)]`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:17:22
+   |
+LL |     if sample.iter().collect::<Vec<_>>().is_empty() {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:21:28
+   |
+LL |     sample.iter().cloned().collect::<Vec<_>>().contains(&1);
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `any(|x| x == 1)`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:27:35
+   |
+LL |     sample.iter().map(|x| (x, x)).collect::<HashMap<_, _>>().is_empty();
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:29:35
+   |
+LL |     sample.iter().map(|x| (x, x)).collect::<BTreeMap<_, _>>().is_empty();
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:37:19
+   |
+LL |     sample.iter().collect::<LinkedList<_>>().len();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `count()`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:39:19
+   |
+LL |     sample.iter().collect::<LinkedList<_>>().is_empty();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:41:28
+   |
+LL |     sample.iter().cloned().collect::<LinkedList<_>>().contains(&1);
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `any(|x| x == 1)`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:43:19
+   |
+LL |     sample.iter().collect::<LinkedList<_>>().contains(&&1);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `any(|x| x == &1)`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:47:19
+   |
+LL |     sample.iter().collect::<BinaryHeap<_>>().len();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `count()`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:49:19
+   |
+LL |     sample.iter().collect::<BinaryHeap<_>>().is_empty();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:55:27
+   |
+LL |     let _ = sample.iter().collect::<HashSet<_>>().is_empty();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:57:27
+   |
+LL |     let _ = sample.iter().collect::<HashSet<_>>().contains(&&0);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `any(|x| x == &0)`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:80:27
+   |
+LL |     let _ = sample.iter().collect::<VecWrapper<_>>().is_empty();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:82:27
+   |
+LL |     let _ = sample.iter().collect::<VecWrapper<_>>().contains(&&0);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `any(|x| x == &0)`
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:87:40
+   |
+LL |         Vec::<u8>::new().extend((0..10).collect::<Vec<_>>());
+   |                                        ^^^^^^^^^^^^^^^^^^^^ help: remove this call
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:89:20
+   |
+LL |         foo((0..10).collect::<Vec<_>>());
+   |                    ^^^^^^^^^^^^^^^^^^^^ help: remove this call
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:91:49
+   |
+LL |         bar((0..10).collect::<Vec<_>>(), (0..10).collect::<Vec<_>>());
+   |                                                 ^^^^^^^^^^^^^^^^^^^^ help: remove this call
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:93:37
+   |
+LL |         baz((0..10), (), ('a'..='z').collect::<Vec<_>>())
+   |                                     ^^^^^^^^^^^^^^^^^^^^ help: remove this call
+
+error: aborting due to 19 previous errors
+

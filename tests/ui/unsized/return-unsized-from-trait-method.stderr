@@ -1,0 +1,9 @@
+error[E0161]: cannot move a value of type `[u8]`
+  --> $DIR/return-unsized-from-trait-method.rs:9:17
+   |
+LL |         let _ = f.foo();
+   |                 ^^^^^^^ the size of `[u8]` cannot be statically determined
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0161`.

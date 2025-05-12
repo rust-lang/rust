@@ -1,0 +1,36 @@
+[package]
+name = "cfg"
+version = "0.0.0"
+repository.workspace = true
+description = "Conditional compiling options, `cfg` attribute parser and evaluator for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+
+[dependencies]
+rustc-hash.workspace = true
+tracing.workspace = true
+
+# locals deps
+tt = { workspace = true, optional = true }
+intern.workspace = true
+
+[dev-dependencies]
+expect-test = "1.5.1"
+oorandom = "11.1.5"
+# We depend on both individually instead of using `features = ["derive"]` to microoptimize the
+# build graph: if the feature was enabled, syn would be built early on in the graph if `smolstr`
+# supports `arbitrary`. This way, we avoid feature unification.
+arbitrary = "1.4.1"
+derive_arbitrary = "1.4.1"
+
+# local deps
+syntax-bridge.workspace = true
+syntax.workspace = true
+
+[lints]
+workspace = true

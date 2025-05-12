@@ -1,0 +1,45 @@
+error[E0277]: `?` couldn't convert the error to `TryFromSliceError`
+  --> $DIR/try-block-bad-type.rs:7:16
+   |
+LL |         Err("")?;
+   |         -------^ the trait `From<&str>` is not implemented for `TryFromSliceError`
+   |         |
+   |         this can't be annotated with `?` because it has type `Result<_, &str>`
+   |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = help: the trait `From<&str>` is not implemented for `TryFromSliceError`
+           but trait `From<Infallible>` is implemented for it
+   = help: for that trait implementation, expected `Infallible`, found `&str`
+
+error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Output == &str`
+  --> $DIR/try-block-bad-type.rs:12:9
+   |
+LL |         ""
+   |         ^^ expected `&str`, found `i32`
+
+error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Output == ()`
+  --> $DIR/try-block-bad-type.rs:15:39
+   |
+LL |     let res: Result<i32, i32> = try { };
+   |                                       ^ expected `()`, found `i32`
+
+error[E0277]: a `try` block must return `Result` or `Option` (or another type that implements `Try`)
+  --> $DIR/try-block-bad-type.rs:17:25
+   |
+LL |     let res: () = try { };
+   |                         ^ could not wrap the final value of the block as `()` doesn't implement `Try`
+   |
+   = help: the trait `Try` is not implemented for `()`
+
+error[E0277]: a `try` block must return `Result` or `Option` (or another type that implements `Try`)
+  --> $DIR/try-block-bad-type.rs:20:26
+   |
+LL |     let res: i32 = try { 5 };
+   |                          ^ could not wrap the final value of the block as `i32` doesn't implement `Try`
+   |
+   = help: the trait `Try` is not implemented for `i32`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0271, E0277.
+For more information about an error, try `rustc --explain E0271`.

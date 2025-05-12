@@ -1,0 +1,60 @@
+error: field marked as public but also inferred as unused because it's prefixed with `_`
+  --> tests/ui-toml/pub_underscore_fields/pub_underscore_fields.rs:15:9
+   |
+LL |         pub _b: u8,
+   |         ^^^^^^
+   |
+   = help: consider removing the underscore, or making the field private
+   = note: `-D clippy::pub-underscore-fields` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::pub_underscore_fields)]`
+
+error: field marked as public but also inferred as unused because it's prefixed with `_`
+  --> tests/ui-toml/pub_underscore_fields/pub_underscore_fields.rs:24:13
+   |
+LL |             pub(in crate::inner) _f: Option<()>,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing the underscore, or making the field private
+
+error: field marked as public but also inferred as unused because it's prefixed with `_`
+  --> tests/ui-toml/pub_underscore_fields/pub_underscore_fields.rs:29:13
+   |
+LL |             pub _g: String,
+   |             ^^^^^^
+   |
+   = help: consider removing the underscore, or making the field private
+
+error: field marked as public but also inferred as unused because it's prefixed with `_`
+  --> tests/ui-toml/pub_underscore_fields/pub_underscore_fields.rs:37:9
+   |
+LL |         pub _a: usize,
+   |         ^^^^^^
+   |
+   = help: consider removing the underscore, or making the field private
+
+error: field marked as public but also inferred as unused because it's prefixed with `_`
+  --> tests/ui-toml/pub_underscore_fields/pub_underscore_fields.rs:45:9
+   |
+LL |         pub _c: i64,
+   |         ^^^^^^
+   |
+   = help: consider removing the underscore, or making the field private
+
+error: field marked as public but also inferred as unused because it's prefixed with `_`
+  --> tests/ui-toml/pub_underscore_fields/pub_underscore_fields.rs:49:9
+   |
+LL |         pub _e: Option<u8>,
+   |         ^^^^^^
+   |
+   = help: consider removing the underscore, or making the field private
+
+error: field marked as public but also inferred as unused because it's prefixed with `_`
+  --> tests/ui-toml/pub_underscore_fields/pub_underscore_fields.rs:63:9
+   |
+LL |         pub(crate) _b: Option<String>,
+   |         ^^^^^^^^^^^^^
+   |
+   = help: consider removing the underscore, or making the field private
+
+error: aborting due to 7 previous errors
+

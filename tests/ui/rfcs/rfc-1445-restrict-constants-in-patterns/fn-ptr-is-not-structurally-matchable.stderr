@@ -1,0 +1,112 @@
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/fn-ptr-is-not-structurally-matchable.rs:41:14
+   |
+LL |     const CFN1: Wrap<fn()> = Wrap(trivial);
+   |     ---------------------- constant defined here
+...
+LL |         Wrap(CFN1) => count += 1,
+   |              ^^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/fn-ptr-is-not-structurally-matchable.rs:49:14
+   |
+LL |     const CFN2: Wrap<fn(SM)> = Wrap(sm_to);
+   |     ------------------------ constant defined here
+...
+LL |         Wrap(CFN2) => count += 1,
+   |              ^^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/fn-ptr-is-not-structurally-matchable.rs:57:14
+   |
+LL |     const CFN3: Wrap<fn() -> SM> = Wrap(to_sm);
+   |     ---------------------------- constant defined here
+...
+LL |         Wrap(CFN3) => count += 1,
+   |              ^^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/fn-ptr-is-not-structurally-matchable.rs:65:14
+   |
+LL |     const CFN4: Wrap<fn(NotSM)> = Wrap(not_sm_to);
+   |     --------------------------- constant defined here
+...
+LL |         Wrap(CFN4) => count += 1,
+   |              ^^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/fn-ptr-is-not-structurally-matchable.rs:73:14
+   |
+LL |     const CFN5: Wrap<fn() -> NotSM> = Wrap(to_not_sm);
+   |     ------------------------------- constant defined here
+...
+LL |         Wrap(CFN5) => count += 1,
+   |              ^^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/fn-ptr-is-not-structurally-matchable.rs:81:14
+   |
+LL |     const CFN6: Wrap<fn(&SM)> = Wrap(r_sm_to);
+   |     ------------------------- constant defined here
+...
+LL |         Wrap(CFN6) => count += 1,
+   |              ^^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/fn-ptr-is-not-structurally-matchable.rs:89:14
+   |
+LL |     const CFN7: Wrap<fn(&()) -> &SM> = Wrap(r_to_r_sm);
+   |     -------------------------------- constant defined here
+...
+LL |         Wrap(CFN7) => count += 1,
+   |              ^^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/fn-ptr-is-not-structurally-matchable.rs:97:14
+   |
+LL |     const CFN8: Wrap<fn(&NotSM)> = Wrap(r_not_sm_to);
+   |     ---------------------------- constant defined here
+...
+LL |         Wrap(CFN8) => count += 1,
+   |              ^^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/fn-ptr-is-not-structurally-matchable.rs:105:14
+   |
+LL |     const CFN9: Wrap<fn(&()) -> &NotSM> = Wrap(r_to_r_not_sm);
+   |     ----------------------------------- constant defined here
+...
+LL |         Wrap(CFN9) => count += 1,
+   |              ^^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/fn-ptr-is-not-structurally-matchable.rs:127:9
+   |
+LL |     const CFOO: Foo = Foo {
+   |     --------------- constant defined here
+...
+LL |         CFOO => count += 1,
+   |         ^^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: aborting due to 10 previous errors
+

@@ -1,0 +1,14 @@
+error: a function marked with `#[track_caller]` cannot perform a tail-call
+  --> $DIR/caller_is_track_caller.rs:6:5
+   |
+LL |     become b();
+   |     ^^^^^^^^^^
+
+error: a function marked with `#[track_caller]` cannot perform a tail-call
+  --> $DIR/caller_is_track_caller.rs:13:5
+   |
+LL |     become a();
+   |     ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

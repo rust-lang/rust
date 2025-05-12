@@ -1,0 +1,20 @@
+error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+  --> $DIR/maybe-polarity-pass.rs:12:20
+   |
+LL | fn bar<T: ?Sized + ?Trait2 + ?Trait1 + ?Trait4>(_: &T) {}
+   |                    ^^^^^^^
+
+error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+  --> $DIR/maybe-polarity-pass.rs:12:30
+   |
+LL | fn bar<T: ?Sized + ?Trait2 + ?Trait1 + ?Trait4>(_: &T) {}
+   |                              ^^^^^^^
+
+error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+  --> $DIR/maybe-polarity-pass.rs:12:40
+   |
+LL | fn bar<T: ?Sized + ?Trait2 + ?Trait1 + ?Trait4>(_: &T) {}
+   |                                        ^^^^^^^
+
+error: aborting due to 3 previous errors
+

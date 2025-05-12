@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> $DIR/tuple-arity-mismatch.rs:8:20
+   |
+LL |     let y = first ((1,2.0,3));
+   |             -----  ^^^^^^^^^ expected a tuple with 2 elements, found one with 3 elements
+   |             |
+   |             arguments to this function are incorrect
+   |
+   = note: expected tuple `(isize, f64)`
+              found tuple `(isize, f64, {integer})`
+note: function defined here
+  --> $DIR/tuple-arity-mismatch.rs:5:4
+   |
+LL | fn first((value, _): (isize, f64)) -> isize { value }
+   |    ^^^^^ ------------------------
+
+error[E0308]: mismatched types
+  --> $DIR/tuple-arity-mismatch.rs:14:20
+   |
+LL |     let y = first ((1,));
+   |             -----  ^^^^ expected a tuple with 2 elements, found one with 1 element
+   |             |
+   |             arguments to this function are incorrect
+   |
+   = note: expected tuple `(isize, f64)`
+              found tuple `(isize,)`
+note: function defined here
+  --> $DIR/tuple-arity-mismatch.rs:5:4
+   |
+LL | fn first((value, _): (isize, f64)) -> isize { value }
+   |    ^^^^^ ------------------------
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

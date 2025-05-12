@@ -1,0 +1,218 @@
+rustdoc [options] <input>
+
+Options:
+    -h, --help          show this help message
+    -V, --version       print rustdoc's version
+    -v, --verbose       use verbose output
+    -w, --output-format [html]
+                        the output type to write
+        --output PATH   Which directory to place the output. This option is
+                        deprecated, use --out-dir instead.
+    -o, --out-dir PATH  which directory to place the output
+        --crate-name NAME
+                        specify the name of this crate
+        --crate-type <bin|lib|rlib|dylib|cdylib|staticlib|proc-macro>
+                        Comma separated list of types of crates
+                        for the compiler to emit
+    -L, --library-path DIR
+                        directory to add to crate search path
+        --cfg           pass a --cfg to rustc
+        --check-cfg     pass a --check-cfg to rustc
+        --extern NAME[=PATH]
+                        pass an --extern to rustc
+        --extern-html-root-url NAME=URL
+                        base URL to use for dependencies; for example,
+                        "std=/doc" links std::vec::Vec to
+                        /doc/std/vec/struct.Vec.html
+        --extern-html-root-takes-precedence 
+                        give precedence to `--extern-html-root-url`, not
+                        `html_root_url`
+    -C, --codegen OPT[=VALUE]
+                        pass a codegen option to rustc
+        --document-private-items 
+                        document private items
+        --document-hidden-items 
+                        document items that have doc(hidden)
+        --test          run code examples as tests
+        --test-args ARGS
+                        arguments to pass to the test runner
+        --test-run-directory PATH
+                        The working directory in which to run tests
+        --target TRIPLE target triple to document
+        --markdown-css FILES
+                        CSS files to include via <link> in a rendered Markdown
+                        file
+        --html-in-header FILES
+                        files to include inline in the <head> section of a
+                        rendered Markdown file or generated documentation
+        --html-before-content FILES
+                        files to include inline between <body> and the content
+                        of a rendered Markdown file or generated documentation
+        --html-after-content FILES
+                        files to include inline between the content and
+                        </body> of a rendered Markdown file or generated
+                        documentation
+        --markdown-before-content FILES
+                        files to include inline between <body> and the content
+                        of a rendered Markdown file or generated documentation
+        --markdown-after-content FILES
+                        files to include inline between the content and
+                        </body> of a rendered Markdown file or generated
+                        documentation
+        --markdown-playground-url URL
+                        URL to send code snippets to
+        --markdown-no-toc 
+                        don't include table of contents
+    -e, --extend-css PATH
+                        To add some CSS rules with a given file to generate
+                        doc with your own theme. However, your theme might
+                        break if the rustdoc's generated HTML changes, so be
+                        careful!
+    -Z FLAG             unstable / perma-unstable options (only on nightly
+                        build)
+        --sysroot PATH  Override the system root
+        --playground-url URL
+                        URL to send code snippets to, may be reset by
+                        --markdown-playground-url or
+                        `#![doc(html_playground_url=...)]`
+        --display-doctest-warnings 
+                        show warnings that originate in doctests
+        --crate-version VERSION
+                        crate version to print into documentation
+        --sort-modules-by-appearance 
+                        sort modules by where they appear in the program,
+                        rather than alphabetically
+        --default-theme THEME
+                        Set the default theme. THEME should be the theme name,
+                        generally lowercase. If an unknown default theme is
+                        specified, the builtin default is used. The set of
+                        themes, and the rustdoc built-in default, are not
+                        stable.
+        --default-setting SETTING[=VALUE]
+                        Default value for a rustdoc setting (used when
+                        "rustdoc-SETTING" is absent from web browser Local
+                        Storage). If VALUE is not supplied, "true" is used.
+                        Supported SETTINGs and VALUEs are not documented and
+                        not stable.
+        --theme FILES   additional themes which will be added to the generated
+                        docs
+        --check-theme FILES
+                        check if given theme is valid
+        --resource-suffix PATH
+                        suffix to add to CSS and JavaScript files, e.g.,
+                        "search-index.js" will become "search-index-suffix.js"
+        --edition EDITION
+                        edition to use when compiling rust code (default:
+                        2015)
+        --color auto|always|never
+                        Configure coloring of output:
+                        auto = colorize, if output goes to a tty (default);
+                        always = always colorize output;
+                        never = never colorize output
+        --error-format human|json|short
+                        How errors and other messages are produced
+        --diagnostic-width WIDTH
+                        Provide width of the output for truncated error
+                        messages
+        --json CONFIG   Configure the structure of JSON diagnostics
+    -A, --allow LINT    Set lint allowed
+    -W, --warn LINT     Set lint warnings
+        --force-warn LINT
+                        Set lint force-warn
+    -D, --deny LINT     Set lint denied
+    -F, --forbid LINT   Set lint forbidden
+        --cap-lints LEVEL
+                        Set the most restrictive lint level. More restrictive
+                        lints are capped at this level. By default, it is at
+                        `forbid` level.
+        --index-page PATH
+                        Markdown file to be used as index page
+        --enable-index-page 
+                        To enable generation of the index page
+        --static-root-path PATH
+                        Path string to force loading static files from in
+                        output pages. If not set, uses combinations of '../'
+                        to reach the documentation root.
+        --persist-doctests PATH
+                        Directory to persist doctest executables into
+        --show-coverage 
+                        calculate percentage of public items with
+                        documentation
+        --test-runtool The tool to run tests with when building for a different target than host
+                        
+        --test-runtool-arg One argument (of possibly many) to pass to the runtool
+                        
+        --test-builder PATH
+                        The rustc-like binary to use as the test builder
+        --test-builder-wrapper PATH
+                        Wrapper program to pass test-builder and arguments
+        --check         Run rustdoc checks
+        --generate-redirect-map 
+                        Generate JSON file at the top level instead of
+                        generating HTML redirection files
+        --emit [unversioned-shared-resources,toolchain-shared-resources,invocation-specific,dep-info]
+                        Comma separated list of types of output for rustdoc to
+                        emit
+        --no-run        Compile doctests without running them
+        --remap-path-prefix FROM=TO
+                        Remap source names in compiler messages
+        --show-type-layout 
+                        Include the memory layout of types in the docs
+        --nocapture     Don't capture stdout and stderr of tests
+        --generate-link-to-definition 
+                        Make the identifiers in the HTML source code pages
+                        navigable
+        --scrape-examples-output-path collect function call information and output at the given path
+                        
+        --scrape-examples-target-crate collect function call information for functions from the target crate
+                        
+        --scrape-tests  Include test code when scraping examples
+        --with-examples path to function call information (for displaying examples in the documentation)
+                        
+        --merge none|shared|finalize
+                        Controls how rustdoc handles files from previously
+                        documented crates in the doc root
+                        none = Do not write cross-crate information to the
+                        --out-dir
+                        shared = Append current crate's info to files found in
+                        the --out-dir
+                        finalize = Write current crate's info and
+                        --include-parts-dir info to the --out-dir, overwriting
+                        conflicting files
+        --parts-out-dir path/to/doc.parts/<crate-name>
+                        Writes trait implementations and other info for the
+                        current crate to provided path. Only use with
+                        --merge=none
+        --include-parts-dir path/to/doc.parts/<crate-name>
+                        Includes trait implementations and other crate info
+                        from provided path. Only use with --merge=finalize
+        --html-no-source 
+                        Disable HTML source code pages generation
+        --doctest-build-arg ARG
+                        One argument (of possibly many) to be used when
+                        compiling doctests
+        --disable-minification 
+                        disable the minification of CSS/JS files
+                        (perma-unstable, do not use with cached files)
+        --plugin-path DIR
+                        removed, see issue #44136
+                        <https://github.com/rust-lang/rust/issues/44136> for
+                        more information
+        --passes PASSES removed, see issue #44136
+                        <https://github.com/rust-lang/rust/issues/44136> for
+                        more information
+        --plugins PLUGINS
+                        removed, see issue #44136
+                        <https://github.com/rust-lang/rust/issues/44136> for
+                        more information
+        --no-defaults   removed, see issue #44136
+                        <https://github.com/rust-lang/rust/issues/44136> for
+                        more information
+    -r, --input-format [rust]
+                        removed, see issue #44136
+                        <https://github.com/rust-lang/rust/issues/44136> for
+                        more information
+
+    @path               Read newline separated options from `path`
+
+More information available at https://doc.rust-lang.org/$CHANNEL/rustdoc/what-is-rustdoc.html

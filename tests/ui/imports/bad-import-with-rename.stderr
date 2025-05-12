@@ -1,0 +1,27 @@
+error[E0432]: unresolved import `crate::D::B`
+  --> $DIR/bad-import-with-rename.rs:7:9
+   |
+LL |     use crate::D::B as _;
+   |         ^^^^^^^^^^^^^^^^ no `B` in `D`
+   |
+help: consider importing this type alias instead
+   |
+LL -     use crate::D::B as _;
+LL +     use A::B as _;
+   |
+
+error[E0432]: unresolved import `crate::D::B2`
+  --> $DIR/bad-import-with-rename.rs:10:9
+   |
+LL |     use crate::D::B2;
+   |         ^^^^^^^^^^^^ no `B2` in `D`
+   |
+help: consider importing this type alias instead
+   |
+LL -     use crate::D::B2;
+LL +     use A::B2;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

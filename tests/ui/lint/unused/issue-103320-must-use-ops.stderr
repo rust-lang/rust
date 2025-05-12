@@ -1,0 +1,67 @@
+warning: unused return value of `add` that must be used
+  --> $DIR/issue-103320-must-use-ops.rs:16:5
+   |
+LL |     x.add(4);
+   |     ^^^^^^^^
+   |
+   = note: this returns the result of the operation, without modifying the original
+note: the lint level is defined here
+  --> $DIR/issue-103320-must-use-ops.rs:3:9
+   |
+LL | #![warn(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = x.add(4);
+   |     +++++++
+
+warning: unused return value of `sub` that must be used
+  --> $DIR/issue-103320-must-use-ops.rs:18:5
+   |
+LL |     x.sub(4);
+   |     ^^^^^^^^
+   |
+   = note: this returns the result of the operation, without modifying the original
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = x.sub(4);
+   |     +++++++
+
+warning: unused return value of `mul` that must be used
+  --> $DIR/issue-103320-must-use-ops.rs:20:5
+   |
+LL |     x.mul(4);
+   |     ^^^^^^^^
+   |
+   = note: this returns the result of the operation, without modifying the original
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = x.mul(4);
+   |     +++++++
+
+warning: unused return value of `div` that must be used
+  --> $DIR/issue-103320-must-use-ops.rs:22:5
+   |
+LL |     x.div(4);
+   |     ^^^^^^^^
+   |
+   = note: this returns the result of the operation, without modifying the original
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = x.div(4);
+   |     +++++++
+
+warning: unused return value of `rem` that must be used
+  --> $DIR/issue-103320-must-use-ops.rs:24:5
+   |
+LL |     x.rem(4);
+   |     ^^^^^^^^
+   |
+   = note: this returns the result of the operation, without modifying the original
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = x.rem(4);
+   |     +++++++
+
+warning: 5 warnings emitted
+

@@ -1,0 +1,4 @@
+error: failed to acquire jobserver token: early EOF on jobserver pipe
+
+error: aborting due to 1 previous error
+

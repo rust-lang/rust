@@ -1,0 +1,16 @@
+error: unclosed frontmatter
+  --> $DIR/unclosed-4.rs:1:1
+   |
+LL | / ----cargo
+LL | |
+LL | |
+   | |_^
+   |
+note: frontmatter opening here was not closed
+  --> $DIR/unclosed-4.rs:1:1
+   |
+LL | ----cargo
+   | ^^^^
+
+error: aborting due to 1 previous error
+

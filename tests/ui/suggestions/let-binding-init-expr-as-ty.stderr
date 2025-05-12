@@ -1,0 +1,32 @@
+error[E0573]: expected type, found local variable `num`
+  --> $DIR/let-binding-init-expr-as-ty.rs:2:27
+   |
+LL |     let foo: i32::from_be(num);
+   |            --             ^^^ not a type
+   |            |
+   |            help: use `=` if you meant to assign
+
+error: argument types not allowed with return type notation
+  --> $DIR/let-binding-init-expr-as-ty.rs:2:26
+   |
+LL |     let foo: i32::from_be(num);
+   |                          ^^^^^
+   |
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
+   = help: add `#![feature(return_type_notation)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+help: remove the input types
+   |
+LL -     let foo: i32::from_be(num);
+LL +     let foo: i32::from_be(..);
+   |
+
+error: return type notation not allowed in this position yet
+  --> $DIR/let-binding-init-expr-as-ty.rs:2:14
+   |
+LL |     let foo: i32::from_be(num);
+   |              ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0573`.

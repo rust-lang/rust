@@ -1,0 +1,39 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-90027-async-fn-return-suggestion.rs:5:5
+   |
+LL | async fn hello() {
+   |                 - help: try adding a return type: `-> i32`
+LL |     0
+   |     ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/issue-90027-async-fn-return-suggestion.rs:10:5
+   |
+LL | async fn world() -> () {
+   |                     -- expected `()` because of return type
+LL |     0
+   |     ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/issue-90027-async-fn-return-suggestion.rs:15:5
+   |
+LL |     hello()
+   |     ^^^^^^^ expected `()`, found future
+   |
+note: calling an async function returns a future
+  --> $DIR/issue-90027-async-fn-return-suggestion.rs:15:5
+   |
+LL |     hello()
+   |     ^^^^^^^
+help: consider `await`ing on the `Future`
+   |
+LL |     hello().await
+   |            ++++++
+help: consider using a semicolon here
+   |
+LL |     hello();
+   |            +
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

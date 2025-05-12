@@ -1,0 +1,13 @@
+error: function can not have more than 65535 arguments
+  --> $DIR/issue-88577-check-fn-with-more-than-65535-arguments.rs:6:17
+   |
+LL |         fn _f($($t: ()),*) {}
+   |                 ^^^^^^
+...
+LL | many_args!{[_]########## ######}
+   | -------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `many_args` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

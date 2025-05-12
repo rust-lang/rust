@@ -1,0 +1,1 @@
+pub enum A { B }

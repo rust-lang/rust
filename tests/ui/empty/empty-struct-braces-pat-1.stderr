@@ -1,0 +1,25 @@
+error[E0533]: expected unit struct, unit variant or constant, found struct variant `E::Empty3`
+  --> $DIR/empty-struct-braces-pat-1.rs:24:9
+   |
+LL |         E::Empty3 => ()
+   |         ^^^^^^^^^ not a unit struct, unit variant or constant
+   |
+help: use the struct variant pattern syntax
+   |
+LL |         E::Empty3 {} => ()
+   |                   ++
+
+error[E0533]: expected unit struct, unit variant or constant, found struct variant `XE::XEmpty3`
+  --> $DIR/empty-struct-braces-pat-1.rs:31:9
+   |
+LL |         XE::XEmpty3 => ()
+   |         ^^^^^^^^^^^ not a unit struct, unit variant or constant
+   |
+help: use the struct variant pattern syntax
+   |
+LL |         XE::XEmpty3 {} => ()
+   |                     ++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0533`.

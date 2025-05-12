@@ -1,0 +1,15 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `a`
+  --> $DIR/macro-inner-attributes.rs:17:5
+   |
+LL |     a::bar();
+   |     ^ use of unresolved module or unlinked crate `a`
+   |
+help: there is a crate or module with a similar name
+   |
+LL -     a::bar();
+LL +     b::bar();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

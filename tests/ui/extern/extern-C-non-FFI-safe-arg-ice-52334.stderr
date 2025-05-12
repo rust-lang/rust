@@ -1,0 +1,22 @@
+warning: `extern` fn uses type `CStr`, which is not FFI-safe
+  --> $DIR/extern-C-non-FFI-safe-arg-ice-52334.rs:7:12
+   |
+LL | type Foo = extern "C" fn(::std::ffi::CStr);
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
+   = note: `CStr`/`CString` do not have a guaranteed layout
+   = note: `#[warn(improper_ctypes_definitions)]` on by default
+
+warning: `extern` block uses type `CStr`, which is not FFI-safe
+  --> $DIR/extern-C-non-FFI-safe-arg-ice-52334.rs:10:18
+   |
+LL |     fn meh(blah: Foo);
+   |                  ^^^ not FFI-safe
+   |
+   = help: consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
+   = note: `CStr`/`CString` do not have a guaranteed layout
+   = note: `#[warn(improper_ctypes)]` on by default
+
+warning: 2 warnings emitted
+

@@ -1,0 +1,89 @@
+error: use of a disallowed/placeholder name `foo`
+  --> tests/ui/disallowed_names.rs:12:9
+   |
+LL | fn test(foo: ()) {}
+   |         ^^^
+   |
+   = note: `-D clippy::disallowed-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_names)]`
+
+error: use of a disallowed/placeholder name `foo`
+  --> tests/ui/disallowed_names.rs:16:9
+   |
+LL |     let foo = 42;
+   |         ^^^
+
+error: use of a disallowed/placeholder name `baz`
+  --> tests/ui/disallowed_names.rs:19:9
+   |
+LL |     let baz = 42;
+   |         ^^^
+
+error: use of a disallowed/placeholder name `quux`
+  --> tests/ui/disallowed_names.rs:22:9
+   |
+LL |     let quux = 42;
+   |         ^^^^
+
+error: use of a disallowed/placeholder name `foo`
+  --> tests/ui/disallowed_names.rs:35:10
+   |
+LL |         (foo, Some(baz), quux @ Some(_)) => (),
+   |          ^^^
+
+error: use of a disallowed/placeholder name `baz`
+  --> tests/ui/disallowed_names.rs:35:20
+   |
+LL |         (foo, Some(baz), quux @ Some(_)) => (),
+   |                    ^^^
+
+error: use of a disallowed/placeholder name `quux`
+  --> tests/ui/disallowed_names.rs:35:26
+   |
+LL |         (foo, Some(baz), quux @ Some(_)) => (),
+   |                          ^^^^
+
+error: use of a disallowed/placeholder name `foo`
+  --> tests/ui/disallowed_names.rs:43:19
+   |
+LL | fn issue_1647(mut foo: u8) {
+   |                   ^^^
+
+error: use of a disallowed/placeholder name `baz`
+  --> tests/ui/disallowed_names.rs:46:13
+   |
+LL |     let mut baz = 0;
+   |             ^^^
+
+error: use of a disallowed/placeholder name `quux`
+  --> tests/ui/disallowed_names.rs:49:21
+   |
+LL |     if let Some(mut quux) = Some(42) {}
+   |                     ^^^^
+
+error: use of a disallowed/placeholder name `baz`
+  --> tests/ui/disallowed_names.rs:54:13
+   |
+LL |     let ref baz = 0;
+   |             ^^^
+
+error: use of a disallowed/placeholder name `quux`
+  --> tests/ui/disallowed_names.rs:57:21
+   |
+LL |     if let Some(ref quux) = Some(42) {}
+   |                     ^^^^
+
+error: use of a disallowed/placeholder name `baz`
+  --> tests/ui/disallowed_names.rs:62:17
+   |
+LL |     let ref mut baz = 0;
+   |                 ^^^
+
+error: use of a disallowed/placeholder name `quux`
+  --> tests/ui/disallowed_names.rs:65:25
+   |
+LL |     if let Some(ref mut quux) = Some(42) {}
+   |                         ^^^^
+
+error: aborting due to 14 previous errors
+

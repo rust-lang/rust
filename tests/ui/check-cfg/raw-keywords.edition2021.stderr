@@ -1,0 +1,40 @@
+warning: unexpected `cfg` condition name: `tru`
+  --> $DIR/raw-keywords.rs:15:7
+   |
+LL | #[cfg(tru)]
+   |       ^^^ help: there is a config with a similar name: `r#true`
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(tru)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `r#false`
+  --> $DIR/raw-keywords.rs:20:7
+   |
+LL | #[cfg(r#false)]
+   |       ^^^^^^^
+   |
+   = help: expected names are: `r#async`, `edition2015`, `edition2021`, and `r#true` and 31 more
+   = help: to expect this configuration use `--check-cfg=cfg(r#false)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#await`
+  --> $DIR/raw-keywords.rs:29:29
+   |
+LL | #[cfg_attr(edition2021, cfg(r#await))]
+   |                             ^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#await)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `raw`
+  --> $DIR/raw-keywords.rs:34:7
+   |
+LL | #[cfg(r#raw)]
+   |       ^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(raw)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: 4 warnings emitted
+

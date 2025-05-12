@@ -1,0 +1,10 @@
+// MIR for `float_to_int` after built
+
+fn float_to_int(_1: f32) -> i32 {
+    let mut _0: i32;
+
+    bb0: {
+        _0 = copy _1 as i32 (FloatToInt);
+        return;
+    }
+}

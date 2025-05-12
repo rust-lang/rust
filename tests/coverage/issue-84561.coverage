@@ -1,0 +1,191 @@
+   LL|       |// This demonstrated Issue #84561: function-like macros produce unintuitive coverage results.
+   LL|       |
+   LL|       |//@ failure-status: 101
+   LL|       |#[derive(PartialEq, Eq)]
+   LL|       |struct Foo(u32);
+   LL|       |
+   LL|       |#[rustfmt::skip]
+   LL|      1|fn test3() {
+   LL|      1|    let is_true = std::env::args().len() == 1;
+   LL|      1|    let bar = Foo(1);
+   LL|      1|    assert_eq!(bar, Foo(1));
+   LL|      1|    let baz = Foo(0);
+   LL|      1|    assert_ne!(baz, Foo(1));
+   LL|      1|    println!("{:?}", Foo(1));
+   LL|      1|    println!("{:?}", bar);
+   LL|      1|    println!("{:?}", baz);
+   LL|       |
+   LL|      1|    assert_eq!(Foo(1), Foo(1));
+   LL|      1|    assert_ne!(Foo(0), Foo(1));
+   LL|      1|    assert_eq!(Foo(2), Foo(2));
+   LL|      1|    let bar = Foo(0);
+   LL|      1|    assert_ne!(bar, Foo(3));
+   LL|      1|    assert_ne!(Foo(0), Foo(4));
+   LL|      1|    assert_eq!(Foo(3), Foo(3), "with a message");
+                                             ^0
+   LL|      1|    println!("{:?}", bar);
+   LL|      1|    println!("{:?}", Foo(1));
+   LL|       |
+   LL|      1|    assert_ne!(Foo(0), Foo(5), "{}", if is_true { "true message" } else { "false message" });
+                                             ^0       ^0        ^0                      ^0
+   LL|      1|    assert_ne!(
+   LL|       |        Foo(0)
+   LL|       |        ,
+   LL|       |        Foo(5)
+   LL|       |        ,
+   LL|      0|        "{}"
+   LL|       |        ,
+   LL|       |        if
+   LL|      0|        is_true
+   LL|       |        {
+   LL|      0|            "true message"
+   LL|       |        } else {
+   LL|      0|            "false message"
+   LL|       |        }
+   LL|       |    );
+   LL|       |
+   LL|      1|    let is_true = std::env::args().len() == 1;
+   LL|       |
+   LL|      1|    assert_eq!(
+   LL|       |        Foo(1),
+   LL|       |        Foo(1)
+   LL|       |    );
+   LL|      1|    assert_ne!(
+   LL|       |        Foo(0),
+   LL|       |        Foo(1)
+   LL|       |    );
+   LL|      1|    assert_eq!(
+   LL|       |        Foo(2),
+   LL|       |        Foo(2)
+   LL|       |    );
+   LL|      1|    let bar = Foo(1);
+   LL|      1|    assert_ne!(
+   LL|       |        bar,
+   LL|       |        Foo(3)
+   LL|       |    );
+   LL|      1|    if is_true {
+   LL|      1|        assert_ne!(
+   LL|       |            Foo(0),
+   LL|       |            Foo(4)
+   LL|       |        );
+   LL|       |    } else {
+   LL|      0|        assert_eq!(
+   LL|       |            Foo(3),
+   LL|       |            Foo(3)
+   LL|       |        );
+   LL|       |    }
+   LL|      1|    if is_true {
+   LL|      1|        assert_ne!(
+   LL|       |            Foo(0),
+   LL|       |            Foo(4),
+   LL|      0|            "with a message"
+   LL|       |        );
+   LL|       |    } else {
+   LL|      0|        assert_eq!(
+   LL|       |            Foo(3),
+   LL|       |            Foo(3),
+   LL|      0|            "with a message"
+   LL|       |        );
+   LL|       |    }
+   LL|      1|    assert_ne!(
+   LL|      1|        if is_true {
+   LL|      1|            Foo(0)
+   LL|       |        } else {
+   LL|      0|            Foo(1)
+   LL|       |        },
+   LL|       |        Foo(5)
+   LL|       |    );
+   LL|      1|    assert_ne!(
+   LL|       |        Foo(5),
+   LL|      1|        if is_true {
+   LL|      1|            Foo(0)
+   LL|       |        } else {
+   LL|      0|            Foo(1)
+   LL|       |        }
+   LL|       |    );
+   LL|      1|    assert_ne!(
+   LL|      1|        if is_true {
+   LL|      1|            assert_eq!(
+   LL|       |                Foo(3),
+   LL|       |                Foo(3)
+   LL|       |            );
+   LL|      1|            Foo(0)
+   LL|       |        } else {
+   LL|      0|            assert_ne!(
+   LL|      0|                if is_true {
+   LL|      0|                    Foo(0)
+   LL|       |                } else {
+   LL|      0|                    Foo(1)
+   LL|       |                },
+   LL|       |                Foo(5)
+   LL|       |            );
+   LL|      0|            Foo(1)
+   LL|       |        },
+   LL|       |        Foo(5),
+   LL|      0|        "with a message"
+   LL|       |    );
+   LL|      1|    assert_eq!(
+   LL|       |        Foo(1),
+   LL|       |        Foo(3),
+   LL|      1|        "this assert should fail"
+   LL|       |    );
+   LL|      0|    assert_eq!(
+   LL|       |        Foo(3),
+   LL|       |        Foo(3),
+   LL|      0|        "this assert should not be reached"
+   LL|       |    );
+   LL|      0|}
+   LL|       |
+   LL|       |impl std::fmt::Debug for Foo {
+   LL|      7|    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+   LL|      7|        write!(f, "try and succeed")?;
+                                                  ^0
+   LL|      7|        Ok(())
+   LL|      7|    }
+   LL|       |}
+   LL|       |
+   LL|       |static mut DEBUG_LEVEL_ENABLED: bool = false;
+   LL|       |
+   LL|       |macro_rules! debug {
+   LL|       |    ($($arg:tt)+) => (
+   LL|       |        if unsafe { DEBUG_LEVEL_ENABLED } {
+   LL|       |            println!($($arg)+);
+   LL|       |        }
+   LL|       |    );
+   LL|       |}
+   LL|       |
+   LL|      1|fn test1() {
+   LL|      1|    debug!("debug is enabled");
+                         ^0
+   LL|      1|    debug!("debug is enabled");
+                         ^0
+   LL|      1|    let _ = 0;
+   LL|      1|    debug!("debug is enabled");
+                         ^0
+   LL|      1|    unsafe {
+   LL|      1|        DEBUG_LEVEL_ENABLED = true;
+   LL|      1|    }
+   LL|      1|    debug!("debug is enabled");
+   LL|      1|}
+   LL|       |
+   LL|       |macro_rules! call_debug {
+   LL|       |    ($($arg:tt)+) => (
+   LL|      1|        fn call_print(s: &str) {
+   LL|      1|            print!("{}", s);
+   LL|      1|        }
+   LL|       |
+   LL|       |        call_print("called from call_debug: ");
+   LL|       |        debug!($($arg)+);
+   LL|       |    );
+   LL|       |}
+   LL|       |
+   LL|      1|fn test2() {
+   LL|      1|    call_debug!("debug is enabled");
+   LL|      1|}
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    test1();
+   LL|      1|    test2();
+   LL|      1|    test3();
+   LL|      1|}
+

@@ -1,0 +1,8 @@
+error: expected identifier, found doc comment `/// document`
+  --> $DIR/doc-before-identifier.rs:1:4
+   |
+LL | fn /// document
+   |    ^^^^^^^^^^^^ expected identifier, found doc comment
+
+error: aborting due to 1 previous error
+

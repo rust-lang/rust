@@ -1,0 +1,48 @@
+error: calling `.type_id()` on `Box<dyn Any>`
+  --> tests/ui/type_id_on_box.rs:31:13
+   |
+LL |     let _ = any_box.type_id();
+   |             -------^^^^^^^^^^
+   |             |
+   |             help: consider dereferencing first: `(*any_box)`
+   |
+   = note: this returns the type id of the literal type `Box<_>` instead of the type id of the boxed value, which is most likely not what you want
+   = note: if this is intentional, use `TypeId::of::<Box<dyn Any>>()` instead, which makes it more clear
+   = note: `-D clippy::type-id-on-box` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::type_id_on_box)]`
+
+error: calling `.type_id()` on `Box<dyn Any>`
+  --> tests/ui/type_id_on_box.rs:40:13
+   |
+LL |     let _ = any_box.type_id();
+   |             -------^^^^^^^^^^
+   |             |
+   |             help: consider dereferencing first: `(**any_box)`
+   |
+   = note: this returns the type id of the literal type `Box<_>` instead of the type id of the boxed value, which is most likely not what you want
+   = note: if this is intentional, use `TypeId::of::<Box<dyn Any>>()` instead, which makes it more clear
+
+error: calling `.type_id()` on `Box<dyn AnySubTrait>`
+  --> tests/ui/type_id_on_box.rs:47:13
+   |
+LL |     let _ = b.type_id();
+   |             -^^^^^^^^^^
+   |             |
+   |             help: consider dereferencing first: `(*b)`
+   |
+   = note: this returns the type id of the literal type `Box<_>` instead of the type id of the boxed value, which is most likely not what you want
+   = note: if this is intentional, use `TypeId::of::<Box<dyn AnySubTrait>>()` instead, which makes it more clear
+
+error: calling `.type_id()` on `Box<dyn Any>`
+  --> tests/ui/type_id_on_box.rs:51:13
+   |
+LL |     let _ = b.type_id();
+   |             -^^^^^^^^^^
+   |             |
+   |             help: consider dereferencing first: `(*b)`
+   |
+   = note: this returns the type id of the literal type `Box<_>` instead of the type id of the boxed value, which is most likely not what you want
+   = note: if this is intentional, use `TypeId::of::<Box<dyn Any>>()` instead, which makes it more clear
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `MissingType` in this scope
+  --> $DIR/issue-68830-spurious-diagnostics.rs:8:10
+   |
+LL |     err: MissingType
+   |          ^^^^^^^^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

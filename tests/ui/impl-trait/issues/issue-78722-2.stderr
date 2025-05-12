@@ -1,0 +1,24 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-78722-2.rs:17:20
+   |
+LL | type F = impl core::future::Future<Output = u8>;
+   |          -------------------------------------- the expected future
+...
+LL |         let f: F = async { 1 };
+   |                -   ^^^^^^^^^^^ expected future, found `async` block
+   |                |
+   |                expected due to this
+   |
+   = note: expected opaque type `F`
+            found `async` block `{async block@$DIR/issue-78722-2.rs:17:20: 17:25}`
+
+error[E0271]: expected `{async block@$DIR/issue-78722-2.rs:14:13: 14:18}` to be a future that resolves to `u8`, but it resolves to `()`
+  --> $DIR/issue-78722-2.rs:12:30
+   |
+LL |         fn concrete_use() -> F {
+   |                              ^ expected `u8`, found `()`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0271, E0308.
+For more information about an error, try `rustc --explain E0271`.

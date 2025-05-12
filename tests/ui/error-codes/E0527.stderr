@@ -1,0 +1,9 @@
+error[E0527]: pattern requires 2 elements but array has 4
+  --> $DIR/E0527.rs:4:10
+   |
+LL |         &[a, b] => {
+   |          ^^^^^^ expected 4 elements
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0527`.

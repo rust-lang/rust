@@ -1,0 +1,616 @@
+error: used `unwrap()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:7:17
+   |
+LL |     let _val2 = val.unwrap();
+   |                 ^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:6:15
+   |
+LL |     let val = Some(1);
+   |               ^^^^^^^
+   = note: `-D clippy::unnecessary-literal-unwrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_literal_unwrap)]`
+
+error: used `expect()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:10:17
+   |
+LL |     let _val2 = val.expect("this never happens");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `expect()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:6:15
+   |
+LL |     let val = Some(1);
+   |               ^^^^^^^
+
+error: used `unwrap()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:15:16
+   |
+LL |     let _val = Some::<usize>([1, 2, 3].iter().sum()).unwrap();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:15:16
+   |
+LL |     let _val = Some::<usize>([1, 2, 3].iter().sum()).unwrap();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `expect()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:18:16
+   |
+LL |     let _val = Some::<usize>([1, 2, 3].iter().sum()).expect("this never happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `expect()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:18:16
+   |
+LL |     let _val = Some::<usize>([1, 2, 3].iter().sum()).expect("this never happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:22:17
+   |
+LL |     let _val2 = val.unwrap();
+   |                 ^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:21:15
+   |
+LL |     let val = Some::<usize>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `expect()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:25:17
+   |
+LL |     let _val2 = val.expect("this never happens");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `expect()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:21:15
+   |
+LL |     let val = Some::<usize>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:31:17
+   |
+LL |     let _val2 = val.unwrap();
+   |                 ^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:30:15
+   |
+LL |     let val = None::<()>;
+   |               ^^^^^^^^^^
+
+error: used `expect()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:34:17
+   |
+LL |     let _val2 = val.expect("this always happens");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `expect()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:30:15
+   |
+LL |     let val = None::<()>;
+   |               ^^^^^^^^^^
+
+error: used `unwrap_or_default()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:37:21
+   |
+LL |     let _val3: u8 = None.unwrap_or_default();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the `None` and `unwrap_or_default()`: `Default::default()`
+
+error: used `unwrap_or_default()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:40:5
+   |
+LL |     None::<()>.unwrap_or_default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the `None` and `unwrap_or_default()`: `Default::default()`
+
+error: used `unwrap()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:46:17
+   |
+LL |     let _val2 = val.unwrap();
+   |                 ^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:45:15
+   |
+LL |     let val = Ok::<_, ()>(1);
+   |               ^^^^^^^^^^^^^^
+
+error: used `expect()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:49:17
+   |
+LL |     let _val2 = val.expect("this never happens");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `expect()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:45:15
+   |
+LL |     let val = Ok::<_, ()>(1);
+   |               ^^^^^^^^^^^^^^
+
+error: used `unwrap_err()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:52:17
+   |
+LL |     let _val2 = val.unwrap_err();
+   |                 ^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_err()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:45:15
+   |
+LL |     let val = Ok::<_, ()>(1);
+   |               ^^^^^^^^^^^^^^
+
+error: used `expect_err()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:55:17
+   |
+LL |     let _val2 = val.expect_err("this always happens");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `expect_err()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:45:15
+   |
+LL |     let val = Ok::<_, ()>(1);
+   |               ^^^^^^^^^^^^^^
+
+error: used `unwrap()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:60:16
+   |
+LL |     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:60:16
+   |
+LL |     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `expect()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:63:16
+   |
+LL |     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).expect("this never happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `expect()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:63:16
+   |
+LL |     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).expect("this never happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_err()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:66:16
+   |
+LL |     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap_err();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_err()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:66:16
+   |
+LL |     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap_err();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `expect_err()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:69:16
+   |
+LL |     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).expect_err("this always happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `expect_err()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:69:16
+   |
+LL |     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).expect_err("this always happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:73:17
+   |
+LL |     let _val2 = val.unwrap();
+   |                 ^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:72:15
+   |
+LL |     let val = Ok::<usize, ()>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `expect()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:76:17
+   |
+LL |     let _val2 = val.expect("this never happens");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `expect()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:72:15
+   |
+LL |     let val = Ok::<usize, ()>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_err()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:79:17
+   |
+LL |     let _val2 = val.unwrap_err();
+   |                 ^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_err()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:72:15
+   |
+LL |     let val = Ok::<usize, ()>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `expect_err()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:82:17
+   |
+LL |     let _val2 = val.expect_err("this always happens");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `expect_err()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:72:15
+   |
+LL |     let val = Ok::<usize, ()>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_err()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:88:17
+   |
+LL |     let _val2 = val.unwrap_err();
+   |                 ^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap_err()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:87:15
+   |
+LL |     let val = Err::<(), _>(1);
+   |               ^^^^^^^^^^^^^^^
+
+error: used `expect_err()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:91:17
+   |
+LL |     let _val2 = val.expect_err("this never happens");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `expect_err()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:87:15
+   |
+LL |     let val = Err::<(), _>(1);
+   |               ^^^^^^^^^^^^^^^
+
+error: used `unwrap()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:94:17
+   |
+LL |     let _val2 = val.unwrap();
+   |                 ^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:87:15
+   |
+LL |     let val = Err::<(), _>(1);
+   |               ^^^^^^^^^^^^^^^
+
+error: used `expect()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:97:17
+   |
+LL |     let _val2 = val.expect("this always happens");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `expect()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:87:15
+   |
+LL |     let val = Err::<(), _>(1);
+   |               ^^^^^^^^^^^^^^^
+
+error: used `unwrap_err()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:102:16
+   |
+LL |     let _val = Err::<(), usize>([1, 2, 3].iter().sum()).unwrap_err();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap_err()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:102:16
+   |
+LL |     let _val = Err::<(), usize>([1, 2, 3].iter().sum()).unwrap_err();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `expect_err()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:105:16
+   |
+LL |     let _val = Err::<(), usize>([1, 2, 3].iter().sum()).expect_err("this never happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `expect_err()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:105:16
+   |
+LL |     let _val = Err::<(), usize>([1, 2, 3].iter().sum()).expect_err("this never happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:108:16
+   |
+LL |     let _val = Err::<(), usize>([1, 2, 3].iter().sum()).unwrap();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:108:16
+   |
+LL |     let _val = Err::<(), usize>([1, 2, 3].iter().sum()).unwrap();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `expect()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:111:16
+   |
+LL |     let _val = Err::<(), usize>([1, 2, 3].iter().sum()).expect("this always happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `expect()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:111:16
+   |
+LL |     let _val = Err::<(), usize>([1, 2, 3].iter().sum()).expect("this always happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_err()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:115:17
+   |
+LL |     let _val2 = val.unwrap_err();
+   |                 ^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap_err()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:114:15
+   |
+LL |     let val = Err::<(), usize>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `expect_err()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:118:17
+   |
+LL |     let _val2 = val.expect_err("this never happens");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `expect_err()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:114:15
+   |
+LL |     let val = Err::<(), usize>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:121:17
+   |
+LL |     let _val2 = val.unwrap();
+   |                 ^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:114:15
+   |
+LL |     let val = Err::<(), usize>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `expect()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:124:17
+   |
+LL |     let _val2 = val.expect("this always happens");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `expect()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:114:15
+   |
+LL |     let val = Err::<(), usize>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:130:17
+   |
+LL |     let _val2 = val.unwrap_or(2);
+   |                 ^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:129:15
+   |
+LL |     let val = Some(1);
+   |               ^^^^^^^
+
+error: used `unwrap_or_default()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:133:17
+   |
+LL |     let _val2 = val.unwrap_or_default();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or_default()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:129:15
+   |
+LL |     let val = Some(1);
+   |               ^^^^^^^
+
+error: used `unwrap_or_else()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:136:17
+   |
+LL |     let _val2 = val.unwrap_or_else(|| 2);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or_else()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:129:15
+   |
+LL |     let val = Some(1);
+   |               ^^^^^^^
+
+error: used `unwrap_or()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:141:16
+   |
+LL |     let _val = Some::<usize>([1, 2, 3].iter().sum()).unwrap_or(2);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:141:16
+   |
+LL |     let _val = Some::<usize>([1, 2, 3].iter().sum()).unwrap_or(2);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or_default()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:144:16
+   |
+LL |     let _val = Some::<usize>([1, 2, 3].iter().sum()).unwrap_or_default();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or_default()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:144:16
+   |
+LL |     let _val = Some::<usize>([1, 2, 3].iter().sum()).unwrap_or_default();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or_else()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:147:16
+   |
+LL |     let _val = Some::<usize>([1, 2, 3].iter().sum()).unwrap_or_else(|| 2);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or_else()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:147:16
+   |
+LL |     let _val = Some::<usize>([1, 2, 3].iter().sum()).unwrap_or_else(|| 2);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:151:17
+   |
+LL |     let _val2 = val.unwrap_or(2);
+   |                 ^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:150:15
+   |
+LL |     let val = Some::<usize>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or_default()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:154:17
+   |
+LL |     let _val2 = val.unwrap_or_default();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or_default()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:150:15
+   |
+LL |     let val = Some::<usize>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or_else()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:157:17
+   |
+LL |     let _val2 = val.unwrap_or_else(|| 2);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or_else()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:150:15
+   |
+LL |     let val = Some::<usize>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:163:17
+   |
+LL |     let _val2 = val.unwrap_or(2);
+   |                 ^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:162:15
+   |
+LL |     let val = Ok::<_, ()>(1);
+   |               ^^^^^^^^^^^^^^
+
+error: used `unwrap_or_default()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:166:17
+   |
+LL |     let _val2 = val.unwrap_or_default();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or_default()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:162:15
+   |
+LL |     let val = Ok::<_, ()>(1);
+   |               ^^^^^^^^^^^^^^
+
+error: used `unwrap_or_else()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:169:17
+   |
+LL |     let _val2 = val.unwrap_or_else(|_| 2);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or_else()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:162:15
+   |
+LL |     let val = Ok::<_, ()>(1);
+   |               ^^^^^^^^^^^^^^
+
+error: used `unwrap_or()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:174:16
+   |
+LL |     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap_or(2);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:174:16
+   |
+LL |     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap_or(2);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or_default()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:177:16
+   |
+LL |     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap_or_default();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or_default()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:177:16
+   |
+LL |     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap_or_default();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or_else()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:180:16
+   |
+LL |     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap_or_else(|_| 2);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or_else()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:180:16
+   |
+LL |     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap_or_else(|_| 2);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:184:17
+   |
+LL |     let _val2 = val.unwrap_or(2);
+   |                 ^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:183:15
+   |
+LL |     let val = Ok::<usize, ()>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or_default()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:187:17
+   |
+LL |     let _val2 = val.unwrap_or_default();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or_default()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:183:15
+   |
+LL |     let val = Ok::<usize, ()>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or_else()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:190:17
+   |
+LL |     let _val2 = val.unwrap_or_else(|_| 2);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or_else()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:183:15
+   |
+LL |     let val = Ok::<usize, ()>([1, 2, 3].iter().sum());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 52 previous errors
+

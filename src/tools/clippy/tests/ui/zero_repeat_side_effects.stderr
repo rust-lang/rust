@@ -1,0 +1,59 @@
+error: function or method calls as the initial value in zero-sized array initializers may cause side effects
+  --> tests/ui/zero_repeat_side_effects.rs:18:5
+   |
+LL |     let a = [f(); 0];
+   |     ^^^^^^^^^^^^^^^^^ help: consider using: `f(); let a: [i32; 0] = [];`
+   |
+   = note: `-D clippy::zero-repeat-side-effects` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::zero_repeat_side_effects)]`
+
+error: function or method calls as the initial value in zero-sized array initializers may cause side effects
+  --> tests/ui/zero_repeat_side_effects.rs:21:5
+   |
+LL |     b = [f(); 0];
+   |     ^^^^^^^^^^^^ help: consider using: `f(); b = [] as [i32; 0]`
+
+error: function or method calls as the initial value in zero-sized array initializers may cause side effects
+  --> tests/ui/zero_repeat_side_effects.rs:26:5
+   |
+LL |     let c = vec![f(); 0];
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `f(); let c: std::vec::Vec<i32> = vec![];`
+
+error: function or method calls as the initial value in zero-sized array initializers may cause side effects
+  --> tests/ui/zero_repeat_side_effects.rs:29:5
+   |
+LL |     d = vec![f(); 0];
+   |     ^^^^^^^^^^^^^^^^ help: consider using: `f(); d = vec![] as std::vec::Vec<i32>`
+
+error: function or method calls as the initial value in zero-sized array initializers may cause side effects
+  --> tests/ui/zero_repeat_side_effects.rs:33:5
+   |
+LL |     let e = [println!("side effect"); 0];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `println!("side effect"); let e: [(); 0] = [];`
+
+error: function or method calls as the initial value in zero-sized array initializers may cause side effects
+  --> tests/ui/zero_repeat_side_effects.rs:37:5
+   |
+LL |     let g = [{ f() }; 0];
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `{ f() }; let g: [i32; 0] = [];`
+
+error: function or method calls as the initial value in zero-sized array initializers may cause side effects
+  --> tests/ui/zero_repeat_side_effects.rs:41:10
+   |
+LL |     drop(vec![f(); 0]);
+   |          ^^^^^^^^^^^^ help: consider using: `{ f(); vec![] as std::vec::Vec<i32> }`
+
+error: function or method calls as the initial value in zero-sized array initializers may cause side effects
+  --> tests/ui/zero_repeat_side_effects.rs:45:5
+   |
+LL |     vec![f(); 0];
+   |     ^^^^^^^^^^^^ help: consider using: `{ f(); vec![] as std::vec::Vec<i32> }`
+
+error: function or method calls as the initial value in zero-sized array initializers may cause side effects
+  --> tests/ui/zero_repeat_side_effects.rs:47:5
+   |
+LL |     [f(); 0];
+   |     ^^^^^^^^ help: consider using: `{ f(); [] as [i32; 0] }`
+
+error: aborting due to 9 previous errors
+

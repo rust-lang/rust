@@ -1,0 +1,130 @@
+//@ run-rustfix
+
+#![feature(box_patterns, stmt_expr_attributes, yeet_expr)]
+
+#![allow(
+    dead_code,
+    ellipsis_inclusive_range_patterns,
+    irrefutable_let_patterns,
+    unreachable_patterns,
+    unused_mut,
+    unused_variables
+)]
+#![deny(unused_parens, unused_braces)]
+
+fn lint_on_top_level() {
+    let a = 0; //~ ERROR unnecessary parentheses around pattern
+    for a in 0..1 {} //~ ERROR unnecessary parentheses around pattern
+    if let a = 0 {} //~ ERROR unnecessary parentheses around pattern
+    while let a = 0 {} //~ ERROR unnecessary parentheses around pattern
+    fn foo(a: u8) {} //~ ERROR unnecessary parentheses around pattern
+    let _ = |a: u8| 0; //~ ERROR unnecessary parentheses around pattern
+}
+
+fn no_lint_attr() {
+    let _x = #[allow(dead_code)] (1 + 2);
+}
+
+fn no_lint_yeet() -> Result<(), ()> {
+    #[allow(unreachable_code)]
+    if (do yeet) {}
+
+    Ok(())
+}
+
+fn no_lint_ops() {
+    #![allow(unreachable_code, irrefutable_let_patterns)]
+    if ((..{}) == ..{}) {}
+    if (!return) {}
+    loop { match (() = () = () = break {}) {} }
+    while let () = (*&mut false |= true && return) {}
+}
+
+fn lint_break_if_not_followed_by_block() {
+    #![allow(unreachable_code)]
+    loop { if break {} } //~ ERROR unnecessary parentheses
+    loop { if break { println!("hello") } {} }
+    //~^ ERROR unnecessary parentheses around `if` condition
+    //~| ERROR unnecessary parentheses around `break` value
+    loop { if (break println!("hello")) {} } //~ ERROR unnecessary braces around `break` value
+}
+
+// Don't lint in these cases (#64106).
+fn or_patterns_no_lint() {
+    match Box::new(0) {
+        box (0 | 1) => {} // Should not lint as `box 0 | 1` binds as `(box 0) | 1`.
+        _ => {}
+    }
+
+    match 0 {
+        x @ (0 | 1) => {} // Should not lint as `x @ 0 | 1` binds as `(x @ 0) | 1`.
+        _ => {}
+    }
+
+    if let &(0 | 1) = &0 {} // Should also not lint.
+    if let &mut (0 | 1) = &mut 0 {} // Same.
+
+    fn foo((Ok(a) | Err(a)): Result<u8, u8>) {} // Doesn't parse if we remove parens for now.
+
+    let _ = |(Ok(a) | Err(a)): Result<u8, u8>| 1; // `|Ok(a) | Err(a)| 1` parses as bit-or.
+}
+
+fn or_patterns_will_lint() {
+    if let 0 | 1 = 0 {} //~ ERROR unnecessary parentheses around pattern
+    if let (0 | 1,) = (0,) {} //~ ERROR unnecessary parentheses around pattern
+    if let [0 | 1] = [0] {} //~ ERROR unnecessary parentheses around pattern
+    if let 0 | 1 | 2 = 0 {} //~ ERROR unnecessary parentheses around pattern
+    struct TS(u8);
+    if let TS(0 | 1) = TS(0) {} //~ ERROR unnecessary parentheses around pattern
+    struct NS { f: u8 }
+    if let NS { f: 0 | 1 } = (NS { f: 0 }) {} //~ ERROR unnecessary parentheses around pattern
+}
+
+// Don't lint on `&(mut x)` because `&mut x` means something else (#55342).
+fn deref_mut_binding_no_lint() {
+    let &(mut x) = &0;
+}
+
+fn main() {
+    match 1 {
+        _ => {} //~ ERROR unnecessary parentheses around pattern
+        y => {} //~ ERROR unnecessary parentheses around pattern
+        ref r => {} //~ ERROR unnecessary parentheses around pattern
+        e @ 1...2 => {} //~ ERROR unnecessary parentheses around pattern
+        (1...2) => {} // Non ambiguous range pattern should not warn
+        e @ (3...4) => {} // Non ambiguous range pattern should not warn
+    }
+
+    match &1 {
+        e @ &(1...2) => {} //~ ERROR unnecessary parentheses around pattern
+        &_ => {} //~ ERROR unnecessary parentheses around pattern
+        e @ &(1...2) => {} // Ambiguous range pattern should not warn
+        &(1...2) => {} // Ambiguous range pattern should not warn
+    }
+
+    match &1 {
+        e @ &(1...2) | e @ &(3...4) => {} // Complex ambiguous pattern should not warn
+        &_ => {}
+    }
+
+    match 1 {
+        _ => {} //~ ERROR unnecessary parentheses around pattern
+        y => {} //~ ERROR unnecessary parentheses around pattern
+        ref r => {} //~ ERROR unnecessary parentheses around pattern
+        e @ 1..=2 => {} //~ ERROR unnecessary parentheses around pattern
+        (1..=2) => {} // Non ambiguous range pattern should not warn
+        e @ (3..=4) => {} // Non ambiguous range pattern should not warn
+    }
+
+    match &1 {
+        e @ &(1..=2) => {} //~ ERROR unnecessary parentheses around pattern
+        &_ => {} //~ ERROR unnecessary parentheses around pattern
+        e @ &(1..=2) => {} // Ambiguous range pattern should not warn
+        &(1..=2) => {} // Ambiguous range pattern should not warn
+    }
+
+    match &1 {
+        e @ &(1..=2) | e @ &(3..=4) => {} // Complex ambiguous pattern should not warn
+        &_ => {}
+    }
+}

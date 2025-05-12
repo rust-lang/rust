@@ -1,0 +1,49 @@
+error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable
+  --> $DIR/issue-105761-suggest-self-for-closure.rs:11:9
+   |
+LL |         let x = |v: i32| {
+   |                 -------- immutable borrow occurs here
+LL |             self.bar();
+   |             ---- first borrow occurs due to use of `self` in closure
+...
+LL |         self.qux();
+   |         ^^^^^^^^^^ mutable borrow occurs here
+LL |         x(1);
+   |         - immutable borrow later used here
+   |
+help: try explicitly passing `&Self` into the closure as an argument
+   |
+LL ~         let x = |this: &Self, v: i32| {
+LL ~             this.bar();
+LL ~             this.hel();
+LL |         };
+LL |         self.qux();
+LL ~         x(self, 1);
+LL ~         x(self, 3);
+   |
+
+error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable
+  --> $DIR/issue-105761-suggest-self-for-closure.rs:23:9
+   |
+LL |         let y = || {
+   |                 -- immutable borrow occurs here
+LL |             self.bar();
+   |             ---- first borrow occurs due to use of `self` in closure
+LL |         };
+LL |         self.qux();
+   |         ^^^^^^^^^^ mutable borrow occurs here
+LL |         y();
+   |         - immutable borrow later used here
+   |
+help: try explicitly passing `&Self` into the closure as an argument
+   |
+LL ~         let y = |this: &Self| {
+LL ~             this.bar();
+LL |         };
+LL |         self.qux();
+LL ~         y(self);
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0502`.

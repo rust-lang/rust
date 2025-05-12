@@ -1,0 +1,30 @@
+error[E0283]: type annotations needed
+  --> $DIR/ambig-hr-projection-issue-93340.rs:17:5
+   |
+LL |     cmp_eq
+   |     ^^^^^^ cannot infer type of the type parameter `A` declared on the function `cmp_eq`
+   |
+   = note: cannot satisfy `_: Scalar`
+note: required by a bound in `cmp_eq`
+  --> $DIR/ambig-hr-projection-issue-93340.rs:10:22
+   |
+LL | fn cmp_eq<'a, 'b, A: Scalar, B: Scalar, O: Scalar>(a: A::RefType<'a>, b: B::RefType<'b>) -> O {
+   |                      ^^^^^^ required by this bound in `cmp_eq`
+help: consider specifying the generic arguments
+   |
+LL |     cmp_eq::<A, B, O>
+   |           +++++++++++
+
+error[E0277]: expected a `Fn(<A as Scalar>::RefType<'_>, <B as Scalar>::RefType<'_>)` closure, found `for<'a, 'b> fn(<O as Scalar>::RefType<'a>, <_ as Scalar>::RefType<'b>) -> O {cmp_eq::<O, _, O>}`
+  --> $DIR/ambig-hr-projection-issue-93340.rs:14:1
+   |
+LL | / fn build_expression<A: Scalar, B: Scalar, O: Scalar>(
+LL | | ) -> impl Fn(A::RefType<'_>, B::RefType<'_>) -> O {
+   | |_________________________________________________^ expected an `Fn(<A as Scalar>::RefType<'_>, <B as Scalar>::RefType<'_>)` closure, found `for<'a, 'b> fn(<O as Scalar>::RefType<'a>, <_ as Scalar>::RefType<'b>) -> O {cmp_eq::<O, _, O>}`
+   |
+   = help: the trait `for<'a, 'b> Fn(<A as Scalar>::RefType<'a>, <B as Scalar>::RefType<'b>)` is not implemented for fn item `for<'a, 'b> fn(<O as Scalar>::RefType<'a>, <_ as Scalar>::RefType<'b>) -> O {cmp_eq::<O, _, O>}`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0283.
+For more information about an error, try `rustc --explain E0277`.

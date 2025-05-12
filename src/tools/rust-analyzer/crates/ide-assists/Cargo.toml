@@ -1,0 +1,39 @@
+[package]
+name = "ide-assists"
+version = "0.0.0"
+repository.workspace = true
+description = "Code assists for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+
+[dependencies]
+cov-mark = "2.0.0"
+
+itertools.workspace = true
+either.workspace = true
+smallvec.workspace = true
+tracing.workspace = true
+
+# local deps
+stdx.workspace = true
+syntax.workspace = true
+ide-db.workspace = true
+hir.workspace = true
+
+[dev-dependencies]
+expect-test = "1.5.1"
+
+# local deps
+test-utils.workspace = true
+test-fixture.workspace = true
+
+[features]
+in-rust-tree = []
+
+[lints]
+workspace = true

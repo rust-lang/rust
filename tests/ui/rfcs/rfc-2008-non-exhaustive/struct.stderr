@@ -1,0 +1,95 @@
+error[E0423]: expected value, found struct `UnitStruct`
+  --> $DIR/struct.rs:29:14
+   |
+LL |     let us = UnitStruct;
+   |              ^^^^^^^^^^ constructor is not visible here due to private fields
+
+error[E0603]: tuple struct constructor `TupleStruct` is private
+  --> $DIR/struct.rs:23:32
+   |
+LL |     let ts_explicit = structs::TupleStruct(640, 480);
+   |                                ^^^^^^^^^^^ private tuple struct constructor
+   |
+note: the tuple struct constructor `TupleStruct` is defined here
+  --> $DIR/auxiliary/structs.rs:12:1
+   |
+LL | #[non_exhaustive]
+   | ----------------- cannot be constructed because it is `#[non_exhaustive]`
+LL | pub struct TupleStruct(pub u16, pub u16);
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0603]: unit struct `UnitStruct` is private
+  --> $DIR/struct.rs:32:32
+   |
+LL |     let us_explicit = structs::UnitStruct;
+   |                                ^^^^^^^^^^ private unit struct
+   |
+note: the unit struct `UnitStruct` is defined here
+  --> $DIR/auxiliary/structs.rs:9:1
+   |
+LL | #[non_exhaustive]
+   | ----------------- cannot be constructed because it is `#[non_exhaustive]`
+LL | pub struct UnitStruct;
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0639]: cannot create non-exhaustive struct using struct expression
+  --> $DIR/struct.rs:7:14
+   |
+LL |       let fr = FunctionalRecord {
+   |  ______________^
+LL | |
+LL | |         first_field: 1920,
+LL | |         second_field: 1080,
+LL | |         ..FunctionalRecord::default()
+LL | |     };
+   | |_____^
+
+error[E0639]: cannot create non-exhaustive struct using struct expression
+  --> $DIR/struct.rs:14:14
+   |
+LL |     let ns = NormalStruct { first_field: 640, second_field: 480 };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0638]: `..` required with struct marked as non-exhaustive
+  --> $DIR/struct.rs:17:9
+   |
+LL |     let NormalStruct { first_field, second_field } = ns;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `..` at the end of the field list to ignore all other fields
+   |
+LL |     let NormalStruct { first_field, second_field , .. } = ns;
+   |                                                  ++++
+
+error[E0423]: cannot initialize a tuple struct which contains private fields
+  --> $DIR/struct.rs:20:14
+   |
+LL |     let ts = TupleStruct(640, 480);
+   |              ^^^^^^^^^^^
+
+error[E0638]: `..` required with struct marked as non-exhaustive
+  --> $DIR/struct.rs:26:9
+   |
+LL |     let TupleStruct { 0: first_field, 1: second_field } = ts;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `..` at the end of the field list to ignore all other fields
+   |
+LL |     let TupleStruct { 0: first_field, 1: second_field , .. } = ts;
+   |                                                       ++++
+
+error[E0638]: `..` required with struct marked as non-exhaustive
+  --> $DIR/struct.rs:35:9
+   |
+LL |     let UnitStruct { } = us;
+   |         ^^^^^^^^^^^^^^
+   |
+help: add `..` at the end of the field list to ignore all other fields
+   |
+LL |     let UnitStruct { .. } = us;
+   |                      ++
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0423, E0603, E0638, E0639.
+For more information about an error, try `rustc --explain E0423`.

@@ -1,0 +1,35 @@
+error: renamed function parameter of trait impl
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:30:18
+   |
+LL |     fn eq(&self, rhs: &Self) -> bool {
+   |                  ^^^ help: consider using the default name: `other`
+   |
+   = note: `-D clippy::renamed-function-params` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::renamed_function_params)]`
+
+error: renamed function parameter of trait impl
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:34:18
+   |
+LL |     fn ne(&self, rhs: &Self) -> bool {
+   |                  ^^^ help: consider using the default name: `other`
+
+error: renamed function parameter of trait impl
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:57:31
+   |
+LL |     fn hash<H: Hasher>(&self, states: &mut H) {
+   |                               ^^^^^^ help: consider using the default name: `state`
+
+error: renamed function parameters of trait impl
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:61:30
+   |
+LL |     fn hash_slice<H: Hasher>(date: &[Self], states: &mut H) {
+   |                              ^^^^           ^^^^^^
+   |
+help: consider using the default names
+   |
+LL -     fn hash_slice<H: Hasher>(date: &[Self], states: &mut H) {
+LL +     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H) {
+   |
+
+error: aborting due to 4 previous errors
+

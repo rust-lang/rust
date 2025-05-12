@@ -1,0 +1,113 @@
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+  --> tests/ui/ref_option/ref_option.rs:8:1
+   |
+LL | fn opt_u8(a: &Option<u8>) {}
+   | ^^^^^^^^^^^^^-----------^^^^
+   |              |
+   |              help: change this to: `Option<&u8>`
+   |
+   = note: `-D clippy::ref-option` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ref_option)]`
+
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+  --> tests/ui/ref_option/ref_option.rs:10:1
+   |
+LL | fn opt_gen<T>(a: &Option<T>) {}
+   | ^^^^^^^^^^^^^^^^^----------^^^^
+   |                  |
+   |                  help: change this to: `Option<&T>`
+
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+  --> tests/ui/ref_option/ref_option.rs:12:1
+   |
+LL | fn opt_string(a: &std::option::Option<String>) {}
+   | ^^^^^^^^^^^^^^^^^----------------------------^^^^
+   |                  |
+   |                  help: change this to: `std::option::Option<&String>`
+
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+  --> tests/ui/ref_option/ref_option.rs:14:1
+   |
+LL |   fn ret_string<'a>(p: &'a str) -> &'a Option<u8> {
+   |   ^                                -------------- help: change this to: `Option<&'a u8>`
+   |  _|
+   | |
+LL | |
+LL | |     panic!()
+LL | | }
+   | |_^
+
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+  --> tests/ui/ref_option/ref_option.rs:18:1
+   |
+LL |   fn ret_string_static() -> &'static Option<u8> {
+   |   ^                         ------------------- help: change this to: `Option<&'static u8>`
+   |  _|
+   | |
+LL | |
+LL | |     panic!()
+LL | | }
+   | |_^
+
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+  --> tests/ui/ref_option/ref_option.rs:22:1
+   |
+LL | fn mult_string(a: &Option<String>, b: &Option<Vec<u8>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL - fn mult_string(a: &Option<String>, b: &Option<Vec<u8>>) {}
+LL + fn mult_string(a: Option<&String>, b: Option<&Vec<u8>>) {}
+   |
+
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+  --> tests/ui/ref_option/ref_option.rs:24:1
+   |
+LL |   fn ret_box<'a>() -> &'a Option<Box<u8>> {
+   |   ^                   ------------------- help: change this to: `Option<&'a Box<u8>>`
+   |  _|
+   | |
+LL | |
+LL | |     panic!()
+LL | | }
+   | |_^
+
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+  --> tests/ui/ref_option/ref_option.rs:42:5
+   |
+LL |     fn trait_opt(&self, a: &Option<String>);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^---------------^^
+   |                            |
+   |                            help: change this to: `Option<&String>`
+
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+  --> tests/ui/ref_option/ref_option.rs:44:5
+   |
+LL |     fn trait_ret(&self) -> &Option<String>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^---------------^
+   |                            |
+   |                            help: change this to: `Option<&String>`
+
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+  --> tests/ui/ref_option/ref_option.rs:58:5
+   |
+LL |     fn private_opt_params(&self, a: &Option<()>) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^
+   |                                     |
+   |                                     help: change this to: `Option<&()>`
+
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+  --> tests/ui/ref_option/ref_option.rs:60:5
+   |
+LL |       fn private_opt_ret(&self) -> &Option<String> {
+   |       ^                            --------------- help: change this to: `Option<&String>`
+   |  _____|
+   | |
+LL | |
+LL | |         panic!()
+LL | |     }
+   | |_____^
+
+error: aborting due to 11 previous errors
+

@@ -1,0 +1,27 @@
+error: expected `{`, found `92`
+  --> $DIR/issue-104392.rs:2:14
+   |
+LL |     { unsafe 92 }
+   |       ------ ^^ expected `{`
+   |       |
+   |       while parsing this `unsafe` expression
+   |
+help: you might have meant to write this as part of a block
+   |
+LL |     { unsafe { 92 } }
+   |              +    +
+
+error: expected identifier, found `92`
+  --> $DIR/issue-104392.rs:6:11
+   |
+LL |     { mod 92 }
+   |           ^^ expected identifier
+
+error: expected identifier, found `92`
+  --> $DIR/issue-104392.rs:10:13
+   |
+LL |     { trait 92 }
+   |             ^^ expected identifier
+
+error: aborting due to 3 previous errors
+

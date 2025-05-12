@@ -1,0 +1,53 @@
+error: `->` is not valid syntax for field accesses and method calls
+  --> $DIR/expr-rarrow-call-on-a-raw-pointer.rs:13:10
+   |
+LL |     named->foo += 1;
+   |          ^^
+   |
+   = help: the `.` operator will automatically dereference the value, except if the value is a raw pointer
+help: try using `.` instead
+   |
+LL -     named->foo += 1;
+LL +     named.foo += 1;
+   |
+
+error: `->` is not valid syntax for field accesses and method calls
+  --> $DIR/expr-rarrow-call-on-a-raw-pointer.rs:18:12
+   |
+LL |     unnamed->0 += 1;
+   |            ^^
+   |
+   = help: the `.` operator will automatically dereference the value, except if the value is a raw pointer
+help: try using `.` instead
+   |
+LL -     unnamed->0 += 1;
+LL +     unnamed.0 += 1;
+   |
+
+error[E0609]: no field `foo` on type `*mut Named`
+  --> $DIR/expr-rarrow-call-on-a-raw-pointer.rs:13:12
+   |
+LL |     named->foo += 1;
+   |            ^^^ unknown field
+   |
+help: `named` is a raw pointer; try dereferencing it
+   |
+LL -     named->foo += 1;
+LL +     (*named).foo += 1;
+   |
+
+error[E0609]: no field `0` on type `*mut Unnamed`
+  --> $DIR/expr-rarrow-call-on-a-raw-pointer.rs:18:14
+   |
+LL |     unnamed->0 += 1;
+   |              ^ unknown field
+   |
+help: `unnamed` is a raw pointer; try dereferencing it
+   |
+LL -     unnamed->0 += 1;
+LL +     (*unnamed).0 += 1;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

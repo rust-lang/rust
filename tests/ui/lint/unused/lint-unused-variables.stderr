@@ -1,0 +1,74 @@
+error: unused variable: `a`
+  --> $DIR/lint-unused-variables.rs:7:5
+   |
+LL |     a: i32,
+   |     ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-unused-variables.rs:4:9
+   |
+LL | #![deny(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unused variable: `a`
+  --> $DIR/lint-unused-variables.rs:21:9
+   |
+LL |         a: i32,
+   |         ^ help: if this is intentional, prefix it with an underscore: `_a`
+
+error: unused variable: `a`
+  --> $DIR/lint-unused-variables.rs:67:9
+   |
+LL |         a: i32,
+   |         ^ help: if this is intentional, prefix it with an underscore: `_a`
+
+error: unused variable: `b`
+  --> $DIR/lint-unused-variables.rs:13:5
+   |
+LL |     b: i32,
+   |     ^ help: if this is intentional, prefix it with an underscore: `_b`
+
+error: unused variable: `b`
+  --> $DIR/lint-unused-variables.rs:28:9
+   |
+LL |         b: i32,
+   |         ^ help: if this is intentional, prefix it with an underscore: `_b`
+
+error: unused variable: `b`
+  --> $DIR/lint-unused-variables.rs:33:9
+   |
+LL |         b: i32,
+   |         ^ help: if this is intentional, prefix it with an underscore: `_b`
+
+error: unused variable: `b`
+  --> $DIR/lint-unused-variables.rs:41:9
+   |
+LL |         b: i32,
+   |         ^ help: if this is intentional, prefix it with an underscore: `_b`
+
+error: unused variable: `b`
+  --> $DIR/lint-unused-variables.rs:46:9
+   |
+LL |         b: i32,
+   |         ^ help: if this is intentional, prefix it with an underscore: `_b`
+
+error: unused variable: `b`
+  --> $DIR/lint-unused-variables.rs:54:9
+   |
+LL |         b: i32,
+   |         ^ help: if this is intentional, prefix it with an underscore: `_b`
+
+error: unused variable: `b`
+  --> $DIR/lint-unused-variables.rs:59:9
+   |
+LL |         b: i32,
+   |         ^ help: if this is intentional, prefix it with an underscore: `_b`
+
+error: unused variable: `b`
+  --> $DIR/lint-unused-variables.rs:73:9
+   |
+LL |         b: i32,
+   |         ^ help: if this is intentional, prefix it with an underscore: `_b`
+
+error: aborting due to 11 previous errors
+

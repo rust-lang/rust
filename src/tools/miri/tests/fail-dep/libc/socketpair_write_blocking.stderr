@@ -1,0 +1,13 @@
+error: deadlock: the evaluated program deadlocked
+  --> tests/fail-dep/libc/socketpair_write_blocking.rs:LL:CC
+   |
+LL |     let _ = unsafe { libc::write(fds[0], data as *const libc::c_void, 3) };
+   |                                                                        ^ the evaluated program deadlocked
+   |
+   = note: BACKTRACE:
+   = note: inside `main` at tests/fail-dep/libc/socketpair_write_blocking.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

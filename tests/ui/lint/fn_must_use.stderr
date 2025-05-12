@@ -1,0 +1,97 @@
+warning: unused return value of `need_to_use_this_value` that must be used
+  --> $DIR/fn_must_use.rs:55:5
+   |
+LL |     need_to_use_this_value();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: it's important
+note: the lint level is defined here
+  --> $DIR/fn_must_use.rs:3:9
+   |
+LL | #![warn(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = need_to_use_this_value();
+   |     +++++++
+
+warning: unused return value of `MyStruct::need_to_use_this_method_value` that must be used
+  --> $DIR/fn_must_use.rs:60:5
+   |
+LL |     m.need_to_use_this_method_value();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = m.need_to_use_this_method_value();
+   |     +++++++
+
+warning: unused return value of `EvenNature::is_even` that must be used
+  --> $DIR/fn_must_use.rs:61:5
+   |
+LL |     m.is_even(); // trait method!
+   |     ^^^^^^^^^^^
+   |
+   = note: no side effects
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = m.is_even(); // trait method!
+   |     +++++++
+
+warning: unused return value of `MyStruct::need_to_use_this_associated_function_value` that must be used
+  --> $DIR/fn_must_use.rs:64:5
+   |
+LL |     MyStruct::need_to_use_this_associated_function_value();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = MyStruct::need_to_use_this_associated_function_value();
+   |     +++++++
+
+warning: unused return value of `std::cmp::PartialEq::eq` that must be used
+  --> $DIR/fn_must_use.rs:70:5
+   |
+LL |     2.eq(&3);
+   |     ^^^^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = 2.eq(&3);
+   |     +++++++
+
+warning: unused return value of `std::cmp::PartialEq::eq` that must be used
+  --> $DIR/fn_must_use.rs:71:5
+   |
+LL |     m.eq(&n);
+   |     ^^^^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = m.eq(&n);
+   |     +++++++
+
+warning: unused comparison that must be used
+  --> $DIR/fn_must_use.rs:74:5
+   |
+LL |     2 == 3;
+   |     ^^^^^^ the comparison produces a value
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = 2 == 3;
+   |     +++++++
+
+warning: unused comparison that must be used
+  --> $DIR/fn_must_use.rs:75:5
+   |
+LL |     m == n;
+   |     ^^^^^^ the comparison produces a value
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = m == n;
+   |     +++++++
+
+warning: 8 warnings emitted
+

@@ -1,0 +1,80 @@
+- // MIR for `match_u8_i8_2` before MatchBranchSimplification
++ // MIR for `match_u8_i8_2` after MatchBranchSimplification
+  
+  fn match_u8_i8_2(_1: EnumAu8) -> (i8, i8) {
+      debug i => _1;
+      let mut _0: (i8, i8);
+      let _2: i8;
+      let _4: ();
+      let mut _5: u8;
+      let mut _6: i8;
+      let mut _7: i8;
++     let mut _8: u8;
+      scope 1 {
+          debug a => _2;
+          let _3: i8;
+          scope 2 {
+              debug b => _3;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _5 = discriminant(_1);
+-         switchInt(move _5) -> [0: bb5, 127: bb4, 128: bb3, 255: bb2, otherwise: bb1];
+-     }
+- 
+-     bb1: {
+-         unreachable;
+-     }
+- 
+-     bb2: {
+-         _2 = const -1_i8;
+-         _3 = const -1_i8;
++         StorageLive(_8);
++         _8 = move _5;
++         _2 = copy _8 as i8 (IntToInt);
++         _3 = copy _8 as i8 (IntToInt);
+          _4 = ();
+-         goto -> bb6;
+-     }
+- 
+-     bb3: {
+-         _2 = const i8::MIN;
+-         _3 = const i8::MIN;
+-         _4 = ();
+-         goto -> bb6;
+-     }
+- 
+-     bb4: {
+-         _2 = const i8::MAX;
+-         _3 = const i8::MAX;
+-         _4 = ();
+-         goto -> bb6;
+-     }
+- 
+-     bb5: {
+-         _2 = const 0_i8;
+-         _3 = const 0_i8;
+-         _4 = ();
+-         goto -> bb6;
+-     }
+- 
+-     bb6: {
++         StorageDead(_8);
+          StorageDead(_4);
+          StorageLive(_6);
+          _6 = copy _2;
+          StorageLive(_7);
+          _7 = copy _3;
+          _0 = (move _6, move _7);
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageDead(_3);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

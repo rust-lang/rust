@@ -1,0 +1,14 @@
+error[E0433]: failed to resolve: use of undeclared type `NonZero`
+  --> $DIR/core-std-import-order-issue-83564.rs:12:14
+   |
+LL |     let _x = NonZero::new(5u32).unwrap();
+   |              ^^^^^^^ use of undeclared type `NonZero`
+   |
+help: consider importing this struct
+   |
+LL + use core::num::NonZero;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

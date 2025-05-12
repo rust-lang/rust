@@ -1,0 +1,40 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/fuzzing-ice-134905.rs:3:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0277]: the trait bound `(): Valid` is not satisfied
+  --> $DIR/fuzzing-ice-134905.rs:12:23
+   |
+LL |     default type Ty = ();
+   |                       ^^ the trait `Valid` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/fuzzing-ice-134905.rs:20:1
+   |
+LL | trait Valid {}
+   | ^^^^^^^^^^^
+note: required by a bound in `Iterate::Ty`
+  --> $DIR/fuzzing-ice-134905.rs:6:14
+   |
+LL |     type Ty: Valid;
+   |              ^^^^^ required by this bound in `Iterate::Ty`
+
+error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
+  --> $DIR/fuzzing-ice-134905.rs:17:10
+   |
+LL | impl<'a, T> Eq for T where <T as Iterate<'a>>::Ty: Valid {}
+   |          ^ type parameter `T` must be used as the type parameter for some local type
+   |
+   = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
+   = note: only traits defined in the current crate can be implemented for a type parameter
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0210, E0277.
+For more information about an error, try `rustc --explain E0210`.

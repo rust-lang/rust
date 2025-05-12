@@ -1,0 +1,36 @@
+[package]
+name = "load-cargo"
+version = "0.0.0"
+repository.workspace = true
+description = "Loads a Cargo project into a static instance of rust-analyzer for analysis."
+
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow.workspace = true
+crossbeam-channel.workspace = true
+itertools.workspace = true
+tracing.workspace = true
+
+# workspace deps
+
+hir-expand.workspace = true
+ide-db.workspace = true
+proc-macro-api.workspace = true
+project-model.workspace = true
+span.workspace = true
+tt.workspace = true
+vfs-notify.workspace = true
+vfs.workspace = true
+intern.workspace = true
+
+[features]
+in-rust-tree = ["hir-expand/in-rust-tree"]
+
+[lints]
+workspace = true

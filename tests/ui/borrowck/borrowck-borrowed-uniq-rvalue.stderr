@@ -1,0 +1,20 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/borrowck-borrowed-uniq-rvalue.rs:8:28
+   |
+LL |     buggy_map.insert(42, &*Box::new(1));
+   |                            ^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |                            |
+   |                            creates a temporary value which is freed while still in use
+...
+LL |     buggy_map.insert(43, &*tmp);
+   |     --------- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = Box::new(1);
+LL ~     buggy_map.insert(42, &*binding);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0716`.

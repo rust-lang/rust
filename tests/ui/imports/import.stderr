@@ -1,0 +1,31 @@
+error[E0432]: unresolved import `zed::baz`
+  --> $DIR/import.rs:4:5
+   |
+LL | use zed::baz;
+   |     ^^^^^---
+   |     |    |
+   |     |    help: a similar name exists in the module: `bar`
+   |     no `baz` in `zed`
+
+error[E0432]: unresolved import `foo`
+  --> $DIR/import.rs:12:9
+   |
+LL |     use foo;
+   |         ^^^ no `foo` in the root
+
+error[E0603]: unresolved item import `foo` is private
+  --> $DIR/import.rs:17:10
+   |
+LL |     zed::foo();
+   |          ^^^ private unresolved item import
+   |
+note: the unresolved item import `foo` is defined here
+  --> $DIR/import.rs:12:9
+   |
+LL |     use foo;
+   |         ^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0432, E0603.
+For more information about an error, try `rustc --explain E0432`.

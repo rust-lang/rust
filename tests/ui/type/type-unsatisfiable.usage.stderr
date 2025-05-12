@@ -1,0 +1,11 @@
+error[E0369]: cannot subtract `dyn Vector2<ScalarType = i32>` from `dyn Vector2<ScalarType = i32>`
+  --> $DIR/type-unsatisfiable.rs:57:20
+   |
+LL |     let bar = *hey - *word;
+   |               ---- ^ ----- dyn Vector2<ScalarType = i32>
+   |               |
+   |               dyn Vector2<ScalarType = i32>
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

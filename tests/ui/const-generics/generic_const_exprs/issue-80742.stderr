@@ -1,0 +1,11 @@
+error: internal compiler error: compiler/rustc_const_eval/src/interpret/operator.rs:LL:CC: unsized type for `NullaryOp::SizeOf`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+
+
+Box<dyn Any>
+query stack during panic:
+#0 [eval_to_allocation_raw] const-evaluating + checking `Inline::{constant#0}`
+#1 [eval_to_valtree] evaluating type-level constant
+... and 2 other queries... use `env RUST_BACKTRACE=1` to see the full query stack
+error: aborting due to 1 previous error
+

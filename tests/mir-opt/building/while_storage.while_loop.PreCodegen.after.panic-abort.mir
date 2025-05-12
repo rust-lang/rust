@@ -1,0 +1,70 @@
+// MIR for `while_loop` after PreCodegen
+
+fn while_loop(_1: bool) -> () {
+    debug c => _1;
+    let mut _0: ();
+    let mut _2: bool;
+    let mut _3: bool;
+    let mut _4: bool;
+    let mut _5: bool;
+    let mut _6: ();
+    let mut _7: !;
+    let mut _8: !;
+    let _9: ();
+    let mut _10: !;
+
+    bb0: {
+        goto -> bb1;
+    }
+
+    bb1: {
+        StorageLive(_3);
+        StorageLive(_2);
+        _2 = copy _1;
+        _3 = get_bool(move _2) -> [return: bb2, unwind unreachable];
+    }
+
+    bb2: {
+        switchInt(move _3) -> [0: bb3, otherwise: bb4];
+    }
+
+    bb3: {
+        StorageDead(_2);
+        StorageLive(_9);
+        _0 = const ();
+        StorageDead(_9);
+        goto -> bb8;
+    }
+
+    bb4: {
+        StorageDead(_2);
+        StorageLive(_5);
+        StorageLive(_4);
+        _4 = copy _1;
+        _5 = get_bool(move _4) -> [return: bb5, unwind unreachable];
+    }
+
+    bb5: {
+        switchInt(move _5) -> [0: bb6, otherwise: bb7];
+    }
+
+    bb6: {
+        StorageDead(_4);
+        _6 = const ();
+        StorageDead(_5);
+        StorageDead(_3);
+        goto -> bb1;
+    }
+
+    bb7: {
+        StorageDead(_4);
+        _0 = const ();
+        StorageDead(_5);
+        goto -> bb8;
+    }
+
+    bb8: {
+        StorageDead(_3);
+        return;
+    }
+}

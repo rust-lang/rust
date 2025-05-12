@@ -1,0 +1,33 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/issue-116434-2021.rs:5:17
+   |
+LL |     fn foo() -> Clone;
+   |                 ^^^^^
+   |
+help: `Clone` is dyn-incompatible, use `impl Clone` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn foo() -> impl Clone;
+   |                 ++++
+help: there is an associated type with the same name
+   |
+LL |     fn foo() -> Self::Clone;
+   |                 ++++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/issue-116434-2021.rs:15:20
+   |
+LL |     fn handle() -> DbHandle;
+   |                    ^^^^^^^^
+   |
+help: `DbHandle` is dyn-incompatible, use `impl DbHandle` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn handle() -> impl DbHandle;
+   |                    ++++
+help: there is an associated type with the same name
+   |
+LL |     fn handle() -> Self::DbHandle;
+   |                    ++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0782`.

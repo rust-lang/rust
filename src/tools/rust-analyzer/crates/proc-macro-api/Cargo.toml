@@ -1,0 +1,32 @@
+[package]
+name = "proc-macro-api"
+version = "0.0.0"
+repository.workspace = true
+description = "RPC Api for the `proc-macro-srv` crate of rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+
+[dependencies]
+serde.workspace = true
+serde_derive.workspace = true
+serde_json = { workspace = true, features = ["unbounded_depth"] }
+tracing.workspace = true
+rustc-hash.workspace = true
+indexmap.workspace = true
+
+# local deps
+paths = { workspace = true, features = ["serde1"] }
+tt.workspace = true
+stdx.workspace = true
+# span = {workspace = true, default-features = false} does not work
+span = { path = "../span", version = "0.0.0", default-features = false}
+
+intern.workspace = true
+
+[lints]
+workspace = true

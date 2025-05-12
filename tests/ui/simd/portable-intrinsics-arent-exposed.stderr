@@ -1,0 +1,25 @@
+error[E0433]: failed to resolve: you might be missing crate `core`
+  --> $DIR/portable-intrinsics-arent-exposed.rs:4:5
+   |
+LL | use core::simd::intrinsics;
+   |     ^^^^
+   |     |
+   |     you might be missing crate `core`
+   |     help: try using `std` instead of `core`: `std`
+
+error[E0432]: unresolved import `std::simd::intrinsics`
+  --> $DIR/portable-intrinsics-arent-exposed.rs:5:5
+   |
+LL | use std::simd::intrinsics;
+   |     ^^^^^^^^^^^^^^^^^^^^^ no `intrinsics` in `simd`
+   |
+help: consider importing this module instead
+   |
+LL - use std::simd::intrinsics;
+LL + use std::intrinsics;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

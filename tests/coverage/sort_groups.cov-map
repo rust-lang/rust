@@ -1,0 +1,98 @@
+Function name: sort_groups::generic_fn::<&str>
+Raw bytes (36): 0x[01, 01, 01, 01, 05, 06, 01, 11, 01, 00, 1d, 01, 01, 08, 00, 0c, 05, 00, 0d, 02, 06, 05, 01, 09, 00, 11, 02, 01, 05, 00, 06, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/sort_groups.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 17, 1) to (start + 0, 29)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 12)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 2, 6)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 17)
+- Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 6)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: sort_groups::generic_fn::<()>
+Raw bytes (36): 0x[01, 01, 01, 01, 05, 06, 01, 11, 01, 00, 1d, 01, 01, 08, 00, 0c, 05, 00, 0d, 02, 06, 05, 01, 09, 00, 11, 02, 01, 05, 00, 06, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/sort_groups.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 17, 1) to (start + 0, 29)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 12)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 2, 6)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 17)
+- Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 6)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: sort_groups::generic_fn::<char>
+Raw bytes (36): 0x[01, 01, 01, 01, 05, 06, 01, 11, 01, 00, 1d, 01, 01, 08, 00, 0c, 05, 00, 0d, 02, 06, 05, 01, 09, 00, 11, 02, 01, 05, 00, 06, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/sort_groups.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 17, 1) to (start + 0, 29)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 12)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 2, 6)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 17)
+- Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 6)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: sort_groups::generic_fn::<i32>
+Raw bytes (36): 0x[01, 01, 01, 01, 05, 06, 01, 11, 01, 00, 1d, 01, 01, 08, 00, 0c, 05, 00, 0d, 02, 06, 05, 01, 09, 00, 11, 02, 01, 05, 00, 06, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/sort_groups.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 17, 1) to (start + 0, 29)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 12)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 2, 6)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 17)
+- Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 6)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: sort_groups::main
+Raw bytes (76): 0x[01, 01, 01, 01, 05, 0e, 01, 06, 01, 00, 0a, 01, 01, 09, 00, 0d, 01, 00, 10, 00, 2a, 01, 01, 05, 00, 15, 01, 00, 16, 00, 1a, 01, 01, 05, 00, 1f, 01, 00, 20, 00, 25, 01, 01, 08, 00, 1c, 05, 00, 24, 02, 06, 02, 02, 05, 00, 06, 01, 01, 05, 00, 16, 01, 00, 17, 00, 1b, 01, 01, 05, 00, 0d, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/sort_groups.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 14
+- Code(Counter(0)) at (prev + 6, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 0, 16) to (start + 0, 42)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 21)
+- Code(Counter(0)) at (prev + 0, 22) to (start + 0, 26)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 31)
+- Code(Counter(0)) at (prev + 0, 32) to (start + 0, 37)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 28)
+- Code(Counter(1)) at (prev + 0, 36) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 2, 5) to (start + 0, 6)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 0, 23) to (start + 0, 27)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: sort_groups::other_fn
+Raw bytes (14): 0x[01, 01, 00, 02, 01, 17, 01, 00, 0e, 01, 00, 10, 00, 11]
+Number of files: 1
+- file 0 => $DIR/sort_groups.rs
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 23, 1) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 16) to (start + 0, 17)
+Highest counter ID seen: c0
+

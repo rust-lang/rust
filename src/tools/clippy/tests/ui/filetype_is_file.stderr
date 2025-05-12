@@ -1,0 +1,28 @@
+error: `FileType::is_file()` only covers regular files
+  --> tests/ui/filetype_is_file.rs:9:8
+   |
+LL |     if fs::metadata("foo.txt")?.file_type().is_file() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `!FileType::is_dir()` instead
+   = note: `-D clippy::filetype-is-file` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::filetype_is_file)]`
+
+error: `!FileType::is_file()` only denies regular files
+  --> tests/ui/filetype_is_file.rs:16:8
+   |
+LL |     if !fs::metadata("foo.txt")?.file_type().is_file() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `FileType::is_dir()` instead
+
+error: `FileType::is_file()` only covers regular files
+  --> tests/ui/filetype_is_file.rs:23:9
+   |
+LL |     if !fs::metadata("foo.txt")?.file_type().is_file().bitor(true) {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `!FileType::is_dir()` instead
+
+error: aborting due to 3 previous errors
+

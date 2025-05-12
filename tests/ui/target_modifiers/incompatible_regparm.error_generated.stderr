@@ -1,0 +1,13 @@
+error: mixing `-Zregparm` will cause an ABI mismatch in crate `incompatible_regparm`
+  --> $DIR/incompatible_regparm.rs:11:1
+   |
+LL | #![feature(no_core)]
+   | ^
+   |
+   = help: the `-Zregparm` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
+   = note: `-Zregparm=1` in this crate is incompatible with `-Zregparm=2` in dependency `wrong_regparm`
+   = help: set `-Zregparm=2` in this crate or `-Zregparm=1` in `wrong_regparm`
+   = help: if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch=regparm` to silence this error
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,48 @@
+[package]
+name = "hir"
+version = "0.0.0"
+repository.workspace = true
+description = "A high-level object-oriented access to Rust code for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+
+[dependencies]
+rustc-hash.workspace = true
+either.workspace = true
+arrayvec.workspace = true
+itertools.workspace = true
+smallvec.workspace = true
+tracing.workspace = true
+triomphe.workspace = true
+indexmap.workspace = true
+
+# local deps
+base-db.workspace = true
+cfg.workspace = true
+hir-def.workspace = true
+hir-expand.workspace = true
+hir-ty.workspace = true
+intern.workspace = true
+stdx.workspace = true
+syntax.workspace = true
+tt.workspace = true
+span.workspace = true
+
+[dev-dependencies]
+expect-test.workspace = true
+
+# local deps
+test-utils.workspace = true
+test-fixture.workspace = true
+syntax-bridge.workspace = true
+
+[features]
+in-rust-tree = ["hir-expand/in-rust-tree"]
+
+[lints]
+workspace = true

@@ -1,0 +1,14 @@
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+  --> $DIR/borrowck-fn-in-const-b.rs:7:9
+   |
+LL |         x.push(format!("this is broken"));
+   |         ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     fn broken(x: &mut Vec<String>) {
+   |                   +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

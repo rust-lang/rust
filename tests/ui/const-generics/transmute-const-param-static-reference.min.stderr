@@ -1,0 +1,18 @@
+error: `&'static ()` is forbidden as the type of a const generic parameter
+  --> $DIR/transmute-const-param-static-reference.rs:9:23
+   |
+LL | struct Const<const P: &'static ()>;
+   |                       ^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
+   |
+LL + #![feature(unsized_const_params)]
+   |
+
+error: aborting due to 1 previous error
+

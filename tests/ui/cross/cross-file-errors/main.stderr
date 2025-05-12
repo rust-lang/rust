@@ -1,0 +1,15 @@
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/underscore.rs:6:9
+   |
+LL |         _
+   |         ^ `_` not allowed here
+   |
+  ::: $DIR/main.rs:5:5
+   |
+LL |     underscore!();
+   |     ------------- in this macro invocation
+   |
+   = note: this error originates in the macro `underscore` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

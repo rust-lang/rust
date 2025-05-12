@@ -1,0 +1,8 @@
+//@ run-rustfix
+
+fn main() {
+    const _FOO: i32 = 123;
+    //~^ ERROR const` and `let` are mutually exclusive
+    const _BAR: i32 = 123;
+    //~^ ERROR `const` and `let` are mutually exclusive
+}

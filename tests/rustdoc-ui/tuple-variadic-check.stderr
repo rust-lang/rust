@@ -1,0 +1,8 @@
+error: `#[doc(fake_variadic)]` must be used on the first of a set of tuple or fn pointer trait impls with varying arity
+  --> $DIR/tuple-variadic-check.rs:12:7
+   |
+LL | #[doc(fake_variadic)]
+   |       ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

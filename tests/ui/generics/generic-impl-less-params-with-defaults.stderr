@@ -1,0 +1,21 @@
+error[E0107]: struct takes at least 2 generic arguments but 1 generic argument was supplied
+  --> $DIR/generic-impl-less-params-with-defaults.rs:11:5
+   |
+LL |     Foo::<isize>::new();
+   |     ^^^   ----- supplied 1 generic argument
+   |     |
+   |     expected at least 2 generic arguments
+   |
+note: struct defined here, with at least 2 generic parameters: `A`, `B`
+  --> $DIR/generic-impl-less-params-with-defaults.rs:3:8
+   |
+LL | struct Foo<A, B, C = (A, B)>(
+   |        ^^^ -  -
+help: add missing generic argument
+   |
+LL |     Foo::<isize, B>::new();
+   |                +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

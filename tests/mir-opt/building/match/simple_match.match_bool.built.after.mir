@@ -1,0 +1,38 @@
+// MIR for `match_bool` after built
+
+fn match_bool(_1: bool) -> usize {
+    debug x => _1;
+    let mut _0: usize;
+
+    bb0: {
+        PlaceMention(_1);
+        switchInt(copy _1) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        _0 = const 20_usize;
+        goto -> bb6;
+    }
+
+    bb2: {
+        falseEdge -> [real: bb5, imaginary: bb1];
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb5: {
+        _0 = const 10_usize;
+        goto -> bb6;
+    }
+
+    bb6: {
+        return;
+    }
+}

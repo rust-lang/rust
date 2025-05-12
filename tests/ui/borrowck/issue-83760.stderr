@@ -1,0 +1,78 @@
+error[E0382]: use of moved value
+  --> $DIR/issue-83760.rs:10:20
+   |
+LL |     while let Some(foo) = val {
+   |                    ^^^ value moved here, in previous iteration of loop
+LL |         if true {
+LL |             val = None;
+   |             ---------- this reinitialization might get skipped
+   |
+   = note: move occurs because value has type `Struct`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     while let Some(ref foo) = val {
+   |                    +++
+
+error[E0382]: use of moved value: `foo`
+  --> $DIR/issue-83760.rs:26:14
+   |
+LL |     let mut foo = Some(Struct);
+   |         ------- move occurs because `foo` has type `Option<Struct>`, which does not implement the `Copy` trait
+LL |     let _x = foo.unwrap();
+   |                  -------- `foo` moved due to this method call
+LL |     if true {
+LL |         foo = Some(Struct);
+   |         ------------------ this reinitialization might get skipped
+...
+LL |     let _y = foo;
+   |              ^^^ value used here after move
+   |
+note: `Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `foo`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: you could `clone` the value and consume it, if the `Struct: Clone` trait bound could be satisfied
+   |
+LL |     let _x = foo.clone().unwrap();
+   |                 ++++++++
+help: consider annotating `Struct` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct Struct;
+   |
+
+error[E0382]: use of moved value: `foo`
+  --> $DIR/issue-83760.rs:42:14
+   |
+LL |     let mut foo = Some(Struct2);
+   |         ------- move occurs because `foo` has type `Option<Struct2>`, which does not implement the `Copy` trait
+LL |     let _x = foo.unwrap();
+   |                  -------- `foo` moved due to this method call
+...
+LL |     let _y = foo;
+   |              ^^^ value used here after move
+   |
+note: these 3 reinitializations and 1 other might get skipped
+  --> $DIR/issue-83760.rs:35:9
+   |
+LL |         foo = Some(Struct2);
+   |         ^^^^^^^^^^^^^^^^^^^
+LL |     } else if true {
+LL |         foo = Some(Struct2);
+   |         ^^^^^^^^^^^^^^^^^^^
+LL |     } else if true {
+LL |         foo = Some(Struct2);
+   |         ^^^^^^^^^^^^^^^^^^^
+note: `Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `foo`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: you could `clone` the value and consume it, if the `Struct2: Clone` trait bound could be satisfied
+   |
+LL |     let _x = foo.clone().unwrap();
+   |                 ++++++++
+help: consider annotating `Struct2` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct Struct2;
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

@@ -1,0 +1,51 @@
+error[E0277]: the trait bound `str: Clone` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-5.rs:26:14
+   |
+LL |     type U = str;
+   |              ^^^ the trait `Clone` is not implemented for `str`
+   |
+   = help: the trait `Clone` is implemented for `String`
+note: required by a bound in `X`
+  --> $DIR/hr-associated-type-bound-param-5.rs:17:45
+   |
+LL | trait X<'a, T: Cycle + for<'b> X<'b, T>>
+   |       - required by a bound in this trait
+...
+LL |     for<'b> <T::Next as X<'b, T::Next>>::U: Clone,
+   |                                             ^^^^^ required by this bound in `X`
+
+error[E0277]: the trait bound `str: Clone` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-5.rs:31:14
+   |
+LL |     type U = str;
+   |              ^^^ the trait `Clone` is not implemented for `str`
+   |
+   = help: the trait `Clone` is implemented for `String`
+note: required by a bound in `X`
+  --> $DIR/hr-associated-type-bound-param-5.rs:17:45
+   |
+LL | trait X<'a, T: Cycle + for<'b> X<'b, T>>
+   |       - required by a bound in this trait
+...
+LL |     for<'b> <T::Next as X<'b, T::Next>>::U: Clone,
+   |                                             ^^^^^ required by this bound in `X`
+
+error[E0277]: the trait bound `str: Clone` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-5.rs:36:15
+   |
+LL |     <i32 as X<Box<i32>>>::f("abc");
+   |               ^^^^^^^^ the trait `Clone` is not implemented for `str`
+   |
+   = help: the trait `Clone` is implemented for `String`
+note: required by a bound in `X::f`
+  --> $DIR/hr-associated-type-bound-param-5.rs:15:33
+   |
+LL |     for<'b> <T as X<'b, T>>::U: Clone,
+   |                                 ^^^^^ required by this bound in `X::f`
+...
+LL |     fn f(x: &<T as X<'_, T>>::U) {
+   |        - required by a bound in this associated function
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

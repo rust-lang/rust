@@ -1,0 +1,11 @@
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/E0403.rs:1:11
+   |
+LL | fn foo<T, T>(s: T, u: T) {}
+   |        -  ^ already used
+   |        |
+   |        first use of `T`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0403`.

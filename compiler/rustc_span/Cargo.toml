@@ -1,0 +1,24 @@
+[package]
+name = "rustc_span"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+blake3 = "1.5.2"
+derive-where = "1.2.7"
+indexmap = { version = "2.0.0" }
+itoa = "1.0"
+md5 = { package = "md-5", version = "0.10.0" }
+rustc_arena = { path = "../rustc_arena" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_hashes = { path = "../rustc_hashes" }
+rustc_index = { path = "../rustc_index" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+scoped-tls = "1.0"
+sha1 = "0.10.0"
+sha2 = "0.10.1"
+tracing = "0.1"
+unicode-width = "0.2.0"
+# tidy-alphabetical-end

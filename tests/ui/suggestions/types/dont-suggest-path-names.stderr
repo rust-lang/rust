@@ -1,0 +1,26 @@
+error[E0308]: mismatched types
+  --> $DIR/dont-suggest-path-names.rs:7:31
+   |
+LL | fn select<F, I>(filter: F) -> Select<F, I> {}
+   |    ------                     ^^^^^^^^^^^^ expected `Select<F, I>`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+   |
+   = note: expected struct `Select<F, I>`
+           found unit type `()`
+
+error[E0282]: type annotations needed
+  --> $DIR/dont-suggest-path-names.rs:11:23
+   |
+LL |     let lit = select(|x| match x {
+   |                       ^        - type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |     let lit = select(|x: /* Type */| match x {
+   |                        ++++++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0308.
+For more information about an error, try `rustc --explain E0282`.

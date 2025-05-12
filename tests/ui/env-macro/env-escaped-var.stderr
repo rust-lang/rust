@@ -1,0 +1,10 @@
+error: environment variable `\t` not defined at compile time
+  --> $DIR/env-escaped-var.rs:2:5
+   |
+LL |     env!("\t");
+   |     ^^^^^^^^^^
+   |
+   = help: use `std::env::var("\t")` to read the variable at run time
+
+error: aborting due to 1 previous error
+

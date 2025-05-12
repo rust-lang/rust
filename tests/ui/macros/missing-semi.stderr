@@ -1,0 +1,8 @@
+error: expected `;`, found `(`
+  --> $DIR/missing-semi.rs:6:5
+   |
+LL |     () => {
+   |     ^ no rules expected this token in macro call
+
+error: aborting due to 1 previous error
+

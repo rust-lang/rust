@@ -1,0 +1,8 @@
+error: values of the type `Example` are too big for the target architecture
+  --> $DIR/too-big-with-padding.rs:17:1
+   |
+LL | pub fn lib(_x: Example) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,41 @@
+[book]
+authors = ["The rust-analyzer authors"]
+language = "en"
+multilingual = false
+src = "src"
+title = "rust-analyzer"
+
+[rust]
+edition = "2024"
+
+[output.html]
+edit-url-template = "https://github.com/rust-lang/rust-analyzer/edit/master/docs/book/{path}"
+git-repository-url = "https://github.com/rust-lang/rust-analyzer/tree/master/docs/book"
+mathjax-support = true
+site-url = "/book/"
+
+[output.html.playground]
+editable = true
+runnable = false
+line-numbers = true
+
+[output.html.search]
+boost-hierarchy = 2
+boost-paragraph = 1
+boost-title = 2
+expand = true
+heading-split-level = 2
+limit-results = 20
+use-boolean-and = true
+
+[output.html.redirect]
+"/manual.html" = "/index.html"
+
+[output.html.fold]
+enable = true
+level = 3
+
+[preprocessor.toc]
+command = "mdbook-toc"
+renderer = ["html"]
+max-level = 3

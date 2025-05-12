@@ -1,0 +1,18 @@
+error[E0501]: cannot borrow `x` as immutable because previous closure requires unique access
+  --> $DIR/yield-while-ref-reborrowed.rs:39:20
+   |
+LL |     || {
+   |     -- coroutine construction occurs here
+LL |         let a = &mut *x;
+   |                      -- first borrow occurs due to use of `x` in coroutine
+...
+LL |     println!("{}", x);
+   |                    ^ second borrow occurs here
+LL |     Pin::new(&mut b).resume(());
+   |              ------ first borrow later used here
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0501`.

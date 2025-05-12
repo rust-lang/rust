@@ -1,0 +1,28 @@
+error[E0658]: `?Trait` is not permitted in trait object types
+  --> $DIR/avoid-getting-associated-items-of-undefined-trait.rs:8:21
+   |
+LL |     let _: dyn Tr + ?Foo<Assoc = ()>;
+   |                     ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0405]: cannot find trait `Foo` in this scope
+  --> $DIR/avoid-getting-associated-items-of-undefined-trait.rs:8:22
+   |
+LL |     let _: dyn Tr + ?Foo<Assoc = ()>;
+   |                      ^^^ not found in this scope
+
+error[E0191]: the value of the associated type `Item` in `Tr` must be specified
+  --> $DIR/avoid-getting-associated-items-of-undefined-trait.rs:8:16
+   |
+LL |     type Item;
+   |     --------- `Item` defined here
+...
+LL |     let _: dyn Tr + ?Foo<Assoc = ()>;
+   |                ^^ help: specify the associated type: `Tr<Item = Type>`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0191, E0405, E0658.
+For more information about an error, try `rustc --explain E0191`.

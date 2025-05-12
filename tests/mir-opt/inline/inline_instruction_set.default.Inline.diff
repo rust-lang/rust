@@ -1,0 +1,46 @@
+- // MIR for `default` before Inline
++ // MIR for `default` after Inline
+  
+  fn default() -> () {
+      let mut _0: ();
+      let _1: ();
+      let _2: ();
+      let _3: ();
+      let _4: ();
++     scope 1 (inlined instruction_set_default) {
++     }
++     scope 2 (inlined inline_always_and_using_inline_asm) {
++     }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = instruction_set_a32() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_1);
+          StorageLive(_2);
+          _2 = instruction_set_t32() -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_2);
+          StorageLive(_3);
+-         _3 = instruction_set_default() -> [return: bb3, unwind unreachable];
+-     }
+- 
+-     bb3: {
+          StorageDead(_3);
+          StorageLive(_4);
+-         _4 = inline_always_and_using_inline_asm() -> [return: bb4, unwind unreachable];
++         asm!("/* do nothing */", options()) -> [return: bb3, unwind unreachable];
+      }
+  
+-     bb4: {
++     bb3: {
+          StorageDead(_4);
+          _0 = const ();
+          return;
+      }
+  }
+  

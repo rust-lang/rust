@@ -1,0 +1,73 @@
+error[E0412]: cannot find type `field` in this scope
+  --> $DIR/resolve-assoc-suggestions.rs:16:16
+   |
+LL |         let _: field;
+   |                ^^^^^ not found in this scope
+
+error[E0531]: cannot find tuple struct or tuple variant `field` in this scope
+  --> $DIR/resolve-assoc-suggestions.rs:18:13
+   |
+LL |         let field(..);
+   |             ^^^^^ not found in this scope
+
+error[E0425]: cannot find value `field` in this scope
+  --> $DIR/resolve-assoc-suggestions.rs:20:9
+   |
+LL |         field;
+   |         ^^^^^
+   |
+help: you might have meant to use the available field
+   |
+LL |         self.field;
+   |         +++++
+
+error[E0412]: cannot find type `Type` in this scope
+  --> $DIR/resolve-assoc-suggestions.rs:23:16
+   |
+LL |         let _: Type;
+   |                ^^^^
+   |
+help: you might have meant to use the associated type
+   |
+LL |         let _: Self::Type;
+   |                ++++++
+
+error[E0531]: cannot find tuple struct or tuple variant `Type` in this scope
+  --> $DIR/resolve-assoc-suggestions.rs:25:13
+   |
+LL |         let Type(..);
+   |             ^^^^ not found in this scope
+
+error[E0425]: cannot find value `Type` in this scope
+  --> $DIR/resolve-assoc-suggestions.rs:27:9
+   |
+LL |         Type;
+   |         ^^^^ not found in this scope
+
+error[E0412]: cannot find type `method` in this scope
+  --> $DIR/resolve-assoc-suggestions.rs:30:16
+   |
+LL |         let _: method;
+   |                ^^^^^^ not found in this scope
+
+error[E0531]: cannot find tuple struct or tuple variant `method` in this scope
+  --> $DIR/resolve-assoc-suggestions.rs:32:13
+   |
+LL |         let method(..);
+   |             ^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `method` in this scope
+  --> $DIR/resolve-assoc-suggestions.rs:34:9
+   |
+LL |         method;
+   |         ^^^^^^
+   |
+help: you might have meant to refer to the method
+   |
+LL |         self.method;
+   |         +++++
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0412, E0425, E0531.
+For more information about an error, try `rustc --explain E0412`.

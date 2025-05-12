@@ -1,0 +1,39 @@
+error[E0642]: patterns aren't allowed in methods without bodies
+  --> $DIR/E0642.rs:9:12
+   |
+LL |     fn foo((x, y): (i32, i32));
+   |            ^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     fn foo((x, y): (i32, i32));
+LL +     fn foo(_: (i32, i32));
+   |
+
+error[E0642]: patterns aren't allowed in methods without bodies
+  --> $DIR/E0642.rs:11:12
+   |
+LL |     fn bar((x, y): (i32, i32)) {}
+   |            ^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     fn bar((x, y): (i32, i32)) {}
+LL +     fn bar(_: (i32, i32)) {}
+   |
+
+error[E0642]: patterns aren't allowed in methods without bodies
+  --> $DIR/E0642.rs:13:15
+   |
+LL |     fn method(S { .. }: S) {}
+   |               ^^^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     fn method(S { .. }: S) {}
+LL +     fn method(_: S) {}
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0642`.

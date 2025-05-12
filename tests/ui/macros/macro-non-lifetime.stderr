@@ -1,0 +1,17 @@
+error: no rules expected `a`
+  --> $DIR/macro-non-lifetime.rs:6:8
+   |
+LL | macro_rules! m { ($x:lifetime) => { } }
+   | -------------- when calling this macro
+...
+LL |     m!(a);
+   |        ^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$x:lifetime`
+  --> $DIR/macro-non-lifetime.rs:3:19
+   |
+LL | macro_rules! m { ($x:lifetime) => { } }
+   |                   ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

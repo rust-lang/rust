@@ -1,0 +1,36 @@
+error[E0432]: unresolved import `abc`
+  --> $DIR/issue-33464.rs:3:5
+   |
+LL | use abc::one_el;
+   |     ^^^ use of unresolved module or unlinked crate `abc`
+   |
+help: you might be missing a crate named `abc`, add it to your project and import it in your code
+   |
+LL + extern crate abc;
+   |
+
+error[E0432]: unresolved import `abc`
+  --> $DIR/issue-33464.rs:5:5
+   |
+LL | use abc::{a, bbb, cccccc};
+   |     ^^^ use of unresolved module or unlinked crate `abc`
+   |
+help: you might be missing a crate named `abc`, add it to your project and import it in your code
+   |
+LL + extern crate abc;
+   |
+
+error[E0432]: unresolved import `a_very_long_name`
+  --> $DIR/issue-33464.rs:7:5
+   |
+LL | use a_very_long_name::{el, el2};
+   |     ^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `a_very_long_name`
+   |
+help: you might be missing a crate named `a_very_long_name`, add it to your project and import it in your code
+   |
+LL + extern crate a_very_long_name;
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

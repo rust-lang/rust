@@ -1,0 +1,14 @@
+[package]
+name = "clippy_lints_internal"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+clippy_config = { path = "../clippy_config" }
+clippy_utils = { path = "../clippy_utils" }
+regex = { version = "1.5" }
+rustc-semver = "1.1"
+
+[package.metadata.rust-analyzer]
+# This crate uses #[feature(rustc_private)]
+rustc_private = true

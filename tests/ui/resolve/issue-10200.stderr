@@ -1,0 +1,14 @@
+error[E0532]: expected a pattern, found a function call
+  --> $DIR/issue-10200.rs:6:9
+   |
+LL | struct Foo(bool);
+   | ----------------- similarly named tuple struct `Foo` defined here
+...
+LL |         foo(x)
+   |         ^^^ help: a tuple struct with a similar name exists (notice the capitalization): `Foo`
+   |
+   = note: function calls are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0532`.

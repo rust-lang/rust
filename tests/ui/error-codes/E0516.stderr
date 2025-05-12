@@ -1,0 +1,15 @@
+error[E0516]: `typeof` is a reserved keyword but unimplemented
+  --> $DIR/E0516.rs:2:12
+   |
+LL |     let x: typeof(92) = 92;
+   |            ^^^^^^^^^^ reserved keyword
+   |
+help: consider replacing `typeof(...)` with an actual type
+   |
+LL -     let x: typeof(92) = 92;
+LL +     let x: i32 = 92;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0516`.

@@ -1,0 +1,51 @@
+error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc: A<T>`
+  --> $DIR/normalize-param-env-2.rs:24:22
+   |
+LL |         Self::Assoc: A<T>,
+   |                      ^^^^
+   |
+note: the requirement `<() as A<T>>::Assoc: A<T>` appears on the `impl`'s associated function `f` but not on the corresponding trait's associated function
+  --> $DIR/normalize-param-env-2.rs:12:8
+   |
+LL | trait A<T> {
+   |       - in this trait
+...
+LL |     fn f()
+   |        ^ this trait's associated function doesn't have the requirement `<() as A<T>>::Assoc: A<T>`
+
+error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc: A<T>`
+  --> $DIR/normalize-param-env-2.rs:24:22
+   |
+LL |         Self::Assoc: A<T>,
+   |                      ^^^^
+
+error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc well-formed`
+  --> $DIR/normalize-param-env-2.rs:24:22
+   |
+LL |         Self::Assoc: A<T>,
+   |                      ^^^^
+
+error[E0275]: overflow evaluating the requirement `(): A<T>`
+  --> $DIR/normalize-param-env-2.rs:27:10
+   |
+LL |         <() as A<T>>::f();
+   |          ^^
+
+error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc: A<T>`
+  --> $DIR/normalize-param-env-2.rs:27:9
+   |
+LL |         <() as A<T>>::f();
+   |         ^^^^^^^^^^^^^^^^^
+   |
+note: required by a bound in `A::f`
+  --> $DIR/normalize-param-env-2.rs:14:22
+   |
+LL |     fn f()
+   |        - required by a bound in this associated function
+LL |     where
+LL |         Self::Assoc: A<T>,
+   |                      ^^^^ required by this bound in `A::f`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

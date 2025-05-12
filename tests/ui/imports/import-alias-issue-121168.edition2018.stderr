@@ -1,0 +1,16 @@
+error[E0412]: cannot find type `Foo` in this scope
+  --> $DIR/import-alias-issue-121168.rs:11:12
+   |
+LL |     let _: Foo<i32> = todo!();
+   |            ^^^ not found in this scope
+   |
+help: consider importing one of these structs
+   |
+LL + use crate::nice_crate_name::Foo;
+   |
+LL + use import_alias_issue_121168_extern::Foo;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

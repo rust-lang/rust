@@ -1,0 +1,38 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `nonexistant`
+  --> $DIR/editions-crate-root-2015.rs:4:26
+   |
+LL |     fn global_inner(_: ::nonexistant::Foo) {
+   |                          ^^^^^^^^^^^ use of unresolved module or unlinked crate `nonexistant`
+   |
+help: you might be missing a crate named `nonexistant`, add it to your project and import it in your code
+   |
+LL + extern crate nonexistant;
+   |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `nonexistant`
+  --> $DIR/editions-crate-root-2015.rs:7:30
+   |
+LL |     fn crate_inner(_: crate::nonexistant::Foo) {
+   |                              ^^^^^^^^^^^ use of unresolved module or unlinked crate `nonexistant`
+   |
+help: you might be missing a crate named `nonexistant`, add it to your project and import it in your code
+   |
+LL + extern crate nonexistant;
+   |
+
+error[E0412]: cannot find type `nonexistant` in the crate root
+  --> $DIR/editions-crate-root-2015.rs:11:25
+   |
+LL |     fn bare_global(_: ::nonexistant) {
+   |                         ^^^^^^^^^^^ not found in the crate root
+
+error[E0412]: cannot find type `nonexistant` in the crate root
+  --> $DIR/editions-crate-root-2015.rs:14:29
+   |
+LL |     fn bare_crate(_: crate::nonexistant) {
+   |                             ^^^^^^^^^^^ not found in the crate root
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0412, E0433.
+For more information about an error, try `rustc --explain E0412`.

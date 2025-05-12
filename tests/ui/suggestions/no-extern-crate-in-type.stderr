@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `Foo` in this scope
+  --> $DIR/no-extern-crate-in-type.rs:5:22
+   |
+LL | type Output = Option<Foo>;
+   |                      ^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use foo::Foo;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

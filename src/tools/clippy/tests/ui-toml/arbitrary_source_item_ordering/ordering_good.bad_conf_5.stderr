@@ -1,0 +1,4 @@
+error: error reading Clippy's configuration file: unknown ordering group: `madules` was not specified in `module-items-ordered-within-groupings`, perhaps you meant `modules`? expected one of: `modules`, `use`, `macros`, `global_asm`, `UPPER_SNAKE_CASE`, `PascalCase`, `lower_snake_case`
+
+error: aborting due to 1 previous error
+

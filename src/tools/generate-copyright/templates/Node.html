@@ -1,0 +1,71 @@
+{% match self %}
+
+{% when Node::Root { children } %}
+
+{% for child in children %}
+{{ child|safe }}
+{% endfor %}
+
+{% when Node::Directory { name, children, license } %}
+
+<div style="border:1px solid black; padding: 5px;">
+
+    <p>
+    <b>File/Directory:</b> <code>{{ name }}</code>
+    </p>
+
+    {% if let Some(license) = license %}
+
+    <p><b>License:</b> {{ license.spdx }}</p>
+    {% for copyright in license.copyright.iter() %}
+    <p><b>Copyright:</b> {{ copyright }}</p>
+    {% endfor %}
+
+    {% endif %}
+
+    {% if !children.is_empty() %}
+
+    <p><b>Exceptions:</b></p>
+    {% for child in children %}
+    {{ child|safe }}
+    {% endfor %}
+
+    {% endif %}
+
+</div>
+
+{% when Node::File { name, license } %}
+
+<div style="border:1px solid black; padding: 5px;">
+    <p>
+    <b>File/Directory:</b> <code>{{ name }}</code>
+    </p>
+
+    <p><b>License:</b> {{ license.spdx }}</p>
+    {% for copyright in license.copyright.iter() %}
+    <p><b>Copyright:</b> {{ copyright }}</p>
+    {% endfor %}
+</div>
+
+{% when Node::Group { files, directories, license } %}
+
+<div style="border:1px solid black; padding: 5px;">
+
+    <p>
+        <b>File/Directory:</b>
+        {% for name in files %}
+        <code>{{ name }}</code>
+        {% endfor %}
+        {% for name in directories %}
+        <code>{{ name }}</code>
+        {% endfor %}
+    </p>
+
+    <p><b>License:</b> {{ license.spdx }}</p>
+    {% for copyright in license.copyright.iter() %}
+    <p><b>Copyright:</b> {{ copyright }}</p>
+    {% endfor %}
+
+</div>
+
+{% endmatch %}

@@ -1,0 +1,34 @@
+error: functions names are duplicated
+  --> $DIR/rustc_must_implement_one_of_duplicates.rs:3:31
+   |
+LL | #[rustc_must_implement_one_of(a, a)]
+   |                               ^  ^
+   |
+   = note: all `#[rustc_must_implement_one_of]` arguments must be unique
+
+error: functions names are duplicated
+  --> $DIR/rustc_must_implement_one_of_duplicates.rs:9:34
+   |
+LL | #[rustc_must_implement_one_of(b, a, a, c, b, c)]
+   |                                  ^  ^
+   |
+   = note: all `#[rustc_must_implement_one_of]` arguments must be unique
+
+error: functions names are duplicated
+  --> $DIR/rustc_must_implement_one_of_duplicates.rs:9:31
+   |
+LL | #[rustc_must_implement_one_of(b, a, a, c, b, c)]
+   |                               ^           ^
+   |
+   = note: all `#[rustc_must_implement_one_of]` arguments must be unique
+
+error: functions names are duplicated
+  --> $DIR/rustc_must_implement_one_of_duplicates.rs:9:40
+   |
+LL | #[rustc_must_implement_one_of(b, a, a, c, b, c)]
+   |                                        ^     ^
+   |
+   = note: all `#[rustc_must_implement_one_of]` arguments must be unique
+
+error: aborting due to 4 previous errors
+

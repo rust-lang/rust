@@ -1,0 +1,24 @@
+error[E0107]: trait takes at most 2 generic arguments but 3 generic arguments were supplied
+  --> $DIR/transmutable-ice-110969.rs:11:14
+   |
+LL |         Dst: TransmuteFrom<Src, Context, ASSUME>,
+   |              ^^^^^^^^^^^^^             -------- help: remove the unnecessary generic argument
+   |              |
+   |              expected at most 2 generic arguments
+
+error[E0308]: mismatched types
+  --> $DIR/transmutable-ice-110969.rs:25:74
+   |
+LL |         const FALSE: bool = assert::is_transmutable::<Src, Dst, Context, {}>();
+   |                                                                          ^^ expected `Assume`, found `()`
+
+error[E0308]: mismatched types
+  --> $DIR/transmutable-ice-110969.rs:25:29
+   |
+LL |         const FALSE: bool = assert::is_transmutable::<Src, Dst, Context, {}>();
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0308.
+For more information about an error, try `rustc --explain E0107`.

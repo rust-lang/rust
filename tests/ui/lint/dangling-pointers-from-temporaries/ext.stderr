@@ -1,0 +1,33 @@
+error: a dangling pointer will be produced because the temporary `Vec<u32>` will be dropped
+  --> $DIR/ext.rs:28:35
+   |
+LL |     let _ptr1 = Vec::<u32>::new().as_ptr().dbg();
+   |                 ----------------- ^^^^^^ this pointer will immediately be invalid
+   |                 |
+   |                 this `Vec<u32>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Vec<u32>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: you must make sure that the variable you bind the `Vec<u32>` to lives at least as long as the pointer returned by the call to `as_ptr`
+   = help: in particular, if this pointer is returned from the current function, binding the `Vec<u32>` inside the function will not suffice
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+note: the lint level is defined here
+  --> $DIR/ext.rs:1:9
+   |
+LL | #![deny(dangling_pointers_from_temporaries)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a dangling pointer will be produced because the temporary `Vec<u32>` will be dropped
+  --> $DIR/ext.rs:30:25
+   |
+LL |     let _ptr2 = vec![0].as_ptr().foo();
+   |                 ------- ^^^^^^ this pointer will immediately be invalid
+   |                 |
+   |                 this `Vec<u32>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Vec<u32>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: you must make sure that the variable you bind the `Vec<u32>` to lives at least as long as the pointer returned by the call to `as_ptr`
+   = help: in particular, if this pointer is returned from the current function, binding the `Vec<u32>` inside the function will not suffice
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: aborting due to 2 previous errors
+

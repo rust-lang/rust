@@ -1,0 +1,36 @@
+error[E0308]: mismatched types
+  --> $DIR/candidate-from-env-universe-err-project.rs:38:5
+   |
+LL |     projection_bound::<T>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected associated type `<T as Trait<'static>>::Assoc`
+              found associated type `<T as Trait<'a>>::Assoc`
+note: the lifetime requirement is introduced here
+  --> $DIR/candidate-from-env-universe-err-project.rs:18:42
+   |
+LL | fn projection_bound<T: for<'a> Trait<'a, Assoc = usize>>() {}
+   |                                          ^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/candidate-from-env-universe-err-project.rs:52:30
+   |
+LL |     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected associated type `<T as Trait<'static>>::Assoc`
+              found associated type `<T as Trait<'a>>::Assoc`
+
+error[E0308]: mismatched types
+  --> $DIR/candidate-from-env-universe-err-project.rs:52:30
+   |
+LL |     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected associated type `<T as Trait<'static>>::Assoc`
+              found associated type `<T as Trait<'a>>::Assoc`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

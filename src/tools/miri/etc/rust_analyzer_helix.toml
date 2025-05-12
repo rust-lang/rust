@@ -1,0 +1,32 @@
+[language-server.rust-analyzer.config.rustc]
+source = "discover"
+
+[language-server.rust-analyzer.config]
+linkedProjects = [
+    "Cargo.toml",
+    "cargo-miri/Cargo.toml",
+    "miri-script/Cargo.toml",
+]
+
+[language-server.rust-analyzer.config.check]
+invocationLocation = "root"
+invocationStrategy = "once"
+overrideCommand = [
+    "env",
+    "MIRI_AUTO_OPS=no",
+    "./miri",
+    "clippy", # make this `check` when working with a locally built rustc
+    "--message-format=json",
+]
+
+# Contrary to what the name suggests, this also affects proc macros.
+[language-server.rust-analyzer.config.buildScripts]
+invocationLocation = "root"
+invocationStrategy = "once"
+overrideCommand = [
+    "env",
+    "MIRI_AUTO_OPS=no",
+    "./miri",
+    "check",
+    "--message-format=json",
+]

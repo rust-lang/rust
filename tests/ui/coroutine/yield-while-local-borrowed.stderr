@@ -1,0 +1,36 @@
+error[E0626]: borrow may still be in use when coroutine yields
+  --> $DIR/yield-while-local-borrowed.rs:13:17
+   |
+LL |     let mut b = #[coroutine] move || {
+   |                              ------- within this coroutine
+LL |         let a = &mut 3;
+   |                 ^^^^^^
+LL |
+LL |         yield ();
+   |         -------- possible yield occurs here
+   |
+help: add `static` to mark this coroutine as unmovable
+   |
+LL |     let mut b = #[coroutine] static move || {
+   |                              ++++++
+
+error[E0626]: borrow may still be in use when coroutine yields
+  --> $DIR/yield-while-local-borrowed.rs:40:21
+   |
+LL |     let mut b = #[coroutine] move || {
+   |                              ------- within this coroutine
+...
+LL |             let b = &a;
+   |                     ^^
+LL |
+LL |             yield ();
+   |             -------- possible yield occurs here
+   |
+help: add `static` to mark this coroutine as unmovable
+   |
+LL |     let mut b = #[coroutine] static move || {
+   |                              ++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0626`.

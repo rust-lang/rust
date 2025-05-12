@@ -1,0 +1,304 @@
+error: field name ends with the struct's name
+  --> tests/ui/struct_fields.rs:10:5
+   |
+LL |     field_data1: u8,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::struct-field-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::struct_field_names)]`
+
+error: field name starts with the struct's name
+  --> tests/ui/struct_fields.rs:20:5
+   |
+LL |     data2_field: u8,
+   |     ^^^^^^^^^^^^^^^
+
+error: all fields have the same postfix: `data`
+  --> tests/ui/struct_fields.rs:25:1
+   |
+LL | / struct StructData {
+LL | |
+LL | |     movable_data: u8,
+LL | |     fixed_data: u8,
+LL | |     invisible_data: u8,
+LL | | }
+   | |_^
+   |
+   = help: remove the postfixes
+
+error: all fields have the same prefix: `data`
+  --> tests/ui/struct_fields.rs:32:1
+   |
+LL | / struct DataStruct {
+LL | |
+LL | |     data_movable: u8,
+LL | |     data_fixed: u8,
+LL | |     data_invisible: u8,
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes
+
+error: all fields have the same prefix: `some_data`
+  --> tests/ui/struct_fields.rs:39:1
+   |
+LL | / struct DoublePrefix {
+LL | |
+LL | |     some_data_a: bool,
+LL | |     some_data_b: i8,
+LL | |     some_data_c: bool,
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes
+
+error: all fields have the same postfix: `some_data`
+  --> tests/ui/struct_fields.rs:46:1
+   |
+LL | / struct DoublePostfix {
+LL | |
+LL | |     a_some_data: bool,
+LL | |     b_some_data: i8,
+LL | |     c_some_data: bool,
+LL | | }
+   | |_^
+   |
+   = help: remove the postfixes
+
+error: all fields have the same postfix: `someData`
+  --> tests/ui/struct_fields.rs:54:1
+   |
+LL | / struct NotSnakeCase {
+LL | |
+LL | |     a_someData: bool,
+LL | |     b_someData: i8,
+LL | |     c_someData: bool,
+LL | | }
+   | |_^
+   |
+   = help: remove the postfixes
+
+error: all fields have the same prefix: `someData`
+  --> tests/ui/struct_fields.rs:61:1
+   |
+LL | / struct NotSnakeCase2 {
+LL | |
+LL | |     someData_c: bool,
+LL | |     someData_b: i8,
+LL | |     someData_a_b: bool,
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes
+
+error: all fields have the same prefix: `prefix`
+  --> tests/ui/struct_fields.rs:74:1
+   |
+LL | / struct NonCaps {
+LL | |
+LL | |     prefix_的: u8,
+LL | |     prefix_tea: u8,
+LL | |     prefix_cake: u8,
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes
+
+error: all fields have the same prefix: `_type`
+  --> tests/ui/struct_fields.rs:124:5
+   |
+LL | /     struct DoLint {
+LL | |
+LL | |         _type_create: u8,
+LL | |         _type_read: u8,
+LL | |         _type_update: u8,
+LL | |         _type_destroy: u8,
+LL | |     }
+   | |_____^
+   |
+   = help: remove the prefixes
+
+error: all fields have the same prefix: `__type`
+  --> tests/ui/struct_fields.rs:132:5
+   |
+LL | /     struct DoLint2 {
+LL | |
+LL | |         __type_create: u8,
+LL | |         __type_read: u8,
+LL | |         __type_update: u8,
+LL | |         __type_destroy: u8,
+LL | |     }
+   | |_____^
+   |
+   = help: remove the prefixes
+
+error: all fields have the same prefix: `___type`
+  --> tests/ui/struct_fields.rs:140:5
+   |
+LL | /     struct DoLint3 {
+LL | |
+LL | |         ___type_create: u8,
+LL | |         ___type_read: u8,
+LL | |         ___type_update: u8,
+LL | |         ___type_destroy: u8,
+LL | |     }
+   | |_____^
+   |
+   = help: remove the prefixes
+
+error: all fields have the same postfix: `_`
+  --> tests/ui/struct_fields.rs:148:5
+   |
+LL | /     struct DoLint4 {
+LL | |
+LL | |         create_: u8,
+LL | |         read_: u8,
+LL | |         update_: u8,
+LL | |         destroy_: u8,
+LL | |     }
+   | |_____^
+   |
+   = help: remove the postfixes
+
+error: all fields have the same postfix: `__`
+  --> tests/ui/struct_fields.rs:156:5
+   |
+LL | /     struct DoLint5 {
+LL | |
+LL | |         create__: u8,
+LL | |         read__: u8,
+LL | |         update__: u8,
+LL | |         destroy__: u8,
+LL | |     }
+   | |_____^
+   |
+   = help: remove the postfixes
+
+error: all fields have the same postfix: `___`
+  --> tests/ui/struct_fields.rs:164:5
+   |
+LL | /     struct DoLint6 {
+LL | |
+LL | |         create___: u8,
+LL | |         read___: u8,
+LL | |         update___: u8,
+LL | |         destroy___: u8,
+LL | |     }
+   | |_____^
+   |
+   = help: remove the postfixes
+
+error: all fields have the same postfix: `type`
+  --> tests/ui/struct_fields.rs:172:5
+   |
+LL | /     struct DoLintToo {
+LL | |
+LL | |         _create_type: u8,
+LL | |         _update_type: u8,
+LL | |         _delete_type: u8,
+LL | |     }
+   | |_____^
+   |
+   = help: remove the postfixes
+
+error: field name starts with the struct's name
+  --> tests/ui/struct_fields.rs:210:5
+   |
+LL |     proxy: i32,
+   |     ^^^^^^^^^^
+
+error: all fields have the same prefix: `some`
+  --> tests/ui/struct_fields.rs:226:13
+   |
+LL | /             struct MacroStruct {
+LL | |
+LL | |                 some_a: i32,
+LL | |                 some_b: i32,
+LL | |                 some_c: i32,
+LL | |             }
+   | |_____________^
+...
+LL |       mk_struct!();
+   |       ------------ in this macro invocation
+   |
+   = help: remove the prefixes
+   = note: this error originates in the macro `mk_struct` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: field name starts with the struct's name
+  --> tests/ui/struct_fields.rs:239:17
+   |
+LL |                 macrobaz_a: i32,
+   |                 ^^^^^^^^^^^^^^^
+...
+LL |     mk_struct2!();
+   |     ------------- in this macro invocation
+   |
+   = note: this error originates in the macro `mk_struct2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: field name starts with the struct's name
+  --> tests/ui/struct_fields.rs:251:17
+   |
+LL |                 $field: i32,
+   |                 ^^^^^^^^^^^
+...
+LL |     mk_struct_with_names!(Foo, foo);
+   |     ------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `mk_struct_with_names` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: all fields have the same prefix: `some`
+  --> tests/ui/struct_fields.rs:291:13
+   |
+LL | /             struct $struct_name {
+LL | |
+LL | |                 $field1: i32,
+LL | |                 $field2: i32,
+LL | |                 $field3: i32,
+LL | |             }
+   | |_____________^
+...
+LL |       mk_struct_full_def!(PrefixData, some_data, some_meta, some_other);
+   |       ----------------------------------------------------------------- in this macro invocation
+   |
+   = help: remove the prefixes
+   = note: this error originates in the macro `mk_struct_full_def` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: field name starts with the struct's name
+  --> tests/ui/struct_fields.rs:339:5
+   |
+LL |     use_foo: bool,
+   |     ^^^^^^^^^^^^^
+
+error: field name starts with the struct's name
+  --> tests/ui/struct_fields.rs:341:5
+   |
+LL |     use_bar: bool,
+   |     ^^^^^^^^^^^^^
+
+error: field name starts with the struct's name
+  --> tests/ui/struct_fields.rs:343:5
+   |
+LL |     use_baz: bool,
+   |     ^^^^^^^^^^^^^
+
+error: field name starts with the struct's name
+  --> tests/ui/struct_fields.rs:349:5
+   |
+LL |     pub_struct_field_named_after_struct: bool,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: all fields have the same prefix: `field`
+  --> tests/ui/struct_fields.rs:354:1
+   |
+LL | / pub struct PubStructFieldPrefix {
+LL | |
+LL | |     field_foo: u8,
+LL | |     field_bar: u8,
+LL | |     field_baz: u8,
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes
+
+error: aborting due to 26 previous errors
+

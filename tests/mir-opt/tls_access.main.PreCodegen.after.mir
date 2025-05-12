@@ -1,0 +1,26 @@
+// MIR for `main` after PreCodegen
+
+fn main() -> () {
+    let mut _0: ();
+    let _1: *mut u8;
+    let _2: &u8;
+    let mut _3: *mut u8;
+    scope 1 {
+        debug a => _2;
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_1);
+        _1 = &/*tls*/ mut FOO;
+        _2 = &(*_1);
+        StorageLive(_3);
+        _3 = &/*tls*/ mut FOO;
+        (*_3) = const 42_u8;
+        StorageDead(_3);
+        _0 = const ();
+        StorageDead(_1);
+        StorageDead(_2);
+        return;
+    }
+}

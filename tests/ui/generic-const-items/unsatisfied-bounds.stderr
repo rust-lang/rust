@@ -1,0 +1,66 @@
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/unsatisfied-bounds.rs:30:18
+   |
+LL |     let () = C::<String>;
+   |                  ^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+note: required by a bound in `C`
+  --> $DIR/unsatisfied-bounds.rs:8:12
+   |
+LL | const C<T: Copy>: () = ();
+   |            ^^^^ required by this bound in `C`
+
+error[E0277]: the trait bound `Infallible: From<()>` is not satisfied
+  --> $DIR/unsatisfied-bounds.rs:31:18
+   |
+LL |     let () = K::<()>;
+   |                  ^^ the trait `From<()>` is not implemented for `Infallible`
+   |
+   = help: the trait `From<()>` is not implemented for `Infallible`
+           but trait `From<!>` is implemented for it
+   = help: for that trait implementation, expected `!`, found `()`
+note: required by a bound in `K`
+  --> $DIR/unsatisfied-bounds.rs:12:17
+   |
+LL | const K<T>: () = ()
+   |       - required by a bound in this constant
+LL | where
+LL |     Infallible: From<T>;
+   |                 ^^^^^^^ required by this bound in `K`
+
+error[E0277]: the trait bound `Vec<u8>: Copy` is not satisfied
+  --> $DIR/unsatisfied-bounds.rs:32:26
+   |
+LL |     let _ = <() as Trait<Vec<u8>>>::A;
+   |                          ^^^^^^^ the trait `Copy` is not implemented for `Vec<u8>`
+   |
+note: required by a bound in `Trait::A`
+  --> $DIR/unsatisfied-bounds.rs:17:12
+   |
+LL |     const A: u32
+   |           - required by a bound in this associated constant
+LL |     where
+LL |         P: Copy;
+   |            ^^^^ required by this bound in `Trait::A`
+
+error[E0277]: the trait bound `Infallible: From<()>` is not satisfied
+  --> $DIR/unsatisfied-bounds.rs:33:46
+   |
+LL |     let _ = <() as Trait<&'static str>>::B::<()>;
+   |                                              ^^ the trait `From<()>` is not implemented for `Infallible`
+   |
+   = help: the trait `From<()>` is not implemented for `Infallible`
+           but trait `From<!>` is implemented for it
+   = help: for that trait implementation, expected `!`, found `()`
+note: required by a bound in `Trait::B`
+  --> $DIR/unsatisfied-bounds.rs:21:21
+   |
+LL |     const B<T>: u32
+   |           - required by a bound in this associated constant
+LL |     where
+LL |         Infallible: From<T>;
+   |                     ^^^^^^^ required by this bound in `Trait::B`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

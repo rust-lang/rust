@@ -1,0 +1,15 @@
+warning: unused variable: `a`
+  --> $DIR/attributes-included.rs:17:9
+   |
+LL |     let a: i32 = "foo";
+   |         ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: the lint level is defined here
+  --> $DIR/attributes-included.rs:4:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: 1 warning emitted
+

@@ -1,0 +1,13 @@
+error[E0597]: `local` does not live long enough
+  --> $DIR/ctfe-arg-bad-borrow.rs:8:25
+   |
+LL |     let local = Type;
+   |         ----- binding `local` declared here
+LL |     become takes_borrow(&local);
+   |                         ^^^^^^- `local` dropped here while still borrowed
+   |                         |
+   |                         borrowed value does not live long enough
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

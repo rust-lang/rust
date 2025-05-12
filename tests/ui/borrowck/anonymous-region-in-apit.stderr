@@ -1,0 +1,16 @@
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/anonymous-region-in-apit.rs:8:17
+   |
+LL | fn qux(foo: impl Foo<&str>) {
+   |        --- lifetime `'2` appears in the type of `foo`
+LL |     |baz: &str| foo.bar(baz);
+   |      ---  -     ^^^^^^^^^^^^
+   |      |    |     |
+   |      |    |     `baz` escapes the closure body here
+   |      |    |     argument requires that `'1` must outlive `'2`
+   |      |    let's call the lifetime of this reference `'1`
+   |      `baz` is a reference that is only valid in the closure body
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0521`.

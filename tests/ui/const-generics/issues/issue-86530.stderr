@@ -1,0 +1,25 @@
+error[E0277]: the trait bound `&str: X` is not satisfied
+  --> $DIR/issue-86530.rs:16:7
+   |
+LL |     z(" ");
+   |     - ^^^ the trait `X` is not implemented for `&str`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-86530.rs:4:1
+   |
+LL | pub trait X {
+   | ^^^^^^^^^^^
+note: required by a bound in `z`
+  --> $DIR/issue-86530.rs:10:8
+   |
+LL | fn z<T>(t: T)
+   |    - required by a bound in this function
+LL | where
+LL |     T: X,
+   |        ^ required by this bound in `z`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

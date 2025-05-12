@@ -1,0 +1,59 @@
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/duplicate-type-parameter.rs:1:12
+   |
+LL | type Foo<T,T> = Option<T>;
+   |          - ^ already used
+   |          |
+   |          first use of `T`
+
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/duplicate-type-parameter.rs:4:14
+   |
+LL | struct Bar<T,T>(T);
+   |            - ^ already used
+   |            |
+   |            first use of `T`
+
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/duplicate-type-parameter.rs:7:14
+   |
+LL | struct Baz<T,T> {
+   |            - ^ already used
+   |            |
+   |            first use of `T`
+
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/duplicate-type-parameter.rs:12:12
+   |
+LL | enum Boo<T,T> {
+   |          - ^ already used
+   |          |
+   |          first use of `T`
+
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/duplicate-type-parameter.rs:18:11
+   |
+LL | fn quux<T,T>(x: T) {}
+   |         - ^ already used
+   |         |
+   |         first use of `T`
+
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/duplicate-type-parameter.rs:21:13
+   |
+LL | trait Qux<T,T> {}
+   |           - ^ already used
+   |           |
+   |           first use of `T`
+
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/duplicate-type-parameter.rs:24:8
+   |
+LL | impl<T,T> Qux<T,T> for Option<T> {}
+   |      - ^ already used
+   |      |
+   |      first use of `T`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0403`.

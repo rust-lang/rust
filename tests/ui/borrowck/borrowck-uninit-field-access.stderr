@@ -1,0 +1,37 @@
+error[E0381]: used binding `a` isn't initialized
+  --> $DIR/borrowck-uninit-field-access.rs:21:13
+   |
+LL |     let mut a: Point;
+   |         ----- binding declared here but left uninitialized
+LL |     let _ = a.x + 1;
+   |             ^^^ `a.x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let mut a: Point = Default::default();
+   |                      ++++++++++++++++++++
+
+error[E0382]: use of moved value: `line1.origin`
+  --> $DIR/borrowck-uninit-field-access.rs:25:13
+   |
+LL |     let _moved = line1.origin;
+   |                  ------------ value moved here
+LL |     let _ = line1.origin.x + 1;
+   |             ^^^^^^^^^^^^^^ value used here after move
+   |
+   = note: move occurs because `line1.origin` has type `Point`, which does not implement the `Copy` trait
+
+error[E0382]: use of partially moved value: `line2`
+  --> $DIR/borrowck-uninit-field-access.rs:29:5
+   |
+LL |     let _moved = (line2.origin, line2.middle);
+   |                                 ------------ value partially moved here
+LL |     line2.consume();
+   |     ^^^^^ value used here after partial move
+   |
+   = note: partial move occurs because `line2.middle` has type `Point`, which does not implement the `Copy` trait
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0381, E0382.
+For more information about an error, try `rustc --explain E0381`.

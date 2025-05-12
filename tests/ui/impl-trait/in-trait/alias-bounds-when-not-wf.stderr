@@ -1,0 +1,53 @@
+warning: the feature `lazy_type_alias` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/alias-bounds-when-not-wf.rs:3:12
+   |
+LL | #![feature(lazy_type_alias)]
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0277]: the trait bound `usize: Foo` is not satisfied
+  --> $DIR/alias-bounds-when-not-wf.rs:16:15
+   |
+LL | fn hello(_: W<A<usize>>) {}
+   |               ^^^^^^^^ the trait `Foo` is not implemented for `usize`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/alias-bounds-when-not-wf.rs:6:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
+note: required by a bound in `A`
+  --> $DIR/alias-bounds-when-not-wf.rs:8:11
+   |
+LL | type A<T: Foo> = T;
+   |           ^^^ required by this bound in `A`
+
+error[E0277]: the trait bound `usize: Foo` is not satisfied
+  --> $DIR/alias-bounds-when-not-wf.rs:16:10
+   |
+LL | fn hello(_: W<A<usize>>) {}
+   |          ^ the trait `Foo` is not implemented for `usize`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/alias-bounds-when-not-wf.rs:6:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
+
+error[E0277]: the trait bound `usize: Foo` is not satisfied
+  --> $DIR/alias-bounds-when-not-wf.rs:16:1
+   |
+LL | fn hello(_: W<A<usize>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `usize`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/alias-bounds-when-not-wf.rs:6:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

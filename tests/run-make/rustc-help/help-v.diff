@@ -1,0 +1,30 @@
+@@ -65,10 +65,28 @@
+                         Set a codegen option
+     -V, --version       Print version info and exit
+     -v, --verbose       Use verbose output
++        --extern <NAME>[=<PATH>]
++                        Specify where an external rust library is located
++        --sysroot <PATH>
++                        Override the system root
++        --error-format <human|json|short>
++                        How errors and other messages are produced
++        --json <CONFIG> Configure the JSON output of the compiler
++        --color <auto|always|never>
++                        Configure coloring of output:
++                        * auto = colorize, if output goes to a tty (default);
++                        * always = always colorize output;
++                        * never = never colorize output
++        --diagnostic-width <WIDTH>
++                        Inform rustc of the width of the output so that
++                        diagnostics can be truncated to fit
++        --remap-path-prefix <FROM>=<TO>
++                        Remap source names in all output (compiler messages
++                        and output files)
++    @path               Read newline separated options from `path`
+ 
+ Additional help:
+     -C help             Print codegen options
+     -W help             Print 'lint' options and default settings
+     -Z help             Print unstable compiler options
+-    --help -v           Print the full set of options rustc accepts
+ 

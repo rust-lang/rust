@@ -1,0 +1,38 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        CALL_EXPR
+          PATH_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "foo"
+          ARG_LIST
+            L_PAREN "("
+            LITERAL
+              ATTR
+                POUND "#"
+                L_BRACK "["
+                META
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "attr"
+                R_BRACK "]"
+              WHITESPACE " "
+              INT_NUMBER "92"
+            R_PAREN ")"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

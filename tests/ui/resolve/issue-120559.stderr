@@ -1,0 +1,14 @@
+error[E0404]: expected trait, found type parameter `Read`
+  --> $DIR/issue-120559.rs:3:9
+   |
+LL | use std::io::Read;
+   |              ---- you might have meant to refer to this trait
+LL |
+LL | fn f<T: Read, U, Read>() {}
+   |         ^^^^     ---- found this type parameter
+   |         |
+   |         not a trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0404`.

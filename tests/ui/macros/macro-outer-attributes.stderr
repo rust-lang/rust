@@ -1,0 +1,35 @@
+error[E0425]: cannot find function `bar` in module `a`
+  --> $DIR/macro-outer-attributes.rs:18:8
+   |
+LL |     a::bar();
+   |        ^^^ not found in `a`
+   |
+note: found an item that was configured out
+  --> $DIR/macro-outer-attributes.rs:9:14
+   |
+LL |       pub fn bar() { });
+   |              ^^^
+note: the item is gated here
+  --> $DIR/macro-outer-attributes.rs:5:45
+   |
+LL |                        $i:item) => (mod $nm { #[$a] $i }); }
+   |                                               ^^^^^
+LL |
+LL | / test!(a,
+LL | |       #[cfg(false)],
+LL | |       pub fn bar() { });
+   | |_______________________- in this macro invocation
+   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider importing this function
+   |
+LL + use b::bar;
+   |
+help: if you import `bar`, refer to it directly
+   |
+LL -     a::bar();
+LL +     bar();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

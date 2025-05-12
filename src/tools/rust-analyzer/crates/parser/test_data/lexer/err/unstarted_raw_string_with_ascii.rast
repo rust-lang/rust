@@ -1,0 +1,9 @@
+STRING "r## " error: Invalid raw string literal
+IDENT "I"
+WHITESPACE " "
+IDENT "lack"
+WHITESPACE " "
+IDENT "a"
+WHITESPACE " "
+IDENT "quote"
+BANG "!"

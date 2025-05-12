@@ -1,0 +1,15 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/unwind-abort.rs:7:15
+   |
+LL | const _: () = foo();
+   |               ^^^^^ evaluation panicked: explicit panic
+   |
+note: inside `foo`
+  --> $DIR/unwind-abort.rs:4:5
+   |
+LL |     panic!()
+   |     ^^^^^^^^ the failure occurred here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

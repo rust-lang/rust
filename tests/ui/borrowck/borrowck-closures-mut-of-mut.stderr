@@ -1,0 +1,18 @@
+error[E0524]: two closures require unique access to `x` at the same time
+  --> $DIR/borrowck-closures-mut-of-mut.rs:14:18
+   |
+LL |     let mut c1 = || set(&mut *x);
+   |                  --          -- first borrow occurs due to use of `x` in closure
+   |                  |
+   |                  first closure is constructed here
+LL |     let mut c2 = || set(&mut *x);
+   |                  ^^          -- second borrow occurs due to use of `x` in closure
+   |                  |
+   |                  second closure is constructed here
+LL |
+LL |     c2(); c1();
+   |           -- first borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0524`.

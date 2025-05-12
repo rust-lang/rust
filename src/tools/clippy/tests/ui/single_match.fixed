@@ -1,0 +1,404 @@
+//@require-annotations-for-level: WARN
+#![warn(clippy::single_match)]
+#![allow(
+    unused,
+    clippy::uninlined_format_args,
+    clippy::needless_if,
+    clippy::redundant_guards,
+    clippy::redundant_pattern_matching,
+    clippy::manual_unwrap_or_default
+)]
+fn dummy() {}
+
+fn single_match() {
+    let x = Some(1u8);
+
+    if let Some(y) = x {
+        println!("{:?}", y);
+    };
+    //~^^^^^^ single_match
+
+    let x = Some(1u8);
+    if let Some(y) = x { println!("{:?}", y) }
+    //~^^^^^^^ single_match
+    //~| NOTE: you might want to preserve the comments from inside the `match`
+
+    let z = (1u8, 1u8);
+    if let (2..=3, 7..=9) = z { dummy() };
+    //~^^^^ single_match
+
+    // Not linted (pattern guards used)
+    match x {
+        Some(y) if y == 0 => println!("{:?}", y),
+        _ => (),
+    }
+
+    // Not linted (no block with statements in the single arm)
+    match z {
+        (2..=3, 7..=9) => println!("{:?}", z),
+        _ => println!("nope"),
+    }
+}
+
+enum Foo {
+    Bar,
+    Baz(u8),
+}
+use Foo::*;
+use std::borrow::Cow;
+
+fn single_match_know_enum() {
+    let x = Some(1u8);
+    let y: Result<_, i8> = Ok(1i8);
+
+    if let Some(y) = x { dummy() };
+    //~^^^^ single_match
+
+    if let Ok(y) = y { dummy() };
+    //~^^^^ single_match
+
+    let c = Cow::Borrowed("");
+
+    if let Cow::Borrowed(..) = c { dummy() };
+    //~^^^^ single_match
+
+    let z = Foo::Bar;
+    // no warning
+    match z {
+        Bar => println!("42"),
+        Baz(_) => (),
+    }
+
+    match z {
+        Baz(_) => println!("42"),
+        Bar => (),
+    }
+}
+
+// issue #173
+fn if_suggestion() {
+    let x = "test";
+    if x == "test" { println!() }
+    //~^^^^ single_match
+
+    #[derive(PartialEq, Eq)]
+    enum Foo {
+        A,
+        B,
+        C(u32),
+    }
+
+    let x = Foo::A;
+    if x == Foo::A { println!() }
+    //~^^^^ single_match
+
+    const FOO_C: Foo = Foo::C(0);
+    if x == FOO_C { println!() }
+    //~^^^^ single_match
+
+    if x == Foo::A { println!() }
+    //~^^^^ single_match
+
+    let x = &x;
+    if x == &Foo::A { println!() }
+    //~^^^^ single_match
+
+    enum Bar {
+        A,
+        B,
+    }
+    impl PartialEq for Bar {
+        fn eq(&self, rhs: &Self) -> bool {
+            matches!((self, rhs), (Self::A, Self::A) | (Self::B, Self::B))
+        }
+    }
+    impl Eq for Bar {}
+
+    let x = Bar::A;
+    if let Bar::A = x { println!() }
+    //~^^^^ single_match
+
+    // issue #7038
+    struct X;
+    let x = Some(X);
+    if let None = x { println!() };
+    //~^^^^ single_match
+}
+
+// See: issue #8282
+fn ranges() {
+    enum E {
+        V,
+    }
+    let x = (Some(E::V), Some(42));
+
+    // Don't lint, because the `E` enum can be extended with additional fields later. Thus, the
+    // proposed replacement to `if let Some(E::V)` may hide non-exhaustive warnings that appeared
+    // because of `match` construction.
+    match x {
+        (Some(E::V), _) => {},
+        (None, _) => {},
+    }
+
+    // lint
+    if let (Some(_), _) = x {}
+    //~^^^^ single_match
+
+    // lint
+    if let (Some(E::V), _) = x { todo!() }
+    //~^^^^ single_match
+
+    // lint
+    if let (.., Some(E::V), _) = (Some(42), Some(E::V), Some(42)) {}
+    //~^^^^ single_match
+
+    // Don't lint, see above.
+    match (Some(E::V), Some(E::V), Some(E::V)) {
+        (.., Some(E::V), _) => {},
+        (.., None, _) => {},
+    }
+
+    // Don't lint, see above.
+    match (Some(E::V), Some(E::V), Some(E::V)) {
+        (Some(E::V), ..) => {},
+        (None, ..) => {},
+    }
+
+    // Don't lint, see above.
+    match (Some(E::V), Some(E::V), Some(E::V)) {
+        (_, Some(E::V), ..) => {},
+        (_, None, ..) => {},
+    }
+}
+
+fn skip_type_aliases() {
+    enum OptionEx {
+        Some(i32),
+        None,
+    }
+    enum ResultEx {
+        Err(i32),
+        Ok(i32),
+    }
+
+    use OptionEx::{None, Some};
+    use ResultEx::{Err, Ok};
+
+    // don't lint
+    match Err(42) {
+        Ok(_) => dummy(),
+        Err(_) => (),
+    };
+
+    // don't lint
+    match Some(1i32) {
+        Some(_) => dummy(),
+        None => (),
+    };
+}
+
+macro_rules! single_match {
+    ($num:literal) => {
+        match $num {
+            15 => println!("15"),
+            _ => (),
+        }
+    };
+}
+
+fn main() {
+    single_match!(5);
+
+    // Don't lint
+    let _ = match Some(0) {
+        #[cfg(feature = "foo")]
+        Some(10) => 11,
+        Some(x) => x,
+        _ => 0,
+    };
+}
+
+fn issue_10808(bar: Option<i32>) {
+    if let Some(v) = bar { unsafe {
+        let r = &v as *const i32;
+        println!("{}", *r);
+    } }
+    //~^^^^^^^ single_match
+
+    if let Some(v) = bar {
+        unsafe {
+            let r = &v as *const i32;
+            println!("{}", *r);
+        }
+    }
+    //~^^^^^^^^^^ single_match
+}
+
+mod issue8634 {
+    struct SomeError(i32, i32);
+
+    fn foo(x: Result<i32, ()>) {
+        match x {
+            Ok(y) => {
+                println!("Yay! {y}");
+            },
+            Err(()) => {
+                // Ignore this error because blah blah blah.
+            },
+        }
+    }
+
+    fn bar(x: Result<i32, SomeError>) {
+        match x {
+            Ok(y) => {
+                println!("Yay! {y}");
+            },
+            Err(_) => {
+                // TODO: Process the error properly.
+            },
+        }
+    }
+
+    fn block_comment(x: Result<i32, SomeError>) {
+        match x {
+            Ok(y) => {
+                println!("Yay! {y}");
+            },
+            Err(_) => {
+                /*
+                let's make sure that this also
+                does not lint block comments.
+                */
+            },
+        }
+    }
+}
+
+fn issue11365() {
+    enum Foo {
+        A,
+        B,
+        C,
+    }
+    use Foo::{A, B, C};
+
+    match Some(A) {
+        Some(A | B | C) => println!(),
+        None => {},
+    }
+
+    match Some(A) {
+        Some(A | B) => println!(),
+        Some { 0: C } | None => {},
+    }
+
+    match [A, A] {
+        [A, _] => println!(),
+        [_, A | B | C] => {},
+    }
+
+    match Ok::<_, u32>(Some(A)) {
+        Ok(Some(A)) => println!(),
+        Err(_) | Ok(None | Some(B | C)) => {},
+    }
+
+    if let Ok(Some(A)) = Ok::<_, u32>(Some(A)) { println!() }
+    //~^^^^ single_match
+
+    match &Some(A) {
+        Some(A | B | C) => println!(),
+        None => {},
+    }
+
+    match &Some(A) {
+        &Some(A | B | C) => println!(),
+        None => {},
+    }
+
+    if let Some(A | B) = &Some(A) { println!() }
+    //~^^^^ single_match
+}
+
+fn issue12758(s: &[u8]) {
+    if &s[0..3] == b"foo" { println!() }
+    //~^^^^ single_match
+}
+
+#[derive(Eq, PartialEq)]
+pub struct Data([u8; 4]);
+
+const DATA: Data = Data([1, 2, 3, 4]);
+const CONST_I32: i32 = 1;
+
+fn irrefutable_match() {
+    println!();
+    //~^^^^ single_match
+
+    println!();
+    //~^^^^ single_match
+
+    let i = 0;
+    {
+        let a = 1;
+        let b = 2;
+    }
+    //~^^^^^^^ single_match
+
+    
+    //~^^^^ single_match
+
+    
+    //~^^^^ single_match
+
+    println!();
+    //~^^^^ single_match
+
+    let mut x = vec![1i8];
+
+    if let Some(u) = x.pop() { println!("{u}") }
+    //~^^^^^^ single_match
+    //~| NOTE: you might want to preserve the comments from inside the `match`
+
+    if let Some(u) = x.pop() {
+        // bla
+        println!("{u}");
+    }
+    //~^^^^^^^^^ single_match
+    //~| NOTE: you might want to preserve the comments from inside the `match`
+}
+
+fn issue_14493() {
+    macro_rules! mac {
+        (some) => {
+            Some(42)
+        };
+        (any) => {
+            _
+        };
+        (str) => {
+            "foo"
+        };
+    }
+
+    if let Some(u) = mac!(some) { println!("{u}") }
+    //~^^^^ single_match
+
+    // When scrutinee comes from macro, do not tell that arm will always match
+    // and suggest an equality check instead.
+    if mac!(str) == "foo" { println!("eq") }
+    //~^^^^ ERROR: for an equality check
+
+    // Do not lint if any match arm come from expansion
+    match Some(0) {
+        mac!(some) => println!("eq"),
+        mac!(any) => println!("neq"),
+    }
+    match Some(0) {
+        Some(42) => println!("eq"),
+        mac!(any) => println!("neq"),
+    }
+    match Some(0) {
+        mac!(some) => println!("eq"),
+        _ => println!("neq"),
+    }
+}

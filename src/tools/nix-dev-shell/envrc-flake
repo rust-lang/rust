@@ -1,0 +1,8 @@
+# If you want to use this as an .envrc file to create a shell with necessary components 
+# to develop rustc, use the following command in the root of the rusr checkout:
+#	
+# ln -s ./src/tools/nix-dev-shell/envrc-flake ./.envrc && nix flake update --flake ./src/tools/nix-dev-shell
+
+if nix flake show path:./src/tools/nix-dev-shell &> /dev/null; then
+  use flake path:./src/tools/nix-dev-shell
+fi

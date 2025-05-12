@@ -1,0 +1,77 @@
+error[E0005]: refutable pattern in local binding
+  --> $DIR/const-pattern-irrefutable.rs:26:9
+   |
+LL | const a: u8 = 2;
+   | ----------- missing patterns are not covered because `a` is interpreted as a constant pattern, not a new variable
+...
+LL |     let a = 4;
+   |         ^ patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `u8`
+help: introduce a variable instead
+   |
+LL |     let a_var = 4;
+   |          ++++
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/const-pattern-irrefutable.rs:30:9
+   |
+LL |     pub const b: u8 = 2;
+   |     --------------- missing patterns are not covered because `b` is interpreted as a constant pattern, not a new variable
+...
+LL |     let c = 4;
+   |         ^ patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `u8`
+help: introduce a variable instead
+   |
+LL -     let c = 4;
+LL +     let b_var = 4;
+   |
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/const-pattern-irrefutable.rs:34:9
+   |
+LL |     pub const d: (u8, u8) = (2, 1);
+   |     --------------------- missing patterns are not covered because `d` is interpreted as a constant pattern, not a new variable
+...
+LL |     let d = (4, 4);
+   |         ^ patterns `(0_u8..=1_u8, _)` and `(3_u8..=u8::MAX, _)` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `(u8, u8)`
+help: introduce a variable instead
+   |
+LL |     let d_var = (4, 4);
+   |          ++++
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/const-pattern-irrefutable.rs:38:9
+   |
+LL | const e: S = S {
+   | ---------- missing patterns are not covered because `e` is interpreted as a constant pattern, not a new variable
+...
+LL |     let e = S {
+   |         ^ pattern `S { foo: 1_u8..=u8::MAX }` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+note: `S` defined here
+  --> $DIR/const-pattern-irrefutable.rs:17:8
+   |
+LL | struct S {
+   |        ^
+   = note: the matched value is of type `S`
+help: introduce a variable instead
+   |
+LL |     let e_var = S {
+   |          ++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0005`.

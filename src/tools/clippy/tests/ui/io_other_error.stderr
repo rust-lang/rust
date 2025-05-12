@@ -1,0 +1,64 @@
+error: this can be `std::io::Error::other(_)`
+  --> tests/ui/io_other_error.rs:23:16
+   |
+LL |     let _err = std::io::Error::new(std::io::ErrorKind::Other, E);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::io-other-error` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::io_other_error)]`
+help: use `std::io::Error::other`
+   |
+LL -     let _err = std::io::Error::new(std::io::ErrorKind::Other, E);
+LL +     let _err = std::io::Error::other(E);
+   |
+
+error: this can be `std::io::Error::other(_)`
+  --> tests/ui/io_other_error.rs:26:16
+   |
+LL |     let _err = std::io::Error::new(other, E);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `std::io::Error::other`
+   |
+LL -     let _err = std::io::Error::new(other, E);
+LL +     let _err = std::io::Error::other(E);
+   |
+
+error: this can be `std::io::Error::other(_)`
+  --> tests/ui/io_other_error.rs:45:20
+   |
+LL |         let _err = Error::new(ErrorKind::Other, super::E);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `std::io::Error::other`
+   |
+LL -         let _err = Error::new(ErrorKind::Other, super::E);
+LL +         let _err = Error::other(super::E);
+   |
+
+error: this can be `std::io::Error::other(_)`
+  --> tests/ui/io_other_error.rs:47:20
+   |
+LL |         let _err = io::Error::new(io::ErrorKind::Other, super::E);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `std::io::Error::other`
+   |
+LL -         let _err = io::Error::new(io::ErrorKind::Other, super::E);
+LL +         let _err = io::Error::other(super::E);
+   |
+
+error: this can be `std::io::Error::other(_)`
+  --> tests/ui/io_other_error.rs:58:5
+   |
+LL |     std::io::Error::new(std::io::ErrorKind::Other, format!("{x}"))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `std::io::Error::other`
+   |
+LL -     std::io::Error::new(std::io::ErrorKind::Other, format!("{x}"))
+LL +     std::io::Error::other(format!("{x}"))
+   |
+
+error: aborting due to 5 previous errors
+

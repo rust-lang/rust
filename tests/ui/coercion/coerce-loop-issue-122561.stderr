@@ -1,0 +1,249 @@
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/coerce-loop-issue-122561.rs:47:5
+   |
+LL |     while true {
+   |     ^^^^^^^^^^ help: use `loop`
+   |
+   = note: `#[warn(while_true)]` on by default
+
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/coerce-loop-issue-122561.rs:71:5
+   |
+LL |     while true {
+   |     ^^^^^^^^^^ help: use `loop`
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:41:24
+   |
+LL | fn for_in_arg(a: &[(); for x in 0..2 {}]) -> bool {
+   |                        ^^^^^^^^^^^^^^^^ expected `usize`, found `()`
+   |
+   = note: `for` loops evaluate to unit type `()`
+help: consider returning a value here
+   |
+LL | fn for_in_arg(a: &[(); for x in 0..2 {} /* `usize` value */]) -> bool {
+   |                                         +++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:4:5
+   |
+LL |   fn for_infinite() -> bool {
+   |                        ---- expected `bool` because of return type
+LL | /     for i in 0.. {
+LL | |
+LL | |         return false;
+LL | |     }
+   | |_____^ expected `bool`, found `()`
+   |
+   = note: `for` loops evaluate to unit type `()`
+help: consider returning a value here
+   |
+LL ~     }
+LL +     /* `bool` value */
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:11:5
+   |
+LL |   fn for_finite() -> String {
+   |                      ------ expected `String` because of return type
+LL | /     for i in 0..5 {
+LL | |
+LL | |         return String::from("test");
+LL | |     }
+   | |_____^ expected `String`, found `()`
+   |
+   = note: `for` loops evaluate to unit type `()`
+help: consider returning a value here
+   |
+LL ~     }
+LL +     /* `String` value */
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:18:5
+   |
+LL |   fn for_zero_times() -> bool {
+   |                          ---- expected `bool` because of return type
+LL | /     for i in 0..0 {
+LL | |
+LL | |         return true;
+LL | |     }
+   | |_____^ expected `bool`, found `()`
+   |
+   = note: `for` loops evaluate to unit type `()`
+help: consider returning a value here
+   |
+LL ~     }
+LL +     /* `bool` value */
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:25:5
+   |
+LL |   fn for_never_type() -> ! {
+   |                          - expected `!` because of return type
+LL | /     for i in 0..5 {
+LL | |
+LL | |     }
+   | |_____^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+   = note: `for` loops evaluate to unit type `()`
+help: consider adding a diverging expression here
+   |
+LL ~     }
+LL +     /* `loop {}` or `panic!("...")` */
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:33:32
+   |
+LL | fn for_single_line() -> bool { for i in 0.. { return false; } }
+   |                         ----   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |                         |
+   |                         expected `bool` because of return type
+   |
+   = note: `for` loops evaluate to unit type `()`
+help: consider returning a value here
+   |
+LL | fn for_single_line() -> bool { for i in 0.. { return false; } /* `bool` value */ }
+   |                                                               ++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:47:5
+   |
+LL |   fn while_inifinite() -> bool {
+   |                           ---- expected `bool` because of return type
+LL | /     while true {
+LL | |
+LL | |
+LL | |         return true;
+LL | |     }
+   | |_____^ expected `bool`, found `()`
+   |
+   = note: `while` loops evaluate to unit type `()`
+help: consider returning a value here
+   |
+LL ~     }
+LL +     /* `bool` value */
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:56:5
+   |
+LL |   fn while_finite() -> bool {
+   |                        ---- expected `bool` because of return type
+LL |       let mut i = 0;
+LL | /     while i < 3 {
+LL | |
+LL | |         i += 1;
+LL | |         return true;
+LL | |     }
+   | |_____^ expected `bool`, found `()`
+   |
+   = note: `while` loops evaluate to unit type `()`
+help: consider returning a value here
+   |
+LL ~     }
+LL +     /* `bool` value */
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:64:5
+   |
+LL |   fn while_zero_times() -> bool {
+   |                            ---- expected `bool` because of return type
+LL | /     while false {
+LL | |
+LL | |         return true;
+LL | |     }
+   | |_____^ expected `bool`, found `()`
+   |
+   = note: `while` loops evaluate to unit type `()`
+help: consider returning a value here
+   |
+LL ~     }
+LL +     /* `bool` value */
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:71:5
+   |
+LL |   fn while_never_type() -> ! {
+   |                            - expected `!` because of return type
+LL | /     while true {
+...  |
+LL | |     }
+   | |_____^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+   = note: `while` loops evaluate to unit type `()`
+help: consider adding a diverging expression here
+   |
+LL ~     }
+LL +     /* `loop {}` or `panic!("...")` */
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:85:5
+   |
+LL | /     for i in 0.. {
+LL | |
+LL | |     }
+   | |_____^ expected `i32`, found `()`
+   |
+   = note: `for` loops evaluate to unit type `()`
+help: consider returning a value here
+   |
+LL ~     }
+LL +     /* `i32` value */
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:92:9
+   |
+LL | /         for i in 0..5 {
+LL | |
+LL | |         }
+   | |_________^ expected `usize`, found `()`
+   |
+   = note: `for` loops evaluate to unit type `()`
+help: consider returning a value here
+   |
+LL ~         }
+LL +         /* `usize` value */
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:98:9
+   |
+LL | /         while false {
+LL | |
+LL | |         }
+   | |_________^ expected `usize`, found `()`
+   |
+   = note: `while` loops evaluate to unit type `()`
+help: consider returning a value here
+   |
+LL ~         }
+LL +         /* `usize` value */
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:104:23
+   |
+LL |     let _ = |a: &[(); for x in 0..2 {}]| {};
+   |                       ^^^^^^^^^^^^^^^^ expected `usize`, found `()`
+   |
+   = note: `for` loops evaluate to unit type `()`
+help: consider returning a value here
+   |
+LL |     let _ = |a: &[(); for x in 0..2 {} /* `usize` value */]| {};
+   |                                        +++++++++++++++++++
+
+error: aborting due to 14 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,17 @@
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> tests/ui-toml/explicit_iter_loop/explicit_iter_loop.rs:6:14
+   |
+LL |     for _ in rmvec.iter() {}
+   |              ^^^^^^^^^^^^ help: to write this more concisely, try: `&*rmvec`
+   |
+   = note: `-D clippy::explicit-iter-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::explicit_iter_loop)]`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> tests/ui-toml/explicit_iter_loop/explicit_iter_loop.rs:8:14
+   |
+LL |     for _ in rmvec.iter_mut() {}
+   |              ^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut *rmvec`
+
+error: aborting due to 2 previous errors
+

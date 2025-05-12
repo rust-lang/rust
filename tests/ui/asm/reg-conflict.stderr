@@ -1,0 +1,10 @@
+error: register `s1` conflicts with register `d0`
+  --> $DIR/reg-conflict.rs:14:31
+   |
+LL |         asm!("", out("d0") _, out("s1") _);
+   |                  -----------  ^^^^^^^^^^^ register `s1`
+   |                  |
+   |                  register `d0`
+
+error: aborting due to 1 previous error
+

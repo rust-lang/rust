@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `self::*`
+  --> $DIR/issue-31212.rs:5:13
+   |
+LL |     pub use self::*;
+   |             ^^^^^^^ cannot glob-import a module into itself
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

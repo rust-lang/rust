@@ -1,0 +1,343 @@
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:16:5
+   |
+LL | /     match x {
+LL | |         Some(y) => {
+LL | |             println!("{:?}", y);
+LL | |         },
+LL | |         _ => (),
+LL | |     };
+   | |_____^
+   |
+   = note: `-D clippy::single-match` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_match)]`
+help: try
+   |
+LL ~     if let Some(y) = x {
+LL +         println!("{:?}", y);
+LL ~     };
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:25:5
+   |
+LL | /     match x {
+...  |
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try: `if let Some(y) = x { println!("{:?}", y) }`
+   |
+   = note: you might want to preserve the comments from inside the `match`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:36:5
+   |
+LL | /     match z {
+LL | |         (2..=3, 7..=9) => dummy(),
+LL | |         _ => {},
+LL | |     };
+   | |_____^ help: try: `if let (2..=3, 7..=9) = z { dummy() }`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:66:5
+   |
+LL | /     match x {
+LL | |         Some(y) => dummy(),
+LL | |         None => (),
+LL | |     };
+   | |_____^ help: try: `if let Some(y) = x { dummy() }`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:72:5
+   |
+LL | /     match y {
+LL | |         Ok(y) => dummy(),
+LL | |         Err(..) => (),
+LL | |     };
+   | |_____^ help: try: `if let Ok(y) = y { dummy() }`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:80:5
+   |
+LL | /     match c {
+LL | |         Cow::Borrowed(..) => dummy(),
+LL | |         Cow::Owned(..) => (),
+LL | |     };
+   | |_____^ help: try: `if let Cow::Borrowed(..) = c { dummy() }`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match.rs:102:5
+   |
+LL | /     match x {
+LL | |         "test" => println!(),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try: `if x == "test" { println!() }`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match.rs:116:5
+   |
+LL | /     match x {
+LL | |         Foo::A => println!(),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try: `if x == Foo::A { println!() }`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match.rs:123:5
+   |
+LL | /     match x {
+LL | |         FOO_C => println!(),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try: `if x == FOO_C { println!() }`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match.rs:129:5
+   |
+LL | /     match &&x {
+LL | |         Foo::A => println!(),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try: `if x == Foo::A { println!() }`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match.rs:136:5
+   |
+LL | /     match &x {
+LL | |         Foo::A => println!(),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try: `if x == &Foo::A { println!() }`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:154:5
+   |
+LL | /     match x {
+LL | |         Bar::A => println!(),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try: `if let Bar::A = x { println!() }`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:163:5
+   |
+LL | /     match x {
+LL | |         None => println!(),
+LL | |         _ => (),
+LL | |     };
+   | |_____^ help: try: `if let None = x { println!() }`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:186:5
+   |
+LL | /     match x {
+LL | |         (Some(_), _) => {},
+LL | |         (None, _) => {},
+LL | |     }
+   | |_____^ help: try: `if let (Some(_), _) = x {}`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:193:5
+   |
+LL | /     match x {
+LL | |         (Some(E::V), _) => todo!(),
+LL | |         (_, _) => {},
+LL | |     }
+   | |_____^ help: try: `if let (Some(E::V), _) = x { todo!() }`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:200:5
+   |
+LL | /     match (Some(42), Some(E::V), Some(42)) {
+LL | |         (.., Some(E::V), _) => {},
+LL | |         (..) => {},
+LL | |     }
+   | |_____^ help: try: `if let (.., Some(E::V), _) = (Some(42), Some(E::V), Some(42)) {}`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:273:5
+   |
+LL | /     match bar {
+LL | |         Some(v) => unsafe {
+LL | |             let r = &v as *const i32;
+LL | |             println!("{}", *r);
+LL | |         },
+LL | |         _ => {},
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if let Some(v) = bar { unsafe {
+LL +         let r = &v as *const i32;
+LL +         println!("{}", *r);
+LL +     } }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:282:5
+   |
+LL | /     match bar {
+LL | |         #[rustfmt::skip]
+LL | |         Some(v) => {
+LL | |             unsafe {
+...  |
+LL | |         _ => {},
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if let Some(v) = bar {
+LL +         unsafe {
+LL +             let r = &v as *const i32;
+LL +             println!("{}", *r);
+LL +         }
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:363:5
+   |
+LL | /     match Ok::<_, u32>(Some(A)) {
+LL | |         Ok(Some(A)) => println!(),
+LL | |         Err(_) | Ok(None | Some(_)) => {},
+LL | |     }
+   | |_____^ help: try: `if let Ok(Some(A)) = Ok::<_, u32>(Some(A)) { println!() }`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:379:5
+   |
+LL | /     match &Some(A) {
+LL | |         Some(A | B) => println!(),
+LL | |         None | Some(_) => {},
+LL | |     }
+   | |_____^ help: try: `if let Some(A | B) = &Some(A) { println!() }`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match.rs:387:5
+   |
+LL | /     match &s[0..3] {
+LL | |         b"foo" => println!(),
+LL | |         _ => {},
+LL | |     }
+   | |_____^ help: try: `if &s[0..3] == b"foo" { println!() }`
+
+error: this pattern is irrefutable, `match` is useless
+  --> tests/ui/single_match.rs:401:5
+   |
+LL | /     match DATA {
+LL | |         DATA => println!(),
+LL | |         _ => {},
+LL | |     }
+   | |_____^ help: try: `println!();`
+
+error: this pattern is irrefutable, `match` is useless
+  --> tests/ui/single_match.rs:407:5
+   |
+LL | /     match CONST_I32 {
+LL | |         CONST_I32 => println!(),
+LL | |         _ => {},
+LL | |     }
+   | |_____^ help: try: `println!();`
+
+error: this pattern is irrefutable, `match` is useless
+  --> tests/ui/single_match.rs:414:5
+   |
+LL | /     match i {
+LL | |         i => {
+LL | |             let a = 1;
+LL | |             let b = 2;
+LL | |         },
+LL | |         _ => {},
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     {
+LL +         let a = 1;
+LL +         let b = 2;
+LL +     }
+   |
+
+error: this pattern is irrefutable, `match` is useless
+  --> tests/ui/single_match.rs:423:5
+   |
+LL | /     match i {
+LL | |         i => {},
+LL | |         _ => {},
+LL | |     }
+   | |_____^ help: `match` expression can be removed
+
+error: this pattern is irrefutable, `match` is useless
+  --> tests/ui/single_match.rs:429:5
+   |
+LL | /     match i {
+LL | |         i => (),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: `match` expression can be removed
+
+error: this pattern is irrefutable, `match` is useless
+  --> tests/ui/single_match.rs:435:5
+   |
+LL | /     match CONST_I32 {
+LL | |         CONST_I32 => println!(),
+LL | |         _ => {},
+LL | |     }
+   | |_____^ help: try: `println!();`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:443:5
+   |
+LL | /     match x.pop() {
+LL | |         // bla
+LL | |         Some(u) => println!("{u}"),
+...  |
+LL | |     }
+   | |_____^ help: try: `if let Some(u) = x.pop() { println!("{u}") }`
+   |
+   = note: you might want to preserve the comments from inside the `match`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:452:5
+   |
+LL | /     match x.pop() {
+LL | |         // bla
+LL | |         Some(u) => {
+...  |
+LL | |         None => {},
+LL | |     }
+   | |_____^
+   |
+   = note: you might want to preserve the comments from inside the `match`
+help: try
+   |
+LL ~     if let Some(u) = x.pop() {
+LL +         // bla
+LL +         println!("{u}");
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:478:5
+   |
+LL | /     match mac!(some) {
+LL | |         Some(u) => println!("{u}"),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try: `if let Some(u) = mac!(some) { println!("{u}") }`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match.rs:486:5
+   |
+LL | /     match mac!(str) {
+LL | |         "foo" => println!("eq"),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try: `if mac!(str) == "foo" { println!("eq") }`
+
+error: aborting due to 31 previous errors
+

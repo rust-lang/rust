@@ -1,0 +1,48 @@
+- // MIR for `call` before Inline
++ // MIR for `call` after Inline
+  
+  fn call(_1: Box<dyn FnMut<I, Output = ()>>, _2: I) -> () {
+      debug mock => _1;
+      debug input => _2;
+      let mut _0: ();
+      let mut _3: &mut std::boxed::Box<dyn std::ops::FnMut<I, Output = ()>>;
+      let mut _4: I;
++     scope 1 (inlined <Box<dyn FnMut<I, Output = ()>> as FnMut<I>>::call_mut) {
++         let mut _5: &mut dyn std::ops::FnMut<I, Output = ()>;
++         let mut _6: std::boxed::Box<dyn std::ops::FnMut<I, Output = ()>>;
++         let mut _7: *const dyn std::ops::FnMut<I, Output = ()>;
++     }
+  
+      bb0: {
+          StorageLive(_3);
+          _3 = &mut _1;
+          StorageLive(_4);
+          _4 = move _2;
+-         _0 = <Box<dyn FnMut<I, Output = ()>> as FnMut<I>>::call_mut(move _3, move _4) -> [return: bb1, unwind unreachable];
++         StorageLive(_6);
++         StorageLive(_7);
++         StorageLive(_5);
++         _6 = copy (*_3);
++         _7 = copy ((_6.0: std::ptr::Unique<dyn std::ops::FnMut<I, Output = ()>>).0: std::ptr::NonNull<dyn std::ops::FnMut<I, Output = ()>>) as *const dyn std::ops::FnMut<I, Output = ()> (Transmute);
++         _5 = &mut (*_7);
++         _0 = <dyn FnMut<I, Output = ()> as FnMut<I>>::call_mut(move _5, move _4) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb1: {
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         drop(_1) -> [return: bb2, unwind unreachable];
++         return;
+      }
+  
+      bb2: {
+-         return;
++         StorageDead(_5);
++         StorageDead(_7);
++         StorageDead(_6);
++         StorageDead(_4);
++         StorageDead(_3);
++         drop(_1) -> [return: bb1, unwind unreachable];
+      }
+  }
+  

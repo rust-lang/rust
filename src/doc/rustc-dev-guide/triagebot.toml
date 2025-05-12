@@ -1,0 +1,18 @@
+[assign]
+
+[relabel]
+allow-unauthenticated = [
+    "waiting-on-review",
+    "waiting-on-author",
+    "blocked",
+]
+
+[no-mentions]
+
+[canonicalize-issue-links]
+
+# Automatically close and reopen PRs made by bots to run CI on them
+[bot-pull-requests]
+
+[behind-upstream]
+days-threshold = 7

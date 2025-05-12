@@ -1,0 +1,11 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `alloc`
+  --> $DIR/undeclared-module-alloc.rs:3:5
+   |
+LL | use alloc::rc::Rc;
+   |     ^^^^^ use of unresolved module or unlinked crate `alloc`
+   |
+   = help: add `extern crate alloc` to use the `alloc` crate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

@@ -1,0 +1,4 @@
+error: multiple renamings were specified for library `foo`
+
+error: aborting due to 1 previous error
+

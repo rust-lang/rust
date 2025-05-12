@@ -1,0 +1,37 @@
+error: environment variable `NON_EXISTENT` not defined at compile time
+  --> $DIR/error-recovery-issue-55897.rs:10:22
+   |
+LL |     include!(concat!(env!("NON_EXISTENT"), "/data.rs"));
+   |                      ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `std::env::var("NON_EXISTENT")` to read the variable at run time
+
+error: suffixes on string literals are invalid
+  --> $DIR/error-recovery-issue-55897.rs:15:22
+   |
+LL |     include!(concat!("NON_EXISTENT"suffix, "/data.rs"));
+   |                      ^^^^^^^^^^^^^^^^^^^^ invalid suffix `suffix`
+
+error[E0432]: unresolved import `prelude`
+  --> $DIR/error-recovery-issue-55897.rs:1:5
+   |
+LL | use prelude::*;
+   |     ^^^^^^^
+   |     |
+   |     unresolved import
+   |     help: a similar path exists: `std::prelude`
+
+error[E0432]: unresolved import `env`
+  --> $DIR/error-recovery-issue-55897.rs:4:9
+   |
+LL |     use env;
+   |         ^^^ no `env` in the root
+   |
+help: consider importing this module instead
+   |
+LL |     use std::env;
+   |         +++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

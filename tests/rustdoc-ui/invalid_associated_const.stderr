@@ -1,0 +1,28 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/invalid_associated_const.rs:4:17
+   |
+LL |     type A: S<C<X = 0i32> = 34>;
+   |                 ^^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item binding
+   |
+LL -     type A: S<C<X = 0i32> = 34>;
+LL +     type A: S<C = 34>;
+   |
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/invalid_associated_const.rs:4:17
+   |
+LL |     type A: S<C<X = 0i32> = 34>;
+   |                 ^^^^^^^^ associated item constraint not allowed here
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider removing this associated item binding
+   |
+LL -     type A: S<C<X = 0i32> = 34>;
+LL +     type A: S<C = 34>;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0229`.

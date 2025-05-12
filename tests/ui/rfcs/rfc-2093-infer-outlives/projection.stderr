@@ -1,0 +1,10 @@
+error: rustc_outlives
+  --> $DIR/projection.rs:4:1
+   |
+LL | struct Foo<'a, T: Iterator> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: <T as Iterator>::Item: 'a
+
+error: aborting due to 1 previous error
+

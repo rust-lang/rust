@@ -1,0 +1,12 @@
+[package]
+name = "linkchecker"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "linkchecker"
+path = "main.rs"
+
+[dependencies]
+regex = "1"
+html5ever = "0.29.0"

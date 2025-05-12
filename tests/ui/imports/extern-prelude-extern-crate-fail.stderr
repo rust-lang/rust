@@ -1,0 +1,20 @@
+error: macro-expanded `extern crate` items cannot shadow names passed with `--extern`
+  --> $DIR/extern-prelude-extern-crate-fail.rs:16:9
+   |
+LL |         extern crate std as non_existent;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | define_std_as_non_existent!();
+   | ----------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `define_std_as_non_existent` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `two_macros`
+  --> $DIR/extern-prelude-extern-crate-fail.rs:10:9
+   |
+LL |         two_macros::m!();
+   |         ^^^^^^^^^^ use of unresolved module or unlinked crate `two_macros`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

@@ -1,0 +1,19 @@
+error: expected one of `!` or `::`, found `Result`
+  --> $DIR/assoc-type.rs:2:10
+   |
+LL | trait Animal {
+   |              - while parsing this item list starting here
+LL |     Type Result = u8;
+   |          ^^^^^^ expected one of `!` or `::`
+LL |
+LL | }
+   | - the item list ends here
+   |
+help: write keyword `type` in lowercase
+   |
+LL -     Type Result = u8;
+LL +     type Result = u8;
+   |
+
+error: aborting due to 1 previous error
+

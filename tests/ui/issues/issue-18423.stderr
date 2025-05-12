@@ -1,0 +1,11 @@
+error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/issue-18423.rs:4:8
+   |
+LL |     x: Box<'a, isize>
+   |        ^^^ -- help: remove the lifetime argument
+   |        |
+   |        expected 0 lifetime arguments
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

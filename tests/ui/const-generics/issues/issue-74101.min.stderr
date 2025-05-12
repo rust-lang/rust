@@ -1,0 +1,26 @@
+error: `[u8; 1 + 2]` is forbidden as the type of a const generic parameter
+  --> $DIR/issue-74101.rs:6:18
+   |
+LL | fn test<const N: [u8; 1 + 2]>() {}
+   |                  ^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: `[u8; 1 + 2]` is forbidden as the type of a const generic parameter
+  --> $DIR/issue-74101.rs:9:21
+   |
+LL | struct Foo<const N: [u8; 1 + 2]>;
+   |                     ^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: aborting due to 2 previous errors
+

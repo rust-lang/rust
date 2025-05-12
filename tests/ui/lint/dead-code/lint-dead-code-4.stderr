@@ -1,0 +1,66 @@
+error: field `b` is never read
+  --> $DIR/lint-dead-code-4.rs:7:5
+   |
+LL | struct Foo {
+   |        --- field in this struct
+LL |     x: usize,
+LL |     b: bool,
+   |     ^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-dead-code-4.rs:3:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: variants `X` and `Y` are never constructed
+  --> $DIR/lint-dead-code-4.rs:15:5
+   |
+LL | enum XYZ {
+   |      --- variants in this enum
+LL |     X,
+   |     ^
+LL |     Y {
+   |     ^
+
+error: enum `ABC` is never used
+  --> $DIR/lint-dead-code-4.rs:24:6
+   |
+LL | enum ABC {
+   |      ^^^
+
+error: fields `b` and `c` are never read
+  --> $DIR/lint-dead-code-4.rs:39:9
+   |
+LL |     J {
+   |     - fields in this variant
+LL |         a: String,
+LL |         b: i32,
+   |         ^
+LL |         c: i32,
+   |         ^
+
+error: variants `I` and `K` are never constructed
+  --> $DIR/lint-dead-code-4.rs:36:5
+   |
+LL | enum IJK {
+   |      --- variants in this enum
+LL |     I,
+   |     ^
+...
+LL |     K
+   |     ^
+
+error: fields `x` and `c` are never read
+  --> $DIR/lint-dead-code-4.rs:61:5
+   |
+LL | struct Bar {
+   |        --- fields in this struct
+LL |     x: usize,
+   |     ^
+LL |     b: bool,
+LL |     c: bool,
+   |     ^
+
+error: aborting due to 6 previous errors
+

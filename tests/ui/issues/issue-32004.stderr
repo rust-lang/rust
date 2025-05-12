@@ -1,0 +1,33 @@
+error[E0532]: expected unit struct, unit variant or constant, found tuple variant `Foo::Bar`
+  --> $DIR/issue-32004.rs:10:9
+   |
+LL |     Bar(i32),
+   |     -------- `Foo::Bar` defined here
+LL |     Baz
+   |     --- similarly named unit variant `Baz` defined here
+...
+LL |         Foo::Bar => {}
+   |         ^^^^^^^^
+   |
+help: use the tuple variant pattern syntax instead
+   |
+LL |         Foo::Bar(_) => {}
+   |                 +++
+help: a unit variant with a similar name exists
+   |
+LL -         Foo::Bar => {}
+LL +         Foo::Baz => {}
+   |
+
+error[E0532]: expected tuple struct or tuple variant, found unit struct `S`
+  --> $DIR/issue-32004.rs:16:9
+   |
+LL | struct S;
+   | --------- `S` defined here
+...
+LL |         S(()) => {}
+   |         ^^^^^ help: use this syntax instead: `S`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0532`.

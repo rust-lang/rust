@@ -1,0 +1,21 @@
+error[E0762]: unterminated character literal
+  --> $DIR/lex-bad-str-literal-as-char-1.rs:3:20
+   |
+LL |     println!('1 + 1');
+   |                    ^^^
+   |
+help: if you meant to write a string literal, use double quotes
+   |
+LL -     println!('1 + 1');
+LL +     println!("1 + 1");
+   |
+
+error: lifetimes cannot start with a number
+  --> $DIR/lex-bad-str-literal-as-char-1.rs:3:14
+   |
+LL |     println!('1 + 1');
+   |              ^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0762`.

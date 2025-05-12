@@ -1,0 +1,26 @@
+error[E0277]: the trait bound `&str: From<String>` is not satisfied
+  --> $DIR/into-str.rs:4:9
+   |
+LL |     foo(String::new());
+   |     --- ^^^^^^^^^^^^^ the trait `From<String>` is not implemented for `&str`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: to coerce a `String` into a `&str`, use `&*` as a prefix
+   = help: the following other types implement trait `From<T>`:
+             `String` implements `From<&String>`
+             `String` implements `From<&mut str>`
+             `String` implements `From<&str>`
+             `String` implements `From<Box<str>>`
+             `String` implements `From<Cow<'_, str>>`
+             `String` implements `From<char>`
+   = note: required for `String` to implement `Into<&str>`
+note: required by a bound in `foo`
+  --> $DIR/into-str.rs:1:31
+   |
+LL | fn foo<'a, T>(_t: T) where T: Into<&'a str> {}
+   |                               ^^^^^^^^^^^^^ required by this bound in `foo`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

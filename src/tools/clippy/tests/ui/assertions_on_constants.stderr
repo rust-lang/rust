@@ -1,0 +1,100 @@
+error: `assert!(true)` will be optimized out by the compiler
+  --> tests/ui/assertions_on_constants.rs:10:5
+   |
+LL |     assert!(true);
+   |     ^^^^^^^^^^^^^
+   |
+   = help: remove it
+   = note: `-D clippy::assertions-on-constants` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::assertions_on_constants)]`
+
+error: `assert!(false)` should probably be replaced
+  --> tests/ui/assertions_on_constants.rs:13:5
+   |
+LL |     assert!(false);
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: use `panic!()` or `unreachable!()`
+
+error: `assert!(true)` will be optimized out by the compiler
+  --> tests/ui/assertions_on_constants.rs:16:5
+   |
+LL |     assert!(true, "true message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove it
+
+error: `assert!(false, ..)` should probably be replaced
+  --> tests/ui/assertions_on_constants.rs:19:5
+   |
+LL |     assert!(false, "false message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `panic!(..)` or `unreachable!(..)`
+
+error: `assert!(false, ..)` should probably be replaced
+  --> tests/ui/assertions_on_constants.rs:23:5
+   |
+LL |     assert!(false, "{}", msg.to_uppercase());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `panic!(..)` or `unreachable!(..)`
+
+error: `assert!(true)` will be optimized out by the compiler
+  --> tests/ui/assertions_on_constants.rs:27:5
+   |
+LL |     assert!(B);
+   |     ^^^^^^^^^^
+   |
+   = help: remove it
+
+error: `assert!(false)` should probably be replaced
+  --> tests/ui/assertions_on_constants.rs:31:5
+   |
+LL |     assert!(C);
+   |     ^^^^^^^^^^
+   |
+   = help: use `panic!()` or `unreachable!()`
+
+error: `assert!(false, ..)` should probably be replaced
+  --> tests/ui/assertions_on_constants.rs:34:5
+   |
+LL |     assert!(C, "C message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `panic!(..)` or `unreachable!(..)`
+
+error: `debug_assert!(true)` will be optimized out by the compiler
+  --> tests/ui/assertions_on_constants.rs:37:5
+   |
+LL |     debug_assert!(true);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove it
+
+error: `assert!(true)` will be optimized out by the compiler
+  --> tests/ui/assertions_on_constants.rs:54:19
+   |
+LL |     const _: () = assert!(true);
+   |                   ^^^^^^^^^^^^^
+   |
+   = help: remove it
+
+error: `assert!(true)` will be optimized out by the compiler
+  --> tests/ui/assertions_on_constants.rs:57:5
+   |
+LL |     assert!(8 == (7 + 1));
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove it
+
+error: `assert!(true)` will be optimized out by the compiler
+  --> tests/ui/assertions_on_constants.rs:66:5
+   |
+LL |     assert!(true);
+   |     ^^^^^^^^^^^^^
+   |
+   = help: remove it
+
+error: aborting due to 12 previous errors
+

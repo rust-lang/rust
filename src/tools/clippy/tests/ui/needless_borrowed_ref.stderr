@@ -1,0 +1,217 @@
+error: this pattern takes a reference on something that is being dereferenced
+  --> tests/ui/needless_borrowed_ref.rs:30:34
+   |
+LL |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
+   |                                  ^^^^^^
+   |
+   = note: `-D clippy::needless-borrowed-reference` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_borrowed_reference)]`
+help: try removing the `&ref` part
+   |
+LL -     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
+LL +     let _ = v.iter_mut().filter(|a| a.is_empty());
+   |
+
+error: this pattern takes a reference on something that is being dereferenced
+  --> tests/ui/needless_borrowed_ref.rs:35:17
+   |
+LL |     if let Some(&ref v) = thingy {}
+   |                 ^^^^^^
+   |
+help: try removing the `&ref` part
+   |
+LL -     if let Some(&ref v) = thingy {}
+LL +     if let Some(v) = thingy {}
+   |
+
+error: this pattern takes a reference on something that is being dereferenced
+  --> tests/ui/needless_borrowed_ref.rs:38:14
+   |
+LL |     if let &[&ref a, ref b] = slice_of_refs {}
+   |              ^^^^^^
+   |
+help: try removing the `&ref` part
+   |
+LL -     if let &[&ref a, ref b] = slice_of_refs {}
+LL +     if let &[a, ref b] = slice_of_refs {}
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> tests/ui/needless_borrowed_ref.rs:41:9
+   |
+LL |     let &[ref a, ..] = &array;
+   |         ^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     let &[ref a, ..] = &array;
+LL +     let [a, ..] = &array;
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> tests/ui/needless_borrowed_ref.rs:43:9
+   |
+LL |     let &[ref a, ref b, ..] = &array;
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     let &[ref a, ref b, ..] = &array;
+LL +     let [a, b, ..] = &array;
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> tests/ui/needless_borrowed_ref.rs:46:12
+   |
+LL |     if let &[ref a, ref b] = slice {}
+   |            ^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &[ref a, ref b] = slice {}
+LL +     if let [a, b] = slice {}
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> tests/ui/needless_borrowed_ref.rs:48:12
+   |
+LL |     if let &[ref a, ref b] = &vec[..] {}
+   |            ^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &[ref a, ref b] = &vec[..] {}
+LL +     if let [a, b] = &vec[..] {}
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> tests/ui/needless_borrowed_ref.rs:51:12
+   |
+LL |     if let &[ref a, ref b, ..] = slice {}
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &[ref a, ref b, ..] = slice {}
+LL +     if let [a, b, ..] = slice {}
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> tests/ui/needless_borrowed_ref.rs:53:12
+   |
+LL |     if let &[ref a, .., ref b] = slice {}
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &[ref a, .., ref b] = slice {}
+LL +     if let [a, .., b] = slice {}
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> tests/ui/needless_borrowed_ref.rs:55:12
+   |
+LL |     if let &[.., ref a, ref b] = slice {}
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &[.., ref a, ref b] = slice {}
+LL +     if let [.., a, b] = slice {}
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> tests/ui/needless_borrowed_ref.rs:58:12
+   |
+LL |     if let &[ref a, _] = slice {}
+   |            ^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &[ref a, _] = slice {}
+LL +     if let [a, _] = slice {}
+   |
+
+error: dereferencing a tuple pattern where every element takes a reference
+  --> tests/ui/needless_borrowed_ref.rs:61:12
+   |
+LL |     if let &(ref a, ref b, ref c) = &tuple {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &(ref a, ref b, ref c) = &tuple {}
+LL +     if let (a, b, c) = &tuple {}
+   |
+
+error: dereferencing a tuple pattern where every element takes a reference
+  --> tests/ui/needless_borrowed_ref.rs:63:12
+   |
+LL |     if let &(ref a, _, ref c) = &tuple {}
+   |            ^^^^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &(ref a, _, ref c) = &tuple {}
+LL +     if let (a, _, c) = &tuple {}
+   |
+
+error: dereferencing a tuple pattern where every element takes a reference
+  --> tests/ui/needless_borrowed_ref.rs:65:12
+   |
+LL |     if let &(ref a, ..) = &tuple {}
+   |            ^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &(ref a, ..) = &tuple {}
+LL +     if let (a, ..) = &tuple {}
+   |
+
+error: dereferencing a tuple pattern where every element takes a reference
+  --> tests/ui/needless_borrowed_ref.rs:68:12
+   |
+LL |     if let &TupleStruct(ref a, ..) = &tuple_struct {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &TupleStruct(ref a, ..) = &tuple_struct {}
+LL +     if let TupleStruct(a, ..) = &tuple_struct {}
+   |
+
+error: dereferencing a struct pattern where every field's pattern takes a reference
+  --> tests/ui/needless_borrowed_ref.rs:71:12
+   |
+LL |       if let &Struct {
+   |  ____________^
+LL | |
+LL | |         ref a,
+LL | |         b: ref b,
+LL | |         c: ref renamed,
+LL | |     } = &s
+   | |_____^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL ~     if let Struct {
+LL |
+LL ~         a,
+LL ~         b: b,
+LL ~         c: renamed,
+   |
+
+error: dereferencing a struct pattern where every field's pattern takes a reference
+  --> tests/ui/needless_borrowed_ref.rs:79:12
+   |
+LL |     if let &Struct { ref a, b: _, .. } = &s {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &Struct { ref a, b: _, .. } = &s {}
+LL +     if let Struct { a, b: _, .. } = &s {}
+   |
+
+error: aborting due to 17 previous errors
+

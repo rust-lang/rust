@@ -1,0 +1,32 @@
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
+  --> $DIR/feature-gate-unboxed-closures.rs:10:12
+   |
+LL |     extern "rust-call" fn call_once(self, (a, b): (u32, u32)) -> u32 {
+   |            ^^^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
+  --> $DIR/feature-gate-unboxed-closures.rs:5:6
+   |
+LL | impl FnOnce<(u32, u32)> for Test {
+   |      ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0183]: manual implementations of `FnOnce` are experimental
+  --> $DIR/feature-gate-unboxed-closures.rs:5:6
+   |
+LL | impl FnOnce<(u32, u32)> for Test {
+   |      ^^^^^^^^^^^^^^^^^^ manual implementations of `FnOnce` are experimental
+   |
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0183, E0658.
+For more information about an error, try `rustc --explain E0183`.

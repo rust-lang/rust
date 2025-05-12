@@ -1,0 +1,83 @@
+// Issue #5746
+#![warn(clippy::redundant_pattern_matching)]
+#![allow(
+    clippy::if_same_then_else,
+    clippy::equatable_if_let,
+    clippy::needless_if,
+    clippy::needless_else
+)]
+use std::task::Poll::{Pending, Ready};
+
+fn main() {
+    let m = std::sync::Mutex::new((0, 0));
+
+    // Result
+    if m.lock().is_ok() {}
+    //~^ redundant_pattern_matching
+    if Err::<(), _>(m.lock().unwrap().0).is_err() {}
+    //~^ redundant_pattern_matching
+
+    {
+        if Ok::<_, std::sync::MutexGuard<()>>(()).is_ok() {}
+        //~^ redundant_pattern_matching
+    }
+    if Ok::<_, std::sync::MutexGuard<()>>(()).is_ok() {
+        //~^ redundant_pattern_matching
+    } else {
+    }
+    if Ok::<_, std::sync::MutexGuard<()>>(()).is_ok() {}
+    //~^ redundant_pattern_matching
+    if Err::<std::sync::MutexGuard<()>, _>(()).is_err() {}
+    //~^ redundant_pattern_matching
+
+    if Ok::<_, ()>(String::new()).is_ok() {}
+    //~^ redundant_pattern_matching
+    if Err::<(), _>((String::new(), ())).is_err() {}
+    //~^ redundant_pattern_matching
+
+    // Option
+    if Some(m.lock()).is_some() {}
+    //~^ redundant_pattern_matching
+    if Some(m.lock().unwrap().0).is_some() {}
+    //~^ redundant_pattern_matching
+
+    {
+        if None::<std::sync::MutexGuard<()>>.is_none() {}
+        //~^ redundant_pattern_matching
+    }
+    if None::<std::sync::MutexGuard<()>>.is_none() {
+        //~^ redundant_pattern_matching
+    } else {
+    }
+
+    if None::<std::sync::MutexGuard<()>>.is_none() {}
+    //~^ redundant_pattern_matching
+
+    if Some(String::new()).is_some() {}
+    //~^ redundant_pattern_matching
+    if Some((String::new(), ())).is_some() {}
+    //~^ redundant_pattern_matching
+
+    // Poll
+    if Ready(m.lock()).is_ready() {}
+    //~^ redundant_pattern_matching
+    if Ready(m.lock().unwrap().0).is_ready() {}
+    //~^ redundant_pattern_matching
+
+    {
+        if Pending::<std::sync::MutexGuard<()>>.is_pending() {}
+        //~^ redundant_pattern_matching
+    }
+    if Pending::<std::sync::MutexGuard<()>>.is_pending() {
+        //~^ redundant_pattern_matching
+    } else {
+    }
+
+    if Pending::<std::sync::MutexGuard<()>>.is_pending() {}
+    //~^ redundant_pattern_matching
+
+    if Ready(String::new()).is_ready() {}
+    //~^ redundant_pattern_matching
+    if Ready((String::new(), ())).is_ready() {}
+    //~^ redundant_pattern_matching
+}

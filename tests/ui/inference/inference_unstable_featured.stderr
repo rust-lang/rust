@@ -1,0 +1,22 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/inference_unstable_featured.rs:16:20
+   |
+LL |     assert_eq!('x'.ipu_flatten(), 0);
+   |                    ^^^^^^^^^^^ multiple `ipu_flatten` found
+   |
+   = note: candidate #1 is defined in an impl of the trait `IpuIterator` for the type `char`
+   = note: candidate #2 is defined in an impl of the trait `IpuItertools` for the type `char`
+help: disambiguate the method for candidate #1
+   |
+LL -     assert_eq!('x'.ipu_flatten(), 0);
+LL +     assert_eq!(IpuIterator::ipu_flatten(&'x'), 0);
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     assert_eq!('x'.ipu_flatten(), 0);
+LL +     assert_eq!(IpuItertools::ipu_flatten(&'x'), 0);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0034`.

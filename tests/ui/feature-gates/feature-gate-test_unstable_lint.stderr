@@ -1,0 +1,13 @@
+warning: unknown lint: `test_unstable_lint`
+  --> $DIR/feature-gate-test_unstable_lint.rs:4:10
+   |
+LL | #![allow(test_unstable_lint)]
+   |          ^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `test_unstable_lint` lint is unstable
+   = help: add `#![feature(test_unstable_lint)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: `#[warn(unknown_lints)]` on by default
+
+warning: 1 warning emitted
+

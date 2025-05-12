@@ -1,0 +1,29 @@
+error[E0599]: no method named `method` found for reference `&T` in the current scope
+  --> $DIR/issue-21673.rs:6:7
+   |
+LL |     x.method()
+   |       ^^^^^^ method not found in `&T`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `method`, perhaps you need to restrict type parameter `T` with it:
+   |
+LL | fn call_method<T: std::fmt::Debug + Foo>(x: &T) {
+   |                                   +++++
+
+error[E0599]: no method named `method` found for type parameter `T` in the current scope
+  --> $DIR/issue-21673.rs:10:7
+   |
+LL | fn call_method_2<T>(x: T) {
+   |                  - method `method` not found for this type parameter
+LL |     x.method()
+   |       ^^^^^^ method not found in `T`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `method`, perhaps you need to restrict type parameter `T` with it:
+   |
+LL | fn call_method_2<T: Foo>(x: T) {
+   |                   +++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

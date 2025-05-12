@@ -1,0 +1,37 @@
+- // MIR for `f` before CopyProp
++ // MIR for `f` after CopyProp
+  
+  fn f(_1: T) -> () {
+      debug a => _1;
+      let mut _0: ();
+      let _2: T;
+      let _3: ();
+      let mut _4: T;
+      let mut _5: T;
+      scope 1 {
+-         debug b => _2;
++         debug b => _1;
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         _2 = copy _1;
+          StorageLive(_3);
+-         StorageLive(_4);
+-         _4 = copy _1;
+-         StorageLive(_5);
+-         _5 = copy _2;
+-         _3 = g::<T>(move _4, move _5) -> [return: bb1, unwind continue];
++         _3 = g::<T>(copy _1, copy _1) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+-         StorageDead(_5);
+-         StorageDead(_4);
+          StorageDead(_3);
+          _0 = const ();
+-         StorageDead(_2);
+          return;
+      }
+  }
+  

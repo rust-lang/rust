@@ -1,0 +1,71 @@
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:22:5
+   |
+LL |     f.read_exact(&mut data).unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `data.resize(20, 0); f.read_exact(&mut data)`
+   |
+   = note: `-D clippy::read-zero-byte-vec` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::read_zero_byte_vec)]`
+
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:28:5
+   |
+LL |     f.read_exact(&mut data2)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `data2.resize(cap, 0); f.read_exact(&mut data2)`
+
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:33:5
+   |
+LL |     f.read_exact(&mut data3)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:38:13
+   |
+LL |     let _ = f.read(&mut data4)?;
+   |             ^^^^^^^^^^^^^^^^^^
+
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:44:9
+   |
+LL |         f.read(&mut data5)
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:51:9
+   |
+LL |         f.read(&mut data6)
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:85:9
+   |
+LL |         f.read(&mut v)?;
+   |         ^^^^^^^^^^^^^^
+
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:95:5
+   |
+LL |     r.read(&mut data).await.unwrap();
+   |     ^^^^^^^^^^^^^^^^^
+
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:100:5
+   |
+LL |     r.read_exact(&mut data2).await.unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:107:5
+   |
+LL |     r.read(&mut data).await.unwrap();
+   |     ^^^^^^^^^^^^^^^^^
+
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:112:5
+   |
+LL |     r.read_exact(&mut data2).await.unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
+

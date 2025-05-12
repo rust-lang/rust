@@ -1,0 +1,19 @@
+error[E0792]: expected generic type parameter, found `u8`
+  --> $DIR/non-defining-use.rs:4:17
+   |
+LL | fn foo<T>() -> impl Sized {
+   |        - this generic parameter must be used with a generic type parameter
+LL |     let _: () = foo::<u8>();
+   |                 ^^^^^^^^^^^
+
+error[E0792]: expected generic type parameter, found `u8`
+  --> $DIR/non-defining-use.rs:8:17
+   |
+LL | fn bar<T>(val: T) -> impl Sized {
+   |        - this generic parameter must be used with a generic type parameter
+LL |     let _: u8 = bar(0u8);
+   |                 ^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0792`.

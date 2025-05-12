@@ -1,0 +1,22 @@
+error[E0308]: mismatched types
+  --> $DIR/old-lub-glb-object.rs:9:14
+   |
+LL |         _ => y,
+   |              ^ one type is more general than the other
+   |
+   = note: expected trait object `dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
+              found trait object `dyn for<'a> Foo<&'a u8, &'a u8>`
+
+error[E0308]: mismatched types
+  --> $DIR/old-lub-glb-object.rs:9:14
+   |
+LL |         _ => y,
+   |              ^ one type is more general than the other
+   |
+   = note: expected trait object `dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
+              found trait object `dyn for<'a> Foo<&'a u8, &'a u8>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

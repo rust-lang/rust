@@ -1,0 +1,48 @@
+error: macros that expand to items must be delimited with braces or followed by a semicolon
+  --> $DIR/issue-118786.rs:17:13
+   |
+LL | make_macro!((meow));
+   |             ^^^^^^
+   |
+help: change the delimiters to curly braces
+   |
+LL - make_macro!((meow));
+LL + make_macro!({meow});
+   |
+help: add a semicolon
+   |
+LL |         macro_rules! $macro_name; {
+   |                                 +
+
+error: macro expansion ignores `{` and any tokens following
+  --> $DIR/issue-118786.rs:8:34
+   |
+LL |         macro_rules! $macro_name {
+   |                                  ^
+...
+LL | make_macro!((meow));
+   | ------------------- caused by the macro expansion here
+   |
+   = note: the usage of `make_macro!` is likely invalid in item context
+
+error: cannot find macro `macro_rules` in this scope
+  --> $DIR/issue-118786.rs:8:9
+   |
+LL |         macro_rules! $macro_name {
+   |         ^^^^^^^^^^^
+...
+LL | make_macro!((meow));
+   | ------------------- in this macro invocation
+   |
+note: maybe you have forgotten to define a name for this `macro_rules!`
+  --> $DIR/issue-118786.rs:8:20
+   |
+LL |         macro_rules! $macro_name {
+   |                    ^ put a macro name here
+...
+LL | make_macro!((meow));
+   | ------------------- in this macro invocation
+   = note: this error originates in the macro `make_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+

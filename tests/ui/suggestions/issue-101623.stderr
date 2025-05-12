@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `*mut (): Trait<'_>` is not satisfied
+  --> $DIR/issue-101623.rs:21:21
+   |
+LL |     Trait::do_stuff({ fun(&mut *inner) });
+   |     --------------- ^^----------------^^
+   |     |               |
+   |     |               the trait `Trait<'_>` is not implemented for `*mut ()`
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Trait<'_>` is not implemented for `*mut ()`
+           but it is implemented for `()`
+   = help: for that trait implementation, expected `()`, found `*mut ()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

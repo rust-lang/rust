@@ -1,0 +1,7 @@
+{"$message_type":"future_incompat","future_incompat_report":[{"diagnostic":{"$message_type":"diagnostic","message":"unused variable: `x`","code":{"code":"unused_variables","explanation":null},"level":"warning","spans":[{"file_name":"$DIR/future-incompat-json-test.rs","byte_start":340,"byte_end":341,"line_start":9,"line_end":9,"column_start":9,"column_end":10,"is_primary":true,"text":[{"text":"    let x = 1;","highlight_start":9,"highlight_end":10}],"label":null,"suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[{"message":"if this is intentional, prefix it with an underscore","code":null,"level":"help","spans":[{"file_name":"$DIR/future-incompat-json-test.rs","byte_start":340,"byte_end":341,"line_start":9,"line_end":9,"column_start":9,"column_end":10,"is_primary":true,"text":[{"text":"    let x = 1;","highlight_start":9,"highlight_end":10}],"label":null,"suggested_replacement":"_x","suggestion_applicability":"MaybeIncorrect","expansion":null}],"children":[],"rendered":null}],"rendered":"warning: unused variable: `x`
+  --> $DIR/future-incompat-json-test.rs:9:9
+   |
+LL |     let x = 1;
+   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+"}}]}

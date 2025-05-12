@@ -1,0 +1,23 @@
+error[E0283]: type annotations needed
+  --> $DIR/issue-83249.rs:19:9
+   |
+LL |     let _ = foo([0; 1]);
+   |         ^   --- ------ type must be known at this point
+   |             |
+   |             required by a bound introduced by this call
+   |
+   = note: cannot satisfy `_: Foo`
+   = help: the trait `Foo` is implemented for `u8`
+note: required by a bound in `foo`
+  --> $DIR/issue-83249.rs:12:11
+   |
+LL | fn foo<T: Foo>(_: [u8; T::N]) -> T {
+   |           ^^^ required by this bound in `foo`
+help: consider giving this pattern a type
+   |
+LL |     let _: /* Type */ = foo([0; 1]);
+   |          ++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

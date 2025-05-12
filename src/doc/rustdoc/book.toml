@@ -1,0 +1,14 @@
+[book]
+src = "src"
+title = "The rustdoc book"
+
+[output.html]
+git-repository-url = "https://github.com/rust-lang/rust/tree/master/src/doc/rustdoc"
+
+[output.html.redirect]
+"/what-to-include.html" = "write-documentation/what-to-include.html"
+"/the-doc-attribute.html" = "write-documentation/the-doc-attribute.html"
+"/linking-to-items-by-name.html" = "write-documentation/linking-to-items-by-name.html"
+"/documentation-tests.html" = "write-documentation/documentation-tests.html"
+"/website-features.html" = "advanced-features.html#custom-search-engines"
+"/passes.html" = "deprecated-features.html#passes"

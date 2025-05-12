@@ -1,0 +1,29 @@
+- // MIR for `borrowed` before GVN
++ // MIR for `borrowed` after GVN
+  
+  fn borrowed(_1: T) -> () {
+      let mut _0: ();
+      let mut _2: T;
+      let mut _3: &T;
+  
+      bb0: {
+          _2 = copy _1;
+          _3 = &_1;
+          _0 = opaque::<&T>(copy _3) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         _0 = opaque::<T>(copy _2) -> [return: bb2, unwind unreachable];
++         _0 = opaque::<T>(copy _1) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+-         _0 = opaque::<T>(copy (*_3)) -> [return: bb3, unwind unreachable];
++         _0 = opaque::<T>(copy _1) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          return;
+      }
+  }
+  

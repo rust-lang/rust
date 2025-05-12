@@ -1,0 +1,18 @@
+#![allow(unused)]
+#![warn(clippy::byte_char_slices)]
+
+fn main() {
+    let bad = b"abc";
+    //~^ byte_char_slices
+    let quotes = b"\"Hi";
+    //~^ byte_char_slices
+    let quotes = b"'Sup";
+    //~^ byte_char_slices
+    let escapes = b"\x42Esc";
+    //~^ byte_char_slices
+
+    let good = &[b'a', 0x42];
+    let good = [b'a', b'a'];
+    //~^ useless_vec
+    let good: u8 = [b'a', b'c'].into_iter().sum();
+}

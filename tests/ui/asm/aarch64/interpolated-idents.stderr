@@ -1,0 +1,41 @@
+error: the `nomem` and `readonly` options are mutually exclusive
+  --> $DIR/interpolated-idents.rs:13:13
+   |
+LL |               $options($pure, $nomem, $readonly, $preserves_flags, $noreturn, $nostack));
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | /     m!(in out lateout inout inlateout const sym
+LL | |        pure nomem readonly preserves_flags
+LL | |        noreturn nostack options);
+   | |________________________________- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the `pure` and `noreturn` options are mutually exclusive
+  --> $DIR/interpolated-idents.rs:13:13
+   |
+LL |               $options($pure, $nomem, $readonly, $preserves_flags, $noreturn, $nostack));
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | /     m!(in out lateout inout inlateout const sym
+LL | |        pure nomem readonly preserves_flags
+LL | |        noreturn nostack options);
+   | |________________________________- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: asm outputs are not allowed with the `noreturn` option
+  --> $DIR/interpolated-idents.rs:10:32
+   |
+LL |               asm!("", $in(x) x, $out(x) x, $lateout(x) x, $inout(x) x, $inlateout(x) x,
+   |                                  ^^^^^^^^^  ^^^^^^^^^^^^^  ^^^^^^^^^^^  ^^^^^^^^^^^^^^^
+...
+LL | /     m!(in out lateout inout inlateout const sym
+LL | |        pure nomem readonly preserves_flags
+LL | |        noreturn nostack options);
+   | |________________________________- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+

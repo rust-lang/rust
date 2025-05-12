@@ -1,0 +1,27 @@
+error: implementing `LintPass` by hand
+  --> $DIR/lint_pass_impl_without_macro.rs:20:6
+   |
+LL | impl LintPass for Foo {
+   |      ^^^^^^^^
+   |
+   = help: try using `declare_lint_pass!` or `impl_lint_pass!` instead
+note: the lint level is defined here
+  --> $DIR/lint_pass_impl_without_macro.rs:4:9
+   |
+LL | #![deny(rustc::lint_pass_impl_without_macro)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementing `LintPass` by hand
+  --> $DIR/lint_pass_impl_without_macro.rs:34:14
+   |
+LL |         impl LintPass for Custom {
+   |              ^^^^^^^^
+...
+LL | custom_lint_pass_macro!();
+   | ------------------------- in this macro invocation
+   |
+   = help: try using `declare_lint_pass!` or `impl_lint_pass!` instead
+   = note: this error originates in the macro `custom_lint_pass_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

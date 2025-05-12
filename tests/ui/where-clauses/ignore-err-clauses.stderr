@@ -1,0 +1,16 @@
+error[E0412]: cannot find type `UUU` in this scope
+  --> $DIR/ignore-err-clauses.rs:7:5
+   |
+LL |     UUU: Copy,
+   |     ^^^ not found in this scope
+
+error[E0282]: type annotations needed
+  --> $DIR/ignore-err-clauses.rs:3:14
+   |
+LL | fn dbl<T>(x: T) -> <T as Add>::Output
+   |              ^ cannot infer type for type parameter `T`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0412.
+For more information about an error, try `rustc --explain E0282`.

@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `Foo` in this scope
+  --> $DIR/rmeta.rs:7:13
+   |
+LL |     let _ = Foo;
+   |             ^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

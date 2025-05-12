@@ -1,0 +1,28 @@
+//@ check-pass
+//@ compile-flags: -Zunpretty=expanded,hygiene
+
+// Don't break whenever Symbol numbering changes
+//@ normalize-stdout: "\d+#" -> "0#"
+
+// minimal junk
+#![feature /* 0#0 */(no_core)]
+#![no_core /* 0#0 */]
+
+macro_rules! foo /* 0#0 */ { ($x: ident) => { y + $x } }
+
+fn bar /* 0#0 */() {
+    let x /* 0#0 */ = 1;
+    y /* 0#1 */ + x /* 0#0 */
+}
+
+fn y /* 0#0 */() {}
+
+/*
+Expansions:
+crate0::{{expn0}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Root
+crate0::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "foo")
+
+SyntaxContexts:
+#0: parent: #0, outer_mark: (crate0::{{expn0}}, Opaque)
+#1: parent: #0, outer_mark: (crate0::{{expn1}}, SemiOpaque)
+*/

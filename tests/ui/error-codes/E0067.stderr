@@ -1,0 +1,26 @@
+error[E0368]: binary assignment operation `+=` cannot be applied to type `LinkedList<_>`
+  --> $DIR/E0067.rs:4:5
+   |
+LL |     LinkedList::new() += 1;
+   |     -----------------^^^^^
+   |     |
+   |     cannot use `+=` on type `LinkedList<_>`
+   |
+note: the foreign item type `LinkedList<_>` doesn't implement `AddAssign<{integer}>`
+  --> $SRC_DIR/alloc/src/collections/linked_list.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/collections/linked_list.rs:LL:COL
+   |
+   = note: not implement `AddAssign<{integer}>`
+
+error[E0067]: invalid left-hand side of assignment
+  --> $DIR/E0067.rs:4:23
+   |
+LL |     LinkedList::new() += 1;
+   |     ----------------- ^^
+   |     |
+   |     cannot assign to this expression
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0067, E0368.
+For more information about an error, try `rustc --explain E0067`.

@@ -1,0 +1,16 @@
+error[E0369]: cannot multiply `Vec<isize>` by `{integer}`
+  --> $DIR/pattern-tyvar-2.rs:3:71
+   |
+LL | fn foo(t: Bar) -> isize { match t { Bar::T1(_, Some(x)) => { return x * 3; } _ => { panic!(); } } }
+   |                                                                     - ^ - {integer}
+   |                                                                     |
+   |                                                                     Vec<isize>
+   |
+note: the foreign item type `Vec<isize>` doesn't implement `Mul<{integer}>`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+   = note: not implement `Mul<{integer}>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

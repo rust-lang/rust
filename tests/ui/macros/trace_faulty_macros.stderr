@@ -1,0 +1,107 @@
+error: no rules expected `bcd`
+  --> $DIR/trace_faulty_macros.rs:7:26
+   |
+LL | macro_rules! my_faulty_macro {
+   | ---------------------------- when calling this macro
+LL |     () => {
+LL |         my_faulty_macro!(bcd);
+   |                          ^^^ no rules expected this token in macro call
+...
+LL |     my_faulty_macro!();
+   |     ------------------ in this macro invocation
+   |
+   = note: while trying to match end of macro
+   = note: this error originates in the macro `my_faulty_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: trace_macro
+  --> $DIR/trace_faulty_macros.rs:31:5
+   |
+LL |     my_faulty_macro!();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: expanding `my_faulty_macro! {  }`
+   = note: to `my_faulty_macro! (bcd);`
+   = note: expanding `my_faulty_macro! { bcd }`
+
+error: recursion limit reached while expanding `my_recursive_macro!`
+  --> $DIR/trace_faulty_macros.rs:22:9
+   |
+LL |         my_recursive_macro!();
+   |         ^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     my_recursive_macro!();
+   |     --------------------- in this macro invocation
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "8"]` attribute to your crate (`trace_faulty_macros`)
+   = note: this error originates in the macro `my_recursive_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: trace_macro
+  --> $DIR/trace_faulty_macros.rs:32:5
+   |
+LL |     my_recursive_macro!();
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expanding `my_recursive_macro! {  }`
+   = note: to `my_recursive_macro! ();`
+   = note: expanding `my_recursive_macro! {  }`
+   = note: to `my_recursive_macro! ();`
+   = note: expanding `my_recursive_macro! {  }`
+   = note: to `my_recursive_macro! ();`
+   = note: expanding `my_recursive_macro! {  }`
+   = note: to `my_recursive_macro! ();`
+
+error: expected expression, found `pat` metavariable
+  --> $DIR/trace_faulty_macros.rs:16:9
+   |
+LL |         $a
+   |         ^^ expected expression
+...
+LL |     let a = pat_macro!();
+   |             ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `pat_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/trace_faulty_macros.rs:42:1
+   |
+LL | #[derive(Debug)]
+   | ^^^^^^^^^^^^^^^^ not applicable here
+LL | fn use_derive_macro_as_attr() {}
+   | -------------------------------- not a `struct`, `enum` or `union`
+
+error: expected expression, found `pat` metavariable
+  --> $DIR/trace_faulty_macros.rs:49:37
+   |
+LL |     (($p:pat, $e:pat)) => {let $p = $e;};
+   |                                     ^^ expected expression
+...
+LL |     test!(let x = 1+1);
+   |     ------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: trace_macro
+  --> $DIR/trace_faulty_macros.rs:36:13
+   |
+LL |     let a = pat_macro!();
+   |             ^^^^^^^^^^^^
+   |
+   = note: expanding `pat_macro! {  }`
+   = note: to `pat_macro! (A {a : a, b : 0, c : _, ..});`
+   = note: expanding `pat_macro! { A {a : a, b : 0, c : _, ..} }`
+   = note: to `A {a : a, b : 0, c : _, ..}`
+
+note: trace_macro
+  --> $DIR/trace_faulty_macros.rs:53:5
+   |
+LL |     test!(let x = 1+1);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: expanding `test! { let x = 1+1 }`
+   = note: to `test! ((x, 1+1))`
+   = note: expanding `test! { (x, 1+1) }`
+   = note: to `let x = 1+1;`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0774`.

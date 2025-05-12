@@ -1,0 +1,23 @@
+error: called `.collect::<Vec<String>>().join("")` on an iterator
+  --> tests/ui/unnecessary_join.rs:10:10
+   |
+LL |           .collect::<Vec<String>>()
+   |  __________^
+LL | |
+LL | |         .join("");
+   | |_________________^ help: consider using: `collect::<String>()`
+   |
+   = note: `-D clippy::unnecessary-join` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_join)]`
+
+error: called `.collect::<Vec<String>>().join("")` on an iterator
+  --> tests/ui/unnecessary_join.rs:20:10
+   |
+LL |           .collect::<Vec<_>>()
+   |  __________^
+LL | |
+LL | |         .join("");
+   | |_________________^ help: consider using: `collect::<String>()`
+
+error: aborting due to 2 previous errors
+

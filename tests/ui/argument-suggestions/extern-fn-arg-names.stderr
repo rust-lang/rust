@@ -1,0 +1,26 @@
+error[E0412]: cannot find type `err` in this scope
+  --> $DIR/extern-fn-arg-names.rs:2:29
+   |
+LL |     fn dstfn(src: i32, dst: err);
+   |                             ^^^ not found in this scope
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/extern-fn-arg-names.rs:7:5
+   |
+LL |     dstfn(1);
+   |     ^^^^^--- argument #2 is missing
+   |
+note: function defined here
+  --> $DIR/extern-fn-arg-names.rs:2:8
+   |
+LL |     fn dstfn(src: i32, dst: err);
+   |        ^^^^^           ---
+help: provide the argument
+   |
+LL |     dstfn(1, /* dst */);
+   |            +++++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0061, E0412.
+For more information about an error, try `rustc --explain E0061`.

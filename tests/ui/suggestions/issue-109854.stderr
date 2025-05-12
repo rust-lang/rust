@@ -1,0 +1,31 @@
+error[E0061]: this function takes 1 argument but 3 arguments were supplied
+  --> $DIR/issue-109854.rs:2:5
+   |
+LL |       String::with_capacity(
+   |       ^^^^^^^^^^^^^^^^^^^^^
+...
+LL | /     r#"
+LL | | pub(crate) struct Person<T: Clone> {}
+LL | | "#,
+   | |__- unexpected argument #2 of type `&'static str`
+LL |        r#""#,
+   |        ----- unexpected argument #3 of type `&'static str`
+   |
+note: expected `usize`, found fn item
+  --> $DIR/issue-109854.rs:4:5
+   |
+LL |     generate_setter,
+   |     ^^^^^^^^^^^^^^^
+   = note: expected type `usize`
+           found fn item `fn() {generate_setter}`
+note: associated function defined here
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+help: remove the extra arguments
+   |
+LL -     generate_setter,
+LL +     /* usize */,
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.

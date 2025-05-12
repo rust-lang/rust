@@ -1,0 +1,10 @@
+error: rustc_outlives
+  --> $DIR/self-dyn.rs:8:1
+   |
+LL | struct Foo<'a, 'b, A>
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: A: 'a
+
+error: aborting due to 1 previous error
+

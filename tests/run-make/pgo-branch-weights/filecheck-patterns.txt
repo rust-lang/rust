@@ -1,0 +1,24 @@
+
+# First, establish that certain !prof labels are attached to the expected
+# functions and branching instructions.
+
+CHECK: define void @function_called_twice(i32 {{.*}} !prof [[function_called_twice_id:![0-9]+]] {
+CHECK: br i1 {{.*}}, label {{.*}}, label {{.*}}, !prof [[branch_weights0:![0-9]+]]
+
+CHECK: define void @function_called_42_times(i32{{.*}} %c) {{.*}} !prof [[function_called_42_times_id:![0-9]+]] {
+CHECK:      switch i32 %c, label {{.*}} [
+CHECK-NEXT:     i32 97, label {{.*}}
+CHECK-NEXT:     i32 98, label {{.*}}
+CHECK-NEXT: ], !prof [[branch_weights1:![0-9]+]]
+
+CHECK: define void @function_called_never(i32 {{.*}} !prof [[function_called_never_id:![0-9]+]] {
+
+
+
+# Now check that those !prof tags hold the expected counts
+
+CHECK: [[function_called_twice_id]] = !{!"function_entry_count", i64 2}
+CHECK: [[branch_weights0]] = !{!"branch_weights", i32 2, i32 0}
+CHECK: [[function_called_42_times_id]] = !{!"function_entry_count", i64 42}
+CHECK: [[branch_weights1]] = !{!"branch_weights", i32 2, i32 12, i32 28}
+CHECK: [[function_called_never_id]] = !{!"function_entry_count", i64 0}

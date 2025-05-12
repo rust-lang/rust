@@ -1,0 +1,284 @@
+DefId(0:16 ~ thir_tree_match[fcf8]::has_match):
+params: [
+    Param {
+        ty: Foo
+        ty_span: Some($DIR/thir-tree-match.rs:15:19: 15:22 (#0))
+        self_kind: None
+        hir_id: Some(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).1))
+        param: Some( 
+            Pat: {
+                ty: Foo
+                span: $DIR/thir-tree-match.rs:15:14: 15:17 (#0)
+                kind: PatKind {
+                    Binding {
+                        name: "foo"
+                        mode: BindingMode(No, Not)
+                        var: LocalVarId(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).2))
+                        ty: Foo
+                        is_primary: true
+                        subpattern: None
+                    }
+                }
+            }
+        )
+    }
+]
+body:
+    Expr {
+        ty: bool
+        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+        span: $DIR/thir-tree-match.rs:15:32: 21:2 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(28)
+                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).28))
+                value:
+                    Expr {
+                        ty: bool
+                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                        span: $DIR/thir-tree-match.rs:15:32: 21:2 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree-match.rs:15:32: 21:2 (#0)
+                                region_scope: Node(3)
+                                safety_mode: Safe
+                                stmts: []
+                                expr:
+                                    Expr {
+                                        ty: bool
+                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                                        span: $DIR/thir-tree-match.rs:16:5: 20:6 (#0)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(4)
+                                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).4))
+                                                value:
+                                                    Expr {
+                                                        ty: bool
+                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                                                        span: $DIR/thir-tree-match.rs:16:5: 20:6 (#0)
+                                                        kind: 
+                                                            Match {
+                                                                scrutinee:
+                                                                    Expr {
+                                                                        ty: Foo
+                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                                                                        span: $DIR/thir-tree-match.rs:16:11: 16:14 (#0)
+                                                                        kind: 
+                                                                            Scope {
+                                                                                region_scope: Node(5)
+                                                                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).5))
+                                                                                value:
+                                                                                    Expr {
+                                                                                        ty: Foo
+                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                                                                                        span: $DIR/thir-tree-match.rs:16:11: 16:14 (#0)
+                                                                                        kind: 
+                                                                                            VarRef {
+                                                                                                id: LocalVarId(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).2))
+                                                                                            }
+                                                                                    }
+                                                                            }
+                                                                    }
+                                                                arms: [
+                                                                    Arm {
+                                                                        pattern: 
+                                                                            Pat: {
+                                                                                ty: Foo
+                                                                                span: $DIR/thir-tree-match.rs:17:9: 17:32 (#0)
+                                                                                kind: PatKind {
+                                                                                    Variant {
+                                                                                        adt_def: 
+                                                                                            AdtDef {
+                                                                                                did: DefId(0:10 ~ thir_tree_match[fcf8]::Foo)
+                                                                                                variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[fcf8]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[fcf8]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[fcf8]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[fcf8])), safety: Safe, value: None }], tainted: None, flags:  }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[fcf8]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[fcf8]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], tainted: None, flags:  }]
+                                                                                                flags: IS_ENUM
+                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , field_shuffle_seed: 3477539199540094892 }
+                                                                                        args: []
+                                                                                        variant_index: 0
+                                                                                        subpatterns: [
+                                                                                            Pat: {
+                                                                                                ty: Bar
+                                                                                                span: $DIR/thir-tree-match.rs:17:21: 17:31 (#0)
+                                                                                                kind: PatKind {
+                                                                                                    Variant {
+                                                                                                        adt_def: 
+                                                                                                            AdtDef {
+                                                                                                                did: DefId(0:3 ~ thir_tree_match[fcf8]::Bar)
+                                                                                                                variants: [VariantDef { def_id: DefId(0:4 ~ thir_tree_match[fcf8]::Bar::First), ctor: Some((Const, DefId(0:5 ~ thir_tree_match[fcf8]::Bar::First::{constructor#0}))), name: "First", discr: Relative(0), fields: [], tainted: None, flags:  }, VariantDef { def_id: DefId(0:6 ~ thir_tree_match[fcf8]::Bar::Second), ctor: Some((Const, DefId(0:7 ~ thir_tree_match[fcf8]::Bar::Second::{constructor#0}))), name: "Second", discr: Relative(1), fields: [], tainted: None, flags:  }, VariantDef { def_id: DefId(0:8 ~ thir_tree_match[fcf8]::Bar::Third), ctor: Some((Const, DefId(0:9 ~ thir_tree_match[fcf8]::Bar::Third::{constructor#0}))), name: "Third", discr: Relative(2), fields: [], tainted: None, flags:  }]
+                                                                                                                flags: IS_ENUM
+                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , field_shuffle_seed: 10333377570083945360 }
+                                                                                                        args: []
+                                                                                                        variant_index: 0
+                                                                                                        subpatterns: []
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+                                                                                        ]
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        guard: None
+                                                                        body: 
+                                                                            Expr {
+                                                                                ty: bool
+                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(14)), backwards_incompatible: None }
+                                                                                span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0)
+                                                                                kind: 
+                                                                                    Scope {
+                                                                                        region_scope: Node(15)
+                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).15))
+                                                                                        value:
+                                                                                            Expr {
+                                                                                                ty: bool
+                                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(14)), backwards_incompatible: None }
+                                                                                                span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0)
+                                                                                                kind: 
+                                                                                                    Literal( lit: Spanned { node: Bool(true), span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0) }, neg: false)
+
+                                                                                            }
+                                                                                    }
+                                                                            }
+                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).14))
+                                                                        scope: Node(14)
+                                                                        span: $DIR/thir-tree-match.rs:17:9: 17:40 (#0)
+                                                                    }
+                                                                    Arm {
+                                                                        pattern: 
+                                                                            Pat: {
+                                                                                ty: Foo
+                                                                                span: $DIR/thir-tree-match.rs:18:9: 18:23 (#0)
+                                                                                kind: PatKind {
+                                                                                    Variant {
+                                                                                        adt_def: 
+                                                                                            AdtDef {
+                                                                                                did: DefId(0:10 ~ thir_tree_match[fcf8]::Foo)
+                                                                                                variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[fcf8]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[fcf8]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[fcf8]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[fcf8])), safety: Safe, value: None }], tainted: None, flags:  }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[fcf8]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[fcf8]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], tainted: None, flags:  }]
+                                                                                                flags: IS_ENUM
+                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , field_shuffle_seed: 3477539199540094892 }
+                                                                                        args: []
+                                                                                        variant_index: 0
+                                                                                        subpatterns: [
+                                                                                            Pat: {
+                                                                                                ty: Bar
+                                                                                                span: $DIR/thir-tree-match.rs:18:21: 18:22 (#0)
+                                                                                                kind: PatKind {
+                                                                                                    Wild
+                                                                                                }
+                                                                                            }
+                                                                                        ]
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        guard: None
+                                                                        body: 
+                                                                            Expr {
+                                                                                ty: bool
+                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(20)), backwards_incompatible: None }
+                                                                                span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0)
+                                                                                kind: 
+                                                                                    Scope {
+                                                                                        region_scope: Node(21)
+                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).21))
+                                                                                        value:
+                                                                                            Expr {
+                                                                                                ty: bool
+                                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(20)), backwards_incompatible: None }
+                                                                                                span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0)
+                                                                                                kind: 
+                                                                                                    Literal( lit: Spanned { node: Bool(false), span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0) }, neg: false)
+
+                                                                                            }
+                                                                                    }
+                                                                            }
+                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).20))
+                                                                        scope: Node(20)
+                                                                        span: $DIR/thir-tree-match.rs:18:9: 18:32 (#0)
+                                                                    }
+                                                                    Arm {
+                                                                        pattern: 
+                                                                            Pat: {
+                                                                                ty: Foo
+                                                                                span: $DIR/thir-tree-match.rs:19:9: 19:20 (#0)
+                                                                                kind: PatKind {
+                                                                                    Variant {
+                                                                                        adt_def: 
+                                                                                            AdtDef {
+                                                                                                did: DefId(0:10 ~ thir_tree_match[fcf8]::Foo)
+                                                                                                variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[fcf8]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[fcf8]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[fcf8]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[fcf8])), safety: Safe, value: None }], tainted: None, flags:  }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[fcf8]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[fcf8]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], tainted: None, flags:  }]
+                                                                                                flags: IS_ENUM
+                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , field_shuffle_seed: 3477539199540094892 }
+                                                                                        args: []
+                                                                                        variant_index: 1
+                                                                                        subpatterns: []
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        guard: None
+                                                                        body: 
+                                                                            Expr {
+                                                                                ty: bool
+                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(26)), backwards_incompatible: None }
+                                                                                span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0)
+                                                                                kind: 
+                                                                                    Scope {
+                                                                                        region_scope: Node(27)
+                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).27))
+                                                                                        value:
+                                                                                            Expr {
+                                                                                                ty: bool
+                                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(26)), backwards_incompatible: None }
+                                                                                                span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0)
+                                                                                                kind: 
+                                                                                                    Literal( lit: Spanned { node: Bool(true), span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0) }, neg: false)
+
+                                                                                            }
+                                                                                    }
+                                                                            }
+                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).26))
+                                                                        scope: Node(26)
+                                                                        span: $DIR/thir-tree-match.rs:19:9: 19:28 (#0)
+                                                                    }
+                                                                ]
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(0:17 ~ thir_tree_match[fcf8]::main):
+params: [
+]
+body:
+    Expr {
+        ty: ()
+        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+        span: $DIR/thir-tree-match.rs:23:11: 23:13 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(2)
+                lint_level: Explicit(HirId(DefId(0:17 ~ thir_tree_match[fcf8]::main).2))
+                value:
+                    Expr {
+                        ty: ()
+                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+                        span: $DIR/thir-tree-match.rs:23:11: 23:13 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree-match.rs:23:11: 23:13 (#0)
+                                region_scope: Node(1)
+                                safety_mode: Safe
+                                stmts: []
+                                expr: []
+                            }
+                    }
+            }
+    }
+
+

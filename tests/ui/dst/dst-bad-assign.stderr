@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/dst-bad-assign.rs:37:14
+   |
+LL |     f5.ptr = Bar1 {f: 36};
+   |     ------   ^^^^^^^^^^^^ expected `dyn ToBar`, found `Bar1`
+   |     |
+   |     expected due to the type of this binding
+   |
+   = note: expected trait object `dyn ToBar`
+                    found struct `Bar1`
+   = help: `Bar1` implements `ToBar` so you could box the found value and coerce it to the trait object `Box<dyn ToBar>`, you will have to change the expected type as well
+
+error[E0277]: the size for values of type `dyn ToBar` cannot be known at compilation time
+  --> $DIR/dst-bad-assign.rs:37:5
+   |
+LL |     f5.ptr = Bar1 {f: 36};
+   |     ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn ToBar`
+   = note: the left-hand-side of an assignment must have a statically known size
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

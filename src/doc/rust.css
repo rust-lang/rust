@@ -1,0 +1,381 @@
+/* General structure */
+
+body {
+	font-family: serif;
+	margin: 0 auto;
+	padding: 0 15px;
+	font-size: 18px;
+	color: #000;
+	line-height: 1.428571429;
+
+	-webkit-box-sizing: unset;
+	-moz-box-sizing: unset;
+	box-sizing: unset;
+	background: #fff;
+}
+@media (min-width: 768px) {
+	body {
+		max-width: 750px;
+	}
+}
+
+h1, h2, h3, h4, h5, h6 {
+	font-family: sans-serif;
+}
+h2, h3, h4, h5, h6 {
+	font-weight: 400;
+	line-height: 1.1;
+}
+h1, h2, h3 {
+	margin-top: 20px;
+	margin-bottom: 15px;
+}
+h1 {
+	margin-bottom: 20px;
+	line-height: 1.1;
+}
+h4, h5, h6 {
+	margin-top: 12px;
+	margin-bottom: 10px;
+	padding: 5px 10px;
+}
+h5, h6 {
+	text-decoration: underline;
+}
+
+h1 {
+	font-size: 28px;
+	font-weight: 500;
+	padding: .1em .4em;
+	border-bottom: 2px solid #ddd;
+}
+h1.title {
+	line-height: 1.5em;
+}
+h2 {
+	font-size: 26px;
+	padding: .2em .5em;
+	border-bottom: 1px solid #ddd;
+}
+h3 {
+	font-size: 24px;
+	padding: .2em .7em;
+	border-bottom: 1px solid #DDE8FC;
+}
+h4 {
+	font-size: 22px;
+	border-bottom: none;
+}
+h5 {
+	font-size: 20px;
+}
+h6 {
+	font-size: 18px;
+}
+@media (min-width: 992px) {
+	h1 {
+		font-size: 36px;
+	}
+	h2 {
+		font-size: 30px;
+	}
+	h3 {
+		font-size: 26px;
+	}
+}
+
+nav {
+	column-count: 2;
+	-moz-column-count: 2;
+	-webkit-column-count: 2;
+	font-size: 15px;
+	margin: 0 0 1em 0;
+}
+p {
+	margin: 0 0 1em 0;
+}
+
+strong {
+	font-weight: bold;
+}
+
+em {
+	font-style: italic;
+}
+
+footer {
+	border-top: 1px solid #ddd;
+	font-size: 14px;
+	font-style: italic;
+	padding-top: 5px;
+	margin-top: 3em;
+	margin-bottom: 1em;
+}
+
+/* Links layout */
+
+a {
+	text-decoration: none;
+	color: #428BCA;
+	background: transparent;
+}
+a:hover, a:focus {
+	color: #2A6496;
+	text-decoration: underline;
+}
+a:focus {
+	outline: thin dotted #333;
+	outline: 5px auto -webkit-focus-ring-color;
+	outline-offset: -2px;
+}
+a:hover, a:active {
+	outline: 0;
+}
+
+h1 a:link, h1 a:visited, h2 a:link, h2 a:visited,
+h3 a:link, h3 a:visited, h4 a:link, h4 a:visited,
+h5 a:link, h5 a:visited {color: black;}
+
+h1, h2, h3, h4, h5 {
+	/* This is needed to be able to position the doc-anchor. Ideally there
+	   would be a <div> around the whole document, but we don't have that. */
+	position: relative;
+}
+
+a.doc-anchor {
+	color: black;
+	display: none;
+	position: absolute;
+	left: -20px;
+	/* We add this padding so that when the cursor moves from the heading's text to the anchor,
+	   the anchor doesn't disappear. */
+	padding-right: 5px;
+	/* And this padding is used to make the anchor larger and easier to click on. */
+	padding-left: 3px;
+}
+*:hover > .doc-anchor {
+	display: block;
+}
+
+
+/* Code */
+
+pre, code {
+	word-wrap: break-word;
+}
+pre {
+	border-left: 2px solid #eee;
+	white-space: pre-wrap;
+	padding-right: 0;
+	margin: 20px 0;
+	font-size: 15px;
+	word-break: break-all;
+}
+code {
+	padding: 0 2px;
+	color: #8D1A38;
+}
+pre code {
+	padding: 0;
+	font-size: inherit;
+	color: inherit;
+}
+
+a > code {
+	color: #428BCA;
+}
+
+.section-header > a > code {
+	color: #8D1A38;
+}
+
+#versioninfo {
+	text-align: center;
+	margin: 0.5em;
+	font-size: 1.1em;
+}
+@media (min-width: 992px) {
+	#versioninfo {
+		font-size: 0.8em;
+		position: fixed;
+		bottom: 0px;
+		right: 0px;
+	}
+	.white-sticker {
+		background-color: #fff;
+		margin: 2px;
+		padding: 0 2px;
+		border-radius: .2em;
+	}
+}
+#versioninfo a.hash {
+	color: gray;
+	font-size: 80%;
+}
+
+blockquote {
+	color: #000;
+	margin: 20px 0;
+	padding: 15px 20px;
+	background-color: #f2f7f9;
+	border-top: .1em solid #e5eef2;
+	border-bottom: .1em solid #e5eef2;
+}
+blockquote p {
+	font-size: 17px;
+	font-weight: 300;
+	line-height: 1.4;
+}
+blockquote p:last-child {
+	margin-bottom: 0;
+}
+
+ul ul, ol ul, ul ol, ol ol {
+	margin-bottom: 0;
+}
+dl {
+	margin-bottom: 20px;
+}
+dd {
+	margin-left: 0;
+}
+
+nav ul {
+	list-style-type: none;
+	margin: 0;
+	padding-left: 0px;
+}
+
+/* Only display one level of hierarchy in the TOC */
+nav ul ul {
+	display: none;
+}
+
+sub,
+sup {
+	font-size: 75%;
+	line-height: 0;
+	position: relative;
+}
+
+hr {
+	margin-top: 20px;
+	margin-bottom: 20px;
+	border: 0;
+	border-top: 1px solid #eeeeee;
+}
+
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+	overflow-x: auto;
+	display: block;
+}
+
+table tr.odd {
+	background: #eee;
+}
+
+table td,
+table th {
+	border: 1px solid #ddd;
+	padding: 5px;
+}
+
+/* Code snippets */
+
+a.test-arrow {
+	color: #f5f5f5
+}
+
+.unstable-feature {
+	border: 2px solid red;
+	padding: 5px;
+}
+
+@media (min-width: 1170px) {
+	pre {
+		font-size: 15px;
+	}
+}
+
+@media print {
+	* {
+		text-shadow: none !important;
+		color: #000 !important;
+		background: transparent !important;
+		box-shadow: none !important;
+	}
+	a, a:visited {
+		text-decoration: underline;
+	}
+	p a[href]:after {
+		content: " (" attr(href) ")";
+	}
+	footer a[href]:after {
+		content: "";
+	}
+	a[href^="javascript:"]:after, a[href^="#"]:after {
+		content: "";
+	}
+	pre, blockquote {
+		border: 1px solid #999;
+		page-break-inside: avoid;
+	}
+	@page {
+		margin: 2cm .5cm;
+	}
+	h1:not(.title), h2, h3 {
+		border-bottom: 0px none;
+	}
+	p, h2, h3 {
+		orphans: 3;
+		widows: 3;
+	}
+	h2, h3 {
+		page-break-after: avoid;
+	}
+	table {
+		border-collapse: collapse !important;
+	}
+	table td, table th {
+		background-color: #fff !important;
+	}
+}
+
+#keyword-table-marker + table thead { display: none; }
+#keyword-table-marker + table td { border: none; }
+#keyword-table-marker + table {
+	margin-left: 2em;
+	margin-bottom: 1em;
+}
+
+.error-described {
+	position: relative;
+}
+
+.tooltip .tooltiptext {
+	width: 120px;
+	display: none;
+	text-align: center;
+	padding: 5px 3px;
+	border-radius: 6px;
+	margin-left: 5px;
+	top: -5px;
+	left: 105%;
+	z-index: 1;
+}
+
+.tooltip:hover .tooltiptext {
+	display: inline;
+}
+
+.tooltip .tooltiptext::after {
+	content: " ";
+	position: absolute;
+	top: 50%;
+	left: 13px;
+	margin-top: -5px;
+	border-width: 5px;
+	border-style: solid;
+}

@@ -1,0 +1,30 @@
+error: expected one of `)` or `,`, found `(`
+  --> $DIR/test2.rs:5:26
+   |
+LL |         struct S3(pub $t ());
+   |                         -^ expected one of `)` or `,`
+   |                         |
+   |                         help: missing `,`
+...
+LL |     define_struct! { (foo) }
+   |     ------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `define_struct` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0412]: cannot find type `foo` in this scope
+  --> $DIR/test2.rs:11:23
+   |
+LL |     define_struct! { (foo) }
+   |                       ^^^ not found in this scope
+
+error[E0412]: cannot find type `foo` in this scope
+  --> $DIR/test2.rs:11:23
+   |
+LL |     define_struct! { (foo) }
+   |                       ^^^ not found in this scope
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

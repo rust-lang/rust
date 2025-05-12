@@ -1,0 +1,68 @@
+name: Abi-cafe
+
+on:
+  - push
+  - pull_request
+
+permissions: {}
+
+jobs:
+  abi_cafe:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.os }}-${{ matrix.env.TARGET_TRIPLE }}
+      cancel-in-progress: true
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: ubuntu-latest
+            env:
+              TARGET_TRIPLE: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            env:
+              TARGET_TRIPLE: aarch64-unknown-linux-gnu
+          - os: macos-13
+            env:
+              TARGET_TRIPLE: x86_64-apple-darwin
+          - os: macos-latest
+            env:
+              TARGET_TRIPLE: aarch64-apple-darwin
+          - os: windows-latest
+            env:
+              TARGET_TRIPLE: x86_64-pc-windows-msvc
+          # FIXME Currently hangs. Re-enable once this is fixed or abi-cafe adds a timeout.
+          #- os: windows-latest
+          #  env:
+          #    TARGET_TRIPLE: x86_64-pc-windows-gnu
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: CPU features
+      if: matrix.os == 'ubuntu-latest'
+      run: cat /proc/cpuinfo
+
+    - name: Cache cargo target dir
+      uses: actions/cache@v4
+      with:
+        path: build/cg_clif
+        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+
+    - name: Set MinGW as the default toolchain
+      if: matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
+      run: rustup set default-host x86_64-pc-windows-gnu
+
+    - name: Build
+      run: ./y.sh build --sysroot none
+
+    - name: Test abi-cafe
+      env:
+        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
+      run: ./y.sh abi-cafe

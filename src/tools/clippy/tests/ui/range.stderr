@@ -1,0 +1,11 @@
+error: using `.zip()` with a range and `.len()`
+  --> tests/ui/range.rs:6:14
+   |
+LL |     let _x = v1.iter().zip(0..v1.len());
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `v1.iter().enumerate()`
+   |
+   = note: `-D clippy::range-zip-with-len` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::range_zip_with_len)]`
+
+error: aborting due to 1 previous error
+

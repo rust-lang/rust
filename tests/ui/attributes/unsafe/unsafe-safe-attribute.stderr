@@ -1,0 +1,10 @@
+error: `repr` is not an unsafe attribute
+  --> $DIR/unsafe-safe-attribute.rs:1:3
+   |
+LL | #[unsafe(repr(C))]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: aborting due to 1 previous error
+

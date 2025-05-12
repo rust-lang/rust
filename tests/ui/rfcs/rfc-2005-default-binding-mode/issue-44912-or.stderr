@@ -1,0 +1,9 @@
+error[E0409]: variable `x` is bound inconsistently across alternatives separated by `|`
+  --> $DIR/issue-44912-or.rs:6:35
+   |
+LL |         Some((x, 3)) | &Some((ref x, 5)) => x,
+   |               - first binding     ^ bound in different ways
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0409`.

@@ -1,0 +1,84 @@
+error: `Foo` has a similarly named generic type parameter `B` in its declaration, but in a different order
+  --> tests/ui/mismatching_type_param_order.rs:11:20
+   |
+LL |     impl<B, A> Foo<B, A> {}
+   |                    ^
+   |
+   = help: try `A`, or a name that does not conflict with `Foo`'s generic params
+   = note: `-D clippy::mismatching-type-param-order` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mismatching_type_param_order)]`
+
+error: `Foo` has a similarly named generic type parameter `A` in its declaration, but in a different order
+  --> tests/ui/mismatching_type_param_order.rs:11:23
+   |
+LL |     impl<B, A> Foo<B, A> {}
+   |                       ^
+   |
+   = help: try `B`, or a name that does not conflict with `Foo`'s generic params
+
+error: `Foo` has a similarly named generic type parameter `A` in its declaration, but in a different order
+  --> tests/ui/mismatching_type_param_order.rs:16:23
+   |
+LL |     impl<C, A> Foo<C, A> {}
+   |                       ^
+   |
+   = help: try `B`, or a name that does not conflict with `Foo`'s generic params
+
+error: `FooLifetime` has a similarly named generic type parameter `B` in its declaration, but in a different order
+  --> tests/ui/mismatching_type_param_order.rs:28:44
+   |
+LL |     impl<'m, 'l, B, A> FooLifetime<'m, 'l, B, A> {}
+   |                                            ^
+   |
+   = help: try `A`, or a name that does not conflict with `FooLifetime`'s generic params
+
+error: `FooLifetime` has a similarly named generic type parameter `A` in its declaration, but in a different order
+  --> tests/ui/mismatching_type_param_order.rs:28:47
+   |
+LL |     impl<'m, 'l, B, A> FooLifetime<'m, 'l, B, A> {}
+   |                                               ^
+   |
+   = help: try `B`, or a name that does not conflict with `FooLifetime`'s generic params
+
+error: `FooEnum` has a similarly named generic type parameter `C` in its declaration, but in a different order
+  --> tests/ui/mismatching_type_param_order.rs:46:27
+   |
+LL |     impl<C, A, B> FooEnum<C, A, B> {}
+   |                           ^
+   |
+   = help: try `A`, or a name that does not conflict with `FooEnum`'s generic params
+
+error: `FooEnum` has a similarly named generic type parameter `A` in its declaration, but in a different order
+  --> tests/ui/mismatching_type_param_order.rs:46:30
+   |
+LL |     impl<C, A, B> FooEnum<C, A, B> {}
+   |                              ^
+   |
+   = help: try `B`, or a name that does not conflict with `FooEnum`'s generic params
+
+error: `FooEnum` has a similarly named generic type parameter `B` in its declaration, but in a different order
+  --> tests/ui/mismatching_type_param_order.rs:46:33
+   |
+LL |     impl<C, A, B> FooEnum<C, A, B> {}
+   |                                 ^
+   |
+   = help: try `C`, or a name that does not conflict with `FooEnum`'s generic params
+
+error: `FooUnion` has a similarly named generic type parameter `B` in its declaration, but in a different order
+  --> tests/ui/mismatching_type_param_order.rs:60:31
+   |
+LL |     impl<B: Copy, A> FooUnion<B, A> where A: Copy {}
+   |                               ^
+   |
+   = help: try `A`, or a name that does not conflict with `FooUnion`'s generic params
+
+error: `FooUnion` has a similarly named generic type parameter `A` in its declaration, but in a different order
+  --> tests/ui/mismatching_type_param_order.rs:60:34
+   |
+LL |     impl<B: Copy, A> FooUnion<B, A> where A: Copy {}
+   |                                  ^
+   |
+   = help: try `B`, or a name that does not conflict with `FooUnion`'s generic params
+
+error: aborting due to 10 previous errors
+

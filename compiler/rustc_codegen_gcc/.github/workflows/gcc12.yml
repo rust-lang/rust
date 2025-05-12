@@ -1,0 +1,108 @@
+name: CI libgccjit 12
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # Enable backtraces for easier debugging
+  RUST_BACKTRACE: 1
+  TEST_FLAGS: "-Cpanic=abort -Zpanic-abort-tests"
+  # FIXME(antoyo): we need to set GCC_EXEC_PREFIX so that the linker can find the linker plugin.
+  # Not sure why it's not found otherwise.
+  GCC_EXEC_PREFIX: /usr/lib/gcc/
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        commands: [
+          "--mini-tests",
+          "--std-tests",
+          # FIXME: re-enable asm tests when GCC can emit in the right syntax.
+          # "--asm-tests",
+          "--test-libcore",
+          "--test-successful-rustc --nb-parts 2 --current-part 0",
+          "--test-successful-rustc --nb-parts 2 --current-part 1",
+        ]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # `rustup show` installs from rust-toolchain.toml
+    - name: Setup rust toolchain
+      run: rustup show
+
+    - name: Setup rust cache
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install packages
+      # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
+      run: sudo apt-get install ninja-build ripgrep llvm-14-tools libgccjit-12-dev
+
+    - name: Setup path to libgccjit
+      run: echo 'gcc-path = "/usr/lib/gcc/x86_64-linux-gnu/12"' > config.toml
+
+    - name: Set env
+      run: |
+        echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
+        echo "LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
+
+    #- name: Cache rust repository
+      ## We only clone the rust repository for rustc tests
+      #if: ${{ contains(matrix.commands, 'rustc') }}
+      #uses: actions/cache@v3
+      #id: cache-rust-repository
+      #with:
+        #path: rust
+        #key: ${{ runner.os }}-packages-${{ hashFiles('rust/.git/HEAD') }}
+
+    - name: Build
+      run: |
+        ./y.sh prepare --only-libcore --libgccjit12-patches
+        ./y.sh build --no-default-features --sysroot-panic-abort
+        # Uncomment when we no longer need to remove global variables.
+        #./y.sh build --sysroot --no-default-features --sysroot-panic-abort
+        #cargo test --no-default-features
+        #./y.sh clean all
+
+    #- name: Prepare dependencies
+      #run: |
+        #git config --global user.email "user@example.com"
+        #git config --global user.name "User"
+        #./y.sh prepare --libgccjit12-patches
+
+    #- name: Add more failing tests for GCC 12
+      #run: cat tests/failing-ui-tests12.txt >> tests/failing-ui-tests.txt
+
+    #- name: Run tests
+      #run: |
+        #./y.sh test --release --clean --build-sysroot ${{ matrix.commands }} --no-default-features
+
+  # Summary job for the merge queue.
+  # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+  success_gcc12:
+    needs: [build]
+    # We need to ensure this job does *not* get skipped if its dependencies fail,
+    # because a skipped job is considered a success by GitHub. So we have to
+    # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
+    # when the workflow is canceled manually.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      # Manually check the status of all dependencies. `if: failure()` does not work.
+      - name: Conclusion
+        run: |
+          # Print the dependent jobs to see them in the CI log
+          jq -C <<< '${{ toJson(needs) }}'
+          # Check if all jobs that we depend on (in the needs array) were successful.
+          jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'

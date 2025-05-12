@@ -1,0 +1,48 @@
+error[E0075]: SIMD vector cannot be empty
+  --> $DIR/type-len.rs:5:1
+   |
+LL | struct empty;
+   | ^^^^^^^^^^^^
+
+error[E0075]: SIMD vector cannot be empty
+  --> $DIR/type-len.rs:8:1
+   |
+LL | struct empty2([f32; 0]);
+   | ^^^^^^^^^^^^^
+
+error[E0076]: SIMD vector's only field must be an array
+  --> $DIR/type-len.rs:14:1
+   |
+LL | struct i64f64(i64, f64);
+   | ^^^^^^^^^^^^^ --- not an array
+
+error[E0076]: SIMD vector's only field must be an array
+  --> $DIR/type-len.rs:19:1
+   |
+LL | struct FooV(Foo, Foo);
+   | ^^^^^^^^^^^ --- not an array
+
+error[E0077]: SIMD vector element type should be a primitive scalar (integer/float/pointer) type
+  --> $DIR/type-len.rs:22:1
+   |
+LL | struct FooV2([Foo; 2]);
+   | ^^^^^^^^^^^^
+
+error[E0075]: SIMD vector cannot have more than 32768 elements
+  --> $DIR/type-len.rs:25:1
+   |
+LL | struct TooBig([f32; 65536]);
+   | ^^^^^^^^^^^^^
+
+error[E0076]: SIMD vector's only field must be an array
+  --> $DIR/type-len.rs:31:1
+   |
+LL | struct RGBA {
+   | ^^^^^^^^^^^
+LL |     r: f32,
+   |     ------ not an array
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0075, E0076, E0077.
+For more information about an error, try `rustc --explain E0075`.

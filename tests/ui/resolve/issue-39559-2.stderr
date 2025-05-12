@@ -1,0 +1,19 @@
+error[E0015]: cannot call non-const associated function `<Dim3 as Dim>::dim` in constants
+  --> $DIR/issue-39559-2.rs:14:24
+   |
+LL |     let array: [usize; Dim3::dim()]
+   |                        ^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot call non-const associated function `<Dim3 as Dim>::dim` in constants
+  --> $DIR/issue-39559-2.rs:16:15
+   |
+LL |         = [0; Dim3::dim()];
+   |               ^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

@@ -1,0 +1,41 @@
+error[E0277]: `&'a (dyn Dummy + 'a)` cannot be sent between threads safely
+  --> $DIR/kindck-send-object1.rs:10:19
+   |
+LL |     assert_send::<&'a dyn Dummy>();
+   |                   ^^^^^^^^^^^^^ `&'a (dyn Dummy + 'a)` cannot be sent between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `(dyn Dummy + 'a)`
+   = note: required for `&'a (dyn Dummy + 'a)` to implement `Send`
+note: required by a bound in `assert_send`
+  --> $DIR/kindck-send-object1.rs:5:18
+   |
+LL | fn assert_send<T:Send+'static>() { }
+   |                  ^^^^ required by this bound in `assert_send`
+
+error[E0277]: `(dyn Dummy + 'a)` cannot be sent between threads safely
+  --> $DIR/kindck-send-object1.rs:29:19
+   |
+LL |     assert_send::<Box<dyn Dummy + 'a>>();
+   |                   ^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be sent between threads safely
+   |
+   = help: the trait `Send` is not implemented for `(dyn Dummy + 'a)`
+   = note: required for `Unique<(dyn Dummy + 'a)>` to implement `Send`
+note: required because it appears within the type `Box<(dyn Dummy + 'a)>`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+note: required by a bound in `assert_send`
+  --> $DIR/kindck-send-object1.rs:5:18
+   |
+LL | fn assert_send<T:Send+'static>() { }
+   |                  ^^^^ required by this bound in `assert_send`
+
+error: lifetime may not live long enough
+  --> $DIR/kindck-send-object1.rs:14:5
+   |
+LL | fn test52<'a>() {
+   |           -- lifetime `'a` defined here
+LL |     assert_send::<&'a (dyn Dummy + Sync)>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

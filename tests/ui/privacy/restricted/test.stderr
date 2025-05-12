@@ -1,0 +1,115 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `bad`
+  --> $DIR/test.rs:50:12
+   |
+LL |     pub(in bad::path) mod m1 {}
+   |            ^^^ use of unresolved module or unlinked crate `bad`
+   |
+help: you might be missing a crate named `bad`, add it to your project and import it in your code
+   |
+LL + extern crate bad;
+   |
+
+error[E0742]: visibilities can only be restricted to ancestor modules
+  --> $DIR/test.rs:51:12
+   |
+LL |     pub(in foo) mod m2 {}
+   |            ^^^
+
+error[E0364]: `f` is private, and cannot be re-exported
+  --> $DIR/test.rs:21:24
+   |
+LL |         pub(super) use foo::bar::f as g;
+   |                        ^^^^^^^^^^^^^^^^
+   |
+note: consider marking `f` as `pub` in the imported module
+  --> $DIR/test.rs:21:24
+   |
+LL |         pub(super) use foo::bar::f as g;
+   |                        ^^^^^^^^^^^^^^^^
+
+error[E0603]: struct `Crate` is private
+  --> $DIR/test.rs:38:25
+   |
+LL |     use pub_restricted::Crate;
+   |                         ^^^^^ private struct
+   |
+note: the struct `Crate` is defined here
+  --> $DIR/auxiliary/pub_restricted.rs:1:1
+   |
+LL | pub(crate) struct Crate;
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0603]: function `f` is private
+  --> $DIR/test.rs:30:19
+   |
+LL |     use foo::bar::f;
+   |                   ^ private function
+   |
+note: the function `f` is defined here
+  --> $DIR/test.rs:8:9
+   |
+LL |         pub(super) fn f() {}
+   |         ^^^^^^^^^^^^^^^^^
+
+error[E0616]: field `x` of struct `S` is private
+  --> $DIR/test.rs:31:18
+   |
+LL |     S::default().x;
+   |                  ^ private field
+
+error[E0624]: method `f` is private
+  --> $DIR/test.rs:32:18
+   |
+LL |             pub(super) fn f(&self) {}
+   |             ---------------------- private method defined here
+...
+LL |     S::default().f();
+   |                  ^ private method
+
+error[E0624]: associated function `g` is private
+  --> $DIR/test.rs:33:8
+   |
+LL |             pub(super) fn g() {}
+   |             ----------------- private associated function defined here
+...
+LL |     S::g();
+   |        ^ private associated function
+
+error[E0616]: field `y` of struct `Universe` is private
+  --> $DIR/test.rs:42:15
+   |
+LL |     let _ = u.y;
+   |               ^ private field
+
+error[E0616]: field `z` of struct `Universe` is private
+  --> $DIR/test.rs:43:15
+   |
+LL |     let _ = u.z;
+   |               ^ private field
+
+error[E0624]: method `g` is private
+  --> $DIR/test.rs:45:7
+   |
+LL |     u.g();
+   |       ^ private method
+   |
+  ::: $DIR/auxiliary/pub_restricted.rs:12:5
+   |
+LL |     pub(crate) fn g(&self) {}
+   |     ---------------------- private method defined here
+
+error[E0624]: method `h` is private
+  --> $DIR/test.rs:46:7
+   |
+LL |     u.h();
+   |       ^ private method
+   |
+  ::: $DIR/auxiliary/pub_restricted.rs:13:5
+   |
+LL |     pub(crate) fn h(&self) {}
+   |     ---------------------- private method defined here
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0364, E0433, E0603, E0616, E0624, E0742.
+For more information about an error, try `rustc --explain E0364`.

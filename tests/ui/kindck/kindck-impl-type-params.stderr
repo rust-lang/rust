@@ -1,0 +1,125 @@
+error[E0277]: `T` cannot be sent between threads safely
+  --> $DIR/kindck-impl-type-params.rs:16:13
+   |
+LL |     let a = &t as &dyn Gettable<T>;
+   |             ^^ `T` cannot be sent between threads safely
+   |
+note: required for `S<T>` to implement `Gettable<T>`
+  --> $DIR/kindck-impl-type-params.rs:12:32
+   |
+LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
+   |         ----                   ^^^^^^^^^^^     ^^^^
+   |         |
+   |         unsatisfied trait bound introduced here
+   = note: required for the cast from `&S<T>` to `&dyn Gettable<T>`
+help: consider restricting type parameter `T` with trait `Send`
+   |
+LL | fn f<T: std::marker::Send>(val: T) {
+   |       +++++++++++++++++++
+
+error[E0277]: the trait bound `T: Copy` is not satisfied
+  --> $DIR/kindck-impl-type-params.rs:16:13
+   |
+LL |     let a = &t as &dyn Gettable<T>;
+   |             ^^ the trait `Copy` is not implemented for `T`
+   |
+note: required for `S<T>` to implement `Gettable<T>`
+  --> $DIR/kindck-impl-type-params.rs:12:32
+   |
+LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
+   |                ----            ^^^^^^^^^^^     ^^^^
+   |                |
+   |                unsatisfied trait bound introduced here
+   = note: required for the cast from `&S<T>` to `&dyn Gettable<T>`
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | fn f<T: std::marker::Copy>(val: T) {
+   |       +++++++++++++++++++
+
+error[E0277]: `T` cannot be sent between threads safely
+  --> $DIR/kindck-impl-type-params.rs:23:31
+   |
+LL |     let a: &dyn Gettable<T> = &t;
+   |                               ^^ `T` cannot be sent between threads safely
+   |
+note: required for `S<T>` to implement `Gettable<T>`
+  --> $DIR/kindck-impl-type-params.rs:12:32
+   |
+LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
+   |         ----                   ^^^^^^^^^^^     ^^^^
+   |         |
+   |         unsatisfied trait bound introduced here
+   = note: required for the cast from `&S<T>` to `&dyn Gettable<T>`
+help: consider restricting type parameter `T` with trait `Send`
+   |
+LL | fn g<T: std::marker::Send>(val: T) {
+   |       +++++++++++++++++++
+
+error[E0277]: the trait bound `T: Copy` is not satisfied
+  --> $DIR/kindck-impl-type-params.rs:23:31
+   |
+LL |     let a: &dyn Gettable<T> = &t;
+   |                               ^^ the trait `Copy` is not implemented for `T`
+   |
+note: required for `S<T>` to implement `Gettable<T>`
+  --> $DIR/kindck-impl-type-params.rs:12:32
+   |
+LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
+   |                ----            ^^^^^^^^^^^     ^^^^
+   |                |
+   |                unsatisfied trait bound introduced here
+   = note: required for the cast from `&S<T>` to `&dyn Gettable<T>`
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | fn g<T: std::marker::Copy>(val: T) {
+   |       +++++++++++++++++++
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/kindck-impl-type-params.rs:36:13
+   |
+LL |     let a = t as Box<dyn Gettable<String>>;
+   |             ^ the trait `Copy` is not implemented for `String`
+   |
+   = help: the trait `Gettable<T>` is implemented for `S<T>`
+note: required for `S<String>` to implement `Gettable<String>`
+  --> $DIR/kindck-impl-type-params.rs:12:32
+   |
+LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
+   |                ----            ^^^^^^^^^^^     ^^^^
+   |                |
+   |                unsatisfied trait bound introduced here
+   = note: required for the cast from `Box<S<String>>` to `Box<dyn Gettable<String>>`
+
+error[E0277]: the trait bound `Foo: Copy` is not satisfied
+  --> $DIR/kindck-impl-type-params.rs:44:37
+   |
+LL |     let a: Box<dyn Gettable<Foo>> = t;
+   |                                     ^ the trait `Copy` is not implemented for `Foo`
+   |
+   = help: the trait `Gettable<T>` is implemented for `S<T>`
+note: required for `S<Foo>` to implement `Gettable<Foo>`
+  --> $DIR/kindck-impl-type-params.rs:12:32
+   |
+LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
+   |                ----            ^^^^^^^^^^^     ^^^^
+   |                |
+   |                unsatisfied trait bound introduced here
+   = note: required for the cast from `Box<S<Foo>>` to `Box<dyn Gettable<Foo>>`
+help: consider annotating `Foo` with `#[derive(Copy)]`
+   |
+LL +     #[derive(Copy)]
+LL |     struct Foo; // does not impl Copy
+   |
+
+error: lifetime may not live long enough
+  --> $DIR/kindck-impl-type-params.rs:30:13
+   |
+LL | fn foo<'a>() {
+   |        -- lifetime `'a` defined here
+LL |     let t: S<&'a isize> = S(marker::PhantomData);
+LL |     let a = &t as &dyn Gettable<&'a isize>;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cast requires that `'a` must outlive `'static`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

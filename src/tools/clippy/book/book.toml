@@ -1,0 +1,28 @@
+[book]
+authors = ["The Rust Clippy Developers"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Clippy Documentation"
+
+[rust]
+edition = "2024"
+
+[output.html]
+edit-url-template = "https://github.com/rust-lang/rust-clippy/edit/master/book/{path}"
+git-repository-url = "https://github.com/rust-lang/rust-clippy/tree/master/book"
+mathjax-support = true
+site-url = "/rust-clippy/"
+
+[output.html.playground]
+editable = true
+line-numbers = true
+
+[output.html.search]
+boost-hierarchy = 2
+boost-paragraph = 1
+boost-title = 2
+expand = true
+heading-split-level = 2
+limit-results = 20
+use-boolean-and = true

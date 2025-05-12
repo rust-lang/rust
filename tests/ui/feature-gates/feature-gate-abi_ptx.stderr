@@ -1,0 +1,73 @@
+error[E0658]: the extern "ptx-kernel" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_ptx.rs:10:8
+   |
+LL | extern "ptx-kernel" fn fu() {}
+   |        ^^^^^^^^^^^^
+   |
+   = note: see issue #38788 <https://github.com/rust-lang/rust/issues/38788> for more information
+   = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "ptx-kernel" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_ptx.rs:13:12
+   |
+LL |     extern "ptx-kernel" fn mu();
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #38788 <https://github.com/rust-lang/rust/issues/38788> for more information
+   = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "ptx-kernel" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_ptx.rs:14:12
+   |
+LL |     extern "ptx-kernel" fn dmu() {}
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #38788 <https://github.com/rust-lang/rust/issues/38788> for more information
+   = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "ptx-kernel" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_ptx.rs:19:12
+   |
+LL |     extern "ptx-kernel" fn mu() {}
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #38788 <https://github.com/rust-lang/rust/issues/38788> for more information
+   = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "ptx-kernel" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_ptx.rs:23:12
+   |
+LL |     extern "ptx-kernel" fn imu() {}
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #38788 <https://github.com/rust-lang/rust/issues/38788> for more information
+   = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "ptx-kernel" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_ptx.rs:26:19
+   |
+LL | type TAU = extern "ptx-kernel" fn();
+   |                   ^^^^^^^^^^^^
+   |
+   = note: see issue #38788 <https://github.com/rust-lang/rust/issues/38788> for more information
+   = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "ptx-kernel" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_ptx.rs:28:8
+   |
+LL | extern "ptx-kernel" {}
+   |        ^^^^^^^^^^^^
+   |
+   = note: see issue #38788 <https://github.com/rust-lang/rust/issues/38788> for more information
+   = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

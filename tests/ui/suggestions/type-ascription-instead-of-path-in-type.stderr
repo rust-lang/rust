@@ -1,0 +1,32 @@
+error[E0405]: cannot find trait `B` in this scope
+  --> $DIR/type-ascription-instead-of-path-in-type.rs:6:18
+   |
+LL |     let _: Vec<A:B> = A::B;
+   |                  ^ not found in this scope
+   |
+help: you might have meant to write a path instead of an associated type bound
+   |
+LL |     let _: Vec<A::B> = A::B;
+   |                  +
+
+error[E0107]: struct takes at least 1 generic argument but 0 generic arguments were supplied
+  --> $DIR/type-ascription-instead-of-path-in-type.rs:6:12
+   |
+LL |     let _: Vec<A:B> = A::B;
+   |            ^^^ expected at least 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL |     let _: Vec<T, A:B> = A::B;
+   |                ++
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/type-ascription-instead-of-path-in-type.rs:6:16
+   |
+LL |     let _: Vec<A:B> = A::B;
+   |                ^^^ associated item constraint not allowed here
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0229, E0405.
+For more information about an error, try `rustc --explain E0107`.

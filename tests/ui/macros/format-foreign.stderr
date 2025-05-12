@@ -1,0 +1,84 @@
+error: multiple unused formatting arguments
+  --> $DIR/format-foreign.rs:2:30
+   |
+LL |     println!("%.*3$s %s!\n", "Hello,", "World", 4);
+   |              --------------  ^^^^^^^^  ^^^^^^^  ^ argument never used
+   |              |               |         |
+   |              |               |         argument never used
+   |              |               argument never used
+   |              multiple missing formatting specifiers
+   |
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
+help: format specifiers use curly braces
+   |
+LL -     println!("%.*3$s %s!\n", "Hello,", "World", 4);
+LL +     println!("{:.2$} {}!\n", "Hello,", "World", 4);
+   |
+
+error: argument never used
+  --> $DIR/format-foreign.rs:3:29
+   |
+LL |     println!("%1$*2$.*3$f", 123.456);
+   |               -----------   ^^^^^^^ argument never used
+   |               |
+   |               help: format specifiers use curly braces: `{0:1$.2$}`
+   |
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
+
+error: multiple unused formatting arguments
+  --> $DIR/format-foreign.rs:6:7
+   |
+LL |       println!(r###"%.*3$s
+   |  ______________-
+LL | |         %s!\n
+LL | | "###, "Hello,", "World", 4);
+   | |    -  ^^^^^^^^  ^^^^^^^  ^ argument never used
+   | |    |  |         |
+   | |    |  |         argument never used
+   | |____|  argument never used
+   |      multiple missing formatting specifiers
+   |
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
+help: format specifiers use curly braces
+   |
+LL ~     println!(r###"{:.2$}
+LL ~         {}!\n
+   |
+
+error: argument never used
+  --> $DIR/format-foreign.rs:12:30
+   |
+LL |     println!("{} %f", "one", 2.0);
+   |              -------         ^^^ argument never used
+   |              |
+   |              formatting specifier missing
+
+error: named argument never used
+  --> $DIR/format-foreign.rs:14:39
+   |
+LL |     println!("Hi there, $NAME.", NAME="Tim");
+   |                         -----         ^^^^^ named argument never used
+   |                         |
+   |                         help: format specifiers use curly braces: `{NAME}`
+   |
+   = note: shell formatting is not supported; see the documentation for `std::fmt`
+
+error: multiple unused formatting arguments
+  --> $DIR/format-foreign.rs:15:32
+   |
+LL |     println!("$1 $0 $$ $NAME", 1, 2, NAME=3);
+   |              ----------------  ^  ^       ^ named argument never used
+   |              |                 |  |
+   |              |                 |  argument never used
+   |              |                 argument never used
+   |              multiple missing formatting specifiers
+   |
+   = note: shell formatting is not supported; see the documentation for `std::fmt`
+help: format specifiers use curly braces
+   |
+LL -     println!("$1 $0 $$ $NAME", 1, 2, NAME=3);
+LL +     println!("{1} {0} $$ {NAME}", 1, 2, NAME=3);
+   |
+
+error: aborting due to 6 previous errors
+

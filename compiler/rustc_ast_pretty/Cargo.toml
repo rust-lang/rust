@@ -1,0 +1,17 @@
+[package]
+name = "rustc_ast_pretty"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+itertools = "0.12"
+rustc_ast = { path = "../rustc_ast" }
+rustc_lexer = { path = "../rustc_lexer" }
+rustc_span = { path = "../rustc_span" }
+# tidy-alphabetical-end
+
+[dev-dependencies]
+# tidy-alphabetical-start
+thin-vec = "0.2.12"
+# tidy-alphabetical-end

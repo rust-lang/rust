@@ -1,0 +1,13 @@
+warning: unexpected `cfg` condition value: `invalid`
+  --> $DIR/check-cfg-test.rs:9:7
+   |
+LL | #[cfg(feature = "invalid")]
+   |       ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `test`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("invalid"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

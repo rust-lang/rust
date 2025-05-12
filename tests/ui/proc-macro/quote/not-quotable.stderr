@@ -1,0 +1,23 @@
+error[E0277]: the trait bound `Ipv4Addr: ToTokens` is not satisfied
+  --> $DIR/not-quotable.rs:11:13
+   |
+LL |     let _ = quote! { $ip };
+   |             ^^^^^^^^^^^^^^
+   |             |
+   |             the trait `ToTokens` is not implemented for `Ipv4Addr`
+   |             required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `ToTokens`:
+             &T
+             &mut T
+             Box<T>
+             CString
+             Cow<'_, T>
+             Option<T>
+             Rc<T>
+             bool
+           and 24 others
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

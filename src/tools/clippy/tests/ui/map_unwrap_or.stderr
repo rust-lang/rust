@@ -1,0 +1,203 @@
+error: called `map(<f>).unwrap_or(<a>)` on an `Option` value
+  --> tests/ui/map_unwrap_or.rs:17:13
+   |
+LL |       let _ = opt.map(|x| x + 1)
+   |  _____________^
+...  |
+LL | |         .unwrap_or(0);
+   | |_____________________^
+   |
+   = note: `-D clippy::map-unwrap-or` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_unwrap_or)]`
+help: use `map_or(<a>, <f>)` instead
+   |
+LL -     let _ = opt.map(|x| x + 1)
+LL +     let _ = opt.map_or(0, |x| x + 1);
+   |
+
+error: called `map(<f>).unwrap_or(<a>)` on an `Option` value
+  --> tests/ui/map_unwrap_or.rs:22:13
+   |
+LL |       let _ = opt.map(|x| {
+   |  _____________^
+LL | |
+LL | |         x + 1
+LL | |     }
+LL | |     ).unwrap_or(0);
+   | |__________________^
+   |
+help: use `map_or(<a>, <f>)` instead
+   |
+LL ~     let _ = opt.map_or(0, |x| {
+LL |
+LL |         x + 1
+LL |     }
+LL ~     );
+   |
+
+error: called `map(<f>).unwrap_or(<a>)` on an `Option` value
+  --> tests/ui/map_unwrap_or.rs:27:13
+   |
+LL |       let _ = opt.map(|x| x + 1)
+   |  _____________^
+LL | |
+LL | |         .unwrap_or({
+LL | |             0
+LL | |         });
+   | |__________^
+   |
+help: use `map_or(<a>, <f>)` instead
+   |
+LL ~     let _ = opt.map_or({
+LL +             0
+LL ~         }, |x| x + 1);
+   |
+
+error: called `map(<f>).unwrap_or(None)` on an `Option` value
+  --> tests/ui/map_unwrap_or.rs:33:13
+   |
+LL |     let _ = opt.map(|x| Some(x + 1)).unwrap_or(None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `and_then(<f>)` instead
+   |
+LL -     let _ = opt.map(|x| Some(x + 1)).unwrap_or(None);
+LL +     let _ = opt.and_then(|x| Some(x + 1));
+   |
+
+error: called `map(<f>).unwrap_or(None)` on an `Option` value
+  --> tests/ui/map_unwrap_or.rs:36:13
+   |
+LL |       let _ = opt.map(|x| {
+   |  _____________^
+LL | |
+LL | |         Some(x + 1)
+LL | |     }
+LL | |     ).unwrap_or(None);
+   | |_____________________^
+   |
+help: use `and_then(<f>)` instead
+   |
+LL ~     let _ = opt.and_then(|x| {
+LL |
+LL |         Some(x + 1)
+LL |     }
+LL ~     );
+   |
+
+error: called `map(<f>).unwrap_or(None)` on an `Option` value
+  --> tests/ui/map_unwrap_or.rs:41:13
+   |
+LL |       let _ = opt
+   |  _____________^
+LL | |
+LL | |         .map(|x| Some(x + 1))
+LL | |         .unwrap_or(None);
+   | |________________________^
+   |
+help: use `and_then(<f>)` instead
+   |
+LL -         .map(|x| Some(x + 1))
+LL +         .and_then(|x| Some(x + 1));
+   |
+
+error: called `map(<f>).unwrap_or(<a>)` on an `Option` value
+  --> tests/ui/map_unwrap_or.rs:53:13
+   |
+LL |     let _ = Some("prefix").map(|p| format!("{}.", p)).unwrap_or(id);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `map_or(<a>, <f>)` instead
+   |
+LL -     let _ = Some("prefix").map(|p| format!("{}.", p)).unwrap_or(id);
+LL +     let _ = Some("prefix").map_or(id, |p| format!("{}.", p));
+   |
+
+error: called `map(<f>).unwrap_or_else(<g>)` on an `Option` value
+  --> tests/ui/map_unwrap_or.rs:58:13
+   |
+LL |       let _ = opt.map(|x| {
+   |  _____________^
+LL | |
+LL | |         x + 1
+LL | |     }
+LL | |     ).unwrap_or_else(|| 0);
+   | |__________________________^
+
+error: called `map(<f>).unwrap_or_else(<g>)` on an `Option` value
+  --> tests/ui/map_unwrap_or.rs:63:13
+   |
+LL |       let _ = opt.map(|x| x + 1)
+   |  _____________^
+LL | |
+LL | |         .unwrap_or_else(||
+LL | |             0
+LL | |         );
+   | |_________^
+
+error: called `map(<f>).unwrap_or(false)` on an `Option` value
+  --> tests/ui/map_unwrap_or.rs:70:13
+   |
+LL |     let _ = opt.map(|x| x > 5).unwrap_or(false);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `is_some_and(<f>)` instead
+   |
+LL -     let _ = opt.map(|x| x > 5).unwrap_or(false);
+LL +     let _ = opt.is_some_and(|x| x > 5);
+   |
+
+error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value
+  --> tests/ui/map_unwrap_or.rs:81:13
+   |
+LL |       let _ = res.map(|x| {
+   |  _____________^
+LL | |
+LL | |         x + 1
+LL | |     }
+LL | |     ).unwrap_or_else(|_e| 0);
+   | |____________________________^
+
+error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value
+  --> tests/ui/map_unwrap_or.rs:86:13
+   |
+LL |       let _ = res.map(|x| x + 1)
+   |  _____________^
+LL | |
+LL | |         .unwrap_or_else(|_e| {
+LL | |             0
+LL | |         });
+   | |__________^
+
+error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value
+  --> tests/ui/map_unwrap_or.rs:111:13
+   |
+LL |     let _ = res.map(|x| x + 1).unwrap_or_else(|_e| 0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `res.map_or_else(|_e| 0, |x| x + 1)`
+
+error: called `map(<f>).unwrap_or(<a>)` on an `Option` value
+  --> tests/ui/map_unwrap_or.rs:119:13
+   |
+LL |     let _ = opt.map(|x| x > 5).unwrap_or(false);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `map_or(<a>, <f>)` instead
+   |
+LL -     let _ = opt.map(|x| x > 5).unwrap_or(false);
+LL +     let _ = opt.map_or(false, |x| x > 5);
+   |
+
+error: called `map(<f>).unwrap_or(false)` on an `Option` value
+  --> tests/ui/map_unwrap_or.rs:127:13
+   |
+LL |     let _ = opt.map(|x| x > 5).unwrap_or(false);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `is_some_and(<f>)` instead
+   |
+LL -     let _ = opt.map(|x| x > 5).unwrap_or(false);
+LL +     let _ = opt.is_some_and(|x| x > 5);
+   |
+
+error: aborting due to 15 previous errors
+

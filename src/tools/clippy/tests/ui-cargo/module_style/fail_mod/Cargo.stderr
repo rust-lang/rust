@@ -1,0 +1,19 @@
+error: `mod.rs` files are required, found `src/bad/inner.rs`
+ --> src/bad/inner.rs:1:1
+  |
+1 | pub mod stuff;
+  | ^
+  |
+  = help: move `src/bad/inner.rs` to `src/bad/inner/mod.rs`
+  = note: `-D clippy::self-named-module-files` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::self_named_module_files)]`
+
+error: `mod.rs` files are required, found `src/bad/inner/stuff.rs`
+ --> src/bad/inner/stuff.rs:1:1
+  |
+1 | pub mod most;
+  | ^
+  |
+  = help: move `src/bad/inner/stuff.rs` to `src/bad/inner/stuff/mod.rs`
+
+error: could not compile `fail-mod` (bin "fail-mod") due to 2 previous errors

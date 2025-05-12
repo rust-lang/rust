@@ -1,0 +1,98 @@
+error: unicode escape in byte string
+  --> $DIR/issue-23620-invalid-escapes.rs:2:15
+   |
+LL |     let _ = b"\u{a66e}";
+   |               ^^^^^^^^ unicode escape in byte string
+   |
+   = help: unicode escape sequences cannot be used as a byte or in a byte string
+
+error: unicode escape in byte string
+  --> $DIR/issue-23620-invalid-escapes.rs:5:15
+   |
+LL |     let _ = b'\u{a66e}';
+   |               ^^^^^^^^ unicode escape in byte string
+   |
+   = help: unicode escape sequences cannot be used as a byte or in a byte string
+
+error: incorrect unicode escape sequence
+  --> $DIR/issue-23620-invalid-escapes.rs:8:15
+   |
+LL |     let _ = b'\u';
+   |               ^^ incorrect unicode escape sequence
+   |
+   = help: format of unicode escape sequences is `\u{...}`
+
+error: numeric character escape is too short
+  --> $DIR/issue-23620-invalid-escapes.rs:11:15
+   |
+LL |     let _ = b'\x5';
+   |               ^^^
+
+error: invalid character in numeric character escape: `x`
+  --> $DIR/issue-23620-invalid-escapes.rs:14:17
+   |
+LL |     let _ = b'\xxy';
+   |                 ^ invalid character in numeric character escape
+
+error: numeric character escape is too short
+  --> $DIR/issue-23620-invalid-escapes.rs:17:14
+   |
+LL |     let _ = '\x5';
+   |              ^^^
+
+error: invalid character in numeric character escape: `x`
+  --> $DIR/issue-23620-invalid-escapes.rs:20:16
+   |
+LL |     let _ = '\xxy';
+   |                ^ invalid character in numeric character escape
+
+error: unicode escape in byte string
+  --> $DIR/issue-23620-invalid-escapes.rs:23:15
+   |
+LL |     let _ = b"\u{a4a4} \xf \u";
+   |               ^^^^^^^^ unicode escape in byte string
+   |
+   = help: unicode escape sequences cannot be used as a byte or in a byte string
+
+error: invalid character in numeric character escape: ` `
+  --> $DIR/issue-23620-invalid-escapes.rs:23:27
+   |
+LL |     let _ = b"\u{a4a4} \xf \u";
+   |                           ^ invalid character in numeric character escape
+
+error: incorrect unicode escape sequence
+  --> $DIR/issue-23620-invalid-escapes.rs:23:28
+   |
+LL |     let _ = b"\u{a4a4} \xf \u";
+   |                            ^^ incorrect unicode escape sequence
+   |
+   = help: format of unicode escape sequences is `\u{...}`
+
+error: invalid character in numeric character escape: ` `
+  --> $DIR/issue-23620-invalid-escapes.rs:28:17
+   |
+LL |     let _ = "\xf \u";
+   |                 ^ invalid character in numeric character escape
+
+error: incorrect unicode escape sequence
+  --> $DIR/issue-23620-invalid-escapes.rs:28:18
+   |
+LL |     let _ = "\xf \u";
+   |                  ^^ incorrect unicode escape sequence
+   |
+   = help: format of unicode escape sequences is `\u{...}`
+
+error: incorrect unicode escape sequence
+  --> $DIR/issue-23620-invalid-escapes.rs:32:14
+   |
+LL |     let _ = "\u8f";
+   |              ^^^
+   |
+help: format of unicode escape sequences uses braces
+   |
+LL -     let _ = "\u8f";
+LL +     let _ = "\u{8f}";
+   |
+
+error: aborting due to 13 previous errors
+

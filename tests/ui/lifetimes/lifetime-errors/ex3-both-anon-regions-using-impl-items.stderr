@@ -1,0 +1,20 @@
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-using-impl-items.rs:6:9
+   |
+LL |     fn foo(x: &mut Vec<&u8>, y: &u8) {
+   |                        -        - let's call the lifetime of this reference `'1`
+   |                        |
+   |                        let's call the lifetime of this reference `'2`
+LL |         x.push(y);
+   |         ^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of a mutable reference to `Vec<&u8>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) {
+   |           ++++              ++          ++
+
+error: aborting due to 1 previous error
+

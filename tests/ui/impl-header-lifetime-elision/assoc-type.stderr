@@ -1,0 +1,15 @@
+error: in the trait associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+  --> $DIR/assoc-type.rs:11:19
+   |
+LL |     type Output = &i32;
+   |                   ^ this lifetime must come from the implemented type
+
+error[E0637]: `'_` cannot be used here
+  --> $DIR/assoc-type.rs:16:20
+   |
+LL |     type Output = &'_ i32;
+   |                    ^^ `'_` is a reserved lifetime name
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0637`.

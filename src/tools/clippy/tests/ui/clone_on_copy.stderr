@@ -1,0 +1,59 @@
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:23:5
+   |
+LL |     42.clone();
+   |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
+   |
+   = note: `-D clippy::clone-on-copy` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::clone_on_copy)]`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:28:5
+   |
+LL |     (&42).clone();
+   |     ^^^^^^^^^^^^^ help: try dereferencing it: `*(&42)`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:32:5
+   |
+LL |     rc.borrow().clone();
+   |     ^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `*rc.borrow()`
+
+error: using `clone` on type `u32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:36:5
+   |
+LL |     x.clone().rotate_left(1);
+   |     ^^^^^^^^^ help: try removing the `clone` call: `x`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:51:5
+   |
+LL |     m!(42).clone();
+   |     ^^^^^^^^^^^^^^ help: try removing the `clone` call: `m!(42)`
+
+error: using `clone` on type `[u32; 2]` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:62:5
+   |
+LL |     x.clone()[0];
+   |     ^^^^^^^^^ help: try dereferencing it: `(*x)`
+
+error: using `clone` on type `char` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:73:14
+   |
+LL |     is_ascii('z'.clone());
+   |              ^^^^^^^^^^^ help: try removing the `clone` call: `'z'`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:78:14
+   |
+LL |     vec.push(42.clone());
+   |              ^^^^^^^^^^ help: try removing the `clone` call: `42`
+
+error: using `clone` on type `Option<i32>` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:83:17
+   |
+LL |     let value = opt.clone()?; // operator precedence needed (*opt)?
+   |                 ^^^^^^^^^^^ help: try dereferencing it: `(*opt)`
+
+error: aborting due to 9 previous errors
+

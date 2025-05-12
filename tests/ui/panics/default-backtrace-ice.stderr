@@ -1,0 +1,28 @@
+error: internal compiler error[E0425]: cannot find value `missing_ident` in this scope
+  --> $DIR/default-backtrace-ice.rs:20:13
+   |
+LL | fn main() { missing_ident; }
+   |             ^^^^^^^^^^^^^ not found in this scope
+
+
+
+aborting due to `-Z treat-err-as-bug=1`
+stack backtrace:
+(end_short_backtrace)
+(begin_short_backtrace)
+(end_short_backtrace)
+(begin_short_backtrace)
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+
+
+
+
+
+
+
+
+query stack during panic:
+#0 [resolver_for_lowering_raw] getting the resolver for lowering
+end of query stack

@@ -1,0 +1,120 @@
+warning: calls to `std::mem::forget` with a value that implements `Copy` does nothing
+  --> $DIR/forgetting_copy_types.rs:34:5
+   |
+LL |     forget(s1);
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `SomeStruct`
+   |
+note: the lint level is defined here
+  --> $DIR/forgetting_copy_types.rs:3:9
+   |
+LL | #![warn(forgetting_copy_types)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(s1);
+LL +     let _ = s1;
+   |
+
+warning: calls to `std::mem::forget` with a value that implements `Copy` does nothing
+  --> $DIR/forgetting_copy_types.rs:35:5
+   |
+LL |     forget(s2);
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(s2);
+LL +     let _ = s2;
+   |
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_copy_types.rs:36:5
+   |
+LL |     forget(s3);
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `&SomeStruct`
+   |
+   = note: `#[warn(forgetting_references)]` on by default
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(s3);
+LL +     let _ = s3;
+   |
+
+warning: calls to `std::mem::forget` with a value that implements `Copy` does nothing
+  --> $DIR/forgetting_copy_types.rs:37:5
+   |
+LL |     forget(s4);
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(s4);
+LL +     let _ = s4;
+   |
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_copy_types.rs:38:5
+   |
+LL |     forget(s5);
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(s5);
+LL +     let _ = s5;
+   |
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_copy_types.rs:50:5
+   |
+LL |     forget(a2);
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `&AnotherStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(a2);
+LL +     let _ = a2;
+   |
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_copy_types.rs:52:5
+   |
+LL |     forget(a3);
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `&AnotherStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(a3);
+LL +     let _ = a3;
+   |
+
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_copy_types.rs:53:5
+   |
+LL |     forget(a4);
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `&AnotherStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(a4);
+LL +     let _ = a4;
+   |
+
+warning: 8 warnings emitted
+

@@ -1,0 +1,45 @@
+error[E0284]: type annotations needed
+  --> $DIR/issue-69683.rs:30:10
+   |
+LL |     0u16.foo(b);
+   |          ^^^
+   |
+   = note: cannot satisfy `<u8 as Element<_>>::Array == [u8; 3]`
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     0u16.foo(b);
+LL +     <u16 as Foo<I>>::foo(0u16, b);
+   |
+
+error[E0283]: type annotations needed
+  --> $DIR/issue-69683.rs:30:10
+   |
+LL |     0u16.foo(b);
+   |          ^^^
+   |
+note: multiple `impl`s satisfying `u8: Element<_>` found
+  --> $DIR/issue-69683.rs:5:1
+   |
+LL | impl<T> Element<()> for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl<T: Element<S>, S> Element<[S; 3]> for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `Foo::foo`
+  --> $DIR/issue-69683.rs:15:9
+   |
+LL |     u8: Element<I>,
+   |         ^^^^^^^^^^ required by this bound in `Foo::foo`
+LL | {
+LL |     fn foo(self, x: <u8 as Element<I>>::Array);
+   |        --- required by a bound in this associated function
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     0u16.foo(b);
+LL +     <u16 as Foo<I>>::foo(0u16, b);
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0283, E0284.
+For more information about an error, try `rustc --explain E0283`.

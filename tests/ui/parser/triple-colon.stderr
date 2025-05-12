@@ -1,0 +1,146 @@
+error: path separator must be a double colon
+  --> $DIR/triple-colon.rs:5:7
+   |
+LL | use :::std::{cell as _};
+   |       ^
+   |
+help: use a double colon instead
+   |
+LL - use :::std::{cell as _};
+LL + use ::std::{cell as _};
+   |
+
+error: path separator must be a double colon
+  --> $DIR/triple-colon.rs:6:16
+   |
+LL | use std::cell:::*;
+   |                ^
+   |
+help: use a double colon instead
+   |
+LL - use std::cell:::*;
+LL + use std::cell::*;
+   |
+
+error: path separator must be a double colon
+  --> $DIR/triple-colon.rs:7:16
+   |
+LL | use std::cell:::Cell;
+   |                ^
+   |
+help: use a double colon instead
+   |
+LL - use std::cell:::Cell;
+LL + use std::cell::Cell;
+   |
+
+error: path separator must be a double colon
+  --> $DIR/triple-colon.rs:8:10
+   |
+LL | use std:::{cell as _};
+   |          ^
+   |
+help: use a double colon instead
+   |
+LL - use std:::{cell as _};
+LL + use std::{cell as _};
+   |
+
+error: path separator must be a double colon
+  --> $DIR/triple-colon.rs:11:11
+   |
+LL |     use :::{};
+   |           ^
+   |
+help: use a double colon instead
+   |
+LL -     use :::{};
+LL +     use ::{};
+   |
+
+error: path separator must be a double colon
+  --> $DIR/triple-colon.rs:12:11
+   |
+LL |     use :::*;
+   |           ^
+   |
+help: use a double colon instead
+   |
+LL -     use :::*;
+LL +     use ::*;
+   |
+
+error: path separator must be a double colon
+  --> $DIR/triple-colon.rs:16:14
+   |
+LL |     let c: :::std:::cell:::Cell:::<u8> = Cell:::<u8>:::new(0);
+   |              ^
+   |
+help: use a double colon instead
+   |
+LL -     let c: :::std:::cell:::Cell:::<u8> = Cell:::<u8>:::new(0);
+LL +     let c: ::std:::cell:::Cell:::<u8> = Cell:::<u8>:::new(0);
+   |
+
+error: path separator must be a double colon
+  --> $DIR/triple-colon.rs:16:20
+   |
+LL |     let c: :::std:::cell:::Cell:::<u8> = Cell:::<u8>:::new(0);
+   |                    ^
+   |
+help: use a double colon instead
+   |
+LL -     let c: :::std:::cell:::Cell:::<u8> = Cell:::<u8>:::new(0);
+LL +     let c: :::std::cell:::Cell:::<u8> = Cell:::<u8>:::new(0);
+   |
+
+error: path separator must be a double colon
+  --> $DIR/triple-colon.rs:16:27
+   |
+LL |     let c: :::std:::cell:::Cell:::<u8> = Cell:::<u8>:::new(0);
+   |                           ^
+   |
+help: use a double colon instead
+   |
+LL -     let c: :::std:::cell:::Cell:::<u8> = Cell:::<u8>:::new(0);
+LL +     let c: :::std:::cell::Cell:::<u8> = Cell:::<u8>:::new(0);
+   |
+
+error: path separator must be a double colon
+  --> $DIR/triple-colon.rs:16:34
+   |
+LL |     let c: :::std:::cell:::Cell:::<u8> = Cell:::<u8>:::new(0);
+   |                                  ^
+   |
+help: use a double colon instead
+   |
+LL -     let c: :::std:::cell:::Cell:::<u8> = Cell:::<u8>:::new(0);
+LL +     let c: :::std:::cell:::Cell::<u8> = Cell:::<u8>:::new(0);
+   |
+
+error: path separator must be a double colon
+  --> $DIR/triple-colon.rs:16:48
+   |
+LL |     let c: :::std:::cell:::Cell:::<u8> = Cell:::<u8>:::new(0);
+   |                                                ^
+   |
+help: use a double colon instead
+   |
+LL -     let c: :::std:::cell:::Cell:::<u8> = Cell:::<u8>:::new(0);
+LL +     let c: :::std:::cell:::Cell:::<u8> = Cell::<u8>:::new(0);
+   |
+
+error: path separator must be a double colon
+  --> $DIR/triple-colon.rs:16:55
+   |
+LL |     let c: :::std:::cell:::Cell:::<u8> = Cell:::<u8>:::new(0);
+   |                                                       ^
+   |
+help: use a double colon instead
+   |
+LL -     let c: :::std:::cell:::Cell:::<u8> = Cell:::<u8>:::new(0);
+LL +     let c: :::std:::cell:::Cell:::<u8> = Cell:::<u8>::new(0);
+   |
+
+error: aborting due to 12 previous errors
+

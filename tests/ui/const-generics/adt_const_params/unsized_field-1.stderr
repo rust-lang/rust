@@ -1,0 +1,30 @@
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/unsized_field-1.rs:8:10
+   |
+LL | #[derive(ConstParamTy, Eq, PartialEq)]
+   |          ^^^^^^^^^^^^
+LL |
+LL | struct A([u8]);
+   |          ---- this field does not implement `ConstParamTy_`
+
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/unsized_field-1.rs:12:10
+   |
+LL | #[derive(ConstParamTy, Eq, PartialEq)]
+   |          ^^^^^^^^^^^^
+LL |
+LL | struct B(&'static [u8]);
+   |          ------------- this field does not implement `ConstParamTy_`
+
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/unsized_field-1.rs:16:10
+   |
+LL | #[derive(ConstParamTy, Eq, PartialEq)]
+   |          ^^^^^^^^^^^^
+LL |
+LL | struct C(unsized_const_param::Foo);
+   |          ------------------------ this field does not implement `ConstParamTy_`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0204`.

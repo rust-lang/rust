@@ -1,0 +1,22 @@
+error[E0599]: no function or associated item named `contains` found for struct `Vec<_, _>` in the current scope
+  --> $DIR/deref-path-method.rs:3:10
+   |
+LL |     Vec::contains(&vec, &0);
+   |          ^^^^^^^^ function or associated item not found in `Vec<_, _>`
+   |
+note: if you're trying to build a new `Vec<_, _>` consider using one of the following associated functions:
+      Vec::<T>::new
+      Vec::<T>::with_capacity
+      Vec::<T>::try_with_capacity
+      Vec::<T>::from_raw_parts
+      and 6 others
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+help: the function `contains` is implemented on `[_]`
+   |
+LL -     Vec::contains(&vec, &0);
+LL +     <[_]>::contains(&vec, &0);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

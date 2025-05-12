@@ -1,0 +1,94 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/opaque-used-in-extraneous-argument.rs:5:39
+   |
+LL | fn frob() -> impl Fn<P, Output = T> + '_ {}
+   |                                       ^^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
+   |
+LL - fn frob() -> impl Fn<P, Output = T> + '_ {}
+LL + fn frob() -> impl Fn<P, Output = T> + 'static {}
+   |
+
+error[E0412]: cannot find type `P` in this scope
+  --> $DIR/opaque-used-in-extraneous-argument.rs:5:22
+   |
+LL | fn frob() -> impl Fn<P, Output = T> + '_ {}
+   |                      ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | fn frob<P>() -> impl Fn<P, Output = T> + '_ {}
+   |        +++
+
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/opaque-used-in-extraneous-argument.rs:5:34
+   |
+LL | fn frob() -> impl Fn<P, Output = T> + '_ {}
+   |                                  ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | fn frob<T>() -> impl Fn<P, Output = T> + '_ {}
+   |        +++
+
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
+  --> $DIR/opaque-used-in-extraneous-argument.rs:5:19
+   |
+LL | fn frob() -> impl Fn<P, Output = T> + '_ {}
+   |                   ^^^^^^^^^^^^^^^^^ help: use parenthetical notation instead: `Fn(P) -> T`
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
+  --> $DIR/opaque-used-in-extraneous-argument.rs:5:19
+   |
+LL | fn frob() -> impl Fn<P, Output = T> + '_ {}
+   |                   ^^^^^^^^^^^^^^^^^ help: use parenthetical notation instead: `Fn(P) -> T`
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/opaque-used-in-extraneous-argument.rs:17:20
+   |
+LL |     let old_path = frob("hello");
+   |                    ^^^^ ------- unexpected argument of type `&'static str`
+   |
+note: function defined here
+  --> $DIR/opaque-used-in-extraneous-argument.rs:5:4
+   |
+LL | fn frob() -> impl Fn<P, Output = T> + '_ {}
+   |    ^^^^
+help: remove the extra argument
+   |
+LL -     let old_path = frob("hello");
+LL +     let old_path = frob();
+   |
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/opaque-used-in-extraneous-argument.rs:20:5
+   |
+LL |     open_parent(&old_path)
+   |     ^^^^^^^^^^^ --------- unexpected argument of type `&impl Fn<{type error}> + FnOnce<{type error}, Output = {type error}> + '_`
+   |
+note: function defined here
+  --> $DIR/opaque-used-in-extraneous-argument.rs:12:4
+   |
+LL | fn open_parent<'path>() {
+   |    ^^^^^^^^^^^
+help: remove the extra argument
+   |
+LL -     open_parent(&old_path)
+LL +     open_parent()
+   |
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0061, E0106, E0412, E0658.
+For more information about an error, try `rustc --explain E0061`.

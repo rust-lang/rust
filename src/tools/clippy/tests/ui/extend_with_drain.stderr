@@ -1,0 +1,29 @@
+error: use of `extend` instead of `append` for adding the full range of a second vector
+  --> tests/ui/extend_with_drain.rs:8:5
+   |
+LL |     vec2.extend(vec1.drain(..));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec2.append(&mut vec1)`
+   |
+   = note: `-D clippy::extend-with-drain` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::extend_with_drain)]`
+
+error: use of `extend` instead of `append` for adding the full range of a second vector
+  --> tests/ui/extend_with_drain.rs:14:5
+   |
+LL |     vec4.extend(vec3.drain(..));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec4.append(&mut vec3)`
+
+error: use of `extend` instead of `append` for adding the full range of a second vector
+  --> tests/ui/extend_with_drain.rs:19:5
+   |
+LL |     vec11.extend(return_vector().drain(..));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec11.append(&mut return_vector())`
+
+error: use of `extend` instead of `append` for adding the full range of a second vector
+  --> tests/ui/extend_with_drain.rs:51:5
+   |
+LL |     y.extend(ref_x.drain(..));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `y.append(ref_x)`
+
+error: aborting due to 4 previous errors
+

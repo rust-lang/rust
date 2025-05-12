@@ -1,0 +1,28 @@
+error[E0277]: the trait bound `isize: HasState` is not satisfied
+  --> $DIR/issue-18611.rs:1:18
+   |
+LL | fn add_state(op: <isize as HasState>::State) {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `HasState` is not implemented for `isize`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-18611.rs:6:1
+   |
+LL | trait HasState {
+   | ^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `isize: HasState` is not satisfied
+  --> $DIR/issue-18611.rs:1:18
+   |
+LL | fn add_state(op: <isize as HasState>::State) {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `HasState` is not implemented for `isize`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-18611.rs:6:1
+   |
+LL | trait HasState {
+   | ^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,53 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/issue-102335-ty.rs:2:17
+   |
+LL |     type A: S<C<i32 = u32> = ()>; // Just one erroneous equality constraint
+   |                 ^^^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item binding
+   |
+LL -     type A: S<C<i32 = u32> = ()>; // Just one erroneous equality constraint
+LL +     type A: S<C = ()>; // Just one erroneous equality constraint
+   |
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/issue-102335-ty.rs:2:17
+   |
+LL |     type A: S<C<i32 = u32> = ()>; // Just one erroneous equality constraint
+   |                 ^^^^^^^^^ associated item constraint not allowed here
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider removing this associated item binding
+   |
+LL -     type A: S<C<i32 = u32> = ()>; // Just one erroneous equality constraint
+LL +     type A: S<C = ()>; // Just one erroneous equality constraint
+   |
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/issue-102335-ty.rs:8:17
+   |
+LL |     type A: S<C<i32 = u32, X = i32> = ()>; // More than one erroneous equality constraints
+   |                 ^^^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item binding
+   |
+LL -     type A: S<C<i32 = u32, X = i32> = ()>; // More than one erroneous equality constraints
+LL +     type A: S<C<X = i32> = ()>; // More than one erroneous equality constraints
+   |
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/issue-102335-ty.rs:8:17
+   |
+LL |     type A: S<C<i32 = u32, X = i32> = ()>; // More than one erroneous equality constraints
+   |                 ^^^^^^^^^ associated item constraint not allowed here
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider removing this associated item binding
+   |
+LL -     type A: S<C<i32 = u32, X = i32> = ()>; // More than one erroneous equality constraints
+LL +     type A: S<C<X = i32> = ()>; // More than one erroneous equality constraints
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0229`.

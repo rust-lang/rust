@@ -1,0 +1,35 @@
+error[E0005]: refutable pattern in local binding
+  --> $DIR/issue-106552.rs:2:9
+   |
+LL |     let 5 = 6;
+   |         ^ patterns `i32::MIN..=4_i32` and `6_i32..=i32::MAX` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |     if let 5 = 6 { todo!() };
+   |     ++           +++++++++++
+help: alternatively, you could prepend the pattern with an underscore to define a new named variable; identifiers cannot begin with digits
+   |
+LL |     let _5 = 6;
+   |         +
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/issue-106552.rs:5:9
+   |
+LL |     let x @ 5 = 6;
+   |         ^ patterns `i32::MIN..=4_i32` and `6_i32..=i32::MAX` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+help: you might want to use `let else` to handle the variants that aren't matched
+   |
+LL |     let x @ 5 = 6 else { todo!() };
+   |                   ++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0005`.

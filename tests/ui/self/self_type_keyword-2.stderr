@@ -1,0 +1,28 @@
+error[E0432]: unresolved import `self::Self`
+  --> $DIR/self_type_keyword-2.rs:1:5
+   |
+LL | use self::Self as Foo;
+   |     ^^^^^^^^^^^^^^^^^ no `Self` in the root
+
+error[E0531]: cannot find unit struct, unit variant or constant `Self` in this scope
+  --> $DIR/self_type_keyword-2.rs:4:9
+   |
+LL |     let Self = 5;
+   |         ^^^^ not found in this scope
+
+error[E0531]: cannot find unit struct, unit variant or constant `Self` in this scope
+  --> $DIR/self_type_keyword-2.rs:8:9
+   |
+LL |         Self => (),
+   |         ^^^^ not found in this scope
+
+error[E0531]: cannot find unit struct, unit variant or constant `Self` in this scope
+  --> $DIR/self_type_keyword-2.rs:10:18
+   |
+LL |         Foo { x: Self } => (),
+   |                  ^^^^ not found in this scope
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0432, E0531.
+For more information about an error, try `rustc --explain E0432`.

@@ -1,0 +1,63 @@
+error[E0658]: ergonomic clones are experimental
+  --> $DIR/feature-gate-ergonomic-clones.rs:5:7
+   |
+LL |     x.use
+   |       ^^^
+   |
+   = note: see issue #132290 <https://github.com/rust-lang/rust/issues/132290> for more information
+   = help: add `#![feature(ergonomic_clones)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ergonomic clones are experimental
+  --> $DIR/feature-gate-ergonomic-clones.rs:21:14
+   |
+LL |     let f2 = use || {
+   |              ^^^
+   |
+   = note: see issue #132290 <https://github.com/rust-lang/rust/issues/132290> for more information
+   = help: add `#![feature(ergonomic_clones)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ergonomic clones are experimental
+  --> $DIR/feature-gate-ergonomic-clones.rs:26:14
+   |
+LL |     let f3 = use || {
+   |              ^^^
+   |
+   = note: see issue #132290 <https://github.com/rust-lang/rust/issues/132290> for more information
+   = help: add `#![feature(ergonomic_clones)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `ergonomic_clones`
+  --> $DIR/feature-gate-ergonomic-clones.rs:1:5
+   |
+LL | use std::clone::UseCloned;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132290 <https://github.com/rust-lang/rust/issues/132290> for more information
+   = help: add `#![feature(ergonomic_clones)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `ergonomic_clones`
+  --> $DIR/feature-gate-ergonomic-clones.rs:12:11
+   |
+LL | fn foo<T: UseCloned>() {}
+   |           ^^^^^^^^^
+   |
+   = note: see issue #132290 <https://github.com/rust-lang/rust/issues/132290> for more information
+   = help: add `#![feature(ergonomic_clones)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `ergonomic_clones`
+  --> $DIR/feature-gate-ergonomic-clones.rs:15:6
+   |
+LL | impl UseCloned for Foo {}
+   |      ^^^^^^^^^
+   |
+   = note: see issue #132290 <https://github.com/rust-lang/rust/issues/132290> for more information
+   = help: add `#![feature(ergonomic_clones)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

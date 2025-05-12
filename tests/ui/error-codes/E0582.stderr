@@ -1,0 +1,30 @@
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/E0582.rs:28:30
+   |
+LL |     where F: for<'a> Fn() -> Option<&'a i32>
+   |                              ^^^^^^^^^^^^^^^
+
+error[E0582]: binding for associated type `Item` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/E0582.rs:36:31
+   |
+LL |     where F: for<'a> Iterator<Item=&'a i32>
+   |                               ^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/E0582.rs:22:5
+   |
+LL |     bar(mk_unexpected_char_err)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected enum `Option<&_>`
+              found enum `Option<&'a _>`
+note: the lifetime requirement is introduced here
+  --> $DIR/E0582.rs:28:30
+   |
+LL |     where F: for<'a> Fn() -> Option<&'a i32>
+   |                              ^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0582.
+For more information about an error, try `rustc --explain E0308`.

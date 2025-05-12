@@ -1,0 +1,16 @@
+error[E0596]: cannot borrow `*container` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-62387-suggest-iter-mut-2.rs:30:45
+   |
+LL |             vec.iter().flat_map(|container| container.things()).cloned().collect::<Vec<PathBuf>>();
+   |                                  ---------  ^^^^^^^^^ `container` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                                  |
+   |                                  consider changing this binding's type to be: `&mut Container`
+   |
+help: you may want to use `iter_mut` here
+   |
+LL |             vec.iter_mut().flat_map(|container| container.things()).cloned().collect::<Vec<PathBuf>>();
+   |                     ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

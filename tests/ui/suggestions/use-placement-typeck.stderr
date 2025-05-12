@@ -1,0 +1,21 @@
+error[E0599]: no method named `abc` found for struct `S` in the current scope
+  --> $DIR/use-placement-typeck.rs:11:7
+   |
+LL |     s.abc();
+   |       ^^^ method not found in `S`
+...
+LL |         fn abc(&self) {}
+   |            --- the method is available for `S` here
+LL |     }
+LL |     pub struct S;
+   |     ------------ method `abc` not found for this struct
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Foo` which provides `abc` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use m::Foo;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

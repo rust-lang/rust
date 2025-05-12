@@ -1,0 +1,398 @@
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/extra_arguments.rs:19:3
+   |
+LL |   empty("");
+   |   ^^^^^ -- unexpected argument of type `&'static str`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:1:4
+   |
+LL | fn empty() {}
+   |    ^^^^^
+help: remove the extra argument
+   |
+LL -   empty("");
+LL +   empty();
+   |
+
+error[E0061]: this function takes 0 arguments but 2 arguments were supplied
+  --> $DIR/extra_arguments.rs:20:3
+   |
+LL |   empty(1, 1);
+   |   ^^^^^ -  - unexpected argument #2 of type `{integer}`
+   |         |
+   |         unexpected argument #1 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:1:4
+   |
+LL | fn empty() {}
+   |    ^^^^^
+help: remove the extra arguments
+   |
+LL -   empty(1, 1);
+LL +   empty();
+   |
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/extra_arguments.rs:22:3
+   |
+LL |   one_arg(1, 1);
+   |   ^^^^^^^    - unexpected argument #2 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:2:4
+   |
+LL | fn one_arg<T>(_a: T) {}
+   |    ^^^^^^^
+help: remove the extra argument
+   |
+LL -   one_arg(1, 1);
+LL +   one_arg(1);
+   |
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/extra_arguments.rs:23:3
+   |
+LL |   one_arg(1, "");
+   |   ^^^^^^^    -- unexpected argument #2 of type `&'static str`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:2:4
+   |
+LL | fn one_arg<T>(_a: T) {}
+   |    ^^^^^^^
+help: remove the extra argument
+   |
+LL -   one_arg(1, "");
+LL +   one_arg(1);
+   |
+
+error[E0061]: this function takes 1 argument but 3 arguments were supplied
+  --> $DIR/extra_arguments.rs:24:3
+   |
+LL |   one_arg(1, "", 1.0);
+   |   ^^^^^^^    --  --- unexpected argument #3 of type `{float}`
+   |              |
+   |              unexpected argument #2 of type `&'static str`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:2:4
+   |
+LL | fn one_arg<T>(_a: T) {}
+   |    ^^^^^^^
+help: remove the extra arguments
+   |
+LL -   one_arg(1, "", 1.0);
+LL +   one_arg(1);
+   |
+
+error[E0061]: this function takes 2 arguments but 3 arguments were supplied
+  --> $DIR/extra_arguments.rs:26:3
+   |
+LL |   two_arg_same(1, 1, 1);
+   |   ^^^^^^^^^^^^       - unexpected argument #3 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:3:4
+   |
+LL | fn two_arg_same(_a: i32, _b: i32) {}
+   |    ^^^^^^^^^^^^
+help: remove the extra argument
+   |
+LL -   two_arg_same(1, 1, 1);
+LL +   two_arg_same(1, 1);
+   |
+
+error[E0061]: this function takes 2 arguments but 3 arguments were supplied
+  --> $DIR/extra_arguments.rs:27:3
+   |
+LL |   two_arg_same(1, 1, 1.0);
+   |   ^^^^^^^^^^^^       --- unexpected argument #3 of type `{float}`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:3:4
+   |
+LL | fn two_arg_same(_a: i32, _b: i32) {}
+   |    ^^^^^^^^^^^^
+help: remove the extra argument
+   |
+LL -   two_arg_same(1, 1, 1.0);
+LL +   two_arg_same(1, 1);
+   |
+
+error[E0061]: this function takes 2 arguments but 3 arguments were supplied
+  --> $DIR/extra_arguments.rs:29:3
+   |
+LL |   two_arg_diff(1, 1, "");
+   |   ^^^^^^^^^^^^    - unexpected argument #2 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:4:4
+   |
+LL | fn two_arg_diff(_a: i32, _b: &str) {}
+   |    ^^^^^^^^^^^^
+help: remove the extra argument
+   |
+LL -   two_arg_diff(1, 1, "");
+LL +   two_arg_diff(1, "");
+   |
+
+error[E0061]: this function takes 2 arguments but 3 arguments were supplied
+  --> $DIR/extra_arguments.rs:30:3
+   |
+LL |   two_arg_diff(1, "", "");
+   |   ^^^^^^^^^^^^        -- unexpected argument #3 of type `&'static str`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:4:4
+   |
+LL | fn two_arg_diff(_a: i32, _b: &str) {}
+   |    ^^^^^^^^^^^^
+help: remove the extra argument
+   |
+LL -   two_arg_diff(1, "", "");
+LL +   two_arg_diff(1, "");
+   |
+
+error[E0061]: this function takes 2 arguments but 4 arguments were supplied
+  --> $DIR/extra_arguments.rs:31:3
+   |
+LL |   two_arg_diff(1, 1, "", "");
+   |   ^^^^^^^^^^^^    -      -- unexpected argument #4 of type `&'static str`
+   |                   |
+   |                   unexpected argument #2 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:4:4
+   |
+LL | fn two_arg_diff(_a: i32, _b: &str) {}
+   |    ^^^^^^^^^^^^
+help: remove the extra arguments
+   |
+LL -   two_arg_diff(1, 1, "", "");
+LL +   two_arg_diff(1, "");
+   |
+
+error[E0061]: this function takes 2 arguments but 4 arguments were supplied
+  --> $DIR/extra_arguments.rs:32:3
+   |
+LL |   two_arg_diff(1, "", 1, "");
+   |   ^^^^^^^^^^^^        -  -- unexpected argument #4 of type `&'static str`
+   |                       |
+   |                       unexpected argument #3 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:4:4
+   |
+LL | fn two_arg_diff(_a: i32, _b: &str) {}
+   |    ^^^^^^^^^^^^
+help: remove the extra arguments
+   |
+LL -   two_arg_diff(1, "", 1, "");
+LL +   two_arg_diff(1, "");
+   |
+
+error[E0061]: this function takes 2 arguments but 3 arguments were supplied
+  --> $DIR/extra_arguments.rs:35:3
+   |
+LL |   two_arg_same(1, 1,     "");
+   |   ^^^^^^^^^^^^           -- unexpected argument #3 of type `&'static str`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:3:4
+   |
+LL | fn two_arg_same(_a: i32, _b: i32) {}
+   |    ^^^^^^^^^^^^
+help: remove the extra argument
+   |
+LL -   two_arg_same(1, 1,     "");
+LL +   two_arg_same(1, 1);
+   |
+
+error[E0061]: this function takes 2 arguments but 3 arguments were supplied
+  --> $DIR/extra_arguments.rs:36:3
+   |
+LL |   two_arg_diff(1, 1,     "");
+   |   ^^^^^^^^^^^^    - unexpected argument #2 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:4:4
+   |
+LL | fn two_arg_diff(_a: i32, _b: &str) {}
+   |    ^^^^^^^^^^^^
+help: remove the extra argument
+   |
+LL -   two_arg_diff(1, 1,     "");
+LL +   two_arg_diff(1,     "");
+   |
+
+error[E0061]: this function takes 2 arguments but 3 arguments were supplied
+  --> $DIR/extra_arguments.rs:37:3
+   |
+LL |   two_arg_same(
+   |   ^^^^^^^^^^^^
+...
+LL |     ""
+   |     -- unexpected argument #3 of type `&'static str`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:3:4
+   |
+LL | fn two_arg_same(_a: i32, _b: i32) {}
+   |    ^^^^^^^^^^^^
+help: remove the extra argument
+   |
+LL -     1,
+LL -     ""
+LL +     1
+   |
+
+error[E0061]: this function takes 2 arguments but 3 arguments were supplied
+  --> $DIR/extra_arguments.rs:43:3
+   |
+LL |   two_arg_diff(
+   |   ^^^^^^^^^^^^
+LL |     1,
+LL |     1,
+   |     - unexpected argument #2 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:4:4
+   |
+LL | fn two_arg_diff(_a: i32, _b: &str) {}
+   |    ^^^^^^^^^^^^
+help: remove the extra argument
+   |
+LL -     1,
+   |
+
+error[E0061]: this function takes 0 arguments but 2 arguments were supplied
+  --> $DIR/extra_arguments.rs:8:9
+   |
+LL |         empty($x, 1);
+   |         ^^^^^     - unexpected argument #2 of type `{integer}`
+...
+LL |   foo!(1, ~);
+   |   ----------
+   |   |    |
+   |   |    unexpected argument #1 of type `{integer}`
+   |   in this macro invocation
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:1:4
+   |
+LL | fn empty() {}
+   |    ^^^^^
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0061]: this function takes 0 arguments but 2 arguments were supplied
+  --> $DIR/extra_arguments.rs:14:9
+   |
+LL |         empty(1, $y);
+   |         ^^^^^ - unexpected argument #1 of type `{integer}`
+...
+LL |   foo!(~, 1);
+   |   ----------
+   |   |       |
+   |   |       unexpected argument #2 of type `{integer}`
+   |   in this macro invocation
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:1:4
+   |
+LL | fn empty() {}
+   |    ^^^^^
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0061]: this function takes 0 arguments but 2 arguments were supplied
+  --> $DIR/extra_arguments.rs:11:9
+   |
+LL |         empty($x, $y);
+   |         ^^^^^
+...
+LL |   foo!(1, 1);
+   |   ----------
+   |   |    |  |
+   |   |    |  unexpected argument #2 of type `{integer}`
+   |   |    unexpected argument #1 of type `{integer}`
+   |   in this macro invocation
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:1:4
+   |
+LL | fn empty() {}
+   |    ^^^^^
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/extra_arguments.rs:53:3
+   |
+LL |   one_arg(1, panic!());
+   |   ^^^^^^^    -------- unexpected argument #2
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:2:4
+   |
+LL | fn one_arg<T>(_a: T) {}
+   |    ^^^^^^^
+help: remove the extra argument
+   |
+LL -   one_arg(1, panic!());
+LL +   one_arg(1);
+   |
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/extra_arguments.rs:54:3
+   |
+LL |   one_arg(panic!(), 1);
+   |   ^^^^^^^           - unexpected argument #2 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:2:4
+   |
+LL | fn one_arg<T>(_a: T) {}
+   |    ^^^^^^^
+help: remove the extra argument
+   |
+LL -   one_arg(panic!(), 1);
+LL +   one_arg(panic!());
+   |
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/extra_arguments.rs:55:3
+   |
+LL |   one_arg(stringify!($e), 1);
+   |   ^^^^^^^                 - unexpected argument #2 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:2:4
+   |
+LL | fn one_arg<T>(_a: T) {}
+   |    ^^^^^^^
+help: remove the extra argument
+   |
+LL -   one_arg(stringify!($e), 1);
+LL +   one_arg(stringify!($e));
+   |
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/extra_arguments.rs:60:3
+   |
+LL |   one_arg(for _ in 1.. {}, 1);
+   |   ^^^^^^^                  - unexpected argument #2 of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:2:4
+   |
+LL | fn one_arg<T>(_a: T) {}
+   |    ^^^^^^^
+help: remove the extra argument
+   |
+LL -   one_arg(for _ in 1.. {}, 1);
+LL +   one_arg(for _ in 1.. {});
+   |
+
+error: aborting due to 22 previous errors
+
+For more information about this error, try `rustc --explain E0061`.

@@ -1,0 +1,22 @@
+error[E0283]: type annotations needed
+  --> $DIR/issue-86162-2.rs:12:14
+   |
+LL |     Foo::bar(gen()); //<- Do not suggest `Foo::bar::<impl Clone>()`!
+   |     -------- ^^^ cannot infer type of the type parameter `T` declared on the function `gen`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: cannot satisfy `_: Clone`
+note: required by a bound in `Foo::bar`
+  --> $DIR/issue-86162-2.rs:8:20
+   |
+LL |     fn bar(x: impl Clone) {}
+   |                    ^^^^^ required by this bound in `Foo::bar`
+help: consider specifying the generic argument
+   |
+LL |     Foo::bar(gen::<T>()); //<- Do not suggest `Foo::bar::<impl Clone>()`!
+   |                 +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

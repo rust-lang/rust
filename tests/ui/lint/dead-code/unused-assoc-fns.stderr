@@ -1,0 +1,29 @@
+error: associated items `one`, `two`, `CONSTANT`, `Type`, and `three` are never used
+  --> $DIR/unused-assoc-fns.rs:8:8
+   |
+LL | impl Foo {
+   | -------- associated items in this implementation
+LL |     fn one() {}
+   |        ^^^
+...
+LL |     fn two(&self) {}
+   |        ^^^
+...
+LL |     const CONSTANT: usize = 5;
+   |           ^^^^^^^^
+...
+LL |     type Type = usize;
+   |          ^^^^
+LL |
+LL |     fn three(&self) {
+   |        ^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-assoc-fns.rs:3:9
+   |
+LL | #![deny(unused)]
+   |         ^^^^^^
+   = note: `#[deny(dead_code)]` implied by `#[deny(unused)]`
+
+error: aborting due to 1 previous error
+

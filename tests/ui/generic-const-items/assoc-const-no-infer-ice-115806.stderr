@@ -1,0 +1,14 @@
+error[E0119]: conflicting implementations of trait `Pins<_>` for type `NoPin`
+  --> $DIR/assoc-const-no-infer-ice-115806.rs:16:1
+   |
+LL | impl<TA> Pins<TA> for NoPin {}
+   | --------------------------- first implementation here
+...
+LL | impl<USART, T> Pins<USART> for T where T: PinA<USART, A = { &() }> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `NoPin`
+   |
+   = note: downstream crates may implement trait `PinA<_>` for type `NoPin`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

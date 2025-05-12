@@ -1,0 +1,17 @@
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/attrs-on-params.rs:3:13
+   |
+LL | fn function(#[inline] param: u32) {
+   |             ^^^^^^^^^
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/attrs-on-params.rs:3:13
+   |
+LL | fn function(#[inline] param: u32) {
+   |             ^^^^^^^^^-----------
+   |             |
+   |             not a function or closure
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0518`.

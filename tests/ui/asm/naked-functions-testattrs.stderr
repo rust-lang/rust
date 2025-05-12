@@ -1,0 +1,35 @@
+error[E0736]: cannot use `#[unsafe(naked)]` with testing attributes
+  --> $DIR/naked-functions-testattrs.rs:10:1
+   |
+LL | #[test]
+   | ------- function marked with testing attribute here
+LL | #[unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^ `#[unsafe(naked)]` is incompatible with testing attributes
+
+error[E0736]: cannot use `#[unsafe(naked)]` with testing attributes
+  --> $DIR/naked-functions-testattrs.rs:18:1
+   |
+LL | #[test]
+   | ------- function marked with testing attribute here
+LL | #[unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^ `#[unsafe(naked)]` is incompatible with testing attributes
+
+error[E0736]: cannot use `#[unsafe(naked)]` with testing attributes
+  --> $DIR/naked-functions-testattrs.rs:26:1
+   |
+LL | #[test]
+   | ------- function marked with testing attribute here
+LL | #[unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^ `#[unsafe(naked)]` is incompatible with testing attributes
+
+error[E0736]: cannot use `#[unsafe(naked)]` with testing attributes
+  --> $DIR/naked-functions-testattrs.rs:33:1
+   |
+LL | #[bench]
+   | -------- function marked with testing attribute here
+LL | #[unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^ `#[unsafe(naked)]` is incompatible with testing attributes
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0736`.

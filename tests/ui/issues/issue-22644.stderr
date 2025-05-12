@@ -1,0 +1,86 @@
+error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
+  --> $DIR/issue-22644.rs:6:31
+   |
+LL |     println!("{}", a as usize < long_name);
+   |                               ^ --------- interpreted as generic arguments
+   |                               |
+   |                               not interpreted as comparison
+   |
+help: try comparing the cast value
+   |
+LL |     println!("{}", (a as usize) < long_name);
+   |                    +          +
+
+error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
+  --> $DIR/issue-22644.rs:7:33
+   |
+LL |     println!("{}{}", a as usize < long_name, long_name);
+   |                                 ^ -------------------- interpreted as generic arguments
+   |                                 |
+   |                                 not interpreted as comparison
+   |
+help: try comparing the cast value
+   |
+LL |     println!("{}{}", (a as usize) < long_name, long_name);
+   |                      +          +
+
+error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
+  --> $DIR/issue-22644.rs:9:31
+   |
+LL |     println!("{}", a as usize < 4);
+   |                               ^ - interpreted as generic arguments
+   |                               |
+   |                               not interpreted as comparison
+   |
+help: try comparing the cast value
+   |
+LL |     println!("{}", (a as usize) < 4);
+   |                    +          +
+
+error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
+  --> $DIR/issue-22644.rs:14:20
+   |
+LL |                    <
+   |                    ^ not interpreted as comparison
+LL |                    4);
+   |                    - interpreted as generic arguments
+   |
+help: try comparing the cast value
+   |
+LL ~     println!("{}", (a
+LL |                    as
+LL ~                    usize)
+   |
+
+error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
+  --> $DIR/issue-22644.rs:23:20
+   |
+LL |                    <
+   |                    ^ not interpreted as comparison
+LL |                    5);
+   |                    - interpreted as generic arguments
+   |
+help: try comparing the cast value
+   |
+LL ~     println!("{}", (a
+LL |
+...
+LL |
+LL ~                    usize)
+   |
+
+error: `<<` is interpreted as a start of generic arguments for `usize`, not a shift
+  --> $DIR/issue-22644.rs:26:31
+   |
+LL |     println!("{}", a as usize << long_name);
+   |                               ^^ --------- interpreted as generic arguments
+   |                               |
+   |                               not interpreted as shift
+   |
+help: try shifting the cast value
+   |
+LL |     println!("{}", (a as usize) << long_name);
+   |                    +          +
+
+error: aborting due to 6 previous errors
+

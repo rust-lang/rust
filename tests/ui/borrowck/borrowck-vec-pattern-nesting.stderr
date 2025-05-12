@@ -1,0 +1,137 @@
+error[E0506]: cannot assign to `vec[_]` because it is borrowed
+  --> $DIR/borrowck-vec-pattern-nesting.rs:9:13
+   |
+LL |         [box ref _a, _, _] => {
+   |              ------ `vec[_]` is borrowed here
+LL |
+LL |             vec[0] = Box::new(4);
+   |             ^^^^^^ `vec[_]` is assigned to here but it was already borrowed
+LL |
+LL |             _a.use_ref();
+   |             -- borrow later used here
+
+error[E0506]: cannot assign to `vec[_]` because it is borrowed
+  --> $DIR/borrowck-vec-pattern-nesting.rs:23:13
+   |
+LL |         &mut [ref _b @ ..] => {
+   |               ------ `vec[_]` is borrowed here
+LL |
+LL |             vec[0] = Box::new(4);
+   |             ^^^^^^ `vec[_]` is assigned to here but it was already borrowed
+LL |
+LL |             _b.use_ref();
+   |             -- borrow later used here
+
+error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
+  --> $DIR/borrowck-vec-pattern-nesting.rs:34:11
+   |
+LL |     match vec {
+   |           ^^^ cannot move out of here
+...
+LL |         &mut [_a,
+   |               --
+   |               |
+   |               data moved here
+   |               move occurs because `_a` has type `Box<isize>`, which does not implement the `Copy` trait
+   |
+help: consider removing the mutable borrow
+   |
+LL -         &mut [_a,
+LL +         [_a,
+   |
+
+error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
+  --> $DIR/borrowck-vec-pattern-nesting.rs:46:13
+   |
+LL |     let a = vec[0];
+   |             ^^^^^^
+   |             |
+   |             cannot move out of here
+   |             move occurs because `vec[_]` has type `Box<isize>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |     let a = &vec[0];
+   |             +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let a = vec[0].clone();
+   |                   ++++++++
+
+error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
+  --> $DIR/borrowck-vec-pattern-nesting.rs:56:11
+   |
+LL |     match vec {
+   |           ^^^ cannot move out of here
+...
+LL |          _b] => {}
+   |          --
+   |          |
+   |          data moved here
+   |          move occurs because `_b` has type `Box<isize>`, which does not implement the `Copy` trait
+   |
+help: consider removing the mutable borrow
+   |
+LL -         &mut [
+LL +         [
+   |
+
+error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
+  --> $DIR/borrowck-vec-pattern-nesting.rs:66:13
+   |
+LL |     let a = vec[0];
+   |             ^^^^^^
+   |             |
+   |             cannot move out of here
+   |             move occurs because `vec[_]` has type `Box<isize>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |     let a = &vec[0];
+   |             +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let a = vec[0].clone();
+   |                   ++++++++
+
+error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
+  --> $DIR/borrowck-vec-pattern-nesting.rs:76:11
+   |
+LL |     match vec {
+   |           ^^^ cannot move out of here
+...
+LL |         &mut [_a, _b, _c] => {}
+   |               --  --  -- ...and here
+   |               |   |
+   |               |   ...and here
+   |               data moved here
+   |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the mutable borrow
+   |
+LL -         &mut [_a, _b, _c] => {}
+LL +         [_a, _b, _c] => {}
+   |
+
+error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
+  --> $DIR/borrowck-vec-pattern-nesting.rs:87:13
+   |
+LL |     let a = vec[0];
+   |             ^^^^^^
+   |             |
+   |             cannot move out of here
+   |             move occurs because `vec[_]` has type `Box<isize>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |     let a = &vec[0];
+   |             +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let a = vec[0].clone();
+   |                   ++++++++
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0506, E0508.
+For more information about an error, try `rustc --explain E0506`.

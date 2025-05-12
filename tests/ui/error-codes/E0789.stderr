@@ -1,0 +1,9 @@
+error[E0789]: `rustc_allowed_through_unstable_modules` attribute must be paired with a `stable` attribute
+  --> $DIR/E0789.rs:9:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0789`.

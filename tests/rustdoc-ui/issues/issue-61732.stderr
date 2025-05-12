@@ -1,0 +1,14 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `r#mod`
+  --> $DIR/issue-61732.rs:3:15
+   |
+LL | pub(in crate::r#mod) fn main() {}
+   |               ^^^^^ use of unresolved module or unlinked crate `r#mod`
+   |
+help: you might be missing a crate named `r#mod`, add it to your project and import it in your code
+   |
+LL + extern crate r#mod;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

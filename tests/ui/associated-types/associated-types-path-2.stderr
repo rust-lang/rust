@@ -1,0 +1,82 @@
+error[E0308]: mismatched types
+  --> $DIR/associated-types-path-2.rs:21:14
+   |
+LL |     f1(2i32, 4i32);
+   |     --       ^^^^ expected `u32`, found `i32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/associated-types-path-2.rs:15:8
+   |
+LL | pub fn f1<T: Foo>(a: T, x: T::A) {}
+   |        ^^               -------
+help: change the type of the numeric literal from `i32` to `u32`
+   |
+LL -     f1(2i32, 4i32);
+LL +     f1(2i32, 4u32);
+   |
+
+error[E0277]: the trait bound `u32: Foo` is not satisfied
+  --> $DIR/associated-types-path-2.rs:31:8
+   |
+LL |     f1(2u32, 4u32);
+   |     -- ^^^^ the trait `Foo` is not implemented for `u32`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Foo` is implemented for `i32`
+note: required by a bound in `f1`
+  --> $DIR/associated-types-path-2.rs:15:14
+   |
+LL | pub fn f1<T: Foo>(a: T, x: T::A) {}
+   |              ^^^ required by this bound in `f1`
+
+error[E0277]: the trait bound `u32: Foo` is not satisfied
+  --> $DIR/associated-types-path-2.rs:31:14
+   |
+LL |     f1(2u32, 4u32);
+   |              ^^^^ the trait `Foo` is not implemented for `u32`
+   |
+   = help: the trait `Foo` is implemented for `i32`
+
+error[E0277]: the trait bound `u32: Foo` is not satisfied
+  --> $DIR/associated-types-path-2.rs:37:8
+   |
+LL |     f1(2u32, 4i32);
+   |     -- ^^^^ the trait `Foo` is not implemented for `u32`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Foo` is implemented for `i32`
+note: required by a bound in `f1`
+  --> $DIR/associated-types-path-2.rs:15:14
+   |
+LL | pub fn f1<T: Foo>(a: T, x: T::A) {}
+   |              ^^^ required by this bound in `f1`
+
+error[E0277]: the trait bound `u32: Foo` is not satisfied
+  --> $DIR/associated-types-path-2.rs:37:14
+   |
+LL |     f1(2u32, 4i32);
+   |              ^^^^ the trait `Foo` is not implemented for `u32`
+   |
+   = help: the trait `Foo` is implemented for `i32`
+
+error[E0308]: mismatched types
+  --> $DIR/associated-types-path-2.rs:43:18
+   |
+LL |     let _: i32 = f2(2i32);
+   |            ---   ^^^^^^^^ expected `i32`, found `u32`
+   |            |
+   |            expected due to this
+   |
+help: you can convert a `u32` to an `i32` and panic if the converted value doesn't fit
+   |
+LL |     let _: i32 = f2(2i32).try_into().unwrap();
+   |                          ++++++++++++++++++++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

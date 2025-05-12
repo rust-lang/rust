@@ -1,0 +1,14 @@
+error: `[usize; 0]` is forbidden as the type of a const generic parameter
+  --> $DIR/issue-68615-adt.rs:6:23
+   |
+LL | struct Const<const V: [usize; 0]> {}
+   |                       ^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: aborting due to 1 previous error
+

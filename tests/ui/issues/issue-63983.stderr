@@ -1,0 +1,24 @@
+error[E0532]: expected unit struct, unit variant or constant, found tuple variant `MyEnum::Tuple`
+  --> $DIR/issue-63983.rs:8:9
+   |
+LL |     Tuple(i32),
+   |     ---------- `MyEnum::Tuple` defined here
+...
+LL |         MyEnum::Tuple => "",
+   |         ^^^^^^^^^^^^^ help: use the tuple variant pattern syntax instead: `MyEnum::Tuple(_)`
+
+error[E0533]: expected unit struct, unit variant or constant, found struct variant `MyEnum::Struct`
+  --> $DIR/issue-63983.rs:10:9
+   |
+LL |         MyEnum::Struct => "",
+   |         ^^^^^^^^^^^^^^ not a unit struct, unit variant or constant
+   |
+help: the struct variant's field is being ignored
+   |
+LL |         MyEnum::Struct { s: _ } => "",
+   |                        ++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0532, E0533.
+For more information about an error, try `rustc --explain E0532`.

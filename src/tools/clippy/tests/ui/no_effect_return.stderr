@@ -1,0 +1,69 @@
+error: statement with no effect
+  --> tests/ui/no_effect_return.rs:9:9
+   |
+LL |         0u32;
+   |         -^^^^
+   |         |
+   |         help: did you mean to return it?: `return`
+   |
+   = note: `-D clippy::no-effect` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::no_effect)]`
+
+error: statement with no effect
+  --> tests/ui/no_effect_return.rs:17:9
+   |
+LL |         0u32;
+   |         -^^^^
+   |         |
+   |         help: did you mean to return it?: `return`
+
+error: statement with no effect
+  --> tests/ui/no_effect_return.rs:26:9
+   |
+LL |         0i32 as C;
+   |         -^^^^^^^^^
+   |         |
+   |         help: did you mean to return it?: `return`
+
+error: statement with no effect
+  --> tests/ui/no_effect_return.rs:35:9
+   |
+LL |         0u128;
+   |         ^^^^^^
+
+error: statement with no effect
+  --> tests/ui/no_effect_return.rs:46:9
+   |
+LL |         0u16;
+   |         ^^^^^
+
+error: statement with no effect
+  --> tests/ui/no_effect_return.rs:54:9
+   |
+LL |         [1u16];
+   |         -^^^^^^
+   |         |
+   |         help: did you mean to return it?: `return`
+
+error: statement with no effect
+  --> tests/ui/no_effect_return.rs:62:9
+   |
+LL |         ControlFlow::Break::<()>(());
+   |         -^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         help: did you mean to return it?: `return`
+
+error: statement with no effect
+  --> tests/ui/no_effect_return.rs:80:9
+   |
+LL |         ();
+   |         ^^^
+
+error: statement with no effect
+  --> tests/ui/no_effect_return.rs:89:9
+   |
+LL |         ();
+   |         ^^^
+
+error: aborting due to 9 previous errors
+

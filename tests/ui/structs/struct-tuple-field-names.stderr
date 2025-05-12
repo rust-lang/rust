@@ -1,0 +1,47 @@
+error[E0769]: tuple variant `E::S` written as struct variant
+  --> $DIR/struct-tuple-field-names.rs:8:9
+   |
+LL |         E::S { 0, 1 } => {}
+   |         ^^^^^^^^^^^^^
+   |
+help: use the tuple variant pattern syntax instead
+   |
+LL -         E::S { 0, 1 } => {}
+LL +         E::S(_, _) => {}
+   |
+
+error[E0769]: tuple variant `S` written as struct variant
+  --> $DIR/struct-tuple-field-names.rs:13:9
+   |
+LL |         S { } => {}
+   |         ^^^^^
+   |
+help: use the tuple variant pattern syntax instead
+   |
+LL -         S { } => {}
+LL +         S(_, _) => {}
+   |
+
+error[E0027]: pattern does not mention field `1`
+  --> $DIR/struct-tuple-field-names.rs:16:12
+   |
+LL |     if let E::S { 0: a } = x {
+   |            ^^^^^^^^^^^^^ missing field `1`
+   |
+help: include the missing field in the pattern
+   |
+LL |     if let E::S { 0: a, 1: _ } = x {
+   |                       ++++++
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |     if let E::S { 0: a, 1: _ } = x {
+   |                       ++++++
+help: or always ignore missing fields here
+   |
+LL |     if let E::S { 0: a, .. } = x {
+   |                       ++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0027, E0769.
+For more information about an error, try `rustc --explain E0027`.

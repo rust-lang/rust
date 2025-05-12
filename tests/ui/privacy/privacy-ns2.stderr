@@ -1,0 +1,128 @@
+error[E0423]: expected function, tuple struct or tuple variant, found trait `Bar`
+  --> $DIR/privacy-ns2.rs:20:5
+   |
+LL |     Bar();
+   |     ^^^ not a function, tuple struct or tuple variant
+   |
+note: these functions exist but are inaccessible
+  --> $DIR/privacy-ns2.rs:14:5
+   |
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo1::Bar`: not accessible
+...
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo3::Bar`: not accessible
+help: consider importing this function instead
+   |
+LL + use foo2::Bar;
+   |
+
+error[E0423]: expected function, tuple struct or tuple variant, found trait `Bar`
+  --> $DIR/privacy-ns2.rs:26:5
+   |
+LL |     pub struct Baz;
+   |     --------------- similarly named unit struct `Baz` defined here
+...
+LL |     Bar();
+   |     ^^^
+   |
+note: these functions exist but are inaccessible
+  --> $DIR/privacy-ns2.rs:14:5
+   |
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo1::Bar`: not accessible
+...
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo3::Bar`: not accessible
+help: a unit struct with a similar name exists
+   |
+LL -     Bar();
+LL +     Baz();
+   |
+help: consider importing this function instead
+   |
+LL + use foo2::Bar;
+   |
+
+error[E0573]: expected type, found function `Bar`
+  --> $DIR/privacy-ns2.rs:42:14
+   |
+LL |     let _x : Bar();
+   |              ^^^^^ not a type
+   |
+note: these traits exist but are inaccessible
+  --> $DIR/privacy-ns2.rs:31:5
+   |
+LL |     trait Bar {
+   |     ^^^^^^^^^ `foo2::Bar`: not accessible
+...
+LL |     trait Bar {
+   |     ^^^^^^^^^ `foo3::Bar`: not accessible
+help: use `=` if you meant to assign
+   |
+LL -     let _x : Bar();
+LL +     let _x = Bar();
+   |
+help: consider importing this trait instead
+   |
+LL + use foo1::Bar;
+   |
+
+error[E0603]: trait `Bar` is private
+  --> $DIR/privacy-ns2.rs:61:15
+   |
+LL |     use foo3::Bar;
+   |               ^^^ private trait
+   |
+note: the trait `Bar` is defined here
+  --> $DIR/privacy-ns2.rs:53:5
+   |
+LL |     trait Bar {
+   |     ^^^^^^^^^
+
+error[E0603]: trait `Bar` is private
+  --> $DIR/privacy-ns2.rs:65:15
+   |
+LL |     use foo3::Bar;
+   |               ^^^ private trait
+   |
+note: the trait `Bar` is defined here
+  --> $DIR/privacy-ns2.rs:53:5
+   |
+LL |     trait Bar {
+   |     ^^^^^^^^^
+
+error[E0603]: trait `Bar` is private
+  --> $DIR/privacy-ns2.rs:72:16
+   |
+LL |     use foo3::{Bar,Baz};
+   |                ^^^ private trait
+   |
+note: the trait `Bar` is defined here
+  --> $DIR/privacy-ns2.rs:53:5
+   |
+LL |     trait Bar {
+   |     ^^^^^^^^^
+
+error[E0747]: constant provided when a type was expected
+  --> $DIR/privacy-ns2.rs:41:18
+   |
+LL |     let _x : Box<Bar>;
+   |                  ^^^
+   |
+   = help: `Bar` is a function item, not a type
+   = help: function item types cannot be named directly
+
+error[E0747]: constant provided when a type was expected
+  --> $DIR/privacy-ns2.rs:48:17
+   |
+LL |     let _x: Box<Bar>;
+   |                 ^^^
+   |
+   = help: `Bar` is a function item, not a type
+   = help: function item types cannot be named directly
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0423, E0573, E0603, E0747.
+For more information about an error, try `rustc --explain E0423`.

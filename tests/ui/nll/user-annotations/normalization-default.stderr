@@ -1,0 +1,36 @@
+error: lifetime may not live long enough
+  --> $DIR/normalization-default.rs:8:22
+   |
+LL | fn test_tuple(x: &(), y: &()) {
+   |                  - let's call the lifetime of this reference `'1`
+LL |     MyTuple::<_>((), x);
+   |                      ^ this usage requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-default.rs:10:12
+   |
+LL | fn test_tuple(x: &(), y: &()) {
+   |                          - let's call the lifetime of this reference `'2`
+...
+LL |     let _: MyTuple::<_> = MyTuple((), y);
+   |            ^^^^^^^^^^^^ type annotation requires that `'2` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-default.rs:16:26
+   |
+LL | fn test_struct(x: &(), y: &()) {
+   |                   - let's call the lifetime of this reference `'1`
+LL |     MyStruct::<_> { val: ((), x) };
+   |                          ^^^^^^^ this usage requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-default.rs:18:12
+   |
+LL | fn test_struct(x: &(), y: &()) {
+   |                           - let's call the lifetime of this reference `'2`
+...
+LL |     let _: MyStruct::<_> = MyStruct { val: ((), y) };
+   |            ^^^^^^^^^^^^^ type annotation requires that `'2` must outlive `'static`
+
+error: aborting due to 4 previous errors
+

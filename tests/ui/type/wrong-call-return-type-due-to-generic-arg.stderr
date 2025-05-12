@@ -1,0 +1,135 @@
+error[E0308]: mismatched types
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:18:28
+   |
+LL |     let x = wrong_arg_type(0u16);
+   |             -------------- ^^^^ expected `u32`, found `u16`
+   |             |
+   |             arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:12:4
+   |
+LL | fn wrong_arg_type(x: u32) -> u32 {
+   |    ^^^^^^^^^^^^^^ ------
+help: change the type of the numeric literal from `u16` to `u32`
+   |
+LL -     let x = wrong_arg_type(0u16);
+LL +     let x = wrong_arg_type(0u32);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:19:30
+   |
+LL |     let x: u16 = function(0, 0u8);
+   |                  --------    ^^^ expected `bool`, found `u8`
+   |                  |
+   |                  arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:1:4
+   |
+LL | fn function<T>(x: T, y: bool) -> T {
+   |    ^^^^^^^^          -------
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:22:18
+   |
+LL |     let x: u16 = function(0u32, 0u8);
+   |                  ^^^^^^^^ ----  --- expected `bool`, found `u8`
+   |                           |
+   |                           expected `u16`, found `u32`
+   |
+help: the return type of this call is `u32` due to the type of the argument passed
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:22:18
+   |
+LL |     let x: u16 = function(0u32, 0u8);
+   |                  ^^^^^^^^^----^^^^^^
+   |                           |
+   |                           this argument influences the return type of `function`
+note: function defined here
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:1:4
+   |
+LL | fn function<T>(x: T, y: bool) -> T {
+   |    ^^^^^^^^    ----  -------
+help: change the type of the numeric literal from `u32` to `u16`
+   |
+LL -     let x: u16 = function(0u32, 0u8);
+LL +     let x: u16 = function(0u16, 0u8);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:25:27
+   |
+LL |     let x: u16 = function(0u32, true);
+   |                  -------- ^^^^ expected `u16`, found `u32`
+   |                  |
+   |                  arguments to this function are incorrect
+   |
+help: the return type of this call is `u32` due to the type of the argument passed
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:25:18
+   |
+LL |     let x: u16 = function(0u32, true);
+   |                  ^^^^^^^^^----^^^^^^^
+   |                           |
+   |                           this argument influences the return type of `function`
+note: function defined here
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:1:4
+   |
+LL | fn function<T>(x: T, y: bool) -> T {
+   |    ^^^^^^^^    ----
+help: change the type of the numeric literal from `u32` to `u16`
+   |
+LL -     let x: u16 = function(0u32, true);
+LL +     let x: u16 = function(0u16, true);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:26:32
+   |
+LL |     let x: u16 = (S {}).method(0u32);
+   |                         ------ ^^^^ expected `u16`, found `u32`
+   |                         |
+   |                         arguments to this method are incorrect
+   |
+help: the return type of this call is `u32` due to the type of the argument passed
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:26:18
+   |
+LL |     let x: u16 = (S {}).method(0u32);
+   |                  ^^^^^^^^^^^^^^----^
+   |                                |
+   |                                this argument influences the return type of `method`
+note: method defined here
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:7:8
+   |
+LL |     fn method<T>(&self, x: T) -> T {
+   |        ^^^^^^           ----
+help: change the type of the numeric literal from `u32` to `u16`
+   |
+LL -     let x: u16 = (S {}).method(0u32);
+LL +     let x: u16 = (S {}).method(0u16);
+   |
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:27:5
+   |
+LL |     function(0u32, 8u8)
+   |     ^^^^^^^^ ----  --- expected `bool`, found `u8`
+   |              |
+   |              expected `()`, found `u32`
+   |
+help: the return type of this call is `u32` due to the type of the argument passed
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:27:5
+   |
+LL |     function(0u32, 8u8)
+   |     ^^^^^^^^^----^^^^^^
+   |              |
+   |              this argument influences the return type of `function`
+note: function defined here
+  --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:1:4
+   |
+LL | fn function<T>(x: T, y: bool) -> T {
+   |    ^^^^^^^^    ----  -------
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

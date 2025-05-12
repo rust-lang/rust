@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `Bar: Hash` is not satisfied
+  --> $DIR/issue-21160.rs:8:12
+   |
+LL | #[derive(Hash)]
+   |          ---- in this derive macro expansion
+LL | struct Foo(Bar);
+   |            ^^^ the trait `Hash` is not implemented for `Bar`
+   |
+help: consider annotating `Bar` with `#[derive(Hash)]`
+   |
+LL + #[derive(Hash)]
+LL | struct Bar;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

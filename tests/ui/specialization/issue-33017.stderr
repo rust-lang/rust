@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `T: Copy` is not satisfied
+  --> $DIR/issue-33017.rs:12:27
+   |
+LL |     default type Output = Self;
+   |                           ^^^^ the trait `Copy` is not implemented for `T`
+   |
+note: required by a bound in `UncheckedCopy::Output`
+  --> $DIR/issue-33017.rs:8:31
+   |
+LL |     type Output: From<Self> + Copy + Into<Self>;
+   |                               ^^^^ required by this bound in `UncheckedCopy::Output`
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | impl<T: std::marker::Copy> UncheckedCopy for T {
+   |       +++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

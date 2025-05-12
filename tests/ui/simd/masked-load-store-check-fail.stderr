@@ -1,0 +1,39 @@
+error[E0308]: mismatched types
+  --> $DIR/masked-load-store-check-fail.rs:16:76
+   |
+LL |             simd_masked_load(Simd::<i8, 4>([-1, 0, -1, -1]), arr.as_ptr(), Simd::<u8, 4>([9; 4]));
+   |             ---------------- arguments to this function are incorrect      ^^^^^^^^^^^^^^^^^^^^^ expected `2`, found `4`
+   |
+   = note: expected struct `Simd<_, 2>`
+              found struct `Simd<_, 4>`
+help: the return type of this call is `Simd<u8, 4>` due to the type of the argument passed
+  --> $DIR/masked-load-store-check-fail.rs:16:13
+   |
+LL |             simd_masked_load(Simd::<i8, 4>([-1, 0, -1, -1]), arr.as_ptr(), Simd::<u8, 4>([9; 4]));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------^
+   |                                                                            |
+   |                                                                            this argument influences the return type of `simd_masked_load`
+note: function defined here
+  --> $SRC_DIR/core/src/intrinsics/simd.rs:LL:COL
+
+error[E0308]: mismatched types
+  --> $DIR/masked-load-store-check-fail.rs:19:92
+   |
+LL |         let _x: Simd<u32, 4> = simd_masked_load(Simd::<u8, 4>([1, 0, 1, 1]), arr.as_ptr(), default);
+   |                                ---------------- arguments to this function are incorrect   ^^^^^^^ expected `Simd<u32, 4>`, found `Simd<u8, 4>`
+   |
+   = note: expected struct `Simd<u32, _>`
+              found struct `Simd<u8, _>`
+help: the return type of this call is `Simd<u8, 4>` due to the type of the argument passed
+  --> $DIR/masked-load-store-check-fail.rs:19:32
+   |
+LL |         let _x: Simd<u32, 4> = simd_masked_load(Simd::<u8, 4>([1, 0, 1, 1]), arr.as_ptr(), default);
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^
+   |                                                                                            |
+   |                                                                                            this argument influences the return type of `simd_masked_load`
+note: function defined here
+  --> $SRC_DIR/core/src/intrinsics/simd.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

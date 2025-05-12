@@ -1,0 +1,49 @@
+error[E0053]: method `call` has an incompatible type for trait
+  --> $DIR/issue-20225.rs:6:43
+   |
+LL | impl<'a, T> Fn<(&'a T,)> for Foo {
+   |          - found this type parameter
+LL |   extern "rust-call" fn call(&self, (_,): (T,)) {}
+   |                                           ^^^^ expected `&'a T`, found type parameter `T`
+   |
+   = note: expected signature `extern "rust-call" fn(&Foo, (&'a _,))`
+              found signature `extern "rust-call" fn(&Foo, (_,))`
+help: change the parameter type to match the trait
+   |
+LL |   extern "rust-call" fn call(&self, (_,): (&'a T,)) {}
+   |                                            +++
+
+error[E0053]: method `call_mut` has an incompatible type for trait
+  --> $DIR/issue-20225.rs:11:51
+   |
+LL | impl<'a, T> FnMut<(&'a T,)> for Foo {
+   |          - found this type parameter
+LL |   extern "rust-call" fn call_mut(&mut self, (_,): (T,)) {}
+   |                                                   ^^^^ expected `&'a T`, found type parameter `T`
+   |
+   = note: expected signature `extern "rust-call" fn(&mut Foo, (&'a _,))`
+              found signature `extern "rust-call" fn(&mut Foo, (_,))`
+help: change the parameter type to match the trait
+   |
+LL |   extern "rust-call" fn call_mut(&mut self, (_,): (&'a T,)) {}
+   |                                                    +++
+
+error[E0053]: method `call_once` has an incompatible type for trait
+  --> $DIR/issue-20225.rs:18:47
+   |
+LL | impl<'a, T> FnOnce<(&'a T,)> for Foo {
+   |          - found this type parameter
+...
+LL |   extern "rust-call" fn call_once(self, (_,): (T,)) {}
+   |                                               ^^^^ expected `&'a T`, found type parameter `T`
+   |
+   = note: expected signature `extern "rust-call" fn(Foo, (&'a _,))`
+              found signature `extern "rust-call" fn(Foo, (_,))`
+help: change the parameter type to match the trait
+   |
+LL |   extern "rust-call" fn call_once(self, (_,): (&'a T,)) {}
+   |                                                +++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0053`.

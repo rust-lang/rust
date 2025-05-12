@@ -1,0 +1,23 @@
+error: called `map(<f>).unwrap_or_else(<g>)` on an `Option` value
+  --> tests/ui/map_unwrap_or_fixable.rs:16:13
+   |
+LL |       let _ = opt.map(|x| x + 1)
+   |  _____________^
+...  |
+LL | |         .unwrap_or_else(|| 0);
+   | |_____________________________^ help: try: `opt.map_or_else(|| 0, |x| x + 1)`
+   |
+   = note: `-D clippy::map-unwrap-or` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_unwrap_or)]`
+
+error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value
+  --> tests/ui/map_unwrap_or_fixable.rs:47:13
+   |
+LL |       let _ = res.map(|x| x + 1)
+   |  _____________^
+...  |
+LL | |         .unwrap_or_else(|_e| 0);
+   | |_______________________________^ help: try: `res.map_or_else(|_e| 0, |x| x + 1)`
+
+error: aborting due to 2 previous errors
+

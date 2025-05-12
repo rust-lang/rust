@@ -1,0 +1,141 @@
+//@aux-build:proc_macros.rs
+
+#![allow(
+    unused_variables,
+    dead_code,
+    clippy::derive_partial_eq_without_eq,
+    clippy::needless_if
+)]
+#![warn(clippy::equatable_if_let)]
+
+extern crate proc_macros;
+use proc_macros::{external, inline_macros};
+
+use std::cmp::Ordering;
+
+#[derive(PartialEq)]
+enum Enum {
+    TupleVariant(i32, u64),
+    RecordVariant { a: i64, b: u32 },
+    UnitVariant,
+    Recursive(Struct),
+}
+
+#[derive(PartialEq)]
+struct Struct {
+    a: i32,
+    b: bool,
+}
+
+struct NoPartialEqStruct {
+    a: i32,
+    b: bool,
+}
+
+enum NotPartialEq {
+    A,
+    B,
+}
+
+enum NotStructuralEq {
+    A,
+    B,
+}
+
+impl PartialEq for NotStructuralEq {
+    fn eq(&self, _: &NotStructuralEq) -> bool {
+        false
+    }
+}
+
+#[inline_macros]
+fn main() {
+    let a = 2;
+    let b = 3;
+    let c = Some(2);
+    let d = Struct { a: 2, b: false };
+    let e = Enum::UnitVariant;
+    let f = NotPartialEq::A;
+    let g = NotStructuralEq::A;
+    let h = NoPartialEqStruct { a: 2, b: false };
+
+    // true
+
+    if a == 2 {}
+    //~^ equatable_if_let
+    if a.cmp(&b) == Ordering::Greater {}
+    //~^ equatable_if_let
+    if c == Some(2) {}
+    //~^ equatable_if_let
+    if d == (Struct { a: 2, b: false }) {}
+    //~^ equatable_if_let
+    if e == Enum::TupleVariant(32, 64) {}
+    //~^ equatable_if_let
+    if e == (Enum::RecordVariant { a: 64, b: 32 }) {}
+    //~^ equatable_if_let
+    if e == Enum::UnitVariant {}
+    //~^ equatable_if_let
+    if (e, &d) == (Enum::UnitVariant, &Struct { a: 2, b: false }) {}
+    //~^ equatable_if_let
+
+    // false
+
+    if let 2 | 3 = a {}
+    if let x @ 2 = a {}
+    if let Some(3 | 4) = c {}
+    if let Struct { a, b: false } = d {}
+    if let Struct { a: 2, b: x } = d {}
+    if matches!(f, NotPartialEq::A) {}
+    //~^ equatable_if_let
+    if g == NotStructuralEq::A {}
+    //~^ equatable_if_let
+    if matches!(Some(f), Some(NotPartialEq::A)) {}
+    //~^ equatable_if_let
+    if Some(g) == Some(NotStructuralEq::A) {}
+    //~^ equatable_if_let
+    if matches!(h, NoPartialEqStruct { a: 2, b: false }) {}
+    //~^ equatable_if_let
+
+    if "abc" == inline!("abc") {
+        //~^ equatable_if_let
+        println!("OK");
+    }
+
+    external!({ if let 2 = $a {} });
+}
+
+mod issue8710 {
+    fn str_ref(cs: &[char]) {
+        if matches!(cs.iter().next(), Some('i')) {
+            //~^ equatable_if_let
+        } else {
+            todo!();
+        }
+    }
+
+    fn i32_ref(cs: &[i32]) {
+        if matches!(cs.iter().next(), Some(1)) {
+            //~^ equatable_if_let
+        } else {
+            todo!();
+        }
+    }
+
+    fn enum_ref() {
+        #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+        enum MyEnum {
+            A(i32),
+            B,
+        }
+
+        fn get_enum() -> Option<&'static MyEnum> {
+            todo!()
+        }
+
+        if matches!(get_enum(), Some(MyEnum::B)) {
+            //~^ equatable_if_let
+        } else {
+            todo!();
+        }
+    }
+}

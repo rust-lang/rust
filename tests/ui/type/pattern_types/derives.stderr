@@ -1,0 +1,12 @@
+error[E0369]: binary operation `==` cannot be applied to type `(i32) is 0..=999999999`
+  --> $DIR/derives.rs:11:20
+   |
+LL | #[derive(Clone, Copy, PartialEq)]
+   |                       --------- in this derive macro expansion
+LL | #[repr(transparent)]
+LL | struct Nanoseconds(NanoI32);
+   |                    ^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

@@ -1,0 +1,66 @@
+error[E0107]: function takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/no-explicit-const-params.rs:15:5
+   |
+LL |     foo::<true>();
+   |     ^^^-------- help: remove the unnecessary generics
+   |     |
+   |     expected 0 generic arguments
+   |
+note: function defined here, with 0 generic parameters
+  --> $DIR/no-explicit-const-params.rs:3:10
+   |
+LL | const fn foo() {}
+   |          ^^^
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/no-explicit-const-params.rs:17:12
+   |
+LL |     <() as Bar<true>>::bar();
+   |            ^^^------ help: remove the unnecessary generics
+   |            |
+   |            expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/no-explicit-const-params.rs:6:7
+   |
+LL | trait Bar {
+   |       ^^^
+
+error[E0107]: function takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/no-explicit-const-params.rs:22:5
+   |
+LL |     foo::<false>();
+   |     ^^^--------- help: remove the unnecessary generics
+   |     |
+   |     expected 0 generic arguments
+   |
+note: function defined here, with 0 generic parameters
+  --> $DIR/no-explicit-const-params.rs:3:10
+   |
+LL | const fn foo() {}
+   |          ^^^
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/no-explicit-const-params.rs:24:12
+   |
+LL |     <() as Bar<false>>::bar();
+   |            ^^^------- help: remove the unnecessary generics
+   |            |
+   |            expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/no-explicit-const-params.rs:6:7
+   |
+LL | trait Bar {
+   |       ^^^
+
+error[E0277]: the trait bound `(): const Bar` is not satisfied
+  --> $DIR/no-explicit-const-params.rs:24:6
+   |
+LL |     <() as Bar<false>>::bar();
+   |      ^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0107, E0277.
+For more information about an error, try `rustc --explain E0107`.

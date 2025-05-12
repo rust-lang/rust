@@ -1,0 +1,25 @@
+error: macro expansion ignores `=>` and any tokens following
+  --> $DIR/macro-expand-to-match-arm.rs:3:18
+   |
+LL |         $pattern => $block
+   |                  ^^
+...
+LL |         arm!(None => {}),
+   |         ---------------- caused by the macro expansion here
+   |
+   = note: the usage of `arm!` is likely invalid in pattern context
+   = note: macros cannot expand to match arms
+
+error: `match` arm with no body
+  --> $DIR/macro-expand-to-match-arm.rs:14:9
+   |
+LL |         arm!(None => {}),
+   |         ^^^^^^^^^^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         arm!(None => {}) => { todo!() },
+   |                          ++++++++++++++
+
+error: aborting due to 2 previous errors
+

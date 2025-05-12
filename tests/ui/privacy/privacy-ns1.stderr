@@ -1,0 +1,94 @@
+error[E0423]: expected function, tuple struct or tuple variant, found trait `Bar`
+  --> $DIR/privacy-ns1.rs:20:5
+   |
+LL |     pub struct Baz;
+   |     --------------- similarly named unit struct `Baz` defined here
+...
+LL |     Bar();
+   |     ^^^
+   |
+note: these functions exist but are inaccessible
+  --> $DIR/privacy-ns1.rs:14:5
+   |
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo1::Bar`: not accessible
+...
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo3::Bar`: not accessible
+help: a unit struct with a similar name exists
+   |
+LL -     Bar();
+LL +     Baz();
+   |
+help: consider importing this function instead
+   |
+LL + use foo2::Bar;
+   |
+
+error[E0425]: cannot find function, tuple struct or tuple variant `Bar` in this scope
+  --> $DIR/privacy-ns1.rs:51:5
+   |
+LL |     pub struct Baz;
+   |     --------------- similarly named unit struct `Baz` defined here
+...
+LL |     Bar();
+   |     ^^^
+   |
+note: these functions exist but are inaccessible
+  --> $DIR/privacy-ns1.rs:14:5
+   |
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo1::Bar`: not accessible
+...
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo3::Bar`: not accessible
+help: a unit struct with a similar name exists
+   |
+LL -     Bar();
+LL +     Baz();
+   |
+help: consider importing this function
+   |
+LL + use foo2::Bar;
+   |
+
+error[E0412]: cannot find type `Bar` in this scope
+  --> $DIR/privacy-ns1.rs:52:17
+   |
+LL |     pub struct Baz;
+   |     --------------- similarly named struct `Baz` defined here
+...
+LL |     let _x: Box<Bar>;
+   |                 ^^^
+   |
+note: these traits exist but are inaccessible
+  --> $DIR/privacy-ns1.rs:25:5
+   |
+LL |     trait Bar {
+   |     ^^^^^^^^^ `foo2::Bar`: not accessible
+...
+LL |     trait Bar {
+   |     ^^^^^^^^^ `foo3::Bar`: not accessible
+help: a struct with a similar name exists
+   |
+LL -     let _x: Box<Bar>;
+LL +     let _x: Box<Baz>;
+   |
+help: consider importing this trait
+   |
+LL + use foo1::Bar;
+   |
+
+error[E0747]: constant provided when a type was expected
+  --> $DIR/privacy-ns1.rs:35:17
+   |
+LL |     let _x: Box<Bar>;
+   |                 ^^^
+   |
+   = help: `Bar` is a function item, not a type
+   = help: function item types cannot be named directly
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0412, E0423, E0425, E0747.
+For more information about an error, try `rustc --explain E0412`.

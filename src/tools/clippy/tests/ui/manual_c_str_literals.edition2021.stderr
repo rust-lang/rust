@@ -1,0 +1,83 @@
+error: calling `CStr::new` with a byte string literal
+  --> tests/ui/manual_c_str_literals.rs:35:5
+   |
+LL |     CStr::from_bytes_with_nul(b"foo\0");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use a `c""` literal: `c"foo"`
+   |
+   = note: `-D clippy::manual-c-str-literals` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_c_str_literals)]`
+
+error: calling `CStr::new` with a byte string literal
+  --> tests/ui/manual_c_str_literals.rs:40:5
+   |
+LL |     CStr::from_bytes_with_nul(b"foo\0");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use a `c""` literal: `c"foo"`
+
+error: calling `CStr::new` with a byte string literal
+  --> tests/ui/manual_c_str_literals.rs:42:5
+   |
+LL |     CStr::from_bytes_with_nul(b"foo\x00");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use a `c""` literal: `c"foo"`
+
+error: calling `CStr::new` with a byte string literal
+  --> tests/ui/manual_c_str_literals.rs:44:5
+   |
+LL |     CStr::from_bytes_with_nul(b"foo\0").unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use a `c""` literal: `c"foo"`
+
+error: calling `CStr::new` with a byte string literal
+  --> tests/ui/manual_c_str_literals.rs:46:5
+   |
+LL |     CStr::from_bytes_with_nul(b"foo\\0sdsd\0").unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use a `c""` literal: `c"foo\\0sdsd"`
+
+error: calling `CStr::from_ptr` with a byte string literal
+  --> tests/ui/manual_c_str_literals.rs:52:14
+   |
+LL |     unsafe { CStr::from_ptr(b"foo\0".as_ptr().cast()) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use a `c""` literal: `c"foo"`
+
+error: calling `CStr::from_ptr` with a byte string literal
+  --> tests/ui/manual_c_str_literals.rs:54:14
+   |
+LL |     unsafe { CStr::from_ptr(b"foo\0".as_ptr() as *const _) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use a `c""` literal: `c"foo"`
+
+error: manually constructing a nul-terminated string
+  --> tests/ui/manual_c_str_literals.rs:56:23
+   |
+LL |     let _: *const _ = b"foo\0".as_ptr();
+   |                       ^^^^^^^^ help: use a `c""` literal: `c"foo"`
+
+error: manually constructing a nul-terminated string
+  --> tests/ui/manual_c_str_literals.rs:58:23
+   |
+LL |     let _: *const _ = "foo\0".as_ptr();
+   |                       ^^^^^^^ help: use a `c""` literal: `c"foo"`
+
+error: manually constructing a nul-terminated string
+  --> tests/ui/manual_c_str_literals.rs:62:23
+   |
+LL |     let _: *const _ = b"foo\0".as_ptr().cast::<i8>();
+   |                       ^^^^^^^^ help: use a `c""` literal: `c"foo"`
+
+error: manually constructing a nul-terminated string
+  --> tests/ui/manual_c_str_literals.rs:66:13
+   |
+LL |     let _ = "电脑\\\0".as_ptr();
+   |             ^^^^^^^^^^ help: use a `c""` literal: `c"电脑\\"`
+
+error: manually constructing a nul-terminated string
+  --> tests/ui/manual_c_str_literals.rs:68:13
+   |
+LL |     let _ = "电脑\0".as_ptr();
+   |             ^^^^^^^^ help: use a `c""` literal: `c"电脑"`
+
+error: manually constructing a nul-terminated string
+  --> tests/ui/manual_c_str_literals.rs:70:13
+   |
+LL |     let _ = "电脑\x00".as_ptr();
+   |             ^^^^^^^^^^ help: use a `c""` literal: `c"电脑"`
+
+error: aborting due to 13 previous errors
+

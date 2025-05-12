@@ -1,0 +1,77 @@
+SOURCE_FILE
+  FN
+    COMMENT "// https://github.com/rust-lang/rust-analyzer/issues/677"
+    WHITESPACE "\n"
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          ATTR
+            POUND "#"
+            L_BRACK "["
+            META
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "cfg"
+              TOKEN_TREE
+                L_PAREN "("
+                IDENT "feature"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                STRING "\"backtrace\""
+                R_PAREN ")"
+            R_BRACK "]"
+          WHITESPACE "\n    "
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "exit_code"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "panic"
+                COLON2 "::"
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "catch_unwind"
+            ARG_LIST
+              L_PAREN "("
+              CLOSURE_EXPR
+                MOVE_KW "move"
+                WHITESPACE " "
+                PARAM_LIST
+                  PIPE "|"
+                  PIPE "|"
+                WHITESPACE " "
+                CALL_EXPR
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "main"
+                  ARG_LIST
+                    L_PAREN "("
+                    R_PAREN ")"
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

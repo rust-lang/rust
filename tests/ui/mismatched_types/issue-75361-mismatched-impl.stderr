@@ -1,0 +1,19 @@
+error: `impl` item signature doesn't match `trait` item signature
+  --> $DIR/issue-75361-mismatched-impl.rs:18:3
+   |
+LL |   fn adjacent_edges(&self) -> Box<dyn MyTrait<Item = &Self::EdgeType>>;
+   |   --------------------------------------------------------------------- expected `fn(&'1 T) -> Box<(dyn MyTrait<Item = &'1 T> + 'static)>`
+...
+LL |   fn adjacent_edges(&self) -> Box<dyn MyTrait<Item = &Self::EdgeType> + '_> {
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 T) -> Box<(dyn MyTrait<Item = &'1 T> + '1)>`
+   |
+   = note: expected signature `fn(&'1 T) -> Box<(dyn MyTrait<Item = &'1 T> + 'static)>`
+              found signature `fn(&'1 T) -> Box<(dyn MyTrait<Item = &'1 T> + '1)>`
+help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
+  --> $DIR/issue-75361-mismatched-impl.rs:12:55
+   |
+LL |   fn adjacent_edges(&self) -> Box<dyn MyTrait<Item = &Self::EdgeType>>;
+   |                                                       ^^^^ consider borrowing this type parameter in the trait
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,26 @@
+// MIR for `f` after CopyProp
+
+fn f(_1: usize) -> usize {
+    debug a => _1;
+    let mut _0: usize;
+    let _2: usize;
+    let mut _3: usize;
+    let mut _4: usize;
+    scope 1 {
+        debug b => _2;
+    }
+
+    bb0: {
+        _2 = copy _1;
+        _1 = const 5_usize;
+        _1 = copy _2;
+        StorageLive(_4);
+        _4 = copy _1;
+        _0 = id::<usize>(move _4) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        StorageDead(_4);
+        return;
+    }
+}

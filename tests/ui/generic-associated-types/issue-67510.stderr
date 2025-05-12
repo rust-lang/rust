@@ -1,0 +1,51 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/issue-67510.rs:5:21
+   |
+LL | fn f(x: Box<dyn X<Y<'a> = &'a ()>>) {}
+   |                     ^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'a` lifetime
+   |
+LL | fn f(x: Box<dyn for<'a> X<Y<'a> = &'a ()>>) {}
+   |                 +++++++
+help: consider introducing lifetime `'a` here
+   |
+LL | fn f<'a>(x: Box<dyn X<Y<'a> = &'a ()>>) {}
+   |     ++++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/issue-67510.rs:5:28
+   |
+LL | fn f(x: Box<dyn X<Y<'a> = &'a ()>>) {}
+   |                            ^^ undeclared lifetime
+   |
+help: consider making the bound lifetime-generic with a new `'a` lifetime
+   |
+LL | fn f(x: Box<dyn for<'a> X<Y<'a> = &'a ()>>) {}
+   |                 +++++++
+help: consider introducing lifetime `'a` here
+   |
+LL | fn f<'a>(x: Box<dyn X<Y<'a> = &'a ()>>) {}
+   |     ++++
+
+error[E0038]: the trait `X` is not dyn compatible
+  --> $DIR/issue-67510.rs:5:13
+   |
+LL | fn f(x: Box<dyn X<Y<'a> = &'a ()>>) {}
+   |             ^^^^^^^^^^^^^^^^^^^^^ `X` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-67510.rs:2:10
+   |
+LL | trait X {
+   |       - this trait is not dyn compatible...
+LL |     type Y<'a>;
+   |          ^ ...because it contains the generic associated type `Y`
+   = help: consider moving `Y` to another trait
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0038, E0261.
+For more information about an error, try `rustc --explain E0038`.

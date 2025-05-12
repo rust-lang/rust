@@ -1,0 +1,8 @@
+error: malformed `global_allocator` attribute input
+  --> $DIR/allocator-args.rs:10:1
+   |
+LL | #[global_allocator(malloc)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[global_allocator]`
+
+error: aborting due to 1 previous error
+

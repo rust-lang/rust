@@ -1,0 +1,33 @@
+error[E0382]: assign to part of moved value: `t`
+  --> $DIR/issue-54499-field-mutation-of-moved-out-with-mut.rs:13:9
+   |
+LL |         let mut t: Tuple = (S(0), 0);
+   |             ----- move occurs because `t` has type `(S, i32)`, which does not implement the `Copy` trait
+LL |         drop(t);
+   |              - value moved here
+LL |         t.0 = S(1);
+   |         ^^^^^^^^^^ value partially assigned here after move
+
+error[E0382]: assign to part of moved value: `u`
+  --> $DIR/issue-54499-field-mutation-of-moved-out-with-mut.rs:22:9
+   |
+LL |         let mut u: Tpair = Tpair(S(0), 0);
+   |             ----- move occurs because `u` has type `Tpair`, which does not implement the `Copy` trait
+LL |         drop(u);
+   |              - value moved here
+LL |         u.0 = S(1);
+   |         ^^^^^^^^^^ value partially assigned here after move
+
+error[E0382]: assign to part of moved value: `v`
+  --> $DIR/issue-54499-field-mutation-of-moved-out-with-mut.rs:31:9
+   |
+LL |         let mut v: Spair = Spair { x: S(0), y: 0 };
+   |             ----- move occurs because `v` has type `Spair`, which does not implement the `Copy` trait
+LL |         drop(v);
+   |              - value moved here
+LL |         v.x = S(1);
+   |         ^^^^^^^^^^ value partially assigned here after move
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

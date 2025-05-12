@@ -1,0 +1,185 @@
+error: replacing an `Option` with `None`
+  --> tests/ui/mem_replace.rs:13:13
+   |
+LL |     let _ = mem::replace(&mut an_option, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `an_option.take()`
+   |
+   = note: `-D clippy::mem-replace-option-with-none` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mem_replace_option_with_none)]`
+
+error: replacing an `Option` with `None`
+  --> tests/ui/mem_replace.rs:16:13
+   |
+LL |     let _ = mem::replace(an_option, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `an_option.take()`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:22:13
+   |
+LL |     let _ = std::mem::replace(&mut s, String::default());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut s)`
+   |
+   = note: `-D clippy::mem-replace-with-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mem_replace_with_default)]`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:24:13
+   |
+LL |     let _ = std::mem::replace(&mut s, String::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut s)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:28:13
+   |
+LL |     let _ = std::mem::replace(s, String::default());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(s)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:30:13
+   |
+LL |     let _ = std::mem::replace(s, String::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(s)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:32:13
+   |
+LL |     let _ = std::mem::replace(s, Default::default());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(s)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:36:13
+   |
+LL |     let _ = std::mem::replace(&mut v, Vec::default());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut v)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:38:13
+   |
+LL |     let _ = std::mem::replace(&mut v, Default::default());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut v)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:40:13
+   |
+LL |     let _ = std::mem::replace(&mut v, Vec::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut v)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:42:13
+   |
+LL |     let _ = std::mem::replace(&mut v, vec![]);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut v)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:46:13
+   |
+LL |     let _ = std::mem::replace(&mut hash_map, HashMap::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut hash_map)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:50:13
+   |
+LL |     let _ = std::mem::replace(&mut btree_map, BTreeMap::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut btree_map)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:54:13
+   |
+LL |     let _ = std::mem::replace(&mut vd, VecDeque::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut vd)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:58:13
+   |
+LL |     let _ = std::mem::replace(&mut hash_set, HashSet::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut hash_set)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:62:13
+   |
+LL |     let _ = std::mem::replace(&mut btree_set, BTreeSet::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut btree_set)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:66:13
+   |
+LL |     let _ = std::mem::replace(&mut list, LinkedList::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut list)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:70:13
+   |
+LL |     let _ = std::mem::replace(&mut binary_heap, BinaryHeap::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut binary_heap)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:74:13
+   |
+LL |     let _ = std::mem::replace(&mut tuple, (vec![], BinaryHeap::new()));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut tuple)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:78:13
+   |
+LL |     let _ = std::mem::replace(&mut refstr, "");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut refstr)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:82:13
+   |
+LL |     let _ = std::mem::replace(&mut slice, &[]);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut slice)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:119:13
+   |
+LL |     let _ = std::mem::replace(&mut s, String::default());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut s)`
+
+error: replacing an `Option` with `None`
+  --> tests/ui/mem_replace.rs:150:13
+   |
+LL |     let _ = std::mem::replace(&mut f.0, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `f.0.take()`
+
+error: replacing an `Option` with `None`
+  --> tests/ui/mem_replace.rs:152:13
+   |
+LL |     let _ = std::mem::replace(&mut *f, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `(*f).take()`
+
+error: replacing an `Option` with `None`
+  --> tests/ui/mem_replace.rs:154:13
+   |
+LL |     let _ = std::mem::replace(&mut b.opt, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `b.opt.take()`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:157:13
+   |
+LL |     let _ = std::mem::replace(&mut b.val, String::default());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut b.val)`
+
+error: replacing an `Option` with `Some(..)`
+  --> tests/ui/mem_replace.rs:164:20
+   |
+LL |     let replaced = mem::replace(&mut an_option, Some(1));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::replace()` instead: `an_option.replace(1)`
+   |
+   = note: `-D clippy::mem-replace-option-with-some` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mem_replace_option_with_some)]`
+
+error: replacing an `Option` with `Some(..)`
+  --> tests/ui/mem_replace.rs:168:20
+   |
+LL |     let replaced = mem::replace(an_option, Some(1));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::replace()` instead: `an_option.replace(1)`
+
+error: replacing an `Option` with `Some(..)`
+  --> tests/ui/mem_replace.rs:173:20
+   |
+LL |     let replaced = mem::replace(if b { &mut opt1 } else { &mut opt2 }, Some(1));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::replace()` instead: `(if b { &mut opt1 } else { &mut opt2 }).replace(1)`
+
+error: aborting due to 29 previous errors
+

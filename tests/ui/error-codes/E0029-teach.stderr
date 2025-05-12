@@ -1,0 +1,14 @@
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/E0029-teach.rs:7:9
+   |
+LL |         "hello" ..= "world" => {}
+   |         -------^^^^^-------
+   |         |           |
+   |         |           this is of type `&'static str` but it should be `char` or numeric
+   |         this is of type `&'static str` but it should be `char` or numeric
+   |
+   = note: In a match expression, only numbers and characters can be matched against a range. This is because the compiler checks that the range is non-empty at compile-time, and is unable to evaluate arbitrary comparison functions. If you want to capture values of an orderable type between two end-points, you can use a guard.
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0029`.

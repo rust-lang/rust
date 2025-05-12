@@ -1,0 +1,54 @@
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/issue-52443.rs:6:11
+   |
+LL |     [(); {while true {break}; 0}];
+   |           ^^^^^^^^^^ help: use `loop`
+   |
+   = note: `#[warn(while_true)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/issue-52443.rs:2:10
+   |
+LL |     [(); & { loop { continue } } ];
+   |          ^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `&_`
+   |
+   = note:   expected type `usize`
+           found reference `&_`
+help: consider removing the borrow
+   |
+LL -     [(); & { loop { continue } } ];
+LL +     [(); { loop { continue } } ];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-52443.rs:4:17
+   |
+LL |     [(); loop { break }];
+   |                 ^^^^^ expected `usize`, found `()`
+   |
+help: give the `break` a value of the expected type
+   |
+LL |     [(); loop { break 42 }];
+   |                       ++
+
+error[E0015]: cannot use `for` loop on `std::ops::RangeFrom<usize>` in constants
+  --> $DIR/issue-52443.rs:9:21
+   |
+LL |     [(); { for _ in 0usize.. {}; 0}];
+   |                     ^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot use `for` loop on `std::ops::RangeFrom<usize>` in constants
+  --> $DIR/issue-52443.rs:9:21
+   |
+LL |     [(); { for _ in 0usize.. {}; 0}];
+   |                     ^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0015, E0308.
+For more information about an error, try `rustc --explain E0015`.

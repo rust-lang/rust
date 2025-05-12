@@ -1,0 +1,21 @@
+error[E0277]: the size for values of type `[Box<E>]` cannot be known at compilation time
+  --> $DIR/issue-35988.rs:2:7
+   |
+LL |     V([Box<E>]),
+   |       ^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[Box<E>]`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     V(&[Box<E>]),
+   |       +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     V(Box<[Box<E>]>),
+   |       ++++        +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

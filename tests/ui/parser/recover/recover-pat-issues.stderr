@@ -1,0 +1,98 @@
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-issues.rs:6:13
+   |
+LL |         Foo("hi".to_owned()) => true,
+   |             ^^^^^^^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+help: consider moving the expression to a match arm guard
+   |
+LL -         Foo("hi".to_owned()) => true,
+LL +         Foo(val) if val == "hi".to_owned() => true,
+   |
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = "hi".to_owned();
+LL ~     match foo {
+LL ~         Foo(VAL) => true,
+   |
+
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-issues.rs:14:20
+   |
+LL |         Bar { baz: "hi".to_owned() } => true,
+   |                    ^^^^^^^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+help: consider moving the expression to a match arm guard
+   |
+LL -         Bar { baz: "hi".to_owned() } => true,
+LL +         Bar { baz } if baz == "hi".to_owned() => true,
+   |
+help: consider extracting the expression into a `const`
+   |
+LL +     const BAZ: /* Type */ = "hi".to_owned();
+LL ~     match bar {
+LL ~         Bar { baz: BAZ } => true,
+   |
+
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-issues.rs:25:11
+   |
+LL |         &["foo".to_string()] => {}
+   |           ^^^^^^^^^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+help: consider moving the expression to a match arm guard
+   |
+LL -         &["foo".to_string()] => {}
+LL +         &[val] if val == "foo".to_string() => {}
+   |
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = "foo".to_string();
+LL ~     match foo.as_slice() {
+LL ~         &[VAL] => {}
+   |
+
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-issues.rs:36:17
+   |
+LL |     if let Some(MAGIC.0 as usize) = None::<usize> {}
+   |                 ^^^^^^^^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = MAGIC.0 as usize;
+LL ~     if let Some(VAL) = None::<usize> {}
+   |
+
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-issues.rs:41:13
+   |
+LL |     if let (-1.some(4)) = (0, Some(4)) {}
+   |             ^^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = -1.some(4);
+LL ~     if let (VAL) = (0, Some(4)) {}
+   |
+
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-issues.rs:44:13
+   |
+LL |     if let (-1.Some(4)) = (0, Some(4)) {}
+   |             ^^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = -1.Some(4);
+LL ~     if let (VAL) = (0, Some(4)) {}
+   |
+
+error: aborting due to 6 previous errors
+

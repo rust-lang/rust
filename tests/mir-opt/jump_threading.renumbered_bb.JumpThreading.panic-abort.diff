@@ -1,0 +1,57 @@
+- // MIR for `renumbered_bb` before JumpThreading
++ // MIR for `renumbered_bb` after JumpThreading
+  
+  fn renumbered_bb(_1: bool) -> u8 {
+      let mut _0: u8;
+      let mut _2: bool;
+      let mut _3: bool;
+  
+      bb0: {
+          _3 = const false;
+          switchInt(copy _1) -> [1: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
+          _2 = const false;
+-         goto -> bb3;
++         goto -> bb8;
+      }
+  
+      bb2: {
+          _2 = copy _1;
+          _3 = copy _1;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          switchInt(copy _2) -> [0: bb4, otherwise: bb5];
+      }
+  
+      bb4: {
+          switchInt(copy _3) -> [0: bb6, otherwise: bb7];
+      }
+  
+      bb5: {
+          _0 = const 7_u8;
+          return;
+      }
+  
+      bb6: {
+          _0 = const 9_u8;
+          return;
+      }
+  
+      bb7: {
+          _0 = const 11_u8;
+          return;
++     }
++ 
++     bb8: {
++         goto -> bb9;
++     }
++ 
++     bb9: {
++         goto -> bb6;
+      }
+  }
+  

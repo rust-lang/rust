@@ -1,0 +1,49 @@
+error[E0072]: recursive types `A` and `B` have infinite size
+  --> $DIR/mutual-struct-recursion.rs:1:1
+   |
+LL | struct A<T> {
+   | ^^^^^^^^^^^
+...
+LL |     y: B<T>,
+   |        ---- recursive without indirection
+...
+LL | struct B<T> {
+   | ^^^^^^^^^^^
+LL |     z: A<T>
+   |        ---- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL ~     y: Box<B<T>>,
+LL | }
+LL |
+LL | struct B<T> {
+LL ~     z: Box<A<T>>
+   |
+
+error[E0072]: recursive types `C` and `D` have infinite size
+  --> $DIR/mutual-struct-recursion.rs:11:1
+   |
+LL | struct C<T> {
+   | ^^^^^^^^^^^
+...
+LL |     y: Option<Option<D<T>>>,
+   |                      ---- recursive without indirection
+...
+LL | struct D<T> {
+   | ^^^^^^^^^^^
+LL |     z: Option<Option<C<T>>>,
+   |                      ---- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL ~     y: Option<Option<Box<D<T>>>>,
+LL | }
+LL |
+LL | struct D<T> {
+LL ~     z: Option<Option<Box<C<T>>>>,
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0072`.

@@ -1,0 +1,126 @@
+   LL|       |#![allow(unused_assignments)]
+   LL|       |#![cfg_attr(rustfmt, rustfmt::skip)]
+   LL|       |//@ failure-status: 1
+   LL|       |
+   LL|      6|fn call(return_error: bool) -> Result<(), ()> {
+   LL|      6|    if return_error {
+   LL|      1|        Err(())
+   LL|       |    } else {
+   LL|      5|        Ok(())
+   LL|       |    }
+   LL|      6|}
+   LL|       |
+   LL|      1|fn test1() -> Result<(), ()> {
+   LL|      1|    let mut
+   LL|      1|        countdown = 10
+   LL|       |    ;
+   LL|       |    for
+   LL|       |        _
+   LL|       |    in
+   LL|      6|        0..10
+   LL|       |    {
+   LL|      6|        countdown
+   LL|      6|            -= 1
+   LL|       |        ;
+   LL|       |        if
+   LL|      6|            countdown < 5
+   LL|       |        {
+   LL|      1|            call(/*return_error=*/ true)?;
+   LL|      0|            call(/*return_error=*/ false)?;
+   LL|       |        }
+   LL|       |        else
+   LL|       |        {
+   LL|      5|            call(/*return_error=*/ false)?;
+                                                       ^0
+   LL|       |        }
+   LL|       |    }
+   LL|      0|    Ok(())
+   LL|      1|}
+   LL|       |
+   LL|       |struct Thing1;
+   LL|       |impl Thing1 {
+   LL|     18|    fn get_thing_2(&self, return_error: bool) -> Result<Thing2, ()> {
+   LL|     18|        if return_error {
+   LL|      1|            Err(())
+   LL|       |        } else {
+   LL|     17|            Ok(Thing2 {})
+   LL|       |        }
+   LL|     18|    }
+   LL|       |}
+   LL|       |
+   LL|       |struct Thing2;
+   LL|       |impl Thing2 {
+   LL|     17|    fn call(&self, return_error: bool) -> Result<u32, ()> {
+   LL|     17|        if return_error {
+   LL|      2|            Err(())
+   LL|       |        } else {
+   LL|     15|            Ok(57)
+   LL|       |        }
+   LL|     17|    }
+   LL|       |}
+   LL|       |
+   LL|      1|fn test2() -> Result<(), ()> {
+   LL|      1|    let thing1 = Thing1{};
+   LL|      1|    let mut
+   LL|      1|        countdown = 10
+   LL|       |    ;
+   LL|       |    for
+   LL|       |        _
+   LL|       |    in
+   LL|      6|        0..10
+   LL|       |    {
+   LL|      6|        countdown
+   LL|      6|            -= 1
+   LL|       |        ;
+   LL|       |        if
+   LL|      6|            countdown < 5
+   LL|       |        {
+   LL|      1|            thing1.get_thing_2(/*err=*/ false)?.call(/*err=*/ true).expect_err("call should fail");
+                                                            ^0
+   LL|      1|            thing1
+   LL|       |                .
+   LL|      1|                get_thing_2(/*return_error=*/ false)
+   LL|      0|                ?
+   LL|       |                .
+   LL|      1|                call(/*return_error=*/ true)
+   LL|       |                .
+   LL|      1|                expect_err(
+   LL|      1|                    "call should fail"
+   LL|       |                );
+   LL|      1|            let val = thing1.get_thing_2(/*return_error=*/ true)?.call(/*return_error=*/ true)?;
+                              ^0                                                ^0                          ^0
+   LL|      0|            assert_eq!(val, 57);
+   LL|      0|            let val = thing1.get_thing_2(/*return_error=*/ true)?.call(/*return_error=*/ false)?;
+   LL|      0|            assert_eq!(val, 57);
+   LL|       |        }
+   LL|       |        else
+   LL|       |        {
+   LL|      5|            let val = thing1.get_thing_2(/*return_error=*/ false)?.call(/*return_error=*/ false)?;
+                                                                               ^0                             ^0
+   LL|      5|            assert_eq!(val, 57);
+   LL|      5|            let val = thing1
+   LL|      5|                .get_thing_2(/*return_error=*/ false)?
+                                                                   ^0
+   LL|      5|                .call(/*return_error=*/ false)?;
+                                                            ^0
+   LL|      5|            assert_eq!(val, 57);
+   LL|      5|            let val = thing1
+   LL|      5|                .get_thing_2(/*return_error=*/ false)
+   LL|      0|                ?
+   LL|      5|                .call(/*return_error=*/ false)
+   LL|      0|                ?
+   LL|       |                ;
+   LL|      5|            assert_eq!(val, 57);
+   LL|       |        }
+   LL|       |    }
+   LL|      0|    Ok(())
+   LL|      1|}
+   LL|       |
+   LL|      1|fn main() -> Result<(), ()> {
+   LL|      1|    test1().expect_err("test1 should fail");
+   LL|      1|    test2()
+   LL|      1|    ?
+   LL|       |    ;
+   LL|      0|    Ok(())
+   LL|      1|}
+

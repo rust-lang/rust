@@ -1,0 +1,26 @@
+error: invalid asm template string: unmatched `}` found
+  --> $DIR/ice-bad-err-span-in-template-129503.rs:12:10
+   |
+LL |     asm!(concat!(r#"lJ𐏿Æ�.𐏿�"#, "r} {}"));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unmatched `}` in asm template string
+   |
+   = note: if you intended to print `}`, you can escape it using `}}`
+
+error: invalid asm template string: unmatched `}` found
+  --> $DIR/ice-bad-err-span-in-template-129503.rs:18:10
+   |
+LL |     asm!(concat!("abc", "r} {}"));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^ unmatched `}` in asm template string
+   |
+   = note: if you intended to print `}`, you can escape it using `}}`
+
+error: invalid asm template string: unmatched `}` found
+  --> $DIR/ice-bad-err-span-in-template-129503.rs:24:19
+   |
+LL |     asm!("abc", "r} {}");
+   |                   ^ unmatched `}` in asm template string
+   |
+   = note: if you intended to print `}`, you can escape it using `}}`
+
+error: aborting due to 3 previous errors
+

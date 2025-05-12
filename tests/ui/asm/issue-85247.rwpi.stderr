@@ -1,0 +1,8 @@
+error: cannot use register `r9`: the RWPI static base register (r9) cannot be used as an operand for inline asm
+  --> $DIR/issue-85247.rs:20:18
+   |
+LL |         asm!("", out("r9") _);
+   |                  ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

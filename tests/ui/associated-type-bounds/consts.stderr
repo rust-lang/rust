@@ -1,0 +1,16 @@
+error: expected type, found constant
+  --> $DIR/consts.rs:1:29
+   |
+LL | pub fn accept(_: impl Trait<K: Copy>) {}
+   |                             ^------ bounds are not allowed on associated constants
+   |                             |
+   |                             unexpected constant
+   |
+note: the associated constant is defined here
+  --> $DIR/consts.rs:5:5
+   |
+LL |     const K: i32;
+   |     ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

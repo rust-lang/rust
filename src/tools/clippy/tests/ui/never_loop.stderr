@@ -1,0 +1,236 @@
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:12:5
+   |
+LL | /     loop {
+...  |
+LL | |         break;
+LL | |     }
+   | |_____^
+   |
+   = note: `#[deny(clippy::never_loop)]` on by default
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:36:5
+   |
+LL | /     loop {
+...  |
+LL | |         break;
+LL | |     }
+   | |_____^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:58:5
+   |
+LL | /     loop {
+...  |
+LL | |         return;
+LL | |     }
+   | |_____^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:62:9
+   |
+LL | /         while i == 0 {
+...  |
+LL | |         }
+   | |_________^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:76:9
+   |
+LL | /         loop {
+...  |
+LL | |             continue 'outer;
+LL | |         }
+   | |_________^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:114:5
+   |
+LL | /     while let Some(y) = x {
+...  |
+LL | |     }
+   | |_____^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:123:5
+   |
+LL | /     for x in 0..10 {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL -     for x in 0..10 {
+LL +     if let Some(x) = (0..10).next() {
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:173:5
+   |
+LL | /     'outer: while a {
+...  |
+LL | |         break 'outer;
+LL | |     }
+   | |_____^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:190:9
+   |
+LL | /         while false {
+LL | |
+LL | |
+LL | |             break 'label;
+LL | |         }
+   | |_________^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:243:13
+   |
+LL |       let _ = loop {
+   |  _____________^
+LL | |
+LL | |
+LL | |         let Some(x) = x else {
+...  |
+LL | |         break x;
+LL | |     };
+   | |_____^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:266:5
+   |
+LL | /     'a: loop {
+LL | |
+LL | |
+LL | |         'b: {
+...  |
+LL | |     }
+   | |_____^
+
+error: sub-expression diverges
+  --> tests/ui/never_loop.rs:271:17
+   |
+LL |                 break 'a;
+   |                 ^^^^^^^^
+   |
+   = note: `-D clippy::diverging-sub-expression` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::diverging_sub_expression)]`
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:303:13
+   |
+LL | /             for _ in 0..20 {
+LL | |
+LL | |
+LL | |                 break 'block;
+LL | |             }
+   | |_____________^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL -             for _ in 0..20 {
+LL +             if let Some(_) = (0..20).next() {
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:388:13
+   |
+LL | /             'c: loop {
+LL | |
+LL | |
+LL | |                 if b { break 'c } else { break 'b }
+LL | |             }
+   | |_____________^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:400:5
+   |
+LL | /     loop {
+LL | |
+LL | |
+LL | |         panic!("oh no");
+LL | |     }
+   | |_____^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:405:5
+   |
+LL | /     loop {
+LL | |
+LL | |
+LL | |         unimplemented!("not yet");
+LL | |     }
+   | |_____^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:426:5
+   |
+LL | /     for v in 0..10 {
+LL | |
+LL | |         break;
+LL | |         println!("{v}");
+LL | |     }
+   | |_____^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL -     for v in 0..10 {
+LL +     if let Some(v) = (0..10).next() {
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:434:5
+   |
+LL | /     'outer: for v in 0..10 {
+LL | |
+LL | |         loop {
+...  |
+LL | |         return;
+LL | |     }
+   | |_____^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL -     'outer: for v in 0..10 {
+LL +     if let Some(v) = (0..10).next() {
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:436:9
+   |
+LL | /         loop {
+LL | |
+LL | |             break 'outer;
+LL | |         }
+   | |_________^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:443:5
+   |
+LL | /     for v in 0..10 {
+LL | |
+LL | |         'inner: loop {
+...  |
+LL | |         return;
+LL | |     }
+   | |_____^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL -     for v in 0..10 {
+LL +     if let Some(v) = (0..10).next() {
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:445:9
+   |
+LL | /         'inner: loop {
+LL | |
+LL | |             break 'inner;
+LL | |         }
+   | |_________^
+
+error: aborting due to 21 previous errors
+

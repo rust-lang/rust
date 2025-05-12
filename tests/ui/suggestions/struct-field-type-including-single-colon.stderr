@@ -1,0 +1,40 @@
+error: found single colon in a struct field type path
+  --> $DIR/struct-field-type-including-single-colon.rs:9:11
+   |
+LL |     a: foo:A,
+   |           ^
+   |
+help: write a path separator here
+   |
+LL |     a: foo::A,
+   |            +
+
+error: expected `,`, or `}`, found `:`
+  --> $DIR/struct-field-type-including-single-colon.rs:9:11
+   |
+LL | struct Foo {
+   |        --- while parsing this struct
+LL |     a: foo:A,
+   |           ^
+
+error: found single colon in a struct field type path
+  --> $DIR/struct-field-type-including-single-colon.rs:15:16
+   |
+LL |     b: foo::bar:B,
+   |                ^
+   |
+help: write a path separator here
+   |
+LL |     b: foo::bar::B,
+   |                 +
+
+error: expected `,`, or `}`, found `:`
+  --> $DIR/struct-field-type-including-single-colon.rs:15:16
+   |
+LL | struct Bar {
+   |        --- while parsing this struct
+LL |     b: foo::bar:B,
+   |                ^
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,25 @@
+error: expected `{`, found identifier `foo`
+  --> $DIR/issue-39848.rs:3:21
+   |
+LL |         if $tgt.has_$field() {}
+   |                     ^^^^^^ expected `{`
+...
+LL |     get_opt!(bar, foo);
+   |     ------------------ in this macro invocation
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/issue-39848.rs:3:12
+   |
+LL |         if $tgt.has_$field() {}
+   |            ^^^^^^^^^
+...
+LL |     get_opt!(bar, foo);
+   |     ------------------ in this macro invocation
+   = note: this error originates in the macro `get_opt` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might have meant to write a method call
+   |
+LL |         if $tgt.has_.$field() {}
+   |                     +
+
+error: aborting due to 1 previous error
+

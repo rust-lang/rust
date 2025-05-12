@@ -1,0 +1,21 @@
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-tail-expr-never-type-error.rs:9:13
+   |
+LL |   fn bar(a: bool) {
+   |                  - help: try adding a return type: `-> i32`
+LL | /     match a {
+LL | |         true => 1,
+   | |                 - this is found to be of type `{integer}`
+LL | |         false => {
+LL | |             never()
+   | |             ^^^^^^^
+   | |             |
+   | |             expected integer, found `()`
+   | |             this expression is of type `!`, but it is coerced to `()` due to its surrounding expression
+LL | |         }
+LL | |     }
+   | |_____- `match` arms have incompatible types
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

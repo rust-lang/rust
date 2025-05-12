@@ -1,0 +1,11 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `somedep`
+  --> $DIR/noprelude.rs:6:5
+   |
+LL |     somedep::somefun();
+   |     ^^^^^^^ use of unresolved module or unlinked crate `somedep`
+   |
+   = help: you might be missing a crate named `somedep`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

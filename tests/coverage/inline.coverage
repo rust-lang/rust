@@ -1,0 +1,54 @@
+   LL|       |//@ compile-flags: -Zinline-mir
+   LL|       |
+   LL|       |use std::fmt::Display;
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    permutations(&['a', 'b', 'c']);
+   LL|      1|}
+   LL|       |
+   LL|       |#[inline(always)]
+   LL|      1|fn permutations<T: Copy + Display>(xs: &[T]) {
+   LL|      1|    let mut ys = xs.to_owned();
+   LL|      1|    permutate(&mut ys, 0);
+   LL|      1|}
+   LL|       |
+   LL|     16|fn permutate<T: Copy + Display>(xs: &mut [T], k: usize) {
+   LL|     16|    let n = length(xs);
+   LL|     16|    if k == n {
+   LL|      6|        display(xs);
+   LL|     10|    } else if k < n {
+   LL|     15|        for i in k..n {
+                               ^10^10
+   LL|     15|            swap(xs, i, k);
+   LL|     15|            permutate(xs, k + 1);
+   LL|     15|            swap(xs, i, k);
+   LL|     15|        }
+   LL|      0|    } else {
+   LL|      0|        error();
+   LL|      0|    }
+   LL|     16|}
+   LL|       |
+   LL|     16|fn length<T>(xs: &[T]) -> usize {
+   LL|     16|    xs.len()
+   LL|     16|}
+   LL|       |
+   LL|       |#[inline]
+   LL|     30|fn swap<T: Copy>(xs: &mut [T], i: usize, j: usize) {
+   LL|     30|    let t = xs[i];
+   LL|     30|    xs[i] = xs[j];
+   LL|     30|    xs[j] = t;
+   LL|     30|}
+   LL|       |
+   LL|      6|fn display<T: Display>(xs: &[T]) {
+   LL|     24|    for x in xs {
+                      ^18
+   LL|     18|        print!("{}", x);
+   LL|     18|    }
+   LL|      6|    println!();
+   LL|      6|}
+   LL|       |
+   LL|       |#[inline(always)]
+   LL|      0|fn error() {
+   LL|      0|    panic!("error");
+   LL|       |}
+

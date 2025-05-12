@@ -1,0 +1,56 @@
+error: symbol-name(_RNvXCsCRATE_HASH_13trait_objectsRDG_INtNtNtCsCRATE_HASH_4core3ops8function5FnMutTRL0_hEEp6OutputuEL_NtB<REF>_3Bar6method)
+  --> $DIR/trait-objects.rs:15:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<&dyn for<'a> core[HASH]::ops::function::FnMut<(&'a u8,), Output = ()> as trait_objects[3c073c57f94bedc2]::Bar>::method)
+  --> $DIR/trait-objects.rs:15:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<&dyn for<'a> core::ops::function::FnMut<(&'a u8,), Output = ()> as trait_objects::Bar>::method)
+  --> $DIR/trait-objects.rs:15:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RNvXs_CsCRATE_HASH_13trait_objectsRDG_INtNtNtCsCRATE_HASH_4core3ops8function5FnMutTRL0_hEEp6OutputuNtNtB<REF>_6marker4SendEL_NtB<REF>_3Foo6method)
+  --> $DIR/trait-objects.rs:27:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<&dyn for<'a> core[HASH]::ops::function::FnMut<(&'a u8,), Output = ()> + core[HASH]::marker::Send as trait_objects[3c073c57f94bedc2]::Foo>::method)
+  --> $DIR/trait-objects.rs:27:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<&dyn for<'a> core::ops::function::FnMut<(&'a u8,), Output = ()> + core::marker::Send as trait_objects::Foo>::method)
+  --> $DIR/trait-objects.rs:27:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RNvXs0_CsCRATE_HASH_13trait_objectsRDG_INtNtNtCsCRATE_HASH_4core3ops8function5FnMutTRL0_hEEp6OutputuNtNtB<REF>_6marker4SendEL_NtB<REF>_3Baz6method)
+  --> $DIR/trait-objects.rs:39:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<&dyn for<'a> core[HASH]::ops::function::FnMut<(&'a u8,), Output = ()> + core[HASH]::marker::Send as trait_objects[3c073c57f94bedc2]::Baz>::method)
+  --> $DIR/trait-objects.rs:39:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<&dyn for<'a> core::ops::function::FnMut<(&'a u8,), Output = ()> + core::marker::Send as trait_objects::Baz>::method)
+  --> $DIR/trait-objects.rs:39:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

@@ -1,0 +1,28 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-free-region-ordering-callee.rs:13:5
+   |
+LL | fn ordering2<'a, 'b>(x: &'a &'b usize, y: &'a usize) -> &'b usize {
+   |              --  -- lifetime `'b` defined here
+   |              |
+   |              lifetime `'a` defined here
+LL |     // However, it is not safe to assume that 'b <= 'a
+LL |     &*y
+   |     ^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: lifetime may not live long enough
+  --> $DIR/regions-free-region-ordering-callee.rs:19:12
+   |
+LL | fn ordering3<'a, 'b>(x: &'a usize, y: &'b usize) -> &'a &'b usize {
+   |              --  -- lifetime `'b` defined here
+   |              |
+   |              lifetime `'a` defined here
+LL |     // Do not infer an ordering from the return value.
+LL |     let z: &'b usize = &*x;
+   |            ^^^^^^^^^ type annotation requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to 2 previous errors
+

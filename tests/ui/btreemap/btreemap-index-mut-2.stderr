@@ -1,0 +1,22 @@
+error[E0594]: cannot assign to data in an index of `BTreeMap<u32, u32>`
+  --> $DIR/btreemap-index-mut-2.rs:6:9
+   |
+LL |         map[&0] = 1;
+   |         ^^^^^^^^^^^ cannot assign
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `BTreeMap<u32, u32>`
+help: use `.insert()` to insert a value into a `BTreeMap<u32, u32>`, `.get_mut()` to modify it, or the entry API for more flexibility
+   |
+LL -         map[&0] = 1;
+LL +         map.insert(&0, 1);
+   |
+LL -         map[&0] = 1;
+LL +         if let Some(val) = map.get_mut(&0) { *val = 1; };
+   |
+LL -         map[&0] = 1;
+LL +         let val = map.entry(&0).or_insert(1);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0594`.

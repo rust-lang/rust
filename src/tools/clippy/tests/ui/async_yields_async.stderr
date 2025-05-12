@@ -1,0 +1,93 @@
+error: an async construct yields a type which is itself awaitable
+  --> tests/ui/async_yields_async.rs:37:9
+   |
+LL |        let _h = async {
+   |  _____________________-
+LL | |/         async {
+LL | ||             3
+LL | ||         }
+   | ||_________^ awaitable value not awaited
+LL | |      };
+   | |______- outer async construct
+   |
+   = note: `-D clippy::async-yields-async` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::async_yields_async)]`
+help: consider awaiting this value
+   |
+LL |         async {
+LL |             3
+LL ~         }.await
+   |
+
+error: an async construct yields a type which is itself awaitable
+  --> tests/ui/async_yields_async.rs:43:9
+   |
+LL |       let _i = async {
+   |  ____________________-
+LL | |         CustomFutureType
+   | |         ^^^^^^^^^^^^^^^^
+   | |         |
+   | |         awaitable value not awaited
+   | |         help: consider awaiting this value: `CustomFutureType.await`
+LL | |     };
+   | |_____- outer async construct
+
+error: an async construct yields a type which is itself awaitable
+  --> tests/ui/async_yields_async.rs:50:9
+   |
+LL |        let _j = async || {
+   |  ________________________-
+LL | |/         async {
+LL | ||             3
+LL | ||         }
+   | ||_________^ awaitable value not awaited
+LL | |      };
+   | |______- outer async construct
+   |
+help: consider awaiting this value
+   |
+LL |         async {
+LL |             3
+LL ~         }.await
+   |
+
+error: an async construct yields a type which is itself awaitable
+  --> tests/ui/async_yields_async.rs:56:9
+   |
+LL |       let _k = async || {
+   |  _______________________-
+LL | |         CustomFutureType
+   | |         ^^^^^^^^^^^^^^^^
+   | |         |
+   | |         awaitable value not awaited
+   | |         help: consider awaiting this value: `CustomFutureType.await`
+LL | |     };
+   | |_____- outer async construct
+
+error: an async construct yields a type which is itself awaitable
+  --> tests/ui/async_yields_async.rs:59:23
+   |
+LL |     let _l = async || CustomFutureType;
+   |                       ^^^^^^^^^^^^^^^^
+   |                       |
+   |                       outer async construct
+   |                       awaitable value not awaited
+   |                       help: consider awaiting this value: `CustomFutureType.await`
+
+error: an async construct yields a type which is itself awaitable
+  --> tests/ui/async_yields_async.rs:66:9
+   |
+LL |       let _m = async || {
+   |  _______________________-
+LL | |         println!("I'm bored");
+...  |
+LL | |         CustomFutureType
+   | |         ^^^^^^^^^^^^^^^^
+   | |         |
+   | |         awaitable value not awaited
+   | |         help: consider awaiting this value: `CustomFutureType.await`
+LL | |     };
+   | |_____- outer async construct
+
+error: aborting due to 6 previous errors
+

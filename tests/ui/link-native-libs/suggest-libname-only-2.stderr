@@ -1,0 +1,14 @@
+warning: `extern` declarations without an explicit ABI are deprecated
+  --> $DIR/suggest-libname-only-2.rs:5:1
+   |
+LL | extern { }
+   | ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`
+   |
+   = note: `#[warn(missing_abi)]` on by default
+
+error: could not find native static library `bar.lib`, perhaps an -L flag is missing?
+   |
+   = help: only provide the library name `bar`, not the full filename
+
+error: aborting due to 1 previous error; 1 warning emitted
+

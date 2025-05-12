@@ -1,0 +1,23 @@
+error: closure called just once immediately after it was declared
+  --> tests/ui/redundant_closure_call_late.rs:16:5
+   |
+LL |     i = redun_closure();
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::redundant-closure-call` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_closure_call)]`
+
+error: closure called just once immediately after it was declared
+  --> tests/ui/redundant_closure_call_late.rs:21:5
+   |
+LL |     i = shadowed_closure();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: closure called just once immediately after it was declared
+  --> tests/ui/redundant_closure_call_late.rs:25:5
+   |
+LL |     i = shadowed_closure();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

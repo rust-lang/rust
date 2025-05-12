@@ -1,0 +1,76 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/impl_bounds.rs:14:39
+   |
+LL |     type A<'a> where Self: 'a;
+   |     ---------- definition of `A` from trait
+...
+LL |     type A<'a> = (&'a ()) where Self: 'static;
+   |                                       ^^^^^^^ impl has extra requirement `T: 'static`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/impl_bounds.rs:16:48
+   |
+LL |     type B<'a, 'b> where 'a: 'b;
+   |     -------------- definition of `B` from trait
+...
+LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
+   |                                                ^^ impl has extra requirement `'b: 'a`
+   |
+help: copy the `where` clause predicates from the trait
+   |
+LL -     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
+LL +     type B<'a, 'b> = (&'a(), &'b ()) where 'a: 'b;
+   |
+
+error[E0277]: the trait bound `T: Copy` is not satisfied
+  --> $DIR/impl_bounds.rs:18:33
+   |
+LL |     type C = String where Self: Copy;
+   |                                 ^^^^ the trait `Copy` is not implemented for `T`
+   |
+note: required for `Fooy<T>` to implement `Copy`
+  --> $DIR/impl_bounds.rs:10:10
+   |
+LL | #[derive(Copy, Clone)]
+   |          ^^^^ unsatisfied trait bound introduced in this `derive` macro
+note: the requirement `Fooy<T>: Copy` appears on the `impl`'s associated type `C` but not on the corresponding trait's associated type
+  --> $DIR/impl_bounds.rs:6:10
+   |
+LL | trait Foo {
+   |       --- in this trait
+...
+LL |     type C where Self: Clone;
+   |          ^ this trait's associated type doesn't have the requirement `Fooy<T>: Copy`
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
+   |       +++++++++++++++++++
+
+error[E0277]: the trait bound `T: Copy` is not satisfied
+  --> $DIR/impl_bounds.rs:20:24
+   |
+LL |     fn d() where Self: Copy {}
+   |                        ^^^^ the trait `Copy` is not implemented for `T`
+   |
+note: required for `Fooy<T>` to implement `Copy`
+  --> $DIR/impl_bounds.rs:10:10
+   |
+LL | #[derive(Copy, Clone)]
+   |          ^^^^ unsatisfied trait bound introduced in this `derive` macro
+note: the requirement `Fooy<T>: Copy` appears on the `impl`'s associated function `d` but not on the corresponding trait's associated function
+  --> $DIR/impl_bounds.rs:7:8
+   |
+LL | trait Foo {
+   |       --- in this trait
+...
+LL |     fn d() where Self: Clone;
+   |        ^ this trait's associated function doesn't have the requirement `Fooy<T>: Copy`
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
+   |       +++++++++++++++++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0276, E0277.
+For more information about an error, try `rustc --explain E0276`.

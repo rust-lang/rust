@@ -1,0 +1,21 @@
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/binder-defaults-118697.rs:4:22
+   |
+LL | type T = dyn for<V = A(&())> Fn(());
+   |                      ^ not found in this scope
+
+error: defaults for generic parameters are not allowed in `for<...>` binders
+  --> $DIR/binder-defaults-118697.rs:4:18
+   |
+LL | type T = dyn for<V = A(&())> Fn(());
+   |                  ^^^^^^^^^^
+
+error: late-bound type parameter not allowed on trait object types
+  --> $DIR/binder-defaults-118697.rs:4:18
+   |
+LL | type T = dyn for<V = A(&())> Fn(());
+   |                  ^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

@@ -1,0 +1,55 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: -Zcoverage-options=mcdc
+   LL|       |//@ llvm-cov-flags: --show-branches=count --show-mcdc
+   LL|       |
+   LL|      2|fn accept_7_conditions(bool_arr: [bool; 7]) {
+   LL|      2|    let [a, b, c, d, e, f, g] = bool_arr;
+   LL|      2|    if a && b && c && d && e && f && g {
+                          ^1   ^1   ^1   ^1   ^1   ^1
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 1]
+  |  Branch (LL:13): [True: 1, False: 0]
+  |  Branch (LL:18): [True: 1, False: 0]
+  |  Branch (LL:23): [True: 1, False: 0]
+  |  Branch (LL:28): [True: 1, False: 0]
+  |  Branch (LL:33): [True: 1, False: 0]
+  |  Branch (LL:38): [True: 1, False: 0]
+  ------------------
+  |---> MC/DC Decision Region (LL:8) to (LL:39)
+  |
+  |  Number of Conditions: 7
+  |     Condition C1 --> (LL:8)
+  |     Condition C2 --> (LL:13)
+  |     Condition C3 --> (LL:18)
+  |     Condition C4 --> (LL:23)
+  |     Condition C5 --> (LL:28)
+  |     Condition C6 --> (LL:33)
+  |     Condition C7 --> (LL:38)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2, C3, C4, C5, C6, C7    Result
+  |  1 { F,  -,  -,  -,  -,  -,  -  = F      }
+  |  2 { T,  T,  T,  T,  T,  T,  T  = T      }
+  |
+  |  C1-Pair: covered: (1,2)
+  |  C2-Pair: not covered
+  |  C3-Pair: not covered
+  |  C4-Pair: not covered
+  |  C5-Pair: not covered
+  |  C6-Pair: not covered
+  |  C7-Pair: not covered
+  |  MC/DC Coverage for Decision: 14.29%
+  |
+  ------------------
+   LL|      1|        core::hint::black_box("hello");
+   LL|      1|    }
+   LL|      2|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    accept_7_conditions([false; 7]);
+   LL|       |    accept_7_conditions([true; 7]);
+   LL|       |}
+

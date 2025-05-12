@@ -1,0 +1,44 @@
+error: lifetime may not live long enough
+  --> $DIR/suggest-lt-on-ty-alias-w-generics.rs:4:5
+   |
+LL |   fn test(x: &i32) -> Lazy<i32> {
+   |              - let's call the lifetime of this reference `'1`
+LL | /     Box::new(|| {
+LL | |
+LL | |
+LL | |         *x
+LL | |     })
+   | |______^ returning this value requires that `'1` must outlive `'static`
+   |
+help: to declare that the trait object captures data from argument `x`, you can add a lifetime parameter `'a` in the type alias
+   |
+LL - type Lazy<T> = Box<dyn Fn() -> T + 'static>;
+LL + type Lazy<'a, T> = Box<dyn Fn() -> T + 'a>;
+   |
+
+error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
+  --> $DIR/suggest-lt-on-ty-alias-w-generics.rs:4:14
+   |
+LL |     Box::new(|| {
+   |              ^^ may outlive borrowed value `x`
+...
+LL |         *x
+   |         -- `x` is borrowed here
+   |
+note: closure is returned here
+  --> $DIR/suggest-lt-on-ty-alias-w-generics.rs:4:5
+   |
+LL | /     Box::new(|| {
+LL | |
+LL | |
+LL | |         *x
+LL | |     })
+   | |______^
+help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
+   |
+LL |     Box::new(move || {
+   |              ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0373`.

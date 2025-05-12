@@ -1,0 +1,41 @@
+error: consider removing unnecessary double parentheses
+  --> tests/ui/double_parens.rs:15:5
+   |
+LL |     ((0))
+   |     ^^^^^
+   |
+   = note: `-D clippy::double-parens` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::double_parens)]`
+
+error: consider removing unnecessary double parentheses
+  --> tests/ui/double_parens.rs:22:14
+   |
+LL |     dummy_fn((0));
+   |              ^^^
+
+error: consider removing unnecessary double parentheses
+  --> tests/ui/double_parens.rs:28:20
+   |
+LL |     x.dummy_method((0));
+   |                    ^^^
+
+error: consider removing unnecessary double parentheses
+  --> tests/ui/double_parens.rs:34:5
+   |
+LL |     ((1, 2))
+   |     ^^^^^^^^
+
+error: consider removing unnecessary double parentheses
+  --> tests/ui/double_parens.rs:40:5
+   |
+LL |     (())
+   |     ^^^^
+
+error: consider removing unnecessary double parentheses
+  --> tests/ui/double_parens.rs:64:16
+   |
+LL |     assert_eq!(((1, 2)), (1, 2), "Error");
+   |                ^^^^^^^^
+
+error: aborting due to 6 previous errors
+

@@ -1,0 +1,11 @@
+error: the type of the `self` parameter does not need to be arbitrary
+  --> tests/ui/needless_arbitrary_self_type_unfixable.rs:42:31
+   |
+LL |         fn call_with_mut_self(self: &mut Self) {}
+   |                               ^^^^^^^^^^^^^^^ help: consider to change this parameter to: `&mut self`
+   |
+   = note: `-D clippy::needless-arbitrary-self-type` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_arbitrary_self_type)]`
+
+error: aborting due to 1 previous error
+

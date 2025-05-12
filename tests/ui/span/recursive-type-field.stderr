@@ -1,0 +1,27 @@
+error[E0072]: recursive types `Foo` and `Bar` have infinite size
+  --> $DIR/recursive-type-field.rs:3:1
+   |
+LL | struct Foo<'a> {
+   | ^^^^^^^^^^^^^^
+LL |     bar: Bar<'a>,
+   |          ------- recursive without indirection
+...
+LL | struct Bar<'a> {
+   | ^^^^^^^^^^^^^^
+LL |     y: (Foo<'a>, Foo<'a>),
+   |         -------  ------- recursive without indirection
+   |         |
+   |         recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL ~     bar: Box<Bar<'a>>,
+LL |     b: Rc<Bar<'a>>,
+...
+LL | struct Bar<'a> {
+LL ~     y: (Box<Foo<'a>>, Box<Foo<'a>>),
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0072`.

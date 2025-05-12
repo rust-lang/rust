@@ -1,0 +1,74 @@
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/repeat_count.rs:7:17
+   |
+LL |     let a = [0; n];
+   |                 ^ non-constant value
+   |
+help: consider using `const` instead of `let`
+   |
+LL -     let n = 1;
+LL +     const n: /* Type */ = 1;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:9:17
+   |
+LL |     let b = [0; ()];
+   |                 ^^ expected `usize`, found `()`
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:33:17
+   |
+LL |     let g = [0; G { g: () }];
+   |                 ^^^^^^^^^^^ expected `usize`, found `G`
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:12:17
+   |
+LL |     let c = [0; true];
+   |                 ^^^^ expected `usize`, found `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:15:17
+   |
+LL |     let d = [0; 0.5];
+   |                 ^^^ expected `usize`, found floating-point number
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:18:17
+   |
+LL |     let e = [0; "foo"];
+   |                 ^^^^^ expected `usize`, found `&str`
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:21:17
+   |
+LL |     let f = [0; -4_isize];
+   |                 ^^^^^^^^ expected `usize`, found `isize`
+   |
+   = note: `-4_isize` cannot fit into type `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:24:23
+   |
+LL |     let f = [0_usize; -1_isize];
+   |                       ^^^^^^^^ expected `usize`, found `isize`
+   |
+   = note: `-1_isize` cannot fit into type `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:27:17
+   |
+LL |     let f = [0; 4u8];
+   |                 ^^^ expected `usize`, found `u8`
+   |
+help: change the type of the numeric literal from `u8` to `usize`
+   |
+LL -     let f = [0; 4u8];
+LL +     let f = [0; 4usize];
+   |
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0308, E0435.
+For more information about an error, try `rustc --explain E0308`.

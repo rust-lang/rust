@@ -1,0 +1,32 @@
+error[E0222]: ambiguous associated constant `K` in bounds of `Trait0`
+  --> $DIR/assoc-const-eq-ambiguity.rs:9:25
+   |
+LL | trait Parent0<T> { const K: (); }
+   |                    -----------
+   |                    |
+   |                    ambiguous `K` from `Parent0<u32>`
+   |                    ambiguous `K` from `Parent0<i32>`
+LL |
+LL | fn take0(_: impl Trait0<K = { () }>) {}
+   |                         ^^^^^^^^^^ ambiguous associated constant `K`
+   |
+   = help: consider introducing a new type parameter `T` and adding `where` constraints:
+               where
+                   T: Trait0,
+                   T: Parent0<u32>::K = { () },
+                   T: Parent0<i32>::K = { () }
+
+error[E0222]: ambiguous associated constant `C` in bounds of `Trait1`
+  --> $DIR/assoc-const-eq-ambiguity.rs:16:25
+   |
+LL | trait Parent1 { const C: i32; }
+   |                 ------------ ambiguous `C` from `Parent1`
+LL | trait Parent2 { const C: &'static str; }
+   |                 --------------------- ambiguous `C` from `Parent2`
+LL |
+LL | fn take1(_: impl Trait1<C = "?">) {}
+   |                         ^^^^^^^ ambiguous associated constant `C`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0222`.

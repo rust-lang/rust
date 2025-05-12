@@ -1,0 +1,31 @@
+error[E0308]: mismatched types
+  --> $DIR/return-types.rs:5:38
+   |
+LL | async gen fn async_gen_fn() -> i32 { 0 }
+   |                                ---   ^ expected `()`, found integer
+   |                                |
+   |                                expected `()` because of return type
+
+error[E0308]: mismatched types
+  --> $DIR/return-types.rs:8:26
+   |
+LL | gen fn gen_fn() -> i32 { 0 }
+   |                    ---   ^ expected `()`, found integer
+   |                    |
+   |                    expected `()` because of return type
+
+error[E0308]: mismatched types
+  --> $DIR/return-types.rs:12:27
+   |
+LL |     async gen { yield (); 1 };
+   |                           ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/return-types.rs:17:21
+   |
+LL |     gen { yield (); 1 };
+   |                     ^ expected `()`, found integer
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

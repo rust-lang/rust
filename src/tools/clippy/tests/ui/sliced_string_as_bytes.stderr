@@ -1,0 +1,23 @@
+error: calling `as_bytes` after slicing a string
+  --> tests/ui/sliced_string_as_bytes.rs:28:17
+   |
+LL |     let bytes = s[1..5].as_bytes();
+   |                 ^^^^^^^^^^^^^^^^^^ help: try: `&s.as_bytes()[1..5]`
+   |
+   = note: `-D clippy::sliced-string-as-bytes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::sliced_string_as_bytes)]`
+
+error: calling `as_bytes` after slicing a string
+  --> tests/ui/sliced_string_as_bytes.rs:30:17
+   |
+LL |     let bytes = string[1..].as_bytes();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&string.as_bytes()[1..]`
+
+error: calling `as_bytes` after slicing a string
+  --> tests/ui/sliced_string_as_bytes.rs:32:17
+   |
+LL |     let bytes = "consectetur adipiscing"[..=5].as_bytes();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&"consectetur adipiscing".as_bytes()[..=5]`
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,16 @@
+error: unreachable pattern
+  --> $DIR/issue-65157-repeated-match-arm.rs:15:9
+   |
+LL |         PartiallyInhabitedVariants::Struct { .. } => {}
+   |         ----------------------------------------- matches all the relevant values
+LL |         PartiallyInhabitedVariants::Struct { .. } => {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no value can reach this
+   |
+note: the lint level is defined here
+  --> $DIR/issue-65157-repeated-match-arm.rs:2:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

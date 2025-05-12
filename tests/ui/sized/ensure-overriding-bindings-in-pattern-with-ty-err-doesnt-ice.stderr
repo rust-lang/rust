@@ -1,0 +1,51 @@
+error: expected a pattern, found an expression
+  --> $DIR/ensure-overriding-bindings-in-pattern-with-ty-err-doesnt-ice.rs:2:31
+   |
+LL |     let str::<{fn str() { let str::T>>::as_bytes; }}, T>::as_bytes;
+   |                               ^^^^^^^^^^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/ensure-overriding-bindings-in-pattern-with-ty-err-doesnt-ice.rs:2:55
+   |
+LL |     let str::<{fn str() { let str::T>>::as_bytes; }}, T>::as_bytes;
+   |                                                       ^ not found in this scope
+
+error[E0109]: const and type arguments are not allowed on builtin type `str`
+  --> $DIR/ensure-overriding-bindings-in-pattern-with-ty-err-doesnt-ice.rs:2:15
+   |
+LL |     let str::<{fn str() { let str::T>>::as_bytes; }}, T>::as_bytes;
+   |         ---   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^ const and type arguments not allowed
+   |         |
+   |         not allowed on builtin type `str`
+   |
+help: primitive type `str` doesn't have generic parameters
+   |
+LL -     let str::<{fn str() { let str::T>>::as_bytes; }}, T>::as_bytes;
+LL +     let str::as_bytes;
+   |
+
+error[E0533]: expected unit struct, unit variant or constant, found associated function `str<{
+                  fn str() { let (/*ERROR*/); }
+              }, T>::as_bytes`
+  --> $DIR/ensure-overriding-bindings-in-pattern-with-ty-err-doesnt-ice.rs:2:9
+   |
+LL |     let str::<{fn str() { let str::T>>::as_bytes; }}, T>::as_bytes;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a unit struct, unit variant or constant
+
+error[E0282]: type annotations needed
+  --> $DIR/ensure-overriding-bindings-in-pattern-with-ty-err-doesnt-ice.rs:2:31
+   |
+LL |     let str::<{fn str() { let str::T>>::as_bytes; }}, T>::as_bytes;
+   |                               ^^^^^^^^^^^^^^^^^^
+   |
+help: consider giving this pattern a type
+   |
+LL |     let str::<{fn str() { let str::T>>::as_bytes: /* Type */; }}, T>::as_bytes;
+   |                                                 ++++++++++++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0109, E0282, E0412, E0533.
+For more information about an error, try `rustc --explain E0109`.

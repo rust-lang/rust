@@ -1,0 +1,23 @@
+error[E0507]: cannot move out of `foo` in pattern guard
+  --> $DIR/match-guards-always-borrow.rs:11:14
+   |
+LL |             (|| { let mut bar = foo; bar.take() })();
+   |              ^^                 --- move occurs because `foo` has type `&mut Option<&i32>`, which does not implement the `Copy` trait
+   |              |
+   |              `foo` is moved here
+   |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+
+error[E0507]: cannot move out of `foo` in pattern guard
+  --> $DIR/match-guards-always-borrow.rs:20:14
+   |
+LL |             (|| { let mut bar = foo; bar.take() })();
+   |              ^^                 --- move occurs because `foo` has type `&mut Option<&i32>`, which does not implement the `Copy` trait
+   |              |
+   |              `foo` is moved here
+   |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

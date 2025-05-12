@@ -1,0 +1,19 @@
+error[E0119]: conflicting implementations of trait `Trait` for type `Box<_>`
+  --> $DIR/coherence-overlap-unnormalizable-projection-1.rs:23:1
+   |
+LL | / impl<T> Trait for T
+LL | | where
+LL | |     T: 'static,
+LL | |     for<'a> T: WithAssoc<'a>,
+LL | |     for<'a> Box<<T as WithAssoc<'a>>::Assoc>: WhereBound,
+   | |_________________________________________________________- first implementation here
+...
+LL |   impl<T> Trait for Box<T> {}
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Box<_>`
+   |
+   = note: downstream crates may implement trait `WithAssoc<'a>` for type `std::boxed::Box<_>`
+   = note: downstream crates may implement trait `WhereBound` for type `std::boxed::Box<_>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

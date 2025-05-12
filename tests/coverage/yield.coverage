@@ -1,0 +1,40 @@
+   LL|       |#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
+   LL|       |#![allow(unused_assignments)]
+   LL|       |
+   LL|       |use std::ops::{Coroutine, CoroutineState};
+   LL|       |use std::pin::Pin;
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    let mut coroutine = #[coroutine]
+   LL|      1|    || {
+   LL|      1|        yield 1;
+   LL|      1|        return "foo";
+   LL|      1|    };
+   LL|       |
+   LL|      1|    match Pin::new(&mut coroutine).resume(()) {
+   LL|      1|        CoroutineState::Yielded(1) => {}
+   LL|      0|        _ => panic!("unexpected value from resume"),
+   LL|       |    }
+   LL|      1|    match Pin::new(&mut coroutine).resume(()) {
+   LL|      1|        CoroutineState::Complete("foo") => {}
+   LL|      0|        _ => panic!("unexpected value from resume"),
+   LL|       |    }
+   LL|       |
+   LL|      1|    let mut coroutine = #[coroutine]
+   LL|      1|    || {
+   LL|      1|        yield 1;
+   LL|      1|        yield 2;
+   LL|      0|        yield 3;
+   LL|      0|        return "foo";
+   LL|      0|    };
+   LL|       |
+   LL|      1|    match Pin::new(&mut coroutine).resume(()) {
+   LL|      1|        CoroutineState::Yielded(1) => {}
+   LL|      0|        _ => panic!("unexpected value from resume"),
+   LL|       |    }
+   LL|      1|    match Pin::new(&mut coroutine).resume(()) {
+   LL|      1|        CoroutineState::Yielded(2) => {}
+   LL|      0|        _ => panic!("unexpected value from resume"),
+   LL|       |    }
+   LL|      1|}
+

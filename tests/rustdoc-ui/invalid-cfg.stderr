@@ -1,0 +1,14 @@
+error: `cfg` is not followed by parentheses
+  --> $DIR/invalid-cfg.rs:2:7
+   |
+LL | #[doc(cfg = "x")]
+   |       ^^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+
+error: multiple `cfg` predicates are specified
+  --> $DIR/invalid-cfg.rs:3:14
+   |
+LL | #[doc(cfg(x, y))]
+   |              ^
+
+error: aborting due to 2 previous errors
+

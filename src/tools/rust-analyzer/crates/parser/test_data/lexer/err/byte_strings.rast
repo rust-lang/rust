@@ -1,0 +1,28 @@
+BYTE_STRING "b\"\\💩\"" error: unknown byte escape
+WHITESPACE "\n"
+BYTE_STRING "b\"\\●\"" error: unknown byte escape
+WHITESPACE "\n"
+BYTE_STRING "b\"\\u{_0000}\"" error: invalid start of unicode escape
+WHITESPACE "\n"
+BYTE_STRING "b\"\\u{0000000}\"" error: overlong unicode escape
+WHITESPACE "\n"
+BYTE_STRING "b\"\\u{FFFFFF}\"" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE_STRING "b\"\\u{ffffff}\"" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE_STRING "b\"\\u{ffffff}\"" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE_STRING "b\"\\u{DC00}\"" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE_STRING "b\"\\u{DDDD}\"" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE_STRING "b\"\\u{DFFF}\"" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE_STRING "b\"\\u{D800}\"" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE_STRING "b\"\\u{DAAA}\"" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE_STRING "b\"\\u{DBFF}\"" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE_STRING "b\"\\xы\"" error: invalid character in numeric character escape
+WHITESPACE "\n"

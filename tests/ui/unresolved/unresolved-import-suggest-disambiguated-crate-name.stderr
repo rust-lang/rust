@@ -1,0 +1,15 @@
+error[E0432]: unresolved import `module::SomeUsefulType`
+  --> $DIR/unresolved-import-suggest-disambiguated-crate-name.rs:19:9
+   |
+LL | pub use module::SomeUsefulType;
+   |         ^^^^^^^^^^^^^^^^^^^^^^ no `SomeUsefulType` in `module`
+   |
+help: consider importing this struct instead
+   |
+LL - pub use module::SomeUsefulType;
+LL + pub use ::library::SomeUsefulType;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

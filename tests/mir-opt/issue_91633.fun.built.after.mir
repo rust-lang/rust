@@ -1,0 +1,35 @@
+// MIR for `fun` after built
+
+fn fun(_1: &[T]) -> &T {
+    debug it => _1;
+    let mut _0: &T;
+    let _2: &T;
+    let _3: usize;
+    let mut _4: usize;
+    let mut _5: bool;
+    scope 1 {
+        debug f => _2;
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = const 0_usize;
+        _4 = PtrMetadata(copy _1);
+        _5 = Lt(copy _3, copy _4);
+        assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, copy _3) -> [success: bb1, unwind: bb2];
+    }
+
+    bb1: {
+        _2 = &(*_1)[_3];
+        FakeRead(ForLet(None), _2);
+        _0 = &(*_2);
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
+    }
+
+    bb2 (cleanup): {
+        resume;
+    }
+}

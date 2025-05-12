@@ -1,0 +1,39 @@
+error: adding items after statements is confusing, since items exist from the start of the scope
+  --> tests/ui/items_after_statement.rs:13:5
+   |
+LL | /     fn foo() {
+LL | |
+LL | |
+LL | |         println!("foo");
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::items-after-statements` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::items_after_statements)]`
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+  --> tests/ui/items_after_statement.rs:22:5
+   |
+LL | /     fn foo() {
+LL | |
+LL | |
+LL | |         println!("foo");
+LL | |     }
+   | |_____^
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+  --> tests/ui/items_after_statement.rs:37:13
+   |
+LL | /             fn say_something() {
+LL | |
+LL | |                 println!("something");
+LL | |             }
+   | |_____________^
+...
+LL |       b!();
+   |       ---- in this macro invocation
+   |
+   = note: this error originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+

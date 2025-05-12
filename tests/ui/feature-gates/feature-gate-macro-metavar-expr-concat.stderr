@@ -1,0 +1,13 @@
+error[E0658]: the `concat` meta-variable expression is unstable
+  --> $DIR/feature-gate-macro-metavar-expr-concat.rs:3:14
+   |
+LL |         let ${concat($lhs, $rhs)}: () = ();
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #124225 <https://github.com/rust-lang/rust/issues/124225> for more information
+   = help: add `#![feature(macro_metavar_expr_concat)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

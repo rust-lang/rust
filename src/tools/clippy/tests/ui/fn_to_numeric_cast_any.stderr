@@ -1,0 +1,191 @@
+error: casting function pointer `foo` to `i8`
+  --> tests/ui/fn_to_numeric_cast_any.rs:23:13
+   |
+LL |     let _ = foo as i8;
+   |             ^^^^^^^^^
+   |
+   = note: `-D clippy::fn-to-numeric-cast-any` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::fn_to_numeric_cast_any)]`
+help: did you mean to invoke the function?
+   |
+LL |     let _ = foo() as i8;
+   |                ++
+
+error: casting function pointer `foo` to `i16`
+  --> tests/ui/fn_to_numeric_cast_any.rs:26:13
+   |
+LL |     let _ = foo as i16;
+   |             ^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     let _ = foo() as i16;
+   |                ++
+
+error: casting function pointer `foo` to `i32`
+  --> tests/ui/fn_to_numeric_cast_any.rs:29:13
+   |
+LL |     let _ = foo as i32;
+   |             ^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     let _ = foo() as i32;
+   |                ++
+
+error: casting function pointer `foo` to `i64`
+  --> tests/ui/fn_to_numeric_cast_any.rs:32:13
+   |
+LL |     let _ = foo as i64;
+   |             ^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     let _ = foo() as i64;
+   |                ++
+
+error: casting function pointer `foo` to `i128`
+  --> tests/ui/fn_to_numeric_cast_any.rs:35:13
+   |
+LL |     let _ = foo as i128;
+   |             ^^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     let _ = foo() as i128;
+   |                ++
+
+error: casting function pointer `foo` to `isize`
+  --> tests/ui/fn_to_numeric_cast_any.rs:38:13
+   |
+LL |     let _ = foo as isize;
+   |             ^^^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     let _ = foo() as isize;
+   |                ++
+
+error: casting function pointer `foo` to `u8`
+  --> tests/ui/fn_to_numeric_cast_any.rs:41:13
+   |
+LL |     let _ = foo as u8;
+   |             ^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     let _ = foo() as u8;
+   |                ++
+
+error: casting function pointer `foo` to `u16`
+  --> tests/ui/fn_to_numeric_cast_any.rs:44:13
+   |
+LL |     let _ = foo as u16;
+   |             ^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     let _ = foo() as u16;
+   |                ++
+
+error: casting function pointer `foo` to `u32`
+  --> tests/ui/fn_to_numeric_cast_any.rs:47:13
+   |
+LL |     let _ = foo as u32;
+   |             ^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     let _ = foo() as u32;
+   |                ++
+
+error: casting function pointer `foo` to `u64`
+  --> tests/ui/fn_to_numeric_cast_any.rs:50:13
+   |
+LL |     let _ = foo as u64;
+   |             ^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     let _ = foo() as u64;
+   |                ++
+
+error: casting function pointer `foo` to `u128`
+  --> tests/ui/fn_to_numeric_cast_any.rs:53:13
+   |
+LL |     let _ = foo as u128;
+   |             ^^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     let _ = foo() as u128;
+   |                ++
+
+error: casting function pointer `foo` to `usize`
+  --> tests/ui/fn_to_numeric_cast_any.rs:56:13
+   |
+LL |     let _ = foo as usize;
+   |             ^^^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     let _ = foo() as usize;
+   |                ++
+
+error: casting function pointer `Struct::static_method` to `usize`
+  --> tests/ui/fn_to_numeric_cast_any.rs:61:13
+   |
+LL |     let _ = Struct::static_method as usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     let _ = Struct::static_method() as usize;
+   |                                  ++
+
+error: casting function pointer `f` to `usize`
+  --> tests/ui/fn_to_numeric_cast_any.rs:66:5
+   |
+LL |     f as usize
+   |     ^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     f() as usize
+   |      ++
+
+error: casting function pointer `T::static_method` to `usize`
+  --> tests/ui/fn_to_numeric_cast_any.rs:71:5
+   |
+LL |     T::static_method as usize
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     T::static_method() as usize
+   |                     ++
+
+error: casting function pointer `(clos as fn(u32) -> u32)` to `usize`
+  --> tests/ui/fn_to_numeric_cast_any.rs:78:13
+   |
+LL |     let _ = (clos as fn(u32) -> u32) as usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     let _ = (clos as fn(u32) -> u32)() as usize;
+   |                                     ++
+
+error: casting function pointer `foo` to `*const ()`
+  --> tests/ui/fn_to_numeric_cast_any.rs:83:13
+   |
+LL |     let _ = foo as *const ();
+   |             ^^^^^^^^^^^^^^^^
+   |
+help: did you mean to invoke the function?
+   |
+LL |     let _ = foo() as *const ();
+   |                ++
+
+error: aborting due to 17 previous errors
+

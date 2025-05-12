@@ -1,0 +1,122 @@
+error: using `print!()` with a format string that ends in a single newline
+  --> tests/ui/print_with_newline.rs:7:5
+   |
+LL |     print!("Hello\n");
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::print-with-newline` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::print_with_newline)]`
+help: use `println!` instead
+   |
+LL -     print!("Hello\n");
+LL +     println!("Hello");
+   |
+
+error: using `print!()` with a format string that ends in a single newline
+  --> tests/ui/print_with_newline.rs:10:5
+   |
+LL |     print!("Hello {}\n", "world");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `println!` instead
+   |
+LL -     print!("Hello {}\n", "world");
+LL +     println!("Hello {}", "world");
+   |
+
+error: using `print!()` with a format string that ends in a single newline
+  --> tests/ui/print_with_newline.rs:13:5
+   |
+LL |     print!("Hello {} {}\n", "world", "#2");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `println!` instead
+   |
+LL -     print!("Hello {} {}\n", "world", "#2");
+LL +     println!("Hello {} {}", "world", "#2");
+   |
+
+error: using `print!()` with a format string that ends in a single newline
+  --> tests/ui/print_with_newline.rs:16:5
+   |
+LL |     print!("{}\n", 1265);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `println!` instead
+   |
+LL -     print!("{}\n", 1265);
+LL +     println!("{}", 1265);
+   |
+
+error: using `print!()` with a format string that ends in a single newline
+  --> tests/ui/print_with_newline.rs:19:5
+   |
+LL |     print!("\n");
+   |     ^^^^^^^^^^^^
+   |
+help: use `println!` instead
+   |
+LL -     print!("\n");
+LL +     println!();
+   |
+
+error: using `print!()` with a format string that ends in a single newline
+  --> tests/ui/print_with_newline.rs:42:5
+   |
+LL |     print!("\\\n");
+   |     ^^^^^^^^^^^^^^
+   |
+help: use `println!` instead
+   |
+LL -     print!("\\\n");
+LL +     println!("\\");
+   |
+
+error: using `print!()` with a format string that ends in a single newline
+  --> tests/ui/print_with_newline.rs:52:5
+   |
+LL | /     print!(
+LL | |
+LL | |         "
+LL | | "
+LL | |     );
+   | |_____^
+   |
+help: use `println!` instead
+   |
+LL ~     println!(
+LL |
+LL ~         
+   |
+
+error: using `print!()` with a format string that ends in a single newline
+  --> tests/ui/print_with_newline.rs:57:5
+   |
+LL | /     print!(
+LL | |
+LL | |         r"
+LL | | "
+LL | |     );
+   | |_____^
+   |
+help: use `println!` instead
+   |
+LL ~     println!(
+LL |
+LL ~         
+   |
+
+error: using `print!()` with a format string that ends in a single newline
+  --> tests/ui/print_with_newline.rs:67:5
+   |
+LL |     print!("\\r\n");
+   |     ^^^^^^^^^^^^^^^
+   |
+help: use `println!` instead
+   |
+LL -     print!("\\r\n");
+LL +     println!("\\r");
+   |
+
+error: aborting due to 9 previous errors
+

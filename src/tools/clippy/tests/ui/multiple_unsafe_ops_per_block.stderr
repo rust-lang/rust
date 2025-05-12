@@ -1,0 +1,196 @@
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:38:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         STATIC += 1;
+LL | |         not_very_safe();
+LL | |     }
+   | |_____^
+   |
+note: modification of a mutable static occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:40:9
+   |
+LL |         STATIC += 1;
+   |         ^^^^^^^^^^^
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:41:9
+   |
+LL |         not_very_safe();
+   |         ^^^^^^^^^^^^^^^
+   = note: `-D clippy::multiple-unsafe-ops-per-block` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::multiple_unsafe_ops_per_block)]`
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:48:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         drop(u.u);
+LL | |         *raw_ptr();
+LL | |     }
+   | |_____^
+   |
+note: union field access occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:50:14
+   |
+LL |         drop(u.u);
+   |              ^^^
+note: raw pointer dereference occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:51:9
+   |
+LL |         *raw_ptr();
+   |         ^^^^^^^^^^
+
+error: this `unsafe` block contains 3 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:56:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         asm!("nop");
+LL | |         sample.not_very_safe();
+LL | |         STATIC = 0;
+LL | |     }
+   | |_____^
+   |
+note: inline assembly used here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:58:9
+   |
+LL |         asm!("nop");
+   |         ^^^^^^^^^^^
+note: unsafe method call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:59:9
+   |
+LL |         sample.not_very_safe();
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+note: modification of a mutable static occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:60:9
+   |
+LL |         STATIC = 0;
+   |         ^^^^^^^^^^
+
+error: this `unsafe` block contains 6 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:66:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         drop(u.u);
+LL | |         drop(STATIC);
+...  |
+LL | |         asm!("nop");
+LL | |     }
+   | |_____^
+   |
+note: union field access occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:68:14
+   |
+LL |         drop(u.u);
+   |              ^^^
+note: access of a mutable static occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:69:14
+   |
+LL |         drop(STATIC);
+   |              ^^^^^^
+note: unsafe method call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:70:9
+   |
+LL |         sample.not_very_safe();
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:71:9
+   |
+LL |         not_very_safe();
+   |         ^^^^^^^^^^^^^^^
+note: raw pointer dereference occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:72:9
+   |
+LL |         *raw_ptr();
+   |         ^^^^^^^^^^
+note: inline assembly used here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:73:9
+   |
+LL |         asm!("nop");
+   |         ^^^^^^^^^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:111:5
+   |
+LL |     unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:111:14
+   |
+LL |     unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: raw pointer dereference occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:111:39
+   |
+LL |     unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
+   |                                       ^^^^^^^^^^^^^^^^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:130:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         x();
+LL | |         x();
+LL | |     }
+   | |_____^
+   |
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:132:9
+   |
+LL |         x();
+   |         ^^^
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:133:9
+   |
+LL |         x();
+   |         ^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:142:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             T::X();
+LL | |             T::X();
+LL | |         }
+   | |_________^
+   |
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:144:13
+   |
+LL |             T::X();
+   |             ^^^^^^
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:145:13
+   |
+LL |             T::X();
+   |             ^^^^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:153:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         x.0();
+LL | |         x.0();
+LL | |     }
+   | |_____^
+   |
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:155:9
+   |
+LL |         x.0();
+   |         ^^^^^
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:156:9
+   |
+LL |         x.0();
+   |         ^^^^^
+
+error: aborting due to 8 previous errors
+

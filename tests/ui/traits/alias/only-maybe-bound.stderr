@@ -1,0 +1,21 @@
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/only-maybe-bound.rs:13:12
+   |
+LL | trait _1 = _0;
+   | -------- this alias does not contain a trait
+...
+LL | type _T0 = dyn _1;
+   |            ^^^^^^
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/only-maybe-bound.rs:19:12
+   |
+LL | trait _2 = _1 + _1;
+   | -------- this alias does not contain a trait
+LL |
+LL | type _T1 = dyn _2;
+   |            ^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0224`.

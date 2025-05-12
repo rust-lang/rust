@@ -1,0 +1,16 @@
+error[E0277]: cannot add `()` to `u32`
+  --> $DIR/multiline-span-simple.rs:13:18
+   |
+LL |     foo(1 as u32 +
+   |                  ^ no implementation for `u32 + ()`
+   |
+   = help: the trait `Add<()>` is not implemented for `u32`
+   = help: the following other types implement trait `Add<Rhs>`:
+             `&u32` implements `Add<u32>`
+             `&u32` implements `Add`
+             `u32` implements `Add<&u32>`
+             `u32` implements `Add`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

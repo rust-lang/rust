@@ -1,0 +1,49 @@
+error[E0107]: missing generics for trait `IntoCow`
+  --> $DIR/ufcs-qpath-missing-params.rs:14:16
+   |
+LL |     <String as IntoCow>::into_cow("foo".to_string());
+   |                ^^^^^^^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `B`
+  --> $DIR/ufcs-qpath-missing-params.rs:3:11
+   |
+LL | pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
+   |           ^^^^^^^     -
+help: add missing generic argument
+   |
+LL |     <String as IntoCow<B>>::into_cow("foo".to_string());
+   |                       +++
+
+error[E0107]: missing generics for trait `IntoCow`
+  --> $DIR/ufcs-qpath-missing-params.rs:17:16
+   |
+LL |     <String as IntoCow>::into_cow::<str>("foo".to_string());
+   |                ^^^^^^^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `B`
+  --> $DIR/ufcs-qpath-missing-params.rs:3:11
+   |
+LL | pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
+   |           ^^^^^^^     -
+help: add missing generic argument
+   |
+LL |     <String as IntoCow<B>>::into_cow::<str>("foo".to_string());
+   |                       +++
+
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/ufcs-qpath-missing-params.rs:17:26
+   |
+LL |     <String as IntoCow>::into_cow::<str>("foo".to_string());
+   |                          ^^^^^^^^------- help: remove the unnecessary generics
+   |                          |
+   |                          expected 0 generic arguments
+   |
+note: method defined here, with 0 generic parameters
+  --> $DIR/ufcs-qpath-missing-params.rs:4:8
+   |
+LL |     fn into_cow(self) -> Cow<'a, B>;
+   |        ^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

@@ -1,0 +1,184 @@
+error: method `add` can be confused for the standard trait method `std::ops::Add::add`
+  --> tests/ui/should_impl_trait/method_list_1.rs:24:5
+   |
+LL | /     pub fn add(self, other: T) -> T {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::ops::Add` or choosing a less ambiguous method name
+   = note: `-D clippy::should-implement-trait` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::should_implement_trait)]`
+
+error: method `as_mut` can be confused for the standard trait method `std::convert::AsMut::as_mut`
+  --> tests/ui/should_impl_trait/method_list_1.rs:30:5
+   |
+LL | /     pub fn as_mut(&mut self) -> &mut T {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::convert::AsMut` or choosing a less ambiguous method name
+
+error: method `as_ref` can be confused for the standard trait method `std::convert::AsRef::as_ref`
+  --> tests/ui/should_impl_trait/method_list_1.rs:36:5
+   |
+LL | /     pub fn as_ref(&self) -> &T {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::convert::AsRef` or choosing a less ambiguous method name
+
+error: method `bitand` can be confused for the standard trait method `std::ops::BitAnd::bitand`
+  --> tests/ui/should_impl_trait/method_list_1.rs:42:5
+   |
+LL | /     pub fn bitand(self, rhs: T) -> T {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::ops::BitAnd` or choosing a less ambiguous method name
+
+error: method `bitor` can be confused for the standard trait method `std::ops::BitOr::bitor`
+  --> tests/ui/should_impl_trait/method_list_1.rs:48:5
+   |
+LL | /     pub fn bitor(self, rhs: Self) -> Self {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::ops::BitOr` or choosing a less ambiguous method name
+
+error: method `bitxor` can be confused for the standard trait method `std::ops::BitXor::bitxor`
+  --> tests/ui/should_impl_trait/method_list_1.rs:54:5
+   |
+LL | /     pub fn bitxor(self, rhs: Self) -> Self {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::ops::BitXor` or choosing a less ambiguous method name
+
+error: method `borrow` can be confused for the standard trait method `std::borrow::Borrow::borrow`
+  --> tests/ui/should_impl_trait/method_list_1.rs:60:5
+   |
+LL | /     pub fn borrow(&self) -> &str {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::borrow::Borrow` or choosing a less ambiguous method name
+
+error: method `borrow_mut` can be confused for the standard trait method `std::borrow::BorrowMut::borrow_mut`
+  --> tests/ui/should_impl_trait/method_list_1.rs:66:5
+   |
+LL | /     pub fn borrow_mut(&mut self) -> &mut str {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::borrow::BorrowMut` or choosing a less ambiguous method name
+
+error: method `clone` can be confused for the standard trait method `std::clone::Clone::clone`
+  --> tests/ui/should_impl_trait/method_list_1.rs:72:5
+   |
+LL | /     pub fn clone(&self) -> Self {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::clone::Clone` or choosing a less ambiguous method name
+
+error: method `cmp` can be confused for the standard trait method `std::cmp::Ord::cmp`
+  --> tests/ui/should_impl_trait/method_list_1.rs:78:5
+   |
+LL | /     pub fn cmp(&self, other: &Self) -> Self {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::cmp::Ord` or choosing a less ambiguous method name
+
+error: method `default` can be confused for the standard trait method `std::default::Default::default`
+  --> tests/ui/should_impl_trait/method_list_1.rs:84:5
+   |
+LL | /     pub fn default() -> Self {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::default::Default` or choosing a less ambiguous method name
+
+error: method `deref` can be confused for the standard trait method `std::ops::Deref::deref`
+  --> tests/ui/should_impl_trait/method_list_1.rs:90:5
+   |
+LL | /     pub fn deref(&self) -> &Self {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::ops::Deref` or choosing a less ambiguous method name
+
+error: method `deref_mut` can be confused for the standard trait method `std::ops::DerefMut::deref_mut`
+  --> tests/ui/should_impl_trait/method_list_1.rs:96:5
+   |
+LL | /     pub fn deref_mut(&mut self) -> &mut Self {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::ops::DerefMut` or choosing a less ambiguous method name
+
+error: method `div` can be confused for the standard trait method `std::ops::Div::div`
+  --> tests/ui/should_impl_trait/method_list_1.rs:102:5
+   |
+LL | /     pub fn div(self, rhs: Self) -> Self {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::ops::Div` or choosing a less ambiguous method name
+
+error: method `drop` can be confused for the standard trait method `std::ops::Drop::drop`
+  --> tests/ui/should_impl_trait/method_list_1.rs:108:5
+   |
+LL | /     pub fn drop(&mut self) {
+LL | |
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::ops::Drop` or choosing a less ambiguous method name
+
+error: aborting due to 15 previous errors
+

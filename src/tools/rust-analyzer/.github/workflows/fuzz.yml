@@ -1,0 +1,43 @@
+name: Fuzz
+on:
+  schedule:
+    # Once a week
+    - cron: '0 0 * * 0'
+  push:
+    paths:
+    - '.github/workflows/fuzz.yml'
+  # Allow manual trigger
+  workflow_dispatch:
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  CI: 1
+  RUST_BACKTRACE: short
+  RUSTFLAGS: "-D warnings -W unreachable-pub -W bare-trait-objects"
+  RUSTUP_MAX_RETRIES: 10
+
+jobs:
+  rust:
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
+    name: Rust
+    runs-on: ubuntu-latest
+    env:
+      CC: deny_c
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+
+      - name: Install Rust toolchain
+        run: |
+          rustup install --profile minimal nightly
+
+      - name: Build fuzzers
+        run: |
+          cargo install cargo-fuzz
+          cd crates/syntax
+          cargo +nightly fuzz build

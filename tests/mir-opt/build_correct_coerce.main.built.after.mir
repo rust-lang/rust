@@ -1,0 +1,18 @@
+// MIR for `main` after built
+
+fn main() -> () {
+    let mut _0: ();
+    let _1: for<'a> fn(&'a (), &'a ());
+    scope 1 {
+        debug x => _1;
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = foo as for<'a> fn(&'a (), &'a ()) (PointerCoercion(ReifyFnPointer, AsCast));
+        FakeRead(ForLet(None), _1);
+        _0 = const ();
+        StorageDead(_1);
+        return;
+    }
+}

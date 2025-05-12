@@ -1,0 +1,62 @@
+error[E0053]: method `mul` has an incompatible type for trait
+  --> $DIR/wrong-mul-method-signature.rs:16:21
+   |
+LL |     fn mul(self, s: &f64) -> Vec1 {
+   |                     ^^^^ expected `f64`, found `&f64`
+   |
+   = note: expected signature `fn(Vec1, _) -> Vec1`
+              found signature `fn(Vec1, &_) -> Vec1`
+help: change the parameter type to match the trait
+   |
+LL -     fn mul(self, s: &f64) -> Vec1 {
+LL +     fn mul(self, s: f64) -> Vec1 {
+   |
+
+error[E0053]: method `mul` has an incompatible type for trait
+  --> $DIR/wrong-mul-method-signature.rs:33:21
+   |
+LL |     fn mul(self, s: f64) -> Vec2 {
+   |                     ^^^ expected `Vec2`, found `f64`
+   |
+   = note: expected signature `fn(Vec2, Vec2) -> f64`
+              found signature `fn(Vec2, f64) -> Vec2`
+help: change the parameter type to match the trait
+   |
+LL -     fn mul(self, s: f64) -> Vec2 {
+LL +     fn mul(self, s: Vec2) -> Vec2 {
+   |
+
+error[E0053]: method `mul` has an incompatible type for trait
+  --> $DIR/wrong-mul-method-signature.rs:52:29
+   |
+LL |     fn mul(self, s: f64) -> f64 {
+   |                             ^^^ expected `i32`, found `f64`
+   |
+   = note: expected signature `fn(Vec3, _) -> i32`
+              found signature `fn(Vec3, _) -> f64`
+help: change the output type to match the trait
+   |
+LL -     fn mul(self, s: f64) -> f64 {
+LL +     fn mul(self, s: f64) -> i32 {
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/wrong-mul-method-signature.rs:63:45
+   |
+LL |     let x: Vec2 = Vec2 { x: 1.0, y: 2.0 } * 2.0; // trait had reversed order
+   |                   -----------------------   ^^^ expected `Vec2`, found floating-point number
+   |                   |
+   |                   expected because this is `Vec2`
+
+error[E0308]: mismatched types
+  --> $DIR/wrong-mul-method-signature.rs:63:19
+   |
+LL |     let x: Vec2 = Vec2 { x: 1.0, y: 2.0 } * 2.0; // trait had reversed order
+   |            ----   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Vec2`, found `f64`
+   |            |
+   |            expected due to this
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0053, E0308.
+For more information about an error, try `rustc --explain E0053`.

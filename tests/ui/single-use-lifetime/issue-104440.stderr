@@ -1,0 +1,28 @@
+error: lifetime parameter `'a` only used once
+  --> $DIR/issue-104440.rs:63:8
+   |
+LL |     m!('a);
+   |        ^^
+   |        |
+   |        this lifetime...
+   |        ...is used only here
+   |
+note: the lint level is defined here
+  --> $DIR/issue-104440.rs:2:9
+   |
+LL | #![deny(single_use_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: lifetime parameter `'a` only used once
+  --> $DIR/issue-104440.rs:38:30
+   |
+LL |         fn f<'b, 'c, $a: 'b, 'a: 'c>(t1: &$a(), t2: &'a ()) -> (&'b (), &'c ()) {
+   |                              ^^ this lifetime...     -- ...is used only here
+...
+LL |     m!('a);
+   |     ------ in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,41 @@
+- // MIR for `as_match` before UnreachablePropagation
++ // MIR for `as_match` after UnreachablePropagation
+  
+  fn as_match() -> () {
+      let mut _0: ();
+      let mut _1: std::option::Option<Empty>;
+      let mut _2: isize;
+      let _3: Empty;
+      let mut _4: !;
++     let mut _5: bool;
+      scope 1 {
+          debug _x => _3;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = empty() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          _2 = discriminant(_1);
+-         switchInt(move _2) -> [1: bb3, otherwise: bb2];
++         _5 = Ne(copy _2, const 1_isize);
++         assume(move _5);
++         goto -> bb2;
+      }
+  
+      bb2: {
+          _0 = const ();
+          StorageDead(_1);
+          return;
+      }
+  
+      bb3: {
+-         StorageLive(_3);
+-         _3 = move ((_1 as Some).0: Empty);
+-         StorageLive(_4);
+          unreachable;
+      }
+  }
+  

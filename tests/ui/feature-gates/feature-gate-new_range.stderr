@@ -1,0 +1,48 @@
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-new_range.rs:4:41
+   |
+LL |     let a: core::range::RangeFrom<u8> = 1..;
+   |            --------------------------   ^^^ expected `RangeFrom<u8>`, found `RangeFrom<{integer}>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `std::range::RangeFrom<u8>`
+              found struct `std::ops::RangeFrom<{integer}>`
+help: call `Into::into` on this expression to convert `std::ops::RangeFrom<{integer}>` into `std::range::RangeFrom<u8>`
+   |
+LL |     let a: core::range::RangeFrom<u8> = 1...into();
+   |                                            +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-new_range.rs:6:37
+   |
+LL |     let b: core::range::Range<u8> = 2..3;
+   |            ----------------------   ^^^^ expected `Range<u8>`, found `Range<{integer}>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `std::range::Range<u8>`
+              found struct `std::ops::Range<{integer}>`
+help: call `Into::into` on this expression to convert `std::ops::Range<{integer}>` into `std::range::Range<u8>`
+   |
+LL |     let b: core::range::Range<u8> = 2..3.into();
+   |                                         +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-new_range.rs:8:46
+   |
+LL |     let c: core::range::RangeInclusive<u8> = 4..=5;
+   |            -------------------------------   ^^^^^ expected `RangeInclusive<u8>`, found `RangeInclusive<{integer}>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `std::range::RangeInclusive<u8>`
+              found struct `std::ops::RangeInclusive<{integer}>`
+help: call `Into::into` on this expression to convert `std::ops::RangeInclusive<{integer}>` into `std::range::RangeInclusive<u8>`
+   |
+LL |     let c: core::range::RangeInclusive<u8> = 4..=5.into();
+   |                                                   +++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

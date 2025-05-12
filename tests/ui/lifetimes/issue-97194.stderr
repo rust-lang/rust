@@ -1,0 +1,33 @@
+error: incorrect function inside `extern` block
+  --> $DIR/issue-97194.rs:2:8
+   |
+LL |   extern "C" {
+   |   ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+LL |       fn bget(&self, index: [usize; Self::DIM]) -> bool {
+   |  ________^^^^___________________________________________-
+   | |        |
+   | |        cannot have a body
+...  |
+LL | |     }
+   | |_____- help: remove the invalid body: `;`
+   |
+   = help: you might have meant to write a function accessible through FFI, which can be done by writing `extern fn` outside of the `extern` block
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/issue-97194.rs:2:13
+   |
+LL |     fn bget(&self, index: [usize; Self::DIM]) -> bool {
+   |             ^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
+  --> $DIR/issue-97194.rs:2:35
+   |
+LL |     fn bget(&self, index: [usize; Self::DIM]) -> bool {
+   |                                   ^^^^ `Self` is only available in impls, traits, and type definitions
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

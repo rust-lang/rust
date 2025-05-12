@@ -1,0 +1,63 @@
+error[E0658]: the extern "riscv-interrupt-m" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-riscv-interrupt.rs:13:8
+   |
+LL | extern "riscv-interrupt-m" fn f() {}
+   |        ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #111889 <https://github.com/rust-lang/rust/issues/111889> for more information
+   = help: add `#![feature(abi_riscv_interrupt)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "riscv-interrupt-s" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-riscv-interrupt.rs:15:8
+   |
+LL | extern "riscv-interrupt-s" fn f_s() {}
+   |        ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #111889 <https://github.com/rust-lang/rust/issues/111889> for more information
+   = help: add `#![feature(abi_riscv_interrupt)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "riscv-interrupt-m" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-riscv-interrupt.rs:19:12
+   |
+LL |     extern "riscv-interrupt-m" fn m();
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #111889 <https://github.com/rust-lang/rust/issues/111889> for more information
+   = help: add `#![feature(abi_riscv_interrupt)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "riscv-interrupt-m" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-riscv-interrupt.rs:25:12
+   |
+LL |     extern "riscv-interrupt-m" fn m() {}
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #111889 <https://github.com/rust-lang/rust/issues/111889> for more information
+   = help: add `#![feature(abi_riscv_interrupt)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "riscv-interrupt-m" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-riscv-interrupt.rs:30:12
+   |
+LL |     extern "riscv-interrupt-m" fn im() {}
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #111889 <https://github.com/rust-lang/rust/issues/111889> for more information
+   = help: add `#![feature(abi_riscv_interrupt)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "riscv-interrupt-m" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-riscv-interrupt.rs:34:18
+   |
+LL | type TA = extern "riscv-interrupt-m" fn();
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #111889 <https://github.com/rust-lang/rust/issues/111889> for more information
+   = help: add `#![feature(abi_riscv_interrupt)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

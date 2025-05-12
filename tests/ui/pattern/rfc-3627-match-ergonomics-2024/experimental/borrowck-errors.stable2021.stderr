@@ -1,0 +1,69 @@
+error[E0308]: mismatched types
+  --> $DIR/borrowck-errors.rs:17:10
+   |
+LL |     let [&x] = &[&mut 0];
+   |          ^^    --------- this expression has type `&[&mut {integer}; 1]`
+   |          |
+   |          types differ in mutability
+   |
+   = note: expected mutable reference `&mut {integer}`
+                      found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     let [&x] = &[&mut 0];
+LL +     let [x] = &[&mut 0];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/borrowck-errors.rs:24:10
+   |
+LL |     let [&x] = &mut [&mut 0];
+   |          ^^    ------------- this expression has type `&mut [&mut {integer}; 1]`
+   |          |
+   |          types differ in mutability
+   |
+   = note: expected mutable reference `&mut {integer}`
+                      found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     let [&x] = &mut [&mut 0];
+LL +     let [x] = &mut [&mut 0];
+   |
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/borrowck-errors.rs:33:29
+   |
+LL |     if let Some(&Some(x)) = Some(&Some(&mut 0)) {
+   |                       -     ^^^^^^^^^^^^^^^^^^^
+   |                       |
+   |                       data moved here
+   |                       move occurs because `x` has type `&mut u32`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -     if let Some(&Some(x)) = Some(&Some(&mut 0)) {
+LL +     if let Some(Some(x)) = Some(&Some(&mut 0)) {
+   |
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-errors.rs:38:10
+   |
+LL |     let &ref mut x = &0;
+   |          ^^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-errors.rs:43:23
+   |
+LL |     if let &Some(Some(x)) = &Some(&mut Some(0)) {
+   |                       ^ cannot borrow as mutable
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-errors.rs:48:11
+   |
+LL |     let &[x] = &&mut [0];
+   |           ^ cannot borrow as mutable
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0308, E0507, E0596.
+For more information about an error, try `rustc --explain E0308`.

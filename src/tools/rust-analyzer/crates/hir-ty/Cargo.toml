@@ -1,0 +1,68 @@
+[package]
+name = "hir-ty"
+version = "0.0.0"
+repository.workspace = true
+description = "The type system for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+
+[dependencies]
+cov-mark = "2.0.0"
+itertools.workspace = true
+arrayvec.workspace = true
+bitflags.workspace = true
+smallvec.workspace = true
+ena = "0.14.3"
+either.workspace = true
+oorandom = "11.1.5"
+tracing.workspace = true
+rustc-hash.workspace = true
+scoped-tls = "1.0.1"
+chalk-solve.workspace = true
+chalk-ir.workspace = true
+chalk-recursive.workspace = true
+chalk-derive.workspace = true
+la-arena.workspace = true
+triomphe.workspace = true
+typed-arena = "2.0.2"
+indexmap.workspace = true
+rustc_apfloat = "0.2.2"
+query-group.workspace = true
+salsa.workspace = true
+salsa-macros.workspace = true
+
+ra-ap-rustc_abi.workspace = true
+ra-ap-rustc_index.workspace = true
+ra-ap-rustc_pattern_analysis.workspace = true
+
+
+# local deps
+stdx.workspace = true
+intern.workspace = true
+hir-def.workspace = true
+hir-expand.workspace = true
+base-db.workspace = true
+syntax.workspace = true
+span.workspace = true
+
+[dev-dependencies]
+expect-test = "1.5.1"
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-tree.workspace = true
+project-model.workspace = true
+
+# local deps
+test-utils.workspace = true
+test-fixture.workspace = true
+
+[features]
+in-rust-tree = ["hir-expand/in-rust-tree"]
+
+[lints]
+workspace = true

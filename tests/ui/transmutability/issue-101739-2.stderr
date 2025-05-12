@@ -1,0 +1,16 @@
+error[E0107]: trait takes at most 2 generic arguments but 5 generic arguments were supplied
+  --> $DIR/issue-101739-2.rs:17:14
+   |
+LL |           Dst: TransmuteFrom<
+   |                ^^^^^^^^^^^^^ expected at most 2 generic arguments
+...
+LL |                   ASSUME_ALIGNMENT,
+   |  _________________________________-
+LL | |                 ASSUME_LIFETIMES,
+LL | |                 ASSUME_VALIDITY,
+LL | |                 ASSUME_VISIBILITY,
+   | |_________________________________- help: remove the unnecessary generic arguments
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

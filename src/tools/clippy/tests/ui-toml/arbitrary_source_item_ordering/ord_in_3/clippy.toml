@@ -1,0 +1,2 @@
+source-item-ordering = ["module"]
+module-items-ordered-within-groupings = ["PascalCase"]

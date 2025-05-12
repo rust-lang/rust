@@ -1,0 +1,20 @@
+// Checks that the "copy path" button is not triggering JS error and its display
+// isn't broken and the copied path is as expected.
+go-to: "file://" + |DOC_PATH| + "/test_docs/foreign_impl_order/trait.Foo.html"
+
+// We ensure that the clipboard is empty.
+assert-clipboard: ""
+
+// First we store the size of the button before we click on it.
+store-size: ("#copy-path", {"width": width, "height": height})
+click: "#copy-path"
+// We wait for the new text to appear.
+wait-for: "#copy-path.clicked"
+// We check that the clipboard value is the expected one.
+assert-clipboard: "test_docs::foreign_impl_order::Foo"
+// We check that the size didn't change.
+assert-size: ("#copy-path.clicked", {"width": |width|, "height": |height|})
+// We wait for the button to turn back to its original state.
+wait-for: "#copy-path:not(.clicked)"
+// We check that the size is still the same.
+assert-size: ("#copy-path:not(.clicked)", {"width": |width|, "height": |height|})

@@ -1,0 +1,71 @@
+#![warn(clippy::unused_format_specs)]
+#![allow(unused)]
+
+macro_rules! format_args_from_macro {
+    () => {
+        format_args!("from macro")
+    };
+}
+
+fn main() {
+    // prints `.`, not `     .`
+    println!("{:5}.", format_args!(""));
+    //~^ unused_format_specs
+
+    //prints `abcde`, not `abc`
+    println!("{:.3}", format_args!("abcde"));
+    //~^ unused_format_specs
+
+    println!("{:5}.", format_args_from_macro!());
+    //~^ unused_format_specs
+
+    let args = format_args!("");
+    println!("{args:5}");
+    //~^ unused_format_specs
+}
+
+fn should_not_lint() {
+    println!("{}", format_args!(""));
+    // Technically the same as `{}`, but the `format_args` docs specifically mention that you can use
+    // debug formatting so allow it
+    println!("{:?}", format_args!(""));
+
+    let args = format_args!("");
+    println!("{args}");
+}
+
+#[clippy::format_args]
+macro_rules! usr_println {
+    ($target:expr, $($args:tt)*) => {{
+        if $target {
+            println!($($args)*)
+        }
+    }};
+}
+
+fn should_lint_user() {
+    // prints `.`, not `     .`
+    usr_println!(true, "{:5}.", format_args!(""));
+    //~^ unused_format_specs
+
+    //prints `abcde`, not `abc`
+    usr_println!(true, "{:.3}", format_args!("abcde"));
+    //~^ unused_format_specs
+
+    usr_println!(true, "{:5}.", format_args_from_macro!());
+    //~^ unused_format_specs
+
+    let args = format_args!("");
+    usr_println!(true, "{args:5}");
+    //~^ unused_format_specs
+}
+
+fn should_not_lint_user() {
+    usr_println!(true, "{}", format_args!(""));
+    // Technically the same as `{}`, but the `format_args` docs specifically mention that you can use
+    // debug formatting so allow it
+    usr_println!(true, "{:?}", format_args!(""));
+
+    let args = format_args!("");
+    usr_println!(true, "{args}");
+}

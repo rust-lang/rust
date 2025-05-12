@@ -1,0 +1,104 @@
+#![allow(dead_code, clippy::double_parens, clippy::unnecessary_cast)]
+#![warn(clippy::suboptimal_flops, clippy::imprecise_flops)]
+
+// FIXME(f16_f128): add tests for these types once math functions are available
+
+const TWO: f32 = 2.0;
+const E: f32 = std::f32::consts::E;
+
+fn check_log_base() {
+    let x = 1f32;
+    let _ = x.log2();
+    //~^ suboptimal_flops
+    let _ = x.log10();
+    //~^ suboptimal_flops
+    let _ = x.ln();
+    //~^ suboptimal_flops
+    let _ = x.log2();
+    //~^ suboptimal_flops
+    let _ = x.ln();
+    //~^ suboptimal_flops
+    let _ = (x as f32).log2();
+    //~^ suboptimal_flops
+
+    let x = 1f64;
+    let _ = x.log2();
+    //~^ suboptimal_flops
+    let _ = x.log10();
+    //~^ suboptimal_flops
+    let _ = x.ln();
+    //~^ suboptimal_flops
+}
+
+fn check_ln1p() {
+    let x = 1f32;
+    let _ = 2.0f32.ln_1p();
+    //~^ imprecise_flops
+    let _ = 2.0f32.ln_1p();
+    //~^ imprecise_flops
+    let _ = x.ln_1p();
+    //~^ imprecise_flops
+    let _ = (x / 2.0).ln_1p();
+    //~^ imprecise_flops
+    let _ = x.powi(3).ln_1p();
+    //~^ imprecise_flops
+    let _ = (x.powi(3) / 2.0).ln_1p();
+    //~^ imprecise_flops
+    let _ = (std::f32::consts::E - 1.0).ln_1p();
+    //~^ imprecise_flops
+    let _ = x.ln_1p();
+    //~^ imprecise_flops
+    let _ = x.powi(3).ln_1p();
+    //~^ imprecise_flops
+    let _ = (x + 2.0).ln_1p();
+    //~^ imprecise_flops
+    let _ = (x / 2.0).ln_1p();
+    //~^ imprecise_flops
+    // Cases where the lint shouldn't be applied
+    let _ = (1.0 + x + 2.0).ln();
+    let _ = (x + 1.0 + 2.0).ln();
+    let _ = (x + 1.0 / 2.0).ln();
+    let _ = (1.0 + x - 2.0).ln();
+
+    let x = 1f64;
+    let _ = 2.0f64.ln_1p();
+    //~^ imprecise_flops
+    let _ = 2.0f64.ln_1p();
+    //~^ imprecise_flops
+    let _ = x.ln_1p();
+    //~^ imprecise_flops
+    let _ = (x / 2.0).ln_1p();
+    //~^ imprecise_flops
+    let _ = x.powi(3).ln_1p();
+    //~^ imprecise_flops
+    let _ = x.ln_1p();
+    //~^ imprecise_flops
+    let _ = x.powi(3).ln_1p();
+    //~^ imprecise_flops
+    let _ = (x + 2.0).ln_1p();
+    //~^ imprecise_flops
+    let _ = (x / 2.0).ln_1p();
+    //~^ imprecise_flops
+    // Cases where the lint shouldn't be applied
+    let _ = (1.0 + x + 2.0).ln();
+    let _ = (x + 1.0 + 2.0).ln();
+    let _ = (x + 1.0 / 2.0).ln();
+    let _ = (1.0 + x - 2.0).ln();
+}
+
+fn issue12881() {
+    pub trait MyLog {
+        fn log(&self) -> Self;
+    }
+
+    impl MyLog for f32 {
+        fn log(&self) -> Self {
+            4.
+        }
+    }
+
+    let x = 2.0;
+    x.log();
+}
+
+fn main() {}

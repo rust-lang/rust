@@ -1,0 +1,13 @@
+error: expected `;`, found `[`
+  --> $DIR/suggest-semicolon-before-array.rs:8:5
+   |
+LL |     [1, 3]
+   |     ^
+   |
+help: consider adding `;` here
+   |
+LL |     foo();
+   |          +
+
+error: aborting due to 1 previous error
+

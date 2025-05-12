@@ -1,0 +1,16 @@
+error[E0596]: cannot borrow `**layer` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-115259-suggest-iter-mut.rs:15:65
+   |
+LL |         self.layers.iter().fold(0, |result, mut layer| result + layer.process())
+   |                                             ---------           ^^^^^ `layer` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                                             |
+   |                                             consider changing this binding's type to be: `&mut Box<dyn Layer>`
+   |
+help: you may want to use `iter_mut` here
+   |
+LL |         self.layers.iter_mut().fold(0, |result, mut layer| result + layer.process())
+   |                         ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

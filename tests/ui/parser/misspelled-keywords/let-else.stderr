@@ -1,0 +1,14 @@
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `elze`
+  --> $DIR/let-else.rs:2:28
+   |
+LL |     let Some(a) = Some(10) elze {}
+   |                            ^^^^ expected one of `.`, `;`, `?`, `else`, or an operator
+   |
+help: there is a keyword `else` with a similar name
+   |
+LL -     let Some(a) = Some(10) elze {}
+LL +     let Some(a) = Some(10) else {}
+   |
+
+error: aborting due to 1 previous error
+

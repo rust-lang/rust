@@ -1,0 +1,18 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-3680.rs:3:9
+   |
+LL |     match None {
+   |           ---- this expression has type `Option<_>`
+LL |         Err(_) => ()
+   |         ^^^^^^ expected `Option<_>`, found `Result<_, _>`
+   |
+   = note: expected enum `Option<_>`
+              found enum `Result<_, _>`
+help: try wrapping the pattern in `Some`
+   |
+LL |         Some(Err(_)) => ()
+   |         +++++      +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

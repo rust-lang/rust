@@ -1,0 +1,1 @@
+STRING "r##\"\\u{20AA}" error: Missing trailing `"` with `#` symbols to terminate the raw string literal

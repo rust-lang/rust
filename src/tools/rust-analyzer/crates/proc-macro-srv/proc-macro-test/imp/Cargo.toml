@@ -1,0 +1,15 @@
+[package]
+name = "proc-macro-test-impl"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+edition = "2024"
+publish = false
+
+[lib]
+proc-macro = true
+
+[dependencies]
+# this crate should not have any dependencies, since it uses its own workspace,
+# and its own `Cargo.lock`
+
+[workspace]

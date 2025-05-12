@@ -1,0 +1,15 @@
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/bound-lifetime-constrained.rs:38:63
+   |
+LL | fn clause1<T>() where T: for<'a> Fn(<() as Foo<'a>>::Item) -> &'a i32 {
+   |                                                               ^^^^^^^
+
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/bound-lifetime-constrained.rs:43:42
+   |
+LL | fn clause2<T>() where T: for<'a> Fn() -> <() as Foo<'a>>::Item {
+   |                                          ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0582`.

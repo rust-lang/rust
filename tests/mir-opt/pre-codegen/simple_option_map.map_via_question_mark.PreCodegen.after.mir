@@ -1,0 +1,70 @@
+// MIR for `map_via_question_mark` after PreCodegen
+
+fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
+    debug x => _1;
+    let mut _0: std::option::Option<i32>;
+    let mut _4: std::ops::ControlFlow<std::option::Option<std::convert::Infallible>, i32>;
+    let _5: i32;
+    let mut _6: i32;
+    scope 1 {
+        debug residual => const Option::<Infallible>::None;
+        scope 2 {
+            scope 7 (inlined <Option<i32> as FromResidual<Option<Infallible>>>::from_residual) {
+            }
+        }
+    }
+    scope 3 {
+        debug val => _5;
+        scope 4 {
+        }
+    }
+    scope 5 (inlined <Option<i32> as Try>::branch) {
+        let mut _2: isize;
+        let _3: i32;
+        scope 6 {
+        }
+    }
+
+    bb0: {
+        StorageLive(_6);
+        StorageLive(_4);
+        StorageLive(_2);
+        StorageLive(_3);
+        _2 = discriminant(_1);
+        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4];
+    }
+
+    bb1: {
+        StorageDead(_3);
+        StorageDead(_2);
+        _0 = const Option::<i32>::None;
+        StorageDead(_6);
+        StorageDead(_4);
+        goto -> bb3;
+    }
+
+    bb2: {
+        _3 = copy ((_1 as Some).0: i32);
+        _4 = ControlFlow::<Option<Infallible>, i32>::Continue(copy _3);
+        StorageDead(_3);
+        StorageDead(_2);
+        _5 = copy ((_4 as Continue).0: i32);
+        _6 = Add(copy _5, const 1_i32);
+        _0 = Option::<i32>::Some(move _6);
+        StorageDead(_6);
+        StorageDead(_4);
+        goto -> bb3;
+    }
+
+    bb3: {
+        return;
+    }
+
+    bb4: {
+        unreachable;
+    }
+}
+
+ALLOC0 (size: 8, align: 4) {
+    00 00 00 00 __ __ __ __                         │ ....░░░░
+}

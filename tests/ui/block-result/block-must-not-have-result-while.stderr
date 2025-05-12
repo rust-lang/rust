@@ -1,0 +1,21 @@
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/block-must-not-have-result-while.rs:4:5
+   |
+LL |     while true {
+   |     ^^^^^^^^^^ help: use `loop`
+   |
+   = note: `#[warn(while_true)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/block-must-not-have-result-while.rs:5:9
+   |
+LL | /     while true {
+LL | |         true
+   | |         ^^^^ expected `()`, found `bool`
+LL | |
+LL | |     }
+   | |_____- expected this to be `()`
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

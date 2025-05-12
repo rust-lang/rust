@@ -1,0 +1,12 @@
+error[E0508]: cannot move out of type `[u8]`, a non-copy slice
+  --> $DIR/unsized-exprs2.rs:19:5
+   |
+LL |     udrop::<[u8]>(foo()[..]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     cannot move out of here
+   |     move occurs because value has type `[u8]`, which does not implement the `Copy` trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0508`.

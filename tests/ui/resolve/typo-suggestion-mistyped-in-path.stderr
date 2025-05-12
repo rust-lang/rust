@@ -1,0 +1,57 @@
+error[E0433]: failed to resolve: could not find `Struc` in `module`
+  --> $DIR/typo-suggestion-mistyped-in-path.rs:35:13
+   |
+LL |     module::Struc::foo();
+   |             ^^^^^
+   |             |
+   |             could not find `Struc` in `module`
+   |             help: a struct with a similar name exists: `Struct`
+
+error[E0599]: no function or associated item named `fob` found for struct `Struct` in the current scope
+  --> $DIR/typo-suggestion-mistyped-in-path.rs:23:13
+   |
+LL | struct Struct;
+   | ------------- function or associated item `fob` not found for this struct
+...
+LL |     Struct::fob();
+   |             ^^^ function or associated item not found in `Struct`
+   |
+help: there is an associated function `foo` with a similar name
+   |
+LL -     Struct::fob();
+LL +     Struct::foo();
+   |
+
+error[E0433]: failed to resolve: use of undeclared type `Struc`
+  --> $DIR/typo-suggestion-mistyped-in-path.rs:27:5
+   |
+LL |     Struc::foo();
+   |     ^^^^^
+   |     |
+   |     use of undeclared type `Struc`
+   |     help: a struct with a similar name exists: `Struct`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `modul`
+  --> $DIR/typo-suggestion-mistyped-in-path.rs:31:5
+   |
+LL |     modul::foo();
+   |     ^^^^^ use of unresolved module or unlinked crate `modul`
+   |
+help: there is a crate or module with a similar name
+   |
+LL |     module::foo();
+   |          +
+
+error[E0433]: failed to resolve: use of undeclared type `Trai`
+  --> $DIR/typo-suggestion-mistyped-in-path.rs:39:5
+   |
+LL |     Trai::foo();
+   |     ^^^^
+   |     |
+   |     use of undeclared type `Trai`
+   |     help: a trait with a similar name exists: `Trait`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0433, E0599.
+For more information about an error, try `rustc --explain E0433`.

@@ -1,0 +1,17 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/issue-51415.rs:7:42
+   |
+LL |     let opt = a.iter().enumerate().find(|(_, &s)| {
+   |                                          ^^^^^-^
+   |                                               |
+   |                                               data moved here
+   |                                               move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     let opt = a.iter().enumerate().find(|(_, &ref s)| {
+   |                                               +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

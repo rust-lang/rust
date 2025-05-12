@@ -1,0 +1,90 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-86094-suggest-add-return-to-coerce-ret-ty.rs:5:9
+   |
+LL |         Err(MyError);
+   |         ^^^ cannot infer type of the type parameter `T` declared on the enum `Result`
+   |
+help: consider specifying the generic arguments
+   |
+LL |         Err::<T, MyError>(MyError);
+   |            ++++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-86094-suggest-add-return-to-coerce-ret-ty.rs:14:9
+   |
+LL |         Ok(());
+   |         ^^ cannot infer type of the type parameter `E` declared on the enum `Result`
+   |
+help: consider specifying the generic arguments
+   |
+LL |         Ok::<(), E>(());
+   |           +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-86094-suggest-add-return-to-coerce-ret-ty.rs:21:20
+   |
+LL | fn baz(x: bool) -> Result<(), MyError> {
+   |    ---             ^^^^^^^^^^^^^^^^^^^ expected `Result<(), MyError>`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+...
+LL |     Err(MyError);
+   |                 - help: remove this semicolon to return this value
+   |
+   = note:   expected enum `Result<(), MyError>`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-86094-suggest-add-return-to-coerce-ret-ty.rs:35:10
+   |
+LL |       if x {
+   |  __________^
+LL | |
+LL | |         error();
+   | |                - help: remove this semicolon to return this value
+LL | |     } else {
+   | |_____^ expected `Result<(), MyError>`, found `()`
+   |
+   = note:   expected enum `Result<(), MyError>`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-86094-suggest-add-return-to-coerce-ret-ty.rs:38:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |
+LL | |         error();
+   | |                - help: remove this semicolon to return this value
+LL | |     }
+   | |_____^ expected `Result<(), MyError>`, found `()`
+   |
+   = note:   expected enum `Result<(), MyError>`
+           found unit type `()`
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-86094-suggest-add-return-to-coerce-ret-ty.rs:45:5
+   |
+LL |     Err(MyError);
+   |     ^^^ cannot infer type of the type parameter `T` declared on the enum `Result`
+   |
+help: consider specifying the generic arguments
+   |
+LL |     Err::<T, MyError>(MyError);
+   |        ++++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-86094-suggest-add-return-to-coerce-ret-ty.rs:57:27
+   |
+LL |     with_closure(|x: u32, y| {});
+   |                           ^
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |     with_closure(|x: u32, y: /* Type */| {});
+   |                            ++++++++++++
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0282, E0308.
+For more information about an error, try `rustc --explain E0282`.

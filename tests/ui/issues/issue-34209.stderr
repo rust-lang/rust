@@ -1,0 +1,18 @@
+error[E0599]: no variant named `B` found for enum `S`
+  --> $DIR/issue-34209.rs:7:12
+   |
+LL | enum S {
+   | ------ variant `B` not found here
+...
+LL |         S::B {} => {},
+   |            ^
+   |
+help: there is a variant with a similar name
+   |
+LL -         S::B {} => {},
+LL +         S::A {} => {},
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

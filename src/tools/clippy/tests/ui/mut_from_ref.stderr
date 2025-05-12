@@ -1,0 +1,100 @@
+error: mutable borrow from immutable input(s)
+  --> tests/ui/mut_from_ref.rs:13:39
+   |
+LL |     fn this_wont_hurt_a_bit(&self) -> &mut Foo {
+   |                                       ^^^^^^^^
+   |
+note: immutable borrow here
+  --> tests/ui/mut_from_ref.rs:13:29
+   |
+LL |     fn this_wont_hurt_a_bit(&self) -> &mut Foo {
+   |                             ^^^^^
+   = note: `-D clippy::mut-from-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mut_from_ref)]`
+
+error: mutable borrow from immutable input(s)
+  --> tests/ui/mut_from_ref.rs:21:25
+   |
+LL |     fn ouch(x: &Foo) -> &mut Foo;
+   |                         ^^^^^^^^
+   |
+note: immutable borrow here
+  --> tests/ui/mut_from_ref.rs:21:16
+   |
+LL |     fn ouch(x: &Foo) -> &mut Foo;
+   |                ^^^^
+
+error: mutable borrow from immutable input(s)
+  --> tests/ui/mut_from_ref.rs:31:21
+   |
+LL | fn fail(x: &u32) -> &mut u16 {
+   |                     ^^^^^^^^
+   |
+note: immutable borrow here
+  --> tests/ui/mut_from_ref.rs:31:12
+   |
+LL | fn fail(x: &u32) -> &mut u16 {
+   |            ^^^^
+
+error: mutable borrow from immutable input(s)
+  --> tests/ui/mut_from_ref.rs:37:50
+   |
+LL | fn fail_lifetime<'a>(x: &'a u32, y: &mut u32) -> &'a mut u32 {
+   |                                                  ^^^^^^^^^^^
+   |
+note: immutable borrow here
+  --> tests/ui/mut_from_ref.rs:37:25
+   |
+LL | fn fail_lifetime<'a>(x: &'a u32, y: &mut u32) -> &'a mut u32 {
+   |                         ^^^^^^^
+
+error: mutable borrow from immutable input(s)
+  --> tests/ui/mut_from_ref.rs:43:67
+   |
+LL | fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
+   |                                                                   ^^^^^^^^^^^
+   |
+note: immutable borrow here
+  --> tests/ui/mut_from_ref.rs:43:27
+   |
+LL | fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
+   |                           ^^^^^^^     ^^^^^^^
+
+error: mutable borrow from immutable input(s)
+  --> tests/ui/mut_from_ref.rs:49:46
+   |
+LL | fn fail_tuples<'a>(x: (&'a u32, &'a u32)) -> &'a mut u32 {
+   |                                              ^^^^^^^^^^^
+   |
+note: immutable borrow here
+  --> tests/ui/mut_from_ref.rs:49:24
+   |
+LL | fn fail_tuples<'a>(x: (&'a u32, &'a u32)) -> &'a mut u32 {
+   |                        ^^^^^^^  ^^^^^^^
+
+error: mutable borrow from immutable input(s)
+  --> tests/ui/mut_from_ref.rs:55:37
+   |
+LL | fn fail_box<'a>(x: Box<&'a u32>) -> &'a mut u32 {
+   |                                     ^^^^^^^^^^^
+   |
+note: immutable borrow here
+  --> tests/ui/mut_from_ref.rs:55:24
+   |
+LL | fn fail_box<'a>(x: Box<&'a u32>) -> &'a mut u32 {
+   |                        ^^^^^^^
+
+error: mutable borrow from immutable input(s)
+  --> tests/ui/mut_from_ref.rs:85:35
+   |
+LL | unsafe fn also_broken(x: &u32) -> &mut u32 {
+   |                                   ^^^^^^^^
+   |
+note: immutable borrow here
+  --> tests/ui/mut_from_ref.rs:85:26
+   |
+LL | unsafe fn also_broken(x: &u32) -> &mut u32 {
+   |                          ^^^^
+
+error: aborting due to 8 previous errors
+

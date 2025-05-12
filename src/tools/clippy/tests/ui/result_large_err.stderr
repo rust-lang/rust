@@ -1,0 +1,108 @@
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui/result_large_err.rs:10:23
+   |
+LL | pub fn large_err() -> Result<(), [u8; 512]> {
+   |                       ^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 512 bytes
+   |
+   = help: try reducing the size of `[u8; 512]`, for example by boxing large elements or replacing it with `Box<[u8; 512]>`
+   = note: `-D clippy::result-large-err` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::result_large_err)]`
+
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui/result_large_err.rs:23:21
+   |
+LL |     pub fn ret() -> Result<(), Self> {
+   |                     ^^^^^^^^^^^^^^^^ the `Err`-variant is at least 240 bytes
+   |
+   = help: try reducing the size of `FullyDefinedLargeError`, for example by boxing large elements or replacing it with `Box<FullyDefinedLargeError>`
+
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui/result_large_err.rs:30:26
+   |
+LL | pub fn struct_error() -> Result<(), FullyDefinedLargeError> {
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 240 bytes
+   |
+   = help: try reducing the size of `FullyDefinedLargeError`, for example by boxing large elements or replacing it with `Box<FullyDefinedLargeError>`
+
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui/result_large_err.rs:37:45
+   |
+LL | pub fn large_err_via_type_alias<T>(x: T) -> Fdlr<T> {
+   |                                             ^^^^^^^ the `Err`-variant is at least 240 bytes
+   |
+   = help: try reducing the size of `FullyDefinedLargeError`, for example by boxing large elements or replacing it with `Box<FullyDefinedLargeError>`
+
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui/result_large_err.rs:47:34
+   |
+LL | pub fn param_large_error<R>() -> Result<(), (u128, R, FullyDefinedLargeError)> {
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 256 bytes
+   |
+   = help: try reducing the size of `(u128, R, FullyDefinedLargeError)`, for example by boxing large elements or replacing it with `Box<(u128, R, FullyDefinedLargeError)>`
+
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui/result_large_err.rs:60:34
+   |
+LL |     _Omg([u8; 512]),
+   |     --------------- the largest variant contains at least 512 bytes
+...
+LL |     pub fn large_enum_error() -> Result<(), Self> {
+   |                                  ^^^^^^^^^^^^^^^^
+   |
+   = help: try reducing the size of `LargeErrorVariants<()>`, for example by boxing large elements or replacing it with `Box<LargeErrorVariants<()>>`
+
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui/result_large_err.rs:74:30
+   |
+LL |     _Biggest([u8; 1024]),
+   |     -------------------- the largest variant contains at least 1024 bytes
+LL |     _AlsoBig([u8; 512]),
+   |     ------------------- the variant `_AlsoBig` contains at least 512 bytes
+...
+LL |     fn large_enum_error() -> Result<(), Self> {
+   |                              ^^^^^^^^^^^^^^^^
+   |
+   = help: try reducing the size of `MultipleLargeVariants`, for example by boxing large elements or replacing it with `Box<MultipleLargeVariants>`
+
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui/result_large_err.rs:82:25
+   |
+LL |     fn large_error() -> Result<(), [u8; 512]> {
+   |                         ^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 512 bytes
+   |
+   = help: try reducing the size of `[u8; 512]`, for example by boxing large elements or replacing it with `Box<[u8; 512]>`
+
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui/result_large_err.rs:103:29
+   |
+LL | pub fn large_union_err() -> Result<(), FullyDefinedUnionError> {
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 512 bytes
+   |
+   = help: try reducing the size of `FullyDefinedUnionError`, for example by boxing large elements or replacing it with `Box<FullyDefinedUnionError>`
+
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui/result_large_err.rs:114:40
+   |
+LL | pub fn param_large_union<T: Copy>() -> Result<(), UnionError<T>> {
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 512 bytes
+   |
+   = help: try reducing the size of `UnionError<T>`, for example by boxing large elements or replacing it with `Box<UnionError<T>>`
+
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui/result_large_err.rs:125:34
+   |
+LL | pub fn array_error_subst<U>() -> Result<(), ArrayError<i32, U>> {
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 128 bytes
+   |
+   = help: try reducing the size of `ArrayError<i32, U>`, for example by boxing large elements or replacing it with `Box<ArrayError<i32, U>>`
+
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui/result_large_err.rs:131:31
+   |
+LL | pub fn array_error<T, U>() -> Result<(), ArrayError<(i32, T), U>> {
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 128 bytes
+   |
+   = help: try reducing the size of `ArrayError<(i32, T), U>`, for example by boxing large elements or replacing it with `Box<ArrayError<(i32, T), U>>`
+
+error: aborting due to 12 previous errors
+

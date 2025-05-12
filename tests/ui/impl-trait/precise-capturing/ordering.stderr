@@ -1,0 +1,28 @@
+error: cannot capture parameter `'a` twice
+  --> $DIR/ordering.rs:1:33
+   |
+LL | fn lt<'a>() -> impl Sized + use<'a, 'a> {}
+   |                                 ^^  -- parameter captured again here
+
+error: cannot capture parameter `T` twice
+  --> $DIR/ordering.rs:4:32
+   |
+LL | fn ty<T>() -> impl Sized + use<T, T> {}
+   |                                ^  - parameter captured again here
+
+error: cannot capture parameter `N` twice
+  --> $DIR/ordering.rs:7:45
+   |
+LL | fn ct<const N: usize>() -> impl Sized + use<N, N> {}
+   |                                             ^  - parameter captured again here
+
+error: lifetime parameter `'a` must be listed before non-lifetime parameters
+  --> $DIR/ordering.rs:10:45
+   |
+LL | fn ordering<'a, T>() -> impl Sized + use<T, 'a> {}
+   |                                          -  ^^
+   |                                          |
+   |                                          move the lifetime before this parameter
+
+error: aborting due to 4 previous errors
+

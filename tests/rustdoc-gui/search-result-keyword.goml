@@ -1,0 +1,8 @@
+// Checks that the "keyword" results have the expected text alongside them.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+write-into: (".search-input", "for")
+// To be SURE that the search will be run.
+press-key: 'Enter'
+// Waiting for the search results to appear...
+wait-for: "#search-tabs"
+assert-text: (".result-keyword .result-name", "keyword for")

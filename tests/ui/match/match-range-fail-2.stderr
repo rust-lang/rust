@@ -1,0 +1,22 @@
+error[E0030]: lower range bound must be less than or equal to upper
+  --> $DIR/match-range-fail-2.rs:3:9
+   |
+LL |         6 ..= 1 => { }
+   |         ^^^^^^^ lower bound larger than upper bound
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/match-range-fail-2.rs:9:9
+   |
+LL |         0 .. 0 => { }
+   |         ^^^^^^
+
+error[E0030]: lower range bound must be less than or equal to upper
+  --> $DIR/match-range-fail-2.rs:15:9
+   |
+LL |         0xFFFF_FFFF_FFFF_FFFF ..= 1 => { }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ lower bound larger than upper bound
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0030, E0579.
+For more information about an error, try `rustc --explain E0030`.

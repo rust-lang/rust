@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> $DIR/missing-return-in-async-block.rs:9:13
+   |
+LL | /         if true {
+LL | |             Ok(S)
+   | |             ^^^^^ expected `()`, found `Result<S, _>`
+LL | |         }
+   | |_________- expected this to be `()`
+   |
+   = note: expected unit type `()`
+                   found enum `Result<S, _>`
+help: you might have meant to return this value
+   |
+LL |             return Ok(S);
+   |             ++++++      +
+
+error[E0308]: mismatched types
+  --> $DIR/missing-return-in-async-block.rs:17:13
+   |
+LL | /         if true {
+LL | |             Ok(S)
+   | |             ^^^^^ expected `()`, found `Result<S, _>`
+LL | |         }
+   | |_________- expected this to be `()`
+   |
+   = note: expected unit type `()`
+                   found enum `Result<S, _>`
+help: you might have meant to return this value
+   |
+LL |             return Ok(S);
+   |             ++++++      +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

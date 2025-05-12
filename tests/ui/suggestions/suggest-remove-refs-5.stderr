@@ -1,0 +1,37 @@
+error[E0277]: `&mut &mut &mut &mut Vec<i32>` is not an iterator
+  --> $DIR/suggest-remove-refs-5.rs:4:14
+   |
+LL |     for _ in &mut &mut v {}
+   |              ^^^^^^^^^^^ `&mut &mut &mut &mut Vec<i32>` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `Vec<i32>`
+   = note: required for `&mut Vec<i32>` to implement `Iterator`
+   = note: 3 redundant requirements hidden
+   = note: required for `&mut &mut &mut &mut Vec<i32>` to implement `Iterator`
+   = note: required for `&mut &mut &mut &mut Vec<i32>` to implement `IntoIterator`
+help: consider removing 3 leading `&`-references
+   |
+LL ~     let v = &mut Vec::<i32>::new();
+LL ~     for _ in v {}
+   |
+
+error[E0277]: `&mut &mut &mut [u8; 1]` is not an iterator
+  --> $DIR/suggest-remove-refs-5.rs:7:14
+   |
+LL |     for _ in &mut v {}
+   |              ^^^^^^ `&mut &mut &mut [u8; 1]` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `[u8; 1]`
+   = note: required for `&mut [u8; 1]` to implement `Iterator`
+   = note: 2 redundant requirements hidden
+   = note: required for `&mut &mut &mut [u8; 1]` to implement `Iterator`
+   = note: required for `&mut &mut &mut [u8; 1]` to implement `IntoIterator`
+help: consider removing 2 leading `&`-references
+   |
+LL ~     let v = &mut [1u8];
+LL ~     for _ in v {}
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

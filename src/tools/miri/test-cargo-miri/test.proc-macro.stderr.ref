@@ -1,0 +1,2 @@
+Running unit tests of `proc-macro` crates is not currently supported by Miri.
+Running doctests of `proc-macro` crates is not currently supported by Miri.

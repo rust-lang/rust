@@ -1,0 +1,34 @@
+error[E0432]: unresolved import `core`
+  --> $DIR/feature-gate-extern_absolute_paths.rs:1:5
+   |
+LL | use core::default;
+   |     ^^^^
+   |     |
+   |     you might be missing crate `core`
+   |     help: try using `std` instead of `core`: `std`
+
+error[E0433]: failed to resolve: you might be missing crate `core`
+  --> $DIR/feature-gate-extern_absolute_paths.rs:4:19
+   |
+LL |     let _: u8 = ::core::default::Default();
+   |                   ^^^^ you might be missing crate `core`
+   |
+help: try using `std` instead of `core`
+   |
+LL -     let _: u8 = ::core::default::Default();
+LL +     let _: u8 = ::std::default::Default();
+   |
+help: consider importing this module
+   |
+LL + use std::default;
+   |
+help: if you import `default`, refer to it directly
+   |
+LL -     let _: u8 = ::core::default::Default();
+LL +     let _: u8 = default::Default();
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

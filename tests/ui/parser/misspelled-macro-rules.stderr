@@ -1,0 +1,10 @@
+error: expected one of `(`, `[`, or `{`, found `thing`
+  --> $DIR/misspelled-macro-rules.rs:7:14
+   |
+LL | marco_rules! thing {
+   | -----------  ^^^^^ expected one of `(`, `[`, or `{`
+   | |
+   | help: perhaps you meant to define a macro: `macro_rules`
+
+error: aborting due to 1 previous error
+

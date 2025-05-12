@@ -1,0 +1,26 @@
+error: transmute from a reference to a reference
+  --> tests/ui/transmute_ref_to_ref_no_std.rs:21:39
+   |
+LL |         let bools: &[bool] = unsafe { core::mem::transmute(single_u64) };
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(single_u64 as *const [u64] as *const [bool])`
+   |
+note: the lint level is defined here
+  --> tests/ui/transmute_ref_to_ref_no_std.rs:3:9
+   |
+LL | #![deny(clippy::transmute_ptr_to_ptr)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from a reference to a reference
+  --> tests/ui/transmute_ref_to_ref_no_std.rs:25:33
+   |
+LL |         let b: &[u8] = unsafe { core::mem::transmute(a) };
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(a as *const [u32] as *const [u8])`
+
+error: transmute from a reference to a reference
+  --> tests/ui/transmute_ref_to_ref_no_std.rs:29:42
+   |
+LL |         let alt_slice: &[u32] = unsafe { core::mem::transmute(bytes) };
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(bytes as *const [u8] as *const [u32])`
+
+error: aborting due to 3 previous errors
+

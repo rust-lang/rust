@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `Something` in this scope
+  --> $DIR/E0412.rs:1:6
+   |
+LL | impl Something {}
+   |      ^^^^^^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

@@ -1,0 +1,15 @@
+**
+!icon.png
+!language-configuration.json
+!LICENSE
+!node_modules/@hpcc-js/wasm/dist/graphvizlib.wasm
+!node_modules/@hpcc-js/wasm/dist/index.min.js
+!node_modules/d3-graphviz/build/d3-graphviz.min.js
+!node_modules/d3/dist/d3.min.js
+!out/main.js
+!package-lock.json
+!package.json
+!ra_syntax_tree.tmGrammar.json
+!server
+!README.md
+!walkthrough-setup-tips.md

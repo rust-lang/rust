@@ -1,0 +1,25 @@
+//@ run-rustfix
+
+#![deny(unused_qualifications)]
+
+mod foo {
+    pub fn bar() {}
+}
+
+mod baz {
+    pub mod qux {
+        pub fn quux() {}
+    }
+}
+
+fn main() {
+    use foo::bar;
+    bar();
+    //~^ ERROR unnecessary qualification
+    bar();
+
+    use baz::qux::quux;
+    quux();
+    //~^ ERROR unnecessary qualification
+    quux();
+}

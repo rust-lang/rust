@@ -1,0 +1,48 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `clippy`
+  --> $DIR/tool-mod-child.rs:2:5
+   |
+LL | use clippy::a::b;
+   |     ^^^^^^ use of unresolved module or unlinked crate `clippy`
+   |
+help: you might be missing a crate named `clippy`, add it to your project and import it in your code
+   |
+LL + extern crate clippy;
+   |
+
+error[E0432]: unresolved import `clippy`
+  --> $DIR/tool-mod-child.rs:1:5
+   |
+LL | use clippy::a;
+   |     ^^^^^^ use of unresolved module or unlinked crate `clippy`
+   |
+help: you might be missing a crate named `clippy`, add it to your project and import it in your code
+   |
+LL + extern crate clippy;
+   |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `rustdoc`
+  --> $DIR/tool-mod-child.rs:5:5
+   |
+LL | use rustdoc::a::b;
+   |     ^^^^^^^ use of unresolved module or unlinked crate `rustdoc`
+   |
+help: you might be missing a crate named `rustdoc`, add it to your project and import it in your code
+   |
+LL + extern crate rustdoc;
+   |
+
+error[E0432]: unresolved import `rustdoc`
+  --> $DIR/tool-mod-child.rs:4:5
+   |
+LL | use rustdoc::a;
+   |     ^^^^^^^ use of unresolved module or unlinked crate `rustdoc`
+   |
+help: you might be missing a crate named `rustdoc`, add it to your project and import it in your code
+   |
+LL + extern crate rustdoc;
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

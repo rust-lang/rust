@@ -1,0 +1,40 @@
+[package]
+name = "project-model"
+version = "0.0.0"
+repository.workspace = true
+description = "A representation for a Cargo project for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+
+[dependencies]
+anyhow.workspace = true
+cargo_metadata.workspace = true
+rustc-hash.workspace = true
+semver.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+serde_derive.workspace = true
+tracing.workspace = true
+triomphe.workspace = true
+la-arena.workspace = true
+itertools.workspace = true
+
+# local deps
+base-db.workspace = true
+intern.workspace = true
+span.workspace = true
+cfg.workspace = true
+paths = { workspace = true, features = ["serde1"] }
+stdx.workspace = true
+toolchain.workspace = true
+
+[dev-dependencies]
+expect-test = "1.5.1"
+
+[lints]
+workspace = true

@@ -1,0 +1,8 @@
+// This test ensures that codeblocks content don't overflow.
+go-to: "file://" + |DOC_PATH| + "/lib2/sub_mod/struct.Foo.html"
+set-window-size: (1080, 600)
+// There should be two codeblocks: a rust one and a non-rust one.
+assert-count: (".docblock > .example-wrap", 2)
+assert: ".docblock > .example-wrap > .language-txt"
+assert: ".docblock > .example-wrap > .rust-example-rendered"
+assert-css: (".docblock > .example-wrap > pre", {"width": "796px", "overflow-x": "auto"}, ALL)

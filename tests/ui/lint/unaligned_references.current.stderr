@@ -1,0 +1,133 @@
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:32:13
+   |
+LL |             &self.x;
+   |             ^^^^^^^
+   |
+   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:44:24
+   |
+LL |     println!("{:?}", &*foo.0);
+   |                        ^^^^^
+   |
+   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:46:24
+   |
+LL |     println!("{:?}", &*foo.0);
+   |                        ^^^^^
+   |
+   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:51:24
+   |
+LL |     println!("{:?}", &*foo.0);
+   |                        ^^^^^
+   |
+   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:81:17
+   |
+LL |         let _ = &good.ptr;
+   |                 ^^^^^^^^^
+   |
+   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:82:17
+   |
+LL |         let _ = &good.data;
+   |                 ^^^^^^^^^^
+   |
+   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:84:17
+   |
+LL |         let _ = &good.data as *const _;
+   |                 ^^^^^^^^^^
+   |
+   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:85:27
+   |
+LL |         let _: *const _ = &good.data;
+   |                           ^^^^^^^^^^
+   |
+   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:87:17
+   |
+LL |         let _ = good.data.clone();
+   |                 ^^^^^^^^^
+   |
+   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:89:17
+   |
+LL |         let _ = &good.data2[0];
+   |                 ^^^^^^^^^^^^^^
+   |
+   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:98:17
+   |
+LL |         let _ = &packed2.x;
+   |                 ^^^^^^^^^^
+   |
+   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:137:20
+   |
+LL |         let _ref = &m1.1.a;
+   |                    ^^^^^^^
+   |
+   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:140:20
+   |
+LL |         let _ref = &m2.1.a;
+   |                    ^^^^^^^
+   |
+   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0793`.

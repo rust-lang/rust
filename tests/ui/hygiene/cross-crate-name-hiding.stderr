@@ -1,0 +1,9 @@
+error[E0422]: cannot find struct, variant or union type `MyStruct` in this scope
+  --> $DIR/cross-crate-name-hiding.rs:11:13
+   |
+LL |     let x = MyStruct {};
+   |             ^^^^^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0422`.

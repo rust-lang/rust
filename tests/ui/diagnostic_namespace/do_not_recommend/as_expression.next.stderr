@@ -1,0 +1,33 @@
+error[E0277]: the trait bound `&str: AsExpression<Integer>` is not satisfied
+  --> $DIR/as_expression.rs:56:21
+   |
+LL |     SelectInt.check("bar");
+   |               ----- ^^^^^ the trait `AsExpression<Integer>` is not implemented for `&str`
+   |               |
+   |               required by a bound introduced by this call
+   |
+   = help: the trait `AsExpression<Integer>` is not implemented for `&str`
+           but trait `AsExpression<Text>` is implemented for it
+   = help: for that trait implementation, expected `Text`, found `Integer`
+note: required by a bound in `Foo::check`
+  --> $DIR/as_expression.rs:47:12
+   |
+LL |     fn check<T>(&self, _: T) -> <T as AsExpression<<Self as Expression>::SqlType>>::Expression
+   |        ----- required by a bound in this associated function
+LL |     where
+LL |         T: AsExpression<Self::SqlType>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Foo::check`
+
+error[E0277]: the trait bound `&str: AsExpression<Integer>` is not satisfied
+  --> $DIR/as_expression.rs:56:5
+   |
+LL |     SelectInt.check("bar");
+   |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `AsExpression<Integer>` is not implemented for `&str`
+   |
+   = help: the trait `AsExpression<Integer>` is not implemented for `&str`
+           but trait `AsExpression<Text>` is implemented for it
+   = help: for that trait implementation, expected `Text`, found `Integer`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

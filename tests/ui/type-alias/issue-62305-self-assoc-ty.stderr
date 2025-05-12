@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
+  --> $DIR/issue-62305-self-assoc-ty.rs:1:14
+   |
+LL | type Alias = Self::Target;
+   |              ^^^^ `Self` is only available in impls, traits, and type definitions
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

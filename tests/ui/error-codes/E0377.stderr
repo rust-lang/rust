@@ -1,0 +1,11 @@
+error[E0377]: the trait `CoerceUnsized` may only be implemented for a coercion between structures
+  --> $DIR/E0377.rs:12:1
+   |
+LL | impl<T, U> CoerceUnsized<Bar<U>> for Foo<T> where T: CoerceUnsized<U> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected coercion between the same definition; expected `Foo`, found `Bar`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0377`.

@@ -1,0 +1,8 @@
+error: malformed `crate_name` attribute input
+  --> $DIR/print-file-names-request-malformed-crate-name-2.rs:7:1
+   |
+LL | #![crate_name = concat!("this_one_is_not")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![crate_name = "name"]`
+
+error: aborting due to 1 previous error
+

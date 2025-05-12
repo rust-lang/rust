@@ -1,0 +1,27 @@
+error[E0599]: no function or associated item named `iter` found for reference `&[u32]` in the current scope
+  --> $DIR/issue-103271.rs:2:30
+   |
+LL |     let iter_fun = <&[u32]>::iter;
+   |                              ^^^^ function or associated item not found in `&[u32]`
+   |
+help: the function `iter` is implemented on `[u32]`
+   |
+LL -     let iter_fun = <&[u32]>::iter;
+LL +     let iter_fun = <[u32]>::iter;
+   |
+
+error[E0599]: no function or associated item named `iter` found for reference `&[u32]` in the current scope
+  --> $DIR/issue-103271.rs:10:33
+   |
+LL |     let iter_fun2 = <(&[u32])>::iter;
+   |                                 ^^^^ function or associated item not found in `&[u32]`
+   |
+help: the function `iter` is implemented on `[u32]`
+   |
+LL -     let iter_fun2 = <(&[u32])>::iter;
+LL +     let iter_fun2 = <([u32])>::iter;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

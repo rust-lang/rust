@@ -1,0 +1,9 @@
+//@ run-rustfix
+
+fn main() {
+    if true {
+        "A".to_string()
+    } else {
+        "B".to_string() //~ ERROR `if` and `else` have incompatible types
+    };
+}

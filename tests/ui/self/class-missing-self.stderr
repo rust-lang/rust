@@ -1,0 +1,29 @@
+error[E0425]: cannot find value `meows` in this scope
+  --> $DIR/class-missing-self.rs:9:7
+   |
+LL |       meows += 1;
+   |       ^^^^^
+   |
+help: you might have meant to use the available field
+   |
+LL |       self.meows += 1;
+   |       +++++
+
+error[E0425]: cannot find function `sleep` in this scope
+  --> $DIR/class-missing-self.rs:10:7
+   |
+LL |       sleep();
+   |       ^^^^^ not found in this scope
+   |
+help: consider using the method on `Self`
+   |
+LL |       self.sleep();
+   |       +++++
+help: consider importing this function
+   |
+LL + use std::thread::sleep;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

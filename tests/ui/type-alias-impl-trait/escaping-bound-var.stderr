@@ -1,0 +1,27 @@
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/escaping-bound-var.rs:9:47
+   |
+LL | pub type Foo = impl for<'a> Trait<'a, Assoc = impl Test<'a>>;
+   |                                               ^^^^^^^^^^^^^ `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
+  --> $DIR/escaping-bound-var.rs:9:25
+   |
+LL | pub type Foo = impl for<'a> Trait<'a, Assoc = impl Test<'a>>;
+   |                         ^^
+
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/escaping-bound-var.rs:9:57
+   |
+LL | pub type Foo = impl for<'a> Trait<'a, Assoc = impl Test<'a>>;
+   |                                                         ^^
+   |
+note: lifetime declared here
+  --> $DIR/escaping-bound-var.rs:9:25
+   |
+LL | pub type Foo = impl for<'a> Trait<'a, Assoc = impl Test<'a>>;
+   |                         ^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0657`.

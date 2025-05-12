@@ -1,0 +1,165 @@
+error: literal with an empty format string
+  --> tests/ui/write_literal_2.rs:10:23
+   |
+LL |     writeln!(v, "{}", "{hello}");
+   |                       ^^^^^^^^^
+   |
+   = note: `-D clippy::write-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::write_literal)]`
+help: try
+   |
+LL -     writeln!(v, "{}", "{hello}");
+LL +     writeln!(v, "{{hello}}");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal_2.rs:13:24
+   |
+LL |     writeln!(v, r"{}", r"{hello}");
+   |                        ^^^^^^^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, r"{}", r"{hello}");
+LL +     writeln!(v, r"{{hello}}");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal_2.rs:16:23
+   |
+LL |     writeln!(v, "{}", '\'');
+   |                       ^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "{}", '\'');
+LL +     writeln!(v, "'");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal_2.rs:19:23
+   |
+LL |     writeln!(v, "{}", '"');
+   |                       ^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "{}", '"');
+LL +     writeln!(v, "\"");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal_2.rs:22:24
+   |
+LL |     writeln!(v, r"{}", '"');
+   |                        ^^^
+
+error: literal with an empty format string
+  --> tests/ui/write_literal_2.rs:25:24
+   |
+LL |     writeln!(v, r"{}", '\'');
+   |                        ^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, r"{}", '\'');
+LL +     writeln!(v, r"'");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal_2.rs:31:9
+   |
+LL | /         "hello \
+LL | |
+LL | |         world!",
+   | |_______________^
+   |
+help: try
+   |
+LL ~         "some hello \
+LL +
+LL ~         world!",
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal_2.rs:39:9
+   |
+LL | /         "1",
+LL | |         "2",
+LL | |         "3",
+   | |___________^
+   |
+help: try
+   |
+LL ~         "some 1\
+LL ~         2 \\ 3",
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal_2.rs:44:23
+   |
+LL |     writeln!(v, "{}", "\\");
+   |                       ^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "{}", "\\");
+LL +     writeln!(v, "\\");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal_2.rs:47:24
+   |
+LL |     writeln!(v, r"{}", "\\");
+   |                        ^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, r"{}", "\\");
+LL +     writeln!(v, r"\");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal_2.rs:50:26
+   |
+LL |     writeln!(v, r#"{}"#, "\\");
+   |                          ^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, r#"{}"#, "\\");
+LL +     writeln!(v, r#"\"#);
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal_2.rs:53:23
+   |
+LL |     writeln!(v, "{}", r"\");
+   |                       ^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "{}", r"\");
+LL +     writeln!(v, "\\");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal_2.rs:56:23
+   |
+LL |     writeln!(v, "{}", "\r");
+   |                       ^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "{}", "\r");
+LL +     writeln!(v, "\r");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal_2.rs:60:28
+   |
+LL |     writeln!(v, r#"{}{}"#, '#', '"');
+   |                            ^^^^^^^^
+
+error: aborting due to 14 previous errors
+

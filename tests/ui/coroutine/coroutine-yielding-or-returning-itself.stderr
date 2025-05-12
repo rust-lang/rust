@@ -1,0 +1,53 @@
+error[E0271]: type mismatch resolving `<{coroutine@$DIR/coroutine-yielding-or-returning-itself.rs:15:47: 15:49} as Coroutine>::Return == {coroutine@$DIR/coroutine-yielding-or-returning-itself.rs:15:47: 15:49}`
+  --> $DIR/coroutine-yielding-or-returning-itself.rs:15:47
+   |
+LL |       want_cyclic_coroutine_return(#[coroutine] || {
+   |  _____----------------------------______________^
+   | |     |
+   | |     required by a bound introduced by this call
+LL | |
+LL | |         if false { yield None.unwrap(); }
+LL | |         None.unwrap()
+LL | |     })
+   | |_____^ cyclic type of infinite size
+   |
+   = note: closures cannot capture themselves or take themselves as argument;
+           this error may be the result of a recent compiler bug-fix,
+           see issue #46062 <https://github.com/rust-lang/rust/issues/46062>
+           for more information
+note: required by a bound in `want_cyclic_coroutine_return`
+  --> $DIR/coroutine-yielding-or-returning-itself.rs:10:36
+   |
+LL | pub fn want_cyclic_coroutine_return<T>(_: T)
+   |        ---------------------------- required by a bound in this function
+LL |     where T: Coroutine<Yield = (), Return = T>
+   |                                    ^^^^^^^^^^ required by this bound in `want_cyclic_coroutine_return`
+
+error[E0271]: type mismatch resolving `<{coroutine@$DIR/coroutine-yielding-or-returning-itself.rs:28:46: 28:48} as Coroutine>::Yield == {coroutine@$DIR/coroutine-yielding-or-returning-itself.rs:28:46: 28:48}`
+  --> $DIR/coroutine-yielding-or-returning-itself.rs:28:46
+   |
+LL |       want_cyclic_coroutine_yield(#[coroutine] || {
+   |  _____---------------------------______________^
+   | |     |
+   | |     required by a bound introduced by this call
+LL | |
+LL | |         if false { yield None.unwrap(); }
+LL | |         None.unwrap()
+LL | |     })
+   | |_____^ cyclic type of infinite size
+   |
+   = note: closures cannot capture themselves or take themselves as argument;
+           this error may be the result of a recent compiler bug-fix,
+           see issue #46062 <https://github.com/rust-lang/rust/issues/46062>
+           for more information
+note: required by a bound in `want_cyclic_coroutine_yield`
+  --> $DIR/coroutine-yielding-or-returning-itself.rs:23:24
+   |
+LL | pub fn want_cyclic_coroutine_yield<T>(_: T)
+   |        --------------------------- required by a bound in this function
+LL |     where T: Coroutine<Yield = T, Return = ()>
+   |                        ^^^^^^^^^ required by this bound in `want_cyclic_coroutine_yield`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

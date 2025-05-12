@@ -1,0 +1,71 @@
+error[E0599]: no method named `foobar` found for type `u32` in the current scope
+  --> $DIR/trait-import-suggestions.rs:22:11
+   |
+LL |             fn foobar(&self) { }
+   |                ------ the method is available for `u32` here
+...
+LL |         x.foobar();
+   |           ^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Foobar` which provides `foobar` is implemented but not in scope; perhaps you want to import it
+   |
+LL +     use crate::foo::foobar::Foobar;
+   |
+help: there is a method `bar` with a similar name
+   |
+LL -         x.foobar();
+LL +         x.bar();
+   |
+
+error[E0599]: no method named `bar` found for type `u32` in the current scope
+  --> $DIR/trait-import-suggestions.rs:28:7
+   |
+LL |         fn bar(&self) { }
+   |            --- the method is available for `u32` here
+...
+LL |     x.bar();
+   |       ^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Bar` which provides `bar` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use crate::foo::Bar;
+   |
+help: there is a method `foobar` with a similar name
+   |
+LL |     x.foobar();
+   |       +++
+
+error[E0599]: no method named `baz` found for type `u32` in the current scope
+  --> $DIR/trait-import-suggestions.rs:29:7
+   |
+LL |     x.baz();
+   |       ^^^
+   |
+help: there is a method `bar` with a similar name
+   |
+LL -     x.baz();
+LL +     x.bar();
+   |
+
+error[E0599]: no function or associated item named `from_str` found for type `u32` in the current scope
+  --> $DIR/trait-import-suggestions.rs:30:18
+   |
+LL |     let y = u32::from_str("33");
+   |                  ^^^^^^^^ function or associated item not found in `u32`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `FromStr` which provides `from_str` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use std::str::FromStr;
+   |
+help: there is an associated function `from` with a similar name
+   |
+LL -     let y = u32::from_str("33");
+LL +     let y = u32::from("33");
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

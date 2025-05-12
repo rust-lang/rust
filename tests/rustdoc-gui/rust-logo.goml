@@ -1,0 +1,56 @@
+// This test ensures that the correct style is applied to the rust logo in the sidebar.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/staged_api/index.html"
+
+define-function: (
+    "check-logo",
+    [theme, filter],
+    block {
+        // Going to the doc page.
+        go-to: "file://" + |DOC_PATH| + "/staged_api/index.html"
+        // Changing theme.
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert-css: (".rust-logo", {"filter": |filter|})
+        // Now we check that the non-rust logos don't have a CSS filter set.
+        go-to: "file://" + |DOC_PATH| + "/huge_logo/index.html"
+        // Changing theme on the new page (again...).
+        call-function: ("switch-theme", {"theme": |theme|})
+        // Check there is no rust logo
+        assert-false: ".rust-logo"
+        // Check there is no filter.
+        assert-css: (".sidebar .logo-container img", {"filter": "none"})
+        // Now we check that this page has no logo at all
+        go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+        assert-false: ".rust-logo"
+        assert-false: ".logo-container"
+        assert-false: ".sub-logo-container"
+    },
+)
+
+call-function: (
+    "check-logo",
+    {
+        "theme": "ayu",
+        "filter": "drop-shadow(#fff 1px 0px 0px) " +
+            "drop-shadow(#fff 0px 1px 0px) " +
+            "drop-shadow(#fff -1px 0px 0px) " +
+            "drop-shadow(#fff 0px -1px 0px)",
+    },
+)
+call-function: (
+    "check-logo",
+    {
+        "theme": "dark",
+        "filter": "drop-shadow(#fff 1px 0px 0px) " +
+            "drop-shadow(#fff 0px 1px 0px) " +
+            "drop-shadow(#fff -1px 0px 0px) " +
+            "drop-shadow(#fff 0px -1px 0px)",
+    },
+)
+call-function: (
+    "check-logo",
+    {
+        "theme": "light",
+        "filter": "none",
+    },
+)

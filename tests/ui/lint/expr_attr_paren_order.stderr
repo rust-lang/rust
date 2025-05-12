@@ -1,0 +1,14 @@
+error: variable `X` should have a snake case name
+  --> $DIR/expr_attr_paren_order.rs:17:17
+   |
+LL |             let X = 0;
+   |                 ^ help: convert the identifier to snake case (notice the capitalization): `x`
+   |
+note: the lint level is defined here
+  --> $DIR/expr_attr_paren_order.rs:15:37
+   |
+LL |     #[allow(non_snake_case)] #[deny(non_snake_case)] (
+   |                                     ^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,75 @@
+error[E0049]: associated const `A` has 1 type parameter but its trait declaration has 0 type parameters
+  --> $DIR/compare-impl-item.rs:16:13
+   |
+LL |     const A: ();
+   |            - expected 0 type parameters
+...
+LL |     const A<T>: () = ();
+   |             ^ found 1 type parameter
+
+error[E0049]: associated const `B` has 1 const parameter but its trait declaration has 2 const parameters
+  --> $DIR/compare-impl-item.rs:18:13
+   |
+LL |     const B<const K: u64, const Q: u64>: u64;
+   |             ------------  ------------
+   |             |
+   |             expected 2 const parameters
+...
+LL |     const B<const K: u64>: u64 = 0;
+   |             ^^^^^^^^^^^^ found 1 const parameter
+
+error[E0049]: associated const `C` has 0 type parameters but its trait declaration has 1 type parameter
+  --> $DIR/compare-impl-item.rs:20:13
+   |
+LL |     const C<T>: T;
+   |             - expected 1 type parameter
+...
+LL |     const C<'a>: &'a str = "";
+   |             ^^ found 0 type parameters
+
+error[E0053]: associated const `D` has an incompatible generic parameter for trait `Trait`
+  --> $DIR/compare-impl-item.rs:22:13
+   |
+LL | trait Trait<P> {
+   |       -----
+...
+LL |     const D<const N: usize>: usize;
+   |             -------------- expected const parameter of type `usize`
+...
+LL | impl<P> Trait<P> for () {
+   | -----------------------
+...
+LL |     const D<const N: u16>: u16 = N;
+   |             ^^^^^^^^^^^^ found const parameter of type `u16`
+
+error[E0195]: lifetime parameters or bounds on associated const `E` do not match the trait declaration
+  --> $DIR/compare-impl-item.rs:24:12
+   |
+LL |     const E<'a>: &'a ();
+   |            ---- lifetimes in impl do not match this associated const in trait
+...
+LL |     const E: &'static () = &();
+   |            ^ lifetimes do not match associated const in trait
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/compare-impl-item.rs:29:12
+   |
+LL |     const F: usize;
+   |     -------------- definition of `F` from trait
+...
+LL |         P: Copy;
+   |            ^^^^ impl has extra requirement `P: Copy`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/compare-impl-item.rs:30:16
+   |
+LL |     const G<T: PartialEq>: ();
+   |     ------------------------- definition of `G` from trait
+...
+LL |     const G<T: Eq>: () = ();
+   |                ^^ impl has extra requirement `T: Eq`
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0049, E0053, E0195, E0276.
+For more information about an error, try `rustc --explain E0049`.

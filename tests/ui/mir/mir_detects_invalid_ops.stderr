@@ -1,0 +1,16 @@
+error: this operation will panic at runtime
+  --> $DIR/mir_detects_invalid_ops.rs:11:14
+   |
+LL |     let _z = 1 / y;
+   |              ^^^^^ attempt to divide `1_i32` by zero
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: this operation will panic at runtime
+  --> $DIR/mir_detects_invalid_ops.rs:16:14
+   |
+LL |     let _z = 1 % y;
+   |              ^^^^^ attempt to calculate the remainder of `1_i32` with a divisor of zero
+
+error: aborting due to 2 previous errors
+

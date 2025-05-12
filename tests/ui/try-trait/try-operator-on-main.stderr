@@ -1,0 +1,58 @@
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/try-operator-on-main.rs:7:31
+   |
+LL | fn main() {
+   | --------- this function should return `Result` or `Option` to accept `?`
+LL |     // error for a `Try` type on a non-`Try` fn
+LL |     std::fs::File::open("foo")?;
+   |                               ^ cannot use the `?` operator in a function that returns `()`
+   |
+help: consider adding return type
+   |
+LL ~ fn main() -> Result<(), Box<dyn std::error::Error>> {
+LL |     // error for a `Try` type on a non-`Try` fn
+...
+LL |     try_trait_generic::<()>();
+LL +     Ok(())
+   |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/try-operator-on-main.rs:10:5
+   |
+LL |     ()?;
+   |     ^^^ the `?` operator cannot be applied to type `()`
+   |
+   = help: the trait `Try` is not implemented for `()`
+
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/try-operator-on-main.rs:10:7
+   |
+LL | fn main() {
+   | --------- this function should return `Result` or `Option` to accept `?`
+...
+LL |     ()?;
+   |       ^ cannot use the `?` operator in a function that returns `()`
+
+error[E0277]: the trait bound `(): Try` is not satisfied
+  --> $DIR/try-operator-on-main.rs:14:25
+   |
+LL |     try_trait_generic::<()>();
+   |                         ^^ the trait `Try` is not implemented for `()`
+   |
+note: required by a bound in `try_trait_generic`
+  --> $DIR/try-operator-on-main.rs:17:25
+   |
+LL | fn try_trait_generic<T: Try>() -> T {
+   |                         ^^^ required by this bound in `try_trait_generic`
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/try-operator-on-main.rs:19:5
+   |
+LL |     ()?;
+   |     ^^^ the `?` operator cannot be applied to type `()`
+   |
+   = help: the trait `Try` is not implemented for `()`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

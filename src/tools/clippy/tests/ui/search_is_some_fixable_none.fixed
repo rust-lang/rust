@@ -1,0 +1,319 @@
+#![allow(dead_code, clippy::explicit_auto_deref, clippy::useless_vec, clippy::manual_contains)]
+#![warn(clippy::search_is_some)]
+
+fn main() {
+    let v = vec![3, 2, 1, 0, -1, -2, -3];
+    let y = &&42;
+
+    // Check `find().is_none()`, single-line case.
+    let _ = !v.iter().any(|x| *x < 0);
+    //~^ search_is_some
+    let _ = !(0..1).any(|x| **y == x); // one dereference less
+    //
+    //~^^ search_is_some
+    let _ = !(0..1).any(|x| x == 0);
+    //~^ search_is_some
+    let _ = !v.iter().any(|x| *x == 0);
+    //~^ search_is_some
+    let _ = !(4..5).any(|x| x == 1 || x == 3 || x == 5);
+    //~^ search_is_some
+    let _ = !(1..3).any(|x| [1, 2, 3].contains(&x));
+    //~^ search_is_some
+    let _ = !(1..3).any(|x| x == 0 || [1, 2, 3].contains(&x));
+    //~^ search_is_some
+    let _ = !(1..3).any(|x| [1, 2, 3].contains(&x) || x == 0);
+    //~^ search_is_some
+    let _ = !(1..3).any(|x| [1, 2, 3].contains(&x) || x == 0 || [4, 5, 6].contains(&x) || x == -1);
+
+    // Check `position().is_none()`, single-line case.
+    let _ = !v.iter().any(|&x| x < 0);
+    //~^ search_is_some
+
+    // Check `rposition().is_none()`, single-line case.
+    let _ = !v.iter().any(|&x| x < 0);
+    //~^ search_is_some
+
+    let s1 = String::from("hello world");
+    let s2 = String::from("world");
+
+    // caller of `find()` is a `&`static str`
+    let _ = !"hello world".contains("world");
+    //~^ search_is_some
+    let _ = !"hello world".contains(&s2);
+    //~^ search_is_some
+    let _ = !"hello world".contains(&s2[2..]);
+    //~^ search_is_some
+    // caller of `find()` is a `String`
+    let _ = !s1.contains("world");
+    //~^ search_is_some
+    let _ = !s1.contains(&s2);
+    //~^ search_is_some
+    let _ = !s1.contains(&s2[2..]);
+    //~^ search_is_some
+    // caller of `find()` is slice of `String`
+    let _ = !s1[2..].contains("world");
+    //~^ search_is_some
+    let _ = !s1[2..].contains(&s2);
+    //~^ search_is_some
+    let _ = !s1[2..].contains(&s2[2..]);
+    //~^ search_is_some
+}
+
+#[allow(clippy::clone_on_copy, clippy::map_clone)]
+mod issue7392 {
+    struct Player {
+        hand: Vec<usize>,
+    }
+    fn filter() {
+        let p = Player {
+            hand: vec![1, 2, 3, 4, 5],
+        };
+        let filter_hand = vec![5];
+        let _ = p
+            .hand
+            .iter()
+            .filter(|c| !filter_hand.iter().any(|cc| c == &cc))
+            //~^ search_is_some
+            .map(|c| c.clone())
+            .collect::<Vec<_>>();
+    }
+
+    struct PlayerTuple {
+        hand: Vec<(usize, char)>,
+    }
+    fn filter_tuple() {
+        let p = PlayerTuple {
+            hand: vec![(1, 'a'), (2, 'b'), (3, 'c'), (4, 'd'), (5, 'e')],
+        };
+        let filter_hand = vec![5];
+        let _ = p
+            .hand
+            .iter()
+            .filter(|(c, _)| !filter_hand.iter().any(|cc| c == cc))
+            //~^ search_is_some
+            .map(|c| c.clone())
+            .collect::<Vec<_>>();
+    }
+
+    fn field_projection() {
+        struct Foo {
+            foo: i32,
+            bar: u32,
+        }
+        let vfoo = vec![Foo { foo: 1, bar: 2 }];
+        let _ = !vfoo.iter().any(|v| v.foo == 1 && v.bar == 2);
+        //~^ search_is_some
+
+        let vfoo = vec![(42, Foo { foo: 1, bar: 2 })];
+        let _ = !vfoo
+            //~^ search_is_some
+            .iter().any(|(i, v)| *i == 42 && v.foo == 1 && v.bar == 2);
+    }
+
+    fn index_projection() {
+        let vfoo = vec![[0, 1, 2, 3]];
+        let _ = !vfoo.iter().any(|a| a[0] == 42);
+        //~^ search_is_some
+    }
+
+    #[allow(clippy::match_like_matches_macro)]
+    fn slice_projection() {
+        let vfoo = vec![[0, 1, 2, 3, 0, 1, 2, 3]];
+        let _ = !vfoo.iter().any(|sub| sub[1..4].len() == 3);
+        //~^ search_is_some
+    }
+
+    fn please(x: &u32) -> bool {
+        *x == 9
+    }
+
+    fn deref_enough(x: u32) -> bool {
+        x == 78
+    }
+
+    fn arg_no_deref(x: &&u32) -> bool {
+        **x == 78
+    }
+
+    fn more_projections() {
+        let x = 19;
+        let ppx: &u32 = &x;
+        let _ = ![ppx].iter().any(|ppp_x: &&u32| please(ppp_x));
+        //~^ search_is_some
+        let _ = ![String::from("Hey hey")].iter().any(|s| s.len() == 2);
+        //~^ search_is_some
+
+        let v = vec![3, 2, 1, 0];
+        let _ = !v.iter().any(|x| deref_enough(*x));
+        //~^ search_is_some
+        let _ = !v.iter().any(|x: &u32| deref_enough(*x));
+        //~^ search_is_some
+
+        #[allow(clippy::redundant_closure)]
+        let _ = !v.iter().any(|x| arg_no_deref(&x));
+        //~^ search_is_some
+        #[allow(clippy::redundant_closure)]
+        let _ = !v.iter().any(|x: &u32| arg_no_deref(&x));
+        //~^ search_is_some
+    }
+
+    fn field_index_projection() {
+        struct FooDouble {
+            bar: Vec<Vec<i32>>,
+        }
+        struct Foo {
+            bar: Vec<i32>,
+        }
+        struct FooOuter {
+            inner: Foo,
+            inner_double: FooDouble,
+        }
+        let vfoo = vec![FooOuter {
+            inner: Foo { bar: vec![0, 1, 2, 3] },
+            inner_double: FooDouble {
+                bar: vec![vec![0, 1, 2, 3]],
+            },
+        }];
+        let _ = !vfoo
+            //~^ search_is_some
+            .iter().any(|v| v.inner_double.bar[0][0] == 2 && v.inner.bar[0] == 2);
+    }
+
+    fn index_field_projection() {
+        struct Foo {
+            bar: i32,
+        }
+        struct FooOuter {
+            inner: Vec<Foo>,
+        }
+        let vfoo = vec![FooOuter {
+            inner: vec![Foo { bar: 0 }],
+        }];
+        let _ = !vfoo.iter().any(|v| v.inner[0].bar == 2);
+        //~^ search_is_some
+    }
+
+    fn double_deref_index_projection() {
+        let vfoo = vec![&&[0, 1, 2, 3]];
+        let _ = !vfoo.iter().any(|x| (**x)[0] == 9);
+        //~^ search_is_some
+    }
+
+    fn method_call_by_ref() {
+        struct Foo {
+            bar: u32,
+        }
+        impl Foo {
+            pub fn by_ref(&self, x: &u32) -> bool {
+                *x == self.bar
+            }
+        }
+        let vfoo = vec![Foo { bar: 1 }];
+        let _ = !vfoo.iter().any(|v| v.by_ref(&v.bar));
+        //~^ search_is_some
+    }
+
+    fn ref_bindings() {
+        let _ = ![&(&1, 2), &(&3, 4), &(&5, 4)]
+            //~^ search_is_some
+            .iter().any(|&&(&x, ref y)| x == *y);
+    }
+
+    fn test_string_1(s: &str) -> bool {
+        s.is_empty()
+    }
+
+    fn test_u32_1(s: &u32) -> bool {
+        s.is_power_of_two()
+    }
+
+    fn test_u32_2(s: u32) -> bool {
+        s.is_power_of_two()
+    }
+
+    fn projection_in_args_test() {
+        // Index projections
+        let lst = &[String::from("Hello"), String::from("world")];
+        let v: Vec<&[String]> = vec![lst];
+        let _ = !v.iter().any(|s| s[0].is_empty());
+        //~^ search_is_some
+        let _ = !v.iter().any(|s| test_string_1(&s[0]));
+        //~^ search_is_some
+
+        // Field projections
+        struct FieldProjection<'a> {
+            field: &'a u32,
+        }
+        let field = 123456789;
+        let instance = FieldProjection { field: &field };
+        let v = vec![instance];
+        let _ = !v.iter().any(|fp| fp.field.is_power_of_two());
+        //~^ search_is_some
+        let _ = !v.iter().any(|fp| test_u32_1(fp.field));
+        //~^ search_is_some
+        let _ = !v.iter().any(|fp| test_u32_2(*fp.field));
+        //~^ search_is_some
+    }
+}
+
+mod issue_11910 {
+    fn computations() -> u32 {
+        0
+    }
+
+    struct Foo;
+    impl Foo {
+        fn bar(&self, _: bool) {}
+    }
+
+    fn test_normal_for_iter() {
+        let v = vec![3, 2, 1, 0, -1, -2, -3];
+        let _ = !v.iter().any(|x| *x == 42);
+        //~^ search_is_some
+        Foo.bar(!v.iter().any(|x| *x == 42));
+        //~^ search_is_some
+    }
+
+    fn test_then_for_iter() {
+        let v = vec![3, 2, 1, 0, -1, -2, -3];
+        (!v.iter().any(|x| *x == 42)).then(computations);
+        //~^ search_is_some
+    }
+
+    fn test_then_some_for_iter() {
+        let v = vec![3, 2, 1, 0, -1, -2, -3];
+        (!v.iter().any(|x| *x == 42)).then_some(0);
+        //~^ search_is_some
+    }
+
+    fn test_normal_for_str() {
+        let s = "hello";
+        let _ = !s.contains("world");
+        //~^ search_is_some
+        Foo.bar(!s.contains("world"));
+        //~^ search_is_some
+        let s = String::from("hello");
+        let _ = !s.contains("world");
+        //~^ search_is_some
+        Foo.bar(!s.contains("world"));
+        //~^ search_is_some
+    }
+
+    fn test_then_for_str() {
+        let s = "hello";
+        let _ = (!s.contains("world")).then(computations);
+        //~^ search_is_some
+        let s = String::from("hello");
+        let _ = (!s.contains("world")).then(computations);
+        //~^ search_is_some
+    }
+
+    fn test_then_some_for_str() {
+        let s = "hello";
+        let _ = (!s.contains("world")).then_some(0);
+        //~^ search_is_some
+        let s = String::from("hello");
+        let _ = (!s.contains("world")).then_some(0);
+        //~^ search_is_some
+    }
+}

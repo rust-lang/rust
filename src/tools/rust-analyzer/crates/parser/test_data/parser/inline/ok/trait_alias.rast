@@ -1,0 +1,33 @@
+SOURCE_FILE
+  TRAIT_ALIAS
+    TRAIT_KW "trait"
+    WHITESPACE " "
+    NAME
+      IDENT "Z"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "U"
+      R_ANGLE ">"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    TYPE_BOUND_LIST
+      TYPE_BOUND
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "T"
+              GENERIC_ARG_LIST
+                L_ANGLE "<"
+                TYPE_ARG
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "U"
+                R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"

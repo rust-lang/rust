@@ -1,0 +1,21 @@
+// MIR for `main::{closure#0}` after SimplifyCfg-pre-optimizations
+
+fn main::{closure#0}(_1: &{closure@main::{closure#0}}, _2: &i32) -> &i32 {
+    debug x => _2;
+    let mut _0: &i32;
+    let _3: &i32;
+    scope 1 {
+        debug _y => _3;
+    }
+
+    bb0: {
+        Retag([fn entry] _1);
+        Retag([fn entry] _2);
+        StorageLive(_3);
+        _3 = copy _2;
+        Retag(_3);
+        _0 = &(*_2);
+        StorageDead(_3);
+        return;
+    }
+}

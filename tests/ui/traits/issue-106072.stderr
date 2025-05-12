@@ -1,0 +1,28 @@
+error[E0428]: the name `Foo` is defined multiple times
+  --> $DIR/issue-106072.rs:5:1
+   |
+LL | struct Foo;
+   | ----------- previous definition of the type `Foo` here
+LL | trait Foo {}
+   | ^^^^^^^^^ `Foo` redefined here
+   |
+   = note: `Foo` must be defined only once in the type namespace of this module
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/issue-106072.rs:1:10
+   |
+LL | #[derive(Clone)]
+   |          ^^^^^
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/issue-106072.rs:1:10
+   |
+LL | #[derive(Clone)]
+   |          ^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0428, E0782.
+For more information about an error, try `rustc --explain E0428`.

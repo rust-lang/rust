@@ -1,0 +1,29 @@
+error: implementation of inherent method `to_string(&self) -> String` for type `A`
+  --> tests/ui/inherent_to_string.rs:22:5
+   |
+LL | /     fn to_string(&self) -> String {
+LL | |
+LL | |
+LL | |         "A.to_string()".to_string()
+LL | |     }
+   | |_____^
+   |
+   = help: implement trait `Display` for type `A` instead
+   = note: `-D clippy::inherent-to-string` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::inherent_to_string)]`
+
+error: type `C` implements inherent method `to_string(&self) -> String` which shadows the implementation of `Display`
+  --> tests/ui/inherent_to_string.rs:48:5
+   |
+LL | /     fn to_string(&self) -> String {
+LL | |
+LL | |
+LL | |         "C.to_string()".to_string()
+LL | |     }
+   | |_____^
+   |
+   = help: remove the inherent method from type `C`
+   = note: `#[deny(clippy::inherent_to_string_shadow_display)]` on by default
+
+error: aborting due to 2 previous errors
+

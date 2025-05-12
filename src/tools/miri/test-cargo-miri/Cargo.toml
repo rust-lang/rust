@@ -1,0 +1,39 @@
+[workspace]
+members = ["subcrate", "issue-1567", "exported-symbol-dep", "test-local-crate-detection"]
+exclude = ["no-std-smoke"] # it wants to be panic="abort"
+
+[package]
+name = "cargo-miri-test"
+version = "0.1.0"
+authors = ["Miri Team"]
+edition = "2024"
+
+[dependencies]
+byteorder = "1.0"
+cdylib = { path = "cdylib" }
+exported_symbol = { path = "exported-symbol" }
+proc_macro_crate = { path = "proc-macro-crate" }
+issue_1567 = { path = "issue-1567" }
+issue_1691 = { path = "issue-1691" }
+issue_1705 = { path = "issue-1705" }
+issue_rust_86261 = { path = "issue-rust-86261" }
+
+[dev-dependencies]
+byteorder_2 = { package = "byteorder", version = "0.5" } # to test dev-dependencies behave as expected, with renaming
+## More dependencies that we don't actually use, but add just for extra test coverage.
+# These use custom build probes, let's make sure they don't explode.
+# (Ideally we'd check if the probe was successful, but that's not easily possible.)
+# proc-macro2 is extra exciting because it is both a host-dependency (of proc_macro_crate above)
+# and a target-dependency.
+proc-macro2 = "1.0"
+eyre = "0.6"
+
+[build-dependencies]
+autocfg = "1"
+
+[lib]
+test = false # test that this is respected (will show in the output)
+
+[[test]]
+name = "main"
+harness = false

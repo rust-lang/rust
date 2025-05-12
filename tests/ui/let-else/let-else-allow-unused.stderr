@@ -1,0 +1,14 @@
+error: unused variable: `chaenomeles`
+  --> $DIR/let-else-allow-unused.rs:14:14
+   |
+LL |     let Some(chaenomeles) = value else { return };
+   |              ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_chaenomeles`
+   |
+note: the lint level is defined here
+  --> $DIR/let-else-allow-unused.rs:5:8
+   |
+LL | #[deny(unused_variables)]
+   |        ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

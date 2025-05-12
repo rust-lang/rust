@@ -1,0 +1,11 @@
+error[E0283]: type annotations needed
+  --> $DIR/where-allowed-2.rs:3:30
+   |
+LL | fn in_adt_in_return() -> Vec<impl Debug> { panic!() }
+   |                              ^^^^^^^^^^ cannot infer type
+   |
+   = note: cannot satisfy `_: Debug`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

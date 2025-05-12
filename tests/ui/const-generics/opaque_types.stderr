@@ -1,0 +1,36 @@
+error: `Foo` is forbidden as the type of a const generic parameter
+  --> $DIR/opaque_types.rs:6:17
+   |
+LL | fn foo<const C: Foo>() {}
+   |                 ^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: item does not constrain `Foo::{opaque#0}`
+  --> $DIR/opaque_types.rs:6:4
+   |
+LL | fn foo<const C: Foo>() {}
+   |    ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/opaque_types.rs:3:12
+   |
+LL | type Foo = impl Sized;
+   |            ^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/opaque_types.rs:11:11
+   |
+LL | type Foo = impl Sized;
+   |            ---------- the expected opaque type
+...
+LL |     foo::<42>();
+   |           ^^ expected opaque type, found integer
+   |
+   = note: expected opaque type `Foo`
+                     found type `{integer}`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

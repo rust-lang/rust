@@ -1,0 +1,13 @@
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `""`
+  --> $DIR/issue-37234.rs:3:19
+   |
+LL |         let x = 5 "";
+   |                   ^^ expected one of `.`, `;`, `?`, `else`, or an operator
+...
+LL |     failed!();
+   |     --------- in this macro invocation
+   |
+   = note: this error originates in the macro `failed` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

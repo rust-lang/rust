@@ -1,0 +1,9 @@
+//@ run-rustfix
+
+const _A: i32 = 123;
+//~^ ERROR: missing type for `const` item
+
+fn main() {
+    const _B: i32 = 123;
+    //~^ ERROR: missing type for `const` item
+}

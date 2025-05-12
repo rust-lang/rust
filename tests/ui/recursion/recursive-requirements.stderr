@@ -1,0 +1,46 @@
+error[E0277]: `*const Bar` cannot be shared between threads safely
+  --> $DIR/recursive-requirements.rs:16:12
+   |
+LL |     let _: AssertSync<Foo> = unimplemented!();
+   |            ^^^^^^^^^^^^^^^ `*const Bar` cannot be shared between threads safely
+   |
+   = help: within `Foo`, the trait `Sync` is not implemented for `*const Bar`
+note: required because it appears within the type `Foo`
+  --> $DIR/recursive-requirements.rs:5:12
+   |
+LL | pub struct Foo {
+   |            ^^^
+note: required by a bound in `AssertSync`
+  --> $DIR/recursive-requirements.rs:3:22
+   |
+LL | struct AssertSync<T: Sync>(PhantomData<T>);
+   |                      ^^^^ required by this bound in `AssertSync`
+
+error[E0277]: `*const Foo` cannot be shared between threads safely
+  --> $DIR/recursive-requirements.rs:16:12
+   |
+LL |     let _: AssertSync<Foo> = unimplemented!();
+   |            ^^^^^^^^^^^^^^^ `*const Foo` cannot be shared between threads safely
+   |
+   = help: within `Foo`, the trait `Sync` is not implemented for `*const Foo`
+note: required because it appears within the type `Bar`
+  --> $DIR/recursive-requirements.rs:10:12
+   |
+LL | pub struct Bar {
+   |            ^^^
+note: required because it appears within the type `PhantomData<Bar>`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+note: required because it appears within the type `Foo`
+  --> $DIR/recursive-requirements.rs:5:12
+   |
+LL | pub struct Foo {
+   |            ^^^
+note: required by a bound in `AssertSync`
+  --> $DIR/recursive-requirements.rs:3:22
+   |
+LL | struct AssertSync<T: Sync>(PhantomData<T>);
+   |                      ^^^^ required by this bound in `AssertSync`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

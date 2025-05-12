@@ -1,0 +1,19 @@
+error: internal compiler error: broken MIR in Item(DefId(0:8 ~ storage_live[HASH]::multiple_storage)) (after pass CheckForceInline) at bb0[1]:
+                                StorageLive(_1) which already has storage here
+  --> $DIR/storage-live.rs:21:13
+   |
+LL |             StorageLive(a);
+   |             ^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_mir_transform/src/lint.rs:LL:CC - disabled backtrace
+  --> $DIR/storage-live.rs:21:13
+   |
+LL |             StorageLive(a);
+   |             ^^^^^^^^^^^^^^
+
+
+aborting due to `-Z treat-err-as-bug=1`
+error: the compiler unexpectedly panicked. this is a bug.
+
+query stack during panic:
+end of query stack

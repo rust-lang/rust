@@ -1,0 +1,33 @@
+error[E0432]: unresolved import `alloc`
+  --> $DIR/resolve_self_super_hint.rs:3:9
+   |
+LL |     use alloc::HashMap;
+   |         ^^^^^ help: a similar path exists: `self::alloc`
+
+error[E0432]: unresolved import `alloc`
+  --> $DIR/resolve_self_super_hint.rs:8:13
+   |
+LL |         use alloc::HashMap;
+   |             ^^^^^ help: a similar path exists: `super::alloc`
+
+error[E0432]: unresolved import `alloc`
+  --> $DIR/resolve_self_super_hint.rs:13:17
+   |
+LL |             use alloc::HashMap;
+   |                 ^^^^^
+   |                 |
+   |                 unresolved import
+   |                 help: a similar path exists: `a::alloc`
+
+error[E0432]: unresolved import `alloc`
+  --> $DIR/resolve_self_super_hint.rs:18:21
+   |
+LL |                 use alloc::HashMap;
+   |                     ^^^^^
+   |                     |
+   |                     unresolved import
+   |                     help: a similar path exists: `a::alloc`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

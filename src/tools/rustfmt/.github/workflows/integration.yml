@@ -1,0 +1,80 @@
+name: integration
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    name: ${{ matrix.integration }}
+    strategy:
+      # https://help.github.com/en/actions/getting-started-with-github-actions/about-github-actions#usage-limits
+      # There's a limit of 60 concurrent jobs across all repos in the rust-lang organization.
+      # In order to prevent overusing too much of that 60 limit, we throttle the
+      # number of rustfmt jobs that will run concurrently.
+      max-parallel: 4
+      fail-fast: false
+      matrix:
+        integration: [
+          bitflags,
+          log,
+          mdbook,
+          packed_simd,
+          rust-semverver,
+          tempdir,
+          futures-rs,
+          rust-clippy,
+        ]
+        include:
+          # Allowed Failures
+          # Actions doesn't yet support explicitly marking matrix legs as allowed failures
+          # https://github.community/t5/GitHub-Actions/continue-on-error-allow-failure-UI-indication/td-p/37033
+          # https://github.community/t5/GitHub-Actions/Why-a-matrix-step-will-be-canceled-if-another-one-failed/td-p/30920
+          # Instead, leverage `continue-on-error`
+          # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepscontinue-on-error
+          #
+          # Failing due to breaking changes in rustfmt 2.0 where empty
+          # match blocks have trailing commas removed
+          # https://github.com/rust-lang/rustfmt/pull/4226
+          - integration: chalk
+            allow-failure: true
+          - integration: crater
+            allow-failure: true
+          - integration: glob
+            allow-failure: true
+          - integration: stdsimd
+            allow-failure: true
+          # Using old rustfmt configuration option
+          - integration: rand
+            allow-failure: true
+          # Keep this as an allowed failure as it's fragile to breaking changes of rustc.
+          - integration: rust-clippy
+            allow-failure: true
+          # Using old rustfmt configuration option
+          - integration: packed_simd
+            allow-failure: true
+          # calebcartwright (2019-12-24)
+          # Keeping this as an allowed failure since it was flagged as such in the TravisCI config, even though
+          # it appears to have been passing for quite some time.
+          # Original comment was: temporal build failure due to breaking changes in the nightly compiler
+          - integration: rust-semverver
+            allow-failure: true
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+      # Run build
+    - name: install rustup
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
+        sh rustup-init.sh -y --default-toolchain none
+
+    - name: run integration tests
+      env:
+        INTEGRATION: ${{ matrix.integration }}
+        TARGET: x86_64-unknown-linux-gnu
+      run: ./ci/integration.sh
+      continue-on-error: ${{ matrix.allow-failure == true }}

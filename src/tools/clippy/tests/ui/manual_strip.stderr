@@ -1,0 +1,199 @@
+error: stripping a prefix manually
+  --> tests/ui/manual_strip.rs:7:24
+   |
+LL |         str::to_string(&s["ab".len()..]);
+   |                        ^^^^^^^^^^^^^^^^
+   |
+note: the prefix was tested here
+  --> tests/ui/manual_strip.rs:6:5
+   |
+LL |     if s.starts_with("ab") {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::manual-strip` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_strip)]`
+help: try using the `strip_prefix` method
+   |
+LL ~     if let Some(<stripped>) = s.strip_prefix("ab") {
+LL ~         str::to_string(<stripped>);
+LL |
+LL |
+LL ~         <stripped>.to_string();
+LL |
+LL ~         str::to_string(<stripped>);
+LL ~         <stripped>.to_string();
+   |
+
+error: stripping a suffix manually
+  --> tests/ui/manual_strip.rs:17:24
+   |
+LL |         str::to_string(&s[..s.len() - "bc".len()]);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the suffix was tested here
+  --> tests/ui/manual_strip.rs:16:5
+   |
+LL |     if s.ends_with("bc") {
+   |     ^^^^^^^^^^^^^^^^^^^^^
+help: try using the `strip_suffix` method
+   |
+LL ~     if let Some(<stripped>) = s.strip_suffix("bc") {
+LL ~         str::to_string(<stripped>);
+LL |
+LL |
+LL ~         <stripped>.to_string();
+LL |
+LL ~         str::to_string(<stripped>);
+LL ~         <stripped>.to_string();
+   |
+
+error: stripping a prefix manually
+  --> tests/ui/manual_strip.rs:28:24
+   |
+LL |         str::to_string(&s[1..]);
+   |                        ^^^^^^^
+   |
+note: the prefix was tested here
+  --> tests/ui/manual_strip.rs:27:5
+   |
+LL |     if s.starts_with('a') {
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+help: try using the `strip_prefix` method
+   |
+LL ~     if let Some(<stripped>) = s.strip_prefix('a') {
+LL ~         str::to_string(<stripped>);
+LL |
+LL |
+LL ~         <stripped>.to_string();
+   |
+
+error: stripping a prefix manually
+  --> tests/ui/manual_strip.rs:37:24
+   |
+LL |         str::to_string(&s[prefix.len()..]);
+   |                        ^^^^^^^^^^^^^^^^^^
+   |
+note: the prefix was tested here
+  --> tests/ui/manual_strip.rs:36:5
+   |
+LL |     if s.starts_with(prefix) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: try using the `strip_prefix` method
+   |
+LL ~     if let Some(<stripped>) = s.strip_prefix(prefix) {
+LL ~         str::to_string(<stripped>);
+   |
+
+error: stripping a prefix manually
+  --> tests/ui/manual_strip.rs:44:24
+   |
+LL |         str::to_string(&s[PREFIX.len()..]);
+   |                        ^^^^^^^^^^^^^^^^^^
+   |
+note: the prefix was tested here
+  --> tests/ui/manual_strip.rs:43:5
+   |
+LL |     if s.starts_with(PREFIX) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: try using the `strip_prefix` method
+   |
+LL ~     if let Some(<stripped>) = s.strip_prefix(PREFIX) {
+LL ~         str::to_string(<stripped>);
+LL |
+LL |
+LL ~         str::to_string(<stripped>);
+   |
+
+error: stripping a prefix manually
+  --> tests/ui/manual_strip.rs:53:24
+   |
+LL |         str::to_string(&TARGET[prefix.len()..]);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the prefix was tested here
+  --> tests/ui/manual_strip.rs:52:5
+   |
+LL |     if TARGET.starts_with(prefix) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: try using the `strip_prefix` method
+   |
+LL ~     if let Some(<stripped>) = TARGET.strip_prefix(prefix) {
+LL ~         str::to_string(<stripped>);
+   |
+
+error: stripping a prefix manually
+  --> tests/ui/manual_strip.rs:60:9
+   |
+LL |         s1[2..].to_uppercase();
+   |         ^^^^^^^
+   |
+note: the prefix was tested here
+  --> tests/ui/manual_strip.rs:59:5
+   |
+LL |     if s1.starts_with("ab") {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+help: try using the `strip_prefix` method
+   |
+LL ~     if let Some(<stripped>) = s1.strip_prefix("ab") {
+LL ~         <stripped>.to_uppercase();
+   |
+
+error: stripping a prefix manually
+  --> tests/ui/manual_strip.rs:80:24
+   |
+LL |         let stripped = &s["ab".len()..];
+   |                        ^^^^^^^^^^^^^^^^
+   |
+note: the prefix was tested here
+  --> tests/ui/manual_strip.rs:79:5
+   |
+LL |     if s.starts_with("ab") {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+help: try using the `strip_prefix` method
+   |
+LL ~     if let Some(<stripped>) = s.strip_prefix("ab") {
+LL ~         let stripped = <stripped>;
+LL |
+LL |         let stripped = format!("{stripped}-");
+LL ~         println!("{stripped}{}", <stripped>);
+   |
+
+error: stripping a prefix manually
+  --> tests/ui/manual_strip.rs:88:28
+   |
+LL |         let mut stripped = &s["ab".len()..];
+   |                            ^^^^^^^^^^^^^^^^
+   |
+note: the prefix was tested here
+  --> tests/ui/manual_strip.rs:87:5
+   |
+LL |     if s.starts_with("ab") {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+help: try using the `strip_prefix` method
+   |
+LL ~     if let Some(<stripped>) = s.strip_prefix("ab") {
+LL ~         let mut stripped = <stripped>;
+LL |
+LL |         stripped = "";
+LL |         let stripped = format!("{stripped}-");
+LL ~         println!("{stripped}{}", <stripped>);
+   |
+
+error: stripping a prefix manually
+  --> tests/ui/manual_strip.rs:108:9
+   |
+LL |         s[1..].to_string();
+   |         ^^^^^^
+   |
+note: the prefix was tested here
+  --> tests/ui/manual_strip.rs:107:5
+   |
+LL |     if s.starts_with('a') {
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+help: try using the `strip_prefix` method
+   |
+LL ~     if let Some(<stripped>) = s.strip_prefix('a') {
+LL ~         <stripped>.to_string();
+   |
+
+error: aborting due to 10 previous errors
+

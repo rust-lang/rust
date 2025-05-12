@@ -1,0 +1,83 @@
+error: name `HTTPResponse` contains a capitalized acronym
+  --> tests/ui-toml/upper_case_acronyms_aggressive/upper_case_acronyms.rs:3:8
+   |
+LL | struct HTTPResponse; // not linted by default, but with cfg option
+   |        ^^^^^^^^^^^^ help: consider making the acronym lowercase, except the initial letter: `HttpResponse`
+   |
+   = note: `-D clippy::upper-case-acronyms` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::upper_case_acronyms)]`
+
+error: name `NS` contains a capitalized acronym
+  --> tests/ui-toml/upper_case_acronyms_aggressive/upper_case_acronyms.rs:9:5
+   |
+LL |     NS, // not linted
+   |     ^^ help: consider making the acronym lowercase, except the initial letter (notice the capitalization): `Ns`
+
+error: name `CWR` contains a capitalized acronym
+  --> tests/ui-toml/upper_case_acronyms_aggressive/upper_case_acronyms.rs:11:5
+   |
+LL |     CWR,
+   |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Cwr`
+
+error: name `ECE` contains a capitalized acronym
+  --> tests/ui-toml/upper_case_acronyms_aggressive/upper_case_acronyms.rs:13:5
+   |
+LL |     ECE,
+   |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Ece`
+
+error: name `URG` contains a capitalized acronym
+  --> tests/ui-toml/upper_case_acronyms_aggressive/upper_case_acronyms.rs:15:5
+   |
+LL |     URG,
+   |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Urg`
+
+error: name `ACK` contains a capitalized acronym
+  --> tests/ui-toml/upper_case_acronyms_aggressive/upper_case_acronyms.rs:17:5
+   |
+LL |     ACK,
+   |     ^^^ help: consider making the acronym lowercase, except the initial letter (notice the capitalization): `Ack`
+
+error: name `PSH` contains a capitalized acronym
+  --> tests/ui-toml/upper_case_acronyms_aggressive/upper_case_acronyms.rs:19:5
+   |
+LL |     PSH,
+   |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Psh`
+
+error: name `RST` contains a capitalized acronym
+  --> tests/ui-toml/upper_case_acronyms_aggressive/upper_case_acronyms.rs:21:5
+   |
+LL |     RST,
+   |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Rst`
+
+error: name `SYN` contains a capitalized acronym
+  --> tests/ui-toml/upper_case_acronyms_aggressive/upper_case_acronyms.rs:23:5
+   |
+LL |     SYN,
+   |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Syn`
+
+error: name `FIN` contains a capitalized acronym
+  --> tests/ui-toml/upper_case_acronyms_aggressive/upper_case_acronyms.rs:25:5
+   |
+LL |     FIN,
+   |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Fin`
+
+error: name `GCCLLVMSomething` contains a capitalized acronym
+  --> tests/ui-toml/upper_case_acronyms_aggressive/upper_case_acronyms.rs:31:8
+   |
+LL | struct GCCLLVMSomething;
+   |        ^^^^^^^^^^^^^^^^ help: consider making the acronym lowercase, except the initial letter: `GccllvmSomething`
+
+error: name `WASD` contains a capitalized acronym
+  --> tests/ui-toml/upper_case_acronyms_aggressive/upper_case_acronyms.rs:49:5
+   |
+LL |     WASD(u8),
+   |     ^^^^ help: consider making the acronym lowercase, except the initial letter: `Wasd`
+
+error: name `WASDMixed` contains a capitalized acronym
+  --> tests/ui-toml/upper_case_acronyms_aggressive/upper_case_acronyms.rs:51:5
+   |
+LL |     WASDMixed(String),
+   |     ^^^^^^^^^ help: consider making the acronym lowercase, except the initial letter: `WasdMixed`
+
+error: aborting due to 13 previous errors
+

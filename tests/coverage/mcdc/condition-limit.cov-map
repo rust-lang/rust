@@ -1,0 +1,58 @@
+Function name: condition_limit::accept_7_conditions
+Raw bytes (192): 0x[01, 01, 08, 01, 05, 05, 09, 09, 0d, 0d, 11, 11, 15, 15, 19, 19, 1d, 01, 1d, 1b, 01, 06, 01, 00, 2c, 01, 01, 0a, 00, 0b, 01, 00, 0d, 00, 0e, 01, 00, 10, 00, 11, 01, 00, 13, 00, 14, 01, 00, 16, 00, 17, 01, 00, 19, 00, 1a, 01, 00, 1c, 00, 1d, 01, 00, 21, 00, 29, 01, 01, 08, 00, 09, 28, 08, 07, 00, 08, 00, 27, 30, 05, 02, 01, 07, 00, 00, 08, 00, 09, 05, 00, 0d, 00, 0e, 30, 09, 06, 07, 06, 00, 00, 0d, 00, 0e, 09, 00, 12, 00, 13, 30, 0d, 0a, 06, 05, 00, 00, 12, 00, 13, 0d, 00, 17, 00, 18, 30, 11, 0e, 05, 04, 00, 00, 17, 00, 18, 11, 00, 1c, 00, 1d, 30, 15, 12, 04, 03, 00, 00, 1c, 00, 1d, 15, 00, 21, 00, 22, 30, 19, 16, 03, 02, 00, 00, 21, 00, 22, 19, 00, 26, 00, 27, 30, 1d, 1a, 02, 00, 00, 00, 26, 00, 27, 1d, 00, 28, 02, 06, 1e, 02, 05, 00, 06, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/condition-limit.rs
+Number of expressions: 8
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 2 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 3 operands: lhs = Counter(3), rhs = Counter(4)
+- expression 4 operands: lhs = Counter(4), rhs = Counter(5)
+- expression 5 operands: lhs = Counter(5), rhs = Counter(6)
+- expression 6 operands: lhs = Counter(6), rhs = Counter(7)
+- expression 7 operands: lhs = Counter(0), rhs = Counter(7)
+Number of file 0 mappings: 27
+- Code(Counter(0)) at (prev + 6, 1) to (start + 0, 44)
+- Code(Counter(0)) at (prev + 1, 10) to (start + 0, 11)
+- Code(Counter(0)) at (prev + 0, 13) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 16) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 0, 19) to (start + 0, 20)
+- Code(Counter(0)) at (prev + 0, 22) to (start + 0, 23)
+- Code(Counter(0)) at (prev + 0, 25) to (start + 0, 26)
+- Code(Counter(0)) at (prev + 0, 28) to (start + 0, 29)
+- Code(Counter(0)) at (prev + 0, 33) to (start + 0, 41)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 9)
+- MCDCDecision { bitmap_idx: 8, conditions_num: 7 } at (prev + 0, 8) to (start + 0, 39)
+- MCDCBranch { true: Counter(1), false: Expression(0, Sub), condition_id: 1, true_next_id: 7, false_next_id: 0 } at (prev + 0, 8) to (start + 0, 9)
+    true  = c1
+    false = (c0 - c1)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 0, 14)
+- MCDCBranch { true: Counter(2), false: Expression(1, Sub), condition_id: 7, true_next_id: 6, false_next_id: 0 } at (prev + 0, 13) to (start + 0, 14)
+    true  = c2
+    false = (c1 - c2)
+- Code(Counter(2)) at (prev + 0, 18) to (start + 0, 19)
+- MCDCBranch { true: Counter(3), false: Expression(2, Sub), condition_id: 6, true_next_id: 5, false_next_id: 0 } at (prev + 0, 18) to (start + 0, 19)
+    true  = c3
+    false = (c2 - c3)
+- Code(Counter(3)) at (prev + 0, 23) to (start + 0, 24)
+- MCDCBranch { true: Counter(4), false: Expression(3, Sub), condition_id: 5, true_next_id: 4, false_next_id: 0 } at (prev + 0, 23) to (start + 0, 24)
+    true  = c4
+    false = (c3 - c4)
+- Code(Counter(4)) at (prev + 0, 28) to (start + 0, 29)
+- MCDCBranch { true: Counter(5), false: Expression(4, Sub), condition_id: 4, true_next_id: 3, false_next_id: 0 } at (prev + 0, 28) to (start + 0, 29)
+    true  = c5
+    false = (c4 - c5)
+- Code(Counter(5)) at (prev + 0, 33) to (start + 0, 34)
+- MCDCBranch { true: Counter(6), false: Expression(5, Sub), condition_id: 3, true_next_id: 2, false_next_id: 0 } at (prev + 0, 33) to (start + 0, 34)
+    true  = c6
+    false = (c5 - c6)
+- Code(Counter(6)) at (prev + 0, 38) to (start + 0, 39)
+- MCDCBranch { true: Counter(7), false: Expression(6, Sub), condition_id: 2, true_next_id: 0, false_next_id: 0 } at (prev + 0, 38) to (start + 0, 39)
+    true  = c7
+    false = (c6 - c7)
+- Code(Counter(7)) at (prev + 0, 40) to (start + 2, 6)
+- Code(Expression(7, Sub)) at (prev + 2, 5) to (start + 0, 6)
+    = (c0 - c7)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c7
+

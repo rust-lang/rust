@@ -1,0 +1,77 @@
+PRINT-ATTR INPUT (DISPLAY): #[deny(unused_attributes)] mod module_with_attrs { #![rustfmt::skip] }
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): #[deny(unused_attributes)] mod module_with_attrs { #! [rustfmt :: skip] }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Punct {
+        ch: '#',
+        spacing: Alone,
+        span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "deny",
+                span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [
+                    Ident {
+                        ident: "unused_attributes",
+                        span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+                    },
+                ],
+                span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+            },
+        ],
+        span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+    },
+    Ident {
+        ident: "mod",
+        span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+    },
+    Ident {
+        ident: "module_with_attrs",
+        span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Joint,
+                span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "rustfmt",
+                        span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+                    },
+                    Punct {
+                        ch: ':',
+                        spacing: Joint,
+                        span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+                    },
+                    Punct {
+                        ch: ':',
+                        spacing: Alone,
+                        span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+                    },
+                    Ident {
+                        ident: "skip",
+                        span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+                    },
+                ],
+                span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+            },
+        ],
+        span: $DIR/inner-attr-non-inline-mod.rs:11:1: 11:23 (#0),
+    },
+]

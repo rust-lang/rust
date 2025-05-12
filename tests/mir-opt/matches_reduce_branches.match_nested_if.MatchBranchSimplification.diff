@@ -1,0 +1,115 @@
+- // MIR for `match_nested_if` before MatchBranchSimplification
++ // MIR for `match_nested_if` after MatchBranchSimplification
+  
+  fn match_nested_if() -> bool {
+      let mut _0: bool;
+      let _1: bool;
+      let mut _2: ();
+      let mut _3: bool;
+      let mut _4: bool;
+      let mut _5: bool;
+      let mut _6: bool;
++     let mut _7: bool;
++     let mut _8: bool;
++     let mut _9: bool;
++     let mut _10: bool;
+      scope 1 {
+          debug val => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = ();
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = const true;
+-         switchInt(move _6) -> [0: bb2, otherwise: bb1];
+-     }
+- 
+-     bb1: {
+-         _5 = const true;
+-         goto -> bb3;
+-     }
+- 
+-     bb2: {
+-         _5 = const false;
+-         goto -> bb3;
+-     }
+- 
+-     bb3: {
+-         switchInt(move _5) -> [0: bb5, otherwise: bb4];
+-     }
+- 
+-     bb4: {
++         StorageLive(_7);
++         _7 = move _6;
++         _5 = Ne(copy _7, const false);
++         StorageDead(_7);
++         StorageLive(_8);
++         _8 = move _5;
+          StorageDead(_6);
+-         _4 = const true;
+-         goto -> bb6;
+-     }
+- 
+-     bb5: {
+-         StorageDead(_6);
+-         _4 = const false;
+-         goto -> bb6;
+-     }
+- 
+-     bb6: {
+-         switchInt(move _4) -> [0: bb8, otherwise: bb7];
+-     }
+- 
+-     bb7: {
++         _4 = Ne(copy _8, const false);
++         StorageDead(_8);
++         StorageLive(_9);
++         _9 = move _4;
+          StorageDead(_5);
+-         _3 = const true;
+-         goto -> bb9;
+-     }
+- 
+-     bb8: {
+-         StorageDead(_5);
+-         _3 = const false;
+-         goto -> bb9;
+-     }
+- 
+-     bb9: {
+-         switchInt(move _3) -> [0: bb11, otherwise: bb10];
+-     }
+- 
+-     bb10: {
++         _3 = Ne(copy _9, const false);
++         StorageDead(_9);
++         StorageLive(_10);
++         _10 = move _3;
+          StorageDead(_4);
+          StorageDead(_3);
+-         _1 = const true;
+-         goto -> bb12;
+-     }
+- 
+-     bb11: {
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         _1 = const false;
+-         goto -> bb12;
+-     }
+- 
+-     bb12: {
++         _1 = Ne(copy _10, const false);
++         StorageDead(_10);
+          StorageDead(_2);
+          _0 = copy _1;
+          StorageDead(_1);
+          return;
+      }
+  }
+  

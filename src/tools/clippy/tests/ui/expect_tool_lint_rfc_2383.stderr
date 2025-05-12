@@ -1,0 +1,49 @@
+error: this lint expectation is unfulfilled
+  --> tests/ui/expect_tool_lint_rfc_2383.rs:30:14
+   |
+LL |     #[expect(dead_code)]
+   |              ^^^^^^^^^
+   |
+   = note: `-D unfulfilled-lint-expectations` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unfulfilled_lint_expectations)]`
+
+error: this lint expectation is unfulfilled
+  --> tests/ui/expect_tool_lint_rfc_2383.rs:37:18
+   |
+LL |         #[expect(invalid_nan_comparisons)]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this lint expectation is unfulfilled
+  --> tests/ui/expect_tool_lint_rfc_2383.rs:37:18
+   |
+LL |         #[expect(invalid_nan_comparisons)]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: this lint expectation is unfulfilled
+  --> tests/ui/expect_tool_lint_rfc_2383.rs:110:14
+   |
+LL |     #[expect(clippy::almost_swapped)]
+   |              ^^^^^^^^^^^^^^^^^^^^^^
+
+error: this lint expectation is unfulfilled
+  --> tests/ui/expect_tool_lint_rfc_2383.rs:118:14
+   |
+LL |     #[expect(clippy::bytes_nth)]
+   |              ^^^^^^^^^^^^^^^^^
+
+error: this lint expectation is unfulfilled
+  --> tests/ui/expect_tool_lint_rfc_2383.rs:124:14
+   |
+LL |     #[expect(clippy::if_same_then_else)]
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this lint expectation is unfulfilled
+  --> tests/ui/expect_tool_lint_rfc_2383.rs:130:14
+   |
+LL |     #[expect(clippy::overly_complex_bool_expr)]
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

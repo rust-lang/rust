@@ -1,0 +1,26 @@
+warning: the feature `deref_patterns` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/ref-mut.rs:1:12
+   |
+LL | #![feature(deref_patterns)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #87121 <https://github.com/rust-lang/rust/issues/87121> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0277]: the trait bound `Rc<{integer}>: DerefMut` is not satisfied
+  --> $DIR/ref-mut.rs:17:9
+   |
+LL |         deref!(x) => {}
+   |         ^^^^^^^^^ the trait `DerefMut` is not implemented for `Rc<{integer}>`
+   |
+   = note: this error originates in the macro `deref` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `Rc<({integer},)>: DerefMut` is not satisfied
+  --> $DIR/ref-mut.rs:22:9
+   |
+LL |         (x,) => {}
+   |         ^^^^ the trait `DerefMut` is not implemented for `Rc<({integer},)>`
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

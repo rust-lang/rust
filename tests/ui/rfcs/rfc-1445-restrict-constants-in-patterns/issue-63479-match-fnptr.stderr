@@ -1,0 +1,24 @@
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/issue-63479-match-fnptr.rs:32:7
+   |
+LL | const TEST: Fn = my_fn;
+   | -------------- constant defined here
+...
+LL |     B(TEST) => println!("matched"),
+   |       ^^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/issue-63479-match-fnptr.rs:37:5
+   |
+LL | const TEST2: (Fn, u8) = (TEST, 0);
+   | --------------------- constant defined here
+...
+LL |     TEST2 => println!("matched"),
+   |     ^^^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: aborting due to 2 previous errors
+

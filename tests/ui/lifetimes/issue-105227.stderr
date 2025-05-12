@@ -1,0 +1,51 @@
+error[E0700]: hidden type for `impl Iterator<Item = char>` captures lifetime that does not appear in bounds
+  --> $DIR/issue-105227.rs:9:5
+   |
+LL | fn chars0(v :(& str, &str)) -> impl Iterator<Item = char> {
+   |               -----            -------------------------- opaque type defined here
+   |               |
+   |               hidden type `std::iter::Chain<Chars<'_>, Chars<'_>>` captures the anonymous lifetime defined here
+LL |
+LL |     v.0.chars().chain(v.1.chars())
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add a `use<...>` bound to explicitly capture `'_`
+   |
+LL | fn chars0(v :(& str, &str)) -> impl Iterator<Item = char> + use<'_> {
+   |                                                           +++++++++
+
+error[E0700]: hidden type for `impl Iterator<Item = char>` captures lifetime that does not appear in bounds
+  --> $DIR/issue-105227.rs:15:5
+   |
+LL | fn chars1(v0 : & str, v1 : &str) -> impl Iterator<Item = char> {
+   |                -----                -------------------------- opaque type defined here
+   |                |
+   |                hidden type `std::iter::Chain<Chars<'_>, Chars<'_>>` captures the anonymous lifetime defined here
+LL |
+LL |     v0.chars().chain(v1.chars())
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add a `use<...>` bound to explicitly capture `'_`
+   |
+LL | fn chars1(v0 : & str, v1 : &str) -> impl Iterator<Item = char> + use<'_> {
+   |                                                                +++++++++
+
+error[E0700]: hidden type for `impl Iterator<Item = char>` captures lifetime that does not appear in bounds
+  --> $DIR/issue-105227.rs:21:5
+   |
+LL | fn chars2<'b>(v0 : &str, v1 : &'_ str, v2 : &'b str) -> (impl Iterator<Item = char>, &'b str) {
+   |                    ----                                  -------------------------- opaque type defined here
+   |                    |
+   |                    hidden type `std::iter::Chain<Chars<'_>, Chars<'_>>` captures the anonymous lifetime defined here
+LL |
+LL |     (v0.chars().chain(v1.chars()), v2)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add a `use<...>` bound to explicitly capture `'_`
+   |
+LL | fn chars2<'b>(v0 : &str, v1 : &'_ str, v2 : &'b str) -> (impl Iterator<Item = char> + use<'_>, &'b str) {
+   |                                                                                     +++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0700`.

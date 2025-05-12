@@ -1,0 +1,33 @@
+error: expected identifier, found keyword `let`
+  --> $DIR/removed-syntax-field-let-2.rs:2:5
+   |
+LL |     let x: i32,
+   |     ^^^-
+   |     |
+   |     expected identifier, found keyword
+   |     help: remove this `let` keyword
+   |
+   = note: the `let` keyword is not allowed in `struct` fields
+   = note: see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> for more information
+
+error: expected identifier, found keyword `let`
+  --> $DIR/removed-syntax-field-let-2.rs:4:5
+   |
+LL |     let y: i32,
+   |     ^^^-
+   |     |
+   |     expected identifier, found keyword
+   |     help: remove this `let` keyword
+   |
+   = note: the `let` keyword is not allowed in `struct` fields
+   = note: see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> for more information
+
+error[E0063]: missing fields `x` and `y` in initializer of `Foo`
+  --> $DIR/removed-syntax-field-let-2.rs:9:13
+   |
+LL |     let _ = Foo {
+   |             ^^^ missing `x` and `y`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0063`.

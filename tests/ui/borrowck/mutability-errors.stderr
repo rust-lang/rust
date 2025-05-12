@@ -1,0 +1,377 @@
+error[E0594]: cannot assign to `*x`, which is behind a `&` reference
+  --> $DIR/mutability-errors.rs:9:5
+   |
+LL |     *x = (1,);
+   |     ^^^^^^^^^ `x` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn named_ref(x: &mut (i32,)) {
+   |                  +++
+
+error[E0594]: cannot assign to `x.0`, which is behind a `&` reference
+  --> $DIR/mutability-errors.rs:10:5
+   |
+LL |     x.0 = 1;
+   |     ^^^^^^^ `x` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn named_ref(x: &mut (i32,)) {
+   |                  +++
+
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+  --> $DIR/mutability-errors.rs:11:5
+   |
+LL |     &mut *x;
+   |     ^^^^^^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn named_ref(x: &mut (i32,)) {
+   |                  +++
+
+error[E0596]: cannot borrow `x.0` as mutable, as it is behind a `&` reference
+  --> $DIR/mutability-errors.rs:12:5
+   |
+LL |     &mut x.0;
+   |     ^^^^^^^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn named_ref(x: &mut (i32,)) {
+   |                  +++
+
+error[E0594]: cannot assign to data in a `&` reference
+  --> $DIR/mutability-errors.rs:16:5
+   |
+LL |     *f() = (1,);
+   |     ^^^^^^^^^^^ cannot assign
+
+error[E0594]: cannot assign to data in a `&` reference
+  --> $DIR/mutability-errors.rs:17:5
+   |
+LL |     f().0 = 1;
+   |     ^^^^^^^^^ cannot assign
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/mutability-errors.rs:18:5
+   |
+LL |     &mut *f();
+   |     ^^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/mutability-errors.rs:19:5
+   |
+LL |     &mut f().0;
+   |     ^^^^^^^^^^ cannot borrow as mutable
+
+error[E0594]: cannot assign to `*x`, which is behind a `*const` pointer
+  --> $DIR/mutability-errors.rs:23:5
+   |
+LL |     *x = (1,);
+   |     ^^^^^^^^^ `x` is a `*const` pointer, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable pointer
+   |
+LL | unsafe fn named_ptr(x: *mut const (i32,)) {
+   |                         +++
+
+error[E0594]: cannot assign to `x.0`, which is behind a `*const` pointer
+  --> $DIR/mutability-errors.rs:24:5
+   |
+LL |     (*x).0 = 1;
+   |     ^^^^^^^^^^ `x` is a `*const` pointer, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable pointer
+   |
+LL | unsafe fn named_ptr(x: *mut const (i32,)) {
+   |                         +++
+
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `*const` pointer
+  --> $DIR/mutability-errors.rs:25:5
+   |
+LL |     &mut *x;
+   |     ^^^^^^^ `x` is a `*const` pointer, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable pointer
+   |
+LL | unsafe fn named_ptr(x: *mut const (i32,)) {
+   |                         +++
+
+error[E0596]: cannot borrow `x.0` as mutable, as it is behind a `*const` pointer
+  --> $DIR/mutability-errors.rs:26:5
+   |
+LL |     &mut (*x).0;
+   |     ^^^^^^^^^^^ `x` is a `*const` pointer, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable pointer
+   |
+LL | unsafe fn named_ptr(x: *mut const (i32,)) {
+   |                         +++
+
+error[E0594]: cannot assign to data in a `*const` pointer
+  --> $DIR/mutability-errors.rs:30:5
+   |
+LL |     *f() = (1,);
+   |     ^^^^^^^^^^^ cannot assign
+
+error[E0594]: cannot assign to data in a `*const` pointer
+  --> $DIR/mutability-errors.rs:31:5
+   |
+LL |     (*f()).0 = 1;
+   |     ^^^^^^^^^^^^ cannot assign
+
+error[E0596]: cannot borrow data in a `*const` pointer as mutable
+  --> $DIR/mutability-errors.rs:32:5
+   |
+LL |     &mut *f();
+   |     ^^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow data in a `*const` pointer as mutable
+  --> $DIR/mutability-errors.rs:33:5
+   |
+LL |     &mut (*f()).0;
+   |     ^^^^^^^^^^^^^ cannot borrow as mutable
+
+error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
+  --> $DIR/mutability-errors.rs:40:9
+   |
+LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
+   |                       - change this to accept `FnMut` instead of `Fn`
+...
+LL |     fn_ref(|| {
+   |     ------ -- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
+LL |         x = (1,);
+   |         ^^^^^^^^ cannot assign
+
+error[E0594]: cannot assign to `x.0`, as `Fn` closures cannot mutate their captured variables
+  --> $DIR/mutability-errors.rs:41:9
+   |
+LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
+   |                       - change this to accept `FnMut` instead of `Fn`
+...
+LL |     fn_ref(|| {
+   |     ------ -- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
+LL |         x = (1,);
+LL |         x.0 = 1;
+   |         ^^^^^^^ cannot assign
+
+error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
+  --> $DIR/mutability-errors.rs:42:9
+   |
+LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
+   |                       - change this to accept `FnMut` instead of `Fn`
+...
+LL |     fn_ref(|| {
+   |     ------ -- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
+...
+LL |         &mut x;
+   |         ^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `x.0` as mutable, as `Fn` closures cannot mutate their captured variables
+  --> $DIR/mutability-errors.rs:43:9
+   |
+LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
+   |                       - change this to accept `FnMut` instead of `Fn`
+...
+LL |     fn_ref(|| {
+   |     ------ -- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
+...
+LL |         &mut x.0;
+   |         ^^^^^^^^ cannot borrow as mutable
+
+error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
+  --> $DIR/mutability-errors.rs:46:9
+   |
+LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
+   |                       - change this to accept `FnMut` instead of `Fn`
+...
+LL |     fn_ref(move || {
+   |     ------ ------- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
+LL |         x = (1,);
+   |         ^^^^^^^^ cannot assign
+
+error[E0594]: cannot assign to `x.0`, as `Fn` closures cannot mutate their captured variables
+  --> $DIR/mutability-errors.rs:47:9
+   |
+LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
+   |                       - change this to accept `FnMut` instead of `Fn`
+...
+LL |     fn_ref(move || {
+   |     ------ ------- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
+LL |         x = (1,);
+LL |         x.0 = 1;
+   |         ^^^^^^^ cannot assign
+
+error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
+  --> $DIR/mutability-errors.rs:48:9
+   |
+LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
+   |                       - change this to accept `FnMut` instead of `Fn`
+...
+LL |     fn_ref(move || {
+   |     ------ ------- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
+...
+LL |         &mut x;
+   |         ^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `x.0` as mutable, as `Fn` closures cannot mutate their captured variables
+  --> $DIR/mutability-errors.rs:49:9
+   |
+LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
+   |                       - change this to accept `FnMut` instead of `Fn`
+...
+LL |     fn_ref(move || {
+   |     ------ ------- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
+...
+LL |         &mut x.0;
+   |         ^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/mutability-errors.rs:53:14
+   |
+LL | fn imm_local(x: (i32,)) {
+   |              ^ not mutable
+LL |     &mut x;
+   |     ------ cannot borrow as mutable
+LL |     &mut x.0;
+   |     -------- cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL | fn imm_local(mut x: (i32,)) {
+   |              +++
+
+error[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/mutability-errors.rs:60:9
+   |
+LL |         x = (1,);
+   |         ^^^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL | fn imm_capture(mut x: (i32,)) {
+   |                +++
+
+error[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
+  --> $DIR/mutability-errors.rs:61:9
+   |
+LL |         x.0 = 1;
+   |         ^^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL | fn imm_capture(mut x: (i32,)) {
+   |                +++
+
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/mutability-errors.rs:62:9
+   |
+LL |         &mut x;
+   |         ^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL | fn imm_capture(mut x: (i32,)) {
+   |                +++
+
+error[E0596]: cannot borrow `x.0` as mutable, as `x` is not declared as mutable
+  --> $DIR/mutability-errors.rs:63:9
+   |
+LL |         &mut x.0;
+   |         ^^^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL | fn imm_capture(mut x: (i32,)) {
+   |                +++
+
+error[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/mutability-errors.rs:66:9
+   |
+LL |         x = (1,);
+   |         ^^^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL | fn imm_capture(mut x: (i32,)) {
+   |                +++
+
+error[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
+  --> $DIR/mutability-errors.rs:67:9
+   |
+LL |         x.0 = 1;
+   |         ^^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL | fn imm_capture(mut x: (i32,)) {
+   |                +++
+
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/mutability-errors.rs:68:9
+   |
+LL |         &mut x;
+   |         ^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL | fn imm_capture(mut x: (i32,)) {
+   |                +++
+
+error[E0596]: cannot borrow `x.0` as mutable, as `x` is not declared as mutable
+  --> $DIR/mutability-errors.rs:69:9
+   |
+LL |         &mut x.0;
+   |         ^^^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL | fn imm_capture(mut x: (i32,)) {
+   |                +++
+
+error[E0594]: cannot assign to immutable static item `X`
+  --> $DIR/mutability-errors.rs:76:5
+   |
+LL |     X = (1,);
+   |     ^^^^^^^^ cannot assign
+
+error[E0594]: cannot assign to `X.0`, as `X` is an immutable static item
+  --> $DIR/mutability-errors.rs:77:5
+   |
+LL |     X.0 = 1;
+   |     ^^^^^^^ cannot assign
+
+error[E0596]: cannot borrow immutable static item `X` as mutable
+  --> $DIR/mutability-errors.rs:78:5
+   |
+LL |     &mut X;
+   |     ^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `X.0` as mutable, as `X` is an immutable static item
+  --> $DIR/mutability-errors.rs:79:5
+   |
+LL |     &mut X.0;
+   |     ^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to 37 previous errors
+
+Some errors have detailed explanations: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

@@ -1,0 +1,22 @@
+error[E0412]: cannot find type `Missing` in this scope
+  --> $DIR/malformed-unsized-type-in-union.rs:3:34
+   |
+LL | union W { s: dyn Iterator<Item = Missing> }
+   |                                  ^^^^^^^ not found in this scope
+
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/malformed-unsized-type-in-union.rs:3:11
+   |
+LL | union W { s: dyn Iterator<Item = Missing> }
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL | union W { s: std::mem::ManuallyDrop<dyn Iterator<Item = Missing>> }
+   |              +++++++++++++++++++++++                            +
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0412, E0740.
+For more information about an error, try `rustc --explain E0412`.

@@ -1,0 +1,104 @@
+error[E0690]: transparent struct needs at most one field with non-trivial size or alignment, but has 2
+  --> $DIR/repr-transparent.rs:26:1
+   |
+LL | struct MultipleNonZst(u8, u8);
+   | ^^^^^^^^^^^^^^^^^^^^^ --  -- this field has non-zero size or requires alignment
+   | |                     |
+   | |                     this field has non-zero size or requires alignment
+   | needs at most one field with non-trivial size or alignment, but has 2
+
+error[E0690]: transparent struct needs at most one field with non-trivial size or alignment, but has 2
+  --> $DIR/repr-transparent.rs:32:1
+   |
+LL | pub struct StructWithProjection(f32, <f32 as Mirror>::It);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ---  ------------------- this field has non-zero size or requires alignment
+   | |                               |
+   | |                               this field has non-zero size or requires alignment
+   | needs at most one field with non-trivial size or alignment, but has 2
+
+error[E0690]: transparent struct needs at most one field with non-trivial size or alignment, but has 2
+  --> $DIR/repr-transparent.rs:36:1
+   |
+LL | struct NontrivialAlignZst(u32, [u16; 0]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ ---  -------- this field has non-zero size or requires alignment
+   | |                         |
+   | |                         this field has non-zero size or requires alignment
+   | needs at most one field with non-trivial size or alignment, but has 2
+
+error[E0690]: transparent struct needs at most one field with non-trivial size or alignment, but has 2
+  --> $DIR/repr-transparent.rs:42:1
+   |
+LL | struct GenericAlign<T>(ZstAlign32<T>, u32);
+   | ^^^^^^^^^^^^^^^^^^^^^^ -------------  --- this field has non-zero size or requires alignment
+   | |                      |
+   | |                      this field has non-zero size or requires alignment
+   | needs at most one field with non-trivial size or alignment, but has 2
+
+error[E0084]: unsupported representation for zero-variant enum
+  --> $DIR/repr-transparent.rs:47:8
+   |
+LL | #[repr(transparent)]
+   |        ^^^^^^^^^^^
+LL | enum Void {}
+   | --------- zero-variant enum
+
+error[E0731]: transparent enum needs exactly one variant, but has 0
+  --> $DIR/repr-transparent.rs:48:1
+   |
+LL | enum Void {}
+   | ^^^^^^^^^ needs exactly one variant, but has 0
+
+error[E0690]: the variant of a transparent enum needs at most one field with non-trivial size or alignment, but has 2
+  --> $DIR/repr-transparent.rs:61:1
+   |
+LL | enum TooManyFieldsEnum {
+   | ^^^^^^^^^^^^^^^^^^^^^^ needs at most one field with non-trivial size or alignment, but has 2
+LL |     Foo(u32, String),
+   |         ---  ------ this field has non-zero size or requires alignment
+   |         |
+   |         this field has non-zero size or requires alignment
+
+error[E0731]: transparent enum needs exactly one variant, but has 2
+  --> $DIR/repr-transparent.rs:67:1
+   |
+LL | enum MultipleVariants {
+   | ^^^^^^^^^^^^^^^^^^^^^ needs exactly one variant, but has 2
+LL |     Foo(String),
+   |     --- variant here
+LL |     Bar,
+   |     --- too many variants in `MultipleVariants`
+
+error[E0690]: the variant of a transparent enum needs at most one field with non-trivial size or alignment, but has 2
+  --> $DIR/repr-transparent.rs:73:1
+   |
+LL | enum NontrivialAlignZstEnum {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ needs at most one field with non-trivial size or alignment, but has 2
+LL |     Foo(u32, [u16; 0]),
+   |         ---  -------- this field has non-zero size or requires alignment
+   |         |
+   |         this field has non-zero size or requires alignment
+
+error[E0690]: the variant of a transparent enum needs at most one field with non-trivial size or alignment, but has 2
+  --> $DIR/repr-transparent.rs:78:1
+   |
+LL | enum GenericAlignEnum<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ needs at most one field with non-trivial size or alignment, but has 2
+LL |     Foo { bar: ZstAlign32<T>, baz: u32 }
+   |           ------------------  -------- this field has non-zero size or requires alignment
+   |           |
+   |           this field has non-zero size or requires alignment
+
+error[E0690]: transparent union needs at most one field with non-trivial size or alignment, but has 2
+  --> $DIR/repr-transparent.rs:88:1
+   |
+LL | union TooManyFields {
+   | ^^^^^^^^^^^^^^^^^^^ needs at most one field with non-trivial size or alignment, but has 2
+LL |     u: u32,
+   |     ------ this field has non-zero size or requires alignment
+LL |     s: i32
+   |     ------ this field has non-zero size or requires alignment
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0084, E0690, E0731.
+For more information about an error, try `rustc --explain E0084`.

@@ -1,0 +1,94 @@
+#![warn(clippy::redundant_pattern_matching)]
+#![allow(
+    clippy::needless_bool,
+    clippy::needless_if,
+    clippy::match_like_matches_macro,
+    clippy::equatable_if_let,
+    clippy::if_same_then_else
+)]
+
+use std::task::Poll::{self, Pending, Ready};
+
+fn main() {
+    if Pending::<()>.is_pending() {}
+    //~^ redundant_pattern_matching
+
+    if Ready(42).is_ready() {}
+    //~^ redundant_pattern_matching
+
+    if Ready(42).is_ready() {
+        //~^ redundant_pattern_matching
+        foo();
+    } else {
+        bar();
+    }
+
+    // Issue 6459
+    if Ready(42).is_ready() {}
+    //~^ redundant_pattern_matching
+
+    // Issue 6459
+    if Pending::<()>.is_pending() {}
+    //~^ redundant_pattern_matching
+
+    while Ready(42).is_ready() {}
+    //~^ redundant_pattern_matching
+
+    while Ready(42).is_pending() {}
+    //~^ redundant_pattern_matching
+
+    while Pending::<()>.is_pending() {}
+    //~^ redundant_pattern_matching
+
+    if Pending::<i32>.is_pending() {}
+
+    if Ready(42).is_ready() {}
+
+    Ready(42).is_ready();
+
+    Pending::<()>.is_pending();
+
+    let _ = Pending::<()>.is_pending();
+
+    let poll = Ready(false);
+    let _ = if poll.is_ready() { true } else { false };
+    //~^ redundant_pattern_matching
+
+    poll_const();
+
+    let _ = if gen_poll().is_ready() {
+        //~^ redundant_pattern_matching
+        1
+    } else if gen_poll().is_pending() {
+        //~^ redundant_pattern_matching
+        2
+    } else {
+        3
+    };
+}
+
+fn gen_poll() -> Poll<()> {
+    Pending
+}
+
+fn foo() {}
+
+fn bar() {}
+
+const fn poll_const() {
+    if Ready(42).is_ready() {}
+    //~^ redundant_pattern_matching
+
+    if Pending::<()>.is_pending() {}
+    //~^ redundant_pattern_matching
+
+    while Ready(42).is_ready() {}
+    //~^ redundant_pattern_matching
+
+    while Pending::<()>.is_pending() {}
+    //~^ redundant_pattern_matching
+
+    Ready(42).is_ready();
+
+    Pending::<()>.is_pending();
+}

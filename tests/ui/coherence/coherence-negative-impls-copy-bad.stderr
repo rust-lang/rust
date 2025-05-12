@@ -1,0 +1,39 @@
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-negative-impls-copy-bad.rs:4:1
+   |
+LL | impl !Copy for str {}
+   | ^^^^^^^^^^^^^^^---
+   |                |
+   |                `str` is not defined in the current crate
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-negative-impls-copy-bad.rs:7:1
+   |
+LL | impl !Copy for fn() {}
+   | ^^^^^^^^^^^^^^^----
+   |                |
+   |                `fn()` is not defined in the current crate
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-negative-impls-copy-bad.rs:10:1
+   |
+LL | impl !Copy for () {}
+   | ^^^^^^^^^^^^^^^--
+   |                |
+   |                this is not defined in the current crate because tuples are always foreign
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0117`.

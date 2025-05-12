@@ -1,0 +1,20 @@
+error: digits grouped inconsistently by underscores
+  --> tests/ui-toml/lint_decimal_readability/test.rs:19:18
+   |
+LL |     let _fail1 = 100_200_300.123456789;
+   |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider: `100_200_300.123_456_789`
+   |
+   = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::inconsistent_digit_grouping)]`
+
+error: long literal lacking separators
+  --> tests/ui-toml/lint_decimal_readability/test.rs:23:18
+   |
+LL |     let _fail2 = 100200300.300200100;
+   |                  ^^^^^^^^^^^^^^^^^^^ help: consider: `100_200_300.300_200_100`
+   |
+   = note: `-D clippy::unreadable-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unreadable_literal)]`
+
+error: aborting due to 2 previous errors
+

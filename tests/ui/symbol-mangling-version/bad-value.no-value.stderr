@@ -1,0 +1,2 @@
+error: codegen option `symbol-mangling-version` requires one of: `legacy`, `v0` (RFC 2603), or `hashed` (C symbol-mangling-version=<value>)
+

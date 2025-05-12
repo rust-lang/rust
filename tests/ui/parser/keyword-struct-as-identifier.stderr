@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `struct`
+  --> $DIR/keyword-struct-as-identifier.rs:4:9
+   |
+LL |     let struct = "foo";
+   |         ^^^^^^ expected identifier, found keyword
+   |
+help: escape `struct` to use it as an identifier
+   |
+LL |     let r#struct = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

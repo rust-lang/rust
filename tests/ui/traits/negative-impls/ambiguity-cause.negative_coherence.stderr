@@ -1,0 +1,14 @@
+error[E0119]: conflicting implementations of trait `MyTrait` for type `String`
+  --> $DIR/ambiguity-cause.rs:10:1
+   |
+LL | impl<T: Copy> MyTrait for T { }
+   | --------------------------- first implementation here
+LL |
+LL | impl MyTrait for String { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `String`
+   |
+   = note: upstream crates may add a new impl of trait `std::marker::Copy` for type `std::string::String` in future versions
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

@@ -1,0 +1,20 @@
+error[E0382]: use of moved value: `c`
+  --> $DIR/print.rs:20:5
+   |
+LL |     let c = to_fn_once(use || {
+   |         - move occurs because `c` has type `{closure@$DIR/print.rs:15:24: 15:30}`, which does not implement the `Copy` trait
+...
+LL |     c();
+   |     --- `c` moved due to this call
+LL |     c();
+   |     ^ value used here after move
+   |
+note: this value implements `FnOnce`, which causes it to be moved when called
+  --> $DIR/print.rs:19:5
+   |
+LL |     c();
+   |     ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

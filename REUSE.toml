@@ -1,0 +1,205 @@
+version = 1
+
+# Reuse annotations file.
+#
+# This file controls how reuse-tool finds copyright and license notices within
+# source files. As the tool has a habit of picking up random uses of the word
+# 'Copyright' within source code, and because it will complain that other files
+# do not contain any specific copyright and license notifications, we usually
+# just set a blanket license and copyright notice for a whole sub-tree at a
+# time.
+#
+# See https://reuse.software and https://github.com/fsfe/reuse-tool for more
+# details. We currently use reuse-tool version 4.0.3.
+
+[[annotations]]
+path = [
+    "compiler/**",
+    "library/**",
+    "tests/**",
+    "src/**",
+    ".github/**",
+    "Cargo.lock",
+    "Cargo.toml",
+    "CODE_OF_CONDUCT.md",
+    "bootstrap.example.toml",
+    "configure",
+    "CONTRIBUTING.md",
+    "COPYRIGHT",
+    "INSTALL.md",
+    "LICENSE-APACHE",
+    "license-metadata.json",
+    "LICENSE-MIT",
+    "README.md",
+    "RELEASES.md",
+    "REUSE.toml",
+    "rustfmt.toml",
+    "rust-bors.toml",
+    "triagebot.toml",
+    "x",
+    "x.ps1",
+    "x.py",
+    ".clang-format",
+    ".editorconfig",
+    ".git-blame-ignore-revs",
+    ".gitattributes",
+    ".gitignore",
+    ".gitmodules",
+    ".mailmap",
+    ".ignore",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "The Rust Project Developers (see https://thanks.rust-lang.org)"
+SPDX-License-Identifier = "MIT or Apache-2.0"
+
+[[annotations]]
+path = "compiler/rustc_llvm/llvm-wrapper/SymbolWrapper.cpp"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "2003-2019 University of Illinois at Urbana-Champaign.",
+    "The Rust Project Developers (see https://thanks.rust-lang.org)",
+]
+SPDX-License-Identifier = "Apache-2.0 WITH LLVM-exception AND (Apache-2.0 OR MIT)"
+
+[[annotations]]
+path = "library/core/src/unicode/unicode_data.rs"
+precedence = "override"
+SPDX-FileCopyrightText = "1991-2024 Unicode, Inc."
+SPDX-License-Identifier = "Unicode-3.0"
+
+[[annotations]]
+path = "library/std/src/sync/mpmc/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "2019 The Crossbeam Project Developers",
+    "The Rust Project Developers (see https://thanks.rust-lang.org)",
+]
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+[[annotations]]
+path = "library/std/src/sys/sync/mutex/fuchsia.rs"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "2016 The Fuchsia Authors",
+    "The Rust Project Developers (see https://thanks.rust-lang.org)",
+]
+SPDX-License-Identifier = "BSD-2-Clause AND (MIT OR Apache-2.0)"
+
+[[annotations]]
+path = "src/test/rustdoc/auxiliary/enum-primitive.rs"
+precedence = "override"
+SPDX-FileCopyrightText = "2015 Anders Kaseorg <andersk@mit.edu>"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "src/librustdoc/html/static/fonts/Fira**"
+precedence = "override"
+SPDX-FileCopyrightText = ["2014, Mozilla Foundation", "2014, Telefonica S.A."]
+SPDX-License-Identifier = "OFL-1.1"
+
+[[annotations]]
+path = "src/librustdoc/html/static/fonts/NanumBarun**"
+precedence = "override"
+SPDX-FileCopyrightText = "2010 NAVER Corporation"
+SPDX-License-Identifier = "OFL-1.1"
+
+[[annotations]]
+path = [
+    "src/librustdoc/html/static/fonts/SourceCodePro**",
+    "src/librustdoc/html/static/fonts/SourceSerif4**",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2010, 2012, 2014-2023, Adobe Systems Incorporated"
+SPDX-License-Identifier = "OFL-1.1"
+
+[[annotations]]
+path = "src/librustdoc/html/static/css/normalize.css"
+precedence = "override"
+SPDX-FileCopyrightText = "Nicolas Gallagher and Jonathan Neal"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "src/librustdoc/html/static/css/rustdoc.css"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "2016 Ike Ku, Jessica Stokes and Leon Guan",
+    "The Rust Project Developers (see https://thanks.rust-lang.org)",
+]
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+[[annotations]]
+path = "src/doc/rustc-dev-guide/mermaid.min.js"
+precedence = "override"
+SPDX-FileCopyrightText = "2014-2021 Knut Sveidqvist"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "library/backtrace/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "2014 Alex Crichton",
+    "The Rust Project Developers (see https://thanks.rust-lang.org)",
+]
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+[[annotations]]
+path = "src/doc/embedded-book/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "Rust on Embedded Devices Working Group",
+    "The Rust Project Developers (see https://thanks.rust-lang.org)",
+]
+SPDX-License-Identifier = "MIT OR Apache-2.0 OR CC-BY-SA-4.0"
+
+[[annotations]]
+path = "src/doc/rust-by-example/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "2014 Jorge Aparicio",
+    "The Rust Project Developers (see https://thanks.rust-lang.org)",
+]
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+[[annotations]]
+path = "src/llvm-project/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "2003-2019 by the contributors listed in CREDITS.TXT (https://github.com/rust-lang/llvm-project/blob/7738295178045041669876bf32b0543ec8319a5c/llvm/CREDITS.TXT)",
+    "2010 Apple Inc",
+    "2003-2019 University of Illinois at Urbana-Champaign.",
+]
+SPDX-License-Identifier = "NCSA AND Apache-2.0 WITH LLVM-exception"
+
+[[annotations]]
+path = "src/gcc/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "Copyright (C) 1997-2024 Free Software Foundation, Inc.",
+]
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "src/gcc/gcc/testsuite/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "Copyright (C) 2000-2024 Free Software Foundation, Inc.",
+]
+SPDX-License-Identifier = "GPL-2.0-only"
+
+[[annotations]]
+path = "src/gcc/gcc/testsuite/c-c++-common/analyzer/*.c"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "Copyright (c) 2007-2011 Atheros Communications Inc.",
+    "Copyright (c) 2011-2012,2017 Qualcomm Atheros, Inc.",
+    "Copyright (c) 2016-2017 Erik Stromdahl <erik.stromdahl@gmail.com>",
+]
+SPDX-License-Identifier = "ISC"
+
+[[annotations]]
+path = "src/gcc/libstdc++-v3/config/os/aix/os_defines.h"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "Copyright (C) 2000-2024 Free Software Foundation, Inc.",
+]
+SPDX-License-Identifier = "GCC-exception-3.1"

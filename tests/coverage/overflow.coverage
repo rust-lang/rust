@@ -1,0 +1,65 @@
+   LL|       |#![allow(unused_assignments)]
+   LL|       |//@ compile-flags: -Coverflow-checks=yes
+   LL|       |//@ failure-status: 101
+   LL|       |
+   LL|      4|fn might_overflow(to_add: u32) -> u32 {
+   LL|      4|    if to_add > 5 {
+   LL|      1|        println!("this will probably overflow");
+   LL|      3|    }
+   LL|      4|    let add_to = u32::MAX - 5;
+   LL|      4|    println!("does {} + {} overflow?", add_to, to_add);
+   LL|      4|    let result = to_add + add_to;
+   LL|      4|    println!("continuing after overflow check");
+   LL|      4|    result
+   LL|      4|}
+   LL|       |
+   LL|      1|fn main() -> Result<(), u8> {
+   LL|      1|    let mut countdown = 10;
+   LL|     10|    while countdown > 0 {
+   LL|      9|        if countdown == 1 {
+   LL|      1|            let result = might_overflow(10);
+   LL|      1|            println!("Result: {}", result);
+   LL|      8|        } else if countdown < 5 {
+   LL|      3|            let result = might_overflow(1);
+   LL|      3|            println!("Result: {}", result);
+   LL|      5|        }
+   LL|      9|        countdown -= 1;
+   LL|       |    }
+   LL|      1|    Ok(())
+   LL|      1|}
+   LL|       |
+   LL|       |// Notes:
+   LL|       |//   1. Compare this program and its coverage results to those of the very similar test `assert.rs`,
+   LL|       |//      and similar tests `panic_unwind.rs`, abort.rs` and `try_error_result.rs`.
+   LL|       |//   2. This test confirms the coverage generated when a program passes or fails a
+   LL|       |//      compiler-generated `TerminatorKind::Assert` (based on an overflow check, in this case).
+   LL|       |//   3. Similar to how the coverage instrumentation handles `TerminatorKind::Call`,
+   LL|       |//      compiler-generated assertion failures are assumed to be a symptom of a program bug, not
+   LL|       |//      expected behavior. To simplify the coverage graphs and keep instrumented programs as
+   LL|       |//      small and fast as possible, `Assert` terminators are assumed to always succeed, and
+   LL|       |//      therefore are considered "non-branching" terminators. So, an `Assert` terminator does not
+   LL|       |//      get its own coverage counter.
+   LL|       |//   4. After an unhandled panic or failed Assert, coverage results may not always be intuitive.
+   LL|       |//      In this test, the final count for the statements after the `if` block in `might_overflow()`
+   LL|       |//      is 4, even though the lines after `to_add + add_to` were executed only 3 times. Depending
+   LL|       |//      on the MIR graph and the structure of the code, this count could have been 3 (which might
+   LL|       |//      have been valid for the overflowed add `+`, but should have been 4 for the lines before
+   LL|       |//      the overflow. The reason for this potential uncertainty is, a `CounterKind` is incremented
+   LL|       |//      via StatementKind::Counter at the end of the block, but (as in the case in this test),
+   LL|       |//      a CounterKind::Expression is always evaluated. In this case, the expression was based on
+   LL|       |//      a `Counter` incremented as part of the evaluation of the `if` expression, which was
+   LL|       |//      executed, and counted, 4 times, before reaching the overflow add.
+   LL|       |
+   LL|       |// If the program did not overflow, the coverage for `might_overflow()` would look like this:
+   LL|       |//
+   LL|       |//     4|       |fn might_overflow(to_add: u32) -> u32 {
+   LL|       |//     5|      4|    if to_add > 5 {
+   LL|       |//     6|      0|        println!("this will probably overflow");
+   LL|       |//     7|      4|    }
+   LL|       |//     8|      4|    let add_to = u32::MAX - 5;
+   LL|       |//     9|      4|    println!("does {} + {} overflow?", add_to, to_add);
+   LL|       |//    10|      4|    let result = to_add + add_to;
+   LL|       |//    11|      4|    println!("continuing after overflow check");
+   LL|       |//    12|      4|    result
+   LL|       |//    13|      4|}
+

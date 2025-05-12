@@ -1,0 +1,14 @@
+error[E0404]: expected trait, found derive macro `Debug`
+  --> $DIR/use-placement-resolve.rs:11:14
+   |
+LL | fn foobar<T: Debug>(x: T) {}
+   |              ^^^^^ not a trait
+   |
+help: consider importing this trait instead
+   |
+LL + use std::fmt::Debug;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0404`.

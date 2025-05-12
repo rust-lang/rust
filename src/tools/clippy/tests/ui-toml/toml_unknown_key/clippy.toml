@@ -1,0 +1,11 @@
+# that one is an error
+foobar = 42
+# so is this one
+barfoo = 53
+
+# when using underscores instead of dashes, suggest the correct one
+allow_mixed_uninlined_format_args = true
+
+# that one is ignored
+[third-party]
+clippy-feature = "nightly"

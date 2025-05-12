@@ -1,0 +1,10 @@
+error: no rules expected `@`
+  --> $DIR/no-matching-rule.rs:2:12
+   |
+LL |     panic!(@);
+   |            ^ no rules expected this token in macro call
+   |
+   = note: while trying to match end of macro
+
+error: aborting due to 1 previous error
+

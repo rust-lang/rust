@@ -1,0 +1,46 @@
+error[E0277]: the trait bound `for<'b> T: X<'b, T>` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-6.rs:12:12
+   |
+LL | impl<S, T> X<'_, T> for (S,) {
+   |            ^^^^^^^^ the trait `for<'b> X<'b, T>` is not implemented for `T`
+   |
+help: consider restricting type parameter `T` with trait `X`
+   |
+LL | impl<S, T: for<'b> X<'b, T>> X<'_, T> for (S,) {
+   |          ++++++++++++++++++
+
+error[E0277]: the trait bound `for<'b> i32: X<'b, i32>` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-6.rs:18:5
+   |
+LL |     <(i32,) as X<i32>>::f("abc");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'b> X<'b, i32>` is not implemented for `i32`
+   |
+   = help: the trait `X<'_, T>` is implemented for `(S,)`
+
+error[E0277]: the trait bound `for<'b> i32: X<'b, i32>` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-6.rs:18:18
+   |
+LL |     <(i32,) as X<i32>>::f("abc");
+   |                  ^^^ the trait `for<'b> X<'b, i32>` is not implemented for `i32`
+   |
+   = help: the trait `X<'_, T>` is implemented for `(S,)`
+note: required by a bound in `X::f`
+  --> $DIR/hr-associated-type-bound-param-6.rs:3:16
+   |
+LL |     for<'b> T: X<'b, T>,
+   |                ^^^^^^^^ required by this bound in `X::f`
+...
+LL |     fn f(x: &<T as X<'_, T>>::U) {
+   |        - required by a bound in this associated function
+
+error[E0277]: the trait bound `i32: X<'_, i32>` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-6.rs:18:27
+   |
+LL |     <(i32,) as X<i32>>::f("abc");
+   |                           ^^^^^ the trait `X<'_, i32>` is not implemented for `i32`
+   |
+   = help: the trait `X<'_, T>` is implemented for `(S,)`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

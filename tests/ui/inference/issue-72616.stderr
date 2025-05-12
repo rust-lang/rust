@@ -1,0 +1,42 @@
+error[E0283]: type annotations needed
+  --> $DIR/issue-72616.rs:22:37
+   |
+LL |         if String::from("a") == "a".try_into().unwrap() {}
+   |                              --     ^^^^^^^^
+   |                              |
+   |                              type must be known at this point
+   |
+   = note: cannot satisfy `String: PartialEq<_>`
+   = help: the following types implement trait `PartialEq<Rhs>`:
+             `String` implements `PartialEq<&str>`
+             `String` implements `PartialEq<ByteStr>`
+             `String` implements `PartialEq<ByteString>`
+             `String` implements `PartialEq<Cow<'_, str>>`
+             `String` implements `PartialEq<str>`
+             `String` implements `PartialEq`
+help: try using a fully qualified path to specify the expected types
+   |
+LL -         if String::from("a") == "a".try_into().unwrap() {}
+LL +         if String::from("a") == <&str as TryInto<T>>::try_into("a").unwrap() {}
+   |
+
+error[E0283]: type annotations needed
+  --> $DIR/issue-72616.rs:22:37
+   |
+LL |         if String::from("a") == "a".try_into().unwrap() {}
+   |                                     ^^^^^^^^
+   |
+   = note: multiple `impl`s satisfying `_: TryFrom<&str>` found in the following crates: `core`, `std`:
+           - impl TryFrom<&str> for std::sys::net::connection::socket::LookupHost;
+           - impl<T, U> TryFrom<U> for T
+             where U: Into<T>;
+   = note: required for `&str` to implement `TryInto<_>`
+help: try using a fully qualified path to specify the expected types
+   |
+LL -         if String::from("a") == "a".try_into().unwrap() {}
+LL +         if String::from("a") == <&str as TryInto<T>>::try_into("a").unwrap() {}
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0283`.

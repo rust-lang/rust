@@ -1,0 +1,9 @@
+error[E0590]: `break` or `continue` with no label in the condition of a `while` loop
+  --> $DIR/issue-50802.rs:5:21
+   |
+LL |         break while continue {
+   |                     ^^^^^^^^ unlabeled `continue` in the condition of a `while` loop
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0590`.

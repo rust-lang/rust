@@ -1,0 +1,6 @@
+error[E0412]: cannot find type `Iter` in this scope
+  --> $DIR/missing-type.rs:4:12
+   |
+LL |     let x: Iter;
+   |            ^^^^ not found in this scope
+   |

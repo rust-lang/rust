@@ -1,0 +1,35 @@
+error[E0382]: borrow of partially moved value: `val`
+  --> $DIR/move-deref-coercion.rs:25:5
+   |
+LL |     let _val = val.first;
+   |                --------- value partially moved here
+LL |     val.inner;
+   |     ^^^ value borrowed here after partial move
+   |
+   = note: partial move occurs because `val.first` has type `NotCopy`, which does not implement the `Copy` trait
+   = note: borrow occurs due to deref coercion to `NotCopy`
+note: deref defined here
+  --> $DIR/move-deref-coercion.rs:17:5
+   |
+LL |     type Target = NotCopy;
+   |     ^^^^^^^^^^^
+
+error[E0382]: borrow of partially moved value: `val`
+  --> $DIR/move-deref-coercion.rs:30:5
+   |
+LL |     let _val = val.first;
+   |                --------- value partially moved here
+LL |     val.inner_method();
+   |     ^^^ value borrowed here after partial move
+   |
+   = note: partial move occurs because `val.first` has type `NotCopy`, which does not implement the `Copy` trait
+   = note: borrow occurs due to deref coercion to `NotCopy`
+note: deref defined here
+  --> $DIR/move-deref-coercion.rs:17:5
+   |
+LL |     type Target = NotCopy;
+   |     ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

@@ -1,0 +1,21 @@
+error[E0451]: field `0` of struct `Box` is private
+  --> $DIR/issue-82772.rs:5:15
+   |
+LL |     let Box { 0: _, .. }: Box<()>;
+   |               ^ private field
+
+error[E0451]: field `1` of struct `Box` is private
+  --> $DIR/issue-82772.rs:6:15
+   |
+LL |     let Box { 1: _, .. }: Box<()>;
+   |               ^ private field
+
+error[E0451]: field `1` of struct `ModPrivateStruct` is private
+  --> $DIR/issue-82772.rs:7:28
+   |
+LL |     let ModPrivateStruct { 1: _, .. } = ModPrivateStruct::default();
+   |                            ^ private field
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0451`.

@@ -1,0 +1,40 @@
+# This file allows configuring the build system.
+
+# Disables cleaning of the sysroot dir. This will cause old compiled artifacts to be re-used when
+# the sysroot source hasn't changed. This is useful when the codegen backend hasn't been modified.
+# This option can be changed while the build system is already running for as long as sysroot
+# building hasn't started yet.
+#keep_sysroot
+
+
+# Testsuite
+#
+# Each test suite item has a corresponding key here. The default is to run all tests.
+# Comment any of these lines to skip individual tests.
+
+testsuite.no_sysroot
+build.mini_core
+build.example
+jit.mini_core_hello_world
+aot.mini_core_hello_world
+
+testsuite.base_sysroot
+aot.arbitrary_self_types_pointers_and_wrappers
+aot.issue_91827_extern_types
+jit.std_example
+aot.std_example
+aot.dst_field_align
+aot.subslice-patterns-const-eval
+aot.track-caller-attribute
+aot.float-minmax-pass
+aot.issue-72793
+aot.issue-59326
+aot.neon
+aot.gen_block_iterate
+aot.raw-dylib
+test.sysroot
+
+testsuite.extended_sysroot
+test.rust-random/rand
+test.regex
+test.portable-simd

@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic-normalize-tabs-115498.rs:3:17
+   |
+LL | struct Bug([u8; panic!{"\t"}]);
+   |                 ^^^^^^^^^^^^ evaluation panicked:     
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

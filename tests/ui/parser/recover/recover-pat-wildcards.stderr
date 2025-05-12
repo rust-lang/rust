@@ -1,0 +1,90 @@
+error: expected one of `=>`, `if`, or `|`, found `+`
+  --> $DIR/recover-pat-wildcards.rs:5:11
+   |
+LL |         _ + 1 => ()
+   |           ^ expected one of `=>`, `if`, or `|`
+
+error: expected one of `)`, `,`, `if`, or `|`, found `%`
+  --> $DIR/recover-pat-wildcards.rs:11:12
+   |
+LL |         (_ % 4) => ()
+   |            ^ expected one of `)`, `,`, `if`, or `|`
+
+error: expected one of `=>`, `if`, or `|`, found `.`
+  --> $DIR/recover-pat-wildcards.rs:17:10
+   |
+LL |         _.x() => ()
+   |          ^ expected one of `=>`, `if`, or `|`
+
+error: expected one of `=>`, `if`, or `|`, found `..=`
+  --> $DIR/recover-pat-wildcards.rs:23:10
+   |
+LL |         _..=4 => ()
+   |          ^^^ expected one of `=>`, `if`, or `|`
+
+error: expected one of `=>`, `if`, or `|`, found reserved identifier `_`
+  --> $DIR/recover-pat-wildcards.rs:29:11
+   |
+LL |         .._ => ()
+   |           ^ expected one of `=>`, `if`, or `|`
+
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-pat-wildcards.rs:35:10
+   |
+LL |         0..._ => ()
+   |          ^^^
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -         0..._ => ()
+LL +         0.._ => ()
+   |
+
+error: expected one of `=>`, `if`, or `|`, found reserved identifier `_`
+  --> $DIR/recover-pat-wildcards.rs:35:13
+   |
+LL |         0..._ => ()
+   |             ^ expected one of `=>`, `if`, or `|`
+
+error: expected one of `)`, `,`, `if`, or `|`, found `*`
+  --> $DIR/recover-pat-wildcards.rs:43:12
+   |
+LL |         (_ * 0)..5 => ()
+   |            ^ expected one of `)`, `,`, `if`, or `|`
+
+error: expected one of `=>`, `if`, or `|`, found `(`
+  --> $DIR/recover-pat-wildcards.rs:49:11
+   |
+LL |         ..(_) => ()
+   |           ^ expected one of `=>`, `if`, or `|`
+
+error: range pattern bounds cannot have parentheses
+  --> $DIR/recover-pat-wildcards.rs:55:13
+   |
+LL |         4..=(2 + _) => ()
+   |             ^     ^
+   |
+help: remove these parentheses
+   |
+LL -         4..=(2 + _) => ()
+LL +         4..=2 + _ => ()
+   |
+
+error: expected a pattern range bound, found an expression
+  --> $DIR/recover-pat-wildcards.rs:55:14
+   |
+LL |         4..=(2 + _) => ()
+   |              ^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = 2 + _;
+LL ~     match 9 {
+LL ~         4..=(VAL) => ()
+   |
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0586`.

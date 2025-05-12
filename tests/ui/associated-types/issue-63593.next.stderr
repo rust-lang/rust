@@ -1,0 +1,19 @@
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-63593.rs:13:17
+   |
+LL |     type This = Self;
+   |                 ^^^^ doesn't have a size known at compile-time
+   |
+note: required by a bound in `MyTrait::This`
+  --> $DIR/issue-63593.rs:13:5
+   |
+LL |     type This = Self;
+   |     ^^^^^^^^^^^^^^^^^ required by this bound in `MyTrait::This`
+help: consider further restricting `Self`
+   |
+LL | trait MyTrait: Sized {
+   |              +++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

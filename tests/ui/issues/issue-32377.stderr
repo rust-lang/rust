@@ -1,0 +1,12 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/issue-32377.rs:15:14
+   |
+LL |     unsafe { mem::transmute(x) }
+   |              ^^^^^^^^^^^^^^
+   |
+   = note: source type: `[usize; 2]` (N bits)
+   = note: target type: `Bar<U>` (N bits)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0512`.

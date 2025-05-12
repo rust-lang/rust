@@ -1,0 +1,19 @@
+error: opaque type's hidden type cannot be another opaque type from the same scope
+  --> $DIR/two_tait_defining_each_other3.rs:15:16
+   |
+LL |         return x;  // B's hidden type is A (opaquely)
+   |                ^ one of the two opaque types used here has to be outside its defining scope
+   |
+note: opaque type whose hidden type is being assigned
+  --> $DIR/two_tait_defining_each_other3.rs:8:10
+   |
+LL | type B = impl Foo;
+   |          ^^^^^^^^
+note: opaque type being used as hidden type
+  --> $DIR/two_tait_defining_each_other3.rs:7:10
+   |
+LL | type A = impl Foo;
+   |          ^^^^^^^^
+
+error: aborting due to 1 previous error
+

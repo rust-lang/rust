@@ -1,0 +1,223 @@
+Function name: if::mcdc_check_a
+Raw bytes (67): 0x[01, 01, 03, 01, 05, 05, 09, 01, 09, 09, 01, 0e, 01, 00, 22, 01, 01, 08, 00, 09, 28, 03, 02, 00, 08, 00, 0e, 30, 05, 02, 01, 02, 00, 00, 08, 00, 09, 05, 00, 0d, 00, 0e, 30, 09, 06, 02, 00, 00, 00, 0d, 00, 0e, 09, 00, 0f, 02, 06, 0a, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/if.rs
+Number of expressions: 3
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 2 operands: lhs = Counter(0), rhs = Counter(2)
+Number of file 0 mappings: 9
+- Code(Counter(0)) at (prev + 14, 1) to (start + 0, 34)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 9)
+- MCDCDecision { bitmap_idx: 3, conditions_num: 2 } at (prev + 0, 8) to (start + 0, 14)
+- MCDCBranch { true: Counter(1), false: Expression(0, Sub), condition_id: 1, true_next_id: 2, false_next_id: 0 } at (prev + 0, 8) to (start + 0, 9)
+    true  = c1
+    false = (c0 - c1)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 0, 14)
+- MCDCBranch { true: Counter(2), false: Expression(1, Sub), condition_id: 2, true_next_id: 0, false_next_id: 0 } at (prev + 0, 13) to (start + 0, 14)
+    true  = c2
+    false = (c1 - c2)
+- Code(Counter(2)) at (prev + 0, 15) to (start + 2, 6)
+- Code(Expression(2, Sub)) at (prev + 2, 12) to (start + 2, 6)
+    = (c0 - c2)
+- Code(Counter(0)) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c2
+
+Function name: if::mcdc_check_b
+Raw bytes (67): 0x[01, 01, 03, 01, 05, 05, 09, 01, 09, 09, 01, 16, 01, 00, 22, 01, 01, 08, 00, 09, 28, 03, 02, 00, 08, 00, 0e, 30, 05, 02, 01, 02, 00, 00, 08, 00, 09, 05, 00, 0d, 00, 0e, 30, 09, 06, 02, 00, 00, 00, 0d, 00, 0e, 09, 00, 0f, 02, 06, 0a, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/if.rs
+Number of expressions: 3
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 2 operands: lhs = Counter(0), rhs = Counter(2)
+Number of file 0 mappings: 9
+- Code(Counter(0)) at (prev + 22, 1) to (start + 0, 34)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 9)
+- MCDCDecision { bitmap_idx: 3, conditions_num: 2 } at (prev + 0, 8) to (start + 0, 14)
+- MCDCBranch { true: Counter(1), false: Expression(0, Sub), condition_id: 1, true_next_id: 2, false_next_id: 0 } at (prev + 0, 8) to (start + 0, 9)
+    true  = c1
+    false = (c0 - c1)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 0, 14)
+- MCDCBranch { true: Counter(2), false: Expression(1, Sub), condition_id: 2, true_next_id: 0, false_next_id: 0 } at (prev + 0, 13) to (start + 0, 14)
+    true  = c2
+    false = (c1 - c2)
+- Code(Counter(2)) at (prev + 0, 15) to (start + 2, 6)
+- Code(Expression(2, Sub)) at (prev + 2, 12) to (start + 2, 6)
+    = (c0 - c2)
+- Code(Counter(0)) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c2
+
+Function name: if::mcdc_check_both
+Raw bytes (67): 0x[01, 01, 03, 01, 05, 05, 09, 01, 09, 09, 01, 1e, 01, 00, 25, 01, 01, 08, 00, 09, 28, 03, 02, 00, 08, 00, 0e, 30, 05, 02, 01, 02, 00, 00, 08, 00, 09, 05, 00, 0d, 00, 0e, 30, 09, 06, 02, 00, 00, 00, 0d, 00, 0e, 09, 00, 0f, 02, 06, 0a, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/if.rs
+Number of expressions: 3
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 2 operands: lhs = Counter(0), rhs = Counter(2)
+Number of file 0 mappings: 9
+- Code(Counter(0)) at (prev + 30, 1) to (start + 0, 37)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 9)
+- MCDCDecision { bitmap_idx: 3, conditions_num: 2 } at (prev + 0, 8) to (start + 0, 14)
+- MCDCBranch { true: Counter(1), false: Expression(0, Sub), condition_id: 1, true_next_id: 2, false_next_id: 0 } at (prev + 0, 8) to (start + 0, 9)
+    true  = c1
+    false = (c0 - c1)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 0, 14)
+- MCDCBranch { true: Counter(2), false: Expression(1, Sub), condition_id: 2, true_next_id: 0, false_next_id: 0 } at (prev + 0, 13) to (start + 0, 14)
+    true  = c2
+    false = (c1 - c2)
+- Code(Counter(2)) at (prev + 0, 15) to (start + 2, 6)
+- Code(Expression(2, Sub)) at (prev + 2, 12) to (start + 2, 6)
+    = (c0 - c2)
+- Code(Counter(0)) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c2
+
+Function name: if::mcdc_check_neither
+Raw bytes (67): 0x[01, 01, 03, 01, 05, 05, 09, 01, 09, 09, 01, 06, 01, 00, 28, 01, 01, 08, 00, 09, 28, 03, 02, 00, 08, 00, 0e, 30, 05, 02, 01, 02, 00, 00, 08, 00, 09, 05, 00, 0d, 00, 0e, 30, 09, 06, 02, 00, 00, 00, 0d, 00, 0e, 09, 00, 0f, 02, 06, 0a, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/if.rs
+Number of expressions: 3
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 2 operands: lhs = Counter(0), rhs = Counter(2)
+Number of file 0 mappings: 9
+- Code(Counter(0)) at (prev + 6, 1) to (start + 0, 40)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 9)
+- MCDCDecision { bitmap_idx: 3, conditions_num: 2 } at (prev + 0, 8) to (start + 0, 14)
+- MCDCBranch { true: Counter(1), false: Expression(0, Sub), condition_id: 1, true_next_id: 2, false_next_id: 0 } at (prev + 0, 8) to (start + 0, 9)
+    true  = c1
+    false = (c0 - c1)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 0, 14)
+- MCDCBranch { true: Counter(2), false: Expression(1, Sub), condition_id: 2, true_next_id: 0, false_next_id: 0 } at (prev + 0, 13) to (start + 0, 14)
+    true  = c2
+    false = (c1 - c2)
+- Code(Counter(2)) at (prev + 0, 15) to (start + 2, 6)
+- Code(Expression(2, Sub)) at (prev + 2, 12) to (start + 2, 6)
+    = (c0 - c2)
+- Code(Counter(0)) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c2
+
+Function name: if::mcdc_check_not_tree_decision
+Raw bytes (90): 0x[01, 01, 07, 01, 05, 01, 17, 05, 09, 05, 09, 17, 0d, 05, 09, 01, 0d, 0b, 01, 30, 01, 00, 3b, 28, 05, 03, 03, 08, 00, 15, 01, 00, 09, 00, 0a, 30, 05, 02, 01, 02, 03, 00, 09, 00, 0a, 02, 00, 0e, 00, 0f, 30, 09, 06, 03, 02, 00, 00, 0e, 00, 0f, 17, 00, 14, 00, 15, 30, 0d, 12, 02, 00, 00, 00, 14, 00, 15, 0d, 00, 16, 02, 06, 1a, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/if.rs
+Number of expressions: 7
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(0), rhs = Expression(5, Add)
+- expression 2 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 3 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 4 operands: lhs = Expression(5, Add), rhs = Counter(3)
+- expression 5 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 6 operands: lhs = Counter(0), rhs = Counter(3)
+Number of file 0 mappings: 11
+- Code(Counter(0)) at (prev + 48, 1) to (start + 0, 59)
+- MCDCDecision { bitmap_idx: 5, conditions_num: 3 } at (prev + 3, 8) to (start + 0, 21)
+- Code(Counter(0)) at (prev + 0, 9) to (start + 0, 10)
+- MCDCBranch { true: Counter(1), false: Expression(0, Sub), condition_id: 1, true_next_id: 2, false_next_id: 3 } at (prev + 0, 9) to (start + 0, 10)
+    true  = c1
+    false = (c0 - c1)
+- Code(Expression(0, Sub)) at (prev + 0, 14) to (start + 0, 15)
+    = (c0 - c1)
+- MCDCBranch { true: Counter(2), false: Expression(1, Sub), condition_id: 3, true_next_id: 2, false_next_id: 0 } at (prev + 0, 14) to (start + 0, 15)
+    true  = c2
+    false = (c0 - (c1 + c2))
+- Code(Expression(5, Add)) at (prev + 0, 20) to (start + 0, 21)
+    = (c1 + c2)
+- MCDCBranch { true: Counter(3), false: Expression(4, Sub), condition_id: 2, true_next_id: 0, false_next_id: 0 } at (prev + 0, 20) to (start + 0, 21)
+    true  = c3
+    false = ((c1 + c2) - c3)
+- Code(Counter(3)) at (prev + 0, 22) to (start + 2, 6)
+- Code(Expression(6, Sub)) at (prev + 2, 12) to (start + 2, 6)
+    = (c0 - c3)
+- Code(Counter(0)) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c3
+
+Function name: if::mcdc_check_tree_decision
+Raw bytes (92): 0x[01, 01, 08, 01, 05, 05, 09, 05, 09, 05, 1f, 09, 0d, 09, 0d, 01, 1f, 09, 0d, 0b, 01, 26, 01, 00, 37, 01, 03, 08, 00, 09, 28, 04, 03, 00, 08, 00, 15, 30, 05, 02, 01, 02, 00, 00, 08, 00, 09, 05, 00, 0e, 00, 0f, 30, 09, 0a, 02, 00, 03, 00, 0e, 00, 0f, 0a, 00, 13, 00, 14, 30, 0d, 0e, 03, 00, 00, 00, 13, 00, 14, 1f, 00, 16, 02, 06, 1a, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/if.rs
+Number of expressions: 8
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 2 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 3 operands: lhs = Counter(1), rhs = Expression(7, Add)
+- expression 4 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 5 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 6 operands: lhs = Counter(0), rhs = Expression(7, Add)
+- expression 7 operands: lhs = Counter(2), rhs = Counter(3)
+Number of file 0 mappings: 11
+- Code(Counter(0)) at (prev + 38, 1) to (start + 0, 55)
+- Code(Counter(0)) at (prev + 3, 8) to (start + 0, 9)
+- MCDCDecision { bitmap_idx: 4, conditions_num: 3 } at (prev + 0, 8) to (start + 0, 21)
+- MCDCBranch { true: Counter(1), false: Expression(0, Sub), condition_id: 1, true_next_id: 2, false_next_id: 0 } at (prev + 0, 8) to (start + 0, 9)
+    true  = c1
+    false = (c0 - c1)
+- Code(Counter(1)) at (prev + 0, 14) to (start + 0, 15)
+- MCDCBranch { true: Counter(2), false: Expression(2, Sub), condition_id: 2, true_next_id: 0, false_next_id: 3 } at (prev + 0, 14) to (start + 0, 15)
+    true  = c2
+    false = (c1 - c2)
+- Code(Expression(2, Sub)) at (prev + 0, 19) to (start + 0, 20)
+    = (c1 - c2)
+- MCDCBranch { true: Counter(3), false: Expression(3, Sub), condition_id: 3, true_next_id: 0, false_next_id: 0 } at (prev + 0, 19) to (start + 0, 20)
+    true  = c3
+    false = (c1 - (c2 + c3))
+- Code(Expression(7, Add)) at (prev + 0, 22) to (start + 2, 6)
+    = (c2 + c3)
+- Code(Expression(6, Sub)) at (prev + 2, 12) to (start + 2, 6)
+    = (c0 - (c2 + c3))
+- Code(Counter(0)) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c3
+
+Function name: if::mcdc_nested_if
+Raw bytes (139): 0x[01, 01, 0d, 01, 05, 01, 33, 05, 09, 05, 09, 05, 09, 05, 09, 33, 0d, 05, 09, 0d, 11, 33, 11, 05, 09, 01, 33, 05, 09, 11, 01, 3a, 01, 00, 2d, 01, 01, 08, 00, 09, 28, 03, 02, 00, 08, 00, 0e, 30, 05, 02, 01, 00, 02, 00, 08, 00, 09, 02, 00, 0d, 00, 0e, 30, 09, 2e, 02, 00, 00, 00, 0d, 00, 0e, 33, 01, 09, 00, 0c, 33, 00, 0d, 00, 15, 33, 01, 0c, 00, 0d, 28, 06, 02, 00, 0c, 00, 12, 30, 0d, 1a, 01, 02, 00, 00, 0c, 00, 0d, 0d, 00, 11, 00, 12, 30, 11, 22, 02, 00, 00, 00, 11, 00, 12, 11, 00, 13, 02, 0a, 26, 02, 09, 00, 0a, 2e, 01, 0c, 02, 06, 01, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/if.rs
+Number of expressions: 13
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(0), rhs = Expression(12, Add)
+- expression 2 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 3 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 4 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 5 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 6 operands: lhs = Expression(12, Add), rhs = Counter(3)
+- expression 7 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 8 operands: lhs = Counter(3), rhs = Counter(4)
+- expression 9 operands: lhs = Expression(12, Add), rhs = Counter(4)
+- expression 10 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 11 operands: lhs = Counter(0), rhs = Expression(12, Add)
+- expression 12 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 17
+- Code(Counter(0)) at (prev + 58, 1) to (start + 0, 45)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 9)
+- MCDCDecision { bitmap_idx: 3, conditions_num: 2 } at (prev + 0, 8) to (start + 0, 14)
+- MCDCBranch { true: Counter(1), false: Expression(0, Sub), condition_id: 1, true_next_id: 0, false_next_id: 2 } at (prev + 0, 8) to (start + 0, 9)
+    true  = c1
+    false = (c0 - c1)
+- Code(Expression(0, Sub)) at (prev + 0, 13) to (start + 0, 14)
+    = (c0 - c1)
+- MCDCBranch { true: Counter(2), false: Expression(11, Sub), condition_id: 2, true_next_id: 0, false_next_id: 0 } at (prev + 0, 13) to (start + 0, 14)
+    true  = c2
+    false = (c0 - (c1 + c2))
+- Code(Expression(12, Add)) at (prev + 1, 9) to (start + 0, 12)
+    = (c1 + c2)
+- Code(Expression(12, Add)) at (prev + 0, 13) to (start + 0, 21)
+    = (c1 + c2)
+- Code(Expression(12, Add)) at (prev + 1, 12) to (start + 0, 13)
+    = (c1 + c2)
+- MCDCDecision { bitmap_idx: 6, conditions_num: 2 } at (prev + 0, 12) to (start + 0, 18)
+- MCDCBranch { true: Counter(3), false: Expression(6, Sub), condition_id: 1, true_next_id: 2, false_next_id: 0 } at (prev + 0, 12) to (start + 0, 13)
+    true  = c3
+    false = ((c1 + c2) - c3)
+- Code(Counter(3)) at (prev + 0, 17) to (start + 0, 18)
+- MCDCBranch { true: Counter(4), false: Expression(8, Sub), condition_id: 2, true_next_id: 0, false_next_id: 0 } at (prev + 0, 17) to (start + 0, 18)
+    true  = c4
+    false = (c3 - c4)
+- Code(Counter(4)) at (prev + 0, 19) to (start + 2, 10)
+- Code(Expression(9, Sub)) at (prev + 2, 9) to (start + 0, 10)
+    = ((c1 + c2) - c4)
+- Code(Expression(11, Sub)) at (prev + 1, 12) to (start + 2, 6)
+    = (c0 - (c1 + c2))
+- Code(Counter(0)) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c4
+

@@ -1,0 +1,15 @@
+error: expected identifier, found keyword `Self`
+  --> $DIR/self-ctor-133272.rs:17:21
+   |
+LL |         let S { ref Self } = todo!();
+   |                     ^^^^ expected identifier, found keyword
+
+error[E0422]: cannot find struct, variant or union type `S` in this scope
+  --> $DIR/self-ctor-133272.rs:17:13
+   |
+LL |         let S { ref Self } = todo!();
+   |             ^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0422`.

@@ -1,0 +1,12 @@
+error: more than 1 bools in function parameters
+  --> tests/ui-toml/fn_params_excessive_bools/test.rs:4:1
+   |
+LL | fn g(_: bool, _: bool) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider refactoring bools into two-variant enums
+   = note: `-D clippy::fn-params-excessive-bools` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::fn_params_excessive_bools)]`
+
+error: aborting due to 1 previous error
+

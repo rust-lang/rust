@@ -1,0 +1,34 @@
+[package]
+name = "rustc-main"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+
+# Make sure rustc_codegen_ssa ends up in the sysroot, because this
+# crate is intended to be used by codegen backends, which may not be in-tree.
+rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
+
+rustc_driver = { path = "../rustc_driver" }
+rustc_driver_impl = { path = "../rustc_driver_impl" }
+
+# Make sure rustc_smir ends up in the sysroot, because this
+# crate is intended to be used by stable MIR consumers, which are not in-tree.
+rustc_smir = { path = "../rustc_smir" }
+
+stable_mir = { path = "../stable_mir" }
+# tidy-alphabetical-end
+
+[dependencies.tikv-jemalloc-sys]
+version = "0.6.0"
+optional = true
+features = ['unprefixed_malloc_on_supported_platforms']
+
+[features]
+# tidy-alphabetical-start
+jemalloc = ['dep:tikv-jemalloc-sys']
+llvm = ['rustc_driver_impl/llvm']
+max_level_info = ['rustc_driver_impl/max_level_info']
+rustc_randomized_layouts = ['rustc_driver_impl/rustc_randomized_layouts']
+# tidy-alphabetical-end

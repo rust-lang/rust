@@ -1,0 +1,39 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found keyword `true`
+  --> $DIR/raw-literal-keywords.rs:2:10
+   |
+LL |     r#if true { }
+   |          ^^^^ expected one of 8 possible tokens
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `Test`
+  --> $DIR/raw-literal-keywords.rs:6:14
+   |
+LL |     r#struct Test;
+   |              ^^^^ expected one of 8 possible tokens
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `Test`
+  --> $DIR/raw-literal-keywords.rs:10:13
+   |
+LL |     r#union Test;
+   |             ^^^^ expected one of 8 possible tokens
+
+error[E0425]: cannot find value `r#if` in this scope
+  --> $DIR/raw-literal-keywords.rs:14:13
+   |
+LL |     let _ = r#if;
+   |             ^^^^ not found in this scope
+
+error[E0425]: cannot find value `r#struct` in this scope
+  --> $DIR/raw-literal-keywords.rs:18:13
+   |
+LL |     let _ = r#struct;
+   |             ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `union` in this scope
+  --> $DIR/raw-literal-keywords.rs:22:13
+   |
+LL |     let _ = r#union;
+   |             ^^^^^^^ not found in this scope
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

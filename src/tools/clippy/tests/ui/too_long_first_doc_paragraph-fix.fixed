@@ -1,0 +1,11 @@
+#![warn(clippy::too_long_first_doc_paragraph)]
+
+/// A very short summary.
+//~^ too_long_first_doc_paragraph
+///
+//~^ too_long_first_doc_paragraph
+/// A much longer explanation that goes into a lot more detail about
+/// how the thing works, possibly with doclinks and so one,
+/// and probably spanning a many rows. Blablabla, it needs to be over
+/// 200 characters so I needed to write something longeeeeeeer.
+pub struct Foo;

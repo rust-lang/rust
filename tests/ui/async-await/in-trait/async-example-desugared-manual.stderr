@@ -1,0 +1,25 @@
+warning: impl trait in impl method signature does not match trait method signature
+  --> $DIR/async-example-desugared-manual.rs:22:22
+   |
+LL |     async fn foo(&self) -> i32;
+   |     --------------------------- return type from trait method defined here
+...
+LL |     fn foo(&self) -> MyFuture {
+   |                      ^^^^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+note: the lint level is defined here
+  --> $DIR/async-example-desugared-manual.rs:21:12
+   |
+LL |     #[warn(refining_impl_trait)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(refining_impl_trait_reachable)]` implied by `#[warn(refining_impl_trait)]`
+help: replace the return type so that it matches the trait
+   |
+LL -     fn foo(&self) -> MyFuture {
+LL +     fn foo(&self) -> impl Future<Output = i32> {
+   |
+
+warning: 1 warning emitted
+

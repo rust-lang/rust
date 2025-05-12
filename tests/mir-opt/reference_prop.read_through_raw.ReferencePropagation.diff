@@ -1,0 +1,23 @@
+- // MIR for `read_through_raw` before ReferencePropagation
++ // MIR for `read_through_raw` after ReferencePropagation
+  
+  fn read_through_raw(_1: &mut usize) -> usize {
+      let mut _0: usize;
+      let mut _2: &mut usize;
+      let mut _3: &mut usize;
+      let mut _4: *mut usize;
+      let mut _5: *mut usize;
+  
+      bb0: {
+-         _2 = &mut (*_1);
+-         _3 = &mut (*_2);
+-         _4 = &raw mut (*_2);
+-         _5 = &raw mut (*_3);
+-         _0 = copy (*_4);
+-         _0 = copy (*_5);
++         _0 = copy (*_1);
++         _0 = copy (*_1);
+          return;
+      }
+  }
+  

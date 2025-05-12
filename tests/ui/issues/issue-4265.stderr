@@ -1,0 +1,32 @@
+error[E0592]: duplicate definitions with name `bar`
+  --> $DIR/issue-4265.rs:11:5
+   |
+LL |     fn bar() {
+   |     -------- other definition for `bar`
+...
+LL |     fn bar() {
+   |     ^^^^^^^^ duplicate definitions for `bar`
+
+error[E0599]: no method named `bar` found for struct `Foo` in the current scope
+  --> $DIR/issue-4265.rs:7:24
+   |
+LL | struct Foo {
+   | ---------- method `bar` not found for this struct
+...
+LL |         Foo { baz: 0 }.bar();
+   |         ---------------^^^--
+   |         |              |
+   |         |              this is an associated function, not a method
+   |         help: use associated function syntax instead: `Foo::bar()`
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in an impl for the type `Foo`
+  --> $DIR/issue-4265.rs:6:5
+   |
+LL |     fn bar() {
+   |     ^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0592, E0599.
+For more information about an error, try `rustc --explain E0592`.

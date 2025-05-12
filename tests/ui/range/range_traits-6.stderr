@@ -1,0 +1,11 @@
+error[E0204]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/range_traits-6.rs:3:10
+   |
+LL | #[derive(Copy, Clone)]
+   |          ^^^^
+LL | struct R(RangeInclusive<usize>);
+   |          --------------------- this field does not implement `Copy`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0204`.

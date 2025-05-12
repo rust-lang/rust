@@ -1,0 +1,21 @@
+error[E0599]: no method named `hello` found for unit type `()` in the current scope
+  --> $DIR/ident-from-macro-expansion.rs:14:10
+   |
+LL |         ().$id();
+   |            --- due to this macro variable
+...
+LL |     dot!(hello);
+   |          ^^^^^ method not found in `()`
+
+error[E0599]: no function or associated item named `hello` found for unit type `()` in the current scope
+  --> $DIR/ident-from-macro-expansion.rs:16:15
+   |
+LL |         <()>::$id();
+   |               --- due to this macro variable
+...
+LL |     dispatch!(hello);
+   |               ^^^^^ function or associated item not found in `()`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

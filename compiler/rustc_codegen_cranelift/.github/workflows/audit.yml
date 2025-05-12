@@ -1,0 +1,18 @@
+name: Security audit
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 10 * * 1' # every monday at 10:00 UTC
+permissions:
+  issues: write
+  checks: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sed -i 's/components.*/components = []/' rust-toolchain
+      - uses: rustsec/audit-check@v1.4.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}

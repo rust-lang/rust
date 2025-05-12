@@ -1,0 +1,77 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/equality2.rs:3:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/equality2.rs:27:18
+   |
+LL | fn hide<T: Foo>(x: T) -> impl Foo {
+   |                          -------- the found opaque type
+...
+LL |     let _: u32 = hide(0_u32);
+   |            ---   ^^^^^^^^^^^ expected `u32`, found opaque type
+   |            |
+   |            expected due to this
+   |
+   = note:     expected type `u32`
+           found opaque type `impl Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/equality2.rs:33:18
+   |
+LL | fn hide<T: Foo>(x: T) -> impl Foo {
+   |                          -------- the found opaque type
+...
+LL |     let _: i32 = Leak::leak(hide(0_i32));
+   |            ---   ^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found associated type
+   |            |
+   |            expected due to this
+   |
+   = note:         expected type `i32`
+           found associated type `<impl Foo as Leak>::T`
+help: consider constraining the associated type `<impl Foo as Leak>::T` to `i32`
+   |
+LL | fn hide<T: Foo>(x: T) -> impl Foo<T = i32> {
+   |                                  +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/equality2.rs:40:10
+   |
+LL | fn hide<T: Foo>(x: T) -> impl Foo {
+   |                          --------
+   |                          |
+   |                          the expected opaque type
+   |                          the found opaque type
+...
+LL |     x = (x.1,
+   |          ^^^ expected `u32`, found `i32`
+   |
+   = note: expected opaque type `impl Foo` (`u32`)
+              found opaque type `impl Foo` (`i32`)
+   = note: distinct uses of `impl Trait` result in different opaque types
+
+error[E0308]: mismatched types
+  --> $DIR/equality2.rs:43:10
+   |
+LL | fn hide<T: Foo>(x: T) -> impl Foo {
+   |                          --------
+   |                          |
+   |                          the expected opaque type
+   |                          the found opaque type
+...
+LL |          x.0);
+   |          ^^^ expected `i32`, found `u32`
+   |
+   = note: expected opaque type `impl Foo` (`i32`)
+              found opaque type `impl Foo` (`u32`)
+   = note: distinct uses of `impl Trait` result in different opaque types
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

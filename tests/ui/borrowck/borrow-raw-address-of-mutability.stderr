@@ -1,0 +1,65 @@
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/borrow-raw-address-of-mutability.rs:3:13
+   |
+LL |     let y = &raw mut x;
+   |             ^^^^^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut x = 0;
+   |         +++
+
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/borrow-raw-address-of-mutability.rs:9:17
+   |
+LL |         let y = &raw mut x;
+   |                 ^^^^^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut x = 0;
+   |         +++
+
+error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
+  --> $DIR/borrow-raw-address-of-mutability.rs:19:5
+   |
+LL |         let y = &raw mut x;
+   |                          - calling `f` requires mutable binding due to mutable borrow of `x`
+LL |     };
+LL |     f();
+   |     ^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut f = || {
+   |         +++
+
+error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
+  --> $DIR/borrow-raw-address-of-mutability.rs:27:17
+   |
+LL | fn make_fn<F: Fn()>(f: F) -> F { f }
+   |                        - change this to accept `FnMut` instead of `Fn`
+...
+LL |     let f = make_fn(|| {
+   |             ------- -- in this closure
+   |             |
+   |             expects `Fn` instead of `FnMut`
+LL |         let y = &raw mut x;
+   |                 ^^^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
+  --> $DIR/borrow-raw-address-of-mutability.rs:35:17
+   |
+LL | fn make_fn<F: Fn()>(f: F) -> F { f }
+   |                        - change this to accept `FnMut` instead of `Fn`
+...
+LL |     let f = make_fn(move || {
+   |             ------- ------- in this closure
+   |             |
+   |             expects `Fn` instead of `FnMut`
+LL |         let y = &raw mut x;
+   |                 ^^^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

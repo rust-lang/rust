@@ -1,0 +1,740 @@
+error: float literals must have an integer part
+  --> $DIR/recover-range-pats.rs:20:12
+   |
+LL |     if let .0..Y = 0 {}
+   |            ^^
+   |
+help: must have an integer part
+   |
+LL |     if let 0.0..Y = 0 {}
+   |            +
+
+error: float literals must have an integer part
+  --> $DIR/recover-range-pats.rs:22:16
+   |
+LL |     if let X.. .0 = 0 {}
+   |                ^^
+   |
+help: must have an integer part
+   |
+LL |     if let X.. 0.0 = 0 {}
+   |                +
+
+error: float literals must have an integer part
+  --> $DIR/recover-range-pats.rs:33:12
+   |
+LL |     if let .0..=Y = 0 {}
+   |            ^^
+   |
+help: must have an integer part
+   |
+LL |     if let 0.0..=Y = 0 {}
+   |            +
+
+error: float literals must have an integer part
+  --> $DIR/recover-range-pats.rs:35:16
+   |
+LL |     if let X..=.0 = 0 {}
+   |                ^^
+   |
+help: must have an integer part
+   |
+LL |     if let X..=0.0 = 0 {}
+   |                +
+
+error: float literals must have an integer part
+  --> $DIR/recover-range-pats.rs:58:12
+   |
+LL |     if let .0...Y = 0 {}
+   |            ^^
+   |
+help: must have an integer part
+   |
+LL |     if let 0.0...Y = 0 {}
+   |            +
+
+error: float literals must have an integer part
+  --> $DIR/recover-range-pats.rs:62:17
+   |
+LL |     if let X... .0 = 0 {}
+   |                 ^^
+   |
+help: must have an integer part
+   |
+LL |     if let X... 0.0 = 0 {}
+   |                 +
+
+error: float literals must have an integer part
+  --> $DIR/recover-range-pats.rs:73:12
+   |
+LL |     if let .0.. = 0 {}
+   |            ^^
+   |
+help: must have an integer part
+   |
+LL |     if let 0.0.. = 0 {}
+   |            +
+
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:79:13
+   |
+LL |     if let 0..= = 0 {}
+   |             ^^^
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let 0..= = 0 {}
+LL +     if let 0.. = 0 {}
+   |
+
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:80:13
+   |
+LL |     if let X..= = 0 {}
+   |             ^^^
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let X..= = 0 {}
+LL +     if let X.. = 0 {}
+   |
+
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:81:16
+   |
+LL |     if let true..= = 0 {}
+   |                ^^^
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let true..= = 0 {}
+LL +     if let true.. = 0 {}
+   |
+
+error: float literals must have an integer part
+  --> $DIR/recover-range-pats.rs:83:12
+   |
+LL |     if let .0..= = 0 {}
+   |            ^^
+   |
+help: must have an integer part
+   |
+LL |     if let 0.0..= = 0 {}
+   |            +
+
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:83:14
+   |
+LL |     if let .0..= = 0 {}
+   |              ^^^
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let .0..= = 0 {}
+LL +     if let .0.. = 0 {}
+   |
+
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:89:13
+   |
+LL |     if let 0... = 0 {}
+   |             ^^^
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let 0... = 0 {}
+LL +     if let 0.. = 0 {}
+   |
+
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:90:13
+   |
+LL |     if let X... = 0 {}
+   |             ^^^
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let X... = 0 {}
+LL +     if let X.. = 0 {}
+   |
+
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:91:16
+   |
+LL |     if let true... = 0 {}
+   |                ^^^
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let true... = 0 {}
+LL +     if let true.. = 0 {}
+   |
+
+error: float literals must have an integer part
+  --> $DIR/recover-range-pats.rs:93:12
+   |
+LL |     if let .0... = 0 {}
+   |            ^^
+   |
+help: must have an integer part
+   |
+LL |     if let 0.0... = 0 {}
+   |            +
+
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:93:14
+   |
+LL |     if let .0... = 0 {}
+   |              ^^^
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let .0... = 0 {}
+LL +     if let .0.. = 0 {}
+   |
+
+error: float literals must have an integer part
+  --> $DIR/recover-range-pats.rs:103:15
+   |
+LL |     if let .. .0 = 0 {}
+   |               ^^
+   |
+help: must have an integer part
+   |
+LL |     if let .. 0.0 = 0 {}
+   |               +
+
+error: float literals must have an integer part
+  --> $DIR/recover-range-pats.rs:113:15
+   |
+LL |     if let ..=.0 = 0 {}
+   |               ^^
+   |
+help: must have an integer part
+   |
+LL |     if let ..=0.0 = 0 {}
+   |               +
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/recover-range-pats.rs:119:12
+   |
+LL |     if let ...3 = 0 {}
+   |            ^^^
+   |
+help: use `..=` instead
+   |
+LL -     if let ...3 = 0 {}
+LL +     if let ..=3 = 0 {}
+   |
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/recover-range-pats.rs:121:12
+   |
+LL |     if let ...Y = 0 {}
+   |            ^^^
+   |
+help: use `..=` instead
+   |
+LL -     if let ...Y = 0 {}
+LL +     if let ..=Y = 0 {}
+   |
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/recover-range-pats.rs:123:12
+   |
+LL |     if let ...true = 0 {}
+   |            ^^^
+   |
+help: use `..=` instead
+   |
+LL -     if let ...true = 0 {}
+LL +     if let ..=true = 0 {}
+   |
+
+error: float literals must have an integer part
+  --> $DIR/recover-range-pats.rs:126:15
+   |
+LL |     if let ....3 = 0 {}
+   |               ^^
+   |
+help: must have an integer part
+   |
+LL |     if let ...0.3 = 0 {}
+   |               +
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/recover-range-pats.rs:126:12
+   |
+LL |     if let ....3 = 0 {}
+   |            ^^^
+   |
+help: use `..=` instead
+   |
+LL -     if let ....3 = 0 {}
+LL +     if let ..=.3 = 0 {}
+   |
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/recover-range-pats.rs:152:17
+   |
+LL |             let ...$e;
+   |                 ^^^
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use `..=` instead
+   |
+LL -             let ...$e;
+LL +             let ..=$e;
+   |
+
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:159:19
+   |
+LL |             let $e...;
+   |                   ^^^
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use `..` instead
+   |
+LL -             let $e...;
+LL +             let $e..;
+   |
+
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:161:19
+   |
+LL |             let $e..=;
+   |                   ^^^
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use `..` instead
+   |
+LL -             let $e..=;
+LL +             let $e..;
+   |
+
+error: `...` range patterns are deprecated
+  --> $DIR/recover-range-pats.rs:40:13
+   |
+LL |     if let 0...3 = 0 {}
+   |             ^^^ help: use `..=` for an inclusive range
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+note: the lint level is defined here
+  --> $DIR/recover-range-pats.rs:6:9
+   |
+LL | #![deny(ellipsis_inclusive_range_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `...` range patterns are deprecated
+  --> $DIR/recover-range-pats.rs:43:13
+   |
+LL |     if let 0...Y = 0 {}
+   |             ^^^ help: use `..=` for an inclusive range
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+
+error: `...` range patterns are deprecated
+  --> $DIR/recover-range-pats.rs:46:13
+   |
+LL |     if let X...3 = 0 {}
+   |             ^^^ help: use `..=` for an inclusive range
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+
+error: `...` range patterns are deprecated
+  --> $DIR/recover-range-pats.rs:49:13
+   |
+LL |     if let X...Y = 0 {}
+   |             ^^^ help: use `..=` for an inclusive range
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+
+error: `...` range patterns are deprecated
+  --> $DIR/recover-range-pats.rs:52:16
+   |
+LL |     if let true...Y = 0 {}
+   |                ^^^ help: use `..=` for an inclusive range
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+
+error: `...` range patterns are deprecated
+  --> $DIR/recover-range-pats.rs:55:13
+   |
+LL |     if let X...true = 0 {}
+   |             ^^^ help: use `..=` for an inclusive range
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+
+error: `...` range patterns are deprecated
+  --> $DIR/recover-range-pats.rs:58:14
+   |
+LL |     if let .0...Y = 0 {}
+   |              ^^^ help: use `..=` for an inclusive range
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+
+error: `...` range patterns are deprecated
+  --> $DIR/recover-range-pats.rs:62:13
+   |
+LL |     if let X... .0 = 0 {}
+   |             ^^^ help: use `..=` for an inclusive range
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+
+error: `...` range patterns are deprecated
+  --> $DIR/recover-range-pats.rs:137:20
+   |
+LL |             let $e1...$e2;
+   |                    ^^^ help: use `..=` for an inclusive range
+...
+LL |     mac2!(0, 1);
+   |     ----------- in this macro invocation
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/recover-range-pats.rs:18:12
+   |
+LL |     if let true..Y = 0 {}
+   |            ^^^^  - this is of type `u8`
+   |            |
+   |            this is of type `bool` but it should be `char` or numeric
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/recover-range-pats.rs:19:15
+   |
+LL |     if let X..true = 0 {}
+   |            -  ^^^^ this is of type `bool` but it should be `char` or numeric
+   |            |
+   |            this is of type `u8`
+
+error[E0308]: mismatched types
+  --> $DIR/recover-range-pats.rs:20:12
+   |
+LL |     if let .0..Y = 0 {}
+   |            ^^  -   - this expression has type `{integer}`
+   |            |   |
+   |            |   this is of type `u8`
+   |            expected integer, found floating-point number
+
+error[E0308]: mismatched types
+  --> $DIR/recover-range-pats.rs:22:16
+   |
+LL |     if let X.. .0 = 0 {}
+   |            -   ^^   - this expression has type `u8`
+   |            |   |
+   |            |   expected `u8`, found floating-point number
+   |            this is of type `u8`
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/recover-range-pats.rs:31:12
+   |
+LL |     if let true..=Y = 0 {}
+   |            ^^^^   - this is of type `u8`
+   |            |
+   |            this is of type `bool` but it should be `char` or numeric
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/recover-range-pats.rs:32:16
+   |
+LL |     if let X..=true = 0 {}
+   |            -   ^^^^ this is of type `bool` but it should be `char` or numeric
+   |            |
+   |            this is of type `u8`
+
+error[E0308]: mismatched types
+  --> $DIR/recover-range-pats.rs:33:12
+   |
+LL |     if let .0..=Y = 0 {}
+   |            ^^   -   - this expression has type `{integer}`
+   |            |    |
+   |            |    this is of type `u8`
+   |            expected integer, found floating-point number
+
+error[E0308]: mismatched types
+  --> $DIR/recover-range-pats.rs:35:16
+   |
+LL |     if let X..=.0 = 0 {}
+   |            -   ^^   - this expression has type `u8`
+   |            |   |
+   |            |   expected `u8`, found floating-point number
+   |            this is of type `u8`
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/recover-range-pats.rs:52:12
+   |
+LL |     if let true...Y = 0 {}
+   |            ^^^^   - this is of type `u8`
+   |            |
+   |            this is of type `bool` but it should be `char` or numeric
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/recover-range-pats.rs:55:16
+   |
+LL |     if let X...true = 0 {}
+   |            -   ^^^^ this is of type `bool` but it should be `char` or numeric
+   |            |
+   |            this is of type `u8`
+
+error[E0308]: mismatched types
+  --> $DIR/recover-range-pats.rs:58:12
+   |
+LL |     if let .0...Y = 0 {}
+   |            ^^   -   - this expression has type `{integer}`
+   |            |    |
+   |            |    this is of type `u8`
+   |            expected integer, found floating-point number
+
+error[E0308]: mismatched types
+  --> $DIR/recover-range-pats.rs:62:17
+   |
+LL |     if let X... .0 = 0 {}
+   |            -    ^^   - this expression has type `u8`
+   |            |    |
+   |            |    expected `u8`, found floating-point number
+   |            this is of type `u8`
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/recover-range-pats.rs:71:12
+   |
+LL |     if let true.. = 0 {}
+   |            ^^^^ this is of type `bool` but it should be `char` or numeric
+
+error[E0308]: mismatched types
+  --> $DIR/recover-range-pats.rs:73:12
+   |
+LL |     if let .0.. = 0 {}
+   |            ^^     - this expression has type `{integer}`
+   |            |
+   |            expected integer, found floating-point number
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/recover-range-pats.rs:81:12
+   |
+LL |     if let true..= = 0 {}
+   |            ^^^^ this is of type `bool` but it should be `char` or numeric
+
+error[E0308]: mismatched types
+  --> $DIR/recover-range-pats.rs:83:12
+   |
+LL |     if let .0..= = 0 {}
+   |            ^^      - this expression has type `{integer}`
+   |            |
+   |            expected integer, found floating-point number
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/recover-range-pats.rs:91:12
+   |
+LL |     if let true... = 0 {}
+   |            ^^^^ this is of type `bool` but it should be `char` or numeric
+
+error[E0308]: mismatched types
+  --> $DIR/recover-range-pats.rs:93:12
+   |
+LL |     if let .0... = 0 {}
+   |            ^^      - this expression has type `{integer}`
+   |            |
+   |            expected integer, found floating-point number
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/recover-range-pats.rs:101:14
+   |
+LL |     if let ..true = 0 {}
+   |              ^^^^ this is of type `bool` but it should be `char` or numeric
+
+error[E0308]: mismatched types
+  --> $DIR/recover-range-pats.rs:103:15
+   |
+LL |     if let .. .0 = 0 {}
+   |               ^^   - this expression has type `{integer}`
+   |               |
+   |               expected integer, found floating-point number
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/recover-range-pats.rs:111:15
+   |
+LL |     if let ..=true = 0 {}
+   |               ^^^^ this is of type `bool` but it should be `char` or numeric
+
+error[E0308]: mismatched types
+  --> $DIR/recover-range-pats.rs:113:15
+   |
+LL |     if let ..=.0 = 0 {}
+   |               ^^   - this expression has type `{integer}`
+   |               |
+   |               expected integer, found floating-point number
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/recover-range-pats.rs:123:15
+   |
+LL |     if let ...true = 0 {}
+   |               ^^^^ this is of type `bool` but it should be `char` or numeric
+
+error[E0308]: mismatched types
+  --> $DIR/recover-range-pats.rs:126:15
+   |
+LL |     if let ....3 = 0 {}
+   |               ^^   - this expression has type `{integer}`
+   |               |
+   |               expected integer, found floating-point number
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:135:17
+   |
+LL |             let $e1..$e2;
+   |                 ^^^^^^^^ patterns `i32::MIN..=-1_i32` and `1_i32..=i32::MAX` not covered
+...
+LL |     mac2!(0, 1);
+   |     ----------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:137:17
+   |
+LL |             let $e1...$e2;
+   |                 ^^^^^^^^^ patterns `i32::MIN..=-1_i32` and `2_i32..=i32::MAX` not covered
+...
+LL |     mac2!(0, 1);
+   |     ----------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:141:17
+   |
+LL |             let $e1..=$e2;
+   |                 ^^^^^^^^^ patterns `i32::MIN..=-1_i32` and `2_i32..=i32::MAX` not covered
+...
+LL |     mac2!(0, 1);
+   |     ----------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:150:17
+   |
+LL |             let ..$e;
+   |                 ^^^^ pattern `0_i32..=i32::MAX` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:152:17
+   |
+LL |             let ...$e;
+   |                 ^^^^^ pattern `1_i32..=i32::MAX` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:155:17
+   |
+LL |             let ..=$e;
+   |                 ^^^^^ pattern `1_i32..=i32::MAX` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:157:17
+   |
+LL |             let $e..;
+   |                 ^^^^ pattern `i32::MIN..=-1_i32` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:159:17
+   |
+LL |             let $e...;
+   |                 ^^^^^ pattern `i32::MIN..=-1_i32` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:161:17
+   |
+LL |             let $e..=;
+   |                 ^^^^^ pattern `i32::MIN..=-1_i32` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 69 previous errors
+
+Some errors have detailed explanations: E0005, E0029, E0308, E0586.
+For more information about an error, try `rustc --explain E0005`.

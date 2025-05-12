@@ -1,0 +1,72 @@
+- // MIR for `cand` before EnumSizeOpt
++ // MIR for `cand` after EnumSizeOpt
+  
+  fn cand() -> Candidate {
+      let mut _0: Candidate;
+      let mut _1: Candidate;
+      let mut _2: Candidate;
+      let mut _3: [u8; 8196];
++     let mut _4: [usize; 2];
++     let mut _5: isize;
++     let mut _6: usize;
++     let mut _7: usize;
++     let mut _8: *mut Candidate;
++     let mut _9: *mut u8;
++     let mut _10: *const Candidate;
++     let mut _11: *const u8;
++     let mut _12: [usize; 2];
++     let mut _13: isize;
++     let mut _14: usize;
++     let mut _15: usize;
++     let mut _16: *mut Candidate;
++     let mut _17: *mut u8;
++     let mut _18: *const Candidate;
++     let mut _19: *const u8;
+      scope 1 {
+          debug a => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = Candidate::Small(const 1_u8);
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = [const 1_u8; 8196];
+          _2 = Candidate::Large(move _3);
+          StorageDead(_3);
+-         _1 = move _2;
++         StorageLive(_4);
++         _4 = const [2_usize, 8197_usize];
++         _5 = discriminant(_2);
++         _6 = copy _5 as usize (IntToInt);
++         _7 = copy _4[_6];
++         _8 = &raw mut _1;
++         _9 = copy _8 as *mut u8 (PtrToPtr);
++         _10 = &raw const _2;
++         _11 = copy _10 as *const u8 (PtrToPtr);
++         Deinit(_8);
++         copy_nonoverlapping(dst = copy _9, src = copy _11, count = copy _7);
++         StorageDead(_4);
++         nop;
+          StorageDead(_2);
+-         _0 = move _1;
++         StorageLive(_12);
++         _12 = const [2_usize, 8197_usize];
++         _13 = discriminant(_1);
++         _14 = copy _13 as usize (IntToInt);
++         _15 = copy _12[_14];
++         _16 = &raw mut _0;
++         _17 = copy _16 as *mut u8 (PtrToPtr);
++         _18 = &raw const _1;
++         _19 = copy _18 as *const u8 (PtrToPtr);
++         Deinit(_16);
++         copy_nonoverlapping(dst = copy _17, src = copy _19, count = copy _15);
++         StorageDead(_12);
++         nop;
+          StorageDead(_1);
+          return;
+      }
+  }
++ 
++ ALLOC0 (size: 8, align: 4) { .. }
+  

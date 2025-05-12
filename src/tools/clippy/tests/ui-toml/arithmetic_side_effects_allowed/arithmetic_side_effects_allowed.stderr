@@ -1,0 +1,59 @@
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui-toml/arithmetic_side_effects_allowed/arithmetic_side_effects_allowed.rs:69:13
+   |
+LL |     let _ = Baz + Baz;
+   |             ^^^^^^^^^
+   |
+   = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::arithmetic_side_effects)]`
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui-toml/arithmetic_side_effects_allowed/arithmetic_side_effects_allowed.rs:81:13
+   |
+LL |     let _ = 1i32 + Baz;
+   |             ^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui-toml/arithmetic_side_effects_allowed/arithmetic_side_effects_allowed.rs:85:13
+   |
+LL |     let _ = 1i64 + Foo;
+   |             ^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui-toml/arithmetic_side_effects_allowed/arithmetic_side_effects_allowed.rs:90:13
+   |
+LL |     let _ = 1i64 + Baz;
+   |             ^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui-toml/arithmetic_side_effects_allowed/arithmetic_side_effects_allowed.rs:102:13
+   |
+LL |     let _ = Baz + 1i32;
+   |             ^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui-toml/arithmetic_side_effects_allowed/arithmetic_side_effects_allowed.rs:106:13
+   |
+LL |     let _ = Foo + 1i64;
+   |             ^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui-toml/arithmetic_side_effects_allowed/arithmetic_side_effects_allowed.rs:111:13
+   |
+LL |     let _ = Baz + 1i64;
+   |             ^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui-toml/arithmetic_side_effects_allowed/arithmetic_side_effects_allowed.rs:121:13
+   |
+LL |     let _ = -Bar;
+   |             ^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui-toml/arithmetic_side_effects_allowed/arithmetic_side_effects_allowed.rs:124:13
+   |
+LL |     let _ = -Baz;
+   |             ^^^^
+
+error: aborting due to 9 previous errors
+

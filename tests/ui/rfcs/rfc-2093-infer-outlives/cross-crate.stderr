@@ -1,0 +1,10 @@
+error: rustc_outlives
+  --> $DIR/cross-crate.rs:4:1
+   |
+LL | struct Foo<'a, T> {
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: T: 'a
+
+error: aborting due to 1 previous error
+

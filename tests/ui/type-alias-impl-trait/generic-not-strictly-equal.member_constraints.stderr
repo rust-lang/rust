@@ -1,0 +1,15 @@
+error[E0700]: hidden type for `Opaque<'x>` captures lifetime that does not appear in bounds
+  --> $DIR/generic-not-strictly-equal.rs:34:5
+   |
+LL | type Opaque<'a> = impl Copy + Captures<'a>;
+   |                   ------------------------ opaque type defined here
+...
+LL | fn test<'x>(_: Opaque<'x>) {
+   |         -- hidden type `&'x u8` captures the lifetime `'x` as defined here
+...
+LL |     relate(opaque, hidden); // defining use: Opaque<'?1> := u8
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.

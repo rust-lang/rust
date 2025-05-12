@@ -1,0 +1,37 @@
+warning: the `passes` flag no longer functions
+   |
+   = note: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
+   = help: you may want to use --document-private-items
+
+error: unknown `doc` attribute `no_default_passes`
+  --> $DIR/deprecated-attrs.rs:3:8
+   |
+LL | #![doc(no_default_passes)]
+   |        ^^^^^^^^^^^^^^^^^ no longer functions
+   |
+   = note: `doc` attribute `no_default_passes` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>
+   = help: you may want to use `doc(document_private_items)`
+   = note: `doc(no_default_passes)` is now a no-op
+   = note: `#[deny(invalid_doc_attributes)]` on by default
+
+error: unknown `doc` attribute `passes`
+  --> $DIR/deprecated-attrs.rs:10:8
+   |
+LL | #![doc(passes = "collapse-docs unindent-comments")]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no longer functions
+   |
+   = note: `doc` attribute `passes` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>
+   = help: you may want to use `doc(document_private_items)`
+   = note: `doc(passes)` is now a no-op
+
+error: unknown `doc` attribute `plugins`
+  --> $DIR/deprecated-attrs.rs:16:8
+   |
+LL | #![doc(plugins = "xxx")]
+   |        ^^^^^^^^^^^^^^^ no longer functions
+   |
+   = note: `doc` attribute `plugins` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136> and CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>
+   = note: `doc(plugins)` is now a no-op
+
+error: aborting due to 3 previous errors
+

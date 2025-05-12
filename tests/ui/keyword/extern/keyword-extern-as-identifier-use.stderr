@@ -1,0 +1,25 @@
+error: expected identifier, found keyword `extern`
+  --> $DIR/keyword-extern-as-identifier-use.rs:1:5
+   |
+LL | use extern::foo;
+   |     ^^^^^^ expected identifier, found keyword
+   |
+help: escape `extern` to use it as an identifier
+   |
+LL | use r#extern::foo;
+   |     ++
+
+error[E0432]: unresolved import `r#extern`
+  --> $DIR/keyword-extern-as-identifier-use.rs:1:5
+   |
+LL | use extern::foo;
+   |     ^^^^^^ use of unresolved module or unlinked crate `r#extern`
+   |
+help: you might be missing a crate named `r#extern`, add it to your project and import it in your code
+   |
+LL + extern crate r#extern;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

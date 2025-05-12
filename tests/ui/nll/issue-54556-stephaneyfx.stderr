@@ -1,0 +1,26 @@
+error[E0597]: `stmt` does not live long enough
+  --> $DIR/issue-54556-stephaneyfx.rs:27:21
+   |
+LL |     let stmt = Statement;
+   |         ---- binding `stmt` declared here
+LL |     let rows = Rows(&stmt);
+   |                     ^^^^^ borrowed value does not live long enough
+LL |     rows.map(|row| row).next()
+   |     ------------------- a temporary with access to the borrow is created here ...
+...
+LL | }
+   | -
+   | |
+   | `stmt` dropped here while still borrowed
+   | ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `Map<Rows<'_>, {closure@$DIR/issue-54556-stephaneyfx.rs:28:14: 28:19}>`
+   |
+   = note: the temporary is part of an expression at the end of a block;
+           consider forcing this temporary to be dropped sooner, before the block's local variables are dropped
+help: for example, you could save the expression's value in a new local variable `x` and then make `x` be the expression at the end of the block
+   |
+LL |     let x = rows.map(|row| row).next(); x
+   |     +++++++                           +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

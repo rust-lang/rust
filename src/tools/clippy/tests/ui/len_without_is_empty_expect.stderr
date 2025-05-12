@@ -1,0 +1,11 @@
+error: this lint expectation is unfulfilled
+  --> tests/ui/len_without_is_empty_expect.rs:18:14
+   |
+LL |     #[expect(clippy::len_without_is_empty)]
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D unfulfilled-lint-expectations` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unfulfilled_lint_expectations)]`
+
+error: aborting due to 1 previous error
+

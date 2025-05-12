@@ -1,0 +1,8 @@
+error: expected expression, found `=`
+  --> $DIR/js-style-comparison-op-separate-eq-token.rs:2:13
+   |
+LL |     if 1 == = 1 {
+   |             ^ expected expression
+
+error: aborting due to 1 previous error
+

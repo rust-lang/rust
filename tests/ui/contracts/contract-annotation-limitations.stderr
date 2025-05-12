@@ -1,0 +1,23 @@
+error: contract annotations is only supported in functions with bodies
+  --> $DIR/contract-annotation-limitations.rs:18:5
+   |
+LL |     #[core::contracts::ensures(|ret| ret.is_none_or(Stars::is_valid))]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: contract annotations is only supported in functions with bodies
+  --> $DIR/contract-annotation-limitations.rs:22:5
+   |
+LL |     #[core::contracts::ensures(|ret| ret.is_none_or(Stars::is_valid))]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/contract-annotation-limitations.rs:4:12
+   |
+LL | #![feature(contracts)]
+   |            ^^^^^^^^^
+   |
+   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

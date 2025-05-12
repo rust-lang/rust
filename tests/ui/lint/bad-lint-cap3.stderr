@@ -1,0 +1,15 @@
+warning: unused import: `std::option`
+  --> $DIR/bad-lint-cap3.rs:7:5
+   |
+LL | use std::option;
+   |     ^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/bad-lint-cap3.rs:5:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[warn(unused_imports)]` implied by `#[warn(warnings)]`
+
+warning: 1 warning emitted
+

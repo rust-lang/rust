@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  schedule:
+    # Run multiple times a day as the successfull cached links are not checked every time.
+    - cron: '0 */8 * * *'
+
+jobs:
+  ci:
+    if: github.repository == 'rust-lang/rustc-dev-guide'
+    runs-on: ubuntu-latest
+    env:
+      MDBOOK_VERSION: 0.4.48
+      MDBOOK_LINKCHECK2_VERSION: 0.9.1
+      MDBOOK_MERMAID_VERSION: 0.12.6
+      MDBOOK_TOC_VERSION: 0.11.2
+      MDBOOK_OUTPUT__LINKCHECK__FOLLOW_WEB_LINKS: ${{ github.event_name != 'pull_request' }}
+      DEPLOY_DIR: book/html
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # linkcheck needs the base commit.
+          fetch-depth: 0
+
+      - name: Cache binaries
+        id: mdbook-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+          key: ${{ runner.os }}-${{ env.MDBOOK_VERSION }}--${{ env.MDBOOK_LINKCHECK2_VERSION }}--${{ env.MDBOOK_TOC_VERSION }}--${{ env.MDBOOK_MERMAID_VERSION }}
+
+      - name: Restore cached Linkcheck
+        if: github.event_name == 'schedule'
+        id: cache-linkcheck-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: book/linkcheck/cache.json
+          key: linkcheck--${{ env.MDBOOK_LINKCHECK2_VERSION }}--${{ github.run_id }}
+          restore-keys: |
+            linkcheck--${{ env.MDBOOK_LINKCHECK2_VERSION }}--
+
+      - name: Install latest nightly Rust toolchain
+        if: steps.mdbook-cache.outputs.cache-hit != 'true'
+        run: |
+          rustup update nightly
+          rustup override set nightly
+
+      - name: Install Dependencies
+        if: steps.mdbook-cache.outputs.cache-hit != 'true'
+        run: |
+          cargo install mdbook --version ${{ env.MDBOOK_VERSION }}
+          cargo install mdbook-linkcheck2 --version ${{ env.MDBOOK_LINKCHECK2_VERSION }}
+          cargo install mdbook-toc --version ${{ env.MDBOOK_TOC_VERSION }}
+          cargo install mdbook-mermaid --version ${{ env.MDBOOK_MERMAID_VERSION }}
+
+      - name: Check build
+        run: ENABLE_LINKCHECK=1 mdbook build
+
+      - name: Save cached Linkcheck
+        id: cache-linkcheck-save
+        if: ${{ !cancelled() && github.event_name == 'schedule' }}
+        uses: actions/cache/save@v4
+        with:
+          path: book/linkcheck/cache.json
+          key: linkcheck--${{ env.MDBOOK_LINKCHECK2_VERSION }}--${{ github.run_id }}
+
+      - name: Deploy to gh-pages
+        if: github.event_name == 'push'
+        run: |
+          touch "${{ env.DEPLOY_DIR }}/.nojekyll"
+          cp CNAME "${{ env.DEPLOY_DIR }}"
+          cd "${{ env.DEPLOY_DIR }}"
+          rm -rf .git
+          git init
+          git config user.name "Deploy from CI"
+          git config user.email ""
+          git add .
+          git commit -m "Deploy ${GITHUB_SHA} to gh-pages"
+          git push --quiet -f "https://x-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}" HEAD:gh-pages

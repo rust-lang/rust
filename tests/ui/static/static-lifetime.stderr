@@ -1,0 +1,42 @@
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/static-lifetime.rs:3:20
+   |
+LL | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {}
+   |                    ^^^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
+  --> $DIR/static-lifetime.rs:3:6
+   |
+LL | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {}
+   |      ^^
+   = note: but lifetime parameter must outlive the static lifetime
+
+error[E0803]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+  --> $DIR/static-lifetime.rs:3:34
+   |
+LL | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {}
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
+  --> $DIR/static-lifetime.rs:3:6
+   |
+LL | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {}
+   |      ^^
+note: ...so that the types are compatible
+  --> $DIR/static-lifetime.rs:3:34
+   |
+LL | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {}
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected `<Cow<'a, A> as Arbitrary>`
+              found `<Cow<'_, A> as Arbitrary>`
+   = note: but, the lifetime must be valid for the static lifetime...
+note: ...so that the declared lifetime parameter bounds are satisfied
+  --> $DIR/static-lifetime.rs:3:34
+   |
+LL | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {}
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0478, E0803.
+For more information about an error, try `rustc --explain E0478`.

@@ -1,0 +1,62 @@
+error[E0382]: use of moved value: `f`
+  --> $DIR/borrow-closures-instead-of-move.rs:3:22
+   |
+LL | fn takes_fn(f: impl Fn()) {
+   |             - move occurs because `f` has type `impl Fn()`, which does not implement the `Copy` trait
+LL |     loop {
+   |     ---- inside of this loop
+LL |         takes_fnonce(f);
+   |                      ^ value moved here, in previous iteration of loop
+   |
+help: consider borrowing `f`
+   |
+LL |         takes_fnonce(&f);
+   |                      +
+
+error[E0382]: use of moved value: `m`
+  --> $DIR/borrow-closures-instead-of-move.rs:14:18
+   |
+LL | fn takes_fn_mut(m: impl FnMut()) {
+   |                 - move occurs because `m` has type `impl FnMut()`, which does not implement the `Copy` trait
+LL |     if maybe() {
+LL |         takes_fnonce(m);
+   |                      - value moved here
+...
+LL |     takes_fnonce(m);
+   |                  ^ value used here after move
+   |
+help: if `impl FnMut()` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-closures-instead-of-move.rs:9:20
+   |
+LL | fn takes_fn_mut(m: impl FnMut()) {
+   |                    ^^^^^^^^^^^^ consider constraining this type parameter with `Clone`
+LL |     if maybe() {
+LL |         takes_fnonce(m);
+   |                      - you could clone this value
+help: consider mutably borrowing `m`
+   |
+LL |         takes_fnonce(&mut m);
+   |                      ++++
+
+error[E0382]: borrow of moved value: `closure`
+  --> $DIR/borrow-closures-instead-of-move.rs:25:5
+   |
+LL |     takes_fnonce(closure);
+   |                  ------- value moved here
+LL |
+LL |     closure();
+   |     ^^^^^^^ value borrowed here after move
+   |
+note: closure cannot be moved more than once as it is not `Copy` due to moving the variable `x` out of its environment
+  --> $DIR/borrow-closures-instead-of-move.rs:21:9
+   |
+LL |         x += 1;
+   |         ^
+help: consider mutably borrowing `closure`
+   |
+LL |     takes_fnonce(&mut closure);
+   |                  ++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

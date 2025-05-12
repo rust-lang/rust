@@ -1,0 +1,16 @@
+error[E0277]: cannot multiply `i32` by `f32`
+  --> $DIR/binop-mul-i32-f32.rs:2:7
+   |
+LL |     x * y
+   |       ^ no implementation for `i32 * f32`
+   |
+   = help: the trait `Mul<f32>` is not implemented for `i32`
+   = help: the following other types implement trait `Mul<Rhs>`:
+             `&i32` implements `Mul<i32>`
+             `&i32` implements `Mul`
+             `i32` implements `Mul<&i32>`
+             `i32` implements `Mul`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

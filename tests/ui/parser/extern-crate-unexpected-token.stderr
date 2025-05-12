@@ -1,0 +1,13 @@
+error: expected one of `crate` or `{`, found `crte`
+  --> $DIR/extern-crate-unexpected-token.rs:1:8
+   |
+LL | extern crte foo;
+   |        ^^^^ expected one of `crate` or `{`
+   |
+help: there is a keyword `crate` with a similar name
+   |
+LL | extern crate foo;
+   |          +
+
+error: aborting due to 1 previous error
+

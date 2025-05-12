@@ -1,0 +1,10 @@
+error: associated function in `impl` without body
+  --> $DIR/impl-item-fn-no-body-semantic-fail.rs:6:5
+   |
+LL |     fn f();
+   |     ^^^^^^-
+   |           |
+   |           help: provide a definition for the function: `{ <body> }`
+
+error: aborting due to 1 previous error
+

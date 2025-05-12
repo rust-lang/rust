@@ -1,0 +1,77 @@
+error[E0573]: expected type, found variant `Mode::Cool`
+  --> $DIR/assoc_const_eq_diagnostic.rs:11:35
+   |
+LL | pub trait CoolStuff: Parse<MODE = Mode::Cool> {}
+   |                                   ^^^^^^^^^^
+   |                                   |
+   |                                   not a type
+   |                                   help: try using the variant's enum: `Mode`
+
+error[E0573]: expected type, found variant `Mode::Cool`
+  --> $DIR/assoc_const_eq_diagnostic.rs:17:17
+   |
+LL | fn no_help() -> Mode::Cool {}
+   |                 ^^^^^^^^^^
+   |                 |
+   |                 not a type
+   |                 help: try using the variant's enum: `Mode`
+
+error: expected constant, found type
+  --> $DIR/assoc_const_eq_diagnostic.rs:11:35
+   |
+LL | pub trait CoolStuff: Parse<MODE = Mode::Cool> {}
+   |                            ----   ^^^^^^^^^^ unexpected type
+   |                            |
+   |                            expected a constant because of this associated constant
+   |
+note: the associated constant is defined here
+  --> $DIR/assoc_const_eq_diagnostic.rs:8:5
+   |
+LL |     const MODE: Mode;
+   |     ^^^^^^^^^^^^^^^^
+help: consider adding braces here
+   |
+LL | pub trait CoolStuff: Parse<MODE = { Mode::Cool }> {}
+   |                                   +            +
+
+error: expected constant, found type
+  --> $DIR/assoc_const_eq_diagnostic.rs:11:35
+   |
+LL | pub trait CoolStuff: Parse<MODE = Mode::Cool> {}
+   |                            ----   ^^^^^^^^^^ unexpected type
+   |                            |
+   |                            expected a constant because of this associated constant
+   |
+note: the associated constant is defined here
+  --> $DIR/assoc_const_eq_diagnostic.rs:8:5
+   |
+LL |     const MODE: Mode;
+   |     ^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding braces here
+   |
+LL | pub trait CoolStuff: Parse<MODE = { Mode::Cool }> {}
+   |                                   +            +
+
+error: expected constant, found type
+  --> $DIR/assoc_const_eq_diagnostic.rs:11:35
+   |
+LL | pub trait CoolStuff: Parse<MODE = Mode::Cool> {}
+   |                            ----   ^^^^^^^^^^ unexpected type
+   |                            |
+   |                            expected a constant because of this associated constant
+   |
+note: the associated constant is defined here
+  --> $DIR/assoc_const_eq_diagnostic.rs:8:5
+   |
+LL |     const MODE: Mode;
+   |     ^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding braces here
+   |
+LL | pub trait CoolStuff: Parse<MODE = { Mode::Cool }> {}
+   |                                   +            +
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0573`.

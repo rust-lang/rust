@@ -1,0 +1,10 @@
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `,`
+  --> $DIR/issue-72253.rs:4:9
+   |
+LL |         .arg("1")
+   |                  - expected one of `.`, `;`, `?`, `else`, or an operator
+LL |         ,arg("2")
+   |         ^ unexpected token
+
+error: aborting due to 1 previous error
+

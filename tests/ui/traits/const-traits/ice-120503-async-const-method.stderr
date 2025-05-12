@@ -1,0 +1,53 @@
+error: expected one of `extern`, `fn`, `safe`, or `unsafe`, found keyword `const`
+  --> $DIR/ice-120503-async-const-method.rs:6:11
+   |
+LL |     async const fn bar(&self) {
+   |     ------^^^^^
+   |     |     |
+   |     |     expected one of `extern`, `fn`, `safe`, or `unsafe`
+   |     help: `const` must come before `async`: `const async`
+   |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+
+error[E0379]: functions in trait impls cannot be declared const
+  --> $DIR/ice-120503-async-const-method.rs:6:11
+   |
+LL |     async const fn bar(&self) {
+   |           ^^^^^-
+   |           |
+   |           functions in trait impls cannot be const
+   |           help: remove the `const`
+
+error: functions cannot be both `const` and `async`
+  --> $DIR/ice-120503-async-const-method.rs:6:5
+   |
+LL |       async const fn bar(&self) {
+   |       -^^^^ ^^^^^ `const` because of this
+   |       |
+   |  _____`async` because of this
+   | |
+...  |
+LL | |     }
+   | |_____-
+
+error[E0407]: method `bar` is not a member of trait `MyTrait`
+  --> $DIR/ice-120503-async-const-method.rs:6:5
+   |
+LL | /     async const fn bar(&self) {
+...  |
+LL | |     }
+   | |_____^ not a member of trait `MyTrait`
+
+error[E0425]: cannot find function `main8` in this scope
+  --> $DIR/ice-120503-async-const-method.rs:11:9
+   |
+LL |         main8().await;
+   |         ^^^^^ help: a function with a similar name exists: `main`
+...
+LL | fn main() {}
+   | --------- similarly named function `main` defined here
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0379, E0407, E0425.
+For more information about an error, try `rustc --explain E0379`.

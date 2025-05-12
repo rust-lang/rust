@@ -1,0 +1,17 @@
+// MIR for `box_to_raw_mut` after SimplifyCfg-pre-optimizations
+
+fn box_to_raw_mut(_1: &mut Box<i32>) -> *mut i32 {
+    debug x => _1;
+    let mut _0: *mut i32;
+    let mut _2: std::boxed::Box<i32>;
+    let mut _3: *const i32;
+
+    bb0: {
+        Retag([fn entry] _1);
+        _2 = deref_copy (*_1);
+        _3 = copy ((_2.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>) as *const i32 (Transmute);
+        _0 = &raw mut (*_3);
+        Retag([raw] _0);
+        return;
+    }
+}

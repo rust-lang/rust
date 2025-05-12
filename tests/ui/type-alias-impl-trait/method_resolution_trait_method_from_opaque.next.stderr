@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/method_resolution_trait_method_from_opaque.rs:28:9
+   |
+LL |         self.bar.next().unwrap();
+   |         ^^^^^^^^ cannot infer type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

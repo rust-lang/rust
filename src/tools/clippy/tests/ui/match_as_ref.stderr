@@ -1,0 +1,37 @@
+error: use `as_ref()` instead
+  --> tests/ui/match_as_ref.rs:6:33
+   |
+LL |       let borrowed: Option<&()> = match owned {
+   |  _________________________________^
+LL | |
+LL | |         None => None,
+LL | |         Some(ref v) => Some(v),
+LL | |     };
+   | |_____^ help: try: `owned.as_ref()`
+   |
+   = note: `-D clippy::match-as-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_as_ref)]`
+
+error: use `as_mut()` instead
+  --> tests/ui/match_as_ref.rs:13:39
+   |
+LL |       let borrow_mut: Option<&mut ()> = match mut_owned {
+   |  _______________________________________^
+LL | |
+LL | |         None => None,
+LL | |         Some(ref mut v) => Some(v),
+LL | |     };
+   | |_____^ help: try: `mut_owned.as_mut()`
+
+error: use `as_ref()` instead
+  --> tests/ui/match_as_ref.rs:32:13
+   |
+LL | /             match self.source {
+LL | |
+LL | |                 Some(ref s) => Some(s),
+LL | |                 None => None,
+LL | |             }
+   | |_____________^ help: try: `self.source.as_ref().map(|x| x as _)`
+
+error: aborting due to 3 previous errors
+

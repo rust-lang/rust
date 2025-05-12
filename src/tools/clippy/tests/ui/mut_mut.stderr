@@ -1,0 +1,61 @@
+error: generally you want to avoid `&mut &mut _` if possible
+  --> tests/ui/mut_mut.rs:15:11
+   |
+LL | fn fun(x: &mut &mut u32) -> bool {
+   |           ^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::mut-mut` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mut_mut)]`
+
+error: generally you want to avoid `&mut &mut _` if possible
+  --> tests/ui/mut_mut.rs:33:17
+   |
+LL |     let mut x = &mut &mut 1u32;
+   |                 ^^^^^^^^^^^^^^
+
+error: generally you want to avoid `&mut &mut _` if possible
+  --> tests/ui/mut_mut.rs:55:25
+   |
+LL |     let mut z = inline!(&mut $(&mut 3u32));
+   |                         ^
+   |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: this expression mutably borrows a mutable reference. Consider reborrowing
+  --> tests/ui/mut_mut.rs:36:21
+   |
+LL |         let mut y = &mut x;
+   |                     ^^^^^^
+
+error: generally you want to avoid `&mut &mut _` if possible
+  --> tests/ui/mut_mut.rs:41:32
+   |
+LL |         let y: &mut &mut u32 = &mut &mut 2;
+   |                                ^^^^^^^^^^^
+
+error: generally you want to avoid `&mut &mut _` if possible
+  --> tests/ui/mut_mut.rs:41:16
+   |
+LL |         let y: &mut &mut u32 = &mut &mut 2;
+   |                ^^^^^^^^^^^^^
+
+error: generally you want to avoid `&mut &mut _` if possible
+  --> tests/ui/mut_mut.rs:48:37
+   |
+LL |         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
+   |                                     ^^^^^^^^^^^^^^^^
+
+error: generally you want to avoid `&mut &mut _` if possible
+  --> tests/ui/mut_mut.rs:48:16
+   |
+LL |         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
+   |                ^^^^^^^^^^^^^^^^^^
+
+error: generally you want to avoid `&mut &mut _` if possible
+  --> tests/ui/mut_mut.rs:48:21
+   |
+LL |         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
+   |                     ^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

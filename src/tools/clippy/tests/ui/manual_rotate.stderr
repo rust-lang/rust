@@ -1,0 +1,71 @@
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:8:16
+   |
+LL |     let y_u8 = (x_u8 >> 3) | (x_u8 << 5);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x_u8.rotate_right(3)`
+   |
+   = note: `-D clippy::manual-rotate` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_rotate)]`
+
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:10:17
+   |
+LL |     let y_u16 = (x_u16 >> 7) | (x_u16 << 9);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x_u16.rotate_right(7)`
+
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:12:17
+   |
+LL |     let y_u32 = (x_u32 >> 8) | (x_u32 << 24);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x_u32.rotate_right(8)`
+
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:14:17
+   |
+LL |     let y_u64 = (x_u64 >> 9) | (x_u64 << 55);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x_u64.rotate_right(9)`
+
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:16:16
+   |
+LL |     let y_i8 = (x_i8 >> 3) | (x_i8 << 5);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x_i8.rotate_right(3)`
+
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:18:17
+   |
+LL |     let y_i16 = (x_i16 >> 7) | (x_i16 << 9);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x_i16.rotate_right(7)`
+
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:20:17
+   |
+LL |     let y_i32 = (x_i32 >> 8) | (x_i32 << 24);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x_i32.rotate_right(8)`
+
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:22:17
+   |
+LL |     let y_i64 = (x_i64 >> 9) | (x_i64 << 55);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x_i64.rotate_right(9)`
+
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:25:22
+   |
+LL |     let y_u32_plus = (x_u32 >> 8) + (x_u32 << 24);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x_u32.rotate_right(8)`
+
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:28:25
+   |
+LL |     let y_u32_complex = ((x_u32 | 3256) >> 8) | ((x_u32 | 3256) << 24);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `(x_u32 | 3256).rotate_right(8)`
+
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:30:20
+   |
+LL |     let y_u64_as = (x_u32 as u64 >> 8) | ((x_u32 as u64) << 56);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `(x_u32 as u64).rotate_right(8)`
+
+error: aborting due to 11 previous errors
+

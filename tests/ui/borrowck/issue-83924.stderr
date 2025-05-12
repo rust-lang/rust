@@ -1,0 +1,22 @@
+error[E0382]: use of moved value: `v`
+  --> $DIR/issue-83924.rs:15:14
+   |
+LL |     let v = &mut values;
+   |         - move occurs because `v` has type `&mut Vec<i32>`, which does not implement the `Copy` trait
+...
+LL |     for n in v {
+   |              - `v` moved due to this implicit call to `.into_iter()`
+...
+LL |     for n in v {
+   |              ^ value used here after move
+   |
+note: `into_iter` takes ownership of the receiver `self`, which moves `v`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: consider creating a fresh reborrow of `v` here
+   |
+LL |     for n in &mut *v {
+   |              ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

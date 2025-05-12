@@ -1,0 +1,53 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `st`
+  --> $DIR/crate-or-module-typo.rs:3:5
+   |
+LL | use st::cell::Cell;
+   |     ^^ use of unresolved module or unlinked crate `st`
+   |
+help: there is a crate or module with a similar name
+   |
+LL | use std::cell::Cell;
+   |       +
+
+error[E0432]: unresolved import `bas`
+  --> $DIR/crate-or-module-typo.rs:11:5
+   |
+LL | use bas::bar;
+   |     ^^^ use of unresolved module or unlinked crate `bas`
+   |
+help: there is a crate or module with a similar name
+   |
+LL - use bas::bar;
+LL + use bar::bar;
+   |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `st`
+  --> $DIR/crate-or-module-typo.rs:14:10
+   |
+LL |     bar: st::cell::Cell<bool>
+   |          ^^ use of unresolved module or unlinked crate `st`
+   |
+help: there is a crate or module with a similar name
+   |
+LL |     bar: std::cell::Cell<bool>
+   |            +
+help: consider importing this module
+   |
+LL + use std::cell;
+   |
+help: if you import `cell`, refer to it directly
+   |
+LL -     bar: st::cell::Cell<bool>
+LL +     bar: cell::Cell<bool>
+   |
+
+error[E0433]: failed to resolve: function `bar` is not a crate or module
+  --> $DIR/crate-or-module-typo.rs:6:20
+   |
+LL |     pub fn bar() { bar::baz(); }
+   |                    ^^^ function `bar` is not a crate or module
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

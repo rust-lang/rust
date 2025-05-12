@@ -1,0 +1,40 @@
+error[E0423]: expected value, found builtin type `u16`
+  --> $DIR/resolve-primitive-fallback.rs:3:23
+   |
+LL |     std::mem::size_of(u16);
+   |                       ^^^ not a value
+
+error[E0412]: cannot find type `u8` in the crate root
+  --> $DIR/resolve-primitive-fallback.rs:8:14
+   |
+LL |     let _: ::u8;
+   |              ^^ not found in the crate root
+   |
+help: consider importing this builtin type
+   |
+LL + use std::primitive::u8;
+   |
+help: if you import `u8`, refer to it directly
+   |
+LL -     let _: ::u8;
+LL +     let _: u8;
+   |
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/resolve-primitive-fallback.rs:3:5
+   |
+LL |     std::mem::size_of(u16);
+   |     ^^^^^^^^^^^^^^^^^ --- unexpected argument
+   |
+note: function defined here
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+help: remove the extra argument
+   |
+LL -     std::mem::size_of(u16);
+LL +     std::mem::size_of();
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0061, E0412, E0423.
+For more information about an error, try `rustc --explain E0061`.

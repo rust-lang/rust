@@ -1,0 +1,9 @@
+error[E0779]: invalid instruction set specified
+  --> $DIR/E0779.rs:1:1
+   |
+LL | #[instruction_set(arm::magic)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0779`.

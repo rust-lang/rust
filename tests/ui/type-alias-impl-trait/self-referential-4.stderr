@@ -1,0 +1,36 @@
+error[E0277]: can't compare `&i32` with `Bar<'b, 'static>`
+  --> $DIR/self-referential-4.rs:6:31
+   |
+LL | fn bar<'a, 'b>(i: &'a i32) -> Bar<'a, 'b> {
+   |                               ^^^^^^^^^^^ no implementation for `&i32 == Bar<'b, 'static>`
+LL |     i
+   |     - return type was inferred to be `&i32` here
+   |
+   = help: the trait `PartialEq<Bar<'b, 'static>>` is not implemented for `&i32`
+   = help: the trait `PartialEq` is implemented for `i32`
+
+error[E0277]: can't compare `&i32` with `Foo<'static, 'b>`
+  --> $DIR/self-referential-4.rs:13:31
+   |
+LL | fn foo<'a, 'b>(i: &'a i32) -> Foo<'a, 'b> {
+   |                               ^^^^^^^^^^^ no implementation for `&i32 == Foo<'static, 'b>`
+LL |     i
+   |     - return type was inferred to be `&i32` here
+   |
+   = help: the trait `PartialEq<Foo<'static, 'b>>` is not implemented for `&i32`
+   = help: the trait `PartialEq` is implemented for `i32`
+
+error[E0277]: can't compare `&i32` with `Moo<'static, 'a>`
+  --> $DIR/self-referential-4.rs:20:31
+   |
+LL | fn moo<'a, 'b>(i: &'a i32) -> Moo<'a, 'b> {
+   |                               ^^^^^^^^^^^ no implementation for `&i32 == Moo<'static, 'a>`
+LL |     i
+   |     - return type was inferred to be `&i32` here
+   |
+   = help: the trait `PartialEq<Moo<'static, 'a>>` is not implemented for `&i32`
+   = help: the trait `PartialEq` is implemented for `i32`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

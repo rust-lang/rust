@@ -1,0 +1,64 @@
+error: this will panic at run-time if the environment variable doesn't exist at compile-time
+  --> tests/ui/option_env_unwrap.rs:10:13
+   |
+LL |     let _ = option_env!("PATH").unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the `env!` macro instead
+   = note: `-D clippy::option-env-unwrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::option_env_unwrap)]`
+
+error: this will panic at run-time if the environment variable doesn't exist at compile-time
+  --> tests/ui/option_env_unwrap.rs:12:13
+   |
+LL |     let _ = option_env!("PATH").expect("environment variable PATH isn't set");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the `env!` macro instead
+
+error: this will panic at run-time if the environment variable doesn't exist at compile-time
+  --> tests/ui/option_env_unwrap.rs:14:13
+   |
+LL |     let _ = option_env!("__Y__do_not_use").unwrap(); // This test only works if you don't have a __Y__do_not_use env variable in your env...
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the `env!` macro instead
+
+error: this will panic at run-time if the environment variable doesn't exist at compile-time
+  --> tests/ui/option_env_unwrap.rs:17:21
+   |
+LL |     let _ = inline!(option_env!($"PATH").unwrap());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the `env!` macro instead
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: this will panic at run-time if the environment variable doesn't exist at compile-time
+  --> tests/ui/option_env_unwrap.rs:19:21
+   |
+LL |     let _ = inline!(option_env!($"PATH").expect($"environment variable PATH isn't set"));
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the `env!` macro instead
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: this will panic at run-time if the environment variable doesn't exist at compile-time
+  --> tests/ui/option_env_unwrap.rs:21:13
+   |
+LL |     let _ = external!(option_env!($"PATH").unwrap());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the `env!` macro instead
+   = note: this error originates in the macro `external` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: this will panic at run-time if the environment variable doesn't exist at compile-time
+  --> tests/ui/option_env_unwrap.rs:23:13
+   |
+LL |     let _ = external!(option_env!($"PATH").expect($"environment variable PATH isn't set"));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the `env!` macro instead
+   = note: this error originates in the macro `external` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 7 previous errors
+

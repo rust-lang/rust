@@ -1,0 +1,18 @@
+error: illegal ordinal format in `link_ordinal`
+  --> $DIR/link-ordinal-invalid-format.rs:3:5
+   |
+LL |     #[link_ordinal("JustMonika")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: an unsuffixed integer value, e.g., `1`, is expected
+
+error: illegal ordinal format in `link_ordinal`
+  --> $DIR/link-ordinal-invalid-format.rs:6:5
+   |
+LL |     #[link_ordinal("JustMonika")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: an unsuffixed integer value, e.g., `1`, is expected
+
+error: aborting due to 2 previous errors
+

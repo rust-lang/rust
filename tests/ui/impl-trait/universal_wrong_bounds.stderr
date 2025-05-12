@@ -1,0 +1,25 @@
+error[E0404]: expected trait, found derive macro `Debug`
+  --> $DIR/universal_wrong_bounds.rs:9:24
+   |
+LL | fn wants_debug(g: impl Debug) { }
+   |                        ^^^^^ not a trait
+   |
+help: consider importing this trait instead
+   |
+LL + use std::fmt::Debug;
+   |
+
+error[E0404]: expected trait, found derive macro `Debug`
+  --> $DIR/universal_wrong_bounds.rs:10:26
+   |
+LL | fn wants_display(g: impl Debug) { }
+   |                          ^^^^^ not a trait
+   |
+help: consider importing this trait instead
+   |
+LL + use std::fmt::Debug;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0404`.

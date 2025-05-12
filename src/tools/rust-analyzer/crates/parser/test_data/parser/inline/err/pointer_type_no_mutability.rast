@@ -1,0 +1,17 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PTR_TYPE
+      STAR "*"
+      TUPLE_TYPE
+        L_PAREN "("
+        R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 10: expected mut or const in raw pointer type (use `*mut T` or `*const T` as appropriate)

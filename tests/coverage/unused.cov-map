@@ -1,0 +1,112 @@
+Function name: unused::foo::<f32>
+Raw bytes (50): 0x[01, 01, 03, 05, 01, 05, 0b, 01, 09, 08, 01, 03, 01, 00, 10, 01, 01, 09, 00, 0e, 01, 00, 11, 00, 12, 05, 01, 0b, 00, 11, 02, 01, 09, 00, 0f, 06, 00, 13, 00, 19, 02, 01, 09, 00, 0f, 01, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/unused.rs
+Number of expressions: 3
+- expression 0 operands: lhs = Counter(1), rhs = Counter(0)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(2, Add)
+- expression 2 operands: lhs = Counter(0), rhs = Counter(2)
+Number of file 0 mappings: 8
+- Code(Counter(0)) at (prev + 3, 1) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 17) to (start + 0, 18)
+- Code(Counter(1)) at (prev + 1, 11) to (start + 0, 17)
+- Code(Expression(0, Sub)) at (prev + 1, 9) to (start + 0, 15)
+    = (c1 - c0)
+- Code(Expression(1, Sub)) at (prev + 0, 19) to (start + 0, 25)
+    = (c1 - (c0 + c2))
+- Code(Expression(0, Sub)) at (prev + 1, 9) to (start + 0, 15)
+    = (c1 - c0)
+- Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: unused::foo::<u32>
+Raw bytes (50): 0x[01, 01, 03, 05, 01, 05, 0b, 01, 09, 08, 01, 03, 01, 00, 10, 01, 01, 09, 00, 0e, 01, 00, 11, 00, 12, 05, 01, 0b, 00, 11, 02, 01, 09, 00, 0f, 06, 00, 13, 00, 19, 02, 01, 09, 00, 0f, 01, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/unused.rs
+Number of expressions: 3
+- expression 0 operands: lhs = Counter(1), rhs = Counter(0)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(2, Add)
+- expression 2 operands: lhs = Counter(0), rhs = Counter(2)
+Number of file 0 mappings: 8
+- Code(Counter(0)) at (prev + 3, 1) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 17) to (start + 0, 18)
+- Code(Counter(1)) at (prev + 1, 11) to (start + 0, 17)
+- Code(Expression(0, Sub)) at (prev + 1, 9) to (start + 0, 15)
+    = (c1 - c0)
+- Code(Expression(1, Sub)) at (prev + 0, 19) to (start + 0, 25)
+    = (c1 - (c0 + c2))
+- Code(Expression(0, Sub)) at (prev + 1, 9) to (start + 0, 15)
+    = (c1 - c0)
+- Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: unused::main
+Raw bytes (29): 0x[01, 01, 00, 05, 01, 25, 01, 00, 1c, 01, 01, 05, 00, 0f, 01, 01, 05, 00, 0f, 01, 01, 05, 00, 0b, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/unused.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 37, 1) to (start + 0, 28)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 11)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: unused::unused_func (unused)
+Raw bytes (29): 0x[01, 01, 00, 05, 00, 13, 01, 00, 1b, 00, 01, 08, 00, 0e, 00, 00, 0f, 02, 06, 00, 02, 05, 00, 06, 00, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/unused.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Zero) at (prev + 19, 1) to (start + 0, 27)
+- Code(Zero) at (prev + 1, 8) to (start + 0, 14)
+- Code(Zero) at (prev + 0, 15) to (start + 2, 6)
+- Code(Zero) at (prev + 2, 5) to (start + 0, 6)
+- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: (none)
+
+Function name: unused::unused_func2 (unused)
+Raw bytes (29): 0x[01, 01, 00, 05, 00, 19, 01, 00, 1c, 00, 01, 08, 00, 0e, 00, 00, 0f, 02, 06, 00, 02, 05, 00, 06, 00, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/unused.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Zero) at (prev + 25, 1) to (start + 0, 28)
+- Code(Zero) at (prev + 1, 8) to (start + 0, 14)
+- Code(Zero) at (prev + 0, 15) to (start + 2, 6)
+- Code(Zero) at (prev + 2, 5) to (start + 0, 6)
+- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: (none)
+
+Function name: unused::unused_func3 (unused)
+Raw bytes (29): 0x[01, 01, 00, 05, 00, 1f, 01, 00, 1c, 00, 01, 08, 00, 0e, 00, 00, 0f, 02, 06, 00, 02, 05, 00, 06, 00, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/unused.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Zero) at (prev + 31, 1) to (start + 0, 28)
+- Code(Zero) at (prev + 1, 8) to (start + 0, 14)
+- Code(Zero) at (prev + 0, 15) to (start + 2, 6)
+- Code(Zero) at (prev + 2, 5) to (start + 0, 6)
+- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: (none)
+
+Function name: unused::unused_template_func::<_> (unused)
+Raw bytes (44): 0x[01, 01, 00, 08, 00, 0b, 01, 00, 21, 00, 01, 09, 00, 0e, 00, 00, 11, 00, 12, 00, 01, 0b, 00, 11, 00, 01, 09, 00, 0f, 00, 00, 13, 00, 19, 00, 01, 09, 00, 0f, 00, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/unused.rs
+Number of expressions: 0
+Number of file 0 mappings: 8
+- Code(Zero) at (prev + 11, 1) to (start + 0, 33)
+- Code(Zero) at (prev + 1, 9) to (start + 0, 14)
+- Code(Zero) at (prev + 0, 17) to (start + 0, 18)
+- Code(Zero) at (prev + 1, 11) to (start + 0, 17)
+- Code(Zero) at (prev + 1, 9) to (start + 0, 15)
+- Code(Zero) at (prev + 0, 19) to (start + 0, 25)
+- Code(Zero) at (prev + 1, 9) to (start + 0, 15)
+- Code(Zero) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: (none)
+

@@ -1,0 +1,46 @@
+   LL|       |#![allow(unused_assignments, unused_variables)]
+   LL|       |
+   LL|       |#[rustfmt::skip]
+   LL|      1|fn main() {
+   LL|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   LL|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   LL|       |    // dependent conditions.
+   LL|      1|    let is_true = std::env::args().len() == 1;
+   LL|       |
+   LL|      1|    let mut countdown = 1;
+   LL|      1|    if is_true {
+   LL|      1|        countdown = 0;
+   LL|      1|    }
+                  ^0
+   LL|       |
+   LL|       |    for
+   LL|       |        _
+   LL|       |    in
+   LL|      3|        0..2
+   LL|       |    {
+   LL|       |        let z
+   LL|       |        ;
+   LL|       |        match
+   LL|      2|            countdown
+   LL|       |        {
+   LL|      1|            x
+   LL|       |            if
+   LL|      2|                x
+   LL|      2|                    <
+   LL|      2|                1
+   LL|       |            =>
+   LL|      1|            {
+   LL|      1|                z = countdown
+   LL|      1|                ;
+   LL|      1|                let y = countdown
+   LL|      1|                ;
+   LL|      1|                countdown = 10
+   LL|      1|                ;
+   LL|      1|            }
+   LL|       |            _
+   LL|       |            =>
+   LL|      1|            {}
+   LL|       |        }
+   LL|       |    }
+   LL|      1|}
+

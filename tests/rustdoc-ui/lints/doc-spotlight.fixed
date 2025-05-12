@@ -1,0 +1,6 @@
+//@ run-rustfix
+#![feature(doc_notable_trait)]
+
+#[doc(notable_trait)]
+//~^ ERROR unknown `doc` attribute `spotlight`
+trait MyTrait {}

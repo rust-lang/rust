@@ -1,0 +1,473 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "92"
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              MATCH_ARM
+                RANGE_PAT
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "0"
+                  WHITESPACE " "
+                  DOT3 "..."
+                  WHITESPACE " "
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "100"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                RANGE_PAT
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "101"
+                  WHITESPACE " "
+                  DOT2EQ "..="
+                  WHITESPACE " "
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "200"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                RANGE_PAT
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "200"
+                  WHITESPACE " "
+                  DOT2 ".."
+                  WHITESPACE " "
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "301"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                RANGE_PAT
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "302"
+                  WHITESPACE " "
+                  DOT2 ".."
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                RANGE_PAT
+                  DOT2EQ "..="
+                  WHITESPACE " "
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "303"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Some"
+              ARG_LIST
+                L_PAREN "("
+                CAST_EXPR
+                  LITERAL
+                    INT_NUMBER "10"
+                  WHITESPACE " "
+                  AS_KW "as"
+                  WHITESPACE " "
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "u8"
+                R_PAREN ")"
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              MATCH_ARM
+                OR_PAT
+                  TUPLE_STRUCT_PAT
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Some"
+                    L_PAREN "("
+                    LITERAL_PAT
+                      LITERAL
+                        INT_NUMBER "0"
+                    R_PAREN ")"
+                  WHITESPACE " "
+                  PIPE "|"
+                  WHITESPACE " "
+                  IDENT_PAT
+                    NAME
+                      IDENT "None"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                TUPLE_STRUCT_PAT
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Some"
+                  L_PAREN "("
+                  RANGE_PAT
+                    LITERAL_PAT
+                      LITERAL
+                        INT_NUMBER "1"
+                    DOT2 ".."
+                  R_PAREN ")"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                TUPLE_STRUCT_PAT
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Some"
+                  L_PAREN "("
+                  RANGE_PAT
+                    DOT2EQ "..="
+                    LITERAL_PAT
+                      LITERAL
+                        INT_NUMBER "2"
+                  R_PAREN ")"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              R_PAREN ")"
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              MATCH_ARM
+                RECORD_PAT
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "S"
+                  WHITESPACE " "
+                  RECORD_PAT_FIELD_LIST
+                    L_CURLY "{"
+                    WHITESPACE " "
+                    RECORD_PAT_FIELD
+                      NAME_REF
+                        IDENT "a"
+                      COLON ":"
+                      WHITESPACE " "
+                      LITERAL_PAT
+                        LITERAL
+                          INT_NUMBER "0"
+                    WHITESPACE " "
+                    R_CURLY "}"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                RECORD_PAT
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "S"
+                  WHITESPACE " "
+                  RECORD_PAT_FIELD_LIST
+                    L_CURLY "{"
+                    WHITESPACE " "
+                    RECORD_PAT_FIELD
+                      NAME_REF
+                        IDENT "a"
+                      COLON ":"
+                      WHITESPACE " "
+                      RANGE_PAT
+                        LITERAL_PAT
+                          LITERAL
+                            INT_NUMBER "1"
+                        DOT2 ".."
+                    WHITESPACE " "
+                    R_CURLY "}"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                RECORD_PAT
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "S"
+                  WHITESPACE " "
+                  RECORD_PAT_FIELD_LIST
+                    L_CURLY "{"
+                    WHITESPACE " "
+                    RECORD_PAT_FIELD
+                      NAME_REF
+                        IDENT "a"
+                      COLON ":"
+                      WHITESPACE " "
+                      RANGE_PAT
+                        DOT2EQ "..="
+                        LITERAL_PAT
+                          LITERAL
+                            INT_NUMBER "2"
+                    WHITESPACE " "
+                    R_CURLY "}"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              R_PAREN ")"
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              MATCH_ARM
+                SLICE_PAT
+                  L_BRACK "["
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "0"
+                  R_BRACK "]"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                SLICE_PAT
+                  L_BRACK "["
+                  RANGE_PAT
+                    LITERAL_PAT
+                      LITERAL
+                        INT_NUMBER "1"
+                    DOT2 ".."
+                  R_BRACK "]"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                SLICE_PAT
+                  L_BRACK "["
+                  RANGE_PAT
+                    DOT2EQ "..="
+                    LITERAL_PAT
+                      LITERAL
+                        INT_NUMBER "2"
+                  R_BRACK "]"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n\n    "
+        MATCH_EXPR
+          MATCH_KW "match"
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            CAST_EXPR
+              LITERAL
+                INT_NUMBER "10"
+              WHITESPACE " "
+              AS_KW "as"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "u8"
+            COMMA ","
+            WHITESPACE " "
+            CAST_EXPR
+              LITERAL
+                INT_NUMBER "5"
+              WHITESPACE " "
+              AS_KW "as"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "u8"
+            R_PAREN ")"
+          WHITESPACE " "
+          MATCH_ARM_LIST
+            L_CURLY "{"
+            WHITESPACE "\n        "
+            MATCH_ARM
+              TUPLE_PAT
+                L_PAREN "("
+                LITERAL_PAT
+                  LITERAL
+                    INT_NUMBER "0"
+                COMMA ","
+                WHITESPACE " "
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+                R_PAREN ")"
+              WHITESPACE " "
+              FAT_ARROW "=>"
+              WHITESPACE " "
+              TUPLE_EXPR
+                L_PAREN "("
+                R_PAREN ")"
+              COMMA ","
+            WHITESPACE "\n        "
+            MATCH_ARM
+              TUPLE_PAT
+                L_PAREN "("
+                RANGE_PAT
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "1"
+                  DOT2 ".."
+                COMMA ","
+                WHITESPACE " "
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+                R_PAREN ")"
+              WHITESPACE " "
+              FAT_ARROW "=>"
+              WHITESPACE " "
+              TUPLE_EXPR
+                L_PAREN "("
+                R_PAREN ")"
+              COMMA ","
+            WHITESPACE "\n        "
+            MATCH_ARM
+              TUPLE_PAT
+                L_PAREN "("
+                RANGE_PAT
+                  DOT2EQ "..="
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "2"
+                COMMA ","
+                WHITESPACE " "
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+                R_PAREN ")"
+              WHITESPACE " "
+              FAT_ARROW "=>"
+              WHITESPACE " "
+              TUPLE_EXPR
+                L_PAREN "("
+                R_PAREN ")"
+              COMMA ","
+            WHITESPACE "\n    "
+            R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

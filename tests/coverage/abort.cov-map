@@ -1,0 +1,56 @@
+Function name: abort::main
+Raw bytes (98): 0x[01, 01, 07, 05, 01, 05, 0b, 01, 09, 05, 13, 01, 0d, 05, 1b, 01, 11, 10, 01, 0d, 01, 00, 1c, 01, 01, 09, 00, 16, 01, 00, 19, 00, 1b, 05, 01, 0b, 00, 18, 02, 01, 0c, 00, 19, 09, 00, 1a, 02, 0a, 06, 02, 09, 00, 0a, 02, 02, 0c, 00, 19, 0d, 00, 1a, 00, 31, 0e, 00, 30, 00, 31, 02, 04, 0c, 00, 19, 11, 00, 1a, 00, 31, 16, 00, 30, 00, 31, 02, 01, 09, 00, 17, 01, 02, 05, 00, 0b, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/abort.rs
+Number of expressions: 7
+- expression 0 operands: lhs = Counter(1), rhs = Counter(0)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(2, Add)
+- expression 2 operands: lhs = Counter(0), rhs = Counter(2)
+- expression 3 operands: lhs = Counter(1), rhs = Expression(4, Add)
+- expression 4 operands: lhs = Counter(0), rhs = Counter(3)
+- expression 5 operands: lhs = Counter(1), rhs = Expression(6, Add)
+- expression 6 operands: lhs = Counter(0), rhs = Counter(4)
+Number of file 0 mappings: 16
+- Code(Counter(0)) at (prev + 13, 1) to (start + 0, 28)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 0, 25) to (start + 0, 27)
+- Code(Counter(1)) at (prev + 1, 11) to (start + 0, 24)
+- Code(Expression(0, Sub)) at (prev + 1, 12) to (start + 0, 25)
+    = (c1 - c0)
+- Code(Counter(2)) at (prev + 0, 26) to (start + 2, 10)
+- Code(Expression(1, Sub)) at (prev + 2, 9) to (start + 0, 10)
+    = (c1 - (c0 + c2))
+- Code(Expression(0, Sub)) at (prev + 2, 12) to (start + 0, 25)
+    = (c1 - c0)
+- Code(Counter(3)) at (prev + 0, 26) to (start + 0, 49)
+- Code(Expression(3, Sub)) at (prev + 0, 48) to (start + 0, 49)
+    = (c1 - (c0 + c3))
+- Code(Expression(0, Sub)) at (prev + 4, 12) to (start + 0, 25)
+    = (c1 - c0)
+- Code(Counter(4)) at (prev + 0, 26) to (start + 0, 49)
+- Code(Expression(5, Sub)) at (prev + 0, 48) to (start + 0, 49)
+    = (c1 - (c0 + c4))
+- Code(Expression(0, Sub)) at (prev + 1, 9) to (start + 0, 23)
+    = (c1 - c0)
+- Code(Counter(0)) at (prev + 2, 5) to (start + 0, 11)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c4
+
+Function name: abort::might_abort
+Raw bytes (41): 0x[01, 01, 01, 01, 05, 07, 01, 03, 01, 00, 2e, 01, 01, 08, 00, 14, 05, 01, 09, 00, 11, 05, 00, 12, 00, 1f, 05, 01, 09, 00, 0f, 02, 01, 0c, 02, 06, 02, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/abort.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 7
+- Code(Counter(0)) at (prev + 3, 1) to (start + 0, 46)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 20)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 17)
+- Code(Counter(1)) at (prev + 0, 18) to (start + 0, 31)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 15)
+- Code(Expression(0, Sub)) at (prev + 1, 12) to (start + 2, 6)
+    = (c0 - c1)
+- Code(Expression(0, Sub)) at (prev + 3, 1) to (start + 0, 2)
+    = (c0 - c1)
+Highest counter ID seen: c1
+

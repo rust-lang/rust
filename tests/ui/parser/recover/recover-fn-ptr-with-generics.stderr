@@ -1,0 +1,111 @@
+error: function pointer types may not have generic parameters
+  --> $DIR/recover-fn-ptr-with-generics.rs:2:24
+   |
+LL |     type Predicate = fn<'a>(&'a str) -> bool;
+   |                        ^^^^
+   |
+help: consider moving the lifetime parameter to a `for` parameter list
+   |
+LL -     type Predicate = fn<'a>(&'a str) -> bool;
+LL +     type Predicate = for<'a> fn(&'a str) -> bool;
+   |
+
+error: function pointer types may not have generic parameters
+  --> $DIR/recover-fn-ptr-with-generics.rs:5:23
+   |
+LL |     type Identity = fn<T>(T) -> T;
+   |                       ^^^
+
+error: function pointer types may not have generic parameters
+  --> $DIR/recover-fn-ptr-with-generics.rs:10:14
+   |
+LL |     let _: fn<const N: usize, 'e, Q, 'f>();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider moving the lifetime parameters to a `for` parameter list
+   |
+LL -     let _: fn<const N: usize, 'e, Q, 'f>();
+LL +     let _: for<'e, 'f> fn();
+   |
+
+error: function pointer types may not have generic parameters
+  --> $DIR/recover-fn-ptr-with-generics.rs:13:26
+   |
+LL |     let _: for<'outer> fn<'inner>();
+   |                          ^^^^^^^^
+   |
+help: consider moving the lifetime parameter to the `for` parameter list
+   |
+LL -     let _: for<'outer> fn<'inner>();
+LL +     let _: for<'outer, 'inner> fn();
+   |
+
+error: function pointer types may not have generic parameters
+  --> $DIR/recover-fn-ptr-with-generics.rs:16:20
+   |
+LL |     let _: for<> fn<'r>();
+   |                    ^^^^
+   |
+help: consider moving the lifetime parameter to the `for` parameter list
+   |
+LL -     let _: for<> fn<'r>();
+LL +     let _: for<'r> fn();
+   |
+
+error: function pointer types may not have generic parameters
+  --> $DIR/recover-fn-ptr-with-generics.rs:19:18
+   |
+LL |     type Hmm = fn<>();
+   |                  ^^
+
+error: function pointer types may not have generic parameters
+  --> $DIR/recover-fn-ptr-with-generics.rs:22:25
+   |
+LL |     let _: extern "C" fn<'a: 'static>();
+   |                         ^^^^^^^^^^^^^
+   |
+help: consider moving the lifetime parameter to a `for` parameter list
+   |
+LL -     let _: extern "C" fn<'a: 'static>();
+LL +     let _: for<'a> extern "C" fn();
+   |
+
+error: function pointer types may not have generic parameters
+  --> $DIR/recover-fn-ptr-with-generics.rs:26:35
+   |
+LL |     let _: for<'any> extern "C" fn<'u>();
+   |                                   ^^^^
+   |
+help: consider moving the lifetime parameter to the `for` parameter list
+   |
+LL -     let _: for<'any> extern "C" fn<'u>();
+LL +     let _: for<'any, 'u> extern "C" fn();
+   |
+
+error: expected identifier, found `>`
+  --> $DIR/recover-fn-ptr-with-generics.rs:29:32
+   |
+LL |     type QuiteBroken = fn<const>();
+   |                                ^ expected identifier
+
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/recover-fn-ptr-with-generics.rs:5:27
+   |
+LL |     type Identity = fn<T>(T) -> T;
+   |                           ^ not found in this scope
+
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/recover-fn-ptr-with-generics.rs:5:33
+   |
+LL |     type Identity = fn<T>(T) -> T;
+   |                                 ^ not found in this scope
+
+error: bounds cannot be used in this context
+  --> $DIR/recover-fn-ptr-with-generics.rs:22:30
+   |
+LL |     let _: extern "C" fn<'a: 'static>();
+   |                              ^^^^^^^
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

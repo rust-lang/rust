@@ -1,0 +1,20 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |//@ aux-build: executor.rs
+   LL|       |extern crate executor;
+   LL|       |
+   LL|      1|fn main() {
+   LL|     17|    for i in 0..16 {
+                      ^16
+   LL|     16|        let future = async {
+   LL|     16|            if i >= 12 {
+   LL|      4|                println!("big");
+   LL|     12|            } else {
+   LL|     12|                println!("small");
+   LL|     12|            }
+   LL|     16|        };
+   LL|     16|        executor::block_on(future);
+   LL|       |    }
+   LL|      1|}
+

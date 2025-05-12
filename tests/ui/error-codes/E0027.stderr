@@ -1,0 +1,79 @@
+error[E0027]: pattern does not mention field `name`
+  --> $DIR/E0027.rs:11:9
+   |
+LL |         Dog { age: x } => {}
+   |         ^^^^^^^^^^^^^^ missing field `name`
+   |
+help: include the missing field in the pattern
+   |
+LL |         Dog { age: x, name } => {}
+   |                     ++++++
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |         Dog { age: x, name: _ } => {}
+   |                     +++++++++
+help: or always ignore missing fields here
+   |
+LL |         Dog { age: x, .. } => {}
+   |                     ++++
+
+error[E0027]: pattern does not mention field `age`
+  --> $DIR/E0027.rs:15:9
+   |
+LL |         Dog { name: x, } => {}
+   |         ^^^^^^^^^^^^^^^^ missing field `age`
+   |
+help: include the missing field in the pattern
+   |
+LL |         Dog { name: x, age } => {}
+   |                        +++
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |         Dog { name: x, age: _ } => {}
+   |                        ++++++
+help: or always ignore missing fields here
+   |
+LL |         Dog { name: x, .. } => {}
+   |                        ++
+
+error[E0027]: pattern does not mention field `age`
+  --> $DIR/E0027.rs:19:9
+   |
+LL |         Dog { name: x  , } => {}
+   |         ^^^^^^^^^^^^^^^^^^ missing field `age`
+   |
+help: include the missing field in the pattern
+   |
+LL |         Dog { name: x, age } => {}
+   |                      ~~~~~~~
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |         Dog { name: x, age: _ } => {}
+   |                      ~~~~~~~~~~
+help: or always ignore missing fields here
+   |
+LL |         Dog { name: x, .. } => {}
+   |                      ~~~~~~
+
+error[E0027]: pattern does not mention fields `name`, `age`
+  --> $DIR/E0027.rs:22:9
+   |
+LL |         Dog {} => {}
+   |         ^^^^^^ missing fields `name`, `age`
+   |
+help: include the missing fields in the pattern
+   |
+LL |         Dog { name, age } => {}
+   |               +++++++++
+help: if you don't care about these missing fields, you can explicitly ignore them
+   |
+LL |         Dog { name: _, age: _ } => {}
+   |               +++++++++++++++
+help: or always ignore missing fields here
+   |
+LL |         Dog { .. } => {}
+   |               ++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0027`.

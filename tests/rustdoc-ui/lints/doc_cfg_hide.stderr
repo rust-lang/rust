@@ -1,0 +1,27 @@
+error: this attribute can only be applied at the crate level
+  --> $DIR/doc_cfg_hide.rs:6:7
+   |
+LL | #[doc(cfg_hide(doc))]
+   |       ^^^^^^^^^^^^^
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
+   = note: `#[deny(invalid_doc_attributes)]` on by default
+help: to apply to the crate, use an inner attribute
+   |
+LL | #![doc(cfg_hide(doc))]
+   |  +
+
+error: `#[doc(cfg_hide(...))]` takes a list of attributes
+  --> $DIR/doc_cfg_hide.rs:3:8
+   |
+LL | #![doc(cfg_hide = "test")]
+   |        ^^^^^^^^^^^^^^^^^
+
+error: `#[doc(cfg_hide(...))]` takes a list of attributes
+  --> $DIR/doc_cfg_hide.rs:4:8
+   |
+LL | #![doc(cfg_hide)]
+   |        ^^^^^^^^
+
+error: aborting due to 3 previous errors
+

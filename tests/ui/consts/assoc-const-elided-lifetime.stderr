@@ -1,0 +1,44 @@
+error: `'_` cannot be used here
+  --> $DIR/assoc-const-elided-lifetime.rs:10:20
+   |
+LL |     const FOO: Foo<'_> = Foo { x: PhantomData::<&()> };
+   |                    ^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
+note: cannot automatically infer `'static` because of other lifetimes in scope
+  --> $DIR/assoc-const-elided-lifetime.rs:9:6
+   |
+LL | impl<'a> Foo<'a> {
+   |      ^^
+note: the lint level is defined here
+  --> $DIR/assoc-const-elided-lifetime.rs:1:9
+   |
+LL | #![deny(elided_lifetimes_in_associated_constant)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the `'static` lifetime
+   |
+LL -     const FOO: Foo<'_> = Foo { x: PhantomData::<&()> };
+LL +     const FOO: Foo<'static> = Foo { x: PhantomData::<&()> };
+   |
+
+error: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/assoc-const-elided-lifetime.rs:14:16
+   |
+LL |     const BAR: &() = &();
+   |                ^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
+note: cannot automatically infer `'static` because of other lifetimes in scope
+  --> $DIR/assoc-const-elided-lifetime.rs:9:6
+   |
+LL | impl<'a> Foo<'a> {
+   |      ^^
+help: use the `'static` lifetime
+   |
+LL |     const BAR: &'static () = &();
+   |                 +++++++
+
+error: aborting due to 2 previous errors
+

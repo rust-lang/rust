@@ -1,0 +1,41 @@
+error[E0277]: the trait bound `for<'a> T: Trait<'a>` is not satisfied
+  --> $DIR/candidate-from-env-universe-err-project.rs:28:19
+   |
+LL |     trait_bound::<T>();
+   |                   ^ the trait `for<'a> Trait<'a>` is not implemented for `T`
+   |
+note: required by a bound in `trait_bound`
+  --> $DIR/candidate-from-env-universe-err-project.rs:17:19
+   |
+LL | fn trait_bound<T: for<'a> Trait<'a>>() {}
+   |                   ^^^^^^^^^^^^^^^^^ required by this bound in `trait_bound`
+
+error[E0277]: the trait bound `for<'a> T: Trait<'a>` is not satisfied
+  --> $DIR/candidate-from-env-universe-err-project.rs:38:24
+   |
+LL |     projection_bound::<T>();
+   |                        ^ the trait `for<'a> Trait<'a>` is not implemented for `T`
+   |
+note: required by a bound in `projection_bound`
+  --> $DIR/candidate-from-env-universe-err-project.rs:18:24
+   |
+LL | fn projection_bound<T: for<'a> Trait<'a, Assoc = usize>>() {}
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `projection_bound`
+
+error: higher-ranked subtype error
+  --> $DIR/candidate-from-env-universe-err-project.rs:52:30
+   |
+LL |     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/candidate-from-env-universe-err-project.rs:52:30
+   |
+LL |     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

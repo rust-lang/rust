@@ -1,0 +1,23 @@
+error[E0369]: binary operation `==` cannot be applied to type `Error`
+  --> $DIR/derives-span-PartialEq-tuple-struct.rs:8:5
+   |
+LL | #[derive(PartialEq)]
+   |          --------- in this derive macro expansion
+LL | struct Struct(
+LL |     Error
+   |     ^^^^^
+   |
+note: an implementation of `PartialEq` might be missing for `Error`
+  --> $DIR/derives-span-PartialEq-tuple-struct.rs:4:1
+   |
+LL | struct Error;
+   | ^^^^^^^^^^^^ must implement `PartialEq`
+help: consider annotating `Error` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct Error;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

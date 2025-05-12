@@ -1,0 +1,9 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/issue-23544.rs:5:17
+   |
+LL |         where T<Bogus = Self::AlsoBogus>: A;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^ associated item constraint not allowed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0229`.

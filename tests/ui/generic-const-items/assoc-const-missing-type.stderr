@@ -1,0 +1,36 @@
+error[E0308]: mismatched types
+  --> $DIR/assoc-const-missing-type.rs:12:18
+   |
+LL |     const K<T> = ();
+   |             -    ^^ expected type parameter `T`, found `()`
+   |             |
+   |             expected this type parameter
+   |
+   = note: expected type parameter `T`
+                   found unit type `()`
+
+error: missing type for `const` item
+  --> $DIR/assoc-const-missing-type.rs:12:15
+   |
+LL |     const K<T> = ();
+   |               ^ help: provide a type for the associated constant: `()`
+
+error[E0195]: lifetime parameters or bounds on associated const `Q` do not match the trait declaration
+  --> $DIR/assoc-const-missing-type.rs:15:12
+   |
+LL |     const Q<'a>: &'a str;
+   |            ---- lifetimes in impl do not match this associated const in trait
+...
+LL |     const Q = "";
+   |            ^ lifetimes do not match associated const in trait
+
+error: missing type for `const` item
+  --> $DIR/assoc-const-missing-type.rs:15:12
+   |
+LL |     const Q = "";
+   |            ^ help: provide a type for the associated constant: `: &str`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0195, E0308.
+For more information about an error, try `rustc --explain E0195`.

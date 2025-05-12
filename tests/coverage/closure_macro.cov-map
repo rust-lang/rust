@@ -1,0 +1,60 @@
+Function name: closure_macro::load_configuration_files
+Raw bytes (19): 0x[01, 01, 00, 03, 01, 1d, 01, 00, 38, 01, 01, 05, 00, 1f, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/closure_macro.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 29, 1) to (start + 0, 56)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 31)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: closure_macro::main
+Raw bytes (66): 0x[01, 01, 01, 01, 05, 0c, 01, 21, 01, 00, 24, 01, 01, 05, 00, 0d, 01, 00, 0e, 00, 20, 02, 01, 09, 00, 0f, 01, 00, 12, 00, 1b, 01, 00, 1c, 00, 34, 05, 00, 54, 00, 55, 02, 02, 09, 00, 1f, 02, 00, 22, 00, 2e, 02, 01, 0d, 00, 2d, 02, 01, 05, 00, 0b, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/closure_macro.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 12
+- Code(Counter(0)) at (prev + 33, 1) to (start + 0, 36)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 0, 14) to (start + 0, 32)
+- Code(Expression(0, Sub)) at (prev + 1, 9) to (start + 0, 15)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 0, 18) to (start + 0, 27)
+- Code(Counter(0)) at (prev + 0, 28) to (start + 0, 52)
+- Code(Counter(1)) at (prev + 0, 84) to (start + 0, 85)
+- Code(Expression(0, Sub)) at (prev + 2, 9) to (start + 0, 31)
+    = (c0 - c1)
+- Code(Expression(0, Sub)) at (prev + 0, 34) to (start + 0, 46)
+    = (c0 - c1)
+- Code(Expression(0, Sub)) at (prev + 1, 13) to (start + 0, 45)
+    = (c0 - c1)
+- Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 11)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: closure_macro::main::{closure#0}
+Raw bytes (60): 0x[01, 01, 03, 01, 05, 01, 0b, 05, 09, 0a, 01, 10, 1c, 00, 1d, 01, 02, 11, 00, 18, 01, 00, 1b, 00, 22, 01, 01, 10, 00, 21, 05, 01, 11, 00, 19, 05, 00, 1a, 00, 1e, 05, 01, 11, 00, 27, 02, 02, 11, 00, 16, 06, 00, 17, 00, 1e, 01, 02, 09, 00, 0a]
+Number of files: 1
+- file 0 => $DIR/closure_macro.rs
+Number of expressions: 3
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(0), rhs = Expression(2, Add)
+- expression 2 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 10
+- Code(Counter(0)) at (prev + 16, 28) to (start + 0, 29)
+- Code(Counter(0)) at (prev + 2, 17) to (start + 0, 24)
+- Code(Counter(0)) at (prev + 0, 27) to (start + 0, 34)
+- Code(Counter(0)) at (prev + 1, 16) to (start + 0, 33)
+- Code(Counter(1)) at (prev + 1, 17) to (start + 0, 25)
+- Code(Counter(1)) at (prev + 0, 26) to (start + 0, 30)
+- Code(Counter(1)) at (prev + 1, 17) to (start + 0, 39)
+- Code(Expression(0, Sub)) at (prev + 2, 17) to (start + 0, 22)
+    = (c0 - c1)
+- Code(Expression(1, Sub)) at (prev + 0, 23) to (start + 0, 30)
+    = (c0 - (c1 + c2))
+- Code(Counter(0)) at (prev + 2, 9) to (start + 0, 10)
+Highest counter ID seen: c1
+

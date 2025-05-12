@@ -1,0 +1,53 @@
+error: usage of `Arc<T>` when T is a buffer type
+  --> tests/ui/rc_buffer_arc.rs:10:11
+   |
+LL |     bad1: Arc<String>,
+   |           ^^^^^^^^^^^ help: try: `Arc<str>`
+   |
+   = note: `-D clippy::rc-buffer` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::rc_buffer)]`
+
+error: usage of `Arc<T>` when T is a buffer type
+  --> tests/ui/rc_buffer_arc.rs:12:11
+   |
+LL |     bad2: Arc<PathBuf>,
+   |           ^^^^^^^^^^^^ help: try: `Arc<std::path::Path>`
+
+error: usage of `Arc<T>` when T is a buffer type
+  --> tests/ui/rc_buffer_arc.rs:14:11
+   |
+LL |     bad3: Arc<Vec<u8>>,
+   |           ^^^^^^^^^^^^ help: try: `Arc<[u8]>`
+
+error: usage of `Arc<T>` when T is a buffer type
+  --> tests/ui/rc_buffer_arc.rs:16:11
+   |
+LL |     bad4: Arc<OsString>,
+   |           ^^^^^^^^^^^^^ help: try: `Arc<std::ffi::OsStr>`
+
+error: usage of `Arc<T>` when T is a buffer type
+  --> tests/ui/rc_buffer_arc.rs:23:17
+   |
+LL | fn func_bad1(_: Arc<String>) {}
+   |                 ^^^^^^^^^^^ help: try: `Arc<str>`
+
+error: usage of `Arc<T>` when T is a buffer type
+  --> tests/ui/rc_buffer_arc.rs:25:17
+   |
+LL | fn func_bad2(_: Arc<PathBuf>) {}
+   |                 ^^^^^^^^^^^^ help: try: `Arc<std::path::Path>`
+
+error: usage of `Arc<T>` when T is a buffer type
+  --> tests/ui/rc_buffer_arc.rs:27:17
+   |
+LL | fn func_bad3(_: Arc<Vec<u8>>) {}
+   |                 ^^^^^^^^^^^^ help: try: `Arc<[u8]>`
+
+error: usage of `Arc<T>` when T is a buffer type
+  --> tests/ui/rc_buffer_arc.rs:29:17
+   |
+LL | fn func_bad4(_: Arc<OsString>) {}
+   |                 ^^^^^^^^^^^^^ help: try: `Arc<std::ffi::OsStr>`
+
+error: aborting due to 8 previous errors
+

@@ -1,0 +1,27 @@
+error[E0433]: failed to resolve: `V` is a variant, not a module
+  --> $DIR/resolve-variant-assoc-item.rs:5:8
+   |
+LL |     E::V::associated_item;
+   |        ^ `V` is a variant, not a module
+   |
+help: there is an enum variant `E::V`; try using the variant's enum
+   |
+LL -     E::V::associated_item;
+LL +     E::associated_item;
+   |
+
+error[E0433]: failed to resolve: `V` is a variant, not a module
+  --> $DIR/resolve-variant-assoc-item.rs:6:5
+   |
+LL |     V::associated_item;
+   |     ^ `V` is a variant, not a module
+   |
+help: there is an enum variant `E::V`; try using the variant's enum
+   |
+LL -     V::associated_item;
+LL +     E::associated_item;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

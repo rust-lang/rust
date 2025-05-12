@@ -1,0 +1,21 @@
+error: literal out of range for `i8`
+  --> $DIR/lint-overflowing-int-136675.rs:2:12
+   |
+LL |     if let -129 = 0i8 {}
+   |            ^^^^
+   |
+   = note: the literal `-129` does not fit into the type `i8` whose range is `-128..=127`
+   = help: consider using the type `i16` instead
+   = note: `#[deny(overflowing_literals)]` on by default
+
+error: literal out of range for `i8`
+  --> $DIR/lint-overflowing-int-136675.rs:3:17
+   |
+LL |     let x: i8 = -129;
+   |                 ^^^^
+   |
+   = note: the literal `-129` does not fit into the type `i8` whose range is `-128..=127`
+   = help: consider using the type `i16` instead
+
+error: aborting due to 2 previous errors
+

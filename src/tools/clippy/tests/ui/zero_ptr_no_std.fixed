@@ -1,0 +1,13 @@
+#![crate_type = "lib"]
+#![no_std]
+#![deny(clippy::zero_ptr)]
+
+pub fn main(_argc: isize, _argv: *const *const u8) -> isize {
+    let _ = core::ptr::null::<usize>();
+    //~^ zero_ptr
+    let _ = core::ptr::null_mut::<f64>();
+    //~^ zero_ptr
+    let _: *const u8 = core::ptr::null();
+    //~^ zero_ptr
+    0
+}

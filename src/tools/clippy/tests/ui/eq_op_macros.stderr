@@ -1,0 +1,96 @@
+error: identical args used in this `assert_eq!` macro call
+  --> tests/ui/eq_op_macros.rs:8:20
+   |
+LL |         assert_eq!(a, a);
+   |                    ^^^^
+...
+LL |     assert_in_macro_def!();
+   |     ---------------------- in this macro invocation
+   |
+   = note: `-D clippy::eq-op` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::eq_op)]`
+   = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: identical args used in this `assert_ne!` macro call
+  --> tests/ui/eq_op_macros.rs:10:20
+   |
+LL |         assert_ne!(a, a);
+   |                    ^^^^
+...
+LL |     assert_in_macro_def!();
+   |     ---------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: identical args used in this `debug_assert_eq!` macro call
+  --> tests/ui/eq_op_macros.rs:12:26
+   |
+LL |         debug_assert_eq!(a, a);
+   |                          ^^^^
+...
+LL |     assert_in_macro_def!();
+   |     ---------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: identical args used in this `debug_assert_ne!` macro call
+  --> tests/ui/eq_op_macros.rs:14:26
+   |
+LL |         debug_assert_ne!(a, a);
+   |                          ^^^^
+...
+LL |     assert_in_macro_def!();
+   |     ---------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: identical args used in this `assert_eq!` macro call
+  --> tests/ui/eq_op_macros.rs:27:16
+   |
+LL |     assert_eq!(a, a);
+   |                ^^^^
+
+error: identical args used in this `assert_eq!` macro call
+  --> tests/ui/eq_op_macros.rs:30:16
+   |
+LL |     assert_eq!(a + 1, a + 1);
+   |                ^^^^^^^^^^^^
+
+error: identical args used in this `assert_ne!` macro call
+  --> tests/ui/eq_op_macros.rs:39:16
+   |
+LL |     assert_ne!(a, a);
+   |                ^^^^
+
+error: identical args used in this `assert_ne!` macro call
+  --> tests/ui/eq_op_macros.rs:42:16
+   |
+LL |     assert_ne!(a + 1, a + 1);
+   |                ^^^^^^^^^^^^
+
+error: identical args used in this `debug_assert_eq!` macro call
+  --> tests/ui/eq_op_macros.rs:51:22
+   |
+LL |     debug_assert_eq!(a, a);
+   |                      ^^^^
+
+error: identical args used in this `debug_assert_eq!` macro call
+  --> tests/ui/eq_op_macros.rs:54:22
+   |
+LL |     debug_assert_eq!(a + 1, a + 1);
+   |                      ^^^^^^^^^^^^
+
+error: identical args used in this `debug_assert_ne!` macro call
+  --> tests/ui/eq_op_macros.rs:63:22
+   |
+LL |     debug_assert_ne!(a, a);
+   |                      ^^^^
+
+error: identical args used in this `debug_assert_ne!` macro call
+  --> tests/ui/eq_op_macros.rs:66:22
+   |
+LL |     debug_assert_ne!(a + 1, a + 1);
+   |                      ^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+

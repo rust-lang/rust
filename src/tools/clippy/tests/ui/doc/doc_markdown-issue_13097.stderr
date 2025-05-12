@@ -1,0 +1,19 @@
+error: item in documentation is missing backticks
+  --> tests/ui/doc/doc_markdown-issue_13097.rs:7:9
+   |
+LL |     /// HumaNified
+   |         ^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui/doc/doc_markdown-issue_13097.rs:4:9
+   |
+LL | #![deny(clippy::doc_markdown)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+help: try
+   |
+LL -     /// HumaNified
+LL +     /// `HumaNified`
+   |
+
+error: aborting due to 1 previous error
+

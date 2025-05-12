@@ -1,0 +1,69 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-object-into-object-5.rs:17:5
+   |
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |     ^^^^^^^^
+   |     |
+   |     the parameter type `T` must be valid for the static lifetime...
+   |     ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn f<'a, T: 'static, U>(v: Box<A<T> + 'static>) -> Box<X + 'static> {
+   |           +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-object-into-object-5.rs:17:5
+   |
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |     ^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `T` must be valid for the static lifetime...
+   |     ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn f<'a, T: 'static, U>(v: Box<A<T> + 'static>) -> Box<X + 'static> {
+   |           +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-object-into-object-5.rs:17:5
+   |
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `T` must be valid for the static lifetime...
+   |     ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn f<'a, T: 'static, U>(v: Box<A<T> + 'static>) -> Box<X + 'static> {
+   |           +++++++++
+
+error[E0515]: cannot return value referencing local data `*v`
+  --> $DIR/regions-close-object-into-object-5.rs:17:5
+   |
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |     ^^^^^^^^^^^---^^^^^^^^^^^^^^^^
+   |     |          |
+   |     |          `*v` is borrowed here
+   |     returns a value referencing data owned by the current function
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-object-into-object-5.rs:17:14
+   |
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |              ^^^^^^
+   |              |
+   |              the parameter type `T` must be valid for the static lifetime...
+   |              ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn f<'a, T: 'static, U>(v: Box<A<T> + 'static>) -> Box<X + 'static> {
+   |           +++++++++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0310, E0515.
+For more information about an error, try `rustc --explain E0310`.

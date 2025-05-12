@@ -1,0 +1,50 @@
+error: replacing an `Option` with `None`
+  --> tests/ui/mem_replace_no_std.rs:23:13
+   |
+LL |     let _ = mem::replace(&mut an_option, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `an_option.take()`
+   |
+   = note: `-D clippy::mem-replace-option-with-none` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mem_replace_option_with_none)]`
+
+error: replacing an `Option` with `None`
+  --> tests/ui/mem_replace_no_std.rs:26:13
+   |
+LL |     let _ = mem::replace(an_option, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `an_option.take()`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `core::mem::take`
+  --> tests/ui/mem_replace_no_std.rs:32:13
+   |
+LL |     let _ = mem::replace(&mut refstr, "");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `core::mem::take(&mut refstr)`
+   |
+   = note: `-D clippy::mem-replace-with-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mem_replace_with_default)]`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `core::mem::take`
+  --> tests/ui/mem_replace_no_std.rs:36:13
+   |
+LL |     let _ = mem::replace(&mut slice, &[]);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `core::mem::take(&mut slice)`
+
+error: replacing an `Option` with `None`
+  --> tests/ui/mem_replace_no_std.rs:80:13
+   |
+LL |     let _ = mem::replace(&mut f.0, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `f.0.take()`
+
+error: replacing an `Option` with `None`
+  --> tests/ui/mem_replace_no_std.rs:82:13
+   |
+LL |     let _ = mem::replace(&mut *f, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `(*f).take()`
+
+error: replacing an `Option` with `None`
+  --> tests/ui/mem_replace_no_std.rs:84:13
+   |
+LL |     let _ = mem::replace(&mut b.opt, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `b.opt.take()`
+
+error: aborting due to 7 previous errors
+

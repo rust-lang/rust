@@ -1,0 +1,16 @@
+error[E0618]: expected function, found `(..., ..., ..., ...)`
+  --> $DIR/long-E0618.rs:10:5
+   |
+LL | fn foo(x: D) {
+   |        - `x` has type `(..., ..., ..., ...)`
+LL |     x();
+   |     ^--
+   |     |
+   |     call expression requires function
+   |
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/long-E0618.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0618`.

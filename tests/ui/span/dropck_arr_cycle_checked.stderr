@@ -1,0 +1,52 @@
+error[E0597]: `b2` does not live long enough
+  --> $DIR/dropck_arr_cycle_checked.rs:93:24
+   |
+LL |     let (b1, b2, b3);
+   |              -- binding `b2` declared here
+...
+LL |     b1.a[0].v.set(Some(&b2));
+   |                        ^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | `b2` dropped here while still borrowed
+   | borrow might be used here, when `b1` is dropped and runs the destructor for type `B<'_>`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0597]: `b3` does not live long enough
+  --> $DIR/dropck_arr_cycle_checked.rs:95:24
+   |
+LL |     let (b1, b2, b3);
+   |                  -- binding `b3` declared here
+...
+LL |     b1.a[1].v.set(Some(&b3));
+   |                        ^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | `b3` dropped here while still borrowed
+   | borrow might be used here, when `b1` is dropped and runs the destructor for type `B<'_>`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0597]: `b1` does not live long enough
+  --> $DIR/dropck_arr_cycle_checked.rs:99:24
+   |
+LL |     let (b1, b2, b3);
+   |          -- binding `b1` declared here
+...
+LL |     b3.a[0].v.set(Some(&b1));
+   |                        ^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | `b1` dropped here while still borrowed
+   | borrow might be used here, when `b1` is dropped and runs the destructor for type `B<'_>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

@@ -1,0 +1,18 @@
+error: format argument must be a string literal
+  --> $DIR/issue-86865.rs:4:14
+   |
+LL |     println!(b"foo");
+   |              -^^^^^
+   |              |
+   |              help: consider removing the leading `b`
+
+error: format argument must be a string literal
+  --> $DIR/issue-86865.rs:8:15
+   |
+LL |     write!(s, b"foo{}", "bar");
+   |               -^^^^^^^
+   |               |
+   |               help: consider removing the leading `b`
+
+error: aborting due to 2 previous errors
+

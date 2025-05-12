@@ -1,0 +1,25 @@
+error[E0277]: `?` couldn't convert the error to `()`
+  --> $DIR/issue-32709.rs:4:11
+   |
+LL | fn a() -> Result<i32, ()> {
+   |           --------------- expected `()` because of this
+LL |     Err(5)?;
+   |     ------^ the trait `From<{integer}>` is not implemented for `()`
+   |     |
+   |     this can't be annotated with `?` because it has type `Result<_, {integer}>`
+   |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = help: the following other types implement trait `From<T>`:
+             `(T, T)` implements `From<[T; 2]>`
+             `(T, T, T)` implements `From<[T; 3]>`
+             `(T, T, T, T)` implements `From<[T; 4]>`
+             `(T, T, T, T, T)` implements `From<[T; 5]>`
+             `(T, T, T, T, T, T)` implements `From<[T; 6]>`
+             `(T, T, T, T, T, T, T)` implements `From<[T; 7]>`
+             `(T, T, T, T, T, T, T, T)` implements `From<[T; 8]>`
+             `(T, T, T, T, T, T, T, T, T)` implements `From<[T; 9]>`
+           and 4 others
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

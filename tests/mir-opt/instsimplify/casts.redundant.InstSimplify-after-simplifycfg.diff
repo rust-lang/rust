@@ -1,0 +1,33 @@
+- // MIR for `redundant` before InstSimplify-after-simplifycfg
++ // MIR for `redundant` after InstSimplify-after-simplifycfg
+  
+  fn redundant(_1: *const &u8) -> *const &u8 {
+      debug x => _1;
+      let mut _0: *const &u8;
+      let mut _2: *const &u8;
+      let mut _3: *const &u8;
+      let mut _4: *const &u8;
+      scope 1 (inlined generic_cast::<&u8, &u8>) {
+          let mut _5: *const &u8;
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = copy _1;
+          StorageLive(_5);
+          _5 = copy _4;
+-         _3 = move _5 as *const &u8 (PtrToPtr);
++         _3 = move _5;
+          StorageDead(_5);
+          StorageDead(_4);
+-         _2 = move _3 as *const &u8 (PtrToPtr);
++         _2 = move _3;
+          _0 = copy _2;
+          StorageDead(_3);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

@@ -1,0 +1,23 @@
+error[E0307]: invalid `self` parameter type: `std::rc::Weak<A>`
+  --> $DIR/arbitrary_self_types_weak.rs:6:16
+   |
+LL |     fn m(self: std::rc::Weak<Self>) {}
+   |                ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or some type implementing `Receiver`
+   = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+   = note: `Weak` does not implement `Receiver` because it has methods that may shadow the referent; consider wrapping your `Weak` in a newtype wrapper for which you implement `Receiver`
+
+error[E0307]: invalid `self` parameter type: `std::sync::Weak<A>`
+  --> $DIR/arbitrary_self_types_weak.rs:8:16
+   |
+LL |     fn n(self: std::sync::Weak<Self>) {}
+   |                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or some type implementing `Receiver`
+   = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+   = note: `Weak` does not implement `Receiver` because it has methods that may shadow the referent; consider wrapping your `Weak` in a newtype wrapper for which you implement `Receiver`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0307`.

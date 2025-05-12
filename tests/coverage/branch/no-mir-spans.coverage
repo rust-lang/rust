@@ -1,0 +1,77 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: -Zcoverage-options=branch,no-mir-spans
+   LL|       |//@ llvm-cov-flags: --show-branches=count
+   LL|       |
+   LL|       |// Tests the behaviour of the `-Zcoverage-options=no-mir-spans` debugging flag.
+   LL|       |// The actual code below is just some non-trivial code copied from another test
+   LL|       |// (`while.rs`), and has no particular significance.
+   LL|       |
+   LL|       |macro_rules! no_merge {
+   LL|       |    () => {
+   LL|       |        for _ in 0..1 {}
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|      1|fn while_cond() {
+   LL|       |    no_merge!();
+   LL|       |
+   LL|       |    let mut a = 8;
+   LL|       |    while a > 0 {
+  ------------------
+  |  Branch (LL:11): [True: 8, False: 1]
+  ------------------
+   LL|       |        a -= 1;
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|      1|fn while_cond_not() {
+   LL|       |    no_merge!();
+   LL|       |
+   LL|       |    let mut a = 8;
+   LL|       |    while !(a == 0) {
+  ------------------
+  |  Branch (LL:11): [True: 8, False: 1]
+  ------------------
+   LL|       |        a -= 1;
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|      1|fn while_op_and() {
+   LL|       |    no_merge!();
+   LL|       |
+   LL|       |    let mut a = 8;
+   LL|       |    let mut b = 4;
+   LL|       |    while a > 0 && b > 0 {
+  ------------------
+  |  Branch (LL:11): [True: 5, False: 0]
+  |  Branch (LL:20): [True: 4, False: 1]
+  ------------------
+   LL|       |        a -= 1;
+   LL|       |        b -= 1;
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|      1|fn while_op_or() {
+   LL|       |    no_merge!();
+   LL|       |
+   LL|       |    let mut a = 4;
+   LL|       |    let mut b = 8;
+   LL|       |    while a > 0 || b > 0 {
+  ------------------
+  |  Branch (LL:11): [True: 4, False: 5]
+  |  Branch (LL:20): [True: 4, False: 1]
+  ------------------
+   LL|       |        a -= 1;
+   LL|       |        b -= 1;
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    while_cond();
+   LL|       |    while_cond_not();
+   LL|       |    while_op_and();
+   LL|       |    while_op_or();
+   LL|       |}
+

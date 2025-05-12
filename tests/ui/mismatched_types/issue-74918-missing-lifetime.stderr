@@ -1,0 +1,14 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-74918-missing-lifetime.rs:9:30
+   |
+LL |     type Item = IteratorChunk<T, S>;
+   |                              ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL |     type Item<'a> = IteratorChunk<'a, T, S>;
+   |              ++++                 +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0106`.

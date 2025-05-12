@@ -1,0 +1,55 @@
+- // MIR for `foo` before SimplifyLocals-final
++ // MIR for `foo` after SimplifyLocals-final
+  
+  fn foo() -> () {
+      let mut _0: ();
+      let mut _1: (std::option::Option<u8>, std::option::Option<T>);
+      let mut _2: std::option::Option<u8>;
+      let mut _3: std::option::Option<T>;
+      let mut _4: isize;
+      let mut _5: isize;
+-     let mut _7: bool;
+-     let mut _8: u8;
+-     let mut _9: bool;
+      scope 1 {
+          debug a => _6;
+          let _6: u8;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = Option::<u8>::None;
+          StorageLive(_3);
+          _3 = Option::<T>::None;
+          _1 = (move _2, move _3);
+          StorageDead(_3);
+          StorageDead(_2);
+          _5 = discriminant((_1.0: std::option::Option<u8>));
+          switchInt(move _5) -> [1: bb1, 0: bb3, otherwise: bb5];
+      }
+  
+      bb1: {
+          _4 = discriminant((_1.1: std::option::Option<T>));
+          switchInt(move _4) -> [0: bb2, 1: bb3, otherwise: bb5];
+      }
+  
+      bb2: {
+          _6 = copy (((_1.0: std::option::Option<u8>) as Some).0: u8);
+          goto -> bb3;
+      }
+  
+      bb3: {
+          drop(_1) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+          StorageDead(_1);
+          return;
+      }
+  
+      bb5: {
+          unreachable;
+      }
+  }
+  

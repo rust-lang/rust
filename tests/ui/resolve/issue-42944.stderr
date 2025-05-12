@@ -1,0 +1,33 @@
+error[E0425]: cannot find function, tuple struct or tuple variant `Bx` in this scope
+  --> $DIR/issue-42944.rs:16:9
+   |
+LL |         Bx(());
+   |         ^^ not found in this scope
+   |
+note: tuple struct `foo::Bx` exists but is inaccessible
+  --> $DIR/issue-42944.rs:2:5
+   |
+LL |     pub struct Bx(pub(in crate::foo) ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not accessible
+
+error[E0423]: cannot initialize a tuple struct which contains private fields
+  --> $DIR/issue-42944.rs:9:9
+   |
+LL |         Bx(());
+   |         ^^
+   |
+note: constructor is not visible here due to private fields
+  --> $DIR/issue-42944.rs:2:19
+   |
+LL |     pub struct Bx(pub(in crate::foo) ());
+   |                   ^^^^^^^^^^^^^^^^^^^^^ private field
+help: consider making the field publicly accessible
+   |
+LL -     pub struct Bx(pub(in crate::foo) ());
+LL +     pub struct Bx(pub ());
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0423, E0425.
+For more information about an error, try `rustc --explain E0423`.

@@ -1,0 +1,22 @@
+error: visibility `pub` is not followed by an item
+  --> $DIR/issue-41155.rs:4:5
+   |
+LL |     pub
+   |     ^^^ the visibility
+   |
+   = help: you likely meant to define an item, e.g., `pub fn foo() {}`
+
+error: non-item in item list
+  --> $DIR/issue-41155.rs:5:1
+   |
+LL | impl S {
+   |        - item list starts here
+LL |     pub
+LL | }
+   | ^
+   | |
+   | non-item starts here
+   | item list ends here
+
+error: aborting due to 2 previous errors
+

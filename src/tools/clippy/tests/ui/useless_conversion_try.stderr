@@ -1,0 +1,79 @@
+error: useless conversion to the same type: `T`
+  --> tests/ui/useless_conversion_try.rs:9:13
+   |
+LL |     let _ = T::try_from(val).unwrap();
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing `T::try_from()`
+note: the lint level is defined here
+  --> tests/ui/useless_conversion_try.rs:1:9
+   |
+LL | #![deny(clippy::useless_conversion)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: useless conversion to the same type: `T`
+  --> tests/ui/useless_conversion_try.rs:12:5
+   |
+LL |     val.try_into().unwrap()
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: consider removing `.try_into()`
+
+error: useless conversion to the same type: `std::string::String`
+  --> tests/ui/useless_conversion_try.rs:35:21
+   |
+LL |     let _: String = "foo".to_string().try_into().unwrap();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing `.try_into()`
+
+error: useless conversion to the same type: `std::string::String`
+  --> tests/ui/useless_conversion_try.rs:38:21
+   |
+LL |     let _: String = TryFrom::try_from("foo".to_string()).unwrap();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing `TryFrom::try_from()`
+
+error: useless conversion to the same type: `std::string::String`
+  --> tests/ui/useless_conversion_try.rs:41:13
+   |
+LL |     let _ = String::try_from("foo".to_string()).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing `String::try_from()`
+
+error: useless conversion to the same type: `std::string::String`
+  --> tests/ui/useless_conversion_try.rs:44:13
+   |
+LL |     let _ = String::try_from(format!("A: {:04}", 123)).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing `String::try_from()`
+
+error: useless conversion to the same type: `std::string::String`
+  --> tests/ui/useless_conversion_try.rs:47:21
+   |
+LL |     let _: String = format!("Hello {}", "world").try_into().unwrap();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing `.try_into()`
+
+error: useless conversion to the same type: `std::string::String`
+  --> tests/ui/useless_conversion_try.rs:50:21
+   |
+LL |     let _: String = String::new().try_into().unwrap();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing `.try_into()`
+
+error: useless conversion to the same type: `std::string::String`
+  --> tests/ui/useless_conversion_try.rs:53:27
+   |
+LL |     let _: String = match String::from("_").try_into() {
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing `.try_into()`
+
+error: aborting due to 9 previous errors
+

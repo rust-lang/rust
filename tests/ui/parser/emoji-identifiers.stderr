@@ -1,0 +1,99 @@
+error: unknown start of token: \u{2796}
+  --> $DIR/emoji-identifiers.rs:13:33
+   |
+LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
+   |                                  ^^
+   |
+help: Unicode character '➖' (Heavy Minus Sign) looks like '-' (Minus/Hyphen), but it is not
+   |
+LL -     let _ = i_like_to_😄_a_lot() ➖ 4;
+LL +     let _ = i_like_to_😄_a_lot() - 4;
+   |
+
+error: identifiers cannot contain emoji: `ABig👩👩👧👧Family`
+  --> $DIR/emoji-identifiers.rs:1:8
+   |
+LL | struct ABig👩👩👧👧Family;
+   |        ^^^^^^^^^^^^^^^^^^
+
+error: identifiers cannot contain emoji: `👀`
+  --> $DIR/emoji-identifiers.rs:2:8
+   |
+LL | struct 👀;
+   |        ^^
+LL | impl 👀 {
+   |      ^^
+LL |     fn full_of_✨() -> 👀 {
+   |                        ^^
+LL |         👀
+   |         ^^
+...
+LL | fn i_like_to_😅_a_lot() -> 👀 {
+   |                            ^^
+LL |     👀::full_of✨()
+   |     ^^
+
+error: identifiers cannot contain emoji: `full_of_✨`
+  --> $DIR/emoji-identifiers.rs:4:8
+   |
+LL |     fn full_of_✨() -> 👀 {
+   |        ^^^^^^^^^^
+
+error: identifiers cannot contain emoji: `i_like_to_😅_a_lot`
+  --> $DIR/emoji-identifiers.rs:8:4
+   |
+LL | fn i_like_to_😅_a_lot() -> 👀 {
+   |    ^^^^^^^^^^^^^^^^^^
+
+error: identifiers cannot contain emoji: `full_of✨`
+  --> $DIR/emoji-identifiers.rs:9:8
+   |
+LL |     👀::full_of✨()
+   |         ^^^^^^^^^
+
+error: identifiers cannot contain emoji: `i_like_to_😄_a_lot`
+  --> $DIR/emoji-identifiers.rs:13:13
+   |
+LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
+   |             ^^^^^^^^^^^^^^^^^^
+
+error: Ferris cannot be used as an identifier
+  --> $DIR/emoji-identifiers.rs:17:9
+   |
+LL |     let 🦀 = 1;
+   |         ^^ help: try using their name instead: `ferris`
+LL |     dbg!(🦀);
+   |          ^^
+
+error[E0599]: no function or associated item named `full_of✨` found for struct `👀` in the current scope
+  --> $DIR/emoji-identifiers.rs:9:8
+   |
+LL | struct 👀;
+   | --------- function or associated item `full_of✨` not found for this struct
+...
+LL |     👀::full_of✨()
+   |         ^^^^^^^^^ function or associated item not found in `👀`
+   |
+note: if you're trying to build a new `👀`, consider using `👀::full_of_✨` which returns `👀`
+  --> $DIR/emoji-identifiers.rs:4:5
+   |
+LL |     fn full_of_✨() -> 👀 {
+   |     ^^^^^^^^^^^^^^^^^^^^^
+help: there is an associated function `full_of_✨` with a similar name
+   |
+LL |     👀::full_of_✨()
+   |                +
+
+error[E0425]: cannot find function `i_like_to_😄_a_lot` in this scope
+  --> $DIR/emoji-identifiers.rs:13:13
+   |
+LL | fn i_like_to_😅_a_lot() -> 👀 {
+   | ----------------------------- similarly named function `i_like_to_😅_a_lot` defined here
+...
+LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
+   |             ^^^^^^^^^^^^^^^^^^ help: a function with a similar name exists: `i_like_to_😅_a_lot`
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0425, E0599.
+For more information about an error, try `rustc --explain E0425`.

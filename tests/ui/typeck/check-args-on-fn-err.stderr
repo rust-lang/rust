@@ -1,0 +1,9 @@
+error[E0425]: cannot find function `unknown` in this scope
+  --> $DIR/check-args-on-fn-err.rs:2:5
+   |
+LL |     unknown(1, |glyf| {
+   |     ^^^^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

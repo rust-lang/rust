@@ -1,0 +1,37 @@
+#![warn(clippy::precedence)]
+#![allow(unused_must_use, clippy::no_effect, clippy::unnecessary_operation)]
+#![allow(clippy::identity_op)]
+#![allow(clippy::eq_op)]
+
+macro_rules! trip {
+    ($a:expr) => {
+        match $a & 0b1111_1111u8 {
+            0 => println!("a is zero ({})", $a),
+            _ => println!("a is {}", $a),
+        }
+    };
+}
+
+fn main() {
+    1 << (2 + 3);
+    //~^ precedence
+    (1 + 2) << 3;
+    //~^ precedence
+    4 >> (1 + 1);
+    //~^ precedence
+    (1 + 3) >> 2;
+    //~^ precedence
+    1 ^ (1 - 1);
+    //~^ precedence
+    3 | (2 - 1);
+    //~^ precedence
+    3 & (5 - 2);
+    //~^ precedence
+    0x0F00 & 0x00F0 << 4;
+    0x0F00 & 0xF000 >> 4;
+    0x0F00 << 1 ^ 3;
+    0x0F00 << 1 | 2;
+
+    let b = 3;
+    trip!(b * 8);
+}

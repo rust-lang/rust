@@ -1,0 +1,119 @@
+error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
+  --> $DIR/borrowck-reborrow-from-mut.rs:13:17
+   |
+LL |     let _bar1 = &mut foo.bar1;
+   |                 ------------- first mutable borrow occurs here
+LL |     let _bar2 = &mut foo.bar1;
+   |                 ^^^^^^^^^^^^^ second mutable borrow occurs here
+LL |     use_mut(_bar1);
+   |             ----- first borrow later used here
+
+error[E0502]: cannot borrow `foo.bar1` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-reborrow-from-mut.rs:18:17
+   |
+LL |     let _bar1 = &mut foo.bar1;
+   |                 ------------- mutable borrow occurs here
+LL |     let _bar2 = &foo.bar1;
+   |                 ^^^^^^^^^ immutable borrow occurs here
+LL |     use_mut(_bar1);
+   |             ----- mutable borrow later used here
+
+error[E0502]: cannot borrow `foo.bar1` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-reborrow-from-mut.rs:23:17
+   |
+LL |     let _bar1 = &foo.bar1;
+   |                 --------- immutable borrow occurs here
+LL |     let _bar2 = &mut foo.bar1;
+   |                 ^^^^^^^^^^^^^ mutable borrow occurs here
+LL |     use_imm(_bar1);
+   |             ----- immutable borrow later used here
+
+error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
+  --> $DIR/borrowck-reborrow-from-mut.rs:45:21
+   |
+LL |     let _bar1 = &mut foo.bar1;
+   |                 ------------- first mutable borrow occurs here
+LL |     match *foo {
+LL |         Foo { bar1: ref mut _bar1, bar2: _ } => {}
+   |                     ^^^^^^^^^^^^^ second mutable borrow occurs here
+...
+LL |     use_mut(_bar1);
+   |             ----- first borrow later used here
+
+error[E0502]: cannot borrow `foo.bar1` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-reborrow-from-mut.rs:52:17
+   |
+LL |     let _bar1 = &mut foo.bar1.int1;
+   |                 ------------------ mutable borrow occurs here
+LL |     let _foo1 = &foo.bar1;
+   |                 ^^^^^^^^^ immutable borrow occurs here
+LL |     let _foo2 = &*foo;
+LL |     use_mut(_bar1);
+   |             ----- mutable borrow later used here
+
+error[E0502]: cannot borrow `*foo` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-reborrow-from-mut.rs:53:17
+   |
+LL |     let _bar1 = &mut foo.bar1.int1;
+   |                 ------------------ mutable borrow occurs here
+LL |     let _foo1 = &foo.bar1;
+LL |     let _foo2 = &*foo;
+   |                 ^^^^^ immutable borrow occurs here
+LL |     use_mut(_bar1);
+   |             ----- mutable borrow later used here
+
+error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
+  --> $DIR/borrowck-reborrow-from-mut.rs:58:17
+   |
+LL |     let _bar1 = &mut foo.bar1.int1;
+   |                 ------------------ first mutable borrow occurs here
+LL |     let _foo1 = &mut foo.bar1;
+   |                 ^^^^^^^^^^^^^ second mutable borrow occurs here
+LL |     use_mut(_bar1);
+   |             ----- first borrow later used here
+
+error[E0499]: cannot borrow `*foo` as mutable more than once at a time
+  --> $DIR/borrowck-reborrow-from-mut.rs:63:17
+   |
+LL |     let _bar1 = &mut foo.bar1.int1;
+   |                 ------------------ first mutable borrow occurs here
+LL |     let _foo2 = &mut *foo;
+   |                 ^^^^^^^^^ second mutable borrow occurs here
+LL |     use_mut(_bar1);
+   |             ----- first borrow later used here
+
+error[E0502]: cannot borrow `foo.bar1` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-reborrow-from-mut.rs:68:17
+   |
+LL |     let _bar1 = &foo.bar1.int1;
+   |                 -------------- immutable borrow occurs here
+LL |     let _foo1 = &mut foo.bar1;
+   |                 ^^^^^^^^^^^^^ mutable borrow occurs here
+LL |     use_imm(_bar1);
+   |             ----- immutable borrow later used here
+
+error[E0502]: cannot borrow `*foo` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-reborrow-from-mut.rs:73:17
+   |
+LL |     let _bar1 = &foo.bar1.int1;
+   |                 -------------- immutable borrow occurs here
+LL |     let _foo2 = &mut *foo;
+   |                 ^^^^^^^^^ mutable borrow occurs here
+LL |     use_imm(_bar1);
+   |             ----- immutable borrow later used here
+
+error[E0596]: cannot borrow `foo.bar1` as mutable, as it is behind a `&` reference
+  --> $DIR/borrowck-reborrow-from-mut.rs:88:17
+   |
+LL |     let _bar1 = &mut foo.bar1;
+   |                 ^^^^^^^^^^^^^ `foo` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn borrow_mut_from_imm(foo: &mut Foo) {
+   |                              +++
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0499, E0502, E0596.
+For more information about an error, try `rustc --explain E0499`.

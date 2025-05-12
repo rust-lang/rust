@@ -1,0 +1,29 @@
+error: hexadecimal float literal is not supported
+  --> $DIR/no-hex-float-literal.rs:4:5
+   |
+LL |     0x567.89;
+   |     ^^^^^^^^
+
+error: invalid suffix `f` for float literal
+  --> $DIR/no-hex-float-literal.rs:6:18
+   |
+LL |     0xDEAD.BEEFp-2f;
+   |                  ^^ invalid suffix `f`
+   |
+   = help: valid suffixes are `f32` and `f64`
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/no-hex-float-literal.rs:2:11
+   |
+LL |     0xABC.Df;
+   |           ^^
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/no-hex-float-literal.rs:6:12
+   |
+LL |     0xDEAD.BEEFp-2f;
+   |            ^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0610`.

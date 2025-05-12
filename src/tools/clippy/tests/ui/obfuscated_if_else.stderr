@@ -1,0 +1,143 @@
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:10:5
+   |
+LL |     true.then_some("a").unwrap_or("b");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { "a" } else { "b" }`
+   |
+   = note: `-D clippy::obfuscated-if-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::obfuscated_if_else)]`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:13:5
+   |
+LL |     true.then(|| "a").unwrap_or("b");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { "a" } else { "b" }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:17:5
+   |
+LL |     (a == 1).then_some("a").unwrap_or("b");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if a == 1 { "a" } else { "b" }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:20:5
+   |
+LL |     (a == 1).then(|| "a").unwrap_or("b");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if a == 1 { "a" } else { "b" }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:27:5
+   |
+LL |     true.then_some(a += 1).unwrap_or(());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { a += 1 } else { () }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:30:5
+   |
+LL |     true.then_some(()).unwrap_or(a += 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { () } else { a += 2 }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:34:5
+   |
+LL |     true.then(|| n = 1).unwrap_or_else(|| n = 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { n = 1 } else { n = 2 }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:36:5
+   |
+LL |     true.then_some(1).unwrap_or_else(|| n * 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { 1 } else { n * 2 }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:38:5
+   |
+LL |     true.then_some(n += 1).unwrap_or_else(|| ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { n += 1 } else { () }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:41:13
+   |
+LL |     let _ = true.then_some(1).unwrap_or_else(|| n * 2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { 1 } else { n * 2 }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:44:5
+   |
+LL |     true.then_some(1).unwrap_or_else(Default::default);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { 1 } else { Default::default() }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:50:5
+   |
+LL |     true.then_some(()).unwrap_or_default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { () } else { Default::default() }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:53:5
+   |
+LL |     true.then(|| ()).unwrap_or_default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { () } else { Default::default() }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:56:5
+   |
+LL |     true.then_some(1).unwrap_or_default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { 1 } else { Default::default() }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:59:5
+   |
+LL |     true.then(|| 1).unwrap_or_default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { 1 } else { Default::default() }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:65:13
+   |
+LL |     let _ = true.then_some(40).unwrap_or(17) | 2;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(if true { 40 } else { 17 })`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:69:13
+   |
+LL |     let _ = true.then_some(30).unwrap_or(17) | true.then_some(2).unwrap_or(3) | true.then_some(10).unwrap_or(1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(if true { 30 } else { 17 })`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:69:48
+   |
+LL |     let _ = true.then_some(30).unwrap_or(17) | true.then_some(2).unwrap_or(3) | true.then_some(10).unwrap_or(1);
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { 2 } else { 3 }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:69:81
+   |
+LL |     let _ = true.then_some(30).unwrap_or(17) | true.then_some(2).unwrap_or(3) | true.then_some(10).unwrap_or(1);
+   |                                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { 10 } else { 1 }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:75:17
+   |
+LL |     let _ = 2 | true.then_some(40).unwrap_or(17);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { 40 } else { 17 }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:79:13
+   |
+LL |     let _ = true.then_some(42).unwrap_or(17) as u8;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { 42 } else { 17 }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:83:14
+   |
+LL |     let _ = *true.then_some(&42).unwrap_or(&17);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { &42 } else { &17 }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:87:14
+   |
+LL |     let _ = *true.then_some(&42).unwrap_or(&17) as u8;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { &42 } else { &17 }`
+
+error: aborting due to 23 previous errors
+

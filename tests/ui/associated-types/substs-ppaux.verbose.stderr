@@ -1,0 +1,96 @@
+error[E0308]: mismatched types
+  --> $DIR/substs-ppaux.rs:22:17
+   |
+LL | /     fn bar<'a, T>()
+LL | |     where
+LL | |         T: 'a,
+   | |______________- associated function `bar` defined here
+...
+LL |       let x: () = <i8 as Foo<'static, 'static, u8>>::bar::<'static, char>;
+   |              --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found fn item
+   |              |
+   |              expected due to this
+   |
+   = note: expected unit type `()`
+                found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
+help: use parentheses to call this associated function
+   |
+LL |     let x: () = <i8 as Foo<'static, 'static, u8>>::bar::<'static, char>();
+   |                                                                        ++
+
+error[E0308]: mismatched types
+  --> $DIR/substs-ppaux.rs:30:17
+   |
+LL | /     fn bar<'a, T>()
+LL | |     where
+LL | |         T: 'a,
+   | |______________- associated function `bar` defined here
+...
+LL |       let x: () = <i8 as Foo<'static, 'static, u32>>::bar::<'static, char>;
+   |              --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found fn item
+   |              |
+   |              expected due to this
+   |
+   = note: expected unit type `()`
+                found fn item `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
+help: use parentheses to call this associated function
+   |
+LL |     let x: () = <i8 as Foo<'static, 'static, u32>>::bar::<'static, char>();
+   |                                                                         ++
+
+error[E0308]: mismatched types
+  --> $DIR/substs-ppaux.rs:38:17
+   |
+LL |     fn baz() {}
+   |     -------- associated function `baz` defined here
+...
+LL |     let x: () = <i8 as Foo<'static, 'static, u8>>::baz;
+   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found fn item
+   |            |
+   |            expected due to this
+   |
+   = note: expected unit type `()`
+                found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
+help: use parentheses to call this associated function
+   |
+LL |     let x: () = <i8 as Foo<'static, 'static, u8>>::baz();
+   |                                                       ++
+
+error[E0308]: mismatched types
+  --> $DIR/substs-ppaux.rs:46:17
+   |
+LL | / fn foo<'z>()
+LL | | where
+LL | |     &'z (): Sized,
+   | |__________________- function `foo` defined here
+...
+LL |       let x: () = foo::<'static>;
+   |              --   ^^^^^^^^^^^^^^ expected `()`, found fn item
+   |              |
+   |              expected due to this
+   |
+   = note: expected unit type `()`
+                found fn item `fn() {foo::<'static>}`
+help: use parentheses to call this function
+   |
+LL |     let x: () = foo::<'static>();
+   |                               ++
+
+error[E0277]: the trait bound `str: Foo<'?0, '?1, u8>` is not satisfied
+  --> $DIR/substs-ppaux.rs:54:6
+   |
+LL |     <str as Foo<u8>>::bar;
+   |      ^^^ the trait `Sized` is not implemented for `str`
+   |
+note: required for `str` to implement `Foo<'?0, '?1, u8>`
+  --> $DIR/substs-ppaux.rs:14:20
+   |
+LL | impl<'a, 'b, T, S> Foo<'a, 'b, S> for T {}
+   |              -     ^^^^^^^^^^^^^^     ^
+   |              |
+   |              unsatisfied trait bound introduced here
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

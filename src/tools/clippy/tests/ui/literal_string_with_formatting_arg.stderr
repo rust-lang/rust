@@ -1,0 +1,83 @@
+error: this looks like a formatting argument but it is not part of a formatting macro
+  --> tests/ui/literal_string_with_formatting_arg.rs:26:14
+   |
+LL |     let s = "{ш}";
+   |              ^^^
+   |
+   = note: `-D clippy::literal-string-with-formatting-args` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::literal_string_with_formatting_args)]`
+
+error: this looks like a formatting argument but it is not part of a formatting macro
+  --> tests/ui/literal_string_with_formatting_arg.rs:32:15
+   |
+LL |     x.expect("{y} {}");
+   |               ^^^
+
+error: this looks like a formatting argument but it is not part of a formatting macro
+  --> tests/ui/literal_string_with_formatting_arg.rs:33:16
+   |
+LL |     x.expect(" {y} bla");
+   |                ^^^
+
+error: this looks like a formatting argument but it is not part of a formatting macro
+  --> tests/ui/literal_string_with_formatting_arg.rs:34:15
+   |
+LL |     x.expect("{:?}");
+   |               ^^^^
+
+error: this looks like a formatting argument but it is not part of a formatting macro
+  --> tests/ui/literal_string_with_formatting_arg.rs:35:15
+   |
+LL |     x.expect("{y:?}");
+   |               ^^^^^
+
+error: these look like formatting arguments but are not part of a formatting macro
+  --> tests/ui/literal_string_with_formatting_arg.rs:36:16
+   |
+LL |     x.expect(" {y:?} {y:?} ");
+   |                ^^^^^ ^^^^^
+
+error: this looks like a formatting argument but it is not part of a formatting macro
+  --> tests/ui/literal_string_with_formatting_arg.rs:37:23
+   |
+LL |     x.expect(" {y:..} {y:?} ");
+   |                       ^^^^^
+
+error: these look like formatting arguments but are not part of a formatting macro
+  --> tests/ui/literal_string_with_formatting_arg.rs:38:16
+   |
+LL |     x.expect(r"{y:?}  {y:?} ");
+   |                ^^^^^  ^^^^^
+
+error: this looks like a formatting argument but it is not part of a formatting macro
+  --> tests/ui/literal_string_with_formatting_arg.rs:39:16
+   |
+LL |     x.expect(r"{y:?} y:?}");
+   |                ^^^^^
+
+error: these look like formatting arguments but are not part of a formatting macro
+  --> tests/ui/literal_string_with_formatting_arg.rs:40:19
+   |
+LL |     x.expect(r##" {y:?} {y:?} "##);
+   |                   ^^^^^ ^^^^^
+
+error: this looks like a formatting argument but it is not part of a formatting macro
+  --> tests/ui/literal_string_with_formatting_arg.rs:41:14
+   |
+LL |     assert!("{y}".is_ascii());
+   |              ^^^
+
+error: this looks like a formatting argument but it is not part of a formatting macro
+  --> tests/ui/literal_string_with_formatting_arg.rs:43:18
+   |
+LL |     x.expect("———{:?}");
+   |                  ^^^^
+
+error: this looks like a formatting argument but it is not part of a formatting macro
+  --> tests/ui/literal_string_with_formatting_arg.rs:54:19
+   |
+LL |     x.expect(r##" {x:?} "##); // `x` doesn't exist so we shoud not lint
+   |                   ^^^^^
+
+error: aborting due to 13 previous errors
+

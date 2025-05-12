@@ -1,0 +1,26 @@
+error[E0277]: the trait bound `Self: Get` is not satisfied
+  --> $DIR/associated-types-no-suitable-supertrait-2.rs:17:40
+   |
+LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) {}
+   |                                        ^^^^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `Self`
+   |
+help: consider further restricting `Self`
+   |
+LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Get {}
+   |                                                              +++++++++++++++
+
+error[E0277]: the trait bound `Self: Get` is not satisfied
+  --> $DIR/associated-types-no-suitable-supertrait-2.rs:17:40
+   |
+LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) {}
+   |                                        ^^^^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `Self`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider further restricting `Self`
+   |
+LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Get {}
+   |                                                              +++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

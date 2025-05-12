@@ -1,0 +1,15 @@
+error[E0404]: expected trait, found type alias `Strings`
+  --> $DIR/suggest-trait-alias-instead-of-type.rs:10:18
+   |
+LL | struct Struct<S: Strings>(S);
+   |                  ^^^^^^^ type aliases cannot be used as traits
+   |
+help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
+   |
+LL - type Strings = Iterator<Item=String>;
+LL + trait Strings = Iterator<Item=String>;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0404`.

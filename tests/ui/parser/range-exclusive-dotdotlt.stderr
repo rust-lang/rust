@@ -1,0 +1,46 @@
+error: expected type, found `10`
+  --> $DIR/range-exclusive-dotdotlt.rs:2:17
+   |
+LL |     let _ = 0..<10;
+   |                -^^ expected type
+   |                |
+   |                help: remove the `<` to write an exclusive range
+
+error: expected one of `!`, `(`, `+`, `::`, `<`, `>`, or `as`, found `;`
+  --> $DIR/range-exclusive-dotdotlt.rs:8:20
+   |
+LL |     let _ = 0..<foo;
+   |                -   ^ expected one of 7 possible tokens
+   |                |
+   |                help: remove the `<` to write an exclusive range
+
+error: expected `::`, found `;`
+  --> $DIR/range-exclusive-dotdotlt.rs:14:18
+   |
+LL |     let _ = <foo>;
+   |                  ^ expected `::`
+
+error: expected type, found `1`
+  --> $DIR/range-exclusive-dotdotlt.rs:19:26
+   |
+LL |     let _ = [1, 2, 3][..<1];
+   |                         -^ expected type
+   |                         |
+   |                         help: remove the `<` to write an exclusive range
+
+error: expected one of `!`, `(`, `+`, `::`, `<`, `>`, or `as`, found `]`
+  --> $DIR/range-exclusive-dotdotlt.rs:25:29
+   |
+LL |     let _ = [1, 2, 3][..<foo];
+   |                         -   ^ expected one of 7 possible tokens
+   |                         |
+   |                         help: remove the `<` to write an exclusive range
+
+error: expected `::`, found `]`
+  --> $DIR/range-exclusive-dotdotlt.rs:31:30
+   |
+LL |     let _ = [1, 2, 3][..<foo>];
+   |                              ^ expected `::`
+
+error: aborting due to 6 previous errors
+

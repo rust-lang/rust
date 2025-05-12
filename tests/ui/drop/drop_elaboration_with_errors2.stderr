@@ -1,0 +1,47 @@
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/drop_elaboration_with_errors2.rs:5:25
+   |
+LL |     pub type Alias<T> = impl Sized;
+   |                         ^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0119]: conflicting implementations of trait `Trait<_>`
+  --> $DIR/drop_elaboration_with_errors2.rs:26:1
+   |
+LL | impl<T> Trait<T> for T {
+   | ---------------------- first implementation here
+...
+LL | impl<T> Trait<T> for defining_scope::Alias<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error: unconstrained opaque type
+  --> $DIR/drop_elaboration_with_errors2.rs:5:25
+   |
+LL |     pub type Alias<T> = impl Sized;
+   |                         ^^^^^^^^^^
+   |
+   = note: `Alias` must be used in combination with a concrete type within the same crate
+
+error[E0308]: mismatched types
+  --> $DIR/drop_elaboration_with_errors2.rs:10:9
+   |
+LL |     pub type Alias<T> = impl Sized;
+   |                         ---------- the found opaque type
+...
+LL |     pub fn cast<T>(x: Container<Alias<T>, T>) -> Container<T, T> {
+   |                 - expected this type parameter   --------------- expected `Container<T, T>` because of return type
+LL |         x
+   |         ^ expected `Container<T, T>`, found `Container<Alias<T>, T>`
+   |
+   = note: expected struct `Container<T, _>`
+              found struct `Container<Alias<T>, _>`
+   = help: type parameters must be constrained to match other types
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0119, E0308, E0658.
+For more information about an error, try `rustc --explain E0119`.

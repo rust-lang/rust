@@ -1,0 +1,22 @@
+error: expected one of `(`, `async`, `const`, `default`, `extern`, `fn`, `safe`, `unsafe`, or `use`, found keyword `pub`
+  --> $DIR/duplicate-visibility.rs:4:9
+   |
+LL | extern "C" {
+   |            - while parsing this item list starting here
+LL |     pub pub fn foo();
+   |         ^^^
+   |         |
+   |         expected one of 9 possible tokens
+   |         help: there is already a visibility modifier, remove one
+...
+LL | }
+   | - the item list ends here
+   |
+note: explicit visibility first seen here
+  --> $DIR/duplicate-visibility.rs:4:5
+   |
+LL |     pub pub fn foo();
+   |     ^^^
+
+error: aborting due to 1 previous error
+

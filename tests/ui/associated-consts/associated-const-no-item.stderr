@@ -1,0 +1,16 @@
+error[E0599]: no associated item named `ID` found for type `i32` in the current scope
+  --> $DIR/associated-const-no-item.rs:5:23
+   |
+LL | const X: i32 = <i32>::ID;
+   |                       ^^ associated item not found in `i32`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Foo` defines an item `ID`, perhaps you need to implement it
+  --> $DIR/associated-const-no-item.rs:1:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

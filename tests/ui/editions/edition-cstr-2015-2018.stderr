@@ -1,0 +1,67 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"str"`
+  --> $DIR/edition-cstr-2015-2018.rs:27:6
+   |
+LL |     c"str";
+   |      ^^^^^ expected one of 8 possible tokens
+   |
+   = note: you may be trying to write a c-string literal
+   = note: c-string literals require Rust 2021 or later
+   = help: pass `--edition 2024` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"str"`
+  --> $DIR/edition-cstr-2015-2018.rs:37:7
+   |
+LL |     cr"str";
+   |       ^^^^^ expected one of 8 possible tokens
+   |
+   = note: you may be trying to write a c-string literal
+   = note: c-string literals require Rust 2021 or later
+   = help: pass `--edition 2024` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `#`
+  --> $DIR/edition-cstr-2015-2018.rs:47:7
+   |
+LL |     cr##"str"##;
+   |       ^ expected one of 8 possible tokens
+   |
+   = note: you may be trying to write a c-string literal
+   = note: c-string literals require Rust 2021 or later
+   = help: pass `--edition 2024` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"str"`
+  --> $DIR/edition-cstr-2015-2018.rs:57:7
+   |
+LL |     c "str";
+   |       ^^^^^ expected one of 8 possible tokens
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"str"`
+  --> $DIR/edition-cstr-2015-2018.rs:1:44
+   |
+LL | macro_rules! construct { ($x:ident) => { $x"str" } }
+   |                                            ^^^^^ expected one of 8 possible tokens
+...
+LL |     construct!(c);
+   |     ------------- in this macro invocation
+   |
+   = note: this error originates in the macro `construct` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"str"`
+  --> $DIR/edition-cstr-2015-2018.rs:5:33
+   |
+LL | macro_rules! contain { () => { c"str" } }
+   |                                 ^^^^^ expected one of 8 possible tokens
+...
+LL |     contain!();
+   |     ---------- in this macro invocation
+   |
+   = note: you may be trying to write a c-string literal
+   = note: c-string literals require Rust 2021 or later
+   = help: pass `--edition 2024` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+   = note: this error originates in the macro `contain` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
+

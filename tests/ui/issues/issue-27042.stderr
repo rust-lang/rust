@@ -1,0 +1,57 @@
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/issue-27042.rs:8:9
+   |
+LL | /         'b:
+LL | |
+LL | |         while true { break }; // but here we cite the whole loop
+   | |__________________^ help: use `loop`
+   |
+   = note: `#[warn(while_true)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/issue-27042.rs:6:16
+   |
+LL |     let _: i32 =
+   |         - expected because of this assignment
+LL |         'a: // in this case, the citation is just the `break`:
+LL |         loop { break };
+   |         ----   ^^^^^ expected `i32`, found `()`
+   |         |
+   |         this loop is expected to be of type `i32`
+   |
+help: give the `break` a value of the expected type
+   |
+LL |         loop { break 42 };
+   |                      ++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-27042.rs:8:9
+   |
+LL |       let _: i32 =
+   |              --- expected due to this
+LL | /         'b:
+LL | |
+LL | |         while true { break }; // but here we cite the whole loop
+   | |____________________________^ expected `i32`, found `()`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-27042.rs:12:9
+   |
+LL | /         'c:
+LL | |         for _ in None { break }; // but here we cite the whole loop
+   | |_______________________________^ expected `i32`, found `()`
+   |
+   = note: `for` loops evaluate to unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-27042.rs:15:9
+   |
+LL |       let _: i32 =
+   |              --- expected due to this
+LL | /         'd:
+LL | |         while let Some(_) = None { break };
+   | |__________________________________________^ expected `i32`, found `()`
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

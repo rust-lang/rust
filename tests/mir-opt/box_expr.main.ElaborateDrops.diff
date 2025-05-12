@@ -1,0 +1,93 @@
+- // MIR for `main` before ElaborateDrops
++ // MIR for `main` after ElaborateDrops
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: std::boxed::Box<S>;
+      let mut _2: usize;
+      let mut _3: usize;
+      let mut _4: *mut u8;
+      let mut _5: std::boxed::Box<S>;
+      let _6: ();
+      let mut _7: std::boxed::Box<S>;
++     let mut _8: &mut std::boxed::Box<S>;
++     let mut _9: ();
++     let mut _10: *const S;
+      scope 1 {
+          debug x => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _2 = SizeOf(S);
+          _3 = AlignOf(S);
+          _4 = alloc::alloc::exchange_malloc(move _2, move _3) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageLive(_5);
+          _5 = ShallowInitBox(move _4, S);
+          (*_5) = S::new() -> [return: bb2, unwind: bb8];
+      }
+  
+      bb2: {
+          _1 = move _5;
+-         drop(_5) -> [return: bb3, unwind continue];
++         goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = move _1;
+          _6 = std::mem::drop::<Box<S>>(move _7) -> [return: bb4, unwind: bb6];
+      }
+  
+      bb4: {
+          StorageDead(_7);
+          StorageDead(_6);
+          _0 = const ();
+-         drop(_1) -> [return: bb5, unwind continue];
++         goto -> bb5;
+      }
+  
+      bb5: {
+          StorageDead(_1);
+          return;
+      }
+  
+      bb6 (cleanup): {
+-         drop(_7) -> [return: bb7, unwind terminate(cleanup)];
++         goto -> bb7;
+      }
+  
+      bb7 (cleanup): {
+-         drop(_1) -> [return: bb9, unwind terminate(cleanup)];
++         goto -> bb9;
+      }
+  
+      bb8 (cleanup): {
+-         drop(_5) -> [return: bb9, unwind terminate(cleanup)];
++         goto -> bb12;
+      }
+  
+      bb9 (cleanup): {
+          resume;
++     }
++ 
++     bb10 (cleanup): {
++         _8 = &mut _5;
++         _9 = <Box<S> as Drop>::drop(move _8) -> [return: bb9, unwind terminate(cleanup)];
++     }
++ 
++     bb11 (cleanup): {
++         goto -> bb10;
++     }
++ 
++     bb12 (cleanup): {
++         _10 = copy ((_5.0: std::ptr::Unique<S>).0: std::ptr::NonNull<S>) as *const S (Transmute);
++         goto -> bb11;
+      }
+  }
+  

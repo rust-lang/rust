@@ -1,0 +1,2 @@
+allow-unwrap-in-consts = false
+allow-unwrap-in-tests = true

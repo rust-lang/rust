@@ -1,0 +1,17 @@
+error: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/issue-109816.rs:4:5
+   |
+LL |     #[test]
+   |     ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
+LL |
+LL |     struct A5(u32, u8);
+   |     ------------------- expected a non-associated function, found a struct
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL -     #[test]
+LL +     #[cfg(test)]
+   |
+
+error: aborting due to 1 previous error
+

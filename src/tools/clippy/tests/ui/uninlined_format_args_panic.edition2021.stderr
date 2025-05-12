@@ -1,0 +1,76 @@
+error: variables can be used directly in the `format!` string
+  --> tests/ui/uninlined_format_args_panic.rs:11:5
+   |
+LL |     println!("val='{}'", var);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::uninlined-format-args` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::uninlined_format_args)]`
+help: change this to
+   |
+LL -     println!("val='{}'", var);
+LL +     println!("val='{var}'");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> tests/ui/uninlined_format_args_panic.rs:15:9
+   |
+LL |         panic!("p1 {}", var);
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -         panic!("p1 {}", var);
+LL +         panic!("p1 {var}");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> tests/ui/uninlined_format_args_panic.rs:19:9
+   |
+LL |         panic!("p2 {0}", var);
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -         panic!("p2 {0}", var);
+LL +         panic!("p2 {var}");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> tests/ui/uninlined_format_args_panic.rs:23:9
+   |
+LL |         panic!("p3 {var}", var = var);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -         panic!("p3 {var}", var = var);
+LL +         panic!("p3 {var}");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> tests/ui/uninlined_format_args_panic.rs:34:5
+   |
+LL |     assert!(var == 1, "p5 {}", var);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -     assert!(var == 1, "p5 {}", var);
+LL +     assert!(var == 1, "p5 {var}");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> tests/ui/uninlined_format_args_panic.rs:36:5
+   |
+LL |     debug_assert!(var == 1, "p6 {}", var);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -     debug_assert!(var == 1, "p6 {}", var);
+LL +     debug_assert!(var == 1, "p6 {var}");
+   |
+
+error: aborting due to 6 previous errors
+

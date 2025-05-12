@@ -1,0 +1,20 @@
+error[E0432]: unresolved import `main`
+  --> $DIR/inaccessible-test-modules.rs:5:5
+   |
+LL | use main as x;
+   |     ^^^^^^^^^ no `main` in the root
+
+error[E0432]: unresolved import `test`
+  --> $DIR/inaccessible-test-modules.rs:6:5
+   |
+LL | use test as y;
+   |     ^^^^^^^^^ no `test` in the root
+   |
+help: consider importing this module instead
+   |
+LL | use test::test as y;
+   |         ++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

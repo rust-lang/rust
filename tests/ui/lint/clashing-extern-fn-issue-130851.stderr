@@ -1,0 +1,31 @@
+warning: `foo` redeclared with a different signature
+  --> $DIR/clashing-extern-fn-issue-130851.rs:20:9
+   |
+LL |         pub fn foo(_: super::A);
+   |         ------------------------ `foo` previously declared here
+...
+LL |         pub fn foo(_: super::B);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn(A)`
+              found `unsafe extern "C" fn(B)`
+note: the lint level is defined here
+  --> $DIR/clashing-extern-fn-issue-130851.rs:2:9
+   |
+LL | #![warn(clashing_extern_declarations)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `bar` redeclared with a different signature
+  --> $DIR/clashing-extern-fn-issue-130851.rs:37:9
+   |
+LL |         pub fn bar(_: super::G<u16>);
+   |         ----------------------------- `bar` previously declared here
+...
+LL |         pub fn bar(_: super::G<u32>);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn(G<u16>)`
+              found `unsafe extern "C" fn(G<u32>)`
+
+warning: 2 warnings emitted
+

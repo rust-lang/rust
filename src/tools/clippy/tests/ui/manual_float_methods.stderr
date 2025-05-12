@@ -1,0 +1,97 @@
+error: manually checking if a float is infinite
+  --> tests/ui/manual_float_methods.rs:24:8
+   |
+LL |     if x == f32::INFINITY || x == f32::NEG_INFINITY {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the dedicated method instead: `x.is_infinite()`
+   |
+   = note: `-D clippy::manual-is-infinite` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_is_infinite)]`
+
+error: manually checking if a float is finite
+  --> tests/ui/manual_float_methods.rs:26:8
+   |
+LL |     if x != f32::INFINITY && x != f32::NEG_INFINITY {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::manual-is-finite` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_is_finite)]`
+help: use the dedicated method instead
+   |
+LL -     if x != f32::INFINITY && x != f32::NEG_INFINITY {}
+LL +     if x.is_finite() {}
+   |
+help: this will alter how it handles NaN; if that is a problem, use instead
+   |
+LL -     if x != f32::INFINITY && x != f32::NEG_INFINITY {}
+LL +     if x.is_finite() || x.is_nan() {}
+   |
+help: or, for conciseness
+   |
+LL -     if x != f32::INFINITY && x != f32::NEG_INFINITY {}
+LL +     if !x.is_infinite() {}
+   |
+
+error: manually checking if a float is infinite
+  --> tests/ui/manual_float_methods.rs:28:8
+   |
+LL |     if x == INFINITE || x == NEG_INFINITE {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the dedicated method instead: `x.is_infinite()`
+
+error: manually checking if a float is finite
+  --> tests/ui/manual_float_methods.rs:30:8
+   |
+LL |     if x != INFINITE && x != NEG_INFINITE {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use the dedicated method instead
+   |
+LL -     if x != INFINITE && x != NEG_INFINITE {}
+LL +     if x.is_finite() {}
+   |
+help: this will alter how it handles NaN; if that is a problem, use instead
+   |
+LL -     if x != INFINITE && x != NEG_INFINITE {}
+LL +     if x.is_finite() || x.is_nan() {}
+   |
+help: or, for conciseness
+   |
+LL -     if x != INFINITE && x != NEG_INFINITE {}
+LL +     if !x.is_infinite() {}
+   |
+
+error: manually checking if a float is infinite
+  --> tests/ui/manual_float_methods.rs:33:8
+   |
+LL |     if x == f64::INFINITY || x == f64::NEG_INFINITY {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the dedicated method instead: `x.is_infinite()`
+
+error: manually checking if a float is finite
+  --> tests/ui/manual_float_methods.rs:35:8
+   |
+LL |     if x != f64::INFINITY && x != f64::NEG_INFINITY {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use the dedicated method instead
+   |
+LL -     if x != f64::INFINITY && x != f64::NEG_INFINITY {}
+LL +     if x.is_finite() {}
+   |
+help: this will alter how it handles NaN; if that is a problem, use instead
+   |
+LL -     if x != f64::INFINITY && x != f64::NEG_INFINITY {}
+LL +     if x.is_finite() || x.is_nan() {}
+   |
+help: or, for conciseness
+   |
+LL -     if x != f64::INFINITY && x != f64::NEG_INFINITY {}
+LL +     if !x.is_infinite() {}
+   |
+
+error: manually checking if a float is infinite
+  --> tests/ui/manual_float_methods.rs:50:12
+   |
+LL |         if x == f64::INFINITY || x == f64::NEG_INFINITY {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the dedicated method instead: `x.is_infinite()`
+
+error: aborting due to 7 previous errors
+

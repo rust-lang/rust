@@ -1,0 +1,27 @@
+error[E0005]: refutable pattern in local binding
+  --> $DIR/issue-31561.rs:10:9
+   |
+LL |     let Thing::Foo(y) = Thing::Foo(1);
+   |         ^^^^^^^^^^^^^ patterns `Thing::Bar` and `Thing::Baz` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+note: `Thing` defined here
+  --> $DIR/issue-31561.rs:3:6
+   |
+LL | enum Thing {
+   |      ^^^^^
+LL |     Foo(u8),
+LL |     Bar,
+   |     --- not covered
+LL |     Baz
+   |     --- not covered
+   = note: the matched value is of type `Thing`
+help: you might want to use `let else` to handle the variants that aren't matched
+   |
+LL |     let Thing::Foo(y) = Thing::Foo(1) else { todo!() };
+   |                                       ++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0005`.

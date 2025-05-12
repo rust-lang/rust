@@ -1,0 +1,106 @@
+error[E0107]: missing generics for associated type `X::Y`
+  --> $DIR/missing_lifetime_args.rs:11:32
+   |
+LL | fn foo<'c, 'd>(_arg: Box<dyn X<Y = (&'c u32, &'d u32)>>) {}
+   |                                ^ expected 2 lifetime arguments
+   |
+note: associated type defined here, with 2 lifetime parameters: `'a`, `'b`
+  --> $DIR/missing_lifetime_args.rs:2:10
+   |
+LL |     type Y<'a, 'b>;
+   |          ^ --  --
+help: add missing lifetime arguments
+   |
+LL | fn foo<'c, 'd>(_arg: Box<dyn X<Y<'_, '_> = (&'c u32, &'d u32)>>) {}
+   |                                 ++++++++
+
+error[E0107]: missing generics for associated type `X::Y`
+  --> $DIR/missing_lifetime_args.rs:11:32
+   |
+LL | fn foo<'c, 'd>(_arg: Box<dyn X<Y = (&'c u32, &'d u32)>>) {}
+   |                                ^ expected 2 lifetime arguments
+   |
+note: associated type defined here, with 2 lifetime parameters: `'a`, `'b`
+  --> $DIR/missing_lifetime_args.rs:2:10
+   |
+LL |     type Y<'a, 'b>;
+   |          ^ --  --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing lifetime arguments
+   |
+LL | fn foo<'c, 'd>(_arg: Box<dyn X<Y<'_, '_> = (&'c u32, &'d u32)>>) {}
+   |                                 ++++++++
+
+error[E0107]: missing generics for associated type `X::Y`
+  --> $DIR/missing_lifetime_args.rs:11:32
+   |
+LL | fn foo<'c, 'd>(_arg: Box<dyn X<Y = (&'c u32, &'d u32)>>) {}
+   |                                ^ expected 2 lifetime arguments
+   |
+note: associated type defined here, with 2 lifetime parameters: `'a`, `'b`
+  --> $DIR/missing_lifetime_args.rs:2:10
+   |
+LL |     type Y<'a, 'b>;
+   |          ^ --  --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing lifetime arguments
+   |
+LL | fn foo<'c, 'd>(_arg: Box<dyn X<Y<'_, '_> = (&'c u32, &'d u32)>>) {}
+   |                                 ++++++++
+
+error[E0038]: the trait `X` is not dyn compatible
+  --> $DIR/missing_lifetime_args.rs:11:26
+   |
+LL | fn foo<'c, 'd>(_arg: Box<dyn X<Y = (&'c u32, &'d u32)>>) {}
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `X` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/missing_lifetime_args.rs:2:10
+   |
+LL | trait X {
+   |       - this trait is not dyn compatible...
+LL |     type Y<'a, 'b>;
+   |          ^ ...because it contains the generic associated type `Y`
+   = help: consider moving `Y` to another trait
+
+error[E0107]: struct takes 3 lifetime arguments but 2 lifetime arguments were supplied
+  --> $DIR/missing_lifetime_args.rs:17:26
+   |
+LL | fn bar<'a, 'b, 'c>(_arg: Foo<'a, 'b>) {}
+   |                          ^^^ --  -- supplied 2 lifetime arguments
+   |                          |
+   |                          expected 3 lifetime arguments
+   |
+note: struct defined here, with 3 lifetime parameters: `'a`, `'b`, `'c`
+  --> $DIR/missing_lifetime_args.rs:5:8
+   |
+LL | struct Foo<'a, 'b, 'c> {
+   |        ^^^ --  --  --
+help: add missing lifetime argument
+   |
+LL | fn bar<'a, 'b, 'c>(_arg: Foo<'a, 'b, 'a>) {}
+   |                                    ++++
+
+error[E0107]: struct takes 3 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/missing_lifetime_args.rs:20:16
+   |
+LL | fn f<'a>(_arg: Foo<'a>) {}
+   |                ^^^ -- supplied 1 lifetime argument
+   |                |
+   |                expected 3 lifetime arguments
+   |
+note: struct defined here, with 3 lifetime parameters: `'a`, `'b`, `'c`
+  --> $DIR/missing_lifetime_args.rs:5:8
+   |
+LL | struct Foo<'a, 'b, 'c> {
+   |        ^^^ --  --  --
+help: add missing lifetime arguments
+   |
+LL | fn f<'a>(_arg: Foo<'a, 'a, 'a>) {}
+   |                      ++++++++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0038, E0107.
+For more information about an error, try `rustc --explain E0038`.

@@ -1,0 +1,130 @@
+error[E0308]: mismatched types
+  --> $DIR/coerce-to-bang.rs:6:17
+   |
+LL |     foo(return, 22, 44);
+   |     ---         ^^ expected `!`, found integer
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected type `!`
+              found type `{integer}`
+note: function defined here
+  --> $DIR/coerce-to-bang.rs:3:4
+   |
+LL | fn foo(x: usize, y: !, z: usize) { }
+   |    ^^^           ----
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-to-bang.rs:18:13
+   |
+LL |     foo(22, 44, return);
+   |     ---     ^^ expected `!`, found integer
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected type `!`
+              found type `{integer}`
+note: function defined here
+  --> $DIR/coerce-to-bang.rs:3:4
+   |
+LL | fn foo(x: usize, y: !, z: usize) { }
+   |    ^^^           ----
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-to-bang.rs:26:12
+   |
+LL |     foo(a, b, c); // ... and hence a reference to `a` is expected to diverge.
+   |     ---    ^ expected `!`, found integer
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected type `!`
+              found type `{integer}`
+note: function defined here
+  --> $DIR/coerce-to-bang.rs:3:4
+   |
+LL | fn foo(x: usize, y: !, z: usize) { }
+   |    ^^^           ----
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-to-bang.rs:36:12
+   |
+LL |     foo(a, b, c);
+   |     ---    ^ expected `!`, found integer
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected type `!`
+              found type `{integer}`
+note: function defined here
+  --> $DIR/coerce-to-bang.rs:3:4
+   |
+LL | fn foo(x: usize, y: !, z: usize) { }
+   |    ^^^           ----
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-to-bang.rs:45:12
+   |
+LL |     foo(a, b, c);
+   |     ---    ^ expected `!`, found integer
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected type `!`
+              found type `{integer}`
+note: function defined here
+  --> $DIR/coerce-to-bang.rs:3:4
+   |
+LL | fn foo(x: usize, y: !, z: usize) { }
+   |    ^^^           ----
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-to-bang.rs:50:21
+   |
+LL |     let x: [!; 2] = [return, 22];
+   |            ------   ^^^^^^^^^^^^ expected `[!; 2]`, found `[{integer}; 2]`
+   |            |
+   |            expected due to this
+   |
+   = note: expected array `[!; 2]`
+              found array `[{integer}; 2]`
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-to-bang.rs:55:22
+   |
+LL |     let x: [!; 2] = [22, return];
+   |                      ^^ expected `!`, found integer
+   |
+   = note: expected type `!`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-to-bang.rs:60:37
+   |
+LL |     let x: (usize, !, usize) = (22, 44, 66);
+   |                                     ^^ expected `!`, found integer
+   |
+   = note: expected type `!`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-to-bang.rs:65:41
+   |
+LL |     let x: (usize, !, usize) = (return, 44, 66);
+   |                                         ^^ expected `!`, found integer
+   |
+   = note: expected type `!`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-to-bang.rs:76:37
+   |
+LL |     let x: (usize, !, usize) = (22, 44, return);
+   |                                     ^^ expected `!`, found integer
+   |
+   = note: expected type `!`
+              found type `{integer}`
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

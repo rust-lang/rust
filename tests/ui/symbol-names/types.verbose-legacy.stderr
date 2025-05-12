@@ -1,0 +1,524 @@
+error: symbol-name(_ZN1a1b16Type$LT$bool$GT$17h[HASH]E)
+  --> $DIR/types.rs:18:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<bool>::h[HASH])
+  --> $DIR/types.rs:18:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<bool>)
+  --> $DIR/types.rs:18:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b16Type$LT$char$GT$17h[HASH]E)
+  --> $DIR/types.rs:27:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<char>::h[HASH])
+  --> $DIR/types.rs:27:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<char>)
+  --> $DIR/types.rs:27:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b14Type$LT$i8$GT$17h[HASH]E)
+  --> $DIR/types.rs:36:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<i8>::h[HASH])
+  --> $DIR/types.rs:36:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<i8>)
+  --> $DIR/types.rs:36:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b15Type$LT$i16$GT$17h[HASH]E)
+  --> $DIR/types.rs:45:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<i16>::h[HASH])
+  --> $DIR/types.rs:45:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<i16>)
+  --> $DIR/types.rs:45:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b15Type$LT$i32$GT$17h[HASH]E)
+  --> $DIR/types.rs:54:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<i32>::h[HASH])
+  --> $DIR/types.rs:54:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<i32>)
+  --> $DIR/types.rs:54:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b15Type$LT$i64$GT$17h[HASH]E)
+  --> $DIR/types.rs:63:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<i64>::h[HASH])
+  --> $DIR/types.rs:63:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<i64>)
+  --> $DIR/types.rs:63:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b14Type$LT$u8$GT$17h[HASH]E)
+  --> $DIR/types.rs:72:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<u8>::h[HASH])
+  --> $DIR/types.rs:72:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<u8>)
+  --> $DIR/types.rs:72:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b15Type$LT$u16$GT$17h[HASH]E)
+  --> $DIR/types.rs:81:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<u16>::h[HASH])
+  --> $DIR/types.rs:81:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<u16>)
+  --> $DIR/types.rs:81:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b15Type$LT$u32$GT$17h[HASH]E)
+  --> $DIR/types.rs:90:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<u32>::h[HASH])
+  --> $DIR/types.rs:90:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<u32>)
+  --> $DIR/types.rs:90:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b15Type$LT$u64$GT$17h[HASH]E)
+  --> $DIR/types.rs:99:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<u64>::h[HASH])
+  --> $DIR/types.rs:99:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<u64>)
+  --> $DIR/types.rs:99:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b15Type$LT$f16$GT$17h[HASH]E)
+  --> $DIR/types.rs:108:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<f16>::h[HASH])
+  --> $DIR/types.rs:108:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<f16>)
+  --> $DIR/types.rs:108:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b15Type$LT$f32$GT$17h[HASH]E)
+  --> $DIR/types.rs:117:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<f32>::h[HASH])
+  --> $DIR/types.rs:117:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<f32>)
+  --> $DIR/types.rs:117:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b15Type$LT$f64$GT$17h[HASH]E)
+  --> $DIR/types.rs:126:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<f64>::h[HASH])
+  --> $DIR/types.rs:126:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<f64>)
+  --> $DIR/types.rs:126:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b16Type$LT$f128$GT$17h[HASH]E)
+  --> $DIR/types.rs:135:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<f128>::h[HASH])
+  --> $DIR/types.rs:135:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<f128>)
+  --> $DIR/types.rs:135:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b15Type$LT$str$GT$17h[HASH]E)
+  --> $DIR/types.rs:144:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<str>::h[HASH])
+  --> $DIR/types.rs:144:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<str>)
+  --> $DIR/types.rs:144:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b17Type$LT$$u21$$GT$17h[HASH]E)
+  --> $DIR/types.rs:153:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<!>::h[HASH])
+  --> $DIR/types.rs:153:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<!>)
+  --> $DIR/types.rs:153:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b20Type$LT$$LP$$RP$$GT$17h[HASH]E)
+  --> $DIR/types.rs:162:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<()>::h[HASH])
+  --> $DIR/types.rs:162:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<()>)
+  --> $DIR/types.rs:162:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b25Type$LT$$LP$u8$C$$RP$$GT$17h[HASH]E)
+  --> $DIR/types.rs:171:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<(u8,)>::h[HASH])
+  --> $DIR/types.rs:171:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<(u8,)>)
+  --> $DIR/types.rs:171:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b28Type$LT$$LP$u8$C$u16$RP$$GT$17h[HASH]E)
+  --> $DIR/types.rs:180:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<(u8,u16)>::h[HASH])
+  --> $DIR/types.rs:180:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<(u8,u16)>)
+  --> $DIR/types.rs:180:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b34Type$LT$$LP$u8$C$u16$C$u32$RP$$GT$17h[HASH]E)
+  --> $DIR/types.rs:189:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<(u8,u16,u32)>::h[HASH])
+  --> $DIR/types.rs:189:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<(u8,u16,u32)>)
+  --> $DIR/types.rs:189:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b28Type$LT$$BP$const$u20$u8$GT$17h[HASH]E)
+  --> $DIR/types.rs:198:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<*const u8>::h[HASH])
+  --> $DIR/types.rs:198:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<*const u8>)
+  --> $DIR/types.rs:198:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b26Type$LT$$BP$mut$u20$u8$GT$17h[HASH]E)
+  --> $DIR/types.rs:207:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<*mut u8>::h[HASH])
+  --> $DIR/types.rs:207:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<*mut u8>)
+  --> $DIR/types.rs:207:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b19Type$LT$$RF$str$GT$17h[HASH]E)
+  --> $DIR/types.rs:216:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<&str>::h[HASH])
+  --> $DIR/types.rs:216:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<&str>)
+  --> $DIR/types.rs:216:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b27Type$LT$$RF$mut$u20$str$GT$17h[HASH]E)
+  --> $DIR/types.rs:225:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<&mut str>::h[HASH])
+  --> $DIR/types.rs:225:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<&mut str>)
+  --> $DIR/types.rs:225:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b35Type$LT$$u5b$u8$u3b$$u20$0$u5d$$GT$17h[HASH]E)
+  --> $DIR/types.rs:234:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<[u8; 0]>::h[HASH])
+  --> $DIR/types.rs:234:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<[u8; 0]>)
+  --> $DIR/types.rs:234:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b22Type$LT$fn$LP$$RP$$GT$17h[HASH]E)
+  --> $DIR/types.rs:243:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<fn()>::h[HASH])
+  --> $DIR/types.rs:243:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<fn()>)
+  --> $DIR/types.rs:243:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b60Type$LT$unsafe$u20$extern$u20$$u22$C$u22$$u20$fn$LP$$RP$$GT$17h[HASH]E)
+  --> $DIR/types.rs:252:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<unsafe extern "C" fn()>::h[HASH])
+  --> $DIR/types.rs:252:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<unsafe extern "C" fn()>)
+  --> $DIR/types.rs:252:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b34Type$LT$$u5b$T$u3b$$u20$N$u5d$$GT$17h[HASH]E)
+  --> $DIR/types.rs:261:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<[T; N]>::h[HASH])
+  --> $DIR/types.rs:261:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<[T; N]>)
+  --> $DIR/types.rs:261:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1a1b35Type$LT$$u5b$u8$u3b$$u20$0$u5d$$GT$17h[HASH]E)
+  --> $DIR/types.rs:272:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(a::b::Type<[u8; 0]>::h[HASH])
+  --> $DIR/types.rs:272:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(a::b::Type<[u8; 0]>)
+  --> $DIR/types.rs:272:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 87 previous errors
+

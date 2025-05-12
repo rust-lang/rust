@@ -1,0 +1,65 @@
+error[E0392]: lifetime parameter `'d` is never used
+  --> $DIR/variance-regions-indirect.rs:8:26
+   |
+LL | enum Base<'a, 'b, 'c:'b, 'd> {
+   |                          ^^ unused lifetime parameter
+   |
+   = help: consider removing `'d`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: lifetime parameter `'w` is never used
+  --> $DIR/variance-regions-indirect.rs:16:17
+   |
+LL | struct Derived1<'w, 'x:'y, 'y, 'z> {
+   |                 ^^ unused lifetime parameter
+   |
+   = help: consider removing `'w`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: lifetime parameter `'c` is never used
+  --> $DIR/variance-regions-indirect.rs:22:28
+   |
+LL | struct Derived2<'a, 'b:'a, 'c> {
+   |                            ^^ unused lifetime parameter
+   |
+   = help: consider removing `'c`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: lifetime parameter `'c` is never used
+  --> $DIR/variance-regions-indirect.rs:28:28
+   |
+LL | struct Derived3<'a:'b, 'b, 'c> {
+   |                            ^^ unused lifetime parameter
+   |
+   = help: consider removing `'c`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: ['a: -, 'b: +, 'c: o, 'd: *]
+  --> $DIR/variance-regions-indirect.rs:8:1
+   |
+LL | enum Base<'a, 'b, 'c:'b, 'd> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['w: *, 'x: o, 'y: +, 'z: -]
+  --> $DIR/variance-regions-indirect.rs:16:1
+   |
+LL | struct Derived1<'w, 'x:'y, 'y, 'z> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: o, 'b: o, 'c: *]
+  --> $DIR/variance-regions-indirect.rs:22:1
+   |
+LL | struct Derived2<'a, 'b:'a, 'c> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: o, 'b: +, 'c: *]
+  --> $DIR/variance-regions-indirect.rs:28:1
+   |
+LL | struct Derived3<'a:'b, 'b, 'c> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: -, 'b: +, 'c: o]
+  --> $DIR/variance-regions-indirect.rs:34:1
+   |
+LL | struct Derived4<'a, 'b, 'c:'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

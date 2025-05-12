@@ -1,0 +1,176 @@
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:11:23
+   |
+LL | extern "C" { fn ffi(#[id] arg1: i32, #[id] ...); }
+   |                       ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:11:40
+   |
+LL | extern "C" { fn ffi(#[id] arg1: i32, #[id] ...); }
+   |                                        ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:15:40
+   |
+LL | unsafe extern "C" fn cvar(arg1: i32, #[id] mut args: ...) {}
+   |                                        ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:18:30
+   |
+LL | type Alias = extern "C" fn(#[id] u8, #[id] ...);
+   |                              ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:18:40
+   |
+LL | type Alias = extern "C" fn(#[id] u8, #[id] ...);
+   |                                        ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:22:11
+   |
+LL | fn free(#[id] arg1: u8) {
+   |           ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:24:18
+   |
+LL |     let lam = |#[id] W(x), #[id] y: usize| ();
+   |                  ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:24:30
+   |
+LL |     let lam = |#[id] W(x), #[id] y: usize| ();
+   |                              ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:30:20
+   |
+LL |     fn inherent1(#[id] self, #[id] arg1: u8) {}
+   |                    ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:30:32
+   |
+LL |     fn inherent1(#[id] self, #[id] arg1: u8) {}
+   |                                ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:33:20
+   |
+LL |     fn inherent2(#[id] &self, #[id] arg1: u8) {}
+   |                    ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:33:33
+   |
+LL |     fn inherent2(#[id] &self, #[id] arg1: u8) {}
+   |                                 ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:36:24
+   |
+LL |     fn inherent3<'a>(#[id] &'a mut self, #[id] arg1: u8) {}
+   |                        ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:36:44
+   |
+LL |     fn inherent3<'a>(#[id] &'a mut self, #[id] arg1: u8) {}
+   |                                            ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:39:24
+   |
+LL |     fn inherent4<'a>(#[id] self: Box<Self>, #[id] arg1: u8) {}
+   |                        ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:39:47
+   |
+LL |     fn inherent4<'a>(#[id] self: Box<Self>, #[id] arg1: u8) {}
+   |                                               ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:42:40
+   |
+LL |     fn issue_64682_associated_fn<'a>(#[id] arg1: u8, #[id] arg2: u8) {}
+   |                                        ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:42:56
+   |
+LL |     fn issue_64682_associated_fn<'a>(#[id] arg1: u8, #[id] arg2: u8) {}
+   |                                                        ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:48:17
+   |
+LL |     fn trait1(#[id] self, #[id] arg1: u8);
+   |                 ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:48:29
+   |
+LL |     fn trait1(#[id] self, #[id] arg1: u8);
+   |                             ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:51:17
+   |
+LL |     fn trait2(#[id] &self, #[id] arg1: u8);
+   |                 ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:51:30
+   |
+LL |     fn trait2(#[id] &self, #[id] arg1: u8);
+   |                              ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:54:21
+   |
+LL |     fn trait3<'a>(#[id] &'a mut self, #[id] arg1: u8);
+   |                     ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:54:41
+   |
+LL |     fn trait3<'a>(#[id] &'a mut self, #[id] arg1: u8);
+   |                                         ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:57:21
+   |
+LL |     fn trait4<'a>(#[id] self: Box<Self>, #[id] arg1: u8, #[id] Vec<u8>);
+   |                     ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:57:44
+   |
+LL |     fn trait4<'a>(#[id] self: Box<Self>, #[id] arg1: u8, #[id] Vec<u8>);
+   |                                            ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:57:60
+   |
+LL |     fn trait4<'a>(#[id] self: Box<Self>, #[id] arg1: u8, #[id] Vec<u8>);
+   |                                                            ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:61:40
+   |
+LL |     fn issue_64682_associated_fn<'a>(#[id] arg1: u8, #[id] arg2: u8);
+   |                                        ^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `id`
+  --> $DIR/proc-macro-cannot-be-used.rs:61:56
+   |
+LL |     fn issue_64682_associated_fn<'a>(#[id] arg1: u8, #[id] arg2: u8);
+   |                                                        ^^ not a non-macro attribute
+
+error: aborting due to 29 previous errors
+

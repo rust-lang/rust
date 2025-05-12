@@ -1,0 +1,163 @@
+#![warn(clippy::unnecessary_literal_unwrap)]
+#![allow(unreachable_code)]
+#![allow(
+    clippy::unnecessary_lazy_evaluations,
+    clippy::diverging_sub_expression,
+    clippy::let_unit_value,
+    clippy::no_effect
+)]
+
+fn unwrap_option_some() {
+    let _val = 1;
+    //~^ unnecessary_literal_unwrap
+    let _val = 1;
+    //~^ unnecessary_literal_unwrap
+
+    1;
+    //~^ unnecessary_literal_unwrap
+    1;
+    //~^ unnecessary_literal_unwrap
+}
+
+#[rustfmt::skip] // force rustfmt not to remove braces in `|| { 234 }`
+fn unwrap_option_none() {
+    let _val = panic!();
+    //~^ unnecessary_literal_unwrap
+    let _val = panic!("this always happens");
+    //~^ unnecessary_literal_unwrap
+    let _val: String = String::default();
+    //~^ unnecessary_literal_unwrap
+    let _val: u16 = 234;
+    //~^ unnecessary_literal_unwrap
+    let _val: u16 = 234;
+    //~^ unnecessary_literal_unwrap
+    let _val: u16 = { 234 };
+    //~^ unnecessary_literal_unwrap
+    let _val: u16 = { 234 };
+    //~^ unnecessary_literal_unwrap
+
+    panic!();
+    //~^ unnecessary_literal_unwrap
+    panic!("this always happens");
+    //~^ unnecessary_literal_unwrap
+    String::default();
+    //~^ unnecessary_literal_unwrap
+    234;
+    //~^ unnecessary_literal_unwrap
+    234;
+    //~^ unnecessary_literal_unwrap
+    { 234 };
+    //~^ unnecessary_literal_unwrap
+    { 234 };
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_result_ok() {
+    let _val = 1;
+    //~^ unnecessary_literal_unwrap
+    let _val = 1;
+    //~^ unnecessary_literal_unwrap
+    let _val = panic!("{:?}", 1);
+    //~^ unnecessary_literal_unwrap
+    let _val = panic!("{1}: {:?}", 1, "this always happens");
+    //~^ unnecessary_literal_unwrap
+
+    1;
+    //~^ unnecessary_literal_unwrap
+    1;
+    //~^ unnecessary_literal_unwrap
+    panic!("{:?}", 1);
+    //~^ unnecessary_literal_unwrap
+    panic!("{1}: {:?}", 1, "this always happens");
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_result_err() {
+    let _val = 1;
+    //~^ unnecessary_literal_unwrap
+    let _val = 1;
+    //~^ unnecessary_literal_unwrap
+    let _val = panic!("{:?}", 1);
+    //~^ unnecessary_literal_unwrap
+    let _val = panic!("{1}: {:?}", 1, "this always happens");
+    //~^ unnecessary_literal_unwrap
+
+    1;
+    //~^ unnecessary_literal_unwrap
+    1;
+    //~^ unnecessary_literal_unwrap
+    panic!("{:?}", 1);
+    //~^ unnecessary_literal_unwrap
+    panic!("{1}: {:?}", 1, "this always happens");
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_methods_option() {
+    let _val = 1;
+    //~^ unnecessary_literal_unwrap
+    let _val = 1;
+    //~^ unnecessary_literal_unwrap
+    let _val = 1;
+    //~^ unnecessary_literal_unwrap
+
+    1;
+    //~^ unnecessary_literal_unwrap
+    1;
+    //~^ unnecessary_literal_unwrap
+    1;
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_methods_result() {
+    let _val = 1;
+    //~^ unnecessary_literal_unwrap
+    let _val = 1;
+    //~^ unnecessary_literal_unwrap
+    let _val = 1;
+    //~^ unnecessary_literal_unwrap
+
+    1;
+    //~^ unnecessary_literal_unwrap
+    1;
+    //~^ unnecessary_literal_unwrap
+    1;
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_from_binding() {
+    macro_rules! from_macro {
+        () => {
+            Some("")
+        };
+    }
+    let val = from_macro!();
+    let _ = val.unwrap_or("");
+}
+
+fn unwrap_unchecked() {
+    let _ = 1;
+    //~^ unnecessary_literal_unwrap
+    let _ = unsafe { 1 + *(&1 as *const i32) }; // needs to keep the unsafe block
+    //
+    //~^^ unnecessary_literal_unwrap
+    let _ = 1 + 1;
+    //~^ unnecessary_literal_unwrap
+    let _ = 1;
+    //~^ unnecessary_literal_unwrap
+    let _ = unsafe { 1 + *(&1 as *const i32) };
+    //~^ unnecessary_literal_unwrap
+    let _ = 1 + 1;
+    //~^ unnecessary_literal_unwrap
+    let _ = 123;
+    //~^ unnecessary_literal_unwrap
+}
+
+fn main() {
+    unwrap_option_some();
+    unwrap_option_none();
+    unwrap_result_ok();
+    unwrap_result_err();
+    unwrap_methods_option();
+    unwrap_methods_result();
+    unwrap_unchecked();
+}

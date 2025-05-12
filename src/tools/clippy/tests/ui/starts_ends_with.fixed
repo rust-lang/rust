@@ -1,0 +1,69 @@
+#![allow(clippy::needless_if, dead_code, unused_must_use, clippy::double_ended_iterator_last)]
+
+fn main() {}
+
+#[allow(clippy::unnecessary_operation)]
+fn starts_with() {
+    "".starts_with(' ');
+    //~^ chars_next_cmp
+    !"".starts_with(' ');
+    //~^ chars_next_cmp
+
+    // Ensure that suggestion is escaped correctly
+    "".starts_with('\n');
+    //~^ chars_next_cmp
+    !"".starts_with('\n');
+    //~^ chars_next_cmp
+}
+
+fn chars_cmp_with_unwrap() {
+    let s = String::from("foo");
+    if s.starts_with('f') {
+        //~^ chars_next_cmp
+        // s.starts_with('f')
+        // Nothing here
+    }
+    if s.ends_with('o') {
+        //~^ chars_last_cmp
+        // s.ends_with('o')
+        // Nothing here
+    }
+    if s.ends_with('o') {
+        //~^ chars_last_cmp
+        // s.ends_with('o')
+        // Nothing here
+    }
+    if !s.starts_with('f') {
+        //~^ chars_next_cmp
+        // !s.starts_with('f')
+        // Nothing here
+    }
+    if !s.ends_with('o') {
+        //~^ chars_last_cmp
+        // !s.ends_with('o')
+        // Nothing here
+    }
+    if !s.ends_with('\n') {
+        //~^ chars_last_cmp
+        // !s.ends_with('o')
+        // Nothing here
+    }
+}
+
+#[allow(clippy::unnecessary_operation)]
+fn ends_with() {
+    "".ends_with(' ');
+    //~^ chars_last_cmp
+    !"".ends_with(' ');
+    //~^ chars_last_cmp
+    "".ends_with(' ');
+    //~^ chars_last_cmp
+    !"".ends_with(' ');
+    //~^ chars_last_cmp
+
+    // Ensure that suggestion is escaped correctly
+    "".ends_with('\n');
+    //~^ chars_last_cmp
+    !"".ends_with('\n');
+    //~^ chars_last_cmp
+}

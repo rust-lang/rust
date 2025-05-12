@@ -1,0 +1,27 @@
+warning: the feature `unsized_const_params` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/unsized_field-2.rs:2:30
+   |
+LL | #![feature(adt_const_params, unsized_const_params)]
+   |                              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/unsized_field-2.rs:7:10
+   |
+LL | #[derive(std::marker::ConstParamTy, Eq, PartialEq)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct A(unsized_const_param::GenericNotUnsizedParam<&'static [u8]>);
+   |          ---------------------------------------------------------- this field does not implement `ConstParamTy_`
+   |
+note: the `ConstParamTy_` impl for `GenericNotUnsizedParam<&'static [u8]>` requires that `&'static [u8]: ConstParamTy_`
+  --> $DIR/unsized_field-2.rs:9:10
+   |
+LL | struct A(unsized_const_param::GenericNotUnsizedParam<&'static [u8]>);
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0204`.

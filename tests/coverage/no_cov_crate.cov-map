@@ -1,0 +1,101 @@
+Function name: no_cov_crate::add_coverage_1
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 16, 01, 00, 14, 01, 01, 05, 00, 0d, 01, 00, 0e, 00, 22, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/no_cov_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 22, 1) to (start + 0, 20)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 0, 14) to (start + 0, 34)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: no_cov_crate::add_coverage_2
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 1a, 01, 00, 14, 01, 01, 05, 00, 0d, 01, 00, 0e, 00, 22, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/no_cov_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 26, 1) to (start + 0, 20)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 0, 14) to (start + 0, 34)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: no_cov_crate::add_coverage_not_called (unused)
+Raw bytes (24): 0x[01, 01, 00, 04, 00, 1f, 01, 00, 1d, 00, 01, 05, 00, 0d, 00, 00, 0e, 00, 26, 00, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/no_cov_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Zero) at (prev + 31, 1) to (start + 0, 29)
+- Code(Zero) at (prev + 1, 5) to (start + 0, 13)
+- Code(Zero) at (prev + 0, 14) to (start + 0, 38)
+- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: (none)
+
+Function name: no_cov_crate::main
+Raw bytes (74): 0x[01, 01, 00, 0e, 01, 4f, 01, 00, 0a, 01, 01, 09, 00, 10, 01, 00, 13, 00, 2e, 01, 02, 05, 00, 1a, 01, 01, 05, 00, 1a, 01, 01, 05, 00, 13, 01, 01, 05, 00, 13, 01, 02, 05, 00, 22, 01, 00, 23, 00, 2a, 01, 01, 05, 00, 16, 01, 00, 17, 00, 1e, 01, 01, 05, 00, 23, 01, 00, 24, 00, 2b, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/no_cov_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 14
+- Code(Counter(0)) at (prev + 79, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 0, 19) to (start + 0, 46)
+- Code(Counter(0)) at (prev + 2, 5) to (start + 0, 26)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 26)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 19)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 19)
+- Code(Counter(0)) at (prev + 2, 5) to (start + 0, 34)
+- Code(Counter(0)) at (prev + 0, 35) to (start + 0, 42)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 0, 23) to (start + 0, 30)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 35)
+- Code(Counter(0)) at (prev + 0, 36) to (start + 0, 43)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: no_cov_crate::nested_fns::outer
+Raw bytes (34): 0x[01, 01, 00, 06, 01, 33, 05, 00, 20, 01, 01, 09, 00, 11, 01, 00, 12, 00, 26, 01, 01, 09, 00, 1a, 01, 00, 1b, 00, 22, 01, 0a, 05, 00, 06]
+Number of files: 1
+- file 0 => $DIR/no_cov_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 51, 5) to (start + 0, 32)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 0, 18) to (start + 0, 38)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 26)
+- Code(Counter(0)) at (prev + 0, 27) to (start + 0, 34)
+- Code(Counter(0)) at (prev + 10, 5) to (start + 0, 6)
+Highest counter ID seen: c0
+
+Function name: no_cov_crate::nested_fns::outer_both_covered
+Raw bytes (34): 0x[01, 01, 00, 06, 01, 41, 05, 00, 2d, 01, 01, 09, 00, 11, 01, 00, 12, 00, 26, 01, 01, 09, 00, 0e, 01, 00, 0f, 00, 16, 01, 09, 05, 00, 06]
+Number of files: 1
+- file 0 => $DIR/no_cov_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 65, 5) to (start + 0, 45)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 0, 18) to (start + 0, 38)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 9, 5) to (start + 0, 6)
+Highest counter ID seen: c0
+
+Function name: no_cov_crate::nested_fns::outer_both_covered::inner
+Raw bytes (31): 0x[01, 01, 01, 01, 05, 05, 01, 45, 09, 00, 20, 01, 01, 10, 00, 17, 05, 00, 18, 02, 0e, 02, 02, 14, 02, 0e, 01, 03, 09, 00, 0a]
+Number of files: 1
+- file 0 => $DIR/no_cov_crate.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 69, 9) to (start + 0, 32)
+- Code(Counter(0)) at (prev + 1, 16) to (start + 0, 23)
+- Code(Counter(1)) at (prev + 0, 24) to (start + 2, 14)
+- Code(Expression(0, Sub)) at (prev + 2, 20) to (start + 2, 14)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 3, 9) to (start + 0, 10)
+Highest counter ID seen: c1
+

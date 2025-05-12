@@ -1,0 +1,187 @@
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:7:5
+   |
+LL | /     match test {
+LL | |
+LL | |         true => 0,
+LL | |         false => 42,
+LL | |     };
+   | |_____^ help: consider using an `if`/`else` expression: `if test { 0 } else { 42 }`
+   |
+note: the lint level is defined here
+  --> tests/ui/match_bool.rs:1:9
+   |
+LL | #![deny(clippy::match_bool)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:14:5
+   |
+LL | /     match option == 1 {
+LL | |
+LL | |         true => 1,
+LL | |         false => 0,
+LL | |     };
+   | |_____^ help: consider using an `if`/`else` expression: `if option == 1 { 1 } else { 0 }`
+
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:20:5
+   |
+LL | /     match test {
+LL | |
+LL | |         true => (),
+LL | |         false => {
+LL | |             println!("Noooo!");
+LL | |         },
+LL | |     };
+   | |_____^
+   |
+help: consider using an `if`/`else` expression
+   |
+LL ~     if !test {
+LL +         println!("Noooo!");
+LL ~     };
+   |
+
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:28:5
+   |
+LL | /     match test {
+LL | |
+LL | |         false => {
+LL | |             println!("Noooo!");
+LL | |         },
+LL | |         _ => (),
+LL | |     };
+   | |_____^
+   |
+help: consider using an `if`/`else` expression
+   |
+LL ~     if !test {
+LL +         println!("Noooo!");
+LL ~     };
+   |
+
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:36:5
+   |
+LL | /     match test && test {
+LL | |
+LL | |         false => {
+LL | |             println!("Noooo!");
+LL | |         },
+LL | |         _ => (),
+LL | |     };
+   | |_____^
+   |
+help: consider using an `if`/`else` expression
+   |
+LL ~     if !(test && test) {
+LL +         println!("Noooo!");
+LL ~     };
+   |
+
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:44:5
+   |
+LL | /     match test {
+LL | |
+LL | |         false => {
+LL | |             println!("Noooo!");
+...  |
+LL | |         },
+LL | |     };
+   | |_____^
+   |
+help: consider using an `if`/`else` expression
+   |
+LL ~     if !test {
+LL +         println!("Noooo!");
+LL +     } else {
+LL +         println!("Yes!");
+LL ~     };
+   |
+
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:69:13
+   |
+LL |       let _ = match test {
+   |  _____________^
+LL | |
+LL | |         true if option == 5 => 10,
+LL | |         _ => 1,
+LL | |     };
+   | |_____^ help: consider using an `if`/`else` expression: `if test && option == 5 { 10 } else { 1 }`
+
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:75:13
+   |
+LL |       let _ = match test {
+   |  _____________^
+LL | |
+LL | |         false if option == 5 => 10,
+LL | |         _ => 1,
+LL | |     };
+   | |_____^ help: consider using an `if`/`else` expression: `if !test && option == 5 { 10 } else { 1 }`
+
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:81:5
+   |
+LL | /     match test {
+LL | |
+LL | |         true if option == 5 => println!("Hello"),
+LL | |         _ => (),
+LL | |     };
+   | |_____^ help: consider using an `if`/`else` expression: `if test && option == 5 { println!("Hello") }`
+
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:87:5
+   |
+LL | /     match test {
+LL | |
+LL | |         true if option == 5 => (),
+LL | |         _ => println!("Hello"),
+LL | |     };
+   | |_____^ help: consider using an `if`/`else` expression: `if !(test && option == 5) { println!("Hello") }`
+
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:93:5
+   |
+LL | /     match test {
+LL | |
+LL | |         false if option == 5 => println!("Hello"),
+LL | |         _ => (),
+LL | |     };
+   | |_____^ help: consider using an `if`/`else` expression: `if !test && option == 5 { println!("Hello") }`
+
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:99:5
+   |
+LL | /     match test {
+LL | |
+LL | |         false if option == 5 => (),
+LL | |         _ => println!("Hello"),
+LL | |     };
+   | |_____^ help: consider using an `if`/`else` expression: `if !(!test && option == 5) { println!("Hello") }`
+
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:107:5
+   |
+LL | /     match true {
+LL | |
+LL | |         true => 'a: {
+LL | |             break 'a;
+LL | |         },
+LL | |         _ => (),
+LL | |     }
+   | |_____^
+   |
+help: consider using an `if`/`else` expression
+   |
+LL ~     if true { 'a: {
+LL +         break 'a;
+LL +     } }
+   |
+
+error: aborting due to 13 previous errors
+

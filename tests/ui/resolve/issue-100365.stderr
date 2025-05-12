@@ -1,0 +1,77 @@
+error[E0423]: expected value, found trait `Into`
+  --> $DIR/issue-100365.rs:2:16
+   |
+LL |     let addr = Into::<std::net::IpAddr>.into([127, 0, 0, 1]);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use the path separator to refer to an item
+   |
+LL -     let addr = Into::<std::net::IpAddr>.into([127, 0, 0, 1]);
+LL +     let addr = Into::<std::net::IpAddr>::into([127, 0, 0, 1]);
+   |
+
+error[E0423]: expected value, found trait `Into`
+  --> $DIR/issue-100365.rs:6:13
+   |
+LL |     let _ = Into.into(());
+   |             ^^^^
+   |
+help: use the path separator to refer to an item
+   |
+LL -     let _ = Into.into(());
+LL +     let _ = Into::into(());
+   |
+
+error[E0423]: expected value, found trait `Into`
+  --> $DIR/issue-100365.rs:10:13
+   |
+LL |     let _ = Into::<()>.into;
+   |             ^^^^^^^^^^
+   |
+help: use the path separator to refer to an item
+   |
+LL -     let _ = Into::<()>.into;
+LL +     let _ = Into::<()>::into;
+   |
+
+error[E0423]: expected value, found trait `std::iter::Iterator`
+  --> $DIR/issue-100365.rs:17:9
+   |
+LL |         ::std::iter::Iterator
+   |         ^^^^^^^^^^^^^^^^^^^^^ not a value
+...
+LL |     Trait!().map(std::convert::identity); // no `help` here!
+   |     -------- in this macro invocation
+   |
+   = note: this error originates in the macro `Trait` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0423]: expected value, found trait `std::iter::Iterator`
+  --> $DIR/issue-100365.rs:17:9
+   |
+LL |         ::std::iter::Iterator
+   |         ^^^^^^^^^^^^^^^^^^^^^ not a value
+...
+LL |     Trait!().map; // no `help` here!
+   |     -------- in this macro invocation
+   |
+   = note: this error originates in the macro `Trait` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0423]: expected value, found trait `Into`
+  --> $DIR/issue-100365.rs:25:9
+   |
+LL |         Into::<String>.into("")
+   |         ^^^^^^^^^^^^^^
+...
+LL |     let _ = create!();
+   |             --------- in this macro invocation
+   |
+   = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -         Into::<String>.into("")
+LL +         Into::<String>::into("")
+   |
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0423`.

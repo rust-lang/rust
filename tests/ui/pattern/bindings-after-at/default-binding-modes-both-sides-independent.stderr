@@ -1,0 +1,63 @@
+error: cannot move out of value because it is borrowed
+  --> $DIR/default-binding-modes-both-sides-independent.rs:26:9
+   |
+LL |     let ref a @ b = NotCopy;
+   |         ^^^^^   - value is moved into `b` here
+   |         |
+   |         value is borrowed by `a` here
+
+error: cannot move out of value because it is borrowed
+  --> $DIR/default-binding-modes-both-sides-independent.rs:29:9
+   |
+LL |     let ref mut a @ b = NotCopy;
+   |         ^^^^^^^^^   - value is moved into `b` here
+   |         |
+   |         value is mutably borrowed by `a` here
+
+error: cannot move out of value because it is borrowed
+  --> $DIR/default-binding-modes-both-sides-independent.rs:34:12
+   |
+LL |         Ok(ref a @ b) | Err(b @ ref a) => {
+   |            ^^^^^   - value is moved into `b` here
+   |            |
+   |            value is borrowed by `a` here
+
+error: borrow of moved value
+  --> $DIR/default-binding-modes-both-sides-independent.rs:34:29
+   |
+LL |         Ok(ref a @ b) | Err(b @ ref a) => {
+   |                             ^   ----- value borrowed here after move
+   |                             |
+   |                             value moved into `b` here
+   |                             move occurs because `b` has type `NotCopy`, which does not implement the `Copy` trait
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         Ok(ref a @ b) | Err(ref b @ ref a) => {
+   |                             +++
+
+error: cannot move out of value because it is borrowed
+  --> $DIR/default-binding-modes-both-sides-independent.rs:42:9
+   |
+LL |         ref a @ b => {
+   |         ^^^^^   - value is moved into `b` here
+   |         |
+   |         value is borrowed by `a` here
+
+error[E0382]: borrow of moved value
+  --> $DIR/default-binding-modes-both-sides-independent.rs:29:9
+   |
+LL |     let ref mut a @ b = NotCopy;
+   |         ^^^^^^^^^   -   ------- move occurs because value has type `NotCopy`, which does not implement the `Copy` trait
+   |         |           |
+   |         |           value moved here
+   |         value borrowed here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let ref mut a @ ref b = NotCopy;
+   |                     +++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

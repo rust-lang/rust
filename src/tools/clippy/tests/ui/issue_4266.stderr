@@ -1,0 +1,27 @@
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/issue_4266.rs:4:16
+   |
+LL | async fn sink1<'a>(_: &'a str) {} // lint
+   |                ^^      ^^
+   |
+   = note: `-D clippy::needless-lifetimes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_lifetimes)]`
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/issue_4266.rs:10:21
+   |
+LL | async fn one_to_one<'a>(s: &'a str) -> &'a str {
+   |                     ^^      ^^          ^^
+
+error: methods called `new` usually take no `self`
+  --> tests/ui/issue_4266.rs:32:22
+   |
+LL |     pub async fn new(&mut self) -> Self {
+   |                      ^^^^^^^^^
+   |
+   = help: consider choosing a less ambiguous name
+   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::wrong_self_convention)]`
+
+error: aborting due to 3 previous errors
+

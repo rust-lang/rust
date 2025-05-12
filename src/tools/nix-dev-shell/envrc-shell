@@ -1,0 +1,7 @@
+# If you want to use this as an .envrc file to create a shell with necessary components 
+# to develop rustc, use the following command in the root of the rusr checkout:
+#	
+# ln -s ./src/tools/nix-dev-shell/envrc-shell ./.envrc
+
+use nix ./src/tools/nix-dev-shell/shell.nix
+  

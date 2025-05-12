@@ -1,0 +1,30 @@
+// MIR for `d` after Inline
+
+fn d(_1: &Box<T>) -> &T {
+    debug x => _1;
+    let mut _0: &T;
+    let _2: &T;
+    let mut _3: &std::boxed::Box<T>;
+    scope 1 (inlined <Box<T> as AsRef<T>>::as_ref) {
+        debug self => _3;
+        let mut _4: std::boxed::Box<T>;
+        let mut _5: *const T;
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = copy _1;
+        StorageLive(_4);
+        StorageLive(_5);
+        _4 = copy (*_3);
+        _5 = copy ((_4.0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>) as *const T (Transmute);
+        _2 = &(*_5);
+        StorageDead(_5);
+        StorageDead(_4);
+        _0 = copy _2;
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
+    }
+}

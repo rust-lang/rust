@@ -1,0 +1,25 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ctfe-id-unlimited.rs:28:20
+   |
+LL | const ID_ED: u32 = rec_id(ORIGINAL);
+   |                    ^^^^^^^^^^^^^^^^ reached the configured maximum number of stack frames
+   |
+note: inside `rec_id`
+  --> $DIR/ctfe-id-unlimited.rs:21:5
+   |
+LL |     inner(0, n)
+   |     ^^^^^^^^^^^
+note: [... 125 additional calls inside `inner` ...]
+  --> $DIR/ctfe-id-unlimited.rs:17:42
+   |
+LL |             #[cfg(r#return)] _ => return inner(acc + 1, n - 1),
+   |                                          ^^^^^^^^^^^^^^^^^^^^^
+note: inside `inner`
+  --> $DIR/ctfe-id-unlimited.rs:17:42
+   |
+LL |             #[cfg(r#return)] _ => return inner(acc + 1, n - 1),
+   |                                          ^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

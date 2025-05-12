@@ -1,0 +1,19 @@
+error[E0109]: type arguments are not allowed on local variable
+  --> $DIR/issue-60989.rs:12:10
+   |
+LL |     c1::<()>;
+   |     --   ^^ type argument not allowed
+   |     |
+   |     not allowed on local variable
+
+error[E0109]: type arguments are not allowed on local variable
+  --> $DIR/issue-60989.rs:16:10
+   |
+LL |     c1::<dyn Into<B>>;
+   |     --   ^^^^^^^^^^^ type argument not allowed
+   |     |
+   |     not allowed on local variable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0109`.

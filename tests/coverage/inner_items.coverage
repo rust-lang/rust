@@ -1,0 +1,60 @@
+   LL|       |#![allow(unused_assignments, unused_variables, dead_code)]
+   LL|       |
+   LL|      1|fn main() {
+   LL|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   LL|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   LL|       |    // dependent conditions.
+   LL|      1|    let is_true = std::env::args().len() == 1;
+   LL|       |
+   LL|      1|    let mut countdown = 0;
+   LL|      1|    if is_true {
+   LL|      1|        countdown = 10;
+   LL|      1|    }
+                  ^0
+   LL|       |
+   LL|       |    mod in_mod {
+   LL|       |        const IN_MOD_CONST: u32 = 1000;
+   LL|       |    }
+   LL|       |
+   LL|      3|    fn in_func(a: u32) {
+   LL|      3|        let b = 1;
+   LL|      3|        let c = a + b;
+   LL|      3|        println!("c = {}", c)
+   LL|      3|    }
+   LL|       |
+   LL|       |    struct InStruct {
+   LL|       |        in_struct_field: u32,
+   LL|       |    }
+   LL|       |
+   LL|       |    const IN_CONST: u32 = 1234;
+   LL|       |
+   LL|       |    trait InTrait {
+   LL|       |        fn trait_func(&mut self, incr: u32);
+   LL|       |
+   LL|      1|        fn default_trait_func(&mut self) {
+   LL|      1|            in_func(IN_CONST);
+   LL|      1|            self.trait_func(IN_CONST);
+   LL|      1|        }
+   LL|       |    }
+   LL|       |
+   LL|       |    impl InTrait for InStruct {
+   LL|      1|        fn trait_func(&mut self, incr: u32) {
+   LL|      1|            self.in_struct_field += incr;
+   LL|      1|            in_func(self.in_struct_field);
+   LL|      1|        }
+   LL|       |    }
+   LL|       |
+   LL|       |    type InType = String;
+   LL|       |
+   LL|      1|    if is_true {
+   LL|      1|        in_func(countdown);
+   LL|      1|    }
+                  ^0
+   LL|       |
+   LL|      1|    let mut val = InStruct {
+   LL|      1|        in_struct_field: 101, //
+   LL|      1|    };
+   LL|       |
+   LL|      1|    val.default_trait_func();
+   LL|      1|}
+

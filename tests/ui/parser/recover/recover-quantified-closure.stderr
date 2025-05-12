@@ -1,0 +1,39 @@
+error: expected one of `move`, `static`, `use`, `|`, or `||`, found `::`
+  --> $DIR/recover-quantified-closure.rs:9:14
+   |
+LL |     for <Foo>::Bar in x {}
+   |              ^^ expected one of `move`, `static`, `use`, `|`, or `||`
+
+error[E0658]: `for<...>` binders for closures are experimental
+  --> $DIR/recover-quantified-closure.rs:2:5
+   |
+LL |     for<'a> |x: &'a u8| *x + 1;
+   |     ^^^^^^^
+   |
+   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
+   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider removing `for<...>`
+
+error[E0658]: `for<...>` binders for closures are experimental
+  --> $DIR/recover-quantified-closure.rs:9:5
+   |
+LL |     for <Foo>::Bar in x {}
+   |     ^^^^^^^^^
+   |
+   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
+   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider removing `for<...>`
+
+error: implicit types in closure signatures are forbidden when `for<...>` is present
+  --> $DIR/recover-quantified-closure.rs:2:24
+   |
+LL |     for<'a> |x: &'a u8| *x + 1;
+   |     -------            ^
+   |     |
+   |     `for<...>` is here
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

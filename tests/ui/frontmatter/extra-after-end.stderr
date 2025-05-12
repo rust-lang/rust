@@ -1,0 +1,8 @@
+error: extra characters after frontmatter close are not allowed
+  --> $DIR/extra-after-end.rs:2:1
+   |
+LL | ---cargo
+   | ^^^^^^^^
+
+error: aborting due to 1 previous error
+

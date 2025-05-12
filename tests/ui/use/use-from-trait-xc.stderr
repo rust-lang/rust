@@ -1,0 +1,82 @@
+error[E0658]: `use` associated items of traits is unstable
+  --> $DIR/use-from-trait-xc.rs:5:5
+   |
+LL | use use_from_trait_xc::Trait::foo;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `use` associated items of traits is unstable
+  --> $DIR/use-from-trait-xc.rs:8:5
+   |
+LL | use use_from_trait_xc::Trait::Assoc;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `use` associated items of traits is unstable
+  --> $DIR/use-from-trait-xc.rs:11:5
+   |
+LL | use use_from_trait_xc::Trait::CONST;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0432]: unresolved import `use_from_trait_xc::Foo`
+  --> $DIR/use-from-trait-xc.rs:14:24
+   |
+LL | use use_from_trait_xc::Foo::new;
+   |                        ^^^ `Foo` is a struct, not a module
+
+error[E0432]: unresolved import `use_from_trait_xc::Foo`
+  --> $DIR/use-from-trait-xc.rs:17:24
+   |
+LL | use use_from_trait_xc::Foo::C;
+   |                        ^^^ `Foo` is a struct, not a module
+
+error[E0432]: unresolved import `use_from_trait_xc::Bar`
+  --> $DIR/use-from-trait-xc.rs:20:24
+   |
+LL | use use_from_trait_xc::Bar::new as bnew;
+   |                        ^^^ `Bar` is a struct, not a module
+
+error[E0432]: unresolved import `use_from_trait_xc::Baz::new`
+  --> $DIR/use-from-trait-xc.rs:23:5
+   |
+LL | use use_from_trait_xc::Baz::new as baznew;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `new` in `sub::Baz`
+
+error[E0603]: struct `Foo` is private
+  --> $DIR/use-from-trait-xc.rs:14:24
+   |
+LL | use use_from_trait_xc::Foo::new;
+   |                        ^^^ private struct
+   |
+note: the struct `Foo` is defined here
+  --> $DIR/auxiliary/use-from-trait-xc.rs:9:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
+
+error[E0603]: struct `Foo` is private
+  --> $DIR/use-from-trait-xc.rs:17:24
+   |
+LL | use use_from_trait_xc::Foo::C;
+   |                        ^^^ private struct
+   |
+note: the struct `Foo` is defined here
+  --> $DIR/auxiliary/use-from-trait-xc.rs:9:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0432, E0603, E0658.
+For more information about an error, try `rustc --explain E0432`.

@@ -1,0 +1,225 @@
+error[E0308]: mismatched types
+  --> $DIR/min_match_ergonomics_fail.rs:23:20
+   |
+LL | test_pat_on_type![(&x,): &(T,)];
+   |                    ^^    ----- expected due to this
+   |                    |
+   |                    expected `T`, found `&_`
+   |
+   = note: expected struct `T`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL - test_pat_on_type![(&x,): &(T,)];
+LL + test_pat_on_type![(x,): &(T,)];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/min_match_ergonomics_fail.rs:25:20
+   |
+LL | test_pat_on_type![(&x,): &(&mut T,)];
+   |                    ^^    ---------- expected due to this
+   |                    |
+   |                    types differ in mutability
+   |
+   = note: expected mutable reference `&mut T`
+                      found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL - test_pat_on_type![(&x,): &(&mut T,)];
+LL + test_pat_on_type![(x,): &(&mut T,)];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/min_match_ergonomics_fail.rs:26:20
+   |
+LL | test_pat_on_type![(&mut x,): &(&T,)];
+   |                    ^^^^^^    ------ expected due to this
+   |                    |
+   |                    types differ in mutability
+   |
+   = note:      expected reference `&T`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/min_match_ergonomics_fail.rs:26:20
+   |
+LL | test_pat_on_type![(&mut x,): &(&T,)];
+   |                    ^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL - test_pat_on_type![(&mut x,): &(&T,)];
+LL + test_pat_on_type![(x,): &(&T,)];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/min_match_ergonomics_fail.rs:28:20
+   |
+LL | test_pat_on_type![(&x,): &&mut &(T,)];
+   |                    ^^    ----------- expected due to this
+   |                    |
+   |                    expected `T`, found `&_`
+   |
+   = note: expected struct `T`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL - test_pat_on_type![(&x,): &&mut &(T,)];
+LL + test_pat_on_type![(x,): &&mut &(T,)];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/min_match_ergonomics_fail.rs:29:29
+   |
+LL | test_pat_on_type![Foo { f: (&x,) }: Foo];
+   |                             ^^      --- expected due to this
+   |                             |
+   |                             expected `u8`, found `&_`
+   |
+   = note:   expected type `u8`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL - test_pat_on_type![Foo { f: (&x,) }: Foo];
+LL + test_pat_on_type![Foo { f: (x,) }: Foo];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/min_match_ergonomics_fail.rs:30:29
+   |
+LL | test_pat_on_type![Foo { f: (&x,) }: &mut Foo];
+   |                             ^^      -------- expected due to this
+   |                             |
+   |                             expected `u8`, found `&_`
+   |
+   = note:   expected type `u8`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL - test_pat_on_type![Foo { f: (&x,) }: &mut Foo];
+LL + test_pat_on_type![Foo { f: (x,) }: &mut Foo];
+   |
+
+error: reference patterns may only be written when the default binding mode is `move`
+  --> $DIR/min_match_ergonomics_fail.rs:24:20
+   |
+LL | test_pat_on_type![(&x,): &(&T,)];
+   |                    ^ reference pattern not allowed under `ref` default binding mode
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+  --> $DIR/min_match_ergonomics_fail.rs:24:19
+   |
+LL | test_pat_on_type![(&x,): &(&T,)];
+   |                   ^^^^^ this matches on type `&_`
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&(&x,): &(&T,)];
+   |                   +
+
+error: reference patterns may only be written when the default binding mode is `move`
+  --> $DIR/min_match_ergonomics_fail.rs:27:20
+   |
+LL | test_pat_on_type![(&mut x,): &(&mut T,)];
+   |                    ^^^^ reference pattern not allowed under `ref` default binding mode
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+  --> $DIR/min_match_ergonomics_fail.rs:27:19
+   |
+LL | test_pat_on_type![(&mut x,): &(&mut T,)];
+   |                   ^^^^^^^^^ this matches on type `&_`
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&(&mut x,): &(&mut T,)];
+   |                   +
+
+error: reference patterns may only be written when the default binding mode is `move`
+  --> $DIR/min_match_ergonomics_fail.rs:31:28
+   |
+LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
+   |                            ^ reference pattern not allowed under `ref` default binding mode
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+  --> $DIR/min_match_ergonomics_fail.rs:31:19
+   |
+LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
+   |                   ^^^^^^^^^^^^^^^^ this matches on type `&_`
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&Foo { f: &(x,) }: &Foo];
+   |                   +
+
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/min_match_ergonomics_fail.rs:32:20
+   |
+LL | test_pat_on_type![(mut x,): &(T,)];
+   |                    ^^^ binding modifier not allowed under `ref` default binding mode
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+  --> $DIR/min_match_ergonomics_fail.rs:32:19
+   |
+LL | test_pat_on_type![(mut x,): &(T,)];
+   |                   ^^^^^^^^ this matches on type `&_`
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&(mut x,): &(T,)];
+   |                   +
+
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/min_match_ergonomics_fail.rs:33:20
+   |
+LL | test_pat_on_type![(ref x,): &(T,)];
+   |                    ^^^ binding modifier not allowed under `ref` default binding mode
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+  --> $DIR/min_match_ergonomics_fail.rs:33:19
+   |
+LL | test_pat_on_type![(ref x,): &(T,)];
+   |                   ^^^^^^^^ this matches on type `&_`
+help: remove the unnecessary binding modifier
+   |
+LL - test_pat_on_type![(ref x,): &(T,)];
+LL + test_pat_on_type![(x,): &(T,)];
+   |
+
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/min_match_ergonomics_fail.rs:34:20
+   |
+LL | test_pat_on_type![(ref mut x,): &mut (T,)];
+   |                    ^^^^^^^ binding modifier not allowed under `ref mut` default binding mode
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+  --> $DIR/min_match_ergonomics_fail.rs:34:19
+   |
+LL | test_pat_on_type![(ref mut x,): &mut (T,)];
+   |                   ^^^^^^^^^^^^ this matches on type `&mut _`
+help: remove the unnecessary binding modifier
+   |
+LL - test_pat_on_type![(ref mut x,): &mut (T,)];
+LL + test_pat_on_type![(x,): &mut (T,)];
+   |
+
+error: reference patterns may only be written when the default binding mode is `move`
+  --> $DIR/min_match_ergonomics_fail.rs:43:10
+   |
+LL |         (&x,) => x,
+   |          ^ reference pattern not allowed under `ref` default binding mode
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+  --> $DIR/min_match_ergonomics_fail.rs:43:9
+   |
+LL |         (&x,) => x,
+   |         ^^^^^ this matches on type `&_`
+help: make the implied reference pattern explicit
+   |
+LL |         &(&x,) => x,
+   |         +
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

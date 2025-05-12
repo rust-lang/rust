@@ -1,0 +1,24 @@
+error[E0416]: identifier `tail` is bound more than once in the same pattern
+  --> $DIR/subslice-only-once-semantic-restriction.rs:4:24
+   |
+LL |         [1, tail @ .., tail @ ..] => {},
+   |                        ^^^^ used in a pattern more than once
+
+error: `..` can only be used once per slice pattern
+  --> $DIR/subslice-only-once-semantic-restriction.rs:4:31
+   |
+LL |         [1, tail @ .., tail @ ..] => {},
+   |                    --         ^^ can only be used once per slice pattern
+   |                    |
+   |                    previously used here
+
+error[E0308]: mismatched types
+  --> $DIR/subslice-only-once-semantic-restriction.rs:11:30
+   |
+LL | const RECOVERY_WITNESS: () = 0;
+   |                              ^ expected `()`, found integer
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0416.
+For more information about an error, try `rustc --explain E0308`.

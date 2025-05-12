@@ -1,0 +1,53 @@
+error: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/elided-lifetime.rs:6:19
+   |
+LL |     const STATIC: &str = "";
+   |                   ^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
+note: cannot automatically infer `'static` because of other lifetimes in scope
+  --> $DIR/elided-lifetime.rs:5:10
+   |
+LL | impl Foo<'_> {
+   |          ^^
+note: the lint level is defined here
+  --> $DIR/elided-lifetime.rs:1:9
+   |
+LL | #![deny(elided_lifetimes_in_associated_constant)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the `'static` lifetime
+   |
+LL |     const STATIC: &'static str = "";
+   |                    +++++++
+
+error: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/elided-lifetime.rs:16:19
+   |
+LL |     const STATIC: &str = "";
+   |                   ^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
+note: cannot automatically infer `'static` because of other lifetimes in scope
+  --> $DIR/elided-lifetime.rs:15:18
+   |
+LL | impl Bar for Foo<'_> {
+   |                  ^^
+help: use the `'static` lifetime
+   |
+LL |     const STATIC: &'static str = "";
+   |                    +++++++
+
+error[E0195]: lifetime parameters or bounds on associated const `STATIC` do not match the trait declaration
+  --> $DIR/elided-lifetime.rs:16:17
+   |
+LL |     const STATIC: &str;
+   |                 - lifetimes in impl do not match this associated const in trait
+...
+LL |     const STATIC: &str = "";
+   |                 ^ lifetimes do not match associated const in trait
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0195`.

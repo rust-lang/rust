@@ -1,0 +1,56 @@
+error: ignoring a result with `.ok()` is misleading
+  --> tests/ui/unused_result_ok.rs:9:5
+   |
+LL |     x.parse::<u32>().ok();
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unused-result-ok` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_result_ok)]`
+help: consider using `let _ =` and removing the call to `.ok()` instead
+   |
+LL -     x.parse::<u32>().ok();
+LL +     let _ = x.parse::<u32>();
+   |
+
+error: ignoring a result with `.ok()` is misleading
+  --> tests/ui/unused_result_ok.rs:19:5
+   |
+LL |     x   .   parse::<i32>()   .   ok   ();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `let _ =` and removing the call to `.ok()` instead
+   |
+LL -     x   .   parse::<i32>()   .   ok   ();
+LL +     let _ = x   .   parse::<i32>();
+   |
+
+error: ignoring a result with `.ok()` is misleading
+  --> tests/ui/unused_result_ok.rs:37:5
+   |
+LL |     v!().ok();
+   |     ^^^^^^^^^
+   |
+help: consider using `let _ =` and removing the call to `.ok()` instead
+   |
+LL -     v!().ok();
+LL +     let _ = v!();
+   |
+
+error: ignoring a result with `.ok()` is misleading
+  --> tests/ui/unused_result_ok.rs:31:9
+   |
+LL |         Ok::<(), ()>(()).ok();
+   |         ^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     w!();
+   |     ---- in this macro invocation
+   |
+   = note: this error originates in the macro `w` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider using `let _ =` and removing the call to `.ok()` instead
+   |
+LL -         Ok::<(), ()>(()).ok();
+LL +         let _ = Ok::<(), ()>(());
+   |
+
+error: aborting due to 4 previous errors
+

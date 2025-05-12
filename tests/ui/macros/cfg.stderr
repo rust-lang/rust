@@ -1,0 +1,27 @@
+error: macro requires a cfg-pattern as an argument
+  --> $DIR/cfg.rs:2:5
+   |
+LL |     cfg!();
+   |     ^^^^^^ cfg-pattern required
+
+error[E0565]: literal in `cfg` predicate value must be a boolean
+  --> $DIR/cfg.rs:3:10
+   |
+LL |     cfg!(123);
+   |          ^^^
+
+error[E0565]: literal in `cfg` predicate value must be a string
+  --> $DIR/cfg.rs:4:16
+   |
+LL |     cfg!(foo = 123);
+   |                ^^^
+
+error: expected 1 cfg-pattern
+  --> $DIR/cfg.rs:5:5
+   |
+LL |     cfg!(foo, bar);
+   |     ^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0565`.

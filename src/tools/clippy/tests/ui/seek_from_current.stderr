@@ -1,0 +1,11 @@
+error: using `SeekFrom::Current` to start from current position
+  --> tests/ui/seek_from_current.rs:19:5
+   |
+LL |     f.seek(SeekFrom::Current(0))?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `f.stream_position()`
+   |
+   = note: `-D clippy::seek-from-current` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::seek_from_current)]`
+
+error: aborting due to 1 previous error
+

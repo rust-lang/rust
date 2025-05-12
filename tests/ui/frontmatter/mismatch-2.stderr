@@ -1,0 +1,22 @@
+error: frontmatter close does not match the opening
+  --> $DIR/mismatch-2.rs:1:1
+   |
+LL |   ----cargo
+   |   ^---
+   |   |
+   |  _the opening here has 4 dashes...
+   | |
+LL | |
+LL | | ---cargo
+   | |_---____^
+   |   |
+   |   ...while the close has 3 dashes
+
+error: extra characters after frontmatter close are not allowed
+  --> $DIR/mismatch-2.rs:3:1
+   |
+LL | ---cargo
+   | ^^^^^^^^
+
+error: aborting due to 2 previous errors
+

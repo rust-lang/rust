@@ -1,0 +1,44 @@
+error: lifetime may not live long enough
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:8:52
+   |
+LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
+   |                          -         -               ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |                          |         |
+   |                          |         let's call the lifetime of this reference `'1`
+   |                          let's call the lifetime of this reference `'2`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn a<'a>(self: Pin<&Foo>, f: &'a Foo) -> &'a Foo { f }
+   |               ++++                      ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:11:75
+   |
+LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
+   |                          -          -                                     ^^^^^^^^^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |                          |          |
+   |                          |          let's call the lifetime of this reference `'1`
+   |                          let's call the lifetime of this reference `'2`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn c<'a>(self: Pin<&Self>, f: &'a Foo, g: &Foo) -> (Pin<&'a Foo>, &'a Foo) { (self, f) }
+   |               ++++                       ++                        ++        ++
+
+error: lifetime may not live long enough
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:17:64
+   |
+LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
+   |                  --              -                             ^^^ method was supposed to return data with lifetime `'1` but it is returning data with lifetime `'a`
+   |                  |               |
+   |                  |               let's call the lifetime of this reference `'1`
+   |                  lifetime `'a` defined here
+   |
+help: consider reusing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &'a () { arg }
+   |                                                           ++
+
+error: aborting due to 3 previous errors
+

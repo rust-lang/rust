@@ -1,0 +1,14 @@
+error[E0596]: cannot borrow `*buf` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-40823.rs:3:5
+   |
+LL |     buf.iter_mut();
+   |     ^^^ `buf` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     let mut buf = &mut [1, 2, 3, 4];
+   |                    +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

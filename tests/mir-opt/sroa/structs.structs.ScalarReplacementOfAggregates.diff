@@ -1,0 +1,33 @@
+- // MIR for `structs` before ScalarReplacementOfAggregates
++ // MIR for `structs` after ScalarReplacementOfAggregates
+  
+  fn structs(_1: f32) -> f32 {
+      debug a => _1;
+      let mut _0: f32;
+      let mut _2: structs::U;
+      let mut _3: f32;
++     let mut _4: usize;
++     let mut _5: f32;
+  
+      bb0: {
+-         StorageLive(_2);
++         StorageLive(_4);
++         StorageLive(_5);
++         nop;
+          StorageLive(_3);
+          _3 = copy _1;
+-         _2 = U { _foo: const 0_usize, a: move _3 };
++         _4 = const 0_usize;
++         _5 = move _3;
++         nop;
+          StorageDead(_3);
+-         _0 = copy (_2.1: f32);
+-         StorageDead(_2);
++         _0 = copy _5;
++         StorageDead(_4);
++         StorageDead(_5);
++         nop;
+          return;
+      }
+  }
+  

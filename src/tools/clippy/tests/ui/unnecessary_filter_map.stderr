@@ -1,0 +1,53 @@
+error: this `.filter_map(..)` can be written more simply using `.filter(..)`
+  --> tests/ui/unnecessary_filter_map.rs:4:13
+   |
+LL |     let _ = (0..4).filter_map(|x| if x > 1 { Some(x) } else { None });
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnecessary-filter-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_filter_map)]`
+
+error: this `.filter_map(..)` can be written more simply using `.filter(..)`
+  --> tests/ui/unnecessary_filter_map.rs:7:13
+   |
+LL |       let _ = (0..4).filter_map(|x| {
+   |  _____________^
+LL | |
+LL | |
+LL | |         if x > 1 {
+...  |
+LL | |         None
+LL | |     });
+   | |______^
+
+error: this `.filter_map(..)` can be written more simply using `.filter(..)`
+  --> tests/ui/unnecessary_filter_map.rs:15:13
+   |
+LL |       let _ = (0..4).filter_map(|x| match x {
+   |  _____________^
+LL | |
+LL | |         0 | 1 => None,
+LL | |         _ => Some(x),
+LL | |     });
+   | |______^
+
+error: this `.filter_map(..)` can be written more simply using `.map(..)`
+  --> tests/ui/unnecessary_filter_map.rs:21:13
+   |
+LL |     let _ = (0..4).filter_map(|x| Some(x + 1));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `.filter_map(..)` is unnecessary
+  --> tests/ui/unnecessary_filter_map.rs:28:61
+   |
+LL |     let _ = vec![Some(10), None].into_iter().filter_map(|x| Some(x));
+   |                                                             ^^^^
+
+error: this `.filter_map(..)` can be written more simply using `.filter(..)`
+  --> tests/ui/unnecessary_filter_map.rs:166:14
+   |
+LL |     let _x = std::iter::once(1).filter_map(|n| (n > 1).then_some(n));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

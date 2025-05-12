@@ -1,0 +1,44 @@
+error: called `ok().expect()` on a `Result` value
+  --> tests/ui/ok_expect.rs:16:5
+   |
+LL |     res.ok().expect("disaster!");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: you can call `expect()` directly on the `Result`
+   = note: `-D clippy::ok-expect` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ok_expect)]`
+
+error: called `ok().expect()` on a `Result` value
+  --> tests/ui/ok_expect.rs:24:5
+   |
+LL |     res3.ok().expect("whoof");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: you can call `expect()` directly on the `Result`
+
+error: called `ok().expect()` on a `Result` value
+  --> tests/ui/ok_expect.rs:28:5
+   |
+LL |     res4.ok().expect("argh");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: you can call `expect()` directly on the `Result`
+
+error: called `ok().expect()` on a `Result` value
+  --> tests/ui/ok_expect.rs:32:5
+   |
+LL |     res5.ok().expect("oops");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: you can call `expect()` directly on the `Result`
+
+error: called `ok().expect()` on a `Result` value
+  --> tests/ui/ok_expect.rs:36:5
+   |
+LL |     res6.ok().expect("meh");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: you can call `expect()` directly on the `Result`
+
+error: aborting due to 5 previous errors
+

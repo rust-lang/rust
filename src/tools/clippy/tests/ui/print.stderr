@@ -1,0 +1,56 @@
+error: use of `Debug`-based formatting
+  --> tests/ui/print.rs:11:20
+   |
+LL |         write!(f, "{:?}", 43.1415)
+   |                    ^^^^
+   |
+   = note: `-D clippy::use-debug` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::use_debug)]`
+
+error: use of `println!`
+  --> tests/ui/print.rs:24:5
+   |
+LL |     println!("Hello");
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::print-stdout` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::print_stdout)]`
+
+error: use of `print!`
+  --> tests/ui/print.rs:27:5
+   |
+LL |     print!("Hello");
+   |     ^^^^^^^^^^^^^^^
+
+error: use of `print!`
+  --> tests/ui/print.rs:30:5
+   |
+LL |     print!("Hello {}", "World");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of `print!`
+  --> tests/ui/print.rs:33:5
+   |
+LL |     print!("Hello {:?}", "World");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of `Debug`-based formatting
+  --> tests/ui/print.rs:33:19
+   |
+LL |     print!("Hello {:?}", "World");
+   |                   ^^^^
+
+error: use of `print!`
+  --> tests/ui/print.rs:37:5
+   |
+LL |     print!("Hello {:#?}", "#orld");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of `Debug`-based formatting
+  --> tests/ui/print.rs:37:19
+   |
+LL |     print!("Hello {:#?}", "#orld");
+   |                   ^^^^^
+
+error: aborting due to 8 previous errors
+

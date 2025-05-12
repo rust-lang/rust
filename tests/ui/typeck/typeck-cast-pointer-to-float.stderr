@@ -1,0 +1,9 @@
+error[E0606]: casting `*const i16` as `f32` is invalid
+  --> $DIR/typeck-cast-pointer-to-float.rs:3:5
+   |
+LL |     ((&x) as *const i16) as f32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0606`.

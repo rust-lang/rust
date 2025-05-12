@@ -1,0 +1,29 @@
+error[E0277]: the trait bound `Rc<u32>: SendSync` is not satisfied
+  --> $DIR/cross-crate.rs:14:17
+   |
+LL |     use_alias::<Rc<u32>>();
+   |                 ^^^^^^^ the trait `Send` is not implemented for `Rc<u32>`
+   |
+   = note: required for `Rc<u32>` to implement `SendSync`
+note: required by a bound in `use_alias`
+  --> $DIR/cross-crate.rs:10:17
+   |
+LL | fn use_alias<T: SendSync>() {}
+   |                 ^^^^^^^^ required by this bound in `use_alias`
+
+error[E0277]: the trait bound `Rc<u32>: SendSync` is not satisfied
+  --> $DIR/cross-crate.rs:14:17
+   |
+LL |     use_alias::<Rc<u32>>();
+   |                 ^^^^^^^ the trait `Sync` is not implemented for `Rc<u32>`
+   |
+   = note: required for `Rc<u32>` to implement `SendSync`
+note: required by a bound in `use_alias`
+  --> $DIR/cross-crate.rs:10:17
+   |
+LL | fn use_alias<T: SendSync>() {}
+   |                 ^^^^^^^^ required by this bound in `use_alias`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

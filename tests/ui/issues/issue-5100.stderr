@@ -1,0 +1,76 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-5100.rs:9:9
+   |
+LL | enum A { B, C }
+   |          - unit variant defined here
+...
+LL |     match (true, false) {
+   |           ------------- this expression has type `(bool, bool)`
+LL |         A::B => (),
+   |         ^^^^ expected `(bool, bool)`, found `A`
+   |
+   = note: expected tuple `(bool, bool)`
+               found enum `A`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-5100.rs:18:9
+   |
+LL |     match (true, false) {
+   |           ------------- this expression has type `(bool, bool)`
+LL |         (true, false, false) => ()
+   |         ^^^^^^^^^^^^^^^^^^^^ expected a tuple with 2 elements, found one with 3 elements
+   |
+   = note: expected tuple `(bool, bool)`
+              found tuple `(_, _, _)`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-5100.rs:26:9
+   |
+LL |     match (true, false) {
+   |           ------------- this expression has type `(bool, bool)`
+LL |         (true, false, false) => ()
+   |         ^^^^^^^^^^^^^^^^^^^^ expected a tuple with 2 elements, found one with 3 elements
+   |
+   = note: expected tuple `(bool, bool)`
+              found tuple `(_, _, _)`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-5100.rs:34:9
+   |
+LL |     match (true, false) {
+   |           ------------- this expression has type `(bool, bool)`
+LL |         box (true, false) => ()
+   |         ^^^^^^^^^^^^^^^^^ expected `(bool, bool)`, found `Box<_>`
+   |
+   = note: expected tuple `(bool, bool)`
+             found struct `Box<_>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-5100.rs:41:9
+   |
+LL |     match (true, false) {
+   |           ------------- this expression has type `(bool, bool)`
+LL |         &(true, false) => ()
+   |         ^^^^^^^^^^^^^^ expected `(bool, bool)`, found `&_`
+   |
+   = note:  expected tuple `(bool, bool)`
+           found reference `&_`
+
+error[E0618]: expected function, found `(char, char)`
+  --> $DIR/issue-5100.rs:49:14
+   |
+LL |     let v = [('a', 'b')
+   |              ^^^^^^^^^^- help: consider separating array elements with a comma: `,`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-5100.rs:56:19
+   |
+LL |     let x: char = true;
+   |            ----   ^^^^ expected `char`, found `bool`
+   |            |
+   |            expected due to this
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0308, E0618.
+For more information about an error, try `rustc --explain E0308`.

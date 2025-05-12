@@ -1,0 +1,99 @@
+#![warn(clippy::result_map_unit_fn)]
+#![allow(unused)]
+#![allow(clippy::uninlined_format_args)]
+
+fn do_nothing<T>(_: T) {}
+
+fn diverge<T>(_: T) -> ! {
+    panic!()
+}
+
+fn plus_one(value: usize) -> usize {
+    value + 1
+}
+
+struct HasResult {
+    field: Result<usize, usize>,
+}
+
+impl HasResult {
+    fn do_result_nothing(&self, value: usize) {}
+
+    fn do_result_plus_one(&self, value: usize) -> usize {
+        value + 1
+    }
+}
+
+#[rustfmt::skip]
+fn result_map_unit_fn() {
+    let x = HasResult { field: Ok(10) };
+
+    x.field.map(plus_one);
+    let _: Result<(), usize> = x.field.map(do_nothing);
+
+    if let Ok(x_field) = x.field { do_nothing(x_field) }
+    //~^ result_map_unit_fn
+
+    if let Ok(x_field) = x.field { do_nothing(x_field) }
+    //~^ result_map_unit_fn
+
+    if let Ok(x_field) = x.field { diverge(x_field) }
+    //~^ result_map_unit_fn
+
+    let captured = 10;
+    if let Ok(value) = x.field { do_nothing(value + captured) };
+    let _: Result<(), usize> = x.field.map(|value| do_nothing(value + captured));
+
+    if let Ok(value) = x.field { x.do_result_nothing(value + captured) }
+    //~^ result_map_unit_fn
+
+    if let Ok(value) = x.field { x.do_result_plus_one(value + captured); }
+    //~^ result_map_unit_fn
+
+
+    if let Ok(value) = x.field { do_nothing(value + captured) }
+    //~^ result_map_unit_fn
+
+    if let Ok(value) = x.field { do_nothing(value + captured) }
+    //~^ result_map_unit_fn
+
+    if let Ok(value) = x.field { do_nothing(value + captured); }
+    //~^ result_map_unit_fn
+
+    if let Ok(value) = x.field { do_nothing(value + captured); }
+    //~^ result_map_unit_fn
+
+
+    if let Ok(value) = x.field { diverge(value + captured) }
+    //~^ result_map_unit_fn
+
+    if let Ok(value) = x.field { diverge(value + captured) }
+    //~^ result_map_unit_fn
+
+    if let Ok(value) = x.field { diverge(value + captured); }
+    //~^ result_map_unit_fn
+
+    if let Ok(value) = x.field { diverge(value + captured); }
+    //~^ result_map_unit_fn
+
+
+    x.field.map(|value| plus_one(value + captured));
+    x.field.map(|value| { plus_one(value + captured) });
+    if let Ok(value) = x.field { let y = plus_one(value + captured); }
+    //~^ result_map_unit_fn
+
+    if let Ok(value) = x.field { plus_one(value + captured); }
+    //~^ result_map_unit_fn
+
+    if let Ok(value) = x.field { plus_one(value + captured); }
+    //~^ result_map_unit_fn
+
+
+    if let Ok(ref value) = x.field { do_nothing(value + captured) }
+    //~^ result_map_unit_fn
+
+    if let Ok(value) = x.field { println!("{:?}", value) }
+    //~^ result_map_unit_fn
+}
+
+fn main() {}

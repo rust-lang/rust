@@ -1,0 +1,184 @@
+warning: irrefutable `if let` pattern
+  --> $DIR/match-cfg-fake-edges.rs:19:8
+   |
+LL |     if let _ = true {
+   |        ^^^^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/match-cfg-fake-edges.rs:16:10
+   |
+LL |     let x = String::new();
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
+...
+LL |         _ => drop(x),
+   |                   - value moved here
+...
+LL |     drop(x);
+   |          ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         _ => drop(x.clone()),
+   |                    ++++++++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/match-cfg-fake-edges.rs:24:10
+   |
+LL |     let x = String::new();
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
+...
+LL |         drop(x)
+   |              - value moved here
+...
+LL |     drop(x);
+   |          ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         drop(x.clone())
+   |               ++++++++
+
+error[E0382]: borrow of moved value: `x.0`
+  --> $DIR/match-cfg-fake-edges.rs:30:5
+   |
+LL |         (y, _) | (_, y) => (),
+   |          - value moved here
+LL |     }
+LL |     &x.0;
+   |     ^^^^ value borrowed here after move
+   |
+   = note: move occurs because `x.0` has type `String`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         (ref y, _) | (_, y) => (),
+   |          +++
+
+error[E0382]: borrow of moved value: `x.1`
+  --> $DIR/match-cfg-fake-edges.rs:32:5
+   |
+LL |         (y, _) | (_, y) => (),
+   |                      - value moved here
+...
+LL |     &x.1;
+   |     ^^^^ value borrowed here after move
+   |
+   = note: move occurs because `x.1` has type `String`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         (y, _) | (_, ref y) => (),
+   |                      +++
+
+error[E0382]: borrow of moved value: `x.0`
+  --> $DIR/match-cfg-fake-edges.rs:36:5
+   |
+LL |     let ((y, _) | (_, y)) = x;
+   |           - value moved here
+LL |     &x.0;
+   |     ^^^^ value borrowed here after move
+   |
+   = note: move occurs because `x.0` has type `String`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let ((ref y, _) | (_, y)) = x;
+   |           +++
+
+error[E0382]: borrow of moved value: `x.1`
+  --> $DIR/match-cfg-fake-edges.rs:38:5
+   |
+LL |     let ((y, _) | (_, y)) = x;
+   |                       - value moved here
+...
+LL |     &x.1;
+   |     ^^^^ value borrowed here after move
+   |
+   = note: move occurs because `x.1` has type `String`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let ((y, _) | (_, ref y)) = x;
+   |                       +++
+
+error[E0381]: used binding `x` is possibly-uninitialized
+  --> $DIR/match-cfg-fake-edges.rs:72:19
+   |
+LL |     let x;
+   |         - binding declared here but left uninitialized
+...
+LL |         _ => drop(x),
+   |         -         ^ `x` used here but it is possibly-uninitialized
+   |         |
+   |         if this pattern is matched, `x` is not initialized
+
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/match-cfg-fake-edges.rs:79:16
+   |
+LL |     let x;
+   |         - binding declared here but left uninitialized
+LL |     match y {
+LL |         _ if { x = 2; true } => 1,
+   |                ----- binding initialized here in some conditions
+LL |         // Borrowck must not know the guard is always run.
+LL |         _ if { x; false } => 2,
+   |                ^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x = 42;
+   |           ++++
+
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/match-cfg-fake-edges.rs:86:31
+   |
+LL |     let x;
+   |         - binding declared here but left uninitialized
+LL |     match y {
+LL |         _ if let Some(()) = { x = 2; Some(()) } => 1,
+   |                               ----- binding initialized here in some conditions
+LL |         _ if let Some(()) = { x; None } => 2,
+   |                               ^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x = 42;
+   |           ++++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/match-cfg-fake-edges.rs:99:22
+   |
+LL |     let x = String::new();
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
+LL |     match y {
+LL |         false if { drop(x); true } => {},
+   |                         - value moved here
+LL |         // Borrowck must not know the guard is not run in the `true` case.
+LL |         true => drop(x),
+   |                      ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         false if { drop(x.clone()); true } => {},
+   |                          ++++++++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/match-cfg-fake-edges.rs:114:22
+   |
+LL |     let x = String::new();
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
+LL |     match y {
+LL |         false if let Some(()) = { drop(x); Some(()) } => {},
+   |                                        - value moved here
+LL |         true => drop(x),
+   |                      ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         false if let Some(()) = { drop(x.clone()); Some(()) } => {},
+   |                                         ++++++++
+
+error: aborting due to 11 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0381, E0382.
+For more information about an error, try `rustc --explain E0381`.

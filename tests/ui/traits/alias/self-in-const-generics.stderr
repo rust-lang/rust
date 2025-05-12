@@ -1,0 +1,23 @@
+error[E0038]: the trait alias `BB` is not dyn compatible
+  --> $DIR/self-in-const-generics.rs:9:16
+   |
+LL | fn foo(x: &dyn BB) {}
+   |                ^^ `BB` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/self-in-const-generics.rs:7:12
+   |
+LL | trait BB = Bar<{ 2 + 1 }>;
+   |       --   ^^^^^^^^^^^^^^ ...because it uses `Self` as a type parameter
+   |       |
+   |       this trait is not dyn compatible...
+help: consider using an opaque type instead
+   |
+LL - fn foo(x: &dyn BB) {}
+LL + fn foo(x: &impl BB) {}
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

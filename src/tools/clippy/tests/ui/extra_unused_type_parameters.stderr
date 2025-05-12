@@ -1,0 +1,65 @@
+error: type parameter `T` goes unused in function definition
+  --> tests/ui/extra_unused_type_parameters.rs:9:13
+   |
+LL | fn unused_ty<T>(x: u8) {
+   |             ^^^ help: consider removing the parameter
+   |
+   = note: `-D clippy::extra-unused-type-parameters` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::extra_unused_type_parameters)]`
+
+error: type parameters go unused in function definition: T, U
+  --> tests/ui/extra_unused_type_parameters.rs:14:16
+   |
+LL | fn unused_multi<T, U>(x: u8) {
+   |                ^^^^^^ help: consider removing the parameters
+
+error: type parameter `T` goes unused in function definition
+  --> tests/ui/extra_unused_type_parameters.rs:19:21
+   |
+LL | fn unused_with_lt<'a, T>(x: &'a u8) {
+   |                     ^^^ help: consider removing the parameter
+
+error: type parameters go unused in function definition: T, V
+  --> tests/ui/extra_unused_type_parameters.rs:32:19
+   |
+LL | fn unused_bounded<T: Default, U, V: Default>(x: U) {
+   |                   ^^^^^^^^^^^^ ^^^^^^^^^^^^
+   |
+help: consider removing the parameters
+   |
+LL - fn unused_bounded<T: Default, U, V: Default>(x: U) {
+LL + fn unused_bounded<U>(x: U) {
+   |
+
+error: type parameters go unused in function definition: A, D, E
+  --> tests/ui/extra_unused_type_parameters.rs:37:16
+   |
+LL | fn some_unused<A, B, C, D: Iterator<Item = (B, C)>, E>(b: B, c: C) {
+   |                ^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider removing the parameters
+   |
+LL - fn some_unused<A, B, C, D: Iterator<Item = (B, C)>, E>(b: B, c: C) {
+LL + fn some_unused<B, C>(b: B, c: C) {
+   |
+
+error: type parameter `T` goes unused in function definition
+  --> tests/ui/extra_unused_type_parameters.rs:63:22
+   |
+LL |     fn unused_ty_impl<T>(&self) {
+   |                      ^^^ help: consider removing the parameter
+
+error: type parameters go unused in function definition: A, B
+  --> tests/ui/extra_unused_type_parameters.rs:86:17
+   |
+LL | fn unused_opaque<A, B>(dummy: impl Default) {
+   |                 ^^^^^^ help: consider removing the parameters
+
+error: type parameter `U` goes unused in function definition
+  --> tests/ui/extra_unused_type_parameters.rs:100:56
+   |
+LL |     fn unused_with_priv_trait_bound<T: private::Private, U>() {
+   |                                                        ^^^ help: consider removing the parameter
+
+error: aborting due to 8 previous errors
+

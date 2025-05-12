@@ -1,0 +1,12 @@
+#![allow(clippy::needless_if)]
+
+#[derive(Default)]
+struct A<T> {
+    a: Vec<A<T>>,
+    b: T,
+}
+
+fn main() {
+    if Ok::<_, ()>(A::<String>::default()).is_ok() {}
+    //~^ redundant_pattern_matching
+}

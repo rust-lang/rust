@@ -1,0 +1,63 @@
+error[E0275]: overflow evaluating the requirement `String: Copy`
+  --> $DIR/alias-bound-unsound.rs:18:38
+   |
+LL |     type Item = String where String: Copy;
+   |                                      ^^^^
+   |
+note: the requirement `String: Copy` appears on the `impl`'s associated type `Item` but not on the corresponding trait's associated type
+  --> $DIR/alias-bound-unsound.rs:8:10
+   |
+LL | trait Foo {
+   |       --- in this trait
+LL |     type Item: Copy
+   |          ^^^^ this trait's associated type doesn't have the requirement `String: Copy`
+
+error[E0275]: overflow evaluating the requirement `String <: <() as Foo>::Item`
+  --> $DIR/alias-bound-unsound.rs:24:31
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |                               ^^
+
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == _`
+  --> $DIR/alias-bound-unsound.rs:24:10
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == _`
+  --> $DIR/alias-bound-unsound.rs:24:10
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0275]: overflow evaluating the requirement `&<() as Foo>::Item well-formed`
+  --> $DIR/alias-bound-unsound.rs:24:31
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |                               ^^
+
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item well-formed`
+  --> $DIR/alias-bound-unsound.rs:24:10
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == _`
+  --> $DIR/alias-bound-unsound.rs:24:10
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == _`
+  --> $DIR/alias-bound-unsound.rs:24:31
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |                               ^^
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

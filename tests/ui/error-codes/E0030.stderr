@@ -1,0 +1,9 @@
+error[E0030]: lower range bound must be less than or equal to upper
+  --> $DIR/E0030.rs:3:9
+   |
+LL |         1000 ..= 5 => {}
+   |         ^^^^^^^^^^ lower bound larger than upper bound
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0030`.

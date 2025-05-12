@@ -1,0 +1,340 @@
+<?xml version="1.0"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+
+    <?if $(sys.BUILDARCH)="x64" ?>
+        <?define ArchSuffix=" 64-bit" ?>
+    <?else?>
+        <?define ArchSuffix="" ?>
+    <?endif?>
+
+    <?if $(env.CFG_CHANNEL)="stable" ?>
+        <?define ProductName="Rust $(env.CFG_VER_MAJOR).$(env.CFG_VER_MINOR) ($(env.CFG_ABI)$(var.ArchSuffix))" ?>
+    <?else?>
+        <?define ProductName="Rust $(env.CFG_CHANNEL) $(env.CFG_VER_MAJOR).$(env.CFG_VER_MINOR) ($(env.CFG_ABI)$(var.ArchSuffix))" ?>
+    <?endif?>
+
+    <?define BaseRegKey="Software\[Manufacturer]\Rust $(env.CFG_CHANNEL) ($(env.CFG_ABI)$(var.ArchSuffix))\$(env.CFG_VER_MAJOR).$(env.CFG_VER_MINOR)" ?>
+
+    <!-- Upgrade code should be different for each platform -->
+    <?if $(sys.BUILDARCH)="x64" ?>
+        <?if $(env.CFG_ABI)="GNU" ?>
+            <!-- UpgradeCode should stay the same for all MSI versions in channel -->
+            <?if $(env.CFG_CHANNEL)="stable" ?>
+                <?define UpgradeCode="B440B077-F8D1-4730-8E1D-D6D37702B4CE" ?>
+            <?elseif $(env.CFG_CHANNEL)="beta" ?>
+                <?define UpgradeCode="7205CEDC-CDA6-4B62-8E4E-4D19EC5D88FC" ?>
+            <?elseif $(env.CFG_CHANNEL)="nightly" ?>
+                <?define UpgradeCode="622497D9-E0B1-448E-838A-4A33D0C5F82C" ?>
+            <?elseif $(env.CFG_CHANNEL)="dev" ?>
+                <?define UpgradeCode="7D32FD99-BB26-45CF-935D-1B0593BBDDBE" ?>
+            <?endif ?>
+        <?elseif $(env.CFG_ABI)="MSVC" ?>
+            <?if $(env.CFG_CHANNEL)="stable" ?>
+                <?define UpgradeCode="123039F9-68E3-44F1-AC9F-C78ADD4D0723" ?>
+            <?elseif $(env.CFG_CHANNEL)="beta" ?>
+                <?define UpgradeCode="ABC640B9-2AB5-4270-9A0D-E54E502A1CCA" ?>
+            <?elseif $(env.CFG_CHANNEL)="nightly" ?>
+                <?define UpgradeCode="56263F12-4AA1-4FE1-AFAE-572915C4FA3E" ?>
+            <?elseif $(env.CFG_CHANNEL)="dev" ?>
+                <?define UpgradeCode="231A9544-7E39-4A60-A069-0EB3CA4BAB2E" ?>
+            <?endif ?>
+        <?endif ?>
+        <?define PlatformProgramFilesFolder="ProgramFiles64Folder" ?>
+    <?elseif $(sys.BUILDARCH)="x86" ?>
+        <?if $(env.CFG_ABI)="GNU" ?>
+            <?if $(env.CFG_CHANNEL)="stable" ?>
+                <?define UpgradeCode="1C7CADA5-D117-43F8-A356-DF15F9FBEFF6" ?>
+            <?elseif $(env.CFG_CHANNEL)="beta" ?>
+                <?define UpgradeCode="5229EAC1-AB7C-4A62-9881-6FAD2DE7D0F9" ?>
+            <?elseif $(env.CFG_CHANNEL)="nightly" ?>
+                <?define UpgradeCode="B94FF1C2-2C7B-4859-A08B-546815516FDA" ?>
+            <?elseif $(env.CFG_CHANNEL)="dev" ?>
+                <?define UpgradeCode="7E6D1349-2773-4792-B8CD-EA2685D86A99" ?>
+            <?endif ?>
+        <?elseif $(env.CFG_ABI)="MSVC" ?>
+            <?if $(env.CFG_CHANNEL)="stable" ?>
+                <?define UpgradeCode="5805719C-45E9-4CF6-9CE7-1E8B57F3C243" ?>
+            <?elseif $(env.CFG_CHANNEL)="beta" ?>
+                <?define UpgradeCode="BC0731C1-BED1-424C-BE99-3589C35C84DE" ?>
+            <?elseif $(env.CFG_CHANNEL)="nightly" ?>
+                <?define UpgradeCode="FF193BBC-E73B-4FBD-ADE0-12F3CFC84145" ?>
+            <?elseif $(env.CFG_CHANNEL)="dev" ?>
+                <?define UpgradeCode="87DFC303-6492-4E9B-911E-56EAD56C5E58" ?>
+            <?endif ?>
+        <?endif ?>
+        <?define PlatformProgramFilesFolder="ProgramFilesFolder" ?>
+    <?else ?>
+        <?error Unsupported value of sys.BUILDARCH=$(sys.BUILDARCH)?>
+    <?endif ?>
+
+    <Product Id="*"
+        Name="$(var.ProductName)"
+        Language="1033"
+        Version="$(env.CFG_VER_MAJOR).$(env.CFG_VER_MINOR).$(env.CFG_VER_PATCH).$(env.CFG_VER_BUILD)"
+        UpgradeCode="$(var.UpgradeCode)"
+        Manufacturer="The Rust Project Developers">
+        <Package
+            Comments="Rust is a systems programming language that runs blazingly fast, prevents almost all crashes, and eliminates data races."
+            InstallerVersion="200"
+            InstallPrivileges="elevated"
+            Compressed="yes" />
+
+        <Icon Id="rust.ico" SourceFile="rust-logo.ico" />
+        <Property Id="ApplicationFolderName" Value="Rust $(env.CFG_CHANNEL) $(env.CFG_ABI) $(env.CFG_VER_MAJOR).$(env.CFG_VER_MINOR)" />
+        <Property Id="WixAppFolder" Value="WixPerMachineFolder" />
+        <Property Id="ARPPRODUCTICON" Value="rust.ico" />
+        <Property Id="ARPURLINFOABOUT" Value="https://www.rust-lang.org/" />
+        <Property Id="ARPCOMMENTS" Value="$(env.CFG_RELEASE_INFO)" />
+        <!-- This is a dual-mode package. https://docs.microsoft.com/en-us/windows/win32/msi/single-package-authoring -->
+        <Property Id="ALLUSERS" Value="2" Secure="yes" />
+        <Property Id="MSIINSTALLPERUSER" Secure="yes" />
+        <!-- The actual install location (initialized below) -->
+        <Property Id="INSTALLDIR" Secure="yes" />
+
+        <!-- Detect path(s) of a previous installation. -->
+        <Property Id="INSTALLDIR_USER">
+            <RegistrySearch Id="InstallDir_User" Type="raw" Root="HKCU" Key="$(var.BaseRegKey)" Name="InstallDir" />
+        </Property>
+        <Property Id="INSTALLDIR_MACHINE">
+            <RegistrySearch Id="InstallDir_Mach" Type="raw" Root="HKLM" Key="$(var.BaseRegKey)" Name="InstallDir" />
+        </Property>
+
+        <!-- Set ALLUSERS to match the previous installation mode, otherwise FindRelatedProducts will ignore
+             the previous installation. If both INSTALLDIR_USER and INSTALLDIR_MACHINE are set, prefer the former. -->
+        <SetProperty Sequence="first" Before="FindRelatedProducts"
+            Id="ALLUSERS" Value="{}">INSTALLDIR_USER</SetProperty>
+
+        <!-- Set default values if RegSearch found nothing, or if we not upgrading -->
+        <SetProperty Sequence="both" Before="SetINSTALLDIR1"
+            Id="INSTALLDIR_USER" Value="[LocalAppDataFolder]Programs\[ApplicationFolderName]">NOT INSTALLDIR_USER</SetProperty>
+        <SetProperty Sequence="both" Before="SetINSTALLDIR1"
+            Id="INSTALLDIR_MACHINE" Value="[$(var.PlatformProgramFilesFolder)][ApplicationFolderName]">NOT INSTALLDIR_MACHINE</SetProperty>
+
+        <!-- Choose the default install location according to ALLUSERS (unless set from the command line) -->
+        <SetProperty Sequence="both" Action="SetINSTALLDIR1" Before="SetINSTALLDIR2"
+            Id="INSTALLDIR" Value="[INSTALLDIR_USER]">NOT INSTALLDIR AND NOT ALLUSERS</SetProperty>
+        <SetProperty Sequence="both" Action="SetINSTALLDIR2" Before="CostFinalize"
+            Id="INSTALLDIR" Value="[INSTALLDIR_MACHINE]">NOT INSTALLDIR AND ALLUSERS</SetProperty>
+
+        <SetProperty Sequence="ui" Before="CostFinalize"
+            Id="WixAppFolder" Value="WixPerUserFolder">NOT ALLUSERS</SetProperty>
+
+        <!-- UI sets ALLUSERS per user selection; propagate this choice to MSIINSTALLPERUSER before executing installation actions -->
+        <SetProperty Sequence="ui" Before="ExecuteAction"
+            Id="MSIINSTALLPERUSER" Value="1">NOT ALLUSERS</SetProperty>
+
+        <!-- Update ARPINSTALLLOCATION to match INSTALLDIR -->
+        <SetProperty Sequence="execute" Before="CostFinalize"
+            Id="ARPINSTALLLOCATION" Value="[INSTALLDIR]" />
+
+        <!-- Path of cmd.exe for the shortcut -->
+        <Property Id="SHORTCUTTARGET" Value="%windir%\System32\cmd.exe" />
+        <!-- Microsoft Installer will resolve any Environment Variables in the working directory at install time -->
+        <Property Id="SHORTCUTWKDIR" Value="%SystemDrive%\" />
+
+        <InstallUISequence>
+            <FindRelatedProducts After="AppSearch" />
+        </InstallUISequence>
+        <InstallExecuteSequence>
+            <FindRelatedProducts After="AppSearch" />
+            <RemoveExistingProducts Before="InstallInitialize" />
+        </InstallExecuteSequence>
+
+        <Upgrade Id="$(var.UpgradeCode)">
+            <UpgradeVersion
+                Minimum="$(env.CFG_VER_MAJOR).$(env.CFG_VER_MINOR).0"
+                Maximum="$(env.CFG_VER_MAJOR).$(env.CFG_VER_MINOR).65535"
+                IncludeMinimum="yes"
+                IncludeMaximum="yes"
+                MigrateFeatures="yes"
+                Property="UPGRADE_DETECTED"
+                />
+        </Upgrade>
+
+        <!-- Specifies a single cab file to be embedded in the installer's .msi. -->
+        <MediaTemplate EmbedCab="yes" CompressionLevel="mszip" />
+
+        <!-- Send a WM_SETTINGCHANGE message to tell processes like explorer to update their
+             environments so any new command prompts get the updated %PATH% -->
+        <CustomActionRef Id="WixBroadcastEnvironmentChange" />
+
+        <!-- Installation directory and files are defined in Files.wxs -->
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="$(var.PlatformProgramFilesFolder)">
+                <Directory Id="INSTALLDIR" Name="Rust">
+                    <!-- Root directories for every feature should have different IDs for correct work of heat.exe -->
+                    <Directory Id="Rustc" Name="." />
+                    <?if $(env.CFG_MINGW)="1" ?>
+                        <Directory Id="Gcc" Name="." />
+                    <?endif?>
+                    <!-- tool-rust-docs-start -->
+                    <Directory Id="Docs" Name="." />
+                    <!-- tool-rust-docs-end -->
+                    <Directory Id="Cargo" Name="." />
+                    <Directory Id="Std" Name="." />
+                    <?if $(env.CFG_RUSTFMT)="1" ?>
+                        <Directory Id="RustFmt" Name="." />
+                    <?endif?>
+                    <?if $(env.CFG_RA)="1" ?>
+                        <Directory Id="RustAnalyzer" Name="." />
+                    <?endif?>
+                    <?if $(env.CFG_MIRI)="1" ?>
+                        <Directory Id="Miri" Name="." />
+                    <?endif?>
+                    <Directory Id="Analysis" Name="." />
+                    <?if $(env.CFG_CLIPPY)="1" ?>
+                        <Directory Id="Clippy" Name="." />
+                    <?endif?>
+                </Directory>
+            </Directory>
+
+            <!-- Record our install location -->
+            <Component Id="InstallDir" Guid="*">
+                <RegistryValue Root="HKMU" Key="$(var.BaseRegKey)"
+                               Type="string"
+                               Name="InstallDir"
+                               Value="[INSTALLDIR]" />
+            </Component>
+
+            <!-- Add $/bin to PATH -->
+            <Component Id="PathEnvPerMachine" Guid="*">
+                <Condition>ALLUSERS=1 OR (ALLUSERS=2 AND Privileged)</Condition>
+                <RegistryValue Root="HKMU" Key="$(var.BaseRegKey)" Name="PathEnvPerMachine" Type="string" Value="1" KeyPath="yes" />
+                <!-- [INSTALLDIR] contains trailing backslash -->
+                <Environment Id="PathPerMachine" Name="PATH" Value="[INSTALLDIR]bin" Permanent="no" Part="last" Action="set" System="yes" />
+            </Component>
+            <Component Id="PathEnvPerUser" Guid="*">
+                <Condition>ALLUSERS="" OR (ALLUSERS=2 AND (NOT Privileged))</Condition>
+                <RegistryValue Root="HKMU" Key="$(var.BaseRegKey)" Name="PathEnvPerUser" Type="string" Value="1" KeyPath="yes" />
+                <Environment Id="PathPerUser" Name="PATH" Value="[INSTALLDIR]bin" Permanent="no" Part="last" Action="set" System="no" />
+            </Component>
+
+            <!-- Start Menu shortcuts -->
+            <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="Rust">
+                    <Component Id="RustShellShortcut" Guid="*">
+                        <Shortcut Id="RustShell"
+                                  Name="$(var.ProductName) Shell"
+                                  Description="Opens Command Prompt with Rust tools directory added to the PATH"
+                                  Target="[SHORTCUTTARGET]"
+                                  Arguments="/K path [INSTALLDIR]bin;%PATH%"
+                                  WorkingDirectory="SHORTCUTWKDIR">
+                            <Icon Id="rust2.ico" SourceFile="rust-logo.ico" />
+                        </Shortcut>
+                        <RegistryValue Root="HKMU" Key="$(var.BaseRegKey)" Name="RustShell" Type="integer" Value="1" KeyPath="yes" />
+                        <RemoveFolder Id="ApplicationProgramsFolder1" On="uninstall" />
+                    </Component>
+                    <!-- tool-rust-docs-start -->
+                    <Component Id="DocIndexShortcut" Guid="*">
+                        <Shortcut Id="RustDocs"
+                                  Name="$(var.ProductName) Documentation"
+                                  Description="Opens Rust HTML documentation in the default browser"
+                                  Target="[INSTALLDIR]share\doc\rust\html\index.html" />
+                        <RegistryValue Root="HKMU" Key="$(var.BaseRegKey)" Name="RustDocs" Type="integer" Value="1" KeyPath="yes" />
+                        <RemoveFolder Id="ApplicationProgramsFolder2" On="uninstall" />
+                    </Component>
+                    <!-- tool-rust-docs-end -->
+                </Directory>
+            </Directory>
+
+        </Directory>
+
+        <Feature Id="Rustc"
+                 Title="Rust compiler and standard crates"
+                 Display="1"
+                 Level="1"
+                 Absent="disallow"
+                 AllowAdvertise="no">
+                 <ComponentGroupRef Id="RustcGroup" />
+                 <ComponentRef Id="RustShellShortcut" />
+                 <ComponentRef Id="InstallDir" />
+        </Feature>
+        <Feature Id="Std"
+                 Title="The Rust standard library"
+                 Display="2"
+                 Level="1"
+                 AllowAdvertise="no">
+                 <ComponentGroupRef Id="StdGroup" />
+        </Feature>
+        <Feature Id="Cargo"
+                 Title="Cargo, the Rust package manager"
+                 Display="3"
+                 Level="1"
+                 AllowAdvertise="no">
+                 <ComponentGroupRef Id="CargoGroup" />
+        </Feature>
+        <?if $(env.CFG_MINGW)="1" ?>
+            <Feature Id="Gcc"
+                     Title="Linker and platform libraries"
+                     Description="If you choose to not install this component, you will require an external MinGW installation in order to create executables and libraries."
+                     Display="4"
+                     Level="1"
+                     AllowAdvertise="no">
+                     <ComponentGroupRef Id="GccGroup" />
+            </Feature>
+        <?endif?>
+        <!-- tool-rust-docs-start -->
+        <Feature Id="Docs"
+                 Title="HTML documentation"
+                 Display="5"
+                 Level="1"
+                 AllowAdvertise="no">
+                 <ComponentGroupRef Id="DocsGroup" />
+                 <ComponentRef Id="DocIndexShortcut" />
+        </Feature>
+        <!-- tool-rust-docs-end -->
+        <Feature Id="Path"
+                 Title="Add to PATH"
+                 Description="Add Rust to PATH environment variable"
+                 Display="6"
+                 Level="1"
+                 AllowAdvertise="no">
+                 <ComponentRef Id="PathEnvPerMachine" />
+                 <ComponentRef Id="PathEnvPerUser" />
+        </Feature>
+        <?if $(env.CFG_RUSTFMT)="1" ?>
+            <Feature Id="RustFmt"
+                     Title="Formatter for rust"
+                     Display="7"
+                     Level="1"
+                     AllowAdvertise="no">
+                     <ComponentGroupRef Id="RustFmtGroup" />
+            </Feature>
+        <?endif?>
+        <?if $(env.CFG_CLIPPY)="1" ?>
+            <Feature Id="Clippy"
+                     Title="Formatter and checker for rust"
+                     Display="8"
+                     Level="1"
+                     AllowAdvertise="no">
+                     <ComponentGroupRef Id="ClippyGroup" />
+            </Feature>
+        <?endif?>
+        <?if $(env.CFG_MIRI)="1" ?>
+            <Feature Id="Miri"
+                     Title="Soundness checker for rust"
+                     Display="9"
+                     Level="1"
+                     AllowAdvertise="no">
+                     <ComponentGroupRef Id="MiriGroup" />
+            </Feature>
+        <?endif?>
+        <?if $(env.CFG_RA)="1" ?>
+            <Feature Id="RustAnalyzer"
+                     Title="Analyzer for rust"
+                     Display="10"
+                     Level="1"
+                     AllowAdvertise="no">
+                     <ComponentGroupRef Id="RustAnalyzerGroup" />
+            </Feature>
+        <?endif?>
+        <Feature Id="Analysis"
+                 Title="Analysis for rust"
+                 Display="11"
+                 Level="1"
+                 AllowAdvertise="no">
+                 <ComponentGroupRef Id="AnalysisGroup" />
+        </Feature>
+        <UIRef Id="RustUI" />
+    </Product>
+</Wix>

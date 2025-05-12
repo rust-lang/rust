@@ -1,0 +1,11 @@
+error[E0493]: destructor of `(Foo, Foo)` cannot be evaluated at compile-time
+  --> $DIR/E0493.rs:17:17
+   |
+LL | const F : Foo = (Foo { a : 0 }, Foo { a : 1 }).1;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ - value is dropped here
+   |                 |
+   |                 the destructor for this type cannot be evaluated in constants
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0493`.

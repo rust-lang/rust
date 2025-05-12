@@ -1,0 +1,10 @@
+error: pointers cannot be reliably compared during const eval
+  --> $DIR/different-fn-ptr-binders-during-ctfe.rs:2:5
+   |
+LL |     x == y
+   |     ^^^^^^
+   |
+   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+
+error: aborting due to 1 previous error
+

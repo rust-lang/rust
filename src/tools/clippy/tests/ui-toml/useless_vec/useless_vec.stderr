@@ -1,0 +1,11 @@
+error: useless use of `vec!`
+  --> tests/ui-toml/useless_vec/useless_vec.rs:8:9
+   |
+LL |     foo(&vec![1_u32]);
+   |         ^^^^^^^^^^^^ help: you can use a slice directly: `&[1_u32]`
+   |
+   = note: `-D clippy::useless-vec` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::useless_vec)]`
+
+error: aborting due to 1 previous error
+

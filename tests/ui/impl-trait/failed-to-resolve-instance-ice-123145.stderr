@@ -1,0 +1,15 @@
+error[E0275]: overflow evaluating the requirement `(fn() -> impl Handler {one},): Handler`
+   |
+note: required for `fn() -> impl Handler {one}` to implement `Handler`
+  --> $DIR/failed-to-resolve-instance-ice-123145.rs:10:32
+   |
+LL | impl<H: Handler, F: Fn() -> H> Handler for F {}
+   |         -------                ^^^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
+   = note: 2 redundant requirements hidden
+   = note: required for `fn() -> impl Handler {one}` to implement `Handler`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

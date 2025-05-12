@@ -1,0 +1,56 @@
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/missing-associated-types.rs:12:32
+   |
+LL | type Foo<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Y<Rhs>;
+   |                     --------   ^^^^^^^^ additional non-auto trait
+   |                     |
+   |                     first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Add<Rhs> + Sub<Rhs> + X<Rhs> + Y<Rhs> {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/missing-associated-types.rs:14:32
+   |
+LL | type Bar<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Z<Rhs>;
+   |                     --------   ^^^^^^^^ additional non-auto trait
+   |                     |
+   |                     first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Add<Rhs> + Sub<Rhs> + X<Rhs> + Z<Rhs> {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/missing-associated-types.rs:16:32
+   |
+LL | type Baz<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Y<Rhs>;
+   |                     --------   ^^^^^^^^ additional non-auto trait
+   |                     |
+   |                     first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Add<Rhs> + Sub<Rhs> + Y<Rhs> {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/missing-associated-types.rs:18:32
+   |
+LL | type Bat<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Fine<Rhs>;
+   |                     --------   ^^^^^^^^ additional non-auto trait
+   |                     |
+   |                     first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Add<Rhs> + Sub<Rhs> + Fine<Rhs> {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0191]: the value of the associated types `Output` in `Div<Rhs>`, `Output` in `Mul<Rhs>` must be specified
+  --> $DIR/missing-associated-types.rs:20:21
+   |
+LL | type Bal<Rhs> = dyn X<Rhs>;
+   |                     ^^^^^^ associated types `Output` (from trait `Div<Rhs>`), `Output` (from trait `Mul<Rhs>`) must be specified
+   |
+   = help: consider introducing a new type parameter, adding `where` constraints using the fully-qualified path to the associated types
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0191, E0225.
+For more information about an error, try `rustc --explain E0191`.

@@ -1,0 +1,60 @@
+error[E0530]: match bindings cannot shadow tuple structs
+  --> $DIR/empty-struct-tuple-pat.rs:22:9
+   |
+LL | struct Empty2();
+   | ---------------- the tuple struct `Empty2` is defined here
+...
+LL |         Empty2 => ()
+   |         ^^^^^^
+   |         |
+   |         cannot be named the same as a tuple struct
+   |         help: try specify the pattern arguments: `Empty2(..)`
+
+error[E0530]: match bindings cannot shadow tuple structs
+  --> $DIR/empty-struct-tuple-pat.rs:25:9
+   |
+LL | use empty_struct::*;
+   |     --------------- the tuple struct `XEmpty6` is imported here
+...
+LL |         XEmpty6 => ()
+   |         ^^^^^^^
+   |         |
+   |         cannot be named the same as a tuple struct
+   |         help: try specify the pattern arguments: `XEmpty6(..)`
+
+error[E0532]: expected unit struct, unit variant or constant, found tuple variant `E::Empty4`
+  --> $DIR/empty-struct-tuple-pat.rs:29:9
+   |
+LL |     Empty4()
+   |     -------- `E::Empty4` defined here
+...
+LL |         E::Empty4 => ()
+   |         ^^^^^^^^^ help: use the tuple variant pattern syntax instead: `E::Empty4()`
+
+error[E0532]: expected unit struct, unit variant or constant, found tuple variant `XE::XEmpty5`
+  --> $DIR/empty-struct-tuple-pat.rs:33:9
+   |
+LL |         XE::XEmpty5 => (),
+   |         ^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/empty-struct.rs:7:5
+   |
+LL |     XEmpty4,
+   |     ------- similarly named unit variant `XEmpty4` defined here
+LL |     XEmpty5(),
+   |     ------- `XE::XEmpty5` defined here
+   |
+help: use the tuple variant pattern syntax instead
+   |
+LL |         XE::XEmpty5() => (),
+   |                    ++
+help: a unit variant with a similar name exists
+   |
+LL -         XE::XEmpty5 => (),
+LL +         XE::XEmpty4 => (),
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0530, E0532.
+For more information about an error, try `rustc --explain E0530`.

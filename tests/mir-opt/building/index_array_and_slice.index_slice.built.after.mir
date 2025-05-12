@@ -1,0 +1,32 @@
+// MIR for `index_slice` after built
+
+fn index_slice(_1: &[i32], _2: usize) -> &i32 {
+    debug slice => _1;
+    debug index => _2;
+    let mut _0: &i32;
+    let _3: &i32;
+    let _4: usize;
+    let mut _5: usize;
+    let mut _6: bool;
+
+    bb0: {
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = copy _2;
+        _5 = PtrMetadata(copy _1);
+        _6 = Lt(copy _4, copy _5);
+        assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, copy _4) -> [success: bb1, unwind: bb2];
+    }
+
+    bb1: {
+        _3 = &(*_1)[_4];
+        _0 = &(*_3);
+        StorageDead(_4);
+        StorageDead(_3);
+        return;
+    }
+
+    bb2 (cleanup): {
+        resume;
+    }
+}

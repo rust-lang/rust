@@ -1,0 +1,67 @@
+error[E0532]: expected tuple struct or tuple variant, found unit variant `A::D`
+  --> $DIR/pattern-error-continue.rs:20:9
+   |
+LL |     B(isize, isize),
+   |     --------------- similarly named tuple variant `B` defined here
+LL |     C(isize, isize, isize),
+LL |     D
+   |     - `A::D` defined here
+...
+LL |         A::D(_) => (),
+   |         ^^^^^^^
+   |
+help: use this syntax instead
+   |
+LL -         A::D(_) => (),
+LL +         A::D => (),
+   |
+help: a tuple variant with a similar name exists
+   |
+LL -         A::D(_) => (),
+LL +         A::B(_) => (),
+   |
+
+error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
+  --> $DIR/pattern-error-continue.rs:19:14
+   |
+LL |     B(isize, isize),
+   |       -----  ----- tuple variant has 2 fields
+...
+LL |         A::B(_, _, _) => (),
+   |              ^  ^  ^ expected 2 fields, found 3
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-error-continue.rs:24:9
+   |
+LL |     match 'c' {
+   |           --- this expression has type `char`
+LL |         S { .. } => (),
+   |         ^^^^^^^^ expected `char`, found `S`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-error-continue.rs:30:7
+   |
+LL |     f(true);
+   |     - ^^^^ expected `char`, found `bool`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/pattern-error-continue.rs:15:4
+   |
+LL | fn f(_c: char) {}
+   |    ^ --------
+
+error[E0433]: failed to resolve: use of undeclared type `E`
+  --> $DIR/pattern-error-continue.rs:35:9
+   |
+LL |         E::V => {}
+   |         ^
+   |         |
+   |         use of undeclared type `E`
+   |         help: an enum with a similar name exists: `A`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0023, E0308, E0433, E0532.
+For more information about an error, try `rustc --explain E0023`.

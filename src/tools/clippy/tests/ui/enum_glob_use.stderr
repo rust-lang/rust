@@ -1,0 +1,23 @@
+error: usage of wildcard import for enum variants
+  --> tests/ui/enum_glob_use.rs:5:5
+   |
+LL | use std::cmp::Ordering::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::cmp::Ordering::Less`
+   |
+   = note: `-D clippy::enum-glob-use` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::enum_glob_use)]`
+
+error: usage of wildcard import for enum variants
+  --> tests/ui/enum_glob_use.rs:12:5
+   |
+LL | use self::Enum::*;
+   |     ^^^^^^^^^^^^^ help: try: `self::Enum::Foo`
+
+error: usage of wildcard import for enum variants
+  --> tests/ui/enum_glob_use.rs:17:13
+   |
+LL |         use crate::Enum::*;
+   |             ^^^^^^^^^^^^^^ help: try: `crate::Enum::Foo`
+
+error: aborting due to 3 previous errors
+

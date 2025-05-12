@@ -1,0 +1,24 @@
+error[E0185]: method `example` has a `&self` declaration in the impl, but not in the trait
+  --> $DIR/argument_number_mismatch_ice.rs:8:5
+   |
+LL |     fn example(val: ());
+   |     -------------------- trait method declared without `&self`
+...
+LL |     fn example(&self, input: &i32) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&self` used in impl
+
+error[E0594]: cannot assign to `*input`, which is behind a `&` reference
+  --> $DIR/argument_number_mismatch_ice.rs:10:9
+   |
+LL |         *input = self.0;
+   |         ^^^^^^^^^^^^^^^ `input` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference in the `impl` method and the `trait` definition
+   |
+LL |     fn example(&self, input: &mut i32) {
+   |                               +++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0185, E0594.
+For more information about an error, try `rustc --explain E0185`.

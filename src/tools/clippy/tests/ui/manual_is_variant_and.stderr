@@ -1,0 +1,88 @@
+error: called `map(<f>).unwrap_or_default()` on an `Option` value
+  --> tests/ui/manual_is_variant_and.rs:13:17
+   |
+LL |       let _ = opt.map(|x| x > 1)
+   |  _________________^
+...  |
+LL | |         .unwrap_or_default();
+   | |____________________________^ help: use: `is_some_and(|x| x > 1)`
+   |
+   = note: `-D clippy::manual-is-variant-and` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_is_variant_and)]`
+
+error: called `map(<f>).unwrap_or_default()` on an `Option` value
+  --> tests/ui/manual_is_variant_and.rs:18:17
+   |
+LL |       let _ = opt.map(|x| {
+   |  _________________^
+LL | |
+LL | |         x > 1
+LL | |     }
+LL | |     ).unwrap_or_default();
+   | |_________________________^
+   |
+help: use
+   |
+LL ~     let _ = opt.is_some_and(|x| {
+LL +
+LL +         x > 1
+LL ~     });
+   |
+
+error: called `map(<f>).unwrap_or_default()` on an `Option` value
+  --> tests/ui/manual_is_variant_and.rs:23:17
+   |
+LL |     let _ = opt.map(|x| x > 1).unwrap_or_default();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `is_some_and(|x| x > 1)`
+
+error: called `map(<f>).unwrap_or_default()` on an `Option` value
+  --> tests/ui/manual_is_variant_and.rs:26:10
+   |
+LL |           .map(|x| x > 1)
+   |  __________^
+LL | |
+LL | |         .unwrap_or_default();
+   | |____________________________^ help: use: `is_some_and(|x| x > 1)`
+
+error: called `map(<f>).unwrap_or_default()` on an `Option` value
+  --> tests/ui/manual_is_variant_and.rs:34:18
+   |
+LL |     let _ = opt2.map(char::is_alphanumeric).unwrap_or_default(); // should lint
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `is_some_and(char::is_alphanumeric)`
+
+error: called `map(<f>).unwrap_or_default()` on a `Result` value
+  --> tests/ui/manual_is_variant_and.rs:44:17
+   |
+LL |       let _ = res.map(|x| {
+   |  _________________^
+LL | |
+LL | |         x > 1
+LL | |     }
+LL | |     ).unwrap_or_default();
+   | |_________________________^
+   |
+help: use
+   |
+LL ~     let _ = res.is_ok_and(|x| {
+LL +
+LL +         x > 1
+LL ~     });
+   |
+
+error: called `map(<f>).unwrap_or_default()` on a `Result` value
+  --> tests/ui/manual_is_variant_and.rs:49:17
+   |
+LL |       let _ = res.map(|x| x > 1)
+   |  _________________^
+LL | |
+LL | |         .unwrap_or_default();
+   | |____________________________^ help: use: `is_ok_and(|x| x > 1)`
+
+error: called `map(<f>).unwrap_or_default()` on a `Result` value
+  --> tests/ui/manual_is_variant_and.rs:57:18
+   |
+LL |     let _ = res2.map(char::is_alphanumeric).unwrap_or_default(); // should lint
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `is_ok_and(char::is_alphanumeric)`
+
+error: aborting due to 8 previous errors
+

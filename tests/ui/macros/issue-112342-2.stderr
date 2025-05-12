@@ -1,0 +1,24 @@
+note: doc comments are ignored in matcher position
+  --> $DIR/issue-112342-2.rs:8:13
+   |
+LL |             ///
+   |             ^^^
+
+note: doc comments are ignored in matcher position
+  --> $DIR/issue-112342-2.rs:19:13
+   |
+LL |             ///
+   |             ^^^
+
+note: doc comments are ignored in matcher position
+  --> $DIR/issue-112342-2.rs:21:13
+   |
+LL |             ///
+   |             ^^^
+
+note: doc comments are ignored in matcher position
+  --> $DIR/issue-112342-2.rs:31:13
+   |
+LL |             ///
+   |             ^^^
+

@@ -1,0 +1,177 @@
+error[E0423]: expected value, found enum `A`
+  --> $DIR/issue-73427.rs:33:5
+   |
+LL |     A.foo();
+   |     ^
+   |
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:1:1
+   |
+LL | / enum A {
+LL | |     StructWithFields { x: () },
+LL | |     TupleWithFields(()),
+LL | |     Struct {},
+LL | |     Tuple(),
+LL | |     Unit,
+LL | | }
+   | |_^
+help: you might have meant to use one of the following enum variants
+   |
+LL -     A.foo();
+LL +     (A::Tuple()).foo();
+   |
+LL |     A::Unit.foo();
+   |      ++++++
+help: alternatively, the following enum variant is available
+   |
+LL -     A.foo();
+LL +     (A::TupleWithFields(/* fields */)).foo();
+   |
+
+error[E0423]: expected value, found enum `B`
+  --> $DIR/issue-73427.rs:35:5
+   |
+LL |     B.foo();
+   |     ^ help: the following enum variant is available: `(B::TupleWithFields(/* fields */))`
+   |
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:9:1
+   |
+LL | / enum B {
+LL | |     StructWithFields { x: () },
+LL | |     TupleWithFields(()),
+LL | | }
+   | |_^
+
+error[E0423]: expected value, found enum `C`
+  --> $DIR/issue-73427.rs:37:5
+   |
+LL |     C.foo();
+   |     ^
+   |
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:14:1
+   |
+LL | / enum C {
+LL | |     StructWithFields { x: () },
+LL | |     TupleWithFields(()),
+LL | |     Unit,
+LL | | }
+   | |_^
+help: you might have meant to use the following enum variant
+   |
+LL |     C::Unit.foo();
+   |      ++++++
+help: alternatively, the following enum variant is available
+   |
+LL -     C.foo();
+LL +     (C::TupleWithFields(/* fields */)).foo();
+   |
+
+error[E0423]: expected value, found enum `D`
+  --> $DIR/issue-73427.rs:39:5
+   |
+LL |     D.foo();
+   |     ^
+   |
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:20:1
+   |
+LL | / enum D {
+LL | |     TupleWithFields(()),
+LL | |     Unit,
+LL | | }
+   | |_^
+help: you might have meant to use the following enum variant
+   |
+LL |     D::Unit.foo();
+   |      ++++++
+help: alternatively, the following enum variant is available
+   |
+LL -     D.foo();
+LL +     (D::TupleWithFields(/* fields */)).foo();
+   |
+
+error[E0423]: expected value, found enum `E`
+  --> $DIR/issue-73427.rs:41:5
+   |
+LL |     E.foo();
+   |     ^
+   |
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:25:1
+   |
+LL | / enum E {
+LL | |     TupleWithFields(()),
+LL | | }
+   | |_^
+help: the following enum variant is available
+   |
+LL -     E.foo();
+LL +     (E::TupleWithFields(/* fields */)).foo();
+   |
+help: consider importing one of these constants instead
+   |
+LL + use std::f128::consts::E;
+   |
+LL + use std::f16::consts::E;
+   |
+LL + use std::f32::consts::E;
+   |
+LL + use std::f64::consts::E;
+   |
+
+error[E0532]: expected tuple struct or tuple variant, found enum `A`
+  --> $DIR/issue-73427.rs:48:12
+   |
+LL |     if let A(3) = x { }
+   |            ^
+   |
+   = help: you might have meant to match against the enum's non-tuple variant
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:1:1
+   |
+LL | / enum A {
+LL | |     StructWithFields { x: () },
+LL | |     TupleWithFields(()),
+LL | |     Struct {},
+LL | |     Tuple(),
+LL | |     Unit,
+LL | | }
+   | |_^
+help: try to match against one of the enum's variants
+   |
+LL |     if let A::Tuple(3) = x { }
+   |             +++++++
+LL |     if let A::TupleWithFields(3) = x { }
+   |             +++++++++++++++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found enum `A`
+  --> $DIR/issue-73427.rs:46:13
+   |
+LL |     let x = A(3);
+   |             ^
+   |
+   = help: you might have meant to construct the enum's non-tuple variant
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:1:1
+   |
+LL | / enum A {
+LL | |     StructWithFields { x: () },
+LL | |     TupleWithFields(()),
+LL | |     Struct {},
+LL | |     Tuple(),
+LL | |     Unit,
+LL | | }
+   | |_^
+help: try to construct one of the enum's variants
+   |
+LL |     let x = A::Tuple(3);
+   |              +++++++
+LL |     let x = A::TupleWithFields(3);
+   |              +++++++++++++++++
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0423, E0532.
+For more information about an error, try `rustc --explain E0423`.

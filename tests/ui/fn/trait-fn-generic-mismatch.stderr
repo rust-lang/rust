@@ -1,0 +1,32 @@
+error[E0412]: cannot find type `XXX` in this scope
+  --> $DIR/trait-fn-generic-mismatch.rs:5:11
+   |
+LL | impl Core<XXX> {
+   |           ^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | impl<XXX> Core<XXX> {
+   |     +++++
+
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+  --> $DIR/trait-fn-generic-mismatch.rs:11:10
+   |
+LL |     core.spawn(retry());
+   |          ^^^^^ ------- unexpected argument of type `impl Sized`
+   |
+note: method defined here
+  --> $DIR/trait-fn-generic-mismatch.rs:6:12
+   |
+LL |     pub fn spawn(self) {}
+   |            ^^^^^
+help: remove the extra argument
+   |
+LL -     core.spawn(retry());
+LL +     core.spawn();
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0061, E0412.
+For more information about an error, try `rustc --explain E0061`.

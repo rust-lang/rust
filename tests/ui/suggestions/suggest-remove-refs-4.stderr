@@ -1,0 +1,17 @@
+error[E0277]: `&&std::slice::Iter<'_, {integer}>` is not an iterator
+  --> $DIR/suggest-remove-refs-4.rs:4:15
+   |
+LL |     for _i in &foo {}
+   |               ^^^^ `&&std::slice::Iter<'_, {integer}>` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `&&std::slice::Iter<'_, {integer}>`
+   = note: required for `&&std::slice::Iter<'_, {integer}>` to implement `IntoIterator`
+help: consider removing 2 leading `&`-references
+   |
+LL ~     let foo = [1,2,3].iter();
+LL ~     for _i in foo {}
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

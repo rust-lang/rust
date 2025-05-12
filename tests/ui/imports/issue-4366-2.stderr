@@ -1,0 +1,32 @@
+error[E0412]: cannot find type `Bar` in this scope
+  --> $DIR/issue-4366-2.rs:15:21
+   |
+LL |         fn sub() -> Bar { 1 }
+   |                     ^^^ not found in this scope
+   |
+note: type alias `a::b::Bar` exists but is inaccessible
+  --> $DIR/issue-4366-2.rs:11:9
+   |
+LL |         type Bar = isize;
+   |         ^^^^^^^^^^^^^^^^^ not accessible
+
+error[E0423]: expected function, found module `foo`
+  --> $DIR/issue-4366-2.rs:25:5
+   |
+LL |     foo();
+   |     ^^^ not a function
+   |
+note: function `m1::foo` exists but is inaccessible
+  --> $DIR/issue-4366-2.rs:21:5
+   |
+LL |     fn foo() {}
+   |     ^^^^^^^^ not accessible
+help: consider importing this function instead
+   |
+LL + use foo::foo;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0412, E0423.
+For more information about an error, try `rustc --explain E0412`.

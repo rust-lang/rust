@@ -1,0 +1,34 @@
+error[E0432]: unresolved import `nonexistent_module`
+  --> $DIR/issue-53269.rs:6:9
+   |
+LL |     use nonexistent_module::mac;
+   |         ^^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `nonexistent_module`
+   |
+help: you might be missing a crate named `nonexistent_module`, add it to your project and import it in your code
+   |
+LL + extern crate nonexistent_module;
+   |
+
+error[E0659]: `mac` is ambiguous
+  --> $DIR/issue-53269.rs:8:5
+   |
+LL |     mac!();
+   |     ^^^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a `macro_rules` name and a non-`macro_rules` name from another module
+note: `mac` could refer to the macro defined here
+  --> $DIR/issue-53269.rs:3:1
+   |
+LL | macro_rules! mac { () => () }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `mac` could also refer to the unresolved item imported here
+  --> $DIR/issue-53269.rs:6:9
+   |
+LL |     use nonexistent_module::mac;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use `self::mac` to refer to this unresolved item unambiguously
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0432, E0659.
+For more information about an error, try `rustc --explain E0432`.

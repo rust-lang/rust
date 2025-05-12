@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/incomplete-inference.rs:7:5
+   |
+LL |     None
+   |     ^^^^ cannot infer type of the type parameter `T` declared on the enum `Option`
+   |
+help: consider specifying the generic argument
+   |
+LL |     None::<T>
+   |         +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

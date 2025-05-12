@@ -1,0 +1,36 @@
+error[E0658]: `!` patterns are experimental
+  --> $DIR/unused_trait_in_never_pattern_body.rs:3:9
+   |
+LL |         ! => || {
+   |         ^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: a never pattern is always unreachable
+  --> $DIR/unused_trait_in_never_pattern_body.rs:3:14
+   |
+LL |           ! => || {
+   |  ______________^
+LL | |
+LL | |
+LL | |             use std::ops::Add;
+LL | |             0.add(1)
+LL | |         },
+   | |         ^
+   | |         |
+   | |_________this will never be executed
+   |           help: remove this expression
+
+error: mismatched types
+  --> $DIR/unused_trait_in_never_pattern_body.rs:3:9
+   |
+LL |         ! => || {
+   |         ^ a never pattern must be used on an uninhabited type
+   |
+   = note: the matched value is of type `i32`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

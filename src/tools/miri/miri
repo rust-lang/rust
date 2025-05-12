@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -e
+# We want to call the binary directly, so we need to know where it ends up.
+ROOT_DIR="$(dirname "$0")"
+MIRI_SCRIPT_TARGET_DIR="$ROOT_DIR"/miri-script/target
+TOOLCHAIN="+nightly"
+# If we are being invoked for RA, use JSON output and the default toolchain (to make proc-macros
+# work in RA). This needs a different target dir to avoid mixing up the builds.
+if [ -n "$MIRI_IN_RA" ]; then
+  MESSAGE_FORMAT="--message-format=json"
+  TOOLCHAIN=""
+  MIRI_SCRIPT_TARGET_DIR="$MIRI_SCRIPT_TARGET_DIR"/ra
+fi
+# We need a nightly toolchain, for `-Zroot-dir`.
+cargo $TOOLCHAIN build $CARGO_EXTRA_FLAGS --manifest-path "$ROOT_DIR"/miri-script/Cargo.toml \
+  -Zroot-dir="$ROOT_DIR" \
+  -q --target-dir "$MIRI_SCRIPT_TARGET_DIR" $MESSAGE_FORMAT || \
+  ( echo "Failed to build miri-script. Is the 'nightly' toolchain installed?"; exit 1 )
+# Instead of doing just `cargo run --manifest-path .. $@`, we invoke miri-script binary directly. Invoking `cargo run` goes through
+# rustup (that sets it's own environmental variables), which is undesirable.
+"$MIRI_SCRIPT_TARGET_DIR"/debug/miri-script "$@"

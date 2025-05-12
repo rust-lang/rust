@@ -1,0 +1,15 @@
+[package]
+name = "rustc_macros"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+# tidy-alphabetical-start
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2.0.9", features = ["full"] }
+synstructure = "0.13.0"
+# tidy-alphabetical-end

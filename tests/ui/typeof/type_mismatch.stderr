@@ -1,0 +1,30 @@
+error[E0516]: `typeof` is a reserved keyword but unimplemented
+  --> $DIR/type_mismatch.rs:8:12
+   |
+LL |     let b: typeof(a) = 1i8;
+   |            ^^^^^^^^^ reserved keyword
+   |
+help: consider replacing `typeof(...)` with an actual type
+   |
+LL -     let b: typeof(a) = 1i8;
+LL +     let b: u8 = 1i8;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/type_mismatch.rs:8:24
+   |
+LL |     let b: typeof(a) = 1i8;
+   |            ---------   ^^^ expected `u8`, found `i8`
+   |            |
+   |            expected due to this
+   |
+help: change the type of the numeric literal from `i8` to `u8`
+   |
+LL -     let b: typeof(a) = 1i8;
+LL +     let b: typeof(a) = 1u8;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0516.
+For more information about an error, try `rustc --explain E0308`.

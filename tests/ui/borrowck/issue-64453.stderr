@@ -1,0 +1,25 @@
+error[E0015]: cannot call non-const function `format` in statics
+  --> $DIR/issue-64453.rs:4:31
+   |
+LL | static settings_dir: String = format!("");
+   |                               ^^^^^^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
+   = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
+   = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0507]: cannot move out of static item `settings_dir`
+  --> $DIR/issue-64453.rs:13:37
+   |
+LL |     let settings_data = from_string(settings_dir);
+   |                                     ^^^^^^^^^^^^ move occurs because `settings_dir` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let settings_data = from_string(settings_dir.clone());
+   |                                                 ++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0015, E0507.
+For more information about an error, try `rustc --explain E0015`.

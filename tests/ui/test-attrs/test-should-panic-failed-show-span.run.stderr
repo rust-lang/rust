@@ -1,0 +1,13 @@
+
+thread 'should_panic_with_any_message' panicked at $DIR/test-should-panic-failed-show-span.rs:14:5:
+Panic!
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'should_panic_with_message' panicked at $DIR/test-should-panic-failed-show-span.rs:20:5:
+message
+
+thread 'should_panic_with_substring_panics_with_incorrect_string' panicked at $DIR/test-should-panic-failed-show-span.rs:38:5:
+ZOMGWTFBBQ
+
+thread 'should_panic_with_substring_panics_with_non_string_value' panicked at $DIR/test-should-panic-failed-show-span.rs:45:5:
+Box<dyn Any>

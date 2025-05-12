@@ -1,0 +1,22 @@
+error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 3 fields
+  --> $DIR/match-pattern-field-mismatch.rs:10:22
+   |
+LL |         Rgb(usize, usize, usize),
+   |             -----  -----  ----- tuple variant has 3 fields
+...
+LL |           Color::Rgb(_, _) => { }
+   |                      ^  ^ expected 3 fields, found 2
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |           Color::Rgb(_, _, _) => { }
+   |                          +++
+help: use `..` to ignore all fields
+   |
+LL -           Color::Rgb(_, _) => { }
+LL +           Color::Rgb(..) => { }
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0023`.

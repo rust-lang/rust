@@ -1,0 +1,39 @@
+error[E0277]: can't compare `&i32` with `Bar<'b, 'a>`
+  --> $DIR/self-referential.rs:6:31
+   |
+LL | fn bar<'a, 'b>(i: &'a i32) -> Bar<'a, 'b> {
+   |                               ^^^^^^^^^^^ no implementation for `&i32 == Bar<'b, 'a>`
+LL |
+LL |     i
+   |     - return type was inferred to be `&i32` here
+   |
+   = help: the trait `PartialEq<Bar<'b, 'a>>` is not implemented for `&i32`
+   = help: the trait `PartialEq` is implemented for `i32`
+
+error[E0277]: can't compare `&i32` with `(i32, Foo<'a, 'b>::{opaque#0}<'a, 'b>)`
+  --> $DIR/self-referential.rs:14:31
+   |
+LL | fn foo<'a, 'b>(i: &'a i32) -> Foo<'a, 'b> {
+   |                               ^^^^^^^^^^^ no implementation for `&i32 == (i32, Foo<'a, 'b>::{opaque#0}<'a, 'b>)`
+LL |
+LL |     (42, i)
+   |     ------- return type was inferred to be `(i32, &i32)` here
+   |
+   = help: the trait `PartialEq<(i32, Foo<'a, 'b>::{opaque#0}<'a, 'b>)>` is not implemented for `&i32`
+   = help: the trait `PartialEq` is implemented for `i32`
+
+error[E0277]: can't compare `&i32` with `(i32, Moo<'b, 'a>::{opaque#0}<'b, 'a>)`
+  --> $DIR/self-referential.rs:22:31
+   |
+LL | fn moo<'a, 'b>(i: &'a i32) -> Moo<'a, 'b> {
+   |                               ^^^^^^^^^^^ no implementation for `&i32 == (i32, Moo<'b, 'a>::{opaque#0}<'b, 'a>)`
+LL |
+LL |     (42, i)
+   |     ------- return type was inferred to be `(i32, &i32)` here
+   |
+   = help: the trait `PartialEq<(i32, Moo<'b, 'a>::{opaque#0}<'b, 'a>)>` is not implemented for `&i32`
+   = help: the trait `PartialEq` is implemented for `i32`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

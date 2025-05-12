@@ -1,0 +1,74 @@
+error: no path from `TypeAlias` to `type_of`
+  --> $DIR/dep-graph-type-alias.rs:18:1
+   |
+LL | #[rustc_then_this_would_need(type_of)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: OK
+  --> $DIR/dep-graph-type-alias.rs:20:5
+   |
+LL |     #[rustc_then_this_would_need(type_of)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: no path from `TypeAlias` to `type_of`
+  --> $DIR/dep-graph-type-alias.rs:25:1
+   |
+LL | #[rustc_then_this_would_need(type_of)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: OK
+  --> $DIR/dep-graph-type-alias.rs:28:9
+   |
+LL |         #[rustc_then_this_would_need(type_of)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: no path from `TypeAlias` to `type_of`
+  --> $DIR/dep-graph-type-alias.rs:34:1
+   |
+LL | #[rustc_then_this_would_need(type_of)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: no path from `TypeAlias` to `type_of`
+  --> $DIR/dep-graph-type-alias.rs:42:1
+   |
+LL | #[rustc_then_this_would_need(type_of)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: OK
+  --> $DIR/dep-graph-type-alias.rs:49:1
+   |
+LL | #[rustc_then_this_would_need(type_of)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: OK
+  --> $DIR/dep-graph-type-alias.rs:52:1
+   |
+LL | #[rustc_then_this_would_need(fn_sig)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: OK
+  --> $DIR/dep-graph-type-alias.rs:53:1
+   |
+LL | #[rustc_then_this_would_need(typeck)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: OK
+  --> $DIR/dep-graph-type-alias.rs:36:5
+   |
+LL |     #[rustc_then_this_would_need(fn_sig)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: OK
+  --> $DIR/dep-graph-type-alias.rs:44:5
+   |
+LL |     #[rustc_then_this_would_need(fn_sig)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: OK
+  --> $DIR/dep-graph-type-alias.rs:45:5
+   |
+LL |     #[rustc_then_this_would_need(typeck)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+

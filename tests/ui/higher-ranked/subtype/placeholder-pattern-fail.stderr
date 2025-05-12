@@ -1,0 +1,30 @@
+error[E0308]: mismatched types
+  --> $DIR/placeholder-pattern-fail.rs:9:47
+   |
+LL |     let _: for<'a, 'b> fn(Inv<'a>, Inv<'b>) = sub;
+   |            --------------------------------   ^^^ one type is more general than the other
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `for<'a, 'b> fn(Inv<'a>, Inv<'b>)`
+              found fn pointer `for<'a> fn(Inv<'a>, Inv<'a>)`
+
+error: lifetime may not live long enough
+  --> $DIR/placeholder-pattern-fail.rs:14:13
+   |
+LL | fn simple1<'c>(x: (&'c i32,)) {
+   |            -- lifetime `'c` defined here
+LL |     let _x: (&'static i32,) = x;
+   |             ^^^^^^^^^^^^^^^ type annotation requires that `'c` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/placeholder-pattern-fail.rs:19:12
+   |
+LL | fn simple2<'c>(x: (&'c i32,)) {
+   |            -- lifetime `'c` defined here
+LL |     let _: (&'static i32,) = x;
+   |            ^^^^^^^^^^^^^^^ type annotation requires that `'c` must outlive `'static`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

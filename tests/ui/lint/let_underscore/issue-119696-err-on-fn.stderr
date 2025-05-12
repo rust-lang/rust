@@ -1,0 +1,23 @@
+error: non-binding let on a type that has a destructor
+  --> $DIR/issue-119696-err-on-fn.rs:5:5
+   |
+LL |     let _ = foo();
+   |     ^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-119696-err-on-fn.rs:3:9
+   |
+LL | #![deny(let_underscore_drop)]
+   |         ^^^^^^^^^^^^^^^^^^^
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let _unused = foo();
+   |          ++++++
+help: consider immediately dropping the value
+   |
+LL -     let _ = foo();
+LL +     drop(foo());
+   |
+
+error: aborting due to 1 previous error
+

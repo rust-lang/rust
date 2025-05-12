@@ -1,0 +1,14 @@
+error[E0594]: cannot assign to `*my_ref`, which is behind a `&` reference
+  --> $DIR/issue-51244.rs:3:5
+   |
+LL |     *my_ref = 0;
+   |     ^^^^^^^^^^^ `my_ref` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     let ref mut my_ref @ _ = 0;
+   |             +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0594`.

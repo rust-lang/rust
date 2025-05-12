@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `m::assert`
+  --> $DIR/issue-53512.rs:4:5
+   |
+LL | use m::assert;
+   |     ^^^^^^^^^ no `assert` in `m`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

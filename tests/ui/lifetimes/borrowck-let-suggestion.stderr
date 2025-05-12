@@ -1,0 +1,25 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/borrowck-let-suggestion.rs:2:17
+   |
+LL |     let mut x = vec![1].iter();
+   |                 ^^^^^^^       - temporary value is freed at the end of this statement
+   |                 |
+   |                 creates a temporary value which is freed while still in use
+LL |
+LL |     x.use_mut();
+   |     - borrow later used here
+   |
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider consuming the `Vec<i32>` when turning it into an `Iterator`
+   |
+LL |     let mut x = vec![1].into_iter();
+   |                          +++++
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = vec![1];
+LL ~     let mut x = binding.iter();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0716`.

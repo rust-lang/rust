@@ -1,0 +1,18 @@
+error[E0599]: no variant or associated item named `PIE` found for enum `Delicious` in the current scope
+  --> $DIR/issue-22933-2.rs:4:55
+   |
+LL | enum Delicious {
+   | -------------- variant or associated item `PIE` not found for this enum
+...
+LL |     ApplePie = Delicious::Apple as isize | Delicious::PIE as isize,
+   |                                                       ^^^ variant or associated item not found in `Delicious`
+   |
+help: there is a variant with a similar name
+   |
+LL -     ApplePie = Delicious::Apple as isize | Delicious::PIE as isize,
+LL +     ApplePie = Delicious::Apple as isize | Delicious::Pie as isize,
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

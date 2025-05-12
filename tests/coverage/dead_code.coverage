@@ -1,0 +1,39 @@
+   LL|       |#![allow(dead_code, unused_assignments, unused_variables)]
+   LL|       |
+   LL|      0|pub fn unused_pub_fn_not_in_library() {
+   LL|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   LL|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   LL|       |    // dependent conditions.
+   LL|      0|    let is_true = std::env::args().len() == 1;
+   LL|       |
+   LL|      0|    let mut countdown = 0;
+   LL|      0|    if is_true {
+   LL|      0|        countdown = 10;
+   LL|      0|    }
+   LL|      0|}
+   LL|       |
+   LL|      0|fn unused_fn() {
+   LL|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   LL|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   LL|       |    // dependent conditions.
+   LL|      0|    let is_true = std::env::args().len() == 1;
+   LL|       |
+   LL|      0|    let mut countdown = 0;
+   LL|      0|    if is_true {
+   LL|      0|        countdown = 10;
+   LL|      0|    }
+   LL|      0|}
+   LL|       |
+   LL|      1|fn main() {
+   LL|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   LL|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   LL|       |    // dependent conditions.
+   LL|      1|    let is_true = std::env::args().len() == 1;
+   LL|       |
+   LL|      1|    let mut countdown = 0;
+   LL|      1|    if is_true {
+   LL|      1|        countdown = 10;
+   LL|      1|    }
+                  ^0
+   LL|      1|}
+

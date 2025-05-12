@@ -1,0 +1,15 @@
+error: expected identifier, found keyword `let`
+  --> $DIR/bad-let-as-field.rs:2:5
+   |
+LL | struct Foo {
+   |        --- while parsing this struct
+LL |     let: i32,
+   |     ^^^ expected identifier, found keyword
+   |
+help: escape `let` to use it as an identifier
+   |
+LL |     r#let: i32,
+   |     ++
+
+error: aborting due to 1 previous error
+

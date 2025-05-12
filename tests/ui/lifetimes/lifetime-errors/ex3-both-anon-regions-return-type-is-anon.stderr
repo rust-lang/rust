@@ -1,0 +1,17 @@
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-return-type-is-anon.rs:9:9
+   |
+LL |     fn foo<'a>(&self, x: &i32) -> &i32 {
+   |                -         - let's call the lifetime of this reference `'1`
+   |                |
+   |                let's call the lifetime of this reference `'2`
+LL |         x
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider reusing a named lifetime parameter and update trait if needed
+   |
+LL |     fn foo<'a>(&self, x: &'a i32) -> &'a i32 {
+   |                           ++          ++
+
+error: aborting due to 1 previous error
+

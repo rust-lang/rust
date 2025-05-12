@@ -1,0 +1,92 @@
+error: `^` is not the exponentiation operator
+  --> tests/ui/suspicious_xor_used_as_pow.rs:21:13
+   |
+LL |     let _ = 2 ^ 5;
+   |             ^^^^^
+   |
+   = note: `-D clippy::suspicious-xor-used-as-pow` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_xor_used_as_pow)]`
+help: did you mean to write
+   |
+LL -     let _ = 2 ^ 5;
+LL +     let _ = 2.pow(5);
+   |
+
+error: `^` is not the exponentiation operator
+  --> tests/ui/suspicious_xor_used_as_pow.rs:24:13
+   |
+LL |     let _ = 2i32 ^ 9i32;
+   |             ^^^^^^^^^^^
+   |
+help: did you mean to write
+   |
+LL -     let _ = 2i32 ^ 9i32;
+LL +     let _ = 2i32.pow(9i32);
+   |
+
+error: `^` is not the exponentiation operator
+  --> tests/ui/suspicious_xor_used_as_pow.rs:27:13
+   |
+LL |     let _ = 2i32 ^ 2i32;
+   |             ^^^^^^^^^^^
+   |
+help: did you mean to write
+   |
+LL -     let _ = 2i32 ^ 2i32;
+LL +     let _ = 2i32.pow(2i32);
+   |
+
+error: `^` is not the exponentiation operator
+  --> tests/ui/suspicious_xor_used_as_pow.rs:30:13
+   |
+LL |     let _ = 50i32 ^ 3i32;
+   |             ^^^^^^^^^^^^
+   |
+help: did you mean to write
+   |
+LL -     let _ = 50i32 ^ 3i32;
+LL +     let _ = 50i32.pow(3i32);
+   |
+
+error: `^` is not the exponentiation operator
+  --> tests/ui/suspicious_xor_used_as_pow.rs:33:13
+   |
+LL |     let _ = 5i32 ^ 8i32;
+   |             ^^^^^^^^^^^
+   |
+help: did you mean to write
+   |
+LL -     let _ = 5i32 ^ 8i32;
+LL +     let _ = 5i32.pow(8i32);
+   |
+
+error: `^` is not the exponentiation operator
+  --> tests/ui/suspicious_xor_used_as_pow.rs:36:13
+   |
+LL |     let _ = 2i32 ^ 32i32;
+   |             ^^^^^^^^^^^^
+   |
+help: did you mean to write
+   |
+LL -     let _ = 2i32 ^ 32i32;
+LL +     let _ = 2i32.pow(32i32);
+   |
+
+error: `^` is not the exponentiation operator
+  --> tests/ui/suspicious_xor_used_as_pow.rs:13:9
+   |
+LL |         1 ^ 2 // should warn even if inside macro
+   |         ^^^^^
+...
+LL |     macro_test_inside!();
+   |     -------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_test_inside` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: did you mean to write
+   |
+LL -         1 ^ 2 // should warn even if inside macro
+LL +         1.pow(2) // should warn even if inside macro
+   |
+
+error: aborting due to 7 previous errors
+

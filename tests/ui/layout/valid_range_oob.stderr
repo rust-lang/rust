@@ -1,0 +1,8 @@
+
+257 > 255
+error: the compiler unexpectedly panicked. this is a bug.
+
+query stack during panic:
+#0 [layout_of] computing layout of `Foo`
+#1 [eval_to_allocation_raw] const-evaluating + checking `FOO`
+... and 2 other queries... use `env RUST_BACKTRACE=1` to see the full query stack
