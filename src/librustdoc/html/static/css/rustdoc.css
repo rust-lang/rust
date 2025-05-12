@@ -1001,7 +1001,13 @@ rustdoc-topbar {
 		+ var(--line-number-right-margin));
 }
 .src .example-wrap .expansion [data-nosnippet] {
-	left: calc((
+	/* FIXME: Once <https://bugzilla.mozilla.org/show_bug.cgi?id=1949948> is solved, uncomment
+	   next line and remove the two other rules. */
+	/*left: calc((
+		var(--example-wrap-digits-count) + var(--line-number-padding) * 2
+		+ var(--line-number-right-margin)) * -1);*/
+	position: initial;
+	margin-left: calc((
 		var(--example-wrap-digits-count) + var(--line-number-padding) * 2
 		+ var(--line-number-right-margin)) * -1);
 }
