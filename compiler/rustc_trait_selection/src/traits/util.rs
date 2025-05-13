@@ -516,11 +516,14 @@ pub fn sizedness_fast_path<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
     if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_ref)) =
         predicate.kind().skip_binder()
     {
-        let sizedness = match tcx.as_lang_item(trait_ref.def_id()) {
-            Some(LangItem::Sized) => SizedTraitKind::Sized,
-            Some(LangItem::MetaSized) => SizedTraitKind::MetaSized,
-            Some(LangItem::PointeeSized) => SizedTraitKind::PointeeSized,
-            _ => return false,
+        let sizedness = if tcx.is_lang_item(trait_ref.def_id(), LangItem::Sized) {
+            SizedTraitKind::Sized
+        } else if tcx.is_lang_item(trait_ref.def_id(), LangItem::MetaSized) {
+            SizedTraitKind::MetaSized
+        } else if tcx.is_lang_item(trait_ref.def_id(), LangItem::PointeeSized) {
+            SizedTraitKind::PointeeSized
+        } else {
+            return false;
         };
 
         if trait_ref.self_ty().has_trivial_sizedness(tcx, sizedness) {

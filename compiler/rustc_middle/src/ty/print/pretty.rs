@@ -1083,24 +1083,21 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 ty::ClauseKind::Trait(pred) => {
                     // With `feature(sized_hierarchy)`, don't print `?Sized` as an alias for
                     // `MetaSized`, and skip sizedness bounds to be added at the end.
-                    match tcx.as_lang_item(pred.def_id()) {
-                        Some(LangItem::Sized) => match pred.polarity {
+                    if tcx.is_lang_item(pred.def_id(), LangItem::Sized) {
+                        match pred.polarity {
                             ty::PredicatePolarity::Positive => {
                                 has_sized_bound = true;
                                 continue;
                             }
                             ty::PredicatePolarity::Negative => has_negative_sized_bound = true,
-                        },
-                        Some(LangItem::MetaSized) => {
-                            has_meta_sized_bound = true;
-                            continue;
                         }
-                        Some(LangItem::PointeeSized) => {
-                            // Unexpected - `PointeeSized` is the absence of bounds.
-                            has_pointee_sized_bound = true;
-                            continue;
-                        }
-                        _ => (),
+                    } else if tcx.is_lang_item(pred.def_id(), LangItem::MetaSized) {
+                        has_meta_sized_bound = true;
+                        continue;
+                    } else if tcx.is_lang_item(pred.def_id(), LangItem::PointeeSized) {
+                        // Unexpected - `PointeeSized` is the absence of bounds.
+                        has_pointee_sized_bound = true;
+                        continue;
                     }
 
                     self.insert_trait_and_projection(

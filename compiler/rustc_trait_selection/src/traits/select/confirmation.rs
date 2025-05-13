@@ -261,20 +261,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         let obligations = if has_nested {
             let trait_def = obligation.predicate.def_id();
-            let conditions = match tcx.as_lang_item(trait_def) {
-                Some(LangItem::Sized) => {
-                    self.sizedness_conditions(obligation, SizedTraitKind::Sized)
-                }
-                Some(LangItem::MetaSized) => {
-                    self.sizedness_conditions(obligation, SizedTraitKind::MetaSized)
-                }
-                Some(LangItem::PointeeSized) => {
-                    self.sizedness_conditions(obligation, SizedTraitKind::PointeeSized)
-                }
-                Some(LangItem::Copy) => self.copy_clone_conditions(obligation),
-                Some(LangItem::Clone) => self.copy_clone_conditions(obligation),
-                Some(LangItem::FusedIterator) => self.fused_iterator_conditions(obligation),
-                _ => bug!("unexpected builtin trait {:?}", trait_def),
+            let conditions = if tcx.is_lang_item(trait_def, LangItem::Sized) {
+                self.sizedness_conditions(obligation, SizedTraitKind::Sized)
+            } else if tcx.is_lang_item(trait_def, LangItem::MetaSized) {
+                self.sizedness_conditions(obligation, SizedTraitKind::MetaSized)
+            } else if tcx.is_lang_item(trait_def, LangItem::PointeeSized) {
+                self.sizedness_conditions(obligation, SizedTraitKind::PointeeSized)
+            } else if tcx.is_lang_item(trait_def, LangItem::Copy) {
+                self.copy_clone_conditions(obligation)
+            } else if tcx.is_lang_item(trait_def, LangItem::Clone) {
+                self.copy_clone_conditions(obligation)
+            } else if tcx.is_lang_item(trait_def, LangItem::FusedIterator) {
+                self.fused_iterator_conditions(obligation)
+            } else {
+                bug!("unexpected builtin trait {:?}", trait_def)
             };
             let BuiltinImplConditions::Where(types) = conditions else {
                 bug!("obligation {:?} had matched a builtin impl but now doesn't", obligation);

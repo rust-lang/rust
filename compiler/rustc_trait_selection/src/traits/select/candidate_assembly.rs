@@ -64,109 +64,82 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // and applicable impls. There is a certain set of precedence rules here.
             let def_id = obligation.predicate.def_id();
             let tcx = self.tcx();
-
-            match tcx.as_lang_item(def_id) {
-                Some(LangItem::Copy) => {
-                    debug!(obligation_self_ty = ?obligation.predicate.skip_binder().self_ty());
-
-                    // User-defined copy impls are permitted, but only for
-                    // structs and enums.
-                    self.assemble_candidates_from_impls(obligation, &mut candidates);
-
-                    // For other types, we'll use the builtin rules.
-                    let copy_conditions = self.copy_clone_conditions(obligation);
-                    self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
+            if tcx.is_lang_item(def_id, LangItem::Copy) {
+                debug!(obligation_self_ty = ?obligation.predicate.skip_binder().self_ty());
+                // User-defined copy impls are permitted, but only for
+                // structs and enums.
+                self.assemble_candidates_from_impls(obligation, &mut candidates);
+                // For other types, we'll use the builtin rules.
+                let copy_conditions = self.copy_clone_conditions(obligation);
+                self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
+            } else if tcx.is_lang_item(def_id, LangItem::DiscriminantKind) {
+                // `DiscriminantKind` is automatically implemented for every type.
+                candidates.vec.push(BuiltinCandidate { has_nested: false });
+            } else if tcx.is_lang_item(def_id, LangItem::PointeeTrait) {
+                // `Pointee` is automatically implemented for every type.
+                candidates.vec.push(BuiltinCandidate { has_nested: false });
+            } else if tcx.is_lang_item(def_id, LangItem::Sized) {
+                self.assemble_builtin_sized_candidate(
+                    obligation,
+                    &mut candidates,
+                    SizedTraitKind::Sized,
+                );
+            } else if tcx.is_lang_item(def_id, LangItem::MetaSized) {
+                self.assemble_builtin_sized_candidate(
+                    obligation,
+                    &mut candidates,
+                    SizedTraitKind::MetaSized,
+                );
+            } else if tcx.is_lang_item(def_id, LangItem::PointeeSized) {
+                self.assemble_builtin_sized_candidate(
+                    obligation,
+                    &mut candidates,
+                    SizedTraitKind::PointeeSized,
+                );
+            } else if tcx.is_lang_item(def_id, LangItem::Unsize) {
+                self.assemble_candidates_for_unsizing(obligation, &mut candidates);
+            } else if tcx.is_lang_item(def_id, LangItem::Destruct) {
+                self.assemble_const_destruct_candidates(obligation, &mut candidates);
+            } else if tcx.is_lang_item(def_id, LangItem::TransmuteTrait) {
+                // User-defined transmutability impls are permitted.
+                self.assemble_candidates_from_impls(obligation, &mut candidates);
+                self.assemble_candidates_for_transmutability(obligation, &mut candidates);
+            } else if tcx.is_lang_item(def_id, LangItem::Tuple) {
+                self.assemble_candidate_for_tuple(obligation, &mut candidates);
+            } else if tcx.is_lang_item(def_id, LangItem::FnPtrTrait) {
+                self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
+            } else if tcx.is_lang_item(def_id, LangItem::BikeshedGuaranteedNoDrop) {
+                self.assemble_candidates_for_bikeshed_guaranteed_no_drop_trait(
+                    obligation,
+                    &mut candidates,
+                );
+            } else {
+                if tcx.is_lang_item(def_id, LangItem::Clone) {
+                    // Same builtin conditions as `Copy`, i.e., every type which has builtin support
+                    // for `Copy` also has builtin support for `Clone`, and tuples/arrays of `Clone`
+                    // types have builtin support for `Clone`.
+                    let clone_conditions = self.copy_clone_conditions(obligation);
+                    self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates);
                 }
-                Some(LangItem::DiscriminantKind) => {
-                    // `DiscriminantKind` is automatically implemented for every type.
-                    candidates.vec.push(BuiltinCandidate { has_nested: false });
+                if tcx.is_lang_item(def_id, LangItem::Coroutine) {
+                    self.assemble_coroutine_candidates(obligation, &mut candidates);
+                } else if tcx.is_lang_item(def_id, LangItem::Future) {
+                    self.assemble_future_candidates(obligation, &mut candidates);
+                } else if tcx.is_lang_item(def_id, LangItem::Iterator) {
+                    self.assemble_iterator_candidates(obligation, &mut candidates);
+                } else if tcx.is_lang_item(def_id, LangItem::FusedIterator) {
+                    self.assemble_fused_iterator_candidates(obligation, &mut candidates);
+                } else if tcx.is_lang_item(def_id, LangItem::AsyncIterator) {
+                    self.assemble_async_iterator_candidates(obligation, &mut candidates);
+                } else if tcx.is_lang_item(def_id, LangItem::AsyncFnKindHelper) {
+                    self.assemble_async_fn_kind_helper_candidates(obligation, &mut candidates);
                 }
-                Some(LangItem::PointeeTrait) => {
-                    // `Pointee` is automatically implemented for every type.
-                    candidates.vec.push(BuiltinCandidate { has_nested: false });
-                }
-                Some(LangItem::Sized) => {
-                    self.assemble_builtin_sized_candidate(
-                        obligation,
-                        &mut candidates,
-                        SizedTraitKind::Sized,
-                    );
-                }
-                Some(LangItem::MetaSized) => {
-                    self.assemble_builtin_sized_candidate(
-                        obligation,
-                        &mut candidates,
-                        SizedTraitKind::MetaSized,
-                    );
-                }
-                Some(LangItem::PointeeSized) => {
-                    bug!("`PointeeSized` is removed during lowering");
-                }
-                Some(LangItem::Unsize) => {
-                    self.assemble_candidates_for_unsizing(obligation, &mut candidates);
-                }
-                Some(LangItem::Destruct) => {
-                    self.assemble_const_destruct_candidates(obligation, &mut candidates);
-                }
-                Some(LangItem::TransmuteTrait) => {
-                    // User-defined transmutability impls are permitted.
-                    self.assemble_candidates_from_impls(obligation, &mut candidates);
-                    self.assemble_candidates_for_transmutability(obligation, &mut candidates);
-                }
-                Some(LangItem::Tuple) => {
-                    self.assemble_candidate_for_tuple(obligation, &mut candidates);
-                }
-                Some(LangItem::FnPtrTrait) => {
-                    self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
-                }
-                Some(LangItem::BikeshedGuaranteedNoDrop) => {
-                    self.assemble_candidates_for_bikeshed_guaranteed_no_drop_trait(
-                        obligation,
-                        &mut candidates,
-                    );
-                }
-                lang_item => {
-                    if matches!(lang_item, Some(LangItem::Clone)) {
-                        // Same builtin conditions as `Copy`, i.e., every type which has builtin support
-                        // for `Copy` also has builtin support for `Clone`, and tuples/arrays of `Clone`
-                        // types have builtin support for `Clone`.
-                        let clone_conditions = self.copy_clone_conditions(obligation);
-                        self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates);
-                    }
-
-                    match lang_item {
-                        Some(LangItem::Coroutine) => {
-                            self.assemble_coroutine_candidates(obligation, &mut candidates);
-                        }
-                        Some(LangItem::Future) => {
-                            self.assemble_future_candidates(obligation, &mut candidates);
-                        }
-                        Some(LangItem::Iterator) => {
-                            self.assemble_iterator_candidates(obligation, &mut candidates);
-                        }
-                        Some(LangItem::FusedIterator) => {
-                            self.assemble_fused_iterator_candidates(obligation, &mut candidates);
-                        }
-                        Some(LangItem::AsyncIterator) => {
-                            self.assemble_async_iterator_candidates(obligation, &mut candidates);
-                        }
-                        Some(LangItem::AsyncFnKindHelper) => {
-                            self.assemble_async_fn_kind_helper_candidates(
-                                obligation,
-                                &mut candidates,
-                            );
-                        }
-                        _ => (),
-                    }
-
-                    // FIXME: Put these into `else if` blocks above, since they're built-in.
-                    self.assemble_closure_candidates(obligation, &mut candidates);
-                    self.assemble_async_closure_candidates(obligation, &mut candidates);
-                    self.assemble_fn_pointer_candidates(obligation, &mut candidates);
-
-                    self.assemble_candidates_from_impls(obligation, &mut candidates);
-                    self.assemble_candidates_from_object_ty(obligation, &mut candidates);
-                }
+                // FIXME: Put these into `else if` blocks above, since they're built-in.
+                self.assemble_closure_candidates(obligation, &mut candidates);
+                self.assemble_async_closure_candidates(obligation, &mut candidates);
+                self.assemble_fn_pointer_candidates(obligation, &mut candidates);
+                self.assemble_candidates_from_impls(obligation, &mut candidates);
+                self.assemble_candidates_from_object_ty(obligation, &mut candidates);
             }
 
             self.assemble_candidates_from_projected_tys(obligation, &mut candidates);
