@@ -5681,6 +5681,7 @@ Released 2018-09-13
 [`clone_on_copy`]: https://rust-lang.github.io/rust-clippy/master/index.html#clone_on_copy
 [`clone_on_ref_ptr`]: https://rust-lang.github.io/rust-clippy/master/index.html#clone_on_ref_ptr
 [`cloned_instead_of_copied`]: https://rust-lang.github.io/rust-clippy/master/index.html#cloned_instead_of_copied
+[`cloned_ref_to_slice_refs`]: https://rust-lang.github.io/rust-clippy/master/index.html#cloned_ref_to_slice_refs
 [`cmp_nan`]: https://rust-lang.github.io/rust-clippy/master/index.html#cmp_nan
 [`cmp_null`]: https://rust-lang.github.io/rust-clippy/master/index.html#cmp_null
 [`cmp_owned`]: https://rust-lang.github.io/rust-clippy/master/index.html#cmp_owned
