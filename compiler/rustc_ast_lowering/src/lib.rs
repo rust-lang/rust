@@ -896,7 +896,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let ret = self.arena.alloc_from_iter(lowered_attrs);
 
             // this is possible if an item contained syntactical attribute,
-            // but none of them parse succesfully or all of them were ignored
+            // but none of them parse successfully or all of them were ignored
             // for not being built-in attributes at all. They could be remaining
             // unexpanded attributes used as markers in proc-macro derives for example.
             // This will have emitted some diagnostics for the misparse, but will then

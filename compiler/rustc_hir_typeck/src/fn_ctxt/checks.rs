@@ -2339,7 +2339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if !mismatched_params.is_empty() {
-                    // For each mismatched paramter, create a two-way link to each matched parameter
+                    // For each mismatched parameter, create a two-way link to each matched parameter
                     // of the same type.
                     let mut dependants = IndexVec::<ExpectedIdx, _>::from_fn_n(
                         |_| SmallVec::<[u32; 4]>::new(),
