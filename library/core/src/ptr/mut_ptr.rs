@@ -1693,6 +1693,37 @@ impl<T: ?Sized> *mut T {
         self.is_aligned_to(align_of::<T>())
     }
 
+    /// Returns whether the pointer is properly aligned for `U`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(pointer_is_aligned_for)]
+    /// 
+    /// // On some platforms, the alignment of i32 is less than 4.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    /// 
+    /// // On some platforms, the alignment of u32 is less than 4.
+    /// #[repr(align(4))]
+    /// struct AlignedU32(u32);
+    ///
+    /// let mut data = AlignedI32(42);
+    /// let ptr = &mut data as *mut AlignedI32;
+    ///
+    /// assert!(ptr.is_aligned_for::<AlignedU32>());
+    /// assert!(!ptr.wrapping_byte_add(1).is_aligned_for::<AlignedU32>());
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "pointer_is_aligned_for", issue = "140980")]
+    pub fn is_aligned_for<U: Sized>(self) -> bool
+    where
+        T: Sized,
+    {
+        self.is_aligned_to(align_of::<U>())
+    }
+
     /// Returns whether the pointer is aligned to `align`.
     ///
     /// For non-`Sized` pointees this operation considers only the data pointer,
