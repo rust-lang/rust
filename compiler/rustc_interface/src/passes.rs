@@ -996,10 +996,9 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
     sess.time("MIR_borrow_checking", || {
         tcx.par_hir_body_owners(|def_id| {
-            // Run unsafety check because it's responsible for stealing and
-            // deallocating THIR.
-            tcx.ensure_ok().check_unsafety(def_id);
             if !tcx.is_typeck_child(def_id.to_def_id()) {
+                // Child unsafety and borrowck happens together with the parent
+                tcx.ensure_ok().check_unsafety(def_id);
                 tcx.ensure_ok().mir_borrowck(def_id)
             }
         });
