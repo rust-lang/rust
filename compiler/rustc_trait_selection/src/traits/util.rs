@@ -539,12 +539,12 @@ pub(crate) fn unelaborated_sizedness_candidate<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligation: &PolyTraitObligation<'tcx>,
     candidate: PolyTraitPredicate<'tcx>,
-) -> PolyTraitPredicate<'tcx> {
+) -> Option<PolyTraitPredicate<'tcx>> {
     use crate::infer::InferCtxtExt;
     if !infcx.tcx.is_lang_item(obligation.predicate.def_id(), LangItem::MetaSized)
         || !infcx.tcx.is_lang_item(candidate.def_id(), LangItem::Sized)
     {
-        return candidate;
+        return None;
     }
 
     let drcx = DeepRejectCtxt::relate_rigid_rigid(infcx.tcx);
@@ -564,15 +564,15 @@ pub(crate) fn unelaborated_sizedness_candidate<'tcx>(
         };
 
     if matches {
-        candidate.map_bound(|c| TraitPredicate {
+        Some(candidate.map_bound(|c| TraitPredicate {
             trait_ref: TraitRef::new_from_args(
                 infcx.tcx,
                 obligation.predicate.def_id(),
                 c.trait_ref.args,
             ),
             polarity: c.polarity,
-        })
+        }))
     } else {
-        candidate
+        None
     }
 }

@@ -1,7 +1,6 @@
 use std::ops::Add;
 
 fn dbl<T>(x: T) -> <T as Add>::Output
-//~^ ERROR type annotations needed
 where
     T: Copy + Add,
     UUU: Copy,

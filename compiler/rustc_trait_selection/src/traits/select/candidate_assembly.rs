@@ -217,8 +217,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     selcx.infcx.probe(|_| {
-                        let bound =
-                            util::unelaborated_sizedness_candidate(selcx.infcx, obligation, bound);
+                        if util::unelaborated_sizedness_candidate(selcx.infcx, obligation, bound)
+                            .is_some()
+                        {
+                            candidates.vec.push(ProjectionCandidate(idx));
+                            return;
+                        }
 
                         // We checked the polarity already
                         match selcx.match_normalize_trait_ref(
@@ -258,26 +262,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<(), SelectionError<'tcx>> {
         debug!(?stack.obligation);
 
+        if let Some(bound) = stack
+            .obligation
+            .param_env
+            .caller_bounds()
+            .iter()
+            .filter_map(|p| p.as_trait_clause())
+            .find_map(|p| util::unelaborated_sizedness_candidate(self.infcx, stack.obligation, p))
+        {
+            candidates.vec.push(ParamCandidate(bound));
+            return Ok(());
+        }
+
         let bounds = stack
             .obligation
             .param_env
             .caller_bounds()
             .iter()
             .filter_map(|p| p.as_trait_clause())
-            // Micro-optimization: filter out predicates with different polarities.
+            // Micro-optimization: filter out predicates relating to different traits.
+            .filter(|p| p.def_id() == stack.obligation.predicate.def_id())
             .filter(|p| p.polarity() == stack.obligation.predicate.polarity());
 
         let drcx = DeepRejectCtxt::relate_rigid_rigid(self.tcx());
         let obligation_args = stack.obligation.predicate.skip_binder().trait_ref.args;
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
         for bound in bounds {
-            let bound = util::unelaborated_sizedness_candidate(self.infcx, stack.obligation, bound);
-
-            // Micro-optimization: filter out predicates relating to different traits.
-            if bound.def_id() != stack.obligation.predicate.def_id() {
-                continue;
-            }
-
             let bound_trait_ref = bound.map_bound(|t| t.trait_ref);
             if !drcx.args_may_unify(obligation_args, bound_trait_ref.skip_binder().args) {
                 continue;

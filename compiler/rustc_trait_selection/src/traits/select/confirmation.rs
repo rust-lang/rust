@@ -168,8 +168,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let candidate_predicate = candidate_predicate
             .as_trait_clause()
             .expect("projection candidate is not a trait predicate");
-        let candidate_predicate =
-            util::unelaborated_sizedness_candidate(self.infcx, obligation, candidate_predicate);
+        if util::unelaborated_sizedness_candidate(self.infcx, obligation, candidate_predicate)
+            .is_some()
+        {
+            return Ok(PredicateObligations::new());
+        }
 
         let candidate = candidate_predicate.map_bound(|t| t.trait_ref);
 
@@ -227,13 +230,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         param: ty::PolyTraitRef<'tcx>,
     ) -> PredicateObligations<'tcx> {
         debug!(?obligation, ?param, "confirm_param_candidate");
-
-        let param = util::unelaborated_sizedness_candidate(
-            self.infcx,
-            obligation,
-            param.upcast(self.infcx.tcx),
-        )
-        .map_bound(|p| p.trait_ref);
 
         // During evaluation, we already checked that this
         // where-clause trait-ref could be unified with the obligation
