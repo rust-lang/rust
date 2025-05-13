@@ -502,6 +502,12 @@ impl u8 {
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
     pub const unsafe fn as_ascii_unchecked(&self) -> ascii::Char {
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "as_ascii_unchecked requires that the byte is valid ASCII",
+            (it: &u8 = self) => it.is_ascii()
+        );
+
         // SAFETY: the caller promised that this byte is ASCII.
         unsafe { ascii::Char::from_u8_unchecked(*self) }
     }

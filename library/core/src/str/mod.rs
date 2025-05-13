@@ -17,6 +17,7 @@ use self::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use crate::char::{self, EscapeDebugExtArgs};
 use crate::ops::Range;
 use crate::slice::{self, SliceIndex};
+use crate::ub_checks::assert_unsafe_precondition;
 use crate::{ascii, mem};
 
 pub mod pattern;
@@ -2644,6 +2645,12 @@ impl str {
     #[must_use]
     #[inline]
     pub const unsafe fn as_ascii_unchecked(&self) -> &[ascii::Char] {
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "as_ascii_unchecked requires that the string is valid ASCII",
+            (it: &str = self) => it.is_ascii()
+        );
+
         // SAFETY: the caller promised that every byte of this string slice
         // is ASCII.
         unsafe { self.as_bytes().as_ascii_unchecked() }
