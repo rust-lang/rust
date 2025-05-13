@@ -1285,6 +1285,37 @@ impl<T: ?Sized> NonNull<T> {
         self.as_ptr().is_aligned()
     }
 
+    /// Returns whether the pointer is properly aligned for `T`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ptr::NonNull;
+    ///
+    /// // On some platforms, the alignment of i32 is less than 4.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    ///
+    /// // On some platforms, the alignment of u32 is less than 4.
+    /// #[repr(align(4))]
+    /// struct AlignedU32(u32);
+    ///
+    /// let data = AlignedI32(42);
+    /// let ptr = NonNull::<AlignedI32>::from(&data);
+    ///
+    /// assert!(ptr.is_aligned_for::<AlignedU32>());
+    /// assert!(!NonNull::new(ptr.as_ptr().wrapping_byte_add(1)).unwrap().is_aligned_for::<AlignedU32>());
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "pointer_is_aligned_for", issue = "140980")]
+    pub fn is_aligned_for<U: Sized>(self) -> bool
+    where
+        T: Sized,
+    {
+        self.as_ptr().is_aligned_for::<U>()
+    }
+
     /// Returns whether the pointer is aligned to `align`.
     ///
     /// For non-`Sized` pointees this operation considers only the data pointer,
