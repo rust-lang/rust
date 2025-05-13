@@ -2212,7 +2212,6 @@ ui/issues/issue-41479.rs
 ui/issues/issue-41498.rs
 ui/issues/issue-41549.rs
 ui/issues/issue-41604.rs
-ui/issues/issue-41628.rs
 ui/issues/issue-41652/auxiliary/issue-41652-b.rs
 ui/issues/issue-41652/issue-41652.rs
 ui/issues/issue-41677.rs
