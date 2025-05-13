@@ -1,0 +1,19 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/open-drop-error2.rs:12:15
+   |
+LL | fn wrong() -> impl Sized {
+   |               ^^^^^^^^^^ doesn't have a size known at compile-time
+LL |
+LL |     *"abc" // Doesn't implement Sized
+   |     ------ return type was inferred to be `str` here
+   |
+   = help: the trait `Sized` is not implemented for `str`
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -     *"abc" // Doesn't implement Sized
+LL +     "abc" // Doesn't implement Sized
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
