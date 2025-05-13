@@ -34,17 +34,16 @@ use super::{SocketAncillary, recv_vectored_with_ancillary_from, send_vectored_wi
     target_os = "cygwin"
 ))]
 use super::{UCred, peer_cred};
-use crate::ffi::c_void;
+use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::Shutdown;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
 use crate::sealed::Sealed;
 use crate::sys::cvt;
-use crate::sys::net::{Socket, wrlen_t};
+use crate::sys::net::Socket;
 use crate::sys_common::{AsInner, FromInner};
 use crate::time::Duration;
-use crate::{cmp, fmt};
 
 /// A Unix stream socket.
 ///
@@ -655,11 +654,7 @@ impl io::Write for UnixStream {
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl<'a> io::Write for &'a UnixStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
-        let ret = cvt(unsafe {
-            libc::send(self.0.as_raw(), buf.as_ptr() as *const c_void, len, MSG_NOSIGNAL)
-        })?;
-        Ok(ret as usize)
+        self.0.send_with_flags(buf, MSG_NOSIGNAL)
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
