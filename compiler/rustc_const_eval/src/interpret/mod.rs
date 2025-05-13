@@ -14,6 +14,7 @@ mod place;
 mod projection;
 mod stack;
 mod step;
+mod tracing_utils;
 mod traits;
 mod util;
 mod validity;
