@@ -80,21 +80,53 @@ pub fn elaborate<I: Interner, O: Elaboratable<I>>(
 ) -> Elaborator<I, O> {
     let mut elaborator =
         Elaborator { cx, stack: Vec::new(), visited: HashSet::default(), mode: Filter::All };
-    elaborator.extend_deduped(obligations);
+    elaborator.extend_deduped(None, obligations);
     elaborator
 }
 
 impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
-    /// Adds `obligations` to the stack.
-    fn extend_deduped(&mut self, obligations: impl IntoIterator<Item = O>) {
+    /// Adds `obligations` to the stack. `current_clause` is the clause which was elaborated to
+    /// produce these obligations.
+    fn extend_deduped(
+        &mut self,
+        current_clause: Option<I::Clause>,
+        obligations: impl IntoIterator<Item = O>,
+    ) {
         // Only keep those bounds that we haven't already seen.
         // This is necessary to prevent infinite recursion in some
         // cases. One common case is when people define
         // `trait Sized: Sized { }` rather than `trait Sized { }`.
         self.stack.extend(
-            obligations.into_iter().filter(|o| {
-                self.visited.insert(self.cx.anonymize_bound_vars(o.predicate().kind()))
-            }),
+            obligations
+                .into_iter()
+                .filter(|o| self.visited.insert(self.cx.anonymize_bound_vars(o.predicate().kind())))
+                .filter(|o| {
+                    let Some(current_clause) = current_clause else {
+                        return true;
+                    };
+                    let Some(next_clause) = o.predicate().as_clause() else {
+                        return true;
+                    };
+                    let current_did = match current_clause.kind().skip_binder() {
+                        ty::ClauseKind::Trait(data) => data.def_id(),
+                        _ => return true,
+                    };
+                    let next_did = match next_clause.kind().skip_binder() {
+                        ty::ClauseKind::Trait(data) => data.def_id(),
+                        _ => return true,
+                    };
+                    // PERF(sized-hierarchy): To avoid iterating over sizedness supertraits in
+                    // parameter environments, as an optimisation, sizedness supertraits aren't
+                    // elaborated, so check if a `Sized` obligation is being elaborated to a
+                    // `MetaSized` obligation and emit it. Candidate assembly and confirmation
+                    // are modified to check for the `Sized` subtrait when a `MetaSized` obligation
+                    // is present.
+                    if self.cx.is_lang_item(current_did, TraitSolverLangItem::Sized) {
+                        !self.cx.is_lang_item(next_did, TraitSolverLangItem::MetaSized)
+                    } else {
+                        true
+                    }
+                }),
         );
     }
 
@@ -112,18 +144,6 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
         let Some(clause) = elaboratable.predicate().as_clause() else {
             return;
         };
-
-        // PERF(sized-hierarchy): To avoid iterating over sizedness supertraits in
-        // parameter environments, as an optimisation, sizedness supertraits aren't
-        // elaborated, so check if a `Sized` obligation is being elaborated to a
-        // `MetaSized` obligation and emit it. Candidate assembly and confirmation
-        // are modified to check for the `Sized` subtrait when a `MetaSized` obligation
-        // is present.
-        if let Some(did) = clause.as_trait_clause().map(|c| c.def_id()) {
-            if self.cx.is_lang_item(did, TraitSolverLangItem::Sized) {
-                return;
-            }
-        }
 
         let bound_clause = clause.kind();
         match bound_clause.skip_binder() {
@@ -146,12 +166,14 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                 // Get predicates implied by the trait, or only super predicates if we only care about self predicates.
                 match self.mode {
                     Filter::All => self.extend_deduped(
+                        Some(clause),
                         cx.explicit_implied_predicates_of(data.def_id())
                             .iter_identity()
                             .enumerate()
                             .map(map_to_child_clause),
                     ),
                     Filter::OnlySelf => self.extend_deduped(
+                        Some(clause),
                         cx.explicit_super_predicates_of(data.def_id())
                             .iter_identity()
                             .enumerate()
@@ -161,6 +183,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
             }
             // `T: ~const Trait` implies `T: ~const Supertrait`.
             ty::ClauseKind::HostEffect(data) => self.extend_deduped(
+                Some(clause),
                 cx.explicit_implied_const_bounds(data.def_id()).iter_identity().map(|trait_ref| {
                     elaboratable.child(
                         trait_ref
@@ -191,6 +214,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                 let mut components = smallvec![];
                 push_outlives_components(cx, ty_max, &mut components);
                 self.extend_deduped(
+                    Some(clause),
                     components
                         .into_iter()
                         .filter_map(|component| elaborate_component_to_clause(cx, component, r_min))
