@@ -141,14 +141,15 @@ where
         // impl {Meta,}Sized for str, [T], dyn Trait
         ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {
             SizedTraitKind::Sized => Err(NoSolution),
-            SizedTraitKind::MetaSized => Ok(ty::Binder::dummy(vec![])),
-            SizedTraitKind::PointeeSized => unreachable!(),
+            SizedTraitKind::MetaSized | SizedTraitKind::PointeeSized => {
+                Ok(ty::Binder::dummy(vec![]))
+            }
         },
 
         // impl {} for extern type
         ty::Foreign(..) => match sizedness {
             SizedTraitKind::Sized | SizedTraitKind::MetaSized => Err(NoSolution),
-            SizedTraitKind::PointeeSized => unreachable!(),
+            SizedTraitKind::PointeeSized => Ok(ty::Binder::dummy(vec![])),
         },
 
         ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => Err(NoSolution),
