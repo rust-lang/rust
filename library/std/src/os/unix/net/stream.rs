@@ -1,17 +1,23 @@
-#[cfg(any(
-    target_os = "linux",
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "openbsd",
-    target_os = "netbsd",
-    target_os = "solaris",
-    target_os = "illumos",
-    target_os = "haiku",
-    target_os = "nto",
-    target_os = "cygwin"
-))]
-use libc::MSG_NOSIGNAL;
+cfg_match! {
+    any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "haiku",
+        target_os = "nto",
+        target_os = "cygwin"
+    ) => {
+        use libc::MSG_NOSIGNAL;
+    }
+    _ => {
+        const MSG_NOSIGNAL: core::ffi::c_int = 0x0;
+    }
+}
 
 use super::{SocketAddr, sockaddr_un};
 #[cfg(any(doc, target_os = "android", target_os = "linux"))]
@@ -39,21 +45,6 @@ use crate::sys::net::{Socket, wrlen_t};
 use crate::sys_common::{AsInner, FromInner};
 use crate::time::Duration;
 use crate::{cmp, fmt};
-
-#[cfg(not(any(
-    target_os = "linux",
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "openbsd",
-    target_os = "netbsd",
-    target_os = "solaris",
-    target_os = "illumos",
-    target_os = "haiku",
-    target_os = "nto",
-    target_os = "cygwin"
-)))]
-const MSG_NOSIGNAL: core::ffi::c_int = 0x0;
 
 /// A Unix stream socket.
 ///
