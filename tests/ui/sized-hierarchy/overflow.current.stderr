@@ -1,0 +1,45 @@
+error[E0275]: overflow evaluating the requirement `Element: MetaSized`
+  --> $DIR/overflow.rs:16:16
+   |
+LL | struct Element(<Box<Box<Element>> as ParseTokens>::Output);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: required for `Box<Element>` to implement `ParseTokens`
+  --> $DIR/overflow.rs:12:31
+   |
+LL | impl<T: ParseTokens + ?Sized> ParseTokens for Box<T> {
+   |      -                        ^^^^^^^^^^^     ^^^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `Box<Box<Element>>` to implement `ParseTokens`
+
+error[E0275]: overflow evaluating the requirement `Box<Element>: ParseTokens`
+  --> $DIR/overflow.rs:18:22
+   |
+LL | impl ParseTokens for Element {
+   |                      ^^^^^^^
+   |
+note: required for `Box<Box<Element>>` to implement `ParseTokens`
+  --> $DIR/overflow.rs:12:31
+   |
+LL | impl<T: ParseTokens + ?Sized> ParseTokens for Box<T> {
+   |         -----------           ^^^^^^^^^^^     ^^^^^^
+   |         |
+   |         unsatisfied trait bound introduced here
+note: required because it appears within the type `Element`
+  --> $DIR/overflow.rs:16:8
+   |
+LL | struct Element(<Box<Box<Element>> as ParseTokens>::Output);
+   |        ^^^^^^^
+note: required by a bound in `ParseTokens`
+  --> $DIR/overflow.rs:9:1
+   |
+LL | / trait ParseTokens {
+LL | |     type Output;
+LL | | }
+   | |_^ required by this bound in `ParseTokens`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0275`.
