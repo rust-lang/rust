@@ -188,6 +188,7 @@
 //
 // Target features:
 // tidy-alphabetical-start
+#![cfg_attr(not(bootstrap), feature(nvptx_target_feature))]
 #![feature(aarch64_unstable_target_feature)]
 #![feature(arm_target_feature)]
 #![feature(avx512_target_feature)]
