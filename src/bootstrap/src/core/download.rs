@@ -57,7 +57,7 @@ impl Config {
         if self.dry_run() {
             return;
         }
-        fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {:?}", f));
+        fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {f:?}"));
     }
 
     /// Create a temporary directory in `out` and return its path.
@@ -112,7 +112,7 @@ impl Config {
             // The latter one does not exist on NixOS when using tmpfs as root.
             let is_nixos = match File::open("/etc/os-release") {
                 Err(e) if e.kind() == ErrorKind::NotFound => false,
-                Err(e) => panic!("failed to access /etc/os-release: {}", e),
+                Err(e) => panic!("failed to access /etc/os-release: {e}"),
                 Ok(os_release) => BufReader::new(os_release).lines().any(|l| {
                     let l = l.expect("reading /etc/os-release");
                     matches!(l.trim(), "ID=nixos" | "ID='nixos'" | "ID=\"nixos\"")

@@ -53,7 +53,7 @@ fn is_dir_writable_for_user(dir: &Path) -> bool {
             if e.kind() == std::io::ErrorKind::PermissionDenied {
                 false
             } else {
-                panic!("Failed the write access check for the current user. {}", e);
+                panic!("Failed the write access check for the current user. {e}");
             }
         }
     }

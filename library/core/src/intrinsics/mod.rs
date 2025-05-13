@@ -1476,7 +1476,7 @@ pub const fn forget<T: ?Sized>(_: T);
 /// Turning raw bytes (`[u8; SZ]`) into `u32`, `f64`, etc.:
 ///
 /// ```
-/// # #![cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
+/// # #![allow(unnecessary_transmutes)]
 /// let raw_bytes = [0x78, 0x56, 0x34, 0x12];
 ///
 /// let num = unsafe {
@@ -3413,7 +3413,6 @@ pub const fn contract_check_requires<C: Fn() -> bool + Copy>(cond: C) {
 /// returns false.
 ///
 /// Note that this function is a no-op during constant evaluation.
-#[cfg(not(bootstrap))]
 #[unstable(feature = "contracts_internals", issue = "128044")]
 // Similar to `contract_check_requires`, we need to use the user-facing
 // `contracts` feature rather than the perma-unstable `contracts_internals`.
@@ -3435,16 +3434,6 @@ pub const fn contract_check_ensures<C: Fn(&Ret) -> bool + Copy, Ret>(cond: C, re
             ret
         }
     )
-}
-
-/// This is the old version of contract_check_ensures kept here for bootstrap only.
-#[cfg(bootstrap)]
-#[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
-#[rustc_intrinsic]
-pub fn contract_check_ensures<'a, Ret, C: Fn(&'a Ret) -> bool>(ret: &'a Ret, cond: C) {
-    if contract_checks() && !cond(ret) {
-        crate::panicking::panic_nounwind("failed ensures check");
-    }
 }
 
 /// The intrinsic will return the size stored in that vtable.

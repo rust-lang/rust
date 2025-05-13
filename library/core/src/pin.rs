@@ -1093,9 +1093,6 @@ pub use self::unsafe_pinned::UnsafePinned;
 #[derive(Copy, Clone)]
 pub struct Pin<Ptr> {
     /// Only public for bootstrap.
-    #[cfg(bootstrap)]
-    pub pointer: Ptr,
-    #[cfg(not(bootstrap))]
     pointer: Ptr,
 }
 
@@ -1936,22 +1933,15 @@ unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 /// constructor.
 ///
 /// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
-#[cfg(not(bootstrap))]
 #[stable(feature = "pin_macro", since = "1.68.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(super_let)]
+// `super` gets removed by rustfmt
+#[rustfmt::skip]
 pub macro pin($value:expr $(,)?) {
     {
         super let mut pinned = $value;
         // SAFETY: The value is pinned: it is the local above which cannot be named outside this macro.
         unsafe { $crate::pin::Pin::new_unchecked(&mut pinned) }
     }
-}
-
-/// Only for bootstrap.
-#[cfg(bootstrap)]
-#[stable(feature = "pin_macro", since = "1.68.0")]
-#[rustc_macro_transparency = "semitransparent"]
-pub macro pin($value:expr $(,)?) {
-    $crate::pin::Pin::<&mut _> { pointer: &mut { $value } }
 }
