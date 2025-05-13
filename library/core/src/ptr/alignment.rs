@@ -43,6 +43,9 @@ impl Alignment {
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     #[must_use]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[cfg_attr(not(bootstrap), core::contracts::ensures(
+            |result: &Alignment| result.as_usize().is_power_of_two()))]
     pub const fn of<T>() -> Self {
         // This can't actually panic since type alignment is always a power of two.
         const { Alignment::new(align_of::<T>()).unwrap() }
@@ -54,6 +57,11 @@ impl Alignment {
     /// Note that `0` is not a power of two, nor a valid alignment.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[cfg_attr(not(bootstrap), core::contracts::ensures(
+            move
+            |result: &Option<Alignment>| align.is_power_of_two() == result.is_some() &&
+            (result.is_none() || result.unwrap().as_usize() == align)))]
     pub const fn new(align: usize) -> Option<Self> {
         if align.is_power_of_two() {
             // SAFETY: Just checked it only has one bit set
@@ -73,6 +81,12 @@ impl Alignment {
     /// It must *not* be zero.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
+    #[cfg_attr(not(bootstrap), rustc_const_unstable(feature = "contracts", issue = "128044"))]
+    #[cfg_attr(not(bootstrap), core::contracts::requires(align.is_power_of_two()))]
+    #[cfg_attr(not(bootstrap), core::contracts::ensures(
+            move
+            |result: &Alignment| result.as_usize() == align &&
+            result.as_usize().is_power_of_two()))]
     pub const unsafe fn new_unchecked(align: usize) -> Self {
         assert_unsafe_precondition!(
             check_language_ub,
@@ -88,6 +102,9 @@ impl Alignment {
     /// Returns the alignment as a [`usize`].
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[cfg_attr(not(bootstrap), core::contracts::ensures(
+            |result: &usize| result.is_power_of_two()))]
     pub const fn as_usize(self) -> usize {
         self.0 as usize
     }
@@ -95,6 +112,11 @@ impl Alignment {
     /// Returns the alignment as a <code>[NonZero]<[usize]></code>.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[cfg_attr(not(bootstrap), core::contracts::ensures(
+            move
+            |result: &NonZero<usize>| result.get().is_power_of_two() &&
+            result.get() == self.as_usize()))]
     pub const fn as_nonzero(self) -> NonZero<usize> {
         // This transmutes directly to avoid the UbCheck in `NonZero::new_unchecked`
         // since there's no way for the user to trip that check anyway -- the
@@ -120,6 +142,12 @@ impl Alignment {
     /// ```
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
+    #[cfg_attr(not(bootstrap), rustc_const_unstable(feature = "contracts", issue = "128044"))]
+    #[cfg_attr(not(bootstrap), core::contracts::requires(self.as_usize().is_power_of_two()))]
+    #[cfg_attr(not(bootstrap), core::contracts::ensures(
+            move
+            |result: &u32| *result < usize::BITS &&
+            (1usize << *result) == self.as_usize()))]
     pub const fn log2(self) -> u32 {
         self.as_nonzero().trailing_zeros()
     }
@@ -149,6 +177,12 @@ impl Alignment {
     /// ```
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
+    #[cfg_attr(not(bootstrap), rustc_const_unstable(feature = "contracts", issue = "128044"))]
+    #[cfg_attr(not(bootstrap), core::contracts::ensures(
+            move
+            |result: &usize| *result > 0 &&
+            *result == !(self.as_usize() -1) &&
+            self.as_usize() & *result == self.as_usize()))]
     pub const fn mask(self) -> usize {
         // SAFETY: The alignment is always nonzero, and therefore decrementing won't overflow.
         !(unsafe { self.as_usize().unchecked_sub(1) })
