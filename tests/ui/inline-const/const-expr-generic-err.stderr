@@ -23,12 +23,6 @@ LL |     const { N - 1 }
    |             ^^^^^ attempt to compute `0_usize - 1_usize`, which would overflow
 
 note: erroneous constant encountered
-  --> $DIR/const-expr-generic-err.rs:9:13
-   |
-LL |     const { N - 1 }
-   |             ^^^^^
-
-note: erroneous constant encountered
   --> $DIR/const-expr-generic-err.rs:9:5
    |
 LL |     const { N - 1 }

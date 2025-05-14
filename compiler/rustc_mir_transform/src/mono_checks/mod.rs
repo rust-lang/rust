@@ -19,5 +19,12 @@ pub(super) fn check_mono_item<'tcx>(
 }
 
 pub(super) fn provide(providers: &mut Providers) {
-    *providers = Providers { skip_move_check_fns: move_check::skip_move_check_fns, ..*providers }
+    *providers = Providers {
+        skip_move_check_fns: move_check::skip_move_check_fns,
+        check_mono_item: |tcx, instance| {
+            let body = tcx.codegen_mir(instance);
+            check_mono_item(tcx, instance, body)
+        },
+        ..*providers
+    }
 }

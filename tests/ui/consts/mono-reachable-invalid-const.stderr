@@ -5,12 +5,6 @@ LL |         ["oops"][b];
    |         ^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 1
 
 note: erroneous constant encountered
-  --> $DIR/mono-reachable-invalid-const.rs:9:9
-   |
-LL |         ["oops"][b];
-   |         ^^^^^^^^^^^
-
-note: erroneous constant encountered
   --> $DIR/mono-reachable-invalid-const.rs:14:19
    |
 LL |         let val = Self::ASSERT;
