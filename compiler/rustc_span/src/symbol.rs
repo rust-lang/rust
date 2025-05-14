@@ -280,6 +280,8 @@ symbols! {
         IoSeek,
         IoWrite,
         IpAddr,
+        Ipv4Addr,
+        Ipv6Addr,
         IrTyKind,
         Is,
         Item,
