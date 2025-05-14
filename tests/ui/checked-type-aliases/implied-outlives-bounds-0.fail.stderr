@@ -1,0 +1,34 @@
+error: lifetime may not live long enough
+  --> $DIR/implied-outlives-bounds-0.rs:33:39
+   |
+LL | #[cfg(fail)] fn env0<'any>() { let _: TypeOutlives<'static, &'any ()>; }
+   |                      ----             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'any` must outlive `'static`
+   |                      |
+   |                      lifetime `'any` defined here
+
+error: lifetime may not live long enough
+  --> $DIR/implied-outlives-bounds-0.rs:36:39
+   |
+LL | #[cfg(fail)] fn env1<'any>() { let _: RegionOutlives<'static, 'any>; }
+   |                      ----             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'any` must outlive `'static`
+   |                      |
+   |                      lifetime `'any` defined here
+
+error: lifetime may not live long enough
+  --> $DIR/implied-outlives-bounds-0.rs:39:39
+   |
+LL | #[cfg(fail)] fn env2<'any>() { let _: Outer0<'static, &'any ()>; }
+   |                      ----             ^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'any` must outlive `'static`
+   |                      |
+   |                      lifetime `'any` defined here
+
+error: lifetime may not live long enough
+  --> $DIR/implied-outlives-bounds-0.rs:42:39
+   |
+LL | #[cfg(fail)] fn env3<'any>() { let _: Outer1<'static, &'any ()>; }
+   |                      ----             ^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'any` must outlive `'static`
+   |                      |
+   |                      lifetime `'any` defined here
+
+error: aborting due to 4 previous errors
+
