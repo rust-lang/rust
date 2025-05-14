@@ -62,6 +62,12 @@ use crate::time::Duration;
 ///     Ok(())
 /// }
 /// ```
+///
+/// # SIGPIPE
+///
+/// Writes to the underlying socket in `SOCK_STREAM` mode are made with `MSG_NOSIGNAL` flag.
+/// This suppresses the emission of the  `SIGPIPE` signal when writing to disconnected socket.
+/// In some cases getting a `SIGPIPE` would trigger process termination.
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct UnixStream(pub(super) Socket);
 
