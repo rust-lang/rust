@@ -14,7 +14,7 @@ use crate::base::add_pic_option;
 use crate::errors::CopyBitcode;
 use crate::{GccCodegenBackend, GccContext};
 
-pub(crate) unsafe fn codegen(
+pub(crate) fn codegen(
     cgcx: &CodegenContext<GccCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
     module: ModuleCodegen<GccContext>,
