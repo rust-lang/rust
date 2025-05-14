@@ -6,6 +6,7 @@ use rustc_attr_parsing::InlineAttr;
 use rustc_attr_parsing::InstructionSetAttr;
 #[cfg(feature = "master")]
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+#[cfg(feature = "master")]
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty;
 
