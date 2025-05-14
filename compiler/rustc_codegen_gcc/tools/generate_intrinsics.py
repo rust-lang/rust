@@ -12,7 +12,7 @@ def run_command(command, cwd=None):
         sys.exit(1)
 
 
-def clone_repository(repo_name, path, repo_url, sub_paths=None):
+def clone_repository(repo_name, path, repo_url, branch="master", sub_paths=None):
     if os.path.exists(path):
         while True:
             choice = input("There is already a `{}` folder, do you want to update it? [y/N]".format(path))
@@ -21,7 +21,7 @@ def clone_repository(repo_name, path, repo_url, sub_paths=None):
                 return
             elif choice.lower() == "y":
                 print("Updating repository...")
-                run_command(["git", "pull", "origin"], cwd=path)
+                run_command(["git", "pull", "origin", branch], cwd=path)
                 return
             else:
                 print("Didn't understand answer...")
@@ -209,6 +209,7 @@ def main():
         "llvm-project",
         llvm_path,
         "https://github.com/llvm/llvm-project",
+        branch="main",
         sub_paths=["llvm/include/llvm/IR", "llvm/include/llvm/CodeGen/"],
     )
     clone_repository(

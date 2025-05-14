@@ -593,7 +593,7 @@ fn thin_lto(
     Ok((opt_jobs, copy_jobs))
 }
 
-pub unsafe fn optimize_thin_module(
+pub fn optimize_thin_module(
     thin_module: ThinModule<GccCodegenBackend>,
     _cgcx: &CodegenContext<GccCodegenBackend>,
 ) -> Result<ModuleCodegen<GccContext>, FatalError> {
