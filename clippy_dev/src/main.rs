@@ -3,11 +3,18 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use clap::{Args, Parser, Subcommand};
-use clippy_dev::{dogfood, fmt, lint, new_lint, release, serve, setup, sync, update_lints, utils};
+use clippy_dev::{
+    deprecate_lint, dogfood, fmt, lint, new_lint, release, rename_lint, serve, setup, sync, update_lints, utils,
+};
 use std::convert::Infallible;
+use std::env;
 
 fn main() {
     let dev = Dev::parse();
+    let clippy = utils::ClippyInfo::search_for_manifest();
+    if let Err(e) = env::set_current_dir(&clippy.path) {
+        panic!("error setting current directory to `{}`: {e}", clippy.path.display());
+    }
 
     match dev.command {
         DevCommand::Bless => {
@@ -20,22 +27,14 @@ fn main() {
             allow_no_vcs,
         } => dogfood::dogfood(fix, allow_dirty, allow_staged, allow_no_vcs),
         DevCommand::Fmt { check, verbose } => fmt::run(check, verbose),
-        DevCommand::UpdateLints { print_only, check } => {
-            if print_only {
-                update_lints::print_lints();
-            } else if check {
-                update_lints::update(utils::UpdateMode::Check);
-            } else {
-                update_lints::update(utils::UpdateMode::Change);
-            }
-        },
+        DevCommand::UpdateLints { check } => update_lints::update(utils::UpdateMode::from_check(check)),
         DevCommand::NewLint {
             pass,
             name,
             category,
             r#type,
             msrv,
-        } => match new_lint::create(pass, &name, &category, r#type.as_deref(), msrv) {
+        } => match new_lint::create(clippy.version, pass, &name, &category, r#type.as_deref(), msrv) {
             Ok(()) => update_lints::update(utils::UpdateMode::Change),
             Err(e) => eprintln!("Unable to create lint: {e}"),
         },
@@ -79,13 +78,18 @@ fn main() {
             old_name,
             new_name,
             uplift,
-        } => update_lints::rename(&old_name, new_name.as_ref().unwrap_or(&old_name), uplift),
-        DevCommand::Deprecate { name, reason } => update_lints::deprecate(&name, &reason),
+        } => rename_lint::rename(
+            clippy.version,
+            &old_name,
+            new_name.as_ref().unwrap_or(&old_name),
+            uplift,
+        ),
+        DevCommand::Deprecate { name, reason } => deprecate_lint::deprecate(clippy.version, &name, &reason),
         DevCommand::Sync(SyncCommand { subcommand }) => match subcommand {
             SyncSubcommand::UpdateNightly => sync::update_nightly(),
         },
         DevCommand::Release(ReleaseCommand { subcommand }) => match subcommand {
-            ReleaseSubcommand::BumpVersion => release::bump_version(),
+            ReleaseSubcommand::BumpVersion => release::bump_version(clippy.version),
         },
     }
 }
@@ -135,11 +139,6 @@ enum DevCommand {
     /// * lint modules in `clippy_lints/*` are visible in `src/lib.rs` via `pub mod` {n}
     /// * all lints are registered in the lint store
     UpdateLints {
-        #[arg(long)]
-        /// Print a table of lints to STDOUT
-        ///
-        /// This does not include deprecated and internal lints. (Does not modify any files)
-        print_only: bool,
         #[arg(long)]
         /// Checks that `cargo dev update_lints` has been run. Used on CI.
         check: bool,
