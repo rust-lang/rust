@@ -7,8 +7,6 @@
 //! When removing a lint, make sure to also add a call to `register_removed` in
 //! compiler/rustc_lint/src/lib.rs.
 
-#![allow(text_direction_codepoint_in_literal)]
-
 use rustc_span::edition::Edition;
 
 use crate::{FutureIncompatibilityReason, declare_lint, declare_lint_pass};
@@ -3796,7 +3794,7 @@ declare_lint! {
     /// ```rust,compile_fail
     /// #![deny(text_direction_codepoint_in_comment)]
     /// fn main() {
-    ///     println!("{:?}"); // '‮');
+    #[doc = "    println!(\"{:?}\"); // '\u{202E}');"]
     /// }
     /// ```
     ///
@@ -3834,7 +3832,9 @@ declare_lint! {
     /// ```rust,compile_fail
     /// #![deny(text_direction_codepoint_in_literal)]
     /// fn main() {
-    ///     println!("{:?}", '‮');
+    // ` - convince tidy that backticks match
+    #[doc = "    println!(\"{:?}\", '\u{202E}');"]
+    // `
     /// }
     /// ```
     ///
