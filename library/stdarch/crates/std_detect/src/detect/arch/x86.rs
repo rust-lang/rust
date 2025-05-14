@@ -224,19 +224,14 @@ features! {
     @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_complex: "amx-complex";
     /// AMX-COMPLEX (Complex number Operations)
     @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_avx512: "amx-avx512";
-    without cfg check: true;
     /// AMX-AVX512 (AVX512 operations extended to matrices)
     @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_fp8: "amx-fp8";
-    without cfg check: true;
     /// AMX-FP8 (Float8 Operations)
     @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_movrs: "amx-movrs";
-    without cfg check: true;
     /// AMX-MOVRS (Matrix MOVERS operations)
     @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_tf32: "amx-tf32";
-    without cfg check: true;
     /// AMX-TF32 (TensorFloat32 Operations)
     @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_transpose: "amx-transpose";
-    without cfg check: true;
     /// AMX-TRANSPOSE (Matrix Transpose Operations)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] f16c: "f16c";
     /// F16C (Conversions between IEEE-754 `binary16` and `binary32` formats)

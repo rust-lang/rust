@@ -159,32 +159,23 @@ features! {
     /// Has reasonably performant unaligned vector
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zicsr: "zicsr";
-    without cfg check: true;
     /// "Zicsr" Extension for Control and Status Register (CSR) Instructions
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zicntr: "zicntr";
-    without cfg check: true;
     /// "Zicntr" Extension for Base Counters and Timers
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zihpm: "zihpm";
-    without cfg check: true;
     /// "Zihpm" Extension for Hardware Performance Counters
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zifencei: "zifencei";
-    without cfg check: true;
     /// "Zifencei" Extension for Instruction-Fetch Fence
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zihintntl: "zihintntl";
-    without cfg check: true;
     /// "Zihintntl" Extension for Non-Temporal Locality Hints
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zihintpause: "zihintpause";
-    without cfg check: true;
     /// "Zihintpause" Extension for Pause Hint
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zimop: "zimop";
-    without cfg check: true;
     /// "Zimop" Extension for May-Be-Operations
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zicboz: "zicboz";
-    without cfg check: true;
     /// "Zicboz" Extension for Cache-Block Zero Instruction
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zicond: "zicond";
-    without cfg check: true;
     /// "Zicond" Extension for Integer Conditional Operations
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] m: "m";
@@ -204,7 +195,6 @@ features! {
     without cfg check: true;
     /// "Zam" Extension for Misaligned Atomics
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] ztso: "ztso";
-    without cfg check: true;
     /// "Ztso" Extension for Total Store Ordering
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] f: "f";
@@ -219,7 +209,6 @@ features! {
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zfhmin: "zfhmin";
     /// "Zfhmin" Extension for Minimal Half-Precision Floating-Point
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zfa: "zfa";
-    without cfg check: true;
     /// "Zfa" Extension for Additional Floating-Point Instructions
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zfinx: "zfinx";
@@ -234,7 +223,6 @@ features! {
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] c: "c";
     /// "C" Extension for Compressed Instructions
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zca: "zca";
-    without cfg check: true;
     /// "Zca" Compressed Instructions excluding Floating-Point Loads/Stores
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zcf: "zcf";
     without cfg check: true;
@@ -243,14 +231,11 @@ features! {
     without cfg check: true;
     /// "Zcd" Compressed Instructions for Double-Precision Floating-Point Loads/Stores
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zcb: "zcb";
-    without cfg check: true;
     /// "Zcb" Simple Code-size Saving Compressed Instructions
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zcmop: "zcmop";
-    without cfg check: true;
     /// "Zcmop" Extension for Compressed May-Be-Operations
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] b: "b";
-    without cfg check: true;
     /// "B" Extension for Bit Manipulation
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zba: "zba";
     /// "Zba" Extension for Address Generation
