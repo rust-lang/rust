@@ -364,7 +364,7 @@ lint_implicit_unsafe_autorefs = implicit autoref creates a reference to the dere
     .note = creating a reference requires the pointer target to be valid and imposes aliasing requirements
     .raw_ptr = this raw pointer has type `{$raw_ptr_ty}`
     .autoref = autoref is being applied to this expression, resulting in: `{$autoref_ty}`
-    .through_overloaded_deref = reference(s) created through call(s) to overloaded `Deref(Mut)::deref(_mut)` implementation
+    .overloaded_deref = references are created through calls to explicit `Deref(Mut)::deref(_mut)` implementations
     .method_def = method calls to `{$method_name}` require a reference
     .suggestion = try using a raw pointer method instead; or if this reference is intentional, make it explicit
 

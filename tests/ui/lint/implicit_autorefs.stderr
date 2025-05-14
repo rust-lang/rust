@@ -128,12 +128,7 @@ LL |     let _ = (*ptr).field;
    |               this raw pointer has type `*const ManuallyDrop<Test>`
    |
    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
-note: autoref is being applied to this expression, resulting in: `Test`
-  --> $DIR/implicit_autorefs.rs:36:13
-   |
-LL |     let _ = (*ptr).field;
-   |             ^^^^^^
-   = note: reference(s) created through call(s) to overloaded `Deref(Mut)::deref(_mut)` implementation
+   = note: references are created through calls to explicit `Deref(Mut)::deref(_mut)` implementations
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
 LL |     let _ = (&(*ptr)).field;
@@ -148,12 +143,7 @@ LL |     let _ = &raw const (*ptr).field;
    |                          this raw pointer has type `*const ManuallyDrop<Test>`
    |
    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
-note: autoref is being applied to this expression, resulting in: `Test`
-  --> $DIR/implicit_autorefs.rs:38:24
-   |
-LL |     let _ = &raw const (*ptr).field;
-   |                        ^^^^^^
-   = note: reference(s) created through call(s) to overloaded `Deref(Mut)::deref(_mut)` implementation
+   = note: references are created through calls to explicit `Deref(Mut)::deref(_mut)` implementations
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
 LL |     let _ = &raw const (&(*ptr)).field;
@@ -168,12 +158,7 @@ LL |     let _ = (*ptr).field;
    |               this raw pointer has type `*mut ManuallyDrop<Test>`
    |
    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
-note: autoref is being applied to this expression, resulting in: `Test`
-  --> $DIR/implicit_autorefs.rs:43:13
-   |
-LL |     let _ = (*ptr).field;
-   |             ^^^^^^
-   = note: reference(s) created through call(s) to overloaded `Deref(Mut)::deref(_mut)` implementation
+   = note: references are created through calls to explicit `Deref(Mut)::deref(_mut)` implementations
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
 LL |     let _ = (&(*ptr)).field;
@@ -188,12 +173,7 @@ LL |     let _ = (*ptr).field;
    |               this raw pointer has type `*const ManuallyDrop<ManuallyDrop<Test>>`
    |
    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
-note: autoref is being applied to this expression, resulting in: `Test`
-  --> $DIR/implicit_autorefs.rs:48:13
-   |
-LL |     let _ = (*ptr).field;
-   |             ^^^^^^
-   = note: reference(s) created through call(s) to overloaded `Deref(Mut)::deref(_mut)` implementation
+   = note: references are created through calls to explicit `Deref(Mut)::deref(_mut)` implementations
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
 LL |     let _ = (&(*ptr)).field;
