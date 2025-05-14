@@ -198,8 +198,27 @@ impl<I: Default> Default for Fuse<I> {
     /// let iter: Fuse<slice::Iter<'_, u8>> = Default::default();
     /// assert_eq!(iter.len(), 0);
     /// ```
+    ///
+    /// Note that if `I`'s default value is not an empty iterator, then this will not be
+    /// an empty iterator.
+    ///
+    /// ```
+    /// # use std::iter::Fuse;
+    /// #[derive(Default)]
+    /// struct Fourever;
+    ///
+    /// impl Iterator for Fourever {
+    ///     type Item = u32;
+    ///     fn next(&mut self) -> Option<u32> {
+    ///         Some(4)
+    ///     }
+    /// }
+    ///
+    /// let mut iter: Fuse<Fourever> = Default::default();
+    /// assert_eq!(iter.next(), Some(4));
+    /// ```
     fn default() -> Self {
-        Fuse { iter: Default::default() }
+        Fuse { iter: Some(I::default()) }
     }
 }
 
