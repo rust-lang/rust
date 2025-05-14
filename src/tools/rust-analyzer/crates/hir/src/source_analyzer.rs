@@ -10,7 +10,9 @@ use std::iter::{self, once};
 use crate::{
     Adt, AssocItem, BindingMode, BuiltinAttr, BuiltinType, Callable, Const, DeriveHelper, Field,
     Function, GenericSubstitution, Local, Macro, ModuleDef, Static, Struct, ToolModule, Trait,
-    TraitAlias, TupleField, Type, TypeAlias, Variant, db::HirDatabase, semantics::PathResolution,
+    TraitAlias, TupleField, Type, TypeAlias, Variant,
+    db::HirDatabase,
+    semantics::{PathResolution, PathResolutionPerNs},
 };
 use either::Either;
 use hir_def::{
@@ -1159,7 +1161,9 @@ impl<'db> SourceAnalyzer<'db> {
                 prefer_value_ns,
                 name_hygiene(db, InFile::new(self.file_id, path.syntax())),
                 Some(&store),
-            )?;
+                false,
+            )
+            .take_path()?;
             let subst = (|| {
                 let parent = parent()?;
                 let ty = if let Some(expr) = ast::Expr::cast(parent.clone()) {
@@ -1207,6 +1211,26 @@ impl<'db> SourceAnalyzer<'db> {
             })();
             Some((res, subst))
         }
+    }
+
+    pub(crate) fn resolve_hir_path_per_ns(
+        &self,
+        db: &dyn HirDatabase,
+        path: &ast::Path,
+    ) -> Option<PathResolutionPerNs> {
+        let mut collector = ExprCollector::new(db, self.resolver.module(), self.file_id);
+        let hir_path =
+            collector.lower_path(path.clone(), &mut ExprCollector::impl_trait_error_allocator)?;
+        let store = collector.store.finish();
+        Some(resolve_hir_path_(
+            db,
+            &self.resolver,
+            &hir_path,
+            false,
+            name_hygiene(db, InFile::new(self.file_id, path.syntax())),
+            Some(&store),
+            true,
+        ))
     }
 
     pub(crate) fn record_literal_missing_fields(
@@ -1532,7 +1556,7 @@ pub(crate) fn resolve_hir_path(
     hygiene: HygieneId,
     store: Option<&ExpressionStore>,
 ) -> Option<PathResolution> {
-    resolve_hir_path_(db, resolver, path, false, hygiene, store)
+    resolve_hir_path_(db, resolver, path, false, hygiene, store, false).take_path()
 }
 
 #[inline]
@@ -1554,7 +1578,8 @@ fn resolve_hir_path_(
     prefer_value_ns: bool,
     hygiene: HygieneId,
     store: Option<&ExpressionStore>,
-) -> Option<PathResolution> {
+    resolve_per_ns: bool,
+) -> PathResolutionPerNs {
     let types = || {
         let (ty, unresolved) = match path.type_anchor() {
             Some(type_ref) => resolver.generic_def().and_then(|def| {
@@ -1635,9 +1660,31 @@ fn resolve_hir_path_(
             .map(|(def, _)| PathResolution::Def(ModuleDef::Macro(def.into())))
     };
 
-    if prefer_value_ns { values().or_else(types) } else { types().or_else(values) }
-        .or_else(items)
-        .or_else(macros)
+    if resolve_per_ns {
+        PathResolutionPerNs {
+            type_ns: types().or_else(items),
+            value_ns: values(),
+            macro_ns: macros(),
+        }
+    } else {
+        let res = if prefer_value_ns {
+            values()
+                .map(|value_ns| PathResolutionPerNs::new(None, Some(value_ns), None))
+                .unwrap_or_else(|| PathResolutionPerNs::new(types(), None, None))
+        } else {
+            types()
+                .map(|type_ns| PathResolutionPerNs::new(Some(type_ns), None, None))
+                .unwrap_or_else(|| PathResolutionPerNs::new(None, values(), None))
+        };
+
+        if res.take_path().is_some() {
+            res
+        } else if let Some(type_ns) = items() {
+            PathResolutionPerNs::new(Some(type_ns), None, None)
+        } else {
+            PathResolutionPerNs::new(None, None, macros())
+        }
+    }
 }
 
 fn resolve_hir_value_path(

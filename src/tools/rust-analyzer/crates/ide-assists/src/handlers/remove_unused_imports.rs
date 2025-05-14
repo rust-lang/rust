@@ -1,6 +1,9 @@
 use std::collections::hash_map::Entry;
 
-use hir::{FileRange, InFile, InRealFile, Module, ModuleSource};
+use hir::{
+    FileRange, InFile, InRealFile, Module, ModuleDef, ModuleSource, PathResolution,
+    PathResolutionPerNs,
+};
 use ide_db::text_edit::TextRange;
 use ide_db::{
     FxHashMap, RootDatabase,
@@ -77,49 +80,52 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
             };
 
             // Get the actual definition associated with this use item.
-            let res = match ctx.sema.resolve_path(&path) {
-                Some(x) => x,
-                None => {
+            let res = match ctx.sema.resolve_path_per_ns(&path) {
+                Some(x) if x.take_path().is_some() => x,
+                Some(_) | None => {
                     return None;
                 }
             };
+            match res {
+                PathResolutionPerNs { type_ns: Some(type_ns), .. } if u.star_token().is_some() => {
+                    // Check if any of the children of this module are used
+                    let def_mod = match type_ns {
+                        PathResolution::Def(ModuleDef::Module(module)) => module,
+                        _ => return None,
+                    };
 
-            let def = match res {
-                hir::PathResolution::Def(d) => Definition::from(d),
-                _ => return None,
-            };
-
-            if u.star_token().is_some() {
-                // Check if any of the children of this module are used
-                let def_mod = match def {
-                    Definition::Module(module) => module,
-                    _ => return None,
-                };
-
-                if !def_mod
-                    .scope(ctx.db(), Some(use_module))
-                    .iter()
-                    .filter_map(|(_, x)| match x {
-                        hir::ScopeDef::ModuleDef(d) => Some(Definition::from(*d)),
-                        _ => None,
-                    })
-                    .any(|d| used_once_in_scope(ctx, d, u.rename(), scope))
-                {
-                    return Some(u);
+                    if !def_mod
+                        .scope(ctx.db(), Some(use_module))
+                        .iter()
+                        .filter_map(|(_, x)| match x {
+                            hir::ScopeDef::ModuleDef(d) => Some(Definition::from(*d)),
+                            _ => None,
+                        })
+                        .any(|d| used_once_in_scope(ctx, d, u.rename(), scope))
+                    {
+                        Some(u)
+                    } else {
+                        None
+                    }
                 }
-            } else if let Definition::Trait(ref t) = def {
-                // If the trait or any item is used.
-                if !std::iter::once((def, u.rename()))
-                    .chain(t.items(ctx.db()).into_iter().map(|item| (item.into(), None)))
-                    .any(|(d, rename)| used_once_in_scope(ctx, d, rename, scope))
-                {
-                    return Some(u);
+                PathResolutionPerNs {
+                    type_ns: Some(PathResolution::Def(ModuleDef::Trait(ref t))),
+                    value_ns,
+                    macro_ns,
+                } => {
+                    // If the trait or any item is used.
+                    if is_trait_unused_in_scope(ctx, &u, scope, t) {
+                        let path = [value_ns, macro_ns];
+                        is_path_unused_in_scope(ctx, &u, scope, &path).then_some(u)
+                    } else {
+                        None
+                    }
                 }
-            } else if !used_once_in_scope(ctx, def, u.rename(), scope) {
-                return Some(u);
+                PathResolutionPerNs { type_ns, value_ns, macro_ns } => {
+                    let path = [type_ns, value_ns, macro_ns];
+                    is_path_unused_in_scope(ctx, &u, scope, &path).then_some(u)
+                }
             }
-
-            None
         })
         .peekable();
 
@@ -139,6 +145,33 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
     } else {
         None
     }
+}
+
+fn is_path_unused_in_scope(
+    ctx: &AssistContext<'_>,
+    u: &ast::UseTree,
+    scope: &mut Vec<SearchScope>,
+    path: &[Option<PathResolution>],
+) -> bool {
+    !path
+        .iter()
+        .filter_map(|path| *path)
+        .filter_map(|res| match res {
+            PathResolution::Def(d) => Some(Definition::from(d)),
+            _ => None,
+        })
+        .any(|def| used_once_in_scope(ctx, def, u.rename(), scope))
+}
+
+fn is_trait_unused_in_scope(
+    ctx: &AssistContext<'_>,
+    u: &ast::UseTree,
+    scope: &mut Vec<SearchScope>,
+    t: &hir::Trait,
+) -> bool {
+    !std::iter::once((Definition::Trait(*t), u.rename()))
+        .chain(t.items(ctx.db()).into_iter().map(|item| (item.into(), None)))
+        .any(|(d, rename)| used_once_in_scope(ctx, d, rename, scope))
 }
 
 fn used_once_in_scope(
@@ -1008,6 +1041,112 @@ use foo::{Foo as Bar, Quxx as _};
 fn test(_: Bar) {
     let a = ();
     a.quxx();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_unused_macro() {
+        check_assist(
+            remove_unused_imports,
+            r#"
+//- /foo.rs crate:foo
+#[macro_export]
+macro_rules! m { () => {} }
+
+//- /main.rs crate:main deps:foo
+use foo::m;$0
+fn main() {}
+"#,
+            r#"
+fn main() {}
+"#,
+        );
+
+        check_assist_not_applicable(
+            remove_unused_imports,
+            r#"
+//- /foo.rs crate:foo
+#[macro_export]
+macro_rules! m { () => {} }
+
+//- /main.rs crate:main deps:foo
+use foo::m;$0
+fn main() {
+    m!();
+}
+"#,
+        );
+
+        check_assist_not_applicable(
+            remove_unused_imports,
+            r#"
+//- /foo.rs crate:foo
+#[macro_export]
+macro_rules! m { () => {} }
+
+//- /bar.rs crate:bar deps:foo
+pub use foo::m;
+fn m() {}
+
+
+//- /main.rs crate:main deps:bar
+use bar::m;$0
+fn main() {
+    m!();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_conflict_derive_macro() {
+        check_assist_not_applicable(
+            remove_unused_imports,
+            r#"
+//- proc_macros: derive_identity
+//- minicore: derive
+//- /bar.rs crate:bar
+pub use proc_macros::DeriveIdentity;
+pub trait DeriveIdentity {}
+
+//- /main.rs crate:main deps:bar
+$0use bar::DeriveIdentity;$0
+#[derive(DeriveIdentity)]
+struct S;
+"#,
+        );
+
+        check_assist_not_applicable(
+            remove_unused_imports,
+            r#"
+//- proc_macros: derive_identity
+//- minicore: derive
+//- /bar.rs crate:bar
+pub use proc_macros::DeriveIdentity;
+pub fn DeriveIdentity() {}
+
+//- /main.rs crate:main deps:bar
+$0use bar::DeriveIdentity;$0
+#[derive(DeriveIdentity)]
+struct S;
+"#,
+        );
+
+        check_assist_not_applicable(
+            remove_unused_imports,
+            r#"
+//- proc_macros: derive_identity
+//- minicore: derive
+//- /bar.rs crate:bar
+pub use proc_macros::DeriveIdentity;
+pub fn DeriveIdentity() {}
+
+//- /main.rs crate:main deps:bar
+$0use bar::DeriveIdentity;$0
+fn main() {
+    DeriveIdentity();
 }
 "#,
         );
