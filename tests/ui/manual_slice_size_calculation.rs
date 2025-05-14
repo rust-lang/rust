@@ -64,3 +64,16 @@ const fn _const(s_i32: &[i32]) {
     // True negative:
     let _ = s_i32.len() * size_of::<i32>(); // Ok, can't use size_of_val in const
 }
+
+fn issue_14802() {
+    struct IcedSlice {
+        dst: [u8],
+    }
+
+    impl IcedSlice {
+        fn get_len(&self) -> usize {
+            self.dst.len() * size_of::<u8>()
+            //~^ manual_slice_size_calculation
+        }
+    }
+}

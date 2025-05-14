@@ -55,5 +55,11 @@ error: manual slice size calculation
 LL |     let _ = external!(&[1u64][..]).len() * size_of::<u64>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(external!(&[1u64][..]))`
 
-error: aborting due to 9 previous errors
+error: manual slice size calculation
+  --> tests/ui/manual_slice_size_calculation.rs:75:13
+   |
+LL |             self.dst.len() * size_of::<u8>()
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(&self.dst)`
+
+error: aborting due to 10 previous errors
 

@@ -49,7 +49,11 @@ impl<'tcx> LateLintPass<'tcx> for ManualSliceSizeCalculation {
         {
             let ctxt = expr.span.ctxt();
             let mut app = Applicability::MachineApplicable;
-            let deref = "*".repeat(refs_count - 1);
+            let deref = if refs_count > 0 {
+                "*".repeat(refs_count - 1)
+            } else {
+                "&".into()
+            };
             let val_name = snippet_with_context(cx, receiver.span, ctxt, "slice", &mut app).0;
             let Some(sugg) = std_or_core(cx) else { return };
 
