@@ -14,7 +14,7 @@ pub(crate) fn target() -> Target {
     // MSVC emits a warning about code that may trip "Cortex-A53 MPCore processor bug #843419" (see
     // https://developer.arm.com/documentation/epm048406/latest) which is sometimes emitted by LLVM.
     // Since Arm64 Windows 10+ isn't supported on that processor, it's safe to disable the warning.
-    base.add_pre_link_args(LinkerFlavor::Msvc(Lld::No), &["/arm64hazardfree"]);
+    base.add_pre_link_args(LinkerFlavor::Msvc(Lld::No), &["-arm64hazardfree"]);
 
     Target {
         llvm_target: "aarch64-pc-windows-msvc".into(),
