@@ -1309,9 +1309,9 @@ impl<T: ?Sized> NonNull<T> {
     #[must_use]
     #[inline]
     #[unstable(feature = "pointer_is_aligned_for", issue = "140980")]
-    pub fn is_aligned_for<U: Sized>(self) -> bool
+    pub fn is_aligned_for<U>(self) -> bool
     where
-        T: Sized,
+        U: Sized,
     {
         self.as_ptr().is_aligned_for::<U>()
     }

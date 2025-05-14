@@ -1699,11 +1699,11 @@ impl<T: ?Sized> *mut T {
     ///
     /// ```
     /// #![feature(pointer_is_aligned_for)]
-    /// 
+    ///
     /// // On some platforms, the alignment of i32 is less than 4.
     /// #[repr(align(4))]
     /// struct AlignedI32(i32);
-    /// 
+    ///
     /// // On some platforms, the alignment of u32 is less than 4.
     /// #[repr(align(4))]
     /// struct AlignedU32(u32);
@@ -1717,9 +1717,9 @@ impl<T: ?Sized> *mut T {
     #[must_use]
     #[inline]
     #[unstable(feature = "pointer_is_aligned_for", issue = "140980")]
-    pub fn is_aligned_for<U: Sized>(self) -> bool
+    pub fn is_aligned_for<U>(self) -> bool
     where
-        T: Sized,
+        U: Sized,
     {
         self.is_aligned_to(align_of::<U>())
     }
