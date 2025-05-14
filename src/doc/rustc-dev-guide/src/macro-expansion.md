@@ -9,9 +9,6 @@ we have a complete [*Abstract Syntax Tree* (AST)][ast] for our crate with no
 unexpanded macros (or a compile error).
 
 [ast]: ./ast-validation.md
-[`rustc_ast`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/index.html
-[`rustc_expand`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/index.html
-[`rustc_builtin_macros`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_builtin_macros/index.html
 [placeholders]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/placeholders/index.html
 
 First, we discuss the algorithm that expands and integrates macro output into
