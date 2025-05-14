@@ -1290,6 +1290,7 @@ impl<T: ?Sized> NonNull<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(pointer_is_aligned_for)]
     /// use std::ptr::NonNull;
     ///
     /// // On some platforms, the alignment of i32 is less than 4.
