@@ -6483,6 +6483,7 @@ Released 2018-09-13
 [`accept-comment-above-statement`]: https://doc.rust-lang.org/clippy/lint_configuration.html#accept-comment-above-statement
 [`allow-comparison-to-zero`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-comparison-to-zero
 [`allow-dbg-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-dbg-in-tests
+[`allow-exact-repetitions`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-exact-repetitions
 [`allow-expect-in-consts`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-expect-in-consts
 [`allow-expect-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-expect-in-tests
 [`allow-indexing-slicing-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-indexing-slicing-in-tests

@@ -162,6 +162,7 @@ pub struct ItemNameRepetitions {
     enum_threshold: u64,
     struct_threshold: u64,
     avoid_breaking_exported_api: bool,
+    allow_exact_repetitions: bool,
     allow_private_module_inception: bool,
     allowed_prefixes: FxHashSet<String>,
 }
@@ -173,6 +174,7 @@ impl ItemNameRepetitions {
             enum_threshold: conf.enum_variant_name_threshold,
             struct_threshold: conf.struct_field_name_threshold,
             avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
+            allow_exact_repetitions: conf.allow_exact_repetitions,
             allow_private_module_inception: conf.allow_private_module_inception,
             allowed_prefixes: conf.allowed_prefixes.iter().map(|s| to_camel_case(s)).collect(),
         }
@@ -486,11 +488,21 @@ impl LateLintPass<'_> for ItemNameRepetitions {
             }
 
             // The `module_name_repetitions` lint should only trigger if the item has the module in its
-            // name. Having the same name is accepted.
-            if cx.tcx.visibility(item.owner_id).is_public()
-                && cx.tcx.visibility(mod_owner_id.def_id).is_public()
-                && item_camel.len() > mod_camel.len()
-            {
+            // name. Having the same name is only accepted if `allow_exact_repetition` is set to `true`.
+
+            let both_are_public =
+                cx.tcx.visibility(item.owner_id).is_public() && cx.tcx.visibility(mod_owner_id.def_id).is_public();
+
+            if both_are_public && !self.allow_exact_repetitions && item_camel == *mod_camel {
+                span_lint(
+                    cx,
+                    MODULE_NAME_REPETITIONS,
+                    ident.span,
+                    "item name is the same as its containing module's name",
+                );
+            }
+
+            if both_are_public && item_camel.len() > mod_camel.len() {
                 let matching = count_match_start(mod_camel, &item_camel);
                 let rmatching = count_match_end(mod_camel, &item_camel);
                 let nchars = mod_camel.chars().count();

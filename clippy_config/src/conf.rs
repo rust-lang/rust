@@ -360,6 +360,9 @@ define_Conf! {
     /// Whether `dbg!` should be allowed in test functions or `#[cfg(test)]`
     #[lints(dbg_macro)]
     allow_dbg_in_tests: bool = false,
+    /// Whether an item should be allowed to have the same name as its containing module
+    #[lints(module_name_repetitions)]
+    allow_exact_repetitions: bool = true,
     /// Whether `expect` should be allowed in code always evaluated at compile time
     #[lints(expect_used)]
     allow_expect_in_consts: bool = true,

@@ -71,6 +71,16 @@ Whether `dbg!` should be allowed in test functions or `#[cfg(test)]`
 * [`dbg_macro`](https://rust-lang.github.io/rust-clippy/master/index.html#dbg_macro)
 
 
+## `allow-exact-repetitions`
+Whether an item should be allowed to have the same name as its containing module
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`module_name_repetitions`](https://rust-lang.github.io/rust-clippy/master/index.html#module_name_repetitions)
+
+
 ## `allow-expect-in-consts`
 Whether `expect` should be allowed in code always evaluated at compile time
 
