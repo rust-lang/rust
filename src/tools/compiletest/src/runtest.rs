@@ -2609,18 +2609,19 @@ impl<'test> TestCx<'test> {
             (expected, actual)
         };
 
-        // Write the actual output to a file in build/
-        let test_name = self.config.compare_mode.as_ref().map_or("", |m| m.to_str());
+        // Write the actual output to a file in build directory.
         let actual_path = self
             .output_base_name()
             .with_extra_extension(self.revision.unwrap_or(""))
-            .with_extra_extension(test_name)
+            .with_extra_extension(
+                self.config.compare_mode.as_ref().map(|cm| cm.to_str()).unwrap_or(""),
+            )
             .with_extra_extension(stream);
 
         if let Err(err) = fs::write(&actual_path, &actual) {
-            self.fatal(&format!("failed to write {stream} to `{actual_path:?}`: {err}",));
+            self.fatal(&format!("failed to write {stream} to `{actual_path}`: {err}",));
         }
-        println!("Saved the actual {stream} to {actual_path:?}");
+        println!("Saved the actual {stream} to `{actual_path}`");
 
         if !self.config.bless {
             if expected.is_empty() {
@@ -2646,13 +2647,16 @@ impl<'test> TestCx<'test> {
 
             if !actual.is_empty() {
                 if let Err(err) = fs::write(&expected_path, &actual) {
-                    self.fatal(&format!("failed to write {stream} to `{expected_path:?}`: {err}"));
+                    self.fatal(&format!("failed to write {stream} to `{expected_path}`: {err}"));
                 }
-                println!("Blessing the {stream} of {test_name} in {expected_path:?}");
+                println!(
+                    "Blessing the {stream} of `{test_name}` as `{expected_path}`",
+                    test_name = self.testpaths.file
+                );
             }
         }
 
-        println!("\nThe actual {0} differed from the expected {0}.", stream);
+        println!("\nThe actual {stream} differed from the expected {stream}");
 
         if self.config.bless { CompareOutcome::Blessed } else { CompareOutcome::Differed }
     }
