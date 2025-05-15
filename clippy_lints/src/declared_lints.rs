@@ -77,6 +77,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::cfg_not_test::CFG_NOT_TEST_INFO,
     crate::checked_conversions::CHECKED_CONVERSIONS_INFO,
     crate::cloned_ref_to_slice_refs::CLONED_REF_TO_SLICE_REFS_INFO,
+    crate::coerce_container_to_any::COERCE_CONTAINER_TO_ANY_INFO,
     crate::cognitive_complexity::COGNITIVE_COMPLEXITY_INFO,
     crate::collapsible_if::COLLAPSIBLE_ELSE_IF_INFO,
     crate::collapsible_if::COLLAPSIBLE_IF_INFO,

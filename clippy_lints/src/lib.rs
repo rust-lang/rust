@@ -95,6 +95,7 @@ mod casts;
 mod cfg_not_test;
 mod checked_conversions;
 mod cloned_ref_to_slice_refs;
+mod coerce_container_to_any;
 mod cognitive_complexity;
 mod collapsible_if;
 mod collection_is_never_read;
@@ -948,5 +949,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(redundant_test_prefix::RedundantTestPrefix));
     store.register_late_pass(|_| Box::new(cloned_ref_to_slice_refs::ClonedRefToSliceRefs::new(conf)));
     store.register_late_pass(|_| Box::new(infallible_try_from::InfallibleTryFrom));
+    store.register_late_pass(|_| Box::new(coerce_container_to_any::CoerceContainerToAny));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
