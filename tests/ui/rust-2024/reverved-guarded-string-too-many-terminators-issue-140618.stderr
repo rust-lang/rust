@@ -1,0 +1,88 @@
+error: reserved multi-hash token is forbidden
+  --> $DIR/reverved-guarded-string-too-many-terminators-issue-140618.rs:14:14
+   |
+LL |     r#"ok2!"###;
+   |              ^^
+   |
+   = note: sequences of two or more # are reserved for future use since Rust 2024
+help: consider inserting whitespace here
+   |
+LL |     r#"ok2!"## #;
+   |               +
+
+error: invalid string literal
+  --> $DIR/reverved-guarded-string-too-many-terminators-issue-140618.rs:20:5
+   |
+LL |     #"ok3!"#;
+   |     ^^^^^^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use since Rust 2024
+help: consider inserting whitespace here
+   |
+LL |     # "ok3!"#;
+   |      +
+
+error: invalid string literal
+  --> $DIR/reverved-guarded-string-too-many-terminators-issue-140618.rs:26:5
+   |
+LL |     #"ok4!"##;
+   |     ^^^^^^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use since Rust 2024
+help: consider inserting whitespace here
+   |
+LL |     # "ok4!"##;
+   |      +
+
+error: invalid string literal
+  --> $DIR/reverved-guarded-string-too-many-terminators-issue-140618.rs:32:5
+   |
+LL |     #"ok5!"###;
+   |     ^^^^^^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use since Rust 2024
+help: consider inserting whitespace here
+   |
+LL |     # "ok5!"###;
+   |      +
+
+error: reserved multi-hash token is forbidden
+  --> $DIR/reverved-guarded-string-too-many-terminators-issue-140618.rs:32:13
+   |
+LL |     #"ok5!"###;
+   |             ^^
+   |
+   = note: sequences of two or more # are reserved for future use since Rust 2024
+help: consider inserting whitespace here
+   |
+LL |     #"ok5!"## #;
+   |              +
+
+error: too many `#` when terminating raw string
+  --> $DIR/reverved-guarded-string-too-many-terminators-issue-140618.rs:8:14
+   |
+LL |     r#"ok1!"##;
+   |     ---------^ help: remove the extra `#`
+   |     |
+   |     this raw string started with 1 `#`
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `##`
+  --> $DIR/reverved-guarded-string-too-many-terminators-issue-140618.rs:14:14
+   |
+LL |     r#"ok2!"###;
+   |              ^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `#`
+  --> $DIR/reverved-guarded-string-too-many-terminators-issue-140618.rs:26:13
+   |
+LL |     #"ok4!"##;
+   |             ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `##`
+  --> $DIR/reverved-guarded-string-too-many-terminators-issue-140618.rs:32:13
+   |
+LL |     #"ok5!"###;
+   |             ^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: aborting due to 9 previous errors
+
