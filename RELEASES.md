@@ -4157,7 +4157,7 @@ Libraries
   when ignoring their return value. This helps catch mistakes such as expecting
   a function to mutate a value in place rather than return a new value.
 
-Stabilised APIs
+Stabilized APIs
 ---------------
 
 - [`[T; N]::as_mut_slice`][`array::as_mut_slice`]
@@ -4297,7 +4297,7 @@ Libraries
   just treat such names as nonexistent variables, since the OS cannot represent
   the existence of a variable with such a name.
 
-Stabilised APIs
+Stabilized APIs
 ---------------
 
 - [`std::os::unix::fs::chroot`]
@@ -4431,7 +4431,7 @@ Libraries
   the produced code size for non-stripped artifacts.
 - [`string::Drain` now implements `AsRef<str>` and `AsRef<[u8]>`.][86858]
 
-Stabilised APIs
+Stabilized APIs
 ---------------
 
 - [`Bound::cloned`]
@@ -4704,7 +4704,7 @@ Libraries
 - [You can now index into slices using `(Bound<usize>, Bound<usize>)`.][77704]
 - [Add the `BITS` associated constant to all numeric types.][82565]
 
-Stabilised APIs
+Stabilized APIs
 ---------------
 - [`AtomicBool::fetch_update`]
 - [`AtomicPtr::fetch_update`]
@@ -4899,7 +4899,7 @@ Libraries
 - [`Arc<impl Error>` now implements `error::Error`.][80553]
 - [All integer division and remainder operations are now `const`.][80962]
 
-Stabilised APIs
+Stabilized APIs
 -------------
 - [`Arguments::as_str`]
 - [`char::MAX`]
@@ -5484,7 +5484,7 @@ Language
 
 Compiler
 --------
-- [Stabilised the `-C link-self-contained=<yes|no>` compiler flag.][76158] This tells
+- [Stabilized the `-C link-self-contained=<yes|no>` compiler flag.][76158] This tells
   `rustc` whether to link its own C runtime and libraries or to rely on a external
   linker to find them. (Supported only on `windows-gnu`, `linux-musl`, and `wasi` platforms.)
 - [You can now use `-C target-feature=+crt-static` on `linux-gnu` targets.][77386]
@@ -5770,7 +5770,7 @@ Libraries
 ---------
 - [`mem::forget` is now a `const fn`.][73887]
 - [`String` now implements `From<char>`.][73466]
-- [The `leading_ones`, and `trailing_ones` methods have been stabilised for all
+- [The `leading_ones`, and `trailing_ones` methods have been stabilized for all
   integer types.][73032]
 - [`vec::IntoIter<T>` now implements `AsRef<[T]>`.][72583]
 - [All non-zero integer types (`NonZeroU8`) now implement `TryFrom` for their
@@ -9178,7 +9178,7 @@ Cargo
 Misc
 ----
 - [`libbacktrace` is now available on Apple platforms.][44251]
-- [Stabilised the `compile_fail` attribute for code fences in doc-comments.][43949]
+- [Stabilized the `compile_fail` attribute for code fences in doc-comments.][43949]
   This now lets you specify that a given code example will fail to compile.
 
 Compatibility Notes
@@ -9321,7 +9321,7 @@ Version 1.20.0 (2017-08-31)
 
 Language
 --------
-- [Associated constants are now stabilised.][42809]
+- [Associated constants are now stabilized.][42809]
 - [A lot of macro bugs are now fixed.][42913]
 
 Compiler
