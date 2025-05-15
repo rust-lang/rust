@@ -35,10 +35,6 @@ fn symbols_check_archive(path: &str) {
             continue; // All compiler-builtins symbols must remain unmangled
         }
 
-        if name == "__rust_no_alloc_shim_is_unstable" {
-            continue; // FIXME remove exception once we mangle this symbol
-        }
-
         if name.contains("rust_eh_personality") {
             continue; // Unfortunately LLVM doesn't allow us to mangle this symbol
         }
@@ -73,10 +69,6 @@ fn symbols_check(path: &str) {
             // be wrong, but even if so symbol_check_archive will likely
             // catch it.
             continue;
-        }
-
-        if name == "__rust_no_alloc_shim_is_unstable" {
-            continue; // FIXME remove exception once we mangle this symbol
         }
 
         if name.contains("rust_eh_personality") {
