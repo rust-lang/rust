@@ -169,6 +169,7 @@ mod inconsistent_struct_constructor;
 mod index_refutable_slice;
 mod indexing_slicing;
 mod ineffective_open_options;
+mod infallible_try_from;
 mod infinite_iter;
 mod inherent_impl;
 mod inherent_to_string;
@@ -944,5 +945,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(single_option_map::SingleOptionMap));
     store.register_late_pass(move |_| Box::new(redundant_test_prefix::RedundantTestPrefix));
     store.register_late_pass(|_| Box::new(cloned_ref_to_slice_refs::ClonedRefToSliceRefs::new(conf)));
+    store.register_late_pass(|_| Box::new(infallible_try_from::InfallibleTryFrom));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
