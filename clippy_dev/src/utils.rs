@@ -2,7 +2,7 @@ use aho_corasick::{AhoCorasick, AhoCorasickBuilder};
 use core::fmt::{self, Display};
 use core::slice;
 use core::str::FromStr;
-use rustc_lexer as lexer;
+use rustc_lexer::{self as lexer, FrontmatterAllowed};
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write};
@@ -446,7 +446,7 @@ impl<'txt> RustSearcher<'txt> {
     pub fn new(text: &'txt str) -> Self {
         Self {
             text,
-            cursor: lexer::Cursor::new(text),
+            cursor: lexer::Cursor::new(text, FrontmatterAllowed::Yes),
             pos: 0,
 
             // Sentinel value indicating there is no read token.
