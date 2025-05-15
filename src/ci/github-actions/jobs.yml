@@ -117,18 +117,50 @@ envs:
 # These jobs automatically inherit envs.pr, to avoid repeating
 # it in each job definition.
 pr:
-  - name: mingw-check
-    <<: *job-linux-4c
-  - name: mingw-check-tidy
-    continue_on_error: true
-    <<: *job-linux-4c
-  - name: x86_64-gnu-llvm-19
+  - name: x86_64-mingw-1
     env:
-      ENABLE_GCC_CODEGEN: "1"
-      DOCKER_SCRIPT: x86_64-gnu-llvm.sh
-    <<: *job-linux-16c
-  - name: x86_64-gnu-tools
-    <<: *job-linux-16c
+      SCRIPT: make ci-mingw-x
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+      # There is no dist-x86_64-mingw-alt, so there is no prebuilt LLVM with assertions
+      NO_DOWNLOAD_CI_LLVM: 1
+    <<: *job-windows
+
+  - name: x86_64-mingw-2
+    env:
+      SCRIPT: make ci-mingw-bootstrap
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+      # There is no dist-x86_64-mingw-alt, so there is no prebuilt LLVM with assertions
+      NO_DOWNLOAD_CI_LLVM: 1
+    <<: *job-windows
+  # x86_64-msvc is split into two jobs to run tests in parallel.
+  - name: x86_64-msvc-1
+    env:
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
+      SCRIPT: make ci-msvc-py
+    # FIXME(#141022): Windows Server 2025 20250504.1.0 currently experiences
+    # insufficient disk space.
+    <<: *job-windows
+
+  - name: x86_64-msvc-2
+    env:
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
+      SCRIPT: make ci-msvc-ps1
+    # FIXME(#141022): Windows Server 2025 20250504.1.0 currently experiences
+    # insufficient disk space.
+    <<: *job-windows
+
+  # i686-msvc is split into two jobs to run tests in parallel.
+  - name: i686-msvc-1
+    env:
+      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc  --enable-sanitizers
+      SCRIPT: make ci-msvc-py
+    <<: *job-windows
+
+  - name: i686-msvc-2
+    env:
+      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --enable-sanitizers
+      SCRIPT: make ci-msvc-ps1
+    <<: *job-windows
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating

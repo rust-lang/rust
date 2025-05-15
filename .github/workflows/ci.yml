@@ -225,8 +225,7 @@ jobs:
           fi
           exit ${STATUS}
         env:
-          AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
+          SCCACHE_S3_NO_CREDENTIALS: 1
 
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
