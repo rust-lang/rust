@@ -1,5 +1,6 @@
 //! Integer and floating-point number formatting
 
+use crate::fmt::num_buffer::NumBuffer;
 use crate::mem::MaybeUninit;
 use crate::num::fmt as numfmt;
 use crate::ops::{Div, Rem, Sub};
@@ -199,44 +200,60 @@ static DEC_DIGITS_LUT: &[u8; 200] = b"\
       6061626364656667686970717273747576777879\
       8081828384858687888990919293949596979899";
 
-macro_rules! impl_Display {
-    ($($signed:ident, $unsigned:ident,)* ; as $u:ident via $conv_fn:ident named $gen_name:ident) => {
+static NEGATIVE_SIGN: &[u8; 1] = b"-";
+
+// SAFETY: safety is ensured by the caller about:
+// 1. The contents of `buf` containing only ASCII characters.
+// 2. `offset` being bound checked.
+// 3. The contents of `buf` being initialized from `offset` onwards till the end.
+unsafe fn extract_str_from_buf(buf: &NumBuffer, offset: usize) -> &str {
+    // SAFETY: safety is ensured by the caller about:
+    // 1. `offset` being bound checked
+    // 2. The contents of `buf` being initialized from `offset` onwards till the end.
+    let written = unsafe { buf.extract(offset..) };
+
+    // SAFETY: safety is ensured by the caller about:
+    // 1. The contents of `buf` containing only ASCII characters.
+    let as_str = unsafe {
+        str::from_utf8_unchecked(slice::from_raw_parts(
+            MaybeUninit::slice_as_ptr(written),
+            written.len(),
+        ))
+    };
+
+    as_str
+}
+
+// SAFETY: safety is ensured by the caller about:
+// 1. `start_offset` being bound checked
+unsafe fn add_negative_sign(
+    is_nonnegative: bool,
+    buf: &mut NumBuffer,
+    start_offset: usize,
+) -> usize {
+    if is_nonnegative {
+        return start_offset;
+    }
+
+    let offset = start_offset - 1;
+
+    // Setting sign for the negative number
+    // SAFETY: `start_offset` being bound checked is ensured by
+    // the caller.
+    unsafe { buf.write(offset, NEGATIVE_SIGN[0]) };
+
+    offset
+}
+
+// Basic functionality that is relied upon by functionality within
+// `impl_Display` and `impl_FormatInto`
+macro_rules! impl_NumBuffer {
+    ($($unsigned:ident,)* ; as $u:ident named $gen_name:ident) => {
 
         $(
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl fmt::Display for $unsigned {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                #[cfg(not(feature = "optimize_for_size"))]
-                {
-                    self._fmt(true, f)
-                }
-                #[cfg(feature = "optimize_for_size")]
-                {
-                    $gen_name(self.$conv_fn(), true, f)
-                }
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl fmt::Display for $signed {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                #[cfg(not(feature = "optimize_for_size"))]
-                {
-                    return self.unsigned_abs()._fmt(*self >= 0, f);
-                }
-                #[cfg(feature = "optimize_for_size")]
-                {
-                    return $gen_name(self.unsigned_abs().$conv_fn(), *self >= 0, f);
-                }
-            }
-        }
-
         #[cfg(not(feature = "optimize_for_size"))]
         impl $unsigned {
-            fn _fmt(self, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                const MAX_DEC_N: usize = $unsigned::MAX.ilog(10) as usize + 1;
-                // Buffer decimals for $unsigned with right alignment.
-                let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
+            fn _write_into_buf(self, buf: &mut NumBuffer) -> usize {
                 // Count the number of bytes in buf that are not initialized.
                 let mut offset = buf.len();
                 // Consume the least-significant decimals from a working copy.
@@ -245,10 +262,11 @@ macro_rules! impl_Display {
                 // Format per four digits from the lookup table.
                 // Four digits need a 16-bit $unsigned or wider.
                 while size_of::<Self>() > 1 && remain > 999.try_into().expect("branch is not hit for types that cannot fit 999 (u8)") {
-                    // SAFETY: All of the decimals fit in buf due to MAX_DEC_N
+                    // SAFETY: All of the decimals fit in `buf` since `buf` is large enough to
+                    // accommodate the largest representation of a number possible (that of i128::MIN)
                     // and the while condition ensures at least 4 more decimals.
                     unsafe { core::hint::assert_unchecked(offset >= 4) }
-                    // SAFETY: The offset counts down from its initial buf.len()
+                    // SAFETY: The offset counts down from its initial size
                     // without underflow due to the previous precondition.
                     unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
                     offset -= 4;
@@ -259,34 +277,44 @@ macro_rules! impl_Display {
                     remain /= scale;
                     let pair1 = (quad / 100) as usize;
                     let pair2 = (quad % 100) as usize;
-                    buf[offset + 0].write(DEC_DIGITS_LUT[pair1 * 2 + 0]);
-                    buf[offset + 1].write(DEC_DIGITS_LUT[pair1 * 2 + 1]);
-                    buf[offset + 2].write(DEC_DIGITS_LUT[pair2 * 2 + 0]);
-                    buf[offset + 3].write(DEC_DIGITS_LUT[pair2 * 2 + 1]);
+
+                    // SAFETY: The offset is bounds-checked in the asserts above.
+                    unsafe {
+                        buf.write(offset + 0, DEC_DIGITS_LUT[pair1 * 2 + 0]);
+                        buf.write(offset + 1, DEC_DIGITS_LUT[pair1 * 2 + 1]);
+                        buf.write(offset + 2, DEC_DIGITS_LUT[pair2 * 2 + 0]);
+                        buf.write(offset + 3, DEC_DIGITS_LUT[pair2 * 2 + 1]);
+                    }
                 }
 
                 // Format per two digits from the lookup table.
                 if remain > 9 {
-                    // SAFETY: All of the decimals fit in buf due to MAX_DEC_N
+                    // SAFETY: All of the decimals fit in `buf` since `buf` is large enough to
+                    // accommodate the largest representation of a number possible (that of i128::MIN)
                     // and the while condition ensures at least 2 more decimals.
                     unsafe { core::hint::assert_unchecked(offset >= 2) }
-                    // SAFETY: The offset counts down from its initial buf.len()
+                    // SAFETY: The offset counts down from its initial size
                     // without underflow due to the previous precondition.
                     unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
                     offset -= 2;
 
                     let pair = (remain % 100) as usize;
                     remain /= 100;
-                    buf[offset + 0].write(DEC_DIGITS_LUT[pair * 2 + 0]);
-                    buf[offset + 1].write(DEC_DIGITS_LUT[pair * 2 + 1]);
+
+                    // SAFETY: The offset is bounds-checked in the asserts above.
+                    unsafe {
+                        buf.write(offset + 0, DEC_DIGITS_LUT[pair * 2 + 0]);
+                        buf.write(offset + 1, DEC_DIGITS_LUT[pair * 2 + 1]);
+                    };
                 }
 
                 // Format the last remaining digit, if any.
                 if remain != 0 || self == 0 {
-                    // SAFETY: All of the decimals fit in buf due to MAX_DEC_N
+                    // SAFETY: All of the decimals fit in `buf` since `buf` is large enough to
+                    // accommodate the largest representation of a number possible (that of i128::MIN)
                     // and the if condition ensures (at least) 1 more decimals.
                     unsafe { core::hint::assert_unchecked(offset >= 1) }
-                    // SAFETY: The offset counts down from its initial buf.len()
+                    // SAFETY: The offset counts down from its initial size
                     // without underflow due to the previous precondition.
                     unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
                     offset -= 1;
@@ -294,34 +322,37 @@ macro_rules! impl_Display {
                     // Either the compiler sees that remain < 10, or it prevents
                     // a boundary check up next.
                     let last = (remain & 15) as usize;
-                    buf[offset].write(DEC_DIGITS_LUT[last * 2 + 1]);
+
+                    // SAFETY: The offset is bounds-checked in the asserts above.
+                    unsafe { buf.write(offset, DEC_DIGITS_LUT[last * 2 + 1]) };
                     // not used: remain = 0;
                 }
 
-                // SAFETY: All buf content since offset is set.
-                let written = unsafe { buf.get_unchecked(offset..) };
-                // SAFETY: Writes use ASCII from the lookup table exclusively.
-                let as_str = unsafe {
-                    str::from_utf8_unchecked(slice::from_raw_parts(
-                          MaybeUninit::slice_as_ptr(written),
-                          written.len(),
-                    ))
-                };
+                offset
+            }
+
+            fn _fmt(self, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                // Buffer decimals for $unsigned with right alignment.
+                let mut buf = NumBuffer::new();
+                let offset = self._write_into_buf(&mut buf);
+
+                // SAFETY: All contents of `buf` since offset is set, and
+                // writes use ASCII from the lookup table exclusively.
+                let as_str = unsafe { extract_str_from_buf(&buf, offset) };
+
                 f.pad_integral(is_nonnegative, "", as_str)
             }
         })*
 
         #[cfg(feature = "optimize_for_size")]
-        fn $gen_name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            const MAX_DEC_N: usize = $u::MAX.ilog(10) as usize + 1;
-            let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
-            let mut curr = MAX_DEC_N;
-            let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
+        fn $gen_name(mut n: $u, is_nonnegative: bool, buf: &mut NumBuffer) -> &str {
+            let mut curr = buf.len();
+            let buf_ptr = NumBuffer::extract_start_mut_ptr(buf);
 
             // SAFETY: To show that it's OK to copy into `buf_ptr`, notice that at the beginning
-            // `curr == buf.len() == 39 > log(n)` since `n < 2^128 < 10^39`, and at
+            // `curr == buf.len() == 40 > log(n)` since `n < 2^128 < 10^39 < 10^40`, and at
             // each step this is kept the same as `n` is divided. Since `n` is always
-            // non-negative, this means that `curr > 0` so `buf_ptr[curr..curr + 1]`
+            // non-negative, this means that `curr >= (40 - 39) == 1 > 0` so `buf_ptr[curr..curr + 1]`
             // is safe to access.
             unsafe {
                 loop {
@@ -335,14 +366,185 @@ macro_rules! impl_Display {
                 }
             }
 
-            // SAFETY: `curr` > 0 (since we made `buf` large enough), and all the chars are valid UTF-8
+            // SAFETY: `curr >= 1` (unchanged if `is_nonnegative` is true) and
+            // `curr >= 0` (incase `is_nonnegative` is false) so `buf_ptr[curr..curr + 1]`
+            // is safe to access.
+            unsafe { add_negative_sign(is_nonnegative, buf, curr) };
+
+            // SAFETY: `curr >= 0` (since we made `buf` large enough), and all the chars are valid UTF-8
             let buf_slice = unsafe {
                 str::from_utf8_unchecked(
                     slice::from_raw_parts(buf_ptr.add(curr), buf.len() - curr))
             };
-            f.pad_integral(is_nonnegative, "", buf_slice)
+
+            buf_slice
         }
     };
+}
+
+// Must invoke `impl_NumBuffer` before invoking this macro.
+macro_rules! impl_Display {
+    ($($signed:ident, $unsigned:ident,)* ; via $conv_fn:ident named $gen_name:ident) => {
+
+        $(
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::Display for $unsigned {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                #[cfg(not(feature = "optimize_for_size"))]
+                {
+                    self._fmt(true, f)
+                }
+                #[cfg(feature = "optimize_for_size")]
+                {
+                    let mut buf = NumBuffer::new();
+
+                    // not setting the sign here, hence sending `is_nonnegative` as `true`
+                    let as_str = $gen_name(self.$conv_fn(), true, &mut buf);
+                    f.pad_integral(true, "", as_str)
+                }
+            }
+        }
+
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::Display for $signed {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                #[cfg(not(feature = "optimize_for_size"))]
+                {
+                    return self.unsigned_abs()._fmt(*self >= 0, f);
+                }
+                #[cfg(feature = "optimize_for_size")]
+                {
+                    let mut buf = NumBuffer::new();
+
+                    // not setting the sign here, hence sending `is_nonnegative` as `true`
+                    let as_str = $gen_name(self.unsigned_abs().$conv_fn(), true, &mut buf);
+                    f.pad_integral(*self >= 0, "", as_str)
+                }
+            }
+        }
+        )*
+    };
+}
+
+// Must invoke `impl_NumBuffer` before invoking this macro.
+macro_rules! impl_FormatInto {
+    ($($signed:ident, $unsigned:ident,)* ; via $conv_fn:ident named $gen_name:ident) => {
+        $(
+        #[unstable(feature = "int_format_into", issue = "138215")]
+        impl $signed {
+            /// Allows users to write an integer (in signed decimal format) into a variable `buf` of
+            /// type [`NumBuffer`] that is passed by the caller by mutable reference.
+            ///
+            /// # Examples
+            /// ```
+            /// #![feature(int_format_into)]
+            /// use core::fmt::NumBuffer;
+            ///
+            #[doc = concat!("let n = 0", stringify!($signed), ";")]
+            /// let mut buf = NumBuffer::new();
+            /// assert_eq!(n.format_into(&mut buf), "0");
+            ///
+            #[doc = concat!("let n1 = -32", stringify!($signed), ";")]
+            /// let mut buf1 = NumBuffer::new();
+            /// assert_eq!(n1.format_into(&mut buf1), "-32");
+            ///
+            #[doc = concat!("let n2 = ", stringify!($signed::MIN), ";")]
+            /// let mut buf2 = NumBuffer::new();
+            #[doc = concat!("assert_eq!(n2.format_into(&mut buf2), ", stringify!($signed::MIN), ".to_string());")]
+            ///
+            #[doc = concat!("let n3 = ", stringify!($signed::MAX), ";")]
+            /// let mut buf3 = NumBuffer::new();
+            #[doc = concat!("assert_eq!(n3.format_into(&mut buf3), ", stringify!($signed::MAX), ".to_string());")]
+            /// ```
+            ///
+            pub fn format_into(self, buf: &mut NumBuffer) -> &str {
+                #[cfg(not(feature = "optimize_for_size"))]
+                {
+                    let is_nonnegative = self >= 0;
+                    let mut offset = self.unsigned_abs()._write_into_buf(buf);
+
+                    // SAFETY: `offset >= 1` since only a maximum of 39 digits
+                    // would have been written into the buffer (of size 40 bytes).
+                    // The negative sign is not written yet.
+                    unsafe { core::hint::assert_unchecked(offset >= 1) }
+
+                    // SAFETY: The offset counts down from its initial size
+                    // without underflow due to the previous precondition.
+                    unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
+
+                    // SAFETY: `offset >= 1` (unchanged if `is_nonnegative` is true) and
+                    // `offset >= 0` (incase `is_nonnegative` is false) so
+                    // `buf_ptr[offset..offset + 1]` is safe to access.
+                    offset = unsafe { add_negative_sign(is_nonnegative, buf, offset) };
+
+                    // SAFETY: All buf content since offset is set, and
+                    // writes use ASCII from the lookup table exclusively.
+                    let as_str = unsafe { extract_str_from_buf(buf, offset) };
+
+                    as_str
+                }
+
+                #[cfg(feature = "optimize_for_size")]
+                {
+                    let is_nonnegative = self >= 0;
+                    $gen_name(self.unsigned_abs().$conv_fn(), is_nonnegative, buf)
+                }
+
+            }
+        }
+
+        #[unstable(feature = "int_format_into", issue = "138215")]
+        impl $unsigned {
+            /// Allows users to write an integer (in signed decimal format) into a variable `buf` of
+            /// type [`NumBuffer`] that is passed by the caller by mutable reference.
+            ///
+            /// # Examples
+            /// ```
+            /// #![feature(int_format_into)]
+            /// use core::fmt::NumBuffer;
+            ///
+            #[doc = concat!("let n = 0", stringify!($signed), ";")]
+            /// let mut buf = NumBuffer::new();
+            /// assert_eq!(n.format_into(&mut buf), "0");
+            ///
+            #[doc = concat!("let n1 = 32", stringify!($unsigned), ";")]
+            /// let mut buf1 = NumBuffer::new();
+            /// assert_eq!(n1.format_into(&mut buf1), "32");
+            ///
+            #[doc = concat!("let n2 = ", stringify!($unsigned::MAX), ";")]
+            /// let mut buf2 = NumBuffer::new();
+            #[doc = concat!("assert_eq!(n2.format_into(&mut buf2), ", stringify!($unsigned::MAX), ".to_string());")]
+            /// ```
+            ///
+            pub fn format_into(self, buf: &mut NumBuffer) -> &str {
+                #[cfg(not(feature = "optimize_for_size"))]
+                {
+                    let offset = self._write_into_buf(buf);
+
+                    // SAFETY: `offset >= 1` since only a maximum of 39 digits
+                    // would have been written into the buffer (of size 40 bytes).
+                    unsafe { core::hint::assert_unchecked(offset >= 1) }
+
+                    // SAFETY: The offset counts down from its initial size
+                    // without underflow due to the previous precondition.
+                    unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
+
+                    // SAFETY: All contents in `buf` since offset is set, and
+                    // writes use ASCII from the lookup table exclusively.
+                    let as_str = unsafe { extract_str_from_buf(buf, offset) };
+
+                    as_str
+                }
+
+                #[cfg(feature = "optimize_for_size")]
+                {
+                    $gen_name(self.$conv_fn(), true, buf)
+                }
+
+            }
+        }
+        )*
+    }
 }
 
 macro_rules! impl_Exp {
@@ -523,14 +725,24 @@ impl_Debug! {
 #[cfg(any(target_pointer_width = "64", target_arch = "wasm32"))]
 mod imp {
     use super::*;
+    impl_NumBuffer!(
+        u8, u16, u32, u64, usize,
+        ; as u64 named stringify_u64);
     impl_Display!(
         i8, u8,
         i16, u16,
         i32, u32,
         i64, u64,
         isize, usize,
-        ; as u64 via to_u64 named fmt_u64
-    );
+        ; via to_u64 named stringify_u64);
+    impl_FormatInto!(
+        i8, u8,
+        i16, u16,
+        i32, u32,
+        i64, u64,
+        isize, usize,
+        ; via to_u64 named stringify_u64);
+
     impl_Exp!(
         i8, u8, i16, u16, i32, u32, i64, u64, usize, isize
             as u64 via to_u64 named exp_u64
@@ -540,19 +752,42 @@ mod imp {
 #[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
 mod imp {
     use super::*;
+    impl_NumBuffer!(
+        u8, u16, u32, usize,
+        ; as u32 named stringify_u32);
     impl_Display!(
         i8, u8,
         i16, u16,
         i32, u32,
         isize, usize,
-        ; as u32 via to_u32 named fmt_u32);
+        ; via to_u32 named stringify_u32);
+    impl_FormatInto!(
+        i8, u8,
+        i16, u16,
+        i32, u32,
+        isize, usize,
+        ; via to_u32 named stringify_u32);
+
+    impl_NumBuffer!(
+        u64,
+        ; as u64 named stringify_u64);
     impl_Display!(
         i64, u64,
-        ; as u64 via to_u64 named fmt_u64);
+        ; via to_u64 named stringify_u64);
+    impl_FormatInto!(
+        i64, u64,
+        ; via to_u64 named stringify_u64);
 
     impl_Exp!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named exp_u32);
     impl_Exp!(i64, u64 as u64 via to_u64 named exp_u64);
 }
+impl_NumBuffer!(
+    u128,
+    ; as u128 named stringify_u128);
+impl_FormatInto!(
+    i128, u128,
+    ; via to_u128 named stringify_u128);
+
 impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
 
 /// Helper function for writing a u64 into `buf` going from last to first, with `curr`.
