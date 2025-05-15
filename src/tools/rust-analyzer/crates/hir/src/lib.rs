@@ -97,7 +97,8 @@ pub use crate::{
     diagnostics::*,
     has_source::HasSource,
     semantics::{
-        PathResolution, Semantics, SemanticsImpl, SemanticsScope, TypeInfo, VisibleTraits,
+        PathResolution, PathResolutionPerNs, Semantics, SemanticsImpl, SemanticsScope, TypeInfo,
+        VisibleTraits,
     },
 };
 

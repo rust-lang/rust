@@ -103,6 +103,26 @@ impl PathResolution {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct PathResolutionPerNs {
+    pub type_ns: Option<PathResolution>,
+    pub value_ns: Option<PathResolution>,
+    pub macro_ns: Option<PathResolution>,
+}
+
+impl PathResolutionPerNs {
+    pub fn new(
+        type_ns: Option<PathResolution>,
+        value_ns: Option<PathResolution>,
+        macro_ns: Option<PathResolution>,
+    ) -> Self {
+        PathResolutionPerNs { type_ns, value_ns, macro_ns }
+    }
+    pub fn any(&self) -> Option<PathResolution> {
+        self.type_ns.or(self.value_ns).or(self.macro_ns)
+    }
+}
+
 #[derive(Debug)]
 pub struct TypeInfo {
     /// The original type of the expression or pattern.
@@ -1604,6 +1624,10 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.resolve_path_with_subst(path).map(|(it, _)| it)
+    }
+
+    pub fn resolve_path_per_ns(&self, path: &ast::Path) -> Option<PathResolutionPerNs> {
+        self.analyze(path.syntax())?.resolve_hir_path_per_ns(self.db, path)
     }
 
     pub fn resolve_path_with_subst(
