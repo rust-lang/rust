@@ -128,21 +128,27 @@ jobs:
     - name: Download JSON
       uses: actions/download-artifact@v4
 
+    - name: Store PR number
+      run: echo ${{ github.event.pull_request.number }} > pr.txt
+
     - name: Diff results
-      # GH's summery has a maximum size of 1024k:
-      # https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary
-      # That's why we first log to file and then to the summary and logs
+      # GH's summery has a maximum size of 1MiB:
+      # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#step-isolation-and-limits
+      # We upload the full diff as an artifact in case it's truncated
       run: |
-        ./target/debug/lintcheck diff {base,head}/ci_crates_logs.json --truncate >> truncated_diff.md
-        head -c 1024000 truncated_diff.md >> $GITHUB_STEP_SUMMARY
-        cat truncated_diff.md
-        ./target/debug/lintcheck diff {base,head}/ci_crates_logs.json >> full_diff.md
+        ./target/debug/lintcheck diff {base,head}/ci_crates_logs.json --truncate | head -c 1M > $GITHUB_STEP_SUMMARY
+        ./target/debug/lintcheck diff {base,head}/ci_crates_logs.json --write-summary summary.json > full_diff.md
 
     - name: Upload full diff
       uses: actions/upload-artifact@v4
       with:
-        name: diff
-        if-no-files-found: ignore
+        name: full_diff
+        path: full_diff.md
+
+    - name: Upload summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: summary
         path: |
-          full_diff.md
-          truncated_diff.md
+          summary.json
+          pr.txt
