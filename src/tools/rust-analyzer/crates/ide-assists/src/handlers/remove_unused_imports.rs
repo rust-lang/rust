@@ -103,29 +103,12 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
                     })
                     .any(|d| used_once_in_scope(ctx, d, u.rename(), scope))
                 {
-                    return Some(u);
+                    Some(u)
                 } else {
-                    return None;
+                    None
                 }
-            }
-            match res {
-                PathResolutionPerNs {
-                    type_ns: Some(PathResolution::Def(ModuleDef::Trait(ref t))),
-                    value_ns,
-                    macro_ns,
-                } => {
-                    // If the trait or any item is used.
-                    if is_trait_unused_in_scope(ctx, &u, scope, t) {
-                        let path = [value_ns, macro_ns];
-                        is_path_unused_in_scope(ctx, &u, scope, &path).then_some(u)
-                    } else {
-                        None
-                    }
-                }
-                PathResolutionPerNs { type_ns, value_ns, macro_ns } => {
-                    let path = [type_ns, value_ns, macro_ns];
-                    is_path_unused_in_scope(ctx, &u, scope, &path).then_some(u)
-                }
+            } else {
+                is_path_per_ns_unused_in_scope(ctx, &u, scope, &res).then_some(u)
             }
         })
         .peekable();
@@ -145,6 +128,25 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
         )
     } else {
         None
+    }
+}
+
+fn is_path_per_ns_unused_in_scope(
+    ctx: &AssistContext<'_>,
+    u: &ast::UseTree,
+    scope: &mut Vec<SearchScope>,
+    path: &PathResolutionPerNs,
+) -> bool {
+    if let Some(PathResolution::Def(ModuleDef::Trait(ref t))) = path.type_ns {
+        if is_trait_unused_in_scope(ctx, u, scope, t) {
+            let path = [path.value_ns, path.macro_ns];
+            is_path_unused_in_scope(ctx, u, scope, &path)
+        } else {
+            false
+        }
+    } else {
+        let path = [path.type_ns, path.value_ns, path.macro_ns];
+        is_path_unused_in_scope(ctx, u, scope, &path)
     }
 }
 
