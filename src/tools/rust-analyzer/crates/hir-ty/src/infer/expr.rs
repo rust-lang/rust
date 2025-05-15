@@ -959,8 +959,8 @@ impl InferenceContext<'_> {
             }
             Expr::OffsetOf(_) => TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(Interner),
             Expr::InlineAsm(asm) => {
-                let mut check_expr_asm_operand = |expr, is_input: bool| {
-                    let ty = self.infer_expr_no_expect(expr, ExprIsRead::Yes);
+                let check_expr_asm_operand = |this: &mut Self, expr, is_input: bool| {
+                    let ty = this.infer_expr_no_expect(expr, ExprIsRead::Yes);
 
                     // If this is an input value, we require its type to be fully resolved
                     // at this point. This allows us to provide helpful coercions which help
@@ -970,18 +970,18 @@ impl InferenceContext<'_> {
                     // allows them to be inferred based on how they are used later in the
                     // function.
                     if is_input {
-                        let ty = self.resolve_ty_shallow(&ty);
+                        let ty = this.resolve_ty_shallow(&ty);
                         match ty.kind(Interner) {
                             TyKind::FnDef(def, parameters) => {
                                 let fnptr_ty = TyKind::Function(
-                                    CallableSig::from_def(self.db, *def, parameters).to_fn_ptr(),
+                                    CallableSig::from_def(this.db, *def, parameters).to_fn_ptr(),
                                 )
                                 .intern(Interner);
-                                _ = self.coerce(Some(expr), &ty, &fnptr_ty, CoerceNever::Yes);
+                                _ = this.coerce(Some(expr), &ty, &fnptr_ty, CoerceNever::Yes);
                             }
                             TyKind::Ref(mutbl, _, base_ty) => {
                                 let ptr_ty = TyKind::Raw(*mutbl, base_ty.clone()).intern(Interner);
-                                _ = self.coerce(Some(expr), &ty, &ptr_ty, CoerceNever::Yes);
+                                _ = this.coerce(Some(expr), &ty, &ptr_ty, CoerceNever::Yes);
                             }
                             _ => {}
                         }
@@ -990,22 +990,28 @@ impl InferenceContext<'_> {
 
                 let diverge = asm.options.contains(AsmOptions::NORETURN);
                 asm.operands.iter().for_each(|(_, operand)| match *operand {
-                    AsmOperand::In { expr, .. } => check_expr_asm_operand(expr, true),
+                    AsmOperand::In { expr, .. } => check_expr_asm_operand(self, expr, true),
                     AsmOperand::Out { expr: Some(expr), .. } | AsmOperand::InOut { expr, .. } => {
-                        check_expr_asm_operand(expr, false)
+                        check_expr_asm_operand(self, expr, false)
                     }
                     AsmOperand::Out { expr: None, .. } => (),
                     AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
-                        check_expr_asm_operand(in_expr, true);
+                        check_expr_asm_operand(self, in_expr, true);
                         if let Some(out_expr) = out_expr {
-                            check_expr_asm_operand(out_expr, false);
+                            check_expr_asm_operand(self, out_expr, false);
                         }
                     }
-                    // FIXME
-                    AsmOperand::Label(_) => (),
-                    // FIXME
-                    AsmOperand::Const(_) => (),
-                    // FIXME
+                    AsmOperand::Label(expr) => {
+                        self.infer_expr(
+                            expr,
+                            &Expectation::HasType(self.result.standard_types.unit.clone()),
+                            ExprIsRead::No,
+                        );
+                    }
+                    AsmOperand::Const(expr) => {
+                        self.infer_expr(expr, &Expectation::None, ExprIsRead::No);
+                    }
+                    // FIXME: `sym` should report for things that are not functions or statics.
                     AsmOperand::Sym(_) => (),
                 });
                 if diverge {
