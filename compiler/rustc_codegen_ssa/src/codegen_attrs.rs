@@ -51,7 +51,7 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
     }
 }
 
-fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
+fn codegen_fn_attrs_provider(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     if cfg!(debug_assertions) {
         let def_kind = tcx.def_kind(did);
         assert!(
@@ -923,6 +923,20 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     Some(AutoDiffAttrs { mode, width, ret_activity, input_activity: arg_activities })
 }
 
+fn codegen_fn_attrs_overridden(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
+    let mut attrs = tcx.codegen_fn_attrs_imp(did).clone();
+    let overrides = tcx.sess.opts.unstable_opts.inline_always_overrides.as_ref().unwrap();
+    if overrides.contains(&tcx.def_path_str(did)) {
+        attrs.inline = InlineAttr::Always;
+    }
+    attrs
+}
+
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { codegen_fn_attrs, should_inherit_track_caller, ..*providers };
+    *providers = Providers {
+        codegen_fn_attrs_imp: codegen_fn_attrs_provider,
+        codegen_fn_attrs_overridden,
+        should_inherit_track_caller,
+        ..*providers
+    };
 }
