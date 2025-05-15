@@ -1151,6 +1151,130 @@ class StdHashMapSyntheticProvider:
         return True
 
 
+def children_of_node(node_ptr: SBValue, height: int):
+    def get_edges(node: SBValue) -> SBValue:
+        # BTreeMap implementation does ad-hoc polymorphism between LeafNode and InternalNode
+        # with raw pointers.
+        # https://github.com/rust-lang/rust/issues/90520#issuecomment-2211103129
+        # Implementing this the same way as the GDB provider with type casting fails
+        # because LLDB does not find the target type for some reason.
+        # Therefore, we manually do the pointer arithmetic to get the edges array
+        # and handle it as raw pointers later instead of MaybeUninit<NonNull<LeafNode<K,V>>>.
+        # We can do that because InternalNode is repr(C).
+        leaf_ptr_type = node.GetType()
+        # Array has a constant length of 2 * B
+        edges_arr_type = leaf_ptr_type.GetArrayType(12)
+        node_addr = node.unsigned
+        leaf_size = leaf_ptr_type.GetPointeeType().size
+        edges_addr = node_addr + leaf_size
+        return node.CreateValueFromAddress("edges", edges_addr, edges_arr_type)
+
+    def unwrap_item_from_array_of_maybe_uninit(arr: SBValue, index: int) -> SBValue:
+        element = arr.GetChildAtIndex(index)
+        return element.GetChildMemberWithName("value").GetChildMemberWithName("value")
+
+    if node_ptr.type.name.startswith("alloc::collections::btree::node::BoxedNode<"):
+        # BACKCOMPAT: rust 1.49
+        node_ptr = node_ptr.GetChildMemberWithName("ptr")
+
+    if not node_ptr.type.IsPointerType():
+        # After the first recursion, this method is called with a raw pointer type directly
+        # instead of NonNull<T>
+        node_ptr = unwrap_unique_or_non_null(node_ptr)
+
+    leaf = node_ptr.Dereference()
+    keys = leaf.GetChildMemberWithName("keys")
+    vals = leaf.GetChildMemberWithName("vals")
+    length = leaf.GetChildMemberWithName("len").unsigned
+    edges = get_edges(node_ptr) if height > 0 else None
+
+    for i in range(length + 1):
+        if height > 0:
+            child_ptr = edges.GetChildAtIndex(i)
+            yield from children_of_node(child_ptr, height - 1)
+        if i < length:
+            # Avoid "Cannot perform pointer math on incomplete type" on zero-sized arrays.
+            key_type_size = keys.type.size
+            val_type_size = vals.type.size
+            key = (
+                unwrap_item_from_array_of_maybe_uninit(keys, i)
+                if key_type_size > 0
+                else node_ptr.EvaluateExpression("()")
+            )
+            val = (
+                unwrap_item_from_array_of_maybe_uninit(vals, i)
+                if val_type_size > 0
+                else node_ptr.EvaluateExpression("()")
+            )
+            yield key, val
+
+
+class StdBTreeMapSyntheticProvider:
+    def __init__(self, valobj: SBValue, _dict: LLDBOpaque, show_values: bool = True):
+        self.valobj = valobj
+        self._dict = _dict
+        self.show_values = show_values
+
+    def num_children(self) -> int:
+        return self.size
+
+    def get_child_index(self, name: str) -> int:
+        index = name.lstrip("[").rstrip("]")
+        if index.isdigit():
+            return int(index)
+        else:
+            return -1
+
+    def get_child_at_index(self, index: int) -> SBValue:
+        key, value = self.items[index]
+        if self.show_values:
+            data = key.GetData()
+            assert data.Append(value.GetData()), "Failed to create key value pair"
+            return self.valobj.CreateValueFromData("[%s]" % index, data, self.pair_type)
+        return self.valobj.CreateValueFromData("[%s]" % index, key.GetData(), key.type)
+
+    def update(self) -> bool:
+        self.size = self.valobj.GetChildMemberWithName("length").unsigned
+        self.items = []
+
+        # Determine the type for the tuple (Key, Value)
+        # - get_template_args helper breaks on console because type is shown as
+        #   `core::marker::PhantomData<(&str, &str) *>`
+        # - Type lookup after get_template_args helper fails with codelldb for unclear reasons
+        # - Native `template_args[0]` from LLDB fails with codelldb and just says `T` if printed
+        #   on console
+        marker = self.valobj.GetChildMemberWithName("_marker")
+        marker_type = marker.GetType()
+        box = marker_type.GetTemplateArgumentType(0)
+        self.pair_type = box.GetPointeeType()
+
+        if self.size == 0:
+            return
+
+        root = self.valobj.GetChildMemberWithName("root")
+
+        if root.type.name.startswith("core::option::Option<"):
+            synthetic_children = root.children[0]
+            current_variant = synthetic_children.GetChildMemberWithName("$variant$")
+            root = current_variant.GetChildMemberWithName(
+                "value"
+            ).GetChildMemberWithName("__0")
+
+        height = root.GetChildMemberWithName("height")
+        node_ptr = root.GetChildMemberWithName("node")
+
+        self.items = [
+            (key, value) for key, value in children_of_node(node_ptr, height.unsigned)
+        ]
+
+        assert len(self.items) == self.size
+
+        return False
+
+    def has_children(self) -> bool:
+        return True
+
+
 def StdRcSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     strong = valobj.GetChildMemberWithName("strong").GetValueAsUnsigned()
     weak = valobj.GetChildMemberWithName("weak").GetValueAsUnsigned()
