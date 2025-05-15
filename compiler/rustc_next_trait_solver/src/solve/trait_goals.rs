@@ -17,7 +17,7 @@ use crate::solve::assembly::{self, AllowInferenceConstraints, AssembleCandidates
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
-    NoSolution, ParamEnvSource,
+    NoSolution, ParamEnvSource, QueryResult,
 };
 
 impl<D, I> assembly::GoalKind<D> for TraitPredicate<I>
@@ -150,13 +150,14 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
         assumption: I::Clause,
-    ) -> Result<(), NoSolution> {
+        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
+    ) -> QueryResult<I> {
         let trait_clause = assumption.as_trait_clause().unwrap();
 
         let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
         ecx.eq(goal.param_env, goal.predicate.trait_ref, assumption_trait_pred.trait_ref)?;
 
-        Ok(())
+        then(ecx)
     }
 
     fn consider_auto_trait_candidate(
