@@ -59,7 +59,6 @@ This API is completely unstable and subject to change.
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -223,10 +222,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             }
             _ => (),
         }
-    });
-
-    tcx.par_hir_body_owners(|item_def_id| {
-        let def_kind = tcx.def_kind(item_def_id);
         // Skip `AnonConst`s because we feed their `type_of`.
         if !matches!(def_kind, DefKind::AnonConst) {
             tcx.ensure_ok().typeck(item_def_id);

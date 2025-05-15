@@ -30,8 +30,6 @@ download-rustc = false
 # Having this set to true disrupts compiler development workflows for people who use `llvm.download-ci-llvm = true`
 # because we don't provide ci-llvm on the `rustc-alt-builds` server. Therefore, it is kept off by default.
 assertions = false
-# Enable warnings during the LLVM compilation (when LLVM is changed, causing a compilation)
-enable-warnings = true
 # Will download LLVM from CI if available on your platform.
 # If you intend to modify `src/llvm-project`, use `"if-unchanged"` or `false` instead.
 download-ci-llvm = true

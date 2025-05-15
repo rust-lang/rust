@@ -907,7 +907,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
                 feed.output_filenames(Arc::new(outputs));
 
                 let res = f(tcx);
-                // FIXME maybe run finish even when a fatal error occured? or at least tcx.alloc_self_profile_query_strings()?
+                // FIXME maybe run finish even when a fatal error occurred? or at least tcx.alloc_self_profile_query_strings()?
                 tcx.finish();
                 res
             },

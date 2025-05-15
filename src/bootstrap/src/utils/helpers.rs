@@ -329,7 +329,7 @@ pub fn start_process(cmd: &mut Command) -> impl FnOnce() -> String + use<> {
         Err(e) => fail(&format!("failed to execute command: {cmd:?}\nERROR: {e}")),
     };
 
-    let command = format!("{:?}", cmd);
+    let command = format!("{cmd:?}");
 
     move || {
         let output = child.wait_with_output().unwrap();
@@ -540,7 +540,7 @@ where
     use std::fmt::Write;
 
     input.as_ref().iter().fold(String::with_capacity(input.as_ref().len() * 2), |mut acc, &byte| {
-        write!(&mut acc, "{:02x}", byte).expect("Failed to write byte to the hex String.");
+        write!(&mut acc, "{byte:02x}").expect("Failed to write byte to the hex String.");
         acc
     })
 }

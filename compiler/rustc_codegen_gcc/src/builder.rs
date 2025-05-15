@@ -2454,7 +2454,6 @@ impl ToGccOrdering for AtomicOrdering {
         use MemOrdering::*;
 
         let ordering = match self {
-            AtomicOrdering::Unordered => __ATOMIC_RELAXED,
             AtomicOrdering::Relaxed => __ATOMIC_RELAXED, // TODO(antoyo): check if that's the same.
             AtomicOrdering::Acquire => __ATOMIC_ACQUIRE,
             AtomicOrdering::Release => __ATOMIC_RELEASE,

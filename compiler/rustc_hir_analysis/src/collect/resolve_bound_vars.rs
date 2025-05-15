@@ -14,7 +14,7 @@ use rustc_ast::visit::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::definitions::DisambiguatorState;
+use rustc_hir::definitions::{DefPathData, DisambiguatorState};
 use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
 use rustc_hir::{
     self as hir, AmbigArg, GenericArg, GenericParam, GenericParamKind, HirId, LifetimeKind, Node,
@@ -1470,14 +1470,14 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             let mut captures = captures.borrow_mut();
             let remapped = *captures.entry(lifetime).or_insert_with(|| {
                 // `opaque_def_id` is unique to the `BoundVarContext` pass which is executed once
-                // per `resolve_bound_vars` query. This is the only location that creates nested
-                // lifetime inside a opaque type. `<opaque_def_id>::LifetimeNs(..)` is thus unique
+                // per `resolve_bound_vars` query. This is the only location that creates
+                // `OpaqueLifetime` paths. `<opaque_def_id>::OpaqueLifetime(..)` is thus unique
                 // to this query and duplicates within the query are handled by `self.disambiguator`.
                 let feed = self.tcx.create_def(
                     opaque_def_id,
-                    Some(ident.name),
-                    DefKind::LifetimeParam,
                     None,
+                    DefKind::LifetimeParam,
+                    Some(DefPathData::OpaqueLifetime(ident.name)),
                     &mut self.disambiguator,
                 );
                 feed.def_span(ident.span);

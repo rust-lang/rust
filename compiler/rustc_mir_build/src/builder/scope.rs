@@ -1485,7 +1485,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 ///   panic occurred (a subset of the drops in `scope`, since we sometimes elide StorageDead and other
 ///   instructions on unwinding)
 /// * `dropline_to`, describes the drops that would occur at this point in the code if a
-///    coroutine drop occured.
+///    coroutine drop occurred.
 /// * `storage_dead_on_unwind`, if true, then we should emit `StorageDead` even when unwinding
 /// * `arg_count`, number of MIR local variables corresponding to fn arguments (used to assert that we don't drop those)
 fn build_scope_drops<'tcx, F>(

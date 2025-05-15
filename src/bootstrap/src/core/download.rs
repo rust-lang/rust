@@ -57,7 +57,7 @@ impl Config {
         if self.dry_run() {
             return;
         }
-        fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {:?}", f));
+        fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {f:?}"));
     }
 
     /// Create a temporary directory in `out` and return its path.
@@ -112,7 +112,7 @@ impl Config {
             // The latter one does not exist on NixOS when using tmpfs as root.
             let is_nixos = match File::open("/etc/os-release") {
                 Err(e) if e.kind() == ErrorKind::NotFound => false,
-                Err(e) => panic!("failed to access /etc/os-release: {}", e),
+                Err(e) => panic!("failed to access /etc/os-release: {e}"),
                 Ok(os_release) => BufReader::new(os_release).lines().any(|l| {
                     let l = l.expect("reading /etc/os-release");
                     matches!(l.trim(), "ID=nixos" | "ID='nixos'" | "ID=\"nixos\"")
@@ -852,7 +852,8 @@ download-rustc = false
             t!(fs::create_dir_all(&gcc_cache));
         }
         let base = &self.stage0_metadata.config.artifacts_server;
-        let filename = format!("gcc-nightly-{}.tar.xz", self.build.triple);
+        let version = self.artifact_version_part(gcc_sha);
+        let filename = format!("gcc-{version}-{}.tar.xz", self.build.triple);
         let tarball = gcc_cache.join(&filename);
         if !tarball.exists() {
             let help_on_error = "ERROR: failed to download gcc from ci

@@ -496,12 +496,21 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
 
         // Try looking for methods and associated items.
         // NB: `path_root` could be empty when resolving in the root namespace (e.g. `::std`).
-        let (path_root, item_str) = path_str.rsplit_once("::").ok_or_else(|| {
-            // If there's no `::`, it's not an associated item.
-            // So we can be sure that `rustc_resolve` was accurate when it said it wasn't resolved.
-            debug!("found no `::`, assuming {path_str} was correctly not in scope");
-            UnresolvedPath { item_id, module_id, partial_res: None, unresolved: path_str.into() }
-        })?;
+        let (path_root, item_str) = match path_str.rsplit_once("::") {
+            Some(res @ (_path_root, item_str)) if !item_str.is_empty() => res,
+            _ => {
+                // If there's no `::`, or the `::` is at the end (e.g. `String::`) it's not an
+                // associated item. So we can be sure that `rustc_resolve` was accurate when it
+                // said it wasn't resolved.
+                debug!("`::` missing or at end, assuming {path_str} was not in scope");
+                return Err(UnresolvedPath {
+                    item_id,
+                    module_id,
+                    partial_res: None,
+                    unresolved: path_str.into(),
+                });
+            }
+        };
         let item_name = Symbol::intern(item_str);
 
         // FIXME(#83862): this arbitrarily gives precedence to primitives over modules to support

@@ -962,15 +962,7 @@ impl f64 {
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
     pub const fn maximum(self, other: f64) -> f64 {
-        if self > other {
-            self
-        } else if other > self {
-            other
-        } else if self == other {
-            if self.is_sign_positive() && other.is_sign_negative() { self } else { other }
-        } else {
-            self + other
-        }
+        intrinsics::maximumf64(self, other)
     }
 
     /// Returns the minimum of the two numbers, propagating NaN.
@@ -997,16 +989,7 @@ impl f64 {
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
     pub const fn minimum(self, other: f64) -> f64 {
-        if self < other {
-            self
-        } else if other < self {
-            other
-        } else if self == other {
-            if self.is_sign_negative() && other.is_sign_positive() { self } else { other }
-        } else {
-            // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
-            self + other
-        }
+        intrinsics::minimumf64(self, other)
     }
 
     /// Calculates the midpoint (average) between `self` and `rhs`.
@@ -1100,7 +1083,7 @@ impl f64 {
                   without modifying the original"]
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
-    #[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
+    #[allow(unnecessary_transmutes)]
     #[inline]
     pub const fn to_bits(self) -> u64 {
         // SAFETY: `u64` is a plain old datatype so we can always transmute to it.
@@ -1147,7 +1130,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
-    #[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
+    #[allow(unnecessary_transmutes)]
     pub const fn from_bits(v: u64) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         // SAFETY: `u64` is a plain old datatype so we can always transmute from it.

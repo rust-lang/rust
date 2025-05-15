@@ -2,7 +2,6 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -219,7 +218,7 @@ pub struct CrateInfo {
     pub target_cpu: String,
     pub target_features: Vec<String>,
     pub crate_types: Vec<CrateType>,
-    pub exported_symbols: UnordMap<CrateType, Vec<String>>,
+    pub exported_symbols: UnordMap<CrateType, Vec<(String, SymbolExportKind)>>,
     pub linked_symbols: FxIndexMap<CrateType, Vec<(String, SymbolExportKind)>>,
     pub local_crate_name: Symbol,
     pub compiler_builtins: Option<CrateNum>,

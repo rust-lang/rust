@@ -14,6 +14,16 @@ pub struct OpaqueTypeStorage<'tcx> {
     duplicate_entries: Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)>,
 }
 
+/// The number of entries in the opaque type storage at a given point.
+///
+/// Used to check that we haven't added any new opaque types after checking
+/// the opaque types currently in the storage.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OpaqueTypeStorageEntries {
+    opaque_types: usize,
+    duplicate_entries: usize,
+}
+
 impl<'tcx> OpaqueTypeStorage<'tcx> {
     #[instrument(level = "debug")]
     pub(crate) fn remove(
@@ -47,6 +57,24 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
     ) -> impl Iterator<Item = (OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
         let OpaqueTypeStorage { opaque_types, duplicate_entries } = self;
         std::mem::take(opaque_types).into_iter().chain(std::mem::take(duplicate_entries))
+    }
+
+    pub fn num_entries(&self) -> OpaqueTypeStorageEntries {
+        OpaqueTypeStorageEntries {
+            opaque_types: self.opaque_types.len(),
+            duplicate_entries: self.duplicate_entries.len(),
+        }
+    }
+
+    pub fn opaque_types_added_since(
+        &self,
+        prev_entries: OpaqueTypeStorageEntries,
+    ) -> impl Iterator<Item = (OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
+        self.opaque_types
+            .iter()
+            .skip(prev_entries.opaque_types)
+            .map(|(k, v)| (*k, *v))
+            .chain(self.duplicate_entries.iter().skip(prev_entries.duplicate_entries).copied())
     }
 
     /// Only returns the opaque types from the lookup table. These are used

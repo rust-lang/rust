@@ -382,7 +382,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             if let Some(term_hack) = normalizes_to_term_hack {
                 infcx
                     .probe(|_| term_hack.constrain(infcx, DUMMY_SP, uncanonicalized_goal.param_env))
-                    .map(|certainty| ok.value.certainty.unify_with(certainty))
+                    .map(|certainty| ok.value.certainty.and(certainty))
             } else {
                 Ok(ok.value.certainty)
             }

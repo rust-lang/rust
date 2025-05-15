@@ -387,7 +387,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                                 [sym::arm, sym::a32 | sym::t32]
                                     if !tcx.sess.target.has_thumb_interworking =>
                                 {
-                                    tcx.dcx().emit_err(errors::UnsuportedInstructionSet {
+                                    tcx.dcx().emit_err(errors::UnsupportedInstructionSet {
                                         span: attr.span(),
                                     });
                                     None

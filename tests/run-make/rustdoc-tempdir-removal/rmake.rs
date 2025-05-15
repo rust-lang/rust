@@ -1,14 +1,22 @@
 // This test ensures that no temporary folder is "left behind" when doctests fail for any reason.
 
-//@ only-linux
+//@ ignore-cross-compile
 
 use std::path::Path;
 
 use run_make_support::{path, rfs, rustdoc};
 
 fn run_doctest_and_check_tmpdir(tmp_dir: &Path, doctest: &str, edition: &str) {
-    let output =
-        rustdoc().input(doctest).env("TMPDIR", tmp_dir).arg("--test").edition(edition).run_fail();
+    let mut runner = rustdoc();
+    runner.input(doctest).arg("--test").edition(edition);
+    let output = if cfg!(unix) {
+        runner.env("TMPDIR", tmp_dir)
+    } else if cfg!(windows) {
+        runner.env("TEMP", tmp_dir).env("TMP", tmp_dir)
+    } else {
+        panic!("unsupported OS")
+    }
+    .run_fail();
 
     output.assert_exit_code(101).assert_stdout_contains(
         "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out",
