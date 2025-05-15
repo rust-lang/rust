@@ -73,7 +73,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         )
     }
 
-    /// Convenience function to *deeply* normalize during wfcheck. In the old solver,
+    /// Convenience function to *deeply* gormalize during wfcheck. In the old solver,
     /// this just dispatches to [`WfCheckingCtxt::normalize`], but in the new solver
     /// this calls `deeply_normalize` and reports errors if they are encountered.
     ///
@@ -1910,12 +1910,6 @@ pub(super) fn check_variances_for_type_defn<'tcx>(tcx: TyCtxt<'tcx>, def_id: Loc
         DefKind::Enum | DefKind::Struct | DefKind::Union => {
             // Ok
         }
-        DefKind::TyAlias => {
-            assert!(
-                tcx.type_alias_is_lazy(def_id),
-                "should not be computing variance of non-free type alias"
-            );
-        }
         kind => span_bug!(tcx.def_span(def_id), "cannot compute the variances of {kind:?}"),
     }
 
@@ -2062,7 +2056,6 @@ fn report_bivariance<'tcx>(
                 errors::UnusedGenericParameterHelp::AdtNoPhantomData { param_name }
             }
         }
-        ItemKind::TyAlias(..) => errors::UnusedGenericParameterHelp::TyAlias { param_name },
         item_kind => bug!("report_bivariance: unexpected item kind: {item_kind:?}"),
     };
 
@@ -2135,9 +2128,6 @@ impl<'tcx> IsProbablyCyclical<'tcx> {
                     self.tcx.type_of(field.did).instantiate_identity().visit_with(self)
                 })
             }
-            DefKind::TyAlias if self.tcx.type_alias_is_lazy(def_id) => {
-                self.tcx.type_of(def_id).instantiate_identity().visit_with(self)
-            }
             _ => ControlFlow::Continue(()),
         }
     }
@@ -2147,17 +2137,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsProbablyCyclical<'tcx> {
     type Result = ControlFlow<(), ()>;
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<(), ()> {
-        let def_id = match ty.kind() {
-            ty::Adt(adt_def, _) => Some(adt_def.did()),
-            ty::Alias(ty::Free, alias_ty) => Some(alias_ty.def_id),
-            _ => None,
-        };
-        if let Some(def_id) = def_id {
-            if def_id == self.item_def_id {
+        if let Some(adt_def) = ty.ty_adt_def() {
+            if adt_def.did() == self.item_def_id {
                 return ControlFlow::Break(());
             }
-            if self.seen.insert(def_id) {
-                self.visit_def(def_id)?;
+            if self.seen.insert(adt_def.did()) {
+                self.visit_def(adt_def.did())?;
             }
         }
         ty.super_visit_with(self)

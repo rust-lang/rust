@@ -905,7 +905,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
-            check_type_alias_type_params_are_used(tcx, def_id);
             if tcx.type_alias_is_lazy(def_id) {
                 res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
                     let ty = tcx.type_of(def_id).instantiate_identity();
@@ -919,7 +918,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     check_where_clauses(wfcx, def_id);
                     Ok(())
                 }));
-                check_variances_for_type_defn(tcx, def_id);
+            } else {
+                check_type_alias_type_params_are_used(tcx, def_id);
             }
         }
         DefKind::ForeignMod => {
@@ -1763,12 +1763,6 @@ fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>)
 }
 
 fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
-    if tcx.type_alias_is_lazy(def_id) {
-        // Since we compute the variances for lazy type aliases and already reject bivariant
-        // parameters as unused, we can and should skip this check for lazy type aliases.
-        return;
-    }
-
     let generics = tcx.generics_of(def_id);
     if generics.own_counts().types == 0 {
         return;
