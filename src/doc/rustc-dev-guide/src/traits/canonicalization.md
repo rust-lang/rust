@@ -147,7 +147,7 @@ when first instantiating our query. To refresh your memory, we had a query
 for<T,L,T> { ?0: Foo<'?1, ?2> }
 ```
 
-for which we made a substutition S:
+for which we made a substitution S:
 
 ```text
 S = [?A, '?B, ?C]
