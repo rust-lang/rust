@@ -86,28 +86,29 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
                     return None;
                 }
             };
-            match res {
-                PathResolutionPerNs { type_ns: Some(type_ns), .. } if u.star_token().is_some() => {
-                    // Check if any of the children of this module are used
-                    let def_mod = match type_ns {
-                        PathResolution::Def(ModuleDef::Module(module)) => module,
-                        _ => return None,
-                    };
 
-                    if !def_mod
-                        .scope(ctx.db(), Some(use_module))
-                        .iter()
-                        .filter_map(|(_, x)| match x {
-                            hir::ScopeDef::ModuleDef(d) => Some(Definition::from(*d)),
-                            _ => None,
-                        })
-                        .any(|d| used_once_in_scope(ctx, d, u.rename(), scope))
-                    {
-                        Some(u)
-                    } else {
-                        None
-                    }
+            if u.star_token().is_some() {
+                // Check if any of the children of this module are used
+                let def_mod = match res.type_ns {
+                    Some(PathResolution::Def(ModuleDef::Module(module))) => module,
+                    _ => return None,
+                };
+
+                if !def_mod
+                    .scope(ctx.db(), Some(use_module))
+                    .iter()
+                    .filter_map(|(_, x)| match x {
+                        hir::ScopeDef::ModuleDef(d) => Some(Definition::from(*d)),
+                        _ => None,
+                    })
+                    .any(|d| used_once_in_scope(ctx, d, u.rename(), scope))
+                {
+                    return Some(u);
+                } else {
+                    return None;
                 }
+            }
+            match res {
                 PathResolutionPerNs {
                     type_ns: Some(PathResolution::Def(ModuleDef::Trait(ref t))),
                     value_ns,
