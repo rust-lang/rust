@@ -1163,7 +1163,7 @@ impl<'db> SourceAnalyzer<'db> {
                 Some(&store),
                 false,
             )
-            .take_path()?;
+            .any()?;
             let subst = (|| {
                 let parent = parent()?;
                 let ty = if let Some(expr) = ast::Expr::cast(parent.clone()) {
@@ -1556,7 +1556,7 @@ pub(crate) fn resolve_hir_path(
     hygiene: HygieneId,
     store: Option<&ExpressionStore>,
 ) -> Option<PathResolution> {
-    resolve_hir_path_(db, resolver, path, false, hygiene, store, false).take_path()
+    resolve_hir_path_(db, resolver, path, false, hygiene, store, false).any()
 }
 
 #[inline]
@@ -1677,7 +1677,7 @@ fn resolve_hir_path_(
                 .unwrap_or_else(|| PathResolutionPerNs::new(None, values(), None))
         };
 
-        if res.take_path().is_some() {
+        if res.any().is_some() {
             res
         } else if let Some(type_ns) = items() {
             PathResolutionPerNs::new(Some(type_ns), None, None)

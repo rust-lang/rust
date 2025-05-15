@@ -81,7 +81,7 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
 
             // Get the actual definition associated with this use item.
             let res = match ctx.sema.resolve_path_per_ns(&path) {
-                Some(x) if x.take_path().is_some() => x,
+                Some(x) if x.any().is_some() => x,
                 Some(_) | None => {
                     return None;
                 }

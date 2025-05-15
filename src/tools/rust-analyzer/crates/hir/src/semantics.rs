@@ -118,7 +118,7 @@ impl PathResolutionPerNs {
     ) -> Self {
         PathResolutionPerNs { type_ns, value_ns, macro_ns }
     }
-    pub fn take_path(&self) -> Option<PathResolution> {
+    pub fn any(&self) -> Option<PathResolution> {
         self.type_ns.or(self.value_ns).or(self.macro_ns)
     }
 }
