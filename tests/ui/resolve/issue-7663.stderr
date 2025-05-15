@@ -1,0 +1,38 @@
+error[E0252]: the name `P` is defined multiple times
+  --> $DIR/issue-7663.rs:33:13
+   |
+LL |         use test2::foo::P;
+   |             ------------- previous import of the type `P` here
+LL |         use test2::bar::P;
+   |             ^^^^^^^^^^^^^ `P` reimported here
+   |
+   = note: `P` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL |         use test2::bar::P as OtherP;
+   |                           +++++++++
+
+error[E0659]: `P` is ambiguous
+  --> $DIR/issue-7663.rs:17:21
+   |
+LL |             let _ = P;
+   |                     ^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `P` could refer to the unit struct imported here
+  --> $DIR/issue-7663.rs:13:13
+   |
+LL |         use test1::foo::*;
+   |             ^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `P` to disambiguate
+note: `P` could also refer to the unit struct imported here
+  --> $DIR/issue-7663.rs:14:13
+   |
+LL |         use test1::bar::*;
+   |             ^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `P` to disambiguate
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0252, E0659.
+For more information about an error, try `rustc --explain E0252`.
