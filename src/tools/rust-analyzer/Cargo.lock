@@ -80,6 +80,7 @@ version = "0.0.0"
 dependencies = [
  "cfg",
  "dashmap",
+ "indexmap",
  "intern",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "query-group-macro",
