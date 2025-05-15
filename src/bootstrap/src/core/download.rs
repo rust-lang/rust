@@ -446,7 +446,7 @@ impl Config {
 
     #[cfg(test)]
     pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
-        None
+        Some(PathBuf::new())
     }
 
     /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
@@ -454,6 +454,10 @@ impl Config {
     #[cfg(not(test))]
     pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
         use build_helper::stage0_parser::VersionMetadata;
+
+        if self.dry_run() {
+            return Some(PathBuf::new());
+        }
 
         let VersionMetadata { date, version } = self.stage0_metadata.rustfmt.as_ref()?;
         let channel = format!("{version}-{date}");
