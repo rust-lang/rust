@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{find_assert_eq_args, root_macro_call_first_node};
+use clippy_utils::sym;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BorrowKind, Expr, ExprKind, MatchSource, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
@@ -42,10 +43,9 @@ impl<'tcx> LateLintPass<'tcx> for DebugAssertWithMutCall {
         let Some(macro_call) = root_macro_call_first_node(cx, e) else {
             return;
         };
-        let macro_name = cx.tcx.item_name(macro_call.def_id);
         if !matches!(
-            macro_name.as_str(),
-            "debug_assert" | "debug_assert_eq" | "debug_assert_ne"
+            cx.tcx.get_diagnostic_name(macro_call.def_id),
+            Some(sym::debug_assert_macro | sym::debug_assert_eq_macro | sym::debug_assert_ne_macro)
         ) {
             return;
         }
@@ -60,7 +60,10 @@ impl<'tcx> LateLintPass<'tcx> for DebugAssertWithMutCall {
                     cx,
                     DEBUG_ASSERT_WITH_MUT_CALL,
                     span,
-                    format!("do not call a function with mutable arguments inside of `{macro_name}!`"),
+                    format!(
+                        "do not call a function with mutable arguments inside of `{}!`",
+                        cx.tcx.item_name(macro_call.def_id)
+                    ),
                 );
             }
         }

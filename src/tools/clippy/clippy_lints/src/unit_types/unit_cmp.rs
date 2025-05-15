@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{find_assert_eq_args, root_macro_call_first_node};
+use clippy_utils::sym;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 
@@ -7,11 +8,12 @@ use super::UNIT_CMP;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if expr.span.from_expansion() {
-        if let Some(macro_call) = root_macro_call_first_node(cx, expr) {
-            let macro_name = cx.tcx.item_name(macro_call.def_id);
-            let result = match macro_name.as_str() {
-                "assert_eq" | "debug_assert_eq" => "succeed",
-                "assert_ne" | "debug_assert_ne" => "fail",
+        if let Some(macro_call) = root_macro_call_first_node(cx, expr)
+            && let Some(diag_name) = cx.tcx.get_diagnostic_name(macro_call.def_id)
+        {
+            let result = match diag_name {
+                sym::assert_eq_macro | sym::debug_assert_eq_macro => "succeed",
+                sym::assert_ne_macro | sym::debug_assert_ne_macro => "fail",
                 _ => return,
             };
             let Some((left, _, _)) = find_assert_eq_args(cx, expr, macro_call.expn) else {
@@ -24,7 +26,10 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 cx,
                 UNIT_CMP,
                 macro_call.span,
-                format!("`{macro_name}` of unit values detected. This will always {result}"),
+                format!(
+                    "`{}` of unit values detected. This will always {result}",
+                    cx.tcx.item_name(macro_call.def_id)
+                ),
             );
         }
         return;

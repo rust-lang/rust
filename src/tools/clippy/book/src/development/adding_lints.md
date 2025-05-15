@@ -416,7 +416,7 @@ In our example, `is_foo_fn` looks like:
 
 fn is_foo_fn(fn_kind: FnKind<'_>) -> bool {
     match fn_kind {
-        FnKind::Fn(_, ident, ..) => {
+        FnKind::Fn(_, _, Fn { ident, .. }) => {
             // check if `fn` name is `foo`
             ident.name.as_str() == "foo"
         }

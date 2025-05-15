@@ -1,11 +1,11 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{IntoSpan as _, SpanRangeExt, snippet, snippet_block, snippet_block_with_applicability};
 use rustc_ast::BinOpKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -78,14 +78,14 @@ declare_clippy_lint! {
 }
 
 pub struct CollapsibleIf {
-    let_chains_enabled: bool,
+    msrv: Msrv,
     lint_commented_code: bool,
 }
 
 impl CollapsibleIf {
-    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            let_chains_enabled: tcx.features().let_chains(),
+            msrv: conf.msrv,
             lint_commented_code: conf.lint_commented_code,
         }
     }
@@ -127,7 +127,7 @@ impl CollapsibleIf {
         if let Some(inner) = expr_block(then)
             && cx.tcx.hir_attrs(inner.hir_id).is_empty()
             && let ExprKind::If(check_inner, _, None) = &inner.kind
-            && self.eligible_condition(check_inner)
+            && self.eligible_condition(cx, check_inner)
             && let ctxt = expr.span.ctxt()
             && inner.span.ctxt() == ctxt
             && (self.lint_commented_code || !block_starts_with_comment(cx, then))
@@ -163,8 +163,9 @@ impl CollapsibleIf {
         }
     }
 
-    pub fn eligible_condition(&self, cond: &Expr<'_>) -> bool {
-        self.let_chains_enabled || !matches!(cond.kind, ExprKind::Let(..))
+    fn eligible_condition(&self, cx: &LateContext<'_>, cond: &Expr<'_>) -> bool {
+        !matches!(cond.kind, ExprKind::Let(..))
+            || (cx.tcx.sess.edition().at_least_rust_2024() && self.msrv.meets(cx, msrvs::LET_CHAINS))
     }
 }
 
@@ -180,7 +181,7 @@ impl LateLintPass<'_> for CollapsibleIf {
             {
                 Self::check_collapsible_else_if(cx, then.span, else_);
             } else if else_.is_none()
-                && self.eligible_condition(cond)
+                && self.eligible_condition(cx, cond)
                 && let ExprKind::Block(then, None) = then.kind
             {
                 self.check_collapsible_if_if(cx, expr, cond, then);
@@ -202,13 +203,12 @@ fn block_starts_with_comment(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
 fn expr_block<'tcx>(block: &Block<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match block.stmts {
         [] => block.expr,
-        [stmt] => {
-            if let StmtKind::Semi(expr) = stmt.kind {
-                Some(expr)
-            } else {
-                None
-            }
-        },
+        [
+            Stmt {
+                kind: StmtKind::Semi(expr),
+                ..
+            },
+        ] if block.expr.is_none() => Some(expr),
         _ => None,
     }
 }

@@ -17,12 +17,10 @@ if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::Fo
     && block1.stmts.len() == 1
     && let StmtKind::Semi(e1) = block1.stmts[0].kind
     && let ExprKind::Call(func, args) = e1.kind
-    && let ExprKind::Path(ref qpath1) = func.kind
-    && match_qpath(qpath1, &["$crate", "io", "_print"])
+    && paths::STD_IO_STDIO__PRINT.matches_path(cx, func) // Add the path to `clippy_utils::paths` if needed
     && args.len() == 1
     && let ExprKind::Call(func1, args1) = args[0].kind
-    && let ExprKind::Path(ref qpath2) = func1.kind
-    && match_qpath(qpath2, &["format_arguments", "new_v1"])
+    && paths::CORE_FMT_RT_NEW_V1.matches_path(cx, func1) // Add the path to `clippy_utils::paths` if needed
     && args1.len() == 2
     && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = args1[0].kind
     && let ExprKind::Array(elements) = inner.kind
@@ -37,12 +35,9 @@ if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::Fo
     && let ExprKind::Array(elements1) = inner1.kind
     && elements1.len() == 1
     && let ExprKind::Call(func2, args2) = elements1[0].kind
-    && let ExprKind::Path(ref qpath3) = func2.kind
-    && match_qpath(qpath3, &["format_argument", "new_display"])
+    && paths::CORE_FMT_RT_ARGUMENT_NEW_DISPLAY.matches_path(cx, func2) // Add the path to `clippy_utils::paths` if needed
     && args2.len() == 1
     && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner2) = args2[0].kind
-    && let ExprKind::Path(ref qpath4) = inner2.kind
-    && match_qpath(qpath4, &["i"])
     && block1.expr.is_none()
     && block.expr.is_none()
 {
