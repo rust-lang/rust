@@ -23,12 +23,12 @@ use crate::common::{
     output_base_dir, output_base_name, output_testname_unique,
 };
 use crate::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
-use crate::errors::{Error, ErrorKind, load_errors};
+use crate::errors::{Error, ErrorKind, ErrorMessage, load_errors};
 use crate::header::TestProps;
+use crate::json::DiagnosticCode;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::util::{Utf8PathBufExt, add_dylib_path, logv, static_regex};
 use crate::{ColorConfig, json, stamp_file_path};
-
 mod debugger;
 
 // Helper modules that implement test running logic for each test suite.
@@ -701,14 +701,17 @@ impl<'test> TestCx<'test> {
         // Parse the JSON output from the compiler and extract out the messages.
         let actual_errors = json::parse_output(&diagnostic_file_name, &self.get_output(proc_res))
             .into_iter()
-            .map(|e| Error { msg: self.normalize_output(&e.msg, &[]), ..e });
+            .map(|mut e| {
+                e.msg.text = self.normalize_output(&e.msg.text, &[]);
+                e
+            });
 
         let mut unexpected = Vec::new();
         let mut found = vec![false; expected_errors.len()];
         for actual_error in actual_errors {
             for pattern in &self.props.error_patterns {
                 let pattern = pattern.trim();
-                if actual_error.msg.contains(pattern) {
+                if actual_error.msg.text.to_string().contains(pattern) {
                     let q = if actual_error.line_num.is_none() { "?" } else { "" };
                     self.fatal(&format!(
                         "error pattern '{pattern}' is found in structured \
@@ -723,7 +726,7 @@ impl<'test> TestCx<'test> {
                     !found[index]
                         && actual_error.line_num == expected_error.line_num
                         && actual_error.kind == expected_error.kind
-                        && actual_error.msg.contains(&expected_error.msg)
+                        && actual_error.msg.to_string().contains(&expected_error.msg.text)
                 });
 
             match opt_index {
@@ -779,6 +782,10 @@ impl<'test> TestCx<'test> {
                     println!("{}", error.render_for_expected());
                 }
                 println!("{}", "---".green());
+
+                if self.config.try_annotate {
+                    self.try_annotate(unexpected, file_name);
+                }
             }
             if !not_found.is_empty() {
                 println!("{}", "--- not found errors (from test file) ---".red());
@@ -2807,6 +2814,97 @@ impl<'test> TestCx<'test> {
         if self.config.verbose {
             println!("init_incremental_test: incremental_dir={incremental_dir}");
         }
+    }
+
+    fn try_annotate(&self, unexpected: Vec<Error>, file_name: String) {
+        use std::io::{BufRead, Seek, Write};
+
+        let mut file = std::fs::OpenOptions::new().write(true).read(true).open(&file_name).unwrap();
+        let br = BufReader::new(&file);
+        let mut lines: Vec<_> = br.lines().map(|line| (line.unwrap(), Vec::new())).collect();
+        for error in &unexpected {
+            let Some(line_no) = error.line_num else { continue };
+            let target_line = &mut lines[line_no - 1];
+            let text = error.msg.clone();
+            let annotation = (error.kind, text);
+            target_line.1.push(annotation);
+        }
+
+        file.set_len(0).unwrap();
+        file.rewind().unwrap();
+
+        let mut idx = 0;
+        while let Some((line, annots)) = lines.get(idx) {
+            write!(file, "{line}").unwrap();
+
+            if let [first, rest @ ..] = &**annots {
+                // where match ergonomics?
+                let mut rest = rest;
+
+                // Reduce instability by trying to put the first annotation on the same line.
+                // We care about this because error messages can mention the line number by,
+                // for example, naming opaque types like `{closure@file.rs:11:22}`. If they
+                // exist in a test then creating new lines before them invalidates those line numbers.
+                if line.contains("//~") {
+                    // The line already has an annotation.
+                    rest = &**annots
+                } else {
+                    let (kind, ErrorMessage { text, code, .. }) = first;
+
+                    if !(line.contains(&kind.to_string()) && line.contains(&*text)) {
+                        // In the case of revisions, where a test is ran multiple times,
+                        // we do not want to add the same annotation multiple times!
+                        write!(file, " //~{kind} {text}").unwrap();
+                        if let Some(DiagnosticCode { code }) = code {
+                            write!(file, " [{code}]").unwrap();
+                        }
+                    }
+                    writeln!(file).unwrap();
+                }
+
+                // Is the next line an error annotation? If so then
+                // we cannot push the annotation there because that will
+                // displace the one that is already there.
+                //
+                // Forward until we're clear of existing annotations.
+                let mut carets = 1;
+                while let Some((maybe_annot, expect_empty)) = lines.get(idx + 1) {
+                    if maybe_annot.trim().starts_with("//~") {
+                        assert!(expect_empty.is_empty(), "did not expect an annotation");
+                        writeln!(file, "{maybe_annot}").unwrap();
+                        carets += 1;
+                        idx += 1;
+                    } else {
+                        break;
+                    }
+                }
+
+                // What is the previous line's offset?
+                // Let's give the next annotation that offset.
+                let offset = line.split_terminator(|c: char| !c.is_whitespace()).next();
+
+                for (kind, ErrorMessage { text, code, .. }) in rest {
+                    // In the case of revisions, where a test is ran multiple times,
+                    // we do not want to add the same annotation multiple times!
+                    if !(line.contains(&kind.to_string()) && line.contains(&*text)) {
+                        if let Some(w) = offset {
+                            write!(file, "{w}").unwrap();
+                        }
+                        write!(file, "//~{:^>carets$}{kind} {text}", "").unwrap();
+                        if let Some(DiagnosticCode { code }) = code {
+                            write!(file, " [{code}]").unwrap();
+                        }
+                    }
+                    writeln!(file).unwrap();
+                    carets += 1;
+                }
+            } else {
+                writeln!(file).unwrap();
+            }
+
+            idx += 1
+        }
+        file.flush().unwrap();
     }
 }
 

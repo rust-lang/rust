@@ -8,6 +8,9 @@ use camino::Utf8Path;
 use regex::Regex;
 use tracing::*;
 
+use crate::common::Location;
+use crate::json::DiagnosticCode;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ErrorKind {
     Help,
@@ -62,12 +65,44 @@ impl fmt::Display for ErrorKind {
     }
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ErrorMessage {
+    pub span: Option<Location>,
+    pub code: Option<DiagnosticCode>,
+    pub text: String,
+}
+
+impl ErrorMessage {
+    pub fn from_only_text(text: String) -> Self {
+        ErrorMessage { span: None, code: None, text }
+    }
+}
+
+impl fmt::Display for ErrorMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { span, code, text } = self;
+        match span {
+            Some(Location { line_start, column_start, line_end, column_end }) => {
+                write!(f, "{line_start}:{column_start}: {line_end}:{column_end}")?
+            }
+            None => write!(f, "?:?: ?:?")?,
+        }
+        match &code {
+            Some(code) => write!(f, ": {text} [{}]", code.code)?,
+            None => write!(f, ": {text}")?,
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub struct Error {
     pub line_num: Option<usize>,
     /// What kind of message we expect (e.g., warning, error, suggestion).
     pub kind: ErrorKind,
-    pub msg: String,
+    pub msg: ErrorMessage,
     /// For some `Error`s, like secondary lines of multi-line diagnostics, line annotations
     /// are not mandatory, even if they would otherwise be mandatory for primary errors.
     /// Only makes sense for "actual" errors, not for "expected" errors.
@@ -77,7 +112,12 @@ pub struct Error {
 impl Error {
     pub fn render_for_expected(&self) -> String {
         use colored::Colorize;
-        format!("{: <10}line {: >3}: {}", self.kind, self.line_num_str(), self.msg.cyan())
+        format!(
+            "{: <10}line {: >3}: {}",
+            self.kind,
+            self.line_num_str(),
+            self.msg.to_string().cyan()
+        )
     }
 
     pub fn line_num_str(&self) -> String {
@@ -191,7 +231,10 @@ fn parse_expected(
         kind,
         msg
     );
-    Some((follow_prev, Error { line_num, kind, msg, require_annotation: true }))
+    Some((
+        follow_prev,
+        Error { line_num, kind, msg: ErrorMessage::from_only_text(msg), require_annotation: true },
+    ))
 }
 
 #[cfg(test)]
