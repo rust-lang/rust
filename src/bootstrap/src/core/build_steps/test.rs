@@ -1102,7 +1102,7 @@ impl Step for Tidy {
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             if !builder.config.json_output {
                 builder.info("fmt check");
-                if builder.initial_rustfmt().is_none() {
+                if builder.config.initial_rustfmt.is_none() {
                     let inferred_rustfmt_dir = builder.initial_sysroot.join("bin");
                     eprintln!(
                         "\
