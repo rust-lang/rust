@@ -1073,6 +1073,8 @@ pub struct Resolver<'ra, 'tcx> {
     module_children: LocalDefIdMap<Vec<ModChild>>,
     trait_map: NodeMap<Vec<TraitCandidate>>,
 
+    typeck_children: LocalDefIdMap<Vec<LocalDefId>>,
+
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
     /// contained within blocks.
@@ -1347,6 +1349,11 @@ impl<'tcx> Resolver<'_, 'tcx> {
         let feed = self.tcx.create_def(parent, name, def_kind, None, &mut self.disambiguator);
         let def_id = feed.def_id();
 
+        if def_kind.is_typeck_child() {
+            let typeck_root_def_id = self.tcx.typeck_root_def_id(def_id.to_def_id()).expect_local();
+            self.typeck_children.entry(typeck_root_def_id).or_default().push(def_id);
+        }
+
         // Create the definition.
         if expn_id != ExpnId::root() {
             self.expn_that_defined.insert(def_id, expn_id);
@@ -1481,6 +1488,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             extra_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
             module_children: Default::default(),
+            typeck_children: Default::default(),
             trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
             empty_module,
@@ -1664,6 +1672,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             effective_visibilities,
             extern_crate_map,
             module_children: self.module_children,
+            typeck_children: self.typeck_children,
             glob_map,
             maybe_unused_trait_imports,
             main_def,
