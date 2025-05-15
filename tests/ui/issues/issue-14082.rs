@@ -5,6 +5,7 @@
 use foo::Foo;
 
 mod foo {
+    pub use d::*;   // this imports d::Foo
     pub use m::Foo; // this should shadow d::Foo
 }
 
@@ -16,4 +17,6 @@ mod d {
     pub struct Foo;
 }
 
-fn main() {}
+fn main() {
+    let _: foo::Foo = m::Foo;
+}
