@@ -35,6 +35,8 @@ runners:
     os: windows-2022
     <<: *base-job
 
+  # FIXME(#141022): Windows Server 2025 20250504.1.0 currently experiences
+  # insufficient disk space.
   - &job-windows-25
     os: windows-2025
     <<: *base-job
@@ -476,13 +478,17 @@ auto:
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
       SCRIPT: make ci-msvc-py
-    <<: *job-windows-25
+    # FIXME(#141022): Windows Server 2025 20250504.1.0 currently experiences
+    # insufficient disk space.
+    <<: *job-windows
 
   - name: x86_64-msvc-2
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
       SCRIPT: make ci-msvc-ps1
-    <<: *job-windows-25
+    # FIXME(#141022): Windows Server 2025 20250504.1.0 currently experiences
+    # insufficient disk space.
+    <<: *job-windows
 
   # i686-msvc is split into two jobs to run tests in parallel.
   - name: i686-msvc-1
