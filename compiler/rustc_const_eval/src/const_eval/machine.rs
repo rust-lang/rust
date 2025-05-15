@@ -508,6 +508,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 found: eval_to_int(found)?,
             },
             NullPointerDereference => NullPointerDereference,
+            InvalidEnumConstruction(source) => InvalidEnumConstruction(eval_to_int(source)?),
         };
         Err(ConstEvalErrKind::AssertFailure(err)).into()
     }
