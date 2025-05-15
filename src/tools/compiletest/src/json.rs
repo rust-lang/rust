@@ -6,7 +6,8 @@ use std::sync::OnceLock;
 use regex::Regex;
 use serde::Deserialize;
 
-use crate::errors::{Error, ErrorKind};
+use crate::common::Location;
+use crate::errors::{Error, ErrorKind, ErrorMessage};
 
 #[derive(Deserialize)]
 struct Diagnostic {
@@ -79,10 +80,10 @@ struct DiagnosticSpanMacroExpansion {
     macro_decl_name: String,
 }
 
-#[derive(Deserialize, Clone)]
-struct DiagnosticCode {
+#[derive(Deserialize, Debug, Clone)]
+pub struct DiagnosticCode {
     /// The code itself.
-    code: String,
+    pub code: String,
 }
 
 pub fn rustfix_diagnostics_only(output: &str) -> String {
@@ -149,7 +150,8 @@ pub fn parse_output(file_name: &str, output: &str) -> Vec<Error> {
             Err(_) => errors.push(Error {
                 line_num: None,
                 kind: ErrorKind::Raw,
-                msg: line.to_string(),
+                msg: ErrorMessage::from_only_text(line.into()),
+
                 require_annotation: false,
             }),
         }
@@ -193,26 +195,18 @@ fn push_actual_errors(
     // also ensure that `//~ ERROR E123` *always* works. The
     // assumption is that these multi-line error messages are on their
     // way out anyhow.
-    let with_code = |span: Option<&DiagnosticSpan>, text: &str| {
-        // FIXME(#33000) -- it'd be better to use a dedicated
-        // UI harness than to include the line/col number like
-        // this, but some current tests rely on it.
-        //
-        // Note: Do NOT include the filename. These can easily
-        // cause false matches where the expected message
-        // appears in the filename, and hence the message
-        // changes but the test still passes.
-        let span_str = match span {
-            Some(DiagnosticSpan { line_start, column_start, line_end, column_end, .. }) => {
-                format!("{line_start}:{column_start}: {line_end}:{column_end}")
-            }
-            None => format!("?:?: ?:?"),
+    let with_code =
+        |span: Option<&DiagnosticSpan>, text: &str| {
+            let span =
+                span.map(
+                    |&DiagnosticSpan { line_start, column_start, line_end, column_end, .. }| {
+                        Location { line_start, column_start, line_end, column_end }
+                    },
+                );
+            let code = diagnostic.code.clone();
+            let text = text.to_string();
+            ErrorMessage { span, code, text }
         };
-        match &diagnostic.code {
-            Some(code) => format!("{span_str}: {text} [{}]", code.code),
-            None => format!("{span_str}: {text}"),
-        }
-    };
 
     // Convert multi-line messages into multiple errors.
     // We expect to replace these with something more structured anyhow.
@@ -267,7 +261,7 @@ fn push_actual_errors(
                 errors.push(Error {
                     line_num: Some(span.line_start + index),
                     kind: ErrorKind::Suggestion,
-                    msg: line.to_string(),
+                    msg: ErrorMessage::from_only_text(line.to_string()),
                     // Empty suggestions (suggestions to remove something) are common
                     // and annotating them in source is not useful.
                     require_annotation: !line.is_empty(),
@@ -289,7 +283,7 @@ fn push_actual_errors(
             errors.push(Error {
                 line_num: Some(span.line_start),
                 kind: ErrorKind::Note,
-                msg: label.clone(),
+                msg: ErrorMessage::from_only_text(label.clone()),
                 // Empty labels (only underlining spans) are common and do not need annotations.
                 require_annotation: !label.is_empty(),
             });
@@ -311,7 +305,10 @@ fn push_backtrace(
         errors.push(Error {
             line_num: Some(expansion.span.line_start),
             kind: ErrorKind::Note,
-            msg: format!("in this expansion of {}", expansion.macro_decl_name),
+            msg: ErrorMessage::from_only_text(format!(
+                "in this expansion of {}",
+                expansion.macro_decl_name
+            )),
             require_annotation: true,
         });
     }
