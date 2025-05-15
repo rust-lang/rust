@@ -226,18 +226,6 @@ help: consider inserting whitespace here
 LL |     demo2!(# "foo"###);
    |             +
 
-error: reserved multi-hash token is forbidden
-  --> $DIR/reserved-guarded-strings.rs:66:19
-   |
-LL |     demo2!(#"foo"###);
-   |                   ^^
-   |
-   = note: sequences of two or more # are reserved for future use since Rust 2024
-help: consider inserting whitespace here
-   |
-LL |     demo2!(#"foo"## #);
-   |                    +
-
 error: invalid string literal
   --> $DIR/reserved-guarded-strings.rs:71:12
    |
@@ -249,6 +237,21 @@ help: consider inserting whitespace here
    |
 LL |     demon!(# ###################################################################################################################################################################################################################################################################"foo");
    |             +
+
+error: no rules expected `#`
+  --> $DIR/reserved-guarded-strings.rs:66:20
+   |
+LL | macro_rules! demo2 {
+   | ------------------ when calling this macro
+...
+LL |     demo2!(#"foo"###);
+   |                    ^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$b:tt`
+  --> $DIR/reserved-guarded-strings.rs:9:13
+   |
+LL |     ( $a:tt $b:tt ) => { println!("two tokens") };
+   |             ^^^^^
 
 error: aborting due to 21 previous errors
 
