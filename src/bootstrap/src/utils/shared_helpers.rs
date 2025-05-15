@@ -90,7 +90,7 @@ pub fn maybe_dump(dump_name: String, cmd: &Command) {
 
         let mut file = OpenOptions::new().create(true).append(true).open(dump_file).unwrap();
 
-        let cmd_dump = format!("{:?}\n", cmd);
+        let cmd_dump = format!("{cmd:?}\n");
         let cmd_dump = cmd_dump.replace(&env::var("BUILD_OUT").unwrap(), "${BUILD_OUT}");
         let cmd_dump = cmd_dump.replace(&env::var("CARGO_HOME").unwrap(), "${CARGO_HOME}");
 

@@ -320,6 +320,10 @@ pub fn spin_loop() {
 /// This also means that this function does not offer any guarantees for cryptographic or security
 /// purposes.
 ///
+/// This limitation is not specific to `black_box`; there is no mechanism in the entire Rust
+/// language that can provide the guarantees required for constant-time cryptography.
+/// (There is also no such mechanism in LLVM, so the same is true for every other LLVM-based compiler.)
+///
 /// </div>
 ///
 /// [`std::convert::identity`]: crate::convert::identity
@@ -778,7 +782,7 @@ pub const fn cold_path() {
 /// # assert_eq!(bucket_one.len() + bucket_two.len(), 1);
 /// ```
 #[inline(always)]
-#[stable(feature = "select_unpredictable", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "select_unpredictable", since = "1.88.0")]
 pub fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T {
     // FIXME(https://github.com/rust-lang/unsafe-code-guidelines/issues/245):
     // Change this to use ManuallyDrop instead.

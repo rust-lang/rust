@@ -63,6 +63,11 @@ impl Rewrite for ast::Local {
             return Err(RewriteError::SkipFormatting);
         }
 
+        // FIXME(super_let): Implement formatting
+        if self.super_.is_some() {
+            return Err(RewriteError::SkipFormatting);
+        }
+
         let attrs_str = self.attrs.rewrite_result(context, shape)?;
         let mut result = if attrs_str.is_empty() {
             "let ".to_owned()

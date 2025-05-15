@@ -535,13 +535,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let tcx = self.tcx();
         // We clone the opaques instead of stealing them here as they are still used for
         // normalization in the next generation trait solver.
-        //
-        // FIXME(-Znext-solver): Opaque types defined after this would simply get dropped
-        // at the end of typeck. While this seems unlikely to happen in practice this
-        // should still get fixed. Either by preventing writeback from defining new opaque
-        // types or by using this function at the end of writeback and running it as a
-        // fixpoint.
         let opaque_types = self.fcx.infcx.clone_opaque_types();
+        let num_entries = self.fcx.inner.borrow_mut().opaque_types().num_entries();
+        let prev = self.fcx.checked_opaque_types_storage_entries.replace(Some(num_entries));
+        debug_assert_eq!(prev, None);
         for (opaque_type_key, hidden_type) in opaque_types {
             let hidden_type = self.resolve(hidden_type, &hidden_type.span);
             let opaque_type_key = self.resolve(opaque_type_key, &hidden_type.span);

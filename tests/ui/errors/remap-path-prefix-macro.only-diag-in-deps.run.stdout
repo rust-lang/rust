@@ -1,0 +1,3 @@
+file::my_file!() = $DIR/remap-path-prefix-macro.rs
+file::file() = $DIR/auxiliary/file-diag.rs
+file!() = $DIR/remap-path-prefix-macro.rs

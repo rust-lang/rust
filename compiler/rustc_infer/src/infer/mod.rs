@@ -9,7 +9,7 @@ use free_regions::RegionRelations;
 pub use freshen::TypeFreshener;
 use lexical_region_resolve::LexicalRegionResolutions;
 pub use lexical_region_resolve::RegionResolutionError;
-use opaque_types::OpaqueTypeStorage;
+pub use opaque_types::{OpaqueTypeStorage, OpaqueTypeStorageEntries, OpaqueTypeTable};
 use region_constraints::{
     GenericKind, RegionConstraintCollector, RegionConstraintStorage, VarInfos, VerifyBound,
 };

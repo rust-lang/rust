@@ -1,6 +1,6 @@
 #![feature(f16, f128, float_algebraic, float_gamma, float_minimum_maximum)]
-#![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
-#![cfg_attr(not(bootstrap), expect(internal_features))] // for reliable_f16_f128
+#![feature(cfg_target_has_reliable_f16_f128)]
+#![expect(internal_features)] // for reliable_f16_f128
 
 use std::fmt;
 use std::ops::{Add, Div, Mul, Rem, Sub};

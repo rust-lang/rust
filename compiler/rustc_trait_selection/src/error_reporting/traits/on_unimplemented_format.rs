@@ -20,7 +20,7 @@ pub struct FormatString {
     input: Symbol,
     span: Span,
     pieces: Vec<Piece>,
-    /// The formatting string was parsed succesfully but with warnings
+    /// The formatting string was parsed successfully but with warnings
     pub warnings: Vec<FormatWarning>,
 }
 

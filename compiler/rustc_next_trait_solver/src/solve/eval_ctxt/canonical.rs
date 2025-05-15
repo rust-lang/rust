@@ -132,12 +132,14 @@ where
                     (Certainty::Yes, NestedNormalizationGoals(goals))
                 }
                 _ => {
-                    let certainty = shallow_certainty.unify_with(goals_certainty);
+                    let certainty = shallow_certainty.and(goals_certainty);
                     (certainty, NestedNormalizationGoals::empty())
                 }
             };
 
-        if let Certainty::Maybe(cause @ MaybeCause::Overflow { .. }) = certainty {
+        if let Certainty::Maybe(cause @ MaybeCause::Overflow { keep_constraints: false, .. }) =
+            certainty
+        {
             // If we have overflow, it's probable that we're substituting a type
             // into itself infinitely and any partial substitutions in the query
             // response are probably not useful anyways, so just return an empty
@@ -193,6 +195,7 @@ where
                     debug!(?num_non_region_vars, "too many inference variables -> overflow");
                     return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
                         suggest_increasing_limit: true,
+                        keep_constraints: false,
                     }));
                 }
             }
@@ -250,13 +253,7 @@ where
         // to the `var_values`.
         let opaque_types = self
             .delegate
-            .clone_opaque_types_lookup_table()
-            .into_iter()
-            .filter(|(a, _)| {
-                self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
-            })
-            .chain(self.delegate.clone_duplicate_opaque_types())
-            .collect();
+            .clone_opaque_types_added_since(self.initial_opaque_types_storage_num_entries);
 
         ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals }
     }

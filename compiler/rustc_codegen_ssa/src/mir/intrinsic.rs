@@ -336,7 +336,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
 
                 let parse_ordering = |bx: &Bx, s| match s {
-                    "unordered" => Unordered,
                     "relaxed" => Relaxed,
                     "acquire" => Acquire,
                     "release" => Release,

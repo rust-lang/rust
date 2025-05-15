@@ -124,7 +124,7 @@ use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 
 use crate::collector::{self, MonoItemCollectionStrategy, UsageMap};
-use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined, UnknownCguCollectionMode};
+use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined};
 
 struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -1127,27 +1127,10 @@ where
 }
 
 fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitions<'_> {
-    let collection_strategy = match tcx.sess.opts.unstable_opts.print_mono_items {
-        Some(ref s) => {
-            let mode = s.to_lowercase();
-            let mode = mode.trim();
-            if mode == "eager" {
-                MonoItemCollectionStrategy::Eager
-            } else {
-                if mode != "lazy" {
-                    tcx.dcx().emit_warn(UnknownCguCollectionMode { mode });
-                }
-
-                MonoItemCollectionStrategy::Lazy
-            }
-        }
-        None => {
-            if tcx.sess.link_dead_code() {
-                MonoItemCollectionStrategy::Eager
-            } else {
-                MonoItemCollectionStrategy::Lazy
-            }
-        }
+    let collection_strategy = if tcx.sess.link_dead_code() {
+        MonoItemCollectionStrategy::Eager
+    } else {
+        MonoItemCollectionStrategy::Lazy
     };
 
     let (items, usage_map) = collector::collect_crate_mono_items(tcx, collection_strategy);
@@ -1209,7 +1192,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
         }
     }
 
-    if tcx.sess.opts.unstable_opts.print_mono_items.is_some() {
+    if tcx.sess.opts.unstable_opts.print_mono_items {
         let mut item_to_cgus: UnordMap<_, Vec<_>> = Default::default();
 
         for cgu in codegen_units {

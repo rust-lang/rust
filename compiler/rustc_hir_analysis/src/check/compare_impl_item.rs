@@ -5,7 +5,7 @@ use std::iter;
 use hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
+use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisit};
@@ -14,10 +14,10 @@ use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BottomUpFolder, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt, TypingMode, Upcast,
+    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
+use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -1137,65 +1137,319 @@ fn check_region_bounds_on_impl_item<'tcx>(
     // but found 0" it's confusing, because it looks like there
     // are zero. Since I don't quite know how to phrase things at
     // the moment, give a kind of vague error message.
-    if trait_params != impl_params {
-        let span = tcx
-            .hir_get_generics(impl_m.def_id.expect_local())
-            .expect("expected impl item to have generics or else we can't compare them")
-            .span;
+    if trait_params == impl_params {
+        return Ok(());
+    }
 
-        let mut generics_span = None;
-        let mut bounds_span = vec![];
-        let mut where_span = None;
-        if let Some(trait_node) = tcx.hir_get_if_local(trait_m.def_id)
-            && let Some(trait_generics) = trait_node.generics()
-        {
-            generics_span = Some(trait_generics.span);
-            // FIXME: we could potentially look at the impl's bounds to not point at bounds that
-            // *are* present in the impl.
-            for p in trait_generics.predicates {
-                if let hir::WherePredicateKind::BoundPredicate(pred) = p.kind {
-                    for b in pred.bounds {
+    if !delay && let Some(guar) = check_region_late_boundedness(tcx, impl_m, trait_m) {
+        return Err(guar);
+    }
+
+    let span = tcx
+        .hir_get_generics(impl_m.def_id.expect_local())
+        .expect("expected impl item to have generics or else we can't compare them")
+        .span;
+
+    let mut generics_span = None;
+    let mut bounds_span = vec![];
+    let mut where_span = None;
+
+    if let Some(trait_node) = tcx.hir_get_if_local(trait_m.def_id)
+        && let Some(trait_generics) = trait_node.generics()
+    {
+        generics_span = Some(trait_generics.span);
+        // FIXME: we could potentially look at the impl's bounds to not point at bounds that
+        // *are* present in the impl.
+        for p in trait_generics.predicates {
+            match p.kind {
+                hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
+                    bounds,
+                    ..
+                })
+                | hir::WherePredicateKind::RegionPredicate(hir::WhereRegionPredicate {
+                    bounds,
+                    ..
+                }) => {
+                    for b in *bounds {
                         if let hir::GenericBound::Outlives(lt) = b {
                             bounds_span.push(lt.ident.span);
                         }
                     }
                 }
+                _ => {}
             }
-            if let Some(impl_node) = tcx.hir_get_if_local(impl_m.def_id)
-                && let Some(impl_generics) = impl_node.generics()
-            {
-                let mut impl_bounds = 0;
-                for p in impl_generics.predicates {
-                    if let hir::WherePredicateKind::BoundPredicate(pred) = p.kind {
-                        for b in pred.bounds {
+        }
+        if let Some(impl_node) = tcx.hir_get_if_local(impl_m.def_id)
+            && let Some(impl_generics) = impl_node.generics()
+        {
+            let mut impl_bounds = 0;
+            for p in impl_generics.predicates {
+                match p.kind {
+                    hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
+                        bounds,
+                        ..
+                    })
+                    | hir::WherePredicateKind::RegionPredicate(hir::WhereRegionPredicate {
+                        bounds,
+                        ..
+                    }) => {
+                        for b in *bounds {
                             if let hir::GenericBound::Outlives(_) = b {
                                 impl_bounds += 1;
                             }
                         }
                     }
-                }
-                if impl_bounds == bounds_span.len() {
-                    bounds_span = vec![];
-                } else if impl_generics.has_where_clause_predicates {
-                    where_span = Some(impl_generics.where_clause_span);
+                    _ => {}
                 }
             }
+            if impl_bounds == bounds_span.len() {
+                bounds_span = vec![];
+            } else if impl_generics.has_where_clause_predicates {
+                where_span = Some(impl_generics.where_clause_span);
+            }
         }
-        let reported = tcx
-            .dcx()
-            .create_err(LifetimesOrBoundsMismatchOnTrait {
-                span,
-                item_kind: impl_m.descr(),
-                ident: impl_m.ident(tcx),
-                generics_span,
-                bounds_span,
-                where_span,
-            })
-            .emit_unless(delay);
-        return Err(reported);
     }
 
-    Ok(())
+    let reported = tcx
+        .dcx()
+        .create_err(LifetimesOrBoundsMismatchOnTrait {
+            span,
+            item_kind: impl_m.descr(),
+            ident: impl_m.ident(tcx),
+            generics_span,
+            bounds_span,
+            where_span,
+        })
+        .emit_unless(delay);
+
+    Err(reported)
+}
+
+#[allow(unused)]
+enum LateEarlyMismatch<'tcx> {
+    EarlyInImpl(DefId, DefId, ty::Region<'tcx>),
+    LateInImpl(DefId, DefId, ty::Region<'tcx>),
+}
+
+fn check_region_late_boundedness<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_m: ty::AssocItem,
+    trait_m: ty::AssocItem,
+) -> Option<ErrorGuaranteed> {
+    if !impl_m.is_fn() {
+        return None;
+    }
+
+    let (infcx, param_env) = tcx
+        .infer_ctxt()
+        .build_with_typing_env(ty::TypingEnv::non_body_analysis(tcx, impl_m.def_id));
+
+    let impl_m_args = infcx.fresh_args_for_item(DUMMY_SP, impl_m.def_id);
+    let impl_m_sig = tcx.fn_sig(impl_m.def_id).instantiate(tcx, impl_m_args);
+    let impl_m_sig = tcx.liberate_late_bound_regions(impl_m.def_id, impl_m_sig);
+
+    let trait_m_args = infcx.fresh_args_for_item(DUMMY_SP, trait_m.def_id);
+    let trait_m_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_args);
+    let trait_m_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_m_sig);
+
+    let ocx = ObligationCtxt::new(&infcx);
+
+    // Equate the signatures so that we can infer whether a late-bound param was present where
+    // an early-bound param was expected, since we replace the late-bound lifetimes with
+    // `ReLateParam`, and early-bound lifetimes with infer vars, so the early-bound args will
+    // resolve to `ReLateParam` if there is a mismatch.
+    let Ok(()) = ocx.eq(
+        &ObligationCause::dummy(),
+        param_env,
+        ty::Binder::dummy(trait_m_sig),
+        ty::Binder::dummy(impl_m_sig),
+    ) else {
+        return None;
+    };
+
+    let errors = ocx.select_where_possible();
+    if !errors.is_empty() {
+        return None;
+    }
+
+    let mut mismatched = vec![];
+
+    let impl_generics = tcx.generics_of(impl_m.def_id);
+    for (id_arg, arg) in
+        std::iter::zip(ty::GenericArgs::identity_for_item(tcx, impl_m.def_id), impl_m_args)
+    {
+        if let ty::GenericArgKind::Lifetime(r) = arg.unpack()
+            && let ty::ReVar(vid) = r.kind()
+            && let r = infcx
+                .inner
+                .borrow_mut()
+                .unwrap_region_constraints()
+                .opportunistic_resolve_var(tcx, vid)
+            && let ty::ReLateParam(ty::LateParamRegion {
+                kind: ty::LateParamRegionKind::Named(trait_param_def_id, _),
+                ..
+            }) = r.kind()
+            && let ty::ReEarlyParam(ebr) = id_arg.expect_region().kind()
+        {
+            mismatched.push(LateEarlyMismatch::EarlyInImpl(
+                impl_generics.region_param(ebr, tcx).def_id,
+                trait_param_def_id,
+                id_arg.expect_region(),
+            ));
+        }
+    }
+
+    let trait_generics = tcx.generics_of(trait_m.def_id);
+    for (id_arg, arg) in
+        std::iter::zip(ty::GenericArgs::identity_for_item(tcx, trait_m.def_id), trait_m_args)
+    {
+        if let ty::GenericArgKind::Lifetime(r) = arg.unpack()
+            && let ty::ReVar(vid) = r.kind()
+            && let r = infcx
+                .inner
+                .borrow_mut()
+                .unwrap_region_constraints()
+                .opportunistic_resolve_var(tcx, vid)
+            && let ty::ReLateParam(ty::LateParamRegion {
+                kind: ty::LateParamRegionKind::Named(impl_param_def_id, _),
+                ..
+            }) = r.kind()
+            && let ty::ReEarlyParam(ebr) = id_arg.expect_region().kind()
+        {
+            mismatched.push(LateEarlyMismatch::LateInImpl(
+                impl_param_def_id,
+                trait_generics.region_param(ebr, tcx).def_id,
+                id_arg.expect_region(),
+            ));
+        }
+    }
+
+    if mismatched.is_empty() {
+        return None;
+    }
+
+    let spans: Vec<_> = mismatched
+        .iter()
+        .map(|param| {
+            let (LateEarlyMismatch::EarlyInImpl(impl_param_def_id, ..)
+            | LateEarlyMismatch::LateInImpl(impl_param_def_id, ..)) = param;
+            tcx.def_span(impl_param_def_id)
+        })
+        .collect();
+
+    let mut diag = tcx
+        .dcx()
+        .struct_span_err(spans, "lifetime parameters do not match the trait definition")
+        .with_note("lifetime parameters differ in whether they are early- or late-bound")
+        .with_code(E0195);
+    for mismatch in mismatched {
+        match mismatch {
+            LateEarlyMismatch::EarlyInImpl(
+                impl_param_def_id,
+                trait_param_def_id,
+                early_bound_region,
+            ) => {
+                let mut multispan = MultiSpan::from_spans(vec![
+                    tcx.def_span(impl_param_def_id),
+                    tcx.def_span(trait_param_def_id),
+                ]);
+                multispan
+                    .push_span_label(tcx.def_span(tcx.parent(impl_m.def_id)), "in this impl...");
+                multispan
+                    .push_span_label(tcx.def_span(tcx.parent(trait_m.def_id)), "in this trait...");
+                multispan.push_span_label(
+                    tcx.def_span(impl_param_def_id),
+                    format!("`{}` is early-bound", tcx.item_name(impl_param_def_id)),
+                );
+                multispan.push_span_label(
+                    tcx.def_span(trait_param_def_id),
+                    format!("`{}` is late-bound", tcx.item_name(trait_param_def_id)),
+                );
+                if let Some(span) =
+                    find_region_in_predicates(tcx, impl_m.def_id, early_bound_region)
+                {
+                    multispan.push_span_label(
+                        span,
+                        format!(
+                            "this lifetime bound makes `{}` early-bound",
+                            tcx.item_name(impl_param_def_id)
+                        ),
+                    );
+                }
+                diag.span_note(
+                    multispan,
+                    format!(
+                        "`{}` differs between the trait and impl",
+                        tcx.item_name(impl_param_def_id)
+                    ),
+                );
+            }
+            LateEarlyMismatch::LateInImpl(
+                impl_param_def_id,
+                trait_param_def_id,
+                early_bound_region,
+            ) => {
+                let mut multispan = MultiSpan::from_spans(vec![
+                    tcx.def_span(impl_param_def_id),
+                    tcx.def_span(trait_param_def_id),
+                ]);
+                multispan
+                    .push_span_label(tcx.def_span(tcx.parent(impl_m.def_id)), "in this impl...");
+                multispan
+                    .push_span_label(tcx.def_span(tcx.parent(trait_m.def_id)), "in this trait...");
+                multispan.push_span_label(
+                    tcx.def_span(impl_param_def_id),
+                    format!("`{}` is late-bound", tcx.item_name(impl_param_def_id)),
+                );
+                multispan.push_span_label(
+                    tcx.def_span(trait_param_def_id),
+                    format!("`{}` is early-bound", tcx.item_name(trait_param_def_id)),
+                );
+                if let Some(span) =
+                    find_region_in_predicates(tcx, trait_m.def_id, early_bound_region)
+                {
+                    multispan.push_span_label(
+                        span,
+                        format!(
+                            "this lifetime bound makes `{}` early-bound",
+                            tcx.item_name(trait_param_def_id)
+                        ),
+                    );
+                }
+                diag.span_note(
+                    multispan,
+                    format!(
+                        "`{}` differs between the trait and impl",
+                        tcx.item_name(impl_param_def_id)
+                    ),
+                );
+            }
+        }
+    }
+
+    Some(diag.emit())
+}
+
+fn find_region_in_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    early_bound_region: ty::Region<'tcx>,
+) -> Option<Span> {
+    for (pred, span) in tcx.explicit_predicates_of(def_id).instantiate_identity(tcx) {
+        if pred.visit_with(&mut FindRegion(early_bound_region)).is_break() {
+            return Some(span);
+        }
+    }
+
+    struct FindRegion<'tcx>(ty::Region<'tcx>);
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindRegion<'tcx> {
+        type Result = ControlFlow<()>;
+        fn visit_region(&mut self, r: ty::Region<'tcx>) -> Self::Result {
+            if r == self.0 { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
+        }
+    }
+
+    None
 }
 
 #[instrument(level = "debug", skip(infcx))]

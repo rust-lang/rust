@@ -26,6 +26,7 @@ pub struct Environment {
     use_bolt: bool,
     shared_llvm: bool,
     run_tests: bool,
+    fast_try_build: bool,
 }
 
 impl Environment {
@@ -105,6 +106,10 @@ impl Environment {
 
     pub fn run_tests(&self) -> bool {
         self.run_tests
+    }
+
+    pub fn is_fast_try_build(&self) -> bool {
+        self.fast_try_build
     }
 }
 

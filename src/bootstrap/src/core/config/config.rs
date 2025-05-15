@@ -3042,7 +3042,7 @@ impl Config {
         let actual_hash = recorded
             .split_whitespace()
             .nth(2)
-            .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
+            .unwrap_or_else(|| panic!("unexpected output `{recorded}`"));
 
         if actual_hash == checked_out_hash {
             // already checked out
@@ -3297,7 +3297,7 @@ impl Config {
             }
             StringOrBool::String(s) if s == "if-unchanged" => if_unchanged(),
             StringOrBool::String(other) => {
-                panic!("unrecognized option for download-ci-llvm: {:?}", other)
+                panic!("unrecognized option for download-ci-llvm: {other:?}")
             }
         }
     }
