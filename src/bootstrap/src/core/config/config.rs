@@ -3,7 +3,7 @@
 //! This module implements parsing `bootstrap.toml` configuration files to tweak
 //! how the build runs.
 
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::{self, Display};
 use std::hash::Hash;
@@ -406,11 +406,7 @@ pub struct Config {
     pub initial_rustc: PathBuf,
     pub initial_cargo_clippy: Option<PathBuf>,
     pub initial_sysroot: PathBuf,
-
-    #[cfg(not(test))]
-    initial_rustfmt: RefCell<RustfmtState>,
-    #[cfg(test)]
-    pub initial_rustfmt: RefCell<RustfmtState>,
+    pub initial_rustfmt: Option<PathBuf>,
 
     /// The paths to work with. For example: with `./x check foo bar` we get
     /// `paths=["foo", "bar"]`.
@@ -426,15 +422,6 @@ pub struct Config {
 
     /// Cache for determining path modifications
     pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
-}
-
-#[derive(Clone, Debug, Default)]
-pub enum RustfmtState {
-    SystemToolchain(PathBuf),
-    Downloaded(PathBuf),
-    Unavailable,
-    #[default]
-    LazyEvaluated,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -2448,13 +2435,8 @@ impl Config {
             });
         }
 
-        if let Some(r) = rustfmt {
-            *config.initial_rustfmt.borrow_mut() = if r.exists() {
-                RustfmtState::SystemToolchain(r)
-            } else {
-                RustfmtState::Unavailable
-            };
-        }
+        config.initial_rustfmt =
+            if let Some(r) = rustfmt { Some(r) } else { config.maybe_download_rustfmt() };
 
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
@@ -2849,25 +2831,6 @@ impl Config {
                 }
             })
             .as_deref()
-    }
-
-    pub(crate) fn initial_rustfmt(&self) -> Option<PathBuf> {
-        match &mut *self.initial_rustfmt.borrow_mut() {
-            RustfmtState::SystemToolchain(p) | RustfmtState::Downloaded(p) => Some(p.clone()),
-            RustfmtState::Unavailable => None,
-            r @ RustfmtState::LazyEvaluated => {
-                if self.dry_run() {
-                    return Some(PathBuf::new());
-                }
-                let path = self.maybe_download_rustfmt();
-                *r = if let Some(p) = &path {
-                    RustfmtState::Downloaded(p.clone())
-                } else {
-                    RustfmtState::Unavailable
-                };
-                path
-            }
-        }
     }
 
     /// Runs a function if verbosity is greater than 0
