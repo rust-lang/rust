@@ -1,0 +1,19 @@
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/unused-generic-arguments-not-wfchecked.rs:28:43
+   |
+LL | #[cfg(not(next_bugged))] type A2 = A<[(); panic!()]>; // FIXME: `panic!()` diverging
+   |                                           ^^^^^^^^ evaluation of `A2::{constant#0}` failed here
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unused-generic-arguments-not-wfchecked.rs:31:37
+   |
+LL | #[cfg(not(next_bugged))] const _: A<[str]> = (); // FIXME: `str: Sized` unsatisfied
+   |                                     ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: slice and array elements must have `Sized` type
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0080, E0277.
+For more information about an error, try `rustc --explain E0080`.
