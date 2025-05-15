@@ -12,8 +12,7 @@ fn f1(){
 
 fn f2(){
     r#"ok2!"###;
-    //~^ ERROR reserved multi-hash token is forbidden
-    //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `##`
+    //~^ ERROR too many `#` when terminating raw string
 }
 
 fn f3(){
@@ -31,8 +30,7 @@ fn f4(){
 fn f5(){
     #"ok5!"###;
     //~^ ERROR invalid string literal
-    //~| ERROR reserved multi-hash token is forbidden
-    //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `##`
+    //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `#`
 }
 
 fn main() {}
