@@ -6,7 +6,7 @@ disallowed-types = [
     "std::thread::Thread",
     "std::time::Instant",
     "std::io::Read",
-    "std::primitive::usize",
+    "usize",
     "bool",
     # can give path and reason with an inline table
     { path = "std::net::Ipv4Addr", reason = "no IPv4 allowed" },

@@ -5,7 +5,7 @@ use clippy_utils::macros::span_is_local;
 use clippy_utils::source::is_present_in_source;
 use clippy_utils::str_utils::{camel_case_split, count_match_end, count_match_start, to_camel_case, to_snake_case};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::{EnumDef, FieldDef, Item, ItemKind, OwnerId, Variant, VariantData};
+use rustc_hir::{EnumDef, FieldDef, Item, ItemKind, OwnerId, QPath, TyKind, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Symbol;
@@ -162,6 +162,7 @@ pub struct ItemNameRepetitions {
     enum_threshold: u64,
     struct_threshold: u64,
     avoid_breaking_exported_api: bool,
+    allow_exact_repetitions: bool,
     allow_private_module_inception: bool,
     allowed_prefixes: FxHashSet<String>,
 }
@@ -173,6 +174,7 @@ impl ItemNameRepetitions {
             enum_threshold: conf.enum_variant_name_threshold,
             struct_threshold: conf.struct_field_name_threshold,
             avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
+            allow_exact_repetitions: conf.allow_exact_repetitions,
             allow_private_module_inception: conf.allow_private_module_inception,
             allowed_prefixes: conf.allowed_prefixes.iter().map(|s| to_camel_case(s)).collect(),
         }
@@ -405,6 +407,7 @@ fn check_enum_start(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>
     if count_match_start(item_name, name).char_count == item_name_chars
         && name.chars().nth(item_name_chars).is_some_and(|c| !c.is_lowercase())
         && name.chars().nth(item_name_chars + 1).is_some_and(|c| !c.is_numeric())
+        && !check_enum_tuple_path_match(name, variant.data)
     {
         span_lint_hir(
             cx,
@@ -420,7 +423,9 @@ fn check_enum_end(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>) 
     let name = variant.ident.name.as_str();
     let item_name_chars = item_name.chars().count();
 
-    if count_match_end(item_name, name).char_count == item_name_chars {
+    if count_match_end(item_name, name).char_count == item_name_chars
+        && !check_enum_tuple_path_match(name, variant.data)
+    {
         span_lint_hir(
             cx,
             ENUM_VARIANT_NAMES,
@@ -428,6 +433,27 @@ fn check_enum_end(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>) 
             variant.span,
             "variant name ends with the enum's name",
         );
+    }
+}
+
+/// Checks if an enum tuple variant contains a single field
+/// whose qualified path contains the variant's name.
+fn check_enum_tuple_path_match(variant_name: &str, variant_data: VariantData<'_>) -> bool {
+    // Only check single-field tuple variants
+    let VariantData::Tuple(fields, ..) = variant_data else {
+        return false;
+    };
+    if fields.len() != 1 {
+        return false;
+    }
+    // Check if field type is a path and contains the variant name
+    match fields[0].ty.kind {
+        TyKind::Path(QPath::Resolved(_, path)) => path
+            .segments
+            .iter()
+            .any(|segment| segment.ident.name.as_str() == variant_name),
+        TyKind::Path(QPath::TypeRelative(_, segment)) => segment.ident.name.as_str() == variant_name,
+        _ => false,
     }
 }
 
@@ -462,11 +488,21 @@ impl LateLintPass<'_> for ItemNameRepetitions {
             }
 
             // The `module_name_repetitions` lint should only trigger if the item has the module in its
-            // name. Having the same name is accepted.
-            if cx.tcx.visibility(item.owner_id).is_public()
-                && cx.tcx.visibility(mod_owner_id.def_id).is_public()
-                && item_camel.len() > mod_camel.len()
-            {
+            // name. Having the same name is only accepted if `allow_exact_repetition` is set to `true`.
+
+            let both_are_public =
+                cx.tcx.visibility(item.owner_id).is_public() && cx.tcx.visibility(mod_owner_id.def_id).is_public();
+
+            if both_are_public && !self.allow_exact_repetitions && item_camel == *mod_camel {
+                span_lint(
+                    cx,
+                    MODULE_NAME_REPETITIONS,
+                    ident.span,
+                    "item name is the same as its containing module's name",
+                );
+            }
+
+            if both_are_public && item_camel.len() > mod_camel.len() {
                 let matching = count_match_start(mod_camel, &item_camel);
                 let rmatching = count_match_end(mod_camel, &item_camel);
                 let nchars = mod_camel.chars().count();
