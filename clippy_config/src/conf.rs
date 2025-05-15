@@ -360,6 +360,9 @@ define_Conf! {
     /// Whether `dbg!` should be allowed in test functions or `#[cfg(test)]`
     #[lints(dbg_macro)]
     allow_dbg_in_tests: bool = false,
+    /// Whether an item should be allowed to have the same name as its containing module
+    #[lints(module_name_repetitions)]
+    allow_exact_repetitions: bool = true,
     /// Whether `expect` should be allowed in code always evaluated at compile time
     #[lints(expect_used)]
     allow_expect_in_consts: bool = true,
@@ -675,6 +678,9 @@ define_Conf! {
     /// Minimum chars an ident can have, anything below or equal to this will be linted.
     #[lints(min_ident_chars)]
     min_ident_chars_threshold: u64 = 1,
+    /// Whether to allow fields starting with an underscore to skip documentation requirements
+    #[lints(missing_docs_in_private_items)]
+    missing_docs_allow_unused: bool = false,
     /// Whether to **only** check for missing documentation in items visible within the current
     /// crate. For example, `pub(crate)` items.
     #[lints(missing_docs_in_private_items)]
@@ -756,6 +762,7 @@ define_Conf! {
         same_item_push,
         seek_from_current,
         seek_rewind,
+        to_digit_is_some,
         transmute_ptr_to_ref,
         tuple_array_conversions,
         type_repetition_in_bounds,

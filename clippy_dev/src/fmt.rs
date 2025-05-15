@@ -1,4 +1,3 @@
-use crate::utils::clippy_project_root;
 use itertools::Itertools;
 use rustc_lexer::{TokenKind, tokenize};
 use shell_escape::escape;
@@ -104,15 +103,8 @@ fn fmt_conf(check: bool) -> Result<(), Error> {
         Field,
     }
 
-    let path: PathBuf = [
-        clippy_project_root().as_path(),
-        "clippy_config".as_ref(),
-        "src".as_ref(),
-        "conf.rs".as_ref(),
-    ]
-    .into_iter()
-    .collect();
-    let text = fs::read_to_string(&path)?;
+    let path = "clippy_config/src/conf.rs";
+    let text = fs::read_to_string(path)?;
 
     let (pre, conf) = text
         .split_once("define_Conf! {\n")
@@ -203,7 +195,7 @@ fn fmt_conf(check: bool) -> Result<(), Error> {
             | (State::Lints, TokenKind::Comma | TokenKind::OpenParen | TokenKind::CloseParen) => {},
             _ => {
                 return Err(Error::Parse(
-                    path,
+                    PathBuf::from(path),
                     offset_to_line(&text, conf_offset + i),
                     format!("unexpected token `{}`", &conf[i..i + t.len as usize]),
                 ));
@@ -213,7 +205,7 @@ fn fmt_conf(check: bool) -> Result<(), Error> {
 
     if !matches!(state, State::Field) {
         return Err(Error::Parse(
-            path,
+            PathBuf::from(path),
             offset_to_line(&text, conf_offset + conf.len()),
             "incomplete field".into(),
         ));
@@ -260,18 +252,16 @@ fn fmt_conf(check: bool) -> Result<(), Error> {
         if check {
             return Err(Error::CheckFailed);
         }
-        fs::write(&path, new_text.as_bytes())?;
+        fs::write(path, new_text.as_bytes())?;
     }
     Ok(())
 }
 
 fn run_rustfmt(context: &FmtContext) -> Result<(), Error> {
-    let project_root = clippy_project_root();
-
     // if we added a local rustc repo as path dependency to clippy for rust analyzer, we do NOT want to
     // format because rustfmt would also format the entire rustc repo as it is a local
     // dependency
-    if fs::read_to_string(project_root.join("Cargo.toml"))
+    if fs::read_to_string("Cargo.toml")
         .expect("Failed to read clippy Cargo.toml")
         .contains("[target.'cfg(NOT_A_PLATFORM)'.dependencies]")
     {
@@ -280,12 +270,12 @@ fn run_rustfmt(context: &FmtContext) -> Result<(), Error> {
 
     check_for_rustfmt(context)?;
 
-    cargo_fmt(context, project_root.as_path())?;
-    cargo_fmt(context, &project_root.join("clippy_dev"))?;
-    cargo_fmt(context, &project_root.join("rustc_tools_util"))?;
-    cargo_fmt(context, &project_root.join("lintcheck"))?;
+    cargo_fmt(context, ".".as_ref())?;
+    cargo_fmt(context, "clippy_dev".as_ref())?;
+    cargo_fmt(context, "rustc_tools_util".as_ref())?;
+    cargo_fmt(context, "lintcheck".as_ref())?;
 
-    let chunks = WalkDir::new(project_root.join("tests"))
+    let chunks = WalkDir::new("tests")
         .into_iter()
         .filter_map(|entry| {
             let entry = entry.expect("failed to find tests");

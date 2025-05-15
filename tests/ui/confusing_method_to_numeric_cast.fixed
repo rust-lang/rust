@@ -1,0 +1,14 @@
+#![feature(float_minimum_maximum)]
+#![warn(clippy::confusing_method_to_numeric_cast)]
+
+fn main() {
+    let _ = u16::MAX as usize; //~ confusing_method_to_numeric_cast
+    let _ = u16::MIN as usize; //~ confusing_method_to_numeric_cast
+    let _ = u16::MAX as usize; //~ confusing_method_to_numeric_cast
+    let _ = u16::MIN as usize; //~ confusing_method_to_numeric_cast
+
+    let _ = f32::MAX as usize; //~ confusing_method_to_numeric_cast
+    let _ = f32::MAX as usize; //~ confusing_method_to_numeric_cast
+    let _ = f32::MIN as usize; //~ confusing_method_to_numeric_cast
+    let _ = f32::MIN as usize; //~ confusing_method_to_numeric_cast
+}

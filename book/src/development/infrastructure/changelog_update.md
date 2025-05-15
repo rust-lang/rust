@@ -51,7 +51,9 @@ Once you've got the correct commit range, run
 util/fetch_prs_between.sh commit1 commit2 > changes.txt
 ```
 
-and open that file in your editor of choice.
+where `commit2` is the commit hash from the previous command and `commit1`
+is the commit hash from the current CHANGELOG file.
+Open `changes.txt` file in your editor of choice.
 
 When updating the changelog it's also a good idea to make sure that `commit1` is
 already correct in the current changelog.
@@ -60,8 +62,8 @@ already correct in the current changelog.
 
 The above script should have dumped all the relevant PRs to the file you
 specified. It should have filtered out most of the irrelevant PRs already, but
-it's a good idea to do a manual cleanup pass where you look for more irrelevant
-PRs. If you're not sure about some PRs, just leave them in for the review and
+it's a good idea to do a manual cleanup pass and choose valuable PRs.
+If you're not sure about some PRs, just leave them in for the review and
 ask for feedback.
 
 With the PRs filtered, you can start to take each PR and move the `changelog: `
@@ -74,10 +76,9 @@ The order should roughly be:
 2. Moves or deprecations of lints
 3. Changes that expand what code existing lints cover
 4. False positive fixes
-5. Suggestion fixes/improvements
-6. ICE fixes
-7. Documentation improvements
-8. Others
+5. ICE fixes
+6. Documentation improvements
+7. Others
 
 As section headers, we use:
 
@@ -91,7 +92,6 @@ As section headers, we use:
 
 ### Enhancements
 ### False Positive Fixes
-### Suggestion Fixes/Improvements
 ### ICE Fixes
 ### Documentation Improvements
 ### Others
@@ -112,7 +112,16 @@ that label in the changelog. If you can, remove the `beta-accepted` labels
 ### 4. Update `clippy::version` attributes
 
 Next, make sure to check that the `#[clippy::version]` attributes for the added
-lints contain the correct version.
+lints contain the correct version. 
+In order to find lints that need a version update, go through the lints in the 
+"New Lints" section and run the following command for each lint name:
+
+```
+grep -rB1 "pub $LINT_NAME" .
+```
+
+The version shown should match the version of the release the changelog is 
+written for. If not, update the version to the changelog version.
 
 [changelog]: https://github.com/rust-lang/rust-clippy/blob/master/CHANGELOG.md
 [forge]: https://forge.rust-lang.org/

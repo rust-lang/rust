@@ -1,16 +1,18 @@
-use clippy_utils::{get_attr, higher};
+use clippy_utils::{MaybePath, get_attr, higher, path_def_id};
+use itertools::Itertools;
 use rustc_ast::LitIntType;
 use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::DefId;
 use rustc_hir::{
     self as hir, BindingMode, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind, ExprKind,
-    FnRetTy, HirId, Lit, PatExprKind, PatKind, QPath, StmtKind, StructTailExpr, TyKind,
+    FnRetTy, HirId, Lit, PatExprKind, PatKind, QPath, StmtKind, StructTailExpr,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::{Ident, Symbol};
 use std::cell::Cell;
-use std::fmt::{Display, Formatter, Write as _};
+use std::fmt::{Display, Formatter};
 
 declare_lint_pass!(
     /// ### What it does
@@ -148,6 +150,15 @@ fn check_node(cx: &LateContext<'_>, hir_id: HirId, f: impl Fn(&PrintVisitor<'_, 
     }
 }
 
+fn paths_static_name(cx: &LateContext<'_>, id: DefId) -> String {
+    cx.get_def_path(id)
+        .iter()
+        .map(Symbol::as_str)
+        .filter(|s| !s.starts_with('<'))
+        .join("_")
+        .to_uppercase()
+}
+
 struct Binding<T> {
     name: String,
     value: T,
@@ -257,11 +268,44 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         chain!(self, "{symbol}.as_str() == {:?}", symbol.value.as_str());
     }
 
-    fn qpath(&self, qpath: &Binding<&QPath<'_>>) {
+    fn qpath<'p>(&self, qpath: &Binding<&QPath<'_>>, has_hir_id: &Binding<&impl MaybePath<'p>>) {
         if let QPath::LangItem(lang_item, ..) = *qpath.value {
             chain!(self, "matches!({qpath}, QPath::LangItem(LangItem::{lang_item:?}, _))");
-        } else if let Ok(path) = path_to_string(qpath.value) {
-            chain!(self, "match_qpath({qpath}, &[{}])", path);
+        } else if let Some(def_id) = self.cx.qpath_res(qpath.value, has_hir_id.value.hir_id()).opt_def_id()
+            && !def_id.is_local()
+        {
+            bind!(self, def_id);
+            chain!(
+                self,
+                "let Some({def_id}) = cx.qpath_res({qpath}, {has_hir_id}.hir_id).opt_def_id()"
+            );
+            if let Some(name) = self.cx.tcx.get_diagnostic_name(def_id.value) {
+                chain!(self, "cx.tcx.is_diagnostic_item(sym::{name}, {def_id})");
+            } else {
+                chain!(
+                    self,
+                    "paths::{}.matches(cx, {def_id}) // Add the path to `clippy_utils::paths` if needed",
+                    paths_static_name(self.cx, def_id.value)
+                );
+            }
+        }
+    }
+
+    fn maybe_path<'p>(&self, path: &Binding<&impl MaybePath<'p>>) {
+        if let Some(id) = path_def_id(self.cx, path.value)
+            && !id.is_local()
+        {
+            if let Some(lang) = self.cx.tcx.lang_items().from_def_id(id) {
+                chain!(self, "is_path_lang_item(cx, {path}, LangItem::{}", lang.name());
+            } else if let Some(name) = self.cx.tcx.get_diagnostic_name(id) {
+                chain!(self, "is_path_diagnostic_item(cx, {path}, sym::{name})");
+            } else {
+                chain!(
+                    self,
+                    "paths::{}.matches_path(cx, {path}) // Add the path to `clippy_utils::paths` if needed",
+                    paths_static_name(self.cx, id)
+                );
+            }
         }
     }
 
@@ -270,7 +314,6 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             ConstArgKind::Path(ref qpath) => {
                 bind!(self, qpath);
                 chain!(self, "let ConstArgKind::Path(ref {qpath}) = {const_arg}.kind");
-                self.qpath(qpath);
             },
             ConstArgKind::Anon(anon_const) => {
                 bind!(self, anon_const);
@@ -394,12 +437,10 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 bind!(self, let_expr);
                 kind!("Let({let_expr})");
                 self.pat(field!(let_expr.pat));
-                // Does what ExprKind::Cast does, only adds a clause for the type
-                // if it's a path
-                if let Some(TyKind::Path(qpath)) = let_expr.value.ty.as_ref().map(|ty| &ty.kind) {
-                    bind!(self, qpath);
-                    chain!(self, "let TyKind::Path(ref {qpath}) = {let_expr}.ty.kind");
-                    self.qpath(qpath);
+                if let Some(ty) = let_expr.value.ty {
+                    bind!(self, ty);
+                    chain!(self, "let Some({ty}) = {let_expr}.ty");
+                    self.maybe_path(ty);
                 }
                 self.expr(field!(let_expr.init));
             },
@@ -451,11 +492,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             ExprKind::Cast(expr, cast_ty) => {
                 bind!(self, expr, cast_ty);
                 kind!("Cast({expr}, {cast_ty})");
-                if let TyKind::Path(ref qpath) = cast_ty.value.kind {
-                    bind!(self, qpath);
-                    chain!(self, "let TyKind::Path(ref {qpath}) = {cast_ty}.kind");
-                    self.qpath(qpath);
-                }
+                self.maybe_path(cast_ty);
                 self.expr(expr);
             },
             ExprKind::Type(expr, _ty) => {
@@ -561,10 +598,8 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.expr(object);
                 self.expr(index);
             },
-            ExprKind::Path(ref qpath) => {
-                bind!(self, qpath);
-                kind!("Path(ref {qpath})");
-                self.qpath(qpath);
+            ExprKind::Path(_) => {
+                self.maybe_path(expr);
             },
             ExprKind::AddrOf(kind, mutability, inner) => {
                 bind!(self, inner);
@@ -608,7 +643,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                     StructTailExpr::None | StructTailExpr::DefaultFields(_) => None,
                 });
                 kind!("Struct({qpath}, {fields}, {base})");
-                self.qpath(qpath);
+                self.qpath(qpath, expr);
                 self.slice(fields, |field| {
                     self.ident(field!(field.ident));
                     self.expr(field!(field.expr));
@@ -648,7 +683,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         self.expr(expr);
     }
 
-    fn pat_expr(&self, lit: &Binding<&hir::PatExpr<'_>>) {
+    fn pat_expr(&self, lit: &Binding<&hir::PatExpr<'_>>, pat: &Binding<&hir::Pat<'_>>) {
         let kind = |kind| chain!(self, "let PatExprKind::{kind} = {lit}.kind");
         macro_rules! kind {
             ($($t:tt)*) => (kind(format_args!($($t)*)));
@@ -657,15 +692,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             PatExprKind::Lit { lit, negated } => {
                 bind!(self, lit);
                 bind!(self, negated);
-                kind!("Lit{{ref {lit}, {negated} }}");
+                kind!("Lit {{ ref {lit}, {negated} }}");
                 self.lit(lit);
             },
             PatExprKind::ConstBlock(_) => kind!("ConstBlock(_)"),
-            PatExprKind::Path(ref qpath) => {
-                bind!(self, qpath);
-                kind!("Path(ref {qpath})");
-                self.qpath(qpath);
-            },
+            PatExprKind::Path(_) => self.maybe_path(pat),
         }
     }
 
@@ -697,7 +728,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             PatKind::Struct(ref qpath, fields, ignore) => {
                 bind!(self, qpath, fields);
                 kind!("Struct(ref {qpath}, {fields}, {ignore})");
-                self.qpath(qpath);
+                self.qpath(qpath, pat);
                 self.slice(fields, |field| {
                     self.ident(field!(field.ident));
                     self.pat(field!(field.pat));
@@ -711,7 +742,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             PatKind::TupleStruct(ref qpath, fields, skip_pos) => {
                 bind!(self, qpath, fields);
                 kind!("TupleStruct(ref {qpath}, {fields}, {skip_pos:?})");
-                self.qpath(qpath);
+                self.qpath(qpath, pat);
                 self.slice(fields, |pat| self.pat(pat));
             },
             PatKind::Tuple(fields, skip_pos) => {
@@ -743,13 +774,13 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             PatKind::Expr(lit_expr) => {
                 bind!(self, lit_expr);
                 kind!("Expr({lit_expr})");
-                self.pat_expr(lit_expr);
+                self.pat_expr(lit_expr, pat);
             },
             PatKind::Range(start, end, end_kind) => {
                 opt_bind!(self, start, end);
                 kind!("Range({start}, {end}, RangeEnd::{end_kind:?})");
-                start.if_some(|e| self.pat_expr(e));
-                end.if_some(|e| self.pat_expr(e));
+                start.if_some(|e| self.pat_expr(e, pat));
+                end.if_some(|e| self.pat_expr(e, pat));
             },
             PatKind::Slice(start, middle, end) => {
                 bind!(self, start, end);
@@ -796,33 +827,4 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 fn has_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     let attrs = cx.tcx.hir_attrs(hir_id);
     get_attr(cx.sess(), attrs, "author").count() > 0
-}
-
-fn path_to_string(path: &QPath<'_>) -> Result<String, ()> {
-    fn inner(s: &mut String, path: &QPath<'_>) -> Result<(), ()> {
-        match *path {
-            QPath::Resolved(_, path) => {
-                for (i, segment) in path.segments.iter().enumerate() {
-                    if i > 0 {
-                        *s += ", ";
-                    }
-                    write!(s, "{:?}", segment.ident.as_str()).unwrap();
-                }
-            },
-            QPath::TypeRelative(ty, segment) => match &ty.kind {
-                TyKind::Path(inner_path) => {
-                    inner(s, inner_path)?;
-                    *s += ", ";
-                    write!(s, "{:?}", segment.ident.as_str()).unwrap();
-                },
-                other => write!(s, "/* unimplemented: {other:?}*/").unwrap(),
-            },
-            QPath::LangItem(..) => return Err(()),
-        }
-
-        Ok(())
-    }
-    let mut s = String::new();
-    inner(&mut s, path)?;
-    Ok(s)
 }

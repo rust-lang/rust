@@ -2,18 +2,18 @@
 // Prefer to use those when possible.
 
 macro_rules! declare_with_version {
-    ($name:ident($name_version:ident): &[$ty:ty] = &[$(
+    ($name:ident($name_version:ident) = [$(
         #[clippy::version = $version:literal]
         $e:expr,
     )*]) => {
-        pub static $name: &[$ty] = &[$($e),*];
+        pub static $name: &[(&str, &str)] = &[$($e),*];
         #[allow(unused)]
         pub static $name_version: &[&str] = &[$($version),*];
     };
 }
 
 #[rustfmt::skip]
-declare_with_version! { DEPRECATED(DEPRECATED_VERSION): &[(&str, &str)] = &[
+declare_with_version! { DEPRECATED(DEPRECATED_VERSION) = [
     #[clippy::version = "pre 1.29.0"]
     ("clippy::should_assert_eq", "`assert!(a == b)` can now print the values the same way `assert_eq!(a, b) can"),
     #[clippy::version = "pre 1.29.0"]
@@ -44,11 +44,10 @@ declare_with_version! { DEPRECATED(DEPRECATED_VERSION): &[(&str, &str)] = &[
     ("clippy::option_map_or_err_ok", "`clippy::manual_ok_or` covers this case"),
     #[clippy::version = "1.86.0"]
     ("clippy::match_on_vec_items", "`clippy::indexing_slicing` covers indexing and slicing on `Vec<_>`"),
-    // end deprecated lints. used by `cargo dev deprecate_lint`
 ]}
 
 #[rustfmt::skip]
-declare_with_version! { RENAMED(RENAMED_VERSION): &[(&str, &str)] = &[
+declare_with_version! { RENAMED(RENAMED_VERSION) = [
     #[clippy::version = ""]
     ("clippy::almost_complete_letter_range", "clippy::almost_complete_range"),
     #[clippy::version = ""]
@@ -187,5 +186,12 @@ declare_with_version! { RENAMED(RENAMED_VERSION): &[(&str, &str)] = &[
     ("clippy::vtable_address_comparisons", "ambiguous_wide_pointer_comparisons"),
     #[clippy::version = ""]
     ("clippy::reverse_range_loop", "clippy::reversed_empty_ranges"),
-    // end renamed lints. used by `cargo dev rename_lint`
+    #[clippy::version = "1.88.0"]
+    ("clippy::transmute_int_to_float", "unnecessary_transmutes"),
+    #[clippy::version = "1.88.0"]
+    ("clippy::transmute_int_to_char", "unnecessary_transmutes"),
+    #[clippy::version = "1.88.0"]
+    ("clippy::transmute_float_to_int", "unnecessary_transmutes"),
+    #[clippy::version = "1.88.0"]
+    ("clippy::transmute_num_to_bytes", "unnecessary_transmutes"),
 ]}

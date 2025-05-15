@@ -77,7 +77,7 @@ debugging to find the actual problem behind the issue.
 
 [`T-middle`] issues can be more involved and require verifying types. The [`ty`] module contains a
 lot of methods that are useful, though one of the most useful would be `expr_ty` (gives the type of
-an AST expression). `match_def_path()` in Clippy's `utils` module can also be useful.
+an AST expression).
 
 [`good-first-issue`]: https://github.com/rust-lang/rust-clippy/labels/good-first-issue
 [`S-inactive-closed`]: https://github.com/rust-lang/rust-clippy/pulls?q=is%3Aclosed+label%3AS-inactive-closed
