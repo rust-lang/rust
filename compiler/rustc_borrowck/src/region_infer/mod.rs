@@ -551,11 +551,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.scc_values.placeholders_contained_in(scc)
     }
 
-    /// Returns access to the value of `r` for debugging purposes.
-    pub(crate) fn region_universe(&self, r: RegionVid) -> ty::UniverseIndex {
-        self.scc_universe(self.constraint_sccs.scc(r))
-    }
-
     /// Once region solving has completed, this function will return the member constraints that
     /// were applied to the value of a given SCC `scc`. See `AppliedMemberConstraint`.
     pub(crate) fn applied_member_constraints(
@@ -722,7 +717,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // If the member region lives in a higher universe, we currently choose
         // the most conservative option by leaving it unchanged.
-        if !self.scc_universe(scc).is_root() {
+        if !self.max_nameable_universe(scc).is_root() {
             return;
         }
 
@@ -902,7 +897,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             "lower_bound = {:?} r_scc={:?} universe={:?}",
             lower_bound,
             r_scc,
-            self.scc_universe(r_scc)
+            self.max_nameable_universe(r_scc)
         );
         // If the type test requires that `T: 'a` where `'a` is a
         // placeholder from another universe, that effectively requires
@@ -1380,10 +1375,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
-    /// The minimum universe of any variable reachable from this
+    /// The minimum maximum universe of any variable reachable from this
     /// SCC, inside or outside of it.
-    fn scc_universe(&self, scc: ConstraintSccIndex) -> UniverseIndex {
-        self.scc_annotations[scc].min_universe()
+    fn max_nameable_universe(&self, scc: ConstraintSccIndex) -> UniverseIndex {
+        self.scc_annotations[scc].max_nameable_universe()
     }
 
     /// Checks the final value for the free region `fr` to see if it
@@ -1405,7 +1400,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Because this free region must be in the ROOT universe, we
         // know it cannot contain any bound universes.
-        assert!(self.scc_universe(longer_fr_scc).is_root());
+        assert!(self.max_nameable_universe(longer_fr_scc).is_root());
 
         // Only check all of the relations for the main representative of each
         // SCC, otherwise just check that we outlive said representative. This
@@ -1754,7 +1749,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     #[instrument(skip(self), level = "trace", ret)]
     pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, location: Location) -> RegionVid {
         trace!(scc = ?self.constraint_sccs.scc(fr1));
-        trace!(universe = ?self.region_universe(fr1));
+        trace!(universe = ?self.max_nameable_universe(self.constraint_sccs.scc(fr1)));
         self.constraint_path_to(fr1, |r| {
             // Look for some `r` such that `fr1: r` and `r` is live at `location`
             trace!(?r, liveness_constraints=?self.liveness_constraints.pretty_print_live_points(r));

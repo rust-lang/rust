@@ -125,8 +125,11 @@ impl PlaceholderReachability {
 /// the values of its elements. This annotates a single SCC.
 #[derive(Copy, Debug, Clone)]
 pub(crate) struct RegionTracker {
-    /// The smallest universe reachable (and its region)
-    min_universe: (UniverseIndex, RegionVid),
+    /// The smallest maximum universe reachable (and its region).
+    /// This determines the largest nameable universe from this
+    /// SCC. Earlier regions in the constraint graph are
+    /// preferred.
+    min_max_universe_reached: (UniverseIndex, RegionVid),
 
     /// Metadata about reachable placeholders
     reachable_placeholders: PlaceholderReachability,
@@ -149,27 +152,32 @@ impl RegionTracker {
             };
 
         Self {
-            min_universe: (definition.universe, rvid),
+            // The largest reachable universe from a rvid is its
+            // declared largest reachable one.
+            min_max_universe_reached: (definition.universe, rvid),
             reachable_placeholders,
             representative: Representative::new(rvid, definition),
         }
     }
 
-    /// The smallest-indexed universe reachable from and/or in this SCC.
-    pub(crate) fn min_universe(self) -> UniverseIndex {
-        self.min_universe.0
+    /// The largest universe that can be named from this SCC is the
+    /// smallest largest nameable universe of anything it reaches in
+    ///  the region constraint graph, or equivalently in logic terms:
+    /// `max_u(scc) = min(max_u(r) for r in scc: r )`.
+    pub(crate) fn max_nameable_universe(self) -> UniverseIndex {
+        self.min_max_universe_reached.0
     }
 
     /// Determine if the tracked universes of the two SCCs
     /// are compatible.
     pub(crate) fn universe_compatible_with(&self, other: Self) -> bool {
-        self.min_universe().can_name(other.min_universe())
-            || other.reachable_placeholders.can_be_named_by(self.min_universe())
+        self.max_nameable_universe().can_name(other.max_nameable_universe())
+            || other.reachable_placeholders.can_be_named_by(self.max_nameable_universe())
     }
 
     /// If this SCC reaches an universe that's too large, return it.
     fn reaches_too_large_universe(&self) -> Option<(RegionVid, UniverseIndex)> {
-        let min_u = self.min_universe();
+        let min_u = self.max_nameable_universe();
 
         let PlaceholderReachability::Placeholders { max_universe: (max_u, max_u_rvid), .. } =
             self.reachable_placeholders
@@ -185,28 +193,31 @@ impl RegionTracker {
     }
 }
 
+/// Pick the smallest universe index out of two, preferring
+/// the first argument if they are equal.
+#[inline(always)]
+fn pick_min_max_universe(a: RegionTracker, b: RegionTracker) -> (UniverseIndex, RegionVid) {
+    std::cmp::min_by_key(
+        a.min_max_universe_reached,
+        b.min_max_universe_reached,
+        |x: &(UniverseIndex, RegionVid)| x.0,
+    )
+}
+
 impl scc::Annotation for RegionTracker {
     fn merge_scc(self, other: Self) -> Self {
         trace!("{:?} << {:?}", self.representative, other.representative);
 
         Self {
             reachable_placeholders: self.reachable_placeholders.merge(other.reachable_placeholders),
-            min_universe: std::cmp::min_by_key(
-                self.min_universe,
-                other.min_universe,
-                |x: &(UniverseIndex, RegionVid)| x.0,
-            ),
+            min_max_universe_reached: pick_min_max_universe(self, other),
             representative: self.representative.merge_scc(other.representative),
         }
     }
 
     fn merge_reached(mut self, other: Self) -> Self {
         let already_has_placeholder_violation = self.reaches_too_large_universe().is_some();
-        self.min_universe = std::cmp::min_by_key(
-            self.min_universe,
-            other.min_universe,
-            |x: &(UniverseIndex, RegionVid)| x.0,
-        );
+        self.min_max_universe_reached = pick_min_max_universe(self, other);
         // This detail is subtle. We stop early here, because there may be multiple
         // illegally reached regions, but they are not equally good as blame candidates.
         // In general, the ones with the smallest indices of their RegionVids will
@@ -424,7 +435,7 @@ fn rewrite_placeholder_outlives<'tcx>(
             continue;
         };
 
-        let min_u = annotation.min_universe();
+        let min_u = annotation.max_nameable_universe();
 
         debug!(
             "Universe {max_u:?} is too large for its SCC, represented by {:?}",
@@ -432,7 +443,7 @@ fn rewrite_placeholder_outlives<'tcx>(
         );
         let blame_to = if annotation.representative.rvid() == max_u_rvid {
             // We originally had a large enough universe to fit all our reachable
-            // placeholders, but had it lowered because we also absorbed something
+            // placeholders, but had it lowered because we also reached something
             // small-universed. In this case, that's to blame!
             let small_universed_rvid = find_region(
                 outlives_constraints,
