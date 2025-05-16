@@ -4,6 +4,7 @@
 use std::{
     env, fmt,
     ops::AddAssign,
+    panic::{AssertUnwindSafe, catch_unwind},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -721,6 +722,7 @@ impl flags::AnalysisStats {
         let mut num_pats_unknown = 0;
         let mut num_pats_partially_unknown = 0;
         let mut num_pat_type_mismatches = 0;
+        let mut panics = 0;
         for &body_id in bodies {
             let name = body_id.name(db).unwrap_or_else(Name::missing);
             let module = body_id.module(db);
@@ -774,7 +776,20 @@ impl flags::AnalysisStats {
             }
             bar.set_message(msg);
             let body = db.body(body_id.into());
-            let inference_result = db.infer(body_id.into());
+            let inference_result = catch_unwind(AssertUnwindSafe(|| db.infer(body_id.into())));
+            let inference_result = match inference_result {
+                Ok(inference_result) => inference_result,
+                Err(p) => {
+                    if let Some(s) = p.downcast_ref::<&str>() {
+                        eprintln!("infer panicked for {}: {}", full_name(), s);
+                    } else if let Some(s) = p.downcast_ref::<String>() {
+                        eprintln!("infer panicked for {}: {}", full_name(), s);
+                    }
+                    panics += 1;
+                    bar.inc(1);
+                    continue;
+                }
+            };
             // This query is LRU'd, so actually calling it will skew the timing results.
             let sm = || db.body_with_source_map(body_id.into()).1;
 
@@ -1008,6 +1023,7 @@ impl flags::AnalysisStats {
             percentage(num_pats_partially_unknown, num_pats),
             num_pat_type_mismatches
         );
+        eprintln!("  panics: {}", panics);
         eprintln!("{:<20} {}", "Inference:", inference_time);
         report_metric("unknown type", num_exprs_unknown, "#");
         report_metric("type mismatches", num_expr_type_mismatches, "#");
