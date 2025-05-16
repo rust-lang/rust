@@ -345,7 +345,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     /// initializer. The check assumes that all already existing pointers and references point to
     /// non-escaping places.
     fn place_may_escape(&mut self, place: &Place<'_>) -> bool {
-        let is_transient = match self.const_kind() {
+        let is_transient = if matches!(self.const_kind(), hir::ConstContext::ConstFn) {
             // In a const fn all borrows are transient or point to the places given via
             // references in the arguments (so we already checked them with
             // TransientMutBorrow/MutBorrow as appropriate).
@@ -353,24 +353,23 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             // NOTE: Once we have heap allocations during CTFE we need to figure out
             // how to prevent `const fn` to create long-lived allocations that point
             // to mutable memory.
-            hir::ConstContext::ConstFn => true,
-            _ => {
-                // For indirect places, we are not creating a new permanent borrow, it's just as
-                // transient as the already existing one. For reborrowing references this is handled
-                // at the top of `visit_rvalue`, but for raw pointers we handle it here.
-                // Pointers/references to `static mut` and cases where the `*` is not the first
-                // projection also end up here.
-                // Locals with StorageDead do not live beyond the evaluation and can
-                // thus safely be borrowed without being able to be leaked to the final
-                // value of the constant.
-                // Note: This is only sound if every local that has a `StorageDead` has a
-                // `StorageDead` in every control flow path leading to a `return` terminator.
-                // If anything slips through, there's no safety net -- safe code can create
-                // references to variants of `!Freeze` enums as long as that variant is `Freeze`, so
-                // interning can't protect us here. (There *is* a safety net for mutable references
-                // though, interning will ICE if we miss something here.)
-                place.is_indirect() || self.local_is_transient(place.local)
-            }
+            true
+        } else {
+            // For indirect places, we are not creating a new permanent borrow, it's just as
+            // transient as the already existing one. For reborrowing references this is handled
+            // at the top of `visit_rvalue`, but for raw pointers we handle it here.
+            // Pointers/references to `static mut` and cases where the `*` is not the first
+            // projection also end up here.
+            // Locals with StorageDead do not live beyond the evaluation and can
+            // thus safely be borrowed without being able to be leaked to the final
+            // value of the constant.
+            // Note: This is only sound if every local that has a `StorageDead` has a
+            // `StorageDead` in every control flow path leading to a `return` terminator.
+            // If anything slips through, there's no safety net -- safe code can create
+            // references to variants of `!Freeze` enums as long as that variant is `Freeze`, so
+            // interning can't protect us here. (There *is* a safety net for mutable references
+            // though, interning will ICE if we miss something here.)
+            place.is_indirect() || self.local_is_transient(place.local)
         };
         // Transient places cannot possibly escape because the place doesn't exist any more at the
         // end of evaluation.
