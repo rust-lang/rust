@@ -724,6 +724,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let r_b = self.shallow_resolve(predicate.skip_binder().b);
         match (r_a.kind(), r_b.kind()) {
             (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
+                self.inner.borrow_mut().type_variables().sub(a_vid, b_vid);
                 return Err((a_vid, b_vid));
             }
             _ => {}
@@ -944,6 +945,10 @@ impl<'tcx> InferCtxt<'tcx> {
         storage.var_infos.clone()
     }
 
+    pub fn has_opaque_types_in_storage(&self) -> bool {
+        !self.inner.borrow().opaque_type_storage.is_empty()
+    }
+
     #[instrument(level = "debug", skip(self), ret)]
     pub fn take_opaque_types(&self) -> Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
         self.inner.borrow_mut().opaque_type_storage.take_opaque_types().collect()
@@ -952,6 +957,23 @@ impl<'tcx> InferCtxt<'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     pub fn clone_opaque_types(&self) -> Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
         self.inner.borrow_mut().opaque_type_storage.iter_opaque_types().collect()
+    }
+
+    pub fn find_sup_as_registered_opaque(&self, ty_vid: TyVid) -> Option<ty::AliasTy<'tcx>> {
+        let ty_sub_vid = self.sub_root_var(ty_vid);
+        let opaques: Vec<_> = self.inner.borrow_mut().opaque_types().iter_opaque_types().collect();
+        opaques
+            .into_iter()
+            .find(|(_, hidden_ty)| {
+                if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.ty.kind()
+                    && self.sub_root_var(hidden_vid) == ty_sub_vid
+                {
+                    true
+                } else {
+                    false
+                }
+            })
+            .map(|(key, _)| ty::AliasTy::new_from_args(self.tcx, key.def_id.to_def_id(), key.args))
     }
 
     #[inline(always)]
@@ -1054,6 +1076,10 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
         self.inner.borrow_mut().type_variables().root_var(var)
+    }
+
+    pub fn sub_root_var(&self, var: ty::TyVid) -> ty::TyVid {
+        self.inner.borrow_mut().type_variables().sub_root_var(var)
     }
 
     pub fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid {
