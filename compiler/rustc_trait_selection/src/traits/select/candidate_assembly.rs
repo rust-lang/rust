@@ -65,71 +65,92 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let def_id = obligation.predicate.def_id();
             let tcx = self.tcx();
 
-            if tcx.is_lang_item(def_id, LangItem::Copy) {
-                debug!(obligation_self_ty = ?obligation.predicate.skip_binder().self_ty());
+            let lang_item = tcx.as_lang_item(def_id);
+            match lang_item {
+                Some(LangItem::Copy | LangItem::Clone) => {
+                    debug!(obligation_self_ty = ?obligation.predicate.skip_binder().self_ty());
 
-                // User-defined copy impls are permitted, but only for
-                // structs and enums.
-                self.assemble_candidates_from_impls(obligation, &mut candidates);
+                    // User-defined copy impls are permitted, but only for
+                    // structs and enums.
+                    self.assemble_candidates_from_impls(obligation, &mut candidates);
 
-                // For other types, we'll use the builtin rules.
-                let copy_conditions = self.copy_clone_conditions(obligation);
-                self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
-            } else if tcx.is_lang_item(def_id, LangItem::DiscriminantKind) {
-                // `DiscriminantKind` is automatically implemented for every type.
-                candidates.vec.push(BuiltinCandidate { has_nested: false });
-            } else if tcx.is_lang_item(def_id, LangItem::PointeeTrait) {
-                // `Pointee` is automatically implemented for every type.
-                candidates.vec.push(BuiltinCandidate { has_nested: false });
-            } else if tcx.is_lang_item(def_id, LangItem::Sized) {
-                self.assemble_builtin_sized_candidate(obligation, &mut candidates);
-            } else if tcx.is_lang_item(def_id, LangItem::Unsize) {
-                self.assemble_candidates_for_unsizing(obligation, &mut candidates);
-            } else if tcx.is_lang_item(def_id, LangItem::Destruct) {
-                self.assemble_const_destruct_candidates(obligation, &mut candidates);
-            } else if tcx.is_lang_item(def_id, LangItem::TransmuteTrait) {
-                // User-defined transmutability impls are permitted.
-                self.assemble_candidates_from_impls(obligation, &mut candidates);
-                self.assemble_candidates_for_transmutability(obligation, &mut candidates);
-            } else if tcx.is_lang_item(def_id, LangItem::Tuple) {
-                self.assemble_candidate_for_tuple(obligation, &mut candidates);
-            } else if tcx.is_lang_item(def_id, LangItem::FnPtrTrait) {
-                self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
-            } else if tcx.is_lang_item(def_id, LangItem::BikeshedGuaranteedNoDrop) {
-                self.assemble_candidates_for_bikeshed_guaranteed_no_drop_trait(
-                    obligation,
-                    &mut candidates,
-                );
-            } else {
-                if tcx.is_lang_item(def_id, LangItem::Clone) {
-                    // Same builtin conditions as `Copy`, i.e., every type which has builtin support
-                    // for `Copy` also has builtin support for `Clone`, and tuples/arrays of `Clone`
-                    // types have builtin support for `Clone`.
-                    let clone_conditions = self.copy_clone_conditions(obligation);
-                    self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates);
+                    // For other types, we'll use the builtin rules.
+                    let copy_conditions = self.copy_clone_conditions(obligation);
+                    self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
                 }
-
-                if tcx.is_lang_item(def_id, LangItem::Coroutine) {
-                    self.assemble_coroutine_candidates(obligation, &mut candidates);
-                } else if tcx.is_lang_item(def_id, LangItem::Future) {
-                    self.assemble_future_candidates(obligation, &mut candidates);
-                } else if tcx.is_lang_item(def_id, LangItem::Iterator) {
-                    self.assemble_iterator_candidates(obligation, &mut candidates);
-                } else if tcx.is_lang_item(def_id, LangItem::FusedIterator) {
-                    self.assemble_fused_iterator_candidates(obligation, &mut candidates);
-                } else if tcx.is_lang_item(def_id, LangItem::AsyncIterator) {
-                    self.assemble_async_iterator_candidates(obligation, &mut candidates);
-                } else if tcx.is_lang_item(def_id, LangItem::AsyncFnKindHelper) {
-                    self.assemble_async_fn_kind_helper_candidates(obligation, &mut candidates);
+                Some(LangItem::DiscriminantKind) => {
+                    // `DiscriminantKind` is automatically implemented for every type.
+                    candidates.vec.push(BuiltinCandidate { has_nested: false });
                 }
+                Some(LangItem::PointeeTrait) => {
+                    // `Pointee` is automatically implemented for every type.
+                    candidates.vec.push(BuiltinCandidate { has_nested: false });
+                }
+                Some(LangItem::Sized) => {
+                    self.assemble_builtin_sized_candidate(obligation, &mut candidates);
+                }
+                Some(LangItem::Unsize) => {
+                    self.assemble_candidates_for_unsizing(obligation, &mut candidates);
+                }
+                Some(LangItem::Destruct) => {
+                    self.assemble_const_destruct_candidates(obligation, &mut candidates);
+                }
+                Some(LangItem::TransmuteTrait) => {
+                    // User-defined transmutability impls are permitted.
+                    self.assemble_candidates_from_impls(obligation, &mut candidates);
+                    self.assemble_candidates_for_transmutability(obligation, &mut candidates);
+                }
+                Some(LangItem::Tuple) => {
+                    self.assemble_candidate_for_tuple(obligation, &mut candidates);
+                }
+                Some(LangItem::FnPtrTrait) => {
+                    self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
+                }
+                Some(LangItem::BikeshedGuaranteedNoDrop) => {
+                    self.assemble_candidates_for_bikeshed_guaranteed_no_drop_trait(
+                        obligation,
+                        &mut candidates,
+                    );
+                }
+                _ => {
+                    // We re-match here for traits that can have both builtin impls and user written impls.
+                    // After the builtin impls we need to also add user written impls, which we do not want to
+                    // do in general because just checking if there are any is expensive.
+                    match lang_item {
+                        Some(LangItem::Coroutine) => {
+                            self.assemble_coroutine_candidates(obligation, &mut candidates);
+                        }
+                        Some(LangItem::Future) => {
+                            self.assemble_future_candidates(obligation, &mut candidates);
+                        }
+                        Some(LangItem::Iterator) => {
+                            self.assemble_iterator_candidates(obligation, &mut candidates);
+                        }
+                        Some(LangItem::FusedIterator) => {
+                            self.assemble_fused_iterator_candidates(obligation, &mut candidates);
+                        }
+                        Some(LangItem::AsyncIterator) => {
+                            self.assemble_async_iterator_candidates(obligation, &mut candidates);
+                        }
+                        Some(LangItem::AsyncFnKindHelper) => {
+                            self.assemble_async_fn_kind_helper_candidates(
+                                obligation,
+                                &mut candidates,
+                            );
+                        }
+                        Some(LangItem::AsyncFn | LangItem::AsyncFnMut | LangItem::AsyncFnOnce) => {
+                            self.assemble_async_closure_candidates(obligation, &mut candidates);
+                        }
+                        Some(LangItem::Fn | LangItem::FnMut | LangItem::FnOnce) => {
+                            self.assemble_closure_candidates(obligation, &mut candidates);
+                            self.assemble_fn_pointer_candidates(obligation, &mut candidates);
+                        }
+                        _ => {}
+                    }
 
-                // FIXME: Put these into `else if` blocks above, since they're built-in.
-                self.assemble_closure_candidates(obligation, &mut candidates);
-                self.assemble_async_closure_candidates(obligation, &mut candidates);
-                self.assemble_fn_pointer_candidates(obligation, &mut candidates);
-
-                self.assemble_candidates_from_impls(obligation, &mut candidates);
-                self.assemble_candidates_from_object_ty(obligation, &mut candidates);
+                    self.assemble_candidates_from_impls(obligation, &mut candidates);
+                    self.assemble_candidates_from_object_ty(obligation, &mut candidates);
+                }
             }
 
             self.assemble_candidates_from_projected_tys(obligation, &mut candidates);
@@ -360,9 +381,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let Some(kind) = self.tcx().fn_trait_kind_from_def_id(obligation.predicate.def_id()) else {
-            return;
-        };
+        let kind = self.tcx().fn_trait_kind_from_def_id(obligation.predicate.def_id()).unwrap();
 
         // Okay to skip binder because the args on closure types never
         // touch bound regions, they just capture the in-scope
@@ -424,11 +443,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let Some(goal_kind) =
-            self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id())
-        else {
-            return;
-        };
+        let goal_kind =
+            self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id()).unwrap();
 
         match *obligation.self_ty().skip_binder().kind() {
             ty::CoroutineClosure(_, args) => {
@@ -501,11 +517,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        // We provide impl of all fn traits for fn pointers.
-        if !self.tcx().is_fn_trait(obligation.predicate.def_id()) {
-            return;
-        }
-
         // Keep this function in sync with extract_tupled_inputs_and_output_from_callable
         // until the old solver (and thus this function) is removed.
 
