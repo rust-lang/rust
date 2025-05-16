@@ -2887,36 +2887,40 @@ impl<T> [T] {
         }
         let mut base = 0usize;
 
-        // This loop intentionally doesn't have an early exit if the comparison
-        // returns Equal. We want the number of loop iterations to depend *only*
-        // on the size of the input slice so that the CPU can reliably predict
-        // the loop count.
         while size > 1 {
-            let half = size / 2;
-            let mid = base + half;
+            size >>= 1;
+            let mid = base + size;
 
-            // SAFETY: the call is made safe by the following invariants:
-            // - `mid >= 0`: by definition
-            // - `mid < size`: `mid = size / 2 + size / 4 + size / 8 ...`
+            // SAFETY: `mid < self.len()` because
+            // mid = self.len() / 2 + self.len() / 4 + self.len() / 8 ...
             let cmp = f(unsafe { self.get_unchecked(mid) });
 
+            base = match cmp {
+                Ordering::Less => mid + (size & 1),
+                Ordering::Equal => {
+                    // SAFETY: same as the `get_unchecked` above.
+                    unsafe { hint::assert_unchecked(mid < self.len()) };
+                    return Ok(mid);
+                },
+                Ordering::Greater => base,
+            };
+            /* if cmp == Equal {
+                // SAFETY: same as the `get_unchecked` above.
+                unsafe { hint::assert_unchecked(mid < self.len()) };
+                return Ok(mid);
+            } */
             // Binary search interacts poorly with branch prediction, so force
             // the compiler to use conditional moves if supported by the target
             // architecture.
-            base = hint::select_unpredictable(cmp == Greater, base, mid);
-
-            // This is imprecise in the case where `size` is odd and the
-            // comparison returns Greater: the mid element still gets included
-            // by `size` even though it's known to be larger than the element
-            // being searched for.
-            //
-            // This is fine though: we gain more performance by keeping the
-            // loop iteration count invariant (and thus predictable) than we
-            // lose from considering one additional element.
-            size -= half;
+            // base = hint::select_unpredictable(cmp == Less, mid + (size & 1), base);
         }
 
-        // SAFETY: base is always in [0, size) because base <= mid.
+        // if was going through `Ordering::Less` each loop (base = mid + 1)
+        if base == self.len() {
+            return Err(base);
+        }
+
+        // SAFETY: `base < self.len()` because `base <= mid`.
         let cmp = f(unsafe { self.get_unchecked(base) });
         if cmp == Equal {
             // SAFETY: same as the `get_unchecked` above.
