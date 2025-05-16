@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition name: `version`
-  --> $DIR/cfg-version-expand.rs:15:11
+  --> $DIR/cfg-version-expand.rs:13:11
    |
 LL | #[cfg(not(version = "1.48.0"))]
    |           ^^^^^^^^^^^^^^^^^^
