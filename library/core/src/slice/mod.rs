@@ -7,7 +7,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
-use crate::intrinsics::{exact_div, unchecked_sub};
+use crate::intrinsics::{assume, exact_div, unchecked_sub};
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{OneSidedRange, OneSidedRangeBound, Range, RangeBounds, RangeInclusive};
@@ -113,7 +113,13 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const fn len(&self) -> usize {
-        ptr::metadata(self)
+        let len = ptr::metadata(self);
+
+        // SAFETY: The value of `T::MAX_SLICE_LEN` is per definition
+        // the largest possible value for the slice length.
+        unsafe { assume(len <= T::MAX_SLICE_LEN) };
+
+        len
     }
 
     /// Returns `true` if the slice has a length of 0.
