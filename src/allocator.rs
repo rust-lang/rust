@@ -152,6 +152,7 @@ fn create_wrapper_function(
     if output.is_some() {
         block.end_with_return(None, ret);
     } else {
+        block.add_eval(None, ret);
         block.end_with_void_return(None);
     }
 
