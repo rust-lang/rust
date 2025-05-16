@@ -362,7 +362,10 @@ impl<'tcx> Const<'tcx> {
             }
             Const::Unevaluated(uneval, _) => {
                 // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`
-                let uneval_ty_ct = ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(uneval.def, uneval.args));
+                let uneval_ty_ct = ty::Const::new_unevaluated(
+                    tcx,
+                    ty::UnevaluatedConst::new(uneval.def, uneval.args),
+                );
                 let mir_ct = tcx.normalize_erasing_regions(typing_env, uneval_ty_ct);
                 // FIXME: duplicated with above match arm
                 match mir_ct.kind() {
