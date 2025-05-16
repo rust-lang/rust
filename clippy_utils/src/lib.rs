@@ -25,6 +25,7 @@
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
+extern crate indexmap;
 extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_attr_parsing;
@@ -81,7 +82,6 @@ pub use self::hir_utils::{
 use core::mem;
 use core::ops::ControlFlow;
 use std::collections::hash_map::Entry;
-use std::hash::BuildHasherDefault;
 use std::iter::{once, repeat_n};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
@@ -91,7 +91,7 @@ use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::packed::Pu128;
-use rustc_data_structures::unhash::UnhashMap;
+use rustc_data_structures::unhash::UnindexMap;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
@@ -2196,45 +2196,46 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
     None
 }
 
-/// Returns list of all pairs `(a, b)` where `eq(a, b) == true`
-/// and `a` is before `b` in `exprs` for all `a` and `b` in
-/// `exprs`
+/// Returns a list of groups where elements in each group are equal according to `eq`
+///
+/// - Within each group the elements are sorted by the order they appear in `exprs`
+/// - The groups themselves are sorted by their first element's appearence in `exprs`
 ///
 /// Given functions `eq` and `hash` such that `eq(a, b) == true`
 /// implies `hash(a) == hash(b)`
-pub fn search_same<T, Hash, Eq>(exprs: &[T], mut hash: Hash, mut eq: Eq) -> Vec<(&T, &T)>
+pub fn search_same<T, Hash, Eq>(exprs: &[T], mut hash: Hash, mut eq: Eq) -> Vec<Vec<&T>>
 where
     Hash: FnMut(&T) -> u64,
     Eq: FnMut(&T, &T) -> bool,
 {
     match exprs {
-        [a, b] if eq(a, b) => return vec![(a, b)],
+        [a, b] if eq(a, b) => return vec![vec![a, b]],
         _ if exprs.len() <= 2 => return vec![],
         _ => {},
     }
 
-    let mut match_expr_list: Vec<(&T, &T)> = Vec::new();
-
-    let mut map: UnhashMap<u64, Vec<&_>> =
-        UnhashMap::with_capacity_and_hasher(exprs.len(), BuildHasherDefault::default());
+    let mut buckets: UnindexMap<u64, Vec<Vec<&T>>> = UnindexMap::default();
 
     for expr in exprs {
-        match map.entry(hash(expr)) {
-            Entry::Occupied(mut o) => {
-                for o in o.get() {
-                    if eq(o, expr) {
-                        match_expr_list.push((o, expr));
-                    }
+        match buckets.entry(hash(expr)) {
+            indexmap::map::Entry::Occupied(mut o) => {
+                let bucket = o.get_mut();
+                match bucket.iter_mut().find(|group| eq(expr, group[0])) {
+                    Some(group) => group.push(expr),
+                    None => bucket.push(vec![expr]),
                 }
-                o.get_mut().push(expr);
             },
-            Entry::Vacant(v) => {
-                v.insert(vec![expr]);
+            indexmap::map::Entry::Vacant(v) => {
+                v.insert(vec![vec![expr]]);
             },
         }
     }
 
-    match_expr_list
+    buckets
+        .into_values()
+        .flatten()
+        .filter(|group| group.len() > 1)
+        .collect()
 }
 
 /// Peels off all references on the pattern. Returns the underlying pattern and the number of
