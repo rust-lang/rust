@@ -2,7 +2,7 @@
 //@ compile-flags: --emit=mir,link -Zmir-opt-level=4
 // Checks that we don't ICE due to attempting to run const prop
 // on a function with unsatisifable 'where' clauses
-
+#![feature(trivial_bounds)]
 #![allow(unused)]
 
 trait A {
