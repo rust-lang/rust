@@ -1,4 +1,3 @@
-use aho_corasick::{AhoCorasick, AhoCorasickBuilder};
 use core::fmt::{self, Display};
 use core::slice;
 use core::str::FromStr;
@@ -21,6 +20,7 @@ pub enum FileAction {
     Write,
     Create,
     Rename,
+    Delete,
 }
 impl FileAction {
     fn as_str(self) -> &'static str {
@@ -30,6 +30,7 @@ impl FileAction {
             Self::Write => "writing",
             Self::Create => "creating",
             Self::Rename => "renaming",
+            Self::Delete => "deleting",
         }
     }
 }
@@ -366,53 +367,11 @@ pub fn update_text_region_fn(
     move |path, src, dst| update_text_region(path, start, end, src, dst, &mut insert)
 }
 
-#[must_use]
-pub fn is_ident_char(c: u8) -> bool {
-    matches!(c, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_')
-}
-
-pub struct StringReplacer<'a> {
-    searcher: AhoCorasick,
-    replacements: &'a [(&'a str, &'a str)],
-}
-impl<'a> StringReplacer<'a> {
-    #[must_use]
-    pub fn new(replacements: &'a [(&'a str, &'a str)]) -> Self {
-        Self {
-            searcher: AhoCorasickBuilder::new()
-                .match_kind(aho_corasick::MatchKind::LeftmostLongest)
-                .build(replacements.iter().map(|&(x, _)| x))
-                .unwrap(),
-            replacements,
-        }
-    }
-
-    /// Replace substrings if they aren't bordered by identifier characters.
-    pub fn replace_ident_fn(&self) -> impl Fn(&Path, &str, &mut String) -> UpdateStatus {
-        move |_, src, dst| {
-            let mut pos = 0;
-            let mut changed = false;
-            for m in self.searcher.find_iter(src) {
-                if !is_ident_char(src.as_bytes().get(m.start().wrapping_sub(1)).copied().unwrap_or(0))
-                    && !is_ident_char(src.as_bytes().get(m.end()).copied().unwrap_or(0))
-                {
-                    changed = true;
-                    dst.push_str(&src[pos..m.start()]);
-                    dst.push_str(self.replacements[m.pattern()].1);
-                    pos = m.end();
-                }
-            }
-            dst.push_str(&src[pos..]);
-            UpdateStatus::from_changed(changed)
-        }
-    }
-}
-
 #[derive(Clone, Copy)]
-pub enum Token {
-    /// Matches any number of doc comments.
-    AnyDoc,
-    Ident(&'static str),
+pub enum Token<'a> {
+    /// Matches any number of comments / doc comments.
+    AnyComment,
+    Ident(&'a str),
     CaptureIdent,
     LitStr,
     CaptureLitStr,
@@ -431,35 +390,37 @@ pub enum Token {
     OpenBracket,
     OpenParen,
     Pound,
+    Semi,
+    Slash,
 }
 
 pub struct RustSearcher<'txt> {
     text: &'txt str,
     cursor: lexer::Cursor<'txt>,
     pos: u32,
-
-    // Either the next token or a zero-sized whitespace sentinel.
     next_token: lexer::Token,
 }
 impl<'txt> RustSearcher<'txt> {
     #[must_use]
+    #[expect(clippy::inconsistent_struct_constructor)]
     pub fn new(text: &'txt str) -> Self {
+        let mut cursor = lexer::Cursor::new(text, FrontmatterAllowed::Yes);
         Self {
             text,
-            cursor: lexer::Cursor::new(text, FrontmatterAllowed::Yes),
             pos: 0,
-
-            // Sentinel value indicating there is no read token.
-            next_token: lexer::Token {
-                len: 0,
-                kind: lexer::TokenKind::Whitespace,
-            },
+            next_token: cursor.advance_token(),
+            cursor,
         }
     }
 
     #[must_use]
     pub fn peek_text(&self) -> &'txt str {
         &self.text[self.pos as usize..(self.pos + self.next_token.len) as usize]
+    }
+
+    #[must_use]
+    pub fn peek_len(&self) -> u32 {
+        self.next_token.len
     }
 
     #[must_use]
@@ -485,37 +446,15 @@ impl<'txt> RustSearcher<'txt> {
 
     /// Consumes the next token if it matches the requested value and captures the value if
     /// requested. Returns true if a token was matched.
-    fn read_token(&mut self, token: Token, captures: &mut slice::IterMut<'_, &mut &'txt str>) -> bool {
+    fn read_token(&mut self, token: Token<'_>, captures: &mut slice::IterMut<'_, &mut &'txt str>) -> bool {
         loop {
             match (token, self.next_token.kind) {
-                // Has to be the first match arm so the empty sentinel token will be handled.
-                // This will also skip all whitespace/comments preceding any tokens.
-                (
-                    _,
-                    lexer::TokenKind::Whitespace
-                    | lexer::TokenKind::LineComment { doc_style: None }
-                    | lexer::TokenKind::BlockComment {
-                        doc_style: None,
-                        terminated: true,
-                    },
-                ) => {
-                    self.step();
-                    if self.at_end() {
-                        // `AnyDoc` always matches.
-                        return matches!(token, Token::AnyDoc);
-                    }
-                },
-                (
-                    Token::AnyDoc,
+                (_, lexer::TokenKind::Whitespace)
+                | (
+                    Token::AnyComment,
                     lexer::TokenKind::BlockComment { terminated: true, .. } | lexer::TokenKind::LineComment { .. },
-                ) => {
-                    self.step();
-                    if self.at_end() {
-                        // `AnyDoc` always matches.
-                        return true;
-                    }
-                },
-                (Token::AnyDoc, _) => return true,
+                ) => self.step(),
+                (Token::AnyComment, _) => return true,
                 (Token::Bang, lexer::TokenKind::Bang)
                 | (Token::CloseBrace, lexer::TokenKind::CloseBrace)
                 | (Token::CloseBracket, lexer::TokenKind::CloseBracket)
@@ -529,6 +468,8 @@ impl<'txt> RustSearcher<'txt> {
                 | (Token::OpenBracket, lexer::TokenKind::OpenBracket)
                 | (Token::OpenParen, lexer::TokenKind::OpenParen)
                 | (Token::Pound, lexer::TokenKind::Pound)
+                | (Token::Semi, lexer::TokenKind::Semi)
+                | (Token::Slash, lexer::TokenKind::Slash)
                 | (
                     Token::LitStr,
                     lexer::TokenKind::Literal {
@@ -569,7 +510,7 @@ impl<'txt> RustSearcher<'txt> {
     }
 
     #[must_use]
-    pub fn find_token(&mut self, token: Token) -> bool {
+    pub fn find_token(&mut self, token: Token<'_>) -> bool {
         let mut capture = [].iter_mut();
         while !self.read_token(token, &mut capture) {
             self.step();
@@ -581,7 +522,7 @@ impl<'txt> RustSearcher<'txt> {
     }
 
     #[must_use]
-    pub fn find_capture_token(&mut self, token: Token) -> Option<&'txt str> {
+    pub fn find_capture_token(&mut self, token: Token<'_>) -> Option<&'txt str> {
         let mut res = "";
         let mut capture = &mut res;
         let mut capture = slice::from_mut(&mut capture).iter_mut();
@@ -595,7 +536,7 @@ impl<'txt> RustSearcher<'txt> {
     }
 
     #[must_use]
-    pub fn match_tokens(&mut self, tokens: &[Token], captures: &mut [&mut &'txt str]) -> bool {
+    pub fn match_tokens(&mut self, tokens: &[Token<'_>], captures: &mut [&mut &'txt str]) -> bool {
         let mut captures = captures.iter_mut();
         tokens.iter().all(|&t| self.read_token(t, &mut captures))
     }
@@ -606,16 +547,44 @@ pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
     match OpenOptions::new().create_new(true).write(true).open(new_name) {
         Ok(file) => drop(file),
         Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
-        Err(e) => panic_file(&e, FileAction::Create, new_name),
+        Err(ref e) => panic_file(e, FileAction::Create, new_name),
     }
     match fs::rename(old_name, new_name) {
         Ok(()) => true,
-        Err(e) => {
+        Err(ref e) => {
             drop(fs::remove_file(new_name));
-            if e.kind() == io::ErrorKind::NotFound {
+            // `NotADirectory` happens on posix when renaming a directory to an existing file.
+            // Windows will ignore this and rename anyways.
+            if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
                 false
             } else {
-                panic_file(&e, FileAction::Rename, old_name);
+                panic_file(e, FileAction::Rename, old_name);
+            }
+        },
+    }
+}
+
+#[expect(clippy::must_use_candidate)]
+pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
+    match fs::create_dir(new_name) {
+        Ok(()) => {},
+        Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
+        Err(ref e) => panic_file(e, FileAction::Create, new_name),
+    }
+    // Windows can't reliably rename to an empty directory.
+    #[cfg(windows)]
+    drop(fs::remove_dir(new_name));
+    match fs::rename(old_name, new_name) {
+        Ok(()) => true,
+        Err(ref e) => {
+            // Already dropped earlier on windows.
+            #[cfg(not(windows))]
+            drop(fs::remove_dir(new_name));
+            // `NotADirectory` happens on posix when renaming a file to an existing directory.
+            if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
+                false
+            } else {
+                panic_file(e, FileAction::Rename, old_name);
             }
         },
     }
@@ -623,4 +592,21 @@ pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
 
 pub fn write_file(path: &Path, contents: &str) {
     fs::write(path, contents).unwrap_or_else(|e| panic_file(&e, FileAction::Write, path));
+}
+
+#[expect(clippy::must_use_candidate)]
+pub fn delete_file_if_exists(path: &Path) -> bool {
+    match fs::remove_file(path) {
+        Ok(()) => true,
+        Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::IsADirectory) => false,
+        Err(ref e) => panic_file(e, FileAction::Delete, path),
+    }
+}
+
+pub fn delete_dir_if_exists(path: &Path) {
+    match fs::remove_dir_all(path) {
+        Ok(()) => {},
+        Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) => {},
+        Err(ref e) => panic_file(e, FileAction::Delete, path),
+    }
 }

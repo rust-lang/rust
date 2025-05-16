@@ -1,4 +1,11 @@
-#![feature(rustc_private, if_let_guard, let_chains)]
+#![feature(
+    rustc_private,
+    if_let_guard,
+    let_chains,
+    os_str_slice,
+    os_string_truncate,
+    slice_split_once
+)]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,
