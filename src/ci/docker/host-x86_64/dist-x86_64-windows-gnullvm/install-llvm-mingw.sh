@@ -8,6 +8,6 @@ curl -L https://github.com/mstorsjo/llvm-mingw/releases/download/${release_date}
 tar --extract --xz --strip 1 --directory /usr/local
 
 # https://github.com/mstorsjo/llvm-mingw/issues/493
-for arch in aarch64 x86_64; do
+for arch in i686 x86_64; do
     ln -s $arch-w64-windows-gnu.cfg /usr/local/bin/$arch-pc-windows-gnu.cfg
 done
