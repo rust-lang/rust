@@ -6,7 +6,6 @@
 // positives.
 
 #![feature(iter_collect_into)]
-#![feature(let_chains)]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,

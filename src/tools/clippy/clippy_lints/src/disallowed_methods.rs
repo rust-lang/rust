@@ -1,6 +1,7 @@
 use clippy_config::Conf;
 use clippy_config::types::{DisallowedPath, create_disallowed_map};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::paths::PathNS;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{Expr, ExprKind};
@@ -66,6 +67,7 @@ impl DisallowedMethods {
         let (disallowed, _) = create_disallowed_map(
             tcx,
             &conf.disallowed_methods,
+            PathNS::Value,
             |def_kind| {
                 matches!(
                     def_kind,

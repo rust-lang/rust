@@ -1,6 +1,7 @@
 use crate::manual_ignore_case_cmp::MatchType::{Literal, ToAscii};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::sym;
 use clippy_utils::ty::{get_type_diagnostic_name, is_type_diagnostic_item, is_type_lang_item};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
@@ -10,7 +11,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::{Ty, UintTy};
 use rustc_session::declare_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -47,9 +48,9 @@ enum MatchType<'a, 'b> {
 
 fn get_ascii_type<'a, 'b>(cx: &LateContext<'a>, kind: rustc_hir::ExprKind<'b>) -> Option<(Span, MatchType<'a, 'b>)> {
     if let MethodCall(path, expr, _, _) = kind {
-        let is_lower = match path.ident.name.as_str() {
-            "to_ascii_lowercase" => true,
-            "to_ascii_uppercase" => false,
+        let is_lower = match path.ident.name {
+            sym::to_ascii_lowercase => true,
+            sym::to_ascii_uppercase => false,
             _ => return None,
         };
         let ty_raw = cx.typeck_results().expr_ty(expr);

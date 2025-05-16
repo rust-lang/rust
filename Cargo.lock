@@ -537,7 +537,7 @@ checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
 name = "clippy"
-version = "0.1.88"
+version = "0.1.89"
 dependencies = [
  "anstream",
  "askama",
@@ -569,7 +569,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.88"
+version = "0.1.89"
 dependencies = [
  "clippy_utils",
  "itertools",
@@ -594,7 +594,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.88"
+version = "0.1.89"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.18.1",
@@ -624,7 +624,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.88"
+version = "0.1.89"
 dependencies = [
  "arrayvec",
  "itertools",
@@ -5084,9 +5084,9 @@ dependencies = [
 
 [[package]]
 name = "tempfile"
-version = "3.19.1"
+version = "3.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7437ac7763b9b123ccf33c338a5cc1bac6f69b45a136c19bdd8a65e3916435bf"
+checksum = "e8a64e3985349f2441a1a9ef0b853f869006c3855f2cda6862a94d26ebb9d6a1"
 dependencies = [
  "fastrand",
  "getrandom 0.3.2",

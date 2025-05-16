@@ -20,7 +20,7 @@ use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
-    GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    GenericParamDefKind, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
@@ -32,7 +32,8 @@ use std::assert_matches::debug_assert_matches;
 use std::collections::hash_map::Entry;
 use std::iter;
 
-use crate::{def_path_def_ids, match_def_path, path_res};
+use crate::path_res;
+use crate::paths::{PathNS, lookup_path_str};
 
 mod type_certainty;
 pub use type_certainty::expr_type_is_certain;
@@ -229,9 +230,7 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
 /// Checks whether a type implements a trait.
 /// The function returns false in case the type contains an inference variable.
 ///
-/// See:
-/// * [`get_trait_def_id`](super::get_trait_def_id) to get a trait [`DefId`].
-/// * [Common tools for writing lints] for an example how to use this function and other options.
+/// See [Common tools for writing lints] for an example how to use this function and other options.
 ///
 /// [Common tools for writing lints]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/common_tools_writing_lints.md#checking-if-a-type-implements-a-specific-trait
 pub fn implements_trait<'tcx>(
@@ -359,56 +358,6 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-// FIXME: Per https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/at/struct.At.html#method.normalize
-// this function can be removed once the `normalize` method does not panic when normalization does
-// not succeed
-/// Checks if `Ty` is normalizable. This function is useful
-/// to avoid crashes on `layout_of`.
-pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-    is_normalizable_helper(cx, param_env, ty, 0, &mut FxHashMap::default())
-}
-
-fn is_normalizable_helper<'tcx>(
-    cx: &LateContext<'tcx>,
-    param_env: ParamEnv<'tcx>,
-    ty: Ty<'tcx>,
-    depth: usize,
-    cache: &mut FxHashMap<Ty<'tcx>, bool>,
-) -> bool {
-    if let Some(&cached_result) = cache.get(&ty) {
-        return cached_result;
-    }
-    if !cx.tcx.recursion_limit().value_within_limit(depth) {
-        return false;
-    }
-    // Prevent recursive loops by answering `true` to recursive requests with the same
-    // type. This will be adjusted when the outermost call analyzes all the type
-    // components.
-    cache.insert(ty, true);
-    let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
-    let cause = ObligationCause::dummy();
-    let result = if infcx.at(&cause, param_env).query_normalize(ty).is_ok() {
-        match ty.kind() {
-            ty::Adt(def, args) => def.variants().iter().all(|variant| {
-                variant
-                    .fields
-                    .iter()
-                    .all(|field| is_normalizable_helper(cx, param_env, field.ty(cx.tcx, args), depth + 1, cache))
-            }),
-            _ => ty.walk().all(|generic_arg| match generic_arg.unpack() {
-                GenericArgKind::Type(inner_ty) if inner_ty != ty => {
-                    is_normalizable_helper(cx, param_env, inner_ty, depth + 1, cache)
-                },
-                _ => true, // if inner_ty == ty, we've already checked it
-            }),
-        }
-    } else {
-        false
-    };
-    cache.insert(ty, result);
-    result
-}
-
 /// Returns `true` if the given type is a non aggregate primitive (a `bool` or `char`, any
 /// integer or floating-point number type).
 ///
@@ -472,17 +421,6 @@ pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: LangItem) 
 /// Return `true` if the passed `typ` is `isize` or `usize`.
 pub fn is_isize_or_usize(typ: Ty<'_>) -> bool {
     matches!(typ.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
-}
-
-/// Checks if type is struct, enum or union type with the given def path.
-///
-/// If the type is a diagnostic item, use `is_type_diagnostic_item` instead.
-/// If you change the signature, remember to update the internal lint `MatchTypeOnDiagItem`
-pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
-    match ty.kind() {
-        ty::Adt(adt, _) => match_def_path(cx, adt.did(), path),
-        _ => false,
-    }
 }
 
 /// Checks if the drop order for a type matters.
@@ -993,9 +931,6 @@ pub fn adt_and_variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<
 /// account the layout of type parameters.
 pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
     use rustc_middle::ty::layout::LayoutOf;
-    if !is_normalizable(cx, cx.param_env, ty) {
-        return 0;
-    }
     match (cx.layout_of(ty).map(|layout| layout.size.bytes()), ty.kind()) {
         (Ok(size), _) => size,
         (Err(_), ty::Tuple(list)) => list.iter().map(|t| approx_ty_size(cx, t)).sum(),
@@ -1184,10 +1119,7 @@ impl<'tcx> InteriorMut<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, ignore_interior_mutability: &[String]) -> Self {
         let ignored_def_ids = ignore_interior_mutability
             .iter()
-            .flat_map(|ignored_ty| {
-                let path: Vec<&str> = ignored_ty.split("::").collect();
-                def_path_def_ids(tcx, path.as_slice())
-            })
+            .flat_map(|ignored_ty| lookup_path_str(tcx, PathNS::Type, ignored_ty))
             .collect();
 
         Self {
@@ -1421,4 +1353,11 @@ pub fn has_non_owning_mutable_access<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'
 
     let mut phantoms = FxHashSet::default();
     has_non_owning_mutable_access_inner(cx, &mut phantoms, iter_ty)
+}
+
+/// Check if `ty` is slice-like, i.e., `&[T]`, `[T; N]`, or `Vec<T>`.
+pub fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    ty.is_slice()
+        || ty.is_array()
+        || matches!(ty.kind(), ty::Adt(adt_def, _) if cx.tcx.is_diagnostic_item(sym::Vec, adt_def.did()))
 }

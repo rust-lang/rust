@@ -1,11 +1,12 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{match_def_path, sym};
+use clippy_utils::{is_in_const_context, paths, sym};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -33,34 +34,35 @@ declare_clippy_lint! {
     "`char.is_digit()` is clearer"
 }
 
-declare_lint_pass!(ToDigitIsSome => [TO_DIGIT_IS_SOME]);
+impl_lint_pass!(ToDigitIsSome => [TO_DIGIT_IS_SOME]);
+
+pub(crate) struct ToDigitIsSome {
+    msrv: Msrv,
+}
+
+impl ToDigitIsSome {
+    pub(crate) fn new(conf: &'static Conf) -> Self {
+        Self { msrv: conf.msrv }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let hir::ExprKind::MethodCall(is_some_path, to_digit_expr, [], _) = &expr.kind
             && is_some_path.ident.name == sym::is_some
         {
-            let match_result = match &to_digit_expr.kind {
+            let match_result = match to_digit_expr.kind {
                 hir::ExprKind::MethodCall(to_digits_path, char_arg, [radix_arg], _) => {
                     if to_digits_path.ident.name == sym::to_digit
-                        && let char_arg_ty = cx.typeck_results().expr_ty_adjusted(char_arg)
-                        && *char_arg_ty.kind() == ty::Char
+                        && cx.typeck_results().expr_ty_adjusted(char_arg).is_char()
                     {
-                        Some((true, *char_arg, radix_arg))
+                        Some((true, char_arg, radix_arg))
                     } else {
                         None
                     }
                 },
                 hir::ExprKind::Call(to_digits_call, [char_arg, radix_arg]) => {
-                    if let hir::ExprKind::Path(to_digits_path) = &to_digits_call.kind
-                        && let to_digits_call_res = cx.qpath_res(to_digits_path, to_digits_call.hir_id)
-                        && let Some(to_digits_def_id) = to_digits_call_res.opt_def_id()
-                        && match_def_path(
-                            cx,
-                            to_digits_def_id,
-                            &["core", "char", "methods", "<impl char>", "to_digit"],
-                        )
-                    {
+                    if paths::CHAR_TO_DIGIT.matches_path(cx, to_digits_call) {
                         Some((false, char_arg, radix_arg))
                     } else {
                         None
@@ -69,7 +71,9 @@ impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
                 _ => None,
             };
 
-            if let Some((is_method_call, char_arg, radix_arg)) = match_result {
+            if let Some((is_method_call, char_arg, radix_arg)) = match_result
+                && (!is_in_const_context(cx) || self.msrv.meets(cx, msrvs::CONST_CHAR_IS_DIGIT))
+            {
                 let mut applicability = Applicability::MachineApplicable;
                 let char_arg_snip = snippet_with_applicability(cx, char_arg.span, "_", &mut applicability);
                 let radix_snip = snippet_with_applicability(cx, radix_arg.span, "_", &mut applicability);

@@ -63,6 +63,7 @@
 #![allow(unused_labels)]
 #![allow(ambiguous_wide_pointer_comparisons)]
 #![allow(clippy::reversed_empty_ranges)]
+#![allow(unnecessary_transmutes)]
 #![warn(clippy::almost_complete_letter_range)] //~ ERROR: lint `clippy::almost_complete_letter_range`
 #![warn(clippy::blacklisted_name)] //~ ERROR: lint `clippy::blacklisted_name`
 #![warn(clippy::block_in_if_condition_expr)] //~ ERROR: lint `clippy::block_in_if_condition_expr`
@@ -132,5 +133,9 @@
 #![warn(clippy::unused_label)] //~ ERROR: lint `clippy::unused_label`
 #![warn(clippy::vtable_address_comparisons)] //~ ERROR: lint `clippy::vtable_address_comparisons`
 #![warn(clippy::reverse_range_loop)] //~ ERROR: lint `clippy::reverse_range_loop`
+#![warn(clippy::transmute_int_to_float)] //~ ERROR: lint `clippy::transmute_int_to_float`
+#![warn(clippy::transmute_int_to_char)] //~ ERROR: lint `clippy::transmute_int_to_char`
+#![warn(clippy::transmute_float_to_int)] //~ ERROR: lint `clippy::transmute_float_to_int`
+#![warn(clippy::transmute_num_to_bytes)] //~ ERROR: lint `clippy::transmute_num_to_bytes`
 
 fn main() {}

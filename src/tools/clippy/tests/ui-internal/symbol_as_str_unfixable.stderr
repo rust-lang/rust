@@ -4,9 +4,10 @@ error: converting a Symbol to a string
 LL |     s.as_str() == "xyz123";
    |     ^^^^^^^^^^
    |
+   = help: add the symbols to `clippy_utils/src/sym.rs` if needed
    = note: `-D clippy::symbol-as-str` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::symbol_as_str)]`
-help: add the symbol to `clippy_utils/src/sym.rs` and use it
+help: use preinterned symbols instead
    |
 LL -     s.as_str() == "xyz123";
 LL +     s == sym::xyz123;
@@ -18,7 +19,8 @@ error: converting a Symbol to a string
 LL |     s.as_str() == "with-dash";
    |     ^^^^^^^^^^
    |
-help: add the symbol to `clippy_utils/src/sym.rs` and use it
+   = help: add the symbols to `clippy_utils/src/sym.rs` if needed
+help: use preinterned symbols instead
    |
 LL -     s.as_str() == "with-dash";
 LL +     s == sym::with_dash;
@@ -30,7 +32,8 @@ error: converting a Symbol to a string
 LL |     s.as_str() == "with.dot";
    |     ^^^^^^^^^^
    |
-help: add the symbol to `clippy_utils/src/sym.rs` and use it
+   = help: add the symbols to `clippy_utils/src/sym.rs` if needed
+help: use preinterned symbols instead
    |
 LL -     s.as_str() == "with.dot";
 LL +     s == sym::with_dot;

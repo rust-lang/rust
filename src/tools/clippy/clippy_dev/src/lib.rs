@@ -1,5 +1,4 @@
-#![feature(let_chains)]
-#![feature(rustc_private)]
+#![feature(rustc_private, if_let_guard, let_chains)]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,
@@ -15,11 +14,13 @@ extern crate rustc_driver;
 extern crate rustc_lexer;
 extern crate rustc_literal_escaper;
 
+pub mod deprecate_lint;
 pub mod dogfood;
 pub mod fmt;
 pub mod lint;
 pub mod new_lint;
 pub mod release;
+pub mod rename_lint;
 pub mod serve;
 pub mod setup;
 pub mod sync;

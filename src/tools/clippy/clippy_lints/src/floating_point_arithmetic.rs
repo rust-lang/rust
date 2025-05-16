@@ -759,12 +759,12 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
             let recv_ty = cx.typeck_results().expr_ty(receiver);
 
             if recv_ty.is_floating_point() && !is_no_std_crate(cx) && is_inherent_method_call(cx, expr) {
-                match path.ident.name.as_str() {
-                    "ln" => check_ln1p(cx, expr, receiver),
-                    "log" => check_log_base(cx, expr, receiver, args),
-                    "powf" => check_powf(cx, expr, receiver, args),
-                    "powi" => check_powi(cx, expr, receiver, args),
-                    "sqrt" => check_hypot(cx, expr, receiver),
+                match path.ident.name {
+                    sym::ln => check_ln1p(cx, expr, receiver),
+                    sym::log => check_log_base(cx, expr, receiver, args),
+                    sym::powf => check_powf(cx, expr, receiver, args),
+                    sym::powi => check_powi(cx, expr, receiver, args),
+                    sym::sqrt => check_hypot(cx, expr, receiver),
                     _ => {},
                 }
             }
