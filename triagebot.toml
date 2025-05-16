@@ -1424,3 +1424,6 @@ compiletest = [
 # Enable `@rustbot note` functionality
 # Documentation at: https://forge.rust-lang.org/triagebot/note.html
 [note]
+
+[behind-upstream]
+days-threshold = 7
