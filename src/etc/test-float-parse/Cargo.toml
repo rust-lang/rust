@@ -13,3 +13,10 @@ rayon = "1"
 
 [lib]
 name = "test_float_parse"
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    # Internal features aren't marked known config by default
+    'cfg(target_has_reliable_f16)',
+]
