@@ -1443,12 +1443,17 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query codegen_fn_attrs(def_id: DefId) -> &'tcx CodegenFnAttrs {
+    query codegen_fn_attrs_imp(def_id: DefId) -> &'tcx CodegenFnAttrs {
         desc { |tcx| "computing codegen attributes of `{}`", tcx.def_path_str(def_id) }
         arena_cache
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
         feedable
+    }
+
+    query codegen_fn_attrs_overridden(def_id: DefId) -> &'tcx CodegenFnAttrs {
+        desc { |tcx| "computing codegen attributes of `{}` (with overrides)", tcx.def_path_str(def_id) }
+        arena_cache
     }
 
     query asm_target_features(def_id: DefId) -> &'tcx FxIndexSet<Symbol> {
