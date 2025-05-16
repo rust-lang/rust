@@ -10,10 +10,6 @@ LL |     for_each_operator!(translate)
    = note: expected type `u32`
               found enum `Result<u32, <T as Reencode>::Error>`
    = note: this error originates in the macro `translate` which comes from the expansion of the macro `for_each_operator` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider using `Result::expect` to unwrap the `Result<u32, <T as Reencode>::Error>` value, panicking if the value is a `Result::Err`
-   |
-LL |         }: tag_index.expect("REASON")
-   |          ++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

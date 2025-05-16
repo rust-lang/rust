@@ -45,7 +45,6 @@ fn process<T: Reencode>(op: &Operator, reencoder: &mut T) -> Instruction {
         };
     }
 
-    // This should give the specific error message with the wrong help suggestion
     for_each_operator!(translate)
 }
 
