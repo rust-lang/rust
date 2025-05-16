@@ -20,14 +20,12 @@ RUN ./install-llvm-mingw.sh
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV CC_aarch64_pc_windows_gnullvm=aarch64-w64-mingw32-clang \
-    CXX_aarch64_pc_windows_gnullvm=aarch64-w64-mingw32-clang++ \
-    CC_i686_pc_windows_gnullvm=i686-w64-mingw32-clang \
+ENV CC_i686_pc_windows_gnullvm=i686-w64-mingw32-clang \
     CC_x86_64_pc_windows_gnullvm=x86_64-w64-mingw32-clang \
     CXX_x86_64_pc_windows_gnullvm=x86_64-w64-mingw32-clang++
 
-ENV HOSTS=aarch64-pc-windows-gnullvm,x86_64-pc-windows-gnullvm
-ENV TARGETS=aarch64-pc-windows-gnullvm,i686-pc-windows-gnullvm,x86_64-pc-windows-gnullvm
+ENV HOST=x86_64-pc-windows-gnullvm
+ENV TARGETS=i686-pc-windows-gnullvm,x86_64-pc-windows-gnullvm
 
 # We are bootstrapping this target and cannot use previously built artifacts.
 # Without this option Clang is given `"-I/checkout/obj/build/aarch64-pc-windows-gnullvm/ci-llvm/include"`
@@ -48,4 +46,4 @@ ENV RUST_CONFIGURE_ARGS \
 # Probably will solve itself when building from Windows.
 # --enable-full-tools \
 
-ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $TARGETS
+ENV SCRIPT python3 ../x.py dist --host $HOST --target $TARGETS
