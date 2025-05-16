@@ -139,7 +139,7 @@ fn parse_assert<'a>(cx: &ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PResult<
     //
     // Emit an error and suggest inserting a comma.
     let custom_message =
-        if let token::Literal(token::Lit { kind: token::Str, .. }) = parser.token.kind {
+        if matches!(parser.token.kind, token::Literal(token::Lit { kind: token::Str, .. })) {
             let comma = parser.prev_token.span.shrink_to_hi();
             cx.dcx().emit_err(errors::AssertMissingComma { span: parser.token.span, comma });
 
