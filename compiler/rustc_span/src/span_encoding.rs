@@ -282,11 +282,6 @@ impl Span {
     }
 
     #[inline]
-    pub fn len(self) -> u32 {
-        (self.len_with_tag_or_marker & !PARENT_TAG) as u32
-    }
-
-    #[inline]
     pub fn index(self) -> u32 {
         self.lo_or_index
     }
