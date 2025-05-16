@@ -825,12 +825,12 @@ impl<S> Literal<S> {
                 let symbol =
                     self.0.symbol.as_str().strip_prefix('-').unwrap_or(self.0.symbol.as_str());
                 match self.0.kind {
-                    LitKind::Byte => write!(f, "b'{}'", symbol),
-                    LitKind::Char => write!(f, "'{}'", symbol),
-                    LitKind::Integer | LitKind::Float | LitKind::Err(_) => write!(f, "{}", symbol),
-                    LitKind::Str => write!(f, "\"{}\"", symbol),
-                    LitKind::ByteStr => write!(f, "b\"{}\"", symbol),
-                    LitKind::CStr => write!(f, "c\"{}\"", symbol),
+                    LitKind::Byte => write!(f, "b'{symbol}'"),
+                    LitKind::Char => write!(f, "'{symbol}'"),
+                    LitKind::Integer | LitKind::Float | LitKind::Err(_) => write!(f, "{symbol}"),
+                    LitKind::Str => write!(f, "\"{symbol}\""),
+                    LitKind::ByteStr => write!(f, "b\"{symbol}\""),
+                    LitKind::CStr => write!(f, "c\"{symbol}\""),
                     LitKind::StrRaw(num_of_hashes) => {
                         let num_of_hashes = num_of_hashes as usize;
                         write!(
