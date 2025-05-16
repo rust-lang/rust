@@ -3926,3 +3926,42 @@ fn foo<T: Bar>() {
         "#]],
     );
 }
+
+#[test]
+fn asm_const_label() {
+    check_infer(
+        r#"
+//- minicore: asm
+const fn bar() -> i32 { 123 }
+fn baz(s: &str) {}
+
+fn foo() {
+    unsafe {
+        core::arch::asm!(
+            "mov eax, {}",
+            "jmp {}",
+            const bar(),
+            label {
+                baz("hello");
+            },
+        );
+    }
+}
+    "#,
+        expect![[r#"
+            22..29 '{ 123 }': i32
+            24..27 '123': i32
+            37..38 's': &'? str
+            46..48 '{}': ()
+            !0..68 'builti...");},)': ()
+            !40..43 'bar': fn bar() -> i32
+            !40..45 'bar()': i32
+            !51..66 '{baz("hello");}': ()
+            !52..55 'baz': fn baz(&'? str)
+            !52..64 'baz("hello")': ()
+            !56..63 '"hello"': &'static str
+            59..257 '{     ...   } }': ()
+            65..255 'unsafe...     }': ()
+        "#]],
+    );
+}

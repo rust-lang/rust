@@ -298,17 +298,16 @@ impl ExpressionStore {
             Expr::InlineAsm(it) => it.operands.iter().for_each(|(_, op)| match op {
                 AsmOperand::In { expr, .. }
                 | AsmOperand::Out { expr: Some(expr), .. }
-                | AsmOperand::InOut { expr, .. } => f(*expr),
+                | AsmOperand::InOut { expr, .. }
+                | AsmOperand::Const(expr)
+                | AsmOperand::Label(expr) => f(*expr),
                 AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
                     f(*in_expr);
                     if let Some(out_expr) = out_expr {
                         f(*out_expr);
                     }
                 }
-                AsmOperand::Out { expr: None, .. }
-                | AsmOperand::Const(_)
-                | AsmOperand::Label(_)
-                | AsmOperand::Sym(_) => (),
+                AsmOperand::Out { expr: None, .. } | AsmOperand::Sym(_) => (),
             }),
             Expr::If { condition, then_branch, else_branch } => {
                 f(*condition);
@@ -435,17 +434,16 @@ impl ExpressionStore {
             Expr::InlineAsm(it) => it.operands.iter().for_each(|(_, op)| match op {
                 AsmOperand::In { expr, .. }
                 | AsmOperand::Out { expr: Some(expr), .. }
-                | AsmOperand::InOut { expr, .. } => f(*expr),
+                | AsmOperand::InOut { expr, .. }
+                | AsmOperand::Const(expr)
+                | AsmOperand::Label(expr) => f(*expr),
                 AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
                     f(*in_expr);
                     if let Some(out_expr) = out_expr {
                         f(*out_expr);
                     }
                 }
-                AsmOperand::Out { expr: None, .. }
-                | AsmOperand::Const(_)
-                | AsmOperand::Label(_)
-                | AsmOperand::Sym(_) => (),
+                AsmOperand::Out { expr: None, .. } | AsmOperand::Sym(_) => (),
             }),
             Expr::If { condition, then_branch, else_branch } => {
                 f(*condition);

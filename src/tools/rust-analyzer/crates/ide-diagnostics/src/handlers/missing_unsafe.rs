@@ -894,4 +894,25 @@ fn main() {
         "#,
         );
     }
+
+    #[test]
+    fn asm_label() {
+        check_diagnostics(
+            r#"
+//- minicore: asm
+fn foo() {
+    unsafe {
+        core::arch::asm!(
+            "jmp {}",
+            label {
+                let p = 0xDEADBEAF as *mut u8;
+                *p = 3;
+             // ^^ error: dereference of raw pointer is unsafe and requires an unsafe function or block
+            },
+        );
+    }
+}
+            "#,
+        );
+    }
 }
