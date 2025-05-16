@@ -33,7 +33,6 @@ const GATED_CFGS: &[GatedCfg] = &[
         Features::cfg_target_has_atomic,
     ),
     (sym::sanitize, sym::cfg_sanitize, Features::cfg_sanitize),
-    (sym::version, sym::cfg_version, Features::cfg_version),
     (sym::relocation_model, sym::cfg_relocation_model, Features::cfg_relocation_model),
     (sym::sanitizer_cfi_generalize_pointers, sym::cfg_sanitizer_cfi, Features::cfg_sanitizer_cfi),
     (sym::sanitizer_cfi_normalize_integers, sym::cfg_sanitizer_cfi, Features::cfg_sanitizer_cfi),

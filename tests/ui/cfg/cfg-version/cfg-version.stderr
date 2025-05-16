@@ -1,0 +1,79 @@
+error: expected a version literal
+  --> $DIR/cfg-version.rs:1:15
+   |
+LL | #[cfg(version(42))]
+   |               ^^
+
+error: expected a version literal
+  --> $DIR/cfg-version.rs:3:15
+   |
+LL | #[cfg(version(1.20))]
+   |               ^^^^
+
+error: expected single version literal
+  --> $DIR/cfg-version.rs:12:7
+   |
+LL | #[cfg(version("1.43", "1.44", "1.45"))]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected a version literal
+  --> $DIR/cfg-version.rs:14:15
+   |
+LL | #[cfg(version(false))]
+   |               ^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/cfg-version.rs:16:15
+   |
+LL | #[cfg(version("foo"))]
+   |               ^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/cfg-version.rs:18:15
+   |
+LL | #[cfg(version("999"))]
+   |               ^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/cfg-version.rs:20:15
+   |
+LL | #[cfg(version("-1"))]
+   |               ^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/cfg-version.rs:22:15
+   |
+LL | #[cfg(version("65536"))]
+   |               ^^^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/cfg-version.rs:24:15
+   |
+LL | #[cfg(version("0"))]
+   |               ^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/cfg-version.rs:28:15
+   |
+LL | #[cfg(version("1.65536.2"))]
+   |               ^^^^^^^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/cfg-version.rs:30:15
+   |
+LL | #[cfg(version("1.20.0-stable"))]
+   |               ^^^^^^^^^^^^^^^
+
+warning: unexpected `cfg` condition name: `version`
+  --> $DIR/cfg-version.rs:5:7
+   |
+LL | #[cfg(version = "1.20")]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = help: expected names are: `FALSE` and `test` and 31 more
+   = help: to expect this configuration use `--check-cfg=cfg(version, values("1.20"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+error: aborting due to 4 previous errors; 8 warnings emitted
+
