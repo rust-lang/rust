@@ -435,7 +435,9 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
         let ct = match tcx.def_kind(uv.def) {
             DefKind::AssocConst => match tcx.def_kind(tcx.parent(uv.def)) {
                 DefKind::Trait => self.normalize_trait_projection(uv.into()).expect_const(),
-                DefKind::Impl { of_trait: false } => self.normalize_inherent_projection(uv.into()).expect_const(),
+                DefKind::Impl { of_trait: false } => {
+                    self.normalize_inherent_projection(uv.into()).expect_const()
+                }
                 kind => unreachable!(
                     "unexpected `DefKind` for const alias' resolution's parent def: {:?}",
                     kind
