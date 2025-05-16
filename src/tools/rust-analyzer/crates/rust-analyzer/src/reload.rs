@@ -659,6 +659,10 @@ impl GlobalState {
                         .chain(
                             ws.sysroot
                                 .root()
+                                .filter(|_| {
+                                    !self.config.extra_env(None).contains_key("RUSTUP_TOOLCHAIN")
+                                        && std::env::var_os("RUSTUP_TOOLCHAIN").is_none()
+                                })
                                 .map(|it| ("RUSTUP_TOOLCHAIN".to_owned(), Some(it.to_string()))),
                         )
                         .collect(),
