@@ -1,4 +1,5 @@
 use clap::Parser;
+
 use crate::sync::{GitSync, RustcPullError};
 
 mod sync;
@@ -11,10 +12,7 @@ enum Args {
     /// Push changes from `rustc-dev-guide` to the given `branch` of a `rustc` fork under the given
     /// GitHub `username`.
     /// The pushed branch should then be merged into the `rustc` repository.
-    RustcPush {
-        branch: String,
-        github_username: String
-    }
+    RustcPush { branch: String, github_username: String },
 }
 
 fn main() -> anyhow::Result<()> {
