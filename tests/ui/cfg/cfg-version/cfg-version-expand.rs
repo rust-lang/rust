@@ -1,0 +1,20 @@
+//@ run-pass
+//@ rustc-env:RUSTC_OVERRIDE_VERSION_STRING=1.50.3
+
+#[cfg(version("1.49.0"))]
+const ON_1_49_0: bool = true;
+#[cfg(version("1.50"))]
+const ON_1_50_0: bool = true;
+#[cfg(not(version("1.51")))]
+const ON_1_51_0: bool = false;
+
+fn main() {
+    assert!(ON_1_49_0);
+    assert!(ON_1_50_0);
+    assert!(!ON_1_51_0);
+    assert!(cfg!(version("1.1")));
+    assert!(cfg!(version("1.49")));
+    assert!(!cfg!(version("1.51")));
+    assert!(!cfg!(version("1.52")));
+    assert!(!cfg!(version("1.100")));
+}

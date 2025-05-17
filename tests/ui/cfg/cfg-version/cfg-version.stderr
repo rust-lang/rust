@@ -1,0 +1,68 @@
+error: expected a version literal
+  --> $DIR/cfg-version.rs:1:15
+   |
+LL | #[cfg(version(42))]
+   |               ^^
+
+error: expected a version literal
+  --> $DIR/cfg-version.rs:3:15
+   |
+LL | #[cfg(version(1.20))]
+   |               ^^^^
+
+error: expected single version literal
+  --> $DIR/cfg-version.rs:10:7
+   |
+LL | #[cfg(version("1.43", "1.44", "1.45"))]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected a version literal
+  --> $DIR/cfg-version.rs:12:15
+   |
+LL | #[cfg(version(false))]
+   |               ^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/cfg-version.rs:14:15
+   |
+LL | #[cfg(version("foo"))]
+   |               ^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/cfg-version.rs:16:15
+   |
+LL | #[cfg(version("999"))]
+   |               ^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/cfg-version.rs:18:15
+   |
+LL | #[cfg(version("-1"))]
+   |               ^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/cfg-version.rs:20:15
+   |
+LL | #[cfg(version("65536"))]
+   |               ^^^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/cfg-version.rs:22:15
+   |
+LL | #[cfg(version("0"))]
+   |               ^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/cfg-version.rs:26:15
+   |
+LL | #[cfg(version("1.65536.2"))]
+   |               ^^^^^^^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/cfg-version.rs:28:15
+   |
+LL | #[cfg(version("1.20.0-stable"))]
+   |               ^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors; 7 warnings emitted
+
