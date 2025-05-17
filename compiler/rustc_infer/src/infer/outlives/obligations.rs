@@ -98,6 +98,14 @@ impl<'tcx> InferCtxt<'tcx> {
         sub_region: Region<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) {
+        // `is_global` means the type has no params, infer, placeholder, or non-`'static`
+        // free regions. If the type has none of these things, then we can skip registering
+        // this outlives obligation since it has no components which affect lifetime
+        // checking in an interesting way.
+        if sup_type.is_global() {
+            return;
+        }
+
         debug!(?sup_type, ?sub_region, ?cause);
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
             infer::RelateParamBound(
