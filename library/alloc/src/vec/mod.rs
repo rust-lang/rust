@@ -2607,7 +2607,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Panics
     ///
     /// Panics if the range has `start_bound > end_bound`, or, one of the range
-    /// bound is bounded and greater than the length of the vector.
+    /// bounds is bounded and greater than the length of the vector.
     ///
     /// # Leaking
     ///
@@ -3616,7 +3616,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Panics
     ///
     /// Panics if the range has `start_bound > end_bound`, or, one of the range
-    /// bound is bounded and greater than the length of the vector.
+    /// bounds is bounded and greater than the length of the vector.
     ///
     /// # Examples
     ///

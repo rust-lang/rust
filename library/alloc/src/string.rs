@@ -1117,7 +1117,7 @@ impl String {
     /// # Panics
     ///
     /// Panics if the range has `start_bound > end_bound`, or, one of the range
-    /// bound is bounded and does not lie on a [`char`] boundary.
+    /// bounds is bounded and does not lie on a [`char`] boundary.
     ///
     /// # Examples
     ///
@@ -1921,7 +1921,7 @@ impl String {
     /// # Panics
     ///
     /// Panics if the range has `start_bound > end_bound`, or, one of the range
-    /// bound is bounded and does not lie on a [`char`] boundary.
+    /// bounds is bounded and does not lie on a [`char`] boundary.
     ///
     /// # Leaking
     ///
@@ -2031,7 +2031,7 @@ impl String {
     /// # Panics
     ///
     /// Panics if the range has `start_bound > end_bound`, or, one of the range
-    /// bound is bounded and does not lie on a [`char`] boundary.
+    /// bounds is bounded and does not lie on a [`char`] boundary.
     ///
     /// # Examples
     ///
