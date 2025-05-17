@@ -3,7 +3,7 @@ use clippy_utils::higher::VecArgs;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_trait_def_id, is_no_std_crate};
+use clippy_utils::{is_no_std_crate, paths};
 use rustc_ast::{LitIntType, LitKind, UintTy};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, QPath, StructTailExpr};
@@ -100,7 +100,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
             && let Some(start_snippet) = start.span.get_source_text(cx)
             && let Some(end_snippet) = end.span.get_source_text(cx)
         {
-            let should_emit_every_value = if let Some(step_def_id) = get_trait_def_id(cx.tcx, &["core", "iter", "Step"])
+            let should_emit_every_value = if let Some(step_def_id) = paths::ITER_STEP.only(cx)
                 && implements_trait(cx, ty, step_def_id, &[])
             {
                 true

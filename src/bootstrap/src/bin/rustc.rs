@@ -58,8 +58,8 @@ fn main() {
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
     let on_fail = env::var_os("RUSTC_ON_FAIL").map(Command::new);
 
-    let rustc_real = env::var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
-    let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{:?} was not set", libdir));
+    let rustc_real = env::var_os(rustc).unwrap_or_else(|| panic!("{rustc:?} was not set"));
+    let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{libdir:?} was not set"));
     let mut dylib_path = dylib_path();
     dylib_path.insert(0, PathBuf::from(&libdir));
 

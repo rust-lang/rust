@@ -52,6 +52,7 @@ pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
+pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
 #[allow(
     hidden_glob_reexports,
     rustc::usage_of_type_ir_inherent,

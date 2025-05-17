@@ -8,6 +8,9 @@ extern crate regex;
 use futures::stream::{empty, select_all};
 use regex::Regex;
 
+use std::convert::identity;
+use std::hint::black_box as renamed;
+
 fn local_fn() {}
 
 struct Struct;
@@ -70,5 +73,10 @@ fn main() {
     s.provided_method();
     //~^ disallowed_methods
     s.implemented_method();
+    //~^ disallowed_methods
+
+    identity(());
+    //~^ disallowed_methods
+    renamed(1);
     //~^ disallowed_methods
 }

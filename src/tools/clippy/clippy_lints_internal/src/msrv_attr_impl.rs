@@ -1,7 +1,6 @@
+use crate::internal_paths;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::match_type;
-use clippy_utils::{match_def_path, paths};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -31,7 +30,7 @@ impl LateLintPass<'_> for MsrvAttrImpl {
                 .tcx
                 .impl_trait_ref(item.owner_id)
                 .map(EarlyBinder::instantiate_identity)
-            && match_def_path(cx, trait_ref.def_id, &paths::EARLY_LINT_PASS)
+            && internal_paths::EARLY_LINT_PASS.matches(cx, trait_ref.def_id)
             && let ty::Adt(self_ty_def, _) = trait_ref.self_ty().kind()
             && self_ty_def.is_struct()
             && self_ty_def.all_fields().any(|f| {
@@ -40,7 +39,7 @@ impl LateLintPass<'_> for MsrvAttrImpl {
                     .instantiate_identity()
                     .walk()
                     .filter(|t| matches!(t.unpack(), GenericArgKind::Type(_)))
-                    .any(|t| match_type(cx, t.expect_ty(), &paths::MSRV_STACK))
+                    .any(|t| internal_paths::MSRV_STACK.matches_ty(cx, t.expect_ty()))
             })
             && !items.iter().any(|item| item.ident.name.as_str() == "check_attributes")
         {

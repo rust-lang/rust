@@ -13,7 +13,9 @@ allow-unauthenticated = [
 
 [note]
 
-[canonicalize-issue-links]
+[close]
+
+[issue-links]
 
 # Prevents mentions in commits to avoid users being spammed
 [no-mentions]
@@ -42,7 +44,7 @@ new_pr = true
 contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md"
 users_on_vacation = [
     "matthiaskrgr",
-    "samueltardieu",
+    "Manishearth",
 ]
 
 [assign.owners]

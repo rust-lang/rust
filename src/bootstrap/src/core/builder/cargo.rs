@@ -1278,5 +1278,5 @@ impl Builder<'_> {
 
 pub fn cargo_profile_var(name: &str, config: &Config) -> String {
     let profile = if config.rust_optimize.is_release() { "RELEASE" } else { "DEV" };
-    format!("CARGO_PROFILE_{}_{}", profile, name)
+    format!("CARGO_PROFILE_{profile}_{name}")
 }

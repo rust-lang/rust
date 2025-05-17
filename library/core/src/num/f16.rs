@@ -881,7 +881,7 @@ impl f16 {
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    #[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
+    #[allow(unnecessary_transmutes)]
     pub const fn to_bits(self) -> u16 {
         // SAFETY: `u16` is a plain old datatype so we can always transmute to it.
         unsafe { mem::transmute(self) }
@@ -928,7 +928,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
+    #[allow(unnecessary_transmutes)]
     pub const fn from_bits(v: u16) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         // SAFETY: `u16` is a plain old datatype so we can always transmute from it.

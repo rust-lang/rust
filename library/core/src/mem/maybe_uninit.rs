@@ -391,7 +391,7 @@ impl<T> MaybeUninit<T> {
     /// For your convenience, this also returns a mutable reference to the
     /// (now safely initialized) contents of `self`.
     ///
-    /// As the content is stored inside a `MaybeUninit`, the destructor is not
+    /// As the content is stored inside a `ManuallyDrop`, the destructor is not
     /// run for the inner data if the MaybeUninit leaves scope without a call to
     /// [`assume_init`], [`assume_init_drop`], or similar. Code that receives
     /// the mutable reference returned by this function needs to keep this in

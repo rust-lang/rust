@@ -504,8 +504,8 @@ impl StepDescription {
                 match std::path::absolute(p) {
                     Ok(p) => p.strip_prefix(&builder.src).unwrap_or(&p).to_path_buf(),
                     Err(e) => {
-                        eprintln!("ERROR: {:?}", e);
-                        panic!("Due to the above error, failed to resolve path: {:?}", p);
+                        eprintln!("ERROR: {e:?}");
+                        panic!("Due to the above error, failed to resolve path: {p:?}");
                     }
                 }
             })
@@ -694,8 +694,7 @@ impl<'a> ShouldRun<'a> {
                     if !submodules_paths.iter().any(|sm_p| p.contains(sm_p)) {
                         assert!(
                             self.builder.src.join(p).exists(),
-                            "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {}",
-                            p
+                            "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {p}"
                         );
                     }
 

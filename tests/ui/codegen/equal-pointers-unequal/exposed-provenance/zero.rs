@@ -23,7 +23,7 @@ fn main() {
     // It's not zero, which means `a` and `b` are not equal.
     assert_ne!(i, 0);
     // But it looks like zero...
-    assert_eq!(i.to_string(), "0");
+    assert_eq!(format!("{i}"), "0");
     // ...and now it *is* zero?
     assert_eq!(i, 0);
     // So `a` and `b` are equal after all?

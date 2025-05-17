@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{match_def_path, path_def_id};
+use clippy_utils::{path_res, sym};
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::def::Res;
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::LayoutOf;
 
@@ -79,16 +80,15 @@ fn is_min_or_max(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<MinMax> {
     }
 
     let ty = cx.typeck_results().expr_ty(expr);
-    let ty_str = ty.to_string();
 
-    // `std::T::MAX` `std::T::MIN` constants
-    if let Some(id) = path_def_id(cx, expr) {
-        if match_def_path(cx, id, &["core", &ty_str, "MAX"]) {
-            return Some(MinMax::Max);
-        }
-
-        if match_def_path(cx, id, &["core", &ty_str, "MIN"]) {
-            return Some(MinMax::Min);
+    // `T::MAX` and `T::MIN` constants
+    if let hir::ExprKind::Path(hir::QPath::TypeRelative(base, seg)) = expr.kind
+        && let Res::PrimTy(_) = path_res(cx, base)
+    {
+        match seg.ident.name {
+            sym::MAX => return Some(MinMax::Max),
+            sym::MIN => return Some(MinMax::Min),
+            _ => {},
         }
     }
 

@@ -1,11 +1,8 @@
 if let StmtKind::Let(local) = stmt.kind
     && let Some(init) = local.init
     && let ExprKind::Call(func, args) = init.kind
-    && let ExprKind::Path(ref qpath) = func.kind
-    && match_qpath(qpath, &["std", "mem", "transmute"])
+    && is_path_diagnostic_item(cx, func, sym::transmute)
     && args.len() == 1
-    && let ExprKind::Path(ref qpath1) = args[0].kind
-    && match_qpath(qpath1, &["ZPTR"])
     && let PatKind::Wild = local.pat.kind
 {
     // report your lint here

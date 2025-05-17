@@ -113,8 +113,8 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
                 );
                 return;
             }
-            match cx.tcx.item_name(macro_call.def_id).as_str() {
-                "todo" => {
+            match cx.tcx.get_diagnostic_name(macro_call.def_id) {
+                Some(sym::todo_macro) => {
                     span_lint(
                         cx,
                         TODO,
@@ -122,7 +122,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
                         "`todo` should not be present in production code",
                     );
                 },
-                "unimplemented" => {
+                Some(sym::unimplemented_macro) => {
                     span_lint(
                         cx,
                         UNIMPLEMENTED,
@@ -130,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
                         "`unimplemented` should not be present in production code",
                     );
                 },
-                "unreachable" => {
+                Some(sym::unreachable_macro) => {
                     span_lint(cx, UNREACHABLE, macro_call.span, "usage of the `unreachable!` macro");
                 },
                 _ => {},
