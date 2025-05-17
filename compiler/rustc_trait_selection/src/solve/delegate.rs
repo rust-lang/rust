@@ -1,6 +1,7 @@
 use std::ops::Deref;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::LangItem;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
@@ -82,6 +83,21 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 );
 
                 Some(HasChanged::No)
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
+                match self.0.tcx.as_lang_item(trait_pred.def_id()) {
+                    Some(LangItem::Sized)
+                        if trait_pred.self_ty().is_trivially_sized(self.0.tcx) =>
+                    {
+                        Some(HasChanged::No)
+                    }
+                    Some(LangItem::Copy | LangItem::Clone)
+                        if trait_pred.self_ty().is_trivially_pure_clone_copy() =>
+                    {
+                        Some(HasChanged::No)
+                    }
+                    _ => None,
+                }
             }
             _ => None,
         }
