@@ -1,0 +1,94 @@
+// MIR for `borrow_not_held_across_yield::{closure#0}` 0 coroutine_pre-elab
+/* coroutine_layout = CoroutineLayout {
+    field_tys: {
+        _0: CoroutineSavedTy {
+            ty: i32,
+            source_info: SourceInfo {
+                span: $DIR/coroutine_pinned_fields.rs:34:13: 34:18 (#0),
+                scope: scope[0],
+            },
+            ignore_for_traits: false,
+            pinned: false,
+        },
+    },
+    variant_fields: {
+        Unresumed(0): [],
+        Returned (1): [],
+        Panicked (2): [],
+        Suspend0 (3): [_0],
+    },
+    storage_conflicts: BitMatrix(1x1) {
+        (_0, _0),
+    },
+} */
+
+fn borrow_not_held_across_yield::{closure#0}(_1: {static coroutine@$DIR/coroutine_pinned_fields.rs:32:5: 32:14}, _2: ()) -> CoroutineState<(), i32> {
+    let mut _0: std::ops::CoroutineState<(), i32>;
+    let mut _3: i32;
+    let _4: ();
+    let _6: ();
+    let mut _7: ();
+    let mut _8: i32;
+    let mut _9: ();
+    scope 1 {
+        debug x => ((_1 as variant#3).0: i32);
+        let _5: &mut i32;
+        scope 2 {
+            debug y => _5;
+        }
+    }
+
+    bb0: {
+        _9 = move _2;
+        nop;
+        ((_1 as variant#3).0: i32) = const 9_i32;
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = &mut ((_1 as variant#3).0: i32);
+        (*_5) = Add(copy (*_5), const 5_i32);
+        _4 = const ();
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = ();
+        _0 = CoroutineState::<(), i32>::Yielded(move _7);
+        StorageDead(_6);
+        StorageDead(_7);
+        discriminant(_1) = 3;
+        return;
+    }
+
+    bb1: {
+        StorageDead(_7);
+        StorageDead(_6);
+        _8 = copy ((_1 as variant#3).0: i32);
+        nop;
+        drop(_1) -> [return: bb2, unwind unreachable];
+    }
+
+    bb2: {
+        _0 = CoroutineState::<(), i32>::Complete(move _8);
+        discriminant(_1) = 1;
+        return;
+    }
+
+    bb3: {
+        StorageDead(_7);
+        StorageDead(_6);
+        nop;
+        drop(_1) -> [return: bb4, unwind unreachable];
+    }
+
+    bb4: {
+        coroutine_drop;
+    }
+
+    bb5: {
+        return;
+    }
+
+    bb6: {
+        drop(_1) -> [return: bb5, unwind continue];
+    }
+}

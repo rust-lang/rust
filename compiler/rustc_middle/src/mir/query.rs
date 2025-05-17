@@ -29,6 +29,9 @@ pub struct CoroutineSavedTy<'tcx> {
     pub source_info: SourceInfo,
     /// Whether the local should be ignored for trait bound computations.
     pub ignore_for_traits: bool,
+    /// If this local is borrowed across a suspension point and thus is
+    /// "wrapped" in `UnsafePinned`. Always false for movable coroutines.
+    pub pinned: bool,
 }
 
 /// The layout of coroutine state.
