@@ -176,7 +176,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     }
                     // HACK(mgca): see lower_const_item in ast_lowering
                     ItemKind::Const(box ConstItem { body_id: Some(body_id), .. }) => {
-                        this.create_def(body_id, None, DefKind::InlineConst, i.span);
+                        this.create_def(body_id, None, DefKind::AnonConst, i.span);
                     }
                     _ => {}
                 }
@@ -341,7 +341,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         self.with_parent(def, |this| {
             // HACK(mgca): see lower_const_item in ast_lowering
             if let AssocItemKind::Const(box ConstItem { body_id: Some(body_id), .. }) = i.kind {
-                this.create_def(body_id, None, DefKind::InlineConst, i.span);
+                this.create_def(body_id, None, DefKind::AnonConst, i.span);
             }
             visit::walk_assoc_item(this, i, ctxt)
         });

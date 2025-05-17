@@ -362,22 +362,7 @@ impl<'tcx> Const<'tcx> {
             }
             Const::Unevaluated(uneval, _) => {
                 // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`
-                let uneval_ty_ct = ty::Const::new_unevaluated(
-                    tcx,
-                    ty::UnevaluatedConst::new(uneval.def, uneval.args),
-                );
-                let mir_ct = tcx.normalize_erasing_regions(typing_env, uneval_ty_ct);
-                // FIXME: duplicated with above match arm
-                match mir_ct.kind() {
-                    ConstKind::Value(cv) => Ok(tcx.valtree_to_const_val(cv)),
-                    ConstKind::Expr(_) => {
-                        bug!("Normalization of `ty::ConstKind::Expr` is unimplemented")
-                    }
-                    _ => Err(ReportedErrorInfo::non_const_eval_error(
-                        tcx.dcx().delayed_bug("Unevaluated `ty::Const` in MIR body"),
-                    )
-                    .into()),
-                }
+                tcx.const_eval_resolve(typing_env, uneval, span)
             }
             Const::Val(val, _) => Ok(val),
         }
