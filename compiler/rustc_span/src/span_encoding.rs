@@ -282,11 +282,6 @@ impl Span {
     }
 
     #[inline]
-    pub fn index(self) -> u32 {
-        self.lo_or_index
-    }
-
-    #[inline]
     pub fn data(self) -> SpanData {
         let data = self.data_untracked();
         if let Some(parent) = data.parent {

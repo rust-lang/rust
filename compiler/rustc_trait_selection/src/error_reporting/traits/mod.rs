@@ -7,6 +7,7 @@ pub mod on_unimplemented_format;
 mod overflow;
 pub mod suggestions;
 
+use std::cmp::Reverse;
 use std::{fmt, iter};
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -21,7 +22,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{ErrorGuaranteed, ExpnKind, Span};
+use rustc_span::{CharPos, ErrorGuaranteed, ExpnKind, Span};
 use tracing::{info, instrument};
 
 pub use self::overflow::*;
@@ -136,6 +137,15 @@ pub enum DefIdOrName {
     Name(&'static str),
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum ErrorSortKey {
+    SubtypeFormat(Reverse<CharPos>),
+    OtherKind,
+    ClauseTraitSized,
+    Coerce,
+    ClauseWellFormed,
+}
+
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(
         &self,
@@ -164,25 +174,58 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // with more relevant type information and hide redundant E0282 errors.
         errors.sort_by_key(|e| match e.obligation.predicate.kind().skip_binder() {
             ty::PredicateKind::Subtype(_)
-                if e.obligation.cause.span.macro_backtrace().next().is_some_and(
-                    |trace| match trace.kind {
-                        ExpnKind::Macro(_, name) => {
-                            name.as_str().rsplit("::").next() == Some("format_args_nl")
-                        }
-                        _ => false,
-                    },
+                if matches! (
+                    e.obligation.cause.span.ctxt().outer_expn_data().kind,
+                    ExpnKind::Macro(_, name) if matches!(
+                        name.as_str().rsplit("::").next(),
+                        Some("format_args" | "format_args_nl")
+                    )
                 ) =>
             {
-                (-1, e.obligation.cause.span.index())
+                let sm = self.tcx.sess.source_map();
+                let bpos = e.obligation.cause.span.data().lo;
+                let loc = sm.lookup_char_pos(bpos);
+
+                eprintln!("DEBUG: bpos:{:?}, col:{:?}, cold:{:?}", bpos, loc.col, loc.col_display);
+                /*
+$./build/x86_64-unknown-linux-gnu/stage1/bin/rustc tests/ui/errors/span-format_args-issue-140578.rs
+DEBUG: bpos:BytePos(52), col:CharPos(27), cold:27
+DEBUG: bpos:BytePos(191660), col:CharPos(27), cold:27
+DEBUG: bpos:BytePos(52), col:CharPos(27), cold:27
+DEBUG: bpos:BytePos(52), col:CharPos(27), cold:27
+error[E0282]: type annotations needed
+ --> tests/ui/errors/span-format_args-issue-140578.rs:2:3
+  |
+2 |   print!("{:?} {a} {a:?}", [], a = 1 + 1);
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+  |
+  = note: this error originates in the macro `$crate::format_args` which comes from the expansion of the macro `print` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+DEBUG: bpos:BytePos(165), col:CharPos(29), cold:29
+DEBUG: bpos:BytePos(193512), col:CharPos(27), cold:27
+DEBUG: bpos:BytePos(193512), col:CharPos(27), cold:27
+DEBUG: bpos:BytePos(193512), col:CharPos(27), cold:27
+error[E0282]: type annotations needed
+ --> tests/ui/errors/span-format_args-issue-140578.rs:7:30
+  |
+7 |   println!("{:?} {a} {a:?}", [], a = 1 + 1);
+  |                              ^^ cannot infer type
+  |
+  = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+                 */
+
+                ErrorSortKey::SubtypeFormat(Reverse(loc.col))
             }
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
                 if self.tcx.is_lang_item(pred.def_id(), LangItem::Sized) =>
             {
-                (1, 0)
+                ErrorSortKey::ClauseTraitSized
             }
-            ty::PredicateKind::Coerce(_) => (2, 0),
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => (3, 0),
-            _ => (0, 0),
+            ty::PredicateKind::Coerce(_) => ErrorSortKey::Coerce,
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => {
+                ErrorSortKey::ClauseWellFormed
+            }
+            _ => ErrorSortKey::OtherKind,
         });
 
         for (index, error) in errors.iter().enumerate() {
