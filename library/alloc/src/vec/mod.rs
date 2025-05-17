@@ -3648,7 +3648,7 @@ impl<T, A: Allocator> Vec<T, A> {
         Splice { drain: self.drain(range), replace_with: replace_with.into_iter() }
     }
 
-    /// Creates an iterator which uses a closure to determine if element in the range should be removed.
+    /// Creates an iterator which uses a closure to determine if an element in the range should be removed.
     ///
     /// If the closure returns true, then the element is removed and yielded.
     /// If the closure returns false, the element will remain in the vector and will not be yielded
