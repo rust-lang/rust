@@ -20,12 +20,12 @@ use crate::util::{ExprToSpannedString, expr_to_spanned_string};
 
 /// An argument to one of the `asm!` macros. The argument is syntactically valid, but is otherwise
 /// not validated at all.
-pub struct RawAsmArg {
-    pub kind: RawAsmArgKind,
+pub struct AsmArg {
+    pub kind: AsmArgKind,
     pub span: Span,
 }
 
-pub enum RawAsmArgKind {
+pub enum AsmArgKind {
     Template(P<ast::Expr>),
     Operand(Option<Symbol>, ast::InlineAsmOperand),
     Options(Vec<(Symbol, ast::InlineAsmOptions, Span, Span)>),
@@ -33,7 +33,7 @@ pub enum RawAsmArgKind {
 }
 
 /// Validated assembly arguments, ready for macro expansion.
-struct AsmArgs {
+struct ValidatedAsmArgs {
     pub templates: Vec<P<ast::Expr>>,
     pub operands: Vec<(ast::InlineAsmOperand, Span)>,
     named_args: FxIndexMap<Symbol, usize>,
@@ -145,11 +145,11 @@ fn parse_asm_operand<'a>(
 }
 
 // Public for rustfmt.
-pub fn parse_raw_asm_args<'a>(
+pub fn parse_asm_args<'a>(
     p: &mut Parser<'a>,
     sp: Span,
     asm_macro: AsmMacro,
-) -> PResult<'a, Vec<RawAsmArg>> {
+) -> PResult<'a, Vec<AsmArg>> {
     let dcx = p.dcx();
 
     if p.token == token::Eof {
@@ -159,10 +159,7 @@ pub fn parse_raw_asm_args<'a>(
     let mut args = Vec::new();
 
     let first_template = p.parse_expr()?;
-    args.push(RawAsmArg {
-        span: first_template.span,
-        kind: RawAsmArgKind::Template(first_template),
-    });
+    args.push(AsmArg { span: first_template.span, kind: AsmArgKind::Template(first_template) });
 
     let mut allow_templates = true;
 
@@ -188,8 +185,8 @@ pub fn parse_raw_asm_args<'a>(
         if p.eat_keyword(exp!(ClobberAbi)) {
             allow_templates = false;
 
-            args.push(RawAsmArg {
-                kind: RawAsmArgKind::ClobberAbi(parse_clobber_abi(p)?),
+            args.push(AsmArg {
+                kind: AsmArgKind::ClobberAbi(parse_clobber_abi(p)?),
                 span: span_start.to(p.prev_token.span),
             });
 
@@ -200,8 +197,8 @@ pub fn parse_raw_asm_args<'a>(
         if p.eat_keyword(exp!(Options)) {
             allow_templates = false;
 
-            args.push(RawAsmArg {
-                kind: RawAsmArgKind::Options(parse_options(p, asm_macro)?),
+            args.push(AsmArg {
+                kind: AsmArgKind::Options(parse_options(p, asm_macro)?),
                 span: span_start.to(p.prev_token.span),
             });
 
@@ -222,9 +219,9 @@ pub fn parse_raw_asm_args<'a>(
         if let Some(op) = parse_asm_operand(p, asm_macro)? {
             allow_templates = false;
 
-            args.push(RawAsmArg {
+            args.push(AsmArg {
                 span: span_start.to(p.prev_token.span),
-                kind: RawAsmArgKind::Operand(name, op),
+                kind: AsmArgKind::Operand(name, op),
             });
         } else if allow_templates {
             let template = p.parse_expr()?;
@@ -246,7 +243,7 @@ pub fn parse_raw_asm_args<'a>(
                 }
             }
 
-            args.push(RawAsmArg { span: template.span, kind: RawAsmArgKind::Template(template) });
+            args.push(AsmArg { span: template.span, kind: AsmArgKind::Template(template) });
         } else {
             p.unexpected_any()?
         }
@@ -260,19 +257,19 @@ fn parse_args<'a>(
     sp: Span,
     tts: TokenStream,
     asm_macro: AsmMacro,
-) -> PResult<'a, AsmArgs> {
-    let raw_args = parse_raw_asm_args(&mut ecx.new_parser_from_tts(tts), sp, asm_macro)?;
-    validate_raw_asm_args(ecx, asm_macro, raw_args)
+) -> PResult<'a, ValidatedAsmArgs> {
+    let args = parse_asm_args(&mut ecx.new_parser_from_tts(tts), sp, asm_macro)?;
+    validate_asm_args(ecx, asm_macro, args)
 }
 
-fn validate_raw_asm_args<'a>(
+fn validate_asm_args<'a>(
     ecx: &ExtCtxt<'a>,
     asm_macro: AsmMacro,
-    raw_args: Vec<RawAsmArg>,
-) -> PResult<'a, AsmArgs> {
+    args: Vec<AsmArg>,
+) -> PResult<'a, ValidatedAsmArgs> {
     let dcx = ecx.dcx();
 
-    let mut args = AsmArgs {
+    let mut validated = ValidatedAsmArgs {
         templates: vec![],
         operands: vec![],
         named_args: Default::default(),
@@ -284,9 +281,9 @@ fn validate_raw_asm_args<'a>(
 
     let mut allow_templates = true;
 
-    for arg in raw_args {
+    for arg in args {
         match arg.kind {
-            RawAsmArgKind::Template(template) => {
+            AsmArgKind::Template(template) => {
                 // The error for the first template is delayed.
                 if !allow_templates {
                     match template.kind {
@@ -306,15 +303,15 @@ fn validate_raw_asm_args<'a>(
                     }
                 }
 
-                args.templates.push(template);
+                validated.templates.push(template);
             }
-            RawAsmArgKind::Operand(name, op) => {
+            AsmArgKind::Operand(name, op) => {
                 allow_templates = false;
 
                 let explicit_reg = matches!(op.reg(), Some(ast::InlineAsmRegOrRegClass::Reg(_)));
                 let span = arg.span;
-                let slot = args.operands.len();
-                args.operands.push((op, span));
+                let slot = validated.operands.len();
+                validated.operands.push((op, span));
 
                 // Validate the order of named, positional & explicit register operands and
                 // clobber_abi/options. We do this at the end once we have the full span
@@ -324,25 +321,27 @@ fn validate_raw_asm_args<'a>(
                     if name.is_some() {
                         dcx.emit_err(errors::AsmExplicitRegisterName { span });
                     }
-                    args.reg_args.insert(slot);
+                    validated.reg_args.insert(slot);
                 } else if let Some(name) = name {
-                    if let Some(&prev) = args.named_args.get(&name) {
+                    if let Some(&prev) = validated.named_args.get(&name) {
                         dcx.emit_err(errors::AsmDuplicateArg {
                             span,
                             name,
-                            prev: args.operands[prev].1,
+                            prev: validated.operands[prev].1,
                         });
                         continue;
                     }
-                    args.named_args.insert(name, slot);
-                } else if !args.named_args.is_empty() || !args.reg_args.is_empty() {
-                    let named = args.named_args.values().map(|p| args.operands[*p].1).collect();
-                    let explicit = args.reg_args.iter().map(|p| args.operands[p].1).collect();
+                    validated.named_args.insert(name, slot);
+                } else if !validated.named_args.is_empty() || !validated.reg_args.is_empty() {
+                    let named =
+                        validated.named_args.values().map(|p| validated.operands[*p].1).collect();
+                    let explicit =
+                        validated.reg_args.iter().map(|p| validated.operands[p].1).collect();
 
                     dcx.emit_err(errors::AsmPositionalAfter { span, named, explicit });
                 }
             }
-            RawAsmArgKind::Options(new_options) => {
+            AsmArgKind::Options(new_options) => {
                 allow_templates = false;
 
                 for (symbol, option, span, full_span) in new_options {
@@ -354,45 +353,47 @@ fn validate_raw_asm_args<'a>(
                             full_span,
                             macro_name: asm_macro.macro_name(),
                         });
-                    } else if args.options.contains(option) {
+                    } else if validated.options.contains(option) {
                         // Tool-only output.
                         dcx.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
                     } else {
-                        args.options |= option;
+                        validated.options |= option;
                     }
                 }
 
-                args.options_spans.push(arg.span);
+                validated.options_spans.push(arg.span);
             }
-            RawAsmArgKind::ClobberAbi(new_abis) => {
+            AsmArgKind::ClobberAbi(new_abis) => {
                 allow_templates = false;
 
                 match &new_abis[..] {
                     // This should have errored above during parsing.
                     [] => unreachable!(),
-                    [(abi, _span)] => args.clobber_abis.push((*abi, arg.span)),
-                    _ => args.clobber_abis.extend(new_abis),
+                    [(abi, _span)] => validated.clobber_abis.push((*abi, arg.span)),
+                    _ => validated.clobber_abis.extend(new_abis),
                 }
             }
         }
     }
 
-    if args.options.contains(ast::InlineAsmOptions::NOMEM)
-        && args.options.contains(ast::InlineAsmOptions::READONLY)
+    if validated.options.contains(ast::InlineAsmOptions::NOMEM)
+        && validated.options.contains(ast::InlineAsmOptions::READONLY)
     {
-        let spans = args.options_spans.clone();
+        let spans = validated.options_spans.clone();
         dcx.emit_err(errors::AsmMutuallyExclusive { spans, opt1: "nomem", opt2: "readonly" });
     }
-    if args.options.contains(ast::InlineAsmOptions::PURE)
-        && args.options.contains(ast::InlineAsmOptions::NORETURN)
+    if validated.options.contains(ast::InlineAsmOptions::PURE)
+        && validated.options.contains(ast::InlineAsmOptions::NORETURN)
     {
-        let spans = args.options_spans.clone();
+        let spans = validated.options_spans.clone();
         dcx.emit_err(errors::AsmMutuallyExclusive { spans, opt1: "pure", opt2: "noreturn" });
     }
-    if args.options.contains(ast::InlineAsmOptions::PURE)
-        && !args.options.intersects(ast::InlineAsmOptions::NOMEM | ast::InlineAsmOptions::READONLY)
+    if validated.options.contains(ast::InlineAsmOptions::PURE)
+        && !validated
+            .options
+            .intersects(ast::InlineAsmOptions::NOMEM | ast::InlineAsmOptions::READONLY)
     {
-        let spans = args.options_spans.clone();
+        let spans = validated.options_spans.clone();
         dcx.emit_err(errors::AsmPureCombine { spans });
     }
 
@@ -400,7 +401,7 @@ fn validate_raw_asm_args<'a>(
     let mut outputs_sp = vec![];
     let mut regclass_outputs = vec![];
     let mut labels_sp = vec![];
-    for (op, op_sp) in &args.operands {
+    for (op, op_sp) in &validated.operands {
         match op {
             ast::InlineAsmOperand::Out { reg, expr, .. }
             | ast::InlineAsmOperand::SplitInOut { reg, out_expr: expr, .. } => {
@@ -423,10 +424,10 @@ fn validate_raw_asm_args<'a>(
             _ => {}
         }
     }
-    if args.options.contains(ast::InlineAsmOptions::PURE) && !have_real_output {
-        dcx.emit_err(errors::AsmPureNoOutput { spans: args.options_spans.clone() });
+    if validated.options.contains(ast::InlineAsmOptions::PURE) && !have_real_output {
+        dcx.emit_err(errors::AsmPureNoOutput { spans: validated.options_spans.clone() });
     }
-    if args.options.contains(ast::InlineAsmOptions::NORETURN)
+    if validated.options.contains(ast::InlineAsmOptions::NORETURN)
         && !outputs_sp.is_empty()
         && labels_sp.is_empty()
     {
@@ -434,15 +435,15 @@ fn validate_raw_asm_args<'a>(
         // Bail out now since this is likely to confuse MIR
         return Err(err);
     }
-    if args.options.contains(ast::InlineAsmOptions::MAY_UNWIND) && !labels_sp.is_empty() {
+    if validated.options.contains(ast::InlineAsmOptions::MAY_UNWIND) && !labels_sp.is_empty() {
         dcx.emit_err(errors::AsmMayUnwind { labels_sp });
     }
 
-    if !args.clobber_abis.is_empty() {
+    if !validated.clobber_abis.is_empty() {
         match asm_macro {
             AsmMacro::GlobalAsm | AsmMacro::NakedAsm => {
                 let err = dcx.create_err(errors::AsmUnsupportedClobberAbi {
-                    spans: args.clobber_abis.iter().map(|(_, span)| *span).collect(),
+                    spans: validated.clobber_abis.iter().map(|(_, span)| *span).collect(),
                     macro_name: asm_macro.macro_name(),
                 });
 
@@ -453,14 +454,14 @@ fn validate_raw_asm_args<'a>(
                 if !regclass_outputs.is_empty() {
                     dcx.emit_err(errors::AsmClobberNoReg {
                         spans: regclass_outputs,
-                        clobbers: args.clobber_abis.iter().map(|(_, span)| *span).collect(),
+                        clobbers: validated.clobber_abis.iter().map(|(_, span)| *span).collect(),
                     });
                 }
             }
         }
     }
 
-    Ok(args)
+    Ok(validated)
 }
 
 fn parse_options<'a>(
@@ -566,7 +567,7 @@ fn parse_reg<'a>(p: &mut Parser<'a>) -> PResult<'a, ast::InlineAsmRegOrRegClass>
 fn expand_preparsed_asm(
     ecx: &mut ExtCtxt<'_>,
     asm_macro: AsmMacro,
-    args: AsmArgs,
+    args: ValidatedAsmArgs,
 ) -> ExpandResult<Result<ast::InlineAsm, ErrorGuaranteed>, ()> {
     let mut template = vec![];
     // Register operands are implicitly used since they are not allowed to be
