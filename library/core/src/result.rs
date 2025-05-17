@@ -1086,7 +1086,7 @@ impl<T, E> Result<T, E> {
     {
         match self {
             Ok(t) => t,
-            Err(e) => unwrap_failed(msg, &e),
+            Err(e) => unwrap_failed("expected: ", msg, &e),
         }
     }
 
@@ -1134,7 +1134,7 @@ impl<T, E> Result<T, E> {
     {
         match self {
             Ok(t) => t,
-            Err(e) => unwrap_failed("called `Result::unwrap()` on an `Err` value", &e),
+            Err(e) => unwrap_failed("", "called `Result::unwrap()` on an `Err` value", &e),
         }
     }
 
@@ -1197,7 +1197,7 @@ impl<T, E> Result<T, E> {
         T: fmt::Debug,
     {
         match self {
-            Ok(t) => unwrap_failed(msg, &t),
+            Ok(t) => unwrap_failed("expected error: ", msg, &t),
             Err(e) => e,
         }
     }
@@ -1228,7 +1228,7 @@ impl<T, E> Result<T, E> {
         T: fmt::Debug,
     {
         match self {
-            Ok(t) => unwrap_failed("called `Result::unwrap_err()` on an `Ok` value", &t),
+            Ok(t) => unwrap_failed("", "called `Result::unwrap_err()` on an `Ok` value", &t),
             Err(e) => e,
         }
     }
@@ -1728,8 +1728,8 @@ impl<T, E> Result<Result<T, E>, E> {
 #[inline(never)]
 #[cold]
 #[track_caller]
-fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
-    panic!("{msg}: {error:?}")
+fn unwrap_failed(prefix: &str, msg: &str, error: &dyn fmt::Debug) -> ! {
+    panic!("{prefix}{msg}: {error:?}")
 }
 
 // This is a separate function to avoid constructing a `dyn Debug`
@@ -1740,7 +1740,7 @@ fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
 #[inline]
 #[cold]
 #[track_caller]
-fn unwrap_failed<T>(_msg: &str, _error: &T) -> ! {
+fn unwrap_failed<T>(_prefix: &str, _msg: &str, _error: &T) -> ! {
     panic!()
 }
 

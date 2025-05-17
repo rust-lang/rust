@@ -573,6 +573,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::fmt;
 use crate::iter::{self, FusedIterator, TrustedLen};
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::panicking::{panic, panic_display};
@@ -955,7 +956,7 @@ impl<T> Option<T> {
     pub const fn expect(self, msg: &str) -> T {
         match self {
             Some(val) => val,
-            None => expect_failed(msg),
+            None => expect_failed("expected: ", msg),
         }
     }
 
@@ -1783,7 +1784,11 @@ impl<T> Option<T> {
     where
         P: FnOnce(&mut T) -> bool,
     {
-        if self.as_mut().map_or(false, predicate) { self.take() } else { None }
+        if self.as_mut().map_or(false, predicate) {
+            self.take()
+        } else {
+            None
+        }
     }
 
     /// Replaces the actual value in the option by the value given in parameter,
@@ -2045,8 +2050,21 @@ const fn unwrap_failed() -> ! {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
-const fn expect_failed(msg: &str) -> ! {
-    panic_display(&msg)
+const fn expect_failed(prefix: &str, msg: &str) -> ! {
+    // TODO: FIXME: there seem to be no way currently to print anything other than a single `&str`
+    // in `panic` in `const` context.
+    struct MsgWithPrefix<'a> {
+        prefix: &'a str,
+        msg: &'a str,
+    }
+
+    impl<'a> fmt::Display for MsgWithPrefix<'a> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str(self.prefix)?;
+            f.write_str(self.msg)
+        }
+    }
+    panic_display(&MsgWithPrefix { prefix, msg })
 }
 
 /////////////////////////////////////////////////////////////////////////////
