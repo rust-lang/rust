@@ -8,15 +8,6 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
 pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
     let tcx = cx.tcx();
 
-    // Type-level uninhabitedness should always imply ABI uninhabitedness.
-    if layout.ty.is_privately_uninhabited(tcx, cx.typing_env) {
-        assert!(
-            layout.is_uninhabited(),
-            "{:?} is type-level uninhabited but not ABI-uninhabited?",
-            layout.ty
-        );
-    }
-
     if layout.size.bytes() % layout.align.abi.bytes() != 0 {
         bug!("size is not a multiple of align, in the following layout:\n{layout:#?}");
     }
@@ -27,6 +18,19 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
     if !cfg!(debug_assertions) {
         // Stop here, the rest is kind of expensive.
         return;
+    }
+
+    // Type-level uninhabitedness should always imply ABI uninhabitedness. This can be expensive on
+    // big non-exhaustive types, and is [hard to
+    // fix](https://github.com/rust-lang/rust/issues/141006#issuecomment-2883415000) in general.
+    // Only doing this sanity check when debug assertions are turned on avoids the issue for the
+    // very specific case of #140944.
+    if layout.ty.is_privately_uninhabited(tcx, cx.typing_env) {
+        assert!(
+            layout.is_uninhabited(),
+            "{:?} is type-level uninhabited but not ABI-uninhabited?",
+            layout.ty
+        );
     }
 
     /// Yields non-ZST fields of the type
