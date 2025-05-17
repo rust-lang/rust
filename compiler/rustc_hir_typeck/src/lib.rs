@@ -201,7 +201,7 @@ fn typeck_with_inspect<'tcx>(
     // fallback arbitrarily inferring something incompatible with `Copy` inference side effects.
     //
     // This should also be forwards compatible with moving repeat expr checks to a custom goal kind or using
-    // marker traits in the future.
+    // marker traits in the future. FIXME(#140855).
     fcx.check_repeat_exprs();
 
     fcx.type_inference_fallback();

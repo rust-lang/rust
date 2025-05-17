@@ -49,12 +49,14 @@ fn ice() {
     // Use index
     let arr = [0; 5];
     let _ = arr[2];
+    //~^ ERROR cannot index into a value of type `[{integer}; 5]`
 
     // Use phantomdata
     let _ = MyPhantomData::<(), i32>;
 
     // Use Foo
     let _: () = Foo;
+    //~^ ERROR mismatched types
 }
 
 // use `start`
