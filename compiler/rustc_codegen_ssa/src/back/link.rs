@@ -768,7 +768,7 @@ fn link_natively(
             && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-fuse-ld=lld")
         {
             info!("linker output: {:?}", out);
-            warn!("The linker driver does not support `-fuse-ld=lld`. Retrying without it.");
+            info!("The linker driver does not support `-fuse-ld=lld`. Retrying without it.");
             for arg in cmd.take_args() {
                 if arg.to_string_lossy() != "-fuse-ld=lld" {
                     cmd.arg(arg);
