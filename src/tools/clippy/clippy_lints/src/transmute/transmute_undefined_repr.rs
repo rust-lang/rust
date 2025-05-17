@@ -242,6 +242,10 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
     loop {
         ty = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty).unwrap_or(ty);
         return match *ty.kind() {
+            ty::Pat(base, _) => {
+                ty = base;
+                continue;
+            },
             ty::Array(sub_ty, _) if matches!(sub_ty.kind(), ty::Int(_) | ty::Uint(_)) => {
                 ReducedTy::TypeErasure { raw_ptr_only: false }
             },

@@ -7,7 +7,7 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
         let mut _2: *mut T;
         let mut _7: bool;
         let mut _8: *mut T;
-        let mut _21: &mut T;
+        let mut _22: &mut T;
         scope 2 {
             let _3: std::ptr::NonNull<T>;
             let _9: usize;
@@ -30,15 +30,15 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
             }
         }
         scope 10 (inlined std::slice::IterMut::<'_, T>::next_back_unchecked) {
-            let mut _15: std::ptr::NonNull<T>;
+            let mut _16: std::ptr::NonNull<T>;
             scope 11 (inlined std::slice::IterMut::<'_, T>::pre_dec_end) {
                 let mut _10: *mut *mut T;
                 let mut _11: *mut std::ptr::NonNull<T>;
                 let mut _12: std::ptr::NonNull<T>;
-                let mut _16: *mut *mut T;
-                let mut _17: *mut usize;
-                let mut _18: usize;
+                let mut _17: *mut *mut T;
+                let mut _18: *mut usize;
                 let mut _19: usize;
+                let mut _20: usize;
                 scope 12 {
                     scope 13 {
                     }
@@ -51,8 +51,9 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
                                 }
                             }
                             scope 21 (inlined NonNull::<T>::offset) {
-                                let mut _13: *const T;
-                                let mut _14: *const T;
+                                let mut _13: *mut T;
+                                let mut _14: *mut T;
+                                let mut _15: (*const T) is !null;
                                 scope 22 (inlined NonNull::<T>::as_ptr) {
                                 }
                             }
@@ -65,7 +66,7 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
                 }
             }
             scope 23 (inlined NonNull::<T>::as_mut::<'_>) {
-                let mut _20: *mut T;
+                let mut _21: *mut T;
                 scope 24 (inlined NonNull::<T>::as_ptr) {
                 }
             }
@@ -77,7 +78,7 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
         StorageLive(_8);
         StorageLive(_3);
         StorageLive(_2);
-        StorageLive(_21);
+        StorageLive(_22);
         StorageLive(_7);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
     }
@@ -110,8 +111,8 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
     }
 
     bb4: {
-        StorageLive(_15);
-        StorageLive(_17);
+        StorageLive(_16);
+        StorageLive(_18);
         StorageLive(_11);
         StorageLive(_12);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb5, otherwise: bb8];
@@ -127,48 +128,51 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
     }
 
     bb6: {
+        StorageLive(_15);
         StorageLive(_14);
         StorageLive(_13);
-        _13 = copy _12 as *const T (Transmute);
+        _13 = copy _12 as *mut T (Transmute);
         _14 = Offset(copy _13, const -1_isize);
         StorageDead(_13);
-        _12 = NonNull::<T> { pointer: copy _14 };
+        _15 = copy _14 as (*const T) is !null (Transmute);
         StorageDead(_14);
+        _12 = NonNull::<T> { pointer: move _15 };
+        StorageDead(_15);
         goto -> bb7;
     }
 
     bb7: {
         (*_11) = move _12;
-        _15 = copy (*_11);
+        _16 = copy (*_11);
         goto -> bb9;
     }
 
     bb8: {
-        StorageLive(_16);
-        _16 = &raw mut ((*_1).1: *mut T);
-        _17 = copy _16 as *mut usize (PtrToPtr);
-        StorageDead(_16);
+        StorageLive(_17);
+        _17 = &raw mut ((*_1).1: *mut T);
+        _18 = copy _17 as *mut usize (PtrToPtr);
+        StorageDead(_17);
+        StorageLive(_20);
         StorageLive(_19);
-        StorageLive(_18);
-        _18 = copy (*_17);
-        _19 = SubUnchecked(move _18, const 1_usize);
-        StorageDead(_18);
-        (*_17) = move _19;
+        _19 = copy (*_18);
+        _20 = SubUnchecked(move _19, const 1_usize);
         StorageDead(_19);
-        _15 = copy ((*_1).0: std::ptr::NonNull<T>);
+        (*_18) = move _20;
+        StorageDead(_20);
+        _16 = copy ((*_1).0: std::ptr::NonNull<T>);
         goto -> bb9;
     }
 
     bb9: {
         StorageDead(_12);
         StorageDead(_11);
-        StorageDead(_17);
-        StorageLive(_20);
-        _20 = copy _15 as *mut T (Transmute);
-        _21 = &mut (*_20);
-        StorageDead(_20);
-        StorageDead(_15);
-        _0 = Option::<&mut T>::Some(copy _21);
+        StorageDead(_18);
+        StorageLive(_21);
+        _21 = copy _16 as *mut T (Transmute);
+        _22 = &mut (*_21);
+        StorageDead(_21);
+        StorageDead(_16);
+        _0 = Option::<&mut T>::Some(copy _22);
         goto -> bb11;
     }
 
@@ -179,7 +183,7 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
 
     bb11: {
         StorageDead(_7);
-        StorageDead(_21);
+        StorageDead(_22);
         StorageDead(_2);
         StorageDead(_3);
         StorageDead(_8);
