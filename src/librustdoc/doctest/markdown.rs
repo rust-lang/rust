@@ -24,7 +24,14 @@ impl DocTestVisitor for MdCollector {
         let filename = self.filename.clone();
         // First line of Markdown is line 1.
         let line = 1 + rel_line.offset();
-        self.tests.push(ScrapedDocTest::new(filename, line, self.cur_path.clone(), config, test));
+        self.tests.push(ScrapedDocTest::new(
+            filename,
+            line,
+            self.cur_path.clone(),
+            config,
+            test,
+            Vec::new(),
+        ));
     }
 
     fn visit_header(&mut self, name: &str, level: u32) {
@@ -89,7 +96,6 @@ pub(crate) fn test(input: &Input, options: Options) -> Result<(), String> {
         crate_name,
         no_crate_inject: true,
         insert_indent_space: false,
-        attrs: vec![],
         args_file,
     };
 

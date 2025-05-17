@@ -9,12 +9,14 @@ fn make_test(
     crate_name: Option<&str>,
     dont_insert_main: bool,
     opts: &GlobalTestOptions,
+    global_crate_attrs: Vec<&str>,
     test_id: Option<&str>,
 ) -> (String, usize) {
     let doctest = DocTestBuilder::new(
         test_code,
         crate_name,
         DEFAULT_EDITION,
+        global_crate_attrs.into_iter().map(|a| a.to_string()).collect(),
         false,
         test_id.map(|s| s.to_string()),
         None,
@@ -30,7 +32,6 @@ fn default_global_opts(crate_name: impl Into<String>) -> GlobalTestOptions {
         crate_name: crate_name.into(),
         no_crate_inject: false,
         insert_indent_space: false,
-        attrs: vec![],
         args_file: PathBuf::new(),
     }
 }
@@ -45,7 +46,7 @@ fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len) = make_test(input, None, false, &opts, None);
+    let (output, len) = make_test(input, None, false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -60,7 +61,7 @@ fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len) = make_test(input, Some("asdf"), false, &opts, None);
+    let (output, len) = make_test(input, Some("asdf"), false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -79,7 +80,7 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len) = make_test(input, Some("asdf"), false, &opts, None);
+    let (output, len) = make_test(input, Some("asdf"), false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 3));
 }
 
@@ -96,7 +97,7 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len) = make_test(input, Some("asdf"), false, &opts, None);
+    let (output, len) = make_test(input, Some("asdf"), false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -114,7 +115,7 @@ use std::*;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len) = make_test(input, Some("std"), false, &opts, None);
+    let (output, len) = make_test(input, Some("std"), false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -133,7 +134,7 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len) = make_test(input, Some("asdf"), false, &opts, None);
+    let (output, len) = make_test(input, Some("asdf"), false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -150,7 +151,7 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len) = make_test(input, Some("asdf"), false, &opts, None);
+    let (output, len) = make_test(input, Some("asdf"), false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -158,8 +159,7 @@ assert_eq!(2+2, 4);
 fn make_test_opts_attrs() {
     // If you supplied some doctest attributes with `#![doc(test(attr(...)))]`, it will use
     // those instead of the stock `#![allow(unused)]`.
-    let mut opts = default_global_opts("asdf");
-    opts.attrs.push("feature(sick_rad)".to_string());
+    let opts = default_global_opts("asdf");
     let input = "use asdf::qwop;
 assert_eq!(2+2, 4);";
     let expected = "#![feature(sick_rad)]
@@ -170,11 +170,10 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len) = make_test(input, Some("asdf"), false, &opts, None);
+    let (output, len) =
+        make_test(input, Some("asdf"), false, &opts, vec!["feature(sick_rad)"], None);
     assert_eq!((output, len), (expected, 3));
 
-    // Adding more will also bump the returned line offset.
-    opts.attrs.push("feature(hella_dope)".to_string());
     let expected = "#![feature(sick_rad)]
 #![feature(hella_dope)]
 #[allow(unused_extern_crates)]
@@ -184,7 +183,18 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len) = make_test(input, Some("asdf"), false, &opts, None);
+    let (output, len) = make_test(
+        input,
+        Some("asdf"),
+        false,
+        &opts,
+        vec![
+            "feature(sick_rad)",
+            // Adding more will also bump the returned line offset.
+            "feature(hella_dope)",
+        ],
+        None,
+    );
     assert_eq!((output, len), (expected, 4));
 }
 
@@ -202,7 +212,7 @@ fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len) = make_test(input, None, false, &opts, None);
+    let (output, len) = make_test(input, None, false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -218,7 +228,7 @@ fn main() {
     assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len) = make_test(input, None, false, &opts, None);
+    let (output, len) = make_test(input, None, false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 1));
 }
 
@@ -234,7 +244,7 @@ fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len) = make_test(input, None, false, &opts, None);
+    let (output, len) = make_test(input, None, false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -248,7 +258,7 @@ assert_eq!(2+2, 4);";
 //Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);"
         .to_string();
-    let (output, len) = make_test(input, None, true, &opts, None);
+    let (output, len) = make_test(input, None, true, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 1));
 }
 
@@ -266,7 +276,7 @@ assert_eq!(2+2, 4);
 }"
     .to_string();
 
-    let (output, len) = make_test(input, None, false, &opts, None);
+    let (output, len) = make_test(input, None, false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -286,7 +296,7 @@ assert_eq!(asdf::foo, 4);
 }"
     .to_string();
 
-    let (output, len) = make_test(input, Some("asdf"), false, &opts, None);
+    let (output, len) = make_test(input, Some("asdf"), false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 3));
 }
 
@@ -304,7 +314,7 @@ test_wrapper! {
 }"
     .to_string();
 
-    let (output, len) = make_test(input, Some("my_crate"), false, &opts, None);
+    let (output, len) = make_test(input, Some("my_crate"), false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 1));
 }
 
@@ -324,7 +334,7 @@ io::stdin().read_line(&mut input)?;
 Ok::<(), io:Error>(())
 } _inner().unwrap() }"
         .to_string();
-    let (output, len) = make_test(input, None, false, &opts, None);
+    let (output, len) = make_test(input, None, false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -338,7 +348,7 @@ fn main() { #[allow(non_snake_case)] fn _doctest_main__some_unique_name() {
 assert_eq!(2+2, 4);
 } _doctest_main__some_unique_name() }"
         .to_string();
-    let (output, len) = make_test(input, None, false, &opts, Some("_some_unique_name"));
+    let (output, len) = make_test(input, None, false, &opts, Vec::new(), Some("_some_unique_name"));
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -357,7 +367,7 @@ fn main() {
     eprintln!(\"hello anan\");
 }"
     .to_string();
-    let (output, len) = make_test(input, None, false, &opts, None);
+    let (output, len) = make_test(input, None, false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -377,7 +387,7 @@ fn main() {
     eprintln!(\"hello anan\");
 }"
     .to_string();
-    let (output, len) = make_test(input, None, false, &opts, None);
+    let (output, len) = make_test(input, None, false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 1));
 }
 
@@ -402,7 +412,7 @@ fn main() {
 
 }"
     .to_string();
-    let (output, len) = make_test(input, None, false, &opts, None);
+    let (output, len) = make_test(input, None, false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 2));
 
     // And same, if there is a `main` function provided by the user, we ensure that it's
@@ -422,7 +432,7 @@ fn main() {}";
 
 fn main() {}"
         .to_string();
-    let (output, len) = make_test(input, None, false, &opts, None);
+    let (output, len) = make_test(input, None, false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 1));
 }
 
@@ -450,6 +460,6 @@ pub mod outer_module {
 }
 }"
     .to_string();
-    let (output, len) = make_test(input, None, false, &opts, None);
+    let (output, len) = make_test(input, None, false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 2));
 }

@@ -300,10 +300,10 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 crate_name: krate.map(String::from).unwrap_or_default(),
                 no_crate_inject: false,
                 insert_indent_space: true,
-                attrs: vec![],
                 args_file: PathBuf::new(),
             };
-            let doctest = doctest::DocTestBuilder::new(&test, krate, edition, false, None, None);
+            let doctest =
+                doctest::DocTestBuilder::new(&test, krate, edition, Vec::new(), false, None, None);
             let (test, _) = doctest.generate_unique_doctest(&test, false, &opts, krate);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
