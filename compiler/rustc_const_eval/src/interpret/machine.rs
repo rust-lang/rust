@@ -147,6 +147,12 @@ pub trait Machine<'tcx>: Sized {
     /// already been checked before.
     const ALL_CONSTS_ARE_PRECHECKED: bool = true;
 
+    /// Determines whether rustc_const_eval functions that make use of the [Machine] should make
+    /// tracing calls (to the `tracing` library). By default this is `false`, meaning the tracing
+    /// calls will supposedly be optimized out. This flag is set to `true` inside Miri, to allow
+    /// tracing the interpretation steps, among other things.
+    const TRACING_ENABLED: bool = false;
+
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(ecx: &InterpCx<'tcx, Self>) -> bool;
 
