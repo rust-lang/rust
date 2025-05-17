@@ -2,7 +2,7 @@ error: path statement with no effect
   --> $DIR/warn-path-statement.rs:10:5
    |
 LL |     x;
-   |     ^^
+   |     ^^ help: remove this statement
    |
    = note: requested on the command line with `-D path-statements`
 
