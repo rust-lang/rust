@@ -78,6 +78,7 @@ pub mod lint;
 pub mod metadata;
 pub mod middle;
 pub mod mir;
+pub mod target_features;
 pub mod thir;
 pub mod traits;
 pub mod ty;
@@ -93,3 +94,8 @@ pub mod dep_graph;
 extern crate self as rustc_middle;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+
+pub fn provide(providers: &mut util::Providers) {
+    hir::provide(providers);
+    target_features::provide(providers);
+}

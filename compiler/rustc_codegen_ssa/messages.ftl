@@ -68,9 +68,6 @@ codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 
 codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
 
-codegen_ssa_forbidden_target_feature_attr =
-    target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}
-
 codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extension} files were produced
 
 codegen_ssa_ignoring_output = ignoring -o because multiple .{$extension} files were produced
@@ -202,8 +199,6 @@ codegen_ssa_metadata_object_file_write = error writing metadata object file: {$e
 
 codegen_ssa_missing_cpp_build_tool_component = or a necessary component may be missing from the "C++ build tools" workload
 
-codegen_ssa_missing_features = add the missing features in a `target_feature` attribute
-
 codegen_ssa_missing_memory_ordering = Atomic intrinsic missing memory ordering
 
 codegen_ssa_missing_query_depgraph =
@@ -272,13 +267,6 @@ codegen_ssa_stripping_debug_info_failed = stripping debug info with `{$util}` fa
     .note = {$output}
 
 codegen_ssa_symbol_file_write_failure = failed to write symbols file: {$error}
-
-codegen_ssa_target_feature_disable_or_enable =
-    the target features {$features} must all be either enabled or disabled together
-
-codegen_ssa_target_feature_safe_trait = `#[target_feature(..)]` cannot be applied to safe trait method
-    .label = cannot be applied to safe trait method
-    .label_def = not an `unsafe` function
 
 codegen_ssa_thorin_decompress_data = failed to decompress compressed section
 
