@@ -1260,8 +1260,7 @@ impl<'tcx> Ty<'tcx> {
                     return true;
                 };
                 alloc.expect_ty().ty_adt_def().is_some_and(|alloc_adt| {
-                    let global_alloc = tcx.require_lang_item(LangItem::GlobalAlloc, None);
-                    alloc_adt.did() == global_alloc
+                    tcx.is_lang_item(alloc_adt.did(), LangItem::GlobalAlloc)
                 })
             }
             _ => false,
