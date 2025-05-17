@@ -180,6 +180,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.sess.threads() > 1
     }
 
+    fn expand_free_alias_tys<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
+        self.expand_free_alias_tys(t)
+    }
+
     fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
         self.expand_abstract_consts(t)
     }

@@ -149,6 +149,7 @@ pub trait Interner:
 
     fn evaluation_is_concurrent(&self) -> bool;
 
+    fn expand_free_alias_tys<T: TypeFoldable<Self>>(self, t: T) -> T;
     fn expand_abstract_consts<T: TypeFoldable<Self>>(self, t: T) -> T;
 
     type GenericsOf: GenericsOf<Self>;
