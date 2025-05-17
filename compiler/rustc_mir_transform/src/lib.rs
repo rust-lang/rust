@@ -748,7 +748,13 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
 
 /// Optimize the MIR and prepare it for codegen.
 fn optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> &Body<'_> {
-    tcx.arena.alloc(inner_optimized_mir(tcx, did))
+    let body = tcx.arena.alloc(inner_optimized_mir(tcx, did));
+    if body.is_codegen_mir {
+        let instance = Instance::mono(tcx, did.to_def_id());
+        mono_checks::check_mono_item(tcx, instance, body);
+    }
+
+    body
 }
 
 fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
