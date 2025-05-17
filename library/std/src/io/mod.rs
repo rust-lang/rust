@@ -729,6 +729,7 @@ pub(crate) fn default_write_fmt<W: Write + ?Sized>(
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(notable_trait)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "IoRead")]
+#[rustc_must_implement_one_of(read, read_buf)]
 pub trait Read {
     /// Pull some bytes from this source into the specified buffer, returning
     /// how many bytes were read.
@@ -810,7 +811,10 @@ pub trait Read {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        let mut buf = BorrowedBuf::from(buf);
+        self.read_buf(buf.unfilled()).map(|()| buf.len())
+    }
 
     /// Like `read`, except that it reads into a slice of buffers.
     ///
