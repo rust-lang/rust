@@ -101,6 +101,7 @@
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(cfg_match)]
+#![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(const_carrying_mul_add)]
 #![feature(const_eval_select)]
 #![feature(core_intrinsics)]
