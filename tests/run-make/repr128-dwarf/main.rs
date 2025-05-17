@@ -1,5 +1,3 @@
-#![feature(repr128)]
-
 // Use .to_le() to ensure that the bytes are in the same order on both little- and big-endian
 // platforms.
 
