@@ -666,11 +666,6 @@ pub fn phase_rustdoc(mut args: impl Iterator<Item = String>) {
         if arg == "--extern" {
             // Patch --extern arguments to use *.rmeta files, since phase_cargo_rustc only creates stub *.rlib files.
             forward_patched_extern_arg(&mut args, &mut cmd);
-        } else if arg == "--test-runtool" {
-            // An existing --test-runtool flag indicates cargo is running in cross-target mode, which we don't support.
-            // Note that this is only passed when cargo is run with the unstable -Zdoctest-xcompile flag;
-            // otherwise, we won't be called as rustdoc at all.
-            show_error!("cross-interpreting doctests is not currently supported by Miri.");
         } else {
             cmd.arg(arg);
         }
@@ -702,10 +697,10 @@ pub fn phase_rustdoc(mut args: impl Iterator<Item = String>) {
     // make sure the 'miri' flag is set for rustdoc
     cmd.arg("--cfg").arg("miri");
 
-    // Make rustdoc call us back.
+    // Make rustdoc call us back for the build.
+    // (cargo already sets `--test-runtool` to us since we are the cargo test runner.)
     let cargo_miri_path = env::current_exe().expect("current executable path invalid");
     cmd.arg("--test-builder").arg(&cargo_miri_path); // invoked by forwarding most arguments
-    cmd.arg("--test-runtool").arg(&cargo_miri_path); // invoked with just a single path argument
 
     debug_cmd("[cargo-miri rustdoc]", verbose, &cmd);
     exec(cmd)

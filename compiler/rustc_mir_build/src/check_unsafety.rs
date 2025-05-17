@@ -1148,8 +1148,9 @@ impl UnsafeOpKind {
 
 pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     // Closures and inline consts are handled by their owner, if it has a body
+    assert!(!tcx.is_typeck_child(def.to_def_id()));
     // Also, don't safety check custom MIR
-    if tcx.is_typeck_child(def.to_def_id()) || tcx.has_attr(def, sym::custom_mir) {
+    if tcx.has_attr(def, sym::custom_mir) {
         return;
     }
 

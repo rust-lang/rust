@@ -907,7 +907,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
                 feed.output_filenames(Arc::new(outputs));
 
                 let res = f(tcx);
-                // FIXME maybe run finish even when a fatal error occured? or at least tcx.alloc_self_profile_query_strings()?
+                // FIXME maybe run finish even when a fatal error occurred? or at least tcx.alloc_self_profile_query_strings()?
                 tcx.finish();
                 res
             },
@@ -996,10 +996,9 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
     sess.time("MIR_borrow_checking", || {
         tcx.par_hir_body_owners(|def_id| {
-            // Run unsafety check because it's responsible for stealing and
-            // deallocating THIR.
-            tcx.ensure_ok().check_unsafety(def_id);
             if !tcx.is_typeck_child(def_id.to_def_id()) {
+                // Child unsafety and borrowck happens together with the parent
+                tcx.ensure_ok().check_unsafety(def_id);
                 tcx.ensure_ok().mir_borrowck(def_id)
             }
         });

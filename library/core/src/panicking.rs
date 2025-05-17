@@ -206,7 +206,6 @@ pub mod panic_const {
     }
     // Separated panic constants list for async drop feature
     // (May be joined when the corresponding lang items will be in the bootstrap)
-    #[cfg(not(bootstrap))]
     panic_const! {
         panic_const_coroutine_resumed_drop = "coroutine resumed after async drop",
         panic_const_async_fn_resumed_drop = "`async fn` resumed after async drop",

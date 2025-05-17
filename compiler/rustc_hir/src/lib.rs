@@ -4,7 +4,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(closure_track_caller)]

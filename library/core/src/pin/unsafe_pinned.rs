@@ -21,7 +21,7 @@ use crate::{fmt, ptr};
 /// Use `UnsafeCell` for that.
 ///
 /// This type blocks niches the same way `UnsafeCell` does.
-#[cfg_attr(not(bootstrap), lang = "unsafe_pinned")]
+#[lang = "unsafe_pinned"]
 #[repr(transparent)]
 #[unstable(feature = "unsafe_pinned", issue = "125735")]
 pub struct UnsafePinned<T: ?Sized> {

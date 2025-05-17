@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::{SpanlessEq, is_expr_path_def_path, is_lint_allowed, peel_blocks_with_stmt};
+use clippy_utils::{SpanlessEq, is_lint_allowed, peel_blocks_with_stmt};
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -9,6 +9,8 @@ use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 use std::borrow::{Borrow, Cow};
+
+use crate::internal_paths;
 
 declare_tool_lint! {
     /// ### What it does
@@ -80,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
         }
 
         if let ExprKind::Call(func, [call_cx, call_lint, call_sp, call_msg, call_f]) = expr.kind
-            && is_expr_path_def_path(cx, func, &["clippy_utils", "diagnostics", "span_lint_and_then"])
+            && internal_paths::SPAN_LINT_AND_THEN.matches_path(cx, func)
             && let ExprKind::Closure(&Closure { body, .. }) = call_f.kind
             && let body = cx.tcx.hir_body(body)
             && let only_expr = peel_blocks_with_stmt(body.value)

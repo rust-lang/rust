@@ -63,8 +63,55 @@ fn main() {
             .first() // creates temporary reference
             .and_then(|x| test_opt_block(Some(*x)))
     }
+
+    fn in_closure() -> bool {
+        let _ = || {
+            Some("").and_then(|x| if x.len() > 2 { Some(3) } else { None })
+            //~^ return_and_then
+        };
+        true
+    }
+
+    fn with_return(shortcut: bool) -> Option<i32> {
+        if shortcut {
+            return Some("").and_then(|x| if x.len() > 2 { Some(3) } else { None });
+            //~^ return_and_then
+        };
+        None
+    }
+
+    fn with_return_multiline(shortcut: bool) -> Option<i32> {
+        if shortcut {
+            return Some("").and_then(|mut x| {
+                let x = format!("{x}.");
+                if x.len() > 2 { Some(3) } else { None }
+            });
+            //~^^^^ return_and_then
+        };
+        None
+    }
 }
 
 fn gen_option(n: i32) -> Option<i32> {
     Some(n)
+}
+
+mod issue14781 {
+    fn foo(_: &str, _: (u32, u32)) -> Result<(u32, u32), ()> {
+        Ok((1, 1))
+    }
+
+    fn bug(_: Option<&str>) -> Result<(), ()> {
+        let year: Option<&str> = None;
+        let month: Option<&str> = None;
+        let day: Option<&str> = None;
+
+        let _day = if let (Some(year), Some(month)) = (year, month) {
+            day.and_then(|day| foo(day, (1, 31)).ok())
+        } else {
+            None
+        };
+
+        Ok(())
+    }
 }

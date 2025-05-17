@@ -169,7 +169,7 @@ The `LazyArray<[T]>` and `LazyTable<I, T>` types provide some functionality over
   than the one being read.
 
 **note**: `LazyValue<T>` does not cache its value after being deserialized the
-first time. Instead the query system its self is the main way of caching these
+first time. Instead the query system itself is the main way of caching these
 results.
 
 [`LazyArray<T>`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/struct.LazyValue.html

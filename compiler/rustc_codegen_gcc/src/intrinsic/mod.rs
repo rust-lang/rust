@@ -4,9 +4,7 @@ mod simd;
 #[cfg(feature = "master")]
 use std::iter;
 
-#[cfg(feature = "master")]
-use gccjit::FunctionType;
-use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp};
+use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, Type, UnaryOp};
 #[cfg(feature = "master")]
 use rustc_abi::ExternAbi;
 use rustc_abi::{BackendRepr, HasDataLayout};
@@ -132,6 +130,72 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     Some(cx.context.get_builtin_function(gcc_name))
 }
 
+// TODO(antoyo): We can probably remove these and use the fallback intrinsic implementation.
+fn get_simple_function<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    name: Symbol,
+) -> Option<Function<'gcc>> {
+    let (return_type, parameters, func_name) = match name {
+        sym::minimumf32 => {
+            let parameters = [
+                cx.context.new_parameter(None, cx.float_type, "a"),
+                cx.context.new_parameter(None, cx.float_type, "b"),
+            ];
+            (cx.float_type, parameters, "fminimumf")
+        }
+        sym::minimumf64 => {
+            let parameters = [
+                cx.context.new_parameter(None, cx.double_type, "a"),
+                cx.context.new_parameter(None, cx.double_type, "b"),
+            ];
+            (cx.double_type, parameters, "fminimum")
+        }
+        sym::minimumf128 => {
+            let f128_type = cx.type_f128();
+            // GCC doesn't have the intrinsic we want so we use the compiler-builtins one
+            // https://docs.rs/compiler_builtins/latest/compiler_builtins/math/full_availability/fn.fminimumf128.html
+            let parameters = [
+                cx.context.new_parameter(None, f128_type, "a"),
+                cx.context.new_parameter(None, f128_type, "b"),
+            ];
+            (f128_type, parameters, "fminimumf128")
+        }
+        sym::maximumf32 => {
+            let parameters = [
+                cx.context.new_parameter(None, cx.float_type, "a"),
+                cx.context.new_parameter(None, cx.float_type, "b"),
+            ];
+            (cx.float_type, parameters, "fmaximumf")
+        }
+        sym::maximumf64 => {
+            let parameters = [
+                cx.context.new_parameter(None, cx.double_type, "a"),
+                cx.context.new_parameter(None, cx.double_type, "b"),
+            ];
+            (cx.double_type, parameters, "fmaximum")
+        }
+        sym::maximumf128 => {
+            let f128_type = cx.type_f128();
+            // GCC doesn't have the intrinsic we want so we use the compiler-builtins one
+            // https://docs.rs/compiler_builtins/latest/compiler_builtins/math/full_availability/fn.fmaximumf128.html
+            let parameters = [
+                cx.context.new_parameter(None, f128_type, "a"),
+                cx.context.new_parameter(None, f128_type, "b"),
+            ];
+            (f128_type, parameters, "fmaximumf128")
+        }
+        _ => return None,
+    };
+    Some(cx.context.new_function(
+        None,
+        FunctionType::Extern,
+        return_type,
+        &parameters,
+        func_name,
+        false,
+    ))
+}
+
 impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn codegen_intrinsic_call(
         &mut self,
@@ -160,6 +224,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let simple = get_simple_intrinsic(self, name);
+        let simple_func = get_simple_function(self, name);
 
         // FIXME(tempdragon): Re-enable `clippy::suspicious_else_formatting` if the following issue is solved:
         // https://github.com/rust-lang/rust-clippy/issues/12497
@@ -167,7 +232,15 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         #[allow(clippy::suspicious_else_formatting)]
         let value = match name {
             _ if simple.is_some() => {
-                let func = simple.expect("simple function");
+                let func = simple.expect("simple intrinsic function");
+                self.cx.context.new_call(
+                    self.location,
+                    func,
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
+            }
+            _ if simple_func.is_some() => {
+                let func = simple_func.expect("simple function");
                 self.cx.context.new_call(
                     self.location,
                     func,

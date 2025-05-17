@@ -196,11 +196,31 @@ where
                 debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);
                 ty
             } else {
-                ocx.deeply_normalize(&cause, param_env, ty)?;
+                // Flush errors b/c `deeply_normalize` doesn't expect pending
+                // obligations, and we may have pending obligations from the
+                // branch above (from other types).
+                let errors = ocx.select_all_or_error();
+                if !errors.is_empty() {
+                    return Err(errors);
+                }
 
-                let errors = ocx.select_where_possible();
-                debug!("normalize errors: {ty} ~> {errors:#?}");
-                return Err(errors);
+                // When query normalization fails, we don't get back an interesting
+                // reason that we could use to report an error in borrowck. In order to turn
+                // this into a reportable error, we deeply normalize again. We don't expect
+                // this to succeed, so delay a bug if it does.
+                match ocx.deeply_normalize(&cause, param_env, ty) {
+                    Ok(_) => {
+                        tcx.dcx().span_delayed_bug(
+                            span,
+                            format!(
+                                "query normalize succeeded of {ty}, \
+                                but deep normalize failed",
+                            ),
+                        );
+                        ty
+                    }
+                    Err(errors) => return Err(errors),
+                }
             };
 
             match ty.kind() {

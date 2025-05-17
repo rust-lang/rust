@@ -1,7 +1,7 @@
 //! Bindings to the LLVM-C API (`LLVM*`), and to our own `extern "C"` wrapper
 //! functions around the unstable LLVM C++ API (`LLVMRust*`).
 //!
-//! ## Passing pointer/length strings as `*const c_uchar`
+//! ## Passing pointer/length strings as `*const c_uchar` (PTR_LEN_STR)
 //!
 //! Normally it's a good idea for Rust-side bindings to match the corresponding
 //! C-side function declarations as closely as possible. But when passing `&str`
@@ -471,7 +471,7 @@ pub(crate) enum MetadataType {
     MD_kcfi_type = 36,
 }
 
-/// LLVMRustAsmDialect
+/// Must match the layout of `LLVMInlineAsmDialect`.
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub(crate) enum AsmDialect {
@@ -1014,8 +1014,25 @@ unsafe extern "C" {
     pub(crate) fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
     pub(crate) fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
 
-    /// See Module::setModuleInlineAsm.
-    pub(crate) fn LLVMAppendModuleInlineAsm(M: &Module, Asm: *const c_char, Len: size_t);
+    /// Append inline assembly to a module. See `Module::appendModuleInlineAsm`.
+    pub(crate) fn LLVMAppendModuleInlineAsm(
+        M: &Module,
+        Asm: *const c_uchar, // See "PTR_LEN_STR".
+        Len: size_t,
+    );
+
+    /// Create the specified uniqued inline asm string. See `InlineAsm::get()`.
+    pub(crate) fn LLVMGetInlineAsm<'ll>(
+        Ty: &'ll Type,
+        AsmString: *const c_uchar, // See "PTR_LEN_STR".
+        AsmStringSize: size_t,
+        Constraints: *const c_uchar, // See "PTR_LEN_STR".
+        ConstraintsSize: size_t,
+        HasSideEffects: llvm::Bool,
+        IsAlignStack: llvm::Bool,
+        Dialect: AsmDialect,
+        CanThrow: llvm::Bool,
+    ) -> &'ll Value;
 
     // Operations on integer types
     pub(crate) fn LLVMInt1TypeInContext(C: &Context) -> &Type;
@@ -1766,7 +1783,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMDIBuilderCreateNameSpace<'ll>(
         Builder: &DIBuilder<'ll>,
         ParentScope: Option<&'ll Metadata>,
-        Name: *const c_uchar,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
         ExportSymbols: llvm::Bool,
     ) -> &'ll Metadata;
@@ -1994,21 +2011,9 @@ unsafe extern "C" {
     /// Prints the statistics collected by `-Zprint-codegen-stats`.
     pub(crate) fn LLVMRustPrintStatistics(OutStr: &RustString);
 
-    /// Prepares inline assembly.
-    pub(crate) fn LLVMRustInlineAsm(
-        Ty: &Type,
-        AsmString: *const c_char,
-        AsmStringLen: size_t,
-        Constraints: *const c_char,
-        ConstraintsLen: size_t,
-        SideEffects: Bool,
-        AlignStack: Bool,
-        Dialect: AsmDialect,
-        CanThrow: Bool,
-    ) -> &Value;
     pub(crate) fn LLVMRustInlineAsmVerify(
         Ty: &Type,
-        Constraints: *const c_char,
+        Constraints: *const c_uchar, // See "PTR_LEN_STR".
         ConstraintsLen: size_t,
     ) -> bool;
 
