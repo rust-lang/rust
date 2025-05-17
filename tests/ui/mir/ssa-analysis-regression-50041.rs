@@ -2,10 +2,10 @@
 //@ compile-flags: -Z mir-opt-level=4
 
 #![crate_type = "lib"]
-#![feature(lang_items)]
+#![feature(lang_items, pattern_type_macro, pattern_types)]
 #![no_std]
 
-struct NonNull<T: ?Sized>(*const T);
+struct NonNull<T: ?Sized>(pattern_type!(*const T is !null));
 
 struct Unique<T: ?Sized>(NonNull<T>);
 
@@ -20,7 +20,7 @@ impl<T: ?Sized> Drop for Box<T> {
 }
 
 #[inline(never)]
-fn dealloc<T: ?Sized>(_: *const T) {}
+fn dealloc<T: ?Sized>(_: pattern_type!(*const T is !null)) {}
 
 pub struct Foo<T>(T);
 
