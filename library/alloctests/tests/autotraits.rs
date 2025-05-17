@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 fn require_sync<T: Sync>(_: T) {}
 fn require_send_sync<T: Send + Sync>(_: T) {}
 
@@ -55,7 +57,13 @@ fn test_btree_map() {
 
     require_send_sync(async {
         let _v = None::<
-            alloc::collections::btree_map::ExtractIf<'_, &u32, &u32, fn(&&u32, &mut &u32) -> bool>,
+            alloc::collections::btree_map::ExtractIf<
+                '_,
+                &u32,
+                &u32,
+                Range<u32>,
+                fn(&&u32, &mut &u32) -> bool,
+            >,
         >;
         async {}.await;
     });
@@ -144,7 +152,9 @@ fn test_btree_set() {
     });
 
     require_send_sync(async {
-        let _v = None::<alloc::collections::btree_set::ExtractIf<'_, &u32, fn(&&u32) -> bool>>;
+        let _v = None::<
+            alloc::collections::btree_set::ExtractIf<'_, &u32, Range<u32>, fn(&&u32) -> bool>,
+        >;
         async {}.await;
     });
 
