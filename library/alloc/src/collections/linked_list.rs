@@ -1124,9 +1124,9 @@ impl<T, A: Allocator> LinkedList<T, A> {
 
     /// Creates an iterator which uses a closure to determine if an element should be removed.
     ///
-    /// If the closure returns true, then the element is removed and yielded.
-    /// If the closure returns false, the element will remain in the list and will not be yielded
-    /// by the iterator.
+    /// If the closure returns `true`, the element is removed from the list and
+    /// yielded. If the closure returns `false`, or panics, the element remains
+    /// in the list and will not be yielded.
     ///
     /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
     /// or the iteration short-circuits, then the remaining elements will be retained.

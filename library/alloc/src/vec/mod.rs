@@ -3650,9 +3650,9 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Creates an iterator which uses a closure to determine if an element in the range should be removed.
     ///
-    /// If the closure returns true, then the element is removed and yielded.
-    /// If the closure returns false, the element will remain in the vector and will not be yielded
-    /// by the iterator.
+    /// If the closure returns `true`, the element is removed from the vector
+    /// and yielded. If the closure returns `false`, or panics, the element
+    /// remains in the vector and will not be yielded.
     ///
     /// Only elements that fall in the provided range are considered for extraction, but any elements
     /// after the range will still have to be moved if any element has been extracted.
