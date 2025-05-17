@@ -584,6 +584,7 @@ pub struct Arm<'tcx> {
     pub lint_level: LintLevel,
     pub scope: region::Scope,
     pub span: Span,
+    pub is_cold: bool,
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
