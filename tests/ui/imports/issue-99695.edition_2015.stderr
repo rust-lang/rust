@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `self::nu`
-  --> $DIR/issue-99695.rs:11:20
+  --> $DIR/issue-99695.rs:15:20
    |
 LL |     pub use self::{nu, other_item as _};
    |                    ^^ no `nu` in `m`
@@ -7,7 +7,7 @@ LL |     pub use self::{nu, other_item as _};
    = note: this could be because a macro annotated with `#[macro_export]` will be exported at the root of the crate instead of the module where it is defined
 help: a macro with this name exists at the root of the crate
    |
-LL ~     use ::nu;
+LL ~     use crate::nu;
 LL ~ pub use self::{other_item as _};
    |
 
