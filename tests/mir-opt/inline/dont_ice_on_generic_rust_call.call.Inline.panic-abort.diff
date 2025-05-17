@@ -10,7 +10,7 @@
 +     scope 1 (inlined <Box<dyn FnMut<I, Output = ()>> as FnMut<I>>::call_mut) {
 +         let mut _5: &mut dyn std::ops::FnMut<I, Output = ()>;
 +         let mut _6: *const dyn std::ops::FnMut<I, Output = ()>;
-+         let mut _7: std::ptr::NonNull<dyn std::ops::FnMut<I, Output = ()>>;
++         let mut _7: (*const dyn std::ops::FnMut<I, Output = ()>) is !null;
 +     }
   
       bb0: {
@@ -22,7 +22,7 @@
 +         StorageLive(_6);
 +         StorageLive(_7);
 +         StorageLive(_5);
-+         _7 = copy (((*_3).0: std::ptr::Unique<dyn std::ops::FnMut<I, Output = ()>>).0: std::ptr::NonNull<dyn std::ops::FnMut<I, Output = ()>>);
++         _7 = copy ((((*_3).0: std::ptr::Unique<dyn std::ops::FnMut<I, Output = ()>>).0: std::ptr::NonNull<dyn std::ops::FnMut<I, Output = ()>>).0: (*const dyn std::ops::FnMut<I, Output = ()>) is !null);
 +         _6 = copy _7 as *const dyn std::ops::FnMut<I, Output = ()> (Transmute);
 +         _5 = &mut (*_6);
 +         _0 = <dyn FnMut<I, Output = ()> as FnMut<I>>::call_mut(move _5, move _4) -> [return: bb2, unwind unreachable];

@@ -17,7 +17,7 @@ use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
-use tracing::debug;
+use tracing::{debug, instrument, trace};
 use {rustc_abi as abi, rustc_hir as hir};
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -376,6 +376,7 @@ pub enum SizeSkeleton<'tcx> {
 }
 
 impl<'tcx> SizeSkeleton<'tcx> {
+    #[instrument(level = "trace", skip(tcx, typing_env), ret)]
     pub fn compute(
         ty: Ty<'tcx>,
         tcx: TyCtxt<'tcx>,
@@ -425,6 +426,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     },
                     || {},
                 );
+                trace!(?tail);
 
                 match tail.kind() {
                     ty::Param(_) | ty::Alias(ty::Projection | ty::Inherent, _) => {
