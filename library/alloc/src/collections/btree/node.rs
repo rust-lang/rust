@@ -47,6 +47,7 @@ const EDGE_IDX_LEFT_OF_CENTER: usize = B - 1;
 const EDGE_IDX_RIGHT_OF_CENTER: usize = B;
 
 /// The underlying representation of leaf nodes and part of the representation of internal nodes.
+#[repr(C)]
 struct LeafNode<K, V> {
     /// We want to be covariant in `K` and `V`.
     parent: Option<NonNull<InternalNode<K, V>>>,

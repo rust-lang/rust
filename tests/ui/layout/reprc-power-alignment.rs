@@ -10,6 +10,7 @@ extern crate minicore;
 use minicore::*;
 
 #[warn(uses_power_alignment)]
+#[warn(improper_ctype_definitions)]
 
 #[repr(C)]
 pub struct Floats {
@@ -149,7 +150,7 @@ pub struct I {
     e: f64,
 }
 #[repr(C)]
-pub struct J {
+pub struct J {  //~ WARNING `repr(C)` type uses type `I`
     a: u8,
     b: I,
 }
