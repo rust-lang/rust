@@ -203,15 +203,15 @@ features! {
     /// AVX-512 P2INTERSECT
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512fp16: "avx512fp16";
     /// AVX-512 FP16 (FLOAT16 instructions)
-    @FEATURE: #[stable(feature = "avx512_target_feature", since = "1.88.0")] avxifma: "avxifma";
+    @FEATURE: #[stable(feature = "avx512_target_feature", since = "1.89.0")] avxifma: "avxifma";
     /// AVX-IFMA (Integer Fused Multiply Add)
-    @FEATURE: #[stable(feature = "avx512_target_feature", since = "1.88.0")] avxneconvert: "avxneconvert";
+    @FEATURE: #[stable(feature = "avx512_target_feature", since = "1.89.0")] avxneconvert: "avxneconvert";
     /// AVX-NE-CONVERT (Exceptionless Convert)
-    @FEATURE: #[stable(feature = "avx512_target_feature", since = "1.88.0")] avxvnni: "avxvnni";
+    @FEATURE: #[stable(feature = "avx512_target_feature", since = "1.89.0")] avxvnni: "avxvnni";
     /// AVX-VNNI (Vector Neural Network Instructions)
-    @FEATURE: #[stable(feature = "avx512_target_feature", since = "1.88.0")] avxvnniint16: "avxvnniint16";
+    @FEATURE: #[stable(feature = "avx512_target_feature", since = "1.89.0")] avxvnniint16: "avxvnniint16";
     /// AVX-VNNI_INT8 (VNNI with 16-bit Integers)
-    @FEATURE: #[stable(feature = "avx512_target_feature", since = "1.88.0")] avxvnniint8: "avxvnniint8";
+    @FEATURE: #[stable(feature = "avx512_target_feature", since = "1.89.0")] avxvnniint8: "avxvnniint8";
     /// AVX-VNNI_INT16 (VNNI with 8-bit integers)
     @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_tile: "amx-tile";
     /// AMX (Advanced Matrix Extensions) - Tile load/store
