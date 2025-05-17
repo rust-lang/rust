@@ -322,9 +322,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         hir::ItemKind::TraitAlias(..) => check_trait(tcx, item),
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => Ok(()),
-        hir::ItemKind::TyAlias(_, hir_ty, hir_generics)
-            if tcx.type_alias_is_lazy(item.owner_id) =>
-        {
+        hir::ItemKind::TyAlias(_, hir_ty, _) if tcx.type_alias_is_lazy(item.owner_id) => {
             let res = enter_wf_checking_ctxt(tcx, item.span, def_id, |wfcx| {
                 let ty = tcx.type_of(def_id).instantiate_identity();
                 let item_ty =
@@ -337,7 +335,6 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                 check_where_clauses(wfcx, item.span, def_id);
                 Ok(())
             });
-            check_variances_for_type_defn(tcx, item, hir_generics);
             res
         }
         _ => Ok(()),
@@ -2044,15 +2041,7 @@ fn check_variances_for_type_defn<'tcx>(
     hir_generics: &hir::Generics<'tcx>,
 ) {
     match item.kind {
-        ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
-            // Ok
-        }
-        ItemKind::TyAlias(..) => {
-            assert!(
-                tcx.type_alias_is_lazy(item.owner_id),
-                "should not be computing variance of non-free type alias"
-            );
-        }
+        ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {} // OK
         kind => span_bug!(item.span, "cannot compute the variances of {kind:?}"),
     }
 
@@ -2195,7 +2184,6 @@ fn report_bivariance<'tcx>(
                 errors::UnusedGenericParameterHelp::AdtNoPhantomData { param_name }
             }
         }
-        ItemKind::TyAlias(..) => errors::UnusedGenericParameterHelp::TyAlias { param_name },
         item_kind => bug!("report_bivariance: unexpected item kind: {item_kind:?}"),
     };
 
@@ -2268,9 +2256,6 @@ impl<'tcx> IsProbablyCyclical<'tcx> {
                     self.tcx.type_of(field.did).instantiate_identity().visit_with(self)
                 })
             }
-            DefKind::TyAlias if self.tcx.type_alias_is_lazy(def_id) => {
-                self.tcx.type_of(def_id).instantiate_identity().visit_with(self)
-            }
             _ => ControlFlow::Continue(()),
         }
     }
@@ -2280,17 +2265,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsProbablyCyclical<'tcx> {
     type Result = ControlFlow<(), ()>;
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<(), ()> {
-        let def_id = match ty.kind() {
-            ty::Adt(adt_def, _) => Some(adt_def.did()),
-            ty::Alias(ty::Free, alias_ty) => Some(alias_ty.def_id),
-            _ => None,
-        };
-        if let Some(def_id) = def_id {
-            if def_id == self.item_def_id {
+        if let Some(adt_def) = ty.ty_adt_def() {
+            if adt_def.did() == self.item_def_id {
                 return ControlFlow::Break(());
             }
-            if self.seen.insert(def_id) {
-                self.visit_def(def_id)?;
+            if self.seen.insert(adt_def.did()) {
+                self.visit_def(adt_def.did())?;
             }
         }
         ty.super_visit_with(self)

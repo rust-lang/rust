@@ -79,9 +79,6 @@ pub(crate) fn add_constraints_from_crate<'a, 'tcx>(
                 }
             }
             DefKind::Fn | DefKind::AssocFn => constraint_cx.build_constraints_for_item(def_id),
-            DefKind::TyAlias if tcx.type_alias_is_lazy(def_id) => {
-                constraint_cx.build_constraints_for_item(def_id)
-            }
             _ => {}
         }
     }
@@ -106,15 +103,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         let inferred_start = self.terms_cx.inferred_starts[&def_id];
         let current_item = &CurrentItem { inferred_start };
         let ty = tcx.type_of(def_id).instantiate_identity();
-
-        // The type as returned by `type_of` is the underlying type and generally not a free alias.
-        // Therefore we need to check the `DefKind` first.
-        if let DefKind::TyAlias = tcx.def_kind(def_id)
-            && tcx.type_alias_is_lazy(def_id)
-        {
-            self.add_constraints_from_ty(current_item, ty, self.covariant);
-            return;
-        }
 
         match ty.kind() {
             ty::Adt(def, _) => {
@@ -223,6 +211,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         variance: VarianceTermPtr<'a>,
     ) {
         debug!("add_constraints_from_ty(ty={:?}, variance={:?})", ty, variance);
+        let ty = self.tcx().expand_free_alias_tys(ty);
 
         match *ty.kind() {
             ty::Bool
@@ -273,12 +262,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_args(current, def.did(), args, variance);
             }
 
-            ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, ref data) => {
-                self.add_constraints_from_invariant_args(current, data.args, variance);
-            }
+            // All free alias types should've been expanded beforehand.
+            ty::Alias(ty::Free, _) => panic!("unexpected free alias type"),
 
-            ty::Alias(ty::Free, ref data) => {
-                self.add_constraints_from_args(current, data.def_id, data.args, variance);
+            ty::Alias(_, ref alias_ty) => {
+                self.add_constraints_from_invariant_args(current, alias_ty.args, variance);
             }
 
             ty::Dynamic(data, r, _) => {

@@ -99,9 +99,6 @@ pub(crate) fn determine_parameters_to_be_inferred<'a, 'tcx>(
                 }
             }
             DefKind::Fn | DefKind::AssocFn => terms_cx.add_inferreds_for_item(def_id),
-            DefKind::TyAlias if tcx.type_alias_is_lazy(def_id) => {
-                terms_cx.add_inferreds_for_item(def_id)
-            }
             _ => {}
         }
     }
