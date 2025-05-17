@@ -6,7 +6,7 @@ LL |     A::default().hey;
    |
    = note: available fields are: `hello`, `bye`
 
-error[E0609]: no field `hey` on type `B`
+error[E0609]: no field `hey` on type `doc_hidden_fields::B`
   --> $DIR/dont-suggest-doc-hidden-fields.rs:29:37
    |
 LL |     doc_hidden_fields::B::default().hey;
