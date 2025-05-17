@@ -1132,8 +1132,8 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// or the iteration short-circuits, then the remaining elements will be retained.
     /// Use `extract_if().for_each(drop)` if you do not need the returned iterator.
     ///
-    /// Note that `extract_if` lets you mutate every element in the filter closure, regardless of
-    /// whether you choose to keep or remove it.
+    /// The iterator also lets you mutate the value of each element in the
+    /// closure, regardless of whether you choose to keep or remove it.
     ///
     /// # Examples
     ///
