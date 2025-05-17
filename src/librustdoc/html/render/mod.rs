@@ -1194,7 +1194,7 @@ fn render_assoc_item(
 // a whitespace prefix and newline.
 fn render_attributes_in_pre(it: &clean::Item, prefix: &str, cx: &Context<'_>) -> impl fmt::Display {
     fmt::from_fn(move |f| {
-        for a in it.attributes_and_repr(cx.tcx(), cx.cache(), false) {
+        for a in it.attributes(cx.tcx(), cx.cache(), false) {
             writeln!(f, "{prefix}{a}")?;
         }
         Ok(())
@@ -1210,19 +1210,14 @@ fn render_code_attribute(code_attr: CodeAttribute, w: &mut impl fmt::Write) {
 // When an attribute is rendered inside a <code> tag, it is formatted using
 // a div to produce a newline after it.
 fn render_attributes_in_code(w: &mut impl fmt::Write, it: &clean::Item, cx: &Context<'_>) {
-    for attr in it.attributes_and_repr(cx.tcx(), cx.cache(), false) {
+    for attr in it.attributes(cx.tcx(), cx.cache(), false) {
         render_code_attribute(CodeAttribute(attr), w);
     }
 }
 
-/// used for type aliases to only render their `repr` attribute.
-fn render_repr_attributes_in_code(
-    w: &mut impl fmt::Write,
-    cx: &Context<'_>,
-    def_id: DefId,
-    item_type: ItemType,
-) {
-    if let Some(repr) = clean::repr_attributes(cx.tcx(), cx.cache(), def_id, item_type, false) {
+/// Render the `repr` attribute.
+fn render_repr_attribute_in_code(w: &mut impl fmt::Write, cx: &Context<'_>, def_id: DefId) {
+    if let Some(repr) = clean::repr_attribute(cx.tcx(), cx.cache(), def_id, false) {
         render_code_attribute(CodeAttribute(repr), w);
     }
 }
