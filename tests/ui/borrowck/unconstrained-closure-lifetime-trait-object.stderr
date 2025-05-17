@@ -1,0 +1,17 @@
+error[E0310]: the parameter type `E` may not live long enough
+  --> $DIR/unconstrained-closure-lifetime-trait-object.rs:7:29
+   |
+LL |     Box::new(|e| Box::new(e.is::<E>()))
+   |                             ^^
+   |                             |
+   |                             the parameter type `E` must be valid for the static lifetime...
+   |                             ...so that the type `E` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn foo<E: 'static>() -> B {
+   |         +++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0310`.

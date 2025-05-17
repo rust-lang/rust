@@ -131,7 +131,8 @@ impl UniversalRegionRelations<'_> {
         assert!(self.universal_regions.is_universal_region(fr0));
 
         let mut external_parents = vec![];
-        let mut queue = vec![fr0];
+
+        let mut queue = vec![relation.minimal_scc_representative(fr0)];
 
         // Keep expanding `fr` into its parents until we reach
         // non-local regions.
