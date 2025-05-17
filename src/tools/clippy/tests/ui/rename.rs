@@ -64,6 +64,7 @@
 #![allow(ambiguous_wide_pointer_comparisons)]
 #![allow(clippy::reversed_empty_ranges)]
 #![allow(unnecessary_transmutes)]
+#![allow(leading_zeros_in_decimal_literals)]
 #![warn(clippy::almost_complete_letter_range)] //~ ERROR: lint `clippy::almost_complete_letter_range`
 #![warn(clippy::blacklisted_name)] //~ ERROR: lint `clippy::blacklisted_name`
 #![warn(clippy::block_in_if_condition_expr)] //~ ERROR: lint `clippy::block_in_if_condition_expr`
@@ -137,5 +138,6 @@
 #![warn(clippy::transmute_int_to_char)] //~ ERROR: lint `clippy::transmute_int_to_char`
 #![warn(clippy::transmute_float_to_int)] //~ ERROR: lint `clippy::transmute_float_to_int`
 #![warn(clippy::transmute_num_to_bytes)] //~ ERROR: lint `clippy::transmute_num_to_bytes`
+#![warn(clippy::zero_prefixed_literal)] //~ ERROR: lint `clippy::zero_prefixed_literal`
 
 fn main() {}

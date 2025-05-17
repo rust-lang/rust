@@ -194,4 +194,7 @@ declare_with_version! { RENAMED(RENAMED_VERSION) = [
     ("clippy::transmute_float_to_int", "unnecessary_transmutes"),
     #[clippy::version = "1.88.0"]
     ("clippy::transmute_num_to_bytes", "unnecessary_transmutes"),
+    #[clippy::version = "CURRENT_RUSTC_VERSION"]
+    ("clippy::zero_prefixed_literal", "leading_zeros_in_decimal_literals"),
+    // end renamed lints. used by `cargo dev rename_lint`
 ]}
