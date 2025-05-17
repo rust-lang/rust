@@ -293,6 +293,7 @@ pub(crate) fn expand_test_or_bench(
                     generics: ast::Generics::default(),
                     ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
                     define_opaque: None,
+                    body_id: Some(ast::DUMMY_NODE_ID),
                     // test::TestDescAndFn {
                     expr: Some(
                         cx.expr_struct(

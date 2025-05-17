@@ -7,8 +7,7 @@ use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
 use clippy_utils::visitors::{Descend, for_each_expr};
 use hir::HirId;
-use rustc_hir as hir;
-use rustc_hir::{Block, BlockCheckMode, ItemKind, Node, UnsafeSource};
+use rustc_hir::{self as hir, AnonConst, Block, BlockCheckMode, ConstArg, ConstArgKind, ItemKind, Node, UnsafeSource};
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
@@ -243,7 +242,17 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
             },
             (ItemKind::Impl(_), _) => {},
             // const and static items only need a safety comment if their body is an unsafe block, lint otherwise
-            (&ItemKind::Const(.., body) | &ItemKind::Static(.., body), HasSafetyComment::Yes(pos)) => {
+            (
+                &ItemKind::Const(
+                    ..,
+                    &ConstArg {
+                        kind: ConstArgKind::Anon(&AnonConst { body, .. }),
+                        ..
+                    },
+                )
+                | &ItemKind::Static(.., body),
+                HasSafetyComment::Yes(pos),
+            ) => {
                 if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, body.hir_id) {
                     let body = cx.tcx.hir_body(body);
                     if !matches!(

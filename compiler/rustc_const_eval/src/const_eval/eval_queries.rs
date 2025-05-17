@@ -294,6 +294,29 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
                 )
             },
         );
+    } else if let ty::InstanceKind::Item(def_id) = key.value.instance.def
+        && matches!(tcx.def_kind(def_id), DefKind::Const | DefKind::AssocConst)
+    {
+        let ct = tcx.const_of_item(def_id).instantiate(tcx, key.value.instance.args);
+        match ct.kind() {
+            ty::ConstKind::Unevaluated(_) => {
+                return Err(ErrorHandled::TooGeneric(DUMMY_SP));
+            }
+            ty::ConstKind::Value(cv) => return Ok(tcx.valtree_to_const_val(cv)),
+            ty::ConstKind::Error(guar) => {
+                return Err(ErrorHandled::Reported(
+                    ReportedErrorInfo::const_eval_error(guar),
+                    DUMMY_SP,
+                ));
+            }
+            ty::ConstKind::Expr(_) => return Err(ErrorHandled::TooGeneric(DUMMY_SP)),
+            ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) => {
+                return Err(ErrorHandled::TooGeneric(DUMMY_SP));
+            }
+            ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) => {
+                bug!("unexpected constant {ct:?}")
+            }
+        }
     }
 
     tcx.eval_to_allocation_raw(key).map(|val| turn_into_const_value(tcx, val, key))

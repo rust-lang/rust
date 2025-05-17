@@ -214,6 +214,7 @@ impl<'a> State<'a> {
                 ident,
                 generics,
                 ty,
+                body_id: _,
                 expr,
                 define_opaque,
             }) => {
@@ -563,6 +564,7 @@ impl<'a> State<'a> {
                 ident,
                 generics,
                 ty,
+                body_id: _,
                 expr,
                 define_opaque,
             }) => {
