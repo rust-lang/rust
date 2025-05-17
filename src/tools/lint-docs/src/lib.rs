@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use rustc_literal_escaper::{Mode, unescape_unicode};
 use walkdir::WalkDir;
 
 mod groups;
@@ -214,6 +215,16 @@ impl<'a> LintExtractor<'a> {
                         let line = line.trim();
                         if let Some(text) = line.strip_prefix("/// ") {
                             doc_lines.push(text.to_string());
+                        } else if let Some(text) = line.strip_prefix("#[doc = \"") {
+                            let escaped = text.strip_suffix("\"]").unwrap();
+                            let mut buf = String::new();
+                            unescape_unicode(escaped, Mode::Str, &mut |_, c| match c {
+                                Ok(c) => buf.push(c),
+                                Err(err) => {
+                                    assert!(!err.is_fatal(), "failed to unescape string literal")
+                                }
+                            });
+                            doc_lines.push(buf);
                         } else if line == "///" {
                             doc_lines.push("".to_string());
                         } else if line.starts_with("// ") {
