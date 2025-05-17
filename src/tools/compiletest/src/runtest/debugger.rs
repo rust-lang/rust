@@ -111,6 +111,9 @@ impl DebuggerCommands {
 }
 
 /// Check that the pattern in `check_line` applies to `line`. Returns `true` if they do match.
+/// Note that this matching is lazy, i.e. matches as little as possible and thus might leave
+/// stuff unparsed, failing the check.
+/// This is different to usual regex or global matching that is typically eager.
 fn check_single_line(line: &str, check_line: &str) -> bool {
     // Allow check lines to leave parts unspecified (e.g., uninitialized
     // bits in the  wrong case of an enum) with the notation "[...]".
