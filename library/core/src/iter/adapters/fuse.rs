@@ -199,7 +199,7 @@ impl<I: Default> Default for Fuse<I> {
     /// assert_eq!(iter.len(), 0);
     /// ```
     fn default() -> Self {
-        Fuse { iter: Default::default() }
+        Fuse { iter: Some(Default::default()) }
     }
 }
 
