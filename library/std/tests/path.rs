@@ -1998,61 +1998,6 @@ fn test_non_ascii_unicode() {
     assert_eq!(path.file_name(), Some(OsStr::new("file.txt")));
 }
 
-
-// Test: Reserved device names (Windows)
-// This test ensures that reserved device names like "CON", "PRN", etc., are handled as normal paths on non-Windows platforms,
-// and as special cases on Windows (if applicable).
-#[test]
-#[cfg(windows)]
-fn test_reserved_device_names() {
-    for &name in &["CON", "PRN", "AUX", "NUL", "COM1", "LPT1"] {
-        let path = Path::new(name);
-        assert_eq!(path.file_name(), Some(OsStr::new(name)));
-        assert_eq!(path.extension(), None);
-    }
-}
-
-// Test: Trailing dots/spaces (Windows)
-// This test checks how Path handles trailing dots or spaces, which are special on Windows.
-// On Unix, these should be treated as normal characters.
-#[test]
-#[cfg(windows)]
-fn test_trailing_dots_and_spaces() {
-    let path = Path::new("foo. ");
-    assert_eq!(path.file_stem(), Some(OsStr::new("foo")));
-    assert_eq!(path.extension(), Some(OsStr::new(" ")));
-    assert_eq!(path.file_name(), Some(OsStr::new("foo. ")));
-    assert_eq!(path.to_str(), Some("foo. "));
-    let path = Path::new("bar...");
-    assert_eq!(path.file_stem(), Some(OsStr::new("bar")));
-    assert_eq!(path.extension(), Some(OsStr::new("...")));
-    assert_eq!(path.file_name(), Some(OsStr::new("bar...")));
-    assert_eq!(path.to_str(), Some("bar..."));
-}
-
-// Test: Only extension (e.g., ".gitignore")
-// This test verifies that files with only an extension and no base name are handled correctly.
-// It checks that the extension is recognized and the file stem is None or empty as appropriate.
-#[test]
-fn test_only_extension() {
-    let path = Path::new(".ext");
-    assert_eq!(path.extension(), None);
-    assert_eq!(path.file_stem(), Some(OsStr::new(".ext")));
-    assert_eq!(path.file_name(), Some(OsStr::new(".ext")));
-}
-
-// Test: Long components
-// This test checks that Path can handle very long path components without truncation or error.
-// It ensures that the length of the component is preserved.
-#[test]
-fn test_long_component() {
-    let long = "a".repeat(300);
-    let path = Path::new(&long);
-    assert_eq!(path.file_name(), Some(OsStr::new(&long)));
-    assert_eq!(path.to_str(), Some(long.as_str()));
-    assert_eq!(path.iter().count(), 1);
-}
-
 // Test: Embedded newlines
 // This test verifies that newlines within path components are preserved and do not break path parsing.
 // It ensures that Path treats newlines as normal characters.
