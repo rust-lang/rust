@@ -15,6 +15,17 @@ LL |     fn transmute(&self, t: T) -> <Self as Super<NotActuallySuper>>::Assoc;
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because method `transmute` references the `Self` type in its return type
    = help: consider moving `transmute` to another trait
 
+error: hi
+  --> $DIR/almost-supertrait-associated-type.rs:39:1
+   |
+LL | trait Mirror {
+   | ------------ built-in `dyn Mirror<Assoc = _>` implementation for this trait
+...
+LL | impl<T: ?Sized> Mirror for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0038]: the trait `Foo` is not dyn compatible
   --> $DIR/almost-supertrait-associated-type.rs:7:27
    |
@@ -50,6 +61,6 @@ LL |     fn transmute(&self, t: T) -> <Self as Super<NotActuallySuper>>::Assoc;
    = help: consider moving `transmute` to another trait
    = note: required for the cast from `&PhantomData<T>` to `&dyn Foo<T, U>`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0038`.

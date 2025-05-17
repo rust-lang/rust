@@ -31,7 +31,7 @@ use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::DeconstructedPat;
 
 pub trait Captures<'a> {}
-impl<'a, T: ?Sized> Captures<'a> for T {}
+impl<'a, T> Captures<'a> for T {}
 
 /// `bool` newtype that indicates whether this is a privately uninhabited field that we should skip
 /// during analysis.

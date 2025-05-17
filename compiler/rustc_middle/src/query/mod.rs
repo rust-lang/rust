@@ -527,6 +527,10 @@ rustc_queries! {
         anon
     }
 
+    query lint_object_blanket_impl(_: (DefId, DefId)) {
+        desc { "u if wu" }
+    }
+
     /// Set of param indexes for type params that are in the type's representation
     query params_in_repr(key: DefId) -> &'tcx rustc_index::bit_set::DenseBitSet<u32> {
         desc { "finding type parameters in the representation" }

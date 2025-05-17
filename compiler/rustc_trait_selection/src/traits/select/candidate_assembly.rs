@@ -779,7 +779,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         //
                         // Note that this is only sound as projection candidates of opaque types
                         // are always applicable for auto traits.
-                    } else if let TypingMode::Coherence = self.infcx.typing_mode() {
+                    } else if let TypingMode::Coherence | TypingMode::CheckObjectOverlap =
+                        self.infcx.typing_mode()
+                    {
                         // We do not emit auto trait candidates for opaque types in coherence.
                         // Doing so can result in weird dependency cycles.
                         candidates.ambiguous = true;

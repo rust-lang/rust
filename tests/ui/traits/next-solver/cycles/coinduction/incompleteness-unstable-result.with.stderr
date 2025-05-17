@@ -1,3 +1,48 @@
+error: hi
+  --> $DIR/incompleteness-unstable-result.rs:25:1
+   |
+LL | trait IncompleteGuidance<T: ?Sized, V: ?Sized> {}
+   | ---------------------------------------------- built-in `dyn IncompleteGuidance<_, u8>` implementation for this trait
+LL | impl<T: ?Sized, U: ?Sized + 'static> IncompleteGuidance<U, u8> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
+error: hi
+  --> $DIR/incompleteness-unstable-result.rs:26:1
+   |
+LL | trait IncompleteGuidance<T: ?Sized, V: ?Sized> {}
+   | ---------------------------------------------- built-in `dyn IncompleteGuidance<_, i8>` implementation for this trait
+LL | impl<T: ?Sized, U: ?Sized + 'static> IncompleteGuidance<U, u8> for T {}
+LL | impl<T: ?Sized, U: ?Sized + 'static> IncompleteGuidance<U, i8> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+
+error: hi
+  --> $DIR/incompleteness-unstable-result.rs:27:1
+   |
+LL | trait IncompleteGuidance<T: ?Sized, V: ?Sized> {}
+   | ---------------------------------------------- built-in `dyn IncompleteGuidance<_, i16>` implementation for this trait
+...
+LL | impl<T: ?Sized, U: ?Sized + 'static> IncompleteGuidance<U, i16> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+
+error: hi
+  --> $DIR/incompleteness-unstable-result.rs:30:1
+   |
+LL | trait ImplGuidance<T: ?Sized, V: ?Sized> {}
+   | ---------------------------------------- built-in `dyn ImplGuidance<u32, u8>` implementation for this trait
+LL | impl<T: ?Sized> ImplGuidance<u32, u8> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+
+error: hi
+  --> $DIR/incompleteness-unstable-result.rs:31:1
+   |
+LL | trait ImplGuidance<T: ?Sized, V: ?Sized> {}
+   | ---------------------------------------- built-in `dyn ImplGuidance<i32, i8>` implementation for this trait
+LL | impl<T: ?Sized> ImplGuidance<u32, u8> for T {}
+LL | impl<T: ?Sized> ImplGuidance<i32, i8> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+
 error[E0277]: the trait bound `A<X>: Trait<_, _, _>` is not satisfied
   --> $DIR/incompleteness-unstable-result.rs:65:19
    |
@@ -21,6 +66,6 @@ note: required by a bound in `impls_trait`
 LL | fn impls_trait<T: ?Sized + Trait<U, V, D>, U: ?Sized, V: ?Sized, D: ?Sized>() {}
    |                            ^^^^^^^^^^^^^^ required by this bound in `impls_trait`
 
-error: aborting due to 1 previous error
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

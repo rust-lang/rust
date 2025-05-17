@@ -4,6 +4,17 @@ error[E0322]: explicit impls for the `NotImplYesObject` trait are not permitted
 LL | impl NotImplYesObject for () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `NotImplYesObject` not allowed
 
+error: hi
+  --> $DIR/deny-builtin-object-impl.rs:24:1
+   |
+LL | trait YesImplNotObject2 {}
+   | ----------------------- built-in `dyn YesImplNotObject2` implementation for this trait
+...
+LL | impl YesImplNotObject2 for dyn YesImplNotObject2 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0277]: the trait bound `dyn NotImplNotObject: NotImplNotObject` is not satisfied
   --> $DIR/deny-builtin-object-impl.rs:37:32
    |
@@ -38,7 +49,7 @@ note: required by a bound in `test_yes_impl_not_object`
 LL | fn test_yes_impl_not_object<T: YesImplNotObject + ?Sized>() {}
    |                                ^^^^^^^^^^^^^^^^ required by this bound in `test_yes_impl_not_object`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0277, E0322.
 For more information about an error, try `rustc --explain E0277`.

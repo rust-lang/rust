@@ -391,6 +391,12 @@ fn check_trait_item<'tcx>(
     // Check that an item definition in a subtrait is shadowing a supertrait item.
     lint_item_shadowing_supertrait_item(tcx, def_id);
 
+    for blanket_impl_def_id in tcx.all_impls(def_id.to_def_id()) {
+        if !blanket_impl_def_id.is_local() {
+            tcx.ensure_ok().lint_object_blanket_impl((blanket_impl_def_id, def_id.to_def_id()));
+        }
+    }
+
     let mut res = check_associated_item(tcx, def_id, span, method_sig);
 
     if matches!(trait_item.kind, hir::TraitItemKind::Fn(..)) {

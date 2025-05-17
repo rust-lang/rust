@@ -968,6 +968,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // and post-borrowck analysis mode. We may need to modify its uses
             // to support PostBorrowckAnalysis in the old solver as well.
             TypingMode::Coherence
+            | TypingMode::CheckObjectOverlap
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => false,
         }
@@ -1260,6 +1261,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 TypingMode::non_body_analysis()
             }
             mode @ (ty::TypingMode::Coherence
+            | TypingMode::CheckObjectOverlap
             | ty::TypingMode::PostBorrowckAnalysis { .. }
             | ty::TypingMode::PostAnalysis) => mode,
         };

@@ -1,3 +1,23 @@
+error: hi
+  --> $DIR/forbid-self-no-normalize.rs:4:1
+   |
+LL | trait AlwaysApplicable {
+   | ---------------------- built-in `dyn AlwaysApplicable<Assoc = _>` implementation for this trait
+...
+LL | impl<T: ?Sized> AlwaysApplicable for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
+error: hi
+  --> $DIR/forbid-self-no-normalize.rs:11:1
+   |
+LL | trait BindsParam<T> {
+   | ------------------- built-in `dyn BindsParam<_, ArrayTy = _>` implementation for this trait
+...
+LL | impl<T> BindsParam<T> for <T as AlwaysApplicable>::Assoc {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+
 error: generic `Self` types are currently not permitted in anonymous constants
   --> $DIR/forbid-self-no-normalize.rs:12:25
    |
@@ -10,5 +30,5 @@ note: not a concrete type
 LL | impl<T> BindsParam<T> for <T as AlwaysApplicable>::Assoc {
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: aborting due to 3 previous errors
 

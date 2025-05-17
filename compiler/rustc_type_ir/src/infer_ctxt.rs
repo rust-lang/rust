@@ -67,7 +67,9 @@ pub enum TypingMode<I: Interner> {
     ///     let x: <() as Assoc>::Output = true;
     /// }
     /// ```
-    Analysis { defining_opaque_types_and_generators: I::LocalDefIds },
+    Analysis {
+        defining_opaque_types_and_generators: I::LocalDefIds,
+    },
     /// The behavior during MIR borrowck is identical to `TypingMode::Analysis`
     /// except that the initial value for opaque types is the type computed during
     /// HIR typeck with unique unconstrained region inference variables.
@@ -75,13 +77,17 @@ pub enum TypingMode<I: Interner> {
     /// This is currently only used with by the new solver as it results in new
     /// non-universal defining uses of opaque types, which is a breaking change.
     /// See tests/ui/impl-trait/non-defining-use/as-projection-term.rs.
-    Borrowck { defining_opaque_types: I::LocalDefIds },
+    Borrowck {
+        defining_opaque_types: I::LocalDefIds,
+    },
     /// Any analysis after borrowck for a given body should be able to use all the
     /// hidden types defined by borrowck, without being able to define any new ones.
     ///
     /// This is currently only used by the new solver, but should be implemented in
     /// the old solver as well.
-    PostBorrowckAnalysis { defined_opaque_types: I::LocalDefIds },
+    PostBorrowckAnalysis {
+        defined_opaque_types: I::LocalDefIds,
+    },
     /// After analysis, mostly during codegen and MIR optimizations, we're able to
     /// reveal all opaque types. As the concrete type should *never* be observable
     /// directly by the user, this should not be used by checks which may expose
@@ -91,6 +97,11 @@ pub enum TypingMode<I: Interner> {
     /// always run in `PostAnalysis` mode, even when used during analysis. This exposes
     /// some information about the underlying type to users, but not the type itself.
     PostAnalysis,
+
+    // Hack modes:
+
+    // TODUwU:
+    CheckObjectOverlap,
 }
 
 impl<I: Interner> TypingMode<I> {

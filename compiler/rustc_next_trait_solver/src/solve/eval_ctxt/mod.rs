@@ -948,7 +948,8 @@ where
                     GoalSource::TypeRelating
                 }
                 // FIXME(-Znext-solver=coinductive): should these WF goals also be unproductive?
-                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => GoalSource::Misc,
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_))
+                | ty::PredicateKind::Ambiguous => GoalSource::Misc,
                 p => unreachable!("unexpected nested goal in `relate`: {p:?}"),
             };
             self.add_goal(source, goal);

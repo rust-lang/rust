@@ -1,3 +1,14 @@
+error: hi
+  --> $DIR/wrong-normalization.rs:10:1
+   |
+LL | pub trait Identity {
+   | ------------------ built-in `dyn Identity<Identity = _>` implementation for this trait
+...
+LL | impl<T: ?Sized> Identity for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0118]: no nominal type found for inherent implementation
   --> $DIR/wrong-normalization.rs:16:1
    |
@@ -6,6 +17,6 @@ LL | impl <I8<{i8::MIN}> as Identity>::Identity {
    |
    = note: either implement a trait on it or create a newtype to wrap it instead
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0118`.
