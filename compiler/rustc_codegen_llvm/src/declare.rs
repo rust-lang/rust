@@ -147,6 +147,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         name: &str,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         instance: Option<Instance<'tcx>>,
+        is_llvm_intrinsic: bool,
     ) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
@@ -158,7 +159,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             fn_abi.llvm_cconv(self),
             llvm::UnnamedAddr::Global,
             llvm::Visibility::Default,
-            fn_abi.llvm_type(self),
+            fn_abi.llvm_type(self, name.as_ref(), is_llvm_intrinsic),
         );
         fn_abi.apply_attrs_llfn(self, llfn, instance);
 

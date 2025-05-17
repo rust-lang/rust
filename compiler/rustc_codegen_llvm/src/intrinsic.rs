@@ -1100,10 +1100,11 @@ fn gen_fn<'a, 'll, 'tcx>(
     name: &str,
     rust_fn_sig: ty::PolyFnSig<'tcx>,
     codegen: &mut dyn FnMut(Builder<'a, 'll, 'tcx>),
+    is_llvm_intrinsic: bool,
 ) -> (&'ll Type, &'ll Value) {
     let fn_abi = cx.fn_abi_of_fn_ptr(rust_fn_sig, ty::List::empty());
-    let llty = fn_abi.llvm_type(cx);
-    let llfn = cx.declare_fn(name, fn_abi, None);
+    let llty = fn_abi.llvm_type(cx, name.as_ref(), is_llvm_intrinsic);
+    let llfn = cx.declare_fn(name, fn_abi, None, is_llvm_intrinsic);
     cx.set_frame_pointer_type(llfn);
     cx.apply_target_cpu_attr(llfn);
     // FIXME(eddyb) find a nicer way to do this.
@@ -1159,7 +1160,7 @@ fn get_rust_try_fn<'a, 'll, 'tcx>(
         hir::Safety::Unsafe,
         ExternAbi::Rust,
     ));
-    let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
+    let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen, false);
     cx.rust_try_fn.set(Some(rust_try));
     rust_try
 }

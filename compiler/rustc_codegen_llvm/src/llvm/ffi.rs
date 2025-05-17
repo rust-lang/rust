@@ -1072,6 +1072,9 @@ unsafe extern "C" {
     pub(crate) fn LLVMPointerTypeInContext(C: &Context, AddressSpace: c_uint) -> &Type;
     pub(crate) fn LLVMVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
 
+    // Special X86 Type for AMX
+    pub(crate) fn LLVMX86AMXTypeInContext(C: &Context) -> &Type;
+
     pub(crate) fn LLVMGetElementType(Ty: &Type) -> &Type;
     pub(crate) fn LLVMGetVectorSize(VectorTy: &Type) -> c_uint;
 
@@ -1194,6 +1197,7 @@ unsafe extern "C" {
 
     // Operations on functions
     pub(crate) fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
+    pub(crate) fn LLVMGetIntrinsicID(Fn: &Value) -> c_uint;
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;

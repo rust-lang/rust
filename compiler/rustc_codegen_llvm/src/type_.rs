@@ -154,6 +154,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
             )
         }
     }
+
+    pub(crate) fn type_x86amx(&self) -> &'ll Type {
+        unsafe { llvm::LLVMX86AMXTypeInContext(self.llcx()) }
+    }
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
@@ -284,8 +288,14 @@ impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn cast_backend_type(&self, ty: &CastTarget) -> &'ll Type {
         ty.llvm_type(self)
     }
-    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
-        fn_abi.llvm_type(self)
+    fn fn_decl_backend_type(
+        &self,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        fn_ptr: &'ll Value,
+    ) -> &'ll Type {
+        let intrinsic_id = unsafe { llvm::LLVMGetIntrinsicID(fn_ptr) };
+        // When the function is not an intrinsic, `Intrinsic::getIntrinsicID` returns `Intrinsic::not_intrinsic`, which is always defined to be 0
+        fn_abi.llvm_type(self, llvm::get_value_name(fn_ptr), intrinsic_id != 0)
     }
     fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
         fn_abi.ptr_to_llvm_type(self)

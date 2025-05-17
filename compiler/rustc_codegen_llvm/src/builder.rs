@@ -1435,7 +1435,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         if let Some(fn_abi) = fn_abi {
             fn_abi.apply_attrs_callsite(self, call);
         }
-        call
+
+        if self.cx.type_kind(self.cx.val_ty(call)) == TypeKind::X86_AMX {
+            self.bitcast(call, self.cx.type_vector(self.cx.type_i32(), 256))
+        } else {
+            call
+        }
     }
 
     fn zext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
