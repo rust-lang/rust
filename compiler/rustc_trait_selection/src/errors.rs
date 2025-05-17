@@ -72,6 +72,13 @@ pub enum InvalidOnClause {
         span: Span,
         invalid_flag: Symbol,
     },
+    #[diag(trait_selection_rustc_on_unimplemented_invalid_name, code = E0232)]
+    InvalidName {
+        #[primary_span]
+        #[label]
+        span: Span,
+        invalid_name: Symbol,
+    },
 }
 
 #[derive(Diagnostic)]

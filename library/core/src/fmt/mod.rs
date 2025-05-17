@@ -856,10 +856,10 @@ impl Display for Arguments<'_> {
     on(
         crate_local,
         label = "`{Self}` cannot be formatted using `{{:?}}`",
-        note = "add `#[derive(Debug)]` to `{Self}` or manually `impl {Debug} for {Self}`"
+        note = "add `#[derive(Debug)]` to `{Self}` or manually `impl {This} for {Self}`"
     ),
-    message = "`{Self}` doesn't implement `{Debug}`",
-    label = "`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{Debug}`"
+    message = "`{Self}` doesn't implement `{This}`",
+    label = "`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{This}`"
 )]
 #[doc(alias = "{:?}")]
 #[rustc_diagnostic_item = "Debug"]
@@ -969,12 +969,12 @@ pub use macros::Debug;
 /// ```
 #[rustc_on_unimplemented(
     on(
-        any(_Self = "std::path::Path", _Self = "std::path::PathBuf"),
+        any(Self = "std::path::Path", Self = "std::path::PathBuf"),
         label = "`{Self}` cannot be formatted with the default formatter; call `.display()` on it",
         note = "call `.display()` or `.to_string_lossy()` to safely print paths, \
                 as they may contain non-Unicode data"
     ),
-    message = "`{Self}` doesn't implement `{Display}`",
+    message = "`{Self}` doesn't implement `{This}`",
     label = "`{Self}` cannot be formatted with the default formatter",
     note = "in format strings you may be able to use `{{:?}}` (or {{:#?}} for pretty-print) instead"
 )]

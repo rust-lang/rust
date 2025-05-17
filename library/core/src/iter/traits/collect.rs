@@ -97,32 +97,32 @@ use super::TrustedLen;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
-        _Self = "&[{A}]",
+        Self = "&[{A}]",
         message = "a slice of type `{Self}` cannot be built since we need to store the elements somewhere",
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
     on(
-        all(A = "{integer}", any(_Self = "&[{integral}]",)),
+        all(A = "{integer}", any(Self = "&[{integral}]",)),
         message = "a slice of type `{Self}` cannot be built since we need to store the elements somewhere",
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
     on(
-        _Self = "[{A}]",
+        Self = "[{A}]",
         message = "a slice of type `{Self}` cannot be built since `{Self}` has no definite size",
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
     on(
-        all(A = "{integer}", any(_Self = "[{integral}]",)),
+        all(A = "{integer}", any(Self = "[{integral}]",)),
         message = "a slice of type `{Self}` cannot be built since `{Self}` has no definite size",
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
     on(
-        _Self = "[{A}; _]",
+        Self = "[{A}; _]",
         message = "an array of type `{Self}` cannot be built directly from an iterator",
         label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
     ),
     on(
-        all(A = "{integer}", any(_Self = "[{integral}; _]",)),
+        all(A = "{integer}", any(Self = "[{integral}; _]",)),
         message = "an array of type `{Self}` cannot be built directly from an iterator",
         label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
     ),
@@ -239,41 +239,38 @@ pub trait FromIterator<A>: Sized {
 #[rustc_diagnostic_item = "IntoIterator"]
 #[rustc_on_unimplemented(
     on(
-        _Self = "core::ops::range::RangeTo<Idx>",
+        Self = "core::ops::range::RangeTo<Idx>",
         label = "if you meant to iterate until a value, add a starting value",
         note = "`..end` is a `RangeTo`, which cannot be iterated on; you might have meant to have a \
               bounded `Range`: `0..end`"
     ),
     on(
-        _Self = "core::ops::range::RangeToInclusive<Idx>",
+        Self = "core::ops::range::RangeToInclusive<Idx>",
         label = "if you meant to iterate until a value (including it), add a starting value",
         note = "`..=end` is a `RangeToInclusive`, which cannot be iterated on; you might have meant \
               to have a bounded `RangeInclusive`: `0..=end`"
     ),
     on(
-        _Self = "[]",
+        Self = "[]",
         label = "`{Self}` is not an iterator; try calling `.into_iter()` or `.iter()`"
     ),
-    on(_Self = "&[]", label = "`{Self}` is not an iterator; try calling `.iter()`"),
+    on(Self = "&[]", label = "`{Self}` is not an iterator; try calling `.iter()`"),
     on(
-        _Self = "alloc::vec::Vec<T, A>",
+        Self = "alloc::vec::Vec<T, A>",
         label = "`{Self}` is not an iterator; try calling `.into_iter()` or `.iter()`"
     ),
+    on(Self = "&str", label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"),
     on(
-        _Self = "&str",
+        Self = "alloc::string::String",
         label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),
     on(
-        _Self = "alloc::string::String",
-        label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
-    ),
-    on(
-        _Self = "{integral}",
+        Self = "{integral}",
         note = "if you want to iterate between `start` until a value `end`, use the exclusive range \
               syntax `start..end` or the inclusive range syntax `start..=end`"
     ),
     on(
-        _Self = "{float}",
+        Self = "{float}",
         note = "if you want to iterate between `start` until a value `end`, use the exclusive range \
               syntax `start..end` or the inclusive range syntax `start..=end`"
     ),

@@ -2532,7 +2532,7 @@ pub fn id() -> u32 {
 #[rustc_on_unimplemented(on(
     cause = "MainFunctionType",
     message = "`main` has invalid return type `{Self}`",
-    label = "`main` can only return types that implement `{Termination}`"
+    label = "`main` can only return types that implement `{This}`"
 ))]
 pub trait Termination {
     /// Is called to get the representation of the value as status code.

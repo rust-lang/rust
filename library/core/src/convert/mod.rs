@@ -575,7 +575,7 @@ pub trait Into<T>: Sized {
 #[rustc_diagnostic_item = "From"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(on(
-    all(_Self = "&str", T = "alloc::string::String"),
+    all(Self = "&str", T = "alloc::string::String"),
     note = "to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
 ))]
 #[doc(search_unbox)]

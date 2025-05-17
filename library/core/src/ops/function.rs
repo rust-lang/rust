@@ -62,7 +62,7 @@ use crate::marker::Tuple;
         note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
     ),
     on(
-        _Self = "unsafe fn",
+        Self = "unsafe fn",
         note = "unsafe function cannot be called generically without an unsafe block",
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
@@ -149,7 +149,7 @@ pub trait Fn<Args: Tuple>: FnMut<Args> {
         note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
     ),
     on(
-        _Self = "unsafe fn",
+        Self = "unsafe fn",
         note = "unsafe function cannot be called generically without an unsafe block",
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
@@ -228,7 +228,7 @@ pub trait FnMut<Args: Tuple>: FnOnce<Args> {
         note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
     ),
     on(
-        _Self = "unsafe fn",
+        Self = "unsafe fn",
         note = "unsafe function cannot be called generically without an unsafe block",
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"

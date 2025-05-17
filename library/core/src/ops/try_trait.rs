@@ -117,12 +117,12 @@ use crate::ops::ControlFlow;
     on(
         all(from_desugaring = "TryBlock"),
         message = "a `try` block must return `Result` or `Option` \
-                    (or another type that implements `{Try}`)",
+                    (or another type that implements `{This}`)",
         label = "could not wrap the final value of the block as `{Self}` doesn't implement `Try`",
     ),
     on(
         all(from_desugaring = "QuestionMark"),
-        message = "the `?` operator can only be applied to values that implement `{Try}`",
+        message = "the `?` operator can only be applied to values that implement `{This}`",
         label = "the `?` operator cannot be applied to type `{Self}`"
     )
 )]
@@ -226,7 +226,7 @@ pub trait Try: FromResidual {
     on(
         all(
             from_desugaring = "QuestionMark",
-            _Self = "core::result::Result<T, E>",
+            Self = "core::result::Result<T, E>",
             R = "core::option::Option<core::convert::Infallible>",
         ),
         message = "the `?` operator can only be used on `Result`s, not `Option`s, \
@@ -237,7 +237,7 @@ pub trait Try: FromResidual {
     on(
         all(
             from_desugaring = "QuestionMark",
-            _Self = "core::result::Result<T, E>",
+            Self = "core::result::Result<T, E>",
         ),
         // There's a special error message in the trait selection code for
         // `From` in `?`, so this is not shown for result-in-result errors,
@@ -250,7 +250,7 @@ pub trait Try: FromResidual {
     on(
         all(
             from_desugaring = "QuestionMark",
-            _Self = "core::option::Option<T>",
+            Self = "core::option::Option<T>",
             R = "core::result::Result<T, E>",
         ),
         message = "the `?` operator can only be used on `Option`s, not `Result`s, \
@@ -261,7 +261,7 @@ pub trait Try: FromResidual {
     on(
         all(
             from_desugaring = "QuestionMark",
-            _Self = "core::option::Option<T>",
+            Self = "core::option::Option<T>",
         ),
         // `Option`-in-`Option` always works, as there's only one possible
         // residual, so this can also be phrased strongly.
@@ -273,7 +273,7 @@ pub trait Try: FromResidual {
     on(
         all(
             from_desugaring = "QuestionMark",
-            _Self = "core::ops::control_flow::ControlFlow<B, C>",
+            Self = "core::ops::control_flow::ControlFlow<B, C>",
             R = "core::ops::control_flow::ControlFlow<B, C>",
         ),
         message = "the `?` operator in {ItemContext} that returns `ControlFlow<B, _>` \
@@ -285,7 +285,7 @@ pub trait Try: FromResidual {
     on(
         all(
             from_desugaring = "QuestionMark",
-            _Self = "core::ops::control_flow::ControlFlow<B, C>",
+            Self = "core::ops::control_flow::ControlFlow<B, C>",
             // `R` is not a `ControlFlow`, as that case was matched previously
         ),
         message = "the `?` operator can only be used on `ControlFlow`s \
@@ -297,7 +297,7 @@ pub trait Try: FromResidual {
         all(from_desugaring = "QuestionMark"),
         message = "the `?` operator can only be used in {ItemContext} \
                     that returns `Result` or `Option` \
-                    (or another type that implements `{FromResidual}`)",
+                    (or another type that implements `{This}`)",
         label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
         parent_label = "this function should return `Result` or `Option` to accept `?`"
     ),

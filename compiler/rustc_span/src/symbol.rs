@@ -398,7 +398,6 @@ symbols! {
         Wrapping,
         Yield,
         _DECLS,
-        _Self,
         __D,
         __H,
         __S,

@@ -429,7 +429,19 @@ impl<'tcx> OnUnimplementedDirective {
                 .next()
                 .ok_or_else(|| tcx.dcx().emit_err(InvalidOnClause::Empty { span }))?;
 
-            match OnUnimplementedCondition::parse(cond) {
+            let generics: Vec<Symbol> = tcx
+                .generics_of(item_def_id)
+                .own_params
+                .iter()
+                .filter_map(|param| {
+                    if matches!(param.kind, GenericParamDefKind::Lifetime) {
+                        None
+                    } else {
+                        Some(param.name)
+                    }
+                })
+                .collect();
+            match OnUnimplementedCondition::parse(cond, &generics) {
                 Ok(condition) => Some(condition),
                 Err(e) => return Err(tcx.dcx().emit_err(e)),
             }

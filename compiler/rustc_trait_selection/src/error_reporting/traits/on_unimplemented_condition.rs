@@ -26,9 +26,12 @@ impl OnUnimplementedCondition {
         })
     }
 
-    pub(crate) fn parse(input: &MetaItemInner) -> Result<Self, InvalidOnClause> {
+    pub(crate) fn parse(
+        input: &MetaItemInner,
+        generics: &[Symbol],
+    ) -> Result<Self, InvalidOnClause> {
         let span = input.span();
-        let pred = Predicate::parse(input)?;
+        let pred = Predicate::parse(input, generics)?;
         Ok(OnUnimplementedCondition { span, pred })
     }
 }
@@ -52,7 +55,7 @@ enum Predicate {
 }
 
 impl Predicate {
-    fn parse(input: &MetaItemInner) -> Result<Self, InvalidOnClause> {
+    fn parse(input: &MetaItemInner, generics: &[Symbol]) -> Result<Self, InvalidOnClause> {
         let meta_item = match input {
             MetaItemInner::MetaItem(meta_item) => meta_item,
             MetaItemInner::Lit(lit) => {
@@ -69,10 +72,10 @@ impl Predicate {
 
         match meta_item.kind {
             MetaItemKind::List(ref mis) => match predicate.name {
-                sym::any => Ok(Predicate::Any(Predicate::parse_sequence(mis)?)),
-                sym::all => Ok(Predicate::All(Predicate::parse_sequence(mis)?)),
+                sym::any => Ok(Predicate::Any(Predicate::parse_sequence(mis, generics)?)),
+                sym::all => Ok(Predicate::All(Predicate::parse_sequence(mis, generics)?)),
                 sym::not => match &**mis {
-                    [one] => Ok(Predicate::Not(Box::new(Predicate::parse(one)?))),
+                    [one] => Ok(Predicate::Not(Box::new(Predicate::parse(one, generics)?))),
                     [first, .., last] => Err(InvalidOnClause::ExpectedOnePredInNot {
                         span: first.span().to(last.span()),
                     }),
@@ -83,7 +86,7 @@ impl Predicate {
                 }
             },
             MetaItemKind::NameValue(MetaItemLit { symbol, .. }) => {
-                let name = Name::parse(predicate);
+                let name = Name::parse(predicate, generics)?;
                 let value = FilterFormatString::parse(symbol);
                 let kv = NameValue { name, value };
                 Ok(Predicate::Match(kv))
@@ -95,8 +98,11 @@ impl Predicate {
         }
     }
 
-    fn parse_sequence(sequence: &[MetaItemInner]) -> Result<Vec<Self>, InvalidOnClause> {
-        sequence.iter().map(Predicate::parse).collect()
+    fn parse_sequence(
+        sequence: &[MetaItemInner],
+        generics: &[Symbol],
+    ) -> Result<Vec<Self>, InvalidOnClause> {
+        sequence.iter().map(|item| Predicate::parse(item, generics)).collect()
     }
 
     fn eval(&self, eval: &mut impl FnMut(FlagOrNv<'_>) -> bool) -> bool {
@@ -156,14 +162,13 @@ enum Name {
 }
 
 impl Name {
-    fn parse(Ident { name, .. }: Ident) -> Self {
+    fn parse(Ident { name, span }: Ident, generics: &[Symbol]) -> Result<Self, InvalidOnClause> {
         match name {
-            sym::_Self | kw::SelfUpper => Name::SelfUpper,
-            sym::from_desugaring => Name::FromDesugaring,
-            sym::cause => Name::Cause,
-            // FIXME(mejrs) Perhaps we should start checking that
-            // this actually is a valid generic parameter?
-            generic => Name::GenericArg(generic),
+            kw::SelfUpper => Ok(Name::SelfUpper),
+            sym::from_desugaring => Ok(Name::FromDesugaring),
+            sym::cause => Ok(Name::Cause),
+            generic if generics.contains(&generic) => Ok(Name::GenericArg(generic)),
+            invalid_name => Err(InvalidOnClause::InvalidName { invalid_name, span }),
         }
     }
 }

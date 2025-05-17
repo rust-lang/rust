@@ -22,11 +22,11 @@ fn _assert_is_dyn_compatible(_: &dyn Iterator<Item = ()>) {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
-        _Self = "core::ops::range::RangeTo<Idx>",
+        Self = "core::ops::range::RangeTo<Idx>",
         note = "you might have meant to use a bounded `Range`"
     ),
     on(
-        _Self = "core::ops::range::RangeToInclusive<Idx>",
+        Self = "core::ops::range::RangeToInclusive<Idx>",
         note = "you might have meant to use a bounded `RangeInclusive`"
     ),
     label = "`{Self}` is not an iterator",
