@@ -1,5 +1,6 @@
 //@ compile-flags: -C opt-level=3
 //@ only-x86_64
+//@ needs-deterministic-layouts
 
 #![crate_type = "lib"]
 #![feature(iter_repeat_n)]
