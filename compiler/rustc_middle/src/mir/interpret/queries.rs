@@ -75,30 +75,6 @@ impl<'tcx> TyCtxt<'tcx> {
         // FIXME: maybe have a separate version for resolving mir::UnevaluatedConst?
         match ty::Instance::try_resolve(self, typing_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
-                if let ty::InstanceKind::Item(def_id) = instance.def
-                    && matches!(self.def_kind(def_id), DefKind::Const | DefKind::AssocConst)
-                {
-                    let ct = self.const_of_item(def_id).instantiate(self, instance.args);
-                    match ct.kind() {
-                        ty::ConstKind::Unevaluated(_) => {
-                            return Err(ErrorHandled::TooGeneric(DUMMY_SP));
-                        }
-                        ty::ConstKind::Value(cv) => return Ok(self.valtree_to_const_val(cv)),
-                        ty::ConstKind::Error(guar) => {
-                            return Err(ErrorHandled::Reported(
-                                ReportedErrorInfo::const_eval_error(guar),
-                                DUMMY_SP,
-                            ));
-                        }
-                        ty::ConstKind::Expr(_) => return Err(ErrorHandled::TooGeneric(DUMMY_SP)),
-                        ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) => {
-                            return Err(ErrorHandled::TooGeneric(DUMMY_SP));
-                        }
-                        ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) => {
-                            bug!("unexpected constant {ct:?}")
-                        }
-                    }
-                }
                 let cid = GlobalId { instance, promoted: ct.promoted };
                 self.const_eval_global_id(typing_env, cid, span)
             }
