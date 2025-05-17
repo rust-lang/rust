@@ -1426,4 +1426,4 @@ compiletest = [
 [note]
 
 [behind-upstream]
-days-threshold = 7
+days-threshold = 14
