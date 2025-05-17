@@ -148,7 +148,7 @@ fn target(sess: &rustc_session::Session) -> types::Target {
             .copied()
             .filter(|(_, stability, _)| {
                 // Describe only target features which the user can toggle
-                stability.toggle_allowed().is_ok()
+                stability.toggle_allowed(|flag| sess.opts.target_feature_flag_enabled(flag)).is_ok()
             })
             .map(|(name, stability, implied_features)| {
                 types::TargetFeature {
@@ -164,7 +164,13 @@ fn target(sess: &rustc_session::Session) -> types::Target {
                             // Imply only target features which the user can toggle
                             feature_stability
                                 .get(name)
-                                .map(|stability| stability.toggle_allowed().is_ok())
+                                .map(|stability| {
+                                    stability
+                                        .toggle_allowed(|flag| {
+                                            sess.opts.target_feature_flag_enabled(flag)
+                                        })
+                                        .is_ok()
+                                })
                                 .unwrap_or(false)
                         })
                         .map(String::from)
