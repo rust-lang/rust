@@ -764,6 +764,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expression: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         needs_block: bool,
+        parent_is_closure: bool,
     ) {
         if expected.is_unit() {
             // `BlockTailExpression` only relevant if the tail expr would be
@@ -798,6 +799,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Applicability::MachineApplicable,
                         );
                     }
+                }
+                ExprKind::Path(..) | ExprKind::Lit(_)
+                    if parent_is_closure
+                        && !expression.span.in_external_macro(self.tcx.sess.source_map()) =>
+                {
+                    err.span_suggestion_verbose(
+                        expression.span.shrink_to_lo(),
+                        "consider ignoring the value",
+                        "_ = ",
+                        Applicability::MachineApplicable,
+                    );
                 }
                 _ => (),
             }
