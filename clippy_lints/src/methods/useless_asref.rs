@@ -79,9 +79,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
                 applicability,
             );
         }
-    } else if let Some(impl_id) = cx.tcx.opt_parent(def_id)
+    } else if let Some(impl_id) = cx.tcx.impl_of_method(def_id)
         && let Some(adt) = cx.tcx.type_of(impl_id).instantiate_identity().ty_adt_def()
-        && (cx.tcx.lang_items().option_type() == Some(adt.did()) || cx.tcx.is_diagnostic_item(sym::Result, adt.did()))
+        && matches!(cx.tcx.get_diagnostic_name(adt.did()), Some(sym::Option | sym::Result))
     {
         let rcv_ty = cx.typeck_results().expr_ty(recvr).peel_refs();
         let res_ty = cx.typeck_results().expr_ty(expr).peel_refs();
