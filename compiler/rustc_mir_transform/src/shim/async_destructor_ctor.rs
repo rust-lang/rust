@@ -121,9 +121,10 @@ pub(super) fn build_async_drop_shim<'tcx>(
         parent_args.as_coroutine().resume_ty(),
     )));
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
-    if !needs_async_drop {
+    if !needs_async_drop || matches!(drop_ty.kind(), ty::Error(_)) {
         // Returning noop body for types without `need async drop`
-        // (or sync Drop in case of !`need async drop` && `need drop`)
+        // (or sync Drop in case of !`need async drop` && `need drop`).
+        // And also for error types.
         return body;
     }
 
