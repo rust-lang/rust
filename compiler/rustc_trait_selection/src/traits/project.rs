@@ -484,7 +484,6 @@ fn normalize_to_error<'a, 'tcx>(
 }
 
 /// Confirm and normalize the given inherent projection.
-// FIXME(mgca): While this supports constants, it is only used for types by default right now
 #[instrument(level = "debug", skip(selcx, param_env, cause, obligations))]
 pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
