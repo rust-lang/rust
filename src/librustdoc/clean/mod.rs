@@ -224,9 +224,9 @@ fn clean_generic_bound<'tcx>(
     bound: &hir::GenericBound<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Option<GenericBound> {
-    Some(match *bound {
+    Some(match bound {
         hir::GenericBound::Outlives(lt) => GenericBound::Outlives(clean_lifetime(lt, cx)),
-        hir::GenericBound::Trait(ref t) => {
+        hir::GenericBound::Trait(t) => {
             // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
             if let hir::BoundConstness::Maybe(_) = t.modifiers.constness
                 && cx.tcx.lang_items().destruct_trait() == Some(t.trait_ref.trait_def_id().unwrap())
@@ -352,8 +352,8 @@ fn clean_where_predicate<'tcx>(
     if !predicate.kind.in_where_clause() {
         return None;
     }
-    Some(match *predicate.kind {
-        hir::WherePredicateKind::BoundPredicate(ref wbp) => {
+    Some(match predicate.kind {
+        hir::WherePredicateKind::BoundPredicate(wbp) => {
             let bound_params = wbp
                 .bound_generic_params
                 .iter()
@@ -366,12 +366,12 @@ fn clean_where_predicate<'tcx>(
             }
         }
 
-        hir::WherePredicateKind::RegionPredicate(ref wrp) => WherePredicate::RegionPredicate {
+        hir::WherePredicateKind::RegionPredicate(wrp) => WherePredicate::RegionPredicate {
             lifetime: clean_lifetime(wrp.lifetime, cx),
             bounds: wrp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
         },
 
-        hir::WherePredicateKind::EqPredicate(ref wrp) => WherePredicate::EqPredicate {
+        hir::WherePredicateKind::EqPredicate(wrp) => WherePredicate::EqPredicate {
             lhs: clean_ty(wrp.lhs_ty, cx),
             rhs: clean_ty(wrp.rhs_ty, cx).into(),
         },
@@ -2112,7 +2112,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             );
             Type::Path { path }
         }
-        ty::Dynamic(obj, ref reg, _) => {
+        ty::Dynamic(obj, reg, _) => {
             // HACK: pick the first `did` as the `did` of the trait object. Someone
             // might want to implement "native" support for marker-trait-only
             // trait objects.
@@ -2129,7 +2129,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
 
             inline::record_extern_fqn(cx, did, ItemType::Trait);
 
-            let lifetime = clean_trait_object_lifetime_bound(*reg, container, obj, cx.tcx);
+            let lifetime = clean_trait_object_lifetime_bound(reg, container, obj, cx.tcx);
 
             let mut bounds = dids
                 .map(|did| {
@@ -2846,7 +2846,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 ));
                 return ret;
             }
-            ItemKind::Enum(_, ref def, generics) => EnumItem(Enum {
+            ItemKind::Enum(_, def, generics) => EnumItem(Enum {
                 variants: def.variants.iter().map(|v| clean_variant(v, cx)).collect(),
                 generics: clean_generics(generics, cx),
             }),
@@ -2854,11 +2854,11 @@ fn clean_maybe_renamed_item<'tcx>(
                 generics: clean_generics(generics, cx),
                 bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
             }),
-            ItemKind::Union(_, ref variant_data, generics) => UnionItem(Union {
+            ItemKind::Union(_, variant_data, generics) => UnionItem(Union {
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
-            ItemKind::Struct(_, ref variant_data, generics) => StructItem(Struct {
+            ItemKind::Struct(_, variant_data, generics) => StructItem(Struct {
                 ctor_kind: variant_data.ctor_kind(),
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),

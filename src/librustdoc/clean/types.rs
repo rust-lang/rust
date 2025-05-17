@@ -1337,9 +1337,9 @@ pub(crate) enum WherePredicate {
 
 impl WherePredicate {
     pub(crate) fn get_bounds(&self) -> Option<&[GenericBound]> {
-        match *self {
-            WherePredicate::BoundPredicate { ref bounds, .. } => Some(bounds),
-            WherePredicate::RegionPredicate { ref bounds, .. } => Some(bounds),
+        match self {
+            WherePredicate::BoundPredicate { bounds, .. } => Some(bounds),
+            WherePredicate::RegionPredicate { bounds, .. } => Some(bounds),
             _ => None,
         }
     }
@@ -1709,13 +1709,13 @@ impl Type {
     ///
     /// [clean]: crate::clean
     pub(crate) fn def_id(&self, cache: &Cache) -> Option<DefId> {
-        let t: PrimitiveType = match *self {
-            Type::Path { ref path } => return Some(path.def_id()),
-            DynTrait(ref bounds, _) => return bounds.first().map(|b| b.trait_.def_id()),
-            Primitive(p) => return cache.primitive_locations.get(&p).cloned(),
+        let t: PrimitiveType = match self {
+            Type::Path { path } => return Some(path.def_id()),
+            DynTrait(bounds, _) => return bounds.first().map(|b| b.trait_.def_id()),
+            Primitive(p) => return cache.primitive_locations.get(p).cloned(),
             BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
-            BorrowedRef { ref type_, .. } => return type_.def_id(cache),
-            Tuple(ref tys) => {
+            BorrowedRef { type_, .. } => return type_.def_id(cache),
+            Tuple(tys) => {
                 if tys.is_empty() {
                     PrimitiveType::Unit
                 } else {
@@ -1727,7 +1727,7 @@ impl Type {
             Array(..) => PrimitiveType::Array,
             Type::Pat(..) => PrimitiveType::Pat,
             RawPointer(..) => PrimitiveType::RawPointer,
-            QPath(box QPathData { ref self_type, .. }) => return self_type.def_id(cache),
+            QPath(box QPathData { self_type, .. }) => return self_type.def_id(cache),
             Generic(_) | SelfTy | Infer | ImplTrait(_) | UnsafeBinder(_) => return None,
         };
         Primitive(t).def_id(cache)
