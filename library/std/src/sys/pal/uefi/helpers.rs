@@ -653,7 +653,6 @@ pub(crate) struct ServiceProtocol {
 }
 
 impl ServiceProtocol {
-    #[expect(dead_code)]
     pub(crate) fn open(service_guid: r_efi::efi::Guid) -> io::Result<Self> {
         let handles = locate_handles(service_guid)?;
 
@@ -670,7 +669,6 @@ impl ServiceProtocol {
         Err(io::const_error!(io::ErrorKind::NotFound, "no service binding protocol found"))
     }
 
-    #[expect(dead_code)]
     pub(crate) fn child_handle(&self) -> NonNull<crate::ffi::c_void> {
         self.child_handle
     }
@@ -732,6 +730,10 @@ impl OwnedEvent {
         }
     }
 
+    pub(crate) fn as_ptr(&self) -> efi::Event {
+        self.0.as_ptr()
+    }
+
     pub(crate) fn into_raw(self) -> *mut crate::ffi::c_void {
         let r = self.0.as_ptr();
         crate::mem::forget(self);
@@ -754,4 +756,8 @@ impl Drop for OwnedEvent {
             };
         }
     }
+}
+
+pub(crate) const fn ipv4_to_r_efi(addr: crate::net::Ipv4Addr) -> efi::Ipv4Address {
+    efi::Ipv4Address { addr: addr.octets() }
 }
