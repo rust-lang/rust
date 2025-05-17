@@ -1,16 +1,21 @@
 // Ensure that `doc(cfg())` respects `check-cfg`
 // Currently not properly working
-#![feature(doc_cfg)]
-#![deny(unexpected_cfgs)]
 
-//@revisions: no_check cfg_empty cfg_foo
+//@ check-pass
+//@ no-auto-check-cfg
+
+//@ revisions: no_check cfg_empty cfg_foo
 //@[cfg_empty] compile-flags: --check-cfg cfg()
 //@[cfg_foo] compile-flags: --check-cfg cfg(foo)
 
-//@[no_check] check-pass
-//@[cfg_empty] check-pass
-//@[cfg_empty] known-bug: #138358
-//@[cfg_foo] check-pass
+#![feature(doc_cfg)]
 
 #[doc(cfg(foo))]
+//[cfg_empty]~^ WARN unexpected `cfg` condition name: `foo`
 pub fn foo() {}
+
+pub mod module {
+    #[allow(unexpected_cfgs)]
+    #[doc(cfg(bar))]
+    pub fn bar() {}
+}

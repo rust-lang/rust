@@ -210,6 +210,7 @@ fn generate_item_with_correct_attrs(
             Cow::Owned(attr) => attr,
         }),
         cx.tcx,
+        def_id.as_local().map(|did| cx.tcx.local_def_id_to_hir_id(did)),
         &cx.cache.hidden_cfg,
     );
     let attrs = Attributes::from_hir_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
