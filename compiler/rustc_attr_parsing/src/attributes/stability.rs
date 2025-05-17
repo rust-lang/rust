@@ -43,7 +43,7 @@ impl StabilityParser {
 
 impl AttributeParser for StabilityParser {
     const ATTRIBUTES: AcceptMapping<Self> = &[
-        (&[sym::stable], |this, cx, args| {
+        (sym::stable, |this, cx, args| {
             reject_outside_std!(cx);
             if !this.check_duplicate(cx)
                 && let Some((feature, level)) = parse_stability(cx, args)
@@ -51,7 +51,7 @@ impl AttributeParser for StabilityParser {
                 this.stability = Some((Stability { level, feature }, cx.attr_span));
             }
         }),
-        (&[sym::unstable], |this, cx, args| {
+        (sym::unstable, |this, cx, args| {
             reject_outside_std!(cx);
             if !this.check_duplicate(cx)
                 && let Some((feature, level)) = parse_unstability(cx, args)
@@ -59,7 +59,7 @@ impl AttributeParser for StabilityParser {
                 this.stability = Some((Stability { level, feature }, cx.attr_span));
             }
         }),
-        (&[sym::rustc_allowed_through_unstable_modules], |this, cx, args| {
+        (sym::rustc_allowed_through_unstable_modules, |this, cx, args| {
             reject_outside_std!(cx);
             this.allowed_through_unstable_modules = args.name_value().and_then(|i| i.value_as_str())
         }),
@@ -97,7 +97,7 @@ pub(crate) struct BodyStabilityParser {
 
 impl AttributeParser for BodyStabilityParser {
     const ATTRIBUTES: AcceptMapping<Self> =
-        &[(&[sym::rustc_default_body_unstable], |this, cx, args| {
+        &[(sym::rustc_default_body_unstable, |this, cx, args| {
             reject_outside_std!(cx);
             if this.stability.is_some() {
                 cx.dcx()
@@ -117,7 +117,7 @@ impl AttributeParser for BodyStabilityParser {
 pub(crate) struct ConstStabilityIndirectParser;
 // FIXME(jdonszelmann): single word attribute group when we have these
 impl SingleAttributeParser for ConstStabilityIndirectParser {
-    const PATH: &'static [rustc_span::Symbol] = &[sym::rustc_const_stable_indirect];
+    const PATH: Symbol = sym::rustc_const_stable_indirect;
 
     // ignore
     fn on_duplicate(_cx: &AcceptContext<'_>, _first_span: Span) {}
@@ -147,7 +147,7 @@ impl ConstStabilityParser {
 
 impl AttributeParser for ConstStabilityParser {
     const ATTRIBUTES: AcceptMapping<Self> = &[
-        (&[sym::rustc_const_stable], |this, cx, args| {
+        (sym::rustc_const_stable, |this, cx, args| {
             reject_outside_std!(cx);
 
             if !this.check_duplicate(cx)
@@ -159,7 +159,7 @@ impl AttributeParser for ConstStabilityParser {
                 ));
             }
         }),
-        (&[sym::rustc_const_unstable], |this, cx, args| {
+        (sym::rustc_const_unstable, |this, cx, args| {
             reject_outside_std!(cx);
             if !this.check_duplicate(cx)
                 && let Some((feature, level)) = parse_unstability(cx, args)
@@ -170,7 +170,7 @@ impl AttributeParser for ConstStabilityParser {
                 ));
             }
         }),
-        (&[sym::rustc_promotable], |this, cx, _| {
+        (sym::rustc_promotable, |this, cx, _| {
             reject_outside_std!(cx);
             this.promotable = true;
         }),

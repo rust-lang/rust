@@ -13,7 +13,7 @@ pub(crate) struct ConfusablesParser {
 }
 
 impl AttributeParser for ConfusablesParser {
-    const ATTRIBUTES: AcceptMapping<Self> = &[(&[sym::rustc_confusables], |this, cx, args| {
+    const ATTRIBUTES: AcceptMapping<Self> = &[(sym::rustc_confusables, |this, cx, args| {
         let Some(list) = args.list() else {
             // FIXME(jdonszelmann): error when not a list? Bring validation code here.
             //       NOTE: currently subsequent attributes are silently ignored using
