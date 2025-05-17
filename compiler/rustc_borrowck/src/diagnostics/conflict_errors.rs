@@ -3201,12 +3201,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         let expr_ty: Option<Ty<'_>> =
                             visitor.prop_expr.map(|expr| typeck_results.expr_ty(expr).peel_refs());
 
-                        let is_format_arguments_item = if let Some(expr_ty) = expr_ty
+                        let (is_format_arguments_item, is_pin_struct) = if let Some(expr_ty) =
+                            expr_ty
                             && let ty::Adt(adt, _) = expr_ty.kind()
                         {
-                            self.infcx.tcx.is_lang_item(adt.did(), LangItem::FormatArguments)
+                            (
+                                self.infcx.tcx.is_lang_item(adt.did(), LangItem::FormatArguments),
+                                (self.infcx.tcx.is_lang_item(adt.did(), LangItem::Pin)),
+                            )
                         } else {
-                            false
+                            (false, false)
                         };
 
                         if visitor.found == 0
@@ -3229,8 +3233,22 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                             }
+
+                            let mutability = if matches!(borrow.kind(), BorrowKind::Mut { .. })
+                                && !is_pin_struct
+                            {
+                                "mut "
+                            } else {
+                                ""
+                            };
+
                             if !is_format_arguments_item {
-                                let addition = format!("let binding = {};\n{}", s, " ".repeat(p));
+                                let addition = format!(
+                                    "let {}binding = {};\n{}",
+                                    mutability,
+                                    s,
+                                    " ".repeat(p)
+                                );
                                 err.multipart_suggestion_verbose(
                                     msg,
                                     vec![
