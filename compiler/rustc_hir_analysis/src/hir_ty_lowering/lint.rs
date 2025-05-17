@@ -103,7 +103,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // In case there is an associated type with the same name
             // Add the suggestion to this error
             if let Some(mut sugg) =
-                tcx.dcx().steal_non_err(self_ty.span, StashKey::AssociatedTypeSuggestion)
+                self.dcx().steal_non_err(self_ty.span, StashKey::AssociatedTypeSuggestion)
                 && let Suggestions::Enabled(ref mut s1) = diag.suggestions
                 && let Suggestions::Enabled(ref mut s2) = sugg.suggestions
             {
