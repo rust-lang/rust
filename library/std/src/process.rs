@@ -1348,7 +1348,7 @@ impl Output {
     ///
     /// ```
     /// #![feature(exit_status_error)]
-    /// # #[cfg(unix)] {
+    /// # #[cfg(all(unix, not(target_os = "android")))] {
     /// use std::process::Command;
     /// assert!(Command::new("false").output().unwrap().exit_ok().is_err());
     /// # }
@@ -1695,7 +1695,7 @@ impl From<io::Stdout> for Stdio {
     /// # Ok(())
     /// # }
     /// #
-    /// # if cfg!(unix) {
+    /// # if cfg!(all(unix, not(target_os = "android"))) {
     /// #     test().unwrap();
     /// # }
     /// ```
@@ -1724,7 +1724,7 @@ impl From<io::Stderr> for Stdio {
     /// # Ok(())
     /// # }
     /// #
-    /// # if cfg!(unix) {
+    /// # if cfg!(all(unix, not(target_os = "android"))) {
     /// #     test().unwrap();
     /// # }
     /// ```
@@ -1907,7 +1907,7 @@ impl crate::sealed::Sealed for ExitStatusError {}
 ///
 /// ```
 /// #![feature(exit_status_error)]
-/// # if cfg!(unix) {
+/// # if cfg!(all(unix, not(target_os = "android"))) {
 /// use std::process::{Command, ExitStatusError};
 ///
 /// fn run(cmd: &str) -> Result<(), ExitStatusError> {
@@ -1950,7 +1950,7 @@ impl ExitStatusError {
     ///
     /// ```
     /// #![feature(exit_status_error)]
-    /// # #[cfg(unix)] {
+    /// # #[cfg(all(unix, not(target_os = "android")))] {
     /// use std::process::Command;
     ///
     /// let bad = Command::new("false").status().unwrap().exit_ok().unwrap_err();
@@ -1975,7 +1975,7 @@ impl ExitStatusError {
     /// ```
     /// #![feature(exit_status_error)]
     ///
-    /// # if cfg!(unix) {
+    /// # if cfg!(all(unix, not(target_os = "android"))) {
     /// use std::num::NonZero;
     /// use std::process::Command;
     ///

@@ -25,7 +25,10 @@ pub trait TcpStreamExt: Sealed {
     /// ```no_run
     /// #![feature(tcp_quickack)]
     /// use std::net::TcpStream;
+    /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::TcpStreamExt;
+    /// #[cfg(target_os = "android")]
+    /// use std::os::android::net::TcpStreamExt;
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///         .expect("Couldn't connect to the server...");
@@ -43,7 +46,10 @@ pub trait TcpStreamExt: Sealed {
     /// ```no_run
     /// #![feature(tcp_quickack)]
     /// use std::net::TcpStream;
+    /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::TcpStreamExt;
+    /// #[cfg(target_os = "android")]
+    /// use std::os::android::net::TcpStreamExt;
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///         .expect("Couldn't connect to the server...");
