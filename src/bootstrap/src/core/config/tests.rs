@@ -459,6 +459,7 @@ fn check_rustc_if_unchanged_paths() {
     let config = parse("");
     let normalised_allowed_paths: Vec<_> = RUSTC_IF_UNCHANGED_ALLOWED_PATHS
         .iter()
+        .chain(super::RUSTC_IF_UNCHANGED_EXTRA_ALLOWED_PATHS_OUTSIDE_CI)
         .map(|t| {
             t.strip_prefix(":!").expect(&format!("{t} doesn't have ':!' prefix, but it should."))
         })
