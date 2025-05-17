@@ -12,7 +12,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::convert::FloatToInt;
-use crate::num::FpCategory;
+use crate::num::{FpCategory, libm};
 use crate::panic::const_assert;
 use crate::{intrinsics, mem};
 
@@ -1554,4 +1554,408 @@ impl f64 {
     pub const fn algebraic_rem(self, rhs: f64) -> f64 {
         intrinsics::frem_algebraic(self, rhs)
     }
+}
+
+/// Experimental version of `floor` in `core`. See [`f64::floor`] for details.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_float_math)]
+///
+/// use core::f64;
+///
+/// let f = 3.7_f64;
+/// let g = 3.0_f64;
+/// let h = -3.7_f64;
+///
+/// assert_eq!(f64::floor(f), 3.0);
+/// assert_eq!(f64::floor(g), 3.0);
+/// assert_eq!(f64::floor(h), -4.0);
+/// ```
+///
+/// _This standalone function is for testing only. It will be stabilized as an inherent method._
+///
+/// [`f64::floor`]: ../../std/primitive.f64.html#method.floor
+#[inline]
+#[unstable(feature = "core_float_math", issue = "137578")]
+#[must_use = "method returns a new number and does not mutate the original value"]
+pub fn floor(x: f64) -> f64 {
+    // SAFETY: intrinsic with no preconditions
+    unsafe { intrinsics::floorf64(x) }
+}
+
+/// Experimental version of `ceil` in `core`. See [`f64::ceil`] for details.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_float_math)]
+///
+/// use core::f64;
+///
+/// let f = 3.01_f64;
+/// let g = 4.0_f64;
+///
+/// assert_eq!(f64::ceil(f), 4.0);
+/// assert_eq!(f64::ceil(g), 4.0);
+/// ```
+///
+/// _This standalone function is for testing only. It will be stabilized as an inherent method._
+///
+/// [`f64::ceil`]: ../../std/primitive.f64.html#method.ceil
+#[inline]
+#[doc(alias = "ceiling")]
+#[unstable(feature = "core_float_math", issue = "137578")]
+#[must_use = "method returns a new number and does not mutate the original value"]
+pub fn ceil(x: f64) -> f64 {
+    // SAFETY: intrinsic with no preconditions
+    unsafe { intrinsics::ceilf64(x) }
+}
+
+/// Experimental version of `round` in `core`. See [`f64::round`] for details.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_float_math)]
+///
+/// use core::f64;
+///
+/// let f = 3.3_f64;
+/// let g = -3.3_f64;
+/// let h = -3.7_f64;
+/// let i = 3.5_f64;
+/// let j = 4.5_f64;
+///
+/// assert_eq!(f64::round(f), 3.0);
+/// assert_eq!(f64::round(g), -3.0);
+/// assert_eq!(f64::round(h), -4.0);
+/// assert_eq!(f64::round(i), 4.0);
+/// assert_eq!(f64::round(j), 5.0);
+/// ```
+///
+/// _This standalone function is for testing only. It will be stabilized as an inherent method._
+///
+/// [`f64::round`]: ../../std/primitive.f64.html#method.round
+#[inline]
+#[unstable(feature = "core_float_math", issue = "137578")]
+#[must_use = "method returns a new number and does not mutate the original value"]
+pub fn round(x: f64) -> f64 {
+    // SAFETY: intrinsic with no preconditions
+    unsafe { intrinsics::roundf64(x) }
+}
+
+/// Experimental version of `round_ties_even` in `core`. See [`f64::round_ties_even`] for details.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_float_math)]
+///
+/// use core::f64;
+///
+/// let f = 3.3_f64;
+/// let g = -3.3_f64;
+/// let h = 3.5_f64;
+/// let i = 4.5_f64;
+///
+/// assert_eq!(f64::round_ties_even(f), 3.0);
+/// assert_eq!(f64::round_ties_even(g), -3.0);
+/// assert_eq!(f64::round_ties_even(h), 4.0);
+/// assert_eq!(f64::round_ties_even(i), 4.0);
+/// ```
+///
+/// _This standalone function is for testing only. It will be stabilized as an inherent method._
+///
+/// [`f64::round_ties_even`]: ../../std/primitive.f64.html#method.round_ties_even
+#[inline]
+#[unstable(feature = "core_float_math", issue = "137578")]
+#[must_use = "method returns a new number and does not mutate the original value"]
+pub fn round_ties_even(x: f64) -> f64 {
+    intrinsics::round_ties_even_f64(x)
+}
+
+/// Experimental version of `trunc` in `core`. See [`f64::trunc`] for details.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_float_math)]
+///
+/// use core::f64;
+///
+/// let f = 3.7_f64;
+/// let g = 3.0_f64;
+/// let h = -3.7_f64;
+///
+/// assert_eq!(f64::trunc(f), 3.0);
+/// assert_eq!(f64::trunc(g), 3.0);
+/// assert_eq!(f64::trunc(h), -3.0);
+/// ```
+///
+/// _This standalone function is for testing only. It will be stabilized as an inherent method._
+///
+/// [`f64::trunc`]: ../../std/primitive.f64.html#method.trunc
+#[inline]
+#[doc(alias = "truncate")]
+#[unstable(feature = "core_float_math", issue = "137578")]
+#[must_use = "method returns a new number and does not mutate the original value"]
+pub fn trunc(x: f64) -> f64 {
+    // SAFETY: intrinsic with no preconditions
+    unsafe { intrinsics::truncf64(x) }
+}
+
+/// Experimental version of `fract` in `core`. See [`f64::fract`] for details.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_float_math)]
+///
+/// use core::f64;
+///
+/// let x = 3.6_f64;
+/// let y = -3.6_f64;
+/// let abs_difference_x = (f64::fract(x) - 0.6).abs();
+/// let abs_difference_y = (f64::fract(y) - (-0.6)).abs();
+///
+/// assert!(abs_difference_x < 1e-10);
+/// assert!(abs_difference_y < 1e-10);
+/// ```
+///
+/// _This standalone function is for testing only. It will be stabilized as an inherent method._
+///
+/// [`f64::fract`]: ../../std/primitive.f64.html#method.fract
+#[inline]
+#[unstable(feature = "core_float_math", issue = "137578")]
+#[must_use = "method returns a new number and does not mutate the original value"]
+pub fn fract(x: f64) -> f64 {
+    x - trunc(x)
+}
+
+/// Experimental version of `mul_add` in `core`. See [`f64::mul_add`] for details.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_float_math)]
+///
+/// # // FIXME(#140515): mingw has an incorrect fma https://sourceforge.net/p/mingw-w64/bugs/848/
+/// # #[cfg(all(target_os = "windows", target_env = "gnu", not(target_abi = "llvm")))] {
+/// use core::f64;
+///
+/// let m = 10.0_f64;
+/// let x = 4.0_f64;
+/// let b = 60.0_f64;
+///
+/// assert_eq!(f64::mul_add(m, x, b), 100.0);
+/// assert_eq!(m * x + b, 100.0);
+///
+/// let one_plus_eps = 1.0_f64 + f64::EPSILON;
+/// let one_minus_eps = 1.0_f64 - f64::EPSILON;
+/// let minus_one = -1.0_f64;
+///
+/// // The exact result (1 + eps) * (1 - eps) = 1 - eps * eps.
+/// assert_eq!(f64::mul_add(one_plus_eps, one_minus_eps, minus_one), -f64::EPSILON * f64::EPSILON);
+/// // Different rounding with the non-fused multiply and add.
+/// assert_eq!(one_plus_eps * one_minus_eps + minus_one, 0.0);
+/// # }
+/// ```
+///
+/// _This standalone function is for testing only. It will be stabilized as an inherent method._
+///
+/// [`f64::mul_add`]: ../../std/primitive.f64.html#method.mul_add
+#[inline]
+#[doc(alias = "fma", alias = "fusedMultiplyAdd")]
+#[unstable(feature = "core_float_math", issue = "137578")]
+#[must_use = "method returns a new number and does not mutate the original value"]
+pub fn mul_add(x: f64, a: f64, b: f64) -> f64 {
+    // SAFETY: intrinsic with no preconditions
+    unsafe { intrinsics::fmaf64(x, a, b) }
+}
+
+/// Experimental version of `div_euclid` in `core`. See [`f64::div_euclid`] for details.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_float_math)]
+///
+/// use core::f64;
+///
+/// let a: f64 = 7.0;
+/// let b = 4.0;
+/// assert_eq!(f64::div_euclid(a, b), 1.0); // 7.0 > 4.0 * 1.0
+/// assert_eq!(f64::div_euclid(-a, b), -2.0); // -7.0 >= 4.0 * -2.0
+/// assert_eq!(f64::div_euclid(a, -b), -1.0); // 7.0 >= -4.0 * -1.0
+/// assert_eq!(f64::div_euclid(-a, -b), 2.0); // -7.0 >= -4.0 * 2.0
+/// ```
+///
+/// _This standalone function is for testing only. It will be stabilized as an inherent method._
+///
+/// [`f64::div_euclid`]: ../../std/primitive.f64.html#method.div_euclid
+#[inline]
+#[unstable(feature = "core_float_math", issue = "137578")]
+#[must_use = "method returns a new number and does not mutate the original value"]
+pub fn div_euclid(x: f64, rhs: f64) -> f64 {
+    let q = trunc(x / rhs);
+    if x % rhs < 0.0 {
+        return if rhs > 0.0 { q - 1.0 } else { q + 1.0 };
+    }
+    q
+}
+
+/// Experimental version of `rem_euclid` in `core`. See [`f64::rem_euclid`] for details.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_float_math)]
+///
+/// use core::f64;
+///
+/// let a: f64 = 7.0;
+/// let b = 4.0;
+/// assert_eq!(f64::rem_euclid(a, b), 3.0);
+/// assert_eq!(f64::rem_euclid(-a, b), 1.0);
+/// assert_eq!(f64::rem_euclid(a, -b), 3.0);
+/// assert_eq!(f64::rem_euclid(-a, -b), 1.0);
+/// // limitation due to round-off error
+/// assert!(f64::rem_euclid(-f64::EPSILON, 3.0) != 0.0);
+/// ```
+///
+/// _This standalone function is for testing only. It will be stabilized as an inherent method._
+///
+/// [`f64::rem_euclid`]: ../../std/primitive.f64.html#method.rem_euclid
+#[inline]
+#[doc(alias = "modulo", alias = "mod")]
+#[unstable(feature = "core_float_math", issue = "137578")]
+#[must_use = "method returns a new number and does not mutate the original value"]
+pub fn rem_euclid(x: f64, rhs: f64) -> f64 {
+    let r = x % rhs;
+    if r < 0.0 { r + rhs.abs() } else { r }
+}
+
+/// Experimental version of `powi` in `core`. See [`f64::powi`] for details.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_float_math)]
+///
+/// use core::f64;
+///
+/// let x = 2.0_f64;
+/// let abs_difference = (f64::powi(x, 2) - (x * x)).abs();
+/// assert!(abs_difference <= f64::EPSILON);
+///
+/// assert_eq!(f64::powi(f64::NAN, 0), 1.0);
+/// ```
+///
+/// _This standalone function is for testing only. It will be stabilized as an inherent method._
+///
+/// [`f64::powi`]: ../../std/primitive.f64.html#method.powi
+#[inline]
+#[unstable(feature = "core_float_math", issue = "137578")]
+#[must_use = "method returns a new number and does not mutate the original value"]
+pub fn powi(x: f64, n: i32) -> f64 {
+    // SAFETY: intrinsic with no preconditions
+    unsafe { intrinsics::powif64(x, n) }
+}
+
+/// Experimental version of `sqrt` in `core`. See [`f64::sqrt`] for details.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_float_math)]
+///
+/// use core::f64;
+///
+/// let positive = 4.0_f64;
+/// let negative = -4.0_f64;
+/// let negative_zero = -0.0_f64;
+///
+/// assert_eq!(f64::sqrt(positive), 2.0);
+/// assert!(f64::sqrt(negative).is_nan());
+/// assert_eq!(f64::sqrt(negative_zero), negative_zero);
+/// ```
+///
+/// _This standalone function is for testing only. It will be stabilized as an inherent method._
+///
+/// [`f64::sqrt`]: ../../std/primitive.f64.html#method.sqrt
+#[inline]
+#[doc(alias = "squareRoot")]
+#[unstable(feature = "core_float_math", issue = "137578")]
+#[must_use = "method returns a new number and does not mutate the original value"]
+pub fn sqrt(x: f64) -> f64 {
+    // SAFETY: intrinsic with no preconditions
+    unsafe { intrinsics::sqrtf64(x) }
+}
+
+/// Experimental version of `abs_sub` in `core`. See [`f64::abs_sub`] for details.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_float_math)]
+///
+/// use core::f64;
+///
+/// let x = 3.0_f64;
+/// let y = -3.0_f64;
+///
+/// let abs_difference_x = (f64::abs_sub(x, 1.0) - 2.0).abs();
+/// let abs_difference_y = (f64::abs_sub(y, 1.0) - 0.0).abs();
+///
+/// assert!(abs_difference_x < 1e-10);
+/// assert!(abs_difference_y < 1e-10);
+/// ```
+///
+/// _This standalone function is for testing only. It will be stabilized as an inherent method._
+///
+/// [`f64::abs_sub`]: ../../std/primitive.f64.html#method.abs_sub
+#[inline]
+#[unstable(feature = "core_float_math", issue = "137578")]
+#[deprecated(
+    since = "1.10.0",
+    note = "you probably meant `(self - other).abs()`: \
+                this operation is `(self - other).max(0.0)` \
+                except that `abs_sub` also propagates NaNs (also \
+                known as `fdim` in C). If you truly need the positive \
+                difference, consider using that expression or the C function \
+                `fdim`, depending on how you wish to handle NaN (please consider \
+                filing an issue describing your use-case too)."
+)]
+#[must_use = "method returns a new number and does not mutate the original value"]
+pub fn abs_sub(x: f64, other: f64) -> f64 {
+    libm::fdim(x, other)
+}
+
+/// Experimental version of `cbrt` in `core`. See [`f64::cbrt`] for details.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_float_math)]
+///
+/// use core::f64;
+///
+/// let x = 8.0_f64;
+///
+/// // x^(1/3) - 2 == 0
+/// let abs_difference = (f64::cbrt(x) - 2.0).abs();
+///
+/// assert!(abs_difference < 1e-10);
+/// ```
+///
+/// _This standalone function is for testing only. It will be stabilized as an inherent method._
+///
+/// [`f64::cbrt`]: ../../std/primitive.f64.html#method.cbrt
+#[inline]
+#[unstable(feature = "core_float_math", issue = "137578")]
+#[must_use = "method returns a new number and does not mutate the original value"]
+pub fn cbrt(x: f64) -> f64 {
+    libm::cbrt(x)
 }
