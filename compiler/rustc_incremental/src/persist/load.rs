@@ -35,9 +35,9 @@ pub enum LoadResult<T> {
     LoadDepGraph(PathBuf, std::io::Error),
 }
 
-impl<T: Default> LoadResult<T> {
+impl<T> LoadResult<T> {
     /// Accesses the data returned in [`LoadResult::Ok`].
-    pub fn open(self, sess: &Session) -> T {
+    pub fn open(self, sess: &Session, fallback: impl FnOnce() -> T) -> T {
         // Check for errors when using `-Zassert-incremental-state`
         match (sess.opts.assert_incr_state, &self) {
             (Some(IncrementalStateAssertion::NotLoaded), LoadResult::Ok { .. }) => {
@@ -55,14 +55,14 @@ impl<T: Default> LoadResult<T> {
         match self {
             LoadResult::LoadDepGraph(path, err) => {
                 sess.dcx().emit_warn(errors::LoadDepGraph { path, err });
-                Default::default()
+                fallback()
             }
             LoadResult::DataOutOfDate => {
                 if let Err(err) = delete_all_session_dir_contents(sess) {
                     sess.dcx()
                         .emit_err(errors::DeleteIncompatible { path: dep_graph_path(sess), err });
                 }
-                Default::default()
+                fallback()
             }
             LoadResult::Ok { data } => data,
         }
@@ -93,13 +93,15 @@ fn delete_dirty_work_product(sess: &Session, swp: SerializedWorkProduct) {
 
 fn load_dep_graph(
     sess: &Session,
-    deps: &DepsType,
-) -> LoadResult<(Arc<SerializedDepGraph>, WorkProductMap)> {
+    deps: &Arc<DepsType>,
+) -> LoadResult<(Arc<SerializedDepGraph<DepsType>>, WorkProductMap)> {
     let prof = sess.prof.clone();
 
     if sess.opts.incremental.is_none() {
         // No incremental compilation.
-        return LoadResult::Ok { data: Default::default() };
+        return LoadResult::Ok {
+            data: (Arc::new(SerializedDepGraph::empty(deps, sess)), Default::default()),
+        };
     }
 
     let _timer = sess.prof.generic_activity("incr_comp_prepare_load_dep_graph");
@@ -174,7 +176,7 @@ fn load_dep_graph(
                 return LoadResult::DataOutOfDate;
             }
 
-            let dep_graph = SerializedDepGraph::decode::<DepsType>(&mut decoder, deps);
+            let dep_graph = SerializedDepGraph::decode(&mut decoder, deps, sess);
 
             LoadResult::Ok { data: (dep_graph, prev_work_products) }
         }
@@ -208,7 +210,7 @@ pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache> {
 
 /// Setups the dependency graph by loading an existing graph from disk and set up streaming of a
 /// new graph to an incremental session directory.
-pub fn setup_dep_graph(sess: &Session, crate_name: Symbol, deps: &DepsType) -> DepGraph {
+pub fn setup_dep_graph(sess: &Session, crate_name: Symbol, deps: &Arc<DepsType>) -> DepGraph {
     // `load_dep_graph` can only be called after `prepare_session_directory`.
     prepare_session_directory(sess, crate_name);
 
@@ -227,7 +229,8 @@ pub fn setup_dep_graph(sess: &Session, crate_name: Symbol, deps: &DepsType) -> D
     }
 
     res.and_then(|result| {
-        let (prev_graph, prev_work_products) = result.open(sess);
+        let (prev_graph, prev_work_products) = result
+            .open(sess, || (Arc::new(SerializedDepGraph::empty(deps, sess)), Default::default()));
         build_dep_graph(sess, prev_graph, prev_work_products)
     })
     .unwrap_or_else(DepGraph::new_disabled)
