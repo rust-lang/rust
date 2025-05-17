@@ -71,7 +71,7 @@
 //@[nvptx64] compile-flags: --target nvptx64-nvidia-cuda
 //@[nvptx64] needs-llvm-components: nvptx
 //@ ignore-backends: gcc
-#![feature(no_core, rustc_attrs, lang_items)]
+#![feature(no_core, rustc_attrs, lang_items, pattern_types)]
 #![feature(unsized_fn_params, transparent_unions)]
 #![no_core]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
@@ -201,7 +201,7 @@ test_abi_compatible!(isize_int, isize, i64);
 // Compatibility of 1-ZST.
 test_abi_compatible!(zst_unit, Zst, ());
 test_abi_compatible!(zst_array, Zst, [u8; 0]);
-test_abi_compatible!(nonzero_int, NonZero<i32>, i32);
+test_abi_compatible!(nonzero_int, pattern_type!(i32 is 1..=0x7FFF_FFFF), i32);
 
 // `#[repr(C)]` enums should not change ABI based on individual variant inhabitedness.
 // (However, this is *not* a guarantee. We only guarantee same layout, not same ABI.)
@@ -318,6 +318,6 @@ test_nonnull!(mut_unsized, &mut [i32]);
 test_nonnull!(fn_, fn());
 test_nonnull!(nonnull, NonNull<i32>);
 test_nonnull!(nonnull_unsized, NonNull<dyn Any>);
-test_nonnull!(non_zero, NonZero<i32>);
+test_nonnull!(non_zero, pattern_type!(i32 is 1..=0x7FFF_FFFF));
 
 fn main() {}
