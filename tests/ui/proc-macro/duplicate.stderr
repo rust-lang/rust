@@ -1,0 +1,14 @@
+error: unused imports: `Empty`, `empty_attr`, and `empty`
+  --> $DIR/duplicate.rs:14:23
+   |
+LL | pub use test_macros::{Empty, empty, empty_attr};
+   |                       ^^^^^  ^^^^^  ^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/duplicate.rs:3:9
+   |
+LL | #![deny(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
