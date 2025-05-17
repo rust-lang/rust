@@ -110,6 +110,8 @@ target | notes
 `x86_64-unknown-linux-musl` | 64-bit Linux with musl 1.2.3
 [`x86_64-unknown-linux-ohos`](platform-support/openharmony.md) | x86_64 OpenHarmony
 [`x86_64-unknown-netbsd`](platform-support/netbsd.md) | NetBSD/amd64
+[`x86_64-pc-solaris`](platform-support/solaris.md) | 64-bit x86 Solaris 11.4
+[`sparcv9-sun-solaris`](platform-support/solaris.md) | SPARC V9 Solaris 11.4
 
 ## Tier 2 without Host Tools
 
@@ -183,7 +185,6 @@ target | std | notes
 `riscv64gc-unknown-none-elf` | * | Bare RISC-V (RV64IMAFDC ISA)
 `riscv64imac-unknown-none-elf` | * | Bare RISC-V (RV64IMAC ISA)
 `sparc64-unknown-linux-gnu` | ✓ | SPARC Linux (kernel 4.4, glibc 2.23)
-[`sparcv9-sun-solaris`](platform-support/solaris.md) | ✓ | SPARC V9 Solaris 11.4
 [`thumbv6m-none-eabi`](platform-support/thumbv6m-none-eabi.md) | * | Bare Armv6-M
 [`thumbv7em-none-eabi`](platform-support/thumbv7em-none-eabi.md) | * | Bare Armv7E-M
 [`thumbv7em-none-eabihf`](platform-support/thumbv7em-none-eabi.md) | * | Bare Armv7E-M, hardfloat
@@ -203,7 +204,6 @@ target | std | notes
 [`x86_64-apple-ios-macabi`](platform-support/apple-ios-macabi.md) | ✓ | Mac Catalyst on x86_64
 [`x86_64-fortanix-unknown-sgx`](platform-support/x86_64-fortanix-unknown-sgx.md) | ✓ | [Fortanix ABI] for 64-bit Intel SGX
 [`x86_64-linux-android`](platform-support/android.md) | ✓ | 64-bit x86 Android
-[`x86_64-pc-solaris`](platform-support/solaris.md) | ✓ | 64-bit x86 Solaris 11.4
 [`x86_64-pc-windows-gnullvm`](platform-support/windows-gnullvm.md) | ✓ | 64-bit x86 MinGW (Windows 10+), LLVM ABI
 [`x86_64-unknown-fuchsia`](platform-support/fuchsia.md) | ✓ | 64-bit x86 Fuchsia
 `x86_64-unknown-linux-gnux32` | ✓ | 64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)
