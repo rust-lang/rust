@@ -3701,7 +3701,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Examples
     ///
-    /// Splitting an array into evens and odds, reusing the original allocation:
+    /// Splitting a vector into even and odd values, reusing the original vector:
     ///
     /// ```
     /// let mut numbers = vec![1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15];

@@ -1137,7 +1137,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     ///
     /// # Examples
     ///
-    /// Splitting a list into evens and odds, reusing the original list:
+    /// Splitting a list into even and odd values, reusing the original list:
     ///
     /// ```
     /// use std::collections::LinkedList;
