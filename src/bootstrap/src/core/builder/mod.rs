@@ -1388,7 +1388,7 @@ impl<'a> Builder<'a> {
         // Windows doesn't need dylib path munging because the dlls for the
         // compiler live next to the compiler and the system will find them
         // automatically.
-        if cfg!(windows) {
+        if cfg!(any(windows, target_os = "cygwin")) {
             return;
         }
 
