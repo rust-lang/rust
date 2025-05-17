@@ -721,6 +721,15 @@ impl fmt::Debug for CString {
     }
 }
 
+/// Delegates to the [`CStr`] implementation of [`fmt::Display`],
+/// showing invalid UTF-8 as the Unicode replacement character.
+#[stable(feature = "cstr_display", since = "CURRENT_RUSTC_VERSION")]
+impl fmt::Display for CString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self.as_c_str(), f)
+    }
+}
+
 #[stable(feature = "cstring_into", since = "1.7.0")]
 impl From<CString> for Vec<u8> {
     /// Converts a [`CString`] into a <code>[Vec]<[u8]></code>.
