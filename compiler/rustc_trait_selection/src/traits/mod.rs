@@ -701,9 +701,15 @@ pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause
         let obligation = Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate);
         ocx.register_obligation(obligation);
     }
-    let errors = ocx.select_all_or_error();
 
-    if !errors.is_empty() {
+    // Use `select_where_possible` to only return impossible for true errors,
+    // and not ambiguities or overflows. Since the new trait solver forces
+    // some currently undetected overlap between `dyn Trait: Trait` built-in
+    // vs user-written impls to AMBIGUOUS, this may return ambiguity even
+    // with no infer vars. There may also be ways to encounter ambiguity due
+    // to post-mono overflow.
+    let true_errors = ocx.select_where_possible();
+    if !true_errors.is_empty() {
         return true;
     }
 
