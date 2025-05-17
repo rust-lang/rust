@@ -285,7 +285,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
         ),
         opt(Stable, FlagMulti, "", "test", "run code examples as tests", ""),
-        opt(Stable, Multi, "", "test-args", "arguments to pass to the test runner", "ARGS"),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "test-arg",
+            "One argument (of possibly many) to pass to the test runner",
+            "ARG",
+        ),
         opt(
             Stable,
             Opt,
@@ -669,6 +676,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
         ),
         // deprecated / removed options
+        opt(
+            Stable,
+            Multi,
+            "",
+            "test-args",
+            "Arguments to pass to the test runner. This option is deprecated, use `--test-arg` instead",
+            "ARGS",
+        ),
         opt(
             Stable,
             Multi,
