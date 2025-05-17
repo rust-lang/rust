@@ -29,15 +29,15 @@
         ],
         "procMacro": {
           "enable": true,
-          "server": "${workspaceFolder}/build/host/stage0/libexec/rust-analyzer-proc-macro-srv"
+          "server": "build/host/stage0/libexec/rust-analyzer-proc-macro-srv"
         },
         "rustc": {
           "source": "./Cargo.toml"
         },
         "rustfmt": {
           "overrideCommand": [
-            "${workspaceFolder}/build/host/rustfmt/bin/rustfmt",
-            "--edition=2021"
+            "build/host/rustfmt/bin/rustfmt",
+            "--edition=2024"
           ]
         },
         "server": {
