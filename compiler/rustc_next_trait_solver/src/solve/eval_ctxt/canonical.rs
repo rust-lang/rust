@@ -12,6 +12,7 @@
 use std::iter;
 
 use rustc_index::IndexVec;
+use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{
@@ -158,10 +159,12 @@ where
             self.compute_external_query_constraints(certainty, normalization_nested_goals);
         let (var_values, mut external_constraints) = (self.var_values, external_constraints)
             .fold_with(&mut EagerResolver::new(self.delegate));
-        // Remove any trivial region constraints once we've resolved regions
-        external_constraints
-            .region_constraints
-            .retain(|outlives| outlives.0.as_region().is_none_or(|re| re != outlives.1));
+
+        // Remove any trivial or duplicated region constraints once we've resolved regions
+        let mut unique = HashSet::default();
+        external_constraints.region_constraints.retain(|outlives| {
+            outlives.0.as_region().is_none_or(|re| re != outlives.1) && unique.insert(*outlives)
+        });
 
         let canonical = Canonicalizer::canonicalize_response(
             self.delegate,
