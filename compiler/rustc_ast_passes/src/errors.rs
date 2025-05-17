@@ -343,7 +343,7 @@ pub(crate) struct ModuleNonAscii {
 #[diag(ast_passes_auto_generic, code = E0567)]
 pub(crate) struct AutoTraitGeneric {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "hidden")]
     pub span: Span,
     #[label]
     pub ident: Span,
@@ -353,8 +353,9 @@ pub(crate) struct AutoTraitGeneric {
 #[diag(ast_passes_auto_super_lifetime, code = E0568)]
 pub(crate) struct AutoTraitBounds {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable")]
-    pub span: Span,
+    pub span: Vec<Span>,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "hidden")]
+    pub removal: Span,
     #[label]
     pub ident: Span,
 }
@@ -364,7 +365,7 @@ pub(crate) struct AutoTraitBounds {
 pub(crate) struct AutoTraitItems {
     #[primary_span]
     pub spans: Vec<Span>,
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "hidden")]
     pub total: Span,
     #[label]
     pub ident: Span,
