@@ -1,5 +1,5 @@
 use crate::utils::{
-    File, FileAction, FileUpdater, RustSearcher, Token, UpdateMode, UpdateStatus, panic_file, update_text_region_fn,
+    ErrAction, File, FileUpdater, RustSearcher, Token, UpdateMode, UpdateStatus, panic_action, update_text_region_fn,
 };
 use itertools::Itertools;
 use std::collections::HashSet;
@@ -203,7 +203,7 @@ fn read_src_with_module(src_root: &Path) -> impl use<'_> + Iterator<Item = (DirE
     WalkDir::new(src_root).into_iter().filter_map(move |e| {
         let e = match e {
             Ok(e) => e,
-            Err(ref e) => panic_file(e, FileAction::Read, src_root),
+            Err(ref e) => panic_action(e, ErrAction::Read, src_root),
         };
         let path = e.path().as_os_str().as_encoded_bytes();
         if let Some(path) = path.strip_suffix(b".rs")

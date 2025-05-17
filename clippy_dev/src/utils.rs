@@ -1,12 +1,14 @@
 use core::fmt::{self, Display};
+use core::ops::Range;
 use core::slice;
 use core::str::FromStr;
 use rustc_lexer::{self as lexer, FrontmatterAllowed};
 use std::env;
+use std::ffi::OsStr;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use std::process::{self, ExitStatus};
+use std::process::{self, Command, ExitStatus, Stdio};
 
 #[cfg(not(windows))]
 static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
@@ -14,15 +16,16 @@ static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
 static CARGO_CLIPPY_EXE: &str = "cargo-clippy.exe";
 
 #[derive(Clone, Copy)]
-pub enum FileAction {
+pub enum ErrAction {
     Open,
     Read,
     Write,
     Create,
     Rename,
     Delete,
+    Run,
 }
-impl FileAction {
+impl ErrAction {
     fn as_str(self) -> &'static str {
         match self {
             Self::Open => "opening",
@@ -31,13 +34,14 @@ impl FileAction {
             Self::Create => "creating",
             Self::Rename => "renaming",
             Self::Delete => "deleting",
+            Self::Run => "running",
         }
     }
 }
 
 #[cold]
 #[track_caller]
-pub fn panic_file(err: &impl Display, action: FileAction, path: &Path) -> ! {
+pub fn panic_action(err: &impl Display, action: ErrAction, path: &Path) -> ! {
     panic!("error {} `{}`: {}", action.as_str(), path.display(), *err)
 }
 
@@ -53,7 +57,7 @@ impl<'a> File<'a> {
         let path = path.as_ref();
         match options.open(path) {
             Ok(inner) => Self { inner, path },
-            Err(e) => panic_file(&e, FileAction::Open, path),
+            Err(e) => panic_action(&e, ErrAction::Open, path),
         }
     }
 
@@ -64,7 +68,7 @@ impl<'a> File<'a> {
         match options.open(path) {
             Ok(inner) => Some(Self { inner, path }),
             Err(e) if e.kind() == io::ErrorKind::NotFound => None,
-            Err(e) => panic_file(&e, FileAction::Open, path),
+            Err(e) => panic_action(&e, ErrAction::Open, path),
         }
     }
 
@@ -82,7 +86,7 @@ impl<'a> File<'a> {
     pub fn read_append_to_string<'dst>(&mut self, dst: &'dst mut String) -> &'dst mut String {
         match self.inner.read_to_string(dst) {
             Ok(_) => {},
-            Err(e) => panic_file(&e, FileAction::Read, self.path),
+            Err(e) => panic_action(&e, ErrAction::Read, self.path),
         }
         dst
     }
@@ -104,7 +108,7 @@ impl<'a> File<'a> {
             Err(e) => Err(e),
         };
         if let Err(e) = res {
-            panic_file(&e, FileAction::Write, self.path);
+            panic_action(&e, ErrAction::Write, self.path);
         }
     }
 }
@@ -166,9 +170,83 @@ impl Version {
     }
 }
 
+enum TomlPart<'a> {
+    Table(&'a str),
+    Value(&'a str, &'a str),
+}
+
+fn toml_iter(s: &str) -> impl Iterator<Item = (usize, TomlPart<'_>)> {
+    let mut pos = 0;
+    s.split('\n')
+        .map(move |s| {
+            let x = pos;
+            pos += s.len() + 1;
+            (x, s)
+        })
+        .filter_map(|(pos, s)| {
+            if let Some(s) = s.strip_prefix('[') {
+                s.split_once(']').map(|(name, _)| (pos, TomlPart::Table(name)))
+            } else if matches!(s.bytes().next(), Some(b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_')) {
+                s.split_once('=').map(|(key, value)| (pos, TomlPart::Value(key, value)))
+            } else {
+                None
+            }
+        })
+}
+
+pub struct CargoPackage<'a> {
+    pub name: &'a str,
+    pub version_range: Range<usize>,
+    pub not_a_platform_range: Range<usize>,
+}
+
+#[must_use]
+pub fn parse_cargo_package(s: &str) -> CargoPackage<'_> {
+    let mut in_package = false;
+    let mut in_platform_deps = false;
+    let mut name = "";
+    let mut version_range = 0..0;
+    let mut not_a_platform_range = 0..0;
+    for (offset, part) in toml_iter(s) {
+        match part {
+            TomlPart::Table(name) => {
+                if in_platform_deps {
+                    not_a_platform_range.end = offset;
+                }
+                in_package = false;
+                in_platform_deps = false;
+
+                match name.trim() {
+                    "package" => in_package = true,
+                    "target.'cfg(NOT_A_PLATFORM)'.dependencies" => {
+                        in_platform_deps = true;
+                        not_a_platform_range.start = offset;
+                    },
+                    _ => {},
+                }
+            },
+            TomlPart::Value(key, value) if in_package => match key.trim_end() {
+                "name" => name = value.trim(),
+                "version" => {
+                    version_range.start = offset + (value.len() - value.trim().len()) + key.len() + 1;
+                    version_range.end = offset + key.len() + value.trim_end().len() + 1;
+                },
+                _ => {},
+            },
+            TomlPart::Value(..) => {},
+        }
+    }
+    CargoPackage {
+        name,
+        version_range,
+        not_a_platform_range,
+    }
+}
+
 pub struct ClippyInfo {
     pub path: PathBuf,
     pub version: Version,
+    pub has_intellij_hook: bool,
 }
 impl ClippyInfo {
     #[must_use]
@@ -178,35 +256,21 @@ impl ClippyInfo {
         loop {
             path.push("Cargo.toml");
             if let Some(mut file) = File::open_if_exists(&path, OpenOptions::new().read(true)) {
-                let mut in_package = false;
-                let mut is_clippy = false;
-                let mut version: Option<Version> = None;
-
-                // Ad-hoc parsing to avoid dependencies. We control all the file so this
-                // isn't actually a problem
-                for line in file.read_to_cleared_string(&mut buf).lines() {
-                    if line.starts_with('[') {
-                        in_package = line.starts_with("[package]");
-                    } else if in_package && let Some((name, value)) = line.split_once('=') {
-                        match name.trim() {
-                            "name" => is_clippy = value.trim() == "\"clippy\"",
-                            "version"
-                                if let Some(value) = value.trim().strip_prefix('"')
-                                    && let Some(value) = value.strip_suffix('"') =>
-                            {
-                                version = value.parse().ok();
-                            },
-                            _ => {},
-                        }
+                file.read_to_cleared_string(&mut buf);
+                let package = parse_cargo_package(&buf);
+                if package.name == "\"clippy\"" {
+                    if let Some(version) = buf[package.version_range].strip_prefix('"')
+                        && let Some(version) = version.strip_suffix('"')
+                        && let Ok(version) = version.parse()
+                    {
+                        path.pop();
+                        return ClippyInfo {
+                            path,
+                            version,
+                            has_intellij_hook: !package.not_a_platform_range.is_empty(),
+                        };
                     }
-                }
-
-                if is_clippy {
-                    let Some(version) = version else {
-                        panic!("error reading clippy version from {}", file.path.display());
-                    };
-                    path.pop();
-                    return ClippyInfo { path, version };
+                    panic!("error reading clippy version from `{}`", file.path.display());
                 }
             }
 
@@ -258,6 +322,11 @@ impl UpdateMode {
     #[must_use]
     pub fn from_check(check: bool) -> Self {
         if check { Self::Check } else { Self::Change }
+    }
+
+    #[must_use]
+    pub fn is_check(self) -> bool {
+        matches!(self, Self::Check)
     }
 }
 
@@ -547,7 +616,7 @@ pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
     match OpenOptions::new().create_new(true).write(true).open(new_name) {
         Ok(file) => drop(file),
         Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
-        Err(ref e) => panic_file(e, FileAction::Create, new_name),
+        Err(ref e) => panic_action(e, ErrAction::Create, new_name),
     }
     match fs::rename(old_name, new_name) {
         Ok(()) => true,
@@ -558,7 +627,7 @@ pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
             if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
                 false
             } else {
-                panic_file(e, FileAction::Rename, old_name);
+                panic_action(e, ErrAction::Rename, old_name);
             }
         },
     }
@@ -569,7 +638,7 @@ pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
     match fs::create_dir(new_name) {
         Ok(()) => {},
         Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
-        Err(ref e) => panic_file(e, FileAction::Create, new_name),
+        Err(ref e) => panic_action(e, ErrAction::Create, new_name),
     }
     // Windows can't reliably rename to an empty directory.
     #[cfg(windows)]
@@ -584,14 +653,55 @@ pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
             if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
                 false
             } else {
-                panic_file(e, FileAction::Rename, old_name);
+                panic_action(e, ErrAction::Rename, old_name);
             }
         },
     }
 }
 
 pub fn write_file(path: &Path, contents: &str) {
-    fs::write(path, contents).unwrap_or_else(|e| panic_file(&e, FileAction::Write, path));
+    fs::write(path, contents).unwrap_or_else(|e| panic_action(&e, ErrAction::Write, path));
+}
+
+#[must_use]
+pub fn run_with_output(path: &(impl AsRef<Path> + ?Sized), cmd: &mut Command) -> Vec<u8> {
+    fn f(path: &Path, cmd: &mut Command) -> Vec<u8> {
+        match cmd
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit())
+            .output()
+        {
+            Ok(x) => match x.status.exit_ok() {
+                Ok(()) => x.stdout,
+                Err(ref e) => panic_action(e, ErrAction::Run, path),
+            },
+            Err(ref e) => panic_action(e, ErrAction::Run, path),
+        }
+    }
+    f(path.as_ref(), cmd)
+}
+
+pub fn run_with_args_split(
+    mut make_cmd: impl FnMut() -> Command,
+    mut run_cmd: impl FnMut(&mut Command),
+    args: impl Iterator<Item: AsRef<OsStr>>,
+) {
+    let mut cmd = make_cmd();
+    let mut len = 0;
+    for arg in args {
+        len += arg.as_ref().len();
+        cmd.arg(arg);
+        // Very conservative limit
+        if len > 10000 {
+            run_cmd(&mut cmd);
+            cmd = make_cmd();
+            len = 0;
+        }
+    }
+    if len != 0 {
+        run_cmd(&mut cmd);
+    }
 }
 
 #[expect(clippy::must_use_candidate)]
@@ -599,7 +709,7 @@ pub fn delete_file_if_exists(path: &Path) -> bool {
     match fs::remove_file(path) {
         Ok(()) => true,
         Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::IsADirectory) => false,
-        Err(ref e) => panic_file(e, FileAction::Delete, path),
+        Err(ref e) => panic_action(e, ErrAction::Delete, path),
     }
 }
 
@@ -607,6 +717,6 @@ pub fn delete_dir_if_exists(path: &Path) {
     match fs::remove_dir_all(path) {
         Ok(()) => {},
         Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) => {},
-        Err(ref e) => panic_file(e, FileAction::Delete, path),
+        Err(ref e) => panic_action(e, ErrAction::Delete, path),
     }
 }
