@@ -12,6 +12,7 @@ use rustc_infer::traits::{
 use rustc_middle::ty::{
     self, DelayedSet, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, TypingMode,
 };
+use rustc_next_trait_solver::delegate::SolverDelegate as _;
 use rustc_next_trait_solver::solve::{GenerateProofTree, HasChanged, SolverDelegateEvalExt as _};
 use rustc_span::Span;
 use tracing::instrument;
@@ -172,7 +173,15 @@ where
                 }
 
                 let goal = obligation.as_goal();
-                let result = <&SolverDelegate<'tcx>>::from(infcx)
+                let delegate = <&SolverDelegate<'tcx>>::from(infcx);
+                if let Some(fast_path_has_changed) =
+                    delegate.compute_goal_fast_path(goal, obligation.cause.span)
+                {
+                    has_changed |= matches!(fast_path_has_changed, HasChanged::Yes);
+                    continue;
+                }
+
+                let result = delegate
                     .evaluate_root_goal(goal, GenerateProofTree::No, obligation.cause.span)
                     .0;
                 self.inspect_evaluated_obligation(infcx, &obligation, &result);
