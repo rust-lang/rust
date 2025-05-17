@@ -2964,6 +2964,10 @@ fn render_code_attribute(prefix: &str, attr: &str, w: &mut impl fmt::Write) {
     write!(w, "<div class=\"code-attribute\">{prefix}{attr}</div>").unwrap();
 }
 
+/// Compute the *public* `#[repr]` of the item given by `DefId`.
+///
+/// Read more about it here:
+/// <https://doc.rust-lang.org/nightly/rustdoc/advanced-features.html#repr-documenting-the-representation-of-a-type>.
 fn repr_attribute<'tcx>(
     tcx: TyCtxt<'tcx>,
     cache: &Cache,
@@ -2975,25 +2979,59 @@ fn repr_attribute<'tcx>(
     };
     let repr = adt.repr();
 
+    let is_visible = |def_id| cache.document_hidden || !tcx.is_doc_hidden(def_id);
+    let is_public_field = |field: &ty::FieldDef| {
+        (cache.document_private || field.vis.is_public()) && is_visible(field.did)
+    };
+
     if repr.transparent() {
-        // Render `repr(transparent)` iff the non-1-ZST field is public or at least one
-        // field is public in case all fields are 1-ZST fields.
-        let render_transparent = cache.document_private
-            || adt
-                .all_fields()
-                .find(|field| {
-                    let ty = field.ty(tcx, ty::GenericArgs::identity_for_item(tcx, field.did));
-                    tcx.layout_of(ty::TypingEnv::post_analysis(tcx, field.did).as_query_input(ty))
-                        .is_ok_and(|layout| !layout.is_1zst())
-                })
-                .map_or_else(
-                    || adt.all_fields().any(|field| field.vis.is_public()),
-                    |field| field.vis.is_public(),
-                );
+        // The transparent repr is public iff the non-1-ZST field is public and visible or
+        // – in case all fields are 1-ZST fields — at least one field is public and visible.
+        let is_public = 'is_public: {
+            // `#[repr(transparent)]` can only be applied to structs and single-variant enums.
+            let var = adt.variant(rustc_abi::FIRST_VARIANT); // the first and only variant
+
+            if !is_visible(var.def_id) {
+                break 'is_public false;
+            }
+
+            // Side note: There can only ever be one or zero non-1-ZST fields.
+            let non_1zst_field = var.fields.iter().find(|field| {
+                let ty = ty::TypingEnv::post_analysis(tcx, field.did)
+                    .as_query_input(tcx.type_of(field.did).instantiate_identity());
+                tcx.layout_of(ty).is_ok_and(|layout| !layout.is_1zst())
+            });
+
+            match non_1zst_field {
+                Some(field) => is_public_field(field),
+                None => var.fields.is_empty() || var.fields.iter().any(is_public_field),
+            }
+        };
 
         // Since the transparent repr can't have any other reprs or
         // repr modifiers beside it, we can safely return early here.
-        return render_transparent.then(|| "#[repr(transparent)]".into());
+        return is_public.then(|| "#[repr(transparent)]".into());
+    }
+
+    // Fast path which avoids looking through the variants and fields in
+    // the common case of no `#[repr]` or in the case of `#[repr(Rust)]`.
+    // FIXME: This check is not very robust / forward compatible!
+    if !repr.c()
+        && !repr.simd()
+        && repr.int.is_none()
+        && repr.pack.is_none()
+        && repr.align.is_none()
+    {
+        return None;
+    }
+
+    // The repr is public iff all components are public and visible.
+    let is_public = adt
+        .variants()
+        .iter()
+        .all(|variant| is_visible(variant.def_id) && variant.fields.iter().all(is_public_field));
+    if !is_public {
+        return None;
     }
 
     let mut result = Vec::<Cow<'_, _>>::new();
@@ -3004,12 +3042,6 @@ fn repr_attribute<'tcx>(
     if repr.simd() {
         result.push("simd".into());
     }
-    if let Some(pack) = repr.pack {
-        result.push(format!("packed({})", pack.bytes()).into());
-    }
-    if let Some(align) = repr.align {
-        result.push(format!("align({})", align.bytes()).into());
-    }
     if let Some(int) = repr.int {
         let prefix = if int.is_signed() { 'i' } else { 'u' };
         let int = match int {
@@ -3019,6 +3051,14 @@ fn repr_attribute<'tcx>(
             }
         };
         result.push(int.into());
+    }
+
+    // Render modifiers last.
+    if let Some(pack) = repr.pack {
+        result.push(format!("packed({})", pack.bytes()).into());
+    }
+    if let Some(align) = repr.align {
+        result.push(format!("align({})", align.bytes()).into());
     }
 
     (!result.is_empty()).then(|| format!("#[repr({})]", result.join(", ")).into())
