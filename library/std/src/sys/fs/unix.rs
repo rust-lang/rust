@@ -1464,6 +1464,15 @@ impl File {
         Ok(n as u64)
     }
 
+    pub fn size(&self) -> Option<io::Result<u64>> {
+        match self.file_attr().map(|attr| attr.size()) {
+            // Fall back to default implementation if the returned size is 0,
+            // we might be in a proc mount.
+            Ok(0) => None,
+            result => Some(result),
+        }
+    }
+
     pub fn tell(&self) -> io::Result<u64> {
         self.seek(SeekFrom::Current(0))
     }
