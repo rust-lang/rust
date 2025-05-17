@@ -101,7 +101,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     &mut candidates,
                 );
             } else {
-                if tcx.is_lang_item(def_id, LangItem::Clone) {
+                if tcx.is_lang_item(def_id, LangItem::Clone)
+                    || tcx.is_lang_item(def_id, LangItem::TrivialClone)
+                {
                     // Same builtin conditions as `Copy`, i.e., every type which has builtin support
                     // for `Copy` also has builtin support for `Clone`, and tuples/arrays of `Clone`
                     // types have builtin support for `Clone`.

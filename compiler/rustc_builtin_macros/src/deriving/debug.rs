@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, EnumDef, MetaItem};
+use rustc_ast::{self as ast, EnumDef, MetaItem, Safety};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::config::FmtDebug;
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -41,6 +41,8 @@ pub(crate) fn expand_deriving_debug(
         }],
         associated_types: Vec::new(),
         is_const,
+        safety: Safety::Default,
+        document: true,
     };
     trait_def.expand(cx, mitem, item, push)
 }

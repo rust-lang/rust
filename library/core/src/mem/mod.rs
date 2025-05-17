@@ -6,6 +6,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::alloc::Layout;
+use crate::clone::TrivialClone;
 use crate::marker::DiscriminantKind;
 use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
 
@@ -1037,6 +1038,10 @@ impl<T> clone::Clone for Discriminant<T> {
         *self
     }
 }
+
+#[doc(hidden)]
+#[unstable(feature = "trivial_clone", issue = "none")]
+unsafe impl<T> TrivialClone for Discriminant<T> {}
 
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 impl<T> cmp::PartialEq for Discriminant<T> {
