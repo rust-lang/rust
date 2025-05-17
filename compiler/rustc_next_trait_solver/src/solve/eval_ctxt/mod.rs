@@ -603,6 +603,11 @@ where
         // If this loop did not result in any progress, what's our final certainty.
         let mut unchanged_certainty = Some(Certainty::Yes);
         for (source, goal) in mem::take(&mut self.nested_goals) {
+            if let Some(()) = self.delegate.compute_goal_fast_path(goal, self.origin_span) {
+                unchanged_certainty = None;
+                continue;
+            }
+
             // We treat normalizes-to goals specially here. In each iteration we take the
             // RHS of the projection, replace it with a fresh inference variable, and only
             // after evaluating that goal do we equate the fresh inference variable with the
