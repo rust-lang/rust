@@ -608,6 +608,12 @@ impl<T: ?Sized> Mutex<T> {
         let data = self.data.get_mut();
         poison::map_result(self.poison.borrow(), |()| data)
     }
+
+    /// Returns a raw pointer to the underlying data.
+    #[unstable(feature = "mutex_data_ptr", issue = "140368")]
+    pub fn data_ptr(&self) -> *mut T {
+        self.data.get()
+    }
 }
 
 #[stable(feature = "mutex_from", since = "1.24.0")]

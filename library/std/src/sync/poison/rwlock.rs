@@ -634,6 +634,12 @@ impl<T: ?Sized> RwLock<T> {
         let data = self.data.get_mut();
         poison::map_result(self.poison.borrow(), |()| data)
     }
+
+    /// Returns a raw pointer to the underlying data.
+    #[unstable(feature = "rwlock_data_ptr", issue = "140368")]
+    pub fn data_ptr(&self) -> *mut T {
+        self.data.get()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
