@@ -1185,7 +1185,7 @@ pub struct Destructor {
 #[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
 pub struct AsyncDestructor {
     /// The `DefId` of the `impl AsyncDrop`
-    pub impl_did: LocalDefId,
+    pub impl_did: DefId,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
