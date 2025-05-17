@@ -28,8 +28,17 @@ pub struct AsmArg {
 pub enum AsmArgKind {
     Template(P<ast::Expr>),
     Operand(Option<Symbol>, ast::InlineAsmOperand),
-    Options(Vec<(Symbol, ast::InlineAsmOptions, Span, Span)>),
+    Options(Vec<AsmOption>),
     ClobberAbi(Vec<(Symbol, Span)>),
+}
+
+pub struct AsmOption {
+    pub symbol: Symbol,
+    pub span: Span,
+    // A bitset, with only the bit for this option's symbol set.
+    pub options: ast::InlineAsmOptions,
+    // Used when suggesting to remove an option.
+    pub span_with_comma: Span,
 }
 
 /// Validated assembly arguments, ready for macro expansion.
@@ -344,20 +353,26 @@ fn validate_asm_args<'a>(
             AsmArgKind::Options(new_options) => {
                 allow_templates = false;
 
-                for (symbol, option, span, full_span) in new_options {
-                    if !asm_macro.is_supported_option(option) {
+                for asm_option in new_options {
+                    let AsmOption { span, symbol, span_with_comma, options } = asm_option;
+
+                    if !asm_macro.is_supported_option(options) {
                         // Tool-only output.
                         dcx.emit_err(errors::AsmUnsupportedOption {
                             span,
                             symbol,
-                            full_span,
+                            span_with_comma,
                             macro_name: asm_macro.macro_name(),
                         });
-                    } else if validated.options.contains(option) {
+                    } else if validated.options.contains(options) {
                         // Tool-only output.
-                        dcx.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
+                        dcx.emit_err(errors::AsmOptAlreadyprovided {
+                            span,
+                            symbol,
+                            span_with_comma,
+                        });
                     } else {
-                        validated.options |= option;
+                        validated.options |= asm_option.options;
                     }
                 }
 
@@ -464,13 +479,10 @@ fn validate_asm_args<'a>(
     Ok(validated)
 }
 
-fn parse_options<'a>(
-    p: &mut Parser<'a>,
-    asm_macro: AsmMacro,
-) -> PResult<'a, Vec<(Symbol, ast::InlineAsmOptions, Span, Span)>> {
+fn parse_options<'a>(p: &mut Parser<'a>, asm_macro: AsmMacro) -> PResult<'a, Vec<AsmOption>> {
     p.expect(exp!(OpenParen))?;
 
-    let mut options = Vec::new();
+    let mut asm_options = Vec::new();
 
     while !p.eat(exp!(CloseParen)) {
         const OPTIONS: [(ExpKeywordPair, ast::InlineAsmOptions); ast::InlineAsmOptions::COUNT] = [
@@ -486,9 +498,9 @@ fn parse_options<'a>(
         ];
 
         'blk: {
-            for (exp, option) in OPTIONS {
+            for (exp, options) in OPTIONS {
                 // Gives a more accurate list of expected next tokens.
-                let kw_matched = if asm_macro.is_supported_option(option) {
+                let kw_matched = if asm_macro.is_supported_option(options) {
                     p.eat_keyword(exp)
                 } else {
                     p.eat_keyword_noexpect(exp.kw)
@@ -496,10 +508,10 @@ fn parse_options<'a>(
 
                 if kw_matched {
                     let span = p.prev_token.span;
-                    let full_span =
+                    let span_with_comma =
                         if p.token == token::Comma { span.to(p.token.span) } else { span };
 
-                    options.push((exp.kw, option, span, full_span));
+                    asm_options.push(AsmOption { symbol: exp.kw, span, options, span_with_comma });
                     break 'blk;
                 }
             }
@@ -514,7 +526,7 @@ fn parse_options<'a>(
         p.expect(exp!(Comma))?;
     }
 
-    Ok(options)
+    Ok(asm_options)
 }
 
 fn parse_clobber_abi<'a>(p: &mut Parser<'a>) -> PResult<'a, Vec<(Symbol, Span)>> {
