@@ -562,6 +562,8 @@ pub enum Conv {
     AvrNonBlockingInterrupt,
 
     RiscvInterrupt { kind: RiscvInterruptKind },
+
+    Custom,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]

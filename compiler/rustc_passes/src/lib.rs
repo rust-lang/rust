@@ -19,6 +19,7 @@ use rustc_middle::query::Providers;
 pub mod abi_test;
 mod check_attr;
 mod check_export;
+mod custom_abi;
 pub mod dead;
 mod debugger_visualizer;
 mod diagnostic_items;
@@ -50,6 +51,7 @@ pub fn provide(providers: &mut Providers) {
     lib_features::provide(providers);
     loops::provide(providers);
     naked_functions::provide(providers);
+    custom_abi::provide(providers);
     liveness::provide(providers);
     reachable::provide(providers);
     stability::provide(providers);
