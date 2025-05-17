@@ -104,20 +104,12 @@ error[E0080]: could not evaluate static initializer
    |
 LL | pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) }; // errors inside libcore
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize
-   |
-note: inside `from_ptr_range::<'_, ()>`
-  --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `std::ptr::const_ptr::<impl *const ()>::offset_from_unsigned`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/forbidden_slices.rs:54:25
    |
 LL |     from_ptr_range(ptr..ptr.add(2)) // errors inside libcore
    |                         ^^^^^^^^^^ in-bounds pointer arithmetic failed: attempting to offset pointer by 8 bytes, but got ALLOC10 which is only 4 bytes from the end of the allocation
-   |
-note: inside `std::ptr::const_ptr::<impl *const u32>::add`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/forbidden_slices.rs:57:1
@@ -170,31 +162,18 @@ error[E0080]: could not evaluate static initializer
    |
 LL |     from_ptr_range(ptr..ptr.add(1))
    |                         ^^^^^^^^^^ in-bounds pointer arithmetic failed: attempting to offset pointer by 8 bytes, but got ALLOC11+0x1 which is only 7 bytes from the end of the allocation
-   |
-note: inside `std::ptr::const_ptr::<impl *const u64>::add`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/forbidden_slices.rs:85:34
    |
 LL | pub static R9: &[u32] = unsafe { from_ptr_range(&D0..(&D0 as *const u32).add(1)) };
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
-   |
-note: inside `from_ptr_range::<'_, u32>`
-  --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `std::ptr::const_ptr::<impl *const u32>::offset_from_unsigned`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/forbidden_slices.rs:87:35
    |
 LL | pub static R10: &[u32] = unsafe { from_ptr_range(&D0..&D0) };
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
-   |
-note: inside `from_ptr_range::<'_, u32>`
-  --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `std::ptr::const_ptr::<impl *const u32>::offset_from_unsigned`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 
 error: aborting due to 18 previous errors
 

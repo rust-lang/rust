@@ -22,6 +22,7 @@ pub(super) const fn from_u32(i: u32) -> Option<char> {
 #[inline]
 #[must_use]
 #[allow(unnecessary_transmutes)]
+#[track_caller]
 pub(super) const unsafe fn from_u32_unchecked(i: u32) -> char {
     // SAFETY: the caller must guarantee that `i` is a valid char value.
     unsafe {

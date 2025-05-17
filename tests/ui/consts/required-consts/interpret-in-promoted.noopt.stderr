@@ -8,9 +8,7 @@ note: inside `ub`
   --> $DIR/interpret-in-promoted.rs:9:5
    |
 LL |     std::hint::unreachable_unchecked();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `unreachable_unchecked`
-  --> $SRC_DIR/core/src/hint.rs:LL:COL
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
 
 note: erroneous constant encountered
   --> $DIR/interpret-in-promoted.rs:15:27

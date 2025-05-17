@@ -29,7 +29,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                 let mut _8: usize;
                 scope 7 {
                     scope 9 (inlined <usize as Step>::forward_unchecked) {
-                        scope 10 (inlined core::num::<impl usize>::unchecked_add) {
+                        scope 10 (inlined #[track_caller] core::num::<impl usize>::unchecked_add) {
                             scope 11 (inlined core::ub_checks::check_language_ub) {
                                 scope 12 (inlined core::ub_checks::check_language_ub::runtime) {
                                 }
