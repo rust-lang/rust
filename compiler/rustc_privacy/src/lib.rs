@@ -20,7 +20,6 @@ use errors::{
 };
 use rustc_ast::MacroDef;
 use rustc_ast::visit::{VisitorResult, try_visit};
-use rustc_attr_parsing::AttributeKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{MultiSpan, listify};
@@ -40,7 +39,7 @@ use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{Ident, Span, Symbol, sym};
 use tracing::debug;
-use {rustc_attr_parsing as attr, rustc_hir as hir};
+use {rustc_attr_data_structures as attrs, rustc_hir as hir};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -497,7 +496,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
         let attrs = self.tcx.hir_attrs(hir_id);
 
-        if attr::find_attr!(attrs, AttributeKind::MacroTransparency(x) => *x)
+        if attrs::find_attr!(attrs, attrs::AttributeKind::MacroTransparency(x) => *x)
             .unwrap_or(Transparency::fallback(md.macro_rules))
             != Transparency::Opaque
         {

@@ -5,7 +5,9 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{ExternAbi, VariantIdx};
-use rustc_attr_parsing::{AttributeKind, ConstStability, Deprecation, Stability, StableSince};
+use rustc_attr_data_structures::{
+    AttributeKind, ConstStability, Deprecation, Stability, StableSince,
+};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -403,13 +405,13 @@ impl Item {
             // versions; the paths that are exposed through it are "deprecated" because they
             // were never supposed to work at all.
             let stab = self.stability(tcx)?;
-            if let rustc_attr_parsing::StabilityLevel::Stable {
+            if let rustc_attr_data_structures::StabilityLevel::Stable {
                 allowed_through_unstable_modules: Some(note),
                 ..
             } = stab.level
             {
                 Some(Deprecation {
-                    since: rustc_attr_parsing::DeprecatedSince::Unspecified,
+                    since: rustc_attr_data_structures::DeprecatedSince::Unspecified,
                     note: Some(note),
                     suggestion: None,
                 })
@@ -777,9 +779,9 @@ impl Item {
                             // don't want it it `Item::attrs`.
                             None
                         }
-                        rustc_hir::Attribute::Parsed(rustc_attr_parsing::AttributeKind::Repr(
-                            ..,
-                        )) => {
+                        rustc_hir::Attribute::Parsed(
+                            rustc_attr_data_structures::AttributeKind::Repr(..),
+                        ) => {
                             // We have separate pretty-printing logic for `#[repr(..)]` attributes.
                             // For example, there are circumstances where `#[repr(transparent)]`
                             // is applied but should not be publicly shown in rustdoc

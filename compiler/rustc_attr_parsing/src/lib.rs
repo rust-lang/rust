@@ -60,7 +60,8 @@
 //! `#[stable(...)]` and `#[unstable()]` cannot occur together, and both semantically define
 //! a "stability" of an item. So, the stability attribute has an
 //! [`AttributeParser`](attributes::AttributeParser) that recognizes both the `#[stable()]`
-//! and `#[unstable()]` syntactic attributes, and at the end produce a single [`AttributeKind::Stability`].
+//! and `#[unstable()]` syntactic attributes, and at the end produce a single
+//! [`AttributeKind::Stability`](rustc_attr_data_structures::AttributeKind::Stability).
 //!
 //! As a rule of thumb, when a syntactical attribute can be applied more than once, they should be
 //! combined into a single semantic attribute. For example:
@@ -91,6 +92,5 @@ mod session_diagnostics;
 pub use attributes::cfg::*;
 pub use attributes::util::{find_crate_name, is_builtin_attr, parse_version};
 pub use context::{AttributeParser, OmitDoc};
-pub use rustc_attr_data_structures::*;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

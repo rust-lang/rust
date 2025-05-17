@@ -5,9 +5,9 @@ use std::mem::replace;
 use std::num::NonZero;
 
 use rustc_ast_lowering::stability::extern_abi_stability;
-use rustc_attr_parsing::{
-    self as attr, AttributeKind, ConstStability, DeprecatedSince, PartialConstStability, Stability,
-    StabilityLevel, StableSince, UnstableReason, VERSION_PLACEHOLDER, find_attr,
+use rustc_attr_data_structures::{
+    self as attrs, AttributeKind, ConstStability, DeprecatedSince, PartialConstStability,
+    Stability, StabilityLevel, StableSince, UnstableReason, VERSION_PLACEHOLDER, find_attr,
 };
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
@@ -121,7 +121,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         let attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
         debug!("annotate(id = {:?}, attrs = {:?})", def_id, attrs);
 
-        let depr = attr::find_attr!(attrs, AttributeKind::Deprecation{deprecation, span} => (*deprecation, *span));
+        let depr = attrs::find_attr!(attrs, AttributeKind::Deprecation{deprecation, span} => (*deprecation, *span));
         let const_stability_indirect = find_attr!(attrs, AttributeKind::ConstStabilityIndirect);
 
         let mut is_deprecated = false;
@@ -174,9 +174,9 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }
 
         // # Regular and body stability
-        let stab = attr::find_attr!(attrs, AttributeKind::Stability { stability, span } => (*stability, *span));
+        let stab = attrs::find_attr!(attrs, AttributeKind::Stability { stability, span } => (*stability, *span));
         let body_stab =
-            attr::find_attr!(attrs, AttributeKind::BodyStability { stability, .. } => *stability);
+            attrs::find_attr!(attrs, AttributeKind::BodyStability { stability, .. } => *stability);
 
         if let Some((depr, span)) = &depr
             && depr.is_since_rustc_version()
@@ -206,7 +206,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             // this is *almost surely* an accident.
             if let (
                 &Some(DeprecatedSince::RustcVersion(dep_since)),
-                &attr::StabilityLevel::Stable { since: stab_since, .. },
+                &attrs::StabilityLevel::Stable { since: stab_since, .. },
             ) = (&depr.as_ref().map(|(d, _)| d.since), &stab.level)
             {
                 match stab_since {
@@ -263,7 +263,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
         // # Const stability
 
-        let const_stab = attr::find_attr!(attrs, AttributeKind::ConstStability { stability, span } => (*stability, *span));
+        let const_stab = attrs::find_attr!(attrs, AttributeKind::ConstStability { stability, span } => (*stability, *span));
 
         // If the current node is a function with const stability attributes (directly given or
         // implied), check if the function/method is const or the parent impl block is const.
@@ -713,7 +713,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
         // by default and are unable to be used.
         if tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
             let stability = Stability {
-                level: attr::StabilityLevel::Unstable {
+                level: attrs::StabilityLevel::Unstable {
                     reason: UnstableReason::Default,
                     issue: NonZero::new(27812),
                     is_soft: false,
@@ -796,17 +796,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 let features = self.tcx.features();
                 if features.staged_api() {
                     let attrs = self.tcx.hir_attrs(item.hir_id());
-                    let stab = attr::find_attr!(attrs, AttributeKind::Stability{stability, span} => (*stability, *span));
+                    let stab = attrs::find_attr!(attrs, AttributeKind::Stability{stability, span} => (*stability, *span));
 
                     // FIXME(jdonszelmann): make it impossible to miss the or_else in the typesystem
-                    let const_stab = attr::find_attr!(attrs, AttributeKind::ConstStability{stability, ..} => *stability);
+                    let const_stab = attrs::find_attr!(attrs, AttributeKind::ConstStability{stability, ..} => *stability);
 
                     // If this impl block has an #[unstable] attribute, give an
                     // error if all involved types and traits are stable, because
                     // it will have no effect.
                     // See: https://github.com/rust-lang/rust/issues/55436
                     if let Some((
-                        Stability { level: attr::StabilityLevel::Unstable { .. }, .. },
+                        Stability { level: attrs::StabilityLevel::Unstable { .. }, .. },
                         span,
                     )) = stab
                     {

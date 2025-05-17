@@ -6,7 +6,7 @@ use clippy_utils::source::SpanRangeExt;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use rustc_ast::ast::LitKind;
-use rustc_attr_parsing::RustcVersion;
+use rustc_attr_data_structures::RustcVersion;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, UnOp};

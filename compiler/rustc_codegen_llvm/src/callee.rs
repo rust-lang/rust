@@ -103,7 +103,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
             // This is a monomorphization of a generic function.
             if !(cx.tcx.sess.opts.share_generics()
                 || tcx.codegen_fn_attrs(instance_def_id).inline
-                    == rustc_attr_parsing::InlineAttr::Never)
+                    == rustc_attr_data_structures::InlineAttr::Never)
             {
                 // When not sharing generics, all instances are in the same
                 // crate and have hidden visibility.
