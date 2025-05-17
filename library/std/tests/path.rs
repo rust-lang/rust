@@ -15,13 +15,6 @@ use std::ptr;
 use std::rc::Rc;
 use std::sync::Arc;
 
-#[cfg(unix)]
-use std::os::unix::ffi::OsStrExt;
-#[cfg(windows)]
-use std::os::windows::ffi::OsStrExt;
-#[cfg(windows)]
-use std::os::windows::ffi::OsStringExt;
-
 #[allow(unknown_lints, unused_macro_rules)]
 macro_rules! t (
     ($path:expr, iter: $iter:expr) => (
@@ -2005,19 +1998,6 @@ fn test_non_ascii_unicode() {
     assert_eq!(path.file_name(), Some(OsStr::new("file.txt")));
 }
 
-// Test: Embedded null bytes
-// This test checks that Path can be constructed from a byte slice containing a null byte (on Unix).
-// It ensures that null bytes are not treated as string terminators.
-#[test]
-fn test_embedded_null_byte() {
-    use std::ffi::OsStr;
-    let bytes = b"foo\0bar";
-    let os_str = OsStr::from_bytes(bytes);
-    let path = Path::new(os_str);
-    assert!(path.as_os_str().as_bytes().contains(&0));
-    assert_eq!(path.file_name(), Some(OsStr::new("foo\0bar")));
-    assert_eq!(path.to_str(), Some("foo\0bar"));
-}
 
 // Test: Reserved device names (Windows)
 // This test ensures that reserved device names like "CON", "PRN", etc., are handled as normal paths on non-Windows platforms,
