@@ -1235,7 +1235,7 @@ pub fn test_push() {
         tp!("foo//", "bar", r"foo//bar");
         tp!(r"foo\\", "bar", r"foo\\bar");
         tp!("foo/.", "bar", r"foo/.\bar");
-        tp!("foo./.", "bar", r"foo././bar");
+        tp!("foo./.", "bar", r"foo./.\bar");
         tp!(r"foo\.", "bar", r"foo\.\bar");
         tp!(r"foo.\.", "bar", r"foo.\.\bar");
         tp!("foo", "", "foo\\");
