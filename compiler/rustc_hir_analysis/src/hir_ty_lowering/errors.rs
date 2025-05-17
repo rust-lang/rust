@@ -24,6 +24,7 @@ use rustc_trait_selection::traits::{
 };
 use smallvec::SmallVec;
 
+use super::InherentAssocCandidate;
 use crate::errors::{
     self, AssocItemConstraintsNotAllowedHere, ManualImplementation, MissingTypeParams,
     ParenthesizedFnTraitExpansion, TraitObjectDeclaredWithNoTraits,
@@ -570,7 +571,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         name: Ident,
         self_ty: Ty<'tcx>,
-        candidates: Vec<(DefId, (DefId, DefId))>,
+        candidates: Vec<InherentAssocCandidate>,
         fulfillment_errors: Vec<FulfillmentError<'tcx>>,
         span: Span,
         assoc_tag: ty::AssocTag,
@@ -604,8 +605,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let type_candidates = candidates
                 .iter()
                 .take(limit)
-                .map(|&(impl_, _)| {
-                    format!("- `{}`", tcx.at(span).type_of(impl_).instantiate_identity())
+                .map(|cand| {
+                    format!("- `{}`", tcx.at(span).type_of(cand.impl_).instantiate_identity())
                 })
                 .collect::<Vec<_>>()
                 .join("\n");
