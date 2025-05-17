@@ -1,0 +1,33 @@
+// MIR for `foo_mut` after built
+
+fn foo_mut(_1: Pin<&mut Foo<T, U>>) -> () {
+    debug foo => _1;
+    let mut _0: ();
+    let _2: std::pin::Pin<&mut T>;
+    let _3: std::pin::Pin<&mut U>;
+    let mut _4: &mut T;
+    let mut _5: &mut U;
+    scope 1 {
+        debug x => _2;
+        debug y => _3;
+    }
+
+    bb0: {
+        PlaceMention(_1);
+        StorageLive(_2);
+        _4 = &mut ((*(_1.0: &mut Foo<T, U>)).0: T);
+        _2 = Pin::<&mut T> { pointer: move _4 };
+        StorageLive(_3);
+        _5 = &mut ((*(_1.0: &mut Foo<T, U>)).1: U);
+        _3 = Pin::<&mut U> { pointer: move _5 };
+        _0 = const ();
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
+    }
+
+    bb1: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+}
