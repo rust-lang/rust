@@ -2289,12 +2289,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         elements: &'hir [hir::Expr<'hir>],
     ) -> hir::Expr<'hir> {
-        let addrof = hir::ExprKind::AddrOf(
-            hir::BorrowKind::Ref,
-            hir::Mutability::Not,
-            self.arena.alloc(self.expr(span, hir::ExprKind::Array(elements))),
-        );
-        self.expr(span, addrof)
+        let array = self.arena.alloc(self.expr(span, hir::ExprKind::Array(elements)));
+        self.expr_ref(span, array)
+    }
+
+    pub(super) fn expr_ref(&mut self, span: Span, expr: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {
+        self.expr(span, hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, expr))
     }
 
     pub(super) fn expr(&mut self, span: Span, kind: hir::ExprKind<'hir>) -> hir::Expr<'hir> {
