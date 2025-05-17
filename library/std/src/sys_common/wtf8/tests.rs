@@ -575,6 +575,17 @@ fn wtf8_encode_wide_size_hint() {
 }
 
 #[test]
+fn wtf8_encode_wide_debug() {
+    let mut string = Wtf8Buf::from_str("aé ");
+    string.push(CodePoint::from_u32(0xD83D).unwrap());
+    string.push_char('💩');
+    assert_eq!(
+        format!("{:?}", string.encode_wide()),
+        r#"EncodeWide([97, 233, 32, 55357, 55357, 56489])"#
+    );
+}
+
+#[test]
 fn wtf8_clone_into() {
     let mut string = Wtf8Buf::new();
     Wtf8::from_str("green").clone_into(&mut string);
