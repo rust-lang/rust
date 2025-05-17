@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use libc::c_uint;
-use rustc_abi::{Align, Endian, Size, TagEncoding, VariantIdx, Variants};
+use rustc_abi::{Align, Endian, FieldIdx, Size, TagEncoding, VariantIdx, Variants};
 use rustc_codegen_ssa::debuginfo::type_names::compute_debuginfo_type_name;
 use rustc_codegen_ssa::debuginfo::{tag_base_type, wants_c_like_enum_debuginfo};
 use rustc_codegen_ssa::traits::{ConstCodegenMethods, MiscCodegenMethods};
@@ -401,7 +401,7 @@ fn build_union_fields_for_enum<'ll, 'tcx>(
     enum_type_and_layout: TyAndLayout<'tcx>,
     enum_type_di_node: &'ll DIType,
     variant_indices: impl Iterator<Item = VariantIdx> + Clone,
-    tag_field: usize,
+    tag_field: FieldIdx,
     untagged_variant_index: Option<VariantIdx>,
 ) -> SmallVec<&'ll DIType> {
     let tag_base_type = tag_base_type(cx.tcx, enum_type_and_layout);
@@ -805,7 +805,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
     variant_field_infos: &[VariantFieldInfo<'ll>],
     discr_type_di_node: &'ll DIType,
     tag_base_type: Ty<'tcx>,
-    tag_field: usize,
+    tag_field: FieldIdx,
     untagged_variant_index: Option<VariantIdx>,
     di_flags: DIFlags,
 ) -> SmallVec<&'ll DIType> {
@@ -858,7 +858,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
     }));
 
     assert_eq!(
-        cx.size_and_align_of(enum_type_and_layout.field(cx, tag_field).ty),
+        cx.size_and_align_of(enum_type_and_layout.field(cx, tag_field.as_usize()).ty),
         cx.size_and_align_of(self::tag_base_type(cx.tcx, enum_type_and_layout))
     );
 
@@ -875,7 +875,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
             Endian::Big => (8, 0),
         };
 
-        let tag_field_offset = enum_type_and_layout.fields.offset(tag_field).bytes();
+        let tag_field_offset = enum_type_and_layout.fields.offset(tag_field.as_usize()).bytes();
         let lo_offset = Size::from_bytes(tag_field_offset + lo_offset);
         let hi_offset = Size::from_bytes(tag_field_offset + hi_offset);
 
@@ -905,8 +905,8 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
             cx,
             enum_type_di_node,
             TAG_FIELD_NAME,
-            enum_type_and_layout.field(cx, tag_field),
-            enum_type_and_layout.fields.offset(tag_field),
+            enum_type_and_layout.field(cx, tag_field.as_usize()),
+            enum_type_and_layout.fields.offset(tag_field.as_usize()),
             di_flags,
             tag_base_type_di_node,
             None,

@@ -1,4 +1,4 @@
-use rustc_abi::{AddressSpace, Float, Integer, Reg};
+use rustc_abi::{AddressSpace, Float, Integer, Primitive, Reg, Scalar};
 use rustc_middle::bug;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
@@ -71,6 +71,24 @@ pub trait DerivedTypeCodegenMethods<'tcx>:
             F64 => self.type_f64(),
             F128 => self.type_f128(),
         }
+    }
+
+    fn type_from_primitive(&self, p: Primitive) -> Self::Type {
+        use Primitive::*;
+        match p {
+            Int(i, _) => self.type_from_integer(i),
+            Float(f) => self.type_from_float(f),
+            Pointer(address_space) => self.type_ptr_ext(address_space),
+        }
+    }
+
+    fn type_from_scalar(&self, s: Scalar) -> Self::Type {
+        // `MaybeUninit` being `repr(transparent)` somewhat implies that the type
+        // of a scalar has to be the type of its primitive (which is true in LLVM,
+        // where noundef is a parameter attribute or metadata) but if we ever get
+        // a backend where that's no longer true, every use of this will need to
+        // to carefully scrutinized and re-evaluated.
+        self.type_from_primitive(s.primitive())
     }
 
     fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
