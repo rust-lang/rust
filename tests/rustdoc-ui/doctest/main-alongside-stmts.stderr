@@ -1,0 +1,14 @@
+warning: the `main` function of this doctest won't be run as it contains expressions at the top level, meaning that the whole doctest code will be wrapped in a function
+  --> $DIR/main-alongside-stmts.rs:17:1
+   |
+17 | //! ```
+   | ^^^^^^^
+
+warning: the `main` function of this doctest won't be run as it contains expressions at the top level, meaning that the whole doctest code will be wrapped in a function
+  --> $DIR/main-alongside-stmts.rs:26:1
+   |
+26 | //! ```
+   | ^^^^^^^
+
+warning: 2 warnings emitted
+
