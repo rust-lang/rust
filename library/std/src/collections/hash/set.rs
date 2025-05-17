@@ -276,10 +276,10 @@ impl<T, S> HashSet<T, S> {
         Drain { base: self.base.drain() }
     }
 
-    /// Creates an iterator which uses a closure to determine if a value should be removed.
+    /// Creates an iterator which uses a closure to determine if an element should be removed.
     ///
-    /// If the closure returns true, then the value is removed and yielded.
-    /// If the closure returns false, the value will remain in the list and will not be yielded
+    /// If the closure returns true, then the element is removed and yielded.
+    /// If the closure returns false, the element will remain in the list and will not be yielded
     /// by the iterator.
     ///
     /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
