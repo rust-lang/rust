@@ -1413,6 +1413,7 @@ pub mod parse {
                 "mcdc" => slot.level = CoverageLevel::Mcdc,
                 "no-mir-spans" => slot.no_mir_spans = true,
                 "discard-all-spans-in-codegen" => slot.discard_all_spans_in_codegen = true,
+                "inject-unused-local-file" => slot.inject_unused_local_file = true,
                 _ => return false,
             }
         }
