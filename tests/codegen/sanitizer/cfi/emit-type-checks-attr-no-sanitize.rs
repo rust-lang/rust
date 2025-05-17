@@ -1,10 +1,9 @@
 // Verifies that pointer type membership tests for indirect calls are omitted.
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Copt-level=0
+//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zunstable-options -Csanitize=cfi -Copt-level=0
 
 #![crate_type = "lib"]
-#![feature(no_sanitize)]
 
 #[no_sanitize(cfi)]
 pub fn foo(f: fn(i32) -> i32, arg: i32) -> i32 {

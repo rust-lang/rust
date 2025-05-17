@@ -23,6 +23,7 @@ pub(crate) fn target() -> Target {
                 | SanitizerSet::CFI
                 | SanitizerSet::LEAK
                 | SanitizerSet::THREAD,
+            stable_sanitizers: SanitizerSet::ADDRESS | SanitizerSet::LEAK,
             ..opts
         },
     }
