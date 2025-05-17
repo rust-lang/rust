@@ -32,7 +32,7 @@ LL | |     }
    |
 help: collapse nested if block
    |
-LL ~     if x == "hello"  // Inner comment
+LL ~     if x == "hello" // Inner comment
 LL ~         && y == "world" {
 LL |             println!("Hello world!");
 LL ~         }
@@ -70,7 +70,7 @@ LL | |     }
    |
 help: collapse nested if block
    |
-LL ~     if x == "hello"  /* Inner comment */
+LL ~     if x == "hello" /* Inner comment */
 LL ~         && y == "world" {
 LL |             println!("Hello world!");
 LL ~         }

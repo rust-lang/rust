@@ -55,7 +55,7 @@ pub(super) fn check_impl_item<'tcx>(
     // Don't lint if method is a trait's implementation, we can't do anything about those
     if let hir::ImplItemKind::Fn(ref sig, _) = item.kind
         && let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.owner_id.def_id, item.span)
-        && trait_ref_of_method(cx, item.owner_id.def_id).is_none()
+        && trait_ref_of_method(cx, item.owner_id).is_none()
     {
         if cx.effective_visibilities.is_exported(item.owner_id.def_id) {
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());

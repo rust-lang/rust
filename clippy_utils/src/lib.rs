@@ -523,12 +523,8 @@ pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>
 ///     }
 /// }
 /// ```
-pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, def_id: LocalDefId) -> Option<&'tcx TraitRef<'tcx>> {
-    // Get the implemented trait for the current function
-    let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
-    let parent_impl = cx.tcx.hir_get_parent_item(hir_id);
-    if parent_impl != hir::CRATE_OWNER_ID
-        && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent_impl.def_id)
+pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, owner: OwnerId) -> Option<&'tcx TraitRef<'tcx>> {
+    if let Node::Item(item) = cx.tcx.hir_node(cx.tcx.hir_owner_parent(owner))
         && let ItemKind::Impl(impl_) = &item.kind
     {
         return impl_.of_trait.as_ref();

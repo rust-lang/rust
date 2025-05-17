@@ -258,7 +258,7 @@ fn lint_branches_sharing_code<'tcx>(
         let span = span.with_hi(last_block.span.hi());
         // Improve formatting if the inner block has indentation (i.e. normal Rust formatting)
         let span = span
-            .map_range(cx, |src, range| {
+            .map_range(cx, |_, src, range| {
                 (range.start > 4 && src.get(range.start - 4..range.start)? == "    ")
                     .then_some(range.start - 4..range.end)
             })
