@@ -1,5 +1,5 @@
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/enums.rs:22:14
+  --> tests/ui/borrow_interior_mutable_const/enums.rs:25:14
    |
 LL |     let _ = &UNFROZEN_VARIANT;
    |              ^^^^^^^^^^^^^^^^
@@ -12,23 +12,7 @@ LL | #![deny(clippy::borrow_interior_mutable_const)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/enums.rs:37:18
-   |
-LL |         let _ = &Self::TO_BE_FROZEN_VARIANT;
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: assign this const to a local or static variable, and use the variable here
-
-error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/enums.rs:41:18
-   |
-LL |         let _ = &Self::DEFAULTED_ON_FROZEN_VARIANT;
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: assign this const to a local or static variable, and use the variable here
-
-error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/enums.rs:50:18
+  --> tests/ui/borrow_interior_mutable_const/enums.rs:53:18
    |
 LL |         let _ = &<Self as AssocConsts>::TO_BE_UNFROZEN_VARIANT;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -36,7 +20,7 @@ LL |         let _ = &<Self as AssocConsts>::TO_BE_UNFROZEN_VARIANT;
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/enums.rs:52:18
+  --> tests/ui/borrow_interior_mutable_const/enums.rs:55:18
    |
 LL |         let _ = &Self::DEFAULTED_ON_UNFROZEN_VARIANT;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,7 +28,7 @@ LL |         let _ = &Self::DEFAULTED_ON_UNFROZEN_VARIANT;
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/enums.rs:74:18
+  --> tests/ui/borrow_interior_mutable_const/enums.rs:77:18
    |
 LL |         let _ = &<Self as AssocTypes>::TO_BE_UNFROZEN_VARIANT;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -52,28 +36,12 @@ LL |         let _ = &<Self as AssocTypes>::TO_BE_UNFROZEN_VARIANT;
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/enums.rs:91:18
-   |
-LL |         let _ = &Self::UNFROZEN_VARIANT;
-   |                  ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: assign this const to a local or static variable, and use the variable here
-
-error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/enums.rs:92:18
-   |
-LL |         let _ = &Self::GENERIC_VARIANT;
-   |                  ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: assign this const to a local or static variable, and use the variable here
-
-error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/enums.rs:99:14
+  --> tests/ui/borrow_interior_mutable_const/enums.rs:102:14
    |
 LL |     let _ = &helper::WRAPPED_PRIVATE_UNFROZEN_VARIANT;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
-error: aborting due to 9 previous errors
+error: aborting due to 5 previous errors
 

@@ -78,6 +78,11 @@ middle_erroneous_constant = erroneous constant encountered
 middle_failed_writing_file =
     failed to write file {$path}: {$error}"
 
+# Note: We only mention patterns here since the error can only occur with references, and those
+# are forbidden in const generics.
+middle_invalid_const_in_valtree = constant {$global_const_id} cannot be used as pattern
+    .note = constants that reference mutable or external memory cannot be used as pattern
+
 middle_layout_cycle =
     a cycle occurred during layout computation
 
@@ -94,6 +99,8 @@ middle_layout_too_generic = the type `{$ty}` does not have a fixed layout
 
 middle_layout_unknown =
     the type `{$ty}` has an unknown layout
+
+middle_max_num_nodes_in_valtree = maximum number of nodes exceeded in constant {$global_const_id}
 
 middle_opaque_hidden_type_mismatch =
     concrete type differs from previous defining opaque type use

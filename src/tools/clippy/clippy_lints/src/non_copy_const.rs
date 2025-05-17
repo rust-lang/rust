@@ -12,7 +12,7 @@ use rustc_hir::{
     BodyId, Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId, ReportedErrorInfo};
+use rustc_middle::mir::interpret::{ErrorHandled, GlobalId};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
@@ -232,7 +232,7 @@ impl<'tcx> NonCopyConst<'tcx> {
         ty: Ty<'tcx>,
     ) -> bool {
         result.map_or_else(
-            |err| {
+            |_err| {
                 // Consider `TooGeneric` cases as being unfrozen.
                 // This causes a false positive where an assoc const whose type is unfrozen
                 // have a value that is a frozen variant with a generic param (an example is
@@ -254,9 +254,16 @@ impl<'tcx> NonCopyConst<'tcx> {
                 // similar to 2., but with a frozen variant) (e.g. borrowing
                 // `borrow_interior_mutable_const::enums::AssocConsts::TO_BE_FROZEN_VARIANT`).
                 // I chose this way because unfrozen enums as assoc consts are rare (or, hopefully, none).
-                matches!(err, ErrorHandled::TooGeneric(..))
+
+                // Update (2025-05-12): After some compiler refactoring, the number of false positives
+                // caused by this has drastically increased, so we no longer warn against generic consts.
+                false
             },
-            |val| val.map_or(true, |val| Self::is_value_unfrozen_raw_inner(cx, val, ty)),
+            |val| {
+                // FIXME: The `true` here leads to false positives for any constant with a
+                // non-valtree-compatible type.
+                val.map_or(true, |val| Self::is_value_unfrozen_raw_inner(cx, val, ty))
+            },
         )
     }
 
@@ -269,42 +276,16 @@ impl<'tcx> NonCopyConst<'tcx> {
             promoted: None,
         };
         let typing_env = ty::TypingEnv::post_analysis(cx.tcx, def_id);
+        // We do *not* want to "resolve" this `cid`, that seems to help the lint evaluate more contants.
         let result = cx.tcx.const_eval_global_id_for_typeck(typing_env, cid, DUMMY_SP);
         Self::is_value_unfrozen_raw(cx, result, ty)
     }
 
     fn is_value_unfrozen_expr(cx: &LateContext<'tcx>, hir_id: HirId, def_id: DefId, ty: Ty<'tcx>) -> bool {
         let args = cx.typeck_results().node_args(hir_id);
-
-        let result = Self::const_eval_resolve(
-            cx.tcx,
-            cx.typing_env(),
-            ty::UnevaluatedConst::new(def_id, args),
-            DUMMY_SP,
-        );
+        let const_ = ty::UnevaluatedConst::new(def_id, args);
+        let result = cx.tcx.const_eval_resolve_for_typeck(cx.typing_env(), const_, DUMMY_SP);
         Self::is_value_unfrozen_raw(cx, result, ty)
-    }
-
-    pub fn const_eval_resolve(
-        tcx: TyCtxt<'tcx>,
-        typing_env: ty::TypingEnv<'tcx>,
-        ct: ty::UnevaluatedConst<'tcx>,
-        span: Span,
-    ) -> EvalToValTreeResult<'tcx> {
-        match ty::Instance::try_resolve(tcx, typing_env, ct.def, ct.args) {
-            Ok(Some(instance)) => {
-                let cid = GlobalId {
-                    instance,
-                    promoted: None,
-                };
-                tcx.const_eval_global_id_for_typeck(typing_env, cid, span)
-            },
-            Ok(None) => Err(ErrorHandled::TooGeneric(span)),
-            Err(err) => Err(ErrorHandled::Reported(
-                ReportedErrorInfo::non_const_eval_error(err),
-                span,
-            )),
-        }
     }
 }
 
