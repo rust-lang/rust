@@ -3648,11 +3648,11 @@ impl<T, A: Allocator> Vec<T, A> {
         Splice { drain: self.drain(range), replace_with: replace_with.into_iter() }
     }
 
-    /// Creates an iterator which uses a closure to determine if element in the range should be removed.
+    /// Creates an iterator which uses a closure to determine if an element in the range should be removed.
     ///
-    /// If the closure returns true, then the element is removed and yielded.
-    /// If the closure returns false, the element will remain in the vector and will not be yielded
-    /// by the iterator.
+    /// If the closure returns `true`, the element is removed from the vector
+    /// and yielded. If the closure returns `false`, or panics, the element
+    /// remains in the vector and will not be yielded.
     ///
     /// Only elements that fall in the provided range are considered for extraction, but any elements
     /// after the range will still have to be moved if any element has been extracted.
@@ -3692,8 +3692,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// But `extract_if` is easier to use. `extract_if` is also more efficient,
     /// because it can backshift the elements of the array in bulk.
     ///
-    /// Note that `extract_if` also lets you mutate the elements passed to the filter closure,
-    /// regardless of whether you choose to keep or remove them.
+    /// The iterator also lets you mutate the value of each element in the
+    /// closure, regardless of whether you choose to keep or remove it.
     ///
     /// # Panics
     ///
@@ -3701,7 +3701,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Examples
     ///
-    /// Splitting an array into evens and odds, reusing the original allocation:
+    /// Splitting a vector into even and odd values, reusing the original vector:
     ///
     /// ```
     /// let mut numbers = vec![1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15];
