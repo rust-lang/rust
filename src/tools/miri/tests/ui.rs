@@ -318,10 +318,10 @@ fn main() -> Result<()> {
     let mut args = std::env::args_os();
 
     // Skip the program name and check whether this is a `./miri run-dep` invocation
-    if let Some(first) = args.nth(1) {
-        if first == "--miri-run-dep-mode" {
-            return run_dep_mode(target, args);
-        }
+    if let Some(first) = args.nth(1)
+        && first == "--miri-run-dep-mode"
+    {
+        return run_dep_mode(target, args);
     }
 
     ui(Mode::Pass, "tests/pass", &target, WithoutDependencies, tmpdir.path())?;

@@ -675,11 +675,9 @@ impl Command {
         let mut early_flags = Vec::<OsString>::new();
 
         // In `dep` mode, the target is already passed via `MIRI_TEST_TARGET`
-        if !dep {
-            if let Some(target) = &target {
-                early_flags.push("--target".into());
-                early_flags.push(target.into());
-            }
+        if !dep && let Some(target) = &target {
+            early_flags.push("--target".into());
+            early_flags.push(target.into());
         }
         early_flags.push("--edition".into());
         early_flags.push(edition.as_deref().unwrap_or("2021").into());
@@ -707,10 +705,8 @@ impl Command {
         // Add Miri flags
         let mut cmd = cmd.args(&miri_flags).args(&early_flags).args(&flags);
         // For `--dep` we also need to set the target in the env var.
-        if dep {
-            if let Some(target) = &target {
-                cmd = cmd.env("MIRI_TEST_TARGET", target);
-            }
+        if dep && let Some(target) = &target {
+            cmd = cmd.env("MIRI_TEST_TARGET", target);
         }
         // Finally, run the thing.
         Ok(cmd.run()?)
