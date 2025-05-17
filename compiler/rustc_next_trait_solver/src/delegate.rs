@@ -55,6 +55,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         &self,
         cv_info: ty::CanonicalVarInfo<Self::Interner>,
         span: <Self::Interner as Interner>::Span,
+        var_values: &[<Self::Interner as Interner>::GenericArg],
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> <Self::Interner as Interner>::GenericArg;
     fn add_item_bounds_for_hidden_type(
