@@ -648,7 +648,7 @@ impl<K, V, S> HashMap<K, V, S> {
         Drain { base: self.base.drain() }
     }
 
-    /// Creates an iterator which uses a closure to determine if an element should be removed.
+    /// Creates an iterator which uses a closure to determine if an element (key-value pair) should be removed.
     ///
     /// If the closure returns `true`, the element is removed from the map and
     /// yielded. If the closure returns `false`, or panics, the element remains
