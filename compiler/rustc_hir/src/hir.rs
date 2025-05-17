@@ -4844,35 +4844,17 @@ impl<'hir> Node<'hir> {
         match self {
             Node::Item(Item {
                 owner_id,
-                kind:
-                    ItemKind::Const(
-                        ..,
-                        ConstArg { kind: ConstArgKind::Anon(AnonConst { body, .. }), .. },
-                    )
-                    | ItemKind::Static(.., body)
-                    | ItemKind::Fn { body, .. },
+                kind: ItemKind::Static(.., body) | ItemKind::Fn { body, .. },
                 ..
             })
             | Node::TraitItem(TraitItem {
                 owner_id,
-                kind:
-                    TraitItemKind::Const(
-                        _,
-                        Some(ConstArg { kind: ConstArgKind::Anon(AnonConst { body, .. }), .. }),
-                    )
-                    | TraitItemKind::Fn(_, TraitFn::Provided(body)),
+                kind: TraitItemKind::Fn(_, TraitFn::Provided(body)),
                 ..
             })
-            | Node::ImplItem(ImplItem {
-                owner_id,
-                kind:
-                    ImplItemKind::Const(
-                        _,
-                        ConstArg { kind: ConstArgKind::Anon(AnonConst { body, .. }), .. },
-                    )
-                    | ImplItemKind::Fn(_, body),
-                ..
-            }) => Some((owner_id.def_id, *body)),
+            | Node::ImplItem(ImplItem { owner_id, kind: ImplItemKind::Fn(_, body), .. }) => {
+                Some((owner_id.def_id, *body))
+            }
 
             Node::Item(Item {
                 owner_id, kind: ItemKind::GlobalAsm { asm: _, fake_body }, ..
