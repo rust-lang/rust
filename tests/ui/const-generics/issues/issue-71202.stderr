@@ -59,5 +59,49 @@ LL +         <IsCopy<T>>::VALUE
 LL ~     } as usize]: = [];
    |
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/issue-71202.rs:28:19
+   |
+LL |     } as usize] = [];
+   |                   ^^ expected `1 - {
+        trait NotCopy {
+            const VALUE: bool = false;
+        }
 
+        impl<__Type: ?Sized> NotCopy for __Type {}
+
+        struct IsCopy<__Type: ?Sized>(PhantomData<__Type>);
+
+        impl<__Type> IsCopy<__Type>
+        where
+            __Type: Sized + Copy,
+        {
+            const VALUE: bool = true;
+        }
+
+        <IsCopy<T>>::VALUE
+    } as usize`, found `0`
+   |
+   = note: expected constant `1 - {
+                   trait NotCopy {
+                       const VALUE: bool = false;
+                   }
+           
+                   impl<__Type: ?Sized> NotCopy for __Type {}
+           
+                   struct IsCopy<__Type: ?Sized>(PhantomData<__Type>);
+           
+                   impl<__Type> IsCopy<__Type>
+                   where
+                       __Type: Sized + Copy,
+                   {
+                       const VALUE: bool = true;
+                   }
+           
+                   <IsCopy<T>>::VALUE
+               } as usize`
+              found constant `0`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
