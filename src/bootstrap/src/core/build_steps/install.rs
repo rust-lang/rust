@@ -244,7 +244,7 @@ install!((self, builder, _config),
             );
         }
     };
-    LlvmTools, alias = "llvm-tools", Self::should_build(_config), only_hosts: true, {
+    LlvmTools, alias = "llvm-tools", _config.llvm_tools_enabled && _config.llvm_enabled(_config.build), only_hosts: true, {
         if let Some(tarball) = builder.ensure(dist::LlvmTools { target: self.target }) {
             install_sh(builder, "llvm-tools", self.compiler.stage, Some(self.target), &tarball);
         } else {

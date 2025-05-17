@@ -1984,17 +1984,20 @@ impl Step for Assemble {
                     trace!("installing `{tool}`");
                     let tool_exe = exe(tool, target_compiler.host);
                     let src_path = llvm_bin_dir.join(&tool_exe);
-                    // When using `download-ci-llvm`, some of the tools
-                    // may not exist, so skip trying to copy them.
-                    if src_path.exists() {
-                        // There is a chance that these tools are being installed from an external LLVM.
-                        // Use `Builder::resolve_symlink_and_copy` instead of `Builder::copy_link` to ensure
-                        // we are copying the original file not the symlinked path, which causes issues for
-                        // tarball distribution.
-                        //
-                        // See https://github.com/rust-lang/rust/issues/135554.
-                        builder.resolve_symlink_and_copy(&src_path, &libdir_bin.join(&tool_exe));
+
+                    // When using `download-ci-llvm`, some of the tools may not exist, so skip trying to copy them.
+                    if !src_path.exists() && builder.config.llvm_from_ci {
+                        eprintln!("{} does not exist; skipping copy", src_path.display());
+                        continue;
                     }
+
+                    // There is a chance that these tools are being installed from an external LLVM.
+                    // Use `Builder::resolve_symlink_and_copy` instead of `Builder::copy_link` to ensure
+                    // we are copying the original file not the symlinked path, which causes issues for
+                    // tarball distribution.
+                    //
+                    // See https://github.com/rust-lang/rust/issues/135554.
+                    builder.resolve_symlink_and_copy(&src_path, &libdir_bin.join(&tool_exe));
                 }
             }
         }
