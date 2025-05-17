@@ -86,12 +86,11 @@ pub unsafe fn sym_static() {
 
 // Regression test for #75761
 // CHECK-LABEL: {{("#)?}}issue_75761{{"?}}
-// aarch64: str {{.*}}x30
-// arm64ec: stp {{.*}}x30
+// x29 holds the frame pointer, right next to x30, so ldp/stp happens sometimes
+// CHECK: st[[MAY_PAIR:(r|p).*]]x30
 // CHECK: //APP
 // CHECK: //NO_APP
-// aarch64: ldr {{.*}}x30
-// arm64ec: ldp {{.*}}x30
+// CHECK: ld[[MAY_PAIR]]x30
 #[no_mangle]
 pub unsafe fn issue_75761() {
     asm!("", out("v0") _, out("x30") _);
