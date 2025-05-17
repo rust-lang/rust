@@ -231,7 +231,7 @@ pub const unsafe fn assert_unchecked(cond: bool) {
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore-wasm
 /// use std::sync::atomic::{AtomicBool, Ordering};
 /// use std::sync::Arc;
 /// use std::{hint, thread};
