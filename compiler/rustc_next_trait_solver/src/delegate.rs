@@ -17,6 +17,12 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     where
         V: TypeFoldable<Self::Interner>;
 
+    fn compute_goal_fast_path(
+        &self,
+        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+        span: <Self::Interner as Interner>::Span,
+    ) -> Option<()>;
+
     fn fresh_var_for_kind_with_span(
         &self,
         arg: <Self::Interner as Interner>::GenericArg,
