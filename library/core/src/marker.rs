@@ -937,6 +937,8 @@ marker_impls! {
         {T: PointeeSized} *mut T,
         {T: PointeeSized} &T,
         {T: PointeeSized} &mut T,
+        {T: PointeeSized} pattern_type!(*const T is !null),
+        {T: PointeeSized} pattern_type!(*mut T is !null),
 }
 
 /// Types that do not require any pinning guarantees.
