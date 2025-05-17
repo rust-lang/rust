@@ -82,12 +82,12 @@ fn main() {
         //~^ ERROR
 
         let z: bool = transmute(1u8);
-        //~^ ERROR
+        // clippy
         let z: u8 = transmute(z);
         //~^ ERROR
 
         let z: bool = transmute(1i8);
-        // no error!
+        // clippy
         let z: i8 = transmute(z);
         //~^ ERROR
     }
