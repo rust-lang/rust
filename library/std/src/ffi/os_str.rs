@@ -594,9 +594,9 @@ impl OsString {
     /// The slice must be valid for the platform encoding (as described in
     /// [`OsStr::from_encoded_bytes_unchecked`]).
     ///
-    /// This bypasses the encoding-dependent surrogate joining, so `self` must
-    /// not end with a leading surrogate half and `other` must not start with
-    /// with a trailing surrogate half.
+    /// This bypasses the encoding-dependent surrogate joining, so either
+    /// `self` must not end with a leading surrogate half, or `other` must not
+    /// start with a trailing surrogate half.
     #[inline]
     pub(crate) unsafe fn extend_from_slice_unchecked(&mut self, other: &[u8]) {
         // SAFETY: Guaranteed by caller.
