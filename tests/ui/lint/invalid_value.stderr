@@ -314,7 +314,6 @@ LL |         let _val: NonNull<i32> = mem::uninitialized();
    |                                  help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `std::ptr::NonNull<i32>` must be non-null
-   = note: raw pointers must be initialized
 
 error: the type `(NonZero<u32>, i32)` does not permit zero-initialization
   --> $DIR/invalid_value.rs:94:41
@@ -623,7 +622,6 @@ LL |         let _val: NonNull<i32> = MaybeUninit::uninit().assume_init();
    |                                  help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `std::ptr::NonNull<i32>` must be non-null
-   = note: raw pointers must be initialized
 
 error: the type `bool` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:158:26
