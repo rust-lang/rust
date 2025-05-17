@@ -18,7 +18,6 @@ pub struct Zip<A, B> {
     // index, len and a_len are only used by the specialized version of zip
     index: usize,
     len: usize,
-    a_len: usize,
 }
 impl<A: Iterator, B: Iterator> Zip<A, B> {
     pub(in crate::iter) fn new(a: A, b: B) -> Zip<A, B> {
@@ -158,7 +157,6 @@ macro_rules! zip_impl_general_defaults {
                 b,
                 index: 0, // unused
                 len: 0,   // unused
-                a_len: 0, // unused
             }
         }
 
@@ -299,9 +297,8 @@ where
     B: TrustedRandomAccess + Iterator,
 {
     fn new(a: A, b: B) -> Self {
-        let a_len = a.size();
-        let len = cmp::min(a_len, b.size());
-        Zip { a, b, index: 0, len, a_len }
+        let len = cmp::min(a.size(), b.size());
+        Zip { a, b, index: 0, len }
     }
 
     #[inline]
@@ -315,17 +312,6 @@ where
             unsafe {
                 Some((self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
             }
-        } else if A::MAY_HAVE_SIDE_EFFECT && self.index < self.a_len {
-            let i = self.index;
-            // as above, increment before executing code that may panic
-            self.index += 1;
-            self.len += 1;
-            // match the base implementation's potential side effects
-            // SAFETY: we just checked that `i` < `self.a.len()`
-            unsafe {
-                self.a.__iterator_get_unchecked(i);
-            }
-            None
         } else {
             None
         }
@@ -371,36 +357,42 @@ where
         A: DoubleEndedIterator + ExactSizeIterator,
         B: DoubleEndedIterator + ExactSizeIterator,
     {
-        if A::MAY_HAVE_SIDE_EFFECT || B::MAY_HAVE_SIDE_EFFECT {
-            let sz_a = self.a.size();
-            let sz_b = self.b.size();
-            // Adjust a, b to equal length, make sure that only the first call
-            // of `next_back` does this, otherwise we will break the restriction
-            // on calls to `self.next_back()` after calling `get_unchecked()`.
-            if sz_a != sz_b {
+        // No effects when the iterator is exhausted, to reduce the number of
+        // cases the unsafe code has to handle.
+        // See #137255 for a case where where too many epicycles lead to unsoundness.
+        if self.index < self.len {
+            let old_len = self.len;
+
+            // since get_unchecked and the side-effecting code can execute user code
+            // which can panic we decrement the counter beforehand
+            // so that the same index won't be accessed twice, as required by TrustedRandomAccess.
+            // Additionally this will ensure that the side-effects code won't run a second time.
+            self.len -= 1;
+
+            // Adjust a, b to equal length if we're iterating backwards.
+            if A::MAY_HAVE_SIDE_EFFECT || B::MAY_HAVE_SIDE_EFFECT {
+                // note if some forward-iteration already happened then these aren't the real
+                // remaining lengths of the inner iterators, so we have to relate them to
+                // Zip's internal length-tracking.
                 let sz_a = self.a.size();
-                if A::MAY_HAVE_SIDE_EFFECT && sz_a > self.len {
-                    for _ in 0..sz_a - self.len {
-                        // since next_back() may panic we increment the counters beforehand
-                        // to keep Zip's state in sync with the underlying iterator source
-                        self.a_len -= 1;
-                        self.a.next_back();
-                    }
-                    debug_assert_eq!(self.a_len, self.len);
-                }
                 let sz_b = self.b.size();
-                if B::MAY_HAVE_SIDE_EFFECT && sz_b > self.len {
-                    for _ in 0..sz_b - self.len {
-                        self.b.next_back();
+                // This condition can and must only be true on the first `next_back` call,
+                // otherwise we will break the restriction on calls to `self.next_back()`
+                // after calling `get_unchecked()`.
+                if sz_a != sz_b && (old_len == sz_a || old_len == sz_b) {
+                    if A::MAY_HAVE_SIDE_EFFECT && sz_a > old_len {
+                        for _ in 0..sz_a - old_len {
+                            self.a.next_back();
+                        }
                     }
+                    if B::MAY_HAVE_SIDE_EFFECT && sz_b > old_len {
+                        for _ in 0..sz_b - old_len {
+                            self.b.next_back();
+                        }
+                    }
+                    debug_assert_eq!(self.a.size(), self.b.size());
                 }
             }
-        }
-        if self.index < self.len {
-            // since get_unchecked executes code which can panic we increment the counters beforehand
-            // so that the same index won't be accessed twice, as required by TrustedRandomAccess
-            self.len -= 1;
-            self.a_len -= 1;
             let i = self.len;
             // SAFETY: `i` is smaller than the previous value of `self.len`,
             // which is also smaller than or equal to `self.a.len()` and `self.b.len()`
