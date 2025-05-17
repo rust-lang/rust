@@ -1,5 +1,5 @@
 error: called `map(..).flatten()` on `Iterator`
-  --> tests/ui/map_flatten_fixable.rs:17:47
+  --> tests/ui/map_flatten_fixable.rs:16:47
    |
 LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(option_id).flatten().collect();
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^ help: try replacing `map` with `filter_map` and remove the `.flatten()`: `filter_map(option_id)`
@@ -8,43 +8,43 @@ LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(option_id).flatten().coll
    = help: to override `-D warnings` add `#[allow(clippy::map_flatten)]`
 
 error: called `map(..).flatten()` on `Iterator`
-  --> tests/ui/map_flatten_fixable.rs:19:47
+  --> tests/ui/map_flatten_fixable.rs:18:47
    |
 LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(option_id_ref).flatten().collect();
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try replacing `map` with `filter_map` and remove the `.flatten()`: `filter_map(option_id_ref)`
 
 error: called `map(..).flatten()` on `Iterator`
-  --> tests/ui/map_flatten_fixable.rs:21:47
+  --> tests/ui/map_flatten_fixable.rs:20:47
    |
 LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(option_id_closure).flatten().collect();
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try replacing `map` with `filter_map` and remove the `.flatten()`: `filter_map(option_id_closure)`
 
 error: called `map(..).flatten()` on `Iterator`
-  --> tests/ui/map_flatten_fixable.rs:23:47
+  --> tests/ui/map_flatten_fixable.rs:22:47
    |
 LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(|x| x.checked_add(1)).flatten().collect();
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try replacing `map` with `filter_map` and remove the `.flatten()`: `filter_map(|x| x.checked_add(1))`
 
 error: called `map(..).flatten()` on `Iterator`
-  --> tests/ui/map_flatten_fixable.rs:27:47
+  --> tests/ui/map_flatten_fixable.rs:26:47
    |
 LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(|x| 0..x).flatten().collect();
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^ help: try replacing `map` with `flat_map` and remove the `.flatten()`: `flat_map(|x| 0..x)`
 
 error: called `map(..).flatten()` on `Option`
-  --> tests/ui/map_flatten_fixable.rs:31:40
+  --> tests/ui/map_flatten_fixable.rs:30:40
    |
 LL |     let _: Option<_> = (Some(Some(1))).map(|x| x).flatten();
    |                                        ^^^^^^^^^^^^^^^^^^^^ help: try replacing `map` with `and_then` and remove the `.flatten()`: `and_then(|x| x)`
 
 error: called `map(..).flatten()` on `Result`
-  --> tests/ui/map_flatten_fixable.rs:35:42
+  --> tests/ui/map_flatten_fixable.rs:34:42
    |
 LL |     let _: Result<_, &str> = (Ok(Ok(1))).map(|x| x).flatten();
    |                                          ^^^^^^^^^^^^^^^^^^^^ help: try replacing `map` with `and_then` and remove the `.flatten()`: `and_then(|x| x)`
 
 error: called `map(..).flatten()` on `Iterator`
-  --> tests/ui/map_flatten_fixable.rs:45:10
+  --> tests/ui/map_flatten_fixable.rs:44:10
    |
 LL |           .map(|n| match n {
    |  __________^
@@ -74,7 +74,7 @@ LL ~         });
    |
 
 error: called `map(..).flatten()` on `Option`
-  --> tests/ui/map_flatten_fixable.rs:66:10
+  --> tests/ui/map_flatten_fixable.rs:65:10
    |
 LL |           .map(|_| {
    |  __________^
