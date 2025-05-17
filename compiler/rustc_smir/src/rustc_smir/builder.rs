@@ -9,9 +9,6 @@ use rustc_middle::mir;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::ty::{self, TyCtxt};
 
-use crate::rustc_smir::{Stable, Tables};
-use crate::stable_mir;
-
 /// Builds a monomorphic body for a given instance.
 pub(crate) struct BodyBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -31,8 +28,8 @@ impl<'tcx> BodyBuilder<'tcx> {
     /// Build a stable monomorphic body for a given instance based on the MIR body.
     ///
     /// All constants are also evaluated.
-    pub(crate) fn build(mut self, tables: &mut Tables<'tcx>) -> stable_mir::mir::Body {
-        let body = tables.tcx.instance_mir(self.instance.def).clone();
+    pub(crate) fn build(mut self) -> mir::Body<'tcx> {
+        let body = self.tcx.instance_mir(self.instance.def).clone();
         let mono_body = if !self.instance.args.is_empty()
             // Without the `generic_const_exprs` feature gate, anon consts in signatures do not
             // get generic parameters. Which is wrong, but also not a problem without
@@ -40,7 +37,7 @@ impl<'tcx> BodyBuilder<'tcx> {
             || self.tcx.def_kind(self.instance.def_id()) != DefKind::AnonConst
         {
             let mut mono_body = self.instance.instantiate_mir_and_normalize_erasing_regions(
-                tables.tcx,
+                self.tcx,
                 ty::TypingEnv::fully_monomorphized(),
                 ty::EarlyBinder::bind(body),
             );
@@ -50,7 +47,8 @@ impl<'tcx> BodyBuilder<'tcx> {
             // Already monomorphic.
             body
         };
-        mono_body.stable(tables)
+
+        mono_body
     }
 }
 
