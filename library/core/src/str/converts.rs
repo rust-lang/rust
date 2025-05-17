@@ -6,6 +6,7 @@ use crate::{mem, ptr};
 
 /// Converts a slice of bytes to a string slice.
 ///
+/// This is an alias to [`<str>::from_utf8`].
 /// A string slice ([`&str`]) is made of bytes ([`u8`]), and a byte slice
 /// ([`&[u8]`][byteslice]) is made of bytes, so this function converts between
 /// the two. Not all byte slices are valid string slices, however: [`&str`] requires
@@ -14,6 +15,7 @@ use crate::{mem, ptr};
 ///
 /// [`&str`]: str
 /// [byteslice]: slice
+/// [`<str>::from_utf8`]: ../../std/primitive.str.html#method.from_utf8
 ///
 /// If you are sure that the byte slice is valid UTF-8, and you don't want to
 /// incur the overhead of the validity check, there is an unsafe version of
@@ -97,6 +99,10 @@ pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 
 /// Converts a mutable slice of bytes to a mutable string slice.
 ///
+/// This is an alias to [`<str>::from_utf8_mut`].
+///
+/// [`<str>::from_utf8_mut`]: ../../std/primitive.str.html#method.from_utf8_mut
+///
 /// # Examples
 ///
 /// Basic usage:
@@ -142,6 +148,10 @@ pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8.
 ///
+/// This is an alias to [`<str>::from_utf8_unchecked`].
+///
+/// [`<str>::from_utf8_unchecked`]: ../../std/primitive.str.html#method.from_utf8_unchecked
+///
 /// See the safe version, [`from_utf8`], for more information.
 ///
 /// # Safety
@@ -177,6 +187,10 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8; mutable version.
+///
+/// This is an alias to [`<str>::from_utf8_unchecked_mut`].
+///
+/// [`<str>::from_utf8_unchecked_mut`]: ../../std/primitive.str.html#method.from_utf8_unchecked_mut
 ///
 /// See the immutable version, [`from_utf8_unchecked()`] for documentation and safety requirements.
 ///
