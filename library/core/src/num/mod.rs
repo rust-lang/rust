@@ -492,6 +492,26 @@ impl u8 {
         ascii::Char::from_u8(*self)
     }
 
+    /// Converts this byte to an [ASCII character](ascii::Char), without
+    /// checking whether or not it's valid.
+    ///
+    /// # Safety
+    ///
+    /// This byte must be valid ASCII, or else this is UB.
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const unsafe fn as_ascii_unchecked(&self) -> ascii::Char {
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "as_ascii_unchecked requires that the byte is valid ASCII",
+            (it: &u8 = self) => it.is_ascii()
+        );
+
+        // SAFETY: the caller promised that this byte is ASCII.
+        unsafe { ascii::Char::from_u8_unchecked(*self) }
+    }
+
     /// Makes a copy of the value in its ASCII upper case equivalent.
     ///
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
