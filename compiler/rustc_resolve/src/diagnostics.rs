@@ -2493,7 +2493,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() else {
             return None;
         };
-        let module_name = crate_module.kind.name().unwrap_or(kw::Empty);
+        let module_name = crate_module.kind.name().unwrap_or(kw::Crate);
         let import_snippet = match import.kind {
             ImportKind::Single { source, target, .. } if source != target => {
                 format!("{source} as {target}")
