@@ -3277,7 +3277,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     maybe_static = true;
                     in_scope_lifetimes = vec![(
                         Ident::with_dummy_span(kw::StaticLifetime),
-                        (DUMMY_NODE_ID, LifetimeRes::Static { suppress_elision_warning: false }),
+                        (DUMMY_NODE_ID, LifetimeRes::Static),
                     )];
                 }
             } else if elided_len == 0 {
@@ -3289,7 +3289,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     maybe_static = true;
                     in_scope_lifetimes = vec![(
                         Ident::with_dummy_span(kw::StaticLifetime),
-                        (DUMMY_NODE_ID, LifetimeRes::Static { suppress_elision_warning: false }),
+                        (DUMMY_NODE_ID, LifetimeRes::Static),
                     )];
                 }
             } else if num_params == 1 {
