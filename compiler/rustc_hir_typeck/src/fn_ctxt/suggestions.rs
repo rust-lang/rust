@@ -2043,6 +2043,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let sugg = match self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr) {
+            Some(_) if expr.span.from_expansion() => return false,
             Some(ident) => format!(": {ident}{sugg}"),
             None => sugg.to_string(),
         };
