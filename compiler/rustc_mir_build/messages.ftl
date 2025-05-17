@@ -84,6 +84,15 @@ mir_build_call_to_unsafe_fn_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
 
 mir_build_confused = missing patterns are not covered because `{$variable}` is interpreted as a constant pattern, not a new variable
 
+mir_build_const_continue_bad_const = could not determine the target branch for this `#[const_continue]`
+    .label = this value is too generic
+    .note = the value must be a literal or a monomorphic const
+
+mir_build_const_continue_missing_value = a `#[const_continue]` must break to a label with a value
+
+mir_build_const_continue_unknown_jump_target = the target of this `#[const_continue]` is not statically known
+    .label = this value must be a literal or a monomorphic const
+
 mir_build_const_defined_here = constant defined here
 
 mir_build_const_param_in_pattern = constant parameters cannot be referenced in patterns
@@ -211,6 +220,30 @@ mir_build_leading_irrefutable_let_patterns = leading irrefutable {$count ->
 mir_build_literal_in_range_out_of_bounds =
     literal out of range for `{$ty}`
     .label = this value does not fit into the type `{$ty}` whose range is `{$min}..={$max}`
+
+mir_build_loop_match_arm_with_guard =
+    match arms that are part of a `#[loop_match]` cannot have guards
+
+mir_build_loop_match_bad_rhs =
+    this expression must be a single `match` wrapped in a labeled block
+
+mir_build_loop_match_bad_statements =
+    statements are not allowed in this position within a `#[loop_match]`
+
+mir_build_loop_match_invalid_match =
+    invalid match on `#[loop_match]` state
+    .note = a local variable must be the scrutinee within a `#[loop_match]`
+
+mir_build_loop_match_invalid_update =
+    invalid update of the `#[loop_match]` state
+    .label = the assignment must update this variable
+
+mir_build_loop_match_missing_assignment =
+    expected a single assignment expression
+
+mir_build_loop_match_unsupported_type =
+    this `#[loop_match]` state value has type `{$ty}`, which is not supported
+    .note = only integers, floats, bool, char, and enums without fields are supported
 
 mir_build_lower_range_bound_must_be_less_than_or_equal_to_upper =
     lower range bound must be less than or equal to upper
