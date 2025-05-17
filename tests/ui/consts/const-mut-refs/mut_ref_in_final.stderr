@@ -4,15 +4,11 @@ error[E0764]: mutable references are not allowed in the final value of constants
 LL | const B: *mut i32 = &mut 4;
    |                     ^^^^^^
 
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/mut_ref_in_final.rs:21:40
+error[E0764]: mutable references are not allowed in the final value of constants
+  --> $DIR/mut_ref_in_final.rs:21:35
    |
 LL | const B3: Option<&mut i32> = Some(&mut 42);
-   |                              ----------^^-
-   |                              |         | |
-   |                              |         | temporary value is freed at the end of this statement
-   |                              |         creates a temporary value which is freed while still in use
-   |                              using this value as a constant requires that borrow lasts for `'static`
+   |                                   ^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/mut_ref_in_final.rs:24:42
