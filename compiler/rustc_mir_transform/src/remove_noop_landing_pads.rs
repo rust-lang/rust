@@ -12,8 +12,8 @@ use crate::patch::MirPatch;
 pub(super) struct RemoveNoopLandingPads;
 
 impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.panic_strategy() != PanicStrategy::Abort
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        tcx.sess.panic_strategy() != PanicStrategy::Abort
     }
 
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
