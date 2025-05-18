@@ -394,9 +394,24 @@ where
 
         match assemble_from {
             AssembleCandidatesFrom::All => {
-                self.assemble_impl_candidates(goal, &mut candidates);
                 self.assemble_builtin_impl_candidates(goal, &mut candidates);
+
+                // UwU
+                if !matches!(self.typing_mode(), TypingMode::Coherence) {
+                    if candidates.iter().any(|cand| {
+                        matches!(
+                            cand.source,
+                            CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)
+                                | CandidateSource::AliasBound
+                                | CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial)
+                        )
+                    }) {
+                        return candidates;
+                    }
+                }
+
                 self.assemble_object_bound_candidates(goal, &mut candidates);
+                self.assemble_impl_candidates(goal, &mut candidates);
             }
             AssembleCandidatesFrom::EnvAndBounds => {}
         }
