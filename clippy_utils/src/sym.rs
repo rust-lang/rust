@@ -132,7 +132,6 @@ generate! {
     enum_glob_use,
     enumerate,
     err,
-    error,
     exp,
     expect_err,
     expn_data,
