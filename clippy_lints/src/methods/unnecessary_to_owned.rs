@@ -655,11 +655,18 @@ fn is_to_string_on_string_like<'a>(
     }
 }
 
-fn is_a_std_map_type(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    is_type_diagnostic_item(cx, ty, sym::HashSet)
-        || is_type_diagnostic_item(cx, ty, sym::HashMap)
-        || is_type_diagnostic_item(cx, ty, sym::BTreeMap)
-        || is_type_diagnostic_item(cx, ty, sym::BTreeSet)
+fn std_map_key<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    match ty.kind() {
+        ty::Adt(adt, args)
+            if matches!(
+                cx.tcx.get_diagnostic_name(adt.did()),
+                Some(sym::BTreeMap | sym::BTreeSet | sym::HashMap | sym::HashSet)
+            ) =>
+        {
+            Some(args.type_at(0))
+        },
+        _ => None,
+    }
 }
 
 fn is_str_and_string(cx: &LateContext<'_>, arg_ty: Ty<'_>, original_arg_ty: Ty<'_>) -> bool {
@@ -721,6 +728,7 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
 // 1. This is a method with only one argument that doesn't come from a trait.
 // 2. That it has `Borrow` in its generic predicates.
 // 3. `Self` is a std "map type" (ie `HashSet`, `HashMap`, `BTreeSet`, `BTreeMap`).
+// 4. The key to the "map type" is not a reference.
 fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
     if let ExprKind::MethodCall(_, caller, &[arg], _) = expr.kind
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
@@ -738,7 +746,9 @@ fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         })
         && let caller_ty = cx.typeck_results().expr_ty(caller)
         // For now we limit it to "map types".
-        && is_a_std_map_type(cx, caller_ty)
+        && let Some(key_ty) = std_map_key(cx, caller_ty)
+        // We need to check that the key type is not a reference.
+        && !key_ty.is_ref()
     {
         check_if_applicable_to_argument(cx, &arg);
     }
