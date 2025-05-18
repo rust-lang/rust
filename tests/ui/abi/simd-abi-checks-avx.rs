@@ -2,7 +2,6 @@
 //@ build-fail
 //@ compile-flags: -C target-feature=-avx
 
-#![feature(avx512_target_feature)]
 #![feature(portable_simd)]
 #![feature(simd_ffi)]
 #![allow(improper_ctypes_definitions)]
