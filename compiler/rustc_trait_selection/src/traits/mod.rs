@@ -2,7 +2,6 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 
-pub mod auto_trait;
 pub(crate) mod coherence;
 pub mod const_evaluatable;
 mod dyn_compatibility;
@@ -71,7 +70,6 @@ pub use self::util::{
     upcast_choices, with_replaced_escaping_bound_vars,
 };
 use crate::error_reporting::InferCtxtErrorExt;
-use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::regions::InferCtxtRegionExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
