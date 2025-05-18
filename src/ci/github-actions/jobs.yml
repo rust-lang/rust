@@ -167,8 +167,11 @@ auto:
   - name: dist-android
     <<: *job-linux-4c
 
-  - name: dist-arm-linux
-    <<: *job-linux-8c-codebuild
+  - name: dist-arm-linux-gnueabi
+    <<: *job-linux-4c
+
+  - name: dist-arm-linux-musl
+    <<: *job-linux-4c
 
   - name: dist-armhf-linux
     <<: *job-linux-4c
