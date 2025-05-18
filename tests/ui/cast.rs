@@ -1,4 +1,4 @@
-//@no-rustfix
+//@no-rustfix: only some diagnostics have suggestions
 
 #![feature(repr128)]
 #![allow(incomplete_features)]
