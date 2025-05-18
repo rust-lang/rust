@@ -53,6 +53,8 @@ rm -r tests/run-make/split-debuginfo # same
 rm -r tests/run-make/target-specs # i686 not supported by Cranelift
 rm -r tests/run-make/mismatching-target-triples # same
 rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
+rm tests/ui/asm/global-asm-mono-sym-fn.rs # same
+rm tests/ui/asm/naked-asm-mono-sym-fn.rs # same
 rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
 rm -r tests/run-make/embed-source-dwarf # embedding sources in debuginfo
@@ -134,6 +136,8 @@ rm -r tests/run-make/const-trait-stable-toolchain # same
 rm -r tests/run-make/print-request-help-stable-unstable # same
 rm -r tests/run-make/incr-add-rust-src-component
 rm tests/ui/errors/remap-path-prefix-sysroot.rs # different sysroot source path
+rm -r tests/run-make/export/extern-opt # something about rustc version mismatches
+rm -r tests/run-make/export # same
 
 # genuine bugs
 # ============
