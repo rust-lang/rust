@@ -752,7 +752,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             let layout = if def_id == self.caller_body.source.def_id() {
                                 self.caller_body
                                     .coroutine_layout_raw()
-                                    .or_else(|| self.tcx.coroutine_layout(def_id, args))
+                                    .or_else(|| self.tcx.coroutine_layout(def_id, args).ok())
                             } else if self.tcx.needs_coroutine_by_move_body_def_id(def_id)
                                 && let ty::ClosureKind::FnOnce =
                                     args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap()
@@ -762,7 +762,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 // Same if this is the by-move body of a coroutine-closure.
                                 self.caller_body.coroutine_layout_raw()
                             } else {
-                                self.tcx.coroutine_layout(def_id, args)
+                                self.tcx.coroutine_layout(def_id, args).ok()
                             };
 
                             let Some(layout) = layout else {
