@@ -856,15 +856,15 @@ fn fmt_type(
 ) -> fmt::Result {
     trace!("fmt_type(t = {t:?})");
 
-    match *t {
+    match t {
         clean::Generic(name) => f.write_str(name.as_str()),
         clean::SelfTy => f.write_str("Self"),
-        clean::Type::Path { ref path } => {
+        clean::Type::Path { path } => {
             // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
             let did = path.def_id();
             resolved_path(f, did, path, path.is_assoc_ty(), use_absolute, cx)
         }
-        clean::DynTrait(ref bounds, ref lt) => {
+        clean::DynTrait(bounds, lt) => {
             f.write_str("dyn ")?;
             tybounds(bounds, lt, cx).fmt(f)
         }
@@ -872,8 +872,8 @@ fn fmt_type(
         clean::Primitive(clean::PrimitiveType::Never) => {
             primitive_link(f, PrimitiveType::Never, format_args!("!"), cx)
         }
-        clean::Primitive(prim) => primitive_link(f, prim, format_args!("{}", prim.as_sym()), cx),
-        clean::BareFunction(ref decl) => {
+        &clean::Primitive(prim) => primitive_link(f, prim, format_args!("{}", prim.as_sym()), cx),
+        clean::BareFunction(decl) => {
             print_higher_ranked_params_with_space(&decl.generic_params, cx, "for").fmt(f)?;
             decl.safety.print_with_space().fmt(f)?;
             print_abi_with_space(decl.abi).fmt(f)?;
@@ -884,11 +884,11 @@ fn fmt_type(
             }
             decl.decl.print(cx).fmt(f)
         }
-        clean::UnsafeBinder(ref binder) => {
+        clean::UnsafeBinder(binder) => {
             print_higher_ranked_params_with_space(&binder.generic_params, cx, "unsafe").fmt(f)?;
             binder.ty.print(cx).fmt(f)
         }
-        clean::Tuple(ref typs) => match &typs[..] {
+        clean::Tuple(typs) => match &typs[..] {
             &[] => primitive_link(f, PrimitiveType::Unit, format_args!("()"), cx),
             [one] => {
                 if let clean::Generic(name) = one {
@@ -925,45 +925,36 @@ fn fmt_type(
                 }
             }
         },
-        clean::Slice(ref t) => match **t {
-            clean::Generic(name) => {
-                primitive_link(f, PrimitiveType::Slice, format_args!("[{name}]"), cx)
-            }
-            _ => {
-                write!(f, "[")?;
-                t.print(cx).fmt(f)?;
-                write!(f, "]")
-            }
-        },
-        clean::Type::Pat(ref t, ref pat) => {
+        clean::Slice(box clean::Generic(name)) => {
+            primitive_link(f, PrimitiveType::Slice, format_args!("[{name}]"), cx)
+        }
+        clean::Slice(t) => {
+            write!(f, "[")?;
+            t.print(cx).fmt(f)?;
+            write!(f, "]")
+        }
+        clean::Type::Pat(t, pat) => {
             fmt::Display::fmt(&t.print(cx), f)?;
             write!(f, " is {pat}")
         }
-        clean::Array(ref t, ref n) => match **t {
-            clean::Generic(name) if !f.alternate() => primitive_link(
-                f,
-                PrimitiveType::Array,
-                format_args!("[{name}; {n}]", n = Escape(n)),
-                cx,
-            ),
-            _ => {
-                write!(f, "[")?;
-                t.print(cx).fmt(f)?;
-                if f.alternate() {
-                    write!(f, "; {n}")?;
-                } else {
-                    write!(f, "; ")?;
-                    primitive_link(
-                        f,
-                        PrimitiveType::Array,
-                        format_args!("{n}", n = Escape(n)),
-                        cx,
-                    )?;
-                }
-                write!(f, "]")
+        clean::Array(box clean::Generic(name), n) if !f.alternate() => primitive_link(
+            f,
+            PrimitiveType::Array,
+            format_args!("[{name}; {n}]", n = Escape(n)),
+            cx,
+        ),
+        clean::Array(t, n) => {
+            write!(f, "[")?;
+            t.print(cx).fmt(f)?;
+            if f.alternate() {
+                write!(f, "; {n}")?;
+            } else {
+                write!(f, "; ")?;
+                primitive_link(f, PrimitiveType::Array, format_args!("{n}", n = Escape(n)), cx)?;
             }
-        },
-        clean::RawPointer(m, ref t) => {
+            write!(f, "]")
+        }
+        clean::RawPointer(m, t) => {
             let m = match m {
                 hir::Mutability::Mut => "mut",
                 hir::Mutability::Not => "const",
@@ -991,7 +982,7 @@ fn fmt_type(
                 t.print(cx).fmt(f)
             }
         }
-        clean::BorrowedRef { lifetime: ref l, mutability, type_: ref ty } => {
+        clean::BorrowedRef { lifetime: l, mutability, type_: ty } => {
             let lt = fmt::from_fn(|f| match l {
                 Some(l) => write!(f, "{} ", l.print()),
                 _ => Ok(()),
@@ -1028,11 +1019,11 @@ fn fmt_type(
             }
             Ok(())
         }
-        clean::ImplTrait(ref bounds) => {
+        clean::ImplTrait(bounds) => {
             f.write_str("impl ")?;
             print_generic_bounds(bounds, cx).fmt(f)
         }
-        clean::QPath(box clean::QPathData {
+        &clean::QPath(box clean::QPathData {
             ref assoc,
             ref self_type,
             ref trait_,

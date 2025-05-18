@@ -176,6 +176,8 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // Set `--target-dir` to `miri` inside the original target directory.
     let target_dir = get_target_dir(&metadata);
     cmd.arg("--target-dir").arg(target_dir);
+    // Enable cross-target doctests (for consistency between different cargo versions).
+    cmd.arg("-Zdoctest-xcompile");
 
     // *After* we set all the flags that need setting, forward everything else. Make sure to skip
     // `--target-dir` (which would otherwise be set twice).

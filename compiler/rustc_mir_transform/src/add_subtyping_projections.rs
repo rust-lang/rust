@@ -32,7 +32,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for SubTypeChecker<'a, 'tcx> {
         let mut rval_ty = rvalue.ty(self.local_decls, self.tcx);
         // Not erasing this causes `Free Regions` errors in validator,
         // when rval is `ReStatic`.
-        rval_ty = self.tcx.erase_regions_ty(rval_ty);
+        rval_ty = self.tcx.erase_regions(rval_ty);
         place_ty = self.tcx.erase_regions(place_ty);
         if place_ty != rval_ty {
             let temp = self
