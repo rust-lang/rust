@@ -31,6 +31,8 @@ macro_rules! generate {
 
 // List of extra symbols to be included in Clippy (for example, as `sym::ambiguous_glob_reexports`).
 // An alternative content can be specified using a colon after the symbol name.
+//
+// `cargo dev fmt` ensures that the content of the `generate!()` macro call stays sorted.
 generate! {
     AsyncReadExt,
     AsyncWriteExt,
