@@ -7,6 +7,7 @@ use rustc_span::{DUMMY_SP, Span, SpanData};
 use smallvec::SmallVec;
 
 use super::data_race::NaReadType;
+use crate::helpers::ToUsize;
 
 /// A vector clock index, this is associated with a thread id
 /// but in some cases one vector index may be shared with
@@ -157,7 +158,7 @@ impl VClock {
 
     #[inline]
     pub(super) fn index_mut(&mut self, index: VectorIdx) -> &mut VTimestamp {
-        self.0.as_mut_slice().get_mut(index.to_u32() as usize).unwrap()
+        self.0.as_mut_slice().get_mut(index.to_u32().to_usize()).unwrap()
     }
 
     /// Get a mutable slice to the internal vector with minimum `min_len`
@@ -420,7 +421,7 @@ impl Index<VectorIdx> for VClock {
 
     #[inline]
     fn index(&self, index: VectorIdx) -> &VTimestamp {
-        self.as_slice().get(index.to_u32() as usize).unwrap_or(&VTimestamp::ZERO)
+        self.as_slice().get(index.to_u32().to_usize()).unwrap_or(&VTimestamp::ZERO)
     }
 }
 

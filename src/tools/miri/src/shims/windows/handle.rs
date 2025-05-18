@@ -70,8 +70,7 @@ impl Handle {
             Self::Null => 0,
             Self::Pseudo(pseudo_handle) => pseudo_handle.value(),
             Self::Thread(thread) => thread.to_u32(),
-            #[expect(clippy::cast_sign_loss)]
-            Self::File(fd) => fd as u32,
+            Self::File(fd) => fd.cast_unsigned(),
             // INVALID_HANDLE_VALUE is -1. This fact is explicitly declared or implied in several
             // pages of Windows documentation.
             // 1: https://learn.microsoft.com/en-us/dotnet/api/microsoft.win32.safehandles.safefilehandle?view=net-9.0
@@ -124,11 +123,10 @@ impl Handle {
             Self::NULL_DISCRIMINANT if data == 0 => Some(Self::Null),
             Self::PSEUDO_DISCRIMINANT => Some(Self::Pseudo(PseudoHandle::from_value(data)?)),
             Self::THREAD_DISCRIMINANT => Some(Self::Thread(ThreadId::new_unchecked(data))),
-            #[expect(clippy::cast_possible_wrap)]
             Self::FILE_DISCRIMINANT => {
                 // This cast preserves all bits.
                 assert_eq!(size_of_val(&data), size_of::<FdNum>());
-                Some(Self::File(data as FdNum))
+                Some(Self::File(data.cast_signed()))
             }
             Self::INVALID_DISCRIMINANT => Some(Self::Invalid),
             _ => None,
@@ -156,8 +154,7 @@ impl Handle {
     pub fn to_scalar(self, cx: &impl HasDataLayout) -> Scalar {
         // 64-bit handles are sign extended 32-bit handles
         // see https://docs.microsoft.com/en-us/windows/win32/winprog64/interprocess-communication
-        #[expect(clippy::cast_possible_wrap)] // we want it to wrap
-        let signed_handle = self.to_packed() as i32;
+        let signed_handle = self.to_packed().cast_signed();
         Scalar::from_target_isize(signed_handle.into(), cx)
     }
 
@@ -171,9 +168,8 @@ impl Handle {
     ) -> InterpResult<'tcx, Result<Self, HandleError>> {
         let sign_extended_handle = handle.to_target_isize(cx)?;
 
-        #[expect(clippy::cast_sign_loss)] // we want to lose the sign
         let handle = if let Ok(signed_handle) = i32::try_from(sign_extended_handle) {
-            signed_handle as u32
+            signed_handle.cast_unsigned()
         } else {
             // if a handle doesn't fit in an i32, it isn't valid.
             return interp_ok(Err(HandleError::InvalidHandle));
