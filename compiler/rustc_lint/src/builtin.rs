@@ -818,25 +818,22 @@ impl EarlyLintPass for DeprecatedAttr {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
         for BuiltinAttribute { name, gate, .. } in &self.depr_attrs {
             if attr.ident().map(|ident| ident.name) == Some(*name) {
-                if let &AttributeGate::Gated(
-                    Stability::Deprecated(link, suggestion),
-                    name,
-                    reason,
-                    _,
-                ) = gate
+                if let &AttributeGate::Gated {
+                    stability: Stability::Deprecated(link, suggestion),
+                    message,
+                    ..
+                } = gate
                 {
                     let suggestion = match suggestion {
-                        Some(msg) => {
-                            BuiltinDeprecatedAttrLinkSuggestion::Msg { suggestion: attr.span, msg }
+                        Some(suggestion) => {
+                            BuiltinDeprecatedAttrLinkSuggestion::Msg { span: attr.span, suggestion }
                         }
-                        None => {
-                            BuiltinDeprecatedAttrLinkSuggestion::Default { suggestion: attr.span }
-                        }
+                        None => BuiltinDeprecatedAttrLinkSuggestion::Default { span: attr.span },
                     };
                     cx.emit_span_lint(
                         DEPRECATED,
                         attr.span,
-                        BuiltinDeprecatedAttrLink { name, reason, link, suggestion },
+                        BuiltinDeprecatedAttrLink { name: *name, message, link, suggestion },
                     );
                 }
                 return;
