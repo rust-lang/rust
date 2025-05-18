@@ -1,3 +1,5 @@
+#![feature(let_chains)]
+
 mod enums;
 mod parse;
 mod shared;
@@ -266,27 +268,27 @@ fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static MathOpInfo>
         }
     }
 
-    if let Some(map) = &input.fn_extra {
-        if !map.keys().any(|key| key == "_") {
-            // No default provided; make sure every expected function is covered
-            let mut fns_not_covered = Vec::new();
-            for func in &fn_list {
-                if !map.keys().any(|key| key == func.name) {
-                    // `name` was not mentioned in the `match` statement
-                    fns_not_covered.push(func);
-                }
+    if let Some(map) = &input.fn_extra
+        && !map.keys().any(|key| key == "_")
+    {
+        // No default provided; make sure every expected function is covered
+        let mut fns_not_covered = Vec::new();
+        for func in &fn_list {
+            if !map.keys().any(|key| key == func.name) {
+                // `name` was not mentioned in the `match` statement
+                fns_not_covered.push(func);
             }
+        }
 
-            if !fns_not_covered.is_empty() {
-                let e = syn::Error::new(
-                    input.fn_extra_span.unwrap(),
-                    format!(
-                        "`fn_extra`: no default `_` pattern specified and the following \
-                         patterns are not covered: {fns_not_covered:#?}"
-                    ),
-                );
-                return Err(e);
-            }
+        if !fns_not_covered.is_empty() {
+            let e = syn::Error::new(
+                input.fn_extra_span.unwrap(),
+                format!(
+                    "`fn_extra`: no default `_` pattern specified and the following \
+                     patterns are not covered: {fns_not_covered:#?}"
+                ),
+            );
+            return Err(e);
         }
     };
 
