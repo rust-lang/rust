@@ -133,7 +133,7 @@ In case it's useful, here are some [instructions] for tackling these sorts of is
 
 [instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/rust-for-linux.html
 """
-label = "O-rfl"
+label = "A-rust-for-linux"
 
 [ping.wasm]
 alias = ["webassembly"]
