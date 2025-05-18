@@ -35,4 +35,10 @@ check-cfg = [
     # and to stdarch `core_arch` crate which messes-up with Cargo list
     # of declared features, we therefor expect any feature cfg
     'cfg(feature, values(any()))',
+    # Internal features aren't marked known config by default, we use these to
+    # gate tests.
+    'cfg(target_has_reliable_f16)',
+    'cfg(target_has_reliable_f16_math)',
+    'cfg(target_has_reliable_f128)',
+    'cfg(target_has_reliable_f128_math)',
 ]

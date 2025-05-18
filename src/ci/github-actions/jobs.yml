@@ -188,8 +188,14 @@ auto:
   - name: dist-loongarch64-musl
     <<: *job-linux-4c
 
-  - name: dist-ohos
-    <<: *job-linux-4c-largedisk
+  - name: dist-ohos-aarch64
+    <<: *job-linux-4c
+
+  - name: dist-ohos-armv7
+    <<: *job-linux-4c
+
+  - name: dist-ohos-x86_64
+    <<: *job-linux-4c
 
   - name: dist-powerpc-linux
     <<: *job-linux-4c
