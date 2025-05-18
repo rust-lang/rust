@@ -933,7 +933,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Check that the calling convention is what we expect.
-    fn check_callconv<'a>(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, exp_abi: Conv) -> InterpResult<'a, ()> {
+    fn check_callconv<'a>(
+        &self,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        exp_abi: Conv,
+    ) -> InterpResult<'a, ()> {
         if fn_abi.conv != exp_abi {
             throw_ub_format!(
                 "calling a function with calling convention {exp_abi} using caller calling convention {}",
