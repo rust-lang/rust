@@ -117,7 +117,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut info = std::mem::MaybeUninit::<libc::Dl_info>::uninit();
         unsafe {
             if libc::dladdr(*func.deref() as *const _, info.as_mut_ptr()) != 0 {
-                if std::ffi::CStr::from_ptr(info.assume_init().dli_fname).to_str().unwrap()
+                let info = info.assume_init();
+                #[cfg(target_os = "cygwin")]
+                let fname_ptr = info.dli_fname.as_ptr();
+                #[cfg(not(target_os = "cygwin"))]
+                let fname_ptr = info.dli_fname;
+                if std::ffi::CStr::from_ptr(fname_ptr).to_str().unwrap()
                     != _lib_path.to_str().unwrap()
                 {
                     return None;
