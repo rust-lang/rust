@@ -6,7 +6,7 @@ use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;
 
-use rustc_attr_parsing::{ConstStability, StabilityLevel};
+use rustc_attr_data_structures as attrs;
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -475,7 +475,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     /// Check the const stability of the given item (fn or trait).
     fn check_callee_stability(&mut self, def_id: DefId) {
         match self.tcx.lookup_const_stability(def_id) {
-            Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
+            Some(attrs::ConstStability { level: attrs::StabilityLevel::Stable { .. }, .. }) => {
                 // All good.
             }
             None => {
@@ -491,8 +491,8 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                     });
                 }
             }
-            Some(ConstStability {
-                level: StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
+            Some(attrs::ConstStability {
+                level: attrs::StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
                 feature,
                 ..
             }) => {
@@ -918,8 +918,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 });
                             }
                         }
-                        Some(ConstStability {
-                            level: StabilityLevel::Unstable { .. },
+                        Some(attrs::ConstStability {
+                            level: attrs::StabilityLevel::Unstable { .. },
                             feature,
                             ..
                         }) => {
@@ -930,7 +930,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 suggestion: self.crate_inject_span(),
                             });
                         }
-                        Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
+                        Some(attrs::ConstStability {
+                            level: attrs::StabilityLevel::Stable { .. },
+                            ..
+                        }) => {
                             // All good. Note that a `#[rustc_const_stable]` intrinsic (meaning it
                             // can be *directly* invoked from stable const code) does not always
                             // have the `#[rustc_intrinsic_const_stable_indirect]` attribute (which controls

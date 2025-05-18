@@ -10,7 +10,7 @@ use rustc_ast::token::{self, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId};
 use rustc_ast_pretty::pprust;
-use rustc_attr_parsing::{AttributeKind, find_attr};
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_feature::Features;

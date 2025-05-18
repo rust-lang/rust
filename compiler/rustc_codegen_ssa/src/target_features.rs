@@ -1,4 +1,4 @@
-use rustc_attr_parsing::InstructionSetAttr;
+use rustc_attr_data_structures::InstructionSetAttr;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Applicability;

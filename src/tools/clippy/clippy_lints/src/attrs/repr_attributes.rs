@@ -1,4 +1,4 @@
-use rustc_attr_parsing::{AttributeKind, ReprAttr, find_attr};
+use rustc_attr_data_structures::{AttributeKind, ReprAttr, find_attr};
 use rustc_hir::Attribute;
 use rustc_lint::LateContext;
 use rustc_span::Span;
