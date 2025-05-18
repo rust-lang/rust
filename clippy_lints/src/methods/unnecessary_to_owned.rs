@@ -619,7 +619,7 @@ fn is_cloned_or_copied(cx: &LateContext<'_>, method_name: Symbol, method_def_id:
 /// Returns true if the named method can be used to convert the receiver to its "owned"
 /// representation.
 fn is_to_owned_like<'a>(cx: &LateContext<'a>, call_expr: &Expr<'a>, method_name: Symbol, method_def_id: DefId) -> bool {
-    is_clone_like(cx, method_name.as_str(), method_def_id)
+    is_clone_like(cx, method_name, method_def_id)
         || is_cow_into_owned(cx, method_name, method_def_id)
         || is_to_string_on_string_like(cx, call_expr, method_name, method_def_id)
 }
@@ -686,11 +686,11 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
     if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, expr) = arg.kind
         && let ExprKind::MethodCall(method_path, caller, &[], _) = expr.kind
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && let method_name = method_path.ident.name.as_str()
+        && let method_name = method_path.ident.name
         && match method_name {
-            "to_owned" => cx.tcx.is_diagnostic_item(sym::to_owned_method, method_def_id),
-            "to_string" => cx.tcx.is_diagnostic_item(sym::to_string_method, method_def_id),
-            "to_vec" => cx
+            sym::to_owned => cx.tcx.is_diagnostic_item(sym::to_owned_method, method_def_id),
+            sym::to_string => cx.tcx.is_diagnostic_item(sym::to_string_method, method_def_id),
+            sym::to_vec => cx
                 .tcx
                 .impl_of_method(method_def_id)
                 .filter(|&impl_did| cx.tcx.type_of(impl_did).instantiate_identity().is_slice())

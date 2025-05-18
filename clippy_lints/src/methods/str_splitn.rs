@@ -4,7 +4,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::visitors::{Descend, for_each_expr};
-use clippy_utils::{is_diag_item_method, path_to_local_id, paths};
+use clippy_utils::{is_diag_item_method, path_to_local_id, paths, sym};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -12,13 +12,13 @@ use rustc_hir::{
 };
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{Span, Symbol, SyntaxContext, sym};
+use rustc_span::{Span, Symbol, SyntaxContext};
 
 use super::{MANUAL_SPLIT_ONCE, NEEDLESS_SPLITN};
 
 pub(super) fn check(
     cx: &LateContext<'_>,
-    method_name: &str,
+    method_name: Symbol,
     expr: &Expr<'_>,
     self_arg: &Expr<'_>,
     pat_arg: &Expr<'_>,
@@ -45,9 +45,9 @@ pub(super) fn check(
     }
 }
 
-fn lint_needless(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, self_arg: &Expr<'_>, pat_arg: &Expr<'_>) {
+fn lint_needless(cx: &LateContext<'_>, method_name: Symbol, expr: &Expr<'_>, self_arg: &Expr<'_>, pat_arg: &Expr<'_>) {
     let mut app = Applicability::MachineApplicable;
-    let r = if method_name == "splitn" { "" } else { "r" };
+    let r = if method_name == sym::splitn { "" } else { "r" };
 
     span_lint_and_sugg(
         cx,
@@ -66,14 +66,14 @@ fn lint_needless(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, self_
 
 fn check_manual_split_once(
     cx: &LateContext<'_>,
-    method_name: &str,
+    method_name: Symbol,
     expr: &Expr<'_>,
     self_arg: &Expr<'_>,
     pat_arg: &Expr<'_>,
     usage: &IterUsage,
 ) {
     let ctxt = expr.span.ctxt();
-    let (msg, reverse) = if method_name == "splitn" {
+    let (msg, reverse) = if method_name == sym::splitn {
         ("manual implementation of `split_once`", false)
     } else {
         ("manual implementation of `rsplit_once`", true)
@@ -121,7 +121,7 @@ fn check_manual_split_once(
 /// ```
 fn check_manual_split_once_indirect(
     cx: &LateContext<'_>,
-    method_name: &str,
+    method_name: Symbol,
     expr: &Expr<'_>,
     self_arg: &Expr<'_>,
     pat_arg: &Expr<'_>,
@@ -143,7 +143,7 @@ fn check_manual_split_once_indirect(
         && first.name != second.name
         && !local_used_after_expr(cx, iter_binding_id, second.init_expr)
     {
-        let (r, lhs, rhs) = if method_name == "splitn" {
+        let (r, lhs, rhs) = if method_name == sym::splitn {
             ("", first.name, second.name)
         } else {
             ("r", second.name, first.name)

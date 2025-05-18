@@ -3,7 +3,7 @@ use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
 use clippy_utils::ty::{get_type_diagnostic_name, is_copy, is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{
-    get_parent_expr, is_inherent_method_call, is_trait_item, is_trait_method, is_ty_alias, path_to_local,
+    get_parent_expr, is_inherent_method_call, is_trait_item, is_trait_method, is_ty_alias, path_to_local, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -15,7 +15,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 declare_clippy_lint! {
@@ -177,7 +177,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
             },
 
             ExprKind::MethodCall(name, recv, [], _) => {
-                if is_trait_method(cx, e, sym::Into) && name.ident.as_str() == "into" {
+                if is_trait_method(cx, e, sym::Into) && name.ident.name == sym::into {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(recv);
                     if same_type_and_consts(a, b) {

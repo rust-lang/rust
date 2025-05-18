@@ -1097,13 +1097,13 @@ pub fn method_calls<'tcx>(expr: &'tcx Expr<'tcx>, max_depth: usize) -> (Vec<Symb
 /// `method_chain_args(expr, &["bar", "baz"])` will return a `Vec`
 /// containing the `Expr`s for
 /// `.bar()` and `.baz()`
-pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec<(&'a Expr<'a>, &'a [Expr<'a>])>> {
+pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[Symbol]) -> Option<Vec<(&'a Expr<'a>, &'a [Expr<'a>])>> {
     let mut current = expr;
     let mut matched = Vec::with_capacity(methods.len());
     for method_name in methods.iter().rev() {
         // method chains are stored last -> first
         if let ExprKind::MethodCall(path, receiver, args, _) = current.kind {
-            if path.ident.name.as_str() == *method_name {
+            if path.ident.name == *method_name {
                 if receiver.span.from_expansion() || args.iter().any(|e| e.span.from_expansion()) {
                     return None;
                 }
@@ -1489,14 +1489,14 @@ pub fn is_adjusted(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 /// macro `name`.
 /// See also [`is_direct_expn_of`].
 #[must_use]
-pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
+pub fn is_expn_of(mut span: Span, name: Symbol) -> Option<Span> {
     loop {
         if span.from_expansion() {
             let data = span.ctxt().outer_expn_data();
             let new_span = data.call_site;
 
             if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind
-                && mac_name.as_str() == name
+                && mac_name == name
             {
                 return Some(new_span);
             }
@@ -1519,13 +1519,13 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 /// `42` is considered expanded from `foo!` and `bar!` by `is_expn_of` but only
 /// from `bar!` by `is_direct_expn_of`.
 #[must_use]
-pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
+pub fn is_direct_expn_of(span: Span, name: Symbol) -> Option<Span> {
     if span.from_expansion() {
         let data = span.ctxt().outer_expn_data();
         let new_span = data.call_site;
 
         if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind
-            && mac_name.as_str() == name
+            && mac_name == name
         {
             return Some(new_span);
         }
@@ -1789,11 +1789,11 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
 }
 
 /// Checks if the given `DefId` matches the `libc` item.
-pub fn match_libc_symbol(cx: &LateContext<'_>, did: DefId, name: &str) -> bool {
+pub fn match_libc_symbol(cx: &LateContext<'_>, did: DefId, name: Symbol) -> bool {
     let path = cx.get_def_path(did);
     // libc is meant to be used as a flat list of names, but they're all actually defined in different
     // modules based on the target platform. Ignore everything but crate name and the item name.
-    path.first().is_some_and(|s| *s == sym::libc) && path.last().is_some_and(|s| s.as_str() == name)
+    path.first().is_some_and(|s| *s == sym::libc) && path.last().copied() == Some(name)
 }
 
 /// Returns the list of condition expressions and the list of blocks in a
