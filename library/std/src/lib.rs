@@ -305,7 +305,6 @@
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(lang_items)]
-#![feature(let_chains)]
 #![feature(link_cfg)]
 #![feature(linkage)]
 #![feature(macro_metavar_expr_concat)]
