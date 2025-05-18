@@ -66,6 +66,34 @@ impl<T: ?Sized> *const T {
         self as _
     }
 
+    /// Try to cast to a pointer of another type by checking aligment.
+    ///
+    /// If the pointer is properly aligned to the target type, it will be
+    /// cast to the target type. Otherwise, `None` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(pointer_try_cast_aligned)]
+    ///
+    /// let aligned: *const u8 = 0x1000 as _;
+    ///
+    /// // i32 has at most 4-byte alignment, so this will succeed
+    /// assert!(aligned.try_cast_aligned::<i32>().is_some());
+    ///
+    /// let unaligned: *const u8 = 0x1001 as _;
+    ///
+    /// // i32 has at least 2-byte alignment, so this will fail
+    /// assert!(unaligned.try_cast_aligned::<i32>().is_none());
+    /// ```
+    #[unstable(feature = "pointer_try_cast_aligned", issue = "141221")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    pub fn try_cast_aligned<U>(self) -> Option<*const U> {
+        if self.is_aligned_to(align_of::<U>()) { Some(self.cast()) } else { None }
+    }
+
     /// Uses the address value in a new pointer of another type.
     ///
     /// This operation will ignore the address part of its `meta` operand and discard existing
