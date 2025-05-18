@@ -19,10 +19,10 @@
 //!   pointer. The following points are only concerned with non-zero-sized accesses.
 //! * A [null] pointer is *never* valid.
 //! * For a pointer to be valid, it is necessary, but not always sufficient, that the pointer be
-//!   *dereferenceable*. The [provenance] of the pointer is used to determine which [allocated
-//!   object] it is derived from; a pointer is dereferenceable if the memory range of the given size
-//!   starting at the pointer is entirely contained within the bounds of that allocated object. Note
-//!   that in Rust, every (stack-allocated) variable is considered a separate allocated object.
+//!   *dereferenceable*. The [provenance] of the pointer is used to determine which [allocation]
+//!   it is derived from; a pointer is dereferenceable if the memory range of the given size
+//!   starting at the pointer is entirely contained within the bounds of that allocation. Note
+//!   that in Rust, every (stack-allocated) variable is considered a separate allocation.
 //! * All accesses performed by functions in this module are *non-atomic* in the sense
 //!   of [atomic operations] used to synchronize between threads. This means it is
 //!   undefined behavior to perform two concurrent accesses to the same location from different
@@ -30,7 +30,7 @@
 //!   includes [`read_volatile`] and [`write_volatile`]: Volatile accesses cannot
 //!   be used for inter-thread synchronization.
 //! * The result of casting a reference to a pointer is valid for as long as the
-//!   underlying object is live and no reference (just raw pointers) is used to
+//!   underlying allocation is live and no reference (just raw pointers) is used to
 //!   access the same memory. That is, reference and pointer accesses cannot be
 //!   interleaved.
 //!
@@ -95,24 +95,26 @@
 //!
 //! [valid value]: ../../reference/behavior-considered-undefined.html#invalid-values
 //!
-//! ## Allocated object
+//! ## Allocation
 //!
-//! An *allocated object* is a subset of program memory which is addressable
+//! <a id="allocated-object"></a> <!-- keep old URLs working -->
+//!
+//! An *allocation* is a subset of program memory which is addressable
 //! from Rust, and within which pointer arithmetic is possible. Examples of
-//! allocated objects include heap allocations, stack-allocated variables,
+//! allocations include heap allocations, stack-allocated variables,
 //! statics, and consts. The safety preconditions of some Rust operations -
 //! such as `offset` and field projections (`expr.field`) - are defined in
-//! terms of the allocated objects on which they operate.
+//! terms of the allocations on which they operate.
 //!
-//! An allocated object has a base address, a size, and a set of memory
-//! addresses. It is possible for an allocated object to have zero size, but
-//! such an allocated object will still have a base address. The base address
-//! of an allocated object is not necessarily unique. While it is currently the
-//! case that an allocated object always has a set of memory addresses which is
+//! An allocation has a base address, a size, and a set of memory
+//! addresses. It is possible for an allocation to have zero size, but
+//! such an allocation will still have a base address. The base address
+//! of an allocation is not necessarily unique. While it is currently the
+//! case that an allocation always has a set of memory addresses which is
 //! fully contiguous (i.e., has no "holes"), there is no guarantee that this
 //! will not change in the future.
 //!
-//! For any allocated object with `base` address, `size`, and a set of
+//! For any allocation with `base` address, `size`, and a set of
 //! `addresses`, the following are guaranteed:
 //! - For all addresses `a` in `addresses`, `a` is in the range `base .. (base +
 //!   size)` (note that this requires `a < base + size`, not `a <= base + size`)
@@ -122,11 +124,11 @@
 //! - `size <= isize::MAX`
 //!
 //! As a consequence of these guarantees, given any address `a` within the set
-//! of addresses of an allocated object:
+//! of addresses of an allocation:
 //! - It is guaranteed that `a - base` does not overflow `isize`
 //! - It is guaranteed that `a - base` is non-negative
 //! - It is guaranteed that, given `o = a - base` (i.e., the offset of `a` within
-//!   the allocated object), `base + o` will not wrap around the address space (in
+//!   the allocation), `base + o` will not wrap around the address space (in
 //!   other words, will not overflow `usize`)
 //!
 //! [`null()`]: null
@@ -138,8 +140,8 @@
 //! and the freed memory gets reallocated before your read/write (in fact this is the
 //! worst-case scenario, UAFs would be much less concerning if this didn't happen!).
 //! As another example, consider that [`wrapping_offset`] is documented to "remember"
-//! the allocated object that the original pointer points to, even if it is offset far
-//! outside the memory range occupied by that allocated object.
+//! the allocation that the original pointer points to, even if it is offset far
+//! outside the memory range occupied by that allocation.
 //! To rationalize claims like this, pointers need to somehow be *more* than just their addresses:
 //! they must have **provenance**.
 //!
@@ -159,12 +161,12 @@
 //!   writes. Note that this can interact with the other components, e.g. a pointer might permit
 //!   mutation only for a subset of addresses, or only for a subset of its maximal timespan.
 //!
-//! When an [allocated object] is created, it has a unique Original Pointer. For alloc
+//! When an [allocation] is created, it has a unique Original Pointer. For alloc
 //! APIs this is literally the pointer the call returns, and for local variables and statics,
 //! this is the name of the variable/static. (This is mildly overloading the term "pointer"
 //! for the sake of brevity/exposition.)
 //!
-//! The Original Pointer for an allocated object has provenance that constrains the *spatial*
+//! The Original Pointer for an allocation has provenance that constrains the *spatial*
 //! permissions of this pointer to the memory range of the allocation, and the *temporal*
 //! permissions to the lifetime of the allocation. Provenance is implicitly inherited by all
 //! pointers transitively derived from the Original Pointer through operations like [`offset`],
@@ -192,10 +194,10 @@
 //!   provenance since they access an empty range of memory.
 //!
 //! * It is undefined behavior to [`offset`] a pointer across a memory range that is not contained
-//!   in the allocated object it is derived from, or to [`offset_from`] two pointers not derived
-//!   from the same allocated object. Provenance is used to say what exactly "derived from" even
+//!   in the allocation it is derived from, or to [`offset_from`] two pointers not derived
+//!   from the same allocation. Provenance is used to say what exactly "derived from" even
 //!   means: the lineage of a pointer is traced back to the Original Pointer it descends from, and
-//!   that identifies the relevant allocated object. In particular, it's always UB to offset a
+//!   that identifies the relevant allocation. In particular, it's always UB to offset a
 //!   pointer derived from something that is now deallocated, except if the offset is 0.
 //!
 //! But it *is* still sound to:
@@ -216,7 +218,7 @@
 //! * Compare arbitrary pointers by address. Pointer comparison ignores provenance and addresses
 //!   *are* just integers, so there is always a coherent answer, even if the pointers are dangling
 //!   or from different provenances. Note that if you get "lucky" and notice that a pointer at the
-//!   end of one allocated object is the "same" address as the start of another allocated object,
+//!   end of one allocation is the "same" address as the start of another allocation,
 //!   anything you do with that fact is *probably* going to be gibberish. The scope of that
 //!   gibberish is kept under control by the fact that the two pointers *still* aren't allowed to
 //!   access the other's allocation (bytes), because they still have different provenance.
@@ -369,7 +371,7 @@
 //! integer-to-pointer casts.
 //!
 //! [aliasing]: ../../nomicon/aliasing.html
-//! [allocated object]: #allocated-object
+//! [allocation]: #allocation
 //! [provenance]: #provenance
 //! [book]: ../../book/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
 //! [ub]: ../../reference/behavior-considered-undefined.html
@@ -1289,7 +1291,7 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // SAFETY: the caller must guarantee that `x` and `y` are
     // valid for writes and properly aligned. `tmp` cannot be
     // overlapping either `x` or `y` because `tmp` was just allocated
-    // on the stack as a separate allocated object.
+    // on the stack as a separate allocation.
     unsafe {
         copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
         copy(y, x, 1); // `x` and `y` may overlap
@@ -1409,7 +1411,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
             // Going though a slice here helps codegen know the size fits in `isize`
             let slice = slice_from_raw_parts_mut(x, count);
             // SAFETY: This is all readable from the pointer, meaning it's one
-            // allocated object, and thus cannot be more than isize::MAX bytes.
+            // allocation, and thus cannot be more than isize::MAX bytes.
             let bytes = unsafe { mem::size_of_val_raw::<[T]>(slice) };
             if let Some(bytes) = NonZero::new(bytes) {
                 // SAFETY: These are the same ranges, just expressed in a different
@@ -1563,7 +1565,7 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
     // SAFETY: the caller must guarantee that `dst` is valid to be
     // cast to a mutable reference (valid for writes, aligned, initialized),
     // and cannot overlap `src` since `dst` must point to a distinct
-    // allocated object.
+    // allocation.
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
@@ -1810,7 +1812,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
     let mut tmp = MaybeUninit::<T>::uninit();
     // SAFETY: the caller must guarantee that `src` is valid for reads.
     // `src` cannot overlap `tmp` because `tmp` was just allocated on
-    // the stack as a separate allocated object.
+    // the stack as a separate allocation.
     //
     // Also, since we just wrote a valid value into `tmp`, it is guaranteed
     // to be properly initialized.
