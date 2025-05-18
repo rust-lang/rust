@@ -218,68 +218,56 @@ error: expected one of `)`, `att_syntax`, or `raw`, found `FOO`
 LL | global_asm!("", options(FOO));
    |                         ^^^ expected one of `)`, `att_syntax`, or `raw`
 
-error: the `nomem` option cannot be used with `global_asm!`
-  --> $DIR/parse-error.rs:97:25
-   |
-LL | global_asm!("", options(nomem FOO));
-   |                         ^^^^^ the `nomem` option is not meaningful for global-scoped inline assembly
-
 error: expected one of `)` or `,`, found `FOO`
   --> $DIR/parse-error.rs:97:31
    |
 LL | global_asm!("", options(nomem FOO));
    |                               ^^^ expected one of `)` or `,`
 
-error: the `nomem` option cannot be used with `global_asm!`
-  --> $DIR/parse-error.rs:100:25
-   |
-LL | global_asm!("", options(nomem, FOO));
-   |                         ^^^^^ the `nomem` option is not meaningful for global-scoped inline assembly
-
 error: expected one of `)`, `att_syntax`, or `raw`, found `FOO`
-  --> $DIR/parse-error.rs:100:32
+  --> $DIR/parse-error.rs:99:32
    |
 LL | global_asm!("", options(nomem, FOO));
    |                                ^^^ expected one of `)`, `att_syntax`, or `raw`
 
 error: expected string literal
-  --> $DIR/parse-error.rs:104:29
+  --> $DIR/parse-error.rs:102:29
    |
 LL | global_asm!("", clobber_abi(FOO));
    |                             ^^^ not a string literal
 
 error: expected one of `)` or `,`, found `FOO`
-  --> $DIR/parse-error.rs:106:33
+  --> $DIR/parse-error.rs:104:33
    |
 LL | global_asm!("", clobber_abi("C" FOO));
    |                                 ^^^ expected one of `)` or `,`
 
 error: expected string literal
-  --> $DIR/parse-error.rs:108:34
+  --> $DIR/parse-error.rs:106:34
    |
 LL | global_asm!("", clobber_abi("C", FOO));
    |                                  ^^^ not a string literal
 
 error: `clobber_abi` cannot be used with `global_asm!`
-  --> $DIR/parse-error.rs:110:19
+  --> $DIR/parse-error.rs:108:19
    |
 LL | global_asm!("{}", clobber_abi("C"), const FOO);
    |                   ^^^^^^^^^^^^^^^^
 
 error: `clobber_abi` cannot be used with `global_asm!`
-  --> $DIR/parse-error.rs:112:28
+  --> $DIR/parse-error.rs:110:28
    |
 LL | global_asm!("", options(), clobber_abi("C"));
    |                            ^^^^^^^^^^^^^^^^
 
 error: `clobber_abi` cannot be used with `global_asm!`
-  --> $DIR/parse-error.rs:114:30
+  --> $DIR/parse-error.rs:112:30
    |
 LL | global_asm!("{}", options(), clobber_abi("C"), const FOO);
    |                              ^^^^^^^^^^^^^^^^
 
 error: duplicate argument named `a`
-  --> $DIR/parse-error.rs:116:35
+  --> $DIR/parse-error.rs:114:35
    |
 LL | global_asm!("{a}", a = const FOO, a = const BAR);
    |                    -------------  ^^^^^^^^^^^^^ duplicate argument
@@ -287,7 +275,7 @@ LL | global_asm!("{a}", a = const FOO, a = const BAR);
    |                    previously here
 
 error: argument never used
-  --> $DIR/parse-error.rs:116:35
+  --> $DIR/parse-error.rs:114:35
    |
 LL | global_asm!("{a}", a = const FOO, a = const BAR);
    |                                   ^^^^^^^^^^^^^ argument never used
@@ -295,19 +283,19 @@ LL | global_asm!("{a}", a = const FOO, a = const BAR);
    = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {1} */"`
 
 error: expected one of `clobber_abi`, `const`, `options`, or `sym`, found `""`
-  --> $DIR/parse-error.rs:119:28
+  --> $DIR/parse-error.rs:117:28
    |
 LL | global_asm!("", options(), "");
    |                            ^^ expected one of `clobber_abi`, `const`, `options`, or `sym`
 
 error: expected one of `clobber_abi`, `const`, `options`, or `sym`, found `"{}"`
-  --> $DIR/parse-error.rs:121:30
+  --> $DIR/parse-error.rs:119:30
    |
 LL | global_asm!("{}", const FOO, "{}", const FOO);
    |                              ^^^^ expected one of `clobber_abi`, `const`, `options`, or `sym`
 
 error: asm template must be a string literal
-  --> $DIR/parse-error.rs:123:13
+  --> $DIR/parse-error.rs:121:13
    |
 LL | global_asm!(format!("{{{}}}", 0), const FOO);
    |             ^^^^^^^^^^^^^^^^^^^^
@@ -315,7 +303,7 @@ LL | global_asm!(format!("{{{}}}", 0), const FOO);
    = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: asm template must be a string literal
-  --> $DIR/parse-error.rs:125:20
+  --> $DIR/parse-error.rs:123:20
    |
 LL | global_asm!("{1}", format!("{{{}}}", 0), const FOO, const BAR);
    |                    ^^^^^^^^^^^^^^^^^^^^
@@ -418,6 +406,6 @@ LL -     let mut bar = 0;
 LL +     const bar: /* Type */ = 0;
    |
 
-error: aborting due to 59 previous errors
+error: aborting due to 57 previous errors
 
 For more information about this error, try `rustc --explain E0435`.
