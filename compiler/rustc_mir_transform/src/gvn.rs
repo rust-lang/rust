@@ -836,6 +836,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
     fn simplify_rvalue(
         &mut self,
+        lhs: &Place<'tcx>,
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
@@ -855,7 +856,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 Value::Repeat(op, amount)
             }
             Rvalue::NullaryOp(op, ty) => Value::NullaryOp(op, ty),
-            Rvalue::Aggregate(..) => return self.simplify_aggregate(rvalue, location),
+            Rvalue::Aggregate(..) => return self.simplify_aggregate(lhs, rvalue, location),
             Rvalue::Ref(_, borrow_kind, ref mut place) => {
                 self.simplify_place_projection(place, location);
                 return Some(self.new_pointer(*place, AddressKind::Ref(borrow_kind)));
@@ -943,6 +944,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     fn simplify_aggregate_to_copy(
         &mut self,
+        lhs: &Place<'tcx>,
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
         fields: &[VnIndex],
@@ -982,12 +984,16 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         // Allow introducing places with non-constant offsets, as those are still better than
         // reconstructing an aggregate.
-        if let Some(place) = self.try_as_place(copy_from_local_value, location, true) {
-            if rvalue.ty(self.local_decls, self.tcx) == place.ty(self.local_decls, self.tcx).ty {
+        if let Some(place) = self.try_as_place(copy_from_local_value, location, true)
+            && rvalue.ty(self.local_decls, self.tcx) == place.ty(self.local_decls, self.tcx).ty
+        {
+            // Avoid creating `*a = copy (*b)`, as they might be aliases resulting in overlapping assignments.
+            // FIXME: This also avoids any kind of projection, not just derefs. We can add allowed projections.
+            if lhs.as_local().is_some() {
                 self.reused_locals.insert(place.local);
                 *rvalue = Rvalue::Use(Operand::Copy(place));
-                return Some(copy_from_local_value);
             }
+            return Some(copy_from_local_value);
         }
 
         None
@@ -995,6 +1001,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     fn simplify_aggregate(
         &mut self,
+        lhs: &Place<'tcx>,
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
@@ -1090,7 +1097,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         if let AggregateTy::Def(_, _) = ty
             && let Some(value) =
-                self.simplify_aggregate_to_copy(rvalue, location, &fields, variant_index)
+                self.simplify_aggregate_to_copy(lhs, rvalue, location, &fields, variant_index)
         {
             return Some(value);
         }
@@ -1765,7 +1772,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
         if let StatementKind::Assign(box (ref mut lhs, ref mut rvalue)) = stmt.kind {
             self.simplify_place_projection(lhs, location);
 
-            let value = self.simplify_rvalue(rvalue, location);
+            let value = self.simplify_rvalue(lhs, rvalue, location);
             let value = if let Some(local) = lhs.as_local()
                 && self.ssa.is_ssa(local)
                 // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark
