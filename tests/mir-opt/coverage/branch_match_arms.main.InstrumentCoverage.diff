@@ -40,7 +40,7 @@
 +     coverage Code { bcb: bcb5 } => $DIR/branch_match_arms.rs:19:17: 19:18 (#0);
 +     coverage Code { bcb: bcb5 } => $DIR/branch_match_arms.rs:19:23: 19:30 (#0);
 +     coverage Code { bcb: bcb5 } => $DIR/branch_match_arms.rs:19:31: 19:32 (#0);
-+     coverage Code { bcb: bcb2 } => $DIR/branch_match_arms.rs:21:2: 21:2 (#0);
++     coverage Code { bcb: bcb2 } => $DIR/branch_match_arms.rs:21:1: 21:2 (#0);
 + 
       bb0: {
 +         Coverage::VirtualCounter(bcb0);
