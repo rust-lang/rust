@@ -5,6 +5,8 @@ use std::{alloc, slice};
 use rustc_abi::{Align, Size};
 use rustc_middle::mir::interpret::AllocBytes;
 
+use crate::helpers::ToU64 as _;
+
 /// Allocation bytes that explicitly handle the layout of the data they're storing.
 /// This is necessary to interface with native code that accesses the program store in Miri.
 #[derive(Debug)]
@@ -21,7 +23,7 @@ pub struct MiriAllocBytes {
 impl Clone for MiriAllocBytes {
     fn clone(&self) -> Self {
         let bytes: Cow<'_, [u8]> = Cow::Borrowed(self);
-        let align = Align::from_bytes(self.layout.align().try_into().unwrap()).unwrap();
+        let align = Align::from_bytes(self.layout.align().to_u64()).unwrap();
         MiriAllocBytes::from_bytes(bytes, align)
     }
 }
@@ -90,7 +92,7 @@ impl AllocBytes for MiriAllocBytes {
         let align = align.bytes();
         // SAFETY: `alloc_fn` will only be used with `size != 0`.
         let alloc_fn = |layout| unsafe { alloc::alloc(layout) };
-        let alloc_bytes = MiriAllocBytes::alloc_with(size.try_into().unwrap(), align, alloc_fn)
+        let alloc_bytes = MiriAllocBytes::alloc_with(size.to_u64(), align, alloc_fn)
             .unwrap_or_else(|()| {
                 panic!("Miri ran out of memory: cannot create allocation of {size} bytes")
             });

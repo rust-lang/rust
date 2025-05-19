@@ -401,7 +401,7 @@ fn extract_windows_epoch<'tcx>(
         Some(time) => {
             let duration = ecx.system_time_since_windows_epoch(&time)?;
             let duration_ticks = ecx.windows_ticks_for(duration)?;
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(clippy::as_conversions)]
             interp_ok(Some((duration_ticks as u32, (duration_ticks >> 32) as u32)))
         }
         None => interp_ok(None),

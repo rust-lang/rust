@@ -94,14 +94,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Try getting the function from the shared library.
         // On windows `_lib_path` will be unused, hence the name starting with `_`.
         let (lib, _lib_path) = this.machine.native_lib.as_ref().unwrap();
-        let func: libloading::Symbol<'_, unsafe extern "C" fn()> = unsafe {
-            match lib.get(link_name.as_str().as_bytes()) {
-                Ok(x) => x,
-                Err(_) => {
-                    return None;
-                }
-            }
-        };
+        let func: libloading::Symbol<'_, unsafe extern "C" fn()> =
+            unsafe { lib.get(link_name.as_str().as_bytes()).ok()? };
+        #[expect(clippy::as_conversions)] // fn-ptr to raw-ptr cast needs `as`.
+        let fn_ptr = *func.deref() as *mut std::ffi::c_void;
 
         // FIXME: this is a hack!
         // The `libloading` crate will automatically load system libraries like `libc`.
@@ -116,7 +112,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // using the `libc` crate where this interface is public.
         let mut info = std::mem::MaybeUninit::<libc::Dl_info>::uninit();
         unsafe {
-            if libc::dladdr(*func.deref() as *const _, info.as_mut_ptr()) != 0 {
+            if libc::dladdr(fn_ptr, info.as_mut_ptr()) != 0 {
                 let info = info.assume_init();
                 #[cfg(target_os = "cygwin")]
                 let fname_ptr = info.dli_fname.as_ptr();
@@ -129,8 +125,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
         }
+
         // Return a pointer to the function.
-        Some(CodePtr(*func.deref() as *mut _))
+        Some(CodePtr(fn_ptr))
     }
 }
 

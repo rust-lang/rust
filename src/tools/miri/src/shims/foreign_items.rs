@@ -639,7 +639,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let val = this.read_scalar(val)?.to_i32()?;
                 let num = this.read_target_usize(num)?;
                 // The docs say val is "interpreted as unsigned char".
-                #[expect(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+                #[expect(clippy::as_conversions)]
                 let val = val as u8;
 
                 // C requires that this must always be a valid pointer (C18 §7.1.4).
@@ -665,7 +665,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let val = this.read_scalar(val)?.to_i32()?;
                 let num = this.read_target_usize(num)?;
                 // The docs say val is "interpreted as unsigned char".
-                #[expect(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+                #[expect(clippy::as_conversions)]
                 let val = val as u8;
 
                 // C requires that this must always be a valid pointer (C18 §7.1.4).
@@ -676,7 +676,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     .iter()
                     .position(|&c| c == val);
                 if let Some(idx) = idx {
-                    let new_ptr = ptr.wrapping_offset(Size::from_bytes(idx as u64), this);
+                    let new_ptr = ptr.wrapping_offset(Size::from_bytes(idx), this);
                     this.write_pointer(new_ptr, dest)?;
                 } else {
                     this.write_null(dest)?;
