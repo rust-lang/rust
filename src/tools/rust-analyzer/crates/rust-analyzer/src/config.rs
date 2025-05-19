@@ -544,7 +544,7 @@ config_data! {
          /// Whether to prefer import paths containing a `prelude` module.
         imports_preferPrelude: bool                       = false,
         /// The path structure for newly inserted paths to use.
-        imports_prefix: ImportPrefixDef               = ImportPrefixDef::Plain,
+        imports_prefix: ImportPrefixDef               = ImportPrefixDef::ByCrate,
         /// Whether to prefix external (including std, core) crate imports with `::`. e.g. "use ::std::io::Read;".
         imports_prefixExternPrelude: bool = false,
     }
