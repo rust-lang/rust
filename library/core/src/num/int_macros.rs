@@ -4,7 +4,7 @@ macro_rules! int_impl {
         ActualT = $ActualT:ident,
         UnsignedT = $UnsignedT:ty,
 
-        // There are all for use *only* in doc comments.
+        // These are all for use *only* in doc comments.
         // As such, they're all passed as literals -- passing them as a string
         // literal is fine if they need to be multiple code tokens.
         // In non-comments, use the associated constants rather than these.
@@ -1016,6 +1016,110 @@ macro_rules! int_impl {
         pub const fn strict_div_euclid(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_div_euclid(rhs);
             if b { overflow_panic::div() } else { a }
+        }
+
+        /// Checked integer division without remainder. Computes `self / rhs`,
+        /// returning `None` if `rhs == 0`, the division results in overflow,
+        /// or `self % rhs != 0`.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(exact_div)]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 1).checked_exact_div(-1), Some(", stringify!($Max), "));")]
+        #[doc = concat!("assert_eq!((-5", stringify!($SelfT), ").checked_exact_div(2), None);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.checked_exact_div(-1), None);")]
+        #[doc = concat!("assert_eq!((1", stringify!($SelfT), ").checked_exact_div(0), None);")]
+        /// ```
+        #[unstable(
+            feature = "exact_div",
+            issue = "139911",
+        )]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn checked_exact_div(self, rhs: Self) -> Option<Self> {
+            if intrinsics::unlikely(rhs == 0 || ((self == Self::MIN) && (rhs == -1))) {
+                None
+            } else {
+                // SAFETY: division by zero and overflow are checked above
+                unsafe {
+                    if intrinsics::unlikely(intrinsics::unchecked_rem(self, rhs) != 0) {
+                        None
+                    } else {
+                        Some(intrinsics::exact_div(self, rhs))
+                    }
+                }
+            }
+        }
+
+        /// Checked integer division without remainder. Computes `self / rhs`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic  if `rhs == 0`, the division results in overflow,
+        /// or `self % rhs != 0`.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(exact_div)]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".exact_div(2), 32);")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".exact_div(32), 2);")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 1).exact_div(-1), ", stringify!($Max), ");")]
+        /// ```
+        ///
+        /// ```should_panic
+        /// #![feature(exact_div)]
+        #[doc = concat!("let _ = 65", stringify!($SelfT), ".exact_div(2);")]
+        /// ```
+        /// ```should_panic
+        /// #![feature(exact_div)]
+        #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.exact_div(-1);")]
+        /// ```
+        #[unstable(
+            feature = "exact_div",
+            issue = "139911",
+        )]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn exact_div(self, rhs: Self) -> Self {
+            match self.checked_exact_div(rhs) {
+                Some(x) => x,
+                None => panic!("Failed to divide without remainder"),
+            }
+        }
+
+        /// Unchecked integer division without remainder. Computes `self / rhs`.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when `rhs == 0`, `self % rhs != 0`, or
+        #[doc = concat!("`self == ", stringify!($SelfT), "::MIN && rhs == -1`,")]
+        /// i.e. when [`checked_exact_div`](Self::checked_exact_div) would return `None`.
+        #[unstable(
+            feature = "exact_div",
+            issue = "139911",
+        )]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const unsafe fn unchecked_exact_div(self, rhs: Self) -> Self {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_exact_div cannot overflow, divide by zero, or leave a remainder"),
+                (
+                    lhs: $SelfT = self,
+                    rhs: $SelfT = rhs,
+                ) => rhs > 0 && lhs % rhs == 0 && (lhs != <$SelfT>::MIN || rhs != -1),
+            );
+            // SAFETY: Same precondition
+            unsafe { intrinsics::exact_div(self, rhs) }
         }
 
         /// Checked integer remainder. Computes `self % rhs`, returning `None` if
