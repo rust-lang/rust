@@ -473,6 +473,27 @@ impl CStore {
         }
     }
 
+    // Report about async drop types in dependency if async drop feature is disabled
+    pub fn report_incompatible_async_drop_feature(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+        if tcx.features().async_drop() {
+            return;
+        }
+        for (_cnum, data) in self.iter_crate_data() {
+            if data.is_proc_macro_crate() {
+                continue;
+            }
+            if data.has_async_drops() {
+                let extern_crate = data.name();
+                let local_crate = tcx.crate_name(LOCAL_CRATE);
+                tcx.dcx().emit_warn(errors::AsyncDropTypesInDependency {
+                    span: krate.spans.inner_span.shrink_to_lo(),
+                    extern_crate,
+                    local_crate,
+                });
+            }
+        }
+    }
+
     pub fn new(metadata_loader: Box<MetadataLoaderDyn>) -> CStore {
         CStore {
             metadata_loader,
