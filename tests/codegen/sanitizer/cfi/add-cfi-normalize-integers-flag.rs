@@ -1,7 +1,7 @@
 // Verifies that "cfi-normalize-integers" module flag is added.
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-normalize-integers
+//@ compile-flags: -Clto -Ctarget-feature=-crt-static -Zunstable-options -Csanitize=cfi -Zsanitizer-cfi-normalize-integers
 
 #![crate_type = "lib"]
 

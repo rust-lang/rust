@@ -2,7 +2,7 @@
 
 //@ only-x86_64
 //@ needs-sanitizer-address
-//@ compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static
+//@ compile-flags: -Zunstable-options -Csanitize=address -Ctarget-feature=-crt-static
 
 #![crate_type = "lib"]
 #![no_std]

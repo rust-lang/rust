@@ -1,11 +1,11 @@
 warning: `no_sanitize` will have no effect after inlining
-  --> $DIR/inline-always.rs:7:1
+  --> $DIR/inline-always.rs:5:1
    |
 LL | #[no_sanitize(address)]
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: inlining requested here
-  --> $DIR/inline-always.rs:5:1
+  --> $DIR/inline-always.rs:3:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^

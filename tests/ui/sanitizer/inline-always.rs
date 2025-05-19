@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(no_sanitize)]
-
 #[inline(always)]
 //~^ NOTE inlining requested here
 #[no_sanitize(address)]
