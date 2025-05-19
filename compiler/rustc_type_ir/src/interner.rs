@@ -139,6 +139,13 @@ pub trait Interner:
     type BoundRegion: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type PlaceholderRegion: PlaceholderLike;
 
+    type RegionAssumptions: Copy
+        + Debug
+        + Hash
+        + Eq
+        + SliceLike<Item = ty::OutlivesPredicate<Self, Self::GenericArg>>
+        + TypeFoldable<Self>;
+
     // Predicates
     type ParamEnv: ParamEnv<Self>;
     type Predicate: Predicate<Self>;

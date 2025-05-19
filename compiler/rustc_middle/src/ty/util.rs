@@ -766,7 +766,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 }),
         );
         ty::EarlyBinder::bind(ty::Binder::bind_with_vars(
-            ty::CoroutineWitnessTypes { types: bound_tys },
+            ty::CoroutineWitnessTypes { types: bound_tys, assumptions: ty::List::empty() },
             self.mk_bound_variable_kinds(&vars),
         ))
     }
