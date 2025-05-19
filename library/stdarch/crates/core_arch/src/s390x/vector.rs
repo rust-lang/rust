@@ -4483,10 +4483,8 @@ pub unsafe fn vec_packs<T: sealed::VectorPacks<U>, U>(a: T, b: U) -> T::Result {
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_packs_cc<T: sealed::VectorPacksCC>(a: T, b: T, c: *mut i32) -> T::Result {
-    let (x, y) = a.vec_packs_cc(b);
-    unsafe { c.write(y) };
-    x
+pub unsafe fn vec_packs_cc<T: sealed::VectorPacksCC>(a: T, b: T) -> (T::Result, i32) {
+    a.vec_packs_cc(b)
 }
 
 /// Vector Pack Saturated Unsigned
@@ -4501,10 +4499,8 @@ pub unsafe fn vec_packsu<T: sealed::VectorPacksu<U>, U>(a: T, b: U) -> T::Result
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_packsu_cc<T: sealed::VectorPacksuCC>(a: T, b: T, c: *mut i32) -> T::Result {
-    let (x, y) = a.vec_packsu_cc(b);
-    unsafe { c.write(y) };
-    x
+pub unsafe fn vec_packsu_cc<T: sealed::VectorPacksuCC>(a: T, b: T) -> (T::Result, i32) {
+    a.vec_packsu_cc(b)
 }
 
 /// Vector Unpack High
@@ -4878,10 +4874,8 @@ macro_rules! vec_find_any_cc {
             #[target_feature(enable = "vector")]
             #[unstable(feature = "stdarch_s390x", issue = "135681")]
             #[doc = $doc]
-            pub unsafe fn $fun<T: sealed::$Trait<U>, U>(a: T, b: U, c: *mut i32) -> T::Result {
-                let (x, y) = a.$fun(b);
-                unsafe { c.write(y) };
-                x
+            pub unsafe fn $fun<T: sealed::$Trait<U>, U>(a: T, b: U) -> (T::Result, i32) {
+                a.$fun(b)
             }
         )*
     }
@@ -5236,11 +5230,8 @@ pub unsafe fn vec_search_string_cc<T: sealed::VectorSearchString>(
     a: T,
     b: T,
     c: vector_unsigned_char,
-    d: *mut i32,
-) -> vector_unsigned_char {
-    let (x, y) = a.vec_search_string_cc(b, c);
-    unsafe { d.write(y) };
-    x
+) -> (vector_unsigned_char, i32) {
+    a.vec_search_string_cc(b, c)
 }
 
 /// Vector Search String Until Zero
@@ -5251,11 +5242,8 @@ pub unsafe fn vec_search_string_until_zero_cc<T: sealed::VectorSearchString>(
     a: T,
     b: T,
     c: vector_unsigned_char,
-    d: *mut i32,
-) -> vector_unsigned_char {
-    let (x, y) = a.vec_search_string_until_zero_cc(b, c);
-    unsafe { d.write(y) };
-    x
+) -> (vector_unsigned_char, i32) {
+    a.vec_search_string_until_zero_cc(b, c)
 }
 
 /// Vector Convert from float (even elements) to double
@@ -5336,10 +5324,8 @@ pub unsafe fn vec_cp_until_zero<T: sealed::VectorCopyUntilZero>(a: T) -> T {
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_cp_until_zero_cc<T: sealed::VectorCopyUntilZeroCC>(a: T, cc: *mut i32) -> T {
-    let (x, y) = a.vec_cp_until_zero_cc();
-    unsafe { cc.write(y) };
-    x
+pub unsafe fn vec_cp_until_zero_cc<T: sealed::VectorCopyUntilZeroCC>(a: T) -> (T, i32) {
+    a.vec_cp_until_zero_cc()
 }
 
 /// Vector Multiply Sum Logical
@@ -5603,27 +5589,15 @@ pub unsafe fn vec_cmpne_idx<T: sealed::VectorEqualityIdx>(a: T, b: T) -> T::Resu
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_cmpeq_idx_cc<T: sealed::VectorEqualityIdx>(
-    a: T,
-    b: T,
-    cc: *mut i32,
-) -> T::Result {
-    let (x, y) = a.vec_cmpeq_idx_cc(b);
-    unsafe { cc.write(y) };
-    x
+pub unsafe fn vec_cmpeq_idx_cc<T: sealed::VectorEqualityIdx>(a: T, b: T) -> (T::Result, i32) {
+    a.vec_cmpeq_idx_cc(b)
 }
 /// Vector Compare Not Equal Index with Condition Code
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_cmpne_idx_cc<T: sealed::VectorEqualityIdx>(
-    a: T,
-    b: T,
-    cc: *mut i32,
-) -> T::Result {
-    let (x, y) = a.vec_cmpne_idx_cc(b);
-    unsafe { cc.write(y) };
-    x
+pub unsafe fn vec_cmpne_idx_cc<T: sealed::VectorEqualityIdx>(a: T, b: T) -> (T::Result, i32) {
+    a.vec_cmpne_idx_cc(b)
 }
 /// Vector Compare Equal or Zero Index
 #[inline]
@@ -5643,27 +5617,15 @@ pub unsafe fn vec_cmpne_or_0_idx<T: sealed::VectorEqualityIdx>(a: T, b: T) -> T:
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_cmpeq_or_0_idx_cc<T: sealed::VectorEqualityIdx>(
-    a: T,
-    b: T,
-    cc: *mut i32,
-) -> T::Result {
-    let (x, y) = a.vec_cmpeq_or_0_idx_cc(b);
-    unsafe { cc.write(y) };
-    x
+pub unsafe fn vec_cmpeq_or_0_idx_cc<T: sealed::VectorEqualityIdx>(a: T, b: T) -> (T::Result, i32) {
+    a.vec_cmpeq_or_0_idx_cc(b)
 }
 /// Vector Compare Not Equal or Zero Index with Condition Code
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_cmpne_or_0_idx_cc<T: sealed::VectorEqualityIdx>(
-    a: T,
-    b: T,
-    cc: *mut i32,
-) -> T::Result {
-    let (x, y) = a.vec_cmpne_or_0_idx_cc(b);
-    unsafe { cc.write(y) };
-    x
+pub unsafe fn vec_cmpne_or_0_idx_cc<T: sealed::VectorEqualityIdx>(a: T, b: T) -> (T::Result, i32) {
+    a.vec_cmpne_or_0_idx_cc(b)
 }
 
 /// All Elements Equal
@@ -6426,138 +6388,126 @@ mod tests {
 
     #[simd_test(enable = "vector")]
     fn test_vec_find_any_eq_cc() {
-        let mut c = 0i32;
-
         let a = vector_unsigned_int([1, 2, 3, 4]);
         let b = vector_unsigned_int([5, 3, 7, 8]);
 
-        let d = unsafe { vec_find_any_eq_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_eq_cc(a, b) };
         assert_eq!(c, 1);
         assert_eq!(d.as_array(), &[0, 0, -1, 0]);
 
         let a = vector_unsigned_int([1, 2, 3, 4]);
         let b = vector_unsigned_int([5, 6, 7, 8]);
-        let d = unsafe { vec_find_any_eq_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_eq_cc(a, b) };
         assert_eq!(c, 3);
         assert_eq!(d.as_array(), &[0, 0, 0, 0]);
     }
 
     #[simd_test(enable = "vector")]
     fn test_vec_find_any_ne_cc() {
-        let mut c = 0i32;
-
         let a = vector_unsigned_int([1, 2, 3, 4]);
         let b = vector_unsigned_int([5, 3, 7, 8]);
 
-        let d = unsafe { vec_find_any_ne_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_ne_cc(a, b) };
         assert_eq!(c, 1);
         assert_eq!(d.as_array(), &[-1, -1, 0, -1]);
 
         let a = vector_unsigned_int([1, 2, 3, 4]);
         let b = vector_unsigned_int([1, 2, 3, 4]);
-        let d = unsafe { vec_find_any_ne_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_ne_cc(a, b) };
         assert_eq!(c, 3);
         assert_eq!(d.as_array(), &[0, 0, 0, 0]);
     }
 
     #[simd_test(enable = "vector")]
     fn test_vec_find_any_eq_idx_cc() {
-        let mut c = 0i32;
-
         let a = vector_unsigned_int([1, 2, 3, 4]);
         let b = vector_unsigned_int([5, 3, 7, 8]);
 
-        let d = unsafe { vec_find_any_eq_idx_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_eq_idx_cc(a, b) };
         assert_eq!(c, 1);
         assert_eq!(d.as_array(), &[0, 8, 0, 0]);
 
         let a = vector_unsigned_int([1, 2, 3, 4]);
         let b = vector_unsigned_int([5, 6, 7, 8]);
-        let d = unsafe { vec_find_any_eq_idx_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_eq_idx_cc(a, b) };
         assert_eq!(c, 3);
         assert_eq!(d.as_array(), &[0, 16, 0, 0]);
     }
 
     #[simd_test(enable = "vector")]
     fn test_vec_find_any_ne_idx_cc() {
-        let mut c = 0i32;
-
         let a = vector_unsigned_int([5, 2, 3, 4]);
         let b = vector_unsigned_int([5, 3, 7, 8]);
 
-        let d = unsafe { vec_find_any_ne_idx_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_ne_idx_cc(a, b) };
         assert_eq!(c, 1);
         assert_eq!(d.as_array(), &[0, 4, 0, 0]);
 
         let a = vector_unsigned_int([1, 2, 3, 4]);
         let b = vector_unsigned_int([1, 2, 3, 4]);
-        let d = unsafe { vec_find_any_ne_idx_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_ne_idx_cc(a, b) };
         assert_eq!(c, 3);
         assert_eq!(d.as_array(), &[0, 16, 0, 0]);
     }
 
     #[simd_test(enable = "vector")]
     fn test_vec_find_any_eq_or_0_idx_cc() {
-        let mut c = 0i32;
-
         // if no element of a matches any element of b with an equal value, and there is at least one element from a with a value of 0
         let a = vector_unsigned_int([0, 1, 2, 3]);
         let b = vector_unsigned_int([4, 5, 6, 7]);
-        let d = unsafe { vec_find_any_eq_or_0_idx_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_eq_or_0_idx_cc(a, b) };
         assert_eq!(c, 0);
         assert_eq!(d.as_array(), &[0, 0, 0, 0]);
 
         // if at least one element of a matches any element of b with an equal value, and no elements of a with a value of 0
         let a = vector_unsigned_int([1, 2, 3, 4]);
         let b = vector_unsigned_int([5, 2, 3, 4]);
-        let d = unsafe { vec_find_any_eq_or_0_idx_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_eq_or_0_idx_cc(a, b) };
         assert_eq!(c, 1);
         assert_eq!(d.as_array(), &[0, 4, 0, 0]);
 
         // if at least one element of a matches any element of b with an equal value, and there is at least one element from a has a value of 0
         let a = vector_unsigned_int([1, 2, 3, 0]);
         let b = vector_unsigned_int([1, 2, 3, 4]);
-        let d = unsafe { vec_find_any_eq_or_0_idx_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_eq_or_0_idx_cc(a, b) };
         assert_eq!(c, 2);
         assert_eq!(d.as_array(), &[0, 0, 0, 0]);
 
         // if no element of a matches any element of b with an equal value, and there is no element from a with a value of 0.
         let a = vector_unsigned_int([1, 2, 3, 4]);
         let b = vector_unsigned_int([5, 6, 7, 8]);
-        let d = unsafe { vec_find_any_eq_or_0_idx_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_eq_or_0_idx_cc(a, b) };
         assert_eq!(c, 3);
         assert_eq!(d.as_array(), &[0, 16, 0, 0]);
     }
 
     #[simd_test(enable = "vector")]
     fn test_vec_find_any_ne_or_0_idx_cc() {
-        let mut c = 0i32;
-
         // if no element of a matches any element of b with a not equal value, and there is at least one element from a with a value of 0.
         let a = vector_unsigned_int([0, 1, 2, 3]);
         let b = vector_unsigned_int([4, 1, 2, 3]);
-        let d = unsafe { vec_find_any_ne_or_0_idx_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_ne_or_0_idx_cc(a, b) };
         assert_eq!(c, 0);
         assert_eq!(d.as_array(), &[0, 0, 0, 0]);
 
         // if at least one element of a matches any element of b with a not equal value, and no elements of a with a value of 0.
         let a = vector_unsigned_int([4, 2, 3, 4]);
         let b = vector_unsigned_int([4, 5, 6, 7]);
-        let d = unsafe { vec_find_any_ne_or_0_idx_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_ne_or_0_idx_cc(a, b) };
         assert_eq!(c, 1);
         assert_eq!(d.as_array(), &[0, 4, 0, 0]);
 
         // if at least one element of a matches any element of b with a not equal value, and there is at least one element from a has a value of 0.
         let a = vector_unsigned_int([1, 0, 1, 1]);
         let b = vector_unsigned_int([4, 5, 6, 7]);
-        let d = unsafe { vec_find_any_ne_or_0_idx_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_ne_or_0_idx_cc(a, b) };
         assert_eq!(c, 2);
         assert_eq!(d.as_array(), &[0, 0, 0, 0]);
 
         // if no element of a matches any element of b with a not equal value, and there is no element from a with a value of 0.
         let a = vector_unsigned_int([4, 4, 4, 4]);
         let b = vector_unsigned_int([4, 5, 6, 7]);
-        let d = unsafe { vec_find_any_ne_or_0_idx_cc(a, b, &mut c) };
+        let (d, c) = unsafe { vec_find_any_ne_or_0_idx_cc(a, b) };
         assert_eq!(c, 3);
         assert_eq!(d.as_array(), &[0, 16, 0, 0]);
     }
@@ -6981,30 +6931,29 @@ mod tests {
         unsafe {
             let b = vector_unsigned_char(*b"ABCD------------");
             let c = vector_unsigned_char([4; 16]);
-            let mut d = 0i32;
 
             let haystack = vector_unsigned_char(*b"__ABCD__________");
-            let result = vec_search_string_cc(haystack, b, c, &mut d);
+            let (result, d) = vec_search_string_cc(haystack, b, c);
             assert_eq!(result.as_array()[7], 2);
             assert_eq!(d, 2);
 
             let haystack = vector_unsigned_char(*b"___ABCD_________");
-            let result = vec_search_string_cc(haystack, b, c, &mut d);
+            let (result, d) = vec_search_string_cc(haystack, b, c);
             assert_eq!(result.as_array()[7], 3);
             assert_eq!(d, 2);
 
             let haystack = vector_unsigned_char(*b"________________");
-            let result = vec_search_string_cc(haystack, b, c, &mut d);
+            let (result, d) = vec_search_string_cc(haystack, b, c);
             assert_eq!(result.as_array()[7], 16);
             assert_eq!(d, 0);
 
             let haystack = vector_unsigned_char(*b"______\0_________");
-            let result = vec_search_string_cc(haystack, b, c, &mut d);
+            let (result, d) = vec_search_string_cc(haystack, b, c);
             assert_eq!(result.as_array()[7], 16);
             assert_eq!(d, 0);
 
             let haystack = vector_unsigned_char(*b"______\0__ABCD___");
-            let result = vec_search_string_cc(haystack, b, c, &mut d);
+            let (result, d) = vec_search_string_cc(haystack, b, c);
             assert_eq!(result.as_array()[7], 9);
             assert_eq!(d, 2);
         }
@@ -7015,30 +6964,29 @@ mod tests {
         unsafe {
             let b = vector_unsigned_char(*b"ABCD\0\0\0\0\0\0\0\0\0\0\0\0");
             let c = vector_unsigned_char([16; 16]);
-            let mut d = 0i32;
 
             let haystack = vector_unsigned_char(*b"__ABCD__________");
-            let result = vec_search_string_until_zero_cc(haystack, b, c, &mut d);
+            let (result, d) = vec_search_string_until_zero_cc(haystack, b, c);
             assert_eq!(result.as_array()[7], 2);
             assert_eq!(d, 2);
 
             let haystack = vector_unsigned_char(*b"___ABCD_________");
-            let result = vec_search_string_until_zero_cc(haystack, b, c, &mut d);
+            let (result, d) = vec_search_string_until_zero_cc(haystack, b, c);
             assert_eq!(result.as_array()[7], 3);
             assert_eq!(d, 2);
 
             let haystack = vector_unsigned_char(*b"________________");
-            let result = vec_search_string_until_zero_cc(haystack, b, c, &mut d);
+            let (result, d) = vec_search_string_until_zero_cc(haystack, b, c);
             assert_eq!(result.as_array()[7], 16);
             assert_eq!(d, 0);
 
             let haystack = vector_unsigned_char(*b"______\0_________");
-            let result = vec_search_string_until_zero_cc(haystack, b, c, &mut d);
+            let (result, d) = vec_search_string_until_zero_cc(haystack, b, c);
             assert_eq!(result.as_array()[7], 16);
             assert_eq!(d, 1);
 
             let haystack = vector_unsigned_char(*b"______\0__ABCD___");
-            let result = vec_search_string_until_zero_cc(haystack, b, c, &mut d);
+            let (result, d) = vec_search_string_until_zero_cc(haystack, b, c);
             assert_eq!(result.as_array()[7], 16);
             assert_eq!(d, 1);
         }
@@ -7132,15 +7080,14 @@ mod tests {
 
     #[simd_test(enable = "vector")]
     fn test_vec_cp_until_zero_cc() {
-        let mut cc = 0;
         unsafe {
             let v = vector_signed_int([1, 2, 3, 4]);
-            let d = vec_cp_until_zero_cc(v, &mut cc);
+            let (d, cc) = vec_cp_until_zero_cc(v);
             assert_eq!(d.as_array(), &[1, 2, 3, 4]);
             assert_eq!(cc, 3);
 
             let v = vector_signed_int([1, 2, 0, 4]);
-            let d = vec_cp_until_zero_cc(v, &mut cc);
+            let (d, cc) = vec_cp_until_zero_cc(v);
             assert_eq!(d.as_array(), &[1, 2, 0, 0]);
             assert_eq!(cc, 0);
         }
