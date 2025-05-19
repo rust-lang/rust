@@ -5,8 +5,8 @@ use clippy_utils::{path_def_id, peel_ref_operators};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_lint_defs::{declare_lint_pass, declare_tool_lint};
 use rustc_middle::mir::ConstValue;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;
 
 declare_tool_lint! {
