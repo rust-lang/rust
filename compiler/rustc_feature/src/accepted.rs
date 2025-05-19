@@ -82,6 +82,8 @@ declare_features! (
     (accepted, attr_literals, "1.30.0", Some(34981)),
     /// Allows overloading augmented assignment operations like `a += b`.
     (accepted, augmented_assignments, "1.8.0", Some(28235)),
+    /// Allows using `avx512*` target features.
+    (accepted, avx512_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
     /// Allows mixing bind-by-move in patterns and references to those identifiers in guards.
     (accepted, bind_by_move_pattern_guards, "1.39.0", Some(15287)),
     /// Allows bindings in the subpattern of a binding pattern.
