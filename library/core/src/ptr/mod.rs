@@ -28,7 +28,8 @@
 //!   undefined behavior to perform two concurrent accesses to the same location from different
 //!   threads unless both accesses only read from memory. Notice that this explicitly
 //!   includes [`read_volatile`] and [`write_volatile`]: Volatile accesses cannot
-//!   be used for inter-thread synchronization.
+//!   be used for inter-thread synchronization, regardless of whether it is acting on
+//!   Rust memory or not.
 //! * The result of casting a reference to a pointer is valid for as long as the
 //!   underlying object is live and no reference (just raw pointers) is used to
 //!   access the same memory. That is, reference and pointer accesses cannot be
@@ -1744,19 +1745,40 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
     }
 }
 
-/// Performs a volatile read of the value from `src` without moving it. This
-/// leaves the memory in `src` unchanged.
-///
-/// Volatile operations are intended to act on I/O memory, and are guaranteed
-/// to not be elided or reordered by the compiler across other volatile
-/// operations.
-///
-/// # Notes
+/// Performs a volatile read of the value from `src` without moving it.
 ///
 /// Rust does not currently have a rigorously and formally defined memory model,
 /// so the precise semantics of what "volatile" means here is subject to change
 /// over time. That being said, the semantics will almost always end up pretty
 /// similar to [C11's definition of volatile][c11].
+///
+/// Volatile operations are intended to act on I/O memory, and are guaranteed
+/// to not be elided or reordered by the compiler across other volatile
+/// operations. With this in mind, there are two cases of usage that need to
+/// be distinguished:
+///
+/// - When a volatile operation is used for memory inside an [allocation], all
+///   the typical restrictions of Rust-allocated memory apply, meaning things
+///   like data races and mutable aliasing remain as undefined behavior. In
+///   addition, the volatile rule that the operation won't be elided or
+///   reordered applies, such that the operation will access memory and not e.g.
+///   be lowered to a register access or stack pop. The memory in `src` should
+///   remain unchanged. Just like in C, whether an operation is volatile has no
+///   bearing whatsoever on questions involving concurrent access from multiple
+///   threads. Volatile accesses behave exactly like non-atomic accesses in that
+///   regard. All this is because this kind of target-memory may be used from
+///   safe code at any time, and its validity assumptions must not be violated.
+///
+/// - Volatile operations, however, provide a conditionally valid way to access
+///   memory that is _outside_ of any allocation. The main use-case is CPU and
+///   peripheral registers that must be accessed via an I/O memory mapping, most
+///   commonly at fixed addresses reserved by the hardware. These often have
+///   special semantics associated to their manipulation, and cannot be used as
+///   general purpose memory. Here, any address value is possible, from 0 to
+///   [`usize::MAX`], so long as its semantics are well-defined by the target
+///   hardware. The access is restricted to not trap/interrupt. It can (and
+///   usually will) cause side-effects, but note they shouldn't affect
+///   Rust-allocated memory in any way.
 ///
 /// The compiler shouldn't change the relative order or number of volatile
 /// memory operations. However, volatile memory operations on zero-sized types
@@ -1764,33 +1786,31 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// and may be ignored.
 ///
 /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
+/// [allocation]: crate::ptr#allocated-object
 ///
 /// # Safety
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `src` must be [valid] for reads.
+/// * `src` must be readable without trapping.
 ///
 /// * `src` must be properly aligned.
 ///
-/// * `src` must point to a properly initialized value of type `T`.
+/// * No Rust memory may be modified.
+///
+/// * If operating on an allocation, `src` must point to a properly initialized
+///   value of type `T`, and the safe usage assumptions of the data must be
+///   satisfied.
 ///
 /// Like [`read`], `read_volatile` creates a bitwise copy of `T`, regardless of
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the returned
 /// value and the value at `*src` can [violate memory safety][read-ownership].
-/// However, storing non-[`Copy`] types in volatile memory is almost certainly
-/// incorrect.
+/// However, modeling volatile memory with non-[`Copy`] types is almost
+/// certainly incorrect.
 ///
 /// Note that even if `T` has size `0`, the pointer must be properly aligned.
 ///
-/// [valid]: self#safety
 /// [read-ownership]: read#ownership-of-the-returned-value
-///
-/// Just like in C, whether an operation is volatile has no bearing whatsoever
-/// on questions involving concurrent access from multiple threads. Volatile
-/// accesses behave exactly like non-atomic accesses in that regard. In particular,
-/// a race between a `read_volatile` and any write operation to the same location
-/// is undefined behavior.
 ///
 /// # Examples
 ///
@@ -1826,48 +1846,70 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// Performs a volatile write of a memory location with the given value without
 /// reading or dropping the old value.
 ///
-/// Volatile operations are intended to act on I/O memory, and are guaranteed
-/// to not be elided or reordered by the compiler across other volatile
-/// operations.
-///
-/// `write_volatile` does not drop the contents of `dst`. This is safe, but it
-/// could leak allocations or resources, so care should be taken not to overwrite
-/// an object that should be dropped.
-///
-/// Additionally, it does not drop `src`. Semantically, `src` is moved into the
-/// location pointed to by `dst`.
-///
-/// # Notes
-///
 /// Rust does not currently have a rigorously and formally defined memory model,
 /// so the precise semantics of what "volatile" means here is subject to change
 /// over time. That being said, the semantics will almost always end up pretty
 /// similar to [C11's definition of volatile][c11].
+///
+/// Volatile operations are intended to act on I/O memory, and are guaranteed
+/// to not be elided or reordered by the compiler across other volatile
+/// operations. With this in mind, there are two cases of usage that need to
+/// be distinguished:
+///
+/// - When a volatile operation is used for memory inside an [allocation], all
+///   the typical restrictions of Rust-allocated memory apply, meaning things
+///   like data races and mutable aliasing remain as undefined behavior. In
+///   addition, the volatile rule that the operation won't be elided or
+///   reordered applies, such that the operation will access memory and not e.g.
+///   be lowered to a register access or stack pop. The memory in `src` should
+///   remain unchanged. Just like in C, whether an operation is volatile has no
+///   bearing whatsoever on questions involving concurrent access from multiple
+///   threads. Volatile accesses behave exactly like non-atomic accesses in that
+///   regard. All this is because this kind of target-memory may be used from
+///   safe code at any time, and its validity assumptions must not be violated.
+///
+/// - Volatile operations, however, provide a conditionally valid way to access
+///   memory that is _outside_ of any allocation. The main use-case is CPU and
+///   peripheral registers that must be accessed via an I/O memory mapping, most
+///   commonly at fixed addresses reserved by the hardware. These often have
+///   special semantics associated to their manipulation, and cannot be used as
+///   general purpose memory. Here, any address value is possible, from 0 to
+///   [`usize::MAX`], so long as its semantics are well-defined by the target
+///   hardware. The access is restricted to not trap/interrupt. It can (and
+///   usually will) cause side-effects, but note they shouldn't affect
+///   Rust-allocated memory in any way.
 ///
 /// The compiler shouldn't change the relative order or number of volatile
 /// memory operations. However, volatile memory operations on zero-sized types
 /// (e.g., if a zero-sized type is passed to `write_volatile`) are noops
 /// and may be ignored.
 ///
+/// `write_volatile` does not drop the contents of `dst`. This is safe, but it
+/// could leak allocations or resources, so care should be taken not to
+/// overwrite an object that should be dropped when operating on Rust memory.
+///
+/// Additionally, it does not drop `src`. Semantically, `src` is moved into the
+/// location pointed to by `dst`.
+///
 /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
+/// [allocation]: crate::ptr#allocated-object
 ///
 /// # Safety
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `dst` must be [valid] for writes.
+/// * `dst` must be writable without trapping.
 ///
 /// * `dst` must be properly aligned.
 ///
+/// * `src` must be a properly initialized value of type `T`.
+///
+/// * If operating on an allocation, no Rust memory outside of `dst` may be
+///   modified.
+///
+/// * If not operating on an allocation, no Rust memory may be affected.
+///
 /// Note that even if `T` has size `0`, the pointer must be properly aligned.
-///
-/// [valid]: self#safety
-///
-/// Just like in C, whether an operation is volatile has no bearing whatsoever
-/// on questions involving concurrent access from multiple threads. Volatile
-/// accesses behave exactly like non-atomic accesses in that regard. In particular,
-/// a race between a `write_volatile` and any other operation (reading or writing)
-/// on the same location is undefined behavior.
 ///
 /// # Examples
 ///
