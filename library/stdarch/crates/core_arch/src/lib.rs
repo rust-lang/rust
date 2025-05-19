@@ -22,7 +22,6 @@
     sse4a_target_feature,
     riscv_target_feature,
     arm_target_feature,
-    avx512_target_feature,
     mips_target_feature,
     powerpc_target_feature,
     s390x_target_feature,
