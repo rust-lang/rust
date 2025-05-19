@@ -1150,4 +1150,5 @@ pub struct FnHeader<I: Interner> {
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 pub struct CoroutineWitnessTypes<I: Interner> {
     pub types: I::Tys,
+    pub assumptions: I::RegionAssumptions,
 }
