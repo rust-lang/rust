@@ -82,7 +82,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
                 let fname_ptr = info.dli_fname.as_ptr();
                 #[cfg(not(target_os = "cygwin"))]
                 let fname_ptr = {
-                    assert!(!info.dli_fname.is_null(), "the docs do not allow dladdr to be null");
+                    assert!(!info.dli_fname.is_null(), "dli_fname cannot be null");
                     info.dli_fname
                 };
                 let bytes = CStr::from_ptr(fname_ptr).to_bytes();
