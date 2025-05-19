@@ -1,0 +1,14 @@
+error: same `cfg` was in `auto_cfg(hide(...))` and `auto_cfg(show(...))` on the same item
+  --> $DIR/cfg-hide-show-conflict.rs:3:31
+   |
+LL | #![doc(auto_cfg(show(windows, target_os = "linux")))]
+   |                               ^^^^^^^^^^^^^^^^^^^
+   |
+note: first change was here
+  --> $DIR/cfg-hide-show-conflict.rs:2:22
+   |
+LL | #![doc(auto_cfg(hide(target_os = "linux")))]
+   |                      ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
