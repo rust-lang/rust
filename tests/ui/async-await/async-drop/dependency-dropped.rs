@@ -1,9 +1,12 @@
 //@ run-pass
 //@ check-run-results
+//@ revisions: with_feature without_feature
 //@ aux-build:async-drop-dep.rs
 //@ edition:2021
 
-#![feature(async_drop)]
+#![cfg_attr(with_feature, feature(async_drop))]
+//[without_feature]~^ WARN found async drop types in dependecy `async_drop_dep`, but async_drop feature is disabled for `dependency_dropped`
+
 #![allow(incomplete_features)]
 
 extern crate async_drop_dep;
