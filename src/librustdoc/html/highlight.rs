@@ -18,7 +18,8 @@ use rustc_span::{BytePos, DUMMY_SP, Span};
 use super::format::{self, write_str};
 use crate::clean::PrimitiveType;
 use crate::html::escape::EscapeBodyText;
-use crate::html::render::{Context, ExpandedCode, LinkFromSrc};
+use crate::html::macro_expansion::ExpandedCode;
+use crate::html::render::{Context, LinkFromSrc};
 
 /// This type is needed in case we want to render links on items to allow to go to their definition.
 pub(crate) struct HrefContext<'a, 'tcx> {
