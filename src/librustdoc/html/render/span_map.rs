@@ -325,6 +325,8 @@ struct ExpandedCodeInfo {
     span: Span,
     /// Expanded macro source code.
     code: String,
+    /// Expanded span
+    expanded_span: Span,
 }
 
 /// HIR visitor which retrieves expanded macro.
@@ -341,19 +343,32 @@ impl<'tcx> ExpandedCodeVisitor<'tcx> {
         if new_span.is_dummy() || !new_span.from_expansion() {
             return;
         }
-        let new_span = new_span.source_callsite();
+        let callsite_span = new_span.source_callsite();
         if let Some(index) =
-            self.expanded_codes.iter().position(|info| info.span.overlaps(new_span))
+            self.expanded_codes.iter().position(|info| info.span.overlaps(callsite_span))
         {
-            if !self.expanded_codes[index].span.contains(new_span) {
+            let info = &mut self.expanded_codes[index];
+            if new_span.contains(info.expanded_span) {
                 // We replace the item.
-                let info = &mut self.expanded_codes[index];
-                info.span = new_span;
+                info.span = callsite_span;
+                info.expanded_span = new_span;
                 info.code = f(self.tcx);
+            } else {
+                // We push the new item after the existing one.
+                let expanded_code = &mut self.expanded_codes[index];
+                expanded_code.code.push('\n');
+                expanded_code.code.push_str(&f(self.tcx));
+                let lo = BytePos(expanded_code.expanded_span.lo().0.min(new_span.lo().0));
+                let hi = BytePos(expanded_code.expanded_span.hi().0.min(new_span.hi().0));
+                expanded_code.expanded_span = expanded_code.expanded_span.with_lo(lo).with_hi(hi);
             }
         } else {
             // We add a new item.
-            self.expanded_codes.push(ExpandedCodeInfo { span: new_span, code: f(self.tcx) });
+            self.expanded_codes.push(ExpandedCodeInfo {
+                span: callsite_span,
+                code: f(self.tcx),
+                expanded_span: new_span,
+            });
         }
     }
 
@@ -361,7 +376,7 @@ impl<'tcx> ExpandedCodeVisitor<'tcx> {
         self.expanded_codes.sort_unstable_by(|item1, item2| item1.span.cmp(&item2.span));
         let source_map = self.tcx.sess.source_map();
         let mut expanded: FxHashMap<BytePos, Vec<ExpandedCode>> = FxHashMap::default();
-        for ExpandedCodeInfo { span, code } in self.expanded_codes {
+        for ExpandedCodeInfo { span, code, .. } in self.expanded_codes {
             if let Ok(lines) = source_map.span_to_lines(span)
                 && !lines.lines.is_empty()
             {
@@ -389,12 +404,18 @@ impl<'tcx> Visitor<'tcx> for ExpandedCodeVisitor<'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
-        self.handle_new_span(expr.span, |tcx| rustc_hir_pretty::expr_to_string(&tcx, expr));
-        intravisit::walk_expr(self, expr);
+        if expr.span.from_expansion() {
+            self.handle_new_span(expr.span, |tcx| rustc_hir_pretty::expr_to_string(&tcx, expr));
+        } else {
+            intravisit::walk_expr(self, expr);
+        }
     }
 
     fn visit_item(&mut self, item: &'tcx rustc_hir::Item<'tcx>) {
-        self.handle_new_span(item.span, |tcx| rustc_hir_pretty::item_to_string(&tcx, item));
-        intravisit::walk_item(self, item);
+        if item.span.from_expansion() {
+            self.handle_new_span(item.span, |tcx| rustc_hir_pretty::item_to_string(&tcx, item));
+        } else {
+            intravisit::walk_item(self, item);
+        }
     }
 }
