@@ -349,7 +349,7 @@ impl MutVisitor for PlaceholderExpander {
     fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         match expr.kind {
             ast::ExprKind::MacCall(_) => self.remove(expr.id).make_opt_expr(),
-            _ => noop_filter_map_expr(self, expr),
+            _ => walk_filter_map_expr(self, expr),
         }
     }
 
