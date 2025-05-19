@@ -247,6 +247,7 @@ fn run_rustfmt(clippy: &ClippyInfo, update_mode: UpdateMode) {
         "clippy_config",
         "clippy_dev",
         "clippy_lints",
+        "clippy_lints_internal",
         "clippy_utils",
         "rustc_tools_util",
         "lintcheck",
