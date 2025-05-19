@@ -6,7 +6,7 @@ use run_make_support::{rustc, source_root};
 
 fn main() {
     rustc()
-        .edition("2021")
+        .edition("2024")
         .arg("-Dwarnings")
         .crate_type("rlib")
         .input(source_root().join("library/core/src/lib.rs"))

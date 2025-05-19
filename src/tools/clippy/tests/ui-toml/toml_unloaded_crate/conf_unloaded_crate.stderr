@@ -1,0 +1,20 @@
+warning: `regex::Regex::new_` does not refer to a reachable function
+  --> $DIR/tests/ui-toml/toml_unloaded_crate/clippy.toml:3:1
+   |
+LL | / [[disallowed-methods]]
+LL | | path = "regex::Regex::new_"
+   | |___________________________^
+   |
+   = help: add `allow-invalid = true` to the entry to suppress this warning
+
+warning: `regex::Regex_::new` does not refer to a reachable function
+  --> $DIR/tests/ui-toml/toml_unloaded_crate/clippy.toml:6:1
+   |
+LL | / [[disallowed-methods]]
+LL | | path = "regex::Regex_::new"
+   | |___________________________^
+   |
+   = help: add `allow-invalid = true` to the entry to suppress this warning
+
+warning: 2 warnings emitted
+

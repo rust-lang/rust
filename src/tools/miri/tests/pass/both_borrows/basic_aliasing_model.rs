@@ -12,7 +12,6 @@ fn main() {
     mut_raw_mut();
     partially_invalidate_mut();
     drop_after_sharing();
-    // direct_mut_to_const_raw();
     two_raw();
     shr_and_raw();
     disjoint_mutable_subborrows();

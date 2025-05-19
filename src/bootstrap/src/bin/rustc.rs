@@ -342,7 +342,7 @@ fn format_rusage_data(child: Child) -> Option<String> {
     use windows::Win32::System::Threading::GetProcessTimes;
     use windows::Win32::System::Time::FileTimeToSystemTime;
 
-    let handle = HANDLE(child.as_raw_handle() as isize);
+    let handle = HANDLE(child.as_raw_handle());
 
     let mut user_filetime = Default::default();
     let mut user_time = Default::default();

@@ -69,7 +69,7 @@ declare_clippy_lint! {
     ///
     /// let result = a.saturating_sub(b);
     /// ```
-    #[clippy::version = "1.44.0"]
+    #[clippy::version = "1.83.0"]
     pub INVERTED_SATURATING_SUB,
     correctness,
     "Check if a variable is smaller than another one and still subtract from it even if smaller"

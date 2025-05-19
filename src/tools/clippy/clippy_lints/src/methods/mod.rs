@@ -4428,7 +4428,7 @@ declare_clippy_lint! {
     /// let file = BufReader::new(std::fs::File::open("./bytes.txt").unwrap());
     /// file.bytes();
     /// ```
-    #[clippy::version = "1.86.0"]
+    #[clippy::version = "1.87.0"]
     pub UNBUFFERED_BYTES,
     perf,
     "calling .bytes() is very inefficient when data is not in memory"
@@ -4453,7 +4453,7 @@ declare_clippy_lint! {
     ///     values.contains(&10)
     /// }
     /// ```
-    #[clippy::version = "1.86.0"]
+    #[clippy::version = "1.87.0"]
     pub MANUAL_CONTAINS,
     perf,
     "unnecessary `iter().any()` on slices that can be replaced with `contains()`"
@@ -4709,6 +4709,8 @@ impl_lint_pass!(Methods => [
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
+/// This ensures that neither the receiver nor any of the arguments
+/// come from expansion.
 pub fn method_call<'tcx>(
     recv: &'tcx Expr<'tcx>,
 ) -> Option<(&'tcx str, &'tcx Expr<'tcx>, &'tcx [Expr<'tcx>], Span, Span)> {
@@ -4907,6 +4909,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 impl Methods {
     #[allow(clippy::too_many_lines)]
     fn check_methods<'tcx>(&self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        // Handle method calls whose receiver and arguments may not come from expansion
         if let Some((name, recv, args, span, call_span)) = method_call(expr) {
             match (name, args) {
                 ("add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub", [_arg]) => {
@@ -5049,29 +5052,12 @@ impl Methods {
                         Some(("err", recv, [], err_span, _)) => {
                             err_expect::check(cx, expr, recv, span, err_span, self.msrv);
                         },
-                        _ => unwrap_expect_used::check(
-                            cx,
-                            expr,
-                            recv,
-                            false,
-                            self.allow_expect_in_consts,
-                            self.allow_expect_in_tests,
-                            unwrap_expect_used::Variant::Expect,
-                        ),
+                        _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
-                ("expect_err", [_]) => {
+                ("expect_err", [_]) | ("unwrap_err" | "unwrap_unchecked" | "unwrap_err_unchecked", []) => {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
-                    unwrap_expect_used::check(
-                        cx,
-                        expr,
-                        recv,
-                        true,
-                        self.allow_expect_in_consts,
-                        self.allow_expect_in_tests,
-                        unwrap_expect_used::Variant::Expect,
-                    );
                 },
                 ("extend", [arg]) => {
                     string_extend_chars::check(cx, expr, recv, arg);
@@ -5437,27 +5423,6 @@ impl Methods {
                         _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
-                    unwrap_expect_used::check(
-                        cx,
-                        expr,
-                        recv,
-                        false,
-                        self.allow_unwrap_in_consts,
-                        self.allow_unwrap_in_tests,
-                        unwrap_expect_used::Variant::Unwrap,
-                    );
-                },
-                ("unwrap_err", []) => {
-                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
-                    unwrap_expect_used::check(
-                        cx,
-                        expr,
-                        recv,
-                        true,
-                        self.allow_unwrap_in_consts,
-                        self.allow_unwrap_in_tests,
-                        unwrap_expect_used::Variant::Unwrap,
-                    );
                 },
                 ("unwrap_or", [u_arg]) => {
                     match method_call(recv) {
@@ -5484,9 +5449,6 @@ impl Methods {
                         },
                         _ => {},
                     }
-                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
-                },
-                ("unwrap_unchecked" | "unwrap_err_unchecked", []) => {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
                 ("unwrap_or_else", [u_arg]) => {
@@ -5522,6 +5484,56 @@ impl Methods {
                     {
                         range_zip_with_len::check(cx, expr, iter_recv, arg);
                     }
+                },
+                _ => {},
+            }
+        }
+        // Handle method calls whose receiver and arguments may come from expansion
+        if let ExprKind::MethodCall(path, recv, args, _call_span) = expr.kind {
+            match (path.ident.name.as_str(), args) {
+                ("expect", [_]) if !matches!(method_call(recv), Some(("ok" | "err", _, [], _, _))) => {
+                    unwrap_expect_used::check(
+                        cx,
+                        expr,
+                        recv,
+                        false,
+                        self.allow_expect_in_consts,
+                        self.allow_expect_in_tests,
+                        unwrap_expect_used::Variant::Expect,
+                    );
+                },
+                ("expect_err", [_]) => {
+                    unwrap_expect_used::check(
+                        cx,
+                        expr,
+                        recv,
+                        true,
+                        self.allow_expect_in_consts,
+                        self.allow_expect_in_tests,
+                        unwrap_expect_used::Variant::Expect,
+                    );
+                },
+                ("unwrap", []) => {
+                    unwrap_expect_used::check(
+                        cx,
+                        expr,
+                        recv,
+                        false,
+                        self.allow_unwrap_in_consts,
+                        self.allow_unwrap_in_tests,
+                        unwrap_expect_used::Variant::Unwrap,
+                    );
+                },
+                ("unwrap_err", []) => {
+                    unwrap_expect_used::check(
+                        cx,
+                        expr,
+                        recv,
+                        true,
+                        self.allow_unwrap_in_consts,
+                        self.allow_unwrap_in_tests,
+                        unwrap_expect_used::Variant::Unwrap,
+                    );
                 },
                 _ => {},
             }

@@ -1102,7 +1102,7 @@ impl Step for Tidy {
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             if !builder.config.json_output {
                 builder.info("fmt check");
-                if builder.initial_rustfmt().is_none() {
+                if builder.config.initial_rustfmt.is_none() {
                     let inferred_rustfmt_dir = builder.initial_sysroot.join("bin");
                     eprintln!(
                         "\
@@ -3554,7 +3554,7 @@ impl Step for TestFloatParse {
         builder.ensure(tool::TestFloatParse { host: self.host });
 
         // Run any unit tests in the crate
-        let cargo_test = tool::prepare_tool_cargo(
+        let mut cargo_test = tool::prepare_tool_cargo(
             builder,
             compiler,
             Mode::ToolStd,
@@ -3564,6 +3564,7 @@ impl Step for TestFloatParse {
             SourceType::InTree,
             &[],
         );
+        cargo_test.allow_features(tool::TestFloatParse::ALLOW_FEATURES);
 
         run_cargo_test(cargo_test, &[], &[], crate_name, bootstrap_host, builder);
 
@@ -3578,6 +3579,7 @@ impl Step for TestFloatParse {
             SourceType::InTree,
             &[],
         );
+        cargo_run.allow_features(tool::TestFloatParse::ALLOW_FEATURES);
 
         if !matches!(env::var("FLOAT_PARSE_TESTS_NO_SKIP_HUGE").as_deref(), Ok("1") | Ok("true")) {
             cargo_run.args(["--", "--skip-huge"]);

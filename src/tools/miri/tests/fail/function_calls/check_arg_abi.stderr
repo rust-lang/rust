@@ -1,8 +1,8 @@
-error: Undefined Behavior: calling a function with ABI C using caller ABI Rust
+error: Undefined Behavior: calling a function with calling convention "C" using caller calling convention "Rust"
   --> tests/fail/function_calls/check_arg_abi.rs:LL:CC
    |
 LL |         let _ = malloc(0);
-   |                 ^^^^^^^^^ calling a function with ABI C using caller ABI Rust
+   |                 ^^^^^^^^^ calling a function with calling convention "C" using caller calling convention "Rust"
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

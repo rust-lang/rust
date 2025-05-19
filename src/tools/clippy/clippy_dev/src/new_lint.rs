@@ -1,4 +1,4 @@
-use crate::utils::{clippy_project_root, clippy_version};
+use crate::utils::{RustSearcher, Token, Version};
 use clap::ValueEnum;
 use indoc::{formatdoc, writedoc};
 use std::fmt::{self, Write as _};
@@ -22,11 +22,11 @@ impl fmt::Display for Pass {
 }
 
 struct LintData<'a> {
+    clippy_version: Version,
     pass: Pass,
     name: &'a str,
     category: &'a str,
     ty: Option<&'a str>,
-    project_root: PathBuf,
 }
 
 trait Context {
@@ -50,18 +50,25 @@ impl<T> Context for io::Result<T> {
 /// # Errors
 ///
 /// This function errors out if the files couldn't be created or written to.
-pub fn create(pass: Pass, name: &str, category: &str, mut ty: Option<&str>, msrv: bool) -> io::Result<()> {
+pub fn create(
+    clippy_version: Version,
+    pass: Pass,
+    name: &str,
+    category: &str,
+    mut ty: Option<&str>,
+    msrv: bool,
+) -> io::Result<()> {
     if category == "cargo" && ty.is_none() {
         // `cargo` is a special category, these lints should always be in `clippy_lints/src/cargo`
         ty = Some("cargo");
     }
 
     let lint = LintData {
+        clippy_version,
         pass,
         name,
         category,
         ty,
-        project_root: clippy_project_root(),
     };
 
     create_lint(&lint, msrv).context("Unable to create lint implementation")?;
@@ -88,7 +95,7 @@ fn create_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
     } else {
         let lint_contents = get_lint_file_contents(lint, enable_msrv);
         let lint_path = format!("clippy_lints/src/{}.rs", lint.name);
-        write_file(lint.project_root.join(&lint_path), lint_contents.as_bytes())?;
+        write_file(&lint_path, lint_contents.as_bytes())?;
         println!("Generated lint file: `{lint_path}`");
 
         Ok(())
@@ -115,8 +122,7 @@ fn create_test(lint: &LintData<'_>, msrv: bool) -> io::Result<()> {
     }
 
     if lint.category == "cargo" {
-        let relative_test_dir = format!("tests/ui-cargo/{}", lint.name);
-        let test_dir = lint.project_root.join(&relative_test_dir);
+        let test_dir = format!("tests/ui-cargo/{}", lint.name);
         fs::create_dir(&test_dir)?;
 
         create_project_layout(
@@ -134,11 +140,11 @@ fn create_test(lint: &LintData<'_>, msrv: bool) -> io::Result<()> {
             false,
         )?;
 
-        println!("Generated test directories: `{relative_test_dir}/pass`, `{relative_test_dir}/fail`");
+        println!("Generated test directories: `{test_dir}/pass`, `{test_dir}/fail`");
     } else {
         let test_path = format!("tests/ui/{}.rs", lint.name);
         let test_contents = get_test_file_contents(lint.name, msrv);
-        write_file(lint.project_root.join(&test_path), test_contents)?;
+        write_file(&test_path, test_contents)?;
 
         println!("Generated test file: `{test_path}`");
     }
@@ -191,11 +197,6 @@ fn to_camel_case(name: &str) -> String {
             }
         })
         .collect()
-}
-
-pub(crate) fn get_stabilization_version() -> String {
-    let (minor, patch) = clippy_version();
-    format!("{minor}.{patch}.0")
 }
 
 fn get_test_file_contents(lint_name: &str, msrv: bool) -> String {
@@ -292,7 +293,11 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
         );
     }
 
-    let _: fmt::Result = writeln!(result, "{}", get_lint_declaration(&name_upper, category));
+    let _: fmt::Result = writeln!(
+        result,
+        "{}",
+        get_lint_declaration(lint.clippy_version, &name_upper, category)
+    );
 
     if enable_msrv {
         let _: fmt::Result = writedoc!(
@@ -330,7 +335,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
     result
 }
 
-fn get_lint_declaration(name_upper: &str, category: &str) -> String {
+fn get_lint_declaration(version: Version, name_upper: &str, category: &str) -> String {
     let justification_heading = if category == "restriction" {
         "Why restrict this?"
     } else {
@@ -355,9 +360,8 @@ fn get_lint_declaration(name_upper: &str, category: &str) -> String {
                 pub {name_upper},
                 {category},
                 "default lint description"
-            }}
-        "#,
-        get_stabilization_version(),
+            }}"#,
+        version.rust_display(),
     )
 }
 
@@ -371,7 +375,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
         _ => {},
     }
 
-    let ty_dir = lint.project_root.join(format!("clippy_lints/src/{ty}"));
+    let ty_dir = PathBuf::from(format!("clippy_lints/src/{ty}"));
     assert!(
         ty_dir.exists() && ty_dir.is_dir(),
         "Directory `{}` does not exist!",
@@ -441,95 +445,25 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
 
 #[allow(clippy::too_many_lines)]
 fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> {
-    use super::update_lints::{LintDeclSearchResult, match_tokens};
-    use rustc_lexer::TokenKind;
-
     let lint_name_upper = lint.name.to_uppercase();
 
     let mut file_contents = fs::read_to_string(path)?;
     assert!(
-        !file_contents.contains(&lint_name_upper),
+        !file_contents.contains(&format!("pub {lint_name_upper},")),
         "Lint `{}` already defined in `{}`",
         lint.name,
         path.display()
     );
 
-    let mut offset = 0usize;
-    let mut last_decl_curly_offset = None;
-    let mut lint_context = None;
-
-    let mut iter = rustc_lexer::tokenize(&file_contents).map(|t| {
-        let range = offset..offset + t.len as usize;
-        offset = range.end;
-
-        LintDeclSearchResult {
-            token_kind: t.kind,
-            content: &file_contents[range.clone()],
-            range,
-        }
-    });
-
-    // Find both the last lint declaration (declare_clippy_lint!) and the lint pass impl
-    while let Some(LintDeclSearchResult { content, .. }) = iter.find(|result| result.token_kind == TokenKind::Ident) {
-        let mut iter = iter
-            .by_ref()
-            .filter(|t| !matches!(t.token_kind, TokenKind::Whitespace | TokenKind::LineComment { .. }));
-
-        match content {
-            "declare_clippy_lint" => {
-                // matches `!{`
-                match_tokens!(iter, Bang OpenBrace);
-                if let Some(LintDeclSearchResult { range, .. }) =
-                    iter.find(|result| result.token_kind == TokenKind::CloseBrace)
-                {
-                    last_decl_curly_offset = Some(range.end);
-                }
-            },
-            "impl" => {
-                let mut token = iter.next();
-                match token {
-                    // matches <'foo>
-                    Some(LintDeclSearchResult {
-                        token_kind: TokenKind::Lt,
-                        ..
-                    }) => {
-                        match_tokens!(iter, Lifetime { .. } Gt);
-                        token = iter.next();
-                    },
-                    None => break,
-                    _ => {},
-                }
-
-                if let Some(LintDeclSearchResult {
-                    token_kind: TokenKind::Ident,
-                    content,
-                    ..
-                }) = token
-                {
-                    // Get the appropriate lint context struct
-                    lint_context = match content {
-                        "LateLintPass" => Some("LateContext"),
-                        "EarlyLintPass" => Some("EarlyContext"),
-                        _ => continue,
-                    };
-                }
-            },
-            _ => {},
-        }
-    }
-
-    drop(iter);
-
-    let last_decl_curly_offset =
-        last_decl_curly_offset.unwrap_or_else(|| panic!("No lint declarations found in `{}`", path.display()));
-    let lint_context =
-        lint_context.unwrap_or_else(|| panic!("No lint pass implementation found in `{}`", path.display()));
+    let (lint_context, lint_decl_end) = parse_mod_file(path, &file_contents);
 
     // Add the lint declaration to `mod.rs`
-    file_contents.replace_range(
-        // Remove the trailing newline, which should always be present
-        last_decl_curly_offset..=last_decl_curly_offset,
-        &format!("\n\n{}", get_lint_declaration(&lint_name_upper, lint.category)),
+    file_contents.insert_str(
+        lint_decl_end,
+        &format!(
+            "\n\n{}",
+            get_lint_declaration(lint.clippy_version, &lint_name_upper, lint.category)
+        ),
     );
 
     // Add the lint to `impl_lint_pass`/`declare_lint_pass`
@@ -578,6 +512,41 @@ fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> 
         .context(format!("writing to file: `{}`", path.display()))?;
 
     Ok(lint_context)
+}
+
+// Find both the last lint declaration (declare_clippy_lint!) and the lint pass impl
+fn parse_mod_file(path: &Path, contents: &str) -> (&'static str, usize) {
+    #[allow(clippy::enum_glob_use)]
+    use Token::*;
+
+    let mut context = None;
+    let mut decl_end = None;
+    let mut searcher = RustSearcher::new(contents);
+    while let Some(name) = searcher.find_capture_token(CaptureIdent) {
+        match name {
+            "declare_clippy_lint" => {
+                if searcher.match_tokens(&[Bang, OpenBrace], &mut []) && searcher.find_token(CloseBrace) {
+                    decl_end = Some(searcher.pos());
+                }
+            },
+            "impl" => {
+                let mut capture = "";
+                if searcher.match_tokens(&[Lt, Lifetime, Gt, CaptureIdent], &mut [&mut capture]) {
+                    match capture {
+                        "LateLintPass" => context = Some("LateContext"),
+                        "EarlyLintPass" => context = Some("EarlyContext"),
+                        _ => {},
+                    }
+                }
+            },
+            _ => {},
+        }
+    }
+
+    (
+        context.unwrap_or_else(|| panic!("No lint pass implementation found in `{}`", path.display())),
+        decl_end.unwrap_or_else(|| panic!("No lint declarations found in `{}`", path.display())) as usize,
+    )
 }
 
 #[test]

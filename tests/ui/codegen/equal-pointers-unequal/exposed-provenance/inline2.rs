@@ -25,7 +25,7 @@ fn main() {
         let v = 0;
         ptr::from_ref(&v).expose_provenance()
     };
-    assert_eq!(a.to_string(), b.to_string());
+    assert_eq!(format!("{a}"), format!("{b}"));
     assert_eq!(format!("{}", a == b), "true");
     assert_eq!(format!("{}", cmp_in(a, b)), "true");
     assert_eq!(format!("{}", cmp(a, b)), "true");
