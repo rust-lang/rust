@@ -547,7 +547,7 @@ mod sealed {
             #[target_feature(enable = "altivec")]
             #[cfg_attr(test, assert_instr($instr))]
             pub unsafe fn $fun(a: isize, b: *const $ty) -> t_t_l!($ty) {
-                let addr = (b as *const i8).offset(a);
+                let addr = b.byte_offset(a).cast::<i8>();
                 transmute($instr(addr))
             }
 
@@ -4785,7 +4785,7 @@ mod tests {
     unsafe fn test_vec_lde_u16() {
         let pat = [u16x8::new(0, 1, 2, 3, 4, 5, 6, 7)];
         for off in 0..8 {
-            let v: u16x8 = transmute(vec_lde(off * 2, pat.as_ptr() as *const u8));
+            let v: u16x8 = transmute(vec_lde(off * 2, pat.as_ptr() as *const u16));
             assert_eq!(off as u16, v.extract(off as _));
         }
     }
@@ -4794,7 +4794,7 @@ mod tests {
     unsafe fn test_vec_lde_u32() {
         let pat = [u32x4::new(0, 1, 2, 3)];
         for off in 0..4 {
-            let v: u32x4 = transmute(vec_lde(off * 4, pat.as_ptr() as *const u8));
+            let v: u32x4 = transmute(vec_lde(off * 4, pat.as_ptr() as *const u32));
             assert_eq!(off as u32, v.extract(off as _));
         }
     }
