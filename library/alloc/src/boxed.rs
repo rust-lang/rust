@@ -1150,8 +1150,11 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Self) -> *mut T {
-        // Make sure Miri realizes that we transition from a noalias pointer to a raw pointer here.
-        unsafe { &raw mut *&mut *Self::into_raw_with_allocator(b).0 }
+        // Avoid `into_raw_with_allocator` as that interacts poorly with Miri's Stacked Borrows.
+        let mut b = mem::ManuallyDrop::new(b);
+        // We go through the built-in deref for `Box`, which is crucial for Miri to recognize this
+        // operation for it's alias tracking.
+        &raw mut **b
     }
 
     /// Consumes the `Box`, returning a wrapped `NonNull` pointer.
