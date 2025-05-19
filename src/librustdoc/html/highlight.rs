@@ -169,6 +169,17 @@ struct TokenHandler<'a, 'tcx, F: Write> {
     write_line_number: fn(&mut F, u32, &'static str),
 }
 
+impl<F: Write> std::fmt::Debug for TokenHandler<'_, '_, F> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TokenHandler")
+            .field("closing_tags", &self.closing_tags)
+            .field("pending_exit_span", &self.pending_exit_span)
+            .field("current_class", &self.current_class)
+            .field("pending_elems", &self.pending_elems)
+            .finish()
+    }
+}
+
 impl<F: Write> TokenHandler<'_, '_, F> {
     fn handle_exit_span(&mut self) {
         // We can't get the last `closing_tags` element using `pop()` because `closing_tags` is
@@ -221,6 +232,12 @@ impl<F: Write> TokenHandler<'_, '_, F> {
             } else {
                 None
             };
+            let mut last_pending = None;
+            // To prevent opening a macro expansion span being closed right away because
+            // the currently open item is replaced by a new class.
+            if let Some((_, Some(Class::Expansion))) = self.pending_elems.last() {
+                last_pending = self.pending_elems.pop();
+            }
             for (text, class) in self.pending_elems.iter() {
                 string(
                     self.out,
@@ -233,6 +250,16 @@ impl<F: Write> TokenHandler<'_, '_, F> {
             }
             if let Some(close_tag) = close_tag {
                 exit_span(self.out, close_tag);
+            }
+            if let Some((text, class)) = last_pending {
+                string(
+                    self.out,
+                    EscapeBodyText(&text),
+                    class,
+                    &self.href_context,
+                    close_tag.is_none(),
+                    self.write_line_number,
+                );
             }
         }
         self.pending_elems.clear();
@@ -278,7 +305,7 @@ fn get_next_expansion<'a>(
     span: Span,
 ) -> Option<&'a ExpandedCode> {
     if let Some(expanded_codes) = expanded_codes {
-        expanded_codes.iter().find(|code| code.start_line == line && code.span.lo() >= span.lo())
+        expanded_codes.iter().find(|code| code.start_line == line && code.span.lo() > span.lo())
     } else {
         None
     }
@@ -328,7 +355,7 @@ fn start_expansion(out: &mut Vec<(Cow<'_, str>, Option<Class>)>, expanded_code: 
 fn end_expansion<'a, W: Write>(
     token_handler: &mut TokenHandler<'_, '_, W>,
     expanded_codes: Option<&'a Vec<ExpandedCode>>,
-    level: usize,
+    expansion_start_tags: &[(&'static str, Class)],
     line: u32,
     span: Span,
 ) -> Option<&'a ExpandedCode> {
@@ -337,15 +364,27 @@ fn end_expansion<'a, W: Write>(
         token_handler.pending_elems.push((Cow::Borrowed("</span>"), Some(Class::Expansion)));
         return Some(expanded_code);
     }
-    if level == 0 {
+    if expansion_start_tags.is_empty() && token_handler.closing_tags.is_empty() {
+        // No need tag opened so we can just close expansion.
         token_handler.pending_elems.push((Cow::Borrowed("</span></span>"), Some(Class::Expansion)));
         return None;
     }
+
+    // If tags were opened inside the expansion, we need to close them and re-open them outside
+    // of the expansion span.
     let mut out = String::new();
     let mut end = String::new();
-    for (tag, class) in
-        token_handler.closing_tags.iter().skip(token_handler.closing_tags.len() - level)
+
+    let mut closing_tags = token_handler.closing_tags.iter().peekable();
+    let mut start_closing_tags = expansion_start_tags.iter().peekable();
+
+    while let (Some(tag), Some(start_tag)) = (closing_tags.peek(), start_closing_tags.peek())
+        && tag == start_tag
     {
+        closing_tags.next();
+        start_closing_tags.next();
+    }
+    for (tag, class) in start_closing_tags.chain(closing_tags) {
         out.push_str(tag);
         end.push_str(&format!("<span class=\"{}\">", class.as_html()));
     }
@@ -431,7 +470,7 @@ pub(super) fn write_code(
     };
     let mut current_expansion = get_expansion(&mut token_handler, expanded_codes, line, file_span);
     token_handler.write_pending_elems(None);
-    let mut level = 0;
+    let mut expansion_start_tags = Vec::new();
 
     Classifier::new(
         &src,
@@ -471,6 +510,12 @@ pub(super) fn write_code(
                     if current_expansion.is_none() {
                         current_expansion =
                             get_expansion(&mut token_handler, expanded_codes, line, span);
+                        expansion_start_tags = token_handler.closing_tags.clone();
+                    }
+                    if let Some(ref current_expansion) = current_expansion
+                        && current_expansion.span.lo() == span.hi()
+                    {
+                        start_expansion(&mut token_handler.pending_elems, current_expansion);
                     }
                 } else {
                     token_handler.pending_elems.push((Cow::Borrowed(text), class));
@@ -486,11 +531,13 @@ pub(super) fn write_code(
                         }
                     }
                     if need_end {
-                        current_expansion =
-                            end_expansion(&mut token_handler, expanded_codes, level, line, span);
-                        if current_expansion.is_none() {
-                            level = 0;
-                        }
+                        current_expansion = end_expansion(
+                            &mut token_handler,
+                            expanded_codes,
+                            &expansion_start_tags,
+                            line,
+                            span,
+                        );
                     }
                 }
             }
@@ -511,9 +558,6 @@ pub(super) fn write_code(
                 if should_add {
                     let closing_tag =
                         enter_span(token_handler.out, class, &token_handler.href_context);
-                    if current_expansion.is_some() {
-                        level += 1;
-                    }
                     token_handler.closing_tags.push((closing_tag, class));
                 }
 
@@ -522,9 +566,6 @@ pub(super) fn write_code(
             }
             Highlight::ExitSpan => {
                 token_handler.current_class = None;
-                if current_expansion.is_some() {
-                    level -= 1;
-                }
                 token_handler.pending_exit_span = Some(
                     token_handler
                         .closing_tags
