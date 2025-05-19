@@ -30,26 +30,12 @@ pub(crate) enum LinkFromSrc {
     Doc(DefId),
 }
 
-/// Contains information about macro expansion in the source code pages.
-#[derive(Debug)]
-pub(crate) struct ExpandedCode {
-    /// The line where the macro expansion starts.
-    pub(crate) start_line: u32,
-    /// The line where the macro expansion ends.
-    pub(crate) end_line: u32,
-    /// The source code of the expanded macro.
-    pub(crate) code: String,
-    /// The span of macro callsite.
-    pub(crate) span: Span,
-}
-
 /// This function will do at most two things:
 ///
 /// 1. Generate a `span` correspondence map which links an item `span` to its definition `span`.
 /// 2. Collect the source code files.
 ///
-/// It returns the source code files, the `span` correspondence map and the expanded macros
-/// correspondence map.
+/// It returns the source code files and the `span` correspondence map.
 ///
 /// Note about the `span` correspondence map: the keys are actually `(lo, hi)` of `span`s. We don't
 /// need the `span` context later on, only their position, so instead of keeping a whole `Span`, we
@@ -60,26 +46,17 @@ pub(crate) fn collect_spans_and_sources(
     src_root: &Path,
     include_sources: bool,
     generate_link_to_definition: bool,
-    generate_macro_expansion: bool,
-) -> (
-    FxIndexMap<PathBuf, String>,
-    FxHashMap<Span, LinkFromSrc>,
-    FxHashMap<BytePos, Vec<ExpandedCode>>,
-) {
+) -> (FxIndexMap<PathBuf, String>, FxHashMap<Span, LinkFromSrc>) {
     if include_sources {
         let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
-        let mut expanded_visitor = ExpandedCodeVisitor { tcx, expanded_codes: Vec::new() };
 
-        if generate_macro_expansion {
-            tcx.hir_walk_toplevel_module(&mut expanded_visitor);
-        }
         if generate_link_to_definition {
             tcx.hir_walk_toplevel_module(&mut visitor);
         }
         let sources = sources::collect_local_sources(tcx, src_root, krate);
-        (sources, visitor.matches, expanded_visitor.compute_expanded())
+        (sources, visitor.matches)
     } else {
-        (Default::default(), Default::default(), Default::default())
+        (Default::default(), Default::default())
     }
 }
 
@@ -313,109 +290,5 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             | ItemKind::Mod(..) => {}
         }
         intravisit::walk_item(self, item);
-    }
-}
-
-/// Contains temporary information of macro expanded code.
-///
-/// As we go through the HIR visitor, if any span overlaps with another, they will
-/// both be merged.
-struct ExpandedCodeInfo {
-    /// Callsite of the macro.
-    span: Span,
-    /// Expanded macro source code.
-    code: String,
-    /// Expanded span
-    expanded_span: Span,
-}
-
-/// HIR visitor which retrieves expanded macro.
-///
-/// Once done, the `expanded_codes` will be transformed into a vec of [`ExpandedCode`]
-/// which contains more information needed when running the source code highlighter.
-pub struct ExpandedCodeVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    expanded_codes: Vec<ExpandedCodeInfo>,
-}
-
-impl<'tcx> ExpandedCodeVisitor<'tcx> {
-    fn handle_new_span<F: Fn(TyCtxt<'_>) -> String>(&mut self, new_span: Span, f: F) {
-        if new_span.is_dummy() || !new_span.from_expansion() {
-            return;
-        }
-        let callsite_span = new_span.source_callsite();
-        if let Some(index) =
-            self.expanded_codes.iter().position(|info| info.span.overlaps(callsite_span))
-        {
-            let info = &mut self.expanded_codes[index];
-            if new_span.contains(info.expanded_span) {
-                // We replace the item.
-                info.span = callsite_span;
-                info.expanded_span = new_span;
-                info.code = f(self.tcx);
-            } else {
-                // We push the new item after the existing one.
-                let expanded_code = &mut self.expanded_codes[index];
-                expanded_code.code.push('\n');
-                expanded_code.code.push_str(&f(self.tcx));
-                let lo = BytePos(expanded_code.expanded_span.lo().0.min(new_span.lo().0));
-                let hi = BytePos(expanded_code.expanded_span.hi().0.min(new_span.hi().0));
-                expanded_code.expanded_span = expanded_code.expanded_span.with_lo(lo).with_hi(hi);
-            }
-        } else {
-            // We add a new item.
-            self.expanded_codes.push(ExpandedCodeInfo {
-                span: callsite_span,
-                code: f(self.tcx),
-                expanded_span: new_span,
-            });
-        }
-    }
-
-    fn compute_expanded(mut self) -> FxHashMap<BytePos, Vec<ExpandedCode>> {
-        self.expanded_codes.sort_unstable_by(|item1, item2| item1.span.cmp(&item2.span));
-        let source_map = self.tcx.sess.source_map();
-        let mut expanded: FxHashMap<BytePos, Vec<ExpandedCode>> = FxHashMap::default();
-        for ExpandedCodeInfo { span, code, .. } in self.expanded_codes {
-            if let Ok(lines) = source_map.span_to_lines(span)
-                && !lines.lines.is_empty()
-            {
-                let mut out = String::new();
-                super::highlight::write_code(&mut out, &code, None, None, None);
-                let first = lines.lines.first().unwrap();
-                let end = lines.lines.last().unwrap();
-                expanded.entry(lines.file.start_pos).or_default().push(ExpandedCode {
-                    start_line: first.line_index as u32 + 1,
-                    end_line: end.line_index as u32 + 1,
-                    code: out,
-                    span,
-                });
-            }
-        }
-        expanded
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for ExpandedCodeVisitor<'tcx> {
-    type NestedFilter = nested_filter::All;
-
-    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
-        self.tcx
-    }
-
-    fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
-        if expr.span.from_expansion() {
-            self.handle_new_span(expr.span, |tcx| rustc_hir_pretty::expr_to_string(&tcx, expr));
-        } else {
-            intravisit::walk_expr(self, expr);
-        }
-    }
-
-    fn visit_item(&mut self, item: &'tcx rustc_hir::Item<'tcx>) {
-        if item.span.from_expansion() {
-            self.handle_new_span(item.span, |tcx| rustc_hir_pretty::item_to_string(&tcx, item));
-        } else {
-            intravisit::walk_item(self, item);
-        }
     }
 }
