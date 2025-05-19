@@ -4,6 +4,7 @@ pub(crate) mod highlight;
 pub(crate) mod layout;
 mod length_limit;
 // used by the error-index generator, so it needs to be public
+pub(crate) mod macro_expansion;
 pub mod markdown;
 pub(crate) mod render;
 pub(crate) mod sources;

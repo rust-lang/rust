@@ -28,8 +28,8 @@ use crate::formats::FormatRenderer;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
+use crate::html::macro_expansion::ExpandedCode;
 use crate::html::markdown::{self, ErrorCodes, IdMap, plain_text_summary};
-use crate::html::render::ExpandedCode;
 use crate::html::render::write_shared::write_shared;
 use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{layout, sources, static_files};
@@ -460,20 +460,13 @@ impl<'tcx> Context<'tcx> {
     }
 }
 
-/// Generates the documentation for `crate` into the directory `dst`
-impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
-    fn descr() -> &'static str {
-        "html"
-    }
-
-    const RUN_ON_MODULE: bool = true;
-    type ModuleData = ContextInfo;
-
-    fn init(
+impl<'tcx> Context<'tcx> {
+    pub(crate) fn init(
         krate: clean::Crate,
         options: RenderOptions,
         cache: Cache,
         tcx: TyCtxt<'tcx>,
+        expanded_codes: FxHashMap<BytePos, Vec<ExpandedCode>>,
     ) -> Result<(Self, clean::Crate), Error> {
         // need to save a copy of the options for rendering the index page
         let md_opts = options.clone();
@@ -492,7 +485,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             generate_redirect_map,
             show_type_layout,
             generate_link_to_definition,
-            generate_macro_expansion,
             call_locations,
             no_emit_shared,
             html_no_source,
@@ -551,13 +543,12 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             }
         }
 
-        let (local_sources, matches, expanded_codes) = collect_spans_and_sources(
+        let (local_sources, matches) = collect_spans_and_sources(
             tcx,
             &krate,
             &src_root,
             include_sources,
             generate_link_to_definition,
-            generate_macro_expansion,
         );
 
         let (sender, receiver) = channel();
@@ -609,6 +600,16 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         Ok((cx, krate))
     }
+}
+
+/// Generates the documentation for `crate` into the directory `dst`
+impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
+    fn descr() -> &'static str {
+        "html"
+    }
+
+    const RUN_ON_MODULE: bool = true;
+    type ModuleData = ContextInfo;
 
     fn save_module_data(&mut self) -> Self::ModuleData {
         self.deref_id_map.borrow_mut().clear();

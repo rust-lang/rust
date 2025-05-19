@@ -63,7 +63,7 @@ use serde::{Serialize, Serializer};
 use tracing::{debug, info};
 
 pub(crate) use self::context::*;
-pub(crate) use self::span_map::{ExpandedCode, LinkFromSrc, collect_spans_and_sources};
+pub(crate) use self::span_map::{LinkFromSrc, collect_spans_and_sources};
 pub(crate) use self::write_shared::*;
 use crate::clean::{self, ItemId, RenderedLink};
 use crate::display::{Joined as _, MaybeDisplay as _};
