@@ -69,6 +69,7 @@ impl GlobalState {
     /// are ready to do semantic work.
     pub(crate) fn is_quiescent(&self) -> bool {
         self.vfs_done
+            && self.fetch_ws_receiver.is_none()
             && !self.fetch_workspaces_queue.op_in_progress()
             && !self.fetch_build_data_queue.op_in_progress()
             && !self.fetch_proc_macros_queue.op_in_progress()

@@ -3,7 +3,11 @@
 //!
 //! Each tick provides an immutable snapshot of the state as `WorldSnapshot`.
 
-use std::{ops::Not as _, panic::AssertUnwindSafe, time::Instant};
+use std::{
+    ops::Not as _,
+    panic::AssertUnwindSafe,
+    time::{Duration, Instant},
+};
 
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use hir::ChangeWithProcMacros;
@@ -41,6 +45,7 @@ use crate::{
     test_runner::{CargoTestHandle, CargoTestMessage},
 };
 
+#[derive(Debug)]
 pub(crate) struct FetchWorkspaceRequest {
     pub(crate) path: Option<AbsPathBuf>,
     pub(crate) force_crate_graph_reload: bool,
@@ -115,6 +120,11 @@ pub(crate) struct GlobalState {
     pub(crate) discover_handle: Option<discover::DiscoverHandle>,
     pub(crate) discover_sender: Sender<discover::DiscoverProjectMessage>,
     pub(crate) discover_receiver: Receiver<discover::DiscoverProjectMessage>,
+
+    // Debouncing channel for fetching the workspace
+    // we want to delay it until the VFS looks stable-ish (and thus is not currently in the middle
+    // of a VCS operation like `git switch`)
+    pub(crate) fetch_ws_receiver: Option<(Receiver<Instant>, FetchWorkspaceRequest)>,
 
     // VFS
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
@@ -267,6 +277,8 @@ impl GlobalState {
             discover_handle: None,
             discover_sender,
             discover_receiver,
+
+            fetch_ws_receiver: None,
 
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), Default::default()))),
             vfs_config_version: 0,
@@ -519,11 +531,7 @@ impl GlobalState {
             if let Some((path, force_crate_graph_reload)) = workspace_structure_change {
                 let _p = span!(Level::INFO, "GlobalState::process_changes/ws_structure_change")
                     .entered();
-
-                self.fetch_workspaces_queue.request_op(
-                    format!("workspace vfs file change: {path}"),
-                    FetchWorkspaceRequest { path: Some(path), force_crate_graph_reload },
-                );
+                self.enqueue_workspace_fetch(path, force_crate_graph_reload);
             }
         }
 
@@ -670,6 +678,30 @@ impl GlobalState {
             }
             None
         })
+    }
+
+    fn enqueue_workspace_fetch(&mut self, path: AbsPathBuf, force_crate_graph_reload: bool) {
+        let already_requested = self.fetch_workspaces_queue.op_requested()
+            && !self.fetch_workspaces_queue.op_in_progress();
+        if self.fetch_ws_receiver.is_none() && already_requested {
+            // Don't queue up a new fetch request if we already have done so
+            // Otherwise we will re-fetch in quick succession which is unnecessary
+            // Note though, that if one is already in progress, we *want* to re-queue
+            // as the in-progress fetch might not have the latest changes in it anymore
+            // FIXME: We should cancel the in-progress fetch here
+            return;
+        }
+
+        self.fetch_ws_receiver = Some((
+            crossbeam_channel::after(Duration::from_millis(100)),
+            FetchWorkspaceRequest { path: Some(path), force_crate_graph_reload },
+        ));
+    }
+
+    pub(crate) fn debounce_workspace_fetch(&mut self) {
+        if let Some((fetch_receiver, _)) = &mut self.fetch_ws_receiver {
+            *fetch_receiver = crossbeam_channel::after(Duration::from_millis(100));
+        }
     }
 }
 
