@@ -1,5 +1,5 @@
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
-use rustc_attr_parsing::InstructionSetAttr;
+use rustc_attr_data_structures::InstructionSetAttr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::mono::{Linkage, MonoItemData, Visibility};
 use rustc_middle::mir::{InlineAsmOperand, START_BLOCK};

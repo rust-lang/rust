@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use hir::Expr;
 use rustc_ast::ast::Mutability;
-use rustc_attr_parsing::{AttributeKind, find_attr};
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;

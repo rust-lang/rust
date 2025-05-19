@@ -27,6 +27,7 @@
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
 extern crate rustc_abi;
 extern crate rustc_ast;
+extern crate rustc_attr_data_structures;
 extern crate rustc_attr_parsing;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
@@ -88,7 +89,7 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 use itertools::Itertools;
 use rustc_abi::Integer;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
-use rustc_attr_parsing::{AttributeKind, find_attr};
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnhashMap;

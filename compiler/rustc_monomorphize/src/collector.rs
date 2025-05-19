@@ -208,7 +208,7 @@
 use std::cell::OnceCell;
 use std::path::PathBuf;
 
-use rustc_attr_parsing::InlineAttr;
+use rustc_attr_data_structures::InlineAttr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{MTLock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
