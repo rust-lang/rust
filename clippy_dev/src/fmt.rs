@@ -1,6 +1,9 @@
-use crate::utils::{ClippyInfo, ErrAction, UpdateMode, panic_action, run_with_args_split, run_with_output};
+use crate::utils::{
+    ClippyInfo, ErrAction, FileUpdater, UpdateMode, UpdateStatus, panic_action, run_with_args_split, run_with_output,
+};
 use itertools::Itertools;
 use rustc_lexer::{TokenKind, tokenize};
+use std::fmt::Write;
 use std::fs;
 use std::io::{self, Read};
 use std::ops::ControlFlow;
@@ -225,6 +228,38 @@ fn fmt_conf(check: bool) -> Result<(), Error> {
     Ok(())
 }
 
+/// Format the symbols list
+fn fmt_syms(update_mode: UpdateMode) {
+    FileUpdater::default().update_file_checked(
+        "cargo dev fmt",
+        update_mode,
+        "clippy_utils/src/sym.rs",
+        &mut |_, text: &str, new_text: &mut String| {
+            let (pre, conf) = text.split_once("generate! {\n").expect("can't find generate! call");
+            let (conf, post) = conf.split_once("\n}\n").expect("can't find end of generate! call");
+            let mut lines = conf
+                .lines()
+                .map(|line| {
+                    let line = line.trim();
+                    line.strip_suffix(',').unwrap_or(line).trim_end()
+                })
+                .collect::<Vec<_>>();
+            lines.sort_unstable();
+            write!(
+                new_text,
+                "{pre}generate! {{\n    {},\n}}\n{post}",
+                lines.join(",\n    "),
+            )
+            .unwrap();
+            if text == new_text {
+                UpdateStatus::Unchanged
+            } else {
+                UpdateStatus::Changed
+            }
+        },
+    );
+}
+
 fn run_rustfmt(clippy: &ClippyInfo, update_mode: UpdateMode) {
     let mut rustfmt_path = String::from_utf8(run_with_output(
         "rustup which rustfmt",
@@ -337,7 +372,7 @@ pub fn run(clippy: &ClippyInfo, update_mode: UpdateMode) {
         return;
     }
     run_rustfmt(clippy, update_mode);
-
+    fmt_syms(update_mode);
     if let Err(e) = fmt_conf(update_mode.is_check()) {
         e.display();
         process::exit(1);
