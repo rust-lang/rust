@@ -315,6 +315,75 @@ pub trait Visitor<'ast>: Sized {
     }
 }
 
+#[macro_export]
+macro_rules! common_visitor_and_walkers {
+    ($(($mut: ident))? $Visitor:ident$(<$lt:lifetime>)?) => {
+        // this is only used by the MutVisitor. We include this symmetry here to make writing other functions easier
+        $(${ignore($lt)}
+            #[expect(unused, rustc::pass_by_value)]
+            #[inline]
+        )?
+        fn visit_span<$($lt,)? V: $Visitor$(<$lt>)?>(visitor: &mut V, span: &$($lt)? $($mut)? Span) $(-> <V as Visitor<$lt>>::Result)? {
+            $(
+                let _ = stringify!($mut);
+                visitor.visit_span(span);
+            )?
+            $(${ignore($lt)}V::Result::output())?
+        }
+
+        // this is only used by the MutVisitor. We include this symmetry here to make writing other functions easier
+        $(${ignore($lt)}
+            #[expect(unused, rustc::pass_by_value)]
+            #[inline]
+        )?
+        fn visit_id<$($lt,)? V: $Visitor$(<$lt>)?>(visitor: &mut V, id: &$($lt)? $($mut)? NodeId) $(-> <V as Visitor<$lt>>::Result)? {
+            $(
+                let _ = stringify!($mut);
+                visitor.visit_id(id);
+            )?
+            $(${ignore($lt)}V::Result::output())?
+        }
+
+        // this is only used by the MutVisitor. We include this symmetry here to make writing other functions easier
+        fn visit_safety<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, safety: &$($lt)? $($mut)? Safety) $(-> <V as Visitor<$lt>>::Result)? {
+            match safety {
+                Safety::Unsafe(span) => visit_span(vis, span),
+                Safety::Safe(span) => visit_span(vis, span),
+                Safety::Default => { $(${ignore($lt)}V::Result::output())? }
+            }
+        }
+
+        fn visit_constness<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, constness: &$($lt)? $($mut)? Const) $(-> <V as Visitor<$lt>>::Result)? {
+            match constness {
+                Const::Yes(span) => visit_span(vis, span),
+                Const::No => {
+                    $(<V as Visitor<$lt>>::Result::output())?
+                }
+            }
+        }
+
+        pub fn walk_label<$($lt,)? V: $Visitor$(<$lt>)?>(visitor: &mut V, Label { ident }: &$($lt)? $($mut)? Label) $(-> <V as Visitor<$lt>>::Result)? {
+            visitor.visit_ident(ident)
+        }
+
+        pub fn walk_fn_header<$($lt,)? V: $Visitor$(<$lt>)?>(visitor: &mut V, header: &$($lt)? $($mut)? FnHeader) $(-> <V as Visitor<$lt>>::Result)? {
+            let FnHeader { safety, coroutine_kind, constness, ext: _ } = header;
+            try_visit!(visit_constness(visitor, constness));
+            if let Some(coroutine_kind) = coroutine_kind {
+                try_visit!(visitor.visit_coroutine_kind(coroutine_kind));
+            }
+            visit_safety(visitor, safety)
+        }
+
+        pub fn walk_lifetime<$($lt,)? V: $Visitor$(<$lt>)?>(visitor: &mut V, Lifetime { id, ident }: &$($lt)? $($mut)? Lifetime) $(-> <V as Visitor<$lt>>::Result)? {
+            try_visit!(visit_id(visitor, id));
+            visitor.visit_ident(ident)
+        }
+    };
+}
+
+common_visitor_and_walkers!(Visitor<'a>);
+
 pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) -> V::Result {
     let Crate { attrs, items, spans: _, id: _, is_placeholder: _ } = krate;
     walk_list!(visitor, visit_attribute, attrs);
@@ -332,15 +401,6 @@ pub fn walk_local<'a, V: Visitor<'a>>(visitor: &mut V, local: &'a Local) -> V::R
         visit_opt!(visitor, visit_block, els);
     }
     V::Result::output()
-}
-
-pub fn walk_label<'a, V: Visitor<'a>>(visitor: &mut V, Label { ident }: &'a Label) -> V::Result {
-    visitor.visit_ident(ident)
-}
-
-pub fn walk_lifetime<'a, V: Visitor<'a>>(visitor: &mut V, lifetime: &'a Lifetime) -> V::Result {
-    let Lifetime { id: _, ident } = lifetime;
-    visitor.visit_ident(ident)
 }
 
 pub fn walk_poly_trait_ref<'a, V>(visitor: &mut V, trait_ref: &'a PolyTraitRef) -> V::Result
@@ -923,12 +983,6 @@ pub fn walk_fn_ret_ty<'a, V: Visitor<'a>>(visitor: &mut V, ret_ty: &'a FnRetTy) 
         FnRetTy::Default(_span) => {}
         FnRetTy::Ty(output_ty) => try_visit!(visitor.visit_ty(output_ty)),
     }
-    V::Result::output()
-}
-
-pub fn walk_fn_header<'a, V: Visitor<'a>>(visitor: &mut V, fn_header: &'a FnHeader) -> V::Result {
-    let FnHeader { safety: _, coroutine_kind, constness: _, ext: _ } = fn_header;
-    visit_opt!(visitor, visit_coroutine_kind, coroutine_kind.as_ref());
     V::Result::output()
 }
 
