@@ -8,4 +8,4 @@ curl -L https://github.com/mstorsjo/llvm-mingw/releases/download/${release_date}
 tar --extract --xz --strip 1 --directory /usr/local
 
 # https://github.com/mstorsjo/llvm-mingw/issues/493
-ln -s $aarch64-w64-windows-gnu.cfg /usr/local/bin/$arch-pc-windows-gnu.cfg
+ln -s aarch64-w64-windows-gnu.cfg /usr/local/bin/aarch64-pc-windows-gnu.cfg
