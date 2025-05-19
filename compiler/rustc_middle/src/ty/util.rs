@@ -743,7 +743,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn coroutine_hidden_types(
         self,
         def_id: DefId,
-    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>> {
+    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, ty::CoroutineWitnessTypes<TyCtxt<'tcx>>>> {
         let coroutine_layout = self.mir_coroutine_witnesses(def_id);
         let mut vars = vec![];
         let bound_tys = self.mk_type_list_from_iter(
@@ -766,7 +766,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 }),
         );
         ty::EarlyBinder::bind(ty::Binder::bind_with_vars(
-            bound_tys,
+            ty::CoroutineWitnessTypes { types: bound_tys },
             self.mk_bound_variable_kinds(&vars),
         ))
     }

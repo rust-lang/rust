@@ -210,7 +210,7 @@ pub trait Interner:
     fn coroutine_hidden_types(
         self,
         def_id: Self::DefId,
-    ) -> ty::EarlyBinder<Self, ty::Binder<Self, Self::Tys>>;
+    ) -> ty::EarlyBinder<Self, ty::Binder<Self, ty::CoroutineWitnessTypes<Self>>>;
 
     fn fn_sig(
         self,
