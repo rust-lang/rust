@@ -121,14 +121,25 @@ impl Intrinsic {
             constraints
         };
 
+        // the `intrinsic-test` crate compares the output of C and Rust intrinsics. Currently, It uses
+        // a string representation of the output value to compare. In C, f16 values are currently printed
+        // as hexadecimal integers. Since https://github.com/rust-lang/rust/pull/127013, rust does print
+        // them as decimal floating point values. To keep the intrinsics tests working, for now, format
+        // vectors containing f16 values like C prints them.
+        let return_value = match self.results.kind() {
+            TypeKind::Float if self.results.inner_size() == 16 => "debug_f16(__return_value)",
+            _ => "format_args!(\"{__return_value:.150?}\")",
+        };
+
         let indentation2 = indentation.nested();
         let indentation3 = indentation2.nested();
+
         format!(
             "{indentation}for i in 0..{passes} {{\n\
                 {indentation2}unsafe {{\n\
                     {loaded_args}\
                     {indentation3}let __return_value = {intrinsic_call}{const}({args});\n\
-                    {indentation3}println!(\"Result {additional}-{{}}: {{:.150?}}\", i + 1, __return_value);\n\
+                    {indentation3}println!(\"Result {additional}-{{}}: {{:?}}\", i + 1, {return_value});\n\
                 {indentation2}}}\n\
             {indentation}}}",
             loaded_args = self.arguments.load_values_rust(indentation3),
