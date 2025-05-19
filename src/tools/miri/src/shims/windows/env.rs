@@ -238,8 +238,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Of course we cannot use `windows_check_buffer_size` here since this uses
                 // a different method for dealing with a too-small buffer than the other functions...
                 let (success, len) = this.write_path_to_wide_str(home, buf, size_avail.into())?;
-                // The Windows docs just say that this is written on failure. But std
-                // seems to rely on it always being written.
+                // The Windows docs just say that this is written on failure, but std relies on it
+                // always being written. Also see <https://github.com/rust-lang/rust/issues/141254>.
                 this.write_scalar(Scalar::from_u32(len.try_into().unwrap()), &size)?;
                 if success {
                     Scalar::from_i32(1) // return TRUE
