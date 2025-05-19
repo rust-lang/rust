@@ -100,6 +100,7 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use rustc_attr_data_structures::InlineAttr;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -845,8 +846,7 @@ fn mono_item_visibility<'tcx>(
         return if is_generic
             && (always_export_generics
                 || (can_export_generics
-                    && tcx.codegen_fn_attrs(def_id).inline
-                        == rustc_attr_parsing::InlineAttr::Never))
+                    && tcx.codegen_fn_attrs(def_id).inline == InlineAttr::Never))
         {
             // If it is an upstream monomorphization and we export generics, we must make
             // it available to downstream crates.
@@ -859,8 +859,7 @@ fn mono_item_visibility<'tcx>(
 
     if is_generic {
         if always_export_generics
-            || (can_export_generics
-                && tcx.codegen_fn_attrs(def_id).inline == rustc_attr_parsing::InlineAttr::Never)
+            || (can_export_generics && tcx.codegen_fn_attrs(def_id).inline == InlineAttr::Never)
         {
             if tcx.is_unreachable_local_definition(def_id) {
                 // This instance cannot be used from another crate.
