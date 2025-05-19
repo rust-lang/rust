@@ -1192,11 +1192,12 @@ pub fn rustc_cargo(
     if builder.config.llvm_enzyme {
         let arch = builder.build.build;
         let enzyme_dir = builder.build.out.join(arch).join("enzyme").join("lib");
-        cargo.rustflag("-L").rustflag(enzyme_dir.to_str().expect("Invalid path"));
+        let abs_path = enzyme_dir.join("libEnzymeStatic-20.a");
 
         if let Some(llvm_config) = builder.llvm_config(builder.config.build) {
-            let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
-            cargo.rustflag("-l").rustflag(&format!("Enzyme-{llvm_version_major}"));
+            //let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
+            //cargo.rustflag("-l").rustflag(&format!("EnzymeStatic-{llvm_version_major}"));
+            cargo.rustflag(abs_path);
         }
     }
 
@@ -2069,8 +2070,8 @@ impl Step for Assemble {
             let enzyme_install = builder.ensure(llvm::Enzyme { target: build_compiler.host });
             let llvm_config = builder.llvm_config(builder.config.build).unwrap();
             let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
-            let lib_ext = std::env::consts::DLL_EXTENSION;
-            let libenzyme = format!("libEnzyme-{llvm_version_major}");
+            let lib_ext = "a";
+            let libenzyme = format!("libEnzymeStatic-{llvm_version_major}");
             let src_lib =
                 enzyme_install.join("build/Enzyme").join(&libenzyme).with_extension(lib_ext);
             let libdir = builder.sysroot_target_libdir(build_compiler, build_compiler.host);
