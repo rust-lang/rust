@@ -1423,3 +1423,15 @@ impl ToUsize for u32 {
         self.try_into().unwrap()
     }
 }
+
+/// Similarly, a maximum address size of `u64` is assumed widely here, so let's have ergonomic
+/// converion from `usize` to `u64`.
+pub trait ToU64 {
+    fn to_u64(self) -> u64;
+}
+
+impl ToU64 for usize {
+    fn to_u64(self) -> u64 {
+        self.try_into().unwrap()
+    }
+}

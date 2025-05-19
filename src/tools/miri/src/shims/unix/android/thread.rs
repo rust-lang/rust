@@ -7,7 +7,7 @@ use crate::helpers::check_min_vararg_count;
 use crate::shims::unix::thread::{EvalContextExt as _, ThreadNameResult};
 use crate::*;
 
-const TASK_COMM_LEN: u32 = 16;
+const TASK_COMM_LEN: u64 = 16;
 
 pub fn prctl<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
@@ -29,12 +29,8 @@ pub fn prctl<'tcx>(
             let thread = ecx.pthread_self()?;
             // The Linux kernel silently truncates long names.
             // https://www.man7.org/linux/man-pages/man2/PR_SET_NAME.2const.html
-            let res = ecx.pthread_setname_np(
-                thread,
-                name,
-                TASK_COMM_LEN.to_usize(),
-                /* truncate */ true,
-            )?;
+            let res =
+                ecx.pthread_setname_np(thread, name, TASK_COMM_LEN, /* truncate */ true)?;
             assert_eq!(res, ThreadNameResult::Ok);
             Scalar::from_u32(0)
         }
@@ -42,7 +38,7 @@ pub fn prctl<'tcx>(
             let [name] = check_min_vararg_count("prctl(PR_GET_NAME, ...)", varargs)?;
             let name = ecx.read_scalar(name)?;
             let thread = ecx.pthread_self()?;
-            let len = Scalar::from_target_usize(TASK_COMM_LEN.into(), ecx);
+            let len = Scalar::from_target_usize(TASK_COMM_LEN, ecx);
             ecx.check_ptr_access(
                 name.to_pointer(ecx)?,
                 Size::from_bytes(TASK_COMM_LEN),
