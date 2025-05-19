@@ -92,8 +92,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn get_func_ptr_explicitly_from_lib(&mut self, link_name: Symbol) -> Option<CodePtr> {
         let this = self.eval_context_mut();
         // Try getting the function from the shared library.
-        // On windows `_lib_path` will be unused, hence the name starting with `_`.
-        let (lib, _lib_path) = this.machine.native_lib.as_ref().unwrap();
+        let (lib, lib_path) = this.machine.native_lib.as_ref().unwrap();
         let func: libloading::Symbol<'_, unsafe extern "C" fn()> = unsafe {
             match lib.get(link_name.as_str().as_bytes()) {
                 Ok(x) => x,
@@ -114,7 +113,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // This code is a reimplementation of the mechanism for getting `dli_fname` in `libloading`,
         // from: https://docs.rs/libloading/0.7.3/src/libloading/os/unix/mod.rs.html#411
         // using the `libc` crate where this interface is public.
-        let mut info = std::mem::MaybeUninit::<libc::Dl_info>::uninit();
+        let mut info = std::mem::MaybeUninit::<libc::Dl_info>::zeroed();
         unsafe {
             if libc::dladdr(*func.deref() as *const _, info.as_mut_ptr()) != 0 {
                 let info = info.assume_init();
@@ -122,8 +121,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let fname_ptr = info.dli_fname.as_ptr();
                 #[cfg(not(target_os = "cygwin"))]
                 let fname_ptr = info.dli_fname;
+                assert!(!fname_ptr.is_null());
                 if std::ffi::CStr::from_ptr(fname_ptr).to_str().unwrap()
-                    != _lib_path.to_str().unwrap()
+                    != lib_path.to_str().unwrap()
                 {
                     return None;
                 }
