@@ -203,9 +203,11 @@ pub trait CommandExt: Sealed {
     /// the command.
     ///
     /// This happens before changing to the directory specified with `Command::current_dir`, and
-    /// that directory will be relative to the new root. If no directory has been specified with
-    /// `Command::current_dir`, this will set the directory to `/`, to avoid leaving the current
-    /// directory outside the chroot.
+    /// that directory will be relative to the new root.
+    ///
+    /// If no directory has been specified with `Command::current_dir`, this will set the directory
+    /// to `/`, to avoid leaving the current directory outside the chroot. (This is an intentional
+    /// difference from the underlying `chroot` system call.)
     #[unstable(feature = "process_chroot", issue = "none")]
     fn chroot<P: AsRef<Path>>(&mut self, dir: P) -> &mut process::Command;
 }
