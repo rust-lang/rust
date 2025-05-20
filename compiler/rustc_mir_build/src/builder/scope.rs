@@ -725,11 +725,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             drops
         };
 
-        let drop_idx = self.scopes.scopes[scope_index + 1..]
-            .iter()
-            .flat_map(|scope| &scope.drops)
-            .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
-
+        let mut drop_idx = ROOT_NODE;
+        for scope in &self.scopes.scopes[scope_index + 1..] {
+            for drop in &scope.drops {
+                drop_idx = drops.add_drop(*drop, drop_idx);
+            }
+        }
         drops.add_entry_point(block, drop_idx);
 
         // `build_drop_trees` doesn't have access to our source_info, so we
