@@ -998,7 +998,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.source_scope = source_scope;
         }
 
-        if self.tcx.intrinsic(self.def_id).is_some_and(|i| i.must_be_overridden) {
+        if self.tcx.intrinsic(self.def_id).is_some_and(|i| i.must_be_overridden)
+            || self.tcx.is_sdylib_interface_build()
+        {
             let source_info = self.source_info(rustc_span::DUMMY_SP);
             self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
             self.cfg.start_new_block().unit()

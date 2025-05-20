@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::get_parent_expr;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
+use clippy_utils::{get_parent_expr, sym};
 use rustc_ast::{LitKind, StrStyle};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_span::edition::Edition::Edition2021;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol};
 
 use super::MANUAL_C_STR_LITERALS;
 
@@ -71,15 +71,15 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, func: &Expr<'_>, args
         && cx.tcx.sess.edition() >= Edition2021
         && msrv.meets(cx, msrvs::C_STR_LITERALS)
     {
-        match fn_name.as_str() {
-            name @ ("from_bytes_with_nul" | "from_bytes_with_nul_unchecked")
+        match fn_name {
+            sym::from_bytes_with_nul | sym::from_bytes_with_nul_unchecked
                 if !arg.span.from_expansion()
                     && let ExprKind::Lit(lit) = arg.kind
                     && let LitKind::ByteStr(_, StrStyle::Cooked) | LitKind::Str(_, StrStyle::Cooked) = lit.node =>
             {
-                check_from_bytes(cx, expr, arg, name);
+                check_from_bytes(cx, expr, arg, fn_name);
             },
-            "from_ptr" => check_from_ptr(cx, expr, arg),
+            sym::from_ptr => check_from_ptr(cx, expr, arg),
             _ => {},
         }
     }
@@ -106,13 +106,13 @@ fn check_from_ptr(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>) {
     }
 }
 /// Checks `CStr::from_bytes_with_nul(b"foo\0")`
-fn check_from_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, method: &str) {
+fn check_from_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, method: Symbol) {
     let (span, applicability) = if let Some(parent) = get_parent_expr(cx, expr)
         && let ExprKind::MethodCall(method, ..) = parent.kind
         && [sym::unwrap, sym::expect].contains(&method.ident.name)
     {
         (parent.span, Applicability::MachineApplicable)
-    } else if method == "from_bytes_with_nul_unchecked" {
+    } else if method == sym::from_bytes_with_nul_unchecked {
         // `*_unchecked` returns `&CStr` directly, nothing needs to be changed
         (expr.span, Applicability::MachineApplicable)
     } else {

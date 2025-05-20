@@ -510,7 +510,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             self.ecx.check_ptr_access(
                 place.ptr(),
                 size,
-                CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
+                CheckInAllocMsg::Dereferenceable, // will anyway be replaced by validity message
             ),
             self.path,
             Ub(DanglingIntPointer { addr: 0, .. }) => NullPtr { ptr_kind },

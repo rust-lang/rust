@@ -356,6 +356,8 @@ passes_ignored_derived_impls =
 passes_implied_feature_not_exist =
     feature `{$implied_by}` implying `{$feature}` does not exist
 
+passes_incorrect_crate_type = lang items are not allowed in stable dylibs
+
 passes_incorrect_do_not_recommend_args =
     `#[diagnostic::do_not_recommend]` does not expect any arguments
 
@@ -741,6 +743,23 @@ passes_trait_impl_const_stable =
 
 passes_transparent_incompatible =
     transparent {$target} cannot have other repr hints
+
+passes_unexportable_adt_with_private_fields = ADT types with private fields are not exportable
+    .note = `{$field_name}` is private
+
+passes_unexportable_fn_abi = only functions with "C" ABI are exportable
+
+passes_unexportable_generic_fn = generic functions are not exportable
+
+passes_unexportable_item = {$descr}'s are not exportable
+
+passes_unexportable_priv_item = private items are not exportable
+    .note = is only usable at visibility `{$vis_descr}`
+
+passes_unexportable_type_in_interface = {$desc} with `#[export_stable]` attribute uses type `{$ty}`, which is not exportable
+    .label = not exportable
+
+passes_unexportable_type_repr = types with unstable layout are not exportable
 
 passes_unknown_external_lang_item =
     unknown external lang item: `{$lang_item}`

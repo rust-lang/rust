@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
-use clippy_utils::{is_res_lang_ctor, is_trait_method, match_def_path, match_trait_method, paths, peel_blocks};
+use clippy_utils::{is_res_lang_ctor, paths, peel_blocks};
 use hir::{ExprKind, HirId, PatKind};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -93,14 +93,14 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
                 return;
             }
 
-            let async_paths: [&[&str]; 4] = [
+            let async_paths = [
                 &paths::TOKIO_IO_ASYNCREADEXT,
                 &paths::TOKIO_IO_ASYNCWRITEEXT,
                 &paths::FUTURES_IO_ASYNCREADEXT,
                 &paths::FUTURES_IO_ASYNCWRITEEXT,
             ];
 
-            if async_paths.into_iter().any(|path| match_def_path(cx, trait_id, path)) {
+            if async_paths.into_iter().any(|path| path.matches(cx, trait_id)) {
                 return;
             }
         }
@@ -226,7 +226,7 @@ fn is_unreachable_or_panic(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     if is_panic(cx, macro_call.def_id) {
         return !cx.tcx.hir_is_inside_const_context(expr.hir_id);
     }
-    matches!(cx.tcx.item_name(macro_call.def_id).as_str(), "unreachable")
+    cx.tcx.is_diagnostic_item(sym::unreachable_macro, macro_call.def_id)
 }
 
 fn unpack_call_chain<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
@@ -291,19 +291,28 @@ fn check_io_mode(cx: &LateContext<'_>, call: &hir::Expr<'_>) -> Option<IoOp> {
         },
     };
 
-    match (
-        is_trait_method(cx, call, sym::IoRead),
-        is_trait_method(cx, call, sym::IoWrite),
-        match_trait_method(cx, call, &paths::FUTURES_IO_ASYNCREADEXT)
-            || match_trait_method(cx, call, &paths::TOKIO_IO_ASYNCREADEXT),
-        match_trait_method(cx, call, &paths::TOKIO_IO_ASYNCWRITEEXT)
-            || match_trait_method(cx, call, &paths::FUTURES_IO_ASYNCWRITEEXT),
-    ) {
-        (true, _, _, _) => Some(IoOp::SyncRead(vectorized)),
-        (_, true, _, _) => Some(IoOp::SyncWrite(vectorized)),
-        (_, _, true, _) => Some(IoOp::AsyncRead(vectorized)),
-        (_, _, _, true) => Some(IoOp::AsyncWrite(vectorized)),
-        _ => None,
+    if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(call.hir_id)
+        && let Some(trait_def_id) = cx.tcx.trait_of_item(method_def_id)
+    {
+        if let Some(diag_name) = cx.tcx.get_diagnostic_name(trait_def_id) {
+            match diag_name {
+                sym::IoRead => Some(IoOp::SyncRead(vectorized)),
+                sym::IoWrite => Some(IoOp::SyncWrite(vectorized)),
+                _ => None,
+            }
+        } else if paths::FUTURES_IO_ASYNCREADEXT.matches(cx, trait_def_id)
+            || paths::TOKIO_IO_ASYNCREADEXT.matches(cx, trait_def_id)
+        {
+            Some(IoOp::AsyncRead(vectorized))
+        } else if paths::TOKIO_IO_ASYNCWRITEEXT.matches(cx, trait_def_id)
+            || paths::FUTURES_IO_ASYNCWRITEEXT.matches(cx, trait_def_id)
+        {
+            Some(IoOp::AsyncWrite(vectorized))
+        } else {
+            None
+        }
+    } else {
+        None
     }
 }
 

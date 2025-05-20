@@ -720,7 +720,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(pre_link_args, vec![String::from("abc"), String::from("def")]);
     untracked!(print_codegen_stats, true);
     untracked!(print_llvm_passes, true);
-    untracked!(print_mono_items, Some(String::from("abc")));
+    untracked!(print_mono_items, true);
     untracked!(print_type_sizes, true);
     untracked!(proc_macro_backtrace, true);
     untracked!(proc_macro_execution_strategy, ProcMacroExecutionStrategy::CrossThread);
@@ -776,7 +776,8 @@ fn test_unstable_options_tracking_hash() {
         CoverageOptions {
             level: CoverageLevel::Mcdc,
             no_mir_spans: true,
-            discard_all_spans_in_codegen: true
+            discard_all_spans_in_codegen: true,
+            inject_unused_local_file: true,
         }
     );
     tracked!(crate_attr, vec!["abc".to_string()]);

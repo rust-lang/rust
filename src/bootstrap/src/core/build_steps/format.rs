@@ -9,7 +9,7 @@ use std::sync::mpsc::SyncSender;
 use build_helper::git::get_git_modified_files;
 use ignore::WalkBuilder;
 
-use crate::core::builder::Builder;
+use crate::core::builder::{Builder, Kind};
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
@@ -58,7 +58,7 @@ fn rustfmt(
 fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, BuildStamp)> {
     let stamp_file = BuildStamp::new(&build.out).with_prefix("rustfmt");
 
-    let mut cmd = command(build.initial_rustfmt()?);
+    let mut cmd = command(build.config.initial_rustfmt.as_ref()?);
     cmd.arg("--version");
 
     let output = cmd.allow_failure().run_capture(build);
@@ -122,6 +122,12 @@ fn print_paths(verb: &str, adjective: Option<&str>, paths: &[String]) {
 }
 
 pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
+    if build.kind == Kind::Format && build.top_stage != 0 {
+        eprintln!("ERROR: `x fmt` only supports stage 0.");
+        eprintln!("HELP: Use `x run rustfmt` to run in-tree rustfmt.");
+        crate::exit!(1);
+    }
+
     if !paths.is_empty() {
         eprintln!(
             "fmt error: path arguments are no longer accepted; use `--all` to format everything"
@@ -237,7 +243,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
 
     let override_ = override_builder.build().unwrap(); // `override` is a reserved keyword
 
-    let rustfmt_path = build.initial_rustfmt().unwrap_or_else(|| {
+    let rustfmt_path = build.config.initial_rustfmt.clone().unwrap_or_else(|| {
         eprintln!("fmt error: `x fmt` is not supported on this channel");
         crate::exit!(1);
     });

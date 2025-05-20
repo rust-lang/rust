@@ -24,7 +24,7 @@
   <text xml:space="preserve" class="container fg">
     <tspan x="10px" y="28px"><tspan class="fg-ansi256-009 bold">error[E0308]</tspan><tspan class="fg-ansi256-015 bold">: mismatched types</tspan>
 </tspan>
-    <tspan x="10px" y="46px"><tspan>  </tspan><tspan class="fg-ansi256-014 bold">--&gt; </tspan><tspan>$DIR/highlighting.rs:22:11</tspan>
+    <tspan x="10px" y="46px"><tspan>  </tspan><tspan class="fg-ansi256-014 bold">--&gt; </tspan><tspan>$DIR/highlighting.rs:21:11</tspan>
 </tspan>
     <tspan x="10px" y="64px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan>
 </tspan>
@@ -44,7 +44,7 @@
 </tspan>
     <tspan x="10px" y="208px"><tspan class="fg-ansi256-010 bold">note</tspan><tspan>: function defined here</tspan>
 </tspan>
-    <tspan x="10px" y="226px"><tspan>  </tspan><tspan class="fg-ansi256-014 bold">--&gt; </tspan><tspan>$DIR/highlighting.rs:11:4</tspan>
+    <tspan x="10px" y="226px"><tspan>  </tspan><tspan class="fg-ansi256-014 bold">--&gt; </tspan><tspan>$DIR/highlighting.rs:10:4</tspan>
 </tspan>
     <tspan x="10px" y="244px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan>
 </tspan>

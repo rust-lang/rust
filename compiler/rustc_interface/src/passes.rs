@@ -31,10 +31,11 @@ use rustc_resolve::Resolver;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
 use rustc_session::output::{collect_crate_types, filename_for_input};
+use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::{
-    ErrorGuaranteed, FileName, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,
+    DUMMY_SP, ErrorGuaranteed, FileName, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,
 };
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
@@ -237,6 +238,7 @@ fn configure_and_expand(
             sess,
             features,
             &krate,
+            tcx.is_sdylib_interface_build(),
             resolver.lint_buffer(),
         )
     });
@@ -252,6 +254,9 @@ fn configure_and_expand(
         if is_proc_macro_crate {
             sess.dcx().emit_err(errors::MixedProcMacroCrate);
         }
+    }
+    if crate_types.contains(&CrateType::Sdylib) && !tcx.features().export_stable() {
+        feature_err(sess, sym::export_stable, DUMMY_SP, "`sdylib` crate type is unstable").emit();
     }
 
     if is_proc_macro_crate && sess.panic_strategy() == PanicStrategy::Abort {
@@ -277,6 +282,7 @@ fn configure_and_expand(
     resolver.resolve_crate(&krate);
 
     CStore::from_tcx(tcx).report_incompatible_target_modifiers(tcx, &krate);
+    CStore::from_tcx(tcx).report_incompatible_async_drop_feature(tcx, &krate);
     krate
 }
 
@@ -742,6 +748,25 @@ pub fn write_dep_info(tcx: TyCtxt<'_>) {
     }
 }
 
+pub fn write_interface<'tcx>(tcx: TyCtxt<'tcx>) {
+    if !tcx.crate_types().contains(&rustc_session::config::CrateType::Sdylib) {
+        return;
+    }
+    let _timer = tcx.sess.timer("write_interface");
+    let (_, krate) = &*tcx.resolver_for_lowering().borrow();
+
+    let krate = rustc_ast_pretty::pprust::print_crate_as_interface(
+        krate,
+        tcx.sess.psess.edition,
+        &tcx.sess.psess.attr_id_generator,
+    );
+    let export_output = tcx.output_filenames(()).interface_path();
+    let mut file = fs::File::create_buffered(export_output).unwrap();
+    if let Err(err) = write!(file, "{}", krate) {
+        tcx.dcx().fatal(format!("error writing interface file: {}", err));
+    }
+}
+
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
@@ -883,7 +908,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
                 feed.output_filenames(Arc::new(outputs));
 
                 let res = f(tcx);
-                // FIXME maybe run finish even when a fatal error occured? or at least tcx.alloc_self_profile_query_strings()?
+                // FIXME maybe run finish even when a fatal error occurred? or at least tcx.alloc_self_profile_query_strings()?
                 tcx.finish();
                 res
             },
@@ -930,6 +955,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 CStore::from_tcx(tcx).report_unused_deps(tcx);
             },
             {
+                tcx.ensure_ok().exportable_items(LOCAL_CRATE);
+                tcx.ensure_ok().stable_order_of_exportable_impls(LOCAL_CRATE);
                 tcx.par_hir_for_each_module(|module| {
                     tcx.ensure_ok().check_mod_loops(module);
                     tcx.ensure_ok().check_mod_attrs(module);
@@ -970,16 +997,11 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
     sess.time("MIR_borrow_checking", || {
         tcx.par_hir_body_owners(|def_id| {
-            // Run unsafety check because it's responsible for stealing and
-            // deallocating THIR.
-            tcx.ensure_ok().check_unsafety(def_id);
             if !tcx.is_typeck_child(def_id.to_def_id()) {
+                // Child unsafety and borrowck happens together with the parent
+                tcx.ensure_ok().check_unsafety(def_id);
                 tcx.ensure_ok().mir_borrowck(def_id)
             }
-        });
-    });
-    sess.time("MIR_effect_checking", || {
-        tcx.par_hir_body_owners(|def_id| {
             tcx.ensure_ok().has_ffi_unwind_calls(def_id);
 
             // If we need to codegen, ensure that we emit all errors from

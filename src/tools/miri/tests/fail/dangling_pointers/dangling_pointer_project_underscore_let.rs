@@ -7,6 +7,6 @@ fn main() {
         &*b as *const i32 as *const (u8, u8, u8, u8)
     };
     unsafe {
-        let _ = (*p).1; //~ ERROR: out-of-bounds pointer arithmetic
+        let _ = (*p).1; //~ ERROR: in-bounds pointer arithmetic failed
     }
 }

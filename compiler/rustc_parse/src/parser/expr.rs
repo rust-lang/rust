@@ -3828,7 +3828,7 @@ impl<'a> Parser<'a> {
         // Convert `label` -> `'label`,
         // so that nameres doesn't complain about non-existing label
         let label = format!("'{}", ident.name);
-        let ident = Ident { name: Symbol::intern(&label), span: ident.span };
+        let ident = Ident::new(Symbol::intern(&label), ident.span);
 
         self.dcx().emit_err(errors::ExpectedLabelFoundIdent {
             span: ident.span,

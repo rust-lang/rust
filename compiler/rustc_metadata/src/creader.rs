@@ -148,7 +148,7 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
             writeln!(fmt, "  hash: {}", data.hash())?;
             writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
             writeln!(fmt, "  priv: {:?}", data.is_private_dep())?;
-            let CrateSource { dylib, rlib, rmeta } = data.source();
+            let CrateSource { dylib, rlib, rmeta, sdylib_interface } = data.source();
             if let Some(dylib) = dylib {
                 writeln!(fmt, "  dylib: {}", dylib.0.display())?;
             }
@@ -157,6 +157,9 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
             }
             if let Some(rmeta) = rmeta {
                 writeln!(fmt, "   rmeta: {}", rmeta.0.display())?;
+            }
+            if let Some(sdylib_interface) = sdylib_interface {
+                writeln!(fmt, "   sdylib interface: {}", sdylib_interface.0.display())?;
             }
         }
         Ok(())
@@ -466,6 +469,27 @@ impl CStore {
             let dep_mods = data.target_modifiers();
             if mods != dep_mods {
                 Self::report_target_modifiers_extended(tcx, krate, &mods, &dep_mods, data);
+            }
+        }
+    }
+
+    // Report about async drop types in dependency if async drop feature is disabled
+    pub fn report_incompatible_async_drop_feature(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+        if tcx.features().async_drop() {
+            return;
+        }
+        for (_cnum, data) in self.iter_crate_data() {
+            if data.is_proc_macro_crate() {
+                continue;
+            }
+            if data.has_async_drops() {
+                let extern_crate = data.name();
+                let local_crate = tcx.crate_name(LOCAL_CRATE);
+                tcx.dcx().emit_warn(errors::AsyncDropTypesInDependency {
+                    span: krate.spans.inner_span.shrink_to_lo(),
+                    extern_crate,
+                    local_crate,
+                });
             }
         }
     }

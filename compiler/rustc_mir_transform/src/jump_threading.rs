@@ -757,12 +757,12 @@ impl OpportunitySet {
 
             // Replace `succ` by `new_succ` where it appears.
             let mut num_edges = 0;
-            for s in basic_blocks[current].terminator_mut().successors_mut() {
+            basic_blocks[current].terminator_mut().successors_mut(|s| {
                 if *s == succ {
                     *s = new_succ;
                     num_edges += 1;
                 }
-            }
+            });
 
             // Update predecessors with the new block.
             let _new_succ = self.predecessors.push(num_edges);

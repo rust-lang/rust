@@ -3,7 +3,7 @@
    LL|       |
    LL|       |#[rustfmt::skip]
    LL|     12|fn if_not(cond: bool) {
-   LL|     12|    if
+   LL|       |    if
    LL|     12|        !
    LL|     12|        cond
    LL|      4|    {

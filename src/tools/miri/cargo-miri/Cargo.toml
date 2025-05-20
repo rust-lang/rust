@@ -5,7 +5,7 @@ license = "MIT OR Apache-2.0"
 name = "cargo-miri"
 repository = "https://github.com/rust-lang/miri"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [[bin]]
 name = "cargo-miri"

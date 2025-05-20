@@ -723,7 +723,10 @@ impl<'tcx> Ty<'tcx> {
         repr: DynKind,
     ) -> Ty<'tcx> {
         if cfg!(debug_assertions) {
-            let projection_count = obj.projection_bounds().count();
+            let projection_count = obj
+                .projection_bounds()
+                .filter(|item| !tcx.generics_require_sized_self(item.item_def_id()))
+                .count();
             let expected_count: usize = obj
                 .principal_def_id()
                 .into_iter()
@@ -1257,8 +1260,7 @@ impl<'tcx> Ty<'tcx> {
                     return true;
                 };
                 alloc.expect_ty().ty_adt_def().is_some_and(|alloc_adt| {
-                    let global_alloc = tcx.require_lang_item(LangItem::GlobalAlloc, None);
-                    alloc_adt.did() == global_alloc
+                    tcx.is_lang_item(alloc_adt.did(), LangItem::GlobalAlloc)
                 })
             }
             _ => false,

@@ -20,7 +20,7 @@ use thin_vec::ThinVec;
 use crate::ast::*;
 use crate::ptr::P;
 use crate::tokenstream::*;
-use crate::visit::{AssocCtxt, BoundKind, FnCtxt};
+use crate::visit::{AssocCtxt, BoundKind, FnCtxt, try_visit};
 
 pub trait ExpectOne<A: Array> {
     fn expect_one(self, err: &'static str) -> A::Item;
@@ -387,6 +387,8 @@ pub trait MutVisitor: Sized {
         walk_fn_ret_ty(self, fn_ret_ty)
     }
 }
+
+super::common_visitor_and_walkers!((mut) MutVisitor);
 
 /// Use a map-style function (`FnOnce(T) -> T`) to overwrite a `&mut T`. Useful
 /// when using a `flat_map_*` or `filter_map_*` method within a `visit_`
@@ -778,27 +780,10 @@ fn visit_defaultness<T: MutVisitor>(vis: &mut T, defaultness: &mut Defaultness) 
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-fn visit_safety<T: MutVisitor>(vis: &mut T, safety: &mut Safety) {
-    match safety {
-        Safety::Unsafe(span) => vis.visit_span(span),
-        Safety::Safe(span) => vis.visit_span(span),
-        Safety::Default => {}
-    }
-}
-
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 fn visit_polarity<T: MutVisitor>(vis: &mut T, polarity: &mut ImplPolarity) {
     match polarity {
         ImplPolarity::Positive => {}
         ImplPolarity::Negative(span) => vis.visit_span(span),
-    }
-}
-
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-fn visit_constness<T: MutVisitor>(vis: &mut T, constness: &mut Const) {
-    match constness {
-        Const::Yes(span) => vis.visit_span(span),
-        Const::No => {}
     }
 }
 
@@ -938,15 +923,6 @@ pub fn walk_flat_map_generic_param<T: MutVisitor>(
 ) -> SmallVec<[GenericParam; 1]> {
     vis.visit_generic_param(&mut param);
     smallvec![param]
-}
-
-fn walk_label<T: MutVisitor>(vis: &mut T, Label { ident }: &mut Label) {
-    vis.visit_ident(ident);
-}
-
-fn walk_lifetime<T: MutVisitor>(vis: &mut T, Lifetime { id, ident }: &mut Lifetime) {
-    vis.visit_id(id);
-    vis.visit_ident(ident);
 }
 
 fn walk_generics<T: MutVisitor>(vis: &mut T, generics: &mut Generics) {
@@ -1338,13 +1314,6 @@ fn walk_const_item<T: MutVisitor>(vis: &mut T, item: &mut ConstItem) {
     vis.visit_ty(ty);
     visit_opt(expr, |expr| vis.visit_expr(expr));
     walk_define_opaques(vis, define_opaque);
-}
-
-fn walk_fn_header<T: MutVisitor>(vis: &mut T, header: &mut FnHeader) {
-    let FnHeader { safety, coroutine_kind, constness, ext: _ } = header;
-    visit_constness(vis, constness);
-    coroutine_kind.as_mut().map(|coroutine_kind| vis.visit_coroutine_kind(coroutine_kind));
-    visit_safety(vis, safety);
 }
 
 pub fn walk_crate<T: MutVisitor>(vis: &mut T, krate: &mut Crate) {

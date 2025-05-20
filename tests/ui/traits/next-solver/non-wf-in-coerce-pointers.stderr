@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `(): Wf` is not satisfied
-  --> $DIR/non-wf-in-coerce-pointers.rs:8:17
+  --> $DIR/non-wf-in-coerce-pointers.rs:8:8
    |
 LL |     f: &'static <() as Wf>::Assoc,
-   |                 ^^^^^^^^^^^^^^^^^ the trait `Wf` is not implemented for `()`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Wf` is not implemented for `()`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/non-wf-in-coerce-pointers.rs:3:1

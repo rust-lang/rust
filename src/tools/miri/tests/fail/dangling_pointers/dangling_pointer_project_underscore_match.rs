@@ -8,7 +8,7 @@ fn main() {
     };
     unsafe {
         match (*p).1 {
-            //~^ ERROR: out-of-bounds pointer arithmetic
+            //~^ ERROR: in-bounds pointer arithmetic failed
             _ => {}
         }
     }

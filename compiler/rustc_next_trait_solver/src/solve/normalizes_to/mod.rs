@@ -48,9 +48,13 @@ where
                     })
                 })
             }
-            ty::AliasTermKind::InherentTy => self.normalize_inherent_associated_type(goal),
+            ty::AliasTermKind::InherentTy | ty::AliasTermKind::InherentConst => {
+                self.normalize_inherent_associated_term(goal)
+            }
             ty::AliasTermKind::OpaqueTy => self.normalize_opaque_type(goal),
-            ty::AliasTermKind::FreeTy => self.normalize_free_alias(goal),
+            ty::AliasTermKind::FreeTy | ty::AliasTermKind::FreeConst => {
+                self.normalize_free_alias(goal)
+            }
             ty::AliasTermKind::UnevaluatedConst => self.normalize_anon_const(goal),
         }
     }
@@ -102,50 +106,80 @@ where
         self.trait_def_id(cx)
     }
 
-    fn probe_and_match_goal_against_assumption(
+    fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
-        source: CandidateSource<I>,
         goal: Goal<I, Self>,
         assumption: I::Clause,
-        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<(), NoSolution> {
         if let Some(projection_pred) = assumption.as_projection_clause() {
             if projection_pred.item_def_id() == goal.predicate.def_id() {
-                let cx = ecx.cx();
-                if !DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
+                if DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                     goal.predicate.alias.args,
                     projection_pred.skip_binder().projection_term.args,
                 ) {
-                    return Err(NoSolution);
+                    return Ok(());
                 }
-                ecx.probe_trait_candidate(source).enter(|ecx| {
-                    let assumption_projection_pred =
-                        ecx.instantiate_binder_with_infer(projection_pred);
-                    ecx.eq(
-                        goal.param_env,
-                        goal.predicate.alias,
-                        assumption_projection_pred.projection_term,
-                    )?;
-
-                    ecx.instantiate_normalizes_to_term(goal, assumption_projection_pred.term);
-
-                    // Add GAT where clauses from the trait's definition
-                    // FIXME: We don't need these, since these are the type's own WF obligations.
-                    ecx.add_goals(
-                        GoalSource::AliasWellFormed,
-                        cx.own_predicates_of(goal.predicate.def_id())
-                            .iter_instantiated(cx, goal.predicate.alias.args)
-                            .map(|pred| goal.with(cx, pred)),
-                    );
-
-                    then(ecx)
-                })
-            } else {
-                Err(NoSolution)
             }
-        } else {
-            Err(NoSolution)
         }
+
+        Err(NoSolution)
+    }
+
+    fn match_assumption(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        assumption: I::Clause,
+        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
+    ) -> QueryResult<I> {
+        let cx = ecx.cx();
+        // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
+        //
+        // If this type is a GAT with currently unconstrained arguments, we do not
+        // want to normalize it via a candidate which only applies for a specific
+        // instantiation. We could otherwise keep the GAT as rigid and succeed this way.
+        // See tests/ui/generic-associated-types/no-incomplete-gat-arg-inference.rs.
+        //
+        // This only avoids normalization if the GAT arguments are fully unconstrained.
+        // This is quite arbitrary but fixing it causes some ambiguity, see #125196.
+        match goal.predicate.alias.kind(cx) {
+            ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
+                for arg in goal.predicate.alias.own_args(cx).iter() {
+                    let Some(term) = arg.as_term() else {
+                        continue;
+                    };
+                    let term = ecx.structurally_normalize_term(goal.param_env, term)?;
+                    if term.is_infer() {
+                        return ecx.evaluate_added_goals_and_make_canonical_response(
+                            Certainty::AMBIGUOUS,
+                        );
+                    }
+                }
+            }
+            ty::AliasTermKind::OpaqueTy
+            | ty::AliasTermKind::InherentTy
+            | ty::AliasTermKind::InherentConst
+            | ty::AliasTermKind::FreeTy
+            | ty::AliasTermKind::FreeConst
+            | ty::AliasTermKind::UnevaluatedConst => {}
+        }
+
+        let projection_pred = assumption.as_projection_clause().unwrap();
+
+        let assumption_projection_pred = ecx.instantiate_binder_with_infer(projection_pred);
+        ecx.eq(goal.param_env, goal.predicate.alias, assumption_projection_pred.projection_term)?;
+
+        ecx.instantiate_normalizes_to_term(goal, assumption_projection_pred.term);
+
+        // Add GAT where clauses from the trait's definition
+        // FIXME: We don't need these, since these are the type's own WF obligations.
+        ecx.add_goals(
+            GoalSource::AliasWellFormed,
+            cx.own_predicates_of(goal.predicate.def_id())
+                .iter_instantiated(cx, goal.predicate.alias.args)
+                .map(|pred| goal.with(cx, pred)),
+        );
+
+        then(ecx)
     }
 
     fn consider_additional_alias_assumptions(
@@ -333,6 +367,8 @@ where
                     cx.type_of(target_item_def_id).map_bound(|ty| ty.into())
                 }
                 ty::AliasTermKind::ProjectionConst => {
+                    // FIXME(mgca): once const items are actual aliases defined as equal to type system consts
+                    // this should instead return that.
                     if cx.features().associated_const_equality() {
                         panic!("associated const projection is not supported yet")
                     } else {

@@ -3,7 +3,7 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{
     eq_expr_value, get_parent_expr, higher, is_in_const_context, is_inherent_method_call, is_no_std_crate,
-    numeric_literal, peel_blocks, sugg,
+    numeric_literal, peel_blocks, sugg, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
@@ -435,7 +435,7 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
         rhs,
     ) = expr.kind
         && let ExprKind::MethodCall(path, self_arg, [], _) = &lhs.kind
-        && path.ident.name.as_str() == "exp"
+        && path.ident.name == sym::exp
         && cx.typeck_results().expr_ty(lhs).is_floating_point()
         && let Some(value) = ConstEvalCtxt::new(cx).eval(rhs)
         && (F32(1.0) == value || F64(1.0) == value)
@@ -759,12 +759,12 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
             let recv_ty = cx.typeck_results().expr_ty(receiver);
 
             if recv_ty.is_floating_point() && !is_no_std_crate(cx) && is_inherent_method_call(cx, expr) {
-                match path.ident.name.as_str() {
-                    "ln" => check_ln1p(cx, expr, receiver),
-                    "log" => check_log_base(cx, expr, receiver, args),
-                    "powf" => check_powf(cx, expr, receiver, args),
-                    "powi" => check_powi(cx, expr, receiver, args),
-                    "sqrt" => check_hypot(cx, expr, receiver),
+                match path.ident.name {
+                    sym::ln => check_ln1p(cx, expr, receiver),
+                    sym::log => check_log_base(cx, expr, receiver, args),
+                    sym::powf => check_powf(cx, expr, receiver, args),
+                    sym::powi => check_powi(cx, expr, receiver, args),
+                    sym::sqrt => check_hypot(cx, expr, receiver),
                     _ => {},
                 }
             }

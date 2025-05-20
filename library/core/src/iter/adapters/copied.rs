@@ -1,4 +1,3 @@
-use crate::cmp::Ordering;
 use crate::iter::adapters::zip::try_get_unchecked;
 use crate::iter::adapters::{SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
@@ -49,35 +48,20 @@ where
 
     fn next_chunk<const N: usize>(
         &mut self,
-    ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>> {
+    ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>>
+    where
+        Self: Sized,
+    {
         <I as SpecNextChunk<'_, N, T>>::spec_next_chunk(&mut self.it)
     }
 
-    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.it.size_hint()
     }
 
-    #[inline]
-    fn count(self) -> usize {
-        self.it.count()
-    }
-
-    fn last(self) -> Option<T> {
-        self.it.last().copied()
-    }
-
-    #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
-        self.it.advance_by(n)
-    }
-
-    fn nth(&mut self, n: usize) -> Option<T> {
-        self.it.nth(n).copied()
-    }
-
     fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
     where
+        Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
@@ -91,56 +75,21 @@ where
         self.it.fold(init, copy_fold(f))
     }
 
-    fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item>
-    where
-        P: FnMut(&Self::Item) -> bool,
-    {
-        self.it.find(move |x| predicate(&x)).copied()
+    fn nth(&mut self, n: usize) -> Option<T> {
+        self.it.nth(n).copied()
     }
 
-    fn max_by<F>(self, mut compare: F) -> Option<Self::Item>
-    where
-        F: FnMut(&Self::Item, &Self::Item) -> Ordering,
-    {
-        self.it.max_by(move |&x, &y| compare(x, y)).copied()
+    fn last(self) -> Option<T> {
+        self.it.last().copied()
     }
 
-    fn min_by<F>(self, mut compare: F) -> Option<Self::Item>
-    where
-        F: FnMut(&Self::Item, &Self::Item) -> Ordering,
-    {
-        self.it.min_by(move |&x, &y| compare(x, y)).copied()
+    fn count(self) -> usize {
+        self.it.count()
     }
 
-    fn cmp<O>(self, other: O) -> Ordering
-    where
-        O: IntoIterator<Item = Self::Item>,
-        Self::Item: Ord,
-    {
-        self.it.cmp_by(other, |x, y| x.cmp(&y))
-    }
-
-    fn partial_cmp<O>(self, other: O) -> Option<Ordering>
-    where
-        O: IntoIterator,
-        Self::Item: PartialOrd<O::Item>,
-    {
-        self.it.partial_cmp_by(other, |x, y| x.partial_cmp(&y))
-    }
-
-    fn eq<O>(self, other: O) -> bool
-    where
-        O: IntoIterator,
-        Self::Item: PartialEq<O::Item>,
-    {
-        self.it.eq_by(other, |x, y| x == &y)
-    }
-
-    fn is_sorted_by<F>(self, mut compare: F) -> bool
-    where
-        F: FnMut(&Self::Item, &Self::Item) -> bool,
-    {
-        self.it.is_sorted_by(move |&x, &y| compare(x, y))
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        self.it.advance_by(n)
     }
 
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
@@ -163,13 +112,9 @@ where
         self.it.next_back().copied()
     }
 
-    #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
-        self.it.advance_back_by(n)
-    }
-
     fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
     where
+        Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
@@ -183,11 +128,9 @@ where
         self.it.rfold(init, copy_fold(f))
     }
 
-    fn rfind<P>(&mut self, mut predicate: P) -> Option<Self::Item>
-    where
-        P: FnMut(&Self::Item) -> bool,
-    {
-        self.it.rfind(move |x| predicate(&x)).copied()
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        self.it.advance_back_by(n)
     }
 }
 
@@ -197,12 +140,10 @@ where
     I: ExactSizeIterator<Item = &'a T>,
     T: Copy,
 {
-    #[inline]
     fn len(&self) -> usize {
         self.it.len()
     }
 
-    #[inline]
     fn is_empty(&self) -> bool {
         self.it.is_empty()
     }

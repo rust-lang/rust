@@ -6,7 +6,7 @@ name = "miri"
 repository = "https://github.com/rust-lang/miri"
 version = "0.1.0"
 default-run = "miri"
-edition = "2021"
+edition = "2024"
 
 [lib]
 test = true     # we have unit tests
@@ -65,6 +65,7 @@ harness = false
 
 [features]
 default = ["stack-cache"]
+genmc = []
 stack-cache = []
 stack-cache-consistency-check = ["stack-cache"]
 

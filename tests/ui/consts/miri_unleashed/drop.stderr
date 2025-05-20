@@ -4,7 +4,7 @@ error[E0080]: could not evaluate static initializer
 LL | };
    | ^ calling non-const function `<Vec<i32> as Drop>::drop`
    |
-note: inside `std::ptr::drop_in_place::<Vec<i32>> - shim(Some(Vec<i32>))`
+note: inside `drop_in_place::<Vec<i32>> - shim(Some(Vec<i32>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 
 warning: skipping const checks

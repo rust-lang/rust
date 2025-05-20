@@ -51,46 +51,6 @@ pub(crate) struct GlobalTestOptions {
     pub(crate) args_file: PathBuf,
 }
 
-/// Function used to split command line arguments just like a shell would.
-fn split_args(args: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut iter = args.chars();
-    let mut current = String::new();
-
-    while let Some(c) = iter.next() {
-        if c == '\\' {
-            if let Some(c) = iter.next() {
-                // If it's escaped, even a quote or a whitespace will be ignored.
-                current.push(c);
-            }
-        } else if c == '"' || c == '\'' {
-            while let Some(new_c) = iter.next() {
-                if new_c == c {
-                    break;
-                } else if new_c == '\\' {
-                    if let Some(c) = iter.next() {
-                        // If it's escaped, even a quote will be ignored.
-                        current.push(c);
-                    }
-                } else {
-                    current.push(new_c);
-                }
-            }
-        } else if " \n\t\r".contains(c) {
-            if !current.is_empty() {
-                out.push(current.clone());
-                current.clear();
-            }
-        } else {
-            current.push(c);
-        }
-    }
-    if !current.is_empty() {
-        out.push(current);
-    }
-    out
-}
-
 pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> Result<(), String> {
     let mut file = File::create(file_path)
         .map_err(|error| format!("failed to create args file: {error:?}"))?;
@@ -119,9 +79,7 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
         content.push(format!("-Z{unstable_option_str}"));
     }
 
-    for compilation_args in &options.doctest_compilation_args {
-        content.extend(split_args(compilation_args));
-    }
+    content.extend(options.doctest_build_args.clone());
 
     let content = content.join("\n");
 
@@ -262,11 +220,21 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         Ok(None) => return,
         Err(error) => {
             eprintln!("{error}");
+            // Since some files in the temporary folder are still owned and alive, we need
+            // to manually remove the folder.
+            let _ = std::fs::remove_dir_all(temp_dir.path());
             std::process::exit(1);
         }
     };
 
-    run_tests(opts, &rustdoc_options, &unused_extern_reports, standalone_tests, mergeable_tests);
+    run_tests(
+        opts,
+        &rustdoc_options,
+        &unused_extern_reports,
+        standalone_tests,
+        mergeable_tests,
+        Some(temp_dir),
+    );
 
     let compiling_test_count = compiling_test_count.load(Ordering::SeqCst);
 
@@ -316,6 +284,8 @@ pub(crate) fn run_tests(
     unused_extern_reports: &Arc<Mutex<Vec<UnusedExterns>>>,
     mut standalone_tests: Vec<test::TestDescAndFn>,
     mergeable_tests: FxIndexMap<Edition, Vec<(DocTestBuilder, ScrapedDocTest)>>,
+    // We pass this argument so we can drop it manually before using `exit`.
+    mut temp_dir: Option<TempDir>,
 ) {
     let mut test_args = Vec::with_capacity(rustdoc_options.test_args.len() + 1);
     test_args.insert(0, "rustdoctest".to_string());
@@ -382,9 +352,14 @@ pub(crate) fn run_tests(
     // `running 0 tests...`.
     if ran_edition_tests == 0 || !standalone_tests.is_empty() {
         standalone_tests.sort_by(|a, b| a.desc.name.as_slice().cmp(b.desc.name.as_slice()));
-        test::test_main(&test_args, standalone_tests, None);
+        test::test_main_with_exit_callback(&test_args, standalone_tests, None, || {
+            // We ensure temp dir destructor is called.
+            std::mem::drop(temp_dir.take());
+        });
     }
     if nb_errors != 0 {
+        // We ensure temp dir destructor is called.
+        std::mem::drop(temp_dir);
         // libtest::ERROR_EXIT_CODE is not public but it's the same value.
         std::process::exit(101);
     }
@@ -450,7 +425,7 @@ enum TestFailure {
 }
 
 enum DirState {
-    Temp(tempfile::TempDir),
+    Temp(TempDir),
     Perm(PathBuf),
 }
 

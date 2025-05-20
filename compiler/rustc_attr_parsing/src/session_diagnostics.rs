@@ -204,7 +204,7 @@ pub(crate) struct InvalidReprHintNoParen {
     #[primary_span]
     pub span: Span,
 
-    pub name: String,
+    pub name: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -213,7 +213,7 @@ pub(crate) struct InvalidReprHintNoValue {
     #[primary_span]
     pub span: Span,
 
-    pub name: String,
+    pub name: Symbol,
 }
 
 /// Error code: E0565
@@ -295,21 +295,21 @@ pub(crate) struct IncorrectReprFormatExpectInteger {
 
 #[derive(Diagnostic)]
 #[diag(attr_parsing_incorrect_repr_format_generic, code = E0693)]
-pub(crate) struct IncorrectReprFormatGeneric<'a> {
+pub(crate) struct IncorrectReprFormatGeneric {
     #[primary_span]
     pub span: Span,
 
-    pub repr_arg: &'a str,
+    pub repr_arg: Symbol,
 
     #[subdiagnostic]
-    pub cause: Option<IncorrectReprFormatGenericCause<'a>>,
+    pub cause: Option<IncorrectReprFormatGenericCause>,
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum IncorrectReprFormatGenericCause<'a> {
+pub(crate) enum IncorrectReprFormatGenericCause {
     #[suggestion(
         attr_parsing_suggestion,
-        code = "{name}({int})",
+        code = "{name}({value})",
         applicability = "machine-applicable"
     )]
     Int {
@@ -317,15 +317,15 @@ pub(crate) enum IncorrectReprFormatGenericCause<'a> {
         span: Span,
 
         #[skip_arg]
-        name: &'a str,
+        name: Symbol,
 
         #[skip_arg]
-        int: u128,
+        value: u128,
     },
 
     #[suggestion(
         attr_parsing_suggestion,
-        code = "{name}({symbol})",
+        code = "{name}({value})",
         applicability = "machine-applicable"
     )]
     Symbol {
@@ -333,20 +333,20 @@ pub(crate) enum IncorrectReprFormatGenericCause<'a> {
         span: Span,
 
         #[skip_arg]
-        name: &'a str,
+        name: Symbol,
 
         #[skip_arg]
-        symbol: Symbol,
+        value: Symbol,
     },
 }
 
-impl<'a> IncorrectReprFormatGenericCause<'a> {
-    pub(crate) fn from_lit_kind(span: Span, kind: &ast::LitKind, name: &'a str) -> Option<Self> {
-        match kind {
-            ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
-                Some(Self::Int { span, name, int: int.get() })
+impl IncorrectReprFormatGenericCause {
+    pub(crate) fn from_lit_kind(span: Span, kind: &ast::LitKind, name: Symbol) -> Option<Self> {
+        match *kind {
+            ast::LitKind::Int(value, ast::LitIntType::Unsuffixed) => {
+                Some(Self::Int { span, name, value: value.get() })
             }
-            ast::LitKind::Str(symbol, _) => Some(Self::Symbol { span, name, symbol: *symbol }),
+            ast::LitKind::Str(value, _) => Some(Self::Symbol { span, name, value }),
             _ => None,
         }
     }

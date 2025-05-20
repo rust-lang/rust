@@ -67,7 +67,7 @@ pub trait Index<Idx: ?Sized> {
     ///
     /// May panic if the index is out of bounds.
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
+    #[rustc_no_implicit_autorefs]
     #[track_caller]
     fn index(&self, index: Idx) -> &Self::Output;
 }
@@ -172,7 +172,7 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     ///
     /// May panic if the index is out of bounds.
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
+    #[rustc_no_implicit_autorefs]
     #[track_caller]
     fn index_mut(&mut self, index: Idx) -> &mut Self::Output;
 }

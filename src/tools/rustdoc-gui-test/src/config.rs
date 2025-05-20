@@ -20,8 +20,8 @@ pub(crate) struct Config {
 impl Config {
     pub(crate) fn from_args(args: Vec<String>) -> Self {
         let mut opts = Options::new();
-        opts.reqopt("", "nodejs", "absolute path of nodejs", "PATH")
-            .reqopt("", "npm", "absolute path of npm", "PATH")
+        opts.optopt("", "nodejs", "absolute path of nodejs", "PATH")
+            .optopt("", "npm", "absolute path of npm", "PATH")
             .reqopt("", "out-dir", "output path of doc compilation", "PATH")
             .reqopt("", "rust-src", "root source of the rust source", "PATH")
             .reqopt(
@@ -47,9 +47,18 @@ impl Config {
             Err(f) => panic!("{:?}", f),
         };
 
+        let Some(nodejs) = matches.opt_str("nodejs").map(PathBuf::from) else {
+            eprintln!("`nodejs` was not provided. If not available, please install it");
+            std::process::exit(1);
+        };
+        let Some(npm) = matches.opt_str("npm").map(PathBuf::from) else {
+            eprintln!("`npm` was not provided. If not available, please install it");
+            std::process::exit(1);
+        };
+
         Self {
-            nodejs: matches.opt_str("nodejs").map(PathBuf::from).expect("nodejs isn't available"),
-            npm: matches.opt_str("npm").map(PathBuf::from).expect("npm isn't available"),
+            nodejs,
+            npm,
             rust_src: matches.opt_str("rust-src").map(PathBuf::from).unwrap(),
             out_dir: matches.opt_str("out-dir").map(PathBuf::from).unwrap(),
             initial_cargo: matches.opt_str("initial-cargo").map(PathBuf::from).unwrap(),

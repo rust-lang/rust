@@ -7,7 +7,7 @@ use rustc_middle::ty::{RegionVid, TyCtxt, VarianceDiagInfo};
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
-use crate::region_infer::{ConstraintSccs, RegionDefinition, RegionTracker};
+use crate::region_infer::{AnnotatedSccs, ConstraintSccs, RegionDefinition, SccAnnotations};
 use crate::type_check::Locations;
 use crate::universal_regions::UniversalRegions;
 
@@ -61,12 +61,14 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
         &self,
         static_region: RegionVid,
         definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
-    ) -> ConstraintSccs {
+    ) -> AnnotatedSccs {
         let constraint_graph = self.graph(definitions.len());
         let region_graph = &constraint_graph.region_graph(self, static_region);
-        ConstraintSccs::new_with_annotation(&region_graph, |r| {
-            RegionTracker::new(r, &definitions[r])
-        })
+        let mut annotation_visitor = SccAnnotations::new(definitions);
+        (
+            ConstraintSccs::new_with_annotation(&region_graph, &mut annotation_visitor),
+            annotation_visitor.scc_to_annotation,
+        )
     }
 
     /// This method handles Universe errors by rewriting the constraint
@@ -79,12 +81,12 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
     /// eventually go away.
     ///
     /// For a more precise definition, see the documentation for
-    /// [`RegionTracker::has_incompatible_universes()`].
+    /// [`crate::region_infer::RegionTracker`].
     ///
     /// This edge case used to be handled during constraint propagation
     /// by iterating over the strongly connected components in the constraint
     /// graph while maintaining a set of bookkeeping mappings similar
-    /// to what is stored in `RegionTracker` and manually adding 'sttaic as
+    /// to what is stored in `RegionTracker` and manually adding 'static as
     /// needed.
     ///
     /// It was rewritten as part of the Polonius project with the goal of moving
@@ -108,9 +110,9 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
         &mut self,
         universal_regions: &UniversalRegions<'tcx>,
         definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
-    ) -> ConstraintSccs {
+    ) -> AnnotatedSccs {
         let fr_static = universal_regions.fr_static;
-        let sccs = self.compute_sccs(fr_static, definitions);
+        let (sccs, annotations) = self.compute_sccs(fr_static, definitions);
 
         // Changed to `true` if we added any constraints to `self` and need to
         // recompute SCCs.
@@ -124,7 +126,7 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
                 continue;
             }
 
-            let annotation = sccs.annotation(scc);
+            let annotation = annotations[scc];
 
             // If this SCC participates in a universe violation,
             // e.g. if it reaches a region with a universe smaller than
@@ -154,7 +156,7 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
             self.compute_sccs(fr_static, definitions)
         } else {
             // If we didn't add any back-edges; no more work needs doing
-            sccs
+            (sccs, annotations)
         }
     }
 }

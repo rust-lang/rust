@@ -59,7 +59,7 @@ fn lint_args(builder: &Builder<'_>, config: &LintConfig, ignored_rules: &[&str])
     let all_args = std::env::args().collect::<Vec<_>>();
     args.extend(get_clippy_rules_in_order(&all_args, config));
 
-    args.extend(ignored_rules.iter().map(|lint| format!("-Aclippy::{}", lint)));
+    args.extend(ignored_rules.iter().map(|lint| format!("-Aclippy::{lint}")));
     args.extend(builder.config.free_args.clone());
     args
 }

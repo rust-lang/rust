@@ -4,7 +4,6 @@
 //! compiler.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(let_chains))]
 // tidy-alphabetical-end
 
 pub mod cfi;

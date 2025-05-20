@@ -1,9 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, should_call_clone_as_function, walk_ptrs_ty_depth};
-use clippy_utils::{
-    get_parent_expr, is_diag_trait_item, match_def_path, path_to_local_id, peel_blocks, strip_pat_refs,
-};
+use clippy_utils::{get_parent_expr, is_diag_trait_item, path_to_local_id, peel_blocks, strip_pat_refs};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, LangItem};
 use rustc_lint::LateContext;
@@ -81,8 +79,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
                 applicability,
             );
         }
-    } else if match_def_path(cx, def_id, &["core", "option", "Option", call_name])
-        || match_def_path(cx, def_id, &["core", "result", "Result", call_name])
+    } else if let Some(impl_id) = cx.tcx.opt_parent(def_id)
+        && let Some(adt) = cx.tcx.type_of(impl_id).instantiate_identity().ty_adt_def()
+        && (cx.tcx.lang_items().option_type() == Some(adt.did()) || cx.tcx.is_diagnostic_item(sym::Result, adt.did()))
     {
         let rcv_ty = cx.typeck_results().expr_ty(recvr).peel_refs();
         let res_ty = cx.typeck_results().expr_ty(expr).peel_refs();

@@ -1,10 +1,10 @@
-error[E0507]: cannot move out of `self` which is behind a shared reference
+error[E0507]: cannot move out of a shared reference
   --> $DIR/deriving-with-repr-packed-move-errors.rs:13:16
    |
 LL | #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
    |          ----- in this derive macro expansion
 LL | struct StructA(String);
-   |                ^^^^^^ move occurs because `self.0` has type `String`, which does not implement the `Copy` trait
+   |                ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
    |
    = note: `#[derive(Debug)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
 help: consider cloning the value if the performance cost is acceptable
@@ -12,13 +12,13 @@ help: consider cloning the value if the performance cost is acceptable
 LL | struct StructA(String.clone());
    |                      ++++++++
 
-error[E0507]: cannot move out of `self` which is behind a shared reference
+error[E0507]: cannot move out of a shared reference
   --> $DIR/deriving-with-repr-packed-move-errors.rs:13:16
    |
 LL | #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
    |                 --------- in this derive macro expansion
 LL | struct StructA(String);
-   |                ^^^^^^ move occurs because `self.0` has type `String`, which does not implement the `Copy` trait
+   |                ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
    |
    = note: `#[derive(PartialEq)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
 help: consider cloning the value if the performance cost is acceptable
@@ -26,27 +26,28 @@ help: consider cloning the value if the performance cost is acceptable
 LL | struct StructA(String.clone());
    |                      ++++++++
 
-error[E0507]: cannot move out of `other` which is behind a shared reference
+error[E0507]: cannot move out of a shared reference
   --> $DIR/deriving-with-repr-packed-move-errors.rs:13:16
    |
 LL | #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
    |                 --------- in this derive macro expansion
 LL | struct StructA(String);
-   |                ^^^^^^ move occurs because `other.0` has type `String`, which does not implement the `Copy` trait
+   |                ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
    |
    = note: `#[derive(PartialEq)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider cloning the value if the performance cost is acceptable
    |
 LL | struct StructA(String.clone());
    |                      ++++++++
 
-error[E0507]: cannot move out of `self` which is behind a shared reference
+error[E0507]: cannot move out of a shared reference
   --> $DIR/deriving-with-repr-packed-move-errors.rs:13:16
    |
 LL | #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
    |                                ---------- in this derive macro expansion
 LL | struct StructA(String);
-   |                ^^^^^^ move occurs because `self.0` has type `String`, which does not implement the `Copy` trait
+   |                ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
    |
    = note: `#[derive(PartialOrd)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
 help: consider cloning the value if the performance cost is acceptable
@@ -54,27 +55,28 @@ help: consider cloning the value if the performance cost is acceptable
 LL | struct StructA(String.clone());
    |                      ++++++++
 
-error[E0507]: cannot move out of `other` which is behind a shared reference
+error[E0507]: cannot move out of a shared reference
   --> $DIR/deriving-with-repr-packed-move-errors.rs:13:16
    |
 LL | #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
    |                                ---------- in this derive macro expansion
 LL | struct StructA(String);
-   |                ^^^^^^ move occurs because `other.0` has type `String`, which does not implement the `Copy` trait
+   |                ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
    |
    = note: `#[derive(PartialOrd)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider cloning the value if the performance cost is acceptable
    |
 LL | struct StructA(String.clone());
    |                      ++++++++
 
-error[E0507]: cannot move out of `self` which is behind a shared reference
+error[E0507]: cannot move out of a shared reference
   --> $DIR/deriving-with-repr-packed-move-errors.rs:13:16
    |
 LL | #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
    |                                            --- in this derive macro expansion
 LL | struct StructA(String);
-   |                ^^^^^^ move occurs because `self.0` has type `String`, which does not implement the `Copy` trait
+   |                ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
    |
    = note: `#[derive(Ord)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
 help: consider cloning the value if the performance cost is acceptable
@@ -82,27 +84,28 @@ help: consider cloning the value if the performance cost is acceptable
 LL | struct StructA(String.clone());
    |                      ++++++++
 
-error[E0507]: cannot move out of `other` which is behind a shared reference
+error[E0507]: cannot move out of a shared reference
   --> $DIR/deriving-with-repr-packed-move-errors.rs:13:16
    |
 LL | #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
    |                                            --- in this derive macro expansion
 LL | struct StructA(String);
-   |                ^^^^^^ move occurs because `other.0` has type `String`, which does not implement the `Copy` trait
+   |                ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
    |
    = note: `#[derive(Ord)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider cloning the value if the performance cost is acceptable
    |
 LL | struct StructA(String.clone());
    |                      ++++++++
 
-error[E0507]: cannot move out of `self` which is behind a shared reference
+error[E0507]: cannot move out of a shared reference
   --> $DIR/deriving-with-repr-packed-move-errors.rs:13:16
    |
 LL | #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
    |                                                 ---- in this derive macro expansion
 LL | struct StructA(String);
-   |                ^^^^^^ move occurs because `self.0` has type `String`, which does not implement the `Copy` trait
+   |                ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
    |
    = note: `#[derive(Hash)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
 help: consider cloning the value if the performance cost is acceptable
@@ -110,13 +113,13 @@ help: consider cloning the value if the performance cost is acceptable
 LL | struct StructA(String.clone());
    |                      ++++++++
 
-error[E0507]: cannot move out of `self` which is behind a shared reference
+error[E0507]: cannot move out of a shared reference
   --> $DIR/deriving-with-repr-packed-move-errors.rs:13:16
    |
 LL | #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
    |                                                       ----- in this derive macro expansion
 LL | struct StructA(String);
-   |                ^^^^^^ move occurs because `self.0` has type `String`, which does not implement the `Copy` trait
+   |                ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
    |
    = note: `#[derive(Clone)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
 help: consider cloning the value if the performance cost is acceptable

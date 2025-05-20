@@ -1,10 +1,6 @@
 [package]
 name = "date-check"
-version = "0.1.0"
-authors = ["Noah Lev <camelidcamel@gmail.com>"]
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+edition = "2024"
 
 [dependencies]
 glob = "0.3"

@@ -5,15 +5,14 @@ use either::Either;
 use rustc_abi::WrappingRange;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan, Subdiagnostic,
+    Diag, DiagArgValue, DiagMessage, Diagnostic, EmissionGuarantee, Level, MultiSpan, Subdiagnostic,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::interpret::{
-    CheckInAllocMsg, CtfeProvenance, ExpectedKind, InterpErrorKind, InvalidMetaKind,
-    InvalidProgramInfo, Misalignment, Pointer, PointerKind, ResourceExhaustionInfo,
-    UndefinedBehaviorInfo, UnsupportedOpInfo, ValidationErrorInfo,
+    CtfeProvenance, ExpectedKind, InterpErrorKind, InvalidMetaKind, InvalidProgramInfo,
+    Misalignment, Pointer, PointerKind, ResourceExhaustionInfo, UndefinedBehaviorInfo,
+    UnsupportedOpInfo, ValidationErrorInfo,
 };
 use rustc_middle::ty::{self, Mutability, Ty};
 use rustc_span::{Span, Symbol};
@@ -498,19 +497,6 @@ pub trait ReportErrorExt {
     }
 }
 
-fn bad_pointer_message(msg: CheckInAllocMsg, dcx: DiagCtxtHandle<'_>) -> String {
-    use crate::fluent_generated::*;
-
-    let msg = match msg {
-        CheckInAllocMsg::MemoryAccessTest => const_eval_memory_access_test,
-        CheckInAllocMsg::PointerArithmeticTest => const_eval_pointer_arithmetic_test,
-        CheckInAllocMsg::OffsetFromTest => const_eval_offset_from_test,
-        CheckInAllocMsg::InboundsTest => const_eval_in_bounds_test,
-    };
-
-    dcx.eagerly_translate_to_string(msg, [].into_iter())
-}
-
 impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
     fn diagnostic_message(&self) -> DiagMessage {
         use UndefinedBehaviorInfo::*;
@@ -564,7 +550,6 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
 
     fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         use UndefinedBehaviorInfo::*;
-        let dcx = diag.dcx;
         match self {
             Ub(_) => {}
             Custom(custom) => {
@@ -612,12 +597,10 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 diag.arg("vtable_dyn_type", vtable_dyn_type.to_string());
             }
             PointerUseAfterFree(alloc_id, msg) => {
-                diag.arg("alloc_id", alloc_id)
-                    .arg("bad_pointer_message", bad_pointer_message(msg, dcx));
+                diag.arg("alloc_id", alloc_id).arg("operation", format!("{:?}", msg));
             }
             PointerOutOfBounds { alloc_id, alloc_size, ptr_offset, inbounds_size, msg } => {
                 diag.arg("alloc_size", alloc_size.bytes());
-                diag.arg("bad_pointer_message", bad_pointer_message(msg, dcx));
                 diag.arg("pointer", {
                     let mut out = format!("{:?}", alloc_id);
                     if ptr_offset > 0 {
@@ -627,14 +610,17 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                     }
                     out
                 });
+                diag.arg("inbounds_size", inbounds_size);
                 diag.arg("inbounds_size_is_neg", inbounds_size < 0);
                 diag.arg("inbounds_size_abs", inbounds_size.unsigned_abs());
+                diag.arg("ptr_offset", ptr_offset);
                 diag.arg("ptr_offset_is_neg", ptr_offset < 0);
                 diag.arg("ptr_offset_abs", ptr_offset.unsigned_abs());
                 diag.arg(
                     "alloc_size_minus_ptr_offset",
                     alloc_size.bytes().saturating_sub(ptr_offset as u64),
                 );
+                diag.arg("operation", format!("{:?}", msg));
             }
             DanglingIntPointer { addr, inbounds_size, msg } => {
                 if addr != 0 {
@@ -644,9 +630,10 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                     );
                 }
 
+                diag.arg("inbounds_size", inbounds_size);
                 diag.arg("inbounds_size_is_neg", inbounds_size < 0);
                 diag.arg("inbounds_size_abs", inbounds_size.unsigned_abs());
-                diag.arg("bad_pointer_message", bad_pointer_message(msg, dcx));
+                diag.arg("operation", format!("{:?}", msg));
             }
             AlignmentCheckFailed(Misalignment { required, has }, msg) => {
                 diag.arg("required", required.bytes());

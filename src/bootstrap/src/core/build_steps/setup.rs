@@ -552,7 +552,7 @@ Select which editor you would like to set up [default: None]: ";
 
         let mut input = String::new();
         loop {
-            print!("{}", prompt_str);
+            print!("{prompt_str}");
             io::stdout().flush()?;
             io::stdin().read_line(&mut input)?;
 
@@ -764,7 +764,7 @@ fn create_editor_settings_maybe(config: &Config, editor: &EditorKind) -> io::Res
             _ => "Created",
         };
         fs::write(&settings_path, editor.settings_template())?;
-        println!("{verb} `{}`", settings_filename);
+        println!("{verb} `{settings_filename}`");
     } else {
         println!("\n{}", editor.settings_template());
     }

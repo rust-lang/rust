@@ -1,5 +1,5 @@
 use rustc_errors::{Diag, EmissionGuarantee, Subdiagnostic};
-use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 
@@ -132,4 +132,16 @@ pub(crate) struct NonExhaustiveOmittedPatternLintOnArm {
     pub suggest_lint_on_match: Option<Span>,
     pub lint_level: &'static str,
     pub lint_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(pattern_analysis_mixed_deref_pattern_constructors)]
+pub(crate) struct MixedDerefPatternConstructors<'tcx> {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    pub smart_pointer_ty: Ty<'tcx>,
+    #[label(pattern_analysis_deref_pattern_label)]
+    pub deref_pattern_label: Span,
+    #[label(pattern_analysis_normal_constructor_label)]
+    pub normal_constructor_label: Span,
 }

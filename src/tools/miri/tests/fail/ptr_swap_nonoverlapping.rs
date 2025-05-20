@@ -1,6 +1,6 @@
 //! This is a regression test for <https://github.com/rust-lang/miri/issues/4188>: The precondition
 //! check in `ptr::swap_nonoverlapping` was incorrectly disabled in Miri.
-//@normalize-stderr-test: "unsafe \{ libc::abort\(\) \}|crate::intrinsics::abort\(\);" -> "ABORT();"
+//@normalize-stderr-test: "\|.*::abort\(\).*" -> "| ABORT()"
 //@normalize-stderr-test: "\| +\^+" -> "| ^"
 //@normalize-stderr-test: "\n +[0-9]+:[^\n]+" -> ""
 //@normalize-stderr-test: "\n +at [^\n]+" -> ""

@@ -31,6 +31,8 @@ pub enum TerminationInfo {
     },
     Int2PtrWithStrictProvenance,
     Deadlock,
+    /// In GenMC mode, an execution can get stuck in certain cases. This is not an error.
+    GenmcStuckExecution,
     MultipleSymbolDefinitions {
         link_name: Symbol,
         first: SpanData,
@@ -75,6 +77,7 @@ impl fmt::Display for TerminationInfo {
             StackedBorrowsUb { msg, .. } => write!(f, "{msg}"),
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
             Deadlock => write!(f, "the evaluated program deadlocked"),
+            GenmcStuckExecution => write!(f, "GenMC determined that the execution got stuck"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
@@ -235,6 +238,12 @@ pub fn report_error<'tcx>(
             StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } =>
                 Some("Undefined Behavior"),
             Deadlock => Some("deadlock"),
+            GenmcStuckExecution => {
+                // This case should only happen in GenMC mode. We treat it like a normal program exit.
+                assert!(ecx.machine.data_race.as_genmc_ref().is_some());
+                tracing::info!("GenMC: found stuck execution");
+                return Some((0, true));
+            }
             MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
         };
         #[rustfmt::skip]
@@ -639,8 +648,7 @@ impl<'tcx> MiriMachine<'tcx> {
             AccessedAlloc(AllocId(id), access_kind) =>
                 format!("{access_kind} to allocation with id {id}"),
             FreedAlloc(AllocId(id)) => format!("freed allocation with id {id}"),
-            RejectedIsolatedOp(ref op) =>
-                format!("{op} was made to return an error due to isolation"),
+            RejectedIsolatedOp(op) => format!("{op} was made to return an error due to isolation"),
             ProgressReport { .. } =>
                 format!("progress report: current operation being executed is here"),
             Int2Ptr { .. } => format!("integer-to-pointer cast"),

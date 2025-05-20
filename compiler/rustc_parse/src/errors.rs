@@ -436,10 +436,28 @@ pub(crate) enum IfExpressionMissingThenBlockSub {
 
 #[derive(Diagnostic)]
 #[diag(parse_ternary_operator)]
-#[help]
 pub(crate) struct TernaryOperator {
     #[primary_span]
     pub span: Span,
+    /// If we have a span for the condition expression, suggest the if/else
+    #[subdiagnostic]
+    pub sugg: Option<TernaryOperatorSuggestion>,
+    /// Otherwise, just print the suggestion message
+    #[help(parse_use_if_else)]
+    pub no_sugg: bool,
+}
+
+#[derive(Subdiagnostic, Copy, Clone)]
+#[multipart_suggestion(parse_use_if_else, applicability = "maybe-incorrect", style = "verbose")]
+pub(crate) struct TernaryOperatorSuggestion {
+    #[suggestion_part(code = "if ")]
+    pub before_cond: Span,
+    #[suggestion_part(code = "{{")]
+    pub question: Span,
+    #[suggestion_part(code = "}} else {{")]
+    pub colon: Span,
+    #[suggestion_part(code = " }}")]
+    pub end: Span,
 }
 
 #[derive(Subdiagnostic)]
@@ -733,6 +751,61 @@ pub(crate) struct FoundExprWouldBeStmt {
     pub token: Token,
     #[subdiagnostic]
     pub suggestion: ExprParenthesesNeeded,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_frontmatter_extra_characters_after_close)]
+pub(crate) struct FrontmatterExtraCharactersAfterClose {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_frontmatter_invalid_infostring)]
+#[note]
+pub(crate) struct FrontmatterInvalidInfostring {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_frontmatter_invalid_opening_preceding_whitespace)]
+pub(crate) struct FrontmatterInvalidOpeningPrecedingWhitespace {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub note_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_frontmatter_unclosed)]
+pub(crate) struct FrontmatterUnclosed {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub note_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_frontmatter_invalid_close_preceding_whitespace)]
+pub(crate) struct FrontmatterInvalidClosingPrecedingWhitespace {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub note_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_frontmatter_length_mismatch)]
+pub(crate) struct FrontmatterLengthMismatch {
+    #[primary_span]
+    pub span: Span,
+    #[label(parse_label_opening)]
+    pub opening: Span,
+    #[label(parse_label_close)]
+    pub close: Span,
+    pub len_opening: usize,
+    pub len_close: usize,
 }
 
 #[derive(Diagnostic)]
@@ -1589,6 +1662,30 @@ pub(crate) struct ExpectedFnPathFoundFnKeyword {
     #[primary_span]
     #[suggestion(applicability = "machine-applicable", code = "Fn", style = "verbose")]
     pub fn_token_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_path_found_named_params)]
+pub(crate) struct FnPathFoundNamedParams {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "")]
+    pub named_param_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_path_found_c_variadic_params)]
+pub(crate) struct PathFoundCVariadicParams {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_path_found_attribute_in_params)]
+pub(crate) struct PathFoundAttributeInParams {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "")]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

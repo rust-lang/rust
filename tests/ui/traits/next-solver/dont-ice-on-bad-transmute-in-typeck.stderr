@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `for<'a> (): Trait<'a>` is not satisfied
-  --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:7:11
+  --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:7:22
    |
 LL | fn foo(x: for<'a> fn(<() as Trait<'a>>::Assoc)) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Trait<'a>` is not implemented for `()`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Trait<'a>` is not implemented for `()`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:3:1

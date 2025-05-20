@@ -1,5 +1,7 @@
 //@ ignore-lldb
 
+//@ ignore-aarch64-pc-windows-msvc: Arm64 Windows cdb doesn't support JavaScript extensions.
+
 // GDB changed the way that it formatted Foreign types
 //@ min-gdb-version: 9.2
 

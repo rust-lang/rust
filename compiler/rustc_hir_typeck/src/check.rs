@@ -3,7 +3,6 @@ use std::cell::RefCell;
 use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::check::check_function_signature;
 use rustc_infer::infer::RegionVariableOrigin;
@@ -50,7 +49,9 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     let span = body.value.span;
 
-    GatherLocalsVisitor::new(fcx).visit_body(body);
+    for param in body.params {
+        GatherLocalsVisitor::gather_from_param(fcx, param);
+    }
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).

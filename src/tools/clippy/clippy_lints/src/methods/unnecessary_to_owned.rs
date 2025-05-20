@@ -7,7 +7,7 @@ use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, is_type_
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{
     fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, is_expr_temporary_value, peel_middle_ty_refs,
-    return_ty,
+    return_ty, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -20,7 +20,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{
     self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionPredicate, TraitPredicate, Ty,
 };
-use rustc_span::{Symbol, sym};
+use rustc_span::Symbol;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
 
@@ -312,8 +312,7 @@ fn check_string_from_utf8<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, 
 /// call of a `to_owned`-like function is unnecessary.
 fn check_split_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, receiver: &Expr<'_>) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr)
-        && let Some((fn_name, argument_expr)) = get_fn_name_and_arg(cx, parent)
-        && fn_name.as_str() == "split"
+        && let Some((sym::split, argument_expr)) = get_fn_name_and_arg(cx, parent)
         && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
         && let Some(arg_snippet) = argument_expr.span.get_source_text(cx)
     {
@@ -614,8 +613,7 @@ fn has_lifetime(ty: Ty<'_>) -> bool {
 
 /// Returns true if the named method is `Iterator::cloned` or `Iterator::copied`.
 fn is_cloned_or_copied(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
-    (method_name.as_str() == "cloned" || method_name.as_str() == "copied")
-        && is_diag_trait_item(cx, method_def_id, sym::Iterator)
+    matches!(method_name, sym::cloned | sym::copied) && is_diag_trait_item(cx, method_def_id, sym::Iterator)
 }
 
 /// Returns true if the named method can be used to convert the receiver to its "owned"
@@ -628,7 +626,7 @@ fn is_to_owned_like<'a>(cx: &LateContext<'a>, call_expr: &Expr<'a>, method_name:
 
 /// Returns true if the named method is `Cow::into_owned`.
 fn is_cow_into_owned(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
-    method_name.as_str() == "into_owned" && is_diag_item_method(cx, method_def_id, sym::Cow)
+    method_name == sym::into_owned && is_diag_item_method(cx, method_def_id, sym::Cow)
 }
 
 /// Returns true if the named method is `ToString::to_string` and it's called on a type that

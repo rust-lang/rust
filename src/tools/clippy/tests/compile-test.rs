@@ -1,4 +1,4 @@
-#![feature(rustc_private, let_chains)]
+#![feature(rustc_private)]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unused_extern_crates)]
 

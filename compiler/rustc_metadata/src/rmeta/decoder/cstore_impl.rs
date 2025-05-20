@@ -2,7 +2,7 @@ use std::any::Any;
 use std::mem;
 use std::sync::Arc;
 
-use rustc_attr_parsing::Deprecation;
+use rustc_attr_data_structures::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -406,6 +406,8 @@ provide! { tcx, def_id, other, cdata,
     used_crate_source => { Arc::clone(&cdata.source) }
     debugger_visualizers => { cdata.get_debugger_visualizers() }
 
+    exportable_items => { tcx.arena.alloc_from_iter(cdata.get_exportable_items()) }
+    stable_order_of_exportable_impls => { tcx.arena.alloc(cdata.get_stable_order_of_exportable_impls().collect()) }
     exported_symbols => {
         let syms = cdata.exported_symbols(tcx);
 

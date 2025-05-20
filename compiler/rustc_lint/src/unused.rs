@@ -942,6 +942,22 @@ trait UnusedDelimLint {
         match s.kind {
             StmtKind::Let(ref local) if Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX => {
                 if let Some((init, els)) = local.kind.init_else_opt() {
+                    if els.is_some()
+                        && let ExprKind::Paren(paren) = &init.kind
+                        && !init.span.eq_ctxt(paren.span)
+                    {
+                        // This branch prevents cases where parentheses wrap an expression
+                        // resulting from macro expansion, such as:
+                        // ```
+                        // macro_rules! x {
+                        // () => { None::<i32> };
+                        // }
+                        // let Some(_) = (x!{}) else { return };
+                        // // -> let Some(_) = (None::<i32>) else { return };
+                        // //                  ~           ~ No Lint
+                        // ```
+                        return;
+                    }
                     let ctx = match els {
                         None => UnusedDelimsCtx::AssignedValue,
                         Some(_) => UnusedDelimsCtx::AssignedValueLetElse,
