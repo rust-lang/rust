@@ -313,7 +313,7 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Closure(closure) = expr.kind {
             self.tcx.ensure_ok().generics_of(closure.def_id);
-            self.tcx.ensure_ok().codegen_fn_attrs_imp(closure.def_id);
+            self.tcx.ensure_ok().codegen_fn_attrs(closure.def_id);
             // We do not call `type_of` for closures here as that
             // depends on typecheck and would therefore hide
             // any further errors in case one typeck fails.
@@ -691,11 +691,11 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                 }
                 match item.kind {
                     hir::ForeignItemKind::Fn(..) => {
-                        tcx.ensure_ok().codegen_fn_attrs_imp(item.owner_id);
+                        tcx.ensure_ok().codegen_fn_attrs(item.owner_id);
                         tcx.ensure_ok().fn_sig(item.owner_id)
                     }
                     hir::ForeignItemKind::Static(..) => {
-                        tcx.ensure_ok().codegen_fn_attrs_imp(item.owner_id);
+                        tcx.ensure_ok().codegen_fn_attrs(item.owner_id);
                         let mut visitor = HirPlaceholderCollector::default();
                         visitor.visit_foreign_item(item);
                         placeholder_type_error(
@@ -782,7 +782,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().fn_sig(def_id);
-            tcx.ensure_ok().codegen_fn_attrs_imp(def_id);
+            tcx.ensure_ok().codegen_fn_attrs(def_id);
         }
     }
 }
@@ -795,7 +795,7 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 
     match trait_item.kind {
         hir::TraitItemKind::Fn(..) => {
-            tcx.ensure_ok().codegen_fn_attrs_imp(def_id);
+            tcx.ensure_ok().codegen_fn_attrs(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().fn_sig(def_id);
         }
@@ -867,7 +867,7 @@ fn lower_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
     let icx = ItemCtxt::new(tcx, def_id.def_id);
     match impl_item.kind {
         hir::ImplItemKind::Fn(..) => {
-            tcx.ensure_ok().codegen_fn_attrs_imp(def_id);
+            tcx.ensure_ok().codegen_fn_attrs(def_id);
             tcx.ensure_ok().fn_sig(def_id);
         }
         hir::ImplItemKind::Type(_) => {

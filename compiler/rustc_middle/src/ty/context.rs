@@ -78,8 +78,8 @@ use crate::traits::solve::{
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, ParamTy,
-    Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
+    GenericArgsRef, GenericParamDefKind, Instance, List, ListWithCachedTypeInfo, ParamConst,
+    ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
     PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
     ValTree, ValTreeKind, Visibility,
 };
@@ -3396,13 +3396,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self.get_diagnostic_attr(def_id, sym::do_not_recommend).is_some()
     }
 
-    pub fn codegen_fn_attrs(self, def_id: impl IntoQueryParam<DefId>) -> &'tcx CodegenFnAttrs {
-        let def_id = def_id.into_query_param();
-        if self.sess.opts.unstable_opts.inline_always_overrides.is_some() {
-            self.codegen_fn_attrs_overridden(def_id)
-        } else {
-            self.codegen_fn_attrs_imp(def_id)
-        }
+    pub fn has_inline_always_override(self, instance: Instance<'tcx>) -> bool {
+        let Some(overrides) = &self.sess.opts.unstable_opts.inline_always_overrides else {
+            return false;
+        };
+        let symbol_name = self.symbol_name(instance).name;
+        overrides.iter().any(|o| o == symbol_name)
     }
 }
 

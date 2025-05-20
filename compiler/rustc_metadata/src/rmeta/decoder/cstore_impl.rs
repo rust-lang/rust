@@ -251,7 +251,7 @@ provide! { tcx, def_id, other, cdata,
     type_alias_is_lazy => { table_direct }
     variances_of => { table }
     fn_sig => { table }
-    codegen_fn_attrs_imp => { table }
+    codegen_fn_attrs => { table }
     impl_trait_header => { table }
     const_param_default => { table }
     object_lifetime_default => { table }
