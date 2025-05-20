@@ -333,6 +333,9 @@ if (getSettingValue("sans-serif-fonts") === "true") {
 if (getSettingValue("word-wrap-source-code") === "true") {
     addClass(document.documentElement, "word-wrap-source-code");
 }
+if (getSettingValue("show-private-items") !== "true") {
+    addClass(document.documentElement, "hide-priv");
+}
 function updateSidebarWidth() {
     const desktopSidebarWidth = getSettingValue("desktop-sidebar-width");
     if (desktopSidebarWidth && desktopSidebarWidth !== "null") {
