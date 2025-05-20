@@ -1171,7 +1171,6 @@ contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
 users_on_vacation = [
     "fmease",
     "jyn514",
-    "Noratrieb",
     "spastorino",
 ]
 
@@ -1198,7 +1197,6 @@ compiler = [
     "@lcnr",
     "@Nadrieril",
     "@nnethercote",
-    "@Noratrieb",
     "@oli-obk",
     "@petrochenkov",
     "@SparrowLii",
@@ -1206,7 +1204,6 @@ compiler = [
 ]
 libs = [
     "@Mark-Simulacrum",
-    "@Noratrieb",
     "@workingjubilee",
     "@joboet",
     "@jhpratt",
