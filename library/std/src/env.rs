@@ -12,9 +12,11 @@
 
 use crate::error::Error;
 use crate::ffi::{OsStr, OsString};
+use crate::num::NonZero;
+use crate::ops::Try;
 use crate::path::{Path, PathBuf};
 use crate::sys::{env as env_imp, os as os_imp};
-use crate::{fmt, io, sys};
+use crate::{array, fmt, io, sys};
 
 /// Returns the current working directory as a [`PathBuf`].
 ///
@@ -872,19 +874,36 @@ impl !Sync for Args {}
 #[stable(feature = "env", since = "1.0.0")]
 impl Iterator for Args {
     type Item = String;
+
     fn next(&mut self) -> Option<String> {
         self.inner.next().map(|s| s.into_string().unwrap())
     }
+
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
+
+    // Methods which skip args cannot simply delegate to the inner iterator,
+    // because `env::args` states that we will "panic during iteration if any
+    // argument to the process is not valid Unicode".
+    //
+    // This offers two possible interpretations:
+    // - a skipped argument is never encountered "during iteration"
+    // - even a skipped argument is encountered "during iteration"
+    //
+    // As a panic can be observed, we err towards validating even skipped
+    // arguments for now, though this is not explicitly promised by the API.
 }
 
 #[stable(feature = "env", since = "1.0.0")]
 impl ExactSizeIterator for Args {
+    #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
+
+    #[inline]
     fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
@@ -914,19 +933,65 @@ impl !Sync for ArgsOs {}
 #[stable(feature = "env", since = "1.0.0")]
 impl Iterator for ArgsOs {
     type Item = OsString;
+
+    #[inline]
     fn next(&mut self) -> Option<OsString> {
         self.inner.next()
     }
+
+    #[inline]
+    fn next_chunk<const N: usize>(
+        &mut self,
+    ) -> Result<[OsString; N], array::IntoIter<OsString, N>> {
+        self.inner.next_chunk()
+    }
+
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.inner.len()
+    }
+
+    #[inline]
+    fn last(self) -> Option<OsString> {
+        self.inner.last()
+    }
+
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        self.inner.advance_by(n)
+    }
+
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        self.inner.try_fold(init, f)
+    }
+
+    #[inline]
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, f)
     }
 }
 
 #[stable(feature = "env", since = "1.0.0")]
 impl ExactSizeIterator for ArgsOs {
+    #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
+
+    #[inline]
     fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
@@ -934,8 +999,14 @@ impl ExactSizeIterator for ArgsOs {
 
 #[stable(feature = "env_iterators", since = "1.12.0")]
 impl DoubleEndedIterator for ArgsOs {
+    #[inline]
     fn next_back(&mut self) -> Option<OsString> {
         self.inner.next_back()
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        self.inner.advance_back_by(n)
     }
 }
 

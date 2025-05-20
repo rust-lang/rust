@@ -12,5 +12,5 @@ extern crate incremental_proc_macro_aux;
 
 #[derive(IncrementalMacro)]
 pub struct Foo {
-    x: u32
+    _x: u32
 }

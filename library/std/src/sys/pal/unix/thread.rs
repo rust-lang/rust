@@ -22,23 +22,6 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 256 * 1024;
 #[cfg(any(target_os = "espidf", target_os = "nuttx"))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 0; // 0 indicates that the stack size configured in the ESP-IDF/NuttX menuconfig system should be used
 
-#[cfg(target_os = "fuchsia")]
-mod zircon {
-    type zx_handle_t = u32;
-    type zx_status_t = i32;
-    pub const ZX_PROP_NAME: u32 = 3;
-
-    unsafe extern "C" {
-        pub fn zx_object_set_property(
-            handle: zx_handle_t,
-            property: u32,
-            value: *const libc::c_void,
-            value_size: libc::size_t,
-        ) -> zx_status_t;
-        pub fn zx_thread_self() -> zx_handle_t;
-    }
-}
-
 pub struct Thread {
     id: libc::pthread_t,
 }
@@ -216,7 +199,7 @@ impl Thread {
 
     #[cfg(target_os = "fuchsia")]
     pub fn set_name(name: &CStr) {
-        use self::zircon::*;
+        use super::fuchsia::*;
         unsafe {
             zx_object_set_property(
                 zx_thread_self(),
@@ -239,16 +222,8 @@ impl Thread {
 
     #[cfg(target_os = "vxworks")]
     pub fn set_name(name: &CStr) {
-        // FIXME(libc): adding real STATUS, ERROR type eventually.
-        unsafe extern "C" {
-            fn taskNameSet(task_id: libc::TASK_ID, task_name: *mut libc::c_char) -> libc::c_int;
-        }
-
-        //  VX_TASK_NAME_LEN is 31 in VxWorks 7.
-        const VX_TASK_NAME_LEN: usize = 31;
-
-        let mut name = truncate_cstr::<{ VX_TASK_NAME_LEN }>(name);
-        let res = unsafe { taskNameSet(libc::taskIdSelf(), name.as_mut_ptr()) };
+        let mut name = truncate_cstr::<{ libc::VX_TASK_RENAME_LENGTH - 1 }>(name);
+        let res = unsafe { libc::taskNameSet(libc::taskIdSelf(), name.as_mut_ptr()) };
         debug_assert_eq!(res, libc::OK);
     }
 

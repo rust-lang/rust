@@ -1,6 +1,6 @@
 // Ensure that we *eagerly* monomorphize drop instances for structs with lifetimes.
 
-//@ compile-flags:-Zprint-mono-items=eager
+//@ compile-flags:-Clink-dead-code
 //@ compile-flags:--crate-type=lib
 
 //~ MONO_ITEM fn std::ptr::drop_in_place::<StructWithDrop> - shim(Some(StructWithDrop))

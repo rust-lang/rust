@@ -1,0 +1,43 @@
+error: mix of deref patterns and normal constructors
+  --> $DIR/mixed-constructors.rs:16:9
+   |
+LL |         false => {}
+   |         ^^^^^ matches on the result of dereferencing `Cow<'_, bool>`
+LL |         Cow::Borrowed(_) => {}
+   |         ^^^^^^^^^^^^^^^^ matches directly on `Cow<'_, bool>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/mixed-constructors.rs:22:9
+   |
+LL |         Cow::Borrowed(_) => {}
+   |         ^^^^^^^^^^^^^^^^ matches directly on `Cow<'_, bool>`
+LL |         true => {}
+   |         ^^^^ matches on the result of dereferencing `Cow<'_, bool>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/mixed-constructors.rs:29:9
+   |
+LL |         Cow::Owned(_) => {}
+   |         ^^^^^^^^^^^^^ matches directly on `Cow<'_, bool>`
+LL |         false => {}
+   |         ^^^^^ matches on the result of dereferencing `Cow<'_, bool>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/mixed-constructors.rs:36:10
+   |
+LL |         (Cow::Borrowed(_), 0) => {}
+   |          ^^^^^^^^^^^^^^^^ matches directly on `Cow<'_, bool>`
+LL |         (true, 0) => {}
+   |          ^^^^ matches on the result of dereferencing `Cow<'_, bool>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/mixed-constructors.rs:43:13
+   |
+LL |         (0, Cow::Borrowed(_)) => {}
+   |             ^^^^^^^^^^^^^^^^ matches directly on `Cow<'_, bool>`
+LL |         _ => {}
+LL |         (1, true) => {}
+   |             ^^^^ matches on the result of dereferencing `Cow<'_, bool>`
+
+error: aborting due to 5 previous errors
+

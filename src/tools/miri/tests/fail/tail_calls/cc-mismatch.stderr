@@ -1,8 +1,8 @@
-error: Undefined Behavior: calling a function with calling convention C using calling convention Rust
+error: Undefined Behavior: calling a function with calling convention "C" using calling convention "Rust"
   --> RUSTLIB/core/src/ops/function.rs:LL:CC
    |
 LL |     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling a function with calling convention C using calling convention Rust
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling a function with calling convention "C" using calling convention "Rust"
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

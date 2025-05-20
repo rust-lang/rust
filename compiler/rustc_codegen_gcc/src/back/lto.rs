@@ -44,7 +44,11 @@ use crate::{GccCodegenBackend, GccContext, SyncContext, to_gcc_opt_level};
 
 pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     match crate_type {
-        CrateType::Executable | CrateType::Dylib | CrateType::Staticlib | CrateType::Cdylib => true,
+        CrateType::Executable
+        | CrateType::Dylib
+        | CrateType::Staticlib
+        | CrateType::Cdylib
+        | CrateType::Sdylib => true,
         CrateType::Rlib | CrateType::ProcMacro => false,
     }
 }
@@ -589,7 +593,7 @@ fn thin_lto(
     Ok((opt_jobs, copy_jobs))
 }
 
-pub unsafe fn optimize_thin_module(
+pub fn optimize_thin_module(
     thin_module: ThinModule<GccCodegenBackend>,
     _cgcx: &CodegenContext<GccCodegenBackend>,
 ) -> Result<ModuleCodegen<GccContext>, FatalError> {

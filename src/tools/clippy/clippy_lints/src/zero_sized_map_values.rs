@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::{is_normalizable, is_type_diagnostic_item, ty_from_hir_ty};
+use clippy_utils::ty::{is_type_diagnostic_item, ty_from_hir_ty};
 use rustc_hir::{self as hir, AmbigArg, HirId, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf as _;
@@ -54,8 +54,6 @@ impl LateLintPass<'_> for ZeroSizedMapValues {
             // Fixes https://github.com/rust-lang/rust-clippy/issues/7447 because of
             // https://github.com/rust-lang/rust/blob/master/compiler/rustc_middle/src/ty/sty.rs#L968
             && !ty.has_escaping_bound_vars()
-            // Do this to prevent `layout_of` crashing, being unable to fully normalize `ty`.
-            && is_normalizable(cx, cx.param_env, ty)
             && let Ok(layout) = cx.layout_of(ty)
             && layout.is_zst()
         {

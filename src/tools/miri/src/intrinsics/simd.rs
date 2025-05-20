@@ -506,7 +506,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 let dest_len = u32::try_from(dest_len).unwrap();
-                let bitmask_len = u32::try_from(bitmask_len).unwrap();
                 for i in 0..dest_len {
                     let bit_i = simd_bitmask_index(i, dest_len, this.data_layout().endian);
                     let mask = mask & 1u64.strict_shl(bit_i);
@@ -517,17 +516,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let val = if mask != 0 { yes } else { no };
                     this.write_immediate(*val, &dest)?;
                 }
-                for i in dest_len..bitmask_len {
-                    // If the mask is "padded", ensure that padding is all-zero.
-                    // This deliberately does not use `simd_bitmask_index`; these bits are outside
-                    // the bitmask. It does not matter in which order we check them.
-                    let mask = mask & 1u64.strict_shl(i);
-                    if mask != 0 {
-                        throw_ub_format!(
-                            "a SIMD bitmask less than 8 bits long must be filled with 0s for the remaining bits"
-                        );
-                    }
-                }
+                // The remaining bits of the mask are ignored.
             }
             // Converts a "vector of bool" into a bitmask.
             "bitmask" => {

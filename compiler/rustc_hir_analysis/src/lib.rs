@@ -59,7 +59,6 @@ This API is completely unstable and subject to change.
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -195,17 +194,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         let _: R = tcx.ensure_ok().crate_inherent_impls_overlap_check(());
     });
 
-    if tcx.features().rustc_attrs() {
-        tcx.sess.time("dumping_rustc_attr_data", || {
-            outlives::dump::inferred_outlives(tcx);
-            variance::dump::variances(tcx);
-            collect::dump::opaque_hidden_types(tcx);
-            collect::dump::predicates_and_item_bounds(tcx);
-            collect::dump::def_parents(tcx);
-            collect::dump::vtables(tcx);
-        });
-    }
-
     // Make sure we evaluate all static and (non-associated) const items, even if unused.
     // If any of these fail to evaluate, we do not want this crate to pass compilation.
     tcx.par_hir_body_owners(|item_def_id| {
@@ -216,22 +204,29 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
                 check::maybe_check_static_with_link_section(tcx, item_def_id);
             }
             DefKind::Const if tcx.generics_of(item_def_id).is_empty() => {
-                let instance = ty::Instance::new(item_def_id.into(), ty::GenericArgs::empty());
+                let instance = ty::Instance::new_raw(item_def_id.into(), ty::GenericArgs::empty());
                 let cid = GlobalId { instance, promoted: None };
                 let typing_env = ty::TypingEnv::fully_monomorphized();
                 tcx.ensure_ok().eval_to_const_value_raw(typing_env.as_query_input(cid));
             }
             _ => (),
         }
-    });
-
-    tcx.par_hir_body_owners(|item_def_id| {
-        let def_kind = tcx.def_kind(item_def_id);
         // Skip `AnonConst`s because we feed their `type_of`.
         if !matches!(def_kind, DefKind::AnonConst) {
             tcx.ensure_ok().typeck(item_def_id);
         }
     });
+
+    if tcx.features().rustc_attrs() {
+        tcx.sess.time("dumping_rustc_attr_data", || {
+            outlives::dump::inferred_outlives(tcx);
+            variance::dump::variances(tcx);
+            collect::dump::opaque_hidden_types(tcx);
+            collect::dump::predicates_and_item_bounds(tcx);
+            collect::dump::def_parents(tcx);
+            collect::dump::vtables(tcx);
+        });
+    }
 
     tcx.ensure_ok().check_unused_traits(());
 }

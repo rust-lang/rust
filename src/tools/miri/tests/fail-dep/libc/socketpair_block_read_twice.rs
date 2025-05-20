@@ -2,7 +2,7 @@
 //~^ERROR: deadlocked
 //~^^ERROR: deadlocked
 // test_race depends on a deterministic schedule.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency
 //@error-in-other-file: deadlock
 
 use std::thread;

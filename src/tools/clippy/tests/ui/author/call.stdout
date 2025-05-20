@@ -1,8 +1,7 @@
 if let StmtKind::Let(local) = stmt.kind
     && let Some(init) = local.init
     && let ExprKind::Call(func, args) = init.kind
-    && let ExprKind::Path(ref qpath) = func.kind
-    && match_qpath(qpath, &["{{root}}", "std", "cmp", "min"])
+    && is_path_diagnostic_item(cx, func, sym::cmp_min)
     && args.len() == 2
     && let ExprKind::Lit(ref lit) = args[0].kind
     && let LitKind::Int(3, LitIntType::Unsuffixed) = lit.node

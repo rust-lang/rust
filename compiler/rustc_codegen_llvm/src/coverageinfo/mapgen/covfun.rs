@@ -11,6 +11,7 @@ use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods as _, ConstCodegenMethods, StaticCodegenMethods,
 };
+use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::{
     BasicCoverageBlock, CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping,
     MappingKind, Op,
@@ -104,6 +105,16 @@ fn fill_region_tables<'tcx>(
     ids_info: &'tcx CoverageIdsInfo,
     covfun: &mut CovfunRecord<'tcx>,
 ) {
+    // If this function is unused, replace all counters with zero.
+    let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::Counter {
+        let term = if covfun.is_used {
+            ids_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
+        } else {
+            CovTerm::Zero
+        };
+        ffi::Counter::from_term(term)
+    };
+
     // Currently a function's mappings must all be in the same file, so use the
     // first mapping's span to determine the file.
     let source_map = tcx.sess.source_map();
@@ -114,6 +125,12 @@ fn fill_region_tables<'tcx>(
     let source_file = source_map.lookup_source_file(first_span.lo());
 
     let local_file_id = covfun.virtual_file_mapping.push_file(&source_file);
+
+    // If this testing flag is set, add an extra unused entry to the local
+    // file table, to help test the code for detecting unused file IDs.
+    if tcx.sess.coverage_inject_unused_local_file() {
+        covfun.virtual_file_mapping.push_file(&source_file);
+    }
 
     // In rare cases, _all_ of a function's spans are discarded, and coverage
     // codegen needs to handle that gracefully to avoid #133606.
@@ -135,16 +152,6 @@ fn fill_region_tables<'tcx>(
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
     for &Mapping { ref kind, span } in &fn_cov_info.mappings {
-        // If this function is unused, replace all counters with zero.
-        let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::Counter {
-            let term = if covfun.is_used {
-                ids_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
-            } else {
-                CovTerm::Zero
-            };
-            ffi::Counter::from_term(term)
-        };
-
         let Some(coords) = make_coords(span) else { continue };
         let cov_span = coords.make_coverage_span(local_file_id);
 
@@ -177,6 +184,19 @@ fn fill_region_tables<'tcx>(
     }
 }
 
+/// LLVM requires all local file IDs to have at least one mapping region.
+/// If that's not the case, skip this function, to avoid an assertion failure
+/// (or worse) in LLVM.
+fn check_local_file_table(covfun: &CovfunRecord<'_>) -> bool {
+    let mut local_file_id_seen =
+        IndexVec::<u32, _>::from_elem_n(false, covfun.virtual_file_mapping.local_file_table.len());
+    for cov_span in covfun.regions.all_cov_spans() {
+        local_file_id_seen[cov_span.file_id] = true;
+    }
+
+    local_file_id_seen.into_iter().all(|seen| seen)
+}
+
 /// Generates the contents of the covfun record for this function, which
 /// contains the function's coverage mapping data. The record is then stored
 /// as a global variable in the `__llvm_covfun` section.
@@ -185,6 +205,10 @@ pub(crate) fn generate_covfun_record<'tcx>(
     global_file_table: &GlobalFileTable,
     covfun: &CovfunRecord<'tcx>,
 ) {
+    if !check_local_file_table(covfun) {
+        return;
+    }
+
     let &CovfunRecord {
         mangled_function_name,
         source_hash,

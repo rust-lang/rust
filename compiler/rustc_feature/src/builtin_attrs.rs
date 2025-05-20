@@ -536,6 +536,12 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Unstable attributes:
     // ==========================================================================
 
+    // Linking:
+    gated!(
+        export_stable, Normal, template!(Word), WarnFollowing,
+        EncodeCrossCrate::No, experimental!(export_stable)
+    ),
+
     // Testing:
     gated!(
         test_runner, CrateLevel, template!(List: "path"), ErrorFollowing,

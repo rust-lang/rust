@@ -5,7 +5,6 @@ use std::ops::ControlFlow;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
@@ -172,6 +171,7 @@ pub(super) enum ProjectAndUnifyResult<'tcx> {
 /// ```
 /// If successful, this may result in additional obligations. Also returns
 /// the projection cache key used to track these additional obligations.
+// FIXME(mgca): While this supports constants, it is only used for types by default right now
 #[instrument(level = "debug", skip(selcx))]
 pub(super) fn poly_project_and_unify_term<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
@@ -201,6 +201,7 @@ pub(super) fn poly_project_and_unify_term<'cx, 'tcx>(
 /// If successful, this may result in additional obligations.
 ///
 /// See [poly_project_and_unify_term] for an explanation of the return value.
+// FIXME(mgca): While this supports constants, it is only used for types by default right now
 #[instrument(level = "debug", skip(selcx))]
 fn project_and_unify_term<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
@@ -258,34 +259,28 @@ fn project_and_unify_term<'cx, 'tcx>(
 /// there are unresolved type variables in the projection, we will
 /// instantiate it with a fresh type variable `$X` and generate a new
 /// obligation `<T as Trait>::Item == $X` for later.
-pub fn normalize_projection_ty<'a, 'b, 'tcx>(
+// FIXME(mgca): While this supports constants, it is only used for types by default right now
+pub fn normalize_projection_term<'a, 'b, 'tcx>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    projection_ty: ty::AliasTy<'tcx>,
+    alias_term: ty::AliasTerm<'tcx>,
     cause: ObligationCause<'tcx>,
     depth: usize,
     obligations: &mut PredicateObligations<'tcx>,
 ) -> Term<'tcx> {
-    opt_normalize_projection_term(
-        selcx,
-        param_env,
-        projection_ty.into(),
-        cause.clone(),
-        depth,
-        obligations,
-    )
-    .ok()
-    .flatten()
-    .unwrap_or_else(move || {
-        // if we bottom out in ambiguity, create a type variable
-        // and a deferred predicate to resolve this when more type
-        // information is available.
+    opt_normalize_projection_term(selcx, param_env, alias_term, cause.clone(), depth, obligations)
+        .ok()
+        .flatten()
+        .unwrap_or_else(move || {
+            // if we bottom out in ambiguity, create a type variable
+            // and a deferred predicate to resolve this when more type
+            // information is available.
 
-        selcx
-            .infcx
-            .projection_ty_to_infer(param_env, projection_ty, cause, depth + 1, obligations)
-            .into()
-    })
+            selcx
+                .infcx
+                .projection_term_to_infer(param_env, alias_term, cause, depth + 1, obligations)
+                .into()
+        })
 }
 
 /// The guts of `normalize`: normalize a specific projection like `<T
@@ -298,6 +293,7 @@ pub fn normalize_projection_ty<'a, 'b, 'tcx>(
 /// often immediately appended to another obligations vector. So now this
 /// function takes an obligations vector and appends to it directly, which is
 /// slightly uglier but avoids the need for an extra short-lived allocation.
+// FIXME(mgca): While this supports constants, it is only used for types by default right now
 #[instrument(level = "debug", skip(selcx, param_env, cause, obligations))]
 pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
@@ -456,6 +452,7 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
 /// an error for this obligation, but we legitimately should not,
 /// because it contains `[type error]`. Yuck! (See issue #29857 for
 /// one case where this arose.)
+// FIXME(mgca): While this supports constants, it is only used for types by default right now
 fn normalize_to_error<'a, 'tcx>(
     selcx: &SelectionContext<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -469,9 +466,10 @@ fn normalize_to_error<'a, 'tcx>(
         | ty::AliasTermKind::InherentTy
         | ty::AliasTermKind::OpaqueTy
         | ty::AliasTermKind::FreeTy => selcx.infcx.next_ty_var(cause.span).into(),
-        ty::AliasTermKind::UnevaluatedConst | ty::AliasTermKind::ProjectionConst => {
-            selcx.infcx.next_const_var(cause.span).into()
-        }
+        ty::AliasTermKind::FreeConst
+        | ty::AliasTermKind::InherentConst
+        | ty::AliasTermKind::UnevaluatedConst
+        | ty::AliasTermKind::ProjectionConst => selcx.infcx.next_const_var(cause.span).into(),
     };
     let mut obligations = PredicateObligations::new();
     obligations.push(Obligation {
@@ -484,36 +482,37 @@ fn normalize_to_error<'a, 'tcx>(
 }
 
 /// Confirm and normalize the given inherent projection.
+// FIXME(mgca): While this supports constants, it is only used for types by default right now
 #[instrument(level = "debug", skip(selcx, param_env, cause, obligations))]
 pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    alias_ty: ty::AliasTy<'tcx>,
+    alias_term: ty::AliasTerm<'tcx>,
     cause: ObligationCause<'tcx>,
     depth: usize,
     obligations: &mut PredicateObligations<'tcx>,
-) -> Ty<'tcx> {
+) -> ty::Term<'tcx> {
     let tcx = selcx.tcx();
 
     if !tcx.recursion_limit().value_within_limit(depth) {
         // Halt compilation because it is important that overflows never be masked.
         tcx.dcx().emit_fatal(InherentProjectionNormalizationOverflow {
             span: cause.span,
-            ty: alias_ty.to_string(),
+            ty: alias_term.to_string(),
         });
     }
 
-    let args = compute_inherent_assoc_ty_args(
+    let args = compute_inherent_assoc_term_args(
         selcx,
         param_env,
-        alias_ty,
+        alias_term,
         cause.clone(),
         depth,
         obligations,
     );
 
     // Register the obligations arising from the impl and from the associated type itself.
-    let predicates = tcx.predicates_of(alias_ty.def_id).instantiate(tcx, args);
+    let predicates = tcx.predicates_of(alias_term.def_id).instantiate(tcx, args);
     for (predicate, span) in predicates {
         let predicate = normalize_with_depth_to(
             selcx,
@@ -531,7 +530,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
             // cause code, inherent projections will be printed with identity instantiation in
             // diagnostics which is not ideal.
             // Consider creating separate cause codes for this specific situation.
-            ObligationCauseCode::WhereClause(alias_ty.def_id, span),
+            ObligationCauseCode::WhereClause(alias_term.def_id, span),
         );
 
         obligations.push(Obligation::with_depth(
@@ -543,27 +542,33 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
         ));
     }
 
-    let ty = tcx.type_of(alias_ty.def_id).instantiate(tcx, args);
+    let term: Term<'tcx> = if alias_term.kind(tcx).is_type() {
+        tcx.type_of(alias_term.def_id).instantiate(tcx, args).into()
+    } else {
+        get_associated_const_value(selcx, alias_term.to_term(tcx).expect_const(), param_env).into()
+    };
 
-    let mut ty = selcx.infcx.resolve_vars_if_possible(ty);
-    if ty.has_aliases() {
-        ty = normalize_with_depth_to(selcx, param_env, cause.clone(), depth + 1, ty, obligations);
+    let mut term = selcx.infcx.resolve_vars_if_possible(term);
+    if term.has_aliases() {
+        term =
+            normalize_with_depth_to(selcx, param_env, cause.clone(), depth + 1, term, obligations);
     }
 
-    ty
+    term
 }
 
-pub fn compute_inherent_assoc_ty_args<'a, 'b, 'tcx>(
+// FIXME(mgca): While this supports constants, it is only used for types by default right now
+pub fn compute_inherent_assoc_term_args<'a, 'b, 'tcx>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    alias_ty: ty::AliasTy<'tcx>,
+    alias_term: ty::AliasTerm<'tcx>,
     cause: ObligationCause<'tcx>,
     depth: usize,
     obligations: &mut PredicateObligations<'tcx>,
 ) -> ty::GenericArgsRef<'tcx> {
     let tcx = selcx.tcx();
 
-    let impl_def_id = tcx.parent(alias_ty.def_id);
+    let impl_def_id = tcx.parent(alias_term.def_id);
     let impl_args = selcx.infcx.fresh_args_for_item(cause.span, impl_def_id);
 
     let mut impl_ty = tcx.type_of(impl_def_id).instantiate(tcx, impl_args);
@@ -580,7 +585,7 @@ pub fn compute_inherent_assoc_ty_args<'a, 'b, 'tcx>(
 
     // Infer the generic parameters of the impl by unifying the
     // impl type with the self type of the projection.
-    let mut self_ty = alias_ty.self_ty();
+    let mut self_ty = alias_term.self_ty();
     if !selcx.infcx.next_trait_solver() {
         self_ty = normalize_with_depth_to(
             selcx,
@@ -602,7 +607,7 @@ pub fn compute_inherent_assoc_ty_args<'a, 'b, 'tcx>(
         }
     }
 
-    alias_ty.rebase_inherent_args_onto_impl(impl_args, tcx)
+    alias_term.rebase_inherent_args_onto_impl(impl_args, tcx)
 }
 
 enum Projected<'tcx> {
@@ -630,6 +635,7 @@ impl<'tcx> Progress<'tcx> {
 ///
 /// IMPORTANT:
 /// - `obligation` must be fully normalized
+// FIXME(mgca): While this supports constants, it is only used for types by default right now
 #[instrument(level = "info", skip(selcx))]
 fn project<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
@@ -896,7 +902,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
             ImplSource::UserDefined(impl_data) => {
                 // We have to be careful when projecting out of an
                 // impl because of specialization. If we are not in
-                // codegen (i.e., projection mode is not "any"), and the
+                // codegen (i.e., `TypingMode` is not `PostAnalysis`), and the
                 // impl's type is declared as default, then we disable
                 // projection (even if the trait ref is fully
                 // monomorphic). In the case where trait ref is not
@@ -1189,6 +1195,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
     });
 }
 
+// FIXME(mgca): While this supports constants, it is only used for types by default right now
 fn confirm_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
@@ -1222,6 +1229,7 @@ fn confirm_candidate<'cx, 'tcx>(
     result
 }
 
+// FIXME(mgca): While this supports constants, it is only used for types by default right now
 fn confirm_select_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
@@ -1873,6 +1881,7 @@ fn confirm_async_fn_kind_helper_candidate<'cx, 'tcx>(
         .with_addl_obligations(nested)
 }
 
+// FIXME(mgca): While this supports constants, it is only used for types by default right now
 fn confirm_param_env_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
@@ -1926,9 +1935,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     ) {
         Ok(InferOk { value: _, obligations }) => {
             nested_obligations.extend(obligations);
-            assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);
-            // FIXME(associated_const_equality): Handle consts here as well? Maybe this progress type should just take
-            // a term instead.
+            assoc_term_own_obligations(selcx, obligation, &mut nested_obligations);
             Progress { term: cache_entry.term, obligations: nested_obligations }
         }
         Err(e) => {
@@ -1942,6 +1949,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     }
 }
 
+// FIXME(mgca): While this supports constants, it is only used for types by default right now
 fn confirm_impl_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
@@ -1955,8 +1963,8 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
 
     let param_env = obligation.param_env;
-    let assoc_ty = match specialization_graph::assoc_def(tcx, impl_def_id, assoc_item_id) {
-        Ok(assoc_ty) => assoc_ty,
+    let assoc_term = match specialization_graph::assoc_def(tcx, impl_def_id, assoc_item_id) {
+        Ok(assoc_term) => assoc_term,
         Err(guar) => return Ok(Projected::Progress(Progress::error(tcx, guar))),
     };
 
@@ -1965,10 +1973,10 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     // has impossible-to-satisfy predicates (since those were
     // allowed in <https://github.com/rust-lang/rust/pull/135480>),
     // or because the impl is literally missing the definition.
-    if !assoc_ty.item.defaultness(tcx).has_value() {
+    if !assoc_term.item.defaultness(tcx).has_value() {
         debug!(
             "confirm_impl_candidate: no associated type {:?} for {:?}",
-            assoc_ty.item.name(),
+            assoc_term.item.name(),
             obligation.predicate
         );
         if tcx.impl_self_is_guaranteed_unsized(impl_def_id) {
@@ -1979,7 +1987,11 @@ fn confirm_impl_candidate<'cx, 'tcx>(
             return Ok(Projected::NoProgress(obligation.predicate.to_term(tcx)));
         } else {
             return Ok(Projected::Progress(Progress {
-                term: Ty::new_misc_error(tcx).into(),
+                term: if obligation.predicate.kind(tcx).is_type() {
+                    Ty::new_misc_error(tcx).into()
+                } else {
+                    ty::Const::new_misc_error(tcx).into()
+                },
                 obligations: nested,
             }));
         }
@@ -1992,27 +2004,32 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     // * `args` is `[u32]`
     // * `args` ends up as `[u32, S]`
     let args = obligation.predicate.args.rebase_onto(tcx, trait_def_id, args);
-    let args = translate_args(selcx.infcx, param_env, impl_def_id, args, assoc_ty.defining_node);
-    let is_const = matches!(tcx.def_kind(assoc_ty.item.def_id), DefKind::AssocConst);
+    let args = translate_args(selcx.infcx, param_env, impl_def_id, args, assoc_term.defining_node);
 
-    let term: ty::EarlyBinder<'tcx, ty::Term<'tcx>> = if is_const {
-        let did = assoc_ty.item.def_id;
-        let identity_args = crate::traits::GenericArgs::identity_for_item(tcx, did);
-        let uv = ty::UnevaluatedConst::new(did, identity_args);
-        ty::EarlyBinder::bind(ty::Const::new_unevaluated(tcx, uv).into())
+    let term = if obligation.predicate.kind(tcx).is_type() {
+        tcx.type_of(assoc_term.item.def_id).map_bound(|ty| ty.into())
     } else {
-        tcx.type_of(assoc_ty.item.def_id).map_bound(|ty| ty.into())
+        ty::EarlyBinder::bind(
+            get_associated_const_value(
+                selcx,
+                obligation.predicate.to_term(tcx).expect_const(),
+                param_env,
+            )
+            .into(),
+        )
     };
 
-    let progress = if !tcx.check_args_compatible(assoc_ty.item.def_id, args) {
-        let err = Ty::new_error_with_message(
-            tcx,
-            obligation.cause.span,
-            "impl item and trait item have different parameters",
-        );
-        Progress { term: err.into(), obligations: nested }
+    let progress = if !tcx.check_args_compatible(assoc_term.item.def_id, args) {
+        let msg = "impl item and trait item have different parameters";
+        let span = obligation.cause.span;
+        let err = if obligation.predicate.kind(tcx).is_type() {
+            Ty::new_error_with_message(tcx, span, msg).into()
+        } else {
+            ty::Const::new_error_with_message(tcx, span, msg).into()
+        };
+        Progress { term: err, obligations: nested }
     } else {
-        assoc_ty_own_obligations(selcx, obligation, &mut nested);
+        assoc_term_own_obligations(selcx, obligation, &mut nested);
         Progress { term: term.instantiate(tcx, args), obligations: nested }
     };
     Ok(Projected::Progress(progress))
@@ -2020,7 +2037,8 @@ fn confirm_impl_candidate<'cx, 'tcx>(
 
 // Get obligations corresponding to the predicates from the where-clause of the
 // associated type itself.
-fn assoc_ty_own_obligations<'cx, 'tcx>(
+// FIXME(mgca): While this supports constants, it is only used for types by default right now
+fn assoc_term_own_obligations<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
     nested: &mut PredicateObligations<'tcx>,
@@ -2089,4 +2107,16 @@ impl<'cx, 'tcx> ProjectionCacheKeyExt<'cx, 'tcx> for ProjectionCacheKey<'tcx> {
             )
         })
     }
+}
+
+fn get_associated_const_value<'tcx>(
+    selcx: &mut SelectionContext<'_, 'tcx>,
+    alias_ct: ty::Const<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> ty::Const<'tcx> {
+    // FIXME(mgca): We shouldn't be invoking ctfe here, instead const items should be aliases to type
+    // system consts that we can retrieve with some `query const_arg_of_alias` query. Evaluating the
+    // constant is "close enough" to getting the actual rhs of the const item for now even if it might
+    // lead to some cycles
+    super::evaluate_const(selcx.infcx, alias_ct, param_env)
 }

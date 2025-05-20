@@ -163,7 +163,7 @@ fn check_version(config: &Config) -> Option<String> {
             msg.push_str("WARNING: The `change-id` is missing in the `bootstrap.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");
             msg.push_str("NOTE: to silence this warning, ");
             msg.push_str(&format!(
-                "add `change-id = {latest_change_id}` or change-id = \"ignore\" at the top of `bootstrap.toml`"
+                "add `change-id = {latest_change_id}` or `change-id = \"ignore\"` at the top of `bootstrap.toml`"
             ));
             return Some(msg);
         }
@@ -195,7 +195,7 @@ fn check_version(config: &Config) -> Option<String> {
 
     msg.push_str("NOTE: to silence this warning, ");
     msg.push_str(&format!(
-        "update `bootstrap.toml` to use `change-id = {latest_change_id}` or change-id = \"ignore\" instead"
+        "update `bootstrap.toml` to use `change-id = {latest_change_id}` or `change-id = \"ignore\"` instead"
     ));
 
     if io::stdout().is_terminal() {

@@ -214,7 +214,7 @@ pub(crate) fn parse(
         };
     }
 
-    let to_span = |inner_span: parse::InnerSpan| {
+    let to_span = |inner_span: std::ops::Range<usize>| {
         is_source_literal.then(|| {
             TextRange::new(inner_span.start.try_into().unwrap(), inner_span.end.try_into().unwrap())
         })
@@ -297,7 +297,8 @@ pub(crate) fn parse(
                     unfinished_literal.clear();
                 }
 
-                let span = parser.arg_places.get(placeholder_index).and_then(|&s| to_span(s));
+                let span =
+                    parser.arg_places.get(placeholder_index).and_then(|s| to_span(s.clone()));
                 placeholder_index += 1;
 
                 let position_span = to_span(position_span);

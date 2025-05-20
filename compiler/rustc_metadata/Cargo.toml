@@ -10,6 +10,7 @@ libloading = "0.8.0"
 odht = { version = "0.3.1", features = ["nightly"] }
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
+rustc_attr_data_structures = { path = "../rustc_attr_data_structures" }
 rustc_attr_parsing = { path = "../rustc_attr_parsing" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
@@ -26,6 +27,7 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
+tempfile = "3.7.1"
 tracing = "0.1"
 # tidy-alphabetical-end
 

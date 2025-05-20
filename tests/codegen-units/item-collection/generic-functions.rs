@@ -1,4 +1,4 @@
-//@ compile-flags:-Zprint-mono-items=eager -Zinline-mir=no
+//@ compile-flags:-Clink-dead-code -Zinline-mir=no
 
 #![deny(dead_code)]
 #![crate_type = "lib"]

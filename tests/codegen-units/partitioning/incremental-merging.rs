@@ -1,5 +1,5 @@
 //@ incremental
-//@ compile-flags: -Zprint-mono-items=lazy -Copt-level=0 -Ccodegen-units=3
+//@ compile-flags: -Copt-level=0 -Ccodegen-units=3
 
 #![crate_type = "rlib"]
 

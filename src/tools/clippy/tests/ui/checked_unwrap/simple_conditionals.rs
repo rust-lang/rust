@@ -188,6 +188,91 @@ fn issue11371() {
     }
 }
 
+fn gen_option() -> Option<()> {
+    Some(())
+    // Or None
+}
+
+fn gen_result() -> Result<(), ()> {
+    Ok(())
+    // Or Err(())
+}
+
+fn issue14725() {
+    let option = Some(());
+
+    if option.is_some() {
+        let _ = option.as_ref().unwrap();
+        //~^ unnecessary_unwrap
+    } else {
+        let _ = option.as_ref().unwrap();
+        //~^ panicking_unwrap
+    }
+
+    let result = Ok::<(), ()>(());
+
+    if result.is_ok() {
+        let _y = 1;
+        result.as_ref().unwrap();
+        //~^ unnecessary_unwrap
+    } else {
+        let _y = 1;
+        result.as_ref().unwrap();
+        //~^ panicking_unwrap
+    }
+
+    let mut option = Some(());
+    if option.is_some() {
+        option = gen_option();
+        option.as_mut().unwrap();
+    } else {
+        option = gen_option();
+        option.as_mut().unwrap();
+    }
+
+    let mut result = Ok::<(), ()>(());
+    if result.is_ok() {
+        result = gen_result();
+        result.as_mut().unwrap();
+    } else {
+        result = gen_result();
+        result.as_mut().unwrap();
+    }
+}
+
+fn issue14763(x: Option<String>, r: Result<(), ()>) {
+    _ = || {
+        if x.is_some() {
+            _ = x.unwrap();
+            //~^ unnecessary_unwrap
+        } else {
+            _ = x.unwrap();
+            //~^ panicking_unwrap
+        }
+    };
+    _ = || {
+        if r.is_ok() {
+            _ = r.as_ref().unwrap();
+            //~^ unnecessary_unwrap
+        } else {
+            _ = r.as_ref().unwrap();
+            //~^ panicking_unwrap
+        }
+    };
+}
+
+const ISSUE14763: fn(Option<String>) = |x| {
+    _ = || {
+        if x.is_some() {
+            _ = x.unwrap();
+            //~^ unnecessary_unwrap
+        } else {
+            _ = x.unwrap();
+            //~^ panicking_unwrap
+        }
+    }
+};
+
 fn check_expect() {
     let x = Some(());
     if x.is_some() {

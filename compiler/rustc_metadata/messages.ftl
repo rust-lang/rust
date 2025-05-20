@@ -1,6 +1,10 @@
 metadata_as_needed_compatibility =
     linking modifier `as-needed` is only compatible with `dylib` and `framework` linking kinds
 
+metadata_async_drop_types_in_dependency =
+    found async drop types in dependecy `{$extern_crate}`, but async_drop feature is disabled for `{$local_crate}`
+    .help = if async drop type will be dropped in a crate without `feature(async_drop)`, sync Drop will be used
+
 metadata_bad_panic_strategy =
     the linked panic runtime `{$runtime}` is not compiled with this crate's panic strategy `{$strategy}`
 

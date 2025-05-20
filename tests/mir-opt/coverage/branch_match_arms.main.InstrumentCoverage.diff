@@ -26,12 +26,21 @@
           debug a => _9;
       }
   
-+     coverage Code { bcb: bcb0 } => $DIR/branch_match_arms.rs:14:1: 15:21 (#0);
-+     coverage Code { bcb: bcb1 } => $DIR/branch_match_arms.rs:16:17: 16:32 (#0);
-+     coverage Code { bcb: bcb3 } => $DIR/branch_match_arms.rs:17:17: 17:32 (#0);
-+     coverage Code { bcb: bcb4 } => $DIR/branch_match_arms.rs:18:17: 18:32 (#0);
-+     coverage Code { bcb: bcb5 } => $DIR/branch_match_arms.rs:19:17: 19:32 (#0);
-+     coverage Code { bcb: bcb2 } => $DIR/branch_match_arms.rs:21:2: 21:2 (#0);
++     coverage Code { bcb: bcb0 } => $DIR/branch_match_arms.rs:14:1: 14:10 (#0);
++     coverage Code { bcb: bcb0 } => $DIR/branch_match_arms.rs:15:11: 15:21 (#0);
++     coverage Code { bcb: bcb1 } => $DIR/branch_match_arms.rs:16:17: 16:18 (#0);
++     coverage Code { bcb: bcb1 } => $DIR/branch_match_arms.rs:16:23: 16:30 (#0);
++     coverage Code { bcb: bcb1 } => $DIR/branch_match_arms.rs:16:31: 16:32 (#0);
++     coverage Code { bcb: bcb3 } => $DIR/branch_match_arms.rs:17:17: 17:18 (#0);
++     coverage Code { bcb: bcb3 } => $DIR/branch_match_arms.rs:17:23: 17:30 (#0);
++     coverage Code { bcb: bcb3 } => $DIR/branch_match_arms.rs:17:31: 17:32 (#0);
++     coverage Code { bcb: bcb4 } => $DIR/branch_match_arms.rs:18:17: 18:18 (#0);
++     coverage Code { bcb: bcb4 } => $DIR/branch_match_arms.rs:18:23: 18:30 (#0);
++     coverage Code { bcb: bcb4 } => $DIR/branch_match_arms.rs:18:31: 18:32 (#0);
++     coverage Code { bcb: bcb5 } => $DIR/branch_match_arms.rs:19:17: 19:18 (#0);
++     coverage Code { bcb: bcb5 } => $DIR/branch_match_arms.rs:19:23: 19:30 (#0);
++     coverage Code { bcb: bcb5 } => $DIR/branch_match_arms.rs:19:31: 19:32 (#0);
++     coverage Code { bcb: bcb2 } => $DIR/branch_match_arms.rs:21:1: 21:2 (#0);
 + 
       bb0: {
 +         Coverage::VirtualCounter(bcb0);

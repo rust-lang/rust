@@ -72,7 +72,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         init_once.status = InitOnceStatus::Complete;
 
         // Each complete happens-before the end of the wait
-        if let Some(data_race) = &this.machine.data_race {
+        if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
             data_race
                 .release_clock(&this.machine.threads, |clock| init_once.clock.clone_from(clock));
         }
@@ -99,7 +99,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         init_once.status = InitOnceStatus::Uninitialized;
 
         // Each complete happens-before the end of the wait
-        if let Some(data_race) = &this.machine.data_race {
+        if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
             data_race
                 .release_clock(&this.machine.threads, |clock| init_once.clock.clone_from(clock));
         }

@@ -6,7 +6,10 @@ use rustc_middle::ty::relate::combine::PredicateEmittingRelation;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
-use super::{BoundRegionConversionTime, InferCtxt, RegionVariableOrigin, SubregionOrigin};
+use super::{
+    BoundRegionConversionTime, InferCtxt, OpaqueTypeStorageEntries, RegionVariableOrigin,
+    SubregionOrigin,
+};
 
 impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     type Interner = TyCtxt<'tcx>;
@@ -121,19 +124,19 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.enter_forall(value, f)
     }
 
-    fn equate_ty_vids_raw(&self, a: rustc_type_ir::TyVid, b: rustc_type_ir::TyVid) {
+    fn equate_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
         self.inner.borrow_mut().type_variables().equate(a, b);
     }
 
-    fn equate_int_vids_raw(&self, a: rustc_type_ir::IntVid, b: rustc_type_ir::IntVid) {
+    fn equate_int_vids_raw(&self, a: ty::IntVid, b: ty::IntVid) {
         self.inner.borrow_mut().int_unification_table().union(a, b);
     }
 
-    fn equate_float_vids_raw(&self, a: rustc_type_ir::FloatVid, b: rustc_type_ir::FloatVid) {
+    fn equate_float_vids_raw(&self, a: ty::FloatVid, b: ty::FloatVid) {
         self.inner.borrow_mut().float_unification_table().union(a, b);
     }
 
-    fn equate_const_vids_raw(&self, a: rustc_type_ir::ConstVid, b: rustc_type_ir::ConstVid) {
+    fn equate_const_vids_raw(&self, a: ty::ConstVid, b: ty::ConstVid) {
         self.inner.borrow_mut().const_unification_table().union(a, b);
     }
 
@@ -141,8 +144,8 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         &self,
         relation: &mut R,
         target_is_expected: bool,
-        target_vid: rustc_type_ir::TyVid,
-        instantiation_variance: rustc_type_ir::Variance,
+        target_vid: ty::TyVid,
+        instantiation_variance: ty::Variance,
         source_ty: Ty<'tcx>,
     ) -> RelateResult<'tcx, ()> {
         self.instantiate_ty_var(
@@ -154,19 +157,11 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         )
     }
 
-    fn instantiate_int_var_raw(
-        &self,
-        vid: rustc_type_ir::IntVid,
-        value: rustc_type_ir::IntVarValue,
-    ) {
+    fn instantiate_int_var_raw(&self, vid: ty::IntVid, value: ty::IntVarValue) {
         self.inner.borrow_mut().int_unification_table().union_value(vid, value);
     }
 
-    fn instantiate_float_var_raw(
-        &self,
-        vid: rustc_type_ir::FloatVid,
-        value: rustc_type_ir::FloatVarValue,
-    ) {
+    fn instantiate_float_var_raw(&self, vid: ty::FloatVid, value: ty::FloatVarValue) {
         self.inner.borrow_mut().float_unification_table().union_value(vid, value);
     }
 
@@ -174,7 +169,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         &self,
         relation: &mut R,
         target_is_expected: bool,
-        target_vid: rustc_type_ir::ConstVid,
+        target_vid: ty::ConstVid,
         source_ct: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ()> {
         self.instantiate_const_var(relation, target_is_expected, target_vid, source_ct)
@@ -220,5 +215,59 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
 
     fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>, span: Span) {
         self.register_region_obligation_with_cause(ty, r, &ObligationCause::dummy_with_span(span));
+    }
+
+    type OpaqueTypeStorageEntries = OpaqueTypeStorageEntries;
+    fn opaque_types_storage_num_entries(&self) -> OpaqueTypeStorageEntries {
+        self.inner.borrow_mut().opaque_types().num_entries()
+    }
+    fn clone_opaque_types_lookup_table(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
+        self.inner.borrow_mut().opaque_types().iter_lookup_table().map(|(k, h)| (k, h.ty)).collect()
+    }
+    fn clone_duplicate_opaque_types(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
+        self.inner
+            .borrow_mut()
+            .opaque_types()
+            .iter_duplicate_entries()
+            .map(|(k, h)| (k, h.ty))
+            .collect()
+    }
+    fn clone_opaque_types_added_since(
+        &self,
+        prev_entries: OpaqueTypeStorageEntries,
+    ) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
+        self.inner
+            .borrow_mut()
+            .opaque_types()
+            .opaque_types_added_since(prev_entries)
+            .map(|(k, h)| (k, h.ty))
+            .collect()
+    }
+
+    fn register_hidden_type_in_storage(
+        &self,
+        opaque_type_key: ty::OpaqueTypeKey<'tcx>,
+        hidden_ty: Ty<'tcx>,
+        span: Span,
+    ) -> Option<Ty<'tcx>> {
+        self.register_hidden_type_in_storage(
+            opaque_type_key,
+            ty::OpaqueHiddenType { span, ty: hidden_ty },
+        )
+    }
+    fn add_duplicate_opaque_type(
+        &self,
+        opaque_type_key: ty::OpaqueTypeKey<'tcx>,
+        hidden_ty: Ty<'tcx>,
+        span: Span,
+    ) {
+        self.inner
+            .borrow_mut()
+            .opaque_types()
+            .add_duplicate(opaque_type_key, ty::OpaqueHiddenType { span, ty: hidden_ty })
+    }
+
+    fn reset_opaque_types(&self) {
+        let _ = self.take_opaque_types();
     }
 }

@@ -1413,6 +1413,7 @@ pub mod parse {
                 "mcdc" => slot.level = CoverageLevel::Mcdc,
                 "no-mir-spans" => slot.no_mir_spans = true,
                 "discard-all-spans-in-codegen" => slot.discard_all_spans_in_codegen = true,
+                "inject-unused-local-file" => slot.inject_unused_local_file = true,
                 _ => return false,
             }
         }
@@ -2113,6 +2114,8 @@ options! {
         "emit noalias metadata for box (default: yes)"),
     branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED],
         "set options for branch target identification and pointer authentication on AArch64"),
+    build_sdylib_interface: bool = (false, parse_bool, [UNTRACKED],
+        "whether the stable interface is being built"),
     cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
         "instrument control-flow architecture protection"),
     check_cfg_all_expected: bool = (false, parse_bool, [UNTRACKED],
@@ -2208,7 +2211,7 @@ options! {
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
-    fixed_x18: bool = (false, parse_bool, [TRACKED],
+    fixed_x18: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
         "make the x18 register reserved on AArch64 (default: no)"),
     flatten_format_args: bool = (true, parse_bool, [TRACKED],
         "flatten nested format_args!() and literals into a simplified format_args!() call \
@@ -2406,10 +2409,8 @@ options! {
         "print codegen statistics (default: no)"),
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "print the LLVM optimization passes being run (default: no)"),
-    print_mono_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
-        "print the result of the monomorphization collection pass. \
-         Value `lazy` means to use normal collection; `eager` means to collect all items.
-         Note that this overwrites the effect `-Clink-dead-code` has on collection!"),
+    print_mono_items: bool = (false, parse_bool, [UNTRACKED],
+        "print the result of the monomorphization collection pass (default: no)"),
     print_type_sizes: bool = (false, parse_bool, [UNTRACKED],
         "print layout information for each type encountered (default: no)"),
     proc_macro_backtrace: bool = (false, parse_bool, [UNTRACKED],

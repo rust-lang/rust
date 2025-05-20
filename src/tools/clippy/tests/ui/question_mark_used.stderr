@@ -1,4 +1,4 @@
-error: question mark operator was used
+error: the `?` operator was used
   --> tests/ui/question_mark_used.rs:11:5
    |
 LL |     other_function()?;

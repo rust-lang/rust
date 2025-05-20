@@ -133,6 +133,8 @@ pub enum Command {
         #[arg(default_value = "miri-sync")]
         branch: String,
     },
+    /// Squash the commits of the current feature branch into one.
+    Squash,
 }
 
 impl Command {
@@ -154,7 +156,7 @@ impl Command {
                 flags.extend(remainder);
                 Ok(())
             }
-            Self::Bench { .. } | Self::RustcPull { .. } | Self::RustcPush { .. } =>
+            Self::Bench { .. } | Self::RustcPull { .. } | Self::RustcPush { .. } | Self::Squash =>
                 bail!("unexpected \"--\" found in arguments"),
         }
     }
@@ -170,6 +172,11 @@ pub struct Cli {
 }
 
 fn main() -> Result<()> {
+    // If we are invoked as the git sequence editor, jump to that logic.
+    if !std::env::var_os("MIRI_SCRIPT_IS_GIT_SEQUENCE_EDITOR").unwrap_or_default().is_empty() {
+        return Command::squash_sequence_editor();
+    }
+
     // Split the arguments into the part before the `--` and the part after.
     // The `--` itself ends up in the second part.
     let miri_args: Vec<_> = std::env::args().take_while(|x| *x != "--").collect();

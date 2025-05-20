@@ -63,11 +63,11 @@ use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::NoSolution;
+use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesPredicate, Region, Ty, TyCtxt,
     TypeFoldable as _, TypeVisitableExt,
 };
-use rustc_type_ir::outlives::{Component, push_outlives_components};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
@@ -98,6 +98,14 @@ impl<'tcx> InferCtxt<'tcx> {
         sub_region: Region<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) {
+        // `is_global` means the type has no params, infer, placeholder, or non-`'static`
+        // free regions. If the type has none of these things, then we can skip registering
+        // this outlives obligation since it has no components which affect lifetime
+        // checking in an interesting way.
+        if sup_type.is_global() {
+            return;
+        }
+
         debug!(?sup_type, ?sub_region, ?cause);
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
             infer::RelateParamBound(

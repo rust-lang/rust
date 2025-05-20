@@ -1,7 +1,5 @@
 // We want to control preemption here. Stacked borrows interferes by having its own accesses.
-//@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
-// Avoid accidental synchronization via address reuse.
-//@compile-flags: -Zmiri-address-reuse-cross-thread-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency -Zmiri-disable-stacked-borrows
 
 use std::mem;
 use std::thread::{sleep, spawn};

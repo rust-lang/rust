@@ -269,18 +269,10 @@ impl DefKind {
             | DefKind::TyParam
             | DefKind::ExternCrate => DefPathData::TypeNs(name.unwrap()),
 
-            // An associated type name will be missing for an RPITIT.
-            DefKind::AssocTy => {
-                if let Some(name) = name {
-                    DefPathData::TypeNs(name)
-                } else {
-                    DefPathData::AnonAssocTy
-                }
-            }
+            // An associated type name will be missing for an RPITIT (DefPathData::AnonAssocTy),
+            // but those provide their own DefPathData.
+            DefKind::AssocTy => DefPathData::TypeNs(name.unwrap()),
 
-            // It's not exactly an anon const, but wrt DefPathData, there
-            // is no difference.
-            DefKind::Static { nested: true, .. } => DefPathData::AnonConst,
             DefKind::Fn
             | DefKind::Const
             | DefKind::ConstParam

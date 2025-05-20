@@ -42,5 +42,5 @@ if isWindows && isKnownToBeMingwBuild; then
 
     curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
     7z x -y mingw.7z > /dev/null
-    ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
+    ciCommandAddPath "$(cygpath -m "$(pwd)/${mingw_dir}/bin")"
 fi

@@ -10,7 +10,7 @@ use std::collections::hash_map::Entry;
 
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, MetaItemLit, ast};
-use rustc_attr_parsing::{AttributeKind, ReprAttr, find_attr};
+use rustc_attr_data_structures::{AttributeKind, ReprAttr, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
@@ -277,6 +277,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::cfg_attr
                             | sym::cfg_trace
                             | sym::cfg_attr_trace
+                            | sym::export_stable // handled in `check_export`
                             // need to be fixed
                             | sym::cfi_encoding // FIXME(cfi_encoding)
                             | sym::pointee // FIXME(derive_coerce_pointee)
@@ -625,6 +626,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             sym::naked,
             sym::instruction_set,
             sym::repr,
+            sym::rustc_std_internal_symbol,
             // code generation
             sym::cold,
             // documentation
@@ -682,7 +684,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                     }
 
-                    if !other_attr.has_any_name(ALLOW_LIST) {
+                    if !other_attr.has_any_name(ALLOW_LIST)
+                        && !matches!(other_attr.path().as_slice(), [sym::rustfmt, ..])
+                    {
                         let path = other_attr.path();
                         let path: Vec<_> = path.iter().map(|s| s.as_str()).collect();
                         let other_attr_name = path.join("::");

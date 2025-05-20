@@ -513,13 +513,13 @@ impl Span {
     }
 
     /// Creates an empty span pointing to directly before this span.
-    #[stable(feature = "proc_macro_span_location", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "proc_macro_span_location", since = "1.88.0")]
     pub fn start(&self) -> Span {
         Span(self.0.start())
     }
 
     /// Creates an empty span pointing to directly after this span.
-    #[stable(feature = "proc_macro_span_location", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "proc_macro_span_location", since = "1.88.0")]
     pub fn end(&self) -> Span {
         Span(self.0.end())
     }
@@ -527,7 +527,7 @@ impl Span {
     /// The one-indexed line of the source file where the span starts.
     ///
     /// To obtain the line of the span's end, use `span.end().line()`.
-    #[stable(feature = "proc_macro_span_location", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "proc_macro_span_location", since = "1.88.0")]
     pub fn line(&self) -> usize {
         self.0.line()
     }
@@ -535,7 +535,7 @@ impl Span {
     /// The one-indexed column of the source file where the span starts.
     ///
     /// To obtain the column of the span's end, use `span.end().column()`.
-    #[stable(feature = "proc_macro_span_location", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "proc_macro_span_location", since = "1.88.0")]
     pub fn column(&self) -> usize {
         self.0.column()
     }
@@ -543,18 +543,18 @@ impl Span {
     /// The path to the source file in which this span occurs, for display purposes.
     ///
     /// This might not correspond to a valid file system path.
-    /// It might be remapped, or might be an artificial path such as `"<macro expansion>"`.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    /// It might be remapped (e.g. `"/src/lib.rs"`) or an artificial path (e.g. `"<command line>"`).
+    #[stable(feature = "proc_macro_span_file", since = "1.88.0")]
     pub fn file(&self) -> String {
         self.0.file()
     }
 
-    /// The path to the source file in which this span occurs on disk.
+    /// The path to the source file in which this span occurs on the local file system.
     ///
     /// This is the actual path on disk. It is unaffected by path remapping.
     ///
     /// This path should not be embedded in the output of the macro; prefer `file()` instead.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_span_file", since = "1.88.0")]
     pub fn local_file(&self) -> Option<PathBuf> {
         self.0.local_file().map(|s| PathBuf::from(s))
     }

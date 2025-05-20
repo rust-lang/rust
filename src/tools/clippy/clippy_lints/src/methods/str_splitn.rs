@@ -4,7 +4,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::visitors::{Descend, for_each_expr};
-use clippy_utils::{is_diag_item_method, match_def_path, path_to_local_id, paths};
+use clippy_utils::{is_diag_item_method, path_to_local_id, paths};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -288,7 +288,7 @@ fn parse_iter_usage<'tcx>(
             match (name.ident.as_str(), args) {
                 ("next", []) if cx.tcx.trait_of_item(did) == Some(iter_id) => (IterUsageKind::Nth(0), e.span),
                 ("next_tuple", []) => {
-                    return if match_def_path(cx, did, &paths::ITERTOOLS_NEXT_TUPLE)
+                    return if paths::ITERTOOLS_NEXT_TUPLE.matches(cx, did)
                         && let ty::Adt(adt_def, subs) = cx.typeck_results().expr_ty(e).kind()
                         && cx.tcx.is_diagnostic_item(sym::Option, adt_def.did())
                         && let ty::Tuple(subs) = subs.type_at(0).kind()

@@ -101,6 +101,7 @@
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(cfg_match)]
+#![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(const_carrying_mul_add)]
 #![feature(const_eval_select)]
 #![feature(core_intrinsics)]
@@ -111,7 +112,6 @@
 #![feature(is_ascii_octdigit)]
 #![feature(lazy_get)]
 #![feature(link_cfg)]
-#![feature(non_null_from_ref)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(ptr_alignment_type)]
@@ -188,9 +188,9 @@
 //
 // Target features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(avx512_target_feature))]
 #![feature(aarch64_unstable_target_feature)]
 #![feature(arm_target_feature)]
-#![feature(avx512_target_feature)]
 #![feature(hexagon_target_feature)]
 #![feature(keylocker_x86)]
 #![feature(loongarch_target_feature)]

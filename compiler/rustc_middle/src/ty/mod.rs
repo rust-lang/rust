@@ -38,6 +38,7 @@ use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
+use rustc_hir::definitions::DisambiguatorState;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{
@@ -50,9 +51,18 @@ use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
-pub use rustc_type_ir::data_structures::DelayedSet;
+pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
+pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
+#[allow(
+    hidden_glob_reexports,
+    rustc::usage_of_type_ir_inherent,
+    rustc::non_glob_import_of_type_ir_inherent
+)]
+use rustc_type_ir::inherent;
 pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::*;
+#[allow(hidden_glob_reexports, unused_imports)]
+use rustc_type_ir::{InferCtxtLike, Interner};
 use tracing::{debug, instrument};
 pub use vtable::*;
 use {rustc_ast as ast, rustc_attr_data_structures as attr, rustc_hir as hir};
@@ -111,6 +121,7 @@ use crate::ty;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 pub use crate::ty::diagnostics::*;
 use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::layout::LayoutError;
 use crate::ty::util::Discr;
 use crate::ty::walk::TypeWalker;
 
@@ -173,7 +184,7 @@ pub struct ResolverGlobalCtxt {
     pub extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub module_children: LocalDefIdMap<Vec<ModChild>>,
-    pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
+    pub glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
     pub main_def: Option<MainDefinition>,
     pub trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
     /// A list of proc macro LocalDefIds, written out in the order in which
@@ -208,6 +219,8 @@ pub struct ResolverAstLowering {
     pub next_node_id: ast::NodeId,
 
     pub node_id_to_def_id: NodeMap<LocalDefId>,
+
+    pub disambiguator: DisambiguatorState,
 
     pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
     /// List functions and methods for which lifetime elision was successful.
@@ -298,7 +311,10 @@ impl Visibility {
                 } else if restricted_id == tcx.parent_module_from_def_id(def_id).to_local_def_id() {
                     "pub(self)".to_string()
                 } else {
-                    format!("pub({})", tcx.item_name(restricted_id.to_def_id()))
+                    format!(
+                        "pub(in crate{})",
+                        tcx.def_path(restricted_id.to_def_id()).to_string_no_crate_verbose()
+                    )
                 }
             }
             ty::Visibility::Public => "pub".to_string(),
@@ -1170,7 +1186,7 @@ pub struct Destructor {
 #[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
 pub struct AsyncDestructor {
     /// The `DefId` of the `impl AsyncDrop`
-    pub impl_did: LocalDefId,
+    pub impl_did: DefId,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
@@ -1863,6 +1879,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.def_kind(trait_def_id) == DefKind::TraitAlias
     }
 
+    /// Arena-alloc of LayoutError for coroutine layout
+    fn layout_error(self, err: LayoutError<'tcx>) -> &'tcx LayoutError<'tcx> {
+        self.arena.alloc(err)
+    }
+
     /// Returns layout of a non-async-drop coroutine. Layout might be unavailable if the
     /// coroutine is tainted by errors.
     ///
@@ -1871,12 +1892,14 @@ impl<'tcx> TyCtxt<'tcx> {
     fn ordinary_coroutine_layout(
         self,
         def_id: DefId,
-        coroutine_kind_ty: Ty<'tcx>,
-    ) -> Option<&'tcx CoroutineLayout<'tcx>> {
+        args: GenericArgsRef<'tcx>,
+    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+        let coroutine_kind_ty = args.as_coroutine().kind_ty();
         let mir = self.optimized_mir(def_id);
+        let ty = || Ty::new_coroutine(self, def_id, args);
         // Regular coroutine
         if coroutine_kind_ty.is_unit() {
-            mir.coroutine_layout_raw()
+            mir.coroutine_layout_raw().ok_or_else(|| self.layout_error(LayoutError::Unknown(ty())))
         } else {
             // If we have a `Coroutine` that comes from an coroutine-closure,
             // then it may be a by-move or by-ref body.
@@ -1890,6 +1913,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // a by-ref coroutine.
             if identity_kind_ty == coroutine_kind_ty {
                 mir.coroutine_layout_raw()
+                    .ok_or_else(|| self.layout_error(LayoutError::Unknown(ty())))
             } else {
                 assert_matches!(coroutine_kind_ty.to_opt_closure_kind(), Some(ClosureKind::FnOnce));
                 assert_matches!(
@@ -1898,6 +1922,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 );
                 self.optimized_mir(self.coroutine_by_move_body_def_id(def_id))
                     .coroutine_layout_raw()
+                    .ok_or_else(|| self.layout_error(LayoutError::Unknown(ty())))
             }
         }
     }
@@ -1909,9 +1934,15 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> Option<&'tcx CoroutineLayout<'tcx>> {
+    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+        let ty = || Ty::new_coroutine(self, def_id, args);
+        if args[0].has_placeholders() || args[0].has_non_region_param() {
+            return Err(self.layout_error(LayoutError::TooGeneric(ty())));
+        }
         let instance = InstanceKind::AsyncDropGlue(def_id, Ty::new_coroutine(self, def_id, args));
-        self.mir_shims(instance).coroutine_layout_raw()
+        self.mir_shims(instance)
+            .coroutine_layout_raw()
+            .ok_or_else(|| self.layout_error(LayoutError::Unknown(ty())))
     }
 
     /// Returns layout of a coroutine. Layout might be unavailable if the
@@ -1920,7 +1951,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> Option<&'tcx CoroutineLayout<'tcx>> {
+    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         if self.is_async_drop_in_place_coroutine(def_id) {
             // layout of `async_drop_in_place<T>::{closure}` in case,
             // when T is a coroutine, contains this internal coroutine's ptr in upvars
@@ -1929,21 +1960,25 @@ impl<'tcx> TyCtxt<'tcx> {
             if arg_cor_ty.is_coroutine() {
                 let span = self.def_span(def_id);
                 let source_info = SourceInfo::outermost(span);
+                // Even minimal, empty coroutine has 3 states (RESERVED_VARIANTS),
+                // so variant_fields and variant_source_info should have 3 elements.
                 let variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, CoroutineSavedLocal>> =
                     iter::repeat(IndexVec::new()).take(CoroutineArgs::RESERVED_VARIANTS).collect();
+                let variant_source_info: IndexVec<VariantIdx, SourceInfo> =
+                    iter::repeat(source_info).take(CoroutineArgs::RESERVED_VARIANTS).collect();
                 let proxy_layout = CoroutineLayout {
                     field_tys: [].into(),
                     field_names: [].into(),
                     variant_fields,
-                    variant_source_info: [source_info].into(),
+                    variant_source_info,
                     storage_conflicts: BitMatrix::new(0, 0),
                 };
-                return Some(self.arena.alloc(proxy_layout));
+                return Ok(self.arena.alloc(proxy_layout));
             } else {
                 self.async_drop_coroutine_layout(def_id, args)
             }
         } else {
-            self.ordinary_coroutine_layout(def_id, args.as_coroutine().kind_ty())
+            self.ordinary_coroutine_layout(def_id, args)
         }
     }
 
@@ -1976,6 +2011,10 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
         None
+    }
+
+    pub fn is_exportable(self, def_id: DefId) -> bool {
+        self.exportable_items(def_id.krate).contains(&def_id)
     }
 
     /// Check if the given `DefId` is `#\[automatically_derived\]`, *and*

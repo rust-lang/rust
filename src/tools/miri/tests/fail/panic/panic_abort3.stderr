@@ -4,13 +4,15 @@ panicking from libcore
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
 error: abnormal termination: the program aborted execution
-  --> RUSTLIB/panic_abort/src/lib.rs:LL:CC
+  --> RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
    |
-LL |                 ABORT();
+LL | ABORT()
    | ^ the program aborted execution
    |
    = note: BACKTRACE:
-   = note: inside `panic_abort::__rust_start_panic::abort` at RUSTLIB/panic_abort/src/lib.rs:LL:CC
+   = note: inside `std::sys::pal::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
+   = note: inside `std::process::abort` at RUSTLIB/std/src/process.rs:LL:CC
+   = note: inside `std::rt::__rust_abort` at RUSTLIB/std/src/rt.rs:LL:CC
    = note: inside `panic_abort::__rust_start_panic` at RUSTLIB/panic_abort/src/lib.rs:LL:CC
    = note: inside `std::panicking::rust_panic` at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside `std::panicking::rust_panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC

@@ -1,6 +1,6 @@
 //@ incremental
 // Need to disable optimizations to ensure consistent output across all CI runners.
-//@ compile-flags: -Zprint-mono-items=lazy -Copt-level=0
+//@ compile-flags: -Copt-level=0
 
 #![crate_type = "rlib"]
 

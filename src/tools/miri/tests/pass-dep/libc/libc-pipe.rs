@@ -1,6 +1,6 @@
 //@ignore-target: windows # No libc pipe on Windows
 // test_race depends on a deterministic schedule.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency
 use std::thread;
 fn main() {
     test_pipe();

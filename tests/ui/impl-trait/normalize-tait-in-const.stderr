@@ -25,14 +25,6 @@ LL |     pub type Alias<'a> = impl T<Item = &'a ()>;
    |
    = note: `Alias` must be used in combination with a concrete type within the same crate
 
-error[E0015]: cannot call non-const closure in constant functions
-  --> $DIR/normalize-tait-in-const.rs:28:5
-   |
-LL |     fun(filter_positive());
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-
 error[E0308]: mismatched types
   --> $DIR/normalize-tait-in-const.rs:22:9
    |
@@ -51,6 +43,14 @@ note: this item must have a `#[define_opaque(foo::Alias)]` attribute to be able 
    |
 LL |     pub const fn filter_positive<'a>() -> &'a Alias<'a> {
    |                  ^^^^^^^^^^^^^^^
+
+error[E0015]: cannot call non-const closure in constant functions
+  --> $DIR/normalize-tait-in-const.rs:28:5
+   |
+LL |     fun(filter_positive());
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 5 previous errors
 

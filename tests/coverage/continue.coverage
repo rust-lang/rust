@@ -2,7 +2,7 @@
    LL|       |
    LL|      1|fn main() {
    LL|      1|    let is_true = std::env::args().len() == 1;
-   LL|      1|
+   LL|       |
    LL|      1|    let mut x = 0;
    LL|     11|    for _ in 0..10 {
    LL|     10|        match is_true {
@@ -12,7 +12,7 @@
    LL|      0|            _ => {
    LL|      0|                x = 1;
    LL|      0|            }
-   LL|      0|        }
+   LL|       |        }
    LL|      0|        x = 3;
    LL|       |    }
    LL|     11|    for _ in 0..10 {

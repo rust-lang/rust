@@ -54,6 +54,7 @@ impl Step for CrateBootstrap {
         run.path("src/tools/jsondoclint")
             .path("src/tools/suggest-tests")
             .path("src/tools/replace-version-placeholder")
+            .path("src/tools/coverage-dump")
             // We want `./x test tidy` to _run_ the tidy tool, not its tests.
             // So we need a separate alias to test the tidy tool itself.
             .alias("tidyselftest")
@@ -1101,7 +1102,7 @@ impl Step for Tidy {
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             if !builder.config.json_output {
                 builder.info("fmt check");
-                if builder.initial_rustfmt().is_none() {
+                if builder.config.initial_rustfmt.is_none() {
                     let inferred_rustfmt_dir = builder.initial_sysroot.join("bin");
                     eprintln!(
                         "\
@@ -1592,10 +1593,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             let build = builder.build.build;
             compiler = builder.compiler(compiler.stage - 1, build);
             let test_stage = compiler.stage + 1;
-            (test_stage, format!("stage{}-{}", test_stage, build))
+            (test_stage, format!("stage{test_stage}-{build}"))
         } else {
             let stage = compiler.stage;
-            (stage, format!("stage{}-{}", stage, target))
+            (stage, format!("stage{stage}-{target}"))
         };
 
         if suite.ends_with("fulldeps") {
@@ -2556,9 +2557,9 @@ fn prepare_cargo_test(
     // We skip everything on Miri as then this overwrites the libdir set up
     // by `Cargo::new` and that actually makes things go wrong.
     if builder.kind != Kind::Miri {
-        let mut dylib_path = dylib_path();
-        dylib_path.insert(0, PathBuf::from(&*builder.sysroot_target_libdir(compiler, target)));
-        cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
+        let mut dylib_paths = builder.rustc_lib_paths(compiler);
+        dylib_paths.push(PathBuf::from(&builder.sysroot_target_libdir(compiler, target)));
+        helpers::add_dylib_path(dylib_paths, &mut cargo);
     }
 
     if builder.remote_tested(target) {
@@ -3553,7 +3554,7 @@ impl Step for TestFloatParse {
         builder.ensure(tool::TestFloatParse { host: self.host });
 
         // Run any unit tests in the crate
-        let cargo_test = tool::prepare_tool_cargo(
+        let mut cargo_test = tool::prepare_tool_cargo(
             builder,
             compiler,
             Mode::ToolStd,
@@ -3563,6 +3564,7 @@ impl Step for TestFloatParse {
             SourceType::InTree,
             &[],
         );
+        cargo_test.allow_features(tool::TestFloatParse::ALLOW_FEATURES);
 
         run_cargo_test(cargo_test, &[], &[], crate_name, bootstrap_host, builder);
 
@@ -3577,6 +3579,7 @@ impl Step for TestFloatParse {
             SourceType::InTree,
             &[],
         );
+        cargo_run.allow_features(tool::TestFloatParse::ALLOW_FEATURES);
 
         if !matches!(env::var("FLOAT_PARSE_TESTS_NO_SKIP_HUGE").as_deref(), Ok("1") | Ok("true")) {
             cargo_run.args(["--", "--skip-huge"]);

@@ -1,5 +1,4 @@
 //@aux-build:proc_macros.rs
-#![feature(let_chains)]
 #![allow(
     clippy::blocks_in_conditions,
     clippy::if_same_then_else,
@@ -46,9 +45,7 @@ fn main() {
     if let true = true
         && true
     {}
-    if true
-        && let true = true
-    {}
+    if true && let true = true {}
     // Can lint nested `if let`s
     if {
         //~^ needless_if

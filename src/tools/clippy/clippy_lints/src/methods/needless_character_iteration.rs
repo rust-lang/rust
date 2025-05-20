@@ -7,9 +7,8 @@ use rustc_span::Span;
 use super::NEEDLESS_CHARACTER_ITERATION;
 use super::utils::get_last_chain_binding_hir_id;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::paths::CHAR_IS_ASCII;
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::{match_def_path, path_to_local_id, peel_blocks};
+use clippy_utils::{is_path_diagnostic_item, path_to_local_id, peel_blocks, sym};
 
 fn peels_expr_ref<'a, 'tcx>(mut expr: &'a Expr<'tcx>) -> &'a Expr<'tcx> {
     while let ExprKind::AddrOf(_, _, e) = expr.kind {
@@ -32,7 +31,7 @@ fn handle_expr(
             // If we have `!is_ascii`, then only `.any()` should warn. And if the condition is
             // `is_ascii`, then only `.all()` should warn.
             if revert != is_all
-                && method.ident.name.as_str() == "is_ascii"
+                && method.ident.name == sym::is_ascii
                 && path_to_local_id(receiver, first_param)
                 && let char_arg_ty = cx.typeck_results().expr_ty_adjusted(receiver).peel_refs()
                 && *char_arg_ty.kind() == ty::Char
@@ -76,9 +75,7 @@ fn handle_expr(
             // If we have `!is_ascii`, then only `.any()` should warn. And if the condition is
             // `is_ascii`, then only `.all()` should warn.
             if revert != is_all
-                && let ExprKind::Path(path) = fn_path.kind
-                && let Some(fn_def_id) = cx.qpath_res(&path, fn_path.hir_id).opt_def_id()
-                && match_def_path(cx, fn_def_id, &CHAR_IS_ASCII)
+                && is_path_diagnostic_item(cx, fn_path, sym::char_is_ascii)
                 && path_to_local_id(peels_expr_ref(arg), first_param)
                 && let Some(snippet) = before_chars.get_source_text(cx)
             {
@@ -102,7 +99,7 @@ pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>,
         && let body = cx.tcx.hir_body(body)
         && let Some(first_param) = body.params.first()
         && let ExprKind::MethodCall(method, mut recv, [], _) = recv.kind
-        && method.ident.name.as_str() == "chars"
+        && method.ident.name == sym::chars
         && let str_ty = cx.typeck_results().expr_ty_adjusted(recv).peel_refs()
         && *str_ty.kind() == ty::Str
     {

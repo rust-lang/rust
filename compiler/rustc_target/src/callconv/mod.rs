@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::str::FromStr;
 use std::{fmt, iter};
 
@@ -892,6 +893,37 @@ impl FromStr for Conv {
             }
             _ => Err(format!("'{s}' is not a valid value for entry function call convention.")),
         }
+    }
+}
+
+fn conv_to_externabi(conv: &Conv) -> ExternAbi {
+    match conv {
+        Conv::C => ExternAbi::C { unwind: false },
+        Conv::Rust => ExternAbi::Rust,
+        Conv::PreserveMost => ExternAbi::RustCold,
+        Conv::ArmAapcs => ExternAbi::Aapcs { unwind: false },
+        Conv::CCmseNonSecureCall => ExternAbi::CCmseNonSecureCall,
+        Conv::CCmseNonSecureEntry => ExternAbi::CCmseNonSecureEntry,
+        Conv::Msp430Intr => ExternAbi::Msp430Interrupt,
+        Conv::GpuKernel => ExternAbi::GpuKernel,
+        Conv::X86Fastcall => ExternAbi::Fastcall { unwind: false },
+        Conv::X86Intr => ExternAbi::X86Interrupt,
+        Conv::X86Stdcall => ExternAbi::Stdcall { unwind: false },
+        Conv::X86ThisCall => ExternAbi::Thiscall { unwind: false },
+        Conv::X86VectorCall => ExternAbi::Vectorcall { unwind: false },
+        Conv::X86_64SysV => ExternAbi::SysV64 { unwind: false },
+        Conv::X86_64Win64 => ExternAbi::Win64 { unwind: false },
+        Conv::AvrInterrupt => ExternAbi::AvrInterrupt,
+        Conv::AvrNonBlockingInterrupt => ExternAbi::AvrNonBlockingInterrupt,
+        Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine } => ExternAbi::RiscvInterruptM,
+        Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor } => ExternAbi::RiscvInterruptS,
+        Conv::Cold | Conv::PreserveAll => unreachable!(),
+    }
+}
+
+impl Display for Conv {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", conv_to_externabi(self))
     }
 }
 

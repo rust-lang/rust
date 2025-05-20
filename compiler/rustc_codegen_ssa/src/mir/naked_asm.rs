@@ -1,5 +1,5 @@
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
-use rustc_attr_parsing::InstructionSetAttr;
+use rustc_attr_data_structures::InstructionSetAttr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::mono::{Linkage, MonoItemData, Visibility};
 use rustc_middle::mir::{InlineAsmOperand, START_BLOCK};
@@ -95,7 +95,9 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
             );
 
             let instance = match mono_type.kind() {
-                &ty::FnDef(def_id, args) => Instance::new(def_id, args),
+                &ty::FnDef(def_id, args) => {
+                    Instance::expect_resolve(cx.tcx(), cx.typing_env(), def_id, args, value.span)
+                }
                 _ => bug!("asm sym is not a function"),
             };
 

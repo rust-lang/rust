@@ -13,11 +13,11 @@ error[E0080]: evaluation of constant value failed
 LL | };
    | ^ calling non-const function `<Vec<u8> as Drop>::drop`
    |
-note: inside `std::ptr::drop_in_place::<Option<String>> - shim(Some(Option<String>))`
+note: inside `drop_in_place::<Option<String>> - shim(Some(Option<String>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `std::ptr::drop_in_place::<String> - shim(Some(String))`
+note: inside `drop_in_place::<String> - shim(Some(String))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `std::ptr::drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
+note: inside `drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 
 error[E0493]: destructor of `Option<String>` cannot be evaluated at compile-time
@@ -34,11 +34,11 @@ error[E0080]: evaluation of constant value failed
 LL | };
    | ^ calling non-const function `<Vec<u8> as Drop>::drop`
    |
-note: inside `std::ptr::drop_in_place::<Option<String>> - shim(Some(Option<String>))`
+note: inside `drop_in_place::<Option<String>> - shim(Some(Option<String>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `std::ptr::drop_in_place::<String> - shim(Some(String))`
+note: inside `drop_in_place::<String> - shim(Some(String))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `std::ptr::drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
+note: inside `drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 
 error[E0493]: destructor of `(u32, Option<String>)` cannot be evaluated at compile-time

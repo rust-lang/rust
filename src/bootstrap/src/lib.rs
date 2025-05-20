@@ -53,6 +53,7 @@ use tracing::{instrument, span};
 pub use utils::change_tracker::{
     CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
 };
+pub use utils::helpers::PanicTracker;
 
 use crate::core::build_steps::vendor::VENDOR_DIR;
 
@@ -324,7 +325,6 @@ forward! {
     tempdir() -> PathBuf,
     llvm_link_shared() -> bool,
     download_rustc() -> bool,
-    initial_rustfmt() -> Option<PathBuf>,
 }
 
 impl Build {
@@ -612,10 +612,6 @@ impl Build {
         unsafe {
             crate::utils::job::setup(self);
         }
-
-        // Download rustfmt early so that it can be used in rust-analyzer configs.
-        trace!("downloading rustfmt early");
-        let _ = &builder::Builder::new(self).initial_rustfmt();
 
         // Handle hard-coded subcommands.
         {

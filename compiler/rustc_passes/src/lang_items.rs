@@ -19,7 +19,8 @@ use rustc_session::cstore::ExternCrate;
 use rustc_span::Span;
 
 use crate::errors::{
-    DuplicateLangItem, IncorrectTarget, LangItemOnIncorrectTarget, UnknownLangItem,
+    DuplicateLangItem, IncorrectCrateType, IncorrectTarget, LangItemOnIncorrectTarget,
+    UnknownLangItem,
 };
 use crate::weak_lang_items;
 
@@ -234,6 +235,10 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 // return early to not collect the lang item
                 return;
             }
+        }
+
+        if self.tcx.crate_types().contains(&rustc_session::config::CrateType::Sdylib) {
+            self.tcx.dcx().emit_err(IncorrectCrateType { span: attr_span });
         }
 
         self.collect_item(lang_item, item_def_id.to_def_id(), Some(item_span));

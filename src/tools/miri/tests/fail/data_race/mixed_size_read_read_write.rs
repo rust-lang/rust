@@ -1,6 +1,4 @@
-//@compile-flags: -Zmiri-preemption-rate=0.0 -Zmiri-disable-weak-memory-emulation
-// Avoid accidental synchronization via address reuse inside `thread::spawn`.
-//@compile-flags: -Zmiri-address-reuse-cross-thread-rate=0
+//@compile-flags:-Zmiri-deterministic-concurrency
 // Two variants: the atomic store matches the size of the first or second atomic load.
 //@revisions: match_first_load match_second_load
 

@@ -33,12 +33,12 @@
 mod foo {
 
     // Trivial functions like this one are imported very reliably by ThinLTO.
-    #[cfg(any(cfail1, cfail4))]
+    #[cfg(cfail1)]
     pub fn inlined_fn() -> u32 {
         1234
     }
 
-    #[cfg(not(any(cfail1, cfail4)))]
+    #[cfg(not(cfail1))]
     pub fn inlined_fn() -> u32 {
         1234
     }

@@ -4,6 +4,8 @@
 //@ edition: 2021
 //@ build-pass
 
+#![allow(dead_code)]
+
 use core::any::Any;
 use core::marker::PhantomData;
 
