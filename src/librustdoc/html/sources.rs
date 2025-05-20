@@ -11,9 +11,8 @@ use rustc_session::Session;
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, sym};
 use tracing::info;
 
-use super::highlight;
-use super::layout::{self, BufDisplay};
 use super::render::Context;
+use super::{highlight, layout};
 use crate::clean;
 use crate::clean::utils::has_doc_flag;
 use crate::docfs::PathError;
@@ -243,9 +242,9 @@ impl SourceCollector<'_, '_> {
             &shared.layout,
             &page,
             "",
-            BufDisplay(|buf: &mut String| {
+            fmt::from_fn(|f| {
                 print_src(
-                    buf,
+                    f,
                     contents,
                     file_span,
                     self.cx,
@@ -253,7 +252,6 @@ impl SourceCollector<'_, '_> {
                     &highlight::DecorationInfo::default(),
                     &source_context,
                 )
-                .unwrap();
             }),
             &shared.style_files,
         );
