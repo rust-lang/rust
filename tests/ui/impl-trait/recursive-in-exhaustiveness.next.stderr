@@ -5,19 +5,19 @@ LL |     let (x,) = (build(x),);
    |                 ^^^^^^^^ cannot satisfy `impl Sized == _`
 
 error[E0271]: type mismatch resolving `build2<(_,)>::{opaque#0} normalizes-to _`
-  --> $DIR/recursive-in-exhaustiveness.rs:31:6
+  --> $DIR/recursive-in-exhaustiveness.rs:30:6
    |
 LL |     (build2(x),)
    |      ^^^^^^^^^ types differ
 
 error[E0271]: type mismatch resolving `build2<(_,)>::{opaque#0} normalizes-to _`
-  --> $DIR/recursive-in-exhaustiveness.rs:31:5
+  --> $DIR/recursive-in-exhaustiveness.rs:30:5
    |
 LL |     (build2(x),)
    |     ^^^^^^^^^^^^ types differ
 
 error[E0277]: the size for values of type `(impl Sized,)` cannot be known at compilation time
-  --> $DIR/recursive-in-exhaustiveness.rs:31:5
+  --> $DIR/recursive-in-exhaustiveness.rs:30:5
    |
 LL |     (build2(x),)
    |     ^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -26,13 +26,13 @@ LL |     (build2(x),)
    = note: tuples must have a statically known size to be initialized
 
 error[E0271]: type mismatch resolving `build3<(T,)>::{opaque#0} normalizes-to _`
-  --> $DIR/recursive-in-exhaustiveness.rs:42:17
+  --> $DIR/recursive-in-exhaustiveness.rs:41:17
    |
 LL |     let (x,) = (build3((x,)),);
    |                 ^^^^^^^^^^^^ types differ
 
 error[E0277]: the size for values of type `(impl Sized,)` cannot be known at compilation time
-  --> $DIR/recursive-in-exhaustiveness.rs:42:16
+  --> $DIR/recursive-in-exhaustiveness.rs:41:16
    |
 LL |     let (x,) = (build3((x,)),);
    |                ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -41,7 +41,7 @@ LL |     let (x,) = (build3((x,)),);
    = note: tuples must have a statically known size to be initialized
 
 error[E0308]: mismatched types
-  --> $DIR/recursive-in-exhaustiveness.rs:42:16
+  --> $DIR/recursive-in-exhaustiveness.rs:41:16
    |
 LL | fn build3<T>(x: T) -> impl Sized {
    |                       ---------- the found opaque type
@@ -53,7 +53,7 @@ LL |     let (x,) = (build3((x,)),);
              found tuple `(impl Sized,)`
 
 error[E0271]: type mismatch resolving `build3<(T,)>::{opaque#0} normalizes-to _`
-  --> $DIR/recursive-in-exhaustiveness.rs:42:17
+  --> $DIR/recursive-in-exhaustiveness.rs:41:17
    |
 LL |     let (x,) = (build3((x,)),);
    |                 ^^^^^^^^^^^^ types differ
@@ -61,13 +61,13 @@ LL |     let (x,) = (build3((x,)),);
    = note: the return type of a function must have a statically known size
 
 error[E0271]: type mismatch resolving `build3<(T,)>::{opaque#0} normalizes-to _`
-  --> $DIR/recursive-in-exhaustiveness.rs:42:16
+  --> $DIR/recursive-in-exhaustiveness.rs:41:16
    |
 LL |     let (x,) = (build3((x,)),);
    |                ^^^^^^^^^^^^^^^ types differ
 
 error[E0271]: type mismatch resolving `build3<(T,)>::{opaque#0} normalizes-to _`
-  --> $DIR/recursive-in-exhaustiveness.rs:42:17
+  --> $DIR/recursive-in-exhaustiveness.rs:41:17
    |
 LL |     let (x,) = (build3((x,)),);
    |                 ^^^^^^^^^^^^ types differ

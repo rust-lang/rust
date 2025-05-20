@@ -84,7 +84,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.annotate_expected_due_to_let_ty(err, expr, error);
         self.annotate_loop_expected_due_to_inference(err, expr, error);
-        if self.annotate_mut_binding_to_immutable_binding(err, expr, error) {
+        if self.annotate_mut_binding_to_immutable_binding(err, expr, expr_ty, expected, error) {
             return;
         }
 
@@ -799,17 +799,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Detect the following case
     ///
     /// ```text
-    /// fn change_object(mut a: &Ty) {
+    /// fn change_object(mut b: &Ty) {
     ///     let a = Ty::new();
     ///     b = a;
     /// }
     /// ```
     ///
-    /// where the user likely meant to modify the value behind there reference, use `a` as an out
+    /// where the user likely meant to modify the value behind there reference, use `b` as an out
     /// parameter, instead of mutating the local binding. When encountering this we suggest:
     ///
     /// ```text
-    /// fn change_object(a: &'_ mut Ty) {
+    /// fn change_object(b: &'_ mut Ty) {
     ///     let a = Ty::new();
     ///     *b = a;
     /// }
@@ -818,13 +818,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
+        expr_ty: Ty<'tcx>,
+        expected: Ty<'tcx>,
         error: Option<TypeError<'tcx>>,
     ) -> bool {
-        if let Some(TypeError::Sorts(ExpectedFound { expected, found })) = error
+        if let Some(TypeError::Sorts(ExpectedFound { .. })) = error
             && let ty::Ref(_, inner, hir::Mutability::Not) = expected.kind()
 
             // The difference between the expected and found values is one level of borrowing.
-            && self.can_eq(self.param_env, *inner, found)
+            && self.can_eq(self.param_env, *inner, expr_ty)
 
             // We have an `ident = expr;` assignment.
             && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Assign(lhs, rhs, _), .. }) =
