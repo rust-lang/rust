@@ -21,7 +21,7 @@ use super::{
     MemPlaceMeta, Memory, OpTy, Place, PlaceTy, PointerArithmetic, Projectable, Provenance,
     err_inval, interp_ok, throw_inval, throw_ub, throw_ub_custom,
 };
-use crate::{ReportErrorExt, fluent_generated as fluent, util};
+use crate::{ReportErrorExt, enter_trace_span, fluent_generated as fluent, util};
 
 pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     /// Stores the `Machine` instance.
@@ -284,6 +284,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
         value: T,
     ) -> Result<T, ErrorHandled> {
+        let _span = enter_trace_span!(
+            M,
+            "instantiate_from_frame_and_normalize_erasing_regions",
+            "{}",
+            frame.instance
+        );
         frame
             .instance
             .try_instantiate_mir_and_normalize_erasing_regions(
