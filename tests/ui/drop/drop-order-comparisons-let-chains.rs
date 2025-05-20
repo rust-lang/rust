@@ -3,8 +3,6 @@
 //@ edition: 2024
 //@ run-pass
 
-#![feature(if_let_guard)]
-
 fn t_if_let_chains_then() {
     let e = Events::new();
     _ = if e.ok(1).is_ok()
@@ -14,9 +12,10 @@ fn t_if_let_chains_then() {
         && let Ok(_) = e.ok(6).as_ref()
         && e.ok(2).is_ok()
         && let Ok(_v) = e.ok(5)
-        && let Ok(_) = e.ok(4).as_ref() {
-            e.mark(3);
-        };
+        && let Ok(_) = e.ok(4).as_ref()
+    {
+        e.mark(3);
+    };
     e.assert(9);
 }
 
@@ -30,9 +29,10 @@ fn t_guard_if_let_chains_then() {
             && let Ok(_) = e.ok(6).as_ref()
             && e.ok(2).is_ok()
             && let Ok(_v) = e.ok(5)
-            && let Ok(_) = e.ok(4).as_ref() => {
-                e.mark(3);
-            }
+            && let Ok(_) = e.ok(4).as_ref() =>
+        {
+            e.mark(3);
+        }
         _ => {}
     };
     e.assert(9);
@@ -47,16 +47,18 @@ fn t_if_let_chains_then_else() {
         && let Ok(_) = e.ok(5).as_ref()
         && e.ok(2).is_ok()
         && let Ok(_v) = e.ok(4)
-        && let Ok(_) = e.err(3) {} else {
-            e.mark(9);
-        };
+        && let Ok(_) = e.err(3)
+    {
+    } else {
+        e.mark(9);
+    };
     e.assert(9);
 }
 
 fn t_guard_if_let_chains_then_else() {
     let e = Events::new();
     _ = match () {
-       () if e.ok(1).is_ok()
+        () if e.ok(1).is_ok()
             && let true = e.ok(8).is_ok()
             && let Ok(_v) = e.ok(7)
             && let Ok(_) = e.ok(6)

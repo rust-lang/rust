@@ -1,12 +1,12 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![doc(rust_logo)]
 #![feature(array_try_map)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
-#![feature(if_let_guard)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
 #![feature(slice_ptr_get)]
