@@ -23,6 +23,7 @@ pub(crate) fn missing_unsafe(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsaf
         format!("{operation} is unsafe and requires an unsafe function or block"),
         d.node.map(|it| it.into()),
     )
+    .stable()
     .with_fixes(fixes(ctx, d))
 }
 
@@ -891,6 +892,27 @@ fn main() {
          // ^^^ 💡 error: call to unsafe function is unsafe and requires an unsafe function or block
 }
         "#,
+        );
+    }
+
+    #[test]
+    fn asm_label() {
+        check_diagnostics(
+            r#"
+//- minicore: asm
+fn foo() {
+    unsafe {
+        core::arch::asm!(
+            "jmp {}",
+            label {
+                let p = 0xDEADBEAF as *mut u8;
+                *p = 3;
+             // ^^ error: dereference of raw pointer is unsafe and requires an unsafe function or block
+            },
+        );
+    }
+}
+            "#,
         );
     }
 }

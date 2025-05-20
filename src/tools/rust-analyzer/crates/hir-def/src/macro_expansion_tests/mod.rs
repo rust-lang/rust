@@ -39,7 +39,7 @@ use test_fixture::WithFixture;
 use crate::{
     AdtId, Lookup, ModuleDefId,
     db::DefDatabase,
-    nameres::{DefMap, ModuleSource},
+    nameres::{DefMap, ModuleSource, crate_def_map},
     src::HasSource,
     test_db::TestDB,
     tt::TopSubtree,
@@ -49,7 +49,7 @@ use crate::{
 fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let db = TestDB::with_files(ra_fixture);
     let krate = db.fetch_test_crate();
-    let def_map = db.crate_def_map(krate);
+    let def_map = crate_def_map(&db, krate);
     let errors = def_map
         .modules()
         .flat_map(|module| module.1.scope.all_macro_calls())
@@ -113,7 +113,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 
                 let (body, sm) = db.body_with_source_map(body);
                 if let Some(it) =
-                    body.blocks(db).find_map(|block| resolve(db, &block.1, ast_id, ast_ptr))
+                    body.blocks(db).find_map(|block| resolve(db, block.1, ast_id, ast_ptr))
                 {
                     return Some(it);
                 }
@@ -127,7 +127,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 
     let db = TestDB::with_files_extra_proc_macros(ra_fixture, extra_proc_macros);
     let krate = db.fetch_test_crate();
-    let def_map = db.crate_def_map(krate);
+    let def_map = crate_def_map(&db, krate);
     let local_id = DefMap::ROOT;
     let source = def_map[local_id].definition_source(&db);
     let source_file = match source.value {
@@ -142,7 +142,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         let ast_id = db.ast_id_map(source.file_id).ast_id(&macro_call_node);
         let ast_id = InFile::new(source.file_id, ast_id);
         let ptr = InFile::new(source.file_id, AstPtr::new(&macro_call_node));
-        let macro_call_id = resolve(&db, &def_map, ast_id, ptr)
+        let macro_call_id = resolve(&db, def_map, ast_id, ptr)
             .unwrap_or_else(|| panic!("unable to find semantic macro call {macro_call_node}"));
         let expansion_result = db.parse_macro_expansion(macro_call_id);
         expansions.push((macro_call_node.clone(), expansion_result));
@@ -379,9 +379,5 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         } else {
             panic!("got invalid macro input: {:?}", parse.errors());
         }
-    }
-
-    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
-        other.as_any().type_id() == std::any::TypeId::of::<Self>()
     }
 }

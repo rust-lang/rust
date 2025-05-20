@@ -28,7 +28,7 @@ pub enum Visibility {
 impl Visibility {
     pub fn resolve(
         db: &dyn DefDatabase,
-        resolver: &crate::resolver::Resolver,
+        resolver: &crate::resolver::Resolver<'_>,
         raw_vis: &RawVisibility,
     ) -> Self {
         // we fall back to public visibility (i.e. fail open) if the path can't be resolved
@@ -50,7 +50,7 @@ impl Visibility {
             return false;
         }
         let def_map = from_module.def_map(db);
-        Self::is_visible_from_def_map_(db, &def_map, to_module, from_module.local_id)
+        Self::is_visible_from_def_map_(db, def_map, to_module, from_module.local_id)
     }
 
     pub(crate) fn is_visible_from_def_map(
@@ -116,7 +116,7 @@ impl Visibility {
                     match def_map.parent() {
                         Some(module) => {
                             parent_arc = module.def_map(db);
-                            def_map = &*parent_arc;
+                            def_map = parent_arc;
                             from_module = module.local_id;
                         }
                         // Reached the root module, nothing left to check.
@@ -257,7 +257,7 @@ pub(crate) fn type_alias_visibility_query(db: &dyn DefDatabase, def: TypeAliasId
 }
 
 #[inline]
-fn trait_vis(db: &dyn DefDatabase, resolver: &Resolver, trait_id: TraitId) -> Visibility {
+fn trait_vis(db: &dyn DefDatabase, resolver: &Resolver<'_>, trait_id: TraitId) -> Visibility {
     let ItemLoc { id: tree_id, .. } = trait_id.lookup(db);
     let item_tree = tree_id.item_tree(db);
     let tr_def = &item_tree[tree_id.value];

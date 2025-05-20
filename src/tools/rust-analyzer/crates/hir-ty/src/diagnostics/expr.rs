@@ -480,7 +480,7 @@ struct FilterMapNextChecker {
 }
 
 impl FilterMapNextChecker {
-    fn new(resolver: &hir_def::resolver::Resolver, db: &dyn HirDatabase) -> Self {
+    fn new(resolver: &hir_def::resolver::Resolver<'_>, db: &dyn HirDatabase) -> Self {
         // Find and store the FunctionIds for Iterator::filter_map and Iterator::next
         let (next_function_id, filter_map_function_id) = match LangItem::IteratorNext
             .resolve_function(db, resolver.krate())

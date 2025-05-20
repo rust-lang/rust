@@ -15,6 +15,7 @@ pub(crate) fn private_field(ctx: &DiagnosticsContext<'_>, d: &hir::PrivateField)
         ),
         d.expr.map(|it| it.into()),
     )
+    .stable()
 }
 
 #[cfg(test)]

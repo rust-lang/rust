@@ -1,5 +1,6 @@
 //! Builtin derives.
 
+use either::Either;
 use intern::sym;
 use itertools::{Itertools, izip};
 use parser::SyntaxKind;
@@ -1179,10 +1180,10 @@ fn coerce_pointee_expand(
                 };
                 new_predicates.push(
                     make::where_pred(
-                        make::ty_path(make::path_from_segments(
+                        Either::Right(make::ty_path(make::path_from_segments(
                             [make::path_segment(new_bounds_target)],
                             false,
-                        )),
+                        ))),
                         new_bounds,
                     )
                     .clone_for_update(),
@@ -1245,7 +1246,9 @@ fn coerce_pointee_expand(
                             substitute_type_in_bound(ty, &pointee_param_name.text(), ADDED_PARAM)
                         })
                     });
-                new_predicates.push(make::where_pred(pred_target, new_bounds).clone_for_update());
+                new_predicates.push(
+                    make::where_pred(Either::Right(pred_target), new_bounds).clone_for_update(),
+                );
             }
         }
 
@@ -1260,10 +1263,10 @@ fn coerce_pointee_expand(
         // Find the `#[pointee]` parameter and add an `Unsize<__S>` bound to it.
         where_clause.add_predicate(
             make::where_pred(
-                make::ty_path(make::path_from_segments(
+                Either::Right(make::ty_path(make::path_from_segments(
                     [make::path_segment(make::name_ref(&pointee_param_name.text()))],
                     false,
-                )),
+                ))),
                 [make::type_bound(make::ty_path(make::path_from_segments(
                     [
                         make::path_segment(make::name_ref("core")),

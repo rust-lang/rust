@@ -12,6 +12,7 @@ pub(crate) fn bad_rtn(ctx: &DiagnosticsContext<'_>, d: &hir::BadRtn) -> Diagnost
         "return type notation not allowed in this position yet",
         d.rtn.map(Into::into),
     )
+    .stable()
 }
 
 #[cfg(test)]

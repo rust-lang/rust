@@ -452,7 +452,10 @@ fn concat_expand(
         Some(_) => (),
         None => span = Some(s),
     };
-    for (i, mut t) in tt.iter().enumerate() {
+
+    let mut i = 0;
+    let mut iter = tt.iter();
+    while let Some(mut t) = iter.next() {
         // FIXME: hack on top of a hack: `$e:expr` captures get surrounded in parentheses
         // to ensure the right parsing order, so skip the parentheses here. Ideally we'd
         // implement rustc's model. cc https://github.com/rust-lang/rust-analyzer/pull/10623
@@ -504,10 +507,40 @@ fn concat_expand(
                 record_span(id.span);
             }
             TtElement::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
+            // handle negative numbers
+            TtElement::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 0 && punct.char == '-' => {
+                let t = match iter.next() {
+                    Some(t) => t,
+                    None => {
+                        err.get_or_insert(ExpandError::other(
+                            call_site,
+                            "unexpected end of input after '-'",
+                        ));
+                        break;
+                    }
+                };
+
+                match t {
+                    TtElement::Leaf(tt::Leaf::Literal(it))
+                        if matches!(it.kind, tt::LitKind::Integer | tt::LitKind::Float) =>
+                    {
+                        format_to!(text, "-{}", it.symbol.as_str());
+                        record_span(punct.span.cover(it.span));
+                    }
+                    _ => {
+                        err.get_or_insert(ExpandError::other(
+                            call_site,
+                            "expected integer or floating pointer number after '-'",
+                        ));
+                        break;
+                    }
+                }
+            }
             _ => {
                 err.get_or_insert(ExpandError::other(call_site, "unexpected token"));
             }
         }
+        i += 1;
     }
     let span = span.unwrap_or_else(|| tt.top_subtree().delimiter.open);
     ExpandResult { value: quote!(span =>#text), err }
