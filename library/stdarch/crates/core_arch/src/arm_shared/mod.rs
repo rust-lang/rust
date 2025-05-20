@@ -47,6 +47,12 @@
 //!
 //! - [ACLE Q2 2018](https://developer.arm.com/docs/101028/latest)
 
+#![cfg_attr(
+    all(target_arch = "aarch64", target_abi = "softfloat"),
+    // Just allow the warning: anyone soundly using the intrinsics has to enable
+    // the target feature, and that will generate a warning for them.
+    allow(aarch64_softfloat_neon)
+)]
 // Only for 'neon' submodule
 #![allow(non_camel_case_types)]
 
