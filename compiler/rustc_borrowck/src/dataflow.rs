@@ -301,6 +301,7 @@ struct PoloniusOutOfScopePrecomputer<'a, 'tcx> {
     loans_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
+#[expect(dead_code)]
 impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
     fn compute(
         body: &Body<'tcx>,
@@ -476,9 +477,16 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             if !tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
                 calculate_borrows_out_of_scope_at_location(body, regioncx, borrow_set)
             } else {
-                PoloniusOutOfScopePrecomputer::compute(body, regioncx, borrow_set)
+                unimplemented!() // This should probably be removed.
             };
         Borrows { tcx, body, borrow_set, borrows_out_of_scope_at_location }
+    }
+
+    /// A dummy `Borrows` with no useful information.
+    ///
+    /// Used for Polonius which doesn't need this.
+    pub fn dummy(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, borrow_set: &'a BorrowSet<'tcx>) -> Self {
+        Borrows { tcx, body, borrow_set, borrows_out_of_scope_at_location: Default::default() }
     }
 
     /// Add all borrows to the kill set, if those borrows are out of scope at `location`.
@@ -563,6 +571,10 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     const NAME: &'static str = "borrows";
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
+        if !self.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled() {
+            return DenseBitSet::new_empty(0);
+        }
+
         // bottom = nothing is reserved or activated yet;
         DenseBitSet::new_empty(self.borrow_set.len())
     }
@@ -578,6 +590,10 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
         _statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
+        if !self.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled() {
+            return;
+        }
+
         self.kill_loans_out_of_scope_at_location(state, location);
     }
 
@@ -587,6 +603,10 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
         stmt: &mir::Statement<'tcx>,
         location: Location,
     ) {
+        if !self.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled() {
+            return;
+        }
+
         match &stmt.kind {
             mir::StatementKind::Assign(box (lhs, rhs)) => {
                 if let mir::Rvalue::Ref(_, _, place) = rhs {
@@ -636,6 +656,10 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
+        if !self.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled() {
+            return;
+        }
+
         self.kill_loans_out_of_scope_at_location(state, location);
     }
 
@@ -645,6 +669,10 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
         terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
+        if !self.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled() {
+            return terminator.edges();
+        }
+
         if let mir::TerminatorKind::InlineAsm { operands, .. } = &terminator.kind {
             for op in operands {
                 if let mir::InlineAsmOperand::Out { place: Some(place), .. }

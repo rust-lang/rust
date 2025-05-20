@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
@@ -42,10 +42,10 @@ pub(super) fn trace<'a, 'tcx>(
     location_map: &DenseLocationMap,
     flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
-    relevant_live_locals: Vec<Local>,
-    boring_locals: Vec<Local>,
+    relevant_live_locals: DenseBitSet<Local>,
 ) {
     let local_use_map = &LocalUseMap::build(&relevant_live_locals, location_map, typeck.body);
+    let body = typeck.body; // typeck will be mutably borrowed soon so we store the body separately.
     let cx = LivenessContext {
         typeck,
         flow_inits,
@@ -59,8 +59,10 @@ pub(super) fn trace<'a, 'tcx>(
 
     results.add_extra_drop_facts(&relevant_live_locals);
 
-    results.compute_for_all_locals(relevant_live_locals);
+    results.compute_for_all_locals(relevant_live_locals.iter());
 
+    // Boring locals are the locals that are not relevant.
+    let boring_locals = body.local_decls.indices().filter(|&l| !relevant_live_locals.contains(l));
     results.dropck_boring_locals(boring_locals);
 }
 
@@ -129,7 +131,7 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
         }
     }
 
-    fn compute_for_all_locals(&mut self, relevant_live_locals: Vec<Local>) {
+    fn compute_for_all_locals(&mut self, relevant_live_locals: impl IntoIterator<Item = Local>) {
         for local in relevant_live_locals {
             self.reset_local_state();
             self.add_defs_for(local);
@@ -159,7 +161,7 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
     /// These are all the locals which do not potentially reference a region local
     /// to this body. Locals which only reference free regions are always drop-live
     /// and can therefore safely be dropped.
-    fn dropck_boring_locals(&mut self, boring_locals: Vec<Local>) {
+    fn dropck_boring_locals(&mut self, boring_locals: impl IntoIterator<Item = Local>) {
         for local in boring_locals {
             let local_ty = self.cx.body().local_decls[local].ty;
             let local_span = self.cx.body().local_decls[local].source_info.span;
@@ -180,7 +182,7 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
     ///
     /// Add facts for all locals with free regions, since regions may outlive
     /// the function body only at certain nodes in the CFG.
-    fn add_extra_drop_facts(&mut self, relevant_live_locals: &[Local]) {
+    fn add_extra_drop_facts(&mut self, relevant_live_locals: &DenseBitSet<Local>) {
         // This collect is more necessary than immediately apparent
         // because these facts go into `add_drop_live_facts_for()`,
         // which also writes to `polonius_facts`, and so this is genuinely
@@ -192,15 +194,12 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
         // `add_drop_live_facts_for()` that make sense.
         let Some(facts) = self.cx.typeck.polonius_facts.as_ref() else { return };
         let facts_to_add: Vec<_> = {
-            let relevant_live_locals: FxIndexSet<_> =
-                relevant_live_locals.iter().copied().collect();
-
             facts
                 .var_dropped_at
                 .iter()
                 .filter_map(|&(local, location_index)| {
                     let local_ty = self.cx.body().local_decls[local].ty;
-                    if relevant_live_locals.contains(&local) || !local_ty.has_free_regions() {
+                    if relevant_live_locals.contains(local) || !local_ty.has_free_regions() {
                         return None;
                     }
 
@@ -583,15 +582,6 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
                 typeck.constraints.liveness_constraints.add_points(live_region_vid, live_at);
             },
         });
-
-        // When using `-Zpolonius=next`, we record the variance of each live region.
-        if let Some(polonius_liveness) = typeck.polonius_liveness.as_mut() {
-            polonius_liveness.record_live_region_variance(
-                typeck.infcx.tcx,
-                typeck.universal_regions,
-                value,
-            );
-        }
     }
 
     fn compute_drop_data(
