@@ -257,8 +257,8 @@ impl<'a> MetaItemParser<'a> {
     /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path
     /// - `#[allow(clippy::complexity)]`: `clippy::complexity` is a path
     /// - `#[inline]`: `inline` is a single segment path
-    pub fn path_without_args(&self) -> PathParser<'a> {
-        self.path.clone()
+    pub fn path(&self) -> &PathParser<'a> {
+        &self.path
     }
 
     /// Gets just the args parser, without caring about the path.
@@ -273,7 +273,7 @@ impl<'a> MetaItemParser<'a> {
     /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path,
     ///   and not a word and should instead be parsed using [`path`](Self::path)
     pub fn word_is(&self, sym: Symbol) -> Option<&ArgParser<'a>> {
-        self.path_without_args().word_is(sym).then(|| self.args())
+        self.path().word_is(sym).then(|| self.args())
     }
 }
 
