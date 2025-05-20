@@ -195,6 +195,11 @@ pub struct CoverageOptions {
     /// regression tests for #133606, because we don't have an easy way to
     /// reproduce it from actual source code.
     pub discard_all_spans_in_codegen: bool,
+
+    /// `-Zcoverage-options=inject-unused-local-file`: During codegen, add an
+    /// extra dummy entry to each function's local file table, to exercise the
+    /// code that checks for local file IDs with no mapping regions.
+    pub inject_unused_local_file: bool,
 }
 
 /// Controls whether branch coverage or MC/DC coverage is enabled.

@@ -7,7 +7,7 @@ use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, AllocatorKind, global_fn_name};
-use rustc_attr_parsing::OptimizeAttr;
+use rustc_attr_data_structures::OptimizeAttr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};

@@ -510,6 +510,10 @@ pub fn break_query_cycles<I: Clone + Debug>(
     registry: &rayon_core::Registry,
 ) {
     let mut wakelist = Vec::new();
+    // It is OK per the comments:
+    // - https://github.com/rust-lang/rust/pull/131200#issuecomment-2798854932
+    // - https://github.com/rust-lang/rust/pull/131200#issuecomment-2798866392
+    #[allow(rustc::potential_query_instability)]
     let mut jobs: Vec<QueryJobId> = query_map.keys().cloned().collect();
 
     let mut found_cycle = false;

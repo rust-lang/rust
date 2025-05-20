@@ -13,7 +13,6 @@ use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::{env, fs};
 
-use crate::Build;
 #[cfg(not(test))]
 use crate::builder::Builder;
 use crate::builder::Kind;
@@ -21,6 +20,7 @@ use crate::builder::Kind;
 use crate::core::build_steps::tool;
 use crate::core::config::Target;
 use crate::utils::exec::command;
+use crate::{Build, Subcommand};
 
 pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,
@@ -205,6 +205,20 @@ than building it.
     .map(|s| s.to_string())
     .collect();
 
+    // Compiler tools like `cc` and `ar` are not configured for cross-targets on certain subcommands
+    // because they are not needed.
+    //
+    // See `cc_detect::find` for more details.
+    let skip_tools_checks = build.config.dry_run()
+        || matches!(
+            build.config.cmd,
+            Subcommand::Clean { .. }
+                | Subcommand::Check { .. }
+                | Subcommand::Suggest { .. }
+                | Subcommand::Format { .. }
+                | Subcommand::Setup { .. }
+        );
+
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
     for target in &build.targets {
@@ -278,7 +292,7 @@ than building it.
             }
         }
 
-        if !build.config.dry_run() {
+        if !skip_tools_checks {
             cmd_finder.must_have(build.cc(*target));
             if let Some(ar) = build.ar(*target) {
                 cmd_finder.must_have(ar);
@@ -286,7 +300,7 @@ than building it.
         }
     }
 
-    if !build.config.dry_run() {
+    if !skip_tools_checks {
         for host in &build.hosts {
             cmd_finder.must_have(build.cxx(*host).unwrap());
 
