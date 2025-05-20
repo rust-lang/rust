@@ -230,7 +230,6 @@ struct DropNode {
 struct DropNodeKey {
     next: DropIdx,
     local: Local,
-    kind: DropKind,
 }
 
 impl Scope {
@@ -291,7 +290,7 @@ impl DropTree {
         let drops = &mut self.drops;
         *self
             .existing_drops_map
-            .entry(DropNodeKey { next, local: data.local, kind: data.kind })
+            .entry(DropNodeKey { next, local: data.local })
             // Create a new node, and also add its index to the map.
             .or_insert_with(|| drops.push(DropNode { data, next }))
     }
