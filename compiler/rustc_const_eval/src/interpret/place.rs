@@ -1056,9 +1056,9 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
+    static_assert_size!(MPlaceTy<'_>, 64);
     static_assert_size!(MemPlace, 48);
     static_assert_size!(MemPlaceMeta, 24);
-    static_assert_size!(MPlaceTy<'_>, 64);
     static_assert_size!(Place, 48);
     static_assert_size!(PlaceTy<'_>, 64);
     // tidy-alphabetical-end
