@@ -26,7 +26,7 @@ use crate::query::Providers;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast, fold_regions,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -735,40 +735,6 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             Ty::new_imm_ref(self, self.lifetimes.re_erased, static_ty)
         }
-    }
-
-    /// Return the set of types that should be taken into account when checking
-    /// trait bounds on a coroutine's internal state. This properly replaces
-    /// `ReErased` with new existential bound lifetimes.
-    pub fn coroutine_hidden_types(
-        self,
-        def_id: DefId,
-    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>> {
-        let coroutine_layout = self.mir_coroutine_witnesses(def_id);
-        let mut vars = vec![];
-        let bound_tys = self.mk_type_list_from_iter(
-            coroutine_layout
-                .as_ref()
-                .map_or_else(|| [].iter(), |l| l.field_tys.iter())
-                .filter(|decl| !decl.ignore_for_traits)
-                .map(|decl| {
-                    let ty = fold_regions(self, decl.ty, |re, debruijn| {
-                        assert_eq!(re, self.lifetimes.re_erased);
-                        let var = ty::BoundVar::from_usize(vars.len());
-                        vars.push(ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon));
-                        ty::Region::new_bound(
-                            self,
-                            debruijn,
-                            ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon },
-                        )
-                    });
-                    ty
-                }),
-        );
-        ty::EarlyBinder::bind(ty::Binder::bind_with_vars(
-            bound_tys,
-            self.mk_bound_variable_kinds(&vars),
-        ))
     }
 
     /// Expands the given impl trait type, stopping if the type is recursive.

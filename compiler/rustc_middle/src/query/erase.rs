@@ -6,7 +6,7 @@ use rustc_span::ErrorGuaranteed;
 
 use crate::query::CyclePlaceholder;
 use crate::ty::adjustment::CoerceUnsizedInfo;
-use crate::ty::{self, Ty};
+use crate::ty::{self, Ty, TyCtxt};
 use crate::{mir, traits};
 
 #[derive(Copy, Clone)]
@@ -205,6 +205,11 @@ impl<T: EraseType> EraseType for ty::EarlyBinder<'_, T> {
 
 impl EraseType for ty::Binder<'_, ty::FnSig<'_>> {
     type Result = [u8; size_of::<ty::Binder<'static, ty::FnSig<'static>>>()];
+}
+
+impl EraseType for ty::Binder<'_, ty::CoroutineWitnessTypes<TyCtxt<'_>>> {
+    type Result =
+        [u8; size_of::<ty::Binder<'static, ty::CoroutineWitnessTypes<TyCtxt<'static>>>>()];
 }
 
 impl EraseType for ty::Binder<'_, &'_ ty::List<Ty<'_>>> {
