@@ -2,6 +2,7 @@
 #[allow(dead_code)]
 #[allow(unused_imports)]
 #[allow(clippy::all)]
+#[path = "../../../libm/src/math/mod.rs"]
 pub(crate) mod libm_math;
 
 macro_rules! libm_intrinsics {
