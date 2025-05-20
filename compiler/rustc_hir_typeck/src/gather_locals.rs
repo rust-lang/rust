@@ -218,7 +218,12 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
             );
         }
         let old_outermost_fn_param_pat = self.outermost_fn_param_pat.take();
-        intravisit::walk_pat(self, p);
+        if let PatKind::Guard(subpat, _) = p.kind {
+            // We'll visit the guard when checking it. Don't gather its locals twice.
+            self.visit_pat(subpat);
+        } else {
+            intravisit::walk_pat(self, p);
+        }
         self.outermost_fn_param_pat = old_outermost_fn_param_pat;
     }
 
