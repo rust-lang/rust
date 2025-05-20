@@ -1,5 +1,5 @@
 warning: irrefutable `if let` guard pattern
-  --> $DIR/issue-88118-2.rs:10:25
+  --> $DIR/issue-88118-2.rs:9:25
    |
 LL |             Registry if let _ = registry.try_find_description() => { }
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

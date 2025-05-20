@@ -1,4 +1,3 @@
-#![feature(if_let_guard)]
 #![allow(unused, non_snake_case)]
 
 enum E {

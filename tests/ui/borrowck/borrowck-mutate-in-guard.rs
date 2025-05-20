@@ -1,5 +1,3 @@
-#![feature(if_let_guard)]
-
 enum Enum<'a> {
     A(&'a isize),
     B(bool),

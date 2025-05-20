@@ -2,8 +2,6 @@
 
 //@ check-pass
 
-#![feature(if_let_guard)]
-
 fn main() {
     let mut x: Option<Option<String>> = Some(Some(String::new()));
     match x {
