@@ -4,6 +4,7 @@ use std::iter;
 use std::ops::ControlFlow;
 
 use rustc_abi::{Integer, IntegerType, VariantIdx};
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
 use rustc_hir::def::CtorKind;
@@ -423,18 +424,21 @@ fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> Type
 
 #[allow(non_snake_case)]
 mod CTypesVisitorStateFlags {
-    pub(super) const NO_FLAGS: u8 = 0b00000;
+    pub(super) const NO_FLAGS: u8 = 0b000000;
     /// for use in (externally-linked) static variables
-    pub(super) const STATIC: u8 = 0b00001;
+    pub(super) const STATIC: u8 = 0b000001;
     /// for use in functions in general
-    pub(super) const FUNC: u8 = 0b00010;
+    pub(super) const FUNC: u8 = 0b000010;
     /// for variables in function returns (implicitly: not for static variables)
-    pub(super) const FN_RETURN: u8 = 0b00100;
-    /// for variables in functions which are defined in rust (implicitly: not for static variables)
-    pub(super) const FN_DEFINED: u8 = 0b01000;
-    /// for time where we are only defining the type of something
+    pub(super) const FN_RETURN: u8 = 0b000100;
+    /// for variables in functions/variables which are defined in rust
+    pub(super) const DEFINED: u8 = 0b001000;
+    /// for times where we are only defining the type of something
     /// (struct/enum/union definitions, FnPtrs)
-    pub(super) const THEORETICAL: u8 = 0b10000;
+    pub(super) const THEORETICAL: u8 = 0b010000;
+    /// if we are looking at an interface where the value can be set by the non-rust side
+    /// (important for e.g. nonzero assumptions)
+    pub(super) const FOREIGN_VALUES: u8 = 0b100000;
 }
 
 #[repr(u8)]
@@ -442,14 +446,21 @@ mod CTypesVisitorStateFlags {
 enum CTypesVisitorState {
     None = CTypesVisitorStateFlags::NO_FLAGS,
     // uses bitflags from CTypesVisitorStateFlags
-    StaticTy = CTypesVisitorStateFlags::STATIC,
-    ExportedStaticTy = CTypesVisitorStateFlags::STATIC | CTypesVisitorStateFlags::FN_DEFINED,
-    ArgumentTyInDefinition = CTypesVisitorStateFlags::FUNC | CTypesVisitorStateFlags::FN_DEFINED,
+    StaticTy = CTypesVisitorStateFlags::STATIC | CTypesVisitorStateFlags::FOREIGN_VALUES,
+    ExportedStaticTy = CTypesVisitorStateFlags::STATIC | CTypesVisitorStateFlags::DEFINED,
+    ExportedStaticMutTy = CTypesVisitorStateFlags::STATIC
+        | CTypesVisitorStateFlags::DEFINED
+        | CTypesVisitorStateFlags::FOREIGN_VALUES,
+    ArgumentTyInDefinition = CTypesVisitorStateFlags::FUNC
+        | CTypesVisitorStateFlags::DEFINED
+        | CTypesVisitorStateFlags::FOREIGN_VALUES,
     ReturnTyInDefinition = CTypesVisitorStateFlags::FUNC
         | CTypesVisitorStateFlags::FN_RETURN
-        | CTypesVisitorStateFlags::FN_DEFINED,
+        | CTypesVisitorStateFlags::DEFINED,
     ArgumentTyInDeclaration = CTypesVisitorStateFlags::FUNC,
-    ReturnTyInDeclaration = CTypesVisitorStateFlags::FUNC | CTypesVisitorStateFlags::FN_RETURN,
+    ReturnTyInDeclaration = CTypesVisitorStateFlags::FUNC
+        | CTypesVisitorStateFlags::FN_RETURN
+        | CTypesVisitorStateFlags::FOREIGN_VALUES,
     ArgumentTyInFnPtr = CTypesVisitorStateFlags::FUNC | CTypesVisitorStateFlags::THEORETICAL,
     ReturnTyInFnPtr = CTypesVisitorStateFlags::FUNC
         | CTypesVisitorStateFlags::THEORETICAL
@@ -490,58 +501,35 @@ impl CTypesVisitorState {
     /// to be treated as an opaque type on the other side of the FFI boundary
     fn is_in_defined_function(self) -> bool {
         use CTypesVisitorStateFlags::*;
-        let ret = ((self as u8) & FN_DEFINED) != 0;
-        #[cfg(debug_assertions)]
-        if ret {
-            assert!(self.is_in_function());
-        }
-        ret
-    }
-    /// whether we the type is used (directly or not) in a function pointer type
-    fn is_in_fn_ptr(self) -> bool {
-        use CTypesVisitorStateFlags::*;
-        ((self as u8) & THEORETICAL) != 0 && self.is_in_function()
+        ((self as u8) & DEFINED) != 0 && self.is_in_function()
     }
 
     /// whether we can expect type parameters and co in a given type
     fn can_expect_ty_params(self) -> bool {
         use CTypesVisitorStateFlags::*;
-        // rust-defined functions, as well as FnPtrs and ADT definitions
-        if ((self as u8) & THEORETICAL) != 0 {
-            true
-        } else {
-            ((self as u8) & FN_DEFINED) != 0 && ((self as u8) & STATIC) == 0
-        }
+        // rust-defined functions, as well as FnPtrs
+        ((self as u8) & THEORETICAL) != 0 || self.is_in_defined_function()
     }
 
     /// whether the value for that type might come from the non-rust side of a FFI boundary
     /// this is particularly useful for non-raw pointers, since rust assume they are non-null
     fn value_may_be_unchecked(self) -> bool {
-        if self.is_in_static() {
-            // FIXME: this is evidently untrue for non-mut static variables
-            // (assuming the cross-FFI code respects this)
-            true
-        } else if self.is_in_defined_function() {
-            // function definitions are assumed to be maybe-not-rust-caller, rust-callee
-            !self.is_in_function_return()
-        } else if self.is_in_fn_ptr() {
-            // 4 cases for function pointers:
-            // - rust caller, rust callee: everything comes from rust
-            // - non-rust-caller, non-rust callee: declaring invariants that are not valid
-            //   is suboptimal, but ultimately not our problem
-            // - non-rust-caller, rust callee: there will be a function declaration somewhere,
-            //   let's assume it will raise the appropriate warning in our stead
-            // - rust caller, non-rust callee: it's possible that the function is a callback,
-            //   not something from a pre-declared API.
-            // so, in theory, we need to care about the function return being possibly non-rust-controlled.
-            // sadly, we need to ignore this because making pointers out of rust-defined functions
-            // would force to systematically cast or overwrap their return types...
-            // FIXME: is there anything better we can do here?
-            false
-        } else {
-            // function declarations are assumed to be rust-caller, non-rust-callee
-            self.is_in_function_return()
-        }
+        // function definitions are assumed to be maybe-not-rust-caller, rust-callee
+        // function declarations are assumed to be rust-caller, non-rust-callee
+        // 4 cases for function pointers:
+        // - rust caller, rust callee: everything comes from rust
+        // - non-rust-caller, non-rust callee: declaring invariants that are not valid
+        //   is suboptimal, but ultimately not our problem
+        // - non-rust-caller, rust callee: there will be a function declaration somewhere,
+        //   let's assume it will raise the appropriate warning in our stead
+        // - rust caller, non-rust callee: it's possible that the function is a callback,
+        //   not something from a pre-declared API.
+        // so, in theory, we need to care about the function return being possibly non-rust-controlled.
+        // sadly, we need to ignore this because making pointers out of rust-defined functions
+        // would force to systematically cast or overwrap their return types...
+        // FIXME: is there anything better we can do here?
+        use CTypesVisitorStateFlags::*;
+        ((self as u8) & FOREIGN_VALUES) != 0
     }
 }
 
@@ -1662,10 +1650,21 @@ impl ImproperCTypesLint {
     }
 
     /// Check that a `#[no_mangle]`/`#[export_name = _]` static variable is of a ffi-safe type
-    fn check_exported_static<'tcx>(&self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
+    fn check_exported_static<'tcx>(
+        &self,
+        cx: &LateContext<'tcx>,
+        id: hir::OwnerId,
+        span: Span,
+        is_mut: bool,
+    ) {
         let ty = cx.tcx.type_of(id).instantiate_identity();
         let visitor = ImproperCTypesVisitor::new(cx);
-        let ffi_res = visitor.check_for_type(CTypesVisitorState::ExportedStaticTy, ty);
+        let state = if is_mut {
+            CTypesVisitorState::ExportedStaticMutTy
+        } else {
+            CTypesVisitorState::ExportedStaticTy
+        };
+        let ffi_res = visitor.check_for_type(state, ty);
         self.process_ffi_result(cx, span, ffi_res, CItemKind::ExportedStatic);
     }
 
@@ -1852,11 +1851,15 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
                     cx.tcx.type_of(item.owner_id).instantiate_identity(),
                 );
 
-                if matches!(item.kind, hir::ItemKind::Static(..))
+                if let hir::ItemKind::Static(_, _, is_mut, _) = item.kind
                     && (cx.tcx.has_attr(item.owner_id, sym::no_mangle)
                         || cx.tcx.has_attr(item.owner_id, sym::export_name))
                 {
-                    self.check_exported_static(cx, item.owner_id, ty.span);
+                    let is_mut = match is_mut {
+                        Mutability::Not => false,
+                        Mutability::Mut => true,
+                    };
+                    self.check_exported_static(cx, item.owner_id, ty.span, is_mut);
                 }
             }
             // See `check_fn` for declarations, `check_foreign_items` for definitions in extern blocks
