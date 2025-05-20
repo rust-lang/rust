@@ -1,5 +1,3 @@
-#![feature(if_let_guard)]
-
 fn main() {
     let a = Some("...".to_owned());
     let b = match a {

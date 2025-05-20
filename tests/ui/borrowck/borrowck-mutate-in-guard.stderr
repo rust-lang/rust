@@ -1,5 +1,5 @@
 error[E0510]: cannot assign `x` in match guard
-  --> $DIR/borrowck-mutate-in-guard.rs:12:25
+  --> $DIR/borrowck-mutate-in-guard.rs:10:25
    |
 LL |     match x {
    |           - value is immutable in match guard
@@ -7,7 +7,7 @@ LL |         Enum::A(_) if { x = Enum::B(false); false } => 1,
    |                         ^^^^^^^^^^^^^^^^^^ cannot assign
 
 error[E0510]: cannot mutably borrow `x` in match guard
-  --> $DIR/borrowck-mutate-in-guard.rs:14:33
+  --> $DIR/borrowck-mutate-in-guard.rs:12:33
    |
 LL |     match x {
    |           - value is immutable in match guard
@@ -16,7 +16,7 @@ LL |         Enum::A(_) if { let y = &mut x; *y = Enum::B(false); false } => 1,
    |                                 ^^^^^^ cannot mutably borrow
 
 error[E0510]: cannot assign `x` in match guard
-  --> $DIR/borrowck-mutate-in-guard.rs:25:40
+  --> $DIR/borrowck-mutate-in-guard.rs:23:40
    |
 LL |     match x {
    |           - value is immutable in match guard
@@ -24,7 +24,7 @@ LL |         Enum::A(_) if let Some(()) = { x = Enum::B(false); None } => 1,
    |                                        ^^^^^^^^^^^^^^^^^^ cannot assign
 
 error[E0510]: cannot mutably borrow `x` in match guard
-  --> $DIR/borrowck-mutate-in-guard.rs:27:48
+  --> $DIR/borrowck-mutate-in-guard.rs:25:48
    |
 LL |     match x {
    |           - value is immutable in match guard

@@ -7,7 +7,6 @@
 
 // See `mir_drop_order.rs` for more information
 
-#![feature(if_let_guard)]
 #![allow(irrefutable_let_patterns)]
 
 use std::cell::RefCell;

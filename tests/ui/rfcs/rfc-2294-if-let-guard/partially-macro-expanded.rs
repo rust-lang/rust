@@ -1,8 +1,6 @@
 // Macros can be used for (parts of) the pattern and expression in an if let guard
 //@ check-pass
 
-#![feature(if_let_guard)]
-
 macro_rules! m {
     (pattern $i:ident) => { Some($i) };
     (expression $e:expr) => { $e };
