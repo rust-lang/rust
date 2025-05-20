@@ -72,7 +72,7 @@ impl<G: graph::DirectedGraph> BalancedFlowGraph<G> {
         // Next, find all nodes that are currently not reverse-reachable from
         // `sink_edge_nodes`, and add them to the set as well.
         dfs.complete_search();
-        sink_edge_nodes.union_not(dfs.visited_set());
+        sink_edge_nodes.union_not(dfs.visited_set(), graph.num_nodes());
 
         // The sink node is 1 higher than the highest real node.
         let sink = G::Node::new(graph.num_nodes());

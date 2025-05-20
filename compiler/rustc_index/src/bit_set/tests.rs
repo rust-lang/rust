@@ -1,9 +1,583 @@
+use std::collections::BTreeSet;
+use std::hash::{BuildHasher, BuildHasherDefault, DefaultHasher};
+use std::hint::black_box;
+use std::ops::{Range, RangeBounds, RangeInclusive};
+
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use test::Bencher;
+
 use super::*;
+use crate::IndexVec;
 
 extern crate test;
-use std::hint::black_box;
 
-use test::Bencher;
+/// A very simple pseudo random generator using linear xorshift.
+///
+/// [See Wikipedia](https://en.wikipedia.org/wiki/Xorshift). This has 64-bit state and a period
+/// of `2^64 - 1`.
+struct Rng(u64);
+
+impl Rng {
+    fn new(seed: u64) -> Self {
+        Rng(seed)
+    }
+
+    fn next(&mut self) -> usize {
+        self.0 ^= self.0 << 7;
+        self.0 ^= self.0 >> 9;
+        self.0 as usize
+    }
+
+    fn next_bool(&mut self) -> bool {
+        self.next() % 2 == 0
+    }
+
+    /// Sample a range, a subset of `0..=max`.
+    ///
+    /// The purpose of this method is to make edge cases such as `0..=max` more common.
+    fn sample_range(&mut self, max: usize) -> RangeInclusive<usize> {
+        let start = match self.next() % 3 {
+            0 => 0,
+            1 => max,
+            2 => self.next() % (max + 1),
+            _ => unreachable!(),
+        };
+        let end = match self.next() % 3 {
+            0 => 0,
+            1 => max,
+            2 => self.next() % (max + 1),
+            _ => unreachable!(),
+        };
+        RangeInclusive::new(start, end)
+    }
+}
+
+#[derive(Default)]
+struct EncoderLittleEndian {
+    bytes: Vec<u8>,
+}
+
+impl Encoder for EncoderLittleEndian {
+    fn emit_usize(&mut self, v: usize) {
+        self.bytes.extend(v.to_le_bytes());
+    }
+    fn emit_u8(&mut self, v: u8) {
+        self.bytes.extend(v.to_le_bytes());
+    }
+    fn emit_u16(&mut self, v: u16) {
+        self.bytes.extend(v.to_le_bytes());
+    }
+    fn emit_u32(&mut self, v: u32) {
+        self.bytes.extend(v.to_le_bytes());
+    }
+    fn emit_u64(&mut self, v: u64) {
+        self.bytes.extend(v.to_le_bytes());
+    }
+    fn emit_u128(&mut self, v: u128) {
+        self.bytes.extend(v.to_le_bytes());
+    }
+    fn emit_isize(&mut self, v: isize) {
+        self.bytes.extend(v.to_le_bytes());
+    }
+    fn emit_i8(&mut self, v: i8) {
+        self.bytes.extend(v.to_le_bytes());
+    }
+    fn emit_i16(&mut self, v: i16) {
+        self.bytes.extend(v.to_le_bytes());
+    }
+    fn emit_i32(&mut self, v: i32) {
+        self.bytes.extend(v.to_le_bytes());
+    }
+    fn emit_i64(&mut self, v: i64) {
+        self.bytes.extend(v.to_le_bytes());
+    }
+    fn emit_i128(&mut self, v: i128) {
+        self.bytes.extend(v.to_le_bytes());
+    }
+    fn emit_raw_bytes(&mut self, v: &[u8]) {
+        self.bytes.extend(v);
+    }
+}
+
+struct DecoderLittleEndian<'a> {
+    bytes: &'a [u8],
+    /// Remember the original `bytes.len()` so we can calculate how many bytes we've read.
+    original_len: usize,
+}
+
+impl<'a> DecoderLittleEndian<'a> {
+    fn new(bytes: &'a [u8]) -> Self {
+        Self { bytes, original_len: bytes.len() }
+    }
+}
+
+impl<'a> Decoder for DecoderLittleEndian<'a> {
+    fn read_usize(&mut self) -> usize {
+        let (int_bytes, rest) = self.bytes.split_at(size_of::<usize>());
+        self.bytes = rest;
+        usize::from_le_bytes(int_bytes.try_into().unwrap())
+    }
+    fn read_u128(&mut self) -> u128 {
+        let (int_bytes, rest) = self.bytes.split_at(size_of::<u128>());
+        self.bytes = rest;
+        u128::from_le_bytes(int_bytes.try_into().unwrap())
+    }
+    fn read_u64(&mut self) -> u64 {
+        let (int_bytes, rest) = self.bytes.split_at(size_of::<u64>());
+        self.bytes = rest;
+        u64::from_le_bytes(int_bytes.try_into().unwrap())
+    }
+    fn read_u32(&mut self) -> u32 {
+        let (int_bytes, rest) = self.bytes.split_at(size_of::<u32>());
+        self.bytes = rest;
+        u32::from_le_bytes(int_bytes.try_into().unwrap())
+    }
+    fn read_u16(&mut self) -> u16 {
+        let (int_bytes, rest) = self.bytes.split_at(size_of::<u16>());
+        self.bytes = rest;
+        u16::from_le_bytes(int_bytes.try_into().unwrap())
+    }
+    fn read_u8(&mut self) -> u8 {
+        let (int_bytes, rest) = self.bytes.split_at(size_of::<u8>());
+        self.bytes = rest;
+        u8::from_le_bytes(int_bytes.try_into().unwrap())
+    }
+    fn read_isize(&mut self) -> isize {
+        let (int_bytes, rest) = self.bytes.split_at(size_of::<isize>());
+        self.bytes = rest;
+        isize::from_le_bytes(int_bytes.try_into().unwrap())
+    }
+    fn read_i128(&mut self) -> i128 {
+        let (int_bytes, rest) = self.bytes.split_at(size_of::<i128>());
+        self.bytes = rest;
+        i128::from_le_bytes(int_bytes.try_into().unwrap())
+    }
+    fn read_i64(&mut self) -> i64 {
+        let (int_bytes, rest) = self.bytes.split_at(size_of::<i64>());
+        self.bytes = rest;
+        i64::from_le_bytes(int_bytes.try_into().unwrap())
+    }
+    fn read_i32(&mut self) -> i32 {
+        let (int_bytes, rest) = self.bytes.split_at(size_of::<i32>());
+        self.bytes = rest;
+        i32::from_le_bytes(int_bytes.try_into().unwrap())
+    }
+    fn read_i16(&mut self) -> i16 {
+        let (int_bytes, rest) = self.bytes.split_at(size_of::<i16>());
+        self.bytes = rest;
+        i16::from_le_bytes(int_bytes.try_into().unwrap())
+    }
+    fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
+        let (bytes, rest) = self.bytes.split_at(len);
+        self.bytes = rest;
+        bytes
+    }
+    fn peek_byte(&self) -> u8 {
+        self.bytes[0]
+    }
+    fn position(&self) -> usize {
+        self.original_len - self.bytes.len()
+    }
+}
+
+fn test_with_domain_size(domain_size: usize) {
+    const TEST_ITERATIONS: u32 = 512;
+
+    let mut set_1 = DenseBitSet::<usize>::new_empty(domain_size);
+    let mut set_1_reference = IndexVec::<usize, bool>::from_elem_n(false, domain_size);
+    let mut set_2 = DenseBitSet::<usize>::new_empty(domain_size);
+    let mut set_2_reference = IndexVec::<usize, bool>::from_elem_n(false, domain_size);
+
+    let hasher = BuildHasherDefault::<DefaultHasher>::new();
+
+    let mut encoder = EncoderLittleEndian::default();
+
+    let mut rng = Rng::new(42);
+
+    for _ in 0..TEST_ITERATIONS {
+        // Make a random operation.
+        match rng.next() % 100 {
+            0..20 => {
+                // Insert in one of the sets.
+                if domain_size == 0 {
+                    continue;
+                }
+                let elem = rng.next() % domain_size;
+                // Choose set to insert into.
+                if rng.next_bool() {
+                    assert_eq!(!set_1.contains(elem), set_1.insert(elem));
+                    set_1_reference[elem] = true;
+                } else {
+                    assert_eq!(!set_2.contains(elem), set_2.insert(elem));
+                    set_2_reference[elem] = true;
+                }
+            }
+            20..40 => {
+                // Insert a range in one of the sets.
+                if domain_size == 0 {
+                    continue;
+                }
+
+                let range = rng.sample_range(domain_size - 1);
+                // Choose set to insert into.
+                if rng.next_bool() {
+                    set_1.insert_range_inclusive(range.clone());
+                    for i in range {
+                        set_1_reference[i] = true;
+                    }
+                } else {
+                    set_2.insert_range_inclusive(range.clone());
+                    for i in range {
+                        set_2_reference[i] = true;
+                    }
+                }
+            }
+            40..50 => {
+                // Test insert_all().
+                if rng.next_bool() {
+                    set_1.insert_all(domain_size);
+                    for x in set_1_reference.iter_mut() {
+                        *x = true;
+                    }
+                } else {
+                    set_2.insert_all(domain_size);
+                    for x in set_2_reference.iter_mut() {
+                        *x = true;
+                    }
+                }
+            }
+            50..70 => {
+                // Remove from one of the sets.
+                if domain_size == 0 {
+                    continue;
+                }
+                let elem = rng.next() % domain_size;
+                // Choose set to remove into.
+                if rng.next_bool() {
+                    assert_eq!(set_1.contains(elem), set_1.remove(elem),);
+                    set_1_reference[elem] = false;
+                } else {
+                    assert_eq!(set_2.contains(elem), set_2.remove(elem),);
+                    set_2_reference[elem] = false;
+                }
+            }
+            70..76 => {
+                // Union
+                let old_set_1 = set_1.clone();
+                let changed = set_1.union(&set_2);
+                assert_eq!(changed, old_set_1 != set_1);
+
+                // Adjust the reference sets.
+                for (x, val) in set_2_reference.iter_enumerated() {
+                    set_1_reference[x] |= val;
+                }
+            }
+            76..82 => {
+                // Intersection
+                let old_set_1 = set_1.clone();
+                let changed = set_1.intersect(&set_2);
+                assert_eq!(changed, old_set_1 != set_1);
+
+                // Adjust the reference sets.
+                for (x, val) in set_2_reference.iter_enumerated() {
+                    set_1_reference[x] &= val;
+                }
+            }
+            82..88 => {
+                // Subtraction
+                let old_set_1 = set_1.clone();
+                let changed = set_1.subtract(&set_2);
+                assert_eq!(changed, old_set_1 != set_1);
+
+                // Adjust the reference sets.
+                for (x, val) in set_2_reference.iter_enumerated() {
+                    set_1_reference[x] &= !val;
+                }
+            }
+            88..94 => {
+                // Union_not
+                set_1.union_not(&set_2, domain_size);
+
+                // Adjust the reference sets.
+                for (x, val) in set_2_reference.iter_enumerated() {
+                    set_1_reference[x] |= !val;
+                }
+            }
+            94..97 => {
+                // Clear
+                if rng.next_bool() {
+                    set_1.clear();
+                    for x in set_1_reference.iter_mut() {
+                        *x = false;
+                    }
+                } else {
+                    set_2.clear();
+                    for x in set_2_reference.iter_mut() {
+                        *x = false;
+                    }
+                }
+            }
+            97..100 => {
+                // Test new_filled().
+                if rng.next_bool() {
+                    set_1 = DenseBitSet::new_filled(domain_size);
+                    for x in set_1_reference.iter_mut() {
+                        *x = true;
+                    }
+                } else {
+                    set_2 = DenseBitSet::new_filled(domain_size);
+                    for x in set_2_reference.iter_mut() {
+                        *x = true;
+                    }
+                }
+            }
+            _ => unreachable!(),
+        }
+
+        // Check the contains function.
+        for i in 0..domain_size {
+            assert_eq!(set_1.contains(i), set_1_reference[i]);
+            assert_eq!(set_2.contains(i), set_2_reference[i]);
+        }
+
+        // Check iter function.
+        assert!(
+            set_1.iter().eq(set_1_reference.iter_enumerated().filter(|&(_, &v)| v).map(|(x, _)| x))
+        );
+        assert!(
+            set_2.iter().eq(set_2_reference.iter_enumerated().filter(|&(_, &v)| v).map(|(x, _)| x))
+        );
+
+        // Check the superset relation.
+        assert_eq!(set_1.superset(&set_2), set_2.iter().all(|x| set_1.contains(x)));
+
+        // Check the `==` operator.
+        assert_eq!(set_1 == set_2, set_1_reference == set_2_reference);
+
+        // Check the `hash()` function.
+        // If the `set_1` and `set_2` are equal, then their hashes must also be equal.
+        if set_1 == set_2 {
+            assert_eq!(hasher.hash_one(&set_1), hasher.hash_one(&set_2));
+        }
+
+        // Check the count function.
+        assert_eq!(set_1.count(), set_1_reference.iter().filter(|&&x| x).count());
+        assert_eq!(set_2.count(), set_2_reference.iter().filter(|&&x| x).count());
+
+        // Check `only_one_elem()`.
+        if let Some(elem) = set_1.only_one_elem() {
+            assert_eq!(set_1.count(), 1);
+            assert_eq!(elem, set_1.iter().next().unwrap());
+        } else {
+            assert_ne!(set_1.count(), 1);
+        }
+
+        // Check `last_set_in()`.
+        if domain_size > 0 {
+            let range = rng.sample_range(domain_size - 1);
+            assert_eq!(
+                set_1.last_set_in(range.clone()),
+                range.clone().filter(|&i| set_1.contains(i)).last()
+            );
+            assert_eq!(
+                set_2.last_set_in(range.clone()),
+                range.filter(|&i| set_2.contains(i)).last()
+            );
+        }
+
+        // Check `Encodable` and `Decodable` implementations.
+        if rng.next() as u32 % TEST_ITERATIONS < 128 {
+            set_1.encode(&mut encoder);
+
+            let mut decoder = DecoderLittleEndian::new(&encoder.bytes);
+            let decoded = DenseBitSet::<usize>::decode(&mut decoder);
+            assert_eq!(
+                decoder.position(),
+                encoder.bytes.len(),
+                "All bytes must be read when decoding."
+            );
+
+            assert_eq!(set_1, decoded);
+
+            encoder.bytes.clear();
+        }
+    }
+}
+
+fn test_relations_with_chunked_set(domain_size: usize) {
+    const TEST_ITERATIONS: u32 = 64;
+
+    let mut dense_set = DenseBitSet::<usize>::new_empty(domain_size);
+    let mut chunked_set = ChunkedBitSet::new_empty(domain_size);
+
+    let mut rng = Rng::new(42);
+
+    for _ in 0..TEST_ITERATIONS {
+        // Make a random operation.
+        match rng.next() % 10 {
+            0..3 => {
+                // Insert in one of the sets.
+                if domain_size == 0 {
+                    continue;
+                }
+                let elem = rng.next() % domain_size;
+                // Choose set to insert into.
+                if rng.next_bool() {
+                    dense_set.insert(elem);
+                } else {
+                    chunked_set.insert(elem);
+                }
+            }
+            3..6 => {
+                // Remove from one of the sets.
+                if domain_size == 0 {
+                    continue;
+                }
+                let elem = rng.next() % domain_size;
+                // Choose set to remove into.
+                if rng.next_bool() {
+                    dense_set.remove(elem);
+                } else {
+                    chunked_set.remove(elem);
+                }
+            }
+            6 => {
+                // Clear
+                if rng.next_bool() {
+                    dense_set.clear();
+                } else {
+                    chunked_set.clear();
+                }
+            }
+            7 => {
+                // Fill.
+                if rng.next_bool() {
+                    dense_set.insert_all(domain_size);
+                } else {
+                    chunked_set.insert_all();
+                }
+            }
+            8 => {
+                // Union
+                let old_dense_set = dense_set.clone();
+                let changed = dense_set.union(&chunked_set);
+                assert_eq!(old_dense_set != dense_set, changed);
+                assert!(dense_set.superset(&old_dense_set));
+                assert!(chunked_set.iter().all(|x| dense_set.contains(x)));
+
+                // Check that all the added elements come from `chunked_set`.
+                let mut difference = dense_set.clone();
+                difference.subtract(&old_dense_set);
+                assert!(difference.iter().all(|x| chunked_set.contains(x)));
+            }
+            9 => {
+                // Intersection
+                let old_dense_set = dense_set.clone();
+                let changed = dense_set.intersect(&chunked_set);
+                assert_eq!(old_dense_set != dense_set, changed);
+                assert!(old_dense_set.superset(&dense_set));
+                assert!(dense_set.iter().all(|x| chunked_set.contains(x)));
+
+                // Check that no of the removed elements comes from `chunked_set`.
+                let mut difference = old_dense_set; // Just renaming.
+                difference.subtract(&dense_set);
+                assert!(difference.iter().all(|x| !chunked_set.contains(x)));
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[test]
+fn test_dense_bit_set() {
+    assert_eq!(
+        size_of::<DenseBitSet<usize>>(),
+        size_of::<Word>(),
+        "DenseBitSet should have the same size as a Word"
+    );
+
+    test_with_domain_size(0);
+    test_with_domain_size(1);
+    test_with_domain_size(63);
+    test_with_domain_size(64);
+    test_with_domain_size(65);
+    test_with_domain_size(127);
+    test_with_domain_size(128);
+    test_with_domain_size(129);
+
+    test_relations_with_chunked_set(0);
+    test_relations_with_chunked_set(1);
+    test_relations_with_chunked_set(CHUNK_BITS - 1);
+    test_relations_with_chunked_set(CHUNK_BITS);
+    test_relations_with_chunked_set(CHUNK_BITS + 2);
+    test_relations_with_chunked_set(3 * CHUNK_BITS - 2);
+    test_relations_with_chunked_set(3 * CHUNK_BITS);
+    test_relations_with_chunked_set(3 * CHUNK_BITS + 1);
+}
+
+#[test]
+fn test_growable_bit_set() {
+    const TEST_ITERATIONS: u32 = 512;
+    const MAX_ELEMS: usize = 314;
+
+    let mut set = GrowableBitSet::<usize>::new_empty();
+    let mut reference_set = BTreeSet::<usize>::new();
+
+    let mut rng = Rng::new(42);
+
+    for _ in 0..TEST_ITERATIONS {
+        match rng.next() % 100 {
+            0..30 => {
+                // Insert an element in the `0..=(DenseBitSet::INLINE_CAPACITY + 2)` range.
+                let elem = rng.next() % (DenseBitSet::<usize>::INLINE_CAPACITY + 3);
+                set.insert(elem);
+                reference_set.insert(elem);
+            }
+            30..50 => {
+                // Insert an element in the `0..MAX_ELEMS` range.
+                let elem = rng.next() % MAX_ELEMS;
+                set.insert(elem);
+                reference_set.insert(elem);
+            }
+            50..70 => {
+                // Remove an existing element.
+                let len = set.len();
+                if len == 0 {
+                    continue;
+                }
+                let elem = set.iter().nth(rng.next() % len).unwrap();
+                set.remove(elem);
+                reference_set.remove(&elem);
+            }
+            70..90 => {
+                // Remove an arbitrary element in the `0..MAX_ELEMS` range.
+                let elem = rng.next() % MAX_ELEMS;
+                set.remove(elem);
+                reference_set.remove(&elem);
+            }
+            90..100 => {
+                // Make sure the `with_capacity()` function works.
+                let capacity = rng.next() % MAX_ELEMS;
+                set = GrowableBitSet::with_capacity(capacity);
+                reference_set.clear();
+            }
+            _ => unreachable!(),
+        }
+
+        // Check the `is_empty()` function.
+        assert_eq!(set.is_empty(), reference_set.is_empty());
+
+        // Check the `iter` function.
+        assert!(set.iter().eq(reference_set.iter().copied()));
+
+        // Check the contains function with a 20 % probability.
+        if rng.next() % 5 == 0 {
+            for x in 0..MAX_ELEMS {
+                assert_eq!(set.contains(x), reference_set.contains(&x));
+            }
+        }
+    }
+}
 
 #[test]
 fn test_new_filled() {
@@ -50,11 +624,11 @@ fn bitset_clone_from() {
 
     let mut b = DenseBitSet::new_empty(2);
     b.clone_from(&a);
-    assert_eq!(b.domain_size(), 10);
+    assert!(b.capacity() >= 10);
     assert_eq!(b.iter().collect::<Vec<_>>(), [4, 7, 9]);
 
     b.clone_from(&DenseBitSet::new_empty(40));
-    assert_eq!(b.domain_size(), 40);
+    assert!(b.capacity() >= 40);
     assert_eq!(b.iter().collect::<Vec<_>>(), []);
 }
 
@@ -91,7 +665,7 @@ fn union_not() {
     b.insert(81); // Already in `a`.
     b.insert(90);
 
-    a.union_not(&b);
+    a.union_not(&b, 100);
 
     // After union-not, `a` should contain all values in the domain, except for
     // the ones that are in `b` and were _not_ already in `a`.
@@ -600,10 +1174,7 @@ fn sparse_matrix_operations() {
 #[test]
 fn dense_insert_range() {
     #[track_caller]
-    fn check<R>(domain: usize, range: R)
-    where
-        R: RangeBounds<usize> + Clone + IntoIterator<Item = usize> + std::fmt::Debug,
-    {
+    fn check_range(domain: usize, range: Range<usize>) {
         let mut set = DenseBitSet::new_empty(domain);
         set.insert_range(range.clone());
         for i in set.iter() {
@@ -613,32 +1184,45 @@ fn dense_insert_range() {
             assert!(set.contains(i), "{} in {:?}, inserted {:?}", i, set, range);
         }
     }
-    check(300, 10..10);
-    check(300, WORD_BITS..WORD_BITS * 2);
-    check(300, WORD_BITS - 1..WORD_BITS * 2);
-    check(300, WORD_BITS - 1..WORD_BITS);
-    check(300, 10..100);
-    check(300, 10..30);
-    check(300, 0..5);
-    check(300, 0..250);
-    check(300, 200..250);
 
-    check(300, 10..=10);
-    check(300, WORD_BITS..=WORD_BITS * 2);
-    check(300, WORD_BITS - 1..=WORD_BITS * 2);
-    check(300, WORD_BITS - 1..=WORD_BITS);
-    check(300, 10..=100);
-    check(300, 10..=30);
-    check(300, 0..=5);
-    check(300, 0..=250);
-    check(300, 200..=250);
+    #[track_caller]
+    fn check_range_inclusive(domain: usize, range: RangeInclusive<usize>) {
+        let mut set = DenseBitSet::new_empty(domain);
+        set.insert_range_inclusive(range.clone());
+        for i in set.iter() {
+            assert!(range.contains(&i));
+        }
+        for i in range.clone() {
+            assert!(set.contains(i), "{} in {:?}, inserted {:?}", i, set, range);
+        }
+    }
+
+    check_range(300, 10..10);
+    check_range(300, WORD_BITS..WORD_BITS * 2);
+    check_range(300, WORD_BITS - 1..WORD_BITS * 2);
+    check_range(300, WORD_BITS - 1..WORD_BITS);
+    check_range(300, 10..100);
+    check_range(300, 10..30);
+    check_range(300, 0..5);
+    check_range(300, 0..250);
+    check_range(300, 200..250);
+
+    check_range_inclusive(300, 10..=10);
+    check_range_inclusive(300, WORD_BITS..=WORD_BITS * 2);
+    check_range_inclusive(300, WORD_BITS - 1..=WORD_BITS * 2);
+    check_range_inclusive(300, WORD_BITS - 1..=WORD_BITS);
+    check_range_inclusive(300, 10..=100);
+    check_range_inclusive(300, 10..=30);
+    check_range_inclusive(300, 0..=5);
+    check_range_inclusive(300, 0..=250);
+    check_range_inclusive(300, 200..=250);
 
     for i in 0..WORD_BITS * 2 {
         for j in i..WORD_BITS * 2 {
-            check(WORD_BITS * 2, i..j);
-            check(WORD_BITS * 2, i..=j);
-            check(300, i..j);
-            check(300, i..=j);
+            check_range(WORD_BITS * 2, i..j);
+            check_range_inclusive(WORD_BITS * 2, i..=j);
+            check_range(300, i..j);
+            check_range_inclusive(300, i..=j);
         }
     }
 }
@@ -656,7 +1240,7 @@ fn dense_last_set_before() {
     }
 
     #[track_caller]
-    fn cmp(set: &DenseBitSet<usize>, needle: impl RangeBounds<usize> + Clone + std::fmt::Debug) {
+    fn cmp(set: &DenseBitSet<usize>, needle: RangeInclusive<usize>) {
         assert_eq!(
             set.last_set_in(needle.clone()),
             easy(set, needle.clone()),
@@ -672,20 +1256,18 @@ fn dense_last_set_before() {
     set.insert(WORD_BITS - 1);
     cmp(&set, 0..=WORD_BITS - 1);
     cmp(&set, 0..=5);
-    cmp(&set, 10..100);
+    cmp(&set, 10..=99);
     set.insert(100);
-    cmp(&set, 100..110);
-    cmp(&set, 99..100);
+    cmp(&set, 100..=119);
+    cmp(&set, 99..=99);
     cmp(&set, 99..=100);
 
     for i in 0..=WORD_BITS * 2 {
         for j in i..=WORD_BITS * 2 {
             for k in 0..WORD_BITS * 2 {
                 let mut set = DenseBitSet::new_empty(300);
-                cmp(&set, i..j);
                 cmp(&set, i..=j);
                 set.insert(k);
-                cmp(&set, i..j);
                 cmp(&set, i..=j);
             }
         }
