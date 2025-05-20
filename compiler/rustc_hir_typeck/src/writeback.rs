@@ -9,17 +9,21 @@
 //! which creates a new `TypeckResults` which doesn't contain any inference variables.
 
 use std::mem;
+use std::ops::ControlFlow;
 
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::ExtendUnord;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{E0720, ErrorGuaranteed};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, InferKind, Visitor};
 use rustc_hir::{self as hir, AmbigArg, HirId};
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::{
-    self, DefiningScopeKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, fold_regions,
+    self, DefiningScopeKind, OpaqueHiddenType, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    fold_regions,
 };
 use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
@@ -595,6 +599,35 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 entry.span = prev.span.substitute_dummy(hidden_type.span);
             }
         }
+
+        let recursive_opaques: Vec<_> = self
+            .typeck_results
+            .concrete_opaque_types
+            .iter()
+            .filter(|&(&def_id, hidden_ty)| {
+                hidden_ty
+                    .ty
+                    .visit_with(&mut HasRecursiveOpaque {
+                        def_id,
+                        seen: Default::default(),
+                        opaques: &self.typeck_results.concrete_opaque_types,
+                        tcx,
+                    })
+                    .is_break()
+            })
+            .map(|(def_id, hidden_ty)| (*def_id, hidden_ty.span))
+            .collect();
+        for (def_id, span) in recursive_opaques {
+            let guar = self
+                .fcx
+                .dcx()
+                .struct_span_err(span, "cannot resolve opaque type")
+                .with_code(E0720)
+                .emit();
+            self.typeck_results
+                .concrete_opaque_types
+                .insert(def_id, OpaqueHiddenType { span, ty: Ty::new_error(tcx, guar) });
+        }
     }
 
     fn visit_field_id(&mut self, hir_id: HirId) {
@@ -957,5 +990,36 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EagerlyNormalizeConsts<'tcx> {
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         self.tcx.try_normalize_erasing_regions(self.typing_env, ct).unwrap_or(ct)
+    }
+}
+
+struct HasRecursiveOpaque<'a, 'tcx> {
+    def_id: LocalDefId,
+    seen: FxHashSet<LocalDefId>,
+    opaques: &'a FxIndexMap<LocalDefId, ty::OpaqueHiddenType<'tcx>>,
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasRecursiveOpaque<'_, 'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+        if let ty::Alias(ty::Opaque, alias_ty) = *t.kind()
+            && let Some(def_id) = alias_ty.def_id.as_local()
+        {
+            if self.def_id == def_id {
+                return ControlFlow::Break(());
+            }
+
+            if self.seen.insert(def_id)
+                && let Some(hidden_ty) = self.opaques.get(&def_id)
+            {
+                ty::EarlyBinder::bind(hidden_ty.ty)
+                    .instantiate(self.tcx, alias_ty.args)
+                    .visit_with(self)?;
+            }
+        }
+
+        t.super_visit_with(self)
     }
 }
