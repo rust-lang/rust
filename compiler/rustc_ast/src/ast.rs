@@ -4064,9 +4064,9 @@ mod size_asserts {
     static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 72);
+    static_assert_size!(PatKind, 48);
     static_assert_size!(Path, 24);
     static_assert_size!(PathSegment, 24);
-    static_assert_size!(PatKind, 48);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
     static_assert_size!(Ty, 64);
