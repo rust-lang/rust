@@ -290,7 +290,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
         let mut mods = GccContext {
             context: Arc::new(SyncContext::new(new_context(tcx))),
             relocation_model: tcx.sess.relocation_model(),
-            should_combine_object_files: false,
+            lto_mode: LtoMode::None,
             temp_dir: None,
         };
 
@@ -319,12 +319,19 @@ impl ExtraBackendMethods for GccCodegenBackend {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum LtoMode {
+    None,
+    Thin,
+    Fat,
+}
+
 pub struct GccContext {
     context: Arc<SyncContext>,
     /// This field is needed in order to be able to set the flag -fPIC when necessary when doing
     /// LTO.
     relocation_model: RelocModel,
-    should_combine_object_files: bool,
+    lto_mode: LtoMode,
     // Temporary directory used by LTO. We keep it here so that it's not removed before linking.
     temp_dir: Option<TempDir>,
 }

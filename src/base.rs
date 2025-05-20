@@ -21,7 +21,7 @@ use rustc_target::spec::SymbolVisibility;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::{GccContext, LockedTargetInfo, SyncContext, gcc_util, new_context};
+use crate::{GccContext, LockedTargetInfo, LtoMode, SyncContext, gcc_util, new_context};
 
 #[cfg(feature = "master")]
 pub fn visibility_to_gcc(visibility: Visibility) -> gccjit::Visibility {
@@ -247,7 +247,7 @@ pub fn compile_codegen_unit(
             GccContext {
                 context: Arc::new(SyncContext::new(context)),
                 relocation_model: tcx.sess.relocation_model(),
-                should_combine_object_files: false,
+                lto_mode: LtoMode::None,
                 temp_dir: None,
             },
         )

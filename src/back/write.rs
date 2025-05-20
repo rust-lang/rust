@@ -10,7 +10,7 @@ use rustc_target::spec::SplitDebuginfo;
 
 use crate::base::add_pic_option;
 use crate::errors::CopyBitcode;
-use crate::{GccCodegenBackend, GccContext};
+use crate::{GccCodegenBackend, GccContext, LtoMode};
 
 pub(crate) fn codegen(
     cgcx: &CodegenContext<GccCodegenBackend>,
@@ -24,7 +24,7 @@ pub(crate) fn codegen(
     {
         let context = &module.module_llvm.context;
 
-        let should_combine_object_files = module.module_llvm.should_combine_object_files;
+        let lto_mode = module.module_llvm.lto_mode;
 
         let bc_out = cgcx.output_filenames.temp_path_for_cgu(
             OutputType::Bitcode,
@@ -124,8 +124,8 @@ pub(crate) fn codegen(
                     context.set_debug_info(true);
                     context.dump_to_file(path, true);
                 }
-                if should_combine_object_files {
-                    let fat_lto = config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full);
+                if lto_mode != LtoMode::None {
+                    let fat_lto = lto_mode == LtoMode::Fat;
                     // We need to check if we're doing LTO since this code is also used for the
                     // dummy ThinLTO implementation to combine the object files.
                     if fat_lto {
