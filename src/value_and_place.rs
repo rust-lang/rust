@@ -593,7 +593,7 @@ impl<'tcx> CPlace<'tcx> {
 
         if fx.clif_comments.enabled() {
             let inst = fx.bcx.func.layout.last_inst(fx.bcx.current_block().unwrap()).unwrap();
-            fx.add_comment(
+            fx.add_post_comment(
                 inst,
                 format!(
                     "{}: {:?}: {:?} <- {:?}: {:?}",

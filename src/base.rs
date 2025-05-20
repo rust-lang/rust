@@ -315,7 +315,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
             });
             let inst = fx.bcx.func.layout.last_inst(block).unwrap();
-            fx.add_comment(inst, terminator_head);
+            fx.add_post_comment(inst, terminator_head);
         }
 
         let source_info = bb_data.terminator().source_info;
@@ -570,7 +570,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
             if fx.clif_comments.enabled() {
                 let inst = fx.bcx.func.layout.last_inst(cur_block).unwrap();
                 with_no_trimmed_paths!({
-                    fx.add_comment(inst, format!("{:?}", stmt));
+                    fx.add_post_comment(inst, format!("{:?}", stmt));
                 });
             }
         }

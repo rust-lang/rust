@@ -185,12 +185,11 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         let sig = Signature { params, returns, call_conv: self.target_config.default_call_conv };
         let func_id = self.module.declare_function(name, Linkage::Import, &sig).unwrap();
         let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
+        let call_inst = self.bcx.ins().call(func_ref, args);
         if self.clif_comments.enabled() {
             self.add_comment(func_ref, format!("{:?}", name));
-            let inst = self.bcx.func.layout.last_inst(self.bcx.current_block().unwrap()).unwrap();
-            self.add_comment(inst, format!("lib_call {}", name));
+            self.add_comment(call_inst, format!("lib_call {}", name));
         }
-        let call_inst = self.bcx.ins().call(func_ref, args);
         let results = self.bcx.inst_results(call_inst);
         assert!(results.len() <= 2, "{}", results.len());
         results
@@ -530,7 +529,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         Some(Instance { def: InstanceKind::Virtual(_, idx), .. }) => {
             if fx.clif_comments.enabled() {
                 let nop_inst = fx.bcx.ins().nop();
-                fx.add_comment(
+                fx.add_post_comment(
                     nop_inst,
                     with_no_trimmed_paths!(format!(
                         "virtual call; self arg pass mode: {:?}",
@@ -556,7 +555,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         None => {
             if fx.clif_comments.enabled() {
                 let nop_inst = fx.bcx.ins().nop();
-                fx.add_comment(nop_inst, "indirect call");
+                fx.add_post_comment(nop_inst, "indirect call");
             }
 
             let func = func.load_scalar(fx);
@@ -586,17 +585,16 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             adjust_call_for_c_variadic(fx, &fn_abi, source_info, func_ref, &mut call_args);
         }
 
-        if fx.clif_comments.enabled() {
-            let nop_inst = fx.bcx.ins().nop();
-            with_no_trimmed_paths!(fx.add_comment(nop_inst, format!("abi: {:?}", fn_abi)));
-        }
-
         let call_inst = match func_ref {
             CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, &call_args),
             CallTarget::Indirect(sig, func_ptr) => {
                 fx.bcx.ins().call_indirect(sig, func_ptr, &call_args)
             }
         };
+
+        if fx.clif_comments.enabled() {
+            with_no_trimmed_paths!(fx.add_comment(call_inst, format!("abi: {:?}", fn_abi)));
+        }
 
         fx.bcx.func.dfg.inst_results(call_inst).iter().copied().collect::<SmallVec<[Value; 2]>>()
     });
