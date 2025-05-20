@@ -742,6 +742,12 @@ crate_def! {
     pub ClosureDef;
 }
 
+impl ClosureDef {
+    pub fn body(&self) -> Option<Body> {
+        with(|ctx| ctx.has_body(self.0).then(|| ctx.mir_body(self.0)))
+    }
+}
+
 crate_def! {
     #[derive(Serialize)]
     pub CoroutineDef;
