@@ -26,11 +26,6 @@ pub(crate) fn codegen(
 
         let should_combine_object_files = module.module_llvm.should_combine_object_files;
 
-        // NOTE: Only generate object files with GIMPLE when this environment variable is set for
-        // now because this requires a particular setup (same gcc/lto1/lto-wrapper commit as libgccjit).
-        // TODO(antoyo): remove this environment variable.
-        let fat_lto = env::var("EMBED_LTO_BITCODE").as_deref() == Ok("1");
-
         let bc_out = cgcx.output_filenames.temp_path_for_cgu(
             OutputType::Bitcode,
             &module.name,
@@ -43,80 +38,44 @@ pub(crate) fn codegen(
         );
 
         if config.bitcode_needed() {
-            if fat_lto {
+            let _timer = cgcx
+                .prof
+                .generic_activity_with_arg("GCC_module_codegen_make_bitcode", &*module.name);
+
+            // TODO(antoyo)
+            /*if let Some(bitcode_filename) = bc_out.file_name() {
+                cgcx.prof.artifact_size(
+                    "llvm_bitcode",
+                    bitcode_filename.to_string_lossy(),
+                    data.len() as u64,
+                );
+            }*/
+
+            if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
                 let _timer = cgcx
                     .prof
-                    .generic_activity_with_arg("GCC_module_codegen_make_bitcode", &*module.name);
+                    .generic_activity_with_arg("GCC_module_codegen_emit_bitcode", &*module.name);
+                context.add_command_line_option("-flto=auto");
+                context.add_command_line_option("-flto-partition=one");
+                // TODO(antoyo): remove since we don't want fat objects when it is for Bitcode only.
+                context.add_command_line_option("-ffat-lto-objects");
+                context
+                    .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
+            }
 
-                // TODO(antoyo)
-                /*if let Some(bitcode_filename) = bc_out.file_name() {
-                    cgcx.prof.artifact_size(
-                        "llvm_bitcode",
-                        bitcode_filename.to_string_lossy(),
-                        data.len() as u64,
-                    );
-                }*/
+            if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full) {
+                let _timer = cgcx
+                    .prof
+                    .generic_activity_with_arg("GCC_module_codegen_embed_bitcode", &*module.name);
+                // TODO(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
+                //embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
 
-                if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
-                    let _timer = cgcx.prof.generic_activity_with_arg(
-                        "GCC_module_codegen_emit_bitcode",
-                        &*module.name,
-                    );
-                    context.add_command_line_option("-flto=auto");
-                    context.add_command_line_option("-flto-partition=one");
-                    // TODO(antoyo): remove since we don't want fat objects when it is for Bitcode only.
-                    context.add_command_line_option("-ffat-lto-objects");
-                    context.compile_to_file(
-                        OutputKind::ObjectFile,
-                        bc_out.to_str().expect("path to str"),
-                    );
-                }
-
-                if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full) {
-                    let _timer = cgcx.prof.generic_activity_with_arg(
-                        "GCC_module_codegen_embed_bitcode",
-                        &*module.name,
-                    );
-                    // TODO(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
-                    //embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
-
-                    context.add_command_line_option("-flto=auto");
-                    context.add_command_line_option("-flto-partition=one");
-                    context.add_command_line_option("-ffat-lto-objects");
-                    // TODO(antoyo): Send -plugin/usr/lib/gcc/x86_64-pc-linux-gnu/11.1.0/liblto_plugin.so to linker (this should be done when specifying the appropriate rustc cli argument).
-                    context.compile_to_file(
-                        OutputKind::ObjectFile,
-                        bc_out.to_str().expect("path to str"),
-                    );
-                }
-            } else {
-                if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
-                    let _timer = cgcx.prof.generic_activity_with_arg(
-                        "GCC_module_codegen_emit_bitcode",
-                        &*module.name,
-                    );
-                    context.compile_to_file(
-                        OutputKind::ObjectFile,
-                        bc_out.to_str().expect("path to str"),
-                    );
-                }
-
-                if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full) {
-                    // TODO(antoyo): we might want to emit to emit an error here, saying to set the
-                    // environment variable EMBED_LTO_BITCODE.
-                    let _timer = cgcx.prof.generic_activity_with_arg(
-                        "GCC_module_codegen_embed_bitcode",
-                        &*module.name,
-                    );
-                    // TODO(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
-                    //embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
-
-                    // TODO(antoyo): Send -plugin/usr/lib/gcc/x86_64-pc-linux-gnu/11.1.0/liblto_plugin.so to linker (this should be done when specifying the appropriate rustc cli argument).
-                    context.compile_to_file(
-                        OutputKind::ObjectFile,
-                        bc_out.to_str().expect("path to str"),
-                    );
-                }
+                context.add_command_line_option("-flto=auto");
+                context.add_command_line_option("-flto-partition=one");
+                context.add_command_line_option("-ffat-lto-objects");
+                // TODO(antoyo): Send -plugin/usr/lib/gcc/x86_64-pc-linux-gnu/11.1.0/liblto_plugin.so to linker (this should be done when specifying the appropriate rustc cli argument).
+                context
+                    .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
             }
         }
 
@@ -166,6 +125,9 @@ pub(crate) fn codegen(
                     context.dump_to_file(path, true);
                 }
                 if should_combine_object_files {
+                    let fat_lto = config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full);
+                    // We need to check if we're doing LTO since this code is also used for the
+                    // dummy ThinLTO implementation to combine the object files.
                     if fat_lto {
                         context.add_command_line_option("-flto=auto");
                         context.add_command_line_option("-flto-partition=one");
