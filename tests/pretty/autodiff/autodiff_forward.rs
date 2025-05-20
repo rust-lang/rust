@@ -64,7 +64,7 @@ pub fn f9() {
 }
 
 // Make sure we can handle generics
-#[autodiff(d_square, Reverse, Duplicated, Active)]
+#[autodiff_reverse(d_square, Duplicated, Active)]
 pub fn f10<T: std::ops::Mul<Output = T> + Copy>(x: &T) -> T {
     *x * *x
 }
