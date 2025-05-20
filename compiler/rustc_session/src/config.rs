@@ -2314,7 +2314,11 @@ fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInf
             if let Some("debuginfo") = s.split('=').next() { Some(i) } else { None }
         })
         .max();
-    if max_g > max_c { DebugInfo::Full } else { cg.debuginfo }
+    let debuginfo = if max_g > max_c { DebugInfo::Full } else { cg.debuginfo };
+    match debuginfo {
+        DebugInfo::None => DebugInfo::None,
+        _ => DebugInfo::LineTablesOnly,
+    }
 }
 
 fn parse_assert_incr_state(
