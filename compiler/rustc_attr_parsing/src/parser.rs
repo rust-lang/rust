@@ -561,20 +561,6 @@ impl<'a> MetaItemListParser<'a> {
         self.len() == 0
     }
 
-    /// Asserts that every item in the list is another list starting with a word.
-    ///
-    /// See [`MetaItemParser::word`] for examples of words.
-    pub fn all_word_list<'s>(&'s self) -> Option<Vec<(Ident, &'s ArgParser<'a>)>> {
-        self.mixed().map(|i| i.meta_item()?.word()).collect()
-    }
-
-    /// Asserts that every item in the list is another list starting with a full path.
-    ///
-    /// See [`MetaItemParser::path`] for examples of paths.
-    pub fn all_path_list<'s>(&'s self) -> Option<Vec<(PathParser<'a>, &'s ArgParser<'a>)>> {
-        self.mixed().map(|i| Some(i.meta_item()?.path())).collect()
-    }
-
     /// Returns Some if the list contains only a single element.
     ///
     /// Inside the Some is the parser to parse this single element.
