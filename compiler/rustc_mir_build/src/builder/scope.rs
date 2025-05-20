@@ -1713,28 +1713,22 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
             let dropline_target = self.diverge_dropline_target(else_scope, span);
             let mut dropline_indices = IndexVec::from_elem_n(dropline_target, 1);
             for (drop_idx, drop_data) in drops.drop_nodes.iter_enumerated().skip(1) {
+                let coroutine_drop = self
+                    .scopes
+                    .coroutine_drops
+                    .add_drop(drop_data.data, dropline_indices[drop_data.next]);
                 match drop_data.data.kind {
-                    DropKind::Storage | DropKind::ForLint => {
-                        let coroutine_drop = self
-                            .scopes
-                            .coroutine_drops
-                            .add_drop(drop_data.data, dropline_indices[drop_data.next]);
-                        dropline_indices.push(coroutine_drop);
-                    }
+                    DropKind::Storage | DropKind::ForLint => {}
                     DropKind::Value => {
-                        let coroutine_drop = self
-                            .scopes
-                            .coroutine_drops
-                            .add_drop(drop_data.data, dropline_indices[drop_data.next]);
                         if self.is_async_drop(drop_data.data.local) {
                             self.scopes.coroutine_drops.add_entry_point(
                                 blocks[drop_idx].unwrap(),
                                 dropline_indices[drop_data.next],
                             );
                         }
-                        dropline_indices.push(coroutine_drop);
                     }
                 }
+                dropline_indices.push(coroutine_drop);
             }
         }
         blocks[ROOT_NODE].map(BasicBlock::unit)
