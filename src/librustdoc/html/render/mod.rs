@@ -49,7 +49,7 @@ use std::{fs, str};
 
 use askama::Template;
 use itertools::Either;
-use rustc_attr_parsing::{
+use rustc_attr_data_structures::{
     ConstStability, DeprecatedSince, Deprecation, RustcVersion, StabilityLevel, StableSince,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};

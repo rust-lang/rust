@@ -8,7 +8,7 @@ use std::sync::Arc;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, Crate, NodeId, attr};
 use rustc_ast_pretty::pprust;
-use rustc_attr_parsing::StabilityLevel;
+use rustc_attr_data_structures::StabilityLevel;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
 use rustc_expand::base::{

@@ -4,7 +4,7 @@
 //! but are not declared in one single location (unlike lang features), which means we need to
 //! collect them instead.
 
-use rustc_attr_parsing::{AttributeKind, StabilityLevel, StableSince};
+use rustc_attr_data_structures::{AttributeKind, StabilityLevel, StableSince};
 use rustc_hir::Attribute;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;

@@ -4383,7 +4383,7 @@ impl<T> [T] {
     /// assert_eq!(first_three, &['a', 'b', 'c']);
     /// ```
     ///
-    /// Splitting off the last two elements of a slice:
+    /// Splitting off a slice starting with the third element:
     ///
     /// ```
     /// let mut slice: &[_] = &['a', 'b', 'c', 'd'];
@@ -4449,7 +4449,7 @@ impl<T> [T] {
     /// assert_eq!(first_three, &mut ['a', 'b', 'c']);
     /// ```
     ///
-    /// Taking the last two elements of a slice:
+    /// Splitting off a slice starting with the third element:
     ///
     /// ```
     /// let mut slice: &mut [_] = &mut ['a', 'b', 'c', 'd'];

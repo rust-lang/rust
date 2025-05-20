@@ -1,7 +1,7 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
 use rustc_abi::{ExternAbi, FIRST_VARIANT, Size};
-use rustc_attr_parsing::InlineAttr;
+use rustc_attr_data_structures::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::LangItem;
 use rustc_index::IndexVec;

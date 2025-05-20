@@ -325,6 +325,7 @@
 #![feature(try_blocks)]
 #![feature(try_trait_v2)]
 #![feature(type_alias_impl_trait)]
+#![feature(unsigned_signed_diff)]
 // tidy-alphabetical-end
 //
 // Library features (core):
