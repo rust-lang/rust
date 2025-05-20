@@ -353,8 +353,8 @@ impl Printer<'_> {
                 let MacroCall { path, ast_id, expand_to, ctxt } = &self.tree[it];
                 let _ = writeln!(
                     self,
-                    "// AstId: {:?}, SyntaxContextId: {}, ExpandTo: {:?}",
-                    ast_id.erase().into_raw(),
+                    "// AstId: {:#?}, SyntaxContextId: {}, ExpandTo: {:?}",
+                    ast_id.erase(),
                     ctxt,
                     expand_to
                 );
@@ -377,7 +377,7 @@ impl Printer<'_> {
     }
 
     fn print_ast_id(&mut self, ast_id: ErasedFileAstId) {
-        wln!(self, "// AstId: {:?}", ast_id.into_raw());
+        wln!(self, "// AstId: {ast_id:#?}");
     }
 }
 

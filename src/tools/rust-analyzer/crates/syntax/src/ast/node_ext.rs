@@ -30,6 +30,16 @@ impl ast::Name {
     pub fn text(&self) -> TokenText<'_> {
         text_of_first_token(self.syntax())
     }
+    pub fn text_non_mutable(&self) -> &str {
+        fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
+            green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
+        }
+
+        match self.syntax().green() {
+            Cow::Borrowed(green_ref) => first_token(green_ref).text(),
+            Cow::Owned(_) => unreachable!(),
+        }
+    }
 }
 
 impl ast::NameRef {

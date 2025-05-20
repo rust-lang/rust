@@ -2,7 +2,7 @@
 use std::borrow::Borrow;
 
 use either::Either;
-use span::{AstIdNode, ErasedFileAstId, FileAstId, FileId, SyntaxContext};
+use span::{ErasedFileAstId, FileAstId, FileId, SyntaxContext};
 use syntax::{AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize};
 
 use crate::{
@@ -106,7 +106,7 @@ impl FileRange {
 /// It is stable across reparses, and can be used as salsa key/value.
 pub type AstId<N> = crate::InFile<FileAstId<N>>;
 
-impl<N: AstIdNode> AstId<N> {
+impl<N: AstNode> AstId<N> {
     pub fn to_node(&self, db: &dyn ExpandDatabase) -> N {
         self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id))
     }

@@ -26,7 +26,7 @@ pub(crate) fn run() -> io::Result<()> {
     let write_response = |msg: msg::Response| msg.write(write_json, &mut io::stdout().lock());
 
     let env = EnvSnapshot::default();
-    let srv = proc_macro_srv::ProcMacroSrv::new(&env);
+    let mut srv = proc_macro_srv::ProcMacroSrv::new(&env);
 
     let mut span_mode = SpanMode::Id;
 
@@ -78,7 +78,7 @@ pub(crate) fn run() -> io::Result<()> {
                         })
                         .map_err(msg::PanicMessage)
                     }),
-                    SpanMode::RustAnalyzer => msg::Response::ExpandMacroExtended({
+                    SpanMode::RustAnalyzer { .. } => msg::Response::ExpandMacroExtended({
                         let mut span_data_table = deserialize_span_data_index_map(&span_data_table);
 
                         let def_site = span_data_table[def_site];
@@ -122,6 +122,9 @@ pub(crate) fn run() -> io::Result<()> {
             msg::Request::ApiVersionCheck {} => msg::Response::ApiVersionCheck(CURRENT_API_VERSION),
             msg::Request::SetConfig(config) => {
                 span_mode = config.span_mode;
+                if let SpanMode::RustAnalyzer { fixup_ast_id } = span_mode {
+                    srv.set_fixup_ast_id(fixup_ast_id);
+                }
                 msg::Response::SetConfig(config)
             }
         };

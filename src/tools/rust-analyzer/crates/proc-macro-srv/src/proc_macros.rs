@@ -1,6 +1,7 @@
 //! Proc macro ABI
 
 use proc_macro::bridge;
+use span::ErasedFileAstId;
 
 use crate::{ProcMacroKind, ProcMacroSrvSpan, server_impl::TopSubtree};
 
@@ -22,6 +23,7 @@ impl ProcMacros {
         def_site: S,
         call_site: S,
         mixed_site: S,
+        fixup_ast_id: ErasedFileAstId,
     ) -> Result<TopSubtree<S>, crate::PanicMessage> {
         let parsed_body = crate::server_impl::TokenStream::with_subtree(macro_body);
 
@@ -37,7 +39,7 @@ impl ProcMacros {
                 {
                     let res = client.run(
                         &bridge::server::SameThread,
-                        S::make_server(call_site, def_site, mixed_site),
+                        S::make_server(call_site, def_site, mixed_site, fixup_ast_id),
                         parsed_body,
                         cfg!(debug_assertions),
                     );
@@ -48,7 +50,7 @@ impl ProcMacros {
                 bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
                     let res = client.run(
                         &bridge::server::SameThread,
-                        S::make_server(call_site, def_site, mixed_site),
+                        S::make_server(call_site, def_site, mixed_site, fixup_ast_id),
                         parsed_body,
                         cfg!(debug_assertions),
                     );
@@ -59,7 +61,7 @@ impl ProcMacros {
                 bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
                     let res = client.run(
                         &bridge::server::SameThread,
-                        S::make_server(call_site, def_site, mixed_site),
+                        S::make_server(call_site, def_site, mixed_site, fixup_ast_id),
                         parsed_attributes,
                         parsed_body,
                         cfg!(debug_assertions),

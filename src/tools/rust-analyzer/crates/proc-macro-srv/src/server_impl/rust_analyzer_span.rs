@@ -11,7 +11,7 @@ use std::{
 
 use intern::Symbol;
 use proc_macro::bridge::{self, server};
-use span::{FIXUP_ERASED_FILE_AST_ID_MARKER, Span};
+use span::{ErasedFileAstId, Span};
 use tt::{TextRange, TextSize};
 
 use crate::server_impl::{from_token_tree, literal_from_str, token_stream::TokenStreamBuilder};
@@ -28,6 +28,7 @@ pub struct RaSpanServer {
     pub call_site: Span,
     pub def_site: Span,
     pub mixed_site: Span,
+    pub fixup_ast_id: ErasedFileAstId,
 }
 
 impl server::Types for RaSpanServer {
@@ -181,10 +182,10 @@ impl server::Span for RaSpanServer {
     fn join(&mut self, first: Self::Span, second: Self::Span) -> Option<Self::Span> {
         // We can't modify the span range for fixup spans, those are meaningful to fixup, so just
         // prefer the non-fixup span.
-        if first.anchor.ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+        if first.anchor.ast_id == self.fixup_ast_id {
             return Some(second);
         }
-        if second.anchor.ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+        if second.anchor.ast_id == self.fixup_ast_id {
             return Some(first);
         }
         // FIXME: Once we can talk back to the client, implement a "long join" request for anchors
@@ -213,7 +214,7 @@ impl server::Span for RaSpanServer {
         end: Bound<usize>,
     ) -> Option<Self::Span> {
         // We can't modify the span range for fixup spans, those are meaningful to fixup.
-        if span.anchor.ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+        if span.anchor.ast_id == self.fixup_ast_id {
             return Some(span);
         }
         let length = span.range.len().into();
@@ -256,7 +257,7 @@ impl server::Span for RaSpanServer {
 
     fn end(&mut self, span: Self::Span) -> Self::Span {
         // We can't modify the span range for fixup spans, those are meaningful to fixup.
-        if span.anchor.ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+        if span.anchor.ast_id == self.fixup_ast_id {
             return span;
         }
         Span { range: TextRange::empty(span.range.end()), ..span }
@@ -264,7 +265,7 @@ impl server::Span for RaSpanServer {
 
     fn start(&mut self, span: Self::Span) -> Self::Span {
         // We can't modify the span range for fixup spans, those are meaningful to fixup.
-        if span.anchor.ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+        if span.anchor.ast_id == self.fixup_ast_id {
             return span;
         }
         Span { range: TextRange::empty(span.range.start()), ..span }
@@ -318,7 +319,7 @@ mod tests {
             range: TextRange::empty(TextSize::new(0)),
             anchor: span::SpanAnchor {
                 file_id: EditionedFileId::current_edition(FileId::from_raw(0)),
-                ast_id: span::ErasedFileAstId::from_raw(0),
+                ast_id: span::ROOT_ERASED_FILE_AST_ID,
             },
             ctx: SyntaxContext::root(span::Edition::CURRENT),
         };
@@ -360,7 +361,7 @@ mod tests {
             range: TextRange::empty(TextSize::new(0)),
             anchor: span::SpanAnchor {
                 file_id: EditionedFileId::current_edition(FileId::from_raw(0)),
-                ast_id: span::ErasedFileAstId::from_raw(0),
+                ast_id: span::ROOT_ERASED_FILE_AST_ID,
             },
             ctx: SyntaxContext::root(span::Edition::CURRENT),
         };

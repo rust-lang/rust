@@ -2141,26 +2141,10 @@ impl ExprCollector<'_> {
         block: ast::BlockExpr,
         mk_block: impl FnOnce(Option<BlockId>, Box<[Statement]>, Option<ExprId>) -> Expr,
     ) -> ExprId {
-        let block_has_items = {
-            let statement_has_item = block.statements().any(|stmt| match stmt {
-                ast::Stmt::Item(_) => true,
-                // Macro calls can be both items and expressions. The syntax library always treats
-                // them as expressions here, so we undo that.
-                ast::Stmt::ExprStmt(es) => matches!(es.expr(), Some(ast::Expr::MacroExpr(_))),
-                _ => false,
-            });
-            statement_has_item
-                || matches!(block.tail_expr(), Some(ast::Expr::MacroExpr(_)))
-                || (block.may_carry_attributes() && block.attrs().next().is_some())
-        };
-
-        let block_id = if block_has_items {
-            let file_local_id = self.expander.ast_id_map().ast_id(&block);
+        let block_id = self.expander.ast_id_map().ast_id_for_block(&block).map(|file_local_id| {
             let ast_id = self.expander.in_file(file_local_id);
-            Some(self.db.intern_block(BlockLoc { ast_id, module: self.module }))
-        } else {
-            None
-        };
+            self.db.intern_block(BlockLoc { ast_id, module: self.module })
+        });
 
         let (module, def_map) =
             match block_id.map(|block_id| (block_def_map(self.db, block_id), block_id)) {

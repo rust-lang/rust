@@ -8,6 +8,7 @@ use std::{
 };
 
 use paths::AbsPath;
+use span::FIXUP_ERASED_FILE_AST_ID_MARKER;
 use stdx::JodChild;
 
 use crate::{
@@ -15,8 +16,7 @@ use crate::{
     legacy_protocol::{
         json::{read_json, write_json},
         msg::{
-            CURRENT_API_VERSION, Message, RUST_ANALYZER_SPAN_SUPPORT, Request, Response,
-            ServerConfig, SpanMode,
+            CURRENT_API_VERSION, HASHED_AST_ID, Message, Request, Response, ServerConfig, SpanMode,
         },
     },
 };
@@ -71,7 +71,9 @@ impl ProcMacroServerProcess {
             Ok(v) => {
                 tracing::info!("Proc-macro server version: {v}");
                 srv.version = v;
-                if srv.version >= RUST_ANALYZER_SPAN_SUPPORT {
+                if srv.version >= HASHED_AST_ID {
+                    // We don't enable spans on versions prior to `HASHED_AST_ID`, because their ast id layout
+                    // is different.
                     if let Ok(mode) = srv.enable_rust_analyzer_spans() {
                         srv.mode = mode;
                     }
@@ -111,7 +113,11 @@ impl ProcMacroServerProcess {
 
     /// Enable support for rust-analyzer span mode if the server supports it.
     fn enable_rust_analyzer_spans(&self) -> Result<SpanMode, ServerError> {
-        let request = Request::SetConfig(ServerConfig { span_mode: SpanMode::RustAnalyzer });
+        let request = Request::SetConfig(ServerConfig {
+            span_mode: SpanMode::RustAnalyzer {
+                fixup_ast_id: FIXUP_ERASED_FILE_AST_ID_MARKER.into_raw(),
+            },
+        });
         let response = self.send_task(request)?;
 
         match response {
