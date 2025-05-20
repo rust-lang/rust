@@ -277,36 +277,13 @@ impl<'a> MetaItemParser<'a> {
     }
 
     /// Asserts that this MetaItem starts with a word, or single segment path.
-    /// Doesn't return the args parser.
-    ///
-    /// For examples. see [`Self::word`]
-    pub fn word_without_args(&self) -> Option<Ident> {
-        Some(self.word()?.0)
-    }
-
-    /// Asserts that this MetaItem starts with a word, or single segment path.
     ///
     /// Some examples:
     /// - `#[inline]`: `inline` is a word
     /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path,
     ///   and not a word and should instead be parsed using [`path`](Self::path)
-    pub fn word(&self) -> Option<(Ident, &ArgParser<'a>)> {
-        let (path, args) = self.deconstruct();
-        Some((path.word()?, args))
-    }
-
-    /// Asserts that this MetaItem starts with some specific word.
-    ///
-    /// See [`word`](Self::word) for examples of what a word is.
     pub fn word_is(&self, sym: Symbol) -> Option<&ArgParser<'a>> {
         self.path_without_args().word_is(sym).then(|| self.args())
-    }
-
-    /// Asserts that this MetaItem starts with some specific path.
-    ///
-    /// See [`word`](Self::path) for examples of what a word is.
-    pub fn path_is(&self, segments: &[Symbol]) -> Option<&ArgParser<'a>> {
-        self.path_without_args().segments_is(segments).then(|| self.args())
     }
 }
 
