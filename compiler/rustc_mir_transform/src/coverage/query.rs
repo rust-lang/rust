@@ -136,7 +136,12 @@ fn coverage_ids_info<'tcx>(
     priority_list[1..].sort_by_key(|&bcb| !bcbs_seen.contains(bcb));
 
     let node_counters = make_node_counters(&fn_cov_info.node_flow_data, &priority_list);
-    let coverage_counters = transcribe_counters(&node_counters, &bcb_needs_counter, &bcbs_seen);
+    let coverage_counters = transcribe_counters(
+        &node_counters,
+        &bcb_needs_counter,
+        &bcbs_seen,
+        fn_cov_info.priority_list.len(),
+    );
 
     let CoverageCounters {
         phys_counter_for_node, next_counter_id, node_counters, expressions, ..

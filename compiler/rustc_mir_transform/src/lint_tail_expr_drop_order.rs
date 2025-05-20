@@ -274,7 +274,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
 
         // We shall now exclude some local bindings for the following cases.
         {
-            let mut to_exclude = MixedBitSet::new_empty(all_locals_dropped.domain_size());
+            let mut to_exclude = MixedBitSet::new_empty(move_data.move_paths.len());
             // We will now do subtraction from the candidate dropped locals, because of the
             // following reasons.
             for path_idx in all_locals_dropped.iter() {

@@ -120,7 +120,7 @@ fn coroutine_saved_local_eligibility<VariantIdx: Idx, FieldIdx: Idx, LocalIdx: I
             for assignment in assignments.iter_mut() {
                 *assignment = Ineligible(None);
             }
-            ineligible_locals.insert_all();
+            ineligible_locals.insert_all(nb_locals);
         }
     }
 
