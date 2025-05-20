@@ -538,7 +538,7 @@ fn document(
     }
 
     fmt::from_fn(move |f| {
-        document_item_info(cx, item, parent).render_into(f).unwrap();
+        document_item_info(cx, item, parent).render_into(f)?;
         if parent.is_none() {
             write!(f, "{}", document_full_collapsible(item, cx, heading_offset))
         } else {
@@ -582,7 +582,7 @@ fn document_short(
     show_def_docs: bool,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| {
-        document_item_info(cx, item, Some(parent)).render_into(f).unwrap();
+        document_item_info(cx, item, Some(parent)).render_into(f)?;
         if !show_def_docs {
             return Ok(());
         }
