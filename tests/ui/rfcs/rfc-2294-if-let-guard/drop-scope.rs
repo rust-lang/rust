@@ -2,8 +2,9 @@
 // regression test for #118593
 
 //@ check-pass
-
-#![feature(if_let_guard)]
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
 fn get_temp() -> Option<String> {
     None
