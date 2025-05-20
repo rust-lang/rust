@@ -30,7 +30,7 @@ declare_clippy_lint! {
     ///     param * 2
     /// }
     /// ```
-    #[clippy::version = "1.86.0"]
+    #[clippy::version = "1.87.0"]
     pub SINGLE_OPTION_MAP,
     nursery,
     "Checks for functions with method calls to `.map(_)` on an arg of type `Option` as the outermost expression."

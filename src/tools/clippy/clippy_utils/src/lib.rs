@@ -1,9 +1,6 @@
-#![feature(array_chunks)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
-#![feature(macro_metavar_expr_concat)]
 #![feature(macro_metavar_expr)]
-#![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustc_private)]
 #![feature(assert_matches)]
@@ -97,28 +94,28 @@ use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{
-    self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, ConstContext,
-    CoroutineDesugaring, CoroutineKind, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg,
-    GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource,
-    Mutability, Node, OwnerId, OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, PrimTy, QPath,
-    Stmt, StmtKind, TraitFn, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp, def,
+    self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, CoroutineDesugaring,
+    CoroutineKind, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg, GenericArgs, HirId, Impl,
+    ImplItem, ImplItemKind, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode,
+    Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem,
+    TraitItemKind, TraitRef, TyKind, UnOp, def,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
+use rustc_middle::hir::nested_filter;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::mir::{AggregateKind, Operand, RETURN_PLACE, Rvalue, StatementKind, TerminatorKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
-use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, FloatTy, GenericArgKind, GenericArgsRef, IntTy, Ty,
-    TyCtxt, TypeFlags, TypeVisitableExt, UintTy, UpvarCapture,
+    self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, GenericArgKind, GenericArgsRef, IntTy, Ty, TyCtxt,
+    TypeFlags, TypeVisitableExt, UintTy, UpvarCapture,
 };
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
@@ -131,7 +128,6 @@ use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
 use crate::higher::Range;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
-use rustc_middle::hir::nested_filter;
 
 #[macro_export]
 macro_rules! extract_msrv_attr {
@@ -239,7 +235,7 @@ pub fn is_in_const_context(cx: &LateContext<'_>) -> bool {
 ///  * const blocks (or inline consts)
 ///  * associated constants
 pub fn is_inside_always_const_context(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
-    use ConstContext::{Const, ConstFn, Static};
+    use rustc_hir::ConstContext::{Const, ConstFn, Static};
     let Some(ctx) = tcx.hir_body_const_context(tcx.hir_enclosing_body_owner(hir_id)) else {
         return false;
     };
@@ -347,14 +343,6 @@ pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
     }
 }
 
-/// Checks if the method call given in `expr` belongs to the given trait.
-/// This is a deprecated function, consider using [`is_trait_method`].
-pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) -> bool {
-    let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
-    let trt_id = cx.tcx.trait_of_item(def_id);
-    trt_id.is_some_and(|trt_id| match_def_path(cx, trt_id, path))
-}
-
 /// Checks if the given method call expression calls an inherent method.
 pub fn is_inherent_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
@@ -438,44 +426,6 @@ pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tc
         })
 }
 
-/// THIS METHOD IS DEPRECATED. Matches a `QPath` against a slice of segment string literals.
-///
-/// This method is deprecated and will eventually be removed since it does not match against the
-/// entire path or resolved `DefId`. Prefer using `match_def_path`. Consider getting a `DefId` from
-/// `QPath::Resolved.1.res.opt_def_id()`.
-///
-/// There is also `match_path` if you are dealing with a `rustc_hir::Path` instead of a
-/// `rustc_hir::QPath`.
-///
-/// # Examples
-/// ```rust,ignore
-/// match_qpath(path, &["std", "rt", "begin_unwind"])
-/// ```
-pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
-    match *path {
-        QPath::Resolved(_, path) => match_path(path, segments),
-        QPath::TypeRelative(ty, segment) => match ty.kind {
-            TyKind::Path(ref inner_path) => {
-                if let [prefix @ .., end] = segments
-                    && match_qpath(inner_path, prefix)
-                {
-                    return segment.ident.name.as_str() == *end;
-                }
-                false
-            },
-            _ => false,
-        },
-        QPath::LangItem(..) => false,
-    }
-}
-
-/// If the expression is a path, resolves it to a `DefId` and checks if it matches the given path.
-///
-/// Please use `is_path_diagnostic_item` if the target is a diagnostic item.
-pub fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[&str]) -> bool {
-    path_def_id(cx, expr).is_some_and(|id| match_def_path(cx, id, segments))
-}
-
 /// If `maybe_path` is a path node which resolves to an item, resolves it to a `DefId` and checks if
 /// it matches the given lang item.
 pub fn is_path_lang_item<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>, lang_item: LangItem) -> bool {
@@ -490,34 +440,6 @@ pub fn is_path_diagnostic_item<'tcx>(
     diag_item: Symbol,
 ) -> bool {
     path_def_id(cx, maybe_path).is_some_and(|id| cx.tcx.is_diagnostic_item(diag_item, id))
-}
-
-/// THIS METHOD IS DEPRECATED. Matches a `Path` against a slice of segment string literals.
-///
-/// This method is deprecated and will eventually be removed since it does not match against the
-/// entire path or resolved `DefId`. Prefer using `match_def_path`. Consider getting a `DefId` from
-/// `QPath::Resolved.1.res.opt_def_id()`.
-///
-/// There is also `match_qpath` if you are dealing with a `rustc_hir::QPath` instead of a
-/// `rustc_hir::Path`.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// if match_path(&trait_ref.path, &paths::HASH) {
-///     // This is the `std::hash::Hash` trait.
-/// }
-///
-/// if match_path(ty_path, &["rustc", "lint", "Lint"]) {
-///     // This is a `rustc_middle::lint::Lint`.
-/// }
-/// ```
-pub fn match_path(path: &Path<'_>, segments: &[&str]) -> bool {
-    path.segments
-        .iter()
-        .rev()
-        .zip(segments.iter().rev())
-        .all(|(a, b)| a.ident.name.as_str() == *b)
 }
 
 /// If the expression is a path to a local, returns the canonical `HirId` of the local.
@@ -584,201 +506,6 @@ pub fn path_res<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>) -
 /// If `maybe_path` is a path node which resolves to an item, retrieves the item ID
 pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>) -> Option<DefId> {
     path_res(cx, maybe_path).opt_def_id()
-}
-
-fn find_primitive_impls<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<Item = DefId> + 'tcx {
-    let ty = match name {
-        "bool" => SimplifiedType::Bool,
-        "char" => SimplifiedType::Char,
-        "str" => SimplifiedType::Str,
-        "array" => SimplifiedType::Array,
-        "slice" => SimplifiedType::Slice,
-        // FIXME: rustdoc documents these two using just `pointer`.
-        //
-        // Maybe this is something we should do here too.
-        "const_ptr" => SimplifiedType::Ptr(Mutability::Not),
-        "mut_ptr" => SimplifiedType::Ptr(Mutability::Mut),
-        "isize" => SimplifiedType::Int(IntTy::Isize),
-        "i8" => SimplifiedType::Int(IntTy::I8),
-        "i16" => SimplifiedType::Int(IntTy::I16),
-        "i32" => SimplifiedType::Int(IntTy::I32),
-        "i64" => SimplifiedType::Int(IntTy::I64),
-        "i128" => SimplifiedType::Int(IntTy::I128),
-        "usize" => SimplifiedType::Uint(UintTy::Usize),
-        "u8" => SimplifiedType::Uint(UintTy::U8),
-        "u16" => SimplifiedType::Uint(UintTy::U16),
-        "u32" => SimplifiedType::Uint(UintTy::U32),
-        "u64" => SimplifiedType::Uint(UintTy::U64),
-        "u128" => SimplifiedType::Uint(UintTy::U128),
-        "f32" => SimplifiedType::Float(FloatTy::F32),
-        "f64" => SimplifiedType::Float(FloatTy::F64),
-        _ => {
-            return [].iter().copied();
-        },
-    };
-
-    tcx.incoherent_impls(ty).iter().copied()
-}
-
-fn non_local_item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Vec<Res> {
-    match tcx.def_kind(def_id) {
-        DefKind::Mod | DefKind::Enum | DefKind::Trait => tcx
-            .module_children(def_id)
-            .iter()
-            .filter(|item| item.ident.name == name)
-            .map(|child| child.res.expect_non_local())
-            .collect(),
-        DefKind::Impl { .. } => tcx
-            .associated_item_def_ids(def_id)
-            .iter()
-            .copied()
-            .filter(|assoc_def_id| tcx.item_name(*assoc_def_id) == name)
-            .map(|assoc_def_id| Res::Def(tcx.def_kind(assoc_def_id), assoc_def_id))
-            .collect(),
-        _ => Vec::new(),
-    }
-}
-
-fn local_item_children_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, name: Symbol) -> Vec<Res> {
-    let root_mod;
-    let item_kind = match tcx.hir_node_by_def_id(local_id) {
-        Node::Crate(r#mod) => {
-            root_mod = ItemKind::Mod(Ident::dummy(), r#mod);
-            &root_mod
-        },
-        Node::Item(item) => &item.kind,
-        _ => return Vec::new(),
-    };
-
-    let res = |ident: Ident, owner_id: OwnerId| {
-        if ident.name == name {
-            let def_id = owner_id.to_def_id();
-            Some(Res::Def(tcx.def_kind(def_id), def_id))
-        } else {
-            None
-        }
-    };
-
-    match item_kind {
-        ItemKind::Mod(_, r#mod) => r#mod
-            .item_ids
-            .iter()
-            .filter_map(|&item_id| {
-                let ident = tcx.hir_item(item_id).kind.ident()?;
-                res(ident, item_id.owner_id)
-            })
-            .collect(),
-        ItemKind::Impl(r#impl) => r#impl
-            .items
-            .iter()
-            .filter_map(|&ImplItemRef { ident, id, .. }| res(ident, id.owner_id))
-            .collect(),
-        ItemKind::Trait(.., trait_item_refs) => trait_item_refs
-            .iter()
-            .filter_map(|&TraitItemRef { ident, id, .. }| res(ident, id.owner_id))
-            .collect(),
-        _ => Vec::new(),
-    }
-}
-
-fn item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Vec<Res> {
-    if let Some(local_id) = def_id.as_local() {
-        local_item_children_by_name(tcx, local_id, name)
-    } else {
-        non_local_item_children_by_name(tcx, def_id, name)
-    }
-}
-
-/// Finds the crates called `name`, may be multiple due to multiple major versions.
-pub fn find_crates(tcx: TyCtxt<'_>, name: Symbol) -> Vec<Res> {
-    tcx.crates(())
-        .iter()
-        .copied()
-        .filter(move |&num| tcx.crate_name(num) == name)
-        .map(CrateNum::as_def_id)
-        .map(|id| Res::Def(tcx.def_kind(id), id))
-        .collect()
-}
-
-/// Resolves a def path like `std::vec::Vec`.
-///
-/// Can return multiple resolutions when there are multiple versions of the same crate, e.g.
-/// `memchr::memchr` could return the functions from both memchr 1.0 and memchr 2.0.
-///
-/// Also returns multiple results when there are multiple paths under the same name e.g. `std::vec`
-/// would have both a [`DefKind::Mod`] and [`DefKind::Macro`].
-///
-/// This function is expensive and should be used sparingly.
-pub fn def_path_res(tcx: TyCtxt<'_>, path: &[&str]) -> Vec<Res> {
-    let (base, path) = match path {
-        [primitive] => {
-            return vec![PrimTy::from_name(Symbol::intern(primitive)).map_or(Res::Err, Res::PrimTy)];
-        },
-        [base, path @ ..] => (base, path),
-        _ => return Vec::new(),
-    };
-
-    let base_sym = Symbol::intern(base);
-
-    let local_crate = if tcx.crate_name(LOCAL_CRATE) == base_sym {
-        Some(LOCAL_CRATE.as_def_id())
-    } else {
-        None
-    };
-
-    let crates = find_primitive_impls(tcx, base)
-        .chain(local_crate)
-        .map(|id| Res::Def(tcx.def_kind(id), id))
-        .chain(find_crates(tcx, base_sym))
-        .collect();
-
-    def_path_res_with_base(tcx, crates, path)
-}
-
-/// Resolves a def path like `vec::Vec` with the base `std`.
-///
-/// This is lighter than [`def_path_res`], and should be called with [`find_crates`] looking up
-/// items from the same crate repeatedly, although should still be used sparingly.
-pub fn def_path_res_with_base(tcx: TyCtxt<'_>, mut base: Vec<Res>, mut path: &[&str]) -> Vec<Res> {
-    while let [segment, rest @ ..] = path {
-        path = rest;
-        let segment = Symbol::intern(segment);
-
-        base = base
-            .into_iter()
-            .filter_map(|res| res.opt_def_id())
-            .flat_map(|def_id| {
-                // When the current def_id is e.g. `struct S`, check the impl items in
-                // `impl S { ... }`
-                let inherent_impl_children = tcx
-                    .inherent_impls(def_id)
-                    .iter()
-                    .flat_map(|&impl_def_id| item_children_by_name(tcx, impl_def_id, segment));
-
-                let direct_children = item_children_by_name(tcx, def_id, segment);
-
-                inherent_impl_children.chain(direct_children)
-            })
-            .collect();
-    }
-
-    base
-}
-
-/// Resolves a def path like `std::vec::Vec` to its [`DefId`]s, see [`def_path_res`].
-pub fn def_path_def_ids(tcx: TyCtxt<'_>, path: &[&str]) -> impl Iterator<Item = DefId> + use<> {
-    def_path_res(tcx, path).into_iter().filter_map(|res| res.opt_def_id())
-}
-
-/// Convenience function to get the `DefId` of a trait by path.
-/// It could be a trait or trait alias.
-///
-/// This function is expensive and should be used sparingly.
-pub fn get_trait_def_id(tcx: TyCtxt<'_>, path: &[&str]) -> Option<DefId> {
-    def_path_res(tcx, path).into_iter().find_map(|res| match res {
-        Res::Def(DefKind::Trait | DefKind::TraitAlias, trait_id) => Some(trait_id),
-        _ => None,
-    })
 }
 
 /// Gets the `hir::TraitRef` of the trait the given method is implemented for.
@@ -2063,24 +1790,6 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
                 sym::automatically_derived,
             )
         })
-}
-
-/// Checks if the given `DefId` matches any of the paths. Returns the index of matching path, if
-/// any.
-///
-/// Please use `tcx.get_diagnostic_name` if the targets are all diagnostic items.
-pub fn match_any_def_paths(cx: &LateContext<'_>, did: DefId, paths: &[&[&str]]) -> Option<usize> {
-    let search_path = cx.get_def_path(did);
-    paths
-        .iter()
-        .position(|p| p.iter().map(|x| Symbol::intern(x)).eq(search_path.iter().copied()))
-}
-
-/// Checks if the given `DefId` matches the path.
-pub fn match_def_path(cx: &LateContext<'_>, did: DefId, syms: &[&str]) -> bool {
-    // We should probably move to Symbols in Clippy as well rather than interning every time.
-    let path = cx.get_def_path(did);
-    syms.iter().map(|x| Symbol::intern(x)).eq(path.iter().copied())
 }
 
 /// Checks if the given `DefId` matches the `libc` item.

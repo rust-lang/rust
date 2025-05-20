@@ -1816,10 +1816,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_ptr`]: Vec::as_ptr
     /// [`as_non_null`]: Vec::as_non_null
     #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    #[rustc_const_unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
     #[inline]
-    pub fn as_non_null(&mut self) -> NonNull<T> {
-        // SAFETY: A `Vec` always has a non-null pointer.
-        unsafe { NonNull::new_unchecked(self.as_mut_ptr()) }
+    pub const fn as_non_null(&mut self) -> NonNull<T> {
+        self.buf.non_null()
     }
 
     /// Returns a reference to the underlying allocator.

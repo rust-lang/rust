@@ -459,7 +459,7 @@ fn jemalloc_magic() {
     // linking, so we need to explicitly depend on the function.
     #[cfg(target_os = "macos")]
     {
-        extern "C" {
+        unsafe extern "C" {
             fn _rjem_je_zone_register();
         }
 

@@ -47,7 +47,7 @@ fi
 # we only ensure that all assertions still pass.
 MIRIFLAGS="-Zmiri-force-intrinsic-fallback --cfg force_intrinsic_fallback -O -Zmir-opt-level=4 -Cdebug-assertions=yes" \
   MIRI_SKIP_UI_CHECKS=1 \
-  python3 "$X_PY" test --stage 2 src/tools/miri -- tests/{pass,panic}
+  python3 "$X_PY" test --stage 2 src/tools/miri -- tests/pass tests/panic
 # We natively run this script on x86_64-unknown-linux-gnu and x86_64-pc-windows-msvc.
 # Also cover some other targets via cross-testing, in particular all tier 1 targets.
 case $HOST_TARGET in

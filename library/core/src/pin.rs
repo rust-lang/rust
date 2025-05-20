@@ -12,11 +12,11 @@
 //! "pinned," in that it has been permanently (until the end of its lifespan) attached to its
 //! location in memory, as though pinned to a pinboard. Pinning a value is an incredibly useful
 //! building block for [`unsafe`] code to be able to reason about whether a raw pointer to the
-//! pinned value is still valid. [As we'll see later][drop-guarantee], this is necessarily from the
-//! time the value is first pinned until the end of its lifespan. This concept of "pinning" is
-//! necessary to implement safe interfaces on top of things like self-referential types and
-//! intrusive data structures which cannot currently be modeled in fully safe Rust using only
-//! borrow-checked [references][reference].
+//! pinned value is still valid. [As we'll see later][drop-guarantee], once a value is pinned,
+//! it is necessarily valid at its memory location until the end of its lifespan. This concept
+//! of "pinning" is necessary to implement safe interfaces on top of things like self-referential
+//! types and intrusive data structures which cannot currently be modeled in fully safe Rust using
+//! only borrow-checked [references][reference].
 //!
 //! "Pinning" allows us to put a *value* which exists at some location in memory into a state where
 //! safe code cannot *move* that value to a different location in memory or otherwise invalidate it

@@ -815,7 +815,6 @@ parse_switch_ref_box_order = switch the order of `ref` and `box`
     .suggestion = swap them
 
 parse_ternary_operator = Rust has no ternary operator
-    .help = use an `if-else` expression instead
 
 parse_tilde_is_not_unary_operator = `~` cannot be used as a unary operator
     .suggestion = use `!` to perform bitwise not
@@ -962,6 +961,8 @@ parse_use_empty_block_not_semi = expected { "`{}`" }, found `;`
 
 parse_use_eq_instead = unexpected `==`
     .suggestion = try using `=` instead
+
+parse_use_if_else = use an `if-else` expression instead
 
 parse_use_let_not_auto = write `let` instead of `auto` to introduce a new variable
 parse_use_let_not_var = write `let` instead of `var` to introduce a new variable

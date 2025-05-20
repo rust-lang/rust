@@ -16,7 +16,7 @@ mod random;
 pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
     match decode(v).1 {
         FullDecoded::Finite(decoded) => decoded,
-        full_decoded => panic!("expected finite, got {full_decoded:?} instead"),
+        full_decoded => panic!("expected finite, got {full_decoded:?} instead for {v:?}"),
     }
 }
 
@@ -73,6 +73,11 @@ macro_rules! try_fixed {
                       expected = (str::from_utf8($expected).unwrap(), $expectedk),
                       $($key = $val),*);
     })
+}
+
+#[cfg(target_has_reliable_f16)]
+fn ldexp_f16(a: f16, b: i32) -> f16 {
+    ldexp_f64(a as f64, b) as f16
 }
 
 fn ldexp_f32(a: f32, b: i32) -> f32 {
@@ -176,6 +181,13 @@ trait TestableFloat: DecodableFloat + fmt::Display {
     fn ldexpi(f: i64, exp: isize) -> Self;
 }
 
+#[cfg(target_has_reliable_f16)]
+impl TestableFloat for f16 {
+    fn ldexpi(f: i64, exp: isize) -> Self {
+        f as Self * (exp as Self).exp2()
+    }
+}
+
 impl TestableFloat for f32 {
     fn ldexpi(f: i64, exp: isize) -> Self {
         f as Self * (exp as Self).exp2()
@@ -225,6 +237,76 @@ macro_rules! check_exact_one {
 //
 // [1] Vern Paxson, A Program for Testing IEEE Decimal-Binary Conversion
 //     ftp://ftp.ee.lbl.gov/testbase-report.ps.Z
+//  or https://www.icir.org/vern/papers/testbase-report.pdf
+
+#[cfg(target_has_reliable_f16)]
+pub fn f16_shortest_sanity_test<F>(mut f: F)
+where
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
+{
+    // 0.0999145507813
+    // 0.0999755859375
+    // 0.100036621094
+    check_shortest!(f(0.1f16) => b"1", 0);
+
+    // 0.3330078125
+    // 0.333251953125 (1/3 in the default rounding)
+    // 0.33349609375
+    check_shortest!(f(1.0f16/3.0) => b"3333", 0);
+
+    // 10^1 * 0.3138671875
+    // 10^1 * 0.3140625
+    // 10^1 * 0.3142578125
+    check_shortest!(f(3.14f16) => b"314", 1);
+
+    // 10^18 * 0.31415916243714048
+    // 10^18 * 0.314159196796878848
+    // 10^18 * 0.314159231156617216
+    check_shortest!(f(3.1415e4f16) => b"3141", 5);
+
+    // regression test for decoders
+    // 10^2 * 0.31984375
+    // 10^2 * 0.32
+    // 10^2 * 0.3203125
+    check_shortest!(f(ldexp_f16(1.0, 5)) => b"32", 2);
+
+    // 10^5 * 0.65472
+    // 10^5 * 0.65504
+    // 10^5 * 0.65536
+    check_shortest!(f(f16::MAX) => b"655", 5);
+
+    // 10^-4 * 0.60975551605224609375
+    // 10^-4 * 0.6103515625
+    // 10^-4 * 0.61094760894775390625
+    check_shortest!(f(f16::MIN_POSITIVE) => b"6104", -4);
+
+    // 10^-9 * 0
+    // 10^-9 * 0.59604644775390625
+    // 10^-8 * 0.11920928955078125
+    let minf16 = ldexp_f16(1.0, -24);
+    check_shortest!(f(minf16) => b"6", -7);
+}
+
+#[cfg(target_has_reliable_f16)]
+pub fn f16_exact_sanity_test<F>(mut f: F)
+where
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
+{
+    let minf16 = ldexp_f16(1.0, -24);
+
+    check_exact!(f(0.1f16)            => b"999755859375     ", -1);
+    check_exact!(f(0.5f16)            => b"5                ", 0);
+    check_exact!(f(1.0f16/3.0)        => b"333251953125     ", 0);
+    check_exact!(f(3.141f16)          => b"3140625          ", 1);
+    check_exact!(f(3.141e4f16)        => b"31408            ", 5);
+    check_exact!(f(f16::MAX)          => b"65504            ", 5);
+    check_exact!(f(f16::MIN_POSITIVE) => b"6103515625       ", -4);
+    check_exact!(f(minf16)            => b"59604644775390625", -7);
+
+    // FIXME(f16_f128): these should gain the check_exact_one tests like `f32` and `f64` have,
+    // but these values are not easy to generate. The algorithm from the Paxon paper [1] needs
+    // to be adapted to binary16.
+}
 
 pub fn f32_shortest_sanity_test<F>(mut f: F)
 where
@@ -553,23 +635,45 @@ where
     assert_eq!(to_string(f, 1.9971e20, Minus, 1), "199710000000000000000.0");
     assert_eq!(to_string(f, 1.9971e20, Minus, 8), "199710000000000000000.00000000");
 
-    assert_eq!(to_string(f, f32::MAX, Minus, 0), format!("34028235{:0>31}", ""));
-    assert_eq!(to_string(f, f32::MAX, Minus, 1), format!("34028235{:0>31}.0", ""));
-    assert_eq!(to_string(f, f32::MAX, Minus, 8), format!("34028235{:0>31}.00000000", ""));
+    #[cfg(target_has_reliable_f16)]
+    {
+        // f16
+        assert_eq!(to_string(f, f16::MAX, Minus, 0), "65500");
+        assert_eq!(to_string(f, f16::MAX, Minus, 1), "65500.0");
+        assert_eq!(to_string(f, f16::MAX, Minus, 8), "65500.00000000");
 
-    let minf32 = ldexp_f32(1.0, -149);
-    assert_eq!(to_string(f, minf32, Minus, 0), format!("0.{:0>44}1", ""));
-    assert_eq!(to_string(f, minf32, Minus, 45), format!("0.{:0>44}1", ""));
-    assert_eq!(to_string(f, minf32, Minus, 46), format!("0.{:0>44}10", ""));
+        let minf16 = ldexp_f16(1.0, -24);
+        assert_eq!(to_string(f, minf16, Minus, 0), "0.00000006");
+        assert_eq!(to_string(f, minf16, Minus, 8), "0.00000006");
+        assert_eq!(to_string(f, minf16, Minus, 9), "0.000000060");
+    }
 
-    assert_eq!(to_string(f, f64::MAX, Minus, 0), format!("17976931348623157{:0>292}", ""));
-    assert_eq!(to_string(f, f64::MAX, Minus, 1), format!("17976931348623157{:0>292}.0", ""));
-    assert_eq!(to_string(f, f64::MAX, Minus, 8), format!("17976931348623157{:0>292}.00000000", ""));
+    {
+        // f32
+        assert_eq!(to_string(f, f32::MAX, Minus, 0), format!("34028235{:0>31}", ""));
+        assert_eq!(to_string(f, f32::MAX, Minus, 1), format!("34028235{:0>31}.0", ""));
+        assert_eq!(to_string(f, f32::MAX, Minus, 8), format!("34028235{:0>31}.00000000", ""));
 
-    let minf64 = ldexp_f64(1.0, -1074);
-    assert_eq!(to_string(f, minf64, Minus, 0), format!("0.{:0>323}5", ""));
-    assert_eq!(to_string(f, minf64, Minus, 324), format!("0.{:0>323}5", ""));
-    assert_eq!(to_string(f, minf64, Minus, 325), format!("0.{:0>323}50", ""));
+        let minf32 = ldexp_f32(1.0, -149);
+        assert_eq!(to_string(f, minf32, Minus, 0), format!("0.{:0>44}1", ""));
+        assert_eq!(to_string(f, minf32, Minus, 45), format!("0.{:0>44}1", ""));
+        assert_eq!(to_string(f, minf32, Minus, 46), format!("0.{:0>44}10", ""));
+    }
+
+    {
+        // f64
+        assert_eq!(to_string(f, f64::MAX, Minus, 0), format!("17976931348623157{:0>292}", ""));
+        assert_eq!(to_string(f, f64::MAX, Minus, 1), format!("17976931348623157{:0>292}.0", ""));
+        assert_eq!(
+            to_string(f, f64::MAX, Minus, 8),
+            format!("17976931348623157{:0>292}.00000000", "")
+        );
+
+        let minf64 = ldexp_f64(1.0, -1074);
+        assert_eq!(to_string(f, minf64, Minus, 0), format!("0.{:0>323}5", ""));
+        assert_eq!(to_string(f, minf64, Minus, 324), format!("0.{:0>323}5", ""));
+        assert_eq!(to_string(f, minf64, Minus, 325), format!("0.{:0>323}50", ""));
+    }
 
     if cfg!(miri) {
         // Miri is too slow
@@ -655,27 +759,45 @@ where
     assert_eq!(to_string(f, 1.0e23, Minus, (23, 24), false), "100000000000000000000000");
     assert_eq!(to_string(f, 1.0e23, Minus, (24, 25), false), "1e23");
 
-    assert_eq!(to_string(f, f32::MAX, Minus, (-4, 16), false), "3.4028235e38");
-    assert_eq!(to_string(f, f32::MAX, Minus, (-39, 38), false), "3.4028235e38");
-    assert_eq!(to_string(f, f32::MAX, Minus, (-38, 39), false), format!("34028235{:0>31}", ""));
+    #[cfg(target_has_reliable_f16)]
+    {
+        // f16
+        assert_eq!(to_string(f, f16::MAX, Minus, (-2, 2), false), "6.55e4");
+        assert_eq!(to_string(f, f16::MAX, Minus, (-4, 4), false), "6.55e4");
+        assert_eq!(to_string(f, f16::MAX, Minus, (-5, 5), false), "65500");
 
-    let minf32 = ldexp_f32(1.0, -149);
-    assert_eq!(to_string(f, minf32, Minus, (-4, 16), false), "1e-45");
-    assert_eq!(to_string(f, minf32, Minus, (-44, 45), false), "1e-45");
-    assert_eq!(to_string(f, minf32, Minus, (-45, 44), false), format!("0.{:0>44}1", ""));
+        let minf16 = ldexp_f16(1.0, -24);
+        assert_eq!(to_string(f, minf16, Minus, (-2, 2), false), "6e-8");
+        assert_eq!(to_string(f, minf16, Minus, (-7, 7), false), "6e-8");
+        assert_eq!(to_string(f, minf16, Minus, (-8, 8), false), "0.00000006");
+    }
 
-    assert_eq!(to_string(f, f64::MAX, Minus, (-4, 16), false), "1.7976931348623157e308");
-    assert_eq!(
-        to_string(f, f64::MAX, Minus, (-308, 309), false),
-        format!("17976931348623157{:0>292}", "")
-    );
-    assert_eq!(to_string(f, f64::MAX, Minus, (-309, 308), false), "1.7976931348623157e308");
+    {
+        // f32
+        assert_eq!(to_string(f, f32::MAX, Minus, (-4, 16), false), "3.4028235e38");
+        assert_eq!(to_string(f, f32::MAX, Minus, (-39, 38), false), "3.4028235e38");
+        assert_eq!(to_string(f, f32::MAX, Minus, (-38, 39), false), format!("34028235{:0>31}", ""));
 
-    let minf64 = ldexp_f64(1.0, -1074);
-    assert_eq!(to_string(f, minf64, Minus, (-4, 16), false), "5e-324");
-    assert_eq!(to_string(f, minf64, Minus, (-324, 323), false), format!("0.{:0>323}5", ""));
-    assert_eq!(to_string(f, minf64, Minus, (-323, 324), false), "5e-324");
+        let minf32 = ldexp_f32(1.0, -149);
+        assert_eq!(to_string(f, minf32, Minus, (-4, 16), false), "1e-45");
+        assert_eq!(to_string(f, minf32, Minus, (-44, 45), false), "1e-45");
+        assert_eq!(to_string(f, minf32, Minus, (-45, 44), false), format!("0.{:0>44}1", ""));
+    }
 
+    {
+        // f64
+        assert_eq!(to_string(f, f64::MAX, Minus, (-4, 16), false), "1.7976931348623157e308");
+        assert_eq!(
+            to_string(f, f64::MAX, Minus, (-308, 309), false),
+            format!("17976931348623157{:0>292}", "")
+        );
+        assert_eq!(to_string(f, f64::MAX, Minus, (-309, 308), false), "1.7976931348623157e308");
+
+        let minf64 = ldexp_f64(1.0, -1074);
+        assert_eq!(to_string(f, minf64, Minus, (-4, 16), false), "5e-324");
+        assert_eq!(to_string(f, minf64, Minus, (-324, 323), false), format!("0.{:0>323}5", ""));
+        assert_eq!(to_string(f, minf64, Minus, (-323, 324), false), "5e-324");
+    }
     assert_eq!(to_string(f, 1.1, Minus, (i16::MIN, i16::MAX), false), "1.1");
 }
 
@@ -790,6 +912,26 @@ where
         to_string(f, 1.0e-6, Minus, 70, false),
         "9.999999999999999547481118258862586856139387236908078193664550781250000e-7"
     );
+
+    #[cfg(target_has_reliable_f16)]
+    {
+        assert_eq!(to_string(f, f16::MAX, Minus, 1, false), "7e4");
+        assert_eq!(to_string(f, f16::MAX, Minus, 2, false), "6.6e4");
+        assert_eq!(to_string(f, f16::MAX, Minus, 4, false), "6.550e4");
+        assert_eq!(to_string(f, f16::MAX, Minus, 5, false), "6.5504e4");
+        assert_eq!(to_string(f, f16::MAX, Minus, 6, false), "6.55040e4");
+        assert_eq!(to_string(f, f16::MAX, Minus, 16, false), "6.550400000000000e4");
+
+        let minf16 = ldexp_f16(1.0, -24);
+        assert_eq!(to_string(f, minf16, Minus, 1, false), "6e-8");
+        assert_eq!(to_string(f, minf16, Minus, 2, false), "6.0e-8");
+        assert_eq!(to_string(f, minf16, Minus, 4, false), "5.960e-8");
+        assert_eq!(to_string(f, minf16, Minus, 8, false), "5.9604645e-8");
+        assert_eq!(to_string(f, minf16, Minus, 16, false), "5.960464477539062e-8");
+        assert_eq!(to_string(f, minf16, Minus, 17, false), "5.9604644775390625e-8");
+        assert_eq!(to_string(f, minf16, Minus, 18, false), "5.96046447753906250e-8");
+        assert_eq!(to_string(f, minf16, Minus, 24, false), "5.96046447753906250000000e-8");
+    }
 
     assert_eq!(to_string(f, f32::MAX, Minus, 1, false), "3e38");
     assert_eq!(to_string(f, f32::MAX, Minus, 2, false), "3.4e38");
@@ -1069,6 +1211,13 @@ where
         "0.000000999999999999999954748111825886258685613938723690807819366455078125000"
     );
 
+    #[cfg(target_has_reliable_f16)]
+    {
+        assert_eq!(to_string(f, f16::MAX, Minus, 0), "65504");
+        assert_eq!(to_string(f, f16::MAX, Minus, 1), "65504.0");
+        assert_eq!(to_string(f, f16::MAX, Minus, 2), "65504.00");
+    }
+
     assert_eq!(to_string(f, f32::MAX, Minus, 0), "340282346638528859811704183484516925440");
     assert_eq!(to_string(f, f32::MAX, Minus, 1), "340282346638528859811704183484516925440.0");
     assert_eq!(to_string(f, f32::MAX, Minus, 2), "340282346638528859811704183484516925440.00");
@@ -1076,6 +1225,21 @@ where
     if cfg!(miri) {
         // Miri is too slow
         return;
+    }
+
+    #[cfg(target_has_reliable_f16)]
+    {
+        let minf16 = ldexp_f16(1.0, -24);
+        assert_eq!(to_string(f, minf16, Minus, 0), "0");
+        assert_eq!(to_string(f, minf16, Minus, 1), "0.0");
+        assert_eq!(to_string(f, minf16, Minus, 2), "0.00");
+        assert_eq!(to_string(f, minf16, Minus, 4), "0.0000");
+        assert_eq!(to_string(f, minf16, Minus, 8), "0.00000006");
+        assert_eq!(to_string(f, minf16, Minus, 10), "0.0000000596");
+        assert_eq!(to_string(f, minf16, Minus, 15), "0.000000059604645");
+        assert_eq!(to_string(f, minf16, Minus, 20), "0.00000005960464477539");
+        assert_eq!(to_string(f, minf16, Minus, 24), "0.000000059604644775390625");
+        assert_eq!(to_string(f, minf16, Minus, 32), "0.00000005960464477539062500000000");
     }
 
     let minf32 = ldexp_f32(1.0, -149);

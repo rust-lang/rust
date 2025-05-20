@@ -157,6 +157,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
+#[allow(clippy::let_and_return)]
 fn declare_raw_fn<'gcc>(
     cx: &CodegenCx<'gcc, '_>,
     name: &str,

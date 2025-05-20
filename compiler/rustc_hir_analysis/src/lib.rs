@@ -194,17 +194,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         let _: R = tcx.ensure_ok().crate_inherent_impls_overlap_check(());
     });
 
-    if tcx.features().rustc_attrs() {
-        tcx.sess.time("dumping_rustc_attr_data", || {
-            outlives::dump::inferred_outlives(tcx);
-            variance::dump::variances(tcx);
-            collect::dump::opaque_hidden_types(tcx);
-            collect::dump::predicates_and_item_bounds(tcx);
-            collect::dump::def_parents(tcx);
-            collect::dump::vtables(tcx);
-        });
-    }
-
     // Make sure we evaluate all static and (non-associated) const items, even if unused.
     // If any of these fail to evaluate, we do not want this crate to pass compilation.
     tcx.par_hir_body_owners(|item_def_id| {
@@ -227,6 +216,17 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             tcx.ensure_ok().typeck(item_def_id);
         }
     });
+
+    if tcx.features().rustc_attrs() {
+        tcx.sess.time("dumping_rustc_attr_data", || {
+            outlives::dump::inferred_outlives(tcx);
+            variance::dump::variances(tcx);
+            collect::dump::opaque_hidden_types(tcx);
+            collect::dump::predicates_and_item_bounds(tcx);
+            collect::dump::def_parents(tcx);
+            collect::dump::vtables(tcx);
+        });
+    }
 
     tcx.ensure_ok().check_unused_traits(());
 }

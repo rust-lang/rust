@@ -585,6 +585,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     errors::SuggestBoxing::AsyncBody
                 }
+                _ if let Node::ExprField(expr_field) = self.tcx.parent_hir_node(hir_id)
+                    && expr_field.is_shorthand =>
+                {
+                    errors::SuggestBoxing::ExprFieldShorthand {
+                        start: span.shrink_to_lo(),
+                        end: span.shrink_to_hi(),
+                        ident: expr_field.ident,
+                    }
+                }
                 _ => errors::SuggestBoxing::Other {
                     start: span.shrink_to_lo(),
                     end: span.shrink_to_hi(),
@@ -2034,6 +2043,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let sugg = match self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr) {
+            Some(_) if expr.span.from_expansion() => return false,
             Some(ident) => format!(": {ident}{sugg}"),
             None => sugg.to_string(),
         };

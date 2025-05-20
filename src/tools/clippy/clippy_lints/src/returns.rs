@@ -5,7 +5,7 @@ use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
     binary_expr_needs_parentheses, fn_def_id, is_from_proc_macro, is_inside_let_else, is_res_lang_ctor,
     leaks_droppable_temporary_with_limited_lifetime, path_res, path_to_local_id, span_contains_cfg,
-    span_find_starting_semi,
+    span_find_starting_semi, sym,
 };
 use core::ops::ControlFlow;
 use rustc_ast::MetaItemInner;
@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, Pos, Span, sym};
+use rustc_span::{BytePos, Pos, Span};
 use std::borrow::Cow;
 use std::fmt::Display;
 
@@ -411,8 +411,8 @@ fn check_final_expr<'tcx>(
                         && let [tool, lint_name] = meta_item.path.segments.as_slice()
                         && tool.ident.name == sym::clippy
                         && matches!(
-                            lint_name.ident.name.as_str(),
-                            "needless_return" | "style" | "all" | "warnings"
+                            lint_name.ident.name,
+                            sym::needless_return | sym::style | sym::all | sym::warnings
                         )
                     {
                         // This is an expectation of the `needless_return` lint
