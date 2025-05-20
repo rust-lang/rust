@@ -1,5 +1,3 @@
-#![feature(if_let_guard)]
-
 struct A { a: Box<i32> }
 
 fn if_guard(n: i32) {

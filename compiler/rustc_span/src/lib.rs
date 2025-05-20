@@ -17,12 +17,12 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
 #![feature(cfg_select)]
 #![feature(core_io_borrowed_buf)]
-#![feature(if_let_guard)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
