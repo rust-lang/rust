@@ -867,7 +867,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(unnecessary_box_returns::UnnecessaryBoxReturns::new(conf)));
     store.register_late_pass(move |_| Box::new(lines_filter_map_ok::LinesFilterMapOk::new(conf)));
     store.register_late_pass(|_| Box::new(tests_outside_test_module::TestsOutsideTestModule));
-    store.register_late_pass(|_| Box::new(manual_slice_size_calculation::ManualSliceSizeCalculation));
+    store.register_late_pass(|_| Box::new(manual_slice_size_calculation::ManualSliceSizeCalculation::new(conf)));
     store.register_early_pass(move || Box::new(excessive_nesting::ExcessiveNesting::new(conf)));
     store.register_late_pass(|_| Box::new(items_after_test_module::ItemsAfterTestModule));
     store.register_early_pass(|| Box::new(ref_patterns::RefPatterns));
