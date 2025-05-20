@@ -253,7 +253,11 @@ impl<'a> MetaItemParser<'a> {
         }
     }
 
-    /// Gets just the path, without the args.
+    /// Gets just the path, without the args. Some examples:
+    ///
+    /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path
+    /// - `#[allow(clippy::complexity)]`: `clippy::complexity` is a path
+    /// - `#[inline]`: `inline` is a single segment path
     pub fn path_without_args(&self) -> PathParser<'a> {
         self.path.clone()
     }
@@ -261,19 +265,6 @@ impl<'a> MetaItemParser<'a> {
     /// Gets just the args parser, without caring about the path.
     pub fn args(&self) -> &ArgParser<'a> {
         &self.args
-    }
-
-    pub fn deconstruct(&self) -> (PathParser<'a>, &ArgParser<'a>) {
-        (self.path_without_args(), self.args())
-    }
-
-    /// Asserts that this MetaItem starts with a path. Some examples:
-    ///
-    /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path
-    /// - `#[allow(clippy::complexity)]`: `clippy::complexity` is a path
-    /// - `#[inline]`: `inline` is a single segment path
-    pub fn path(&self) -> (PathParser<'a>, &ArgParser<'a>) {
-        self.deconstruct()
     }
 
     /// Asserts that this MetaItem starts with a word, or single segment path.
