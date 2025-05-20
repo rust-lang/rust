@@ -887,6 +887,7 @@ message = "Some changes occurred in HTML/CSS/JS."
 cc = [
     "@GuillaumeGomez",
     "@jsha",
+    "@lolbinarycat",
 ]
 
 [mentions."tests/rustdoc-gui/"]
