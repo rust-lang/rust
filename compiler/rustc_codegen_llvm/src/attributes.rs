@@ -368,6 +368,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         (inline, _) => inline,
     };
     if cx.tcx.has_inline_always_override(instance) {
+        eprintln!("Applying override");
         to_add.extend(inline_attr(cx, InlineAttr::Always));
     } else {
         to_add.extend(inline_attr(cx, inline));

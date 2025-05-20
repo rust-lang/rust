@@ -3401,7 +3401,7 @@ impl<'tcx> TyCtxt<'tcx> {
             return false;
         };
         let symbol_name = self.symbol_name(instance).name;
-        overrides.iter().any(|o| o == symbol_name)
+        overrides.iter().any(|o| symbol_name.starts_with(o))
     }
 }
 
