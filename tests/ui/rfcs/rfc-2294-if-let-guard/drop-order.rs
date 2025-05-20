@@ -3,8 +3,10 @@
 // For let guards temporaries live until the end of the arm.
 
 //@ run-pass
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
-#![feature(if_let_guard)]
 #![allow(irrefutable_let_patterns)]
 
 use std::sync::Mutex;
@@ -49,11 +51,7 @@ fn main() {
     if_guard(2);
     if_let_guard(1);
     if_let_guard(2);
-    let expected =  [
-        1, 2, !2, 3, !3, !1,
-        1, 2, !2, 3, !3, !1,
-        1, 2, 3, !3, !2, !1,
-        1, 2, 3, !3, !2, !1,
-    ];
+    let expected =
+        [1, 2, !2, 3, !3, !1, 1, 2, !2, 3, !3, !1, 1, 2, 3, !3, !2, !1, 1, 2, 3, !3, !2, !1];
     assert_eq!(*A.lock().unwrap(), expected);
 }

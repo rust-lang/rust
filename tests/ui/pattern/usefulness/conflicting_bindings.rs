@@ -1,4 +1,4 @@
-#![feature(if_let_guard, let_chains)]
+#![feature(let_chains)]
 
 fn main() {
     let mut x = Some(String::new());

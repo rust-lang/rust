@@ -2,10 +2,11 @@
 // Regression test for #116079.
 
 //@ build-pass
-//@ edition:2018
+//@revisions: edition2021 edition2024 edition2018
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
+//@[edition2018] edition:2018
 // -Zvalidate-mir
-
-#![feature(if_let_guard)]
 
 static mut A: [i32; 5] = [1, 2, 3, 4, 5];
 

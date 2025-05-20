@@ -95,6 +95,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
 #![feature(bigint_helper_methods)]
@@ -143,6 +144,7 @@
 #![feature(cfg_ub_checks)]
 #![feature(const_precise_live_drops)]
 #![feature(const_trait_impl)]
+#![feature(core_float_math)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
@@ -154,7 +156,6 @@
 #![feature(freeze_impls)]
 #![feature(fundamental)]
 #![feature(generic_arg_infer)]
-#![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
@@ -181,6 +182,7 @@
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
 #![feature(unboxed_closures)]
+#![feature(unsigned_signed_diff)]
 #![feature(unsized_fn_params)]
 #![feature(with_negative_coherence)]
 // tidy-alphabetical-end
