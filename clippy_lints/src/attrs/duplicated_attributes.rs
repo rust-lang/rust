@@ -1,9 +1,10 @@
 use super::DUPLICATED_ATTRIBUTES;
 use clippy_utils::diagnostics::span_lint_and_then;
+use itertools::Itertools;
 use rustc_ast::{Attribute, MetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::EarlyContext;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 use std::collections::hash_map::Entry;
 
 fn emit_if_duplicated(
@@ -29,7 +30,7 @@ fn check_duplicated_attr(
     cx: &EarlyContext<'_>,
     attr: &MetaItem,
     attr_paths: &mut FxHashMap<String, Span>,
-    parent: &mut Vec<String>,
+    parent: &mut Vec<Symbol>,
 ) {
     if attr.span.from_expansion() {
         return;
@@ -43,7 +44,7 @@ fn check_duplicated_attr(
         return;
     }
     if let Some(direct_parent) = parent.last()
-        && direct_parent == sym::cfg_trace.as_str()
+        && *direct_parent == sym::cfg_trace
         && [sym::all, sym::not, sym::any].contains(&name)
     {
         // FIXME: We don't correctly check `cfg`s for now, so if it's more complex than just a one
@@ -51,9 +52,14 @@ fn check_duplicated_attr(
         return;
     }
     if let Some(value) = attr.value_str() {
-        emit_if_duplicated(cx, attr, attr_paths, format!("{}:{name}={value}", parent.join(":")));
+        emit_if_duplicated(
+            cx,
+            attr,
+            attr_paths,
+            format!("{}:{name}={value}", parent.iter().join(":")),
+        );
     } else if let Some(sub_attrs) = attr.meta_item_list() {
-        parent.push(name.as_str().to_string());
+        parent.push(name);
         for sub_attr in sub_attrs {
             if let Some(meta) = sub_attr.meta_item() {
                 check_duplicated_attr(cx, meta, attr_paths, parent);
@@ -61,7 +67,7 @@ fn check_duplicated_attr(
         }
         parent.pop();
     } else {
-        emit_if_duplicated(cx, attr, attr_paths, format!("{}:{name}", parent.join(":")));
+        emit_if_duplicated(cx, attr, attr_paths, format!("{}:{name}", parent.iter().join(":")));
     }
 }
 
