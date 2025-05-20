@@ -70,7 +70,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         }
     }
 
-    pub(super) fn lower_node(&mut self, def_id: LocalDefId) -> hir::MaybeOwner<'hir> {
+    pub(super) fn lower_node(&mut self, def_id: LocalDefId) {
         let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
         if let hir::MaybeOwner::Phantom = owner {
             let node = self.ast_index[def_id];
@@ -82,8 +82,6 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
                 AstOwner::ForeignItem(item) => self.lower_foreign_item(item),
             }
         }
-
-        self.owners[def_id]
     }
 
     #[instrument(level = "debug", skip(self, c))]
