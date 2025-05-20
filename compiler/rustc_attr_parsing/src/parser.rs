@@ -548,7 +548,7 @@ impl<'a> MetaItemListParser<'a> {
     }
 
     /// Lets you pick and choose as what you want to parse each element in the list
-    pub fn mixed<'s>(&'s self) -> impl Iterator<Item = &'s MetaItemOrLitParser<'a>> + 's {
+    pub fn mixed(&self) -> impl Iterator<Item = &MetaItemOrLitParser<'a>> {
         self.sub_parsers.iter()
     }
 
