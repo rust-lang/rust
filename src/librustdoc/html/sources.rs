@@ -252,7 +252,8 @@ impl SourceCollector<'_, '_> {
                     &root_path,
                     &highlight::DecorationInfo::default(),
                     &source_context,
-                );
+                )
+                .unwrap();
             }),
             &shared.style_files,
         );
@@ -331,7 +332,7 @@ pub(crate) fn print_src(
     root_path: &str,
     decoration_info: &highlight::DecorationInfo,
     source_context: &SourceContext<'_>,
-) {
+) -> fmt::Result {
     let mut lines = s.lines().count();
     let line_info = if let SourceContext::Embedded(info) = source_context {
         highlight::LineInfo::new_scraped(lines as u32, info.offset as u32)
@@ -367,12 +368,10 @@ pub(crate) fn print_src(
             },
             max_nb_digits,
         }
-        .render_into(&mut writer)
-        .unwrap(),
+        .render_into(&mut writer),
         SourceContext::Embedded(info) => {
-            ScrapedSource { info, code_html: code, max_nb_digits }
-                .render_into(&mut writer)
-                .unwrap();
+            ScrapedSource { info, code_html: code, max_nb_digits }.render_into(&mut writer)
         }
-    };
+    }?;
+    Ok(())
 }

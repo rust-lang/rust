@@ -251,7 +251,7 @@ impl<'tcx> Context<'tcx> {
                 &self.shared.layout,
                 &page,
                 BufDisplay(|buf: &mut String| {
-                    print_sidebar(self, it, buf);
+                    print_sidebar(self, it, buf).unwrap();
                 }),
                 content,
                 &self.shared.style_files,
