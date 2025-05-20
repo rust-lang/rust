@@ -318,15 +318,20 @@ where
                 bug!();
             };
             let obj_ptr_ty = Ty::new_mut_ptr(tcx, drop_ty);
-            let obj_ptr_place = Place::from(self.new_temp(obj_ptr_ty));
             let unwrap_ty = adt_def.non_enum_variant().fields[FieldIdx::ZERO].ty(tcx, adt_args);
-            let addr = Rvalue::RawPtr(
-                RawPtrKind::Mut,
-                pin_obj_place.project_deeper(
-                    &[ProjectionElem::Field(FieldIdx::ZERO, unwrap_ty), ProjectionElem::Deref],
-                    tcx,
-                ),
-            );
+            let obj_ref_place = Place::from(self.new_temp(unwrap_ty));
+            call_statements.push(self.assign(
+                obj_ref_place,
+                Rvalue::Use(Operand::Copy(tcx.mk_place_field(
+                    pin_obj_place,
+                    FieldIdx::ZERO,
+                    unwrap_ty,
+                ))),
+            ));
+
+            let obj_ptr_place = Place::from(self.new_temp(obj_ptr_ty));
+
+            let addr = Rvalue::RawPtr(RawPtrKind::Mut, tcx.mk_place_deref(obj_ref_place));
             call_statements.push(self.assign(obj_ptr_place, addr));
             obj_ptr_place
         };
