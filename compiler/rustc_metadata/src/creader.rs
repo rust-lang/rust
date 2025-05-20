@@ -1442,6 +1442,11 @@ fn load_dylib(path: &Path, max_attempts: usize) -> Result<libloading::Library, S
                         attempt + 1
                     );
                 }
+                #[cfg(target_os = "cygwin")]
+                unsafe {
+                    // We don't need to reload proc macros in child processes.
+                    libc::dlfork(libc::FORK_NO_RELOAD);
+                }
                 return Ok(lib);
             }
             Err(err) => {

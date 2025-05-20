@@ -31,7 +31,7 @@ tempfile = "3.7.1"
 tracing = "0.1"
 # tidy-alphabetical-end
 
-[target.'cfg(target_os = "aix")'.dependencies]
+[target.'cfg(any(target_os = "aix", target_os = "cygwin"))'.dependencies]
 # tidy-alphabetical-start
 libc = "0.2"
 # tidy-alphabetical-end
