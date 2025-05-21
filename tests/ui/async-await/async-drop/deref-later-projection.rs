@@ -1,7 +1,11 @@
-//@ known-bug: #140975
-//@ compile-flags: --crate-type lib -Zvalidate-mir
-//@ edition: 2021
+// Ex-ICE: #140975
+//@ compile-flags: -Zvalidate-mir
+//@ build-pass
+//@ edition:2021
+#![crate_type = "lib"]
 #![feature(async_drop)]
+#![allow(incomplete_features)]
+
 use std::{future::AsyncDrop, pin::Pin};
 
 struct HasAsyncDrop ;
