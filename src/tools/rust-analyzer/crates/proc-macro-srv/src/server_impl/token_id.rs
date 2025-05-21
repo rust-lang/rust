@@ -238,7 +238,8 @@ impl server::TokenStream for TokenIdServer {
         &mut self,
         stream: Self::TokenStream,
     ) -> Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
-        stream.into_bridge()
+        // Can't join with `TokenId`.
+        stream.into_bridge(&mut |first, _second| first)
     }
 }
 
