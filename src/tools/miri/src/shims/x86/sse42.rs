@@ -1,9 +1,9 @@
-use rustc_abi::Size;
+use rustc_abi::{CanonAbi, Size};
 use rustc_middle::mir;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_span::Symbol;
-use rustc_target::callconv::{Conv, FnAbi};
+use rustc_target::callconv::FnAbi;
 
 use crate::*;
 
@@ -223,7 +223,7 @@ fn deconstruct_args<'tcx>(
     };
 
     if is_explicit {
-        let [str1, len1, str2, len2, imm] = ecx.check_shim(abi, Conv::C, link_name, args)?;
+        let [str1, len1, str2, len2, imm] = ecx.check_shim(abi, CanonAbi::C, link_name, args)?;
         let imm = ecx.read_scalar(imm)?.to_u8()?;
 
         let default_len = default_len::<u32>(imm);
@@ -236,7 +236,7 @@ fn deconstruct_args<'tcx>(
 
         interp_ok((str1, str2, Some((len1, len2)), imm))
     } else {
-        let [str1, str2, imm] = ecx.check_shim(abi, Conv::C, link_name, args)?;
+        let [str1, str2, imm] = ecx.check_shim(abi, CanonAbi::C, link_name, args)?;
         let imm = ecx.read_scalar(imm)?.to_u8()?;
 
         let array_layout = array_layout_fn(ecx, imm)?;
@@ -386,7 +386,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // search for a null terminator (see `deconstruct_args` for more details).
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#ig_expand=924,925
             "pcmpistriz128" | "pcmpistris128" => {
-                let [str1, str2, imm] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [str1, str2, imm] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let imm = this.read_scalar(imm)?.to_u8()?;
 
                 let str = if unprefixed_name == "pcmpistris128" { str1 } else { str2 };
@@ -406,7 +406,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // than 16 for byte-sized operands or 8 for word-sized operands.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#ig_expand=1046,1047
             "pcmpestriz128" | "pcmpestris128" => {
-                let [_, len1, _, len2, imm] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [_, len1, _, len2, imm] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let len = if unprefixed_name == "pcmpestris128" { len1 } else { len2 };
                 let len = this.read_scalar(len)?.to_i32()?;
                 let imm = this.read_scalar(imm)?.to_u8()?;
@@ -433,7 +433,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return interp_ok(EmulateItemResult::NotSupported);
                 }
 
-                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let left = this.read_scalar(left)?;
                 let right = this.read_scalar(right)?;
 

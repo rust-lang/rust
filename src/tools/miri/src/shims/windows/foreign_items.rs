@@ -2,10 +2,10 @@ use std::ffi::OsStr;
 use std::path::{self, Path, PathBuf};
 use std::{io, iter, str};
 
-use rustc_abi::{Align, Size};
+use rustc_abi::{Align, CanonAbi, Size, X86Call};
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::{Conv, FnAbi};
+use rustc_target::callconv::FnAbi;
 
 use self::shims::windows::handle::{Handle, PseudoHandle};
 use crate::shims::os_str::bytes_to_os_str;
@@ -140,7 +140,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // https://github.com/rust-lang/rust/blob/fb00adbdb69266f10df95a4527b767b0ad35ea48/compiler/rustc_target/src/spec/mod.rs#L2766-L2768,
         // x86-32 Windows uses a different calling convention than other Windows targets
         // for the "system" ABI.
-        let sys_conv = if this.tcx.sess.target.arch == "x86" { Conv::X86Stdcall } else { Conv::C };
+        let sys_conv = if this.tcx.sess.target.arch == "x86" {
+            CanonAbi::X86(X86Call::Stdcall)
+        } else {
+            CanonAbi::C
+        };
 
         // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
 
@@ -856,7 +860,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     );
                 }
                 // This function looks and behaves excatly like miri_start_unwind.
-                let [payload] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [payload] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.handle_miri_start_unwind(payload)?;
                 return interp_ok(EmulateItemResult::NeedsUnwind);
             }

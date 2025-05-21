@@ -1,6 +1,7 @@
+use rustc_abi::CanonAbi;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::{Conv, FnAbi};
+use rustc_target::callconv::FnAbi;
 
 use crate::shims::alloc::EvalContextExt as _;
 use crate::*;
@@ -22,12 +23,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match link_name.as_str() {
             // Allocation
             "posix_memalign" => {
-                let [memptr, align, size] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [memptr, align, size] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let result = this.posix_memalign(memptr, align, size)?;
                 this.write_scalar(result, dest)?;
             }
             "aligned_alloc" => {
-                let [align, size] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [align, size] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let res = this.aligned_alloc(align, size)?;
                 this.write_pointer(res, dest)?;
             }
