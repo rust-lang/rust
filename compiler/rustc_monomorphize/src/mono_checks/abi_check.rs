@@ -1,6 +1,6 @@
 //! This module ensures that if a function's ABI requires a particular target feature,
 //! that target feature is enabled both on the callee and all callers.
-use rustc_abi::{BackendRepr, RegKind};
+use rustc_abi::{BackendRepr, CanonAbi, RegKind, X86Call};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::layout::LayoutCx;
@@ -8,7 +8,7 @@ use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt, TypingEnv};
 use rustc_session::lint::builtin::WASM_C_ABI;
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
-use rustc_target::callconv::{ArgAbi, Conv, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::{HasWasmCAbiOpt, WasmCAbi};
 
 use crate::errors;
@@ -72,7 +72,7 @@ fn do_check_simd_vector_abi<'tcx>(
         }
     }
     // The `vectorcall` ABI is special in that it requires SSE2 no matter which types are being passed.
-    if abi.conv == Conv::X86VectorCall && !have_feature(sym::sse2) {
+    if abi.conv == CanonAbi::X86(X86Call::Vectorcall) && !have_feature(sym::sse2) {
         let (span, _hir_id) = loc();
         tcx.dcx().emit_err(errors::AbiRequiredTargetFeature {
             span,
@@ -128,7 +128,7 @@ fn do_check_wasm_abi<'tcx>(
     if !(tcx.sess.target.arch == "wasm32"
         && tcx.sess.target.os == "unknown"
         && tcx.wasm_c_abi_opt() == WasmCAbi::Legacy { with_lint: true }
-        && abi.conv == Conv::C)
+        && abi.conv == CanonAbi::C)
     {
         return;
     }
