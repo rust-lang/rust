@@ -43,7 +43,7 @@ use std::str::FromStr;
 use std::{fmt, io};
 
 use rustc_abi::{
-    Align, Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutErrors,
+    Align, CanonAbi, Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutErrors,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_fs_util::try_canonicalize;
@@ -53,7 +53,6 @@ use rustc_span::{Symbol, kw, sym};
 use serde_json::Value;
 use tracing::debug;
 
-use crate::callconv::Conv;
 use crate::json::{Json, ToJson};
 use crate::spec::crt_objects::CrtObjects;
 
@@ -2657,9 +2656,9 @@ pub struct TargetOptions {
     /// Default value is "main"
     pub entry_name: StaticCow<str>,
 
-    /// The ABI of entry function.
-    /// Default value is `Conv::C`, i.e. C call convention
-    pub entry_abi: Conv,
+    /// The ABI of the entry function.
+    /// Default value is `CanonAbi::C`
+    pub entry_abi: CanonAbi,
 
     /// Whether the target supports XRay instrumentation.
     pub supports_xray: bool,
@@ -2890,7 +2889,7 @@ impl Default for TargetOptions {
             generate_arange_section: true,
             supports_stack_protector: true,
             entry_name: "main".into(),
-            entry_abi: Conv::C,
+            entry_abi: CanonAbi::C,
             supports_xray: false,
             small_data_threshold_support: SmallDataThresholdSupport::DefaultForArch,
         }
