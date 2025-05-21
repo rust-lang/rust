@@ -47,6 +47,14 @@ pub fn panic_action(err: &impl Display, action: ErrAction, path: &Path) -> ! {
     panic!("error {} `{}`: {}", action.as_str(), path.display(), *err)
 }
 
+#[track_caller]
+pub fn expect_action<T>(res: Result<T, impl Display>, action: ErrAction, path: impl AsRef<Path>) -> T {
+    match res {
+        Ok(x) => x,
+        Err(ref e) => panic_action(e, action, path.as_ref()),
+    }
+}
+
 /// Wrapper around `std::fs::File` which panics with a path on failure.
 pub struct File<'a> {
     pub inner: fs::File,
@@ -57,9 +65,9 @@ impl<'a> File<'a> {
     #[track_caller]
     pub fn open(path: &'a (impl AsRef<Path> + ?Sized), options: &mut OpenOptions) -> Self {
         let path = path.as_ref();
-        match options.open(path) {
-            Ok(inner) => Self { inner, path },
-            Err(e) => panic_action(&e, ErrAction::Open, path),
+        Self {
+            inner: expect_action(options.open(path), ErrAction::Open, path),
+            path,
         }
     }
 
@@ -86,10 +94,7 @@ impl<'a> File<'a> {
     /// Read the entire contents of a file to the given buffer.
     #[track_caller]
     pub fn read_append_to_string<'dst>(&mut self, dst: &'dst mut String) -> &'dst mut String {
-        match self.inner.read_to_string(dst) {
-            Ok(_) => {},
-            Err(e) => panic_action(&e, ErrAction::Read, self.path),
-        }
+        expect_action(self.inner.read_to_string(dst), ErrAction::Read, self.path);
         dst
     }
 
@@ -109,9 +114,7 @@ impl<'a> File<'a> {
             },
             Err(e) => Err(e),
         };
-        if let Err(e) = res {
-            panic_action(&e, ErrAction::Write, self.path);
-        }
+        expect_action(res, ErrAction::Write, self.path);
     }
 }
 
@@ -662,24 +665,22 @@ pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
 }
 
 pub fn write_file(path: &Path, contents: &str) {
-    fs::write(path, contents).unwrap_or_else(|e| panic_action(&e, ErrAction::Write, path));
+    expect_action(fs::write(path, contents), ErrAction::Write, path);
 }
 
 #[must_use]
 pub fn run_with_output(path: &(impl AsRef<Path> + ?Sized), cmd: &mut Command) -> Vec<u8> {
     fn f(path: &Path, cmd: &mut Command) -> Vec<u8> {
-        match cmd
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
-            .output()
-        {
-            Ok(x) => match x.status.exit_ok() {
-                Ok(()) => x.stdout,
-                Err(ref e) => panic_action(e, ErrAction::Run, path),
-            },
-            Err(ref e) => panic_action(e, ErrAction::Run, path),
-        }
+        let output = expect_action(
+            cmd.stdin(Stdio::null())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::inherit())
+                .output(),
+            ErrAction::Run,
+            path,
+        );
+        expect_action(output.status.exit_ok(), ErrAction::Run, path);
+        output.stdout
     }
     f(path.as_ref(), cmd)
 }

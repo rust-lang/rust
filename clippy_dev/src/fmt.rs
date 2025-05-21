@@ -1,5 +1,5 @@
 use crate::utils::{
-    ErrAction, FileUpdater, UpdateMode, UpdateStatus, panic_action, run_with_output, split_args_for_threads,
+    ErrAction, FileUpdater, UpdateMode, UpdateStatus, expect_action, run_with_output, split_args_for_threads,
     walk_dir_no_dot_or_target,
 };
 use itertools::Itertools;
@@ -270,7 +270,7 @@ fn run_rustfmt(update_mode: UpdateMode) {
 
     let args: Vec<_> = walk_dir_no_dot_or_target()
         .filter_map(|e| {
-            let e = e.expect("error reading `.`");
+            let e = expect_action(e, ErrAction::Read, ".");
             e.path()
                 .as_os_str()
                 .as_encoded_bytes()
@@ -294,37 +294,32 @@ fn run_rustfmt(update_mode: UpdateMode) {
         },
         args.iter(),
     )
-    .map(|mut cmd| match cmd.spawn() {
-        Ok(x) => x,
-        Err(ref e) => panic_action(&e, ErrAction::Run, "rustfmt".as_ref()),
-    })
+    .map(|mut cmd| expect_action(cmd.spawn(), ErrAction::Run, "rustfmt"))
     .collect();
 
     for child in &mut children {
-        match child.wait() {
-            Ok(status) => match (update_mode, status.exit_ok()) {
-                (UpdateMode::Check | UpdateMode::Change, Ok(())) => {},
-                (UpdateMode::Check, Err(_)) => {
-                    let mut s = String::new();
-                    if let Some(mut stderr) = child.stderr.take()
-                        && stderr.read_to_string(&mut s).is_ok()
-                    {
-                        eprintln!("{s}");
-                    }
-                    eprintln!("Formatting check failed!\nRun `cargo dev fmt` to update.");
-                    process::exit(1);
-                },
-                (UpdateMode::Change, Err(e)) => {
-                    let mut s = String::new();
-                    if let Some(mut stderr) = child.stderr.take()
-                        && stderr.read_to_string(&mut s).is_ok()
-                    {
-                        eprintln!("{s}");
-                    }
-                    panic_action(&e, ErrAction::Run, "rustfmt".as_ref());
-                },
+        let status = expect_action(child.wait(), ErrAction::Run, "rustfmt");
+        match (update_mode, status.exit_ok()) {
+            (UpdateMode::Check | UpdateMode::Change, Ok(())) => {},
+            (UpdateMode::Check, Err(_)) => {
+                let mut s = String::new();
+                if let Some(mut stderr) = child.stderr.take()
+                    && stderr.read_to_string(&mut s).is_ok()
+                {
+                    eprintln!("{s}");
+                }
+                eprintln!("Formatting check failed!\nRun `cargo dev fmt` to update.");
+                process::exit(1);
             },
-            Err(ref e) => panic_action(e, ErrAction::Run, "rustfmt".as_ref()),
+            (UpdateMode::Change, e) => {
+                let mut s = String::new();
+                if let Some(mut stderr) = child.stderr.take()
+                    && stderr.read_to_string(&mut s).is_ok()
+                {
+                    eprintln!("{s}");
+                }
+                expect_action(e, ErrAction::Run, "rustfmt");
+            },
         }
     }
 }
