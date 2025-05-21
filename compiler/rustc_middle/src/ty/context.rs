@@ -37,7 +37,9 @@ use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, Definitions, DisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir, Attribute, HirId, MaybeOwner, Node, OwnerInfo, TraitCandidate};
+use rustc_hir::{
+    self as hir, Attribute, HirId, MaybeOwner, Node, OwnerId, OwnerInfo, TraitCandidate,
+};
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::cache::WithDepNode;
@@ -1273,6 +1275,16 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_unit_query(self) -> TyCtxtFeed<'tcx, ()> {
         self.dep_graph.assert_ignored();
         TyCtxtFeed { tcx: self, key: () }
+    }
+
+    pub fn super_duper_perf_hack_experiment(self, key: LocalDefId) -> TyCtxtFeed<'tcx, LocalDefId> {
+        self.dep_graph.assert_eval_always();
+        TyCtxtFeed { tcx: self, key }
+    }
+
+    pub fn super_duper_perf_hack_experiment2(self, key: OwnerId) -> TyCtxtFeed<'tcx, OwnerId> {
+        self.dep_graph.assert_eval_always();
+        TyCtxtFeed { tcx: self, key }
     }
 
     /// Only used in the resolver to register the `CRATE_DEF_ID` `DefId` and feed
