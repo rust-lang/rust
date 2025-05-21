@@ -753,15 +753,9 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         if self_is_available {
                             let source_map = self.r.tcx.sess.source_map();
                             // check if the field is used in a format string, such as `"{x}"`
-                            let field_is_format_named_arg =
-                                source_map.span_to_source(span, |s, start, _| {
-                                    if let Some(expanded_expr) = s.get(start - 1..start)
-                                        && expanded_expr.starts_with("{")
-                                    {
-                                        Ok(true)
-                                    } else {
-                                        Ok(false)
-                                    }
+                            let field_is_format_named_arg = source_map
+                                .span_to_source(span, |s, start, _| {
+                                    Ok(s.get(start - 1..start) == Some("{"))
                                 });
                             if let Ok(true) = field_is_format_named_arg {
                                 err.help(
@@ -772,7 +766,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                     span.shrink_to_lo(),
                                     "you might have meant to use the available field",
                                     format!("{pre}self."),
-                                    Applicability::MachineApplicable,
+                                    Applicability::MaybeIncorrect,
                                 );
                             }
                         } else {
