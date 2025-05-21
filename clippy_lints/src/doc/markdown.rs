@@ -7,7 +7,7 @@ use rustc_span::{BytePos, Pos, Span};
 use url::Url;
 
 use crate::doc::{DOC_MARKDOWN, Fragments};
-use std::ops::{ControlFlow, Range};
+use std::ops::Range;
 
 pub fn check(
     cx: &LateContext<'_>,
@@ -70,7 +70,7 @@ pub fn check(
         let fragment_offset = word.as_ptr() as usize - text.as_ptr() as usize;
 
         // Adjust for the current word
-        if check_word(
+        check_word(
             cx,
             word,
             fragments,
@@ -78,11 +78,7 @@ pub fn check(
             fragment_offset,
             code_level,
             blockquote_level,
-        )
-        .is_break()
-        {
-            return;
-        }
+        );
     }
 }
 
@@ -94,10 +90,10 @@ fn check_word(
     fragment_offset: usize,
     code_level: isize,
     blockquote_level: isize,
-) -> ControlFlow<()> {
+) {
     /// Checks if a string is upper-camel-case, i.e., starts with an uppercase and
     /// contains at least two uppercase letters (`Clippy` is ok) and one lower-case
-    /// letter (`NASA` is ok).[
+    /// letter (`NASA` is ok).
     /// Plurals are also excluded (`IDs` is ok).
     fn is_camel_case(s: &str) -> bool {
         if s.starts_with(|c: char| c.is_ascii_digit() | c.is_ascii_lowercase()) {
@@ -135,9 +131,8 @@ fn check_word(
         && !url.cannot_be_a_base()
     {
         let Some(fragment_span) = fragments.span(cx, range.clone()) else {
-            return ControlFlow::Break(());
+            return;
         };
-
         let span = Span::new(
             fragment_span.lo() + BytePos::from_usize(fragment_offset),
             fragment_span.lo() + BytePos::from_usize(fragment_offset + word.len()),
@@ -154,19 +149,19 @@ fn check_word(
             format!("<{word}>"),
             Applicability::MachineApplicable,
         );
-        return ControlFlow::Continue(());
+        return;
     }
 
     // We assume that mixed-case words are not meant to be put inside backticks. (Issue #2343)
     //
     // We also assume that backticks are not necessary if inside a quote. (Issue #10262)
     if code_level > 0 || blockquote_level > 0 || (has_underscore(word) && has_hyphen(word)) {
-        return ControlFlow::Break(());
+        return;
     }
 
     if has_underscore(word) || word.contains("::") || is_camel_case(word) || word.ends_with("()") {
         let Some(fragment_span) = fragments.span(cx, range.clone()) else {
-            return ControlFlow::Break(());
+            return;
         };
 
         let span = Span::new(
@@ -188,5 +183,4 @@ fn check_word(
             },
         );
     }
-    ControlFlow::Continue(())
 }
