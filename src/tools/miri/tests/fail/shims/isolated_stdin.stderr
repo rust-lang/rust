@@ -1,13 +1,14 @@
 error: unsupported operation: `read` from stdin not available when isolation is enabled
-  --> tests/fail-dep/libc/fs/isolated_stdin.rs:LL:CC
+  --> RUSTLIB/std/$FILE:LL:CC
    |
-LL |         libc::read(0, bytes.as_mut_ptr() as *mut libc::c_void, 512);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `read` from stdin not available when isolation is enabled
+   | ^ `read` from stdin not available when isolation is enabled
    |
    = help: set `MIRIFLAGS=-Zmiri-disable-isolation` to disable isolation;
    = help: or set `MIRIFLAGS=-Zmiri-isolation-error=warn` to make Miri return an error code from isolated operations (if supported for that operation) and continue with a warning
-   = note: BACKTRACE:
-   = note: inside `main` at tests/fail-dep/libc/fs/isolated_stdin.rs:LL:CC
+note: inside `main`
+  --> tests/fail/shims/isolated_stdin.rs:LL:CC
+   |
+   | ^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

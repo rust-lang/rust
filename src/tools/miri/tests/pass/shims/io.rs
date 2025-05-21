@@ -1,8 +1,10 @@
-use std::io::{self, IsTerminal};
+use std::io::{self, IsTerminal, Write};
 
 fn main() {
-    // We can't really assume that this is truly a terminal, and anyway on Windows Miri will always
-    // return `false` here, but we can check that the call succeeds.
+    io::stdout().write_all(b"stdout\n").unwrap();
+    io::stderr().write_all(b"stderr\n").unwrap();
+
+    // We can't assume that this is truly a terminal, but we can check that the call succeeds.
     io::stdout().is_terminal();
 
     // Ensure we can format `io::Error` created from OS errors
