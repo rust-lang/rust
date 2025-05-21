@@ -258,7 +258,9 @@ impl server::TokenStream for RaSpanServer {
         &mut self,
         stream: Self::TokenStream,
     ) -> Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
-        stream.into_bridge()
+        stream.into_bridge(&mut |first, second| {
+            server::Span::join(self, first, second).unwrap_or(first)
+        })
     }
 }
 
