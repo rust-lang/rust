@@ -122,7 +122,6 @@ enum LiveNodeKind {
     VarDefNode(Span, HirId),
     ClosureNode,
     ExitNode,
-    ErrNode,
 }
 
 fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
@@ -133,7 +132,6 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
         VarDefNode(s, _) => format!("Var def node [{}]", sm.span_to_diagnostic_string(s)),
         ClosureNode => "Closure node".to_owned(),
         ExitNode => "Exit node".to_owned(),
-        ErrNode => "Error node".to_owned(),
     }
 }
 
@@ -492,6 +490,9 @@ struct Liveness<'a, 'tcx> {
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn new(ir: &'a mut IrMaps<'tcx>, body_owner: LocalDefId) -> Liveness<'a, 'tcx> {
         let typeck_results = ir.tcx.typeck(body_owner);
+        // Liveness linting runs after building the THIR. We make several assumptions based on
+        // typeck succeeding, e.g. that breaks and continues are well-formed.
+        assert!(typeck_results.tainted_by_errors.is_none());
         // FIXME(#132279): we're in a body here.
         let typing_env = ty::TypingEnv::non_body_analysis(ir.tcx, body_owner);
         let closure_min_captures = typeck_results.closure_min_captures.get(&body_owner);
@@ -976,8 +977,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // Now that we know the label we're going to,
                 // look it up in the continue loop nodes table
                 self.cont_ln.get(&sc).cloned().unwrap_or_else(|| {
-                    self.ir.tcx.dcx().span_delayed_bug(expr.span, "continue to unknown label");
-                    self.ir.add_live_node(ErrNode)
+                    // Liveness linting happens after building the THIR. Bad labels should already
+                    // have been caught.
+                    span_bug!(expr.span, "continue to unknown label");
                 })
             }
 
