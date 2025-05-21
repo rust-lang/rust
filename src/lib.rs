@@ -82,10 +82,7 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::path::PathBuf;
-#[cfg(not(feature = "master"))]
-use std::sync::atomic::AtomicBool;
-#[cfg(not(feature = "master"))]
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use back::lto::{ThinBuffer, ThinData};
@@ -177,6 +174,7 @@ impl LockedTargetInfo {
 #[derive(Clone)]
 pub struct GccCodegenBackend {
     target_info: LockedTargetInfo,
+    lto_supported: Arc<AtomicBool>,
 }
 
 impl CodegenBackend for GccCodegenBackend {
@@ -200,6 +198,29 @@ impl CodegenBackend for GccCodegenBackend {
             }
 
             **self.target_info.info.lock().expect("lock") = context.get_target_info();
+        }
+
+        // TODO: try the LTO frontend and check if it errors out. If so, do not embed the bitcode.
+        {
+            let temp_dir = TempDir::new().expect("cannot create temporary directory");
+            let temp_file = temp_dir.into_path().join("result.asm");
+            let context = Context::default();
+            let object_file_path = temp_file.to_str().expect("path to str");
+            context.compile_to_file(gccjit::OutputKind::ObjectFile, object_file_path);
+
+            //let temp_dir = TempDir::new().expect("cannot create temporary directory");
+            //let temp_file = temp_dir.into_path().join("result.asm");
+            let check_context = Context::default();
+            check_context.add_driver_option("-x");
+            check_context.add_driver_option("lto");
+            check_context.add_driver_option(object_file_path);
+            check_context.set_print_errors_to_stderr(false);
+            //context.compile_to_file(gccjit::OutputKind::ObjectFile, temp_file.to_str().expect("path to str"));
+            // FIXME: compile gives the error as expected, but compile_to_file doesn't.
+            check_context.compile();
+            let error = check_context.get_last_error();
+            let lto_supported = error == Ok(None);
+            self.lto_supported.store(lto_supported, Ordering::SeqCst);
         }
 
         #[cfg(feature = "master")]
@@ -291,6 +312,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
             context: Arc::new(SyncContext::new(new_context(tcx))),
             relocation_model: tcx.sess.relocation_model(),
             lto_mode: LtoMode::None,
+            lto_supported: false,
             temp_dir: None,
         };
 
@@ -305,7 +327,12 @@ impl ExtraBackendMethods for GccCodegenBackend {
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
     ) -> (ModuleCodegen<Self::Module>, u64) {
-        base::compile_codegen_unit(tcx, cgu_name, self.target_info.clone())
+        base::compile_codegen_unit(
+            tcx,
+            cgu_name,
+            self.target_info.clone(),
+            self.lto_supported.load(Ordering::SeqCst),
+        )
     }
 
     fn target_machine_factory(
@@ -332,6 +359,7 @@ pub struct GccContext {
     /// LTO.
     relocation_model: RelocModel,
     lto_mode: LtoMode,
+    lto_supported: bool,
     // Temporary directory used by LTO. We keep it here so that it's not removed before linking.
     temp_dir: Option<TempDir>,
 }
@@ -443,7 +471,10 @@ pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
         supports_128bit_integers: AtomicBool::new(false),
     })));
 
-    Box::new(GccCodegenBackend { target_info: LockedTargetInfo { info } })
+    Box::new(GccCodegenBackend {
+        lto_supported: Arc::new(AtomicBool::new(false)),
+        target_info: LockedTargetInfo { info },
+    })
 }
 
 fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {

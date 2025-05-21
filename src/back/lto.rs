@@ -564,6 +564,7 @@ pub fn optimize_thin_module(
         GccContext {
             context,
             lto_mode,
+            lto_supported: false, // TODO(antoyo): check if this is correct to use this value.
             // TODO(antoyo): use the correct relocation model here.
             relocation_model: RelocModel::Pic,
             temp_dir: None,

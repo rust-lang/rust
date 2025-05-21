@@ -25,6 +25,7 @@ pub(crate) fn codegen(
         let context = &module.module_llvm.context;
 
         let lto_mode = module.module_llvm.lto_mode;
+        let lto_supported = module.module_llvm.lto_supported;
 
         let bc_out = cgcx.output_filenames.temp_path_for_cgu(
             OutputType::Bitcode,
@@ -51,14 +52,17 @@ pub(crate) fn codegen(
                 );
             }*/
 
+            // TODO: only emit if libgccjit is compiled with LTO enabled?
             if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("GCC_module_codegen_emit_bitcode", &*module.name);
-                context.add_command_line_option("-flto=auto");
-                context.add_command_line_option("-flto-partition=one");
-                // TODO(antoyo): remove since we don't want fat objects when it is for Bitcode only.
-                context.add_command_line_option("-ffat-lto-objects");
+                if lto_supported {
+                    context.add_command_line_option("-flto=auto");
+                    context.add_command_line_option("-flto-partition=one");
+                    // TODO(antoyo): remove since we don't want fat objects when it is for Bitcode only.
+                    context.add_command_line_option("-ffat-lto-objects");
+                }
                 context
                     .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
             }
@@ -67,12 +71,14 @@ pub(crate) fn codegen(
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("GCC_module_codegen_embed_bitcode", &*module.name);
-                // TODO(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
-                //embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
+                if lto_supported {
+                    // TODO(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
+                    //embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
 
-                context.add_command_line_option("-flto=auto");
-                context.add_command_line_option("-flto-partition=one");
-                context.add_command_line_option("-ffat-lto-objects");
+                    context.add_command_line_option("-flto=auto");
+                    context.add_command_line_option("-flto-partition=one");
+                    context.add_command_line_option("-ffat-lto-objects");
+                }
                 // TODO(antoyo): Send -plugin/usr/lib/gcc/x86_64-pc-linux-gnu/11.1.0/liblto_plugin.so to linker (this should be done when specifying the appropriate rustc cli argument).
                 context
                     .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
