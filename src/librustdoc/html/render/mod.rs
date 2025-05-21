@@ -1203,17 +1203,15 @@ fn render_attributes_in_pre(it: &clean::Item, prefix: &str, cx: &Context<'_>) ->
 
 struct CodeAttribute(String);
 
-impl CodeAttribute {
-    fn render_into(self, w: &mut impl fmt::Write) {
-        write!(w, "<div class=\"code-attribute\">{}</div>", self.0).unwrap();
-    }
+fn render_code_attribute(code_attr: CodeAttribute, w: &mut impl fmt::Write) {
+    write!(w, "<div class=\"code-attribute\">{}</div>", code_attr.0).unwrap();
 }
 
 // When an attribute is rendered inside a <code> tag, it is formatted using
 // a div to produce a newline after it.
 fn render_attributes_in_code(w: &mut impl fmt::Write, it: &clean::Item, cx: &Context<'_>) {
     for attr in it.attributes_and_repr(cx.tcx(), cx.cache(), false) {
-        CodeAttribute(attr).render_into(w);
+        render_code_attribute(CodeAttribute(attr), w);
     }
 }
 
@@ -1225,7 +1223,7 @@ fn render_repr_attributes_in_code(
     item_type: ItemType,
 ) {
     if let Some(repr) = clean::repr_attributes(cx.tcx(), cx.cache(), def_id, item_type) {
-        CodeAttribute(repr).render_into(w);
+        render_code_attribute(CodeAttribute(repr), w);
     }
 }
 
