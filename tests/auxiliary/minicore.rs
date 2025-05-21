@@ -192,6 +192,12 @@ trait Drop {
     fn drop(&mut self);
 }
 
+#[lang = "panic"]
+pub fn panic(_msg: &'static str) {}
+
+#[lang = "panic_const_neg_overflow"]
+pub fn panic_const_neg_overflow() {}
+
 #[lang = "neg"]
 trait Neg {
     type Output;
