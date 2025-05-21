@@ -60,7 +60,7 @@ pub fn layout_of_adt_query(
             let r = variants
                 .variants
                 .iter()
-                .map(|&(v, _)| handle_variant(v.into(), &db.variant_fields(v.into())))
+                .map(|&(v, _, _)| handle_variant(v.into(), &db.variant_fields(v.into())))
                 .collect::<Result<SmallVec<_>, _>>()?;
             (r, db.enum_signature(e).repr.unwrap_or_default(), false)
         }

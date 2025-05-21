@@ -52,12 +52,14 @@ use hir_def::{
         BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, LabelId, Pat,
         generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     },
-    item_tree::{AttrOwner, FieldParent, ImportAlias, ItemTreeFieldId, ItemTreeNode},
+    item_tree::ImportAlias,
     layout::{self, ReprOptions, TargetDataLayout},
     nameres::{self, diagnostics::DefDiagnostic},
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     signatures::{ImplFlags, StaticFlags, TraitFlags, VariantFields},
+    src::HasSource as _,
+    visibility::visibility_from_ast,
 };
 use hir_expand::{
     AstId, MacroCallKind, RenderedExpandError, ValueResult, attrs::collect_attrs,
@@ -81,11 +83,11 @@ use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
-use span::{Edition, FileId};
+use span::{AstIdNode, Edition, FileId};
 use stdx::{format_to, impl_from, never};
 use syntax::{
     AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, T, TextRange, ToSmolStr,
-    ast::{self, HasAttrs as _, HasName},
+    ast::{self, HasAttrs as _, HasName, HasVisibility as _},
     format_smolstr,
 };
 use triomphe::{Arc, ThinArc};
@@ -687,7 +689,7 @@ impl Module {
                             let source_map = db.enum_signature_with_source_map(e.id).1;
                             expr_store_diagnostics(db, acc, &source_map);
                             let (variants, diagnostics) = db.enum_variants_with_diagnostics(e.id);
-                            let file = e.id.lookup(db).id.file_id();
+                            let file = e.id.lookup(db).id.file_id;
                             let ast_id_map = db.ast_id_map(file);
                             if let Some(diagnostics) = &diagnostics {
                                 for diag in diagnostics.iter() {
@@ -704,7 +706,7 @@ impl Module {
                                     );
                                 }
                             }
-                            for &(v, _) in &variants.variants {
+                            for &(v, _, _) in &variants.variants {
                                 let source_map = db.variant_fields_with_source_map(v.into()).1;
                                 push_ty_diagnostics(
                                     db,
@@ -742,12 +744,10 @@ impl Module {
             GenericDef::Impl(impl_def).diagnostics(db, acc);
 
             let loc = impl_def.id.lookup(db);
-            let tree = loc.id.item_tree(db);
             let source_map = db.impl_signature_with_source_map(impl_def.id).1;
             expr_store_diagnostics(db, acc, &source_map);
 
-            let node = &tree[loc.id.value];
-            let file_id = loc.id.file_id();
+            let file_id = loc.id.file_id;
             if file_id.macro_file().is_some_and(|it| it.kind(db) == MacroKind::DeriveBuiltIn) {
                 // these expansion come from us, diagnosing them is a waste of resources
                 // FIXME: Once we diagnose the inputs to builtin derives, we should at least extract those diagnostics somehow
@@ -765,11 +765,11 @@ impl Module {
             }
 
             if inherent_impls.invalid_impls().contains(&impl_def.id) {
-                acc.push(IncoherentImpl { impl_: ast_id_map.get(node.ast_id()), file_id }.into())
+                acc.push(IncoherentImpl { impl_: ast_id_map.get(loc.id.value), file_id }.into())
             }
 
             if !impl_def.check_orphan_rules(db) {
-                acc.push(TraitImplOrphan { impl_: ast_id_map.get(node.ast_id()), file_id }.into())
+                acc.push(TraitImplOrphan { impl_: ast_id_map.get(loc.id.value), file_id }.into())
             }
 
             let trait_ = impl_def.trait_(db);
@@ -808,11 +808,11 @@ impl Module {
                 // unsafe negative impl
                 (true, _, true, _) |
                 // unsafe impl for safe trait
-                (true, false, _, false) => acc.push(TraitImplIncorrectSafety { impl_: ast_id_map.get(node.ast_id()), file_id, should_be_safe: true }.into()),
+                (true, false, _, false) => acc.push(TraitImplIncorrectSafety { impl_: ast_id_map.get(loc.id.value), file_id, should_be_safe: true }.into()),
                 // safe impl for unsafe trait
                 (false, true, false, _) |
                 // safe impl of dangling drop
-                (false, false, _, true) => acc.push(TraitImplIncorrectSafety { impl_: ast_id_map.get(node.ast_id()), file_id, should_be_safe: false }.into()),
+                (false, false, _, true) => acc.push(TraitImplIncorrectSafety { impl_: ast_id_map.get(loc.id.value), file_id, should_be_safe: false }.into()),
                 _ => (),
             };
 
@@ -839,7 +839,7 @@ impl Module {
                         TraitImplRedundantAssocItems {
                             trait_,
                             file_id,
-                            impl_: ast_id_map.get(node.ast_id()),
+                            impl_: ast_id_map.get(loc.id.value),
                             assoc_item: (name, assoc_item),
                         }
                         .into(),
@@ -889,7 +889,7 @@ impl Module {
                 if !missing.is_empty() {
                     acc.push(
                         TraitImplMissingAssocItems {
-                            impl_: ast_id_map.get(node.ast_id()),
+                            impl_: ast_id_map.get(loc.id.value),
                             file_id,
                             missing,
                         }
@@ -1076,73 +1076,25 @@ fn emit_def_diagnostic_(
             )
         }
         DefDiagnosticKind::UnresolvedImport { id, index } => {
-            let file_id = id.file_id();
-            let item_tree = id.item_tree(db);
-            let import = &item_tree[id.value];
+            let file_id = id.file_id;
 
-            let use_tree = import.use_tree_to_ast(db, file_id, *index);
+            let use_tree = hir_def::src::use_tree_to_ast(db, *id, *index);
             acc.push(
                 UnresolvedImport { decl: InFile::new(file_id, AstPtr::new(&use_tree)) }.into(),
             );
         }
 
-        DefDiagnosticKind::UnconfiguredCode { tree, item, cfg, opts } => {
-            let item_tree = tree.item_tree(db);
-            let ast_id_map = db.ast_id_map(tree.file_id());
-            // FIXME: This parses... We could probably store relative ranges for the children things
-            // here in the item tree?
-            (|| {
-                let process_field_list =
-                    |field_list: Option<_>, idx: ItemTreeFieldId| match field_list? {
-                        ast::FieldList::RecordFieldList(it) => Some(SyntaxNodePtr::new(
-                            it.fields().nth(idx.into_raw().into_u32() as usize)?.syntax(),
-                        )),
-                        ast::FieldList::TupleFieldList(it) => Some(SyntaxNodePtr::new(
-                            it.fields().nth(idx.into_raw().into_u32() as usize)?.syntax(),
-                        )),
-                    };
-                let ptr = match *item {
-                    AttrOwner::ModItem(it) => {
-                        ast_id_map.get(it.ast_id(&item_tree)).syntax_node_ptr()
-                    }
-                    AttrOwner::TopLevel => ast_id_map.root(),
-                    AttrOwner::Variant(it) => {
-                        ast_id_map.get(item_tree[it].ast_id).syntax_node_ptr()
-                    }
-                    AttrOwner::Field(FieldParent::EnumVariant(parent), idx) => process_field_list(
-                        ast_id_map
-                            .get(item_tree[parent].ast_id)
-                            .to_node(&db.parse_or_expand(tree.file_id()))
-                            .field_list(),
-                        idx,
-                    )?,
-                    AttrOwner::Field(FieldParent::Struct(parent), idx) => process_field_list(
-                        ast_id_map
-                            .get(item_tree[parent.index()].ast_id)
-                            .to_node(&db.parse_or_expand(tree.file_id()))
-                            .field_list(),
-                        idx,
-                    )?,
-                    AttrOwner::Field(FieldParent::Union(parent), idx) => SyntaxNodePtr::new(
-                        ast_id_map
-                            .get(item_tree[parent.index()].ast_id)
-                            .to_node(&db.parse_or_expand(tree.file_id()))
-                            .record_field_list()?
-                            .fields()
-                            .nth(idx.into_raw().into_u32() as usize)?
-                            .syntax(),
-                    ),
-                };
-                acc.push(
-                    InactiveCode {
-                        node: InFile::new(tree.file_id(), ptr),
-                        cfg: cfg.clone(),
-                        opts: opts.clone(),
-                    }
-                    .into(),
-                );
-                Some(())
-            })();
+        DefDiagnosticKind::UnconfiguredCode { ast_id, cfg, opts } => {
+            let ast_id_map = db.ast_id_map(ast_id.file_id);
+            let ptr = ast_id_map.get_erased(ast_id.value);
+            acc.push(
+                InactiveCode {
+                    node: InFile::new(ast_id.file_id, ptr),
+                    cfg: cfg.clone(),
+                    opts: opts.clone(),
+                }
+                .into(),
+            );
         }
         DefDiagnosticKind::UnresolvedMacroCall { ast, path } => {
             let (node, precise_location) = precise_macro_call_location(ast, db);
@@ -1478,12 +1430,8 @@ impl Struct {
 impl HasVisibility for Struct {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let loc = self.id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
-        Visibility::resolve(
-            db,
-            &self.id.resolver(db),
-            &item_tree[item_tree[loc.id.value].visibility],
-        )
+        let source = loc.source(db);
+        visibility_from_ast(db, &self.id.resolver(db), source.map(|src| src.visibility()))
     }
 }
 
@@ -1536,12 +1484,8 @@ impl Union {
 impl HasVisibility for Union {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let loc = self.id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
-        Visibility::resolve(
-            db,
-            &self.id.resolver(db),
-            &item_tree[item_tree[loc.id.value].visibility],
-        )
+        let source = loc.source(db);
+        visibility_from_ast(db, &self.id.resolver(db), source.map(|src| src.visibility()))
     }
 }
 
@@ -1560,7 +1504,7 @@ impl Enum {
     }
 
     pub fn variants(self, db: &dyn HirDatabase) -> Vec<Variant> {
-        db.enum_variants(self.id).variants.iter().map(|&(id, _)| Variant { id }).collect()
+        db.enum_variants(self.id).variants.iter().map(|&(id, _, _)| Variant { id }).collect()
     }
 
     pub fn num_variants(self, db: &dyn HirDatabase) -> usize {
@@ -1629,12 +1573,8 @@ impl Enum {
 impl HasVisibility for Enum {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let loc = self.id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
-        Visibility::resolve(
-            db,
-            &self.id.resolver(db),
-            &item_tree[item_tree[loc.id.value].visibility],
-        )
+        let source = loc.source(db);
+        visibility_from_ast(db, &self.id.resolver(db), source.map(|src| src.visibility()))
     }
 }
 
@@ -2708,10 +2648,9 @@ impl ExternCrateDecl {
 
     pub fn resolved_crate(self, db: &dyn HirDatabase) -> Option<Crate> {
         let loc = self.id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
         let krate = loc.container.krate();
-        let name = &item_tree[loc.id.value].name;
-        if *name == sym::self_ {
+        let name = self.name(db);
+        if name == sym::self_ {
             Some(krate.into())
         } else {
             krate.data(db).dependencies.iter().find_map(|dep| {
@@ -2722,25 +2661,29 @@ impl ExternCrateDecl {
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let loc = self.id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
-        item_tree[loc.id.value].name.clone()
+        let source = loc.source(db);
+        as_name_opt(source.value.name_ref())
     }
 
     pub fn alias(self, db: &dyn HirDatabase) -> Option<ImportAlias> {
         let loc = self.id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
-        item_tree[loc.id.value].alias.clone()
+        let source = loc.source(db);
+        let rename = source.value.rename()?;
+        if let Some(name) = rename.name() {
+            Some(ImportAlias::Alias(name.as_name()))
+        } else if rename.underscore_token().is_some() {
+            Some(ImportAlias::Underscore)
+        } else {
+            None
+        }
     }
 
     /// Returns the name under which this crate is made accessible, taking `_` into account.
     pub fn alias_or_name(self, db: &dyn HirDatabase) -> Option<Name> {
-        let loc = self.id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
-
-        match &item_tree[loc.id.value].alias {
+        match self.alias(db) {
             Some(ImportAlias::Underscore) => None,
-            Some(ImportAlias::Alias(alias)) => Some(alias.clone()),
-            None => Some(item_tree[loc.id.value].name.clone()),
+            Some(ImportAlias::Alias(alias)) => Some(alias),
+            None => Some(self.name(db)),
         }
     }
 }
@@ -2748,12 +2691,8 @@ impl ExternCrateDecl {
 impl HasVisibility for ExternCrateDecl {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let loc = self.id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
-        Visibility::resolve(
-            db,
-            &self.id.resolver(db),
-            &item_tree[item_tree[loc.id.value].visibility],
-        )
+        let source = loc.source(db);
+        visibility_from_ast(db, &self.id.resolver(db), source.map(|src| src.visibility()))
     }
 }
 
@@ -2873,12 +2812,8 @@ impl Static {
 impl HasVisibility for Static {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let loc = self.id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
-        Visibility::resolve(
-            db,
-            &self.id.resolver(db),
-            &item_tree[item_tree[loc.id.value].visibility],
-        )
+        let source = loc.source(db);
+        visibility_from_ast(db, &self.id.resolver(db), source.map(|src| src.visibility()))
     }
 }
 
@@ -2967,11 +2902,7 @@ impl Trait {
     }
 
     fn all_macro_calls(&self, db: &dyn HirDatabase) -> Box<[(AstId<ast::Item>, MacroCallId)]> {
-        db.trait_items(self.id)
-            .macro_calls
-            .as_ref()
-            .map(|it| it.as_ref().clone().into_boxed_slice())
-            .unwrap_or_default()
+        db.trait_items(self.id).macro_calls.to_vec().into_boxed_slice()
     }
 
     /// `#[rust_analyzer::completions(...)]` mode.
@@ -2983,12 +2914,8 @@ impl Trait {
 impl HasVisibility for Trait {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let loc = self.id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
-        Visibility::resolve(
-            db,
-            &self.id.resolver(db),
-            &item_tree[item_tree[loc.id.value].visibility],
-        )
+        let source = loc.source(db);
+        visibility_from_ast(db, &self.id.resolver(db), source.map(|src| src.visibility()))
     }
 }
 
@@ -3010,12 +2937,8 @@ impl TraitAlias {
 impl HasVisibility for TraitAlias {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let loc = self.id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
-        Visibility::resolve(
-            db,
-            &self.id.resolver(db),
-            &item_tree[item_tree[loc.id.value].visibility],
-        )
+        let source = loc.source(db);
+        visibility_from_ast(db, &self.id.resolver(db), source.map(|src| src.visibility()))
     }
 }
 
@@ -3163,25 +3086,23 @@ impl Macro {
         match self.id {
             MacroId::Macro2Id(id) => {
                 let loc = id.lookup(db);
-                let item_tree = loc.id.item_tree(db);
-                item_tree[loc.id.value].name.clone()
+                let source = loc.source(db);
+                as_name_opt(source.value.name())
             }
             MacroId::MacroRulesId(id) => {
                 let loc = id.lookup(db);
-                let item_tree = loc.id.item_tree(db);
-                item_tree[loc.id.value].name.clone()
+                let source = loc.source(db);
+                as_name_opt(source.value.name())
             }
             MacroId::ProcMacroId(id) => {
                 let loc = id.lookup(db);
-                let item_tree = loc.id.item_tree(db);
+                let source = loc.source(db);
                 match loc.kind {
                     ProcMacroKind::CustomDerive => db
                         .attrs(id.into())
                         .parse_proc_macro_derive()
-                        .map_or_else(|| item_tree[loc.id.value].name.clone(), |(it, _)| it),
-                    ProcMacroKind::Bang | ProcMacroKind::Attr => {
-                        item_tree[loc.id.value].name.clone()
-                    }
+                        .map_or_else(|| as_name_opt(source.value.name()), |(it, _)| it),
+                    ProcMacroKind::Bang | ProcMacroKind::Attr => as_name_opt(source.value.name()),
                 }
             }
         }
@@ -3278,12 +3199,8 @@ impl HasVisibility for Macro {
         match self.id {
             MacroId::Macro2Id(id) => {
                 let loc = id.lookup(db);
-                let item_tree = loc.id.item_tree(db);
-                Visibility::resolve(
-                    db,
-                    &id.resolver(db),
-                    &item_tree[item_tree[loc.id.value].visibility],
-                )
+                let source = loc.source(db);
+                visibility_from_ast(db, &id.resolver(db), source.map(|src| src.visibility()))
             }
             MacroId::MacroRulesId(_) => Visibility::Public,
             MacroId::ProcMacroId(_) => Visibility::Public,
@@ -3437,7 +3354,7 @@ fn as_assoc_item<'db, ID, DEF, LOC>(
 where
     ID: Lookup<Database = dyn DefDatabase, Data = AssocItemLoc<LOC>>,
     DEF: From<ID>,
-    LOC: ItemTreeNode,
+    LOC: AstIdNode,
 {
     match id.lookup(db).container {
         ItemContainerId::TraitId(_) | ItemContainerId::ImplId(_) => Some(ctor(DEF::from(id))),
@@ -3453,7 +3370,7 @@ fn as_extern_assoc_item<'db, ID, DEF, LOC>(
 where
     ID: Lookup<Database = dyn DefDatabase, Data = AssocItemLoc<LOC>>,
     DEF: From<ID>,
-    LOC: ItemTreeNode,
+    LOC: AstIdNode,
 {
     match id.lookup(db).container {
         ItemContainerId::ExternBlockId(_) => Some(ctor(DEF::from(id))),
@@ -4545,11 +4462,7 @@ impl Impl {
     }
 
     fn all_macro_calls(&self, db: &dyn HirDatabase) -> Box<[(AstId<ast::Item>, MacroCallId)]> {
-        db.impl_items(self.id)
-            .macro_calls
-            .as_ref()
-            .map(|it| it.as_ref().clone().into_boxed_slice())
-            .unwrap_or_default()
+        db.impl_items(self.id).macro_calls.to_vec().into_boxed_slice()
     }
 }
 
@@ -6509,4 +6422,8 @@ pub fn resolve_absolute_path<'a, I: Iterator<Item = Symbol> + Clone + 'a>(
                 .collect::<Vec<_>>()
         })
         .flatten()
+}
+
+fn as_name_opt(name: Option<impl AsName>) -> Name {
+    name.map_or_else(Name::missing, |name| name.as_name())
 }

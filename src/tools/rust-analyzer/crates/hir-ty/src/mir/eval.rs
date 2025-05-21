@@ -2771,12 +2771,15 @@ impl Evaluator<'_> {
             Err(e) => {
                 let db = self.db;
                 let loc = variant.lookup(db);
-                let enum_loc = loc.parent.lookup(db);
                 let edition = self.crate_id.data(self.db).edition;
                 let name = format!(
                     "{}::{}",
-                    enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db, edition),
-                    loc.id.item_tree(db)[loc.id.value].name.display(db, edition),
+                    self.db.enum_signature(loc.parent).name.display(db, edition),
+                    self.db
+                        .enum_variants(loc.parent)
+                        .variant_name_by_id(variant)
+                        .unwrap()
+                        .display(db, edition),
                 );
                 Err(MirEvalError::ConstEvalError(name, Box::new(e)))
             }

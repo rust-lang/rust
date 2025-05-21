@@ -258,7 +258,7 @@ impl Printer<'_> {
                 let Enum { name, visibility, variants, ast_id } = &self.tree[it];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
-                w!(self, "enum {}", name.display(self.db, self.edition));
+                w!(self, "enum {} {{", name.display(self.db, self.edition));
                 let edition = self.edition;
                 self.indented(|this| {
                     for variant in FileItemTreeId::range_iter(variants.clone()) {

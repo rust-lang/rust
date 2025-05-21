@@ -2,7 +2,7 @@
 use std::borrow::Borrow;
 
 use either::Either;
-use span::{ErasedFileAstId, FileAstId, FileId, SyntaxContext};
+use span::{AstIdNode, ErasedFileAstId, FileAstId, FileId, SyntaxContext};
 use syntax::{AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize};
 
 use crate::{
@@ -121,6 +121,13 @@ impl<N: AstNode> AstId<N> {
     }
     pub fn erase(&self) -> ErasedAstId {
         crate::InFile::new(self.file_id, self.value.erase())
+    }
+    #[inline]
+    pub fn upcast<M: AstIdNode>(self) -> AstId<M>
+    where
+        N: Into<M>,
+    {
+        self.map(|it| it.upcast())
     }
 }
 

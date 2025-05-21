@@ -10,9 +10,10 @@ use std::mem;
 use cfg::CfgOptions;
 use either::Either;
 use hir_expand::{
-    HirFileId, InFile, Lookup, MacroDefId,
+    HirFileId, InFile, MacroDefId,
     mod_path::tool_path,
     name::{AsName, Name},
+    span_map::SpanMapRef,
 };
 use intern::{Symbol, sym};
 use rustc_hash::FxHashMap;
@@ -30,8 +31,8 @@ use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
-    AdtId, BlockId, BlockLoc, DefWithBodyId, FunctionId, GenericDefId, ImplId, ItemTreeLoc,
-    MacroId, ModuleDefId, ModuleId, TraitAliasId, TraitId, TypeAliasId, UnresolvedMacro,
+    AdtId, BlockId, BlockLoc, DefWithBodyId, FunctionId, GenericDefId, ImplId, MacroId,
+    ModuleDefId, ModuleId, TraitAliasId, TraitId, TypeAliasId, UnresolvedMacro,
     builtin_type::BuiltinUint,
     db::DefDatabase,
     expr_store::{
@@ -562,6 +563,11 @@ impl ExprCollector<'_> {
             current_block_legacy_macro_defs_count: FxHashMap::default(),
             outer_impl_trait: false,
         }
+    }
+
+    #[inline]
+    pub(crate) fn span_map(&self) -> SpanMapRef<'_> {
+        self.expander.span_map()
     }
 
     pub fn lower_lifetime_ref(&mut self, lifetime: ast::Lifetime) -> LifetimeRefId {
@@ -2244,11 +2250,8 @@ impl ExprCollector<'_> {
                     match resolved.take_values() {
                         Some(ModuleDefId::ConstId(_)) => (None, Pat::Path(name.into())),
                         Some(ModuleDefId::EnumVariantId(variant))
-                            if {
-                                let loc = variant.lookup(self.db);
-                                let tree = loc.item_tree_id().item_tree(self.db);
-                                tree[loc.id.value].shape != FieldsShape::Record
-                            } =>
+                        // FIXME: This can cause a cycle if the user is writing invalid code
+                            if self.db.variant_fields(variant.into()).shape != FieldsShape::Record =>
                         {
                             (None, Pat::Path(name.into()))
                         }

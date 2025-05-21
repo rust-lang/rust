@@ -46,7 +46,7 @@ use std::{
 use ast::{AstNode, StructKind};
 use base_db::Crate;
 use hir_expand::{
-    ExpandTo, HirFileId, InFile,
+    ExpandTo, HirFileId,
     attrs::RawAttrs,
     mod_path::{ModPath, PathKind},
     name::Name,
@@ -61,6 +61,8 @@ use syntax::{SyntaxKind, ast, match_ast};
 use triomphe::Arc;
 
 use crate::{BlockId, Lookup, attr::Attrs, db::DefDatabase};
+
+pub(crate) use crate::item_tree::lower::{lower_use_tree, visibility_from_ast};
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct RawVisibilityId(u32);
@@ -446,6 +448,7 @@ impl TreeId {
         }
     }
 
+    #[inline]
     pub fn file_id(self) -> HirFileId {
         self.file
     }
@@ -876,43 +879,6 @@ pub struct Macro2 {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::MacroDef>,
-}
-
-impl Use {
-    /// Maps a `UseTree` contained in this import back to its AST node.
-    pub fn use_tree_to_ast(
-        &self,
-        db: &dyn DefDatabase,
-        file_id: HirFileId,
-        index: Idx<ast::UseTree>,
-    ) -> ast::UseTree {
-        // Re-lower the AST item and get the source map.
-        // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
-        let ast = InFile::new(file_id, self.ast_id).to_node(db);
-        let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
-        let (_, source_map) = lower::lower_use_tree(db, ast_use_tree, &mut |range| {
-            db.span_map(file_id).span_for_range(range).ctx
-        })
-        .expect("failed to lower use tree");
-        source_map[index].clone()
-    }
-
-    /// Maps a `UseTree` contained in this import back to its AST node.
-    pub fn use_tree_source_map(
-        &self,
-        db: &dyn DefDatabase,
-        file_id: HirFileId,
-    ) -> Arena<ast::UseTree> {
-        // Re-lower the AST item and get the source map.
-        // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
-        let ast = InFile::new(file_id, self.ast_id).to_node(db);
-        let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
-        lower::lower_use_tree(db, ast_use_tree, &mut |range| {
-            db.span_map(file_id).span_for_range(range).ctx
-        })
-        .expect("failed to lower use tree")
-        .1
-    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

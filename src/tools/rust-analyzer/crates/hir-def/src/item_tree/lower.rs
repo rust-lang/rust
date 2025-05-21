@@ -626,7 +626,7 @@ fn private_vis() -> RawVisibility {
     )
 }
 
-fn visibility_from_ast(
+pub(crate) fn visibility_from_ast(
     db: &dyn DefDatabase,
     node: Option<ast::Visibility>,
     span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContext,
