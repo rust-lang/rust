@@ -1,7 +1,9 @@
-use core::num::Wrapping;
+#![allow(clippy::useless_vec)]
+#![warn(clippy::assign_op_pattern)]
 
-#[allow(dead_code, unused_assignments, clippy::useless_vec)]
-#[warn(clippy::assign_op_pattern)]
+use core::num::Wrapping;
+use std::ops::{Mul, MulAssign};
+
 fn main() {
     let mut a = 5;
     a += 1;
@@ -38,4 +40,36 @@ fn main() {
     let mut v = vec![Wrapping(0u32), Wrapping(1u32)];
     v[0] = v[0] + v[1];
     let _ = || v[0] = v[0] + v[1];
+}
+
+fn cow_add_assign() {
+    use std::borrow::Cow;
+    let mut buf = Cow::Owned(String::from("bar"));
+    let cows = Cow::Borrowed("foo");
+
+    // this can be linted
+    buf += cows.clone();
+    //~^ assign_op_pattern
+
+    // this should not as cow<str> Add is not commutative
+    buf = cows + buf;
+}
+
+// check that we don't lint on op assign impls, because that's just the way to impl them
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Wrap(i64);
+
+impl Mul<i64> for Wrap {
+    type Output = Self;
+
+    fn mul(self, rhs: i64) -> Self {
+        Wrap(self.0 * rhs)
+    }
+}
+
+impl MulAssign<i64> for Wrap {
+    fn mul_assign(&mut self, rhs: i64) {
+        *self = *self * rhs
+    }
 }

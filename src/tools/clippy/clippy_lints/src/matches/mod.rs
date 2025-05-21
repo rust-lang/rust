@@ -28,7 +28,7 @@ use clippy_config::Conf;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::walk_span_to_context;
 use clippy_utils::{
-    higher, is_direct_expn_of, is_in_const_context, is_span_match, span_contains_cfg, span_extract_comments,
+    higher, is_direct_expn_of, is_in_const_context, is_span_match, span_contains_cfg, span_extract_comments, sym,
 };
 use rustc_hir::{Arm, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -1053,13 +1053,13 @@ impl_lint_pass!(Matches => [
 impl<'tcx> LateLintPass<'tcx> for Matches {
     #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if is_direct_expn_of(expr.span, "matches").is_none() && expr.span.in_external_macro(cx.sess().source_map()) {
+        if is_direct_expn_of(expr.span, sym::matches).is_none() && expr.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
         let from_expansion = expr.span.from_expansion();
 
         if let ExprKind::Match(ex, arms, source) = expr.kind {
-            if is_direct_expn_of(expr.span, "matches").is_some()
+            if is_direct_expn_of(expr.span, sym::matches).is_some()
                 && let [arm, _] = arms
             {
                 redundant_pattern_match::check_match(cx, expr, ex, arms);

@@ -159,7 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Fn(ref sig, id) = item.kind {
-            let report_extra_lifetimes = trait_ref_of_method(cx, item.owner_id.def_id).is_none();
+            let report_extra_lifetimes = trait_ref_of_method(cx, item.owner_id).is_none();
             check_fn_inner(
                 cx,
                 sig,

@@ -3,18 +3,18 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use clippy_utils::ty::get_field_by_name;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures};
-use clippy_utils::{ExprUseNode, expr_use_ctxt, is_diag_item_method, is_diag_trait_item, path_to_local_id};
+use clippy_utils::{ExprUseNode, expr_use_ctxt, is_diag_item_method, is_diag_trait_item, path_to_local_id, sym};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, BorrowKind, ByRef, ClosureKind, Expr, ExprKind, Mutability, Node, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 
 use super::MANUAL_INSPECT;
 
 #[expect(clippy::too_many_lines)]
-pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name: &str, name_span: Span, msrv: Msrv) {
+pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name: Symbol, name_span: Span, msrv: Msrv) {
     if let ExprKind::Closure(c) = arg.kind
         && matches!(c.kind, ClosureKind::Closure)
         && let typeck = cx.typeck_results()
@@ -101,7 +101,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
                 UseKind::Return(s) => edits.push((s.with_leading_whitespace(cx).with_ctxt(s.ctxt()), String::new())),
                 UseKind::Borrowed(s) => {
                     #[expect(clippy::range_plus_one)]
-                    let range = s.map_range(cx, |src, range| {
+                    let range = s.map_range(cx, |_, src, range| {
                         let src = src.get(range.clone())?;
                         let trimmed = src.trim_start_matches([' ', '\t', '\n', '\r', '(']);
                         trimmed.starts_with('&').then(|| {
@@ -168,8 +168,8 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
                 edits.extend(addr_of_edits);
             }
             let edit = match name {
-                "map" => "inspect",
-                "map_err" => "inspect_err",
+                sym::map => "inspect",
+                sym::map_err => "inspect_err",
                 _ => return,
             };
             edits.push((name_span, edit.to_string()));

@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, GenericArg, Ty};
+use rustc_span::Symbol;
 use rustc_span::def_id::DefId;
-use rustc_span::{Symbol, sym};
 
 use super::CONFUSING_METHOD_TO_NUMERIC_CAST;
 
@@ -25,7 +26,6 @@ fn get_const_name_and_ty_name(
     method_def_id: DefId,
     generics: &[GenericArg<'_>],
 ) -> Option<(&'static str, &'static str)> {
-    let method_name = method_name.as_str();
     let diagnostic_name = cx.tcx.get_diagnostic_name(method_def_id);
 
     let ty_name = if diagnostic_name.is_some_and(|diag| diag == sym::cmp_ord_min || diag == sym::cmp_ord_max) {
@@ -39,14 +39,21 @@ fn get_const_name_and_ty_name(
         }
     } else if let Some(impl_id) = cx.tcx.impl_of_method(method_def_id)
         && let Some(ty_name) = get_primitive_ty_name(cx.tcx.type_of(impl_id).instantiate_identity())
-        && ["min", "max", "minimum", "maximum", "min_value", "max_value"].contains(&method_name)
+        && matches!(
+            method_name,
+            sym::min | sym::max | sym::minimum | sym::maximum | sym::min_value | sym::max_value
+        )
     {
         ty_name
     } else {
         return None;
     };
 
-    let const_name = if method_name.starts_with("max") { "MAX" } else { "MIN" };
+    let const_name = if matches!(method_name, sym::max | sym::maximum | sym::max_value) {
+        "MAX"
+    } else {
+        "MIN"
+    };
     Some((const_name, ty_name))
 }
 

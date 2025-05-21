@@ -1,19 +1,18 @@
+use crate::utils::{
+    ClippyInfo, ErrAction, FileUpdater, UpdateMode, UpdateStatus, panic_action, run_with_args_split, run_with_output,
+};
 use itertools::Itertools;
 use rustc_lexer::{TokenKind, tokenize};
-use shell_escape::escape;
-use std::ffi::{OsStr, OsString};
+use std::fmt::Write;
+use std::fs;
+use std::io::{self, Read};
 use std::ops::ControlFlow;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
-use std::{fs, io};
 use walkdir::WalkDir;
 
 pub enum Error {
-    CommandFailed(String, String),
     Io(io::Error),
-    RustfmtNotInstalled,
-    WalkDir(walkdir::Error),
-    IntellijSetupActive,
     Parse(PathBuf, usize, String),
     CheckFailed,
 }
@@ -24,48 +23,20 @@ impl From<io::Error> for Error {
     }
 }
 
-impl From<walkdir::Error> for Error {
-    fn from(error: walkdir::Error) -> Self {
-        Self::WalkDir(error)
-    }
-}
-
 impl Error {
     fn display(&self) {
         match self {
             Self::CheckFailed => {
                 eprintln!("Formatting check failed!\nRun `cargo dev fmt` to update.");
             },
-            Self::CommandFailed(command, stderr) => {
-                eprintln!("error: command `{command}` failed!\nstderr: {stderr}");
-            },
             Self::Io(err) => {
                 eprintln!("error: {err}");
-            },
-            Self::RustfmtNotInstalled => {
-                eprintln!("error: rustfmt nightly is not installed.");
-            },
-            Self::WalkDir(err) => {
-                eprintln!("error: {err}");
-            },
-            Self::IntellijSetupActive => {
-                eprintln!(
-                    "error: a local rustc repo is enabled as path dependency via `cargo dev setup intellij`.\n\
-                    Not formatting because that would format the local repo as well!\n\
-                    Please revert the changes to `Cargo.toml`s with `cargo dev remove intellij`."
-                );
             },
             Self::Parse(path, line, msg) => {
                 eprintln!("error parsing `{}:{line}`: {msg}", path.display());
             },
         }
     }
-}
-
-struct FmtContext {
-    check: bool,
-    verbose: bool,
-    rustfmt_path: String,
 }
 
 struct ClippyConf<'a> {
@@ -257,155 +228,153 @@ fn fmt_conf(check: bool) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_rustfmt(context: &FmtContext) -> Result<(), Error> {
-    // if we added a local rustc repo as path dependency to clippy for rust analyzer, we do NOT want to
-    // format because rustfmt would also format the entire rustc repo as it is a local
-    // dependency
-    if fs::read_to_string("Cargo.toml")
-        .expect("Failed to read clippy Cargo.toml")
-        .contains("[target.'cfg(NOT_A_PLATFORM)'.dependencies]")
-    {
-        return Err(Error::IntellijSetupActive);
-    }
-
-    check_for_rustfmt(context)?;
-
-    cargo_fmt(context, ".".as_ref())?;
-    cargo_fmt(context, "clippy_dev".as_ref())?;
-    cargo_fmt(context, "rustc_tools_util".as_ref())?;
-    cargo_fmt(context, "lintcheck".as_ref())?;
-
-    let chunks = WalkDir::new("tests")
-        .into_iter()
-        .filter_map(|entry| {
-            let entry = entry.expect("failed to find tests");
-            let path = entry.path();
-            if path.extension() != Some("rs".as_ref())
-                || path
-                    .components()
-                    .nth_back(1)
-                    .is_some_and(|c| c.as_os_str() == "syntax-error-recovery")
-                || entry.file_name() == "ice-3891.rs"
-            {
-                None
+/// Format the symbols list
+fn fmt_syms(update_mode: UpdateMode) {
+    FileUpdater::default().update_file_checked(
+        "cargo dev fmt",
+        update_mode,
+        "clippy_utils/src/sym.rs",
+        &mut |_, text: &str, new_text: &mut String| {
+            let (pre, conf) = text.split_once("generate! {\n").expect("can't find generate! call");
+            let (conf, post) = conf.split_once("\n}\n").expect("can't find end of generate! call");
+            let mut lines = conf
+                .lines()
+                .map(|line| {
+                    let line = line.trim();
+                    line.strip_suffix(',').unwrap_or(line).trim_end()
+                })
+                .collect::<Vec<_>>();
+            lines.sort_unstable();
+            write!(
+                new_text,
+                "{pre}generate! {{\n    {},\n}}\n{post}",
+                lines.join(",\n    "),
+            )
+            .unwrap();
+            if text == new_text {
+                UpdateStatus::Unchanged
             } else {
-                Some(entry.into_path().into_os_string())
+                UpdateStatus::Changed
             }
-        })
-        .chunks(250);
+        },
+    );
+}
 
-    for chunk in &chunks {
-        rustfmt(context, chunk)?;
+fn run_rustfmt(clippy: &ClippyInfo, update_mode: UpdateMode) {
+    let mut rustfmt_path = String::from_utf8(run_with_output(
+        "rustup which rustfmt",
+        Command::new("rustup").args(["which", "rustfmt"]),
+    ))
+    .expect("invalid rustfmt path");
+    rustfmt_path.truncate(rustfmt_path.trim_end().len());
+
+    let mut cargo_path = String::from_utf8(run_with_output(
+        "rustup which cargo",
+        Command::new("rustup").args(["which", "cargo"]),
+    ))
+    .expect("invalid cargo path");
+    cargo_path.truncate(cargo_path.trim_end().len());
+
+    // Start all format jobs first before waiting on the results.
+    let mut children = Vec::with_capacity(16);
+    for &path in &[
+        ".",
+        "clippy_config",
+        "clippy_dev",
+        "clippy_lints",
+        "clippy_lints_internal",
+        "clippy_utils",
+        "rustc_tools_util",
+        "lintcheck",
+    ] {
+        let mut cmd = Command::new(&cargo_path);
+        cmd.current_dir(clippy.path.join(path))
+            .args(["fmt"])
+            .env("RUSTFMT", &rustfmt_path)
+            .stdout(Stdio::null())
+            .stdin(Stdio::null())
+            .stderr(Stdio::piped());
+        if update_mode.is_check() {
+            cmd.arg("--check");
+        }
+        match cmd.spawn() {
+            Ok(x) => children.push(("cargo fmt", x)),
+            Err(ref e) => panic_action(&e, ErrAction::Run, "cargo fmt".as_ref()),
+        }
     }
-    Ok(())
+
+    run_with_args_split(
+        || {
+            let mut cmd = Command::new(&rustfmt_path);
+            if update_mode.is_check() {
+                cmd.arg("--check");
+            }
+            cmd.stdout(Stdio::null())
+                .stdin(Stdio::null())
+                .stderr(Stdio::piped())
+                .args(["--config", "show_parse_errors=false"]);
+            cmd
+        },
+        |cmd| match cmd.spawn() {
+            Ok(x) => children.push(("rustfmt", x)),
+            Err(ref e) => panic_action(&e, ErrAction::Run, "rustfmt".as_ref()),
+        },
+        WalkDir::new("tests")
+            .into_iter()
+            .filter_entry(|p| p.path().file_name().is_none_or(|x| x != "skip_rustfmt"))
+            .filter_map(|e| {
+                let e = e.expect("error reading `tests`");
+                e.path()
+                    .as_os_str()
+                    .as_encoded_bytes()
+                    .ends_with(b".rs")
+                    .then(|| e.into_path().into_os_string())
+            }),
+    );
+
+    for (name, child) in &mut children {
+        match child.wait() {
+            Ok(status) => match (update_mode, status.exit_ok()) {
+                (UpdateMode::Check | UpdateMode::Change, Ok(())) => {},
+                (UpdateMode::Check, Err(_)) => {
+                    let mut s = String::new();
+                    if let Some(mut stderr) = child.stderr.take()
+                        && stderr.read_to_string(&mut s).is_ok()
+                    {
+                        eprintln!("{s}");
+                    }
+                    eprintln!("Formatting check failed!\nRun `cargo dev fmt` to update.");
+                    process::exit(1);
+                },
+                (UpdateMode::Change, Err(e)) => {
+                    let mut s = String::new();
+                    if let Some(mut stderr) = child.stderr.take()
+                        && stderr.read_to_string(&mut s).is_ok()
+                    {
+                        eprintln!("{s}");
+                    }
+                    panic_action(&e, ErrAction::Run, name.as_ref());
+                },
+            },
+            Err(ref e) => panic_action(e, ErrAction::Run, name.as_ref()),
+        }
+    }
 }
 
 // the "main" function of cargo dev fmt
-pub fn run(check: bool, verbose: bool) {
-    let output = Command::new("rustup")
-        .args(["which", "rustfmt"])
-        .stderr(Stdio::inherit())
-        .output()
-        .expect("error running `rustup which rustfmt`");
-    if !output.status.success() {
-        eprintln!("`rustup which rustfmt` did not execute successfully");
-        process::exit(1);
+pub fn run(clippy: &ClippyInfo, update_mode: UpdateMode) {
+    if clippy.has_intellij_hook {
+        eprintln!(
+            "error: a local rustc repo is enabled as path dependency via `cargo dev setup intellij`.\n\
+            Not formatting because that would format the local repo as well!\n\
+            Please revert the changes to `Cargo.toml`s with `cargo dev remove intellij`."
+        );
+        return;
     }
-    let mut rustfmt_path = String::from_utf8(output.stdout).expect("invalid rustfmt path");
-    rustfmt_path.truncate(rustfmt_path.trim_end().len());
-
-    let context = FmtContext {
-        check,
-        verbose,
-        rustfmt_path,
-    };
-    if let Err(e) = run_rustfmt(&context).and_then(|()| fmt_conf(check)) {
+    run_rustfmt(clippy, update_mode);
+    fmt_syms(update_mode);
+    if let Err(e) = fmt_conf(update_mode.is_check()) {
         e.display();
         process::exit(1);
     }
-}
-
-fn format_command(program: impl AsRef<OsStr>, dir: impl AsRef<Path>, args: &[impl AsRef<OsStr>]) -> String {
-    let arg_display: Vec<_> = args.iter().map(|a| escape(a.as_ref().to_string_lossy())).collect();
-
-    format!(
-        "cd {} && {} {}",
-        escape(dir.as_ref().to_string_lossy()),
-        escape(program.as_ref().to_string_lossy()),
-        arg_display.join(" ")
-    )
-}
-
-fn exec_fmt_command(
-    context: &FmtContext,
-    program: impl AsRef<OsStr>,
-    dir: impl AsRef<Path>,
-    args: &[impl AsRef<OsStr>],
-) -> Result<(), Error> {
-    if context.verbose {
-        println!("{}", format_command(&program, &dir, args));
-    }
-
-    let output = Command::new(&program)
-        .env("RUSTFMT", &context.rustfmt_path)
-        .current_dir(&dir)
-        .args(args.iter())
-        .output()
-        .unwrap();
-    let success = output.status.success();
-
-    match (context.check, success) {
-        (_, true) => Ok(()),
-        (true, false) => Err(Error::CheckFailed),
-        (false, false) => {
-            let stderr = std::str::from_utf8(&output.stderr).unwrap_or("");
-            Err(Error::CommandFailed(
-                format_command(&program, &dir, args),
-                String::from(stderr),
-            ))
-        },
-    }
-}
-
-fn cargo_fmt(context: &FmtContext, path: &Path) -> Result<(), Error> {
-    let mut args = vec!["fmt", "--all"];
-    if context.check {
-        args.push("--check");
-    }
-    exec_fmt_command(context, "cargo", path, &args)
-}
-
-fn check_for_rustfmt(context: &FmtContext) -> Result<(), Error> {
-    let program = "rustfmt";
-    let dir = std::env::current_dir()?;
-    let args = &["--version"];
-
-    if context.verbose {
-        println!("{}", format_command(program, &dir, args));
-    }
-
-    let output = Command::new(program).current_dir(&dir).args(args.iter()).output()?;
-
-    if output.status.success() {
-        Ok(())
-    } else if std::str::from_utf8(&output.stderr)
-        .unwrap_or("")
-        .starts_with("error: 'rustfmt' is not installed")
-    {
-        Err(Error::RustfmtNotInstalled)
-    } else {
-        Err(Error::CommandFailed(
-            format_command(program, &dir, args),
-            std::str::from_utf8(&output.stderr).unwrap_or("").to_string(),
-        ))
-    }
-}
-
-fn rustfmt(context: &FmtContext, paths: impl Iterator<Item = OsString>) -> Result<(), Error> {
-    let mut args = Vec::new();
-    if context.check {
-        args.push(OsString::from("--check"));
-    }
-    args.extend(paths);
-    exec_fmt_command(context, &context.rustfmt_path, std::env::current_dir()?, &args)
 }
