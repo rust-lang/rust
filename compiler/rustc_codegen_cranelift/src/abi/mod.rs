@@ -10,7 +10,7 @@ use std::mem;
 use cranelift_codegen::ir::{ArgumentPurpose, SigRef};
 use cranelift_codegen::isa::CallConv;
 use cranelift_module::ModuleError;
-use rustc_abi::ExternAbi;
+use rustc_abi::{CanonAbi, ExternAbi, X86Call};
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_codegen_ssa::errors::CompilerBuiltinsCannotCall;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -19,7 +19,7 @@ use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
-use rustc_target::callconv::{Conv, FnAbi, PassMode};
+use rustc_target::callconv::{FnAbi, PassMode};
 use smallvec::SmallVec;
 
 use self::pass_mode::*;
@@ -42,32 +42,27 @@ fn clif_sig_from_fn_abi<'tcx>(
     Signature { params, returns, call_conv }
 }
 
-pub(crate) fn conv_to_call_conv(sess: &Session, c: Conv, default_call_conv: CallConv) -> CallConv {
+pub(crate) fn conv_to_call_conv(
+    sess: &Session,
+    c: CanonAbi,
+    default_call_conv: CallConv,
+) -> CallConv {
     match c {
-        Conv::Rust | Conv::C => default_call_conv,
-        Conv::Cold | Conv::PreserveMost | Conv::PreserveAll => CallConv::Cold,
-        Conv::X86_64SysV => CallConv::SystemV,
-        Conv::X86_64Win64 => CallConv::WindowsFastcall,
+        CanonAbi::Rust | CanonAbi::C => default_call_conv,
+        CanonAbi::RustCold => CallConv::Cold,
 
-        // Should already get a back compat warning
-        Conv::X86Fastcall | Conv::X86Stdcall | Conv::X86ThisCall | Conv::X86VectorCall => {
-            default_call_conv
-        }
+        CanonAbi::X86(x86_call) => match x86_call {
+            X86Call::SysV64 => CallConv::SystemV,
+            X86Call::Win64 => CallConv::WindowsFastcall,
+            // Should already get a back compat warning
+            _ => default_call_conv,
+        },
 
-        Conv::X86Intr | Conv::RiscvInterrupt { .. } => {
-            sess.dcx().fatal(format!("interrupt call conv {c:?} not yet implemented"))
+        CanonAbi::Interrupt(_) | CanonAbi::Arm(_) => {
+            sess.dcx().fatal("call conv {c:?} is not yet implemented")
         }
-
-        Conv::ArmAapcs => sess.dcx().fatal("aapcs call conv not yet implemented"),
-        Conv::CCmseNonSecureCall => {
-            sess.dcx().fatal("C-cmse-nonsecure-call call conv is not yet implemented");
-        }
-        Conv::CCmseNonSecureEntry => {
-            sess.dcx().fatal("C-cmse-nonsecure-entry call conv is not yet implemented");
-        }
-
-        Conv::Msp430Intr | Conv::GpuKernel | Conv::AvrInterrupt | Conv::AvrNonBlockingInterrupt => {
-            unreachable!("tried to use {c:?} call conv which only exists on an unsupported target");
+        CanonAbi::GpuKernel => {
+            unreachable!("tried to use {c:?} call conv which only exists on an unsupported target")
         }
     }
 }
@@ -610,7 +605,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         target: CallTarget,
         call_args: &mut Vec<Value>,
     ) {
-        if fn_abi.conv != Conv::C {
+        if fn_abi.conv != CanonAbi::C {
             fx.tcx.dcx().span_fatal(
                 source_info.span,
                 format!("Variadic call for non-C abi {:?}", fn_abi.conv),
