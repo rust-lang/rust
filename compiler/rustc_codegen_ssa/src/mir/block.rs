@@ -8,7 +8,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::ty::{self, Instance, List, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Spanned;
@@ -827,7 +827,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         helper: &TerminatorCodegenHelper<'tcx>,
         bx: &mut Bx,
         intrinsic: ty::IntrinsicDef,
-        instance: Option<Instance<'tcx>>,
+        instance: Instance<'tcx>,
         source_info: mir::SourceInfo,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
@@ -837,7 +837,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
         if let Some(requirement) = ValidityRequirement::from_intrinsic(intrinsic.name) {
-            let ty = instance.unwrap().args.type_at(0);
+            let ty = instance.args.type_at(0);
 
             let do_panic = !bx
                 .tcx()
@@ -910,35 +910,116 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let callee = self.codegen_operand(bx, func);
 
         let (instance, mut llfn) = match *callee.layout.ty.kind() {
-            ty::FnDef(def_id, args) => (
-                Some(ty::Instance::expect_resolve(
+            ty::FnDef(def_id, generic_args) => {
+                let instance = ty::Instance::expect_resolve(
                     bx.tcx(),
                     bx.typing_env(),
                     def_id,
-                    args,
+                    generic_args,
                     fn_span,
-                )),
-                None,
-            ),
+                );
+
+                let instance = match instance.def {
+                    // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
+                    // it is `func returning noop future`
+                    ty::InstanceKind::DropGlue(_, None) => {
+                        // Empty drop glue; a no-op.
+                        let target = target.unwrap();
+                        return helper.funclet_br(self, bx, target, mergeable_succ);
+                    }
+                    ty::InstanceKind::Intrinsic(def_id) => {
+                        let intrinsic = bx.tcx().intrinsic(def_id).unwrap();
+                        if let Some(merging_succ) = self.codegen_panic_intrinsic(
+                            &helper,
+                            bx,
+                            intrinsic,
+                            instance,
+                            source_info,
+                            target,
+                            unwind,
+                            mergeable_succ,
+                        ) {
+                            return merging_succ;
+                        }
+
+                        let fn_abi = bx.fn_abi_of_instance(instance, List::empty());
+
+                        let mut llargs = Vec::with_capacity(1);
+                        let ret_dest = self.make_return_dest(
+                            bx,
+                            destination,
+                            &fn_abi.ret,
+                            &mut llargs,
+                            Some(intrinsic),
+                        );
+                        let dest = match ret_dest {
+                            _ if fn_abi.ret.is_indirect() => llargs[0],
+                            ReturnDest::Nothing => bx.const_undef(bx.type_ptr()),
+                            ReturnDest::IndirectOperand(dst, _) | ReturnDest::Store(dst) => {
+                                dst.val.llval
+                            }
+                            ReturnDest::DirectOperand(_) => {
+                                bug!("Cannot use direct operand with an intrinsic call")
+                            }
+                        };
+
+                        let args: Vec<_> =
+                            args.iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect();
+
+                        if matches!(intrinsic, ty::IntrinsicDef { name: sym::caller_location, .. })
+                        {
+                            let location = self.get_caller_location(
+                                bx,
+                                mir::SourceInfo { span: fn_span, ..source_info },
+                            );
+
+                            assert_eq!(llargs, []);
+                            if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
+                                location.val.store(bx, tmp);
+                            }
+                            self.store_return(bx, ret_dest, &fn_abi.ret, location.immediate());
+                            return helper.funclet_br(self, bx, target.unwrap(), mergeable_succ);
+                        }
+
+                        match Self::codegen_intrinsic_call(bx, instance, fn_abi, &args, dest, span)
+                        {
+                            Ok(()) => {
+                                if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
+                                    self.store_return(bx, ret_dest, &fn_abi.ret, dst.val.llval);
+                                }
+
+                                return if let Some(target) = target {
+                                    helper.funclet_br(self, bx, target, mergeable_succ)
+                                } else {
+                                    bx.unreachable();
+                                    MergingSucc::False
+                                };
+                            }
+                            Err(instance) => {
+                                if intrinsic.must_be_overridden {
+                                    span_bug!(
+                                        span,
+                                        "intrinsic {} must be overridden by codegen backend, but isn't",
+                                        intrinsic.name,
+                                    );
+                                }
+                                instance
+                            }
+                        }
+                    }
+                    _ => instance,
+                };
+
+                (Some(instance), None)
+            }
             ty::FnPtr(..) => (None, Some(callee.immediate())),
             _ => bug!("{} is not callable", callee.layout.ty),
         };
-
-        let def = instance.map(|i| i.def);
-
-        // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
-        // it is `func returning noop future`
-        if let Some(ty::InstanceKind::DropGlue(_, None)) = def {
-            // Empty drop glue; a no-op.
-            let target = target.unwrap();
-            return helper.funclet_br(self, bx, target, mergeable_succ);
-        }
 
         // FIXME(eddyb) avoid computing this if possible, when `instance` is
         // available - right now `sig` is only needed for getting the `abi`
         // and figuring out how many extra args were passed to a C-variadic `fn`.
         let sig = callee.layout.ty.fn_sig(bx.tcx());
-        let abi = sig.abi();
 
         let extra_args = &args[sig.inputs().skip_binder().len()..];
         let extra_args = bx.tcx().mk_type_list_from_iter(extra_args.iter().map(|op_arg| {
@@ -954,83 +1035,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // The arguments we'll be passing. Plus one to account for outptr, if used.
         let arg_count = fn_abi.args.len() + fn_abi.ret.is_indirect() as usize;
 
-        let instance = match def {
-            Some(ty::InstanceKind::Intrinsic(def_id)) => {
-                let intrinsic = bx.tcx().intrinsic(def_id).unwrap();
-                if let Some(merging_succ) = self.codegen_panic_intrinsic(
-                    &helper,
-                    bx,
-                    intrinsic,
-                    instance,
-                    source_info,
-                    target,
-                    unwind,
-                    mergeable_succ,
-                ) {
-                    return merging_succ;
-                }
-
-                let mut llargs = Vec::with_capacity(1);
-                let ret_dest = self.make_return_dest(
-                    bx,
-                    destination,
-                    &fn_abi.ret,
-                    &mut llargs,
-                    Some(intrinsic),
-                );
-                let dest = match ret_dest {
-                    _ if fn_abi.ret.is_indirect() => llargs[0],
-                    ReturnDest::Nothing => bx.const_undef(bx.type_ptr()),
-                    ReturnDest::IndirectOperand(dst, _) | ReturnDest::Store(dst) => dst.val.llval,
-                    ReturnDest::DirectOperand(_) => {
-                        bug!("Cannot use direct operand with an intrinsic call")
-                    }
-                };
-
-                let args: Vec<_> =
-                    args.iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect();
-
-                if matches!(intrinsic, ty::IntrinsicDef { name: sym::caller_location, .. }) {
-                    let location = self
-                        .get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
-
-                    assert_eq!(llargs, []);
-                    if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
-                        location.val.store(bx, tmp);
-                    }
-                    self.store_return(bx, ret_dest, &fn_abi.ret, location.immediate());
-                    return helper.funclet_br(self, bx, target.unwrap(), mergeable_succ);
-                }
-
-                let instance = *instance.as_ref().unwrap();
-                match Self::codegen_intrinsic_call(bx, instance, fn_abi, &args, dest, span) {
-                    Ok(()) => {
-                        if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
-                            self.store_return(bx, ret_dest, &fn_abi.ret, dst.val.llval);
-                        }
-
-                        return if let Some(target) = target {
-                            helper.funclet_br(self, bx, target, mergeable_succ)
-                        } else {
-                            bx.unreachable();
-                            MergingSucc::False
-                        };
-                    }
-                    Err(instance) => {
-                        if intrinsic.must_be_overridden {
-                            span_bug!(
-                                span,
-                                "intrinsic {} must be overridden by codegen backend, but isn't",
-                                intrinsic.name,
-                            );
-                        }
-                        Some(instance)
-                    }
-                }
-            }
-            _ => instance,
-        };
-
         let mut llargs = Vec::with_capacity(arg_count);
 
         // We still need to call `make_return_dest` even if there's no `target`, since
@@ -1040,7 +1044,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let destination = target.map(|target| (return_dest, target));
 
         // Split the rust-call tupled arguments off.
-        let (first_args, untuple) = if abi == ExternAbi::RustCall
+        let (first_args, untuple) = if sig.abi() == ExternAbi::RustCall
             && let Some((tup, args)) = args.split_last()
         {
             (args, Some(tup))
@@ -1055,7 +1059,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         'make_args: for (i, arg) in first_args.iter().enumerate() {
             let mut op = self.codegen_operand(bx, &arg.node);
 
-            if let (0, Some(ty::InstanceKind::Virtual(_, idx))) = (i, def) {
+            if let (0, Some(ty::InstanceKind::Virtual(_, idx))) = (i, instance.map(|i| i.def)) {
                 match op.val {
                     Pair(data_ptr, meta) => {
                         // In the case of Rc<Self>, we need to explicitly pass a
