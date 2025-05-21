@@ -8,23 +8,22 @@ use hir_expand::{
     name::AsName,
     span_map::{SpanMap, SpanMapRef},
 };
-use intern::{Symbol, sym};
 use la_arena::Arena;
 use span::{AstIdMap, SyntaxContext};
 use syntax::{
     AstNode,
-    ast::{self, HasModuleItem, HasName, IsString},
+    ast::{self, HasModuleItem, HasName},
 };
 use triomphe::Arc;
 
 use crate::{
     db::DefDatabase,
     item_tree::{
-        AssocItem, AttrOwner, Const, Enum, ExternBlock, ExternCrate, Field, FieldParent,
-        FieldsShape, FileItemTreeId, Function, Idx, Impl, ImportAlias, Interned, ItemTree,
-        ItemTreeData, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, ModPath, Name, Range,
-        RawAttrs, RawIdx, RawVisibility, RawVisibilityId, Static, Struct, StructKind, Trait,
-        TraitAlias, TypeAlias, Union, Use, UseTree, UseTreeKind, Variant, VisibilityExplicitness,
+        AttrOwner, Const, Enum, ExternBlock, ExternCrate, FieldsShape, FileItemTreeId, Function,
+        Idx, Impl, ImportAlias, Interned, ItemTree, ItemTreeData, Macro2, MacroCall, MacroRules,
+        Mod, ModItem, ModKind, ModPath, RawAttrs, RawVisibility, RawVisibilityId, Static, Struct,
+        StructKind, Trait, TraitAlias, TypeAlias, Union, Use, UseTree, UseTreeKind,
+        VisibilityExplicitness,
     },
 };
 
@@ -163,118 +162,23 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn lower_assoc_item(&mut self, item_node: &ast::AssocItem) -> Option<AssocItem> {
-        let item: AssocItem = match item_node {
-            ast::AssocItem::Fn(ast) => self.lower_function(ast).map(Into::into),
-            ast::AssocItem::TypeAlias(ast) => self.lower_type_alias(ast).map(Into::into),
-            ast::AssocItem::Const(ast) => Some(self.lower_const(ast).into()),
-            ast::AssocItem::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
-        }?;
-        let attrs = RawAttrs::new(self.db, item_node, self.span_map());
-        self.add_attrs(
-            match item {
-                AssocItem::Function(it) => AttrOwner::ModItem(ModItem::Function(it)),
-                AssocItem::TypeAlias(it) => AttrOwner::ModItem(ModItem::TypeAlias(it)),
-                AssocItem::Const(it) => AttrOwner::ModItem(ModItem::Const(it)),
-                AssocItem::MacroCall(it) => AttrOwner::ModItem(ModItem::MacroCall(it)),
-            },
-            attrs,
-        );
-        Some(item)
-    }
-
     fn lower_struct(&mut self, strukt: &ast::Struct) -> Option<FileItemTreeId<Struct>> {
         let visibility = self.lower_visibility(strukt);
         let name = strukt.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(strukt);
-        let (fields, kind, attrs) = self.lower_fields(&strukt.kind());
-        let res = Struct { name, visibility, fields, shape: kind, ast_id };
+        let shape = adt_shape(strukt.kind());
+        let res = Struct { name, visibility, shape, ast_id };
         let id = id(self.data().structs.alloc(res));
 
-        for (idx, attr) in attrs {
-            self.add_attrs(
-                AttrOwner::Field(
-                    FieldParent::Struct(id),
-                    Idx::from_raw(RawIdx::from_u32(idx as u32)),
-                ),
-                attr,
-            );
-        }
         Some(id)
-    }
-
-    fn lower_fields(
-        &mut self,
-        strukt_kind: &ast::StructKind,
-    ) -> (Box<[Field]>, FieldsShape, Vec<(usize, RawAttrs)>) {
-        match strukt_kind {
-            ast::StructKind::Record(it) => {
-                let mut fields = vec![];
-                let mut attrs = vec![];
-
-                for (i, field) in it.fields().enumerate() {
-                    let data = self.lower_record_field(&field);
-                    fields.push(data);
-                    let attr = RawAttrs::new(self.db, &field, self.span_map());
-                    if !attr.is_empty() {
-                        attrs.push((i, attr))
-                    }
-                }
-                (fields.into(), FieldsShape::Record, attrs)
-            }
-            ast::StructKind::Tuple(it) => {
-                let mut fields = vec![];
-                let mut attrs = vec![];
-
-                for (i, field) in it.fields().enumerate() {
-                    let data = self.lower_tuple_field(i, &field);
-                    fields.push(data);
-                    let attr = RawAttrs::new(self.db, &field, self.span_map());
-                    if !attr.is_empty() {
-                        attrs.push((i, attr))
-                    }
-                }
-                (fields.into(), FieldsShape::Tuple, attrs)
-            }
-            ast::StructKind::Unit => (Box::default(), FieldsShape::Unit, Vec::default()),
-        }
-    }
-
-    fn lower_record_field(&mut self, field: &ast::RecordField) -> Field {
-        let name = match field.name() {
-            Some(name) => name.as_name(),
-            None => Name::missing(),
-        };
-        let visibility = self.lower_visibility(field);
-
-        Field { name, visibility, is_unsafe: field.unsafe_token().is_some() }
-    }
-
-    fn lower_tuple_field(&mut self, idx: usize, field: &ast::TupleField) -> Field {
-        let name = Name::new_tuple_field(idx);
-        let visibility = self.lower_visibility(field);
-        Field { name, visibility, is_unsafe: false }
     }
 
     fn lower_union(&mut self, union: &ast::Union) -> Option<FileItemTreeId<Union>> {
         let visibility = self.lower_visibility(union);
         let name = union.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(union);
-        let (fields, _, attrs) = match union.record_field_list() {
-            Some(record_field_list) => self.lower_fields(&StructKind::Record(record_field_list)),
-            None => (Box::default(), FieldsShape::Record, Vec::default()),
-        };
-        let res = Union { name, visibility, fields, ast_id };
+        let res = Union { name, visibility, ast_id };
         let id = id(self.data().unions.alloc(res));
-        for (idx, attr) in attrs {
-            self.add_attrs(
-                AttrOwner::Field(
-                    FieldParent::Union(id),
-                    Idx::from_raw(RawIdx::from_u32(idx as u32)),
-                ),
-                attr,
-            );
-        }
         Some(id)
     }
 
@@ -282,46 +186,9 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(enum_);
         let name = enum_.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(enum_);
-        let variants = match &enum_.variant_list() {
-            Some(variant_list) => self.lower_variants(variant_list),
-            None => {
-                FileItemTreeId(self.next_variant_idx())..FileItemTreeId(self.next_variant_idx())
-            }
-        };
-        let res = Enum { name, visibility, variants, ast_id };
+        let res = Enum { name, visibility, ast_id };
         let id = id(self.data().enums.alloc(res));
         Some(id)
-    }
-
-    fn lower_variants(&mut self, variants: &ast::VariantList) -> Range<FileItemTreeId<Variant>> {
-        let start = self.next_variant_idx();
-        for variant in variants.variants() {
-            let idx = self.lower_variant(&variant);
-            self.add_attrs(id(idx).into(), RawAttrs::new(self.db, &variant, self.span_map()));
-        }
-        let end = self.next_variant_idx();
-        FileItemTreeId(start)..FileItemTreeId(end)
-    }
-
-    fn lower_variant(&mut self, variant: &ast::Variant) -> Idx<Variant> {
-        let name = match variant.name() {
-            Some(name) => name.as_name(),
-            None => Name::missing(),
-        };
-        let (fields, kind, attrs) = self.lower_fields(&variant.kind());
-        let ast_id = self.source_ast_id_map.ast_id(variant);
-        let res = Variant { name, fields, shape: kind, ast_id };
-        let id = self.data().variants.alloc(res);
-        for (idx, attr) in attrs {
-            self.add_attrs(
-                AttrOwner::Field(
-                    FieldParent::EnumVariant(FileItemTreeId(id)),
-                    Idx::from_raw(RawIdx::from_u32(idx as u32)),
-                ),
-                attr,
-            );
-        }
-        id
     }
 
     fn lower_function(&mut self, func: &ast::Fn) -> Option<FileItemTreeId<Function>> {
@@ -390,14 +257,7 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(trait_def);
         let ast_id = self.source_ast_id_map.ast_id(trait_def);
 
-        let items = trait_def
-            .assoc_item_list()
-            .into_iter()
-            .flat_map(|list| list.assoc_items())
-            .filter_map(|item_node| self.lower_assoc_item(&item_node))
-            .collect();
-
-        let def = Trait { name, visibility, items, ast_id };
+        let def = Trait { name, visibility, ast_id };
         let id = id(self.data().traits.alloc(def));
         Some(id)
     }
@@ -417,16 +277,9 @@ impl<'a> Ctx<'a> {
 
     fn lower_impl(&mut self, impl_def: &ast::Impl) -> FileItemTreeId<Impl> {
         let ast_id = self.source_ast_id_map.ast_id(impl_def);
-        // We cannot use `assoc_items()` here as that does not include macro calls.
-        let items = impl_def
-            .assoc_item_list()
-            .into_iter()
-            .flat_map(|it| it.assoc_items())
-            .filter_map(|item| self.lower_assoc_item(&item))
-            .collect();
         // Note that trait impls don't get implicit `Self` unlike traits, because here they are a
         // type alias rather than a type parameter, so this is handled by the resolver.
-        let res = Impl { items, ast_id };
+        let res = Impl { ast_id };
         id(self.data().impls.alloc(res))
     }
 
@@ -489,7 +342,6 @@ impl<'a> Ctx<'a> {
 
     fn lower_extern_block(&mut self, block: &ast::ExternBlock) -> FileItemTreeId<ExternBlock> {
         let ast_id = self.source_ast_id_map.ast_id(block);
-        let abi = block.abi().map(lower_abi);
         let children: Box<[_]> = block.extern_item_list().map_or(Box::new([]), |list| {
             list.extern_items()
                 .filter_map(|item| {
@@ -510,7 +362,7 @@ impl<'a> Ctx<'a> {
                 .collect()
         });
 
-        let res = ExternBlock { abi, ast_id, children };
+        let res = ExternBlock { ast_id, children };
         id(self.data().extern_blocks.alloc(res))
     }
 
@@ -519,20 +371,6 @@ impl<'a> Ctx<'a> {
             self.span_map().span_for_range(range).ctx
         });
         self.data().vis.alloc(vis)
-    }
-
-    fn next_variant_idx(&self) -> Idx<Variant> {
-        Idx::from_raw(RawIdx::from(
-            self.tree.data.as_ref().map_or(0, |data| data.variants.len() as u32),
-        ))
-    }
-}
-
-fn lower_abi(abi: ast::Abi) -> Symbol {
-    match abi.abi_string() {
-        Some(tok) => Symbol::intern(tok.text_without_quotes()),
-        // `extern` default to be `extern "C"`.
-        _ => sym::C,
     }
 }
 
@@ -646,4 +484,12 @@ pub(crate) fn visibility_from_ast(
         ast::VisibilityKind::Pub => return RawVisibility::Public,
     };
     RawVisibility::Module(Interned::new(path), VisibilityExplicitness::Explicit)
+}
+
+fn adt_shape(kind: StructKind) -> FieldsShape {
+    match kind {
+        StructKind::Record(_) => FieldsShape::Record,
+        StructKind::Tuple(_) => FieldsShape::Tuple,
+        StructKind::Unit => FieldsShape::Unit,
+    }
 }

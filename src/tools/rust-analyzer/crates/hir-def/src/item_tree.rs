@@ -29,7 +29,6 @@
 //!
 //! In general, any item in the `ItemTree` stores its `AstId`, which allows mapping it back to its
 //! surface syntax.
-#![allow(unexpected_cfgs)]
 
 mod lower;
 mod pretty;
@@ -51,7 +50,7 @@ use hir_expand::{
     mod_path::{ModPath, PathKind},
     name::Name,
 };
-use intern::{Interned, Symbol};
+use intern::Interned;
 use la_arena::{Arena, Idx, RawIdx};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
@@ -237,7 +236,6 @@ impl ItemTree {
                 structs,
                 unions,
                 enums,
-                variants,
                 consts,
                 statics,
                 traits,
@@ -258,7 +256,6 @@ impl ItemTree {
             structs.shrink_to_fit();
             unions.shrink_to_fit();
             enums.shrink_to_fit();
-            variants.shrink_to_fit();
             consts.shrink_to_fit();
             statics.shrink_to_fit();
             traits.shrink_to_fit();
@@ -310,7 +307,6 @@ struct ItemTreeData {
     structs: Arena<Struct>,
     unions: Arena<Union>,
     enums: Arena<Enum>,
-    variants: Arena<Variant>,
     consts: Arena<Const>,
     statics: Arena<Static>,
     traits: Arena<Trait>,
@@ -340,40 +336,14 @@ pub enum AttrOwner {
     ModItem(ModItem),
     /// Inner attributes of the source file.
     TopLevel,
-
-    Variant(FileItemTreeId<Variant>),
-    // while not relevant to early name resolution, fields can contain visibility
-    Field(FieldParent, ItemTreeFieldId),
 }
 
-impl AttrOwner {
-    pub fn make_field_indexed(parent: FieldParent, idx: usize) -> Self {
-        AttrOwner::Field(parent, ItemTreeFieldId::from_raw(RawIdx::from_u32(idx as u32)))
+impl From<ModItem> for AttrOwner {
+    #[inline]
+    fn from(value: ModItem) -> Self {
+        AttrOwner::ModItem(value)
     }
 }
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum FieldParent {
-    Struct(FileItemTreeId<Struct>),
-    Union(FileItemTreeId<Union>),
-    EnumVariant(FileItemTreeId<Variant>),
-}
-
-pub type ItemTreeFieldId = Idx<Field>;
-
-macro_rules! from_attrs {
-    ( $( $var:ident($t:ty) ),+ $(,)? ) => {
-        $(
-            impl From<$t> for AttrOwner {
-                fn from(t: $t) -> AttrOwner {
-                    AttrOwner::$var(t)
-                }
-            }
-        )+
-    };
-}
-
-from_attrs!(ModItem(ModItem), Variant(FileItemTreeId<Variant>));
 
 /// Trait implemented by all nodes in the item tree.
 pub trait ItemTreeNode: Clone {
@@ -383,7 +353,6 @@ pub trait ItemTreeNode: Clone {
 
     /// Looks up an instance of `Self` in an item tree.
     fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self;
-    fn attr_owner(id: FileItemTreeId<Self>) -> AttrOwner;
 }
 
 pub struct FileItemTreeId<N>(Idx<N>);
@@ -547,10 +516,6 @@ macro_rules! mod_items {
                 fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self {
                     &tree.data().$fld[index]
                 }
-
-                fn attr_owner(id: FileItemTreeId<Self>) -> AttrOwner {
-                    AttrOwner::ModItem(ModItem::$typ(id))
-                }
             }
 
             impl Index<Idx<$typ>> for ItemTree {
@@ -621,22 +586,6 @@ impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
     type Output = N;
     fn index(&self, id: FileItemTreeId<N>) -> &N {
         N::lookup(self, id.index())
-    }
-}
-
-impl ItemTreeNode for Variant {
-    type Source = ast::Variant;
-
-    fn ast_id(&self) -> FileAstId<Self::Source> {
-        self.ast_id
-    }
-
-    fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self {
-        &tree.data().variants[index]
-    }
-
-    fn attr_owner(id: FileItemTreeId<Self>) -> AttrOwner {
-        AttrOwner::Variant(id)
     }
 }
 
@@ -712,7 +661,6 @@ pub struct ExternCrate {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ExternBlock {
-    pub abi: Option<Symbol>,
     pub ast_id: FileAstId<ast::ExternBlock>,
     pub children: Box<[ModItem]>,
 }
@@ -728,7 +676,6 @@ pub struct Function {
 pub struct Struct {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub fields: Box<[Field]>,
     pub shape: FieldsShape,
     pub ast_id: FileAstId<ast::Struct>,
 }
@@ -737,7 +684,6 @@ pub struct Struct {
 pub struct Union {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub fields: Box<[Field]>,
     pub ast_id: FileAstId<ast::Union>,
 }
 
@@ -745,16 +691,7 @@ pub struct Union {
 pub struct Enum {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub variants: Range<FileItemTreeId<Variant>>,
     pub ast_id: FileAstId<ast::Enum>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Variant {
-    pub name: Name,
-    pub fields: Box<[Field]>,
-    pub shape: FieldsShape,
-    pub ast_id: FileAstId<ast::Variant>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -788,16 +725,6 @@ impl VisibilityExplicitness {
     }
 }
 
-// FIXME: Remove this from item tree?
-/// A single field of an enum variant or struct
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Field {
-    pub name: Name,
-    pub visibility: RawVisibilityId,
-    // FIXME: Not an item tree property
-    pub is_unsafe: bool,
-}
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Const {
     /// `None` for `const _: () = ();`
@@ -817,7 +744,6 @@ pub struct Static {
 pub struct Trait {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::Trait>,
 }
 
@@ -830,7 +756,6 @@ pub struct TraitAlias {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Impl {
-    pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::Impl>,
 }
 
@@ -968,79 +893,6 @@ impl UseTree {
                     tree.expand_impl(prefix.clone(), cb);
                 }
             }
-        }
-    }
-}
-
-macro_rules! impl_froms {
-    ($e:ident { $($v:ident ($t:ty)),* $(,)? }) => {
-        $(
-            impl From<$t> for $e {
-                fn from(it: $t) -> $e {
-                    $e::$v(it)
-                }
-            }
-        )*
-    }
-}
-
-impl ModItem {
-    pub fn as_assoc_item(&self) -> Option<AssocItem> {
-        match self {
-            ModItem::Use(_)
-            | ModItem::ExternCrate(_)
-            | ModItem::ExternBlock(_)
-            | ModItem::Struct(_)
-            | ModItem::Union(_)
-            | ModItem::Enum(_)
-            | ModItem::Static(_)
-            | ModItem::Trait(_)
-            | ModItem::TraitAlias(_)
-            | ModItem::Impl(_)
-            | ModItem::Mod(_)
-            | ModItem::MacroRules(_)
-            | ModItem::Macro2(_) => None,
-            &ModItem::MacroCall(call) => Some(AssocItem::MacroCall(call)),
-            &ModItem::Const(konst) => Some(AssocItem::Const(konst)),
-            &ModItem::TypeAlias(alias) => Some(AssocItem::TypeAlias(alias)),
-            &ModItem::Function(func) => Some(AssocItem::Function(func)),
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum AssocItem {
-    Function(FileItemTreeId<Function>),
-    TypeAlias(FileItemTreeId<TypeAlias>),
-    Const(FileItemTreeId<Const>),
-    MacroCall(FileItemTreeId<MacroCall>),
-}
-
-impl_froms!(AssocItem {
-    Function(FileItemTreeId<Function>),
-    TypeAlias(FileItemTreeId<TypeAlias>),
-    Const(FileItemTreeId<Const>),
-    MacroCall(FileItemTreeId<MacroCall>),
-});
-
-impl From<AssocItem> for ModItem {
-    fn from(item: AssocItem) -> Self {
-        match item {
-            AssocItem::Function(it) => it.into(),
-            AssocItem::TypeAlias(it) => it.into(),
-            AssocItem::Const(it) => it.into(),
-            AssocItem::MacroCall(it) => it.into(),
-        }
-    }
-}
-
-impl AssocItem {
-    pub fn ast_id(self, tree: &ItemTree) -> FileAstId<ast::AssocItem> {
-        match self {
-            AssocItem::Function(id) => tree[id].ast_id.upcast(),
-            AssocItem::TypeAlias(id) => tree[id].ast_id.upcast(),
-            AssocItem::Const(id) => tree[id].ast_id.upcast(),
-            AssocItem::MacroCall(id) => tree[id].ast_id.upcast(),
         }
     }
 }
