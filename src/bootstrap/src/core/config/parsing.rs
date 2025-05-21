@@ -314,7 +314,7 @@ impl Config {
             skip_all
         )
     )]
-    pub(super) fn parse_inner(
+    pub(crate) fn parse_inner(
         mut flags: Flags,
         get_toml: impl Fn(&Path) -> Result<TomlConfig, toml::de::Error>,
     ) -> Config {

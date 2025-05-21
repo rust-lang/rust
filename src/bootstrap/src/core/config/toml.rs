@@ -280,7 +280,7 @@ impl<T> Merge for Option<T> {
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub(crate) struct TomlConfig {
     #[serde(flatten)]
-    pub(super) change_id: ChangeIdWrapper,
+    pub(crate) change_id: ChangeIdWrapper,
     pub(super) build: Option<Build>,
     pub(super) install: Option<Install>,
     pub(super) llvm: Option<Llvm>,
@@ -304,9 +304,9 @@ pub enum ChangeId {
 /// that if deserialization fails due to other fields, we can still provide the changelogs
 /// to allow developers to potentially find the reason for the failure in the logs..
 #[derive(Deserialize, Default)]
-pub(super) struct ChangeIdWrapper {
+pub(crate) struct ChangeIdWrapper {
     #[serde(alias = "change-id", default, deserialize_with = "deserialize_change_id")]
-    pub(super) inner: Option<ChangeId>,
+    pub(crate) inner: Option<ChangeId>,
 }
 
 fn deserialize_change_id<'de, D: Deserializer<'de>>(
