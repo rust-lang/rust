@@ -257,6 +257,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.copy_clone_conditions(obligation)
             } else if tcx.is_lang_item(trait_def, LangItem::Clone) {
                 self.copy_clone_conditions(obligation)
+            } else if tcx.is_lang_item(trait_def, LangItem::TrivialClone) {
+                self.copy_clone_conditions(obligation)
             } else if tcx.is_lang_item(trait_def, LangItem::FusedIterator) {
                 self.fused_iterator_conditions(obligation)
             } else {

@@ -183,7 +183,7 @@ pub(crate) use SubstructureFields::*;
 use rustc_ast::ptr::P;
 use rustc_ast::{
     self as ast, AnonConst, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind,
-    Generics, Mutability, PatKind, VariantData,
+    Generics, Mutability, PatKind, Safety, VariantData,
 };
 use rustc_attr_data_structures::{AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
@@ -222,6 +222,12 @@ pub(crate) struct TraitDef<'a> {
     pub associated_types: Vec<(Ident, Ty)>,
 
     pub is_const: bool,
+
+    /// The safety of the `impl`.
+    pub safety: Safety,
+
+    /// Whether the added `impl` should appear in rustdoc output.
+    pub document: bool,
 }
 
 pub(crate) struct MethodDef<'a> {
@@ -784,14 +790,18 @@ impl<'a> TraitDef<'a> {
         let path = cx.path_all(self.span, false, vec![type_ident], self_params);
         let self_type = cx.ty_path(path);
 
-        let attrs = thin_vec![cx.attr_word(sym::automatically_derived, self.span),];
+        let mut attrs = thin_vec![cx.attr_word(sym::automatically_derived, self.span),];
+        if !self.document {
+            attrs.push(cx.attr_nested_word(sym::doc, sym::hidden, self.span));
+        }
+
         let opt_trait_ref = Some(trait_ref);
 
         cx.item(
             self.span,
             attrs,
             ast::ItemKind::Impl(Box::new(ast::Impl {
-                safety: ast::Safety::Default,
+                safety: self.safety,
                 polarity: ast::ImplPolarity::Positive,
                 defaultness: ast::Defaultness::Final,
                 constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },

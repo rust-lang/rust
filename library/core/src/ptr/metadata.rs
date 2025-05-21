@@ -1,5 +1,6 @@
 #![unstable(feature = "ptr_metadata", issue = "81513")]
 
+use crate::clone::TrivialClone;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::intrinsics::{aggregate_raw_ptr, ptr_metadata};
@@ -227,6 +228,9 @@ impl<Dyn: ?Sized> Clone for DynMetadata<Dyn> {
         *self
     }
 }
+
+#[doc(hidden)]
+unsafe impl<Dyn: ?Sized> TrivialClone for DynMetadata<Dyn> {}
 
 impl<Dyn: ?Sized> Eq for DynMetadata<Dyn> {}
 
