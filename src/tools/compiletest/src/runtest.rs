@@ -762,7 +762,13 @@ impl<'test> TestCx<'test> {
                 not_found.len()
             ));
             let print = |e: &Error| {
-                println!("{file_name}:{}: {}: {}", e.line_num_str(), e.kind, e.msg.cyan())
+                let line_num = e.line_num.map_or("?".to_string(), |line_num| line_num.to_string());
+                // `file:?:NUM` may be confusing to editors and unclickable.
+                let opt_col_num = match e.column_num {
+                    Some(col_num) if line_num != "?" => format!("{col_num}:"),
+                    _ => "".to_string(),
+                };
+                println!("{file_name}:{line_num}:{opt_col_num} {}: {}", e.kind, e.msg.cyan())
             };
             // Fuzzy matching quality:
             // - message and line / message and kind - great, suggested
