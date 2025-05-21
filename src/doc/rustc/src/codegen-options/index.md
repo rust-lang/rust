@@ -249,8 +249,16 @@ It is also possible to enable or disable specific self-contained components in a
 You can pass a comma-separated list of self-contained components, individually enabled
 (`+component`) or disabled (`-component`).
 
-Currently, only the `linker` granular option is stabilized:
+Currently, only the `linker` granular option is stabilized, and only on the `x86_64-unknown-linux-gnu` target:
 - `linker`: toggle the usage of self-contained linker binaries (linker, dlltool, and their necessary libraries)
+
+#### Implementation notes
+
+On the `x86_64-unknown-linux-gnu` target, when using the default linker flavor (using `cc` as the
+linker driver) and linker features (to try using `lld`), `rustc` will try to use the self-contained
+linker by passing a `-B /path/to/sysroot/` link argument to the driver to find `rust-lld` in the
+sysroot. For backwards-compatibility, and to limit name and `PATH` collisions, this is done using a
+shim executable (the `lld-wrapper` tool) that forwards execution to the `rust-lld` executable itself.
 
 ## linker
 
@@ -275,12 +283,23 @@ The flag accepts a comma-separated list of features, individually enabled (`+fea
 (`-feature`).
 
 Currently only one is stable, and only on the `x86_64-unknown-linux-gnu` target:
-- `lld`: to toggle using the lld linker, either the system-installed binary, or the self-contained
-  `rust-lld` linker (via the `-Clink-self-contained=+linker` flag).
+- `lld`: to toggle trying to use the lld linker, either the system-installed binary, or the self-contained
+  `rust-lld` linker (via the [`-Clink-self-contained=+linker`](#link-self-contained) flag).
 
 For example, use:
-- `-Clinker-features=+lld` to opt in to using the `lld` linker
+- `-Clinker-features=+lld` to opt into using the `lld` linker, when possible (see the Implementation notes below)
 - `-Clinker-features=-lld` to opt out instead, for targets where it is configured as the default linker
+
+#### Implementation notes
+
+On the `x86_64-unknown-linux-gnu` target, when using the default linker flavor (using `cc` as the
+linker driver), `rustc` will try to use lld by passing a `-fuse-ld=lld` link argument to the driver.
+`rustc` will also try to detect if that _causes_ an error during linking (for example, if GCC is too
+old to understand the flag, and returns an error) and will then retry linking without this argument,
+as a fallback.
+
+If the user _also_ passes a `-Clink-arg=-fuse-ld=$value`, both will be given to the linker
+driver but the user's will be passed last, and would generally have priority over `rustc`'s.
 
 ## linker-flavor
 
