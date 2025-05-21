@@ -487,8 +487,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             sccs_info(infcx, &constraint_sccs);
         }
 
-        let mut scc_values =
-            RegionValues::new(location_map.clone(), universal_regions.len(), placeholder_indices);
+        let mut scc_values = RegionValues::new(
+            Rc::clone(&location_map),
+            universal_regions.len(),
+            placeholder_indices,
+        );
 
         for region in liveness_constraints.regions() {
             let scc = constraint_sccs.scc(region);

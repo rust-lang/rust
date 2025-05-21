@@ -124,7 +124,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         infcx,
         constraints,
         universal_region_relations,
-        location_map.clone(),
+        Rc::clone(&location_map),
     );
 
     // If requested: dump NLL facts, and run legacy polonius analysis.
