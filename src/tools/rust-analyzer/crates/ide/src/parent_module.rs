@@ -1,4 +1,4 @@
-use hir::{Semantics, db::DefDatabase};
+use hir::{Semantics, crate_def_map};
 use ide_db::{
     FileId, FilePosition, RootDatabase,
     base_db::{Crate, RootQueryDb},
@@ -58,7 +58,7 @@ pub(crate) fn crates_for(db: &RootDatabase, file_id: FileId) -> Vec<Crate> {
         .iter()
         .copied()
         .filter(|&crate_id| {
-            db.crate_def_map(crate_id).modules_for_file(db, file_id).next().is_some()
+            crate_def_map(db, crate_id).modules_for_file(db, file_id).next().is_some()
         })
         .sorted()
         .collect()

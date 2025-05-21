@@ -5,7 +5,7 @@
 //@ edition:2021
 
 #![cfg_attr(with_feature, feature(async_drop))]
-//[without_feature]~^ WARN found async drop types in dependecy `async_drop_dep`, but async_drop feature is disabled for `dependency_dropped`
+//[without_feature]~^ WARN found async drop types in dependency `async_drop_dep`, but async_drop feature is disabled for `dependency_dropped`
 
 #![allow(incomplete_features)]
 

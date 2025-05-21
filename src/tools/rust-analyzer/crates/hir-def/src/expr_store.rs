@@ -19,7 +19,6 @@ use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::{Edition, SyntaxContext};
 use syntax::{AstPtr, SyntaxNodePtr, ast};
-use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
@@ -30,7 +29,7 @@ use crate::{
         Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, Label, LabelId, Pat,
         PatId, RecordFieldPat, Statement,
     },
-    nameres::DefMap,
+    nameres::{DefMap, block_def_map},
     type_ref::{LifetimeRef, LifetimeRefId, PathId, TypeRef, TypeRefId},
 };
 
@@ -225,8 +224,8 @@ impl ExpressionStore {
     pub fn blocks<'a>(
         &'a self,
         db: &'a dyn DefDatabase,
-    ) -> impl Iterator<Item = (BlockId, Arc<DefMap>)> + 'a {
-        self.block_scopes.iter().map(move |&block| (block, db.block_def_map(block)))
+    ) -> impl Iterator<Item = (BlockId, &'a DefMap)> + 'a {
+        self.block_scopes.iter().map(move |&block| (block, block_def_map(db, block)))
     }
 
     pub fn walk_bindings_in_pat(&self, pat_id: PatId, mut f: impl FnMut(BindingId)) {
@@ -299,17 +298,16 @@ impl ExpressionStore {
             Expr::InlineAsm(it) => it.operands.iter().for_each(|(_, op)| match op {
                 AsmOperand::In { expr, .. }
                 | AsmOperand::Out { expr: Some(expr), .. }
-                | AsmOperand::InOut { expr, .. } => f(*expr),
+                | AsmOperand::InOut { expr, .. }
+                | AsmOperand::Const(expr)
+                | AsmOperand::Label(expr) => f(*expr),
                 AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
                     f(*in_expr);
                     if let Some(out_expr) = out_expr {
                         f(*out_expr);
                     }
                 }
-                AsmOperand::Out { expr: None, .. }
-                | AsmOperand::Const(_)
-                | AsmOperand::Label(_)
-                | AsmOperand::Sym(_) => (),
+                AsmOperand::Out { expr: None, .. } | AsmOperand::Sym(_) => (),
             }),
             Expr::If { condition, then_branch, else_branch } => {
                 f(*condition);
@@ -436,17 +434,16 @@ impl ExpressionStore {
             Expr::InlineAsm(it) => it.operands.iter().for_each(|(_, op)| match op {
                 AsmOperand::In { expr, .. }
                 | AsmOperand::Out { expr: Some(expr), .. }
-                | AsmOperand::InOut { expr, .. } => f(*expr),
+                | AsmOperand::InOut { expr, .. }
+                | AsmOperand::Const(expr)
+                | AsmOperand::Label(expr) => f(*expr),
                 AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
                     f(*in_expr);
                     if let Some(out_expr) = out_expr {
                         f(*out_expr);
                     }
                 }
-                AsmOperand::Out { expr: None, .. }
-                | AsmOperand::Const(_)
-                | AsmOperand::Label(_)
-                | AsmOperand::Sym(_) => (),
+                AsmOperand::Out { expr: None, .. } | AsmOperand::Sym(_) => (),
             }),
             Expr::If { condition, then_branch, else_branch } => {
                 f(*condition);

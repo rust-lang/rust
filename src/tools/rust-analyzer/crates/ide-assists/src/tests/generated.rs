@@ -3482,6 +3482,23 @@ fn main() {
 }
 
 #[test]
+fn doctest_unwrap_type_to_generic_arg() {
+    check_doc_test(
+        "unwrap_type_to_generic_arg",
+        r#####"
+fn foo() -> $0Option<i32> {
+    todo!()
+}
+"#####,
+        r#####"
+fn foo() -> i32 {
+    todo!()
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_wrap_return_type_in_option() {
     check_doc_test(
         "wrap_return_type_in_option",

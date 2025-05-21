@@ -1,4 +1,5 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
+use std::iter;
 use std::{borrow::Cow, fmt, ops};
 
 use base_db::Crate;
@@ -122,16 +123,15 @@ impl RawAttrs {
             (None, entries @ Some(_)) => Self { entries },
             (Some(entries), None) => Self { entries: Some(entries.clone()) },
             (Some(a), Some(b)) => {
-                let last_ast_index = a.slice.last().map_or(0, |it| it.id.ast_index() + 1) as u32;
+                let last_ast_index = a.slice.last().map_or(0, |it| it.id.ast_index() + 1);
                 let items = a
                     .slice
                     .iter()
                     .cloned()
                     .chain(b.slice.iter().map(|it| {
                         let mut it = it.clone();
-                        it.id.id = (it.id.ast_index() as u32 + last_ast_index)
-                            | ((it.id.cfg_attr_index().unwrap_or(0) as u32)
-                                << AttrId::AST_INDEX_BITS);
+                        let id = it.id.ast_index() + last_ast_index;
+                        it.id = AttrId::new(id, it.id.is_inner_attr());
                         it
                     }))
                     .collect::<Vec<_>>();
@@ -175,25 +175,20 @@ pub struct AttrId {
 // FIXME: This only handles a single level of cfg_attr nesting
 // that is `#[cfg_attr(all(), cfg_attr(all(), cfg(any())))]` breaks again
 impl AttrId {
-    const CFG_ATTR_BITS: usize = 7;
-    const AST_INDEX_MASK: usize = 0x00FF_FFFF;
-    const AST_INDEX_BITS: usize = Self::AST_INDEX_MASK.count_ones() as usize;
-    const CFG_ATTR_SET_BITS: u32 = 1 << 31;
+    const INNER_ATTR_SET_BIT: u32 = 1 << 31;
+
+    pub fn new(id: usize, is_inner: bool) -> Self {
+        assert!(id <= !Self::INNER_ATTR_SET_BIT as usize);
+        let id = id as u32;
+        Self { id: if is_inner { id | Self::INNER_ATTR_SET_BIT } else { id } }
+    }
 
     pub fn ast_index(&self) -> usize {
-        self.id as usize & Self::AST_INDEX_MASK
+        (self.id & !Self::INNER_ATTR_SET_BIT) as usize
     }
 
-    pub fn cfg_attr_index(&self) -> Option<usize> {
-        if self.id & Self::CFG_ATTR_SET_BITS == 0 {
-            None
-        } else {
-            Some(self.id as usize >> Self::AST_INDEX_BITS)
-        }
-    }
-
-    pub fn with_cfg_attr(self, idx: usize) -> AttrId {
-        AttrId { id: self.id | ((idx as u32) << Self::AST_INDEX_BITS) | Self::CFG_ATTR_SET_BITS }
+    pub fn is_inner_attr(&self) -> bool {
+        self.id & Self::INNER_ATTR_SET_BIT != 0
     }
 }
 
@@ -333,10 +328,7 @@ impl Attr {
             None => return smallvec![self.clone()],
         };
         let index = self.id;
-        let attrs = parts
-            .enumerate()
-            .take(1 << AttrId::CFG_ATTR_BITS)
-            .filter_map(|(idx, attr)| Attr::from_tt(db, attr, index.with_cfg_attr(idx)));
+        let attrs = parts.filter_map(|attr| Attr::from_tt(db, attr, index));
 
         let cfg = TopSubtree::from_token_trees(subtree.top_subtree().delimiter, cfg);
         let cfg = CfgExpr::parse(&cfg);
@@ -467,13 +459,18 @@ fn unescape(s: &str) -> Option<Cow<'_, str>> {
 pub fn collect_attrs(
     owner: &dyn ast::HasAttrs,
 ) -> impl Iterator<Item = (AttrId, Either<ast::Attr, ast::Comment>)> {
-    let inner_attrs = inner_attributes(owner.syntax()).into_iter().flatten();
-    let outer_attrs =
-        ast::AttrDocCommentIter::from_syntax_node(owner.syntax()).filter(|el| match el {
+    let inner_attrs =
+        inner_attributes(owner.syntax()).into_iter().flatten().zip(iter::repeat(true));
+    let outer_attrs = ast::AttrDocCommentIter::from_syntax_node(owner.syntax())
+        .filter(|el| match el {
             Either::Left(attr) => attr.kind().is_outer(),
             Either::Right(comment) => comment.is_outer(),
-        });
-    outer_attrs.chain(inner_attrs).enumerate().map(|(id, attr)| (AttrId { id: id as u32 }, attr))
+        })
+        .zip(iter::repeat(false));
+    outer_attrs
+        .chain(inner_attrs)
+        .enumerate()
+        .map(|(id, (attr, is_inner))| (AttrId::new(id, is_inner), attr))
 }
 
 fn inner_attributes(

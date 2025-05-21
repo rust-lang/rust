@@ -14,6 +14,7 @@ pub(crate) fn non_exhaustive_let(
         format!("non-exhaustive pattern: {}", d.uncovered_patterns),
         d.pat.map(Into::into),
     )
+    .stable()
 }
 
 #[cfg(test)]

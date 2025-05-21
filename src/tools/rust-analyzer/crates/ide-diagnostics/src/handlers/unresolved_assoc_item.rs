@@ -13,7 +13,6 @@ pub(crate) fn unresolved_assoc_item(
         "no such associated item",
         d.expr_or_pat.map(Into::into),
     )
-    .experimental()
 }
 
 #[cfg(test)]

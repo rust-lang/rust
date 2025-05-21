@@ -7,7 +7,7 @@ use either::Either;
 use hir_def::{
     AdtId, DefWithBodyId, FieldId, FunctionId, VariantId,
     expr_store::{Body, path::Path},
-    hir::{Expr, ExprId, ExprOrPatId, Pat, PatId, Statement, UnaryOp},
+    hir::{AsmOperand, Expr, ExprId, ExprOrPatId, Pat, PatId, Statement, UnaryOp},
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
     signatures::StaticFlags,
     type_ref::Rawness,
@@ -131,28 +131,28 @@ pub fn unsafe_operations(
     visitor.walk_expr(current);
 }
 
-struct UnsafeVisitor<'a> {
-    db: &'a dyn HirDatabase,
-    infer: &'a InferenceResult,
-    body: &'a Body,
-    resolver: Resolver,
+struct UnsafeVisitor<'db> {
+    db: &'db dyn HirDatabase,
+    infer: &'db InferenceResult,
+    body: &'db Body,
+    resolver: Resolver<'db>,
     def: DefWithBodyId,
     inside_unsafe_block: InsideUnsafeBlock,
     inside_assignment: bool,
     inside_union_destructure: bool,
-    callback: &'a mut dyn FnMut(UnsafeDiagnostic),
+    callback: &'db mut dyn FnMut(UnsafeDiagnostic),
     def_target_features: TargetFeatures,
     // FIXME: This needs to be the edition of the span of each call.
     edition: Edition,
 }
 
-impl<'a> UnsafeVisitor<'a> {
+impl<'db> UnsafeVisitor<'db> {
     fn new(
-        db: &'a dyn HirDatabase,
-        infer: &'a InferenceResult,
-        body: &'a Body,
+        db: &'db dyn HirDatabase,
+        infer: &'db InferenceResult,
+        body: &'db Body,
         def: DefWithBodyId,
-        unsafe_expr_cb: &'a mut dyn FnMut(UnsafeDiagnostic),
+        unsafe_expr_cb: &'db mut dyn FnMut(UnsafeDiagnostic),
     ) -> Self {
         let resolver = def.resolver(db);
         let def_target_features = match def {
@@ -197,6 +197,17 @@ impl<'a> UnsafeVisitor<'a> {
                 })
             }
         }
+    }
+
+    fn with_inside_unsafe_block<R>(
+        &mut self,
+        inside_unsafe_block: InsideUnsafeBlock,
+        f: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        let old = mem::replace(&mut self.inside_unsafe_block, inside_unsafe_block);
+        let result = f(self);
+        self.inside_unsafe_block = old;
+        result
     }
 
     fn walk_pats_top(&mut self, pats: impl Iterator<Item = PatId>, parent_expr: ExprId) {
@@ -303,7 +314,29 @@ impl<'a> UnsafeVisitor<'a> {
                 self.walk_pats_top(std::iter::once(target), current);
                 self.inside_assignment = old_inside_assignment;
             }
-            Expr::InlineAsm(_) => self.on_unsafe_op(current.into(), UnsafetyReason::InlineAsm),
+            Expr::InlineAsm(asm) => {
+                self.on_unsafe_op(current.into(), UnsafetyReason::InlineAsm);
+                asm.operands.iter().for_each(|(_, op)| match op {
+                    AsmOperand::In { expr, .. }
+                    | AsmOperand::Out { expr: Some(expr), .. }
+                    | AsmOperand::InOut { expr, .. }
+                    | AsmOperand::Const(expr) => self.walk_expr(*expr),
+                    AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                        self.walk_expr(*in_expr);
+                        if let Some(out_expr) = out_expr {
+                            self.walk_expr(*out_expr);
+                        }
+                    }
+                    AsmOperand::Out { expr: None, .. } | AsmOperand::Sym(_) => (),
+                    AsmOperand::Label(expr) => {
+                        // Inline asm labels are considered safe even when inside unsafe blocks.
+                        self.with_inside_unsafe_block(InsideUnsafeBlock::No, |this| {
+                            this.walk_expr(*expr)
+                        });
+                    }
+                });
+                return;
+            }
             // rustc allows union assignment to propagate through field accesses and casts.
             Expr::Cast { .. } => self.inside_assignment = inside_assignment,
             Expr::Field { .. } => {
@@ -317,17 +350,16 @@ impl<'a> UnsafeVisitor<'a> {
                 }
             }
             Expr::Unsafe { statements, .. } => {
-                let old_inside_unsafe_block =
-                    mem::replace(&mut self.inside_unsafe_block, InsideUnsafeBlock::Yes);
-                self.walk_pats_top(
-                    statements.iter().filter_map(|statement| match statement {
-                        &Statement::Let { pat, .. } => Some(pat),
-                        _ => None,
-                    }),
-                    current,
-                );
-                self.body.walk_child_exprs_without_pats(current, |child| self.walk_expr(child));
-                self.inside_unsafe_block = old_inside_unsafe_block;
+                self.with_inside_unsafe_block(InsideUnsafeBlock::Yes, |this| {
+                    this.walk_pats_top(
+                        statements.iter().filter_map(|statement| match statement {
+                            &Statement::Let { pat, .. } => Some(pat),
+                            _ => None,
+                        }),
+                        current,
+                    );
+                    this.body.walk_child_exprs_without_pats(current, |child| this.walk_expr(child));
+                });
                 return;
             }
             Expr::Block { statements, .. } | Expr::Async { statements, .. } => {

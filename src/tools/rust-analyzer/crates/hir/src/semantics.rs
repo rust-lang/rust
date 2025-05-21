@@ -15,7 +15,7 @@ use hir_def::{
     DefWithBodyId, FunctionId, MacroId, StructId, TraitId, VariantId,
     expr_store::{Body, ExprOrPatSource, path::Path},
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
-    nameres::ModuleOrigin,
+    nameres::{ModuleOrigin, crate_def_map},
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,
 };
@@ -100,6 +100,26 @@ impl PathResolution {
             PathResolution::TypeParam(param) => Some(TypeNs::GenericParam((*param).into())),
             PathResolution::SelfType(impl_def) => Some(TypeNs::SelfType((*impl_def).into())),
         }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct PathResolutionPerNs {
+    pub type_ns: Option<PathResolution>,
+    pub value_ns: Option<PathResolution>,
+    pub macro_ns: Option<PathResolution>,
+}
+
+impl PathResolutionPerNs {
+    pub fn new(
+        type_ns: Option<PathResolution>,
+        value_ns: Option<PathResolution>,
+        macro_ns: Option<PathResolution>,
+    ) -> Self {
+        PathResolutionPerNs { type_ns, value_ns, macro_ns }
+    }
+    pub fn any(&self) -> Option<PathResolution> {
+        self.type_ns.or(self.value_ns).or(self.macro_ns)
     }
 }
 
@@ -341,7 +361,7 @@ impl<'db> SemanticsImpl<'db> {
         match file_id {
             HirFileId::FileId(file_id) => {
                 let module = self.file_to_module_defs(file_id.file_id(self.db)).next()?;
-                let def_map = self.db.crate_def_map(module.krate().id);
+                let def_map = crate_def_map(self.db, module.krate().id);
                 match def_map[module.id.local_id].origin {
                     ModuleOrigin::CrateRoot { .. } => None,
                     ModuleOrigin::File { declaration, declaration_tree_id, .. } => {
@@ -1606,6 +1626,10 @@ impl<'db> SemanticsImpl<'db> {
         self.resolve_path_with_subst(path).map(|(it, _)| it)
     }
 
+    pub fn resolve_path_per_ns(&self, path: &ast::Path) -> Option<PathResolutionPerNs> {
+        self.analyze(path.syntax())?.resolve_hir_path_per_ns(self.db, path)
+    }
+
     pub fn resolve_path_with_subst(
         &self,
         path: &ast::Path,
@@ -1711,13 +1735,13 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     /// Returns none if the file of the node is not part of a crate.
-    fn analyze(&self, node: &SyntaxNode) -> Option<SourceAnalyzer> {
+    fn analyze(&self, node: &SyntaxNode) -> Option<SourceAnalyzer<'db>> {
         let node = self.find_file(node);
         self.analyze_impl(node, None, true)
     }
 
     /// Returns none if the file of the node is not part of a crate.
-    fn analyze_no_infer(&self, node: &SyntaxNode) -> Option<SourceAnalyzer> {
+    fn analyze_no_infer(&self, node: &SyntaxNode) -> Option<SourceAnalyzer<'db>> {
         let node = self.find_file(node);
         self.analyze_impl(node, None, false)
     }
@@ -1726,7 +1750,7 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         node: &SyntaxNode,
         offset: TextSize,
-    ) -> Option<SourceAnalyzer> {
+    ) -> Option<SourceAnalyzer<'db>> {
         let node = self.find_file(node);
         self.analyze_impl(node, Some(offset), false)
     }
@@ -1737,7 +1761,7 @@ impl<'db> SemanticsImpl<'db> {
         offset: Option<TextSize>,
         // replace this, just make the inference result a `LazyCell`
         infer_body: bool,
-    ) -> Option<SourceAnalyzer> {
+    ) -> Option<SourceAnalyzer<'db>> {
         let _p = tracing::info_span!("SemanticsImpl::analyze_impl").entered();
 
         let container = self.with_ctx(|ctx| ctx.find_container(node))?;
@@ -1984,13 +2008,13 @@ fn find_root(node: &SyntaxNode) -> SyntaxNode {
 /// Note that if you are wondering "what does this specific existing name mean?",
 /// you'd better use the `resolve_` family of methods.
 #[derive(Debug)]
-pub struct SemanticsScope<'a> {
-    pub db: &'a dyn HirDatabase,
+pub struct SemanticsScope<'db> {
+    pub db: &'db dyn HirDatabase,
     file_id: HirFileId,
-    resolver: Resolver,
+    resolver: Resolver<'db>,
 }
 
-impl SemanticsScope<'_> {
+impl<'db> SemanticsScope<'db> {
     pub fn module(&self) -> Module {
         Module { id: self.resolver.module() }
     }
@@ -2006,7 +2030,7 @@ impl SemanticsScope<'_> {
         })
     }
 
-    pub(crate) fn resolver(&self) -> &Resolver {
+    pub(crate) fn resolver(&self) -> &Resolver<'db> {
         &self.resolver
     }
 
@@ -2133,7 +2157,7 @@ impl ops::Deref for VisibleTraits {
 struct RenameConflictsVisitor<'a> {
     db: &'a dyn HirDatabase,
     owner: DefWithBodyId,
-    resolver: Resolver,
+    resolver: Resolver<'a>,
     body: &'a Body,
     to_be_renamed: BindingId,
     new_name: Symbol,

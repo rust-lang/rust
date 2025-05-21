@@ -193,7 +193,7 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
 
             ReVar(vid) => write!(f, "{vid:?}"),
 
-            RePlaceholder(placeholder) => write!(f, "{placeholder:?}"),
+            RePlaceholder(placeholder) => write!(f, "'{placeholder:?}"),
 
             // Use `'{erased}` as the output instead of `'erased` so that its more obviously distinct from
             // a `ReEarlyParam` named `'erased`. Technically that would print as `'erased/#IDX` so this is

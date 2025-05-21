@@ -29,6 +29,7 @@ pub(crate) fn incorrect_case(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCas
         ),
         InFile::new(d.file, d.ident.into()),
     )
+    .stable()
     .with_fixes(fixes(ctx, d))
 }
 
