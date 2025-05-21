@@ -6,7 +6,7 @@
 
 // See `mir_drop_order.rs` for more information
 
-#![feature(if_let_guard)]
+#![cfg_attr(edition2021, feature(let_chains))]
 #![allow(irrefutable_let_patterns)]
 
 use std::cell::RefCell;
