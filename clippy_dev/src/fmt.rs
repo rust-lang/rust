@@ -223,7 +223,7 @@ fn fmt_conf(check: bool) -> Result<(), Error> {
         if check {
             return Err(Error::CheckFailed);
         }
-        fs::write(path, new_text.as_bytes())?;
+        fs::write(path, new_text)?;
     }
     Ok(())
 }
