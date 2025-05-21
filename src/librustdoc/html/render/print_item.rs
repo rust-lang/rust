@@ -1457,26 +1457,23 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
         ty.print(self.cx)
     }
 
-    fn fields_iter(
-        &self,
-    ) -> iter::Peekable<impl Iterator<Item = (&'a clean::Item, &'a clean::Type)>> {
-        self.fields
-            .iter()
-            .filter_map(|f| match f.kind {
-                clean::StructFieldItem(ref ty) => Some((f, ty)),
-                _ => None,
-            })
-            .peekable()
+    // FIXME (GuillaumeGomez): When <https://github.com/askama-rs/askama/issues/452> is implemented,
+    // we can replace the returned value with:
+    //
+    // `iter::Peekable<impl Iterator<Item = (&'a clean::Item, &'a clean::Type)>>`
+    //
+    // And update `item_union.html`.
+    fn fields_iter(&self) -> impl Iterator<Item = (&'a clean::Item, &'a clean::Type)> {
+        self.fields.iter().filter_map(|f| match f.kind {
+            clean::StructFieldItem(ref ty) => Some((f, ty)),
+            _ => None,
+        })
     }
 
     fn render_attributes_in_pre(&self) -> impl fmt::Display {
         fmt::from_fn(move |f| {
-            if !self.is_type_alias {
-                for a in self.it.attributes_and_repr(self.cx.tcx(), self.cx.cache(), false) {
-                    writeln!(f, "{a}")?;
-                }
-            } else {
-                // For now we only render `repr` attributes for type aliases.
+            if self.is_type_alias {
+                // For now the only attributes we render for type aliases are `repr` attributes.
                 if let Some(repr) = clean::repr_attributes(
                     self.cx.tcx(),
                     self.cx.cache(),
@@ -1485,6 +1482,10 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
                 ) {
                     writeln!(f, "{repr}")?;
                 };
+            } else {
+                for a in self.it.attributes_and_repr(self.cx.tcx(), self.cx.cache(), false) {
+                    writeln!(f, "{a}")?;
+                }
             }
             Ok(())
         })
@@ -1501,8 +1502,7 @@ fn item_union(cx: &Context<'_>, it: &clean::Item, s: &clean::Union) -> impl fmt:
             is_type_alias: false,
             def_id: it.def_id().unwrap(),
         }
-        .render_into(w)
-        .unwrap();
+        .render_into(w)?;
         Ok(())
     })
 }
@@ -1529,14 +1529,14 @@ fn print_tuple_struct_fields(cx: &Context<'_>, s: &[clean::Item]) -> impl Displa
     })
 }
 
-struct DisplayEnum<'a> {
-    variants: &'a IndexVec<VariantIdx, clean::Item>,
-    generics: &'a clean::Generics,
+struct DisplayEnum<'clean> {
+    variants: &'clean IndexVec<VariantIdx, clean::Item>,
+    generics: &'clean clean::Generics,
     is_non_exhaustive: bool,
     def_id: DefId,
 }
 
-impl<'a> DisplayEnum<'a> {
+impl<'clean> DisplayEnum<'clean> {
     fn render_into<W: fmt::Write>(
         self,
         cx: &Context<'_>,
@@ -1544,16 +1544,16 @@ impl<'a> DisplayEnum<'a> {
         is_type_alias: bool,
         w: &mut W,
     ) -> fmt::Result {
-        let variants_count = self.variants.iter().filter(|i| !i.is_stripped()).count();
+        let non_stripped_variant_count = self.variants.iter().filter(|i| !i.is_stripped()).count();
         let variants_len = self.variants.len();
-        let has_stripped_entries = variants_len != variants_count;
+        let has_stripped_entries = variants_len != non_stripped_variant_count;
 
         wrap_item(w, |w| {
-            if !is_type_alias {
-                render_attributes_in_code(w, it, cx);
-            } else {
-                // For now we only render `repr` attributes for type aliases.
+            if is_type_alias {
+                // For now the only attributes we render for type aliases are `repr` attributes.
                 render_repr_attributes_in_code(w, cx, self.def_id, ItemType::Enum);
+            } else {
+                render_attributes_in_code(w, it, cx);
             }
             write!(
                 w,
@@ -1565,7 +1565,7 @@ impl<'a> DisplayEnum<'a> {
                     cx,
                     Some(self.generics),
                     self.variants,
-                    variants_count,
+                    non_stripped_variant_count,
                     has_stripped_entries,
                     self.is_non_exhaustive,
                     self.def_id,
@@ -1574,14 +1574,16 @@ impl<'a> DisplayEnum<'a> {
         })?;
 
         let def_id = it.item_id.expect_def_id();
-        let layout_def_id = if !is_type_alias {
-            write!(w, "{}", document(cx, it, None, HeadingOffset::H2))?;
-            def_id
-        } else {
+        let layout_def_id = if is_type_alias {
             self.def_id
+        } else {
+            write!(w, "{}", document(cx, it, None, HeadingOffset::H2))?;
+            // We don't return the same `DefId` since the layout size of the type alias might be
+            // different since we might have more information on the generics.
+            def_id
         };
 
-        if variants_count != 0 {
+        if non_stripped_variant_count != 0 {
             write!(w, "{}", item_variants(cx, it, self.variants, self.def_id))?;
         }
         write!(
@@ -2005,11 +2007,11 @@ impl<'a> DisplayStruct<'a> {
         w: &mut W,
     ) -> fmt::Result {
         wrap_item(w, |w| {
-            if !is_type_alias {
-                render_attributes_in_code(w, it, cx);
-            } else {
-                // For now we only render `repr` attributes for type aliases.
+            if is_type_alias {
+                // For now the only attributes we render for type aliases are `repr` attributes.
                 render_repr_attributes_in_code(w, cx, self.def_id, ItemType::Struct);
+            } else {
+                render_attributes_in_code(w, it, cx);
             }
             write!(
                 w,

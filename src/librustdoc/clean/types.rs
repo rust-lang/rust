@@ -764,7 +764,7 @@ impl Item {
         Some(tcx.visibility(def_id))
     }
 
-    pub(crate) fn attributes_witout_repr(&self, tcx: TyCtxt<'_>, is_json: bool) -> Vec<String> {
+    pub(crate) fn attributes_without_repr(&self, tcx: TyCtxt<'_>, is_json: bool) -> Vec<String> {
         const ALLOWED_ATTRIBUTES: &[Symbol] =
             &[sym::export_name, sym::link_section, sym::no_mangle, sym::non_exhaustive];
 
@@ -805,7 +805,7 @@ impl Item {
         cache: &Cache,
         is_json: bool,
     ) -> Vec<String> {
-        let mut attrs = self.attributes_witout_repr(tcx, is_json);
+        let mut attrs = self.attributes_without_repr(tcx, is_json);
 
         if let Some(repr_attr) = self.repr(tcx, cache) {
             attrs.push(repr_attr);
@@ -813,7 +813,7 @@ impl Item {
         attrs
     }
 
-    /// Returns a `#[repr(...)]` representation.
+    /// Returns a stringified `#[repr(...)]` attribute.
     pub(crate) fn repr(&self, tcx: TyCtxt<'_>, cache: &Cache, is_json: bool) -> Option<String> {
         repr_attributes(tcx, cache, self.def_id()?, self.type_(), is_json)
     }
@@ -2370,8 +2370,9 @@ impl TypeAliasInnerType {
     fn has_stripped_entries(&self) -> Option<bool> {
         Some(match self {
             Self::Enum { variants, .. } => variants.iter().any(|v| v.is_stripped()),
-            Self::Union { fields } => fields.iter().any(|f| f.is_stripped()),
-            Self::Struct { fields, .. } => fields.iter().any(|f| f.is_stripped()),
+            Self::Union { fields } | Self::Struct { fields, .. } => {
+                fields.iter().any(|f| f.is_stripped())
+            }
         })
     }
 }

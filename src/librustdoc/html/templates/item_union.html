@@ -5,7 +5,7 @@
 {% if !self.is_type_alias %}
     {{ self.document()|safe }}
 {% endif %}
-{% if self.fields_iter().peek().is_some() %}
+{% if self.fields_iter().next().is_some() %}
     <h2 id="fields" class="fields section-header"> {# #}
         Fields<a href="#fields" class="anchor">§</a> {# #}
     </h2>
