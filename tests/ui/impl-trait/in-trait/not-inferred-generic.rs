@@ -1,4 +1,3 @@
-//@ known-bug: #141143
 trait TypedClient {
     fn publish_typed<F>(&self) -> impl Sized
     where
@@ -10,4 +9,5 @@ impl TypedClient for () {
 
 fn main() {
     ().publish_typed();
+    //~^ ERROR type annotations needed [E0283]
 }
