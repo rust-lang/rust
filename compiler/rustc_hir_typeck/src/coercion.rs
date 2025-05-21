@@ -1190,9 +1190,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (ty::FnDef(..), ty::FnDef(..)) => {
                         // Don't reify if the function types have a LUB, i.e., they
                         // are the same function and their parameters have a LUB.
-                        match self
-                            .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
-                        {
+                        match self.commit_if_ok(|_| {
+                            // We need to eagerly handle nested obligations due to lazy norm.
+                            if self.next_trait_solver() {
+                                let ocx = ObligationCtxt::new(self);
+                                let value = ocx.lub(cause, self.param_env, prev_ty, new_ty)?;
+                                if ocx.select_where_possible().is_empty() {
+                                    Ok(InferOk {
+                                        value,
+                                        obligations: ocx.into_pending_obligations(),
+                                    })
+                                } else {
+                                    Err(TypeError::Mismatch)
+                                }
+                            } else {
+                                self.at(cause, self.param_env).lub(prev_ty, new_ty)
+                            }
+                        }) {
                             // We have a LUB of prev_ty and new_ty, just return it.
                             Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
                             Err(_) => {
