@@ -19,11 +19,24 @@ use rustc_middle::ty::TyCtxt;
 ///
 /// It also removes *never*-used constants, since it had all the information
 /// needed to do that too, including updating the debug info.
-pub(super) struct SingleUseConsts;
+pub(super) enum SingleUseConsts {
+    TempOnly,
+    Full,
+}
 
 impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
+    fn name(&self) -> &'static str {
+        match self {
+            SingleUseConsts::TempOnly => "SingleUseConsts-temp-only",
+            SingleUseConsts::Full => "SingleUseConsts-full",
+        }
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+        match self {
+            SingleUseConsts::TempOnly => sess.mir_opt_level() == 1,
+            SingleUseConsts::Full => sess.mir_opt_level() > 1,
+        }
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -46,6 +59,11 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
                 continue;
             };
 
+            let local_has_debug_info = finder.locals_in_debug_info.contains(local);
+            if local_has_debug_info && matches!(self, SingleUseConsts::TempOnly) {
+                continue;
+            }
+
             // We're only changing an operand, not the terminator kinds or successors
             let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
             let init_statement_kind = std::mem::replace(
@@ -61,7 +79,7 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
 
             let mut replacer = LocalReplacer { tcx, local, operand: Some(operand) };
 
-            if finder.locals_in_debug_info.contains(local) {
+            if local_has_debug_info {
                 for var_debug_info in &mut body.var_debug_info {
                     replacer.visit_var_debug_info(var_debug_info);
                 }
