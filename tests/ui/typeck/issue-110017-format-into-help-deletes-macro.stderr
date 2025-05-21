@@ -6,7 +6,6 @@ LL |      Err(format!("error: {x}"))
    |
    = note: expected struct `Box<dyn std::error::Error>`
               found struct `String`
-   = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: call `Into::into` on this expression to convert `String` into `Box<dyn std::error::Error>`
    |
 LL |      Err(format!("error: {x}").into())

@@ -9,7 +9,6 @@ LL |
 LL |     x.use_mut();
    |     - borrow later used here
    |
-   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider consuming the `Vec<i32>` when turning it into an `Iterator`
    |
 LL |     let mut x = vec![1].into_iter();

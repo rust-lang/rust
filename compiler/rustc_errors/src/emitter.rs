@@ -24,7 +24,7 @@ use rustc_lexer;
 use rustc_lint_defs::pluralize;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{FileLines, FileName, SourceFile, Span, char_width, str_width};
+use rustc_span::{FileLines, FileName, SourceFile, Span, char_width, str_width, sym};
 use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tracing::{debug, instrument, trace, warn};
 
@@ -298,7 +298,17 @@ pub trait Emitter: Translate {
                     ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
                     ExpnKind::Macro(macro_kind, name) => {
-                        Some((macro_kind, name, expn_data.hide_backtrace))
+                        // Don't recommend using `-Zmacro-backtrace` if
+                        // - hide_backtrace is true, which it is for builtin macros
+                        // - if the macro uses internal features so their expansion is unlikely to be useful
+                        let hide_macro_backtrace_suggestion = expn_data.hide_backtrace
+                            || expn_data.allow_internal_unstable.is_some_and(|aiu| {
+                                aiu.contains(&sym::fmt_internals)
+                                    || aiu.contains(&sym::print_internals)
+                                    || aiu.contains(&sym::liballoc_internals)
+                            });
+
+                        Some((macro_kind, name, hide_macro_backtrace_suggestion))
                     }
                 }
             })
@@ -311,8 +321,9 @@ pub trait Emitter: Translate {
         self.render_multispans_macro_backtrace(span, children, backtrace);
 
         if !backtrace {
-            // Skip builtin macros, as their expansion isn't relevant to the end user. This includes
-            // actual intrinsics, like `asm!`.
+            // Skip some special macros, as their expansion isn't relevant to the end user.
+            // This includes actual intrinsics and builtins like `asm!`, as well as macros
+            // that contain implementation details like the formatting macros
             if let Some((macro_kind, name, _)) = has_macro_spans.first()
                 && let Some((_, _, false)) = has_macro_spans.last()
             {

@@ -6,7 +6,6 @@ LL | static VEC: [u32; 256] = vec![];
    |
    = note: expected array `[u32; 256]`
              found struct `Vec<_>`
-   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 
