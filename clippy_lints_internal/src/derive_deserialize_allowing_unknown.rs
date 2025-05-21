@@ -8,8 +8,9 @@ use rustc_hir::{
     AttrArgs, AttrItem, AttrPath, Attribute, HirId, Impl, Item, ItemKind, Path, QPath, TraitRef, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint_defs::declare_tool_lint;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
 declare_tool_lint! {
