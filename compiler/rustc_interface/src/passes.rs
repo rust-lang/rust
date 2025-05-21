@@ -45,7 +45,7 @@ use crate::interface::Compiler;
 use crate::{errors, limits, proc_macro_decls, util};
 
 pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
-    let krate = sess
+    let mut krate = sess
         .time("parse_crate", || {
             let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
                 Input::File(file) => new_parser_from_file(&sess.psess, file, None),
@@ -63,6 +63,12 @@ pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
     if sess.opts.unstable_opts.input_stats {
         input_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS", "ast-stats-1");
     }
+
+    rustc_builtin_macros::cmdline_attrs::inject(
+        &mut krate,
+        &sess.psess,
+        &sess.opts.unstable_opts.crate_attr,
+    );
 
     krate
 }
@@ -805,16 +811,10 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
 
 pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     compiler: &Compiler,
-    mut krate: rustc_ast::Crate,
+    krate: rustc_ast::Crate,
     f: F,
 ) -> T {
     let sess = &compiler.sess;
-
-    rustc_builtin_macros::cmdline_attrs::inject(
-        &mut krate,
-        &sess.psess,
-        &sess.opts.unstable_opts.crate_attr,
-    );
 
     let pre_configured_attrs = rustc_expand::config::pre_configure_attrs(sess, &krate.attrs);
 
