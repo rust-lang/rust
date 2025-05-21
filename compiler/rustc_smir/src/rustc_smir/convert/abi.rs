@@ -2,6 +2,7 @@
 
 #![allow(rustc::usage_of_qualified_ty)]
 
+use rustc_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
 use rustc_middle::ty;
 use rustc_target::callconv::{self, Conv};
 use stable_mir::abi::{
@@ -69,7 +70,7 @@ impl<'tcx> Stable<'tcx> for callconv::FnAbi<'tcx, ty::Ty<'tcx>> {
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         assert!(self.args.len() >= self.fixed_count as usize);
-        assert!(!self.c_variadic || matches!(self.conv, Conv::C));
+        assert!(!self.c_variadic || matches!(self.conv, CanonAbi::C));
         FnAbi {
             args: self.args.as_ref().stable(tables),
             ret: self.ret.stable(tables),
@@ -117,6 +118,41 @@ impl<'tcx> Stable<'tcx> for callconv::Conv {
             Conv::AvrInterrupt => CallConvention::AvrInterrupt,
             Conv::AvrNonBlockingInterrupt => CallConvention::AvrNonBlockingInterrupt,
             Conv::RiscvInterrupt { .. } => CallConvention::RiscvInterrupt,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for CanonAbi {
+    type T = CallConvention;
+
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
+        match self {
+            CanonAbi::C => CallConvention::C,
+            CanonAbi::Rust => CallConvention::Rust,
+            CanonAbi::RustCold => CallConvention::Cold,
+            CanonAbi::Arm(arm_call) => match arm_call {
+                ArmCall::Aapcs => CallConvention::ArmAapcs,
+                ArmCall::CCmseNonSecureCall => CallConvention::CCmseNonSecureCall,
+                ArmCall::CCmseNonSecureEntry => CallConvention::CCmseNonSecureEntry,
+            },
+            CanonAbi::GpuKernel => CallConvention::GpuKernel,
+            CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {
+                InterruptKind::Avr => CallConvention::AvrInterrupt,
+                InterruptKind::AvrNonBlocking => CallConvention::AvrNonBlockingInterrupt,
+                InterruptKind::Msp430 => CallConvention::Msp430Intr,
+                InterruptKind::RiscvMachine | InterruptKind::RiscvSupervisor => {
+                    CallConvention::RiscvInterrupt
+                }
+                InterruptKind::X86 => CallConvention::X86Intr,
+            },
+            CanonAbi::X86(x86_call) => match x86_call {
+                X86Call::Fastcall => CallConvention::X86Fastcall,
+                X86Call::Stdcall => CallConvention::X86Stdcall,
+                X86Call::SysV64 => CallConvention::X86_64SysV,
+                X86Call::Thiscall => CallConvention::X86ThisCall,
+                X86Call::Vectorcall => CallConvention::X86VectorCall,
+                X86Call::Win64 => CallConvention::X86_64Win64,
+            },
         }
     }
 }

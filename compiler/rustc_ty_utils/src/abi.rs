@@ -13,7 +13,7 @@ use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
 use rustc_target::callconv::{
-    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, RiscvInterruptKind,
+    AbiMap, ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, FnAbi, PassMode,
 };
 use tracing::debug;
 
@@ -237,45 +237,6 @@ fn fn_sig_for_fn_abi<'tcx>(
             }
         }
         _ => bug!("unexpected type {:?} in Instance::fn_sig", ty),
-    }
-}
-
-#[inline]
-fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: ExternAbi, c_variadic: bool) -> Conv {
-    use rustc_abi::ExternAbi::*;
-    match tcx.sess.target.adjust_abi(abi, c_variadic) {
-        Rust | RustCall => Conv::Rust,
-
-        // This is intentionally not using `Conv::Cold`, as that has to preserve
-        // even SIMD registers, which is generally not a good trade-off.
-        RustCold => Conv::PreserveMost,
-
-        // It's the ABI's job to select this, not ours.
-        System { .. } => bug!("system abi should be selected elsewhere"),
-        EfiApi => bug!("eficall abi should be selected elsewhere"),
-
-        Stdcall { .. } => Conv::X86Stdcall,
-        Fastcall { .. } => Conv::X86Fastcall,
-        Vectorcall { .. } => Conv::X86VectorCall,
-        Thiscall { .. } => Conv::X86ThisCall,
-        C { .. } => Conv::C,
-        Unadjusted => Conv::C,
-        Win64 { .. } => Conv::X86_64Win64,
-        SysV64 { .. } => Conv::X86_64SysV,
-        Aapcs { .. } => Conv::ArmAapcs,
-        CCmseNonSecureCall => Conv::CCmseNonSecureCall,
-        CCmseNonSecureEntry => Conv::CCmseNonSecureEntry,
-        PtxKernel => Conv::GpuKernel,
-        Msp430Interrupt => Conv::Msp430Intr,
-        X86Interrupt => Conv::X86Intr,
-        GpuKernel => Conv::GpuKernel,
-        AvrInterrupt => Conv::AvrInterrupt,
-        AvrNonBlockingInterrupt => Conv::AvrNonBlockingInterrupt,
-        RiscvInterruptM => Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine },
-        RiscvInterruptS => Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor },
-
-        // These API constants ought to be more specific...
-        Cdecl { .. } => Conv::C,
     }
 }
 
@@ -529,7 +490,8 @@ fn fn_abi_new_uncached<'tcx>(
     };
     let sig = tcx.normalize_erasing_regions(cx.typing_env, sig);
 
-    let conv = conv_from_spec_abi(cx.tcx(), sig.abi, sig.c_variadic);
+    let abi_map = AbiMap::from_target(&tcx.sess.target);
+    let conv = abi_map.canonize_abi(sig.abi, sig.c_variadic).unwrap();
 
     let mut inputs = sig.inputs();
     let extra_args = if sig.abi == ExternAbi::RustCall {
