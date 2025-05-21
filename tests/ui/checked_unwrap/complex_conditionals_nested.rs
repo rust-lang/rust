@@ -4,7 +4,7 @@
     clippy::branches_sharing_code,
     clippy::unnecessary_literal_unwrap
 )]
-//@no-rustfix
+//@no-rustfix: has placeholders
 fn test_nested() {
     fn nested() {
         let x = Some(());

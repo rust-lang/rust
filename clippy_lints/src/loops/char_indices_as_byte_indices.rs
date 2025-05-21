@@ -3,12 +3,12 @@ use std::ops::ControlFlow;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{eq_expr_value, higher, path_to_local_id};
+use clippy_utils::{eq_expr_value, higher, path_to_local_id, sym};
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::{Expr, ExprKind, LangItem, Node, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol};
 
 use super::CHAR_INDICES_AS_BYTE_INDICES;
 
@@ -16,22 +16,22 @@ use super::CHAR_INDICES_AS_BYTE_INDICES;
 // Note: `String` also has methods that work with byte indices,
 // but they all take `&mut self` and aren't worth considering since the user couldn't have called
 // them while the chars iterator is live anyway.
-const BYTE_INDEX_METHODS: &[&str] = &[
-    "is_char_boundary",
-    "floor_char_boundary",
-    "ceil_char_boundary",
-    "get",
-    "index",
-    "index_mut",
-    "get_mut",
-    "get_unchecked",
-    "get_unchecked_mut",
-    "slice_unchecked",
-    "slice_mut_unchecked",
-    "split_at",
-    "split_at_mut",
-    "split_at_checked",
-    "split_at_mut_checked",
+const BYTE_INDEX_METHODS: &[Symbol] = &[
+    sym::ceil_char_boundary,
+    sym::floor_char_boundary,
+    sym::get,
+    sym::get_mut,
+    sym::get_unchecked,
+    sym::get_unchecked_mut,
+    sym::index,
+    sym::index_mut,
+    sym::is_char_boundary,
+    sym::slice_mut_unchecked,
+    sym::slice_unchecked,
+    sym::split_at,
+    sym::split_at_checked,
+    sym::split_at_mut,
+    sym::split_at_mut_checked,
 ];
 
 const CONTINUE: ControlFlow<!, ()> = ControlFlow::Continue(());
@@ -88,7 +88,7 @@ fn check_index_usage<'tcx>(
             // (contrary to the `ExprKind::Index` case which needs to handle both with `is_string_like` because `String` implements
             // `Index` directly and no deref to `str` would happen in that case).
             if cx.typeck_results().expr_ty_adjusted(recv).peel_refs().is_str()
-                && BYTE_INDEX_METHODS.contains(&segment.ident.name.as_str())
+                && BYTE_INDEX_METHODS.contains(&segment.ident.name)
                 && eq_expr_value(cx, chars_recv, recv) =>
         {
             "passing a character position to a method that expects a byte index"

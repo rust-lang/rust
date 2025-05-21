@@ -26,7 +26,7 @@ fn main() {
             allow_staged,
             allow_no_vcs,
         } => dogfood::dogfood(fix, allow_dirty, allow_staged, allow_no_vcs),
-        DevCommand::Fmt { check, verbose } => fmt::run(check, verbose),
+        DevCommand::Fmt { check } => fmt::run(&clippy, utils::UpdateMode::from_check(check)),
         DevCommand::UpdateLints { check } => update_lints::update(utils::UpdateMode::from_check(check)),
         DevCommand::NewLint {
             pass,
@@ -125,9 +125,6 @@ enum DevCommand {
         #[arg(long)]
         /// Use the rustfmt --check option
         check: bool,
-        #[arg(short, long)]
-        /// Echo commands run
-        verbose: bool,
     },
     #[command(name = "update_lints")]
     /// Updates lint registration and information from the source code

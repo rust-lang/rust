@@ -4,10 +4,11 @@ use std::ops::ControlFlow;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
-use clippy_utils::{method_chain_args, sext};
+use clippy_utils::{method_chain_args, sext, sym};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
+use rustc_span::Symbol;
 
 use super::CAST_SIGN_LOSS;
 
@@ -16,24 +17,24 @@ use super::CAST_SIGN_LOSS;
 ///
 /// Methods that can overflow and return a negative value must not be included in this list,
 /// because casting their return values can still result in sign loss.
-const METHODS_RET_POSITIVE: &[&str] = &[
-    "checked_abs",
-    "saturating_abs",
-    "isqrt",
-    "checked_isqrt",
-    "rem_euclid",
-    "checked_rem_euclid",
-    "wrapping_rem_euclid",
+const METHODS_RET_POSITIVE: &[Symbol] = &[
+    sym::checked_abs,
+    sym::saturating_abs,
+    sym::isqrt,
+    sym::checked_isqrt,
+    sym::rem_euclid,
+    sym::checked_rem_euclid,
+    sym::wrapping_rem_euclid,
 ];
 
 /// A list of methods that act like `pow()`. See `pow_call_result_sign()` for details.
 ///
 /// Methods that can overflow and return a negative value must not be included in this list,
 /// because casting their return values can still result in sign loss.
-const METHODS_POW: &[&str] = &["pow", "saturating_pow", "checked_pow"];
+const METHODS_POW: &[Symbol] = &[sym::pow, sym::saturating_pow, sym::checked_pow];
 
 /// A list of methods that act like `unwrap()`, and don't change the sign of the inner value.
-const METHODS_UNWRAP: &[&str] = &["unwrap", "unwrap_unchecked", "expect", "into_ok"];
+const METHODS_UNWRAP: &[Symbol] = &[sym::unwrap, sym::unwrap_unchecked, sym::expect, sym::into_ok];
 
 pub(super) fn check<'cx>(
     cx: &LateContext<'cx>,
@@ -129,7 +130,7 @@ fn expr_sign<'cx, 'tcx>(cx: &LateContext<'cx>, mut expr: &'tcx Expr<'tcx>, ty: i
 
     // Calling on methods that always return non-negative values.
     if let ExprKind::MethodCall(path, caller, args, ..) = expr.kind {
-        let mut method_name = path.ident.name.as_str();
+        let mut method_name = path.ident.name;
 
         // Peel unwrap(), expect(), etc.
         while let Some(&found_name) = METHODS_UNWRAP.iter().find(|&name| &method_name == name)
@@ -138,7 +139,7 @@ fn expr_sign<'cx, 'tcx>(cx: &LateContext<'cx>, mut expr: &'tcx Expr<'tcx>, ty: i
         {
             // The original type has changed, but we can't use `ty` here anyway, because it has been
             // moved.
-            method_name = inner_path.ident.name.as_str();
+            method_name = inner_path.ident.name;
             expr = recv;
         }
 
