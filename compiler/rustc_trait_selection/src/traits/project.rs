@@ -378,6 +378,7 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
             term: projected_term,
             obligations: mut projected_obligations,
         })) => {
+            debug!("opt_normalize_projection_type: progress");
             // if projection succeeded, then what we get out of this
             // is also non-normalized (consider: it was derived from
             // an impl, where-clause etc) and hence we must
@@ -408,6 +409,7 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
             Ok(Some(result.value))
         }
         Ok(Projected::NoProgress(projected_ty)) => {
+            debug!("opt_normalize_projection_type: no progress");
             let result =
                 Normalized { value: projected_ty, obligations: PredicateObligations::new() };
             infcx.inner.borrow_mut().projection_cache().insert_term(cache_key, result.clone());
@@ -621,8 +623,17 @@ struct Progress<'tcx> {
 }
 
 impl<'tcx> Progress<'tcx> {
-    fn error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Self {
-        Progress { term: Ty::new_error(tcx, guar).into(), obligations: PredicateObligations::new() }
+    fn error_for_term(
+        tcx: TyCtxt<'tcx>,
+        alias_term: ty::AliasTerm<'tcx>,
+        guar: ErrorGuaranteed,
+    ) -> Self {
+        let err_term = if alias_term.kind(tcx).is_type() {
+            Ty::new_error(tcx, guar).into()
+        } else {
+            ty::Const::new_error(tcx, guar).into()
+        };
+        Progress { term: err_term, obligations: PredicateObligations::new() }
     }
 
     fn with_addl_obligations(mut self, mut obligations: PredicateObligations<'tcx>) -> Self {
@@ -650,7 +661,11 @@ fn project<'cx, 'tcx>(
     }
 
     if let Err(guar) = obligation.predicate.error_reported() {
-        return Ok(Projected::Progress(Progress::error(selcx.tcx(), guar)));
+        return Ok(Projected::Progress(Progress::error_for_term(
+            selcx.tcx(),
+            obligation.predicate,
+            guar,
+        )));
     }
 
     let mut candidates = ProjectionCandidateSet::None;
@@ -1965,7 +1980,13 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let param_env = obligation.param_env;
     let assoc_term = match specialization_graph::assoc_def(tcx, impl_def_id, assoc_item_id) {
         Ok(assoc_term) => assoc_term,
-        Err(guar) => return Ok(Projected::Progress(Progress::error(tcx, guar))),
+        Err(guar) => {
+            return Ok(Projected::Progress(Progress::error_for_term(
+                tcx,
+                obligation.predicate,
+                guar,
+            )));
+        }
     };
 
     // This means that the impl is missing a definition for the
