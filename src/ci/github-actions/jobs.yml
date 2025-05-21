@@ -351,6 +351,12 @@ auto:
       DOCKER_SCRIPT: x86_64-gnu-llvm3.sh
     <<: *job-linux-4c
 
+  - name: x86_64-gnu-llvm-19
+    env:
+      ENABLE_GCC_CODEGEN: "1"
+      DOCKER_SCRIPT: x86_64-gnu-llvm.sh
+    <<: &job-linux-36c-codebuild
+
   # The x86_64-gnu-llvm-19 job is split into multiple jobs to run tests in parallel.
   # x86_64-gnu-llvm-19-1 skips tests that run in x86_64-gnu-llvm-19-{2,3}.
   - name: x86_64-gnu-llvm-19-1
@@ -382,7 +388,7 @@ auto:
   - name: x86_64-gnu-tools
     env:
       DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
-    <<: *job-linux-4c
+    <<: *job-linux-36c-codebuild
 
   ####################
   #  macOS Builders  #
