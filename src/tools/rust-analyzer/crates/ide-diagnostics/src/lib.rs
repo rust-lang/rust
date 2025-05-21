@@ -182,7 +182,7 @@ impl Diagnostic {
                 DiagnosticCode::Ra(_, s) => s,
             },
             unused: false,
-            experimental: false,
+            experimental: true,
             fixes: None,
             main_node: None,
         }
@@ -198,8 +198,8 @@ impl Diagnostic {
             .with_main_node(node)
     }
 
-    fn experimental(mut self) -> Diagnostic {
-        self.experimental = true;
+    fn stable(mut self) -> Diagnostic {
+        self.experimental = false;
         self
     }
 
@@ -424,14 +424,11 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::MacroExpansionParseError(d) => {
                 // FIXME: Point to the correct error span here, not just the macro-call name
                 res.extend(d.errors.iter().take(16).map(|err| {
-                    {
                         Diagnostic::new(
                             DiagnosticCode::SyntaxError,
                             format!("Syntax Error in Expansion: {err}"),
                             ctx.resolve_precise_location(&d.node.clone(), d.precise_location),
                         )
-                    }
-                    .experimental()
                 }));
                 continue;
             },
@@ -485,12 +482,8 @@ pub fn semantic_diagnostics(
                 Some(it) => it,
                 None => continue,
             },
-            AnyDiagnostic::GenericArgsProhibited(d) => {
-                handlers::generic_args_prohibited::generic_args_prohibited(&ctx, &d)
-            }
-            AnyDiagnostic::ParenthesizedGenericArgsWithoutFnTrait(d) => {
-                handlers::parenthesized_generic_args_without_fn_trait::parenthesized_generic_args_without_fn_trait(&ctx, &d)
-            }
+            AnyDiagnostic::GenericArgsProhibited(d) => handlers::generic_args_prohibited::generic_args_prohibited(&ctx, &d),
+            AnyDiagnostic::ParenthesizedGenericArgsWithoutFnTrait(d) => handlers::parenthesized_generic_args_without_fn_trait::parenthesized_generic_args_without_fn_trait(&ctx, &d),
             AnyDiagnostic::BadRtn(d) => handlers::bad_rtn::bad_rtn(&ctx, &d),
             AnyDiagnostic::IncorrectGenericsLen(d) => handlers::incorrect_generics_len::incorrect_generics_len(&ctx, &d),
             AnyDiagnostic::IncorrectGenericsOrder(d) => handlers::incorrect_generics_order::incorrect_generics_order(&ctx, &d),

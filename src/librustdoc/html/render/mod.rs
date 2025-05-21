@@ -538,7 +538,7 @@ fn document(
     }
 
     fmt::from_fn(move |f| {
-        document_item_info(cx, item, parent).render_into(f).unwrap();
+        document_item_info(cx, item, parent).render_into(f)?;
         if parent.is_none() {
             write!(f, "{}", document_full_collapsible(item, cx, heading_offset))
         } else {
@@ -582,7 +582,7 @@ fn document_short(
     show_def_docs: bool,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| {
-        document_item_info(cx, item, Some(parent)).render_into(f).unwrap();
+        document_item_info(cx, item, Some(parent)).render_into(f)?;
         if !show_def_docs {
             return Ok(());
         }
@@ -661,7 +661,7 @@ fn document_full_inner(
         };
 
         if let clean::ItemKind::FunctionItem(..) | clean::ItemKind::MethodItem(..) = kind {
-            render_call_locations(f, cx, item);
+            render_call_locations(f, cx, item)?;
         }
         Ok(())
     })
@@ -2584,11 +2584,15 @@ const MAX_FULL_EXAMPLES: usize = 5;
 const NUM_VISIBLE_LINES: usize = 10;
 
 /// Generates the HTML for example call locations generated via the --scrape-examples flag.
-fn render_call_locations<W: fmt::Write>(mut w: W, cx: &Context<'_>, item: &clean::Item) {
+fn render_call_locations<W: fmt::Write>(
+    mut w: W,
+    cx: &Context<'_>,
+    item: &clean::Item,
+) -> fmt::Result {
     let tcx = cx.tcx();
     let def_id = item.item_id.expect_def_id();
     let key = tcx.def_path_hash(def_id);
-    let Some(call_locations) = cx.shared.call_locations.get(&key) else { return };
+    let Some(call_locations) = cx.shared.call_locations.get(&key) else { return Ok(()) };
 
     // Generate a unique ID so users can link to this section for a given method
     let id = cx.derive_id("scraped-examples");
@@ -2602,8 +2606,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &Context<'_>, item: &clean
           </h5>",
         root_path = cx.root_path(),
         id = id
-    )
-    .unwrap();
+    )?;
 
     // Create a URL to a particular location in a reverse-dependency's source file
     let link_to_loc = |call_data: &CallData, loc: &CallLocation| -> (String, String) {
@@ -2705,7 +2708,8 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &Context<'_>, item: &clean
                 title: init_title,
                 locations: locations_encoded,
             }),
-        );
+        )
+        .unwrap();
 
         true
     };
@@ -2761,8 +2765,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &Context<'_>, item: &clean
                   <div class=\"hide-more\">Hide additional examples</div>\
                   <div class=\"more-scraped-examples\">\
                     <div class=\"toggle-line\"><div class=\"toggle-line-inner\"></div></div>"
-        )
-        .unwrap();
+        )?;
 
         // Only generate inline code for MAX_FULL_EXAMPLES number of examples. Otherwise we could
         // make the page arbitrarily huge!
@@ -2774,9 +2777,8 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &Context<'_>, item: &clean
         if it.peek().is_some() {
             w.write_str(
                 r#"<div class="example-links">Additional examples can be found in:<br><ul>"#,
-            )
-            .unwrap();
-            it.for_each(|(_, call_data)| {
+            )?;
+            it.try_for_each(|(_, call_data)| {
                 let (url, _) = link_to_loc(call_data, &call_data.locations[0]);
                 write!(
                     w,
@@ -2784,13 +2786,12 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &Context<'_>, item: &clean
                     url = url,
                     name = call_data.display_name
                 )
-                .unwrap();
-            });
-            w.write_str("</ul></div>").unwrap();
+            })?;
+            w.write_str("</ul></div>")?;
         }
 
-        w.write_str("</div></details>").unwrap();
+        w.write_str("</div></details>")?;
     }
 
-    w.write_str("</div>").unwrap();
+    w.write_str("</div>")
 }

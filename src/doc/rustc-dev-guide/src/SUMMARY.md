@@ -134,9 +134,9 @@
 
 - [Command-line arguments](./cli.md)
 - [rustc_driver and rustc_interface](./rustc-driver/intro.md)
+    - [Remarks on perma-unstable features](./rustc-driver/remarks-on-perma-unstable-features.md)
     - [Example: Type checking](./rustc-driver/interacting-with-the-ast.md)
     - [Example: Getting diagnostics](./rustc-driver/getting-diagnostics.md)
-    - [Remarks on perma-unstable features](./rustc-driver/remarks-on-perma-unstable-features.md)
 - [Errors and lints](diagnostics.md)
     - [Diagnostic and subdiagnostic structs](./diagnostics/diagnostic-structs.md)
     - [Translation](./diagnostics/translation.md)

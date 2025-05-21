@@ -97,7 +97,8 @@ pub use crate::{
     diagnostics::*,
     has_source::HasSource,
     semantics::{
-        PathResolution, Semantics, SemanticsImpl, SemanticsScope, TypeInfo, VisibleTraits,
+        PathResolution, PathResolutionPerNs, Semantics, SemanticsImpl, SemanticsScope, TypeInfo,
+        VisibleTraits,
     },
 };
 
@@ -119,7 +120,7 @@ pub use {
         find_path::PrefixKind,
         import_map,
         lang_item::LangItem,
-        nameres::{DefMap, ModuleSource},
+        nameres::{DefMap, ModuleSource, crate_def_map},
         per_ns::Namespace,
         type_ref::{Mutability, TypeRef},
         visibility::Visibility,
@@ -227,7 +228,7 @@ impl Crate {
     }
 
     pub fn modules(self, db: &dyn HirDatabase) -> Vec<Module> {
-        let def_map = db.crate_def_map(self.id);
+        let def_map = crate_def_map(db, self.id);
         def_map.modules().map(|(id, _)| def_map.module_id(id).into()).collect()
     }
 
@@ -528,7 +529,7 @@ impl Module {
     /// might be missing `krate`. This can happen if a module's file is not included
     /// in the module tree of any target in `Cargo.toml`.
     pub fn crate_root(self, db: &dyn HirDatabase) -> Module {
-        let def_map = db.crate_def_map(self.id.krate());
+        let def_map = crate_def_map(db, self.id.krate());
         Module { id: def_map.crate_root().into() }
     }
 
@@ -2468,7 +2469,7 @@ impl Function {
         {
             return None;
         }
-        let def_map = db.crate_def_map(HasModule::krate(&self.id, db));
+        let def_map = crate_def_map(db, HasModule::krate(&self.id, db));
         def_map.fn_as_proc_macro(self.id).map(|id| Macro { id: id.into() })
     }
 
@@ -4015,8 +4016,7 @@ impl BuiltinAttr {
         if let builtin @ Some(_) = Self::builtin(name) {
             return builtin;
         }
-        let idx = db
-            .crate_def_map(krate.id)
+        let idx = crate_def_map(db, krate.id)
             .registered_attrs()
             .iter()
             .position(|it| it.as_str() == name)? as u32;
@@ -4031,7 +4031,7 @@ impl BuiltinAttr {
     pub fn name(&self, db: &dyn HirDatabase) -> Name {
         match self.krate {
             Some(krate) => Name::new_symbol_root(
-                db.crate_def_map(krate).registered_attrs()[self.idx as usize].clone(),
+                crate_def_map(db, krate).registered_attrs()[self.idx as usize].clone(),
             ),
             None => Name::new_symbol_root(Symbol::intern(
                 hir_expand::inert_attr_macro::INERT_ATTRIBUTES[self.idx as usize].name,
@@ -4059,14 +4059,14 @@ impl ToolModule {
     pub(crate) fn by_name(db: &dyn HirDatabase, krate: Crate, name: &str) -> Option<Self> {
         let krate = krate.id;
         let idx =
-            db.crate_def_map(krate).registered_tools().iter().position(|it| it.as_str() == name)?
+            crate_def_map(db, krate).registered_tools().iter().position(|it| it.as_str() == name)?
                 as u32;
         Some(ToolModule { krate, idx })
     }
 
     pub fn name(&self, db: &dyn HirDatabase) -> Name {
         Name::new_symbol_root(
-            db.crate_def_map(self.krate).registered_tools()[self.idx as usize].clone(),
+            crate_def_map(db, self.krate).registered_tools()[self.idx as usize].clone(),
         )
     }
 
@@ -4488,7 +4488,7 @@ impl Impl {
             MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, .. } => {
                 let module_id = self.id.lookup(db).container;
                 (
-                    db.crate_def_map(module_id.krate())[module_id.local_id]
+                    crate_def_map(db, module_id.krate())[module_id.local_id]
                         .scope
                         .derive_macro_invoc(ast_id, derive_attr_index)?,
                     derive_index,
@@ -4530,7 +4530,7 @@ pub struct TraitRef {
 impl TraitRef {
     pub(crate) fn new_with_resolver(
         db: &dyn HirDatabase,
-        resolver: &Resolver,
+        resolver: &Resolver<'_>,
         trait_ref: hir_ty::TraitRef,
     ) -> TraitRef {
         let env = resolver
@@ -4752,13 +4752,13 @@ pub struct Type {
 }
 
 impl Type {
-    pub(crate) fn new_with_resolver(db: &dyn HirDatabase, resolver: &Resolver, ty: Ty) -> Type {
+    pub(crate) fn new_with_resolver(db: &dyn HirDatabase, resolver: &Resolver<'_>, ty: Ty) -> Type {
         Type::new_with_resolver_inner(db, resolver, ty)
     }
 
     pub(crate) fn new_with_resolver_inner(
         db: &dyn HirDatabase,
-        resolver: &Resolver,
+        resolver: &Resolver<'_>,
         ty: Ty,
     ) -> Type {
         let environment = resolver
@@ -6400,7 +6400,7 @@ pub fn resolve_absolute_path<'a, I: Iterator<Item = Symbol> + Clone + 'a>(
                 })
                 .filter_map(|&krate| {
                     let segments = segments.clone();
-                    let mut def_map = db.crate_def_map(krate);
+                    let mut def_map = crate_def_map(db, krate);
                     let mut module = &def_map[DefMap::ROOT];
                     let mut segments = segments.with_position().peekable();
                     while let Some((_, segment)) = segments.next_if(|&(position, _)| {

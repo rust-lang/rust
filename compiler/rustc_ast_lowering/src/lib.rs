@@ -444,14 +444,14 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
         tcx.definitions_untracked().def_index_count(),
     );
 
+    let mut lowerer = item::ItemLowerer {
+        tcx,
+        resolver: &mut resolver,
+        ast_index: &ast_index,
+        owners: &mut owners,
+    };
     for def_id in ast_index.indices() {
-        item::ItemLowerer {
-            tcx,
-            resolver: &mut resolver,
-            ast_index: &ast_index,
-            owners: &mut owners,
-        }
-        .lower_node(def_id);
+        lowerer.lower_node(def_id);
     }
 
     drop(ast_index);

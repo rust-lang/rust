@@ -85,11 +85,11 @@ vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 edition = { path = "./crates/edition", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.110", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.110", default-features = false }
-ra-ap-rustc_index = { version = "0.110", default-features = false }
-ra-ap-rustc_abi = { version = "0.110", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.110", default-features = false }
+ra-ap-rustc_lexer = { version = "0.113", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.113", default-features = false }
+ra-ap-rustc_index = { version = "0.113", default-features = false }
+ra-ap-rustc_abi = { version = "0.113", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.113", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 
@@ -132,7 +132,10 @@ pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.6", default-features = false }
 rayon = "1.10.0"
 rowan = "=0.15.15"
-salsa = { version = "0.21.1", default-features = false, features = ["rayon","salsa_unstable"] }
+salsa = { version = "0.21.1", default-features = false, features = [
+  "rayon",
+  "salsa_unstable",
+] }
 salsa-macros = "0.21.1"
 semver = "1.0.26"
 serde = { version = "1.0.219" }

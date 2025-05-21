@@ -49,7 +49,7 @@
     }
     #pagetoc a {
         border-left: 1px solid var(--sidebar-bg);
-        color: var(--sidebar-fg) !important;
+        color: var(--fg);
         display: block;
         padding-bottom: 5px;
         padding-top: 5px;

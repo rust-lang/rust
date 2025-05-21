@@ -7375,6 +7375,128 @@ pub struct Foo(i32);
 }
 
 #[test]
+fn hover_intra_inner_attr() {
+    check(
+        r#"
+/// outer comment for [`Foo`]
+#[doc = "Doc outer comment for [`Foo`]"]
+pub fn Foo {
+    //! inner comment for [`Foo$0`]
+    #![doc = "Doc inner comment for [`Foo`]"]
+}
+"#,
+        expect![[r#"
+            *[`Foo`]*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            pub fn Foo()
+            ```
+
+            ---
+
+            outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+            Doc outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+            inner comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+            Doc inner comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+        "#]],
+    );
+
+    check(
+        r#"
+/// outer comment for [`Foo`]
+#[doc = "Doc outer comment for [`Foo`]"]
+pub mod Foo {
+    //! inner comment for [`super::Foo$0`]
+    #![doc = "Doc inner comment for [`super::Foo`]"]
+}
+"#,
+        expect![[r#"
+            *[`super::Foo`]*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            pub mod Foo
+            ```
+
+            ---
+
+            outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+            Doc outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+            inner comment for [`super::Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+            Doc inner comment for [`super::Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+        "#]],
+    );
+}
+
+#[test]
+fn hover_intra_outer_attr() {
+    check(
+        r#"
+/// outer comment for [`Foo$0`]
+#[doc = "Doc outer comment for [`Foo`]"]
+pub fn Foo() {
+    //! inner comment for [`Foo`]
+    #![doc = "Doc inner comment for [`Foo`]"]
+}
+"#,
+        expect![[r#"
+            *[`Foo`]*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            pub fn Foo()
+            ```
+
+            ---
+
+            outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+            Doc outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+            inner comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+            Doc inner comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+        "#]],
+    );
+
+    check(
+        r#"
+/// outer comment for [`Foo$0`]
+#[doc = "Doc outer comment for [`Foo`]"]
+pub mod Foo {
+    //! inner comment for [`super::Foo`]
+    #![doc = "Doc inner comment for [`super::Foo`]"]
+}
+"#,
+        expect![[r#"
+            *[`Foo`]*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            pub mod Foo
+            ```
+
+            ---
+
+            outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+            Doc outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+            inner comment for [`super::Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+            Doc inner comment for [`super::Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+        "#]],
+    );
+}
+
+#[test]
 fn hover_intra_generics() {
     check(
         r#"

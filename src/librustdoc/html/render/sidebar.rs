@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
+use std::fmt;
 
 use askama::Template;
 use rustc_data_structures::fx::FxHashSet;
@@ -135,7 +136,11 @@ pub(crate) mod filters {
     }
 }
 
-pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut String) {
+pub(super) fn print_sidebar(
+    cx: &Context<'_>,
+    it: &clean::Item,
+    mut buffer: impl fmt::Write,
+) -> fmt::Result {
     let mut ids = IdMap::new();
     let mut blocks: Vec<LinkBlock<'_>> = docblock_toc(cx, it, &mut ids).into_iter().collect();
     let deref_id_map = cx.deref_id_map.borrow();
@@ -195,7 +200,8 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Str
         blocks,
         path,
     };
-    sidebar.render_into(buffer).unwrap();
+    sidebar.render_into(&mut buffer)?;
+    Ok(())
 }
 
 fn get_struct_fields_name<'a>(fields: &'a [clean::Item]) -> Vec<Link<'a>> {
