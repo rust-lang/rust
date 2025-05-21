@@ -81,7 +81,7 @@ impl<T> DenseBitSet<T> {
 
     /// The tag for the `empty_unallocated` variant. The two most significant bits are
     /// `[0, 1]`.
-    const EMPTY_UNALLOCATED_TAG_BITS: usize = 0b01 << (WORD_BITS - 2);
+    const EMPTY_UNALLOCATED_TAG_BITS: usize = 0b01 << (usize::BITS - 2);
 
     /// Create a new empty bit set with a given domain_size.
     ///
@@ -115,7 +115,9 @@ impl<T> DenseBitSet<T> {
                 *word = Word::MAX;
             }
             // Remove excessive bits on the last word.
-            *words.last_mut().unwrap() >>= WORD_BITS - domain_size % WORD_BITS;
+            // Trust me: this mask is correct.
+            let last_word_mask = Word::MAX.wrapping_shr(domain_size.wrapping_neg() as u32);
+            *words.last_mut().unwrap() &= last_word_mask;
             Self { on_heap: ManuallyDrop::new(on_heap) }
         }
     }
@@ -135,8 +137,8 @@ impl<T> DenseBitSet<T> {
     // safe to assume `self.inline`, or `self.on_heap`.
     #[inline(always)]
     pub const fn is_empty_unallocated(&self) -> bool {
-        (unsafe { self.empty_unallocated }) >> usize::BITS as u32 - 2
-            == Self::EMPTY_UNALLOCATED_TAG_BITS >> usize::BITS as u32 - 2
+        const MASK: usize = usize::MAX << usize::BITS - 2;
+        (unsafe { self.empty_unallocated } & MASK) == Self::EMPTY_UNALLOCATED_TAG_BITS
     }
 
     /// Check if `self` is `empty_unallocated` and if so return the number of words required to
