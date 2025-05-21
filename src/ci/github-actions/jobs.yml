@@ -351,8 +351,9 @@ auto:
       DOCKER_SCRIPT: x86_64-gnu-llvm3.sh
     <<: *job-linux-4c
 
-  - name: x86_64-gnu-llvm-19
+  - name: x86_64-gnu-llvm-19-full
     env:
+      IMAGE: x86_64-gnu-llvm-19
       ENABLE_GCC_CODEGEN: "1"
       DOCKER_SCRIPT: x86_64-gnu-llvm.sh
     <<: &job-linux-36c-codebuild
