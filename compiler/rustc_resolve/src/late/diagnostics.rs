@@ -11,6 +11,7 @@ use rustc_ast::{
     Item, ItemKind, MethodCall, NodeId, Path, PathSegment, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
+use rustc_attr_parsing::is_doc_alias_attrs_contain_symbol;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -39,7 +40,7 @@ use crate::late::{
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{
-    Module, ModuleKind, ModuleOrUniformRoot, PathResult, PathSource, Segment, errors,
+    Module, ModuleKind, ModuleOrUniformRoot, PathResult, PathSource, Resolver, Segment, errors,
     path_names_to_string,
 };
 
@@ -477,6 +478,19 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             return (err, Vec::new());
         }
 
+        if let Some((did, item)) = self.lookup_doc_alias_name(path, source.namespace()) {
+            let item_name = item.name;
+            let suggestion_name = self.r.tcx.item_name(did);
+            err.span_suggestion(
+                item.span,
+                format!("`{suggestion_name}` has a name defined in the doc alias attribute as `{item_name}`"),
+                    suggestion_name,
+                    Applicability::MaybeIncorrect
+                );
+
+            return (err, Vec::new());
+        };
+
         let (found, suggested_candidates, mut candidates) = self.try_lookup_name_relaxed(
             &mut err,
             source,
@@ -850,6 +864,65 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
 
         (false, suggested_candidates, candidates)
+    }
+
+    fn lookup_doc_alias_name(&mut self, path: &[Segment], ns: Namespace) -> Option<(DefId, Ident)> {
+        let find_doc_alias_name = |r: &mut Resolver<'ra, '_>, m: Module<'ra>, item_name: Symbol| {
+            for resolution in r.resolutions(m).borrow().values() {
+                let Some(did) =
+                    resolution.borrow().binding.and_then(|binding| binding.res().opt_def_id())
+                else {
+                    continue;
+                };
+                if did.is_local() {
+                    // We don't record the doc alias name in the local crate
+                    // because the people who write doc alias are usually not
+                    // confused by them.
+                    continue;
+                }
+                if is_doc_alias_attrs_contain_symbol(r.tcx.get_attrs(did, sym::doc), item_name) {
+                    return Some(did);
+                }
+            }
+            None
+        };
+
+        if path.len() == 1 {
+            for rib in self.ribs[ns].iter().rev() {
+                let item = path[0].ident;
+                if let RibKind::Module(module) = rib.kind
+                    && let Some(did) = find_doc_alias_name(self.r, module, item.name)
+                {
+                    return Some((did, item));
+                }
+            }
+        } else {
+            // Finds to the last resolved module item in the path
+            // and searches doc aliases within that module.
+            //
+            // Example: For the path `a::b::last_resolved::not_exist::c::d`,
+            // we will try to find any item has doc aliases named `not_exist`
+            // in `last_resolved` module.
+            //
+            // - Use `skip(1)` because the final segment must remain unresolved.
+            for (idx, seg) in path.iter().enumerate().rev().skip(1) {
+                let Some(id) = seg.id else {
+                    continue;
+                };
+                let Some(res) = self.r.partial_res_map.get(&id) else {
+                    continue;
+                };
+                if let Res::Def(DefKind::Mod, module) = res.expect_full_res()
+                    && let Some(module) = self.r.get_module(module)
+                    && let item = path[idx + 1].ident
+                    && let Some(did) = find_doc_alias_name(self.r, module, item.name)
+                {
+                    return Some((did, item));
+                }
+                break;
+            }
+        }
+        None
     }
 
     fn suggest_trait_and_bounds(
