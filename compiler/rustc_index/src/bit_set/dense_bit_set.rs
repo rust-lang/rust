@@ -26,11 +26,13 @@ use crate::Idx;
 /// variant for the empty set. In this case, the domain size is stored inline along with a few
 /// bits indicating that the set is empty. Allocation is deferred until needed, such as on
 /// the first insert or remove operation. This avoids the need to wrap a lazily initialised bit set
-/// in a [`OnceCell`] or an [`Option`]—you can simply create an empty set and populate it if needed.
+/// in a [`OnceCell`](std::cell::OnceCell) or an [`Option`]—you can simply create an empty set and
+/// populate it if needed.
 ///
 /// Note 1: Since this bitset is dense, if your domain is large and/or relatively homogeneous (e.g.
-/// long runs of set or unset bits), it may be more efficient to use a [MixedBitSet] or an
-/// [IntervalSet](crate::interval::IntervalSet), which are better suited for sparse or highly
+/// long runs of set or unset bits), it may be more efficient to use a
+/// [`MixedBitSet`](crate::bit_set::MixedBitSet) or an
+/// [`IntervalSet`](crate::interval::IntervalSet), which are better suited for sparse or highly
 /// compressible domains.
 ///
 /// Note 2: Use [`GrowableBitSet`] if you require support for resizing after creation.
