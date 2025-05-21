@@ -162,11 +162,11 @@ case $HOST_TARGET in
     MANY_SEEDS=16 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
     MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-illumos run_tests
     MANY_SEEDS=16 TEST_TARGET=x86_64-pc-solaris run_tests
+    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-freebsd run_tests
+    MANY_SEEDS=16 TEST_TARGET=i686-unknown-freebsd run_tests
     # Partially supported targets (tier 2)
     BASIC="empty_main integer heap_alloc libc-mem vec string btreemap" # ensures we have the basics: pre-main code, system allocator
     UNIX="hello panic/panic panic/unwind concurrency/simple atomic libc-mem libc-misc libc-random env num_cpus" # the things that are very similar across all Unixes, and hence easily supported there
-    TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal $BASIC $UNIX time hashmap random thread sync concurrency fs libc-pipe affinity
-    TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC $UNIX time hashmap random thread sync concurrency fs libc-pipe affinity
     TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX time hashmap random thread sync concurrency epoll eventfd
     TEST_TARGET=wasm32-wasip2          run_tests_minimal $BASIC wasm
     TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std empty_main wasm # this target doesn't really have std
