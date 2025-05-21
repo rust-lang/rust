@@ -323,6 +323,15 @@ impl Command {
                 cvt(libc::setuid(u as uid_t))?;
             }
         }
+        if let Some(chroot) = self.get_chroot() {
+            #[cfg(not(target_os = "fuchsia"))]
+            cvt(libc::chroot(chroot.as_ptr()))?;
+            #[cfg(target_os = "fuchsia")]
+            return Err(io::const_error!(
+                io::ErrorKind::Unsupported,
+                "chroot not supported by fuchsia"
+            ));
+        }
         if let Some(cwd) = self.get_cwd() {
             cvt(libc::chdir(cwd.as_ptr()))?;
         }
@@ -447,6 +456,7 @@ impl Command {
             || (self.env_saw_path() && !self.program_is_path())
             || !self.get_closures().is_empty()
             || self.get_groups().is_some()
+            || self.get_chroot().is_some()
         {
             return Ok(None);
         }

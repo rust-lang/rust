@@ -66,8 +66,7 @@ pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
                 }
             };
 
-            // this must run before MIR dump, because
-            // "not all control paths return a value" is reported here.
+            // Checking liveness after building the THIR ensures there were no typeck errors.
             //
             // maybe move the check to a MIR pass?
             tcx.ensure_ok().check_liveness(def);
