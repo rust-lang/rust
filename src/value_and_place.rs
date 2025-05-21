@@ -564,27 +564,7 @@ impl<'tcx> CPlace<'tcx> {
                 src_ty,
                 dst_ty,
             );
-            let data = match (src_ty, dst_ty) {
-                (_, _) if src_ty == dst_ty => data,
-
-                // This is a `write_cvalue_transmute`.
-                (types::I32, types::F32)
-                | (types::F32, types::I32)
-                | (types::I64, types::F64)
-                | (types::F64, types::I64) => codegen_bitcast(fx, dst_ty, data),
-                _ if src_ty.is_vector() && dst_ty.is_vector() => codegen_bitcast(fx, dst_ty, data),
-                _ if src_ty.is_vector() || dst_ty.is_vector() => {
-                    // FIXME(bytecodealliance/wasmtime#6104) do something more efficient for transmutes between vectors and integers.
-                    let ptr = fx.create_stack_slot(src_ty.bytes(), src_ty.bytes());
-                    ptr.store(fx, data, MemFlags::trusted());
-                    ptr.load(fx, dst_ty, MemFlags::trusted())
-                }
-
-                // `CValue`s should never contain SSA-only types, so if you ended
-                // up here having seen an error like `B1 -> I8`, then before
-                // calling `write_cvalue` you need to add a `bint` instruction.
-                _ => unreachable!("write_cvalue_transmute: {:?} -> {:?}", src_ty, dst_ty),
-            };
+            let data = if src_ty == dst_ty { data } else { codegen_bitcast(fx, dst_ty, data) };
             //fx.bcx.set_val_label(data, cranelift_codegen::ir::ValueLabel::new(var.index()));
             fx.bcx.def_var(var, data);
         }

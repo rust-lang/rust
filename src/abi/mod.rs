@@ -154,10 +154,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 
             let ret = self.lib_call_unadjusted(name, params, returns, &args)[0];
 
-            // FIXME(bytecodealliance/wasmtime#6104) use bitcast instead of store to get from i64x2 to i128
-            let ret_ptr = self.create_stack_slot(16, 16);
-            ret_ptr.store(self, ret, MemFlags::trusted());
-            Cow::Owned(vec![ret_ptr.load(self, types::I128, MemFlags::trusted())])
+            Cow::Owned(vec![codegen_bitcast(self, types::I128, ret)])
         } else if ret_single_i128 && self.tcx.sess.target.arch == "s390x" {
             // Return i128 using a return area pointer on s390x.
             let mut params = params;
