@@ -1,7 +1,7 @@
 use std::assert_matches::debug_assert_matches;
 use std::fmt::{self, Display, Write as _};
-use std::mem;
 use std::sync::LazyLock as Lazy;
+use std::{ascii, mem};
 
 use rustc_ast::tokenstream::TokenTree;
 use rustc_hir::def::{DefKind, Res};
@@ -391,30 +391,12 @@ pub(crate) fn print_evaluated_const(
     })
 }
 
-fn format_integer_with_underscore_sep(num: &str) -> String {
-    let num_chars: Vec<_> = num.chars().collect();
-    let mut num_start_index = if num_chars.first() == Some(&'-') { 1 } else { 0 };
-    let chunk_size = match &num.as_bytes()[num_start_index..] {
-        [b'0', b'b' | b'x', ..] => {
-            num_start_index += 2;
-            4
-        }
-        [b'0', b'o', ..] => {
-            num_start_index += 2;
-            let remaining_chars = num_chars.len() - num_start_index;
-            if remaining_chars <= 6 {
-                // don't add underscores to Unix permissions like 0755 or 100755
-                return num.to_string();
-            }
-            3
-        }
-        _ => 3,
-    };
-
-    num_chars[..num_start_index]
-        .iter()
-        .chain(num_chars[num_start_index..].rchunks(chunk_size).rev().intersperse(&['_']).flatten())
-        .collect()
+fn format_integer_with_underscore_sep(num: u128, is_negative: bool) -> String {
+    let num = num.to_string();
+    let chars = num.as_ascii().unwrap();
+    let mut result = if is_negative { "-".to_string() } else { String::new() };
+    result.extend(chars.rchunks(3).rev().intersperse(&[ascii::Char::LowLine]).flatten());
+    result
 }
 
 fn print_const_with_custom_print_scalar<'tcx>(
@@ -428,7 +410,10 @@ fn print_const_with_custom_print_scalar<'tcx>(
     match (ct, ct.ty().kind()) {
         (mir::Const::Val(mir::ConstValue::Scalar(int), _), ty::Uint(ui)) => {
             let mut output = if with_underscores {
-                format_integer_with_underscore_sep(&int.to_string())
+                format_integer_with_underscore_sep(
+                    int.assert_scalar_int().to_bits_unchecked(),
+                    false,
+                )
             } else {
                 int.to_string()
             };
@@ -445,7 +430,10 @@ fn print_const_with_custom_print_scalar<'tcx>(
                 .size;
             let sign_extended_data = int.assert_scalar_int().to_int(size);
             let mut output = if with_underscores {
-                format_integer_with_underscore_sep(&sign_extended_data.to_string())
+                format_integer_with_underscore_sep(
+                    sign_extended_data.unsigned_abs(),
+                    sign_extended_data.is_negative(),
+                )
             } else {
                 sign_extended_data.to_string()
             };

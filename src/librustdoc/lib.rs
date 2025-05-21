@@ -3,6 +3,8 @@
     html_playground_url = "https://play.rust-lang.org/"
 )]
 #![feature(rustc_private)]
+#![feature(ascii_char)]
+#![feature(ascii_char_variants)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
