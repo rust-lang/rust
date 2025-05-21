@@ -4,52 +4,32 @@
 fn main() {
     // Test for loop over implicitly adjusted `Iterator` with `if let` expression
     let x = vec![Some(1), Some(2), Some(3)];
-    for n in x {
-        //~^ manual_flatten
-
-        if let Some(y) = n {
-            println!("{}", y);
-        }
+    for y in x.into_iter().flatten() {
+        println!("{}", y);
     }
 
     // Test for loop over implicitly adjusted `Iterator` with `if let` statement
     let y: Vec<Result<i32, i32>> = vec![];
-    for n in y.clone() {
-        //~^ manual_flatten
-
-        if let Ok(n) = n {
-            println!("{}", n);
-        };
+    for n in y.clone().into_iter().flatten() {
+        println!("{}", n);
     }
 
     // Test for loop over by reference
-    for n in &y {
-        //~^ manual_flatten
-
-        if let Ok(n) = n {
-            println!("{}", n);
-        }
+    for n in y.iter().flatten() {
+        println!("{}", n);
     }
 
     // Test for loop over an implicit reference
     let z = &y;
-    for n in z {
-        //~^ manual_flatten
-
-        if let Ok(n) = n {
-            println!("{}", n);
-        }
+    for n in z.iter().flatten() {
+        println!("{}", n);
     }
 
     // Test for loop over `Iterator` with `if let` expression
     let z = vec![Some(1), Some(2), Some(3)];
     let z = z.iter();
-    for n in z {
-        //~^ manual_flatten
-
-        if let Some(m) = n {
-            println!("{}", m);
-        }
+    for m in z.flatten() {
+        println!("{}", m);
     }
 
     // Using the `None` variant should not trigger the lint
@@ -79,30 +59,18 @@ fn main() {
     }
 
     let vec_of_ref = vec![&Some(1)];
-    for n in &vec_of_ref {
-        //~^ manual_flatten
-
-        if let Some(n) = n {
-            println!("{:?}", n);
-        }
+    for n in vec_of_ref.iter().copied().flatten() {
+        println!("{:?}", n);
     }
 
     let vec_of_ref = &vec_of_ref;
-    for n in vec_of_ref {
-        //~^ manual_flatten
-
-        if let Some(n) = n {
-            println!("{:?}", n);
-        }
+    for n in vec_of_ref.iter().copied().flatten() {
+        println!("{:?}", n);
     }
 
     let slice_of_ref = &[&Some(1)];
-    for n in slice_of_ref {
-        //~^ manual_flatten
-
-        if let Some(n) = n {
-            println!("{:?}", n);
-        }
+    for n in slice_of_ref.iter().copied().flatten() {
+        println!("{:?}", n);
     }
 
     struct Test {
@@ -158,13 +126,8 @@ fn main() {
 
     // This should trigger the lint, but the applicability is `MaybeIncorrect`
     let z = vec![Some(1), Some(2), Some(3)];
-    for n in z {
-        //~^ manual_flatten
-
-        if let Some(n) = n {
-            println!("{:?}", n);
-        }
-        // foo
+    for n in z.into_iter().flatten() {
+        println!("{:?}", n);
     }
 
     run_unformatted_tests();
@@ -179,9 +142,7 @@ fn run_unformatted_tests() {
         Some(1),
         Some(2),
         Some(3)
-    ].iter() {
-        if let Some(n) = n {
-            println!("{:?}", n);
-        }
+    ].iter().flatten() {
+        println!("{:?}", n);
     }
 }
