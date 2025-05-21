@@ -166,7 +166,7 @@ rustc_queries! {
     /// query gives you access to all other items. To avoid this fate, do not
     /// call `tcx.hir_crate(())`; instead, prefer wrappers like
     /// [`TyCtxt::hir_visit_all_item_likes_in_crate`].
-    query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
+    query hir_crate(key: ()) -> &'tcx Crate {
         arena_cache
         eval_always
         desc { "getting the crate HIR" }

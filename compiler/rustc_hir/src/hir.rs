@@ -1571,8 +1571,7 @@ impl<'tcx> MaybeOwner<'tcx> {
 ///
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 #[derive(Debug)]
-pub struct Crate<'hir> {
-    pub owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
+pub struct Crate {
     // Only present when incr. comp. is enabled.
     pub opt_hir_hash: Option<Fingerprint>,
 }

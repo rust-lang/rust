@@ -1272,6 +1272,11 @@ impl<'tcx> TyCtxt<'tcx> {
         TyCtxtFeed { tcx: self, key: () }
     }
 
+    pub fn super_duper_perf_hack_experiment(self, key: LocalDefId) -> TyCtxtFeed<'tcx, LocalDefId> {
+        self.dep_graph.assert_eval_always();
+        TyCtxtFeed { tcx: self, key }
+    }
+
     /// Only used in the resolver to register the `CRATE_DEF_ID` `DefId` and feed
     /// some queries for it. It will panic if used twice.
     pub fn create_local_crate_def_id(self, span: Span) -> TyCtxtFeed<'tcx, LocalDefId> {
