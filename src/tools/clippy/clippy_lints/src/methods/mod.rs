@@ -150,7 +150,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::FormatArgsStorage;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
-use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty};
+use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty, sym};
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
@@ -159,7 +159,7 @@ use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, kw};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -4711,17 +4711,15 @@ impl_lint_pass!(Methods => [
 /// Extracts a method call name, args, and `Span` of the method name.
 /// This ensures that neither the receiver nor any of the arguments
 /// come from expansion.
-pub fn method_call<'tcx>(
-    recv: &'tcx Expr<'tcx>,
-) -> Option<(&'tcx str, &'tcx Expr<'tcx>, &'tcx [Expr<'tcx>], Span, Span)> {
+pub fn method_call<'tcx>(recv: &'tcx Expr<'tcx>) -> Option<(Symbol, &'tcx Expr<'tcx>, &'tcx [Expr<'tcx>], Span, Span)> {
     if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind
         && !args.iter().any(|e| e.span.from_expansion())
         && !receiver.span.from_expansion()
     {
-        let name = path.ident.name.as_str();
-        return Some((name, receiver, args, path.ident.span, call_span));
+        Some((path.ident.name, receiver, args, path.ident.span, call_span))
+    } else {
+        None
     }
-    None
 }
 
 impl<'tcx> LateLintPass<'tcx> for Methods {
@@ -4743,13 +4741,13 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             },
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
-                or_fun_call::check(cx, expr, method_span, method_call.ident.as_str(), receiver, args);
+                or_fun_call::check(cx, expr, method_span, method_call.ident.name, receiver, args);
                 expect_fun_call::check(
                     cx,
                     &self.format_args,
                     expr,
                     method_span,
-                    method_call.ident.as_str(),
+                    method_call.ident.name,
                     receiver,
                     args,
                 );
@@ -4778,7 +4776,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         if impl_item.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
-        let name = impl_item.ident.name.as_str();
+        let name = impl_item.ident.name;
         let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
         let item = cx.tcx.hir_expect_item(parent);
         let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
@@ -4851,7 +4849,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 return;
             }
 
-            if name == "new" && ret_ty != self_ty {
+            if name == sym::new && ret_ty != self_ty {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,
@@ -4881,7 +4879,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
             wrong_self_convention::check(
                 cx,
-                item.ident.name.as_str(),
+                item.ident.name,
                 self_ty,
                 first_arg_ty,
                 first_arg_hir_ty.span,
@@ -4912,14 +4910,17 @@ impl Methods {
         // Handle method calls whose receiver and arguments may not come from expansion
         if let Some((name, recv, args, span, call_span)) = method_call(expr) {
             match (name, args) {
-                ("add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub", [_arg]) => {
+                (
+                    sym::add | sym::offset | sym::sub | sym::wrapping_offset | sym::wrapping_add | sym::wrapping_sub,
+                    [_arg],
+                ) => {
                     zst_offset::check(cx, expr, recv);
                 },
-                ("all", [arg]) => {
+                (sym::all, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
                     needless_character_iteration::check(cx, expr, recv, arg, true);
                     match method_call(recv) {
-                        Some(("cloned", recv2, [], _, _)) => {
+                        Some((sym::cloned, recv2, [], _, _)) => {
                             iter_overeager_cloned::check(
                                 cx,
                                 expr,
@@ -4929,13 +4930,13 @@ impl Methods {
                                 false,
                             );
                         },
-                        Some(("map", _, [map_arg], _, map_call_span)) => {
+                        Some((sym::map, _, [map_arg], _, map_call_span)) => {
                             map_all_any_identity::check(cx, expr, recv, map_call_span, map_arg, call_span, arg, "all");
                         },
                         _ => {},
                     }
                 },
-                ("and_then", [arg]) => {
+                (sym::and_then, [arg]) => {
                     let biom_option_linted = bind_instead_of_map::check_and_then_some(cx, expr, recv, arg);
                     let biom_result_linted = bind_instead_of_map::check_and_then_ok(cx, expr, recv, arg);
                     if !biom_option_linted && !biom_result_linted {
@@ -4945,11 +4946,11 @@ impl Methods {
                         }
                     }
                 },
-                ("any", [arg]) => {
+                (sym::any, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
                     needless_character_iteration::check(cx, expr, recv, arg, false);
                     match method_call(recv) {
-                        Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
+                        Some((sym::cloned, recv2, [], _, _)) => iter_overeager_cloned::check(
                             cx,
                             expr,
                             recv,
@@ -4957,80 +4958,79 @@ impl Methods {
                             iter_overeager_cloned::Op::NeedlessMove(arg),
                             false,
                         ),
-                        Some(("chars", recv, _, _, _))
+                        Some((sym::chars, recv, _, _, _))
                             if let ExprKind::Closure(arg) = arg.kind
                                 && let body = cx.tcx.hir_body(arg.body)
                                 && let [param] = body.params =>
                         {
                             string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), self.msrv);
                         },
-                        Some(("map", _, [map_arg], _, map_call_span)) => {
+                        Some((sym::map, _, [map_arg], _, map_call_span)) => {
                             map_all_any_identity::check(cx, expr, recv, map_call_span, map_arg, call_span, arg, "any");
                         },
-                        Some(("iter", iter_recv, ..)) => {
+                        Some((sym::iter, iter_recv, ..)) => {
                             manual_contains::check(cx, expr, iter_recv, arg);
                         },
                         _ => {},
                     }
                 },
-                ("arg", [arg]) => {
+                (sym::arg, [arg]) => {
                     suspicious_command_arg_space::check(cx, recv, arg, span);
                 },
-                ("as_deref" | "as_deref_mut", []) => {
+                (sym::as_deref | sym::as_deref_mut, []) => {
                     needless_option_as_deref::check(cx, expr, recv, name);
                 },
-                ("as_bytes", []) => {
-                    if let Some(("as_str", recv, [], as_str_span, _)) = method_call(recv) {
+                (sym::as_bytes, []) => {
+                    if let Some((sym::as_str, recv, [], as_str_span, _)) = method_call(recv) {
                         redundant_as_str::check(cx, expr, recv, as_str_span, span);
                     }
                     sliced_string_as_bytes::check(cx, expr, recv);
                 },
-                ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
-                ("as_ptr", []) => manual_c_str_literals::check_as_ptr(cx, expr, recv, self.msrv),
-                ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
-                ("assume_init", []) => uninit_assumed_init::check(cx, expr, recv),
-                ("bytes", []) => unbuffered_bytes::check(cx, expr, recv),
-                ("cloned", []) => {
+                (sym::as_mut | sym::as_ref, []) => useless_asref::check(cx, expr, name, recv),
+                (sym::as_ptr, []) => manual_c_str_literals::check_as_ptr(cx, expr, recv, self.msrv),
+                (sym::assume_init, []) => uninit_assumed_init::check(cx, expr, recv),
+                (sym::bytes, []) => unbuffered_bytes::check(cx, expr, recv),
+                (sym::cloned, []) => {
                     cloned_instead_of_copied::check(cx, expr, recv, span, self.msrv);
                     option_as_ref_cloned::check(cx, recv, span);
                 },
-                ("collect", []) if is_trait_method(cx, expr, sym::Iterator) => {
+                (sym::collect, []) if is_trait_method(cx, expr, sym::Iterator) => {
                     needless_collect::check(cx, span, expr, recv, call_span);
                     match method_call(recv) {
-                        Some((name @ ("cloned" | "copied"), recv2, [], _, _)) => {
+                        Some((name @ (sym::cloned | sym::copied), recv2, [], _, _)) => {
                             iter_cloned_collect::check(cx, name, expr, recv2);
                         },
-                        Some(("map", m_recv, [m_arg], m_ident_span, _)) => {
+                        Some((sym::map, m_recv, [m_arg], m_ident_span, _)) => {
                             map_collect_result_unit::check(cx, expr, m_recv, m_arg);
                             format_collect::check(cx, expr, m_arg, m_ident_span);
                         },
-                        Some(("take", take_self_arg, [take_arg], _, _)) => {
+                        Some((sym::take, take_self_arg, [take_arg], _, _)) => {
                             if self.msrv.meets(cx, msrvs::STR_REPEAT) {
                                 manual_str_repeat::check(cx, expr, recv, take_self_arg, take_arg);
                             }
                         },
-                        Some(("drain", recv, args, ..)) => {
+                        Some((sym::drain, recv, args, ..)) => {
                             drain_collect::check(cx, args, expr, recv);
                         },
                         _ => {},
                     }
                 },
-                ("count", []) if is_trait_method(cx, expr, sym::Iterator) => match method_call(recv) {
-                    Some(("cloned", recv2, [], _, _)) => {
+                (sym::count, []) if is_trait_method(cx, expr, sym::Iterator) => match method_call(recv) {
+                    Some((sym::cloned, recv2, [], _, _)) => {
                         iter_overeager_cloned::check(cx, expr, recv, recv2, iter_overeager_cloned::Op::RmCloned, false);
                     },
-                    Some((name2 @ ("into_iter" | "iter" | "iter_mut"), recv2, [], _, _)) => {
+                    Some((name2 @ (sym::into_iter | sym::iter | sym::iter_mut), recv2, [], _, _)) => {
                         iter_count::check(cx, expr, recv2, name2);
                     },
-                    Some(("map", _, [arg], _, _)) => suspicious_map::check(cx, expr, recv, arg),
-                    Some(("filter", recv2, [arg], _, _)) => bytecount::check(cx, expr, recv2, arg),
-                    Some(("bytes", recv2, [], _, _)) => bytes_count_to_len::check(cx, expr, recv, recv2),
+                    Some((sym::map, _, [arg], _, _)) => suspicious_map::check(cx, expr, recv, arg),
+                    Some((sym::filter, recv2, [arg], _, _)) => bytecount::check(cx, expr, recv2, arg),
+                    Some((sym::bytes, recv2, [], _, _)) => bytes_count_to_len::check(cx, expr, recv, recv2),
                     _ => {},
                 },
-                ("min" | "max", [arg]) => {
+                (sym::min | sym::max, [arg]) => {
                     unnecessary_min_or_max::check(cx, expr, name, recv, arg);
                 },
-                ("drain", ..) => {
+                (sym::drain, ..) => {
                     if let Node::Stmt(Stmt { hir_id: _, kind, .. }) = cx.tcx.parent_hir_node(expr.hir_id)
                         && matches!(kind, StmtKind::Semi(_))
                         && args.len() <= 1
@@ -5040,31 +5040,31 @@ impl Methods {
                         iter_with_drain::check(cx, expr, recv, span, arg);
                     }
                 },
-                ("ends_with", [arg]) => {
+                (sym::ends_with, [arg]) => {
                     if let ExprKind::MethodCall(.., span) = expr.kind {
                         case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg, self.msrv);
                     }
                     path_ends_with_ext::check(cx, recv, arg, expr, self.msrv, &self.allowed_dotfiles);
                 },
-                ("expect", [_]) => {
+                (sym::expect, [_]) => {
                     match method_call(recv) {
-                        Some(("ok", recv, [], _, _)) => ok_expect::check(cx, expr, recv),
-                        Some(("err", recv, [], err_span, _)) => {
+                        Some((sym::ok, recv, [], _, _)) => ok_expect::check(cx, expr, recv),
+                        Some((sym::err, recv, [], err_span, _)) => {
                             err_expect::check(cx, expr, recv, span, err_span, self.msrv);
                         },
                         _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
-                ("expect_err", [_]) | ("unwrap_err" | "unwrap_unchecked" | "unwrap_err_unchecked", []) => {
+                (sym::expect_err, [_]) | (sym::unwrap_err | sym::unwrap_unchecked | sym::unwrap_err_unchecked, []) => {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
-                ("extend", [arg]) => {
+                (sym::extend, [arg]) => {
                     string_extend_chars::check(cx, expr, recv, arg);
                     extend_with_drain::check(cx, expr, recv, arg);
                 },
-                ("filter", [arg]) => {
-                    if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
+                (sym::filter, [arg]) => {
+                    if let Some((sym::cloned, recv2, [], _span2, _)) = method_call(recv) {
                         // if `arg` has side-effect, the semantic will change
                         iter_overeager_cloned::check(
                             cx,
@@ -5080,8 +5080,8 @@ impl Methods {
                         iter_filter::check(cx, expr, arg, span);
                     }
                 },
-                ("find", [arg]) => {
-                    if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
+                (sym::find, [arg]) => {
+                    if let Some((sym::cloned, recv2, [], _span2, _)) = method_call(recv) {
                         // if `arg` has side-effect, the semantic will change
                         iter_overeager_cloned::check(
                             cx,
@@ -5093,26 +5093,26 @@ impl Methods {
                         );
                     }
                 },
-                ("filter_map", [arg]) => {
+                (sym::filter_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
                     unnecessary_filter_map::check(cx, expr, arg, name);
                     filter_map_bool_then::check(cx, expr, arg, call_span);
                     filter_map_identity::check(cx, expr, arg, span);
                 },
-                ("find_map", [arg]) => {
+                (sym::find_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
                     unnecessary_filter_map::check(cx, expr, arg, name);
                 },
-                ("flat_map", [arg]) => {
+                (sym::flat_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
                     flat_map_identity::check(cx, expr, arg, span);
                     flat_map_option::check(cx, expr, arg, span);
                 },
-                ("flatten", []) => match method_call(recv) {
-                    Some(("map", recv, [map_arg], map_span, _)) => {
+                (sym::flatten, []) => match method_call(recv) {
+                    Some((sym::map, recv, [map_arg], map_span, _)) => {
                         map_flatten::check(cx, expr, recv, map_arg, map_span);
                     },
-                    Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
+                    Some((sym::cloned, recv2, [], _, _)) => iter_overeager_cloned::check(
                         cx,
                         expr,
                         recv,
@@ -5122,15 +5122,15 @@ impl Methods {
                     ),
                     _ => {},
                 },
-                ("fold", [init, acc]) => {
+                (sym::fold, [init, acc]) => {
                     manual_try_fold::check(cx, expr, init, acc, call_span, self.msrv);
                     unnecessary_fold::check(cx, expr, init, acc, span);
                 },
-                ("for_each", [arg]) => {
+                (sym::for_each, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
                     match method_call(recv) {
-                        Some(("inspect", _, [_], span2, _)) => inspect_for_each::check(cx, expr, span2),
-                        Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
+                        Some((sym::inspect, _, [_], span2, _)) => inspect_for_each::check(cx, expr, span2),
+                        Some((sym::cloned, recv2, [], _, _)) => iter_overeager_cloned::check(
                             cx,
                             expr,
                             recv,
@@ -5141,44 +5141,44 @@ impl Methods {
                         _ => {},
                     }
                 },
-                ("get", [arg]) => {
+                (sym::get, [arg]) => {
                     get_first::check(cx, expr, recv, arg);
                     get_last_with_len::check(cx, expr, recv, arg);
                 },
-                ("get_or_insert_with", [arg]) => {
+                (sym::get_or_insert_with, [arg]) => {
                     unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert");
                 },
-                ("hash", [arg]) => {
+                (sym::hash, [arg]) => {
                     unit_hash::check(cx, expr, recv, arg);
                 },
-                ("is_empty", []) => {
+                (sym::is_empty, []) => {
                     match method_call(recv) {
-                        Some((prev_method @ ("as_bytes" | "bytes"), prev_recv, [], _, _)) => {
-                            needless_as_bytes::check(cx, prev_method, "is_empty", prev_recv, expr.span);
+                        Some((prev_method @ (sym::as_bytes | sym::bytes), prev_recv, [], _, _)) => {
+                            needless_as_bytes::check(cx, prev_method, name, prev_recv, expr.span);
                         },
-                        Some(("as_str", recv, [], as_str_span, _)) => {
+                        Some((sym::as_str, recv, [], as_str_span, _)) => {
                             redundant_as_str::check(cx, expr, recv, as_str_span, span);
                         },
                         _ => {},
                     }
                     is_empty::check(cx, expr, recv);
                 },
-                ("is_file", []) => filetype_is_file::check(cx, expr, recv),
-                ("is_digit", [radix]) => is_digit_ascii_radix::check(cx, expr, recv, radix, self.msrv),
-                ("is_none", []) => check_is_some_is_none(cx, expr, recv, call_span, false),
-                ("is_some", []) => check_is_some_is_none(cx, expr, recv, call_span, true),
-                ("iter" | "iter_mut" | "into_iter", []) => {
+                (sym::is_file, []) => filetype_is_file::check(cx, expr, recv),
+                (sym::is_digit, [radix]) => is_digit_ascii_radix::check(cx, expr, recv, radix, self.msrv),
+                (sym::is_none, []) => check_is_some_is_none(cx, expr, recv, call_span, false),
+                (sym::is_some, []) => check_is_some_is_none(cx, expr, recv, call_span, true),
+                (sym::iter | sym::iter_mut | sym::into_iter, []) => {
                     iter_on_single_or_empty_collections::check(cx, expr, name, recv);
                 },
-                ("join", [join_arg]) => {
-                    if let Some(("collect", _, _, span, _)) = method_call(recv) {
+                (sym::join, [join_arg]) => {
+                    if let Some((sym::collect, _, _, span, _)) = method_call(recv) {
                         unnecessary_join::check(cx, expr, recv, join_arg, span);
                     } else {
                         join_absolute_paths::check(cx, recv, join_arg, expr.span);
                     }
                 },
-                ("last", []) => {
-                    if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
+                (sym::last, []) => {
+                    if let Some((sym::cloned, recv2, [], _span2, _)) = method_call(recv) {
                         iter_overeager_cloned::check(
                             cx,
                             expr,
@@ -5190,24 +5190,24 @@ impl Methods {
                     }
                     double_ended_iterator_last::check(cx, expr, recv, call_span);
                 },
-                ("len", []) => {
-                    if let Some((prev_method @ ("as_bytes" | "bytes"), prev_recv, [], _, _)) = method_call(recv) {
-                        needless_as_bytes::check(cx, prev_method, "len", prev_recv, expr.span);
+                (sym::len, []) => {
+                    if let Some((prev_method @ (sym::as_bytes | sym::bytes), prev_recv, [], _, _)) = method_call(recv) {
+                        needless_as_bytes::check(cx, prev_method, sym::len, prev_recv, expr.span);
                     }
                 },
-                ("lock", []) => {
+                (sym::lock, []) => {
                     mut_mutex_lock::check(cx, expr, recv, span);
                 },
-                (name @ ("map" | "map_err"), [m_arg]) => {
-                    if name == "map" {
+                (name @ (sym::map | sym::map_err), [m_arg]) => {
+                    if name == sym::map {
                         unused_enumerate_index::check(cx, expr, recv, m_arg);
                         map_clone::check(cx, expr, recv, m_arg, self.msrv);
                         map_with_unused_argument_over_ranges::check(cx, expr, recv, m_arg, self.msrv, span);
                         match method_call(recv) {
-                            Some((map_name @ ("iter" | "into_iter"), recv2, _, _, _)) => {
+                            Some((map_name @ (sym::iter | sym::into_iter), recv2, _, _, _)) => {
                                 iter_kv_map::check(cx, map_name, expr, recv2, m_arg, self.msrv);
                             },
-                            Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
+                            Some((sym::cloned, recv2, [], _, _)) => iter_overeager_cloned::check(
                                 cx,
                                 expr,
                                 recv,
@@ -5222,12 +5222,12 @@ impl Methods {
                     }
                     if let Some((name, recv2, args, span2, _)) = method_call(recv) {
                         match (name, args) {
-                            ("as_mut", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, true, self.msrv),
-                            ("as_ref", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, false, self.msrv),
-                            ("filter", [f_arg]) => {
+                            (sym::as_mut, []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, true, self.msrv),
+                            (sym::as_ref, []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, false, self.msrv),
+                            (sym::filter, [f_arg]) => {
                                 filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, false);
                             },
-                            ("find", [f_arg]) => {
+                            (sym::find, [f_arg]) => {
                                 filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, true);
                             },
                             _ => {},
@@ -5237,22 +5237,22 @@ impl Methods {
                     manual_inspect::check(cx, expr, m_arg, name, span, self.msrv);
                     crate::useless_conversion::check_function_application(cx, expr, recv, m_arg);
                 },
-                ("map_break" | "map_continue", [m_arg]) => {
+                (sym::map_break | sym::map_continue, [m_arg]) => {
                     crate::useless_conversion::check_function_application(cx, expr, recv, m_arg);
                 },
-                ("map_or", [def, map]) => {
+                (sym::map_or, [def, map]) => {
                     option_map_or_none::check(cx, expr, recv, def, map);
                     manual_ok_or::check(cx, expr, recv, def, map);
                     unnecessary_map_or::check(cx, expr, recv, def, map, span, self.msrv);
                 },
-                ("map_or_else", [def, map]) => {
+                (sym::map_or_else, [def, map]) => {
                     result_map_or_else_none::check(cx, expr, recv, def, map);
                     unnecessary_result_map_or_else::check(cx, expr, recv, def, map);
                 },
-                ("next", []) => {
+                (sym::next, []) => {
                     if let Some((name2, recv2, args2, _, _)) = method_call(recv) {
                         match (name2, args2) {
-                            ("cloned", []) => iter_overeager_cloned::check(
+                            (sym::cloned, []) => iter_overeager_cloned::check(
                                 cx,
                                 expr,
                                 recv,
@@ -5260,19 +5260,19 @@ impl Methods {
                                 iter_overeager_cloned::Op::LaterCloned,
                                 false,
                             ),
-                            ("filter", [arg]) => filter_next::check(cx, expr, recv2, arg),
-                            ("filter_map", [arg]) => filter_map_next::check(cx, expr, recv2, arg, self.msrv),
-                            ("iter", []) => iter_next_slice::check(cx, expr, recv2),
-                            ("skip", [arg]) => iter_skip_next::check(cx, expr, recv2, arg),
-                            ("skip_while", [_]) => skip_while_next::check(cx, expr),
-                            ("rev", []) => manual_next_back::check(cx, expr, recv, recv2),
+                            (sym::filter, [arg]) => filter_next::check(cx, expr, recv2, arg),
+                            (sym::filter_map, [arg]) => filter_map_next::check(cx, expr, recv2, arg, self.msrv),
+                            (sym::iter, []) => iter_next_slice::check(cx, expr, recv2),
+                            (sym::skip, [arg]) => iter_skip_next::check(cx, expr, recv2, arg),
+                            (sym::skip_while, [_]) => skip_while_next::check(cx, expr),
+                            (sym::rev, []) => manual_next_back::check(cx, expr, recv, recv2),
                             _ => {},
                         }
                     }
                 },
-                ("nth", [n_arg]) => match method_call(recv) {
-                    Some(("bytes", recv2, [], _, _)) => bytes_nth::check(cx, expr, recv2, n_arg),
-                    Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
+                (sym::nth, [n_arg]) => match method_call(recv) {
+                    Some((sym::bytes, recv2, [], _, _)) => bytes_nth::check(cx, expr, recv2, n_arg),
+                    Some((sym::cloned, recv2, [], _, _)) => iter_overeager_cloned::check(
                         cx,
                         expr,
                         recv,
@@ -5280,54 +5280,54 @@ impl Methods {
                         iter_overeager_cloned::Op::LaterCloned,
                         false,
                     ),
-                    Some((iter_method @ ("iter" | "iter_mut"), iter_recv, [], iter_span, _)) => {
+                    Some((iter_method @ (sym::iter | sym::iter_mut), iter_recv, [], iter_span, _)) => {
                         if !iter_nth::check(cx, expr, iter_recv, iter_method, iter_span, span) {
                             iter_nth_zero::check(cx, expr, recv, n_arg);
                         }
                     },
                     _ => iter_nth_zero::check(cx, expr, recv, n_arg),
                 },
-                ("ok_or_else", [arg]) => {
+                (sym::ok_or_else, [arg]) => {
                     unnecessary_lazy_eval::check(cx, expr, recv, arg, "ok_or");
                 },
-                ("open", [_]) => {
+                (sym::open, [_]) => {
                     open_options::check(cx, expr, recv);
                 },
-                ("or_else", [arg]) => {
+                (sym::or_else, [arg]) => {
                     if !bind_instead_of_map::check_or_else_err(cx, expr, recv, arg) {
                         unnecessary_lazy_eval::check(cx, expr, recv, arg, "or");
                     }
                 },
-                ("push", [arg]) => {
+                (sym::push, [arg]) => {
                     path_buf_push_overwrite::check(cx, expr, arg);
                 },
-                ("read_to_end", [_]) => {
+                (sym::read_to_end, [_]) => {
                     verbose_file_reads::check(cx, expr, recv, verbose_file_reads::READ_TO_END_MSG);
                 },
-                ("read_to_string", [_]) => {
+                (sym::read_to_string, [_]) => {
                     verbose_file_reads::check(cx, expr, recv, verbose_file_reads::READ_TO_STRING_MSG);
                 },
-                ("read_line", [arg]) => {
+                (sym::read_line, [arg]) => {
                     read_line_without_trim::check(cx, expr, recv, arg);
                 },
-                ("repeat", [arg]) => {
+                (sym::repeat, [arg]) => {
                     repeat_once::check(cx, expr, recv, arg);
                 },
-                (name @ ("replace" | "replacen"), [arg1, arg2] | [arg1, arg2, _]) => {
+                (name @ (sym::replace | sym::replacen), [arg1, arg2] | [arg1, arg2, _]) => {
                     no_effect_replace::check(cx, expr, arg1, arg2);
 
                     // Check for repeated `str::replace` calls to perform `collapsible_str_replace` lint
                     if self.msrv.meets(cx, msrvs::PATTERN_TRAIT_CHAR_ARRAY)
-                        && name == "replace"
-                        && let Some(("replace", ..)) = method_call(recv)
+                        && name == sym::replace
+                        && let Some((sym::replace, ..)) = method_call(recv)
                     {
                         collapsible_str_replace::check(cx, expr, arg1, arg2);
                     }
                 },
-                ("resize", [count_arg, default_arg]) => {
+                (sym::resize, [count_arg, default_arg]) => {
                     vec_resize_to_zero::check(cx, expr, count_arg, default_arg, span);
                 },
-                ("seek", [arg]) => {
+                (sym::seek, [arg]) => {
                     if self.msrv.meets(cx, msrvs::SEEK_FROM_CURRENT) {
                         seek_from_current::check(cx, expr, recv, arg);
                     }
@@ -5335,11 +5335,11 @@ impl Methods {
                         seek_to_start_instead_of_rewind::check(cx, expr, recv, arg, span);
                     }
                 },
-                ("skip", [arg]) => {
+                (sym::skip, [arg]) => {
                     iter_skip_zero::check(cx, expr, arg);
                     iter_out_of_bounds::check_skip(cx, expr, recv, arg);
 
-                    if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
+                    if let Some((sym::cloned, recv2, [], _span2, _)) = method_call(recv) {
                         iter_overeager_cloned::check(
                             cx,
                             expr,
@@ -5350,34 +5350,34 @@ impl Methods {
                         );
                     }
                 },
-                ("sort", []) => {
+                (sym::sort, []) => {
                     stable_sort_primitive::check(cx, expr, recv);
                 },
-                ("sort_by", [arg]) => {
+                (sym::sort_by, [arg]) => {
                     unnecessary_sort_by::check(cx, expr, recv, arg, false);
                 },
-                ("sort_unstable_by", [arg]) => {
+                (sym::sort_unstable_by, [arg]) => {
                     unnecessary_sort_by::check(cx, expr, recv, arg, true);
                 },
-                ("split", [arg]) => {
+                (sym::split, [arg]) => {
                     str_split::check(cx, expr, recv, arg);
                 },
-                ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
+                (sym::splitn | sym::rsplitn, [count_arg, pat_arg]) => {
                     if let Some(Constant::Int(count)) = ConstEvalCtxt::new(cx).eval(count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);
                         str_splitn::check(cx, name, expr, recv, pat_arg, count, self.msrv);
                     }
                 },
-                ("splitn_mut" | "rsplitn_mut", [count_arg, _]) => {
+                (sym::splitn_mut | sym::rsplitn_mut, [count_arg, _]) => {
                     if let Some(Constant::Int(count)) = ConstEvalCtxt::new(cx).eval(count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);
                     }
                 },
-                ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
-                ("take", [arg]) => {
+                (sym::step_by, [arg]) => iterator_step_by_zero::check(cx, expr, arg),
+                (sym::take, [arg]) => {
                     iter_out_of_bounds::check_take(cx, expr, recv, arg);
                     manual_repeat_n::check(cx, expr, recv, arg, self.msrv);
-                    if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
+                    if let Some((sym::cloned, recv2, [], _span2, _)) = method_call(recv) {
                         iter_overeager_cloned::check(
                             cx,
                             expr,
@@ -5388,74 +5388,89 @@ impl Methods {
                         );
                     }
                 },
-                ("take", []) => needless_option_take::check(cx, expr, recv),
-                ("then", [arg]) => {
+                (sym::take, []) => needless_option_take::check(cx, expr, recv),
+                (sym::then, [arg]) => {
                     if !self.msrv.meets(cx, msrvs::BOOL_THEN_SOME) {
                         return;
                     }
                     unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some");
                 },
-                ("try_into", []) if is_trait_method(cx, expr, sym::TryInto) => {
+                (sym::try_into, []) if is_trait_method(cx, expr, sym::TryInto) => {
                     unnecessary_fallible_conversions::check_method(cx, expr);
                 },
-                ("to_owned", []) => {
+                (sym::to_owned, []) => {
                     if !suspicious_to_owned::check(cx, expr, recv) {
                         implicit_clone::check(cx, name, expr, recv);
                     }
                 },
-                ("to_os_string" | "to_path_buf" | "to_vec", []) => {
+                (sym::to_os_string | sym::to_path_buf | sym::to_vec, []) => {
                     implicit_clone::check(cx, name, expr, recv);
                 },
-                ("type_id", []) => {
+                (sym::type_id, []) => {
                     type_id_on_box::check(cx, recv, expr.span);
                 },
-                ("unwrap", []) => {
+                (sym::unwrap, []) => {
                     match method_call(recv) {
-                        Some(("get", recv, [get_arg], _, _)) => {
+                        Some((sym::get, recv, [get_arg], _, _)) => {
                             get_unwrap::check(cx, expr, recv, get_arg, false);
                         },
-                        Some(("get_mut", recv, [get_arg], _, _)) => {
+                        Some((sym::get_mut, recv, [get_arg], _, _)) => {
                             get_unwrap::check(cx, expr, recv, get_arg, true);
                         },
-                        Some(("or", recv, [or_arg], or_span, _)) => {
+                        Some((sym::or, recv, [or_arg], or_span, _)) => {
                             or_then_unwrap::check(cx, expr, recv, or_arg, or_span);
                         },
                         _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
-                ("unwrap_or", [u_arg]) => {
+                (sym::unwrap_or, [u_arg]) => {
                     match method_call(recv) {
-                        Some((arith @ ("checked_add" | "checked_sub" | "checked_mul"), lhs, [rhs], _, _)) => {
-                            manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);
+                        Some((arith @ (sym::checked_add | sym::checked_sub | sym::checked_mul), lhs, [rhs], _, _)) => {
+                            manual_saturating_arithmetic::check(
+                                cx,
+                                expr,
+                                lhs,
+                                rhs,
+                                u_arg,
+                                &arith.as_str()[const { "checked_".len() }..],
+                            );
                         },
-                        Some(("map", m_recv, [m_arg], span, _)) => {
+                        Some((sym::map, m_recv, [m_arg], span, _)) => {
                             option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, self.msrv);
                         },
-                        Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
-                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, Some(u_arg), then_method, "unwrap_or");
+                        Some((then_method @ (sym::then | sym::then_some), t_recv, [t_arg], _, _)) => {
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, Some(u_arg), then_method, name);
                         },
                         _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
-                ("unwrap_or_default", []) => {
+                (sym::unwrap_or_default, []) => {
                     match method_call(recv) {
-                        Some(("map", m_recv, [arg], span, _)) => {
+                        Some((sym::map, m_recv, [arg], span, _)) => {
                             manual_is_variant_and::check(cx, expr, m_recv, arg, span, self.msrv);
                         },
-                        Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
-                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, None, then_method, "unwrap_or_default");
+                        Some((then_method @ (sym::then | sym::then_some), t_recv, [t_arg], _, _)) => {
+                            obfuscated_if_else::check(
+                                cx,
+                                expr,
+                                t_recv,
+                                t_arg,
+                                None,
+                                then_method,
+                                sym::unwrap_or_default,
+                            );
                         },
                         _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
-                ("unwrap_or_else", [u_arg]) => {
+                (sym::unwrap_or_else, [u_arg]) => {
                     match method_call(recv) {
-                        Some(("map", recv, [map_arg], _, _))
+                        Some((sym::map, recv, [map_arg], _, _))
                             if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, self.msrv) => {},
-                        Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
+                        Some((then_method @ (sym::then | sym::then_some), t_recv, [t_arg], _, _)) => {
                             obfuscated_if_else::check(
                                 cx,
                                 expr,
@@ -5463,7 +5478,7 @@ impl Methods {
                                 t_arg,
                                 Some(u_arg),
                                 then_method,
-                                "unwrap_or_else",
+                                sym::unwrap_or_else,
                             );
                         },
                         _ => {
@@ -5472,13 +5487,13 @@ impl Methods {
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
-                ("wake", []) => {
+                (sym::wake, []) => {
                     waker_clone_wake::check(cx, expr, recv);
                 },
-                ("write", []) => {
+                (sym::write, []) => {
                     readonly_write_lock::check(cx, expr, recv);
                 },
-                ("zip", [arg]) => {
+                (sym::zip, [arg]) => {
                     if let ExprKind::MethodCall(name, iter_recv, [], _) = recv.kind
                         && name.ident.name == sym::iter
                     {
@@ -5490,8 +5505,8 @@ impl Methods {
         }
         // Handle method calls whose receiver and arguments may come from expansion
         if let ExprKind::MethodCall(path, recv, args, _call_span) = expr.kind {
-            match (path.ident.name.as_str(), args) {
-                ("expect", [_]) if !matches!(method_call(recv), Some(("ok" | "err", _, [], _, _))) => {
+            match (path.ident.name, args) {
+                (sym::expect, [_]) if !matches!(method_call(recv), Some((sym::ok | sym::err, _, [], _, _))) => {
                     unwrap_expect_used::check(
                         cx,
                         expr,
@@ -5502,7 +5517,7 @@ impl Methods {
                         unwrap_expect_used::Variant::Expect,
                     );
                 },
-                ("expect_err", [_]) => {
+                (sym::expect_err, [_]) => {
                     unwrap_expect_used::check(
                         cx,
                         expr,
@@ -5513,7 +5528,7 @@ impl Methods {
                         unwrap_expect_used::Variant::Expect,
                     );
                 },
-                ("unwrap", []) => {
+                (sym::unwrap, []) => {
                     unwrap_expect_used::check(
                         cx,
                         expr,
@@ -5524,7 +5539,7 @@ impl Methods {
                         unwrap_expect_used::Variant::Unwrap,
                     );
                 },
-                ("unwrap_err", []) => {
+                (sym::unwrap_err, []) => {
                     unwrap_expect_used::check(
                         cx,
                         expr,
@@ -5543,13 +5558,13 @@ impl Methods {
 
 fn check_is_some_is_none(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, call_span: Span, is_some: bool) {
     match method_call(recv) {
-        Some((name @ ("find" | "position" | "rposition"), f_recv, [arg], span, _)) => {
+        Some((name @ (sym::find | sym::position | sym::rposition), f_recv, [arg], span, _)) => {
             search_is_some::check(cx, expr, name, is_some, f_recv, arg, recv, span);
         },
-        Some(("get", f_recv, [arg], _, _)) => {
+        Some((sym::get, f_recv, [arg], _, _)) => {
             unnecessary_get_then_check::check(cx, call_span, recv, f_recv, arg, is_some);
         },
-        Some(("first", f_recv, [], _, _)) => {
+        Some((sym::first, f_recv, [], _, _)) => {
             unnecessary_first_then_check::check(cx, call_span, recv, f_recv, is_some);
         },
         _ => {},
@@ -5593,7 +5608,7 @@ const FN_HEADER: hir::FnHeader = hir::FnHeader {
 
 struct ShouldImplTraitCase {
     trait_name: &'static str,
-    method_name: &'static str,
+    method_name: Symbol,
     param_count: usize,
     fn_header: hir::FnHeader,
     // implicit self kind expected (none, self, &self, ...)
@@ -5606,7 +5621,7 @@ struct ShouldImplTraitCase {
 impl ShouldImplTraitCase {
     const fn new(
         trait_name: &'static str,
-        method_name: &'static str,
+        method_name: Symbol,
         param_count: usize,
         fn_header: hir::FnHeader,
         self_kind: SelfKind,
@@ -5639,36 +5654,36 @@ impl ShouldImplTraitCase {
 
 #[rustfmt::skip]
 const TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
-    ShouldImplTraitCase::new("std::ops::Add", "add",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::convert::AsMut", "as_mut",  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::convert::AsRef", "as_ref",  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::BitAnd", "bitand",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::BitOr", "bitor",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::BitXor", "bitxor",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::borrow::Borrow", "borrow",  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::borrow::BorrowMut", "borrow_mut",  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::clone::Clone", "clone",  1,  FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::cmp::Ord", "cmp",  2,  FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::default::Default", "default",  0,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Deref", "deref",  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::DerefMut", "deref_mut",  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::Div", "div",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Drop", "drop",  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Unit, true),
-    ShouldImplTraitCase::new("std::cmp::PartialEq", "eq",  2,  FN_HEADER,  SelfKind::Ref,  OutType::Bool, true),
-    ShouldImplTraitCase::new("std::iter::FromIterator", "from_iter",  1,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::str::FromStr", "from_str",  1,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::hash::Hash", "hash",  2,  FN_HEADER,  SelfKind::Ref,  OutType::Unit, true),
-    ShouldImplTraitCase::new("std::ops::Index", "index",  2,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::IndexMut", "index_mut",  2,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::iter::IntoIterator", "into_iter",  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Mul", "mul",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Neg", "neg",  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::iter::Iterator", "next",  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Any, false),
-    ShouldImplTraitCase::new("std::ops::Not", "not",  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Rem", "rem",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Shl", "shl",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Shr", "shr",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Sub", "sub",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Add", sym::add,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::convert::AsMut", sym::as_mut,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::convert::AsRef", sym::as_ref,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::ops::BitAnd", sym::bitand,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::BitOr", sym::bitor,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::BitXor", sym::bitxor,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::borrow::Borrow", sym::borrow,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::borrow::BorrowMut", sym::borrow_mut,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::clone::Clone", sym::clone,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::cmp::Ord", sym::cmp,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::default::Default", kw::Default,  0,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Deref", sym::deref,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::ops::DerefMut", sym::deref_mut,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::ops::Div", sym::div,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Drop", sym::drop,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Unit, true),
+    ShouldImplTraitCase::new("std::cmp::PartialEq", sym::eq,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Bool, true),
+    ShouldImplTraitCase::new("std::iter::FromIterator", sym::from_iter,  1,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::str::FromStr", sym::from_str,  1,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::hash::Hash", sym::hash,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Unit, true),
+    ShouldImplTraitCase::new("std::ops::Index", sym::index,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::ops::IndexMut", sym::index_mut,  2,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::iter::IntoIterator", sym::into_iter,  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Mul", sym::mul,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Neg", sym::neg,  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::iter::Iterator", sym::next,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Any, false),
+    ShouldImplTraitCase::new("std::ops::Not", sym::not,  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Rem", sym::rem,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Shl", sym::shl,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Shr", sym::shr,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Sub", sym::sub,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

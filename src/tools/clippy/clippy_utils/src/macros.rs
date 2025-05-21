@@ -2,8 +2,8 @@
 
 use std::sync::{Arc, OnceLock};
 
-use crate::get_unique_attr;
 use crate::visitors::{Descend, for_each_expr_without_closures};
+use crate::{get_unique_attr, sym};
 
 use arrayvec::ArrayVec;
 use rustc_ast::{FormatArgs, FormatArgument, FormatPlaceholder};
@@ -12,7 +12,7 @@ use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
-use rustc_span::{BytePos, ExpnData, ExpnId, ExpnKind, Span, SpanData, Symbol, sym};
+use rustc_span::{BytePos, ExpnData, ExpnId, ExpnKind, Span, SpanData, Symbol};
 use std::ops::ControlFlow;
 
 const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
@@ -42,7 +42,7 @@ pub fn is_format_macro(cx: &LateContext<'_>, macro_def_id: DefId) -> bool {
     } else {
         // Allow users to tag any macro as being format!-like
         // TODO: consider deleting FORMAT_MACRO_DIAG_ITEMS and using just this method
-        get_unique_attr(cx.sess(), cx.tcx.get_attrs_unchecked(macro_def_id), "format_args").is_some()
+        get_unique_attr(cx.sess(), cx.tcx.get_attrs_unchecked(macro_def_id), sym::format_args).is_some()
     }
 }
 
@@ -248,10 +248,10 @@ impl<'a> PanicExpn<'a> {
         let ExprKind::Path(QPath::Resolved(_, path)) = &callee.kind else {
             return None;
         };
-        let name = path.segments.last().unwrap().ident.as_str();
+        let name = path.segments.last().unwrap().ident.name;
 
         // This has no argument
-        if name == "panic_cold_explicit" {
+        if name == sym::panic_cold_explicit {
             return Some(Self::Empty);
         }
 
@@ -259,18 +259,18 @@ impl<'a> PanicExpn<'a> {
             return None;
         };
         let result = match name {
-            "panic" if arg.span.eq_ctxt(expr.span) => Self::Empty,
-            "panic" | "panic_str" => Self::Str(arg),
-            "panic_display" | "panic_cold_display" => {
+            sym::panic if arg.span.eq_ctxt(expr.span) => Self::Empty,
+            sym::panic | sym::panic_str => Self::Str(arg),
+            sym::panic_display | sym::panic_cold_display => {
                 let ExprKind::AddrOf(_, _, e) = &arg.kind else {
                     return None;
                 };
                 Self::Display(e)
             },
-            "panic_fmt" => Self::Format(arg),
+            sym::panic_fmt => Self::Format(arg),
             // Since Rust 1.52, `assert_{eq,ne}` macros expand to use:
             // `core::panicking::assert_failed(.., left_val, right_val, None | Some(format_args!(..)));`
-            "assert_failed" => {
+            sym::assert_failed => {
                 // It should have 4 arguments in total (we already matched with the first argument,
                 // so we're just checking for 3)
                 if rest.len() != 3 {

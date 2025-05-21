@@ -1361,3 +1361,14 @@ pub fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         || ty.is_array()
         || matches!(ty.kind(), ty::Adt(adt_def, _) if cx.tcx.is_diagnostic_item(sym::Vec, adt_def.did()))
 }
+
+/// Gets the index of a field by name.
+pub fn get_field_idx_by_name(ty: Ty<'_>, name: Symbol) -> Option<usize> {
+    match *ty.kind() {
+        ty::Adt(def, _) if def.is_union() || def.is_struct() => {
+            def.non_enum_variant().fields.iter().position(|f| f.name == name)
+        },
+        ty::Tuple(_) => name.as_str().parse::<usize>().ok(),
+        _ => None,
+    }
+}

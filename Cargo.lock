@@ -582,13 +582,11 @@ dependencies = [
 name = "clippy_dev"
 version = "0.0.1"
 dependencies = [
- "aho-corasick",
  "chrono",
  "clap",
  "indoc",
  "itertools",
  "opener",
- "shell-escape",
  "walkdir",
 ]
 
@@ -4887,12 +4885,6 @@ checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
 dependencies = [
  "lazy_static",
 ]
-
-[[package]]
-name = "shell-escape"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45bb67a18fa91266cc7807181f62f9178a6873bfad7dc788c42e6430db40184f"
 
 [[package]]
 name = "shlex"

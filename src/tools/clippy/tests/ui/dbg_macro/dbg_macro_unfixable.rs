@@ -1,4 +1,4 @@
-//@no-rustfix
+//@no-rustfix: overlapping suggestions
 //@error-in-other-file:
 #![warn(clippy::dbg_macro)]
 

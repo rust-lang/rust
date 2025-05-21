@@ -1,13 +1,14 @@
-use aho_corasick::{AhoCorasick, AhoCorasickBuilder};
 use core::fmt::{self, Display};
+use core::ops::Range;
 use core::slice;
 use core::str::FromStr;
 use rustc_lexer::{self as lexer, FrontmatterAllowed};
 use std::env;
+use std::ffi::OsStr;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use std::process::{self, ExitStatus};
+use std::process::{self, Command, ExitStatus, Stdio};
 
 #[cfg(not(windows))]
 static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
@@ -15,14 +16,16 @@ static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
 static CARGO_CLIPPY_EXE: &str = "cargo-clippy.exe";
 
 #[derive(Clone, Copy)]
-pub enum FileAction {
+pub enum ErrAction {
     Open,
     Read,
     Write,
     Create,
     Rename,
+    Delete,
+    Run,
 }
-impl FileAction {
+impl ErrAction {
     fn as_str(self) -> &'static str {
         match self {
             Self::Open => "opening",
@@ -30,13 +33,15 @@ impl FileAction {
             Self::Write => "writing",
             Self::Create => "creating",
             Self::Rename => "renaming",
+            Self::Delete => "deleting",
+            Self::Run => "running",
         }
     }
 }
 
 #[cold]
 #[track_caller]
-pub fn panic_file(err: &impl Display, action: FileAction, path: &Path) -> ! {
+pub fn panic_action(err: &impl Display, action: ErrAction, path: &Path) -> ! {
     panic!("error {} `{}`: {}", action.as_str(), path.display(), *err)
 }
 
@@ -52,7 +57,7 @@ impl<'a> File<'a> {
         let path = path.as_ref();
         match options.open(path) {
             Ok(inner) => Self { inner, path },
-            Err(e) => panic_file(&e, FileAction::Open, path),
+            Err(e) => panic_action(&e, ErrAction::Open, path),
         }
     }
 
@@ -63,7 +68,7 @@ impl<'a> File<'a> {
         match options.open(path) {
             Ok(inner) => Some(Self { inner, path }),
             Err(e) if e.kind() == io::ErrorKind::NotFound => None,
-            Err(e) => panic_file(&e, FileAction::Open, path),
+            Err(e) => panic_action(&e, ErrAction::Open, path),
         }
     }
 
@@ -81,7 +86,7 @@ impl<'a> File<'a> {
     pub fn read_append_to_string<'dst>(&mut self, dst: &'dst mut String) -> &'dst mut String {
         match self.inner.read_to_string(dst) {
             Ok(_) => {},
-            Err(e) => panic_file(&e, FileAction::Read, self.path),
+            Err(e) => panic_action(&e, ErrAction::Read, self.path),
         }
         dst
     }
@@ -103,7 +108,7 @@ impl<'a> File<'a> {
             Err(e) => Err(e),
         };
         if let Err(e) = res {
-            panic_file(&e, FileAction::Write, self.path);
+            panic_action(&e, ErrAction::Write, self.path);
         }
     }
 }
@@ -165,9 +170,83 @@ impl Version {
     }
 }
 
+enum TomlPart<'a> {
+    Table(&'a str),
+    Value(&'a str, &'a str),
+}
+
+fn toml_iter(s: &str) -> impl Iterator<Item = (usize, TomlPart<'_>)> {
+    let mut pos = 0;
+    s.split('\n')
+        .map(move |s| {
+            let x = pos;
+            pos += s.len() + 1;
+            (x, s)
+        })
+        .filter_map(|(pos, s)| {
+            if let Some(s) = s.strip_prefix('[') {
+                s.split_once(']').map(|(name, _)| (pos, TomlPart::Table(name)))
+            } else if matches!(s.bytes().next(), Some(b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_')) {
+                s.split_once('=').map(|(key, value)| (pos, TomlPart::Value(key, value)))
+            } else {
+                None
+            }
+        })
+}
+
+pub struct CargoPackage<'a> {
+    pub name: &'a str,
+    pub version_range: Range<usize>,
+    pub not_a_platform_range: Range<usize>,
+}
+
+#[must_use]
+pub fn parse_cargo_package(s: &str) -> CargoPackage<'_> {
+    let mut in_package = false;
+    let mut in_platform_deps = false;
+    let mut name = "";
+    let mut version_range = 0..0;
+    let mut not_a_platform_range = 0..0;
+    for (offset, part) in toml_iter(s) {
+        match part {
+            TomlPart::Table(name) => {
+                if in_platform_deps {
+                    not_a_platform_range.end = offset;
+                }
+                in_package = false;
+                in_platform_deps = false;
+
+                match name.trim() {
+                    "package" => in_package = true,
+                    "target.'cfg(NOT_A_PLATFORM)'.dependencies" => {
+                        in_platform_deps = true;
+                        not_a_platform_range.start = offset;
+                    },
+                    _ => {},
+                }
+            },
+            TomlPart::Value(key, value) if in_package => match key.trim_end() {
+                "name" => name = value.trim(),
+                "version" => {
+                    version_range.start = offset + (value.len() - value.trim().len()) + key.len() + 1;
+                    version_range.end = offset + key.len() + value.trim_end().len() + 1;
+                },
+                _ => {},
+            },
+            TomlPart::Value(..) => {},
+        }
+    }
+    CargoPackage {
+        name,
+        version_range,
+        not_a_platform_range,
+    }
+}
+
 pub struct ClippyInfo {
     pub path: PathBuf,
     pub version: Version,
+    pub has_intellij_hook: bool,
 }
 impl ClippyInfo {
     #[must_use]
@@ -177,35 +256,21 @@ impl ClippyInfo {
         loop {
             path.push("Cargo.toml");
             if let Some(mut file) = File::open_if_exists(&path, OpenOptions::new().read(true)) {
-                let mut in_package = false;
-                let mut is_clippy = false;
-                let mut version: Option<Version> = None;
-
-                // Ad-hoc parsing to avoid dependencies. We control all the file so this
-                // isn't actually a problem
-                for line in file.read_to_cleared_string(&mut buf).lines() {
-                    if line.starts_with('[') {
-                        in_package = line.starts_with("[package]");
-                    } else if in_package && let Some((name, value)) = line.split_once('=') {
-                        match name.trim() {
-                            "name" => is_clippy = value.trim() == "\"clippy\"",
-                            "version"
-                                if let Some(value) = value.trim().strip_prefix('"')
-                                    && let Some(value) = value.strip_suffix('"') =>
-                            {
-                                version = value.parse().ok();
-                            },
-                            _ => {},
-                        }
+                file.read_to_cleared_string(&mut buf);
+                let package = parse_cargo_package(&buf);
+                if package.name == "\"clippy\"" {
+                    if let Some(version) = buf[package.version_range].strip_prefix('"')
+                        && let Some(version) = version.strip_suffix('"')
+                        && let Ok(version) = version.parse()
+                    {
+                        path.pop();
+                        return ClippyInfo {
+                            path,
+                            version,
+                            has_intellij_hook: !package.not_a_platform_range.is_empty(),
+                        };
                     }
-                }
-
-                if is_clippy {
-                    let Some(version) = version else {
-                        panic!("error reading clippy version from {}", file.path.display());
-                    };
-                    path.pop();
-                    return ClippyInfo { path, version };
+                    panic!("error reading clippy version from `{}`", file.path.display());
                 }
             }
 
@@ -257,6 +322,11 @@ impl UpdateMode {
     #[must_use]
     pub fn from_check(check: bool) -> Self {
         if check { Self::Check } else { Self::Change }
+    }
+
+    #[must_use]
+    pub fn is_check(self) -> bool {
+        matches!(self, Self::Check)
     }
 }
 
@@ -366,53 +436,11 @@ pub fn update_text_region_fn(
     move |path, src, dst| update_text_region(path, start, end, src, dst, &mut insert)
 }
 
-#[must_use]
-pub fn is_ident_char(c: u8) -> bool {
-    matches!(c, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_')
-}
-
-pub struct StringReplacer<'a> {
-    searcher: AhoCorasick,
-    replacements: &'a [(&'a str, &'a str)],
-}
-impl<'a> StringReplacer<'a> {
-    #[must_use]
-    pub fn new(replacements: &'a [(&'a str, &'a str)]) -> Self {
-        Self {
-            searcher: AhoCorasickBuilder::new()
-                .match_kind(aho_corasick::MatchKind::LeftmostLongest)
-                .build(replacements.iter().map(|&(x, _)| x))
-                .unwrap(),
-            replacements,
-        }
-    }
-
-    /// Replace substrings if they aren't bordered by identifier characters.
-    pub fn replace_ident_fn(&self) -> impl Fn(&Path, &str, &mut String) -> UpdateStatus {
-        move |_, src, dst| {
-            let mut pos = 0;
-            let mut changed = false;
-            for m in self.searcher.find_iter(src) {
-                if !is_ident_char(src.as_bytes().get(m.start().wrapping_sub(1)).copied().unwrap_or(0))
-                    && !is_ident_char(src.as_bytes().get(m.end()).copied().unwrap_or(0))
-                {
-                    changed = true;
-                    dst.push_str(&src[pos..m.start()]);
-                    dst.push_str(self.replacements[m.pattern()].1);
-                    pos = m.end();
-                }
-            }
-            dst.push_str(&src[pos..]);
-            UpdateStatus::from_changed(changed)
-        }
-    }
-}
-
 #[derive(Clone, Copy)]
-pub enum Token {
-    /// Matches any number of doc comments.
-    AnyDoc,
-    Ident(&'static str),
+pub enum Token<'a> {
+    /// Matches any number of comments / doc comments.
+    AnyComment,
+    Ident(&'a str),
     CaptureIdent,
     LitStr,
     CaptureLitStr,
@@ -431,35 +459,37 @@ pub enum Token {
     OpenBracket,
     OpenParen,
     Pound,
+    Semi,
+    Slash,
 }
 
 pub struct RustSearcher<'txt> {
     text: &'txt str,
     cursor: lexer::Cursor<'txt>,
     pos: u32,
-
-    // Either the next token or a zero-sized whitespace sentinel.
     next_token: lexer::Token,
 }
 impl<'txt> RustSearcher<'txt> {
     #[must_use]
+    #[expect(clippy::inconsistent_struct_constructor)]
     pub fn new(text: &'txt str) -> Self {
+        let mut cursor = lexer::Cursor::new(text, FrontmatterAllowed::Yes);
         Self {
             text,
-            cursor: lexer::Cursor::new(text, FrontmatterAllowed::Yes),
             pos: 0,
-
-            // Sentinel value indicating there is no read token.
-            next_token: lexer::Token {
-                len: 0,
-                kind: lexer::TokenKind::Whitespace,
-            },
+            next_token: cursor.advance_token(),
+            cursor,
         }
     }
 
     #[must_use]
     pub fn peek_text(&self) -> &'txt str {
         &self.text[self.pos as usize..(self.pos + self.next_token.len) as usize]
+    }
+
+    #[must_use]
+    pub fn peek_len(&self) -> u32 {
+        self.next_token.len
     }
 
     #[must_use]
@@ -485,37 +515,15 @@ impl<'txt> RustSearcher<'txt> {
 
     /// Consumes the next token if it matches the requested value and captures the value if
     /// requested. Returns true if a token was matched.
-    fn read_token(&mut self, token: Token, captures: &mut slice::IterMut<'_, &mut &'txt str>) -> bool {
+    fn read_token(&mut self, token: Token<'_>, captures: &mut slice::IterMut<'_, &mut &'txt str>) -> bool {
         loop {
             match (token, self.next_token.kind) {
-                // Has to be the first match arm so the empty sentinel token will be handled.
-                // This will also skip all whitespace/comments preceding any tokens.
-                (
-                    _,
-                    lexer::TokenKind::Whitespace
-                    | lexer::TokenKind::LineComment { doc_style: None }
-                    | lexer::TokenKind::BlockComment {
-                        doc_style: None,
-                        terminated: true,
-                    },
-                ) => {
-                    self.step();
-                    if self.at_end() {
-                        // `AnyDoc` always matches.
-                        return matches!(token, Token::AnyDoc);
-                    }
-                },
-                (
-                    Token::AnyDoc,
+                (_, lexer::TokenKind::Whitespace)
+                | (
+                    Token::AnyComment,
                     lexer::TokenKind::BlockComment { terminated: true, .. } | lexer::TokenKind::LineComment { .. },
-                ) => {
-                    self.step();
-                    if self.at_end() {
-                        // `AnyDoc` always matches.
-                        return true;
-                    }
-                },
-                (Token::AnyDoc, _) => return true,
+                ) => self.step(),
+                (Token::AnyComment, _) => return true,
                 (Token::Bang, lexer::TokenKind::Bang)
                 | (Token::CloseBrace, lexer::TokenKind::CloseBrace)
                 | (Token::CloseBracket, lexer::TokenKind::CloseBracket)
@@ -529,6 +537,8 @@ impl<'txt> RustSearcher<'txt> {
                 | (Token::OpenBracket, lexer::TokenKind::OpenBracket)
                 | (Token::OpenParen, lexer::TokenKind::OpenParen)
                 | (Token::Pound, lexer::TokenKind::Pound)
+                | (Token::Semi, lexer::TokenKind::Semi)
+                | (Token::Slash, lexer::TokenKind::Slash)
                 | (
                     Token::LitStr,
                     lexer::TokenKind::Literal {
@@ -569,7 +579,7 @@ impl<'txt> RustSearcher<'txt> {
     }
 
     #[must_use]
-    pub fn find_token(&mut self, token: Token) -> bool {
+    pub fn find_token(&mut self, token: Token<'_>) -> bool {
         let mut capture = [].iter_mut();
         while !self.read_token(token, &mut capture) {
             self.step();
@@ -581,7 +591,7 @@ impl<'txt> RustSearcher<'txt> {
     }
 
     #[must_use]
-    pub fn find_capture_token(&mut self, token: Token) -> Option<&'txt str> {
+    pub fn find_capture_token(&mut self, token: Token<'_>) -> Option<&'txt str> {
         let mut res = "";
         let mut capture = &mut res;
         let mut capture = slice::from_mut(&mut capture).iter_mut();
@@ -595,7 +605,7 @@ impl<'txt> RustSearcher<'txt> {
     }
 
     #[must_use]
-    pub fn match_tokens(&mut self, tokens: &[Token], captures: &mut [&mut &'txt str]) -> bool {
+    pub fn match_tokens(&mut self, tokens: &[Token<'_>], captures: &mut [&mut &'txt str]) -> bool {
         let mut captures = captures.iter_mut();
         tokens.iter().all(|&t| self.read_token(t, &mut captures))
     }
@@ -606,21 +616,107 @@ pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
     match OpenOptions::new().create_new(true).write(true).open(new_name) {
         Ok(file) => drop(file),
         Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
-        Err(e) => panic_file(&e, FileAction::Create, new_name),
+        Err(ref e) => panic_action(e, ErrAction::Create, new_name),
     }
     match fs::rename(old_name, new_name) {
         Ok(()) => true,
-        Err(e) => {
+        Err(ref e) => {
             drop(fs::remove_file(new_name));
-            if e.kind() == io::ErrorKind::NotFound {
+            // `NotADirectory` happens on posix when renaming a directory to an existing file.
+            // Windows will ignore this and rename anyways.
+            if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
                 false
             } else {
-                panic_file(&e, FileAction::Rename, old_name);
+                panic_action(e, ErrAction::Rename, old_name);
+            }
+        },
+    }
+}
+
+#[expect(clippy::must_use_candidate)]
+pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
+    match fs::create_dir(new_name) {
+        Ok(()) => {},
+        Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
+        Err(ref e) => panic_action(e, ErrAction::Create, new_name),
+    }
+    // Windows can't reliably rename to an empty directory.
+    #[cfg(windows)]
+    drop(fs::remove_dir(new_name));
+    match fs::rename(old_name, new_name) {
+        Ok(()) => true,
+        Err(ref e) => {
+            // Already dropped earlier on windows.
+            #[cfg(not(windows))]
+            drop(fs::remove_dir(new_name));
+            // `NotADirectory` happens on posix when renaming a file to an existing directory.
+            if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
+                false
+            } else {
+                panic_action(e, ErrAction::Rename, old_name);
             }
         },
     }
 }
 
 pub fn write_file(path: &Path, contents: &str) {
-    fs::write(path, contents).unwrap_or_else(|e| panic_file(&e, FileAction::Write, path));
+    fs::write(path, contents).unwrap_or_else(|e| panic_action(&e, ErrAction::Write, path));
+}
+
+#[must_use]
+pub fn run_with_output(path: &(impl AsRef<Path> + ?Sized), cmd: &mut Command) -> Vec<u8> {
+    fn f(path: &Path, cmd: &mut Command) -> Vec<u8> {
+        match cmd
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit())
+            .output()
+        {
+            Ok(x) => match x.status.exit_ok() {
+                Ok(()) => x.stdout,
+                Err(ref e) => panic_action(e, ErrAction::Run, path),
+            },
+            Err(ref e) => panic_action(e, ErrAction::Run, path),
+        }
+    }
+    f(path.as_ref(), cmd)
+}
+
+pub fn run_with_args_split(
+    mut make_cmd: impl FnMut() -> Command,
+    mut run_cmd: impl FnMut(&mut Command),
+    args: impl Iterator<Item: AsRef<OsStr>>,
+) {
+    let mut cmd = make_cmd();
+    let mut len = 0;
+    for arg in args {
+        len += arg.as_ref().len();
+        cmd.arg(arg);
+        // Very conservative limit
+        if len > 10000 {
+            run_cmd(&mut cmd);
+            cmd = make_cmd();
+            len = 0;
+        }
+    }
+    if len != 0 {
+        run_cmd(&mut cmd);
+    }
+}
+
+#[expect(clippy::must_use_candidate)]
+pub fn delete_file_if_exists(path: &Path) -> bool {
+    match fs::remove_file(path) {
+        Ok(()) => true,
+        Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::IsADirectory) => false,
+        Err(ref e) => panic_action(e, ErrAction::Delete, path),
+    }
+}
+
+pub fn delete_dir_if_exists(path: &Path) {
+    match fs::remove_dir_all(path) {
+        Ok(()) => {},
+        Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) => {},
+        Err(ref e) => panic_action(e, ErrAction::Delete, path),
+    }
 }

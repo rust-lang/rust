@@ -423,7 +423,14 @@ fn check_final_expr<'tcx>(
                 _ => return,
             }
 
-            emit_return_lint(cx, ret_span, semi_spans, &replacement, expr.hir_id);
+            emit_return_lint(
+                cx,
+                peeled_drop_expr.span,
+                ret_span,
+                semi_spans,
+                &replacement,
+                expr.hir_id,
+            );
         },
         ExprKind::If(_, then, else_clause_opt) => {
             check_block_return(cx, &then.kind, peeled_drop_expr.span, semi_spans.clone());
@@ -448,6 +455,7 @@ fn check_final_expr<'tcx>(
 
 fn emit_return_lint(
     cx: &LateContext<'_>,
+    lint_span: Span,
     ret_span: Span,
     semi_spans: Vec<Span>,
     replacement: &RetReplacement<'_>,
@@ -457,7 +465,7 @@ fn emit_return_lint(
         cx,
         NEEDLESS_RETURN,
         at,
-        ret_span,
+        lint_span,
         "unneeded `return` statement",
         |diag| {
             let suggestions = std::iter::once((ret_span, replacement.to_string()))
