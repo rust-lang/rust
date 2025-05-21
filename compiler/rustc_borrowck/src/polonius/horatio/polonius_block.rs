@@ -116,8 +116,9 @@ impl PoloniusBlock {
 
     /// Iterate over the successor blocks to this block.
     ///
-    /// Note that this is same as [`Terminator::successors`] except for the "before introduction
-    /// block" where it is the "introduction block".
+    /// Note that this is same as
+    /// [`Terminator::successors`](rustc_middle::mir::Terminator::successors) except for the "before
+    /// introduction block" where it is the "introduction block".
     #[inline]
     pub(super) fn successors(
         self,

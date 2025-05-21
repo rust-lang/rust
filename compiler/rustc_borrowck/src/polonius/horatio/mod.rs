@@ -63,7 +63,7 @@ pub(crate) struct PoloniusContext<'a, 'tcx> {
 
     /// For every block, we store a set of all proceeding blocks.
     ///
-    /// ```
+    /// ```text
     ///       a
     ///      / \
     ///     b   c
@@ -315,7 +315,7 @@ impl<'a, 'tcx> Polonius<'a, 'tcx> {
     /// The purpose of this function is to be really quick. In most cases it will return `false` and
     /// no conflict is therefore possible. In the rare situations it returns `true`, the caller
     /// should proceed with other more time consuming methods of checking for a conflict and
-    /// eventually call the [`Polonius::loan_is_active`] function which will give a definite answer.
+    /// eventually call the [`Polonius::loan_is_active_at`] function which will give a definite answer.
     #[inline]
     pub(crate) fn loan_maybe_active_at(
         &mut self,

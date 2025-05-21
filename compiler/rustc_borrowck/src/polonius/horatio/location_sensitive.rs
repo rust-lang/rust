@@ -293,7 +293,7 @@ impl LocationSensitiveAnalysis {
     }
 }
 
-/// This is a very specific function used in [`LocationInsensitiveAnalysis::compute()`] to visit all
+/// This is a very specific function used in [`LocationSensitiveAnalysis::compute()`] to visit all
 ///
 /// predecessors and successors of a node. One could argue that it shouldn’t be a separate function
 /// and should just be hardcoded, but that led to a ton of repetitive code.
