@@ -115,6 +115,12 @@ jobs:
       - uses: actions/checkout@v4
       - run: python tools/check_intrinsics_duplicates.py
 
+  spell_check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: crate-ci/typos@v1.32.0
+
   build_system:
     runs-on: ubuntu-24.04
     steps:
