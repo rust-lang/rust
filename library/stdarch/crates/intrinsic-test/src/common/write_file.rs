@@ -32,6 +32,7 @@ pub fn write_rust_testfiles<T: IntrinsicTypeDefinition>(
     intrinsics: Vec<&dyn IntrinsicDefinition<T>>,
     rust_target: &str,
     notice: &str,
+    definitions: &str,
     cfg: &str,
 ) -> Vec<String> {
     let intrinsics_name_list = intrinsics
@@ -41,7 +42,7 @@ pub fn write_rust_testfiles<T: IntrinsicTypeDefinition>(
     let filename_mapping = create_rust_filenames(&intrinsics_name_list);
 
     intrinsics.iter().for_each(|i| {
-        let rust_code = i.generate_rust_program(rust_target, notice, cfg);
+        let rust_code = i.generate_rust_program(rust_target, notice, definitions, cfg);
         match filename_mapping.get(&i.name()) {
             Some(filename) => write_file(filename, rust_code),
             None => {}

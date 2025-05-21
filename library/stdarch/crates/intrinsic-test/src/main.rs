@@ -1,4 +1,3 @@
-#![feature(slice_partition_dedup)]
 #[macro_use]
 extern crate log;
 

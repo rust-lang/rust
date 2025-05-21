@@ -7,6 +7,7 @@ use std::process::Command;
 
 pub fn generate_rust_program(
     notices: &str,
+    definitions: &str,
     configurations: &str,
     arch_definition: &str,
     arglists: &str,
@@ -17,7 +18,8 @@ pub fn generate_rust_program(
 #![feature(link_llvm_intrinsics)]
 #![feature(f16)]
 {configurations}
-#![allow(non_upper_case_globals)]
+{definitions}
+
 use core_arch::arch::{arch_definition}::*;
 
 fn main() {{

@@ -87,7 +87,7 @@ impl IntrinsicDefinition<ArmIntrinsicType> for Intrinsic<ArmIntrinsicType> {
         )
     }
 
-    pub fn generate_loop_c(
+    fn generate_loop_c(
         &self,
         indentation: Indentation,
         additional: &str,
@@ -108,7 +108,7 @@ impl IntrinsicDefinition<ArmIntrinsicType> for Intrinsic<ArmIntrinsicType> {
         )
     }
 
-    pub fn generate_loop_rust(
+    fn generate_loop_rust(
         &self,
         indentation: Indentation,
         additional: &str,

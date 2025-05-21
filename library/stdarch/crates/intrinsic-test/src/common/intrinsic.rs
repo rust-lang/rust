@@ -202,7 +202,13 @@ where
         }
     }
 
-    fn generate_rust_program(&self, target: &str, notice: &str, cfg: &str) -> String {
+    fn generate_rust_program(
+        &self,
+        target: &str,
+        notice: &str,
+        definitions: &str,
+        cfg: &str,
+    ) -> String {
         let arguments = self.arguments();
         let constraints = arguments
             .iter()
@@ -212,6 +218,7 @@ where
         let indentation = Indentation::default();
         generate_rust_program(
             notice,
+            definitions,
             cfg,
             target,
             self.arguments()

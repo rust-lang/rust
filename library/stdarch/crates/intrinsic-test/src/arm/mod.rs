@@ -13,7 +13,7 @@ use crate::common::gen_rust::compile_rust;
 use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
 use crate::common::intrinsic_helpers::{BaseIntrinsicTypeDefinition, TypeKind};
 use crate::common::write_file::{write_c_testfiles, write_rust_testfiles};
-use config::{AARCH_CONFIGURATIONS, POLY128_OSTREAM_DEF, build_notices};
+use config::{AARCH_CONFIGURATIONS, F16_FORMATTING_DEF, POLY128_OSTREAM_DEF, build_notices};
 use json_parser::get_neon_intrinsics;
 
 pub struct ArmArchitectureTest {
@@ -91,6 +91,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
                 .collect::<Vec<_>>(),
             final_target,
             &build_notices("// "),
+            F16_FORMATTING_DEF,
             AARCH_CONFIGURATIONS,
         );
 
