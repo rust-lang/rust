@@ -72,6 +72,7 @@ impl fmt::Display for ErrorKind {
 #[derive(Debug)]
 pub struct Error {
     pub line_num: Option<usize>,
+    pub column_num: Option<usize>,
     /// What kind of message we expect (e.g., warning, error, suggestion).
     pub kind: ErrorKind,
     pub msg: String,
@@ -79,12 +80,6 @@ pub struct Error {
     /// are not mandatory, even if they would otherwise be mandatory for primary errors.
     /// Only makes sense for "actual" errors, not for "expected" errors.
     pub require_annotation: bool,
-}
-
-impl Error {
-    pub fn line_num_str(&self) -> String {
-        self.line_num.map_or("?".to_string(), |line_num| line_num.to_string())
-    }
 }
 
 /// Looks for either "//~| KIND MESSAGE" or "//~^^... KIND MESSAGE"
@@ -186,6 +181,7 @@ fn parse_expected(
     } else {
         (false, Some(line_num - line_num_adjust.len()))
     };
+    let column_num = Some(tag.start() + 1);
 
     debug!(
         "line={:?} tag={:?} follow_prev={:?} kind={:?} msg={:?}",
@@ -195,7 +191,7 @@ fn parse_expected(
         kind,
         msg
     );
-    Some((follow_prev, Error { line_num, kind, msg, require_annotation: true }))
+    Some((follow_prev, Error { line_num, column_num, kind, msg, require_annotation: true }))
 }
 
 #[cfg(test)]

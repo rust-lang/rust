@@ -677,9 +677,6 @@ impl<'test> TestCx<'test> {
             return;
         }
 
-        // On Windows, translate all '\' path separators to '/'
-        let file_name = self.testpaths.file.to_string().replace(r"\", "/");
-
         // On Windows, keep all '\' path separators to match the paths reported in the JSON output
         // from the compiler
         let diagnostic_file_name = if self.props.remap_src_base {
@@ -762,7 +759,20 @@ impl<'test> TestCx<'test> {
                 not_found.len()
             ));
             let print = |e: &Error| {
-                println!("{file_name}:{}: {}: {}", e.line_num_str(), e.kind, e.msg.cyan())
+                let line_num = e.line_num.map_or("?".to_string(), |line_num| line_num.to_string());
+                // `file:?:NUM` may be confusing to editors and unclickable.
+                let opt_col_num = match e.column_num {
+                    Some(col_num) if line_num != "?" => format!("{col_num}:"),
+                    _ => "".to_string(),
+                };
+                println!(
+                    "{}/{}/{}:{line_num}:{opt_col_num} {}: {}",
+                    self.config.src_test_suite_root,
+                    self.testpaths.relative_dir,
+                    self.testpaths.file.file_name().unwrap(),
+                    e.kind,
+                    e.msg.cyan()
+                )
             };
             // Fuzzy matching quality:
             // - message and line / message and kind - great, suggested
