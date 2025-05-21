@@ -3,7 +3,7 @@ use std::fmt;
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_Generic;
 
-use crate::{AbiFromStrErr, ExternAbi};
+use crate::ExternAbi;
 
 /// Calling convention to determine codegen
 ///
