@@ -3901,7 +3901,9 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // We walk the pattern before declaring the pattern's inner bindings,
         // so that we avoid resolving a literal expression to a binding defined
         // by the pattern.
-        visit::walk_pat(self, pat);
+        // NB: `Self::visit_pat` must be used rather than `visit::walk_pat` to avoid resolving guard
+        // patterns' guard expressions multiple times (#141265).
+        self.visit_pat(pat);
         self.resolve_pattern_inner(pat, pat_src, bindings);
         // This has to happen *after* we determine which pat_idents are variants:
         self.check_consistent_bindings(pat);
