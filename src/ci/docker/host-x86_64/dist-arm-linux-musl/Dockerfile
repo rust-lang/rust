@@ -19,19 +19,13 @@ RUN sh /scripts/rustbuild-setup.sh
 WORKDIR /tmp
 
 COPY scripts/crosstool-ng-build.sh /scripts/
-COPY host-x86_64/dist-arm-linux/arm-linux-gnueabi.defconfig /tmp/crosstool.defconfig
+COPY host-x86_64/dist-arm-linux-musl/arm-linux-musl.defconfig /tmp/crosstool.defconfig
 RUN /scripts/crosstool-ng-build.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV PATH=$PATH:/x-tools/arm-unknown-linux-gnueabi/bin
-
-ENV CC_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-gcc \
-    AR_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-ar \
-    CXX_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-g++
-
-ENV HOSTS=arm-unknown-linux-gnueabi,aarch64-unknown-linux-musl
+ENV HOSTS=aarch64-unknown-linux-musl
 
 ENV RUST_CONFIGURE_ARGS \
       --enable-full-tools \
