@@ -1,3 +1,4 @@
+use std::env::consts::EXE_EXTENSION;
 use std::fmt::{Display, Formatter};
 
 use crate::core::build_steps::compile::{Std, Sysroot};
@@ -160,7 +161,10 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
     }
 
     let sysroot = builder.ensure(Sysroot::new(compiler));
-    let rustc = sysroot.join("bin/rustc");
+    let mut rustc = sysroot.clone();
+    rustc.push("bin");
+    rustc.push("rustc");
+    rustc.set_extension(EXE_EXTENSION);
 
     let rustc_perf_dir = builder.build.tempdir().join("rustc-perf");
     let results_dir = rustc_perf_dir.join("results");
