@@ -3,8 +3,8 @@ use std::str::FromStr;
 use std::{fmt, iter};
 
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, ExternAbi, HasDataLayout, Primitive, Reg, RegKind, Scalar,
-    Size, TyAbiInterface, TyAndLayout,
+    AddressSpace, Align, BackendRepr, CanonAbi, ExternAbi, HasDataLayout, Primitive, Reg, RegKind,
+    Scalar, Size, TyAbiInterface, TyAndLayout,
 };
 use rustc_macros::HashStable_Generic;
 
@@ -606,7 +606,7 @@ pub struct FnAbi<'a, Ty> {
     /// This can be used to know whether an argument is variadic or not.
     pub fixed_count: u32,
     /// The calling convention of this function.
-    pub conv: Conv,
+    pub conv: CanonAbi,
     /// Indicates if an unwind may happen across a call to this function.
     pub can_unwind: bool,
 }
