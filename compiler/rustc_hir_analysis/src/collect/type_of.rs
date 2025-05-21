@@ -157,13 +157,13 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            TraitItemKind::Const(ty, body_id) => body_id
-                .and_then(|body_id| {
+            TraitItemKind::Const(ty, body) => body
+                .and_then(|ct_arg| {
                     ty.is_suggestable_infer_ty().then(|| {
                         infer_placeholder_type(
                             icx.lowerer(),
                             def_id,
-                            body_id,
+                            ct_arg.hir_id,
                             ty.span,
                             item.ident,
                             "associated constant",
@@ -182,12 +182,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            ImplItemKind::Const(ty, body_id) => {
+            ImplItemKind::Const(ty, ct_arg) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
-                        body_id,
+                        ct_arg.hir_id,
                         ty.span,
                         item.ident,
                         "associated constant",
@@ -211,7 +211,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
-                        body_id,
+                        body_id.hir_id,
                         ty.span,
                         ident,
                         "static variable",
@@ -220,12 +220,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     icx.lower_ty(ty)
                 }
             }
-            ItemKind::Const(ident, ty, _, body_id) => {
+            ItemKind::Const(ident, ty, _, body) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
-                        body_id,
+                        body.hir_id,
                         ty.span,
                         ident,
                         "constant",
@@ -406,13 +406,13 @@ pub(super) fn type_of_opaque_hir_typeck(
 fn infer_placeholder_type<'tcx>(
     cx: &dyn HirTyLowerer<'tcx>,
     def_id: LocalDefId,
-    body_id: hir::BodyId,
+    hir_id: HirId,
     span: Span,
     item_ident: Ident,
     kind: &'static str,
 ) -> Ty<'tcx> {
     let tcx = cx.tcx();
-    let ty = tcx.typeck(def_id).node_type(body_id.hir_id);
+    let ty = tcx.typeck(def_id).node_type(hir_id);
 
     // If this came from a free `const` or `static mut?` item,
     // then the user may have written e.g. `const A = 42;`.
@@ -440,7 +440,7 @@ fn infer_placeholder_type<'tcx>(
                     );
                 } else {
                     with_forced_trimmed_paths!(err.span_note(
-                        tcx.hir_body(body_id).value.span,
+                        tcx.hir_span(hir_id),
                         format!("however, the inferred type `{ty}` cannot be named"),
                     ));
                 }
@@ -483,7 +483,7 @@ fn infer_placeholder_type<'tcx>(
                     );
                 } else {
                     with_forced_trimmed_paths!(diag.span_note(
-                        tcx.hir_body(body_id).value.span,
+                        tcx.hir_span(hir_id),
                         format!("however, the inferred type `{ty}` cannot be named"),
                     ));
                 }
