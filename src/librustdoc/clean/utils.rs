@@ -24,7 +24,7 @@ use crate::clean::{
     clean_middle_ty, inline,
 };
 use crate::core::DocContext;
-use crate::display::Joined as _;
+use crate::display::{Joined as _, MaybeDisplay as _};
 
 #[cfg(test)]
 mod tests;
@@ -254,14 +254,7 @@ pub(crate) fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     fmt::from_fn(|f| {
         segments
             .iter()
-            .map(|seg| {
-                fmt::from_fn(|f| {
-                    if seg.ident.name != kw::PathRoot {
-                        write!(f, "{}", seg.ident)?;
-                    }
-                    Ok(())
-                })
-            })
+            .map(|seg| (seg.ident.name != kw::PathRoot).then_some(seg.ident).maybe_display())
             .joined("::", f)
     })
     .to_string()
