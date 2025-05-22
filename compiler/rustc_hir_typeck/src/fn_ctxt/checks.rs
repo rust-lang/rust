@@ -4,10 +4,10 @@ use itertools::Itertools;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, a_or_an, listify, pluralize};
-use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{ExprKind, HirId, Node, QPath};
+use rustc_hir::{ExprKind, HirId, LangItem, Node, QPath};
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_index::IndexVec;
@@ -104,24 +104,96 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_repeat_exprs(&self) {
         let mut deferred_repeat_expr_checks = self.deferred_repeat_expr_checks.borrow_mut();
         debug!("FnCtxt::check_repeat_exprs: {} deferred checks", deferred_repeat_expr_checks.len());
-        for (element, element_ty, count) in deferred_repeat_expr_checks.drain(..) {
-            // We want to emit an error if the const is not structurally resolveable as otherwise
-            // we can find up conservatively proving `Copy` which may infer the repeat expr count
-            // to something that never required `Copy` in the first place.
-            let count =
-                self.structurally_resolve_const(element.span, self.normalize(element.span, count));
 
-            // Avoid run on "`NotCopy: Copy` is not implemented" errors when the repeat expr count
-            // is erroneous/unknown. The user might wind up specifying a repeat count of 0/1.
-            if count.references_error() {
-                continue;
-            }
+        let deferred_repeat_expr_checks = deferred_repeat_expr_checks
+            .drain(..)
+            .flat_map(|(element, element_ty, count)| {
+                // Actual constants as the repeat element are inserted repeatedly instead
+                // of being copied via `Copy`, so we don't need to attempt to structurally
+                // resolve the repeat count which may unnecessarily error.
+                match &element.kind {
+                    hir::ExprKind::ConstBlock(..) => return None,
+                    hir::ExprKind::Path(qpath) => {
+                        let res = self.typeck_results.borrow().qpath_res(qpath, element.hir_id);
+                        if let Res::Def(DefKind::Const | DefKind::AssocConst, _) = res {
+                            return None;
+                        }
+                    }
+                    _ => {}
+                }
 
-            // If the length is 0, we don't create any elements, so we don't copy any.
-            // If the length is 1, we don't copy that one element, we move it. Only check
-            // for `Copy` if the length is larger.
-            if count.try_to_target_usize(self.tcx).is_none_or(|x| x > 1) {
-                self.enforce_repeat_element_needs_copy_bound(element, element_ty);
+                // We want to emit an error if the const is not structurally resolveable
+                // as otherwise we can wind up conservatively proving `Copy` which may
+                // infer the repeat expr count to something that never required `Copy` in
+                // the first place.
+                let count = self
+                    .structurally_resolve_const(element.span, self.normalize(element.span, count));
+
+                // Avoid run on "`NotCopy: Copy` is not implemented" errors when the
+                // repeat expr count is erroneous/unknown. The user might wind up
+                // specifying a repeat count of 0/1.
+                if count.references_error() {
+                    return None;
+                }
+
+                Some((element, element_ty, count))
+            })
+            // We collect to force the side effects of structurally resolving the repeat
+            // count to happen in one go, to avoid side effects from proving `Copy`
+            // affecting whether repeat counts are known or not. If we did not do this we
+            // would get results that depend on the order that we evaluate each repeat
+            // expr's `Copy` check.
+            .collect::<Vec<_>>();
+
+        let enforce_copy_bound = |element: &hir::Expr<'_>, element_ty| {
+            // If someone calls a const fn or constructs a const value, they can extract that
+            // out into a separate constant (or a const block in the future), so we check that
+            // to tell them that in the diagnostic. Does not affect typeck.
+            let is_constable = match element.kind {
+                hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
+                    ty::FnDef(def_id, _) if self.tcx.is_stable_const_fn(def_id) => {
+                        traits::IsConstable::Fn
+                    }
+                    _ => traits::IsConstable::No,
+                },
+                hir::ExprKind::Path(qpath) => {
+                    match self.typeck_results.borrow().qpath_res(&qpath, element.hir_id) {
+                        Res::Def(DefKind::Ctor(_, CtorKind::Const), _) => traits::IsConstable::Ctor,
+                        _ => traits::IsConstable::No,
+                    }
+                }
+                _ => traits::IsConstable::No,
+            };
+
+            let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
+            let code = traits::ObligationCauseCode::RepeatElementCopy {
+                is_constable,
+                elt_span: element.span,
+            };
+            self.require_type_meets(element_ty, element.span, code, lang_item);
+        };
+
+        for (element, element_ty, count) in deferred_repeat_expr_checks {
+            match count.kind() {
+                ty::ConstKind::Value(val) => {
+                    if val.try_to_target_usize(self.tcx).is_none_or(|count| count > 1) {
+                        enforce_copy_bound(element, element_ty)
+                    } else {
+                        // If the length is 0 or 1 we don't actually copy the element, we either don't create it
+                        // or we just use the one value.
+                    }
+                }
+
+                // If the length is a generic parameter or some rigid alias then conservatively
+                // require `element_ty: Copy` as it may wind up being `>1` after monomorphization.
+                ty::ConstKind::Param(_)
+                | ty::ConstKind::Expr(_)
+                | ty::ConstKind::Placeholder(_)
+                | ty::ConstKind::Unevaluated(_) => enforce_copy_bound(element, element_ty),
+
+                ty::ConstKind::Bound(_, _) | ty::ConstKind::Infer(_) | ty::ConstKind::Error(_) => {
+                    unreachable!()
+                }
             }
         }
     }
