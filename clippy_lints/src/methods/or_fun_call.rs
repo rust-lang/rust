@@ -12,7 +12,7 @@ use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Span;
-use rustc_span::symbol::{self, Symbol};
+use rustc_span::Symbol;
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::{OR_FUN_CALL, UNWRAP_OR_DEFAULT};
@@ -265,7 +265,7 @@ fn closure_body_returns_empty_to_string(cx: &LateContext<'_>, e: &hir::Expr<'_>)
             && ident.name == sym::to_string
             && let hir::Expr { kind, .. } = self_arg
             && let hir::ExprKind::Lit(lit) = kind
-            && let ast::LitKind::Str(symbol::kw::Empty, _) = lit.node
+            && let ast::LitKind::Str(rustc_span::sym::empty, _) = lit.node
         {
             return true;
         }
