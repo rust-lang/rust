@@ -340,7 +340,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn coroutine_hidden_types(
         self,
         def_id: DefId,
-    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>> {
+    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, ty::CoroutineWitnessTypes<TyCtxt<'tcx>>>> {
         self.coroutine_hidden_types(def_id)
     }
 

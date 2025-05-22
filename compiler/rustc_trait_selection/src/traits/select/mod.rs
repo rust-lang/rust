@@ -2868,7 +2868,7 @@ fn rebind_coroutine_witness_types<'tcx>(
     let shifted_coroutine_types =
         tcx.shift_bound_var_indices(bound_vars.len(), bound_coroutine_types.skip_binder());
     ty::Binder::bind_with_vars(
-        ty::EarlyBinder::bind(shifted_coroutine_types.to_vec()).instantiate(tcx, args),
+        ty::EarlyBinder::bind(shifted_coroutine_types.types.to_vec()).instantiate(tcx, args),
         tcx.mk_bound_variable_kinds_from_iter(
             bound_vars.iter().chain(bound_coroutine_types.bound_vars()),
         ),
