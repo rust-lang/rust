@@ -4280,6 +4280,7 @@ pub enum ItemKind<'hir> {
     /// A `static` item.
     Static(Ident, &'hir Ty<'hir>, Mutability, BodyId),
     /// A `const` item.
+    // TODO: make sure we only allow usage of path RHS in generic contexts under mgca, not stable!
     Const(Ident, &'hir Ty<'hir>, &'hir Generics<'hir>, &'hir ConstArg<'hir>),
     /// A function declaration.
     Fn {
