@@ -627,8 +627,6 @@ declare_features! (
     (unstable, return_type_notation, "1.70.0", Some(109417)),
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
-    /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics
-    (unstable, sha512_sm_x86, "1.82.0", Some(126624)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
     (unstable, simd_ffi, "1.0.0", Some(27731)),
     /// Allows specialization of implementations (RFC 1210).
