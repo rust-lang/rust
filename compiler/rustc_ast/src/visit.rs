@@ -448,14 +448,13 @@ impl WalkItemKind for ItemKind {
                 ident,
                 generics,
                 ty,
-                body_id: _,
-                expr,
+                body,
                 define_opaque,
             }) => {
                 try_visit!(visitor.visit_ident(ident));
                 try_visit!(visitor.visit_generics(generics));
                 try_visit!(visitor.visit_ty(ty));
-                visit_opt!(visitor, visit_expr, expr);
+                visit_opt!(visitor, visit_anon_const, body);
                 try_visit!(walk_define_opaques(visitor, define_opaque));
             }
             ItemKind::Fn(func) => {
@@ -1045,14 +1044,13 @@ impl WalkItemKind for AssocItemKind {
                 ident,
                 generics,
                 ty,
-                body_id: _,
-                expr,
+                body,
                 define_opaque,
             }) => {
                 try_visit!(visitor.visit_ident(ident));
                 try_visit!(visitor.visit_generics(generics));
                 try_visit!(visitor.visit_ty(ty));
-                visit_opt!(visitor, visit_expr, expr);
+                visit_opt!(visitor, visit_anon_const, body);
                 try_visit!(walk_define_opaques(visitor, define_opaque));
             }
             AssocItemKind::Fn(func) => {
