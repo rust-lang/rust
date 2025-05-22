@@ -965,12 +965,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let args: Vec<_> =
                             args.iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect();
 
+                        let result = PlaceRef::new_sized(dest, fn_abi.ret.layout);
+
                         match self.codegen_intrinsic_call(
                             bx,
                             instance,
                             fn_abi,
                             &args,
-                            dest,
+                            result,
                             source_info,
                         ) {
                             Ok(()) => {
