@@ -2489,7 +2489,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 });
 
             let source_info = self.source_info(guard_span);
-            let guard_end = self.source_info(tcx.sess.source_map().end_point(guard_span));
+            let guard_end = self.source_info(tcx.end_point(guard_span));
             let guard_frame = self.guard_context.pop().unwrap();
             debug!("Exiting guard building context with locals: {:?}", guard_frame);
 

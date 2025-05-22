@@ -159,6 +159,10 @@ rustc_queries! {
         desc { "getting the source span" }
     }
 
+    query start_and_end_point(key: Span) -> (Span, Span) {
+        desc { "computing the start and end points for span" }
+    }
+
     /// Represents crate as a whole (as distinct from the top-level crate module).
     ///
     /// If you call `tcx.hir_crate(())` we will have to assume that any change

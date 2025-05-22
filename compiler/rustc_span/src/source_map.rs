@@ -886,8 +886,7 @@ impl SourceMap {
     /// Returns a new span representing just the first character of the given span.
     pub fn start_point(&self, sp: Span) -> Span {
         let width = {
-            let sp = sp.data();
-            let local_begin = self.lookup_byte_offset(sp.lo);
+            let local_begin = self.lookup_byte_offset(sp.lo());
             let start_index = local_begin.pos.to_usize();
             let src = local_begin.sf.external_src.read();
 

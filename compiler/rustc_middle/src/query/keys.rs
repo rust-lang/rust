@@ -70,6 +70,14 @@ impl Key for () {
     }
 }
 
+impl Key for Span {
+    type Cache<V> = DefaultCache<Self, V>;
+
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        *self
+    }
+}
+
 impl<'tcx> Key for ty::InstanceKind<'tcx> {
     type Cache<V> = DefaultCache<Self, V>;
 

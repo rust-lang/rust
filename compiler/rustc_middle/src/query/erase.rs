@@ -333,6 +333,7 @@ trivial! {
     rustc_span::ExpnHash,
     rustc_span::ExpnId,
     rustc_span::Span,
+    (rustc_span::Span, rustc_span::Span),
     rustc_span::Symbol,
     rustc_span::Ident,
     rustc_target::spec::PanicStrategy,

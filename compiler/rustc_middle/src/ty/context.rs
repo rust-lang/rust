@@ -2116,6 +2116,14 @@ impl<'tcx> TyCtxt<'tcx> {
         self.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP)
     }
 
+    pub fn start_point(self, span: Span) -> Span {
+        self.start_and_end_point(span).0
+    }
+
+    pub fn end_point(self, span: Span) -> Span {
+        self.start_and_end_point(span).1
+    }
+
     #[inline(always)]
     pub fn with_stable_hashing_context<R>(
         self,
@@ -3430,6 +3438,10 @@ pub fn provide(providers: &mut Providers) {
         tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())
     };
     providers.source_span = |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP);
+    providers.start_and_end_point = |tcx, span| {
+        let sm = tcx.sess.source_map();
+        (sm.start_point(span), sm.end_point(span))
+    };
 }
 
 pub fn contains_name(attrs: &[Attribute], name: Symbol) -> bool {

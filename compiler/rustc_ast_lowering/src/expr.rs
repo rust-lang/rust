@@ -641,7 +641,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             } else {
                 let try_span = this.mark_span_with_reason(
                     DesugaringKind::TryBlock,
-                    this.tcx.sess.source_map().end_point(body.span),
+                    this.tcx.end_point(body.span),
                     Some(Arc::clone(&this.allow_try_trait)),
                 );
 
@@ -1968,7 +1968,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span,
             Some(Arc::clone(&self.allow_try_trait)),
         );
-        let try_span = self.tcx.sess.source_map().end_point(span);
+        let try_span = self.tcx.end_point(span);
         let try_span = self.mark_span_with_reason(
             DesugaringKind::QuestionMark,
             try_span,

@@ -1402,7 +1402,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 } else {
                     self.next_node_id()
                 };
-                let span = self.tcx.sess.source_map().start_point(t.span).shrink_to_hi();
+                let span = self.tcx.start_point(t.span).shrink_to_hi();
                 let region = Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id };
                 (region, LifetimeSyntax::Hidden)
             }
