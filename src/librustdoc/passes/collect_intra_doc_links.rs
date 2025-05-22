@@ -2219,6 +2219,17 @@ fn report_malformed_generics(
     );
 }
 
+fn refer_to_single_item(v: &[Res]) -> bool {
+    // proc macros can exist in multiple namespaces at once,
+    // so we need to compare DefIds
+    v.iter()
+        .try_reduce(|l, r| match (l, r) {
+            (Res::Def(_, lid), Res::Def(_, rid)) if lid == rid => Some(l),
+            _ => None,
+        })
+        .is_some()
+}
+
 /// Report an ambiguity error, where there were multiple possible resolutions.
 ///
 /// If all `candidates` have the same kind, it's not possible to disambiguate so in this case,
@@ -2241,7 +2252,7 @@ fn ambiguity_error(
         )
         .filter(|res| descrs.insert(res.descr()))
         .collect::<Vec<_>>();
-    if descrs.len() == 1 {
+    if descrs.len() == 1 || refer_to_single_item(&kinds) {
         // There is no way for users to disambiguate at this point, so better return the first
         // candidate and not show a warning.
         return false;
