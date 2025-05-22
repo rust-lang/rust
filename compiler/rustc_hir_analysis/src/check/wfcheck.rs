@@ -742,7 +742,7 @@ fn ty_known_to_outlive<'tcx>(
     region: ty::Region<'tcx>,
 ) -> bool {
     test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
-        infcx.register_region_obligation(infer::RegionObligation {
+        infcx.type_outlives_predicate(infer::RegionObligation {
             sub_region: region,
             sup_type: ty,
             origin: infer::RelateParamBound(DUMMY_SP, ty, None),

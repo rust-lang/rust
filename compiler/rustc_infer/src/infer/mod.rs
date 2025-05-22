@@ -738,19 +738,6 @@ impl<'tcx> InferCtxt<'tcx> {
         })
     }
 
-    pub fn region_outlives_predicate(
-        &self,
-        cause: &traits::ObligationCause<'tcx>,
-        predicate: ty::PolyRegionOutlivesPredicate<'tcx>,
-    ) {
-        self.enter_forall(predicate, |ty::OutlivesPredicate(r_a, r_b)| {
-            let origin = SubregionOrigin::from_obligation_cause(cause, || {
-                RelateRegionParamBound(cause.span, None)
-            });
-            self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
-        })
-    }
-
     /// Number of type variables created so far.
     pub fn num_ty_vars(&self) -> usize {
         self.inner.borrow_mut().type_variables().num_vars()
