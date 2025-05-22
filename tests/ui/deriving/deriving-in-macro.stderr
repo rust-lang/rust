@@ -1,0 +1,18 @@
+error: struct `bar` is never constructed
+  --> $DIR/deriving-in-macro.rs:8:24
+   |
+LL |             pub struct bar;
+   |                        ^^^
+...
+LL | define_vec![];
+   | ------------- in this macro invocation
+   |
+note: the lint level is defined here
+  --> $DIR/deriving-in-macro.rs:2:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+   = note: this error originates in the macro `define_vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
