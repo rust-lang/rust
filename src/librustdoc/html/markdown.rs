@@ -307,7 +307,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 builder = builder.crate_name(krate);
             }
             let doctest = builder.build(None);
-            let (test, _) = doctest.generate_unique_doctest(&test, false, &opts, krate);
+            let (wrapped, _) = doctest.generate_unique_doctest(&test, false, &opts, krate);
+            let test = wrapped.to_string();
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
             let test_escaped = small_url_encode(test);

@@ -5,6 +5,7 @@
 
 use serde::Serialize;
 
+use super::make::DocTestWrapResult;
 use super::{BuildDocTestBuilder, ScrapedDocTest};
 use crate::config::Options as RustdocOptions;
 use crate::html::markdown;
@@ -14,7 +15,7 @@ use crate::html::markdown;
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob into the `format_version` root field.
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-const FORMAT_VERSION: u32 = 1;
+const FORMAT_VERSION: u32 = 2;
 
 #[derive(Serialize)]
 pub(crate) struct ExtractedDocTests {
@@ -44,8 +45,7 @@ impl ExtractedDocTests {
             .edition(edition)
             .lang_str(&langstr)
             .build(None);
-
-        let (full_test_code, size) = doctest.generate_unique_doctest(
+        let (wrapper, _size) = doctest.generate_unique_doctest(
             &text,
             langstr.test_harness,
             opts,
@@ -55,11 +55,36 @@ impl ExtractedDocTests {
             file: filename.prefer_remapped_unconditionaly().to_string(),
             line,
             doctest_attributes: langstr.into(),
-            doctest_code: if size != 0 { Some(full_test_code) } else { None },
+            doctest_code: match wrapper {
+                DocTestWrapResult::Valid { crate_level_code, wrapper, code } => Some(DocTest {
+                    crate_level: crate_level_code,
+                    code,
+                    wrapper: wrapper.map(
+                        |super::make::WrapperInfo { before, after, returns_result, .. }| {
+                            WrapperInfo { before, after, returns_result }
+                        },
+                    ),
+                }),
+                DocTestWrapResult::SyntaxError { .. } => None,
+            },
             original_code: text,
             name,
         });
     }
+}
+
+#[derive(Serialize)]
+pub(crate) struct WrapperInfo {
+    before: String,
+    after: String,
+    returns_result: bool,
+}
+
+#[derive(Serialize)]
+pub(crate) struct DocTest {
+    crate_level: String,
+    code: String,
+    wrapper: Option<WrapperInfo>,
 }
 
 #[derive(Serialize)]
@@ -69,7 +94,7 @@ pub(crate) struct ExtractedDocTest {
     doctest_attributes: LangString,
     original_code: String,
     /// `None` if the code syntax is invalid.
-    doctest_code: Option<String>,
+    doctest_code: Option<DocTest>,
     name: String,
 }
 

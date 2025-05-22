@@ -19,9 +19,9 @@ fn make_test(
         builder = builder.test_id(test_id.to_string());
     }
     let doctest = builder.build(None);
-    let (code, line_offset) =
+    let (wrapper, line_offset) =
         doctest.generate_unique_doctest(test_code, dont_insert_main, opts, crate_name);
-    (code, line_offset)
+    (wrapper.to_string(), line_offset)
 }
 
 /// Default [`GlobalTestOptions`] for these unit tests.
