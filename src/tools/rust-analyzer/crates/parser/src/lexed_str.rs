@@ -179,7 +179,10 @@ impl<'a> Converter<'a> {
                     COMMENT
                 }
 
-                rustc_lexer::TokenKind::Frontmatter  { has_invalid_preceding_whitespace, invalid_infostring } => {
+                rustc_lexer::TokenKind::Frontmatter {
+                    has_invalid_preceding_whitespace,
+                    invalid_infostring,
+                } => {
                     if *has_invalid_preceding_whitespace {
                         err = "invalid preceding whitespace for frontmatter opening"
                     } else if *invalid_infostring {

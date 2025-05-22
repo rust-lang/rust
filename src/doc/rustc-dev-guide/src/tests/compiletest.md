@@ -325,12 +325,8 @@ The tests in [`tests/codegen-units`] test the
 [monomorphization](../backend/monomorph.md) collector and CGU partitioning.
 
 These tests work by running `rustc` with a flag to print the result of the
-monomorphization collection pass, and then special annotations in the file are
-used to compare against that.
-
-Each test should be annotated with the `//@
-compile-flags:-Zprint-mono-items=VAL` directive with the appropriate `VAL` to
-instruct `rustc` to print the monomorphization information.
+monomorphization collection pass, i.e., `-Zprint-mono-items`, and then special
+annotations in the file are used to compare against that.
 
 Then, the test should be annotated with comments of the form `//~ MONO_ITEM
 name` where `name` is the monomorphized string printed by rustc like `fn <u32 as

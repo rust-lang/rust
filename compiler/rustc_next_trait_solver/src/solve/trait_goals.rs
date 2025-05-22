@@ -9,7 +9,7 @@ use rustc_type_ir::{
     self as ty, Interner, Movability, TraitPredicate, TypeVisitableExt as _, TypingMode,
     Upcast as _, elaborate,
 };
-use tracing::{instrument, trace};
+use tracing::{debug, instrument, trace};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::structural_traits::{self, AsyncCallableRelevantTypes};
@@ -17,7 +17,7 @@ use crate::solve::assembly::{self, AllowInferenceConstraints, AssembleCandidates
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
-    NoSolution, QueryResult,
+    NoSolution, ParamEnvSource, QueryResult, has_only_region_constraints,
 };
 
 impl<D, I> assembly::GoalKind<D> for TraitPredicate<I>
@@ -125,39 +125,39 @@ where
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
 
-    fn probe_and_match_goal_against_assumption(
+    fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
-        source: CandidateSource<I>,
         goal: Goal<I, Self>,
         assumption: I::Clause,
-        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<(), NoSolution> {
         if let Some(trait_clause) = assumption.as_trait_clause() {
             if trait_clause.def_id() == goal.predicate.def_id()
                 && trait_clause.polarity() == goal.predicate.polarity
             {
-                if !DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
+                if DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                     goal.predicate.trait_ref.args,
                     trait_clause.skip_binder().trait_ref.args,
                 ) {
-                    return Err(NoSolution);
+                    return Ok(());
                 }
-
-                ecx.probe_trait_candidate(source).enter(|ecx| {
-                    let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
-                    ecx.eq(
-                        goal.param_env,
-                        goal.predicate.trait_ref,
-                        assumption_trait_pred.trait_ref,
-                    )?;
-                    then(ecx)
-                })
-            } else {
-                Err(NoSolution)
             }
-        } else {
-            Err(NoSolution)
         }
+
+        Err(NoSolution)
+    }
+
+    fn match_assumption(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        assumption: I::Clause,
+        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
+    ) -> QueryResult<I> {
+        let trait_clause = assumption.as_trait_clause().unwrap();
+
+        let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
+        ecx.eq(goal.param_env, goal.predicate.trait_ref, assumption_trait_pred.trait_ref)?;
+
+        then(ecx)
     }
 
     fn consider_auto_trait_candidate(
@@ -1253,10 +1253,48 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    #[instrument(level = "debug", skip(self, goal), ret)]
+    /// FIXME(#57893): For backwards compatability with the old trait solver implementation,
+    /// we need to handle overlap between builtin and user-written impls for trait objects.
+    ///
+    /// This overlap is unsound in general and something which we intend to fix separately.
+    /// To avoid blocking the stabilization of the trait solver, we add this hack to avoid
+    /// breakage in cases which are *mostly fine*™. Importantly, this preference is strictly
+    /// weaker than the old behavior.
+    ///
+    /// We only prefer builtin over user-written impls if there are no inference constraints.
+    /// Importantly, we also only prefer the builtin impls for trait goals, and not during
+    /// normalization. This means the only case where this special-case results in exploitable
+    /// unsoundness should be lifetime dependent user-written impls.
+    pub(super) fn unsound_prefer_builtin_dyn_impl(&mut self, candidates: &mut Vec<Candidate<I>>) {
+        match self.typing_mode() {
+            TypingMode::Coherence => return,
+            TypingMode::Analysis { .. }
+            | TypingMode::Borrowck { .. }
+            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostAnalysis => {}
+        }
+
+        if candidates
+            .iter()
+            .find(|c| {
+                matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Object(_)))
+            })
+            .is_some_and(|c| has_only_region_constraints(c.result))
+        {
+            candidates.retain(|c| {
+                if matches!(c.source, CandidateSource::Impl(_)) {
+                    debug!(?c, "unsoundly dropping impl in favor of builtin dyn-candidate");
+                    false
+                } else {
+                    true
+                }
+            });
+        }
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn merge_trait_candidates(
         &mut self,
-        goal: Goal<I, TraitPredicate<I>>,
         mut candidates: Vec<Candidate<I>>,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         if let TypingMode::Coherence = self.typing_mode() {
@@ -1284,21 +1322,9 @@ where
 
         // If there are non-global where-bounds, prefer where-bounds
         // (including global ones) over everything else.
-        let has_non_global_where_bounds = candidates.iter().any(|c| match c.source {
-            CandidateSource::ParamEnv(idx) => {
-                let where_bound = goal.param_env.caller_bounds().get(idx).unwrap();
-                let ty::ClauseKind::Trait(trait_pred) = where_bound.kind().skip_binder() else {
-                    unreachable!("expected trait-bound: {where_bound:?}");
-                };
-
-                if trait_pred.has_bound_vars() || !trait_pred.is_global() {
-                    return true;
-                }
-
-                false
-            }
-            _ => false,
-        });
+        let has_non_global_where_bounds = candidates
+            .iter()
+            .any(|c| matches!(c.source, CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)));
         if has_non_global_where_bounds {
             let where_bounds: Vec<_> = candidates
                 .iter()
@@ -1326,18 +1352,22 @@ where
         }
 
         self.filter_specialized_impls(AllowInferenceConstraints::No, &mut candidates);
+        self.unsound_prefer_builtin_dyn_impl(&mut candidates);
 
         // If there are *only* global where bounds, then make sure to return that this
         // is still reported as being proven-via the param-env so that rigid projections
         // operate correctly. Otherwise, drop all global where-bounds before merging the
         // remaining candidates.
-        let proven_via =
-            if candidates.iter().all(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
-                TraitGoalProvenVia::ParamEnv
-            } else {
-                candidates.retain(|c| !matches!(c.source, CandidateSource::ParamEnv(_)));
-                TraitGoalProvenVia::Misc
-            };
+        let proven_via = if candidates
+            .iter()
+            .all(|c| matches!(c.source, CandidateSource::ParamEnv(ParamEnvSource::Global)))
+        {
+            TraitGoalProvenVia::ParamEnv
+        } else {
+            candidates
+                .retain(|c| !matches!(c.source, CandidateSource::ParamEnv(ParamEnvSource::Global)));
+            TraitGoalProvenVia::Misc
+        };
 
         let all_candidates: Vec<_> = candidates.into_iter().map(|c| c.result).collect();
         if let Some(response) = self.try_merge_responses(&all_candidates) {
@@ -1353,7 +1383,7 @@ where
         goal: Goal<I, TraitPredicate<I>>,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         let candidates = self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
-        self.merge_trait_candidates(goal, candidates)
+        self.merge_trait_candidates(candidates)
     }
 
     fn try_stall_coroutine_witness(

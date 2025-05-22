@@ -13,7 +13,6 @@ fn simple_vec(vec: Vec<u32>) -> u32 {
         deref!([x]) => x,
         deref!([1, x]) => x + 200,
         deref!(ref slice) => slice.iter().sum(),
-        _ => 2000,
     }
 }
 
@@ -25,7 +24,6 @@ fn simple_vec(vec: Vec<u32>) -> u32 {
         [x] => x,
         [1, x] => x + 200,
         deref!(ref slice) => slice.iter().sum(),
-        _ => 2000,
     }
 }
 

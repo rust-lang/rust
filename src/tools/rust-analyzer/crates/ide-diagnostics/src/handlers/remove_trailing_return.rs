@@ -31,6 +31,7 @@ pub(crate) fn remove_trailing_return(
             "replace return <expr>; with <expr>",
             display_range,
         )
+        .stable()
         .with_fixes(fixes(ctx, d)),
     )
 }

@@ -180,19 +180,13 @@ pub struct Item {
     ///
     /// Does not include `#[deprecated]` attributes: see the [`Self::deprecation`] field instead.
     ///
-    /// Some attributes appear in pretty-printed Rust form, regardless of their formatting
+    /// Attributes appear in pretty-printed Rust form, regardless of their formatting
     /// in the original source code. For example:
     /// - `#[non_exhaustive]` and `#[must_use]` are represented as themselves.
     /// - `#[no_mangle]` and `#[export_name]` are also represented as themselves.
     /// - `#[repr(C)]` and other reprs also appear as themselves,
     ///   though potentially with a different order: e.g. `repr(i8, C)` may become `repr(C, i8)`.
     ///   Multiple repr attributes on the same item may be combined into an equivalent single attr.
-    ///
-    /// Other attributes may appear debug-printed. For example:
-    /// - `#[inline]` becomes something similar to `#[attr="Inline(Hint)"]`.
-    ///
-    /// As an internal implementation detail subject to change, this debug-printing format
-    /// is currently equivalent to the HIR pretty-printing of parsed attributes.
     pub attrs: Vec<String>,
     /// Information about the item’s deprecation, if present.
     pub deprecation: Option<Deprecation>,

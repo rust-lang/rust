@@ -19,6 +19,7 @@ pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> 
         d.message.clone(),
         display_range,
     )
+    .stable()
 }
 
 // Diagnostic: macro-def-error
@@ -33,6 +34,7 @@ pub(crate) fn macro_def_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroDefErr
         d.message.clone(),
         display_range,
     )
+    .stable()
 }
 
 #[cfg(test)]

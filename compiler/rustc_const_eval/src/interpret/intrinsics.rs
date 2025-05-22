@@ -493,10 +493,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::minnumf64 => self.float_min_intrinsic::<Double>(args, dest)?,
             sym::minnumf128 => self.float_min_intrinsic::<Quad>(args, dest)?,
 
+            sym::minimumf16 => self.float_minimum_intrinsic::<Half>(args, dest)?,
+            sym::minimumf32 => self.float_minimum_intrinsic::<Single>(args, dest)?,
+            sym::minimumf64 => self.float_minimum_intrinsic::<Double>(args, dest)?,
+            sym::minimumf128 => self.float_minimum_intrinsic::<Quad>(args, dest)?,
+
             sym::maxnumf16 => self.float_max_intrinsic::<Half>(args, dest)?,
             sym::maxnumf32 => self.float_max_intrinsic::<Single>(args, dest)?,
             sym::maxnumf64 => self.float_max_intrinsic::<Double>(args, dest)?,
             sym::maxnumf128 => self.float_max_intrinsic::<Quad>(args, dest)?,
+
+            sym::maximumf16 => self.float_maximum_intrinsic::<Half>(args, dest)?,
+            sym::maximumf32 => self.float_maximum_intrinsic::<Single>(args, dest)?,
+            sym::maximumf64 => self.float_maximum_intrinsic::<Double>(args, dest)?,
+            sym::maximumf128 => self.float_maximum_intrinsic::<Quad>(args, dest)?,
 
             sym::copysignf16 => self.float_copysign_intrinsic::<Half>(args, dest)?,
             sym::copysignf32 => self.float_copysign_intrinsic::<Single>(args, dest)?,
@@ -826,6 +836,38 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         } else {
             self.adjust_nan(a.max(b), &[a, b])
         };
+        self.write_scalar(res, dest)?;
+        interp_ok(())
+    }
+
+    fn float_minimum_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let a: F = self.read_scalar(&args[0])?.to_float()?;
+        let b: F = self.read_scalar(&args[1])?.to_float()?;
+        let res = a.minimum(b);
+        let res = self.adjust_nan(res, &[a, b]);
+        self.write_scalar(res, dest)?;
+        interp_ok(())
+    }
+
+    fn float_maximum_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let a: F = self.read_scalar(&args[0])?.to_float()?;
+        let b: F = self.read_scalar(&args[1])?.to_float()?;
+        let res = a.maximum(b);
+        let res = self.adjust_nan(res, &[a, b]);
         self.write_scalar(res, dest)?;
         interp_ok(())
     }

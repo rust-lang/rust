@@ -1,10 +1,11 @@
+use std::io::Write;
 use std::ops::Not;
 use std::path::PathBuf;
-use std::{env, net, process};
-use std::io::Write;
 use std::time::Duration;
-use anyhow::{anyhow, bail, Context};
-use xshell::{cmd, Shell};
+use std::{env, net, process};
+
+use anyhow::{Context, anyhow, bail};
+use xshell::{Shell, cmd};
 
 /// Used for rustc syncs.
 const JOSH_FILTER: &str = ":/src/doc/rustc-dev-guide";
@@ -15,10 +16,13 @@ pub enum RustcPullError {
     /// No changes are available to be pulled.
     NothingToPull,
     /// A rustc-pull has failed, probably a git operation error has occurred.
-    PullFailed(anyhow::Error)
+    PullFailed(anyhow::Error),
 }
 
-impl<E> From<E> for RustcPullError where E: Into<anyhow::Error> {
+impl<E> From<E> for RustcPullError
+where
+    E: Into<anyhow::Error>,
+{
     fn from(error: E) -> Self {
         Self::PullFailed(error.into())
     }
@@ -32,9 +36,7 @@ pub struct GitSync {
 /// (https://github.com/rust-lang/miri/blob/6a68a79f38064c3bc30617cca4bdbfb2c336b140/miri-script/src/commands.rs#L236).
 impl GitSync {
     pub fn from_current_dir() -> anyhow::Result<Self> {
-        Ok(Self {
-            dir: std::env::current_dir()?
-        })
+        Ok(Self { dir: std::env::current_dir()? })
     }
 
     pub fn rustc_pull(&self, commit: Option<String>) -> Result<(), RustcPullError> {
@@ -51,7 +53,10 @@ impl GitSync {
         })?;
         // Make sure the repo is clean.
         if cmd!(sh, "git status --untracked-files=no --porcelain").read()?.is_empty().not() {
-            return Err(anyhow::anyhow!("working directory must be clean before performing rustc pull").into());
+            return Err(anyhow::anyhow!(
+                "working directory must be clean before performing rustc pull"
+            )
+            .into());
         }
         // Make sure josh is running.
         let josh = Self::start_josh()?;
@@ -94,7 +99,8 @@ impl GitSync {
         };
         let num_roots_before = num_roots()?;
 
-        let sha = cmd!(sh, "git rev-parse HEAD").output().context("FAILED to get current commit")?.stdout;
+        let sha =
+            cmd!(sh, "git rev-parse HEAD").output().context("FAILED to get current commit")?.stdout;
 
         // Merge the fetched commit.
         const MERGE_COMMIT_MESSAGE: &str = "Merge from rustc";
@@ -102,18 +108,24 @@ impl GitSync {
             .run()
             .context("FAILED to merge new commits, something went wrong")?;
 
-        let current_sha = cmd!(sh, "git rev-parse HEAD").output().context("FAILED to get current commit")?.stdout;
+        let current_sha =
+            cmd!(sh, "git rev-parse HEAD").output().context("FAILED to get current commit")?.stdout;
         if current_sha == sha {
             cmd!(sh, "git reset --hard HEAD^")
                 .run()
                 .expect("FAILED to clean up after creating the preparation commit");
-            eprintln!("No merge was performed, no changes to pull were found. Rolled back the preparation commit.");
+            eprintln!(
+                "No merge was performed, no changes to pull were found. Rolled back the preparation commit."
+            );
             return Err(RustcPullError::NothingToPull);
         }
 
         // Check that the number of roots did not increase.
         if num_roots()? != num_roots_before {
-            return Err(anyhow::anyhow!("Josh created a new root commit. This is probably not the history you want.").into());
+            return Err(anyhow::anyhow!(
+                "Josh created a new root commit. This is probably not the history you want."
+            )
+            .into());
         }
 
         drop(josh);

@@ -1,9 +1,10 @@
 mod block;
 
-use crate::{DefWithBodyId, ModuleDefId, hir::MatchArm, test_db::TestDB};
+use crate::{DefWithBodyId, ModuleDefId, hir::MatchArm, nameres::crate_def_map, test_db::TestDB};
 use expect_test::{Expect, expect};
 use la_arena::RawIdx;
 use test_fixture::WithFixture;
+use triomphe::Arc;
 
 use super::super::*;
 
@@ -11,7 +12,7 @@ fn lower(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (TestDB, Arc<Body>,
     let db = TestDB::with_files(ra_fixture);
 
     let krate = db.fetch_test_crate();
-    let def_map = db.crate_def_map(krate);
+    let def_map = crate_def_map(&db, krate);
     let mut fn_def = None;
     'outer: for (_, module) in def_map.modules() {
         for decl in module.scope.declarations() {

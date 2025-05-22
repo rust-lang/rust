@@ -289,7 +289,7 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     ) -> Self::DILocation {
         let pos = span.lo();
         let DebugLoc { file, line, col } = self.lookup_debug_loc(pos);
-        let loc = match file.name {
+        match file.name {
             rustc_span::FileName::Real(ref name) => match *name {
                 rustc_span::RealFileName::LocalPath(ref name) => {
                     if let Some(name) = name.to_str() {
@@ -314,7 +314,6 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 }
             },
             _ => Location::null(),
-        };
-        loc
+        }
     }
 }

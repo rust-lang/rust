@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{HasSession, snippet_with_applicability};
-use clippy_utils::ty::implements_trait;
+use clippy_utils::ty::{implements_trait, is_slice_like};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{higher, peel_blocks_with_stmt, span_contains_comment};
 use rustc_ast::ast::LitKind;
@@ -58,6 +58,8 @@ pub(super) fn check<'tcx>(
         && let Res::Local(idx_hir) = idx_path.res
         && !is_local_used(cx, assignval, idx_hir)
         && msrv.meets(cx, msrvs::SLICE_FILL)
+        && let slice_ty = cx.typeck_results().expr_ty(slice).peel_refs()
+        && is_slice_like(cx, slice_ty)
     {
         sugg(cx, body, expr, slice.span, assignval.span);
     }

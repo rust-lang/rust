@@ -1,8 +1,8 @@
-error: Undefined Behavior: calling a function with calling convention Rust using calling convention C
+error: Undefined Behavior: calling a function with calling convention "Rust" using calling convention "C"
   --> tests/fail/function_calls/exported_symbol_abi_mismatch.rs:LL:CC
    |
 LL |             foo();
-   |             ^^^^^ calling a function with calling convention Rust using calling convention C
+   |             ^^^^^ calling a function with calling convention "Rust" using calling convention "C"
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

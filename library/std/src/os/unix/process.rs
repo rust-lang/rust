@@ -8,6 +8,7 @@ use cfg_if::cfg_if;
 
 use crate::ffi::OsStr;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::path::Path;
 use crate::sealed::Sealed;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::{io, process, sys};
@@ -197,6 +198,18 @@ pub trait CommandExt: Sealed {
     /// ```
     #[stable(feature = "process_set_process_group", since = "1.64.0")]
     fn process_group(&mut self, pgroup: i32) -> &mut process::Command;
+
+    /// Set the root of the child process. This calls `chroot` in the child process before executing
+    /// the command.
+    ///
+    /// This happens before changing to the directory specified with
+    /// [`process::Command::current_dir`], and that directory will be relative to the new root.
+    ///
+    /// If no directory has been specified with [`process::Command::current_dir`], this will set the
+    /// directory to `/`, to avoid leaving the current directory outside the chroot. (This is an
+    /// intentional difference from the underlying `chroot` system call.)
+    #[unstable(feature = "process_chroot", issue = "141298")]
+    fn chroot<P: AsRef<Path>>(&mut self, dir: P) -> &mut process::Command;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -240,6 +253,11 @@ impl CommandExt for process::Command {
 
     fn process_group(&mut self, pgroup: i32) -> &mut process::Command {
         self.as_inner_mut().pgroup(pgroup);
+        self
+    }
+
+    fn chroot<P: AsRef<Path>>(&mut self, dir: P) -> &mut process::Command {
+        self.as_inner_mut().chroot(dir.as_ref());
         self
     }
 }

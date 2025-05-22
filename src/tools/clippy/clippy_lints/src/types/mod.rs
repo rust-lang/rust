@@ -385,7 +385,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let right: std::borrow::Cow<'_, [u8]>;
     /// ```
-    #[clippy::version = "1.85.0"]
+    #[clippy::version = "1.87.0"]
     pub OWNED_COW,
     style,
     "needlessly owned Cow type"

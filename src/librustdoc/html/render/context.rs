@@ -28,11 +28,10 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::format::join_with_double_colon;
-use crate::html::layout::{self, BufDisplay};
 use crate::html::markdown::{self, ErrorCodes, IdMap, plain_text_summary};
 use crate::html::render::write_shared::write_shared;
 use crate::html::url_parts_builder::UrlPartsBuilder;
-use crate::html::{sources, static_files};
+use crate::html::{layout, sources, static_files};
 use crate::scrape_examples::AllCallLocations;
 use crate::{DOC_RUST_LANG_ORG_VERSION, try_err};
 
@@ -250,9 +249,7 @@ impl<'tcx> Context<'tcx> {
             layout::render(
                 &self.shared.layout,
                 &page,
-                BufDisplay(|buf: &mut String| {
-                    print_sidebar(self, it, buf);
-                }),
+                fmt::from_fn(|f| print_sidebar(self, it, f)),
                 content,
                 &self.shared.style_files,
             )

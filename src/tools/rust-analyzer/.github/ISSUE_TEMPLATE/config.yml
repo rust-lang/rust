@@ -1,0 +1,4 @@
+contact_links:
+  - name: Questions regarding rust-analyzer
+    url: https://github.com/rust-lang/rust-analyzer/discussions
+    about: Please ask and answer questions here instead of opening an issue

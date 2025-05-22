@@ -468,7 +468,7 @@ declare_clippy_lint! {
     /// #[ignore = "Some good reason"]
     /// fn test() {}
     /// ```
-    #[clippy::version = "1.85.0"]
+    #[clippy::version = "1.88.0"]
     pub IGNORE_WITHOUT_REASON,
     pedantic,
     "ignored tests without messages"

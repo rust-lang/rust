@@ -31,6 +31,8 @@ pub fn f1(x: &[f64], y: f64) -> f64 {
 
     // We want to make sure that we can use the macro for functions defined inside of functions
 
+    // Make sure we can handle generics
+
     ::core::panicking::panic("not implemented")
 }
 #[rustc_autodiff(Forward, 1, Dual, Const, Dual)]
@@ -180,5 +182,17 @@ pub fn f9() {
         ::core::hint::black_box((bx_0,));
         ::core::hint::black_box(<f32>::default())
     }
+}
+#[rustc_autodiff]
+#[inline(never)]
+pub fn f10<T: std::ops::Mul<Output = T> + Copy>(x: &T) -> T { *x * *x }
+#[rustc_autodiff(Reverse, 1, Duplicated, Active)]
+#[inline(never)]
+pub fn d_square<T: std::ops::Mul<Output = T> +
+    Copy>(x: &T, dx_0: &mut T, dret: T) -> T {
+    unsafe { asm!("NOP", options(pure, nomem)); };
+    ::core::hint::black_box(f10::<T>(x));
+    ::core::hint::black_box((dx_0, dret));
+    ::core::hint::black_box(f10::<T>(x))
 }
 fn main() {}

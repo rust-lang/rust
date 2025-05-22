@@ -15,6 +15,6 @@ static TEST_BAD: () = {
     let _v: Vec<i32> = Vec::new();
 }; //~ ERROR could not evaluate static initializer
    //~| NOTE calling non-const function `<Vec<i32> as Drop>::drop`
-   //~| NOTE inside `std::ptr::drop_in_place::<Vec<i32>> - shim(Some(Vec<i32>))`
+   //~| NOTE inside `drop_in_place::<Vec<i32>> - shim(Some(Vec<i32>))`
 
 //~? WARN skipping const checks

@@ -377,5 +377,17 @@ LL -             takes_into_iter(self.my_field.into_iter());
 LL +             takes_into_iter(&mut *self.my_field);
    |
 
-error: aborting due to 41 previous errors
+error: useless conversion to the same type: `std::ops::Range<u32>`
+  --> tests/ui/useless_conversion.rs:440:5
+   |
+LL |     R.into_iter().for_each(|_x| {});
+   |     ^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `R`
+
+error: useless conversion to the same type: `std::ops::Range<u32>`
+  --> tests/ui/useless_conversion.rs:442:13
+   |
+LL |     let _ = R.into_iter().map(|_x| 0);
+   |             ^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `R`
+
+error: aborting due to 43 previous errors
 

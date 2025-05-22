@@ -183,3 +183,16 @@ pub fn issue_13184() {
     let rvalues = &values;
     for _ in rvalues.iter() {}
 }
+
+fn issue14630() {
+    macro_rules! mac {
+        (iter $e:expr) => {
+            $e.into_iter()
+        };
+    }
+
+    for _ in &dbg!([1, 2]) {}
+    //~^ explicit_iter_loop
+
+    for _ in mac!(iter [1, 2]) {}
+}

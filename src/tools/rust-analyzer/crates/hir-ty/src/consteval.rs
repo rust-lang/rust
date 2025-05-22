@@ -91,7 +91,7 @@ impl From<MirEvalError> for ConstEvalError {
 
 pub(crate) fn path_to_const<'g>(
     db: &dyn HirDatabase,
-    resolver: &Resolver,
+    resolver: &Resolver<'_>,
     path: &Path,
     mode: ParamLoweringMode,
     args: impl FnOnce() -> &'g Generics,

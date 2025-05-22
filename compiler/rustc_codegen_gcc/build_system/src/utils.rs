@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Output};
 
 #[cfg(unix)]
-extern "C" {
+unsafe extern "C" {
     fn raise(signal: c_int) -> c_int;
 }
 

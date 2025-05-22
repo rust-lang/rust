@@ -945,7 +945,7 @@ where
 
         // This is quite similar to the `projection_may_match` we use in unsizing,
         // but here we want to unify a projection predicate against an alias term
-        // so we can replace it with the the projection predicate's term.
+        // so we can replace it with the projection predicate's term.
         let mut matching_projections = replacements
             .iter()
             .filter(|source_projection| self.projection_may_match(**source_projection, alias_term));

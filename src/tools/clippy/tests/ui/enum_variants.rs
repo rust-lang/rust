@@ -220,4 +220,19 @@ mod issue11494 {
     }
 }
 
+mod encapsulated {
+    mod types {
+        pub struct FooError;
+        pub struct BarError;
+        pub struct BazError;
+    }
+
+    enum Error {
+        FooError(types::FooError),
+        BarError(types::BarError),
+        BazError(types::BazError),
+        Other,
+    }
+}
+
 fn main() {}

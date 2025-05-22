@@ -113,7 +113,8 @@ fn find_panic(cx: &LateContext<'_>, body_id: BodyId) -> Option<Span> {
         }
 
         // check for `unwrap` and `expect` for both `Option` and `Result`
-        if let Some(arglists) = method_chain_args(expr, &["unwrap"]).or_else(|| method_chain_args(expr, &["expect"]))
+        if let Some(arglists) =
+            method_chain_args(expr, &[sym::unwrap]).or_else(|| method_chain_args(expr, &[sym::expect]))
             && let receiver_ty = typeck.expr_ty(arglists[0].0).peel_refs()
             && matches!(
                 get_type_diagnostic_name(cx, receiver_ty),

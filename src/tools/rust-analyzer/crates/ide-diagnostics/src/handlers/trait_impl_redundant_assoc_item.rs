@@ -61,6 +61,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
         format!("{redundant_item_name} is not a member of trait `{trait_name}`"),
         ide_db::FileRange { file_id: file_id.file_id(ctx.sema.db), range },
     )
+    .stable()
     .with_fixes(quickfix_for_redundant_assoc_item(
         ctx,
         d,

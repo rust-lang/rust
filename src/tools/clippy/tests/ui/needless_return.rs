@@ -85,16 +85,16 @@ fn test_macro_call() -> i32 {
 
 fn test_void_fun() {
     return;
-    //~^^ needless_return
+    //~^ needless_return
 }
 
 fn test_void_if_fun(b: bool) {
     if b {
         return;
-        //~^^ needless_return
+        //~^ needless_return
     } else {
         return;
-        //~^^ needless_return
+        //~^ needless_return
     }
 }
 
@@ -112,7 +112,7 @@ fn test_nested_match(x: u32) {
         1 => {
             let _ = 42;
             return;
-            //~^^ needless_return
+            //~^ needless_return
         },
         _ => return,
         //~^ needless_return
@@ -161,7 +161,7 @@ mod issue6501 {
     fn test_closure() {
         let _ = || {
             return;
-            //~^^ needless_return
+            //~^ needless_return
         };
         let _ = || return;
         //~^ needless_return
@@ -226,16 +226,16 @@ async fn async_test_macro_call() -> i32 {
 
 async fn async_test_void_fun() {
     return;
-    //~^^ needless_return
+    //~^ needless_return
 }
 
 async fn async_test_void_if_fun(b: bool) {
     if b {
         return;
-        //~^^ needless_return
+        //~^ needless_return
     } else {
         return;
-        //~^^ needless_return
+        //~^ needless_return
     }
 }
 
@@ -363,7 +363,7 @@ mod issue9416 {
     pub fn with_newline() {
         let _ = 42;
         return;
-        //~^^ needless_return
+        //~^ needless_return
     }
 
     #[rustfmt::skip]

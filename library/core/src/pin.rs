@@ -12,11 +12,11 @@
 //! "pinned," in that it has been permanently (until the end of its lifespan) attached to its
 //! location in memory, as though pinned to a pinboard. Pinning a value is an incredibly useful
 //! building block for [`unsafe`] code to be able to reason about whether a raw pointer to the
-//! pinned value is still valid. [As we'll see later][drop-guarantee], this is necessarily from the
-//! time the value is first pinned until the end of its lifespan. This concept of "pinning" is
-//! necessary to implement safe interfaces on top of things like self-referential types and
-//! intrusive data structures which cannot currently be modeled in fully safe Rust using only
-//! borrow-checked [references][reference].
+//! pinned value is still valid. [As we'll see later][drop-guarantee], once a value is pinned,
+//! it is necessarily valid at its memory location until the end of its lifespan. This concept
+//! of "pinning" is necessary to implement safe interfaces on top of things like self-referential
+//! types and intrusive data structures which cannot currently be modeled in fully safe Rust using
+//! only borrow-checked [references][reference].
 //!
 //! "Pinning" allows us to put a *value* which exists at some location in memory into a state where
 //! safe code cannot *move* that value to a different location in memory or otherwise invalidate it
@@ -1093,9 +1093,6 @@ pub use self::unsafe_pinned::UnsafePinned;
 #[derive(Copy, Clone)]
 pub struct Pin<Ptr> {
     /// Only public for bootstrap.
-    #[cfg(bootstrap)]
-    pub pointer: Ptr,
-    #[cfg(not(bootstrap))]
     pointer: Ptr,
 }
 
@@ -1422,7 +1419,7 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     #[stable(feature = "pin_deref_mut", since = "1.84.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline(always)]
-    pub fn as_deref_mut(self: Pin<&mut Pin<Ptr>>) -> Pin<&mut Ptr::Target> {
+    pub fn as_deref_mut(self: Pin<&mut Self>) -> Pin<&mut Ptr::Target> {
         // SAFETY: What we're asserting here is that going from
         //
         //     Pin<&mut Pin<Ptr>>
@@ -1936,22 +1933,15 @@ unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 /// constructor.
 ///
 /// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
-#[cfg(not(bootstrap))]
 #[stable(feature = "pin_macro", since = "1.68.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(super_let)]
+// `super` gets removed by rustfmt
+#[rustfmt::skip]
 pub macro pin($value:expr $(,)?) {
     {
         super let mut pinned = $value;
         // SAFETY: The value is pinned: it is the local above which cannot be named outside this macro.
         unsafe { $crate::pin::Pin::new_unchecked(&mut pinned) }
     }
-}
-
-/// Only for bootstrap.
-#[cfg(bootstrap)]
-#[stable(feature = "pin_macro", since = "1.68.0")]
-#[rustc_macro_transparency = "semitransparent"]
-pub macro pin($value:expr $(,)?) {
-    $crate::pin::Pin::<&mut _> { pointer: &mut { $value } }
 }

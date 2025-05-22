@@ -811,3 +811,13 @@ pub struct UnknownTargetModifierUnsafeAllowed {
     pub span: Span,
     pub flag_name: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(metadata_async_drop_types_in_dependency)]
+#[help]
+pub struct AsyncDropTypesInDependency {
+    #[primary_span]
+    pub span: Span,
+    pub extern_crate: Symbol,
+    pub local_crate: Symbol,
+}

@@ -53,8 +53,8 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
         display_range,
     )
     .with_fixes(fixes(ctx, d));
-    if diag.fixes.is_none() {
-        diag.experimental = true;
+    if diag.fixes.is_some() {
+        diag.experimental = false;
     }
     diag
 }

@@ -17,14 +17,17 @@ use hir_expand::{
     name::Name,
 };
 use span::Edition;
-use triomphe::Arc;
+use stdx::TupleExt;
 
 use crate::{
     AdtId, LocalModuleId, ModuleDefId,
     db::DefDatabase,
     item_scope::{BUILTIN_SCOPE, ImportOrExternCrate},
     item_tree::FieldsShape,
-    nameres::{BlockInfo, BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, sub_namespace_match},
+    nameres::{
+        BlockInfo, BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, crate_def_map,
+        sub_namespace_match,
+    },
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
 };
@@ -44,6 +47,7 @@ pub(super) enum ReachedFixedPoint {
 #[derive(Debug, Clone)]
 pub(super) struct ResolvePathResult {
     pub(super) resolved_def: PerNs,
+    /// The index of the last resolved segment, or `None` if the full path has been resolved.
     pub(super) segment_index: Option<usize>,
     pub(super) reached_fixedpoint: ReachedFixedPoint,
     pub(super) prefix_info: ResolvePathResultPrefixInfo,
@@ -173,7 +177,6 @@ impl DefMap {
             return result;
         }
 
-        let mut arc;
         let mut current_map = self;
 
         let mut merge = |new: ResolvePathResult| {
@@ -195,8 +198,7 @@ impl DefMap {
                 Some(block) if original_module == Self::ROOT => {
                     // Block modules "inherit" names from its parent module.
                     original_module = block.parent.local_id;
-                    arc = block.parent.def_map(db, current_map.krate);
-                    current_map = &arc;
+                    current_map = block.parent.def_map(db, current_map.krate);
                 }
                 // Proper (non-block) modules, including those in block `DefMap`s, don't.
                 _ => {
@@ -204,8 +206,7 @@ impl DefMap {
                         // A module inside a block. Do not resolve items declared in upper blocks, but we do need to get
                         // the prelude items (which are not inserted into blocks because they can be overridden there).
                         original_module = Self::ROOT;
-                        arc = db.crate_def_map(self.krate);
-                        current_map = &arc;
+                        current_map = crate_def_map(db, self.krate);
 
                         let new = current_map.resolve_path_fp_in_all_preludes(
                             local_def_map,
@@ -253,7 +254,7 @@ impl DefMap {
                     cov_mark::hit!(macro_dollar_crate_self);
                     PerNs::types(self.crate_root().into(), Visibility::Public, None)
                 } else {
-                    let def_map = db.crate_def_map(krate);
+                    let def_map = crate_def_map(db, krate);
                     let module = def_map.module_id(Self::ROOT);
                     cov_mark::hit!(macro_dollar_crate_other);
                     PerNs::types(module.into(), Visibility::Public, None)
@@ -312,7 +313,7 @@ impl DefMap {
                 // Adjust `local_id` to `self`, i.e. the nearest non-block module.
                 if def_map.module_id(local_id).is_block_module() {
                     (ext, local_id) = adjust_to_nearest_non_block_module(db, def_map, local_id);
-                    def_map = &ext;
+                    def_map = ext;
                 }
 
                 // Go up the module tree but skip block modules as `super` always refers to the
@@ -325,7 +326,7 @@ impl DefMap {
                         if def_map.module_id(local_id).is_block_module() {
                             (ext, local_id) =
                                 adjust_to_nearest_non_block_module(db, def_map, local_id);
-                            def_map = &ext;
+                            def_map = ext;
                         }
                     } else {
                         stdx::always!(def_map.block.is_none());
@@ -364,7 +365,15 @@ impl DefMap {
             },
         };
 
-        self.resolve_remaining_segments(segments, curr_per_ns, path, db, shadow, original_module)
+        self.resolve_remaining_segments(
+            db,
+            mode,
+            segments,
+            curr_per_ns,
+            path,
+            shadow,
+            original_module,
+        )
     }
 
     /// Resolves a path only in the preludes, without accounting for item scopes.
@@ -413,7 +422,15 @@ impl DefMap {
             }
         };
 
-        self.resolve_remaining_segments(segments, curr_per_ns, path, db, shadow, original_module)
+        self.resolve_remaining_segments(
+            db,
+            mode,
+            segments,
+            curr_per_ns,
+            path,
+            shadow,
+            original_module,
+        )
     }
 
     /// 2018-style absolute path -- only extern prelude
@@ -441,10 +458,11 @@ impl DefMap {
 
     fn resolve_remaining_segments<'a>(
         &self,
+        db: &dyn DefDatabase,
+        mode: ResolveMode,
         mut segments: impl Iterator<Item = (usize, &'a Name)>,
         mut curr_per_ns: PerNs,
         path: &ModPath,
-        db: &dyn DefDatabase,
         shadow: BuiltinShadowMode,
         original_module: LocalModuleId,
     ) -> ResolvePathResult {
@@ -465,6 +483,7 @@ impl DefMap {
             curr_per_ns = match curr.def {
                 ModuleDefId::ModuleId(module) => {
                     if module.krate != self.krate {
+                        // FIXME: Inefficient
                         let path = ModPath::from_segments(
                             PathKind::SELF,
                             path.segments()[i..].iter().cloned(),
@@ -478,7 +497,7 @@ impl DefMap {
                         let resolution = defp_map.resolve_path_fp_with_macro(
                             LocalDefMap::EMPTY,
                             db,
-                            ResolveMode::Other,
+                            mode,
                             module.local_id,
                             &path,
                             shadow,
@@ -547,6 +566,44 @@ impl DefMap {
                         }
                         None => ResolvePathResult::new(
                             PerNs::types(e.into(), curr.vis, curr.import),
+                            ReachedFixedPoint::Yes,
+                            Some(i),
+                            ResolvePathResultPrefixInfo::default(),
+                        ),
+                    };
+                }
+                def @ ModuleDefId::TraitId(t) if mode == ResolveMode::Import => {
+                    // FIXME: Implement this correctly
+                    // We can't actually call `trait_items`, the reason being that if macro calls
+                    // occur, they will call back into the def map which we might be computing right
+                    // now resulting in a cycle.
+                    // To properly implement this, trait item collection needs to be done in def map
+                    // collection...
+                    let item =
+                        if true { None } else { db.trait_items(t).assoc_item_by_name(segment) };
+                    return match item {
+                        Some(item) => ResolvePathResult::new(
+                            match item {
+                                crate::AssocItemId::FunctionId(function_id) => PerNs::values(
+                                    function_id.into(),
+                                    curr.vis,
+                                    curr.import.and_then(|it| it.import_or_glob()),
+                                ),
+                                crate::AssocItemId::ConstId(const_id) => PerNs::values(
+                                    const_id.into(),
+                                    curr.vis,
+                                    curr.import.and_then(|it| it.import_or_glob()),
+                                ),
+                                crate::AssocItemId::TypeAliasId(type_alias_id) => {
+                                    PerNs::types(type_alias_id.into(), curr.vis, curr.import)
+                                }
+                            },
+                            ReachedFixedPoint::Yes,
+                            segments.next().map(TupleExt::head),
+                            ResolvePathResultPrefixInfo::default(),
+                        ),
+                        None => ResolvePathResult::new(
+                            PerNs::types(def, curr.vis, curr.import),
                             ReachedFixedPoint::Yes,
                             Some(i),
                             ResolvePathResultPrefixInfo::default(),
@@ -715,7 +772,7 @@ impl DefMap {
             } else {
                 // Extend lifetime
                 keep = prelude.def_map(db);
-                &keep
+                keep
             };
             def_map[prelude.local_id].scope.get(name)
         } else {
@@ -725,25 +782,23 @@ impl DefMap {
 }
 
 /// Given a block module, returns its nearest non-block module and the `DefMap` it belongs to.
-fn adjust_to_nearest_non_block_module(
-    db: &dyn DefDatabase,
-    def_map: &DefMap,
+fn adjust_to_nearest_non_block_module<'db>(
+    db: &'db dyn DefDatabase,
+    def_map: &'db DefMap,
     mut local_id: LocalModuleId,
-) -> (Arc<DefMap>, LocalModuleId) {
+) -> (&'db DefMap, LocalModuleId) {
     // INVARIANT: `local_id` in `def_map` must be a block module.
     stdx::always!(def_map.module_id(local_id).is_block_module());
 
-    let mut ext;
     // This needs to be a local variable due to our mighty lifetime.
     let mut def_map = def_map;
     loop {
         let BlockInfo { parent, .. } = def_map.block.expect("block module without parent module");
 
-        ext = parent.def_map(db, def_map.krate);
-        def_map = &ext;
+        def_map = parent.def_map(db, def_map.krate);
         local_id = parent.local_id;
         if !parent.is_block_module() {
-            return (ext, local_id);
+            return (def_map, local_id);
         }
     }
 }

@@ -373,7 +373,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_constructors)]
+    /// #![feature(duration_constructors_lite)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::from_hours(6);
@@ -381,7 +381,7 @@ impl Duration {
     /// assert_eq!(6 * 60 * 60, duration.as_secs());
     /// assert_eq!(0, duration.subsec_nanos());
     /// ```
-    #[unstable(feature = "duration_constructors", issue = "120301")]
+    #[unstable(feature = "duration_constructors_lite", issue = "140881")]
     #[must_use]
     #[inline]
     pub const fn from_hours(hours: u64) -> Duration {
@@ -401,7 +401,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_constructors)]
+    /// #![feature(duration_constructors_lite)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::from_mins(10);
@@ -409,7 +409,7 @@ impl Duration {
     /// assert_eq!(10 * 60, duration.as_secs());
     /// assert_eq!(0, duration.subsec_nanos());
     /// ```
-    #[unstable(feature = "duration_constructors", issue = "120301")]
+    #[unstable(feature = "duration_constructors_lite", issue = "140881")]
     #[must_use]
     #[inline]
     pub const fn from_mins(mins: u64) -> Duration {

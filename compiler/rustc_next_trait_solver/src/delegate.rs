@@ -39,13 +39,6 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         term: <Self::Interner as Interner>::Term,
     ) -> Option<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>>;
 
-    fn clone_opaque_types_lookup_table(
-        &self,
-    ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
-    fn clone_duplicate_opaque_types(
-        &self,
-    ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
-
     fn make_deduplicated_outlives_constraints(
         &self,
     ) -> Vec<ty::OutlivesPredicate<Self::Interner, <Self::Interner as Interner>::GenericArg>>;
@@ -64,20 +57,6 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         span: <Self::Interner as Interner>::Span,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> <Self::Interner as Interner>::GenericArg;
-
-    fn register_hidden_type_in_storage(
-        &self,
-        opaque_type_key: ty::OpaqueTypeKey<Self::Interner>,
-        hidden_ty: <Self::Interner as Interner>::Ty,
-        span: <Self::Interner as Interner>::Span,
-    ) -> Option<<Self::Interner as Interner>::Ty>;
-    fn add_duplicate_opaque_type(
-        &self,
-        opaque_type_key: ty::OpaqueTypeKey<Self::Interner>,
-        hidden_ty: <Self::Interner as Interner>::Ty,
-        span: <Self::Interner as Interner>::Span,
-    );
-
     fn add_item_bounds_for_hidden_type(
         &self,
         def_id: <Self::Interner as Interner>::DefId,
@@ -86,7 +65,6 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         hidden_ty: <Self::Interner as Interner>::Ty,
         goals: &mut Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
     );
-    fn reset_opaque_types(&self);
 
     fn fetch_eligible_assoc_item(
         &self,

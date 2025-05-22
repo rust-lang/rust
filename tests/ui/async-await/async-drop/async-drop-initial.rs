@@ -60,7 +60,10 @@ fn main() {
         let j = 42;
         test_async_drop(&i, 16).await;
         test_async_drop(&j, 16).await;
-        test_async_drop(AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 }, 168).await;
+        test_async_drop(
+            AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 },
+            if cfg!(panic = "unwind") { 168 } else { 136 },
+        ).await;
         test_async_drop(ManuallyDrop::new(AsyncInt(9)), 16).await;
 
         let foo = AsyncInt(10);

@@ -299,12 +299,21 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
             );
         }
 
+        // We don't replace bound vars in the generic arguments of the free alias with
+        // placeholders. This doesn't cause any issues as instantiating parameters with
+        // bound variables is special-cased to rewrite the debruijn index to be higher
+        // whenever we fold through a binder.
+        //
+        // However, we do replace any escaping bound vars in the resulting goals with
+        // placeholders as the trait solver does not expect to encounter escaping bound
+        // vars in obligations.
+        //
+        // FIXME(lazy_type_alias): Check how much this actually matters for perf before
+        // stabilization. This is a bit weird and generally not how we handle binders in
+        // the compiler so ideally we'd do the same boundvar->placeholder->boundvar dance
+        // that other kinds of normalization do.
         let infcx = self.selcx.infcx;
         self.obligations.extend(
-            // FIXME(BoxyUwU):
-            // FIXME(lazy_type_alias):
-            // It seems suspicious to instantiate the predicates with arguments that might be bound vars,
-            // we might wind up instantiating one of these bound vars underneath a hrtb.
             infcx.tcx.predicates_of(free.def_id).instantiate_own(infcx.tcx, free.args).map(
                 |(mut predicate, span)| {
                     if free.has_escaping_bound_vars() {

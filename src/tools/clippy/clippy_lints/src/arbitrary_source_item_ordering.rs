@@ -6,9 +6,10 @@ use clippy_config::types::{
 };
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::is_cfg_test;
+use rustc_attr_data_structures::AttributeKind;
 use rustc_hir::{
-    AssocItemKind, FieldDef, HirId, ImplItemRef, IsAuto, Item, ItemKind, Mod, QPath, TraitItemRef, TyKind, Variant,
-    VariantData,
+    AssocItemKind, Attribute, FieldDef, HirId, ImplItemRef, IsAuto, Item, ItemKind, Mod, QPath, TraitItemRef, TyKind,
+    Variant, VariantData,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
@@ -27,6 +28,11 @@ declare_clippy_lint! {
     /// a topic that is (under most circumstances) not relevant to the logic
     /// implemented in the code. Sometimes this will be referred to as
     /// "bikeshedding".
+    ///
+    /// The content of items with a representation clause attribute, such as
+    /// `#[repr(C)]` will not be checked, as the order of their fields or
+    /// variants might be dictated by an external API (application binary
+    /// interface).
     ///
     /// ### Default Ordering and Configuration
     ///
@@ -256,6 +262,15 @@ impl ArbitrarySourceItemOrdering {
 
 impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
+        if cx
+            .tcx
+            .hir_attrs(item.hir_id())
+            .iter()
+            .any(|attr| matches!(attr, Attribute::Parsed(AttributeKind::Repr(..))))
+        {
+            // Do not lint items with a `#[repr]` attribute as their layout may be imposed by an external API.
+            return;
+        }
         match &item.kind {
             ItemKind::Enum(_, enum_def, _generics) if self.enable_ordering_for_enum => {
                 let mut cur_v: Option<&Variant<'_>> = None;

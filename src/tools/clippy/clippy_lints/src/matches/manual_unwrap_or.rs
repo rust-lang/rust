@@ -1,5 +1,6 @@
 use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::source::{SpanRangeExt as _, indent_of, reindent_multiline};
+use rustc_ast::{BindingMode, ByRef};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, LangItem, Pat, PatExpr, PatExprKind, PatKind, QPath};
@@ -16,7 +17,7 @@ use super::{MANUAL_UNWRAP_OR, MANUAL_UNWRAP_OR_DEFAULT};
 
 fn get_some(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option<HirId> {
     if let PatKind::TupleStruct(QPath::Resolved(_, path), &[pat], _) = pat.kind
-        && let PatKind::Binding(_, pat_id, _, _) = pat.kind
+        && let PatKind::Binding(BindingMode(ByRef::No, _), pat_id, _, _) = pat.kind
         && let Some(def_id) = path.res.opt_def_id()
         // Since it comes from a pattern binding, we need to get the parent to actually match
         // against it.

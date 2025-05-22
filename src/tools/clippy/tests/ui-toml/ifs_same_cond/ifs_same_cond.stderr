@@ -1,14 +1,12 @@
-error: this `if` has the same condition as a previous `if`
-  --> tests/ui-toml/ifs_same_cond/ifs_same_cond.rs:15:15
-   |
-LL |     } else if x.get() {
-   |               ^^^^^^^
-   |
-note: same as this
+error: these `if` branches have the same condition
   --> tests/ui-toml/ifs_same_cond/ifs_same_cond.rs:13:8
    |
 LL |     if x.get() {
    |        ^^^^^^^
+...
+LL |     } else if x.get() {
+   |               ^^^^^^^
+   |
    = note: `-D clippy::ifs-same-cond` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::ifs_same_cond)]`
 

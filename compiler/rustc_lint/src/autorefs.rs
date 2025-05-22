@@ -4,7 +4,10 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, OverloadedDer
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
-use crate::lints::{ImplicitUnsafeAutorefsDiag, ImplicitUnsafeAutorefsSuggestion};
+use crate::lints::{
+    ImplicitUnsafeAutorefsDiag, ImplicitUnsafeAutorefsMethodNote, ImplicitUnsafeAutorefsOrigin,
+    ImplicitUnsafeAutorefsSuggestion,
+};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
@@ -92,25 +95,37 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitAutorefs {
             && let adjustments = peel_derefs_adjustments(&**adjustments)
             // 3. An automatically inserted reference (might come from a deref).
             && let [adjustment] = adjustments
-            && let Some(borrow_mutbl) = has_implicit_borrow(adjustment)
+            && let Some((borrow_mutbl, through_overloaded_deref)) = has_implicit_borrow(adjustment)
             && let ExprKind::Unary(UnOp::Deref, dereferenced) =
                 // 2. Any number of place projections.
                 peel_place_mappers(inner).kind
             // 1. Deref of a raw pointer.
             && typeck.expr_ty(dereferenced).is_raw_ptr()
-            // PERF: 5. b. A method call annotated with `#[rustc_no_implicit_refs]`
-            && match expr.kind {
-                ExprKind::MethodCall(..) => matches!(
-                    cx.typeck_results().type_dependent_def_id(expr.hir_id),
-                    Some(def_id) if cx.tcx.has_attr(def_id, sym::rustc_no_implicit_autorefs)
-                ),
-                _ => true,
+            && let method_did = match expr.kind {
+                // PERF: 5. b. A method call annotated with `#[rustc_no_implicit_refs]`
+                ExprKind::MethodCall(..) => cx.typeck_results().type_dependent_def_id(expr.hir_id),
+                _ => None,
             }
+            && method_did.map(|did| cx.tcx.has_attr(did, sym::rustc_no_implicit_autorefs)).unwrap_or(true)
         {
             cx.emit_span_lint(
                 DANGEROUS_IMPLICIT_AUTOREFS,
                 expr.span.source_callsite(),
                 ImplicitUnsafeAutorefsDiag {
+                    raw_ptr_span: dereferenced.span,
+                    raw_ptr_ty: typeck.expr_ty(dereferenced),
+                    origin: if through_overloaded_deref {
+                        ImplicitUnsafeAutorefsOrigin::OverloadedDeref
+                    } else {
+                        ImplicitUnsafeAutorefsOrigin::Autoref {
+                            autoref_span: inner.span,
+                            autoref_ty: typeck.expr_ty_adjusted(inner),
+                        }
+                    },
+                    method: method_did.map(|did| ImplicitUnsafeAutorefsMethodNote {
+                        def_span: cx.tcx.def_span(did),
+                        method_name: cx.tcx.item_name(did),
+                    }),
                     suggestion: ImplicitUnsafeAutorefsSuggestion {
                         mutbl: borrow_mutbl.ref_prefix_str(),
                         deref: if is_coming_from_deref { "*" } else { "" },
@@ -146,11 +161,12 @@ fn peel_derefs_adjustments<'a>(mut adjs: &'a [Adjustment<'a>]) -> &'a [Adjustmen
 
 /// Test if some adjustment has some implicit borrow.
 ///
-/// Returns `Some(mutability)` if the argument adjustment has implicit borrow in it.
-fn has_implicit_borrow(Adjustment { kind, .. }: &Adjustment<'_>) -> Option<Mutability> {
+/// Returns `Some((mutability, was_an_overloaded_deref))` if the argument adjustment is
+/// an implicit borrow (or has an implicit borrow via an overloaded deref).
+fn has_implicit_borrow(Adjustment { kind, .. }: &Adjustment<'_>) -> Option<(Mutability, bool)> {
     match kind {
-        &Adjust::Deref(Some(OverloadedDeref { mutbl, .. })) => Some(mutbl),
-        &Adjust::Borrow(AutoBorrow::Ref(mutbl)) => Some(mutbl.into()),
+        &Adjust::Deref(Some(OverloadedDeref { mutbl, .. })) => Some((mutbl, true)),
+        &Adjust::Borrow(AutoBorrow::Ref(mutbl)) => Some((mutbl.into(), false)),
         Adjust::NeverToAny
         | Adjust::Pointer(..)
         | Adjust::ReborrowPin(..)

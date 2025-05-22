@@ -99,7 +99,13 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
             Ok((_, Certainty::Maybe(MaybeCause::Ambiguity))) => {
                 (FulfillmentErrorCode::Ambiguity { overflow: None }, true)
             }
-            Ok((_, Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit }))) => (
+            Ok((
+                _,
+                Certainty::Maybe(MaybeCause::Overflow {
+                    suggest_increasing_limit,
+                    keep_constraints: _,
+                }),
+            )) => (
                 FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) },
                 // Don't look into overflows because we treat overflows weirdly anyways.
                 // We discard the inference constraints from overflowing goals, so

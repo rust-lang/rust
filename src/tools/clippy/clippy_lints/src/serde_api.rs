@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{get_trait_def_id, paths};
+use clippy_utils::paths;
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -32,9 +32,7 @@ impl<'tcx> LateLintPass<'tcx> for SerdeApi {
         }) = item.kind
         {
             let did = trait_ref.path.res.def_id();
-            if let Some(visit_did) = get_trait_def_id(cx.tcx, &paths::SERDE_DE_VISITOR)
-                && did == visit_did
-            {
+            if paths::SERDE_DE_VISITOR.matches(cx, did) {
                 let mut seen_str = None;
                 let mut seen_string = None;
                 for item in *items {

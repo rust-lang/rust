@@ -1,0 +1,38 @@
+error: missing documentation for a struct field
+  --> tests/ui-toml/missing_docs_allow_unused/missing_docs_allow_unused.rs:10:5
+   |
+LL |     field3: i32,
+   |     ^^^^^^^^^^^
+   |
+   = note: `-D clippy::missing-docs-in-private-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_docs_in_private_items)]`
+
+error: missing documentation for a struct
+  --> tests/ui-toml/missing_docs_allow_unused/missing_docs_allow_unused.rs:13:1
+   |
+LL | / struct Test2 {
+LL | |
+LL | |     _field1: i32, // This should not trigger a warning
+LL | |     _field2: i32, // This should not trigger a warning
+LL | | }
+   | |_^
+
+error: missing documentation for a struct
+  --> tests/ui-toml/missing_docs_allow_unused/missing_docs_allow_unused.rs:19:1
+   |
+LL | / struct Test3 {
+LL | |
+LL | |     /// This field is documented although this is not mandatory
+LL | |     _unused: i32, // This should not trigger a warning because it starts with an underscore
+LL | |     field2: i32,
+LL | | }
+   | |_^
+
+error: missing documentation for a struct field
+  --> tests/ui-toml/missing_docs_allow_unused/missing_docs_allow_unused.rs:23:5
+   |
+LL |     field2: i32,
+   |     ^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

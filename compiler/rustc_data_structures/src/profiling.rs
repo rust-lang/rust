@@ -860,7 +860,7 @@ fn get_thread_id() -> u32 {
 }
 
 // Memory reporting
-cfg_match! {
+cfg_select! {
     windows => {
         pub fn get_resident_set_size() -> Option<usize> {
             use windows::{

@@ -2,11 +2,12 @@ use clippy_utils::diagnostics::span_lint_and_note;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
+use rustc_span::Symbol;
 use rustc_span::source_map::Spanned;
 
 use super::SUSPICIOUS_SPLITN;
 
-pub(super) fn check(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, self_arg: &Expr<'_>, count: u128) {
+pub(super) fn check(cx: &LateContext<'_>, method_name: Symbol, expr: &Expr<'_>, self_arg: &Expr<'_>, count: u128) {
     if count <= 1
         && let Some(call_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_method(call_id)

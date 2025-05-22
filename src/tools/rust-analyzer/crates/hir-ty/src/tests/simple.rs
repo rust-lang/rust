@@ -3902,3 +3902,66 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn regression_19734() {
+    check_infer(
+        r#"
+trait Foo {
+    type Gat<'o>;
+}
+
+trait Bar {
+    fn baz() -> <Self::Xyz as Foo::Gat<'_>>;
+}
+
+fn foo<T: Bar>() {
+    T::baz();
+}
+    "#,
+        expect![[r#"
+            110..127 '{     ...z(); }': ()
+            116..122 'T::baz': fn baz<T>() -> <{unknown} as Foo>::Gat<'?>
+            116..124 'T::baz()': Foo::Gat<'?, {unknown}>
+        "#]],
+    );
+}
+
+#[test]
+fn asm_const_label() {
+    check_infer(
+        r#"
+//- minicore: asm
+const fn bar() -> i32 { 123 }
+fn baz(s: &str) {}
+
+fn foo() {
+    unsafe {
+        core::arch::asm!(
+            "mov eax, {}",
+            "jmp {}",
+            const bar(),
+            label {
+                baz("hello");
+            },
+        );
+    }
+}
+    "#,
+        expect![[r#"
+            22..29 '{ 123 }': i32
+            24..27 '123': i32
+            37..38 's': &'? str
+            46..48 '{}': ()
+            !0..68 'builti...");},)': ()
+            !40..43 'bar': fn bar() -> i32
+            !40..45 'bar()': i32
+            !51..66 '{baz("hello");}': ()
+            !52..55 'baz': fn baz(&'? str)
+            !52..64 'baz("hello")': ()
+            !56..63 '"hello"': &'static str
+            59..257 '{     ...   } }': ()
+            65..255 'unsafe...     }': ()
+        "#]],
+    );
+}

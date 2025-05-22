@@ -456,7 +456,7 @@ pub(crate) fn hover_for_definition(
     let notable_traits = def_ty.map(|ty| notable_traits(db, &ty)).unwrap_or_default();
     let subst_types = subst.map(|subst| subst.types(db));
 
-    let markup = render::definition(
+    let (markup, range_map) = render::definition(
         sema.db,
         def,
         famous_defs.as_ref(),
@@ -469,7 +469,7 @@ pub(crate) fn hover_for_definition(
         display_target,
     );
     HoverResult {
-        markup: render::process_markup(sema.db, def, &markup, config),
+        markup: render::process_markup(sema.db, def, &markup, range_map, config),
         actions: [
             show_fn_references_action(sema.db, def),
             show_implementations_action(sema.db, def),

@@ -465,7 +465,7 @@ impl<'tcx> TyCtxt<'tcx> {
             dtor_candidate = Some(impl_did);
         }
 
-        Some(ty::AsyncDestructor { impl_did: dtor_candidate? })
+        Some(ty::AsyncDestructor { impl_did: dtor_candidate?.into() })
     }
 
     /// Returns the set of types that are required to be alive in

@@ -1,6 +1,5 @@
 use std::fmt;
 use std::iter::once;
-use std::ops::ControlFlow;
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 use rustc_arena::DroplessArena;
@@ -12,8 +11,7 @@ use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, VariantDef,
+    self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -137,22 +135,11 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// Returns the hidden type corresponding to this key if the body under analysis is allowed to
     /// know it.
     fn reveal_opaque_key(&self, key: OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>> {
-        if let Some(hidden_ty) = self.typeck_results.concrete_opaque_types.get(&key.def_id) {
-            let ty = ty::EarlyBinder::bind(hidden_ty.ty).instantiate(self.tcx, key.args);
-            if ty.visit_with(&mut RecursiveOpaque { def_id: key.def_id.into() }).is_continue() {
-                Some(ty)
-            } else {
-                // HACK: We skip revealing opaque types which recursively expand
-                // to themselves. This is because we may infer hidden types like
-                // `Opaque<T> = Opaque<Opaque<T>>` or `Opaque<T> = Opaque<(T,)>`
-                // in hir typeck.
-                None
-            }
-        } else {
-            None
-        }
+        self.typeck_results
+            .concrete_opaque_types
+            .get(&key.def_id)
+            .map(|x| ty::EarlyBinder::bind(x.ty).instantiate(self.tcx, key.args))
     }
-
     // This can take a non-revealed `Ty` because it reveals opaques itself.
     pub fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         !ty.inhabited_predicate(self.tcx).apply_revealing_opaque(
@@ -269,6 +256,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
             },
+            DerefPattern(pointee_ty) => reveal_and_alloc(cx, once(pointee_ty.inner())),
             Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
             | F128Range(..) | Str(..) | Opaque(..) | Never | NonExhaustive | Hidden | Missing
             | PrivateUninhabited | Wildcard => &[],
@@ -296,7 +284,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 }
                 _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
             },
-            Ref => 1,
+            Ref | DerefPattern(_) => 1,
             Slice(slice) => slice.arity(),
             Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
             | F128Range(..) | Str(..) | Opaque(..) | Never | NonExhaustive | Hidden | Missing
@@ -493,11 +481,15 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     ),
                 };
             }
-            PatKind::DerefPattern { .. } => {
-                // FIXME(deref_patterns): At least detect that `box _` is irrefutable.
-                fields = vec![];
-                arity = 0;
-                ctor = Opaque(OpaqueId::new());
+            PatKind::DerefPattern { subpattern, .. } => {
+                // NB(deref_patterns): This assumes the deref pattern is matching on a trusted
+                // `DerefPure` type. If the `Deref` impl isn't trusted, exhaustiveness must take
+                // into account that multiple calls to deref may return different results. Hence
+                // multiple deref! patterns cannot be exhaustive together unless each is exhaustive
+                // by itself.
+                fields = vec![self.lower_pat(subpattern).at_index(0)];
+                arity = 1;
+                ctor = DerefPattern(cx.reveal_opaque_ty(subpattern.ty));
             }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
                 match ty.kind() {
@@ -874,6 +866,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 print::write_ref_like(&mut s, pat.ty().inner(), &print(&pat.fields[0])).unwrap();
                 s
             }
+            DerefPattern(_) => format!("deref!({})", print(&pat.fields[0])),
             Slice(slice) => {
                 let (prefix_len, has_dot_dot) = match slice.kind {
                     SliceKind::FixedLen(len) => (len, false),
@@ -1100,6 +1093,14 @@ pub fn analyze_match<'p, 'tcx>(
     scrut_ty: Ty<'tcx>,
 ) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
     let scrut_ty = tycx.reveal_opaque_ty(scrut_ty);
+
+    // The analysis doesn't support deref patterns mixed with normal constructors; error if present.
+    // FIXME(deref_patterns): This only needs to run when a deref pattern was found during lowering.
+    if tycx.tcx.features().deref_patterns() {
+        let pat_column = PatternColumn::new(arms);
+        detect_mixed_deref_pat_ctors(tycx, &pat_column)?;
+    }
+
     let scrut_validity = PlaceValidity::from_bool(tycx.known_valid_scrutinee);
     let report = compute_match_usefulness(
         tycx,
@@ -1119,19 +1120,47 @@ pub fn analyze_match<'p, 'tcx>(
     Ok(report)
 }
 
-struct RecursiveOpaque {
-    def_id: DefId,
-}
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for RecursiveOpaque {
-    type Result = ControlFlow<()>;
+// FIXME(deref_patterns): Currently it's the responsibility of the frontend (rustc or rust-analyzer)
+// to ensure that deref patterns don't appear in the same column as normal constructors. Deref
+// patterns aren't currently implemented in rust-analyzer, but should they be, the columnwise check
+// here could be made generic and shared between frontends.
+fn detect_mixed_deref_pat_ctors<'p, 'tcx>(
+    cx: &RustcPatCtxt<'p, 'tcx>,
+    column: &PatternColumn<'p, RustcPatCtxt<'p, 'tcx>>,
+) -> Result<(), ErrorGuaranteed> {
+    let Some(&ty) = column.head_ty() else {
+        return Ok(());
+    };
 
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
-        if let ty::Alias(ty::Opaque, alias_ty) = t.kind() {
-            if alias_ty.def_id == self.def_id {
-                return ControlFlow::Break(());
-            }
+    // Check for a mix of deref patterns and normal constructors.
+    let mut normal_ctor_span = None;
+    let mut deref_pat_span = None;
+    for pat in column.iter() {
+        match pat.ctor() {
+            // The analysis can handle mixing deref patterns with wildcards and opaque patterns.
+            Wildcard | Opaque(_) => {}
+            DerefPattern(_) => deref_pat_span = Some(pat.data().span),
+            // Nothing else can be compared to deref patterns in `Constructor::is_covered_by`.
+            _ => normal_ctor_span = Some(pat.data().span),
         }
-
-        if t.has_opaque_types() { t.super_visit_with(self) } else { ControlFlow::Continue(()) }
     }
+    if let Some(normal_constructor_label) = normal_ctor_span
+        && let Some(deref_pattern_label) = deref_pat_span
+    {
+        return Err(cx.tcx.dcx().emit_err(errors::MixedDerefPatternConstructors {
+            spans: vec![deref_pattern_label, normal_constructor_label],
+            smart_pointer_ty: ty.inner(),
+            deref_pattern_label,
+            normal_constructor_label,
+        }));
+    }
+
+    // Specialize and recurse into the patterns' fields.
+    let set = column.analyze_ctors(cx, &ty)?;
+    for ctor in set.present {
+        for specialized_column in column.specialize(cx, &ty, &ctor).iter() {
+            detect_mixed_deref_pat_ctors(cx, specialized_column)?;
+        }
+    }
+    Ok(())
 }

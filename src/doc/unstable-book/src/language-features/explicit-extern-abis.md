@@ -1,6 +1,6 @@
 # `explicit_extern_abis`
 
-The tracking issue for this feature is: #134986
+The tracking issue for this feature is: [#134986]
 
 ------
 
@@ -21,3 +21,5 @@ extern "C" fn function2() {} // compiles
 
 extern "aapcs" fn function3() {} // compiles
 ```
+
+[#134986]: https://github.com/rust-lang/rust/issues/134986

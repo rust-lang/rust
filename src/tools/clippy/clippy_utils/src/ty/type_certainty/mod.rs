@@ -11,14 +11,14 @@
 //! As a heuristic, `expr_type_is_certain` may produce false negatives, but a false positive should
 //! be considered a bug.
 
-use crate::def_path_res;
+use crate::paths::{PathNS, lookup_path};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_qpath, walk_ty};
 use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, GenericArgs, HirId, Node, PathSegment, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, AdtDef, GenericArgKind, Ty};
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 
 mod certainty;
 use certainty::{Certainty, Meet, join, meet};
@@ -194,7 +194,7 @@ fn path_segment_certainty(
     path_segment: &PathSegment<'_>,
     resolves_to_type: bool,
 ) -> Certainty {
-    let certainty = match update_res(cx, parent_certainty, path_segment).unwrap_or(path_segment.res) {
+    let certainty = match update_res(cx, parent_certainty, path_segment, resolves_to_type).unwrap_or(path_segment.res) {
         // A definition's type is certain if it refers to something without generics (e.g., a crate or module, or
         // an unparameterized type), or the generics are instantiated with arguments that are certain.
         //
@@ -267,17 +267,24 @@ fn path_segment_certainty(
 
 /// For at least some `QPath::TypeRelative`, the path segment's `res` can be `Res::Err`.
 /// `update_res` tries to fix the resolution when `parent_certainty` is `Certain(Some(..))`.
-fn update_res(cx: &LateContext<'_>, parent_certainty: Certainty, path_segment: &PathSegment<'_>) -> Option<Res> {
+fn update_res(
+    cx: &LateContext<'_>,
+    parent_certainty: Certainty,
+    path_segment: &PathSegment<'_>,
+    resolves_to_type: bool,
+) -> Option<Res> {
     if path_segment.res == Res::Err
         && let Some(def_id) = parent_certainty.to_def_id()
     {
         let mut def_path = cx.get_def_path(def_id);
         def_path.push(path_segment.ident.name);
-        let reses = def_path_res(cx.tcx, &def_path.iter().map(Symbol::as_str).collect::<Vec<_>>());
-        if let [res] = reses.as_slice() { Some(*res) } else { None }
-    } else {
-        None
+        let ns = if resolves_to_type { PathNS::Type } else { PathNS::Value };
+        if let &[id] = lookup_path(cx.tcx, ns, &def_path).as_slice() {
+            return Some(Res::Def(cx.tcx.def_kind(id), id));
+        }
     }
+
+    None
 }
 
 #[allow(clippy::cast_possible_truncation)]

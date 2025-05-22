@@ -11,9 +11,8 @@ use rustc_session::Session;
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, sym};
 use tracing::info;
 
-use super::highlight;
-use super::layout::{self, BufDisplay};
 use super::render::Context;
+use super::{highlight, layout};
 use crate::clean;
 use crate::clean::utils::has_doc_flag;
 use crate::docfs::PathError;
@@ -243,16 +242,16 @@ impl SourceCollector<'_, '_> {
             &shared.layout,
             &page,
             "",
-            BufDisplay(|buf: &mut String| {
+            fmt::from_fn(|f| {
                 print_src(
-                    buf,
+                    f,
                     contents,
                     file_span,
                     self.cx,
                     &root_path,
                     &highlight::DecorationInfo::default(),
                     &source_context,
-                );
+                )
             }),
             &shared.style_files,
         );
@@ -331,7 +330,7 @@ pub(crate) fn print_src(
     root_path: &str,
     decoration_info: &highlight::DecorationInfo,
     source_context: &SourceContext<'_>,
-) {
+) -> fmt::Result {
     let mut lines = s.lines().count();
     let line_info = if let SourceContext::Embedded(info) = source_context {
         highlight::LineInfo::new_scraped(lines as u32, info.offset as u32)
@@ -367,12 +366,10 @@ pub(crate) fn print_src(
             },
             max_nb_digits,
         }
-        .render_into(&mut writer)
-        .unwrap(),
+        .render_into(&mut writer),
         SourceContext::Embedded(info) => {
-            ScrapedSource { info, code_html: code, max_nb_digits }
-                .render_into(&mut writer)
-                .unwrap();
+            ScrapedSource { info, code_html: code, max_nb_digits }.render_into(&mut writer)
         }
-    };
+    }?;
+    Ok(())
 }

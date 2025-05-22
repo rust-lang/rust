@@ -13,7 +13,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_attr_parsing::InlineAttr;
+use rustc_attr_data_structures::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
@@ -614,6 +614,9 @@ pub struct MiriMachine<'tcx> {
 
     /// Cache for `mangle_internal_symbol`.
     pub(crate) mangle_internal_symbol_cache: FxHashMap<&'static str, String>,
+
+    /// Always prefer the intrinsic fallback body over the native Miri implementation.
+    pub force_intrinsic_fallback: bool,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -770,6 +773,7 @@ impl<'tcx> MiriMachine<'tcx> {
             reject_in_isolation_warned: Default::default(),
             int2ptr_warned: Default::default(),
             mangle_internal_symbol_cache: Default::default(),
+            force_intrinsic_fallback: config.force_intrinsic_fallback,
         }
     }
 
@@ -946,6 +950,7 @@ impl VisitProvenance for MiriMachine<'_> {
             reject_in_isolation_warned: _,
             int2ptr_warned: _,
             mangle_internal_symbol_cache: _,
+            force_intrinsic_fallback: _,
         } = self;
 
         threads.visit_provenance(visit);

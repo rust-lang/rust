@@ -47,7 +47,6 @@ pub(crate) fn unresolved_method(
         }),
     )
     .with_fixes(fixes(ctx, d))
-    .experimental()
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -> Option<Vec<Assist>> {

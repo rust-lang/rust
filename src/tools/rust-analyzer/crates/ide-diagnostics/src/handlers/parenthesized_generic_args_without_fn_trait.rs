@@ -14,6 +14,7 @@ pub(crate) fn parenthesized_generic_args_without_fn_trait(
         "parenthesized type parameters may only be used with a `Fn` trait",
         d.args.map(Into::into),
     )
+    .stable()
 }
 
 #[cfg(test)]

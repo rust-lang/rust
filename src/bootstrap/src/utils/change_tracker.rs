@@ -406,4 +406,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Added a new option `rust.debug-assertions-tools` to control debug asssertions for tools.",
     },
+    ChangeInfo {
+        change_id: 140732,
+        severity: ChangeSeverity::Info,
+        summary: "`./x run` now supports running in-tree `rustfmt`, e.g., `./x run rustfmt -- --check /path/to/file.rs`.",
+    },
 ];

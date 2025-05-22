@@ -67,12 +67,12 @@ use crate::value::Value;
 /// the `OperandBundleDef` value created for MSVC landing pads.
 pub(crate) struct Funclet<'ll> {
     cleanuppad: &'ll Value,
-    operand: llvm::OperandBundleOwned<'ll>,
+    operand: llvm::OperandBundleBox<'ll>,
 }
 
 impl<'ll> Funclet<'ll> {
     pub(crate) fn new(cleanuppad: &'ll Value) -> Self {
-        Funclet { cleanuppad, operand: llvm::OperandBundleOwned::new("funclet", &[cleanuppad]) }
+        Funclet { cleanuppad, operand: llvm::OperandBundleBox::new("funclet", &[cleanuppad]) }
     }
 
     pub(crate) fn cleanuppad(&self) -> &'ll Value {
@@ -80,7 +80,7 @@ impl<'ll> Funclet<'ll> {
     }
 
     pub(crate) fn bundle(&self) -> &llvm::OperandBundle<'ll> {
-        self.operand.raw()
+        self.operand.as_ref()
     }
 }
 

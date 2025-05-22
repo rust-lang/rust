@@ -1,79 +1,62 @@
-error: this `if` has the same function call as a previous `if`
-  --> tests/ui/same_functions_in_if_condition.rs:34:15
-   |
-LL |     } else if function() {
-   |               ^^^^^^^^^^
-   |
-note: same as this
+error: these `if` branches have the same function call
   --> tests/ui/same_functions_in_if_condition.rs:33:8
    |
 LL |     if function() {
    |        ^^^^^^^^^^
+LL |
+LL |     } else if function() {
+   |               ^^^^^^^^^^
+   |
 note: the lint level is defined here
   --> tests/ui/same_functions_in_if_condition.rs:2:9
    |
 LL | #![deny(clippy::same_functions_in_if_condition)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: this `if` has the same function call as a previous `if`
-  --> tests/ui/same_functions_in_if_condition.rs:39:15
-   |
-LL |     } else if fn_arg(a) {
-   |               ^^^^^^^^^
-   |
-note: same as this
+error: these `if` branches have the same function call
   --> tests/ui/same_functions_in_if_condition.rs:38:8
    |
 LL |     if fn_arg(a) {
    |        ^^^^^^^^^
+LL |
+LL |     } else if fn_arg(a) {
+   |               ^^^^^^^^^
 
-error: this `if` has the same function call as a previous `if`
-  --> tests/ui/same_functions_in_if_condition.rs:44:15
-   |
-LL |     } else if obj.method() {
-   |               ^^^^^^^^^^^^
-   |
-note: same as this
+error: these `if` branches have the same function call
   --> tests/ui/same_functions_in_if_condition.rs:43:8
    |
 LL |     if obj.method() {
    |        ^^^^^^^^^^^^
+LL |
+LL |     } else if obj.method() {
+   |               ^^^^^^^^^^^^
 
-error: this `if` has the same function call as a previous `if`
-  --> tests/ui/same_functions_in_if_condition.rs:49:15
-   |
-LL |     } else if obj.method_arg(a) {
-   |               ^^^^^^^^^^^^^^^^^
-   |
-note: same as this
+error: these `if` branches have the same function call
   --> tests/ui/same_functions_in_if_condition.rs:48:8
    |
 LL |     if obj.method_arg(a) {
    |        ^^^^^^^^^^^^^^^^^
-
-error: this `if` has the same function call as a previous `if`
-  --> tests/ui/same_functions_in_if_condition.rs:55:15
-   |
-LL |     } else if v.pop().is_none() {
+LL |
+LL |     } else if obj.method_arg(a) {
    |               ^^^^^^^^^^^^^^^^^
-   |
-note: same as this
+
+error: these `if` branches have the same function call
   --> tests/ui/same_functions_in_if_condition.rs:54:8
    |
 LL |     if v.pop().is_none() {
    |        ^^^^^^^^^^^^^^^^^
+LL |
+LL |     } else if v.pop().is_none() {
+   |               ^^^^^^^^^^^^^^^^^
 
-error: this `if` has the same function call as a previous `if`
-  --> tests/ui/same_functions_in_if_condition.rs:60:15
-   |
-LL |     } else if v.len() == 42 {
-   |               ^^^^^^^^^^^^^
-   |
-note: same as this
+error: these `if` branches have the same function call
   --> tests/ui/same_functions_in_if_condition.rs:59:8
    |
 LL |     if v.len() == 42 {
    |        ^^^^^^^^^^^^^
+LL |
+LL |     } else if v.len() == 42 {
+   |               ^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

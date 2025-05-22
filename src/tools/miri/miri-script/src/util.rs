@@ -213,7 +213,7 @@ impl MiriEnv {
             let toolchain = &self.toolchain;
             let mut cmd = cmd!(
                 self.sh,
-                "rustfmt +{toolchain} --edition=2021 --config-path {config_path} --unstable-features --skip-children {flags...}"
+                "rustfmt +{toolchain} --edition=2024 --config-path {config_path} --unstable-features --skip-children {flags...}"
             );
             if first {
                 // Log an abbreviating command, and only once.

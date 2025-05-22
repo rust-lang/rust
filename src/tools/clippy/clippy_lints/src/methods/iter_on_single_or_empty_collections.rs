@@ -2,7 +2,7 @@ use std::iter::once;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::{get_expr_use_or_unification_node, is_res_lang_ctor, path_res, std_or_core};
+use clippy_utils::{get_expr_use_or_unification_node, is_res_lang_ctor, path_res, std_or_core, sym};
 
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -10,6 +10,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirId;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
+use rustc_span::Symbol;
 
 use super::{ITER_ON_EMPTY_COLLECTIONS, ITER_ON_SINGLE_ITEMS};
 
@@ -51,7 +52,7 @@ fn is_arg_ty_unified_in_fn<'tcx>(
         .any(|(i, ty)| i != arg_id_in_args && ty.skip_binder().walk().any(|arg| arg.as_type() == Some(arg_ty_in_args)))
 }
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: &str, recv: &'tcx Expr<'tcx>) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: Symbol, recv: &'tcx Expr<'tcx>) {
     let item = match recv.kind {
         ExprKind::Array([]) => None,
         ExprKind::Array([e]) => Some(e),
@@ -60,9 +61,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method
         _ => return,
     };
     let iter_type = match method_name {
-        "iter" => IterType::Iter,
-        "iter_mut" => IterType::IterMut,
-        "into_iter" => IterType::IntoIter,
+        sym::iter => IterType::Iter,
+        sym::iter_mut => IterType::IterMut,
+        sym::into_iter => IterType::IntoIter,
         _ => return,
     };
 

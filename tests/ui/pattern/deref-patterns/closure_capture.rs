@@ -9,7 +9,7 @@ struct NoCopy;
 fn main() {
     let b = Rc::new("aaa".to_string());
     let f = || {
-        let deref!(ref s) = b else { unreachable!() };
+        let deref!(ref s) = b;
         assert_eq!(s.len(), 3);
     };
     assert_eq!(b.len(), 3);
@@ -26,7 +26,7 @@ fn main() {
 
     let mut b = "aaa".to_string();
     let mut f = || {
-        let deref!(ref mut s) = b else { unreachable!() };
+        let deref!(ref mut s) = b;
         s.make_ascii_uppercase();
     };
     f();
@@ -53,7 +53,7 @@ fn main() {
     let b = Box::new(NoCopy);
     let f = || {
         // this should move out of the box rather than borrow.
-        let deref!(x) = b else { unreachable!() };
+        let deref!(x) = b;
         drop::<NoCopy>(x);
     };
     f();
@@ -61,7 +61,7 @@ fn main() {
     let b = Box::new((NoCopy,));
     let f = || {
         // this should move out of the box rather than borrow.
-        let (x,) = b else { unreachable!() };
+        let (x,) = b;
         drop::<NoCopy>(x);
     };
     f();

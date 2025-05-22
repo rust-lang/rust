@@ -1,6 +1,6 @@
 use clippy_config::Conf;
-use clippy_utils::def_path_def_ids;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::paths::{PathNS, lookup_path_str};
 use clippy_utils::source::SpanRangeExt;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -56,8 +56,12 @@ impl ImportRename {
             renames: conf
                 .enforced_import_renames
                 .iter()
-                .map(|x| (x.path.split("::").collect::<Vec<_>>(), Symbol::intern(&x.rename)))
-                .flat_map(|(path, rename)| def_path_def_ids(tcx, &path).map(move |id| (id, rename)))
+                .map(|x| (&x.path, Symbol::intern(&x.rename)))
+                .flat_map(|(path, rename)| {
+                    lookup_path_str(tcx, PathNS::Arbitrary, path)
+                        .into_iter()
+                        .map(move |id| (id, rename))
+                })
                 .collect(),
         }
     }

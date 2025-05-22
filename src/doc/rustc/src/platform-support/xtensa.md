@@ -24,4 +24,4 @@ Xtensa targets that support `std` are documented in the [ESP-IDF platform suppor
 
 ## Building the targets
 
-The targets can be built by installing the [Xtensa enabled Rust channel](https://github.com/esp-rs/rust/). See instructions in the [RISC-V and Xtensa Targets section of the The Rust on ESP Book](https://docs.esp-rs.org/book/installation/riscv-and-xtensa.html).
+The targets can be built by installing the [Xtensa enabled Rust channel](https://github.com/esp-rs/rust/). See instructions in the [RISC-V and Xtensa Targets section of The Rust on ESP Book](https://docs.esp-rs.org/book/installation/riscv-and-xtensa.html).

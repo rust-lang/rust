@@ -32,21 +32,21 @@ Built-in implementations are provided for:
 
 ## Structural implementations
 
-There are two implementations of `Unsize` which can be thought of as
+There is one implementation of `Unsize` which can be thought of as
 structural:
-* `(A1, A2, .., An): Unsize<(A1, A2, .., U)>` given `An: Unsize<U>`, which
-  allows the tail field of a tuple to be unsized. This is gated behind the
-  [`unsized_tuple_coercion`] feature.
 * `Struct<.., Pi, .., Pj, ..>: Unsize<Struct<.., Ui, .., Uj, ..>>` given 
   `TailField<Pi, .., Pj>: Unsize<Ui, .. Uj>`, which allows the tail field of a
   struct to be unsized if it is the only field that mentions generic parameters
   `Pi`, .., `Pj` (which don't need to be contiguous).
 
-The rules for the latter implementation are slightly complicated, since they
+The rules for struct unsizing are slightly complicated, since they
 may allow more than one parameter to be changed (not necessarily unsized) and
 are best stated in terms of the tail field of the struct.
 
-[`unsized_tuple_coercion`]: https://doc.rust-lang.org/beta/unstable-book/language-features/unsized-tuple-coercion.html
+(Tuple unsizing was previously implemented behind the feature gate
+`unsized_tuple_coercion`, but the implementation was removed by [#137728].)
+
+[#137728]: https://github.com/rust-lang/rust/pull/137728
 
 ## Upcasting implementations
 

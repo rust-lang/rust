@@ -4884,3 +4884,22 @@ async fn baz<T: AsyncFnOnce(u32) -> i32>(c: T) {
         "#]],
     );
 }
+
+#[test]
+fn import_trait_items() {
+    check_infer(
+        r#"
+//- minicore: default
+use core::default::Default::default;
+fn main() {
+    let a: i32 = default();
+}
+    "#,
+        expect![[r#"
+            47..78 '{     ...t(); }': ()
+            57..58 'a': i32
+            66..73 'default': {unknown}
+            66..75 'default()': i32
+        "#]],
+    );
+}

@@ -15,7 +15,6 @@ pub(crate) fn expected_function(
         format!("expected function, found {}", d.found.display(ctx.sema.db, ctx.display_target)),
         d.call.map(|it| it.into()),
     )
-    .experimental()
 }
 
 #[cfg(test)]

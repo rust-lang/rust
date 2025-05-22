@@ -675,3 +675,9 @@ mod issue_14242 {
         rc_slice_provider().to_vec().into_iter()
     }
 }
+
+fn issue14833() {
+    use std::collections::HashSet;
+    let mut s = HashSet::<&String>::new();
+    s.remove(&"hello".to_owned());
+}

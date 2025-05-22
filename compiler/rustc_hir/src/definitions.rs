@@ -309,6 +309,8 @@ pub enum DefPathData {
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
+    /// Used for remapped captured lifetimes in an existential `impl Trait` type node.
+    OpaqueLifetime(Symbol),
     /// An anonymous associated type from an RPITIT. The symbol refers to the name of the method
     /// that defined the type.
     AnonAssocTy(Symbol),
@@ -445,7 +447,8 @@ impl DefPathData {
     pub fn get_opt_name(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
+            | OpaqueLifetime(name) => Some(name),
 
             Impl
             | ForeignMod
@@ -465,9 +468,8 @@ impl DefPathData {
     fn hashed_symbol(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) | AnonAssocTy(name) => {
-                Some(name)
-            }
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) | AnonAssocTy(name)
+            | OpaqueLifetime(name) => Some(name),
 
             Impl
             | ForeignMod
@@ -486,9 +488,8 @@ impl DefPathData {
     pub fn name(&self) -> DefPathDataName {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => {
-                DefPathDataName::Named(name)
-            }
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
+            | OpaqueLifetime(name) => DefPathDataName::Named(name),
             // Note that this does not show up in user print-outs.
             CrateRoot => DefPathDataName::Anon { namespace: kw::Crate },
             Impl => DefPathDataName::Anon { namespace: kw::Impl },

@@ -28,6 +28,6 @@ adding a new command-line argument.
   unstable-options` flag.
 
 [cli-docs]: https://doc.rust-lang.org/rustc/command-line-arguments.html
-[forge guide for new options]: https://forge.rust-lang.org/compiler/new_option.html
+[forge guide for new options]: https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#compiler-flags
 [unstable book]: https://doc.rust-lang.org/nightly/unstable-book/
 [`parse_bool`]: https://github.com/rust-lang/rust/blob/e5335592e78354e33d798d20c04bcd677c1df62d/src/librustc_session/options.rs#L307-L313

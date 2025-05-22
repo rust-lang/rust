@@ -188,6 +188,20 @@ where
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
+    /// Computes the least-upper-bound, or mutual supertype, of two values.
+    pub fn lub<T: ToTrace<'tcx>>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        expected: T,
+        actual: T,
+    ) -> Result<T, TypeError<'tcx>> {
+        self.infcx
+            .at(cause, param_env)
+            .lub(expected, actual)
+            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+    }
+
     #[must_use]
     pub fn select_where_possible(&self) -> Vec<E> {
         self.engine.borrow_mut().select_where_possible(self.infcx)

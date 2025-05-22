@@ -15,7 +15,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::{BytePos, Span};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -282,18 +282,18 @@ impl TraitBounds {
                     .iter()
                     .copied()
                     .chain(p.bounds.iter())
-                    .filter_map(get_trait_info_from_bound)
-                    .map(|(_, _, span)| snippet_with_applicability(cx, span, "..", &mut applicability))
+                    .map(|bound| snippet_with_applicability(cx, bound.span(), "_", &mut applicability))
                     .join(" + ");
                 let hint_string = format!(
                     "consider combining the bounds: `{}: {trait_bounds}`",
                     snippet(cx, p.bounded_ty.span, "_"),
                 );
+                let ty_name = snippet(cx, p.bounded_ty.span, "_");
                 span_lint_and_help(
                     cx,
                     TYPE_REPETITION_IN_BOUNDS,
                     bound.span,
-                    "this type has already been used as a bound predicate",
+                    format!("type `{ty_name}` has already been used as a bound predicate"),
                     None,
                     hint_string,
                 );
@@ -395,15 +395,7 @@ impl Hash for ComparableTraitRef<'_, '_> {
 fn get_trait_info_from_bound<'a>(bound: &'a GenericBound<'_>) -> Option<(Res, &'a [PathSegment<'a>], Span)> {
     if let GenericBound::Trait(t) = bound {
         let trait_path = t.trait_ref.path;
-        let trait_span = {
-            let path_span = trait_path.span;
-            if let BoundPolarity::Maybe(_) = t.modifiers.polarity {
-                path_span.with_lo(path_span.lo() - BytePos(1)) // include the `?`
-            } else {
-                path_span
-            }
-        };
-        Some((trait_path.res, trait_path.segments, trait_span))
+        Some((trait_path.res, trait_path.segments, t.span))
     } else {
         None
     }

@@ -910,7 +910,7 @@ pub(crate) struct AsmOptAlreadyprovided {
     pub(crate) span: Span,
     pub(crate) symbol: Symbol,
     #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
-    pub(crate) full_span: Span,
+    pub(crate) span_with_comma: Span,
 }
 
 #[derive(Diagnostic)]
@@ -921,7 +921,7 @@ pub(crate) struct AsmUnsupportedOption {
     pub(crate) span: Span,
     pub(crate) symbol: Symbol,
     #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
-    pub(crate) full_span: Span,
+    pub(crate) span_with_comma: Span,
     pub(crate) macro_name: &'static str,
 }
 

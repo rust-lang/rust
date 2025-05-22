@@ -9,7 +9,7 @@ mod vector_clock;
 pub mod weak_memory;
 
 // Import either the real genmc adapter or a dummy module.
-cfg_match! {
+cfg_select! {
     feature = "genmc" => {
         mod genmc;
         pub use self::genmc::{GenmcCtx, GenmcConfig};

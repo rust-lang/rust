@@ -51,14 +51,14 @@ pub fn rename_my_lifetimes(_args: TokenStream, input: TokenStream) -> TokenStrea
 
     fn mut_receiver_of(sig: &mut Signature) -> Option<&mut FnArg> {
         let arg = sig.inputs.first_mut()?;
-        if let FnArg::Typed(PatType { pat, .. }) = arg {
-            if let Pat::Ident(PatIdent { ident, .. }) = &**pat {
-                if ident == "self" {
-                    return Some(arg);
-                }
-            }
+        if let FnArg::Typed(PatType { pat, .. }) = arg
+            && let Pat::Ident(PatIdent { ident, .. }) = &**pat
+            && ident == "self"
+        {
+            Some(arg)
+        } else {
+            None
         }
-        None
     }
 
     let mut elided = 0;
@@ -66,30 +66,29 @@ pub fn rename_my_lifetimes(_args: TokenStream, input: TokenStream) -> TokenStrea
 
     // Look for methods having arbitrary self type taken by &mut ref
     for inner in &mut item.items {
-        if let ImplItem::Fn(method) = inner {
-            if let Some(FnArg::Typed(pat_type)) = mut_receiver_of(&mut method.sig) {
-                if let box Type::Reference(reference) = &mut pat_type.ty {
-                    // Target only unnamed lifetimes
-                    let name = match &reference.lifetime {
-                        Some(lt) if lt.ident == "_" => make_name(elided),
-                        None => make_name(elided),
-                        _ => continue,
-                    };
-                    elided += 1;
+        if let ImplItem::Fn(method) = inner
+            && let Some(FnArg::Typed(pat_type)) = mut_receiver_of(&mut method.sig)
+            && let box Type::Reference(reference) = &mut pat_type.ty
+        {
+            // Target only unnamed lifetimes
+            let name = match &reference.lifetime {
+                Some(lt) if lt.ident == "_" => make_name(elided),
+                None => make_name(elided),
+                _ => continue,
+            };
+            elided += 1;
 
-                    // HACK: Syn uses `Span` from the proc_macro2 crate, and does not seem to reexport it.
-                    // In order to avoid adding the dependency, get a default span from a nonexistent token.
-                    // A default span is needed to mark the code as coming from expansion.
-                    let span = Star::default().span();
+            // HACK: Syn uses `Span` from the proc_macro2 crate, and does not seem to reexport it.
+            // In order to avoid adding the dependency, get a default span from a nonexistent token.
+            // A default span is needed to mark the code as coming from expansion.
+            let span = Star::default().span();
 
-                    // Replace old lifetime with the named one
-                    let lifetime = Lifetime::new(&name, span);
-                    reference.lifetime = Some(parse_quote!(#lifetime));
+            // Replace old lifetime with the named one
+            let lifetime = Lifetime::new(&name, span);
+            reference.lifetime = Some(parse_quote!(#lifetime));
 
-                    // Add lifetime to the generics of the method
-                    method.sig.generics.params.push(parse_quote!(#lifetime));
-                }
-            }
+            // Add lifetime to the generics of the method
+            method.sig.generics.params.push(parse_quote!(#lifetime));
         }
     }
 
@@ -129,15 +128,15 @@ pub fn fake_desugar_await(_args: TokenStream, input: TokenStream) -> TokenStream
     let mut async_fn = parse_macro_input!(input as syn::ItemFn);
 
     for stmt in &mut async_fn.block.stmts {
-        if let syn::Stmt::Expr(syn::Expr::Match(syn::ExprMatch { expr: scrutinee, .. }), _) = stmt {
-            if let syn::Expr::Await(syn::ExprAwait { base, await_token, .. }) = scrutinee.as_mut() {
-                let blc = quote_spanned!( await_token.span => {
-                    #[allow(clippy::let_and_return)]
-                    let __pinned = #base;
-                    __pinned
-                });
-                *scrutinee = parse_quote!(#blc);
-            }
+        if let syn::Stmt::Expr(syn::Expr::Match(syn::ExprMatch { expr: scrutinee, .. }), _) = stmt
+            && let syn::Expr::Await(syn::ExprAwait { base, await_token, .. }) = scrutinee.as_mut()
+        {
+            let blc = quote_spanned!( await_token.span => {
+                #[allow(clippy::let_and_return)]
+                let __pinned = #base;
+                __pinned
+            });
+            *scrutinee = parse_quote!(#blc);
         }
     }
 

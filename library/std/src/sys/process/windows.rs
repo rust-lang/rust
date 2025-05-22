@@ -155,6 +155,9 @@ pub struct Command {
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
     force_quotes_enabled: bool,
+    startupinfo_fullscreen: bool,
+    startupinfo_untrusted_source: bool,
+    startupinfo_force_feedback: Option<bool>,
 }
 
 pub enum Stdio {
@@ -186,6 +189,9 @@ impl Command {
             stdout: None,
             stderr: None,
             force_quotes_enabled: false,
+            startupinfo_fullscreen: false,
+            startupinfo_untrusted_source: false,
+            startupinfo_force_feedback: None,
         }
     }
 
@@ -220,6 +226,18 @@ impl Command {
 
     pub fn raw_arg(&mut self, command_str_to_append: &OsStr) {
         self.args.push(Arg::Raw(command_str_to_append.to_os_string()))
+    }
+
+    pub fn startupinfo_fullscreen(&mut self, enabled: bool) {
+        self.startupinfo_fullscreen = enabled;
+    }
+
+    pub fn startupinfo_untrusted_source(&mut self, enabled: bool) {
+        self.startupinfo_untrusted_source = enabled;
+    }
+
+    pub fn startupinfo_force_feedback(&mut self, enabled: Option<bool>) {
+        self.startupinfo_force_feedback = enabled;
     }
 
     pub fn get_program(&self) -> &OsStr {
@@ -341,6 +359,24 @@ impl Command {
         if let Some(cmd_show) = self.show_window {
             si.dwFlags |= c::STARTF_USESHOWWINDOW;
             si.wShowWindow = cmd_show;
+        }
+
+        if self.startupinfo_fullscreen {
+            si.dwFlags |= c::STARTF_RUNFULLSCREEN;
+        }
+
+        if self.startupinfo_untrusted_source {
+            si.dwFlags |= c::STARTF_UNTRUSTEDSOURCE;
+        }
+
+        match self.startupinfo_force_feedback {
+            Some(true) => {
+                si.dwFlags |= c::STARTF_FORCEONFEEDBACK;
+            }
+            Some(false) => {
+                si.dwFlags |= c::STARTF_FORCEOFFFEEDBACK;
+            }
+            None => {}
         }
 
         let si_ptr: *mut c::STARTUPINFOW;

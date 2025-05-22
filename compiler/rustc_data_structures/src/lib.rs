@@ -19,7 +19,7 @@
 #![feature(ascii_char_variants)]
 #![feature(assert_matches)]
 #![feature(auto_traits)]
-#![feature(cfg_match)]
+#![feature(cfg_select)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(extend_one)]

@@ -26,16 +26,16 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
 
                         if namespace.is_none()
                             && matches!(
-                                name.as_str(),
-                                "ambiguous_glob_reexports"
-                                    | "dead_code"
-                                    | "deprecated"
-                                    | "hidden_glob_reexports"
-                                    | "unreachable_pub"
-                                    | "unused"
-                                    | "unused_braces"
-                                    | "unused_import_braces"
-                                    | "unused_imports"
+                                name,
+                                sym::ambiguous_glob_reexports
+                                    | sym::dead_code
+                                    | sym::deprecated
+                                    | sym::hidden_glob_reexports
+                                    | sym::unreachable_pub
+                                    | sym::unused
+                                    | sym::unused_braces
+                                    | sym::unused_import_braces
+                                    | sym::unused_imports
                             )
                         {
                             return;
@@ -43,16 +43,16 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
 
                         if namespace == Some(sym::clippy)
                             && matches!(
-                                name.as_str(),
-                                "wildcard_imports"
-                                    | "enum_glob_use"
-                                    | "redundant_pub_crate"
-                                    | "macro_use_imports"
-                                    | "unsafe_removed_from_name"
-                                    | "module_name_repetitions"
-                                    | "single_component_path_imports"
-                                    | "disallowed_types"
-                                    | "unused_trait_names"
+                                name,
+                                sym::wildcard_imports
+                                    | sym::enum_glob_use
+                                    | sym::redundant_pub_crate
+                                    | sym::macro_use_imports
+                                    | sym::unsafe_removed_from_name
+                                    | sym::module_name_repetitions
+                                    | sym::single_component_path_imports
+                                    | sym::disallowed_types
+                                    | sym::unused_trait_names
                             )
                         {
                             return;

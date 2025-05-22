@@ -129,11 +129,18 @@ pub(super) fn doc_comment(
         extract_definitions_from_docs(&docs)
             .into_iter()
             .filter_map(|(range, link, ns)| {
-                doc_mapping.map(range).filter(|mapping| mapping.file_id == src_file_id).and_then(
-                    |InFile { value: mapped_range, .. }| {
-                        Some(mapped_range).zip(resolve_doc_path_for_def(sema.db, def, &link, ns))
-                    },
-                )
+                doc_mapping
+                    .map(range)
+                    .filter(|(mapping, _)| mapping.file_id == src_file_id)
+                    .and_then(|(InFile { value: mapped_range, .. }, attr_id)| {
+                        Some(mapped_range).zip(resolve_doc_path_for_def(
+                            sema.db,
+                            def,
+                            &link,
+                            ns,
+                            attr_id.is_inner_attr(),
+                        ))
+                    })
             })
             .for_each(|(range, def)| {
                 hl.add(HlRange {

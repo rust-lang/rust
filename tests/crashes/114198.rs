@@ -1,5 +1,5 @@
 //@ known-bug: #114198
-//@ compile-flags: -Zprint-mono-items=eager
+//@ compile-flags: -Zprint-mono-items -Clink-dead-code
 
 #![feature(lazy_type_alias)]
 

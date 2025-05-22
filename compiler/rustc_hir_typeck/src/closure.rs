@@ -1080,15 +1080,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Check that this is a projection from the `Future` trait.
         let trait_def_id = predicate.projection_term.trait_def_id(self.tcx);
-        let future_trait = self.tcx.require_lang_item(LangItem::Future, Some(cause_span));
-        if trait_def_id != future_trait {
+        if !self.tcx.is_lang_item(trait_def_id, LangItem::Future) {
             debug!("deduce_future_output_from_projection: not a future");
             return None;
         }
 
         // The `Future` trait has only one associated item, `Output`,
         // so check that this is what we see.
-        let output_assoc_item = self.tcx.associated_item_def_ids(future_trait)[0];
+        let output_assoc_item = self.tcx.associated_item_def_ids(trait_def_id)[0];
         if output_assoc_item != predicate.projection_term.def_id {
             span_bug!(
                 cause_span,

@@ -1,4 +1,3 @@
-#![feature(let_chains)]
 #![feature(proc_macro_span)]
 #![allow(clippy::needless_if, dead_code)]
 

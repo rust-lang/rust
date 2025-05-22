@@ -4,9 +4,10 @@ error: interning a string literal
 LL |     let _ = Symbol::intern("f32");
    |             ^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: add the symbol to `clippy_utils/src/sym.rs` if needed
    = note: `-D clippy::interning-literals` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::interning_literals)]`
-help: use the preinterned symbol
+help: use a preinterned symbol instead
    |
 LL -     let _ = Symbol::intern("f32");
 LL +     let _ = sym::f32;
@@ -18,7 +19,8 @@ error: interning a string literal
 LL |     let _ = Symbol::intern("proc-macro");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use the preinterned symbol
+   = help: add the symbol to `clippy_utils/src/sym.rs` if needed
+help: use a preinterned symbol instead
    |
 LL -     let _ = Symbol::intern("proc-macro");
 LL +     let _ = sym::proc_dash_macro;
@@ -30,7 +32,8 @@ error: interning a string literal
 LL |     let _ = Symbol::intern("self");
    |             ^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use the preinterned symbol
+   = help: add the symbol to `clippy_utils/src/sym.rs` if needed
+help: use a preinterned symbol instead
    |
 LL -     let _ = Symbol::intern("self");
 LL +     let _ = kw::SelfLower;
@@ -42,7 +45,8 @@ error: interning a string literal
 LL |     let _ = Symbol::intern("msrv");
    |             ^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use the preinterned symbol
+   = help: add the symbol to `clippy_utils/src/sym.rs` if needed
+help: use a preinterned symbol instead
    |
 LL -     let _ = Symbol::intern("msrv");
 LL +     let _ = sym::msrv;
@@ -54,7 +58,8 @@ error: interning a string literal
 LL |     let _ = Symbol::intern("Cargo.toml");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use the preinterned symbol
+   = help: add the symbol to `clippy_utils/src/sym.rs` if needed
+help: use a preinterned symbol instead
    |
 LL -     let _ = Symbol::intern("Cargo.toml");
 LL +     let _ = sym::Cargo_toml;

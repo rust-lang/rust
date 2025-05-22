@@ -49,6 +49,10 @@ fn main() {
         //~^ ERROR
         let y: char = transmute(y);
         //~^ ERROR
+        let y: i32 = transmute('🐱');
+        //~^ ERROR
+        let y: char = transmute(y);
+        //~^ ERROR
 
         let x: u16 = transmute(8i16);
         //~^ ERROR
@@ -72,13 +76,18 @@ fn main() {
         let y: u64 = transmute(2.0);
         //~^ ERROR
 
-        let z: bool = transmute(1u8);
+        let y: f64 = transmute(1i64);
         //~^ ERROR
+        let y: i64 = transmute(1f64);
+        //~^ ERROR
+
+        let z: bool = transmute(1u8);
+        // clippy
         let z: u8 = transmute(z);
         //~^ ERROR
 
         let z: bool = transmute(1i8);
-        // no error!
+        // clippy
         let z: i8 = transmute(z);
         //~^ ERROR
     }

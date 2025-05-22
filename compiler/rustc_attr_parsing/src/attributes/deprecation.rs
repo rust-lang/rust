@@ -1,5 +1,4 @@
 use rustc_attr_data_structures::{AttributeKind, DeprecatedSince, Deprecation};
-use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol, sym};
 
 use super::SingleAttributeParser;
@@ -13,16 +12,13 @@ pub(crate) struct DeprecationParser;
 
 fn get(
     cx: &AcceptContext<'_>,
-    ident: Ident,
+    name: Symbol,
     param_span: Span,
     arg: &ArgParser<'_>,
     item: &Option<Symbol>,
 ) -> Option<Symbol> {
     if item.is_some() {
-        cx.emit_err(session_diagnostics::MultipleItem {
-            span: param_span,
-            item: ident.to_string(),
-        });
+        cx.emit_err(session_diagnostics::MultipleItem { span: param_span, item: name.to_string() });
         return None;
     }
     if let Some(v) = arg.name_value() {
@@ -83,16 +79,16 @@ impl SingleAttributeParser for DeprecationParser {
                     return None;
                 };
 
-                let (ident, arg) = param.word_or_empty();
+                let ident_name = param.path_without_args().word_sym();
 
-                match ident.name {
-                    sym::since => {
-                        since = Some(get(cx, ident, param_span, arg, &since)?);
+                match ident_name {
+                    Some(name @ sym::since) => {
+                        since = Some(get(cx, name, param_span, param.args(), &since)?);
                     }
-                    sym::note => {
-                        note = Some(get(cx, ident, param_span, arg, &note)?);
+                    Some(name @ sym::note) => {
+                        note = Some(get(cx, name, param_span, param.args(), &note)?);
                     }
-                    sym::suggestion => {
+                    Some(name @ sym::suggestion) => {
                         if !features.deprecated_suggestion() {
                             cx.emit_err(session_diagnostics::DeprecatedItemSuggestion {
                                 span: param_span,
@@ -101,12 +97,12 @@ impl SingleAttributeParser for DeprecationParser {
                             });
                         }
 
-                        suggestion = Some(get(cx, ident, param_span, arg, &suggestion)?);
+                        suggestion = Some(get(cx, name, param_span, param.args(), &suggestion)?);
                     }
                     _ => {
                         cx.emit_err(session_diagnostics::UnknownMetaItem {
                             span: param_span,
-                            item: ident.to_string(),
+                            item: param.path_without_args().to_string(),
                             expected: if features.deprecated_suggestion() {
                                 &["since", "note", "suggestion"]
                             } else {

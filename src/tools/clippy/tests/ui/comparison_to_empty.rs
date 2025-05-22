@@ -1,6 +1,5 @@
 #![warn(clippy::comparison_to_empty)]
 #![allow(clippy::borrow_deref_ref, clippy::needless_if, clippy::useless_vec)]
-#![feature(let_chains)]
 
 fn main() {
     // Disallow comparisons to empty

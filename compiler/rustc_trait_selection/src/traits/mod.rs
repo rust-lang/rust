@@ -340,7 +340,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     let mut predicates: Vec<_> = util::elaborate(
         tcx,
         unnormalized_env.caller_bounds().into_iter().map(|predicate| {
-            if tcx.features().generic_const_exprs() {
+            if tcx.features().generic_const_exprs() || tcx.next_trait_solver_globally() {
                 return predicate;
             }
 
@@ -405,8 +405,6 @@ pub fn normalize_param_env_or_error<'tcx>(
             // compatibility. Eventually when lazy norm is implemented this can just be removed.
             // We do not normalize types here as there is no backwards compatibility requirement
             // for us to do so.
-            //
-            // FIXME(-Znext-solver): remove this hack since we have deferred projection equality
             predicate.fold_with(&mut ConstNormalizer(tcx))
         }),
     )
@@ -690,24 +688,26 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 /// used during analysis.
 pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause<'tcx>>) -> bool {
     debug!("impossible_predicates(predicates={:?})", predicates);
-    let (infcx, param_env) =
-        tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized());
+    let (infcx, param_env) = tcx
+        .infer_ctxt()
+        .with_next_trait_solver(true)
+        .build_with_typing_env(ty::TypingEnv::fully_monomorphized());
+
     let ocx = ObligationCtxt::new(&infcx);
     let predicates = ocx.normalize(&ObligationCause::dummy(), param_env, predicates);
     for predicate in predicates {
         let obligation = Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate);
         ocx.register_obligation(obligation);
     }
-    let errors = ocx.select_all_or_error();
 
-    if !errors.is_empty() {
-        return true;
-    }
-
-    // Leak check for any higher-ranked trait mismatches.
-    // We only need to do this in the old solver, since the new solver already
-    // leak-checks.
-    if !infcx.next_trait_solver() && infcx.leak_check(ty::UniverseIndex::ROOT, None).is_err() {
+    // Use `select_where_possible` to only return impossible for true errors,
+    // and not ambiguities or overflows. Since the new trait solver forces
+    // some currently undetected overlap between `dyn Trait: Trait` built-in
+    // vs user-written impls to AMBIGUOUS, this may return ambiguity even
+    // with no infer vars. There may also be ways to encounter ambiguity due
+    // to post-mono overflow.
+    let true_errors = ocx.select_where_possible();
+    if !true_errors.is_empty() {
         return true;
     }
 

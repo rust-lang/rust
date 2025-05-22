@@ -1,6 +1,5 @@
 // tidy-alphabetical-start
 #![allow(rustc::default_hash_types)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(if_let_guard)]
 #![feature(never_type)]
 #![feature(proc_macro_diagnostic)]

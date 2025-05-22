@@ -68,6 +68,11 @@ impl<S: Copy> TokenStream<S> {
                         span: ident.span,
                     }))
                 }
+                // Note, we do not have to assemble our `-` punct and literal split into a single
+                // negative bridge literal here. As the proc-macro docs state
+                // > Literals created from negative numbers might not survive round-trips through
+                // > TokenStream or strings and may be broken into two tokens (- and positive
+                // > literal).
                 tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
                     result.push(bridge::TokenTree::Literal(bridge::Literal {
                         span: lit.span,

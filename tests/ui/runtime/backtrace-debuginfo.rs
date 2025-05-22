@@ -42,9 +42,13 @@ macro_rules! dump_and_die {
         // there, even on i686-pc-windows-msvc. We do the best we can in
         // rust-lang/rust to test it as well, but sometimes we just gotta keep
         // landing PRs.
+        //
+        // aarch64-msvc is broken as its backtraces are truncated.
+        // See https://github.com/rust-lang/rust/issues/140489
         if cfg!(any(target_os = "android",
                     all(target_os = "linux", target_arch = "arm"),
                     all(target_env = "msvc", target_arch = "x86"),
+                    all(target_env = "msvc", target_arch = "aarch64"),
                     target_os = "freebsd",
                     target_os = "dragonfly",
                     target_os = "openbsd")) {

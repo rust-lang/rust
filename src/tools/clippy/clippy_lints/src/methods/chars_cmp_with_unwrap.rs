@@ -5,12 +5,13 @@ use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, Lint};
+use rustc_span::Symbol;
 
 /// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints with `unwrap()`.
 pub(super) fn check(
     cx: &LateContext<'_>,
     info: &crate::methods::BinaryExprInfo<'_>,
-    chain_methods: &[&str],
+    chain_methods: &[Symbol],
     lint: &'static Lint,
     suggest: &str,
 ) -> bool {

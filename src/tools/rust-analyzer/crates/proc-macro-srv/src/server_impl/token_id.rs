@@ -153,16 +153,38 @@ impl server::TokenStream for TokenIdServer {
             }
 
             bridge::TokenTree::Literal(literal) => {
-                let literal = Literal {
-                    symbol: literal.symbol,
-                    suffix: literal.suffix,
-                    span: literal.span,
-                    kind: literal_kind_to_internal(literal.kind),
-                };
+                let token_trees =
+                    if let Some((_minus, symbol)) = literal.symbol.as_str().split_once('-') {
+                        let punct = tt::Punct {
+                            spacing: tt::Spacing::Alone,
+                            span: literal.span,
+                            char: '-' as char,
+                        };
+                        let leaf: tt::Leaf = tt::Leaf::from(punct);
+                        let minus_tree = tt::TokenTree::from(leaf);
 
-                let leaf = tt::Leaf::from(literal);
-                let tree = TokenTree::from(leaf);
-                TokenStream { token_trees: vec![tree] }
+                        let literal = Literal {
+                            symbol: Symbol::intern(symbol),
+                            suffix: literal.suffix,
+                            span: literal.span,
+                            kind: literal_kind_to_internal(literal.kind),
+                        };
+                        let leaf: tt::Leaf = tt::Leaf::from(literal);
+                        let tree = tt::TokenTree::from(leaf);
+                        vec![minus_tree, tree]
+                    } else {
+                        let literal = Literal {
+                            symbol: literal.symbol,
+                            suffix: literal.suffix,
+                            span: literal.span,
+                            kind: literal_kind_to_internal(literal.kind),
+                        };
+
+                        let leaf: tt::Leaf = tt::Leaf::from(literal);
+                        let tree = tt::TokenTree::from(leaf);
+                        vec![tree]
+                    };
+                TokenStream { token_trees }
             }
 
             bridge::TokenTree::Punct(p) => {

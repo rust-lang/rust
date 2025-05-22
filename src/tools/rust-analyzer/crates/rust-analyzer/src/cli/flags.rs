@@ -150,8 +150,8 @@ xflags::xflags! {
             optional --disable-proc-macros
             /// Run the proc-macro-srv binary at the specified path.
             optional --proc-macro-srv path: PathBuf
-            /// Run cache priming in parallel.
-            optional --parallel
+            /// The number of threads to use. Defaults to the number of physical cores.
+            optional --num-threads num_threads: usize
         }
 
         cmd ssr {
@@ -299,7 +299,7 @@ pub struct PrimeCaches {
     pub disable_build_scripts: bool,
     pub disable_proc_macros: bool,
     pub proc_macro_srv: Option<PathBuf>,
-    pub parallel: bool,
+    pub num_threads: Option<usize>,
 }
 
 #[derive(Debug)]

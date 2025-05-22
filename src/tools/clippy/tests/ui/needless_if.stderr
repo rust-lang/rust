@@ -1,5 +1,5 @@
 error: this `if` branch is empty
-  --> tests/ui/needless_if.rs:27:5
+  --> tests/ui/needless_if.rs:26:5
    |
 LL |     if (true) {}
    |     ^^^^^^^^^^^^ help: you can remove it
@@ -8,13 +8,13 @@ LL |     if (true) {}
    = help: to override `-D warnings` add `#[allow(clippy::needless_if)]`
 
 error: this `if` branch is empty
-  --> tests/ui/needless_if.rs:30:5
+  --> tests/ui/needless_if.rs:29:5
    |
 LL |     if maybe_side_effect() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `maybe_side_effect();`
 
 error: this `if` branch is empty
-  --> tests/ui/needless_if.rs:36:5
+  --> tests/ui/needless_if.rs:35:5
    |
 LL | /     if {
 LL | |
@@ -31,7 +31,7 @@ LL +     });
    |
 
 error: this `if` branch is empty
-  --> tests/ui/needless_if.rs:51:5
+  --> tests/ui/needless_if.rs:50:5
    |
 LL | /     if {
 LL | |
@@ -57,19 +57,19 @@ LL +     } && true);
    |
 
 error: this `if` branch is empty
-  --> tests/ui/needless_if.rs:96:5
+  --> tests/ui/needless_if.rs:95:5
    |
 LL |     if { maybe_side_effect() } {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `({ maybe_side_effect() });`
 
 error: this `if` branch is empty
-  --> tests/ui/needless_if.rs:99:5
+  --> tests/ui/needless_if.rs:98:5
    |
 LL |     if { maybe_side_effect() } && true {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `({ maybe_side_effect() } && true);`
 
 error: this `if` branch is empty
-  --> tests/ui/needless_if.rs:104:5
+  --> tests/ui/needless_if.rs:103:5
    |
 LL |     if true {}
    |     ^^^^^^^^^^ help: you can remove it: `true;`

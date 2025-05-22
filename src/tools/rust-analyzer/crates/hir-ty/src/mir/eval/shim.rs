@@ -5,6 +5,7 @@ use std::cmp::{self, Ordering};
 
 use chalk_ir::TyKind;
 use hir_def::{
+    CrateRootModuleId,
     builtin_type::{BuiltinInt, BuiltinUint},
     resolver::HasResolver,
 };
@@ -153,7 +154,7 @@ impl Evaluator<'_> {
     ) -> Result<Option<FunctionId>> {
         // `PanicFmt` is redirected to `ConstPanicFmt`
         if let Some(LangItem::PanicFmt) = self.db.lang_attr(def.into()) {
-            let resolver = self.db.crate_def_map(self.crate_id).crate_root().resolver(self.db);
+            let resolver = CrateRootModuleId::from(self.crate_id).resolver(self.db);
 
             let Some(const_panic_fmt) =
                 LangItem::ConstPanicFmt.resolve_function(self.db, resolver.krate())

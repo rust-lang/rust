@@ -16,7 +16,7 @@ use crate::{
     AssocItemId, AttrDefId, Complete, FxIndexMap, ModuleDefId, ModuleId, TraitId,
     db::DefDatabase,
     item_scope::{ImportOrExternCrate, ItemInNs},
-    nameres::DefMap,
+    nameres::{DefMap, crate_def_map},
     visibility::Visibility,
 };
 
@@ -129,7 +129,7 @@ impl ImportMap {
     fn collect_import_map(db: &dyn DefDatabase, krate: Crate) -> ImportMapIndex {
         let _p = tracing::info_span!("collect_import_map").entered();
 
-        let def_map = db.crate_def_map(krate);
+        let def_map = crate_def_map(db, krate);
         let mut map = FxIndexMap::default();
 
         // We look only into modules that are public(ly reexported), starting with the crate root.

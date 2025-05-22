@@ -229,6 +229,7 @@ mod handlers {
     mod unwrap_block;
     mod unwrap_return_type;
     mod unwrap_tuple;
+    mod unwrap_type_to_generic_arg;
     mod wrap_return_type;
     mod wrap_unwrap_cfg_attr;
 
@@ -369,6 +370,7 @@ mod handlers {
             unwrap_block::unwrap_block,
             unwrap_return_type::unwrap_return_type,
             unwrap_tuple::unwrap_tuple,
+            unwrap_type_to_generic_arg::unwrap_type_to_generic_arg,
             wrap_return_type::wrap_return_type,
             wrap_unwrap_cfg_attr::wrap_unwrap_cfg_attr,
 

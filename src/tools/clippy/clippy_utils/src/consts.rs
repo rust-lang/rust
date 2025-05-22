@@ -487,7 +487,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             ExprKind::Path(ref qpath) => self.qpath(qpath, e.hir_id),
             ExprKind::Block(block, _) => self.block(block),
             ExprKind::Lit(lit) => {
-                if is_direct_expn_of(e.span, "cfg").is_some() {
+                if is_direct_expn_of(e.span, sym::cfg).is_some() {
                     None
                 } else {
                     Some(lit_to_mir_constant(&lit.node, self.typeck.expr_ty_opt(e)))
@@ -565,7 +565,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 })
             },
             ExprKind::Lit(lit) => {
-                if is_direct_expn_of(e.span, "cfg").is_some() {
+                if is_direct_expn_of(e.span, sym::cfg).is_some() {
                     None
                 } else {
                     match &lit.node {
@@ -654,7 +654,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                         span,
                         ..
                     }) = self.tcx.hir_node(body_id.hir_id)
-                    && is_direct_expn_of(*span, "cfg").is_some()
+                    && is_direct_expn_of(*span, sym::cfg).is_some()
                 {
                     return None;
                 }

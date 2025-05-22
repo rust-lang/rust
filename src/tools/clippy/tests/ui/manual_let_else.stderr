@@ -529,5 +529,25 @@ LL +                 return;
 LL +             };
    |
 
-error: aborting due to 33 previous errors
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else.rs:520:9
+   |
+LL | /         let value = match foo() {
+LL | |
+LL | |             Err(_) => return Err("abc"),
+LL | |             Ok(value) => value,
+LL | |         };
+   | |__________^ help: consider writing: `let Ok(value) = foo() else { return Err("abc") };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else.rs:527:9
+   |
+LL | /         let v = match w {
+LL | |
+LL | |             None => return Err("abc"),
+LL | |             Some(x) => x,
+LL | |         };
+   | |__________^ help: consider writing: `let Some(v) = w else { return Err("abc") };`
+
+error: aborting due to 35 previous errors
 

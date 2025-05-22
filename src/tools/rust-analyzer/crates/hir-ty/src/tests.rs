@@ -132,7 +132,7 @@ fn check_impl(
             None => continue,
         };
         let def_map = module.def_map(&db);
-        visit_module(&db, &def_map, module.local_id, &mut |it| {
+        visit_module(&db, def_map, module.local_id, &mut |it| {
             let def = match it {
                 ModuleDefId::FunctionId(it) => it.into(),
                 ModuleDefId::EnumVariantId(it) => it.into(),
@@ -391,7 +391,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     let def_map = module.def_map(&db);
 
     let mut defs: Vec<(DefWithBodyId, Crate)> = Vec::new();
-    visit_module(&db, &def_map, module.local_id, &mut |it| {
+    visit_module(&db, def_map, module.local_id, &mut |it| {
         let def = match it {
             ModuleDefId::FunctionId(it) => it.into(),
             ModuleDefId::EnumVariantId(it) => it.into(),
@@ -504,7 +504,7 @@ pub(crate) fn visit_module(
     fn visit_body(db: &TestDB, body: &Body, cb: &mut dyn FnMut(ModuleDefId)) {
         for (_, def_map) in body.blocks(db) {
             for (mod_id, _) in def_map.modules() {
-                visit_module(db, &def_map, mod_id, cb);
+                visit_module(db, def_map, mod_id, cb);
             }
         }
     }
@@ -570,7 +570,7 @@ fn salsa_bug() {
 
     let module = db.module_for_file(pos.file_id.file_id(&db));
     let crate_def_map = module.def_map(&db);
-    visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
+    visit_module(&db, crate_def_map, module.local_id, &mut |def| {
         db.infer(match def {
             ModuleDefId::FunctionId(it) => it.into(),
             ModuleDefId::EnumVariantId(it) => it.into(),
@@ -609,7 +609,7 @@ fn salsa_bug() {
 
     let module = db.module_for_file(pos.file_id.file_id(&db));
     let crate_def_map = module.def_map(&db);
-    visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
+    visit_module(&db, crate_def_map, module.local_id, &mut |def| {
         db.infer(match def {
             ModuleDefId::FunctionId(it) => it.into(),
             ModuleDefId::EnumVariantId(it) => it.into(),

@@ -10,7 +10,7 @@ use chalk_ir::{UniverseIndex, WithKind, cast::Cast};
 use hir_def::{
     AssocItemId, BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup,
     ModuleId, TraitId,
-    nameres::{DefMap, assoc::ImplItems},
+    nameres::{DefMap, assoc::ImplItems, block_def_map, crate_def_map},
     signatures::{ConstFlags, EnumFlags, FnFlags, StructFlags, TraitFlags, TypeAliasFlags},
 };
 use hir_expand::name::Name;
@@ -152,7 +152,7 @@ impl TraitImpls {
         let _p = tracing::info_span!("trait_impls_in_crate_query", ?krate).entered();
         let mut impls = FxHashMap::default();
 
-        Self::collect_def_map(db, &mut impls, &db.crate_def_map(krate));
+        Self::collect_def_map(db, &mut impls, crate_def_map(db, krate));
 
         Arc::new(Self::finish(impls))
     }
@@ -164,7 +164,7 @@ impl TraitImpls {
         let _p = tracing::info_span!("trait_impls_in_block_query").entered();
         let mut impls = FxHashMap::default();
 
-        Self::collect_def_map(db, &mut impls, &db.block_def_map(block));
+        Self::collect_def_map(db, &mut impls, block_def_map(db, block));
 
         if impls.is_empty() { None } else { Some(Arc::new(Self::finish(impls))) }
     }
@@ -214,7 +214,7 @@ impl TraitImpls {
             for konst in module_data.scope.unnamed_consts() {
                 let body = db.body(konst.into());
                 for (_, block_def_map) in body.blocks(db) {
-                    Self::collect_def_map(db, map, &block_def_map);
+                    Self::collect_def_map(db, map, block_def_map);
                 }
             }
         }
@@ -280,8 +280,8 @@ impl InherentImpls {
         let _p = tracing::info_span!("inherent_impls_in_crate_query", ?krate).entered();
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
-        let crate_def_map = db.crate_def_map(krate);
-        impls.collect_def_map(db, &crate_def_map);
+        let crate_def_map = crate_def_map(db, krate);
+        impls.collect_def_map(db, crate_def_map);
         impls.shrink_to_fit();
 
         Arc::new(impls)
@@ -294,8 +294,8 @@ impl InherentImpls {
         let _p = tracing::info_span!("inherent_impls_in_block_query").entered();
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
-        let block_def_map = db.block_def_map(block);
-        impls.collect_def_map(db, &block_def_map);
+        let block_def_map = block_def_map(db, block);
+        impls.collect_def_map(db, block_def_map);
         impls.shrink_to_fit();
 
         if impls.map.is_empty() && impls.invalid_impls.is_empty() {
@@ -337,7 +337,7 @@ impl InherentImpls {
             for konst in module_data.scope.unnamed_consts() {
                 let body = db.body(konst.into());
                 for (_, block_def_map) in body.blocks(db) {
-                    self.collect_def_map(db, &block_def_map);
+                    self.collect_def_map(db, block_def_map);
                 }
             }
         }
@@ -1399,7 +1399,7 @@ fn iterate_inherent_methods(
             )?;
         }
 
-        block = db.block_def_map(block_id).parent().and_then(|module| module.containing_block());
+        block = block_def_map(db, block_id).parent().and_then(|module| module.containing_block());
     }
 
     for krate in def_crates {

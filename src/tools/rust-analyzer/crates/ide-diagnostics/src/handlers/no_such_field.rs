@@ -22,6 +22,7 @@ pub(crate) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) 
             "field is private",
             node,
         )
+        .stable()
     } else {
         Diagnostic::new_with_syntax_node_ptr(
             ctx,
@@ -32,6 +33,7 @@ pub(crate) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) 
             "no such field",
             node,
         )
+        .stable()
         .with_fixes(fixes(ctx, d))
     }
 }

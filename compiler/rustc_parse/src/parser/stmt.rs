@@ -879,7 +879,12 @@ impl<'a> Parser<'a> {
             {
                 // Just check for errors and recover; do not eat semicolon yet.
 
-                let expect_result = self.expect_one_of(&[], &[exp!(Semi), exp!(CloseBrace)]);
+                let expect_result =
+                    if let Err(e) = self.maybe_recover_from_ternary_operator(Some(expr.span)) {
+                        Err(e)
+                    } else {
+                        self.expect_one_of(&[], &[exp!(Semi), exp!(CloseBrace)])
+                    };
 
                 // Try to both emit a better diagnostic, and avoid further errors by replacing
                 // the `expr` with `ExprKind::Err`.

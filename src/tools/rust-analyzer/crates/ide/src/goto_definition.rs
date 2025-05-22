@@ -1923,6 +1923,74 @@ pub fn foo() { }
     }
 
     #[test]
+    fn goto_def_for_intra_doc_link_outer_same_file() {
+        check(
+            r#"
+/// [`S$0`]
+mod m {
+    //! [`super::S`]
+}
+struct S;
+     //^
+            "#,
+        );
+
+        check(
+            r#"
+/// [`S$0`]
+mod m {}
+struct S;
+     //^
+            "#,
+        );
+
+        check(
+            r#"
+/// [`S$0`]
+fn f() {
+    //! [`S`]
+}
+struct S;
+     //^
+            "#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_intra_doc_link_inner_same_file() {
+        check(
+            r#"
+/// [`S`]
+mod m {
+    //! [`super::S$0`]
+}
+struct S;
+     //^
+            "#,
+        );
+
+        check(
+            r#"
+mod m {
+    //! [`super::S$0`]
+}
+struct S;
+     //^
+            "#,
+        );
+
+        check(
+            r#"
+fn f() {
+    //! [`S$0`]
+}
+struct S;
+     //^
+            "#,
+        );
+    }
+
+    #[test]
     fn goto_def_for_intra_doc_link_inner() {
         check(
             r#"

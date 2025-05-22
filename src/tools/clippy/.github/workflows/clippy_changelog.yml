@@ -15,27 +15,18 @@ jobs:
   changelog:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        shell: bash
-
     steps:
     # Run
     - name: Check Changelog
       if: ${{ github.event_name == 'pull_request' }}
       run: |
-        body=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -s "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" | \
-          python -c "import sys, json; print(json.load(sys.stdin)['body'])")
-        output=$(awk '/^changelog:\s*\S/ && !/changelog: \[.*\]: your change/' <<< "$body" | sed "s/changelog:\s*//g")
-        if [ -z "$output" ]; then
-          echo "ERROR: pull request message must contain 'changelog: ...' with your changelog. Please add it."
+        if [[ -z $(grep -oP 'changelog: *\K\S+' <<< "$PR_BODY") ]]; then
+          echo "::error::Pull request message must contain 'changelog: ...' with your changelog. Please add it."
           exit 1
-        else
-          echo "changelog: $output"
         fi
       env:
-        PYTHONIOENCODING: 'utf-8'
-        PR_NUMBER: '${{ github.event.number }}'
+        PR_BODY: ${{ github.event.pull_request.body }})
+
 
   # We need to have the "conclusion" job also on PR CI, to make it possible
   # to add PRs to a merge queue.

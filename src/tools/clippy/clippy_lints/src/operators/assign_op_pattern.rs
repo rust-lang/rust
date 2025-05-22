@@ -26,7 +26,7 @@ pub(super) fn check<'tcx>(
             let rty = cx.typeck_results().expr_ty(rhs);
             if let Some((_, lang_item)) = binop_traits(op.node)
                 && let Some(trait_id) = cx.tcx.lang_items().get(lang_item)
-                && let parent_fn = cx.tcx.hir_get_parent_item(e.hir_id).def_id
+                && let parent_fn = cx.tcx.hir_get_parent_item(e.hir_id)
                 && trait_ref_of_method(cx, parent_fn).is_none_or(|t| t.path.res.def_id() != trait_id)
                 && implements_trait(cx, ty, trait_id, &[rty.into()])
             {

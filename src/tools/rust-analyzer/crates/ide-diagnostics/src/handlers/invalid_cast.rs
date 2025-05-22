@@ -100,7 +100,7 @@ pub(crate) fn invalid_cast(ctx: &DiagnosticsContext<'_>, d: &hir::InvalidCast) -
         //     "cannot cast to a pointer of an unknown kind".to_owned(),
         // ),
     };
-    Diagnostic::new(code, message, display_range)
+    Diagnostic::new(code, message, display_range).stable()
 }
 
 // Diagnostic: cast-to-unsized
@@ -113,6 +113,7 @@ pub(crate) fn cast_to_unsized(ctx: &DiagnosticsContext<'_>, d: &hir::CastToUnsiz
         format_ty!(ctx, "cast to unsized type: `{}`", d.cast_ty),
         display_range,
     )
+    .stable()
 }
 
 #[cfg(test)]

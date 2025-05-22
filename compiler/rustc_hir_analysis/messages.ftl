@@ -522,7 +522,7 @@ hir_analysis_trait_object_declared_with_no_traits =
     at least one trait is required for an object type
     .alias_span = this alias does not contain a trait
 
-hir_analysis_traits_with_defualt_impl = traits with a default impl, like `{$traits}`, cannot be implemented for {$problematic_kind} `{$self_ty}`
+hir_analysis_traits_with_default_impl = traits with a default impl, like `{$traits}`, cannot be implemented for {$problematic_kind} `{$self_ty}`
     .note = a trait object implements `{$traits}` if and only if `{$traits}` is one of the trait object's trait bounds
 
 hir_analysis_transparent_enum_variant = transparent enum needs exactly one variant, but has {$number}

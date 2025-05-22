@@ -8,10 +8,10 @@ use rustc_span::def_id::LocalDefId;
 /// Create a THIR tree for debugging.
 pub fn thir_tree(tcx: TyCtxt<'_>, owner_def: LocalDefId) -> String {
     match super::cx::thir_body(tcx, owner_def) {
-        Ok((thir, _)) => {
+        Ok((thir, expr)) => {
             let thir = thir.steal();
             let mut printer = ThirPrinter::new(&thir);
-            printer.print();
+            printer.print(expr);
             printer.into_buffer()
         }
         Err(_) => "error".into(),
@@ -58,7 +58,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         }
     }
 
-    fn print(&mut self) {
+    fn print(&mut self, body_expr: ExprId) {
         print_indented!(self, "params: [", 0);
         for param in self.thir.params.iter() {
             self.print_param(param, 1);
@@ -66,8 +66,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         print_indented!(self, "]", 0);
 
         print_indented!(self, "body:", 0);
-        let expr = ExprId::from_usize(self.thir.exprs.len() - 1);
-        self.print_expr(expr, 1);
+        self.print_expr(body_expr, 1);
     }
 
     fn into_buffer(self) -> String {

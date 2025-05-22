@@ -325,7 +325,7 @@ fn array_map_drop_safety() {
     let success = std::panic::catch_unwind(|| {
         let items = [0; 10];
         let mut nth = 0;
-        items.map(|_| {
+        let _ = items.map(|_| {
             assert!(nth < num_to_create);
             nth += 1;
             DropCounter

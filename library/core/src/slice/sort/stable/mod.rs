@@ -7,7 +7,7 @@ use crate::mem::{MaybeUninit, SizedTypeProperties};
 use crate::slice::sort::shared::smallsort::{
     SMALL_SORT_GENERAL_SCRATCH_LEN, StableSmallSortTypeImpl, insertion_sort_shift_left,
 };
-use crate::{cfg_match, intrinsics};
+use crate::{cfg_select, intrinsics};
 
 pub(crate) mod merge;
 
@@ -39,13 +39,13 @@ pub fn sort<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], is_less
         return;
     }
 
-    cfg_match! {
+    cfg_select! {
         any(feature = "optimize_for_size", target_pointer_width = "16") => {
             // Unlike driftsort, mergesort only requires len / 2,
             // not len - len / 2.
             let alloc_len = len / 2;
 
-            cfg_match! {
+            cfg_select! {
                 target_pointer_width = "16" => {
                     let mut heap_buf = BufT::with_capacity(alloc_len);
                     let scratch = heap_buf.as_uninit_slice_mut();

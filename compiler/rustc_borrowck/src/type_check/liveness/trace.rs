@@ -621,13 +621,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
                         &ocx, op, span,
                     ) {
                         Ok(_) => ocx.select_all_or_error(),
-                        Err(e) => {
-                            if e.is_empty() {
-                                ocx.select_all_or_error()
-                            } else {
-                                e
-                            }
-                        }
+                        Err(e) => e,
                     };
 
                     // Could have no errors if a type lowering error, say, caused the query

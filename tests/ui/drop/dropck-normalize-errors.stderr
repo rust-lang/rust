@@ -1,0 +1,76 @@
+error[E0277]: the trait bound `NonImplementedStruct: NonImplementedTrait` is not satisfied in `ADecoder<'a>`
+  --> $DIR/dropck-normalize-errors.rs:15:28
+   |
+LL | fn make_a_decoder<'a>() -> ADecoder<'a> {
+   |                            ^^^^^^^^^^^^ within `ADecoder<'a>`, the trait `NonImplementedTrait` is not implemented for `NonImplementedStruct`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dropck-normalize-errors.rs:7:1
+   |
+LL | trait NonImplementedTrait {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required because it appears within the type `BDecoder`
+  --> $DIR/dropck-normalize-errors.rs:26:12
+   |
+LL | pub struct BDecoder {
+   |            ^^^^^^^^
+note: required because it appears within the type `ADecoder<'a>`
+  --> $DIR/dropck-normalize-errors.rs:12:12
+   |
+LL | pub struct ADecoder<'a> {
+   |            ^^^^^^^^
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: the trait bound `NonImplementedStruct: NonImplementedTrait` is not satisfied in `BDecoder`
+  --> $DIR/dropck-normalize-errors.rs:23:20
+   |
+LL |     type Decoder = BDecoder;
+   |                    ^^^^^^^^ within `BDecoder`, the trait `NonImplementedTrait` is not implemented for `NonImplementedStruct`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dropck-normalize-errors.rs:7:1
+   |
+LL | trait NonImplementedTrait {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required because it appears within the type `BDecoder`
+  --> $DIR/dropck-normalize-errors.rs:26:12
+   |
+LL | pub struct BDecoder {
+   |            ^^^^^^^^
+note: required by a bound in `Decode::Decoder`
+  --> $DIR/dropck-normalize-errors.rs:4:5
+   |
+LL |     type Decoder;
+   |     ^^^^^^^^^^^^^ required by this bound in `Decode::Decoder`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Decoder: ?Sized;
+   |                 ++++++++
+
+error[E0277]: the trait bound `NonImplementedStruct: NonImplementedTrait` is not satisfied
+  --> $DIR/dropck-normalize-errors.rs:27:22
+   |
+LL |     non_implemented: <NonImplementedStruct as NonImplementedTrait>::Assoc,
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NonImplementedTrait` is not implemented for `NonImplementedStruct`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dropck-normalize-errors.rs:7:1
+   |
+LL | trait NonImplementedTrait {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `NonImplementedStruct: NonImplementedTrait` is not satisfied
+  --> $DIR/dropck-normalize-errors.rs:15:28
+   |
+LL | fn make_a_decoder<'a>() -> ADecoder<'a> {
+   |                            ^^^^^^^^^^^^ the trait `NonImplementedTrait` is not implemented for `NonImplementedStruct`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dropck-normalize-errors.rs:7:1
+   |
+LL | trait NonImplementedTrait {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

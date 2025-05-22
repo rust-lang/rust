@@ -1,6 +1,6 @@
 // tidy-alphabetical-start
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
-#![cfg_attr(test, feature(cfg_match))]
+#![cfg_attr(test, feature(cfg_select))]
 #![feature(alloc_layout_extra)]
 #![feature(array_chunks)]
 #![feature(array_ptr_get)]
@@ -12,10 +12,12 @@
 #![feature(async_iterator)]
 #![feature(bigint_helper_methods)]
 #![feature(bstr)]
+#![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
 #![feature(const_eval_select)]
 #![feature(const_trait_impl)]
+#![feature(core_float_math)]
 #![feature(core_intrinsics)]
 #![feature(core_intrinsics_fallbacks)]
 #![feature(core_io_borrowed_buf)]
@@ -24,10 +26,15 @@
 #![feature(dec2flt)]
 #![feature(duration_constants)]
 #![feature(duration_constructors)]
+#![feature(duration_constructors_lite)]
 #![feature(error_generic_member_access)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(extern_types)]
+#![feature(f128)]
+#![feature(f16)]
+#![feature(float_algebraic)]
+#![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
@@ -143,6 +150,7 @@ mod cmp;
 mod const_ptr;
 mod convert;
 mod ffi;
+mod floats;
 mod fmt;
 mod future;
 mod hash;

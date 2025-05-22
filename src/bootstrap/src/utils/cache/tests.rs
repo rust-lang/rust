@@ -13,26 +13,6 @@ fn test_string_interning() {
 }
 
 #[test]
-fn test_path_interning() {
-    let p1 = PathBuf::from("/tmp/file").intern();
-    let p2 = PathBuf::from("/tmp/file").intern();
-    let p3 = PathBuf::from("/tmp/other").intern();
-
-    assert_eq!(p1, p2);
-    assert_ne!(p1, p3);
-}
-
-#[test]
-fn test_vec_interning() {
-    let v1 = vec!["a".to_string(), "b".to_string()].intern();
-    let v2 = vec!["a".to_string(), "b".to_string()].intern();
-    let v3 = vec!["c".to_string()].intern();
-
-    assert_eq!(v1, v2);
-    assert_ne!(v1, v3);
-}
-
-#[test]
 fn test_interned_equality() {
     let s1 = INTERNER.intern_str("test");
     let s2 = INTERNER.intern_str("test");

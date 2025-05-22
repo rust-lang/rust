@@ -28,8 +28,8 @@ format is specific to `rustc`, and may change over time. This file contains:
   [`-C embed-bitcode=no`][embed-bitcode] CLI option to improve compile times
   and reduce disk space if LTO is not needed.
 * `rustc` [metadata], in a file named `lib.rmeta`.
-* A symbol table, which is generally a list of symbols with offsets to the
-  object file that contain that symbol. This is pretty standard for archive
+* A symbol table, which is essentially a list of symbols with offsets to the
+  object files that contain that symbol. This is pretty standard for archive
   files.
 
 [archive file]: https://en.wikipedia.org/wiki/Ar_(Unix)
@@ -46,12 +46,11 @@ A `dylib` is a platform-specific shared library. It includes the `rustc`
 
 ### rmeta
 
-An `rmeta` file is custom binary format that contains the [metadata] for the
-crate. This file can be used for fast "checks" of a project by skipping all
-code generation (as is done with `cargo check`), collecting enough information
-for documentation (as is done with `cargo doc`), or for
-[pipelining](#pipelining). This file is created if the
-[`--emit=metadata`][emit] CLI option is used.
+An `rmeta` file is a custom binary format that contains the [metadata] for the
+crate. This file can be used for fast "checks" of a project by skipping all code
+generation (as is done with `cargo check`), collecting enough information for
+documentation (as is done with `cargo doc`), or for [pipelining](#pipelining).
+This file is created if the [`--emit=metadata`][emit] CLI option is used.
 
 `rmeta` files do not support linking, since they do not contain compiled
 object files.
@@ -60,8 +59,8 @@ object files.
 
 ## Metadata
 
-The metadata contains a wide swath of different elements. This guide will not
-go into detail of every field it contains. You are encouraged to browse the
+The metadata contains a wide swath of different elements. This guide will not go
+into detail about every field it contains. You are encouraged to browse the
 [`CrateRoot`] definition to get a sense of the different elements it contains.
 Everything about metadata encoding and decoding is in the [`rustc_metadata`]
 package.
@@ -122,9 +121,9 @@ much more.
 
 By default, all Rust symbols are mangled and incorporate the stable crate id.
 This allows multiple versions of the same crate to be included together. Cargo
-automatically generates `-C metadata` hashes based on a variety of factors,
-like the package version, source, and the target kind (a lib and test can have
-the same crate name, so they need to be disambiguated).
+automatically generates `-C metadata` hashes based on a variety of factors, like
+the package version, source, and target kind (a lib and test can have the same
+crate name, so they need to be disambiguated).
 
 [`StableCrateId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/def_id/struct.StableCrateId.html
 [`StableCrateId::new`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/def_id/struct.StableCrateId.html#method.new
@@ -154,7 +153,7 @@ will also look at the [sysroot] to find dependencies.
 
 As crates are loaded, they are kept in the [`CStore`] with the crate metadata
 wrapped in the [`CrateMetadata`] struct. After resolution and expansion, the
-`CStore` will make its way into the [`GlobalCtxt`] for the rest of
+`CStore` will make its way into the [`GlobalCtxt`] for the rest of the
 compilation.
 
 [name resolution]: ../name-resolution.md

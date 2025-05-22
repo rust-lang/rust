@@ -1,5 +1,5 @@
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:6:13
+  --> tests/ui/manual_saturating_arithmetic.rs:4:13
    |
 LL |     let _ = 1u32.checked_add(1).unwrap_or(u32::max_value());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_add`: `1u32.saturating_add(1)`
@@ -8,19 +8,19 @@ LL |     let _ = 1u32.checked_add(1).unwrap_or(u32::max_value());
    = help: to override `-D warnings` add `#[allow(clippy::manual_saturating_arithmetic)]`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:8:13
+  --> tests/ui/manual_saturating_arithmetic.rs:6:13
    |
 LL |     let _ = 1u32.checked_add(1).unwrap_or(u32::MAX);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_add`: `1u32.saturating_add(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:10:13
+  --> tests/ui/manual_saturating_arithmetic.rs:8:13
    |
 LL |     let _ = 1u8.checked_add(1).unwrap_or(255);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_add`: `1u8.saturating_add(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:12:13
+  --> tests/ui/manual_saturating_arithmetic.rs:10:13
    |
 LL |       let _ = 1u128
    |  _____________^
@@ -30,49 +30,49 @@ LL | |         .unwrap_or(340_282_366_920_938_463_463_374_607_431_768_211_455);
    | |_______________________________________________________________________^ help: consider using `saturating_add`: `1u128.saturating_add(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:18:13
+  --> tests/ui/manual_saturating_arithmetic.rs:16:13
    |
 LL |     let _ = 1u32.checked_mul(1).unwrap_or(u32::MAX);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_mul`: `1u32.saturating_mul(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:21:13
+  --> tests/ui/manual_saturating_arithmetic.rs:19:13
    |
 LL |     let _ = 1u32.checked_sub(1).unwrap_or(u32::min_value());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_sub`: `1u32.saturating_sub(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:23:13
+  --> tests/ui/manual_saturating_arithmetic.rs:21:13
    |
 LL |     let _ = 1u32.checked_sub(1).unwrap_or(u32::MIN);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_sub`: `1u32.saturating_sub(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:25:13
+  --> tests/ui/manual_saturating_arithmetic.rs:23:13
    |
 LL |     let _ = 1u8.checked_sub(1).unwrap_or(0);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_sub`: `1u8.saturating_sub(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:30:13
+  --> tests/ui/manual_saturating_arithmetic.rs:28:13
    |
 LL |     let _ = 1i32.checked_add(1).unwrap_or(i32::max_value());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_add`: `1i32.saturating_add(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:32:13
+  --> tests/ui/manual_saturating_arithmetic.rs:30:13
    |
 LL |     let _ = 1i32.checked_add(1).unwrap_or(i32::MAX);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_add`: `1i32.saturating_add(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:34:13
+  --> tests/ui/manual_saturating_arithmetic.rs:32:13
    |
 LL |     let _ = 1i8.checked_add(1).unwrap_or(127);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_add`: `1i8.saturating_add(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:36:13
+  --> tests/ui/manual_saturating_arithmetic.rs:34:13
    |
 LL |       let _ = 1i128
    |  _____________^
@@ -82,25 +82,25 @@ LL | |         .unwrap_or(170_141_183_460_469_231_731_687_303_715_884_105_727);
    | |_______________________________________________________________________^ help: consider using `saturating_add`: `1i128.saturating_add(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:40:13
+  --> tests/ui/manual_saturating_arithmetic.rs:38:13
    |
 LL |     let _ = 1i32.checked_add(-1).unwrap_or(i32::min_value());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_add`: `1i32.saturating_add(-1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:42:13
+  --> tests/ui/manual_saturating_arithmetic.rs:40:13
    |
 LL |     let _ = 1i32.checked_add(-1).unwrap_or(i32::MIN);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_add`: `1i32.saturating_add(-1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:44:13
+  --> tests/ui/manual_saturating_arithmetic.rs:42:13
    |
 LL |     let _ = 1i8.checked_add(-1).unwrap_or(-128);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_add`: `1i8.saturating_add(-1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:46:13
+  --> tests/ui/manual_saturating_arithmetic.rs:44:13
    |
 LL |       let _ = 1i128
    |  _____________^
@@ -110,25 +110,25 @@ LL | |         .unwrap_or(-170_141_183_460_469_231_731_687_303_715_884_105_728);
    | |________________________________________________________________________^ help: consider using `saturating_add`: `1i128.saturating_add(-1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:54:13
+  --> tests/ui/manual_saturating_arithmetic.rs:52:13
    |
 LL |     let _ = 1i32.checked_sub(1).unwrap_or(i32::min_value());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_sub`: `1i32.saturating_sub(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:56:13
+  --> tests/ui/manual_saturating_arithmetic.rs:54:13
    |
 LL |     let _ = 1i32.checked_sub(1).unwrap_or(i32::MIN);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_sub`: `1i32.saturating_sub(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:58:13
+  --> tests/ui/manual_saturating_arithmetic.rs:56:13
    |
 LL |     let _ = 1i8.checked_sub(1).unwrap_or(-128);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_sub`: `1i8.saturating_sub(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:60:13
+  --> tests/ui/manual_saturating_arithmetic.rs:58:13
    |
 LL |       let _ = 1i128
    |  _____________^
@@ -138,25 +138,25 @@ LL | |         .unwrap_or(-170_141_183_460_469_231_731_687_303_715_884_105_728);
    | |________________________________________________________________________^ help: consider using `saturating_sub`: `1i128.saturating_sub(1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:64:13
+  --> tests/ui/manual_saturating_arithmetic.rs:62:13
    |
 LL |     let _ = 1i32.checked_sub(-1).unwrap_or(i32::max_value());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_sub`: `1i32.saturating_sub(-1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:66:13
+  --> tests/ui/manual_saturating_arithmetic.rs:64:13
    |
 LL |     let _ = 1i32.checked_sub(-1).unwrap_or(i32::MAX);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_sub`: `1i32.saturating_sub(-1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:68:13
+  --> tests/ui/manual_saturating_arithmetic.rs:66:13
    |
 LL |     let _ = 1i8.checked_sub(-1).unwrap_or(127);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_sub`: `1i8.saturating_sub(-1)`
 
 error: manual saturating arithmetic
-  --> tests/ui/manual_saturating_arithmetic.rs:70:13
+  --> tests/ui/manual_saturating_arithmetic.rs:68:13
    |
 LL |       let _ = 1i128
    |  _____________^

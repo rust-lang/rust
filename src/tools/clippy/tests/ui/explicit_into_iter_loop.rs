@@ -73,3 +73,16 @@ fn main() {
 
     for _ in S.into_iter::<u32>() {}
 }
+
+fn issue14630() {
+    macro_rules! mac {
+        (into_iter $e:expr) => {
+            $e.into_iter()
+        };
+    }
+
+    for _ in dbg!([1, 2]).into_iter() {}
+    //~^ explicit_into_iter_loop
+
+    for _ in mac!(into_iter [1, 2]) {}
+}

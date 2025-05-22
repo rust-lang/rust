@@ -144,7 +144,7 @@ impl Cfg {
 
     /// Whether the configuration consists of just `Cfg` or `Not`.
     fn is_simple(&self) -> bool {
-        match *self {
+        match self {
             Cfg::False | Cfg::True | Cfg::Cfg(..) | Cfg::Not(..) => true,
             Cfg::All(..) | Cfg::Any(..) => false,
         }
@@ -152,7 +152,7 @@ impl Cfg {
 
     /// Whether the configuration consists of just `Cfg`, `Not` or `All`.
     fn is_all(&self) -> bool {
-        match *self {
+        match self {
             Cfg::False | Cfg::True | Cfg::Cfg(..) | Cfg::Not(..) | Cfg::All(..) => true,
             Cfg::Any(..) => false,
         }
@@ -204,7 +204,7 @@ impl Cfg {
     }
 
     fn should_append_only_to_description(&self) -> bool {
-        match *self {
+        match self {
             Cfg::False | Cfg::True => false,
             Cfg::Any(..) | Cfg::All(..) | Cfg::Cfg(..) => true,
             Cfg::Not(box Cfg::Cfg(..)) => true,
@@ -261,17 +261,17 @@ impl ops::Not for Cfg {
 impl ops::BitAndAssign for Cfg {
     fn bitand_assign(&mut self, other: Cfg) {
         match (self, other) {
-            (&mut Cfg::False, _) | (_, Cfg::True) => {}
+            (Cfg::False, _) | (_, Cfg::True) => {}
             (s, Cfg::False) => *s = Cfg::False,
-            (s @ &mut Cfg::True, b) => *s = b,
-            (&mut Cfg::All(ref mut a), Cfg::All(ref mut b)) => {
+            (s @ Cfg::True, b) => *s = b,
+            (Cfg::All(a), Cfg::All(ref mut b)) => {
                 for c in b.drain(..) {
                     if !a.contains(&c) {
                         a.push(c);
                     }
                 }
             }
-            (&mut Cfg::All(ref mut a), ref mut b) => {
+            (Cfg::All(a), ref mut b) => {
                 if !a.contains(b) {
                     a.push(mem::replace(b, Cfg::True));
                 }
@@ -305,15 +305,15 @@ impl ops::BitOrAssign for Cfg {
     fn bitor_assign(&mut self, other: Cfg) {
         match (self, other) {
             (Cfg::True, _) | (_, Cfg::False) | (_, Cfg::True) => {}
-            (s @ &mut Cfg::False, b) => *s = b,
-            (&mut Cfg::Any(ref mut a), Cfg::Any(ref mut b)) => {
+            (s @ Cfg::False, b) => *s = b,
+            (Cfg::Any(a), Cfg::Any(ref mut b)) => {
                 for c in b.drain(..) {
                     if !a.contains(&c) {
                         a.push(c);
                     }
                 }
             }
-            (&mut Cfg::Any(ref mut a), ref mut b) => {
+            (Cfg::Any(a), ref mut b) => {
                 if !a.contains(b) {
                     a.push(mem::replace(b, Cfg::True));
                 }
@@ -440,40 +440,34 @@ impl Display<'_> {
 
 impl fmt::Display for Display<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self.0 {
-            Cfg::Not(ref child) => match **child {
-                Cfg::Any(ref sub_cfgs) => {
-                    let separator =
-                        if sub_cfgs.iter().all(Cfg::is_simple) { " nor " } else { ", nor " };
-                    fmt.write_str("neither ")?;
+        match self.0 {
+            Cfg::Not(box Cfg::Any(sub_cfgs)) => {
+                let separator =
+                    if sub_cfgs.iter().all(Cfg::is_simple) { " nor " } else { ", nor " };
+                fmt.write_str("neither ")?;
 
-                    sub_cfgs
-                        .iter()
-                        .map(|sub_cfg| {
-                            fmt::from_fn(|fmt| {
-                                write_with_opt_paren(
-                                    fmt,
-                                    !sub_cfg.is_all(),
-                                    Display(sub_cfg, self.1),
-                                )
-                            })
+                sub_cfgs
+                    .iter()
+                    .map(|sub_cfg| {
+                        fmt::from_fn(|fmt| {
+                            write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))
                         })
-                        .joined(separator, fmt)
-                }
-                ref simple @ Cfg::Cfg(..) => write!(fmt, "non-{}", Display(simple, self.1)),
-                ref c => write!(fmt, "not ({})", Display(c, self.1)),
-            },
+                    })
+                    .joined(separator, fmt)
+            }
+            Cfg::Not(box simple @ Cfg::Cfg(..)) => write!(fmt, "non-{}", Display(simple, self.1)),
+            Cfg::Not(box c) => write!(fmt, "not ({})", Display(c, self.1)),
 
-            Cfg::Any(ref sub_cfgs) => {
+            Cfg::Any(sub_cfgs) => {
                 let separator = if sub_cfgs.iter().all(Cfg::is_simple) { " or " } else { ", or " };
                 self.display_sub_cfgs(fmt, sub_cfgs, separator)
             }
-            Cfg::All(ref sub_cfgs) => self.display_sub_cfgs(fmt, sub_cfgs, " and "),
+            Cfg::All(sub_cfgs) => self.display_sub_cfgs(fmt, sub_cfgs, " and "),
 
             Cfg::True => fmt.write_str("everywhere"),
             Cfg::False => fmt.write_str("nowhere"),
 
-            Cfg::Cfg(name, value) => {
+            &Cfg::Cfg(name, value) => {
                 let human_readable = match (name, value) {
                     (sym::unix, None) => "Unix",
                     (sym::windows, None) => "Windows",

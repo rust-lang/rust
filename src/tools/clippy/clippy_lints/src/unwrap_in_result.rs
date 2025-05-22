@@ -79,7 +79,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_item: &'tc
         let mut result = Vec::new();
         let _: Option<!> = for_each_expr(cx, body.value, |e| {
             // check for `expect`
-            if let Some(arglists) = method_chain_args(e, &["expect"]) {
+            if let Some(arglists) = method_chain_args(e, &[sym::expect]) {
                 let receiver_ty = typeck.expr_ty(arglists[0].0).peel_refs();
                 if is_type_diagnostic_item(cx, receiver_ty, sym::Option)
                     || is_type_diagnostic_item(cx, receiver_ty, sym::Result)
@@ -89,7 +89,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_item: &'tc
             }
 
             // check for `unwrap`
-            if let Some(arglists) = method_chain_args(e, &["unwrap"]) {
+            if let Some(arglists) = method_chain_args(e, &[sym::unwrap]) {
                 let receiver_ty = typeck.expr_ty(arglists[0].0).peel_refs();
                 if is_type_diagnostic_item(cx, receiver_ty, sym::Option)
                     || is_type_diagnostic_item(cx, receiver_ty, sym::Result)

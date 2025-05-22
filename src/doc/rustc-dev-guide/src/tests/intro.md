@@ -102,11 +102,12 @@ by passing a path to a book to `./x test`.
 
 ### Documentation link checker
 
-Links across all documentation is validated with a link checker tool.
+Links across all documentation is validated with a link checker tool,
+and it can be invoked so:
 
-> Example: `./x test src/tools/linkchecker`
-
-> Example: `./x test linkchecker`
+```console
+./x test linkchecker
+```
 
 This requires building all of the documentation, which might take a while.
 

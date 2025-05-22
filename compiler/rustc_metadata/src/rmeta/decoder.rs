@@ -1984,6 +1984,10 @@ impl CrateMetadata {
         self.root.header.hash
     }
 
+    pub(crate) fn has_async_drops(&self) -> bool {
+        self.root.tables.adt_async_destructor.len > 0
+    }
+
     fn num_def_ids(&self) -> usize {
         self.root.tables.def_keys.size()
     }

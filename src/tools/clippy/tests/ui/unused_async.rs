@@ -119,3 +119,11 @@ fn main() {
     foo();
     bar();
 }
+
+mod issue14704 {
+    use std::sync::Arc;
+
+    trait Action {
+        async fn cancel(self: Arc<Self>) {}
+    }
+}

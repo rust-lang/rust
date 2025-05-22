@@ -5,13 +5,13 @@ if let StmtKind::Let(local) = stmt.kind
     && let LitKind::Int(42, LitIntType::Unsuffixed) = lit.node
     && arms.len() == 3
     && let PatKind::Expr(lit_expr) = arms[0].pat.kind
-    && let PatExprKind::Lit{ref lit1, negated } = lit_expr.kind
+    && let PatExprKind::Lit { ref lit1, negated } = lit_expr.kind
     && let LitKind::Int(16, LitIntType::Unsuffixed) = lit1.node
     && arms[0].guard.is_none()
     && let ExprKind::Lit(ref lit2) = arms[0].body.kind
     && let LitKind::Int(5, LitIntType::Unsuffixed) = lit2.node
     && let PatKind::Expr(lit_expr1) = arms[1].pat.kind
-    && let PatExprKind::Lit{ref lit3, negated1 } = lit_expr1.kind
+    && let PatExprKind::Lit { ref lit3, negated1 } = lit_expr1.kind
     && let LitKind::Int(17, LitIntType::Unsuffixed) = lit3.node
     && arms[1].guard.is_none()
     && let ExprKind::Block(block, None) = arms[1].body.kind
@@ -23,8 +23,6 @@ if let StmtKind::Let(local) = stmt.kind
     && let PatKind::Binding(BindingMode::NONE, _, name, None) = local1.pat.kind
     && name.as_str() == "x"
     && let Some(trailing_expr) = block.expr
-    && let ExprKind::Path(ref qpath) = trailing_expr.kind
-    && match_qpath(qpath, &["x"])
     && let PatKind::Wild = arms[2].pat.kind
     && arms[2].guard.is_none()
     && let ExprKind::Lit(ref lit5) = arms[2].body.kind

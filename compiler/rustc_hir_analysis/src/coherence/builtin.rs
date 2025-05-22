@@ -214,11 +214,9 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     let span = tcx.def_span(impl_did);
     let trait_name = "DispatchFromDyn";
 
-    let dispatch_from_dyn_trait = tcx.require_lang_item(LangItem::DispatchFromDyn, Some(span));
-
     let source = trait_ref.self_ty();
     let target = {
-        assert_eq!(trait_ref.def_id, dispatch_from_dyn_trait);
+        assert!(tcx.is_lang_item(trait_ref.def_id, LangItem::DispatchFromDyn));
 
         trait_ref.args.type_at(1)
     };
@@ -339,7 +337,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                     tcx,
                     cause.clone(),
                     param_env,
-                    ty::TraitRef::new(tcx, dispatch_from_dyn_trait, [ty_a, ty_b]),
+                    ty::TraitRef::new(tcx, trait_ref.def_id, [ty_a, ty_b]),
                 ));
                 let errors = ocx.select_all_or_error();
                 if !errors.is_empty() {

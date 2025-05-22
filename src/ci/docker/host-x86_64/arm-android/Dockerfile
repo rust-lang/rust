@@ -28,6 +28,7 @@ RUN /scripts/android-sdk.sh
 ENV PATH=$PATH:/android/sdk/emulator
 ENV PATH=$PATH:/android/sdk/tools
 ENV PATH=$PATH:/android/sdk/platform-tools
+ENV PATH=$PATH:/android/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin
 
 ENV TARGETS=arm-linux-androideabi
 

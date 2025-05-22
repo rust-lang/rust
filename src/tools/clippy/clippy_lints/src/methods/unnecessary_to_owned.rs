@@ -619,7 +619,7 @@ fn is_cloned_or_copied(cx: &LateContext<'_>, method_name: Symbol, method_def_id:
 /// Returns true if the named method can be used to convert the receiver to its "owned"
 /// representation.
 fn is_to_owned_like<'a>(cx: &LateContext<'a>, call_expr: &Expr<'a>, method_name: Symbol, method_def_id: DefId) -> bool {
-    is_clone_like(cx, method_name.as_str(), method_def_id)
+    is_clone_like(cx, method_name, method_def_id)
         || is_cow_into_owned(cx, method_name, method_def_id)
         || is_to_string_on_string_like(cx, call_expr, method_name, method_def_id)
 }
@@ -655,11 +655,18 @@ fn is_to_string_on_string_like<'a>(
     }
 }
 
-fn is_a_std_map_type(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    is_type_diagnostic_item(cx, ty, sym::HashSet)
-        || is_type_diagnostic_item(cx, ty, sym::HashMap)
-        || is_type_diagnostic_item(cx, ty, sym::BTreeMap)
-        || is_type_diagnostic_item(cx, ty, sym::BTreeSet)
+fn std_map_key<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    match ty.kind() {
+        ty::Adt(adt, args)
+            if matches!(
+                cx.tcx.get_diagnostic_name(adt.did()),
+                Some(sym::BTreeMap | sym::BTreeSet | sym::HashMap | sym::HashSet)
+            ) =>
+        {
+            Some(args.type_at(0))
+        },
+        _ => None,
+    }
 }
 
 fn is_str_and_string(cx: &LateContext<'_>, arg_ty: Ty<'_>, original_arg_ty: Ty<'_>) -> bool {
@@ -679,11 +686,11 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
     if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, expr) = arg.kind
         && let ExprKind::MethodCall(method_path, caller, &[], _) = expr.kind
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && let method_name = method_path.ident.name.as_str()
+        && let method_name = method_path.ident.name
         && match method_name {
-            "to_owned" => cx.tcx.is_diagnostic_item(sym::to_owned_method, method_def_id),
-            "to_string" => cx.tcx.is_diagnostic_item(sym::to_string_method, method_def_id),
-            "to_vec" => cx
+            sym::to_owned => cx.tcx.is_diagnostic_item(sym::to_owned_method, method_def_id),
+            sym::to_string => cx.tcx.is_diagnostic_item(sym::to_string_method, method_def_id),
+            sym::to_vec => cx
                 .tcx
                 .impl_of_method(method_def_id)
                 .filter(|&impl_did| cx.tcx.type_of(impl_did).instantiate_identity().is_slice())
@@ -721,6 +728,7 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
 // 1. This is a method with only one argument that doesn't come from a trait.
 // 2. That it has `Borrow` in its generic predicates.
 // 3. `Self` is a std "map type" (ie `HashSet`, `HashMap`, `BTreeSet`, `BTreeMap`).
+// 4. The key to the "map type" is not a reference.
 fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
     if let ExprKind::MethodCall(_, caller, &[arg], _) = expr.kind
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
@@ -738,7 +746,9 @@ fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         })
         && let caller_ty = cx.typeck_results().expr_ty(caller)
         // For now we limit it to "map types".
-        && is_a_std_map_type(cx, caller_ty)
+        && let Some(key_ty) = std_map_key(cx, caller_ty)
+        // We need to check that the key type is not a reference.
+        && !key_ty.is_ref()
     {
         check_if_applicable_to_argument(cx, &arg);
     }

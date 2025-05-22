@@ -736,7 +736,7 @@ pub struct bar;
 
 #[test]
 fn macro_dollar_crate_is_correct_in_derive_meta() {
-    let map = compute_crate_def_map(
+    compute_crate_def_map(
         r#"
 //- minicore: derive, clone
 //- /main.rs crate:main deps:lib
@@ -753,13 +753,13 @@ macro_rules! foo {
 
 pub use core::clone::Clone;
 "#,
+        |map| assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 1),
     );
-    assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 1);
 }
 
 #[test]
 fn expand_derive() {
-    let map = compute_crate_def_map(
+    compute_crate_def_map(
         r#"
 //- /main.rs crate:main deps:core
 use core::Copy;
@@ -775,8 +775,8 @@ pub macro Copy {}
 #[rustc_builtin_macro]
 pub macro Clone {}
 "#,
+        |map| assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 2),
     );
-    assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 2);
 }
 
 #[test]
@@ -803,7 +803,7 @@ pub trait Clone {}
 fn builtin_derive_with_unresolved_attributes_fall_back() {
     // Tests that we still resolve derives after ignoring an unresolved attribute.
     cov_mark::check!(unresolved_attribute_fallback);
-    let map = compute_crate_def_map(
+    compute_crate_def_map(
         r#"
 //- /main.rs crate:main deps:core
 use core::{Clone, derive};
@@ -818,8 +818,8 @@ pub macro derive($item:item) {}
 #[rustc_builtin_macro]
 pub macro Clone {}
 "#,
+        |map| assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 1),
     );
-    assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 1);
 }
 
 #[test]
@@ -1096,7 +1096,7 @@ pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
 "#,
     );
     let krate = *db.all_crates().last().expect("no crate graph present");
-    let def_map = db.crate_def_map(krate);
+    let def_map = crate_def_map(&db, krate);
 
     assert_eq!(def_map.data.exported_derives.len(), 1);
     match def_map.data.exported_derives.values().next() {
@@ -1446,7 +1446,7 @@ fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
     "#,
     );
     let krate = *db.all_crates().last().expect("no crate graph present");
-    let def_map = db.crate_def_map(krate);
+    let def_map = crate_def_map(&db, krate);
 
     let root_module = &def_map[DefMap::ROOT].scope;
     assert!(
@@ -1544,7 +1544,7 @@ macro_rules! mk_foo {
 
 #[test]
 fn macro_sub_namespace() {
-    let map = compute_crate_def_map(
+    compute_crate_def_map(
         r#"
 //- minicore: derive, clone
 macro_rules! Clone { () => {} }
@@ -1553,8 +1553,8 @@ macro_rules! derive { () => {} }
 #[derive(Clone)]
 struct S;
     "#,
+        |map| assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 1),
     );
-    assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 1);
 }
 
 #[test]

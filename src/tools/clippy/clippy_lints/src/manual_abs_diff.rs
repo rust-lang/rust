@@ -36,7 +36,7 @@ declare_clippy_lint! {
     /// a.abs_diff(b)
     /// # ;
     /// ```
-    #[clippy::version = "1.86.0"]
+    #[clippy::version = "1.88.0"]
     pub MANUAL_ABS_DIFF,
     complexity,
     "using an if-else pattern instead of `abs_diff`"

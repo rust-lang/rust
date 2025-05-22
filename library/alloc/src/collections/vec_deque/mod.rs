@@ -1312,6 +1312,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// If [`make_contiguous`] was previously called, all elements of the
     /// deque will be in the first slice and the second slice will be empty.
+    /// Otherwise, the exact split point depends on implementation details
+    /// and is not guaranteed.
     ///
     /// [`make_contiguous`]: VecDeque::make_contiguous
     ///
@@ -1326,12 +1328,18 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// deque.push_back(1);
     /// deque.push_back(2);
     ///
-    /// assert_eq!(deque.as_slices(), (&[0, 1, 2][..], &[][..]));
+    /// let expected = [0, 1, 2];
+    /// let (front, back) = deque.as_slices();
+    /// assert_eq!(&expected[..front.len()], front);
+    /// assert_eq!(&expected[front.len()..], back);
     ///
     /// deque.push_front(10);
     /// deque.push_front(9);
     ///
-    /// assert_eq!(deque.as_slices(), (&[9, 10][..], &[0, 1, 2][..]));
+    /// let expected = [9, 10, 0, 1, 2];
+    /// let (front, back) = deque.as_slices();
+    /// assert_eq!(&expected[..front.len()], front);
+    /// assert_eq!(&expected[front.len()..], back);
     /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
@@ -1347,6 +1355,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// If [`make_contiguous`] was previously called, all elements of the
     /// deque will be in the first slice and the second slice will be empty.
+    /// Otherwise, the exact split point depends on implementation details
+    /// and is not guaranteed.
     ///
     /// [`make_contiguous`]: VecDeque::make_contiguous
     ///
@@ -1363,9 +1373,22 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// deque.push_front(10);
     /// deque.push_front(9);
     ///
-    /// deque.as_mut_slices().0[0] = 42;
-    /// deque.as_mut_slices().1[0] = 24;
-    /// assert_eq!(deque.as_slices(), (&[42, 10][..], &[24, 1][..]));
+    /// // Since the split point is not guaranteed, we may need to update
+    /// // either slice.
+    /// let mut update_nth = |index: usize, val: u32| {
+    ///     let (front, back) = deque.as_mut_slices();
+    ///     if index > front.len() - 1 {
+    ///         back[index - front.len()] = val;
+    ///     } else {
+    ///         front[index] = val;
+    ///     }
+    /// };
+    ///
+    /// update_nth(0, 42);
+    /// update_nth(2, 24);
+    ///
+    /// let v: Vec<_> = deque.into();
+    /// assert_eq!(v, [42, 10, 24, 1]);
     /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]

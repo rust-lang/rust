@@ -311,6 +311,8 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
 
     let mut prefix = String::new();
 
+    let mut found_ref_or_deref = false;
+
     while let Some(parent_deref_element) =
         resulting_element.syntax().parent().and_then(ast::PrefixExpr::cast)
     {
@@ -318,27 +320,26 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
             break;
         }
 
+        found_ref_or_deref = true;
         resulting_element = ast::Expr::from(parent_deref_element);
 
         prefix.insert(0, '*');
     }
 
-    if let Some(first_ref_expr) = resulting_element.syntax().parent().and_then(ast::RefExpr::cast) {
-        if let Some(expr) = first_ref_expr.expr() {
-            resulting_element = expr;
-        }
+    while let Some(parent_ref_element) =
+        resulting_element.syntax().parent().and_then(ast::RefExpr::cast)
+    {
+        found_ref_or_deref = true;
+        let exclusive = parent_ref_element.mut_token().is_some();
+        resulting_element = ast::Expr::from(parent_ref_element);
 
-        while let Some(parent_ref_element) =
-            resulting_element.syntax().parent().and_then(ast::RefExpr::cast)
-        {
-            let exclusive = parent_ref_element.mut_token().is_some();
-            resulting_element = ast::Expr::from(parent_ref_element);
+        prefix.insert_str(0, if exclusive { "&mut " } else { "&" });
+    }
 
-            prefix.insert_str(0, if exclusive { "&mut " } else { "&" });
-        }
-    } else {
-        // If we do not find any ref expressions, restore
+    if !found_ref_or_deref {
+        // If we do not find any ref/deref expressions, restore
         // all the progress of tree climbing
+        prefix.clear();
         resulting_element = initial_element.clone();
     }
 

@@ -10,8 +10,8 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 # Update both macOS's and Windows's tarballs when bumping the version here.
-# Try to keep this in sync with src/ci/docker/host-x86_64/dist-x86_64-linux/build-clang.sh
-LLVM_VERSION="18.1.4"
+# Try to keep this in sync with src/ci/docker/scripts/build-clang.sh
+LLVM_VERSION="20.1.3"
 
 if isMacOS; then
     # FIXME: This is the latest pre-built version of LLVM that's available for

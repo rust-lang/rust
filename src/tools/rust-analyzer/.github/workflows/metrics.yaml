@@ -18,9 +18,9 @@ jobs:
     steps:
       - name: Install Rust toolchain
         run: |
-          rustup update --no-self-update stable
-          rustup default stable
-          rustup component add --toolchain stable rust-src
+          rustup update --no-self-update beta
+          rustup default beta
+          rustup component add --toolchain beta rust-src
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -61,9 +61,9 @@ jobs:
     steps:
       - name: Install Rust toolchain
         run: |
-          rustup update --no-self-update stable
-          rustup default stable
-          rustup component add --toolchain stable rust-src
+          rustup update --no-self-update beta
+          rustup default beta
+          rustup component add --toolchain beta rust-src
 
       - name: Checkout repository
         uses: actions/checkout@v4

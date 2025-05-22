@@ -73,7 +73,7 @@ pub(crate) struct MatchCheckCtx<'db> {
 
 impl<'db> MatchCheckCtx<'db> {
     pub(crate) fn new(module: ModuleId, body: DefWithBodyId, db: &'db dyn HirDatabase) -> Self {
-        let def_map = db.crate_def_map(module.krate());
+        let def_map = module.crate_def_map(db);
         let exhaustive_patterns = def_map.is_unstable_feature_enabled(&sym::exhaustive_patterns);
         Self { module, body, db, exhaustive_patterns }
     }
@@ -301,6 +301,7 @@ impl<'db> MatchCheckCtx<'db> {
             // ignore this issue.
             Ref => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
             Slice(_) => unimplemented!(),
+            DerefPattern(_) => unimplemented!(),
             &Str(void) => match void {},
             Wildcard | NonExhaustive | Hidden | PrivateUninhabited => PatKind::Wild,
             Never => PatKind::Never,
@@ -351,6 +352,7 @@ impl PatCx for MatchCheckCtx<'_> {
             },
             Ref => 1,
             Slice(..) => unimplemented!(),
+            DerefPattern(..) => unimplemented!(),
             Never | Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
             | F128Range(..) | Str(..) | Opaque(..) | NonExhaustive | PrivateUninhabited
             | Hidden | Missing | Wildcard => 0,
@@ -411,6 +413,7 @@ impl PatCx for MatchCheckCtx<'_> {
                 }
             },
             Slice(_) => unreachable!("Found a `Slice` constructor in match checking"),
+            DerefPattern(_) => unreachable!("Found a `DerefPattern` constructor in match checking"),
             Never | Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
             | F128Range(..) | Str(..) | Opaque(..) | NonExhaustive | PrivateUninhabited
             | Hidden | Missing | Wildcard => {

@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_def_id_trait_method;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
-use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId, Node, YieldSource};
+use rustc_hir::{Body, Defaultness, Expr, ExprKind, FnDecl, HirId, Node, TraitItem, YieldSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_session::impl_lint_pass;
@@ -116,7 +116,11 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
         span: Span,
         def_id: LocalDefId,
     ) {
-        if !span.from_expansion() && fn_kind.asyncness().is_async() && !is_def_id_trait_method(cx, def_id) {
+        if !span.from_expansion()
+            && fn_kind.asyncness().is_async()
+            && !is_def_id_trait_method(cx, def_id)
+            && !is_default_trait_impl(cx, def_id)
+        {
             let mut visitor = AsyncFnVisitor {
                 cx,
                 found_await: false,
@@ -188,4 +192,14 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
             );
         }
     }
+}
+
+fn is_default_trait_impl(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
+    matches!(
+        cx.tcx.hir_node_by_def_id(def_id),
+        Node::TraitItem(TraitItem {
+            defaultness: Defaultness::Default { .. },
+            ..
+        })
+    )
 }

@@ -133,12 +133,10 @@ LL +     the_answer!()
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:86:21
+  --> tests/ui/needless_return.rs:87:5
    |
-LL |   fn test_void_fun() {
-   |  _____________________^
-LL | |     return;
-   | |__________^
+LL |     return;
+   |     ^^^^^^
    |
 help: remove `return`
    |
@@ -148,12 +146,10 @@ LL + fn test_void_fun() {
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:92:11
+  --> tests/ui/needless_return.rs:93:9
    |
-LL |       if b {
-   |  ___________^
-LL | |         return;
-   | |______________^
+LL |         return;
+   |         ^^^^^^
    |
 help: remove `return`
    |
@@ -163,12 +159,10 @@ LL +     if b {
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:95:13
+  --> tests/ui/needless_return.rs:96:9
    |
-LL |       } else {
-   |  _____________^
-LL | |         return;
-   | |______________^
+LL |         return;
+   |         ^^^^^^
    |
 help: remove `return`
    |
@@ -190,12 +184,10 @@ LL +         _ => (),
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:113:24
+  --> tests/ui/needless_return.rs:114:13
    |
-LL |               let _ = 42;
-   |  ________________________^
-LL | |             return;
-   | |__________________^
+LL |             return;
+   |             ^^^^^^
    |
 help: remove `return`
    |
@@ -253,12 +245,10 @@ LL +         bar.unwrap_or_else(|_| {})
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:162:21
+  --> tests/ui/needless_return.rs:163:13
    |
-LL |           let _ = || {
-   |  _____________________^
-LL | |             return;
-   | |__________________^
+LL |             return;
+   |             ^^^^^^
    |
 help: remove `return`
    |
@@ -400,12 +390,10 @@ LL +     the_answer!()
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:227:33
+  --> tests/ui/needless_return.rs:228:5
    |
-LL |   async fn async_test_void_fun() {
-   |  _________________________________^
-LL | |     return;
-   | |__________^
+LL |     return;
+   |     ^^^^^^
    |
 help: remove `return`
    |
@@ -415,12 +403,10 @@ LL + async fn async_test_void_fun() {
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:233:11
+  --> tests/ui/needless_return.rs:234:9
    |
-LL |       if b {
-   |  ___________^
-LL | |         return;
-   | |______________^
+LL |         return;
+   |         ^^^^^^
    |
 help: remove `return`
    |
@@ -430,12 +416,10 @@ LL +     if b {
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:236:13
+  --> tests/ui/needless_return.rs:237:9
    |
-LL |       } else {
-   |  _____________^
-LL | |         return;
-   | |______________^
+LL |         return;
+   |         ^^^^^^
    |
 help: remove `return`
    |
@@ -593,12 +577,10 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:364:20
+  --> tests/ui/needless_return.rs:365:9
    |
-LL |           let _ = 42;
-   |  ____________________^
-LL | |         return;
-   | |______________^
+LL |         return;
+   |         ^^^^^^
    |
 help: remove `return`
    |
@@ -608,10 +590,10 @@ LL +         let _ = 42;
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:371:20
+  --> tests/ui/needless_return.rs:371:21
    |
 LL |         let _ = 42; return;
-   |                    ^^^^^^^
+   |                     ^^^^^^
    |
 help: remove `return`
    |

@@ -1,5 +1,3 @@
-//@ compile-flags:-Zprint-mono-items=lazy
-
 #![deny(dead_code)]
 #![crate_type = "rlib"]
 

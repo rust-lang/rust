@@ -20,7 +20,6 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::Deref;
-use std::path::PathBuf;
 use std::sync::{LazyLock, Mutex};
 use std::{fmt, mem};
 
@@ -51,24 +50,9 @@ impl<T> PartialEq for Interned<T> {
 }
 impl<T> Eq for Interned<T> {}
 
-impl PartialEq<str> for Interned<String> {
-    fn eq(&self, other: &str) -> bool {
-        *self == other
-    }
-}
 impl PartialEq<&str> for Interned<String> {
     fn eq(&self, other: &&str) -> bool {
         **self == **other
-    }
-}
-impl<T> PartialEq<&Interned<T>> for Interned<T> {
-    fn eq(&self, other: &&Self) -> bool {
-        self.0 == other.0
-    }
-}
-impl<T> PartialEq<Interned<T>> for &Interned<T> {
-    fn eq(&self, other: &Interned<T>) -> bool {
-        self.0 == other.0
     }
 }
 
@@ -188,8 +172,6 @@ impl<T: Hash + Clone + Eq> TyIntern<T> {
 #[derive(Default)]
 pub struct Interner {
     strs: Mutex<TyIntern<String>>,
-    paths: Mutex<TyIntern<PathBuf>>,
-    lists: Mutex<TyIntern<Vec<String>>>,
 }
 
 /// Defines the behavior required for a type to be internable.
@@ -207,18 +189,6 @@ trait Internable: Clone + Eq + Hash + 'static {
 impl Internable for String {
     fn intern_cache() -> &'static Mutex<TyIntern<Self>> {
         &INTERNER.strs
-    }
-}
-
-impl Internable for PathBuf {
-    fn intern_cache() -> &'static Mutex<TyIntern<Self>> {
-        &INTERNER.paths
-    }
-}
-
-impl Internable for Vec<String> {
-    fn intern_cache() -> &'static Mutex<TyIntern<Self>> {
-        &INTERNER.lists
     }
 }
 

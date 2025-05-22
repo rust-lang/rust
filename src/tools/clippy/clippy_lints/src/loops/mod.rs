@@ -25,8 +25,8 @@ mod while_let_loop;
 mod while_let_on_iterator;
 
 use clippy_config::Conf;
-use clippy_utils::higher;
 use clippy_utils::msrvs::Msrv;
+use clippy_utils::{higher, sym};
 use rustc_ast::Label;
 use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
 use rustc_lint::{LateContext, LateLintPass};
@@ -778,7 +778,7 @@ declare_clippy_lint! {
     ///     let _ = s[idx..];
     /// }
     /// ```
-    #[clippy::version = "1.83.0"]
+    #[clippy::version = "1.88.0"]
     pub CHAR_INDICES_AS_BYTE_INDICES,
     correctness,
     "using the character position yielded by `.chars().enumerate()` in a context where a byte index is expected"
@@ -909,15 +909,17 @@ impl Loops {
     }
 
     fn check_for_loop_arg(&self, cx: &LateContext<'_>, _: &Pat<'_>, arg: &Expr<'_>) {
-        if let ExprKind::MethodCall(method, self_arg, [], _) = arg.kind {
-            match method.ident.as_str() {
-                "iter" | "iter_mut" => {
+        if !arg.span.from_expansion()
+            && let ExprKind::MethodCall(method, self_arg, [], _) = arg.kind
+        {
+            match method.ident.name {
+                sym::iter | sym::iter_mut => {
                     explicit_iter_loop::check(cx, self_arg, arg, self.msrv, self.enforce_iter_loop_reborrow);
                 },
-                "into_iter" => {
+                sym::into_iter => {
                     explicit_into_iter_loop::check(cx, self_arg, arg);
                 },
-                "next" => {
+                sym::next => {
                     iter_next_loop::check(cx, arg);
                 },
                 _ => {},

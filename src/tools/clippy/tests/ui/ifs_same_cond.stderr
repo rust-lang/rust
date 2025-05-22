@@ -1,52 +1,52 @@
-error: this `if` has the same condition as a previous `if`
-  --> tests/ui/ifs_same_cond.rs:9:15
-   |
-LL |     } else if b {
-   |               ^
-   |
-note: same as this
+error: these `if` branches have the same condition
   --> tests/ui/ifs_same_cond.rs:8:8
    |
 LL |     if b {
    |        ^
+LL |
+LL |     } else if b {
+   |               ^
+   |
    = note: `-D clippy::ifs-same-cond` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::ifs_same_cond)]`
 
-error: this `if` has the same condition as a previous `if`
-  --> tests/ui/ifs_same_cond.rs:14:15
-   |
-LL |     } else if a == 1 {
-   |               ^^^^^^
-   |
-note: same as this
+error: these `if` branches have the same condition
   --> tests/ui/ifs_same_cond.rs:13:8
+   |
+LL |     if b {
+   |        ^
+LL |
+LL |     } else if b {
+   |               ^
+LL |     } else if b {
+   |               ^
+
+error: these `if` branches have the same condition
+  --> tests/ui/ifs_same_cond.rs:19:8
    |
 LL |     if a == 1 {
    |        ^^^^^^
+LL |
+LL |     } else if a == 1 {
+   |               ^^^^^^
 
-error: this `if` has the same condition as a previous `if`
-  --> tests/ui/ifs_same_cond.rs:20:15
-   |
-LL |     } else if 2 * a == 1 {
-   |               ^^^^^^^^^^
-   |
-note: same as this
-  --> tests/ui/ifs_same_cond.rs:18:8
+error: these `if` branches have the same condition
+  --> tests/ui/ifs_same_cond.rs:24:8
    |
 LL |     if 2 * a == 1 {
    |        ^^^^^^^^^^
+...
+LL |     } else if 2 * a == 1 {
+   |               ^^^^^^^^^^
 
-error: this `if` has the same condition as a previous `if`
-  --> tests/ui/ifs_same_cond.rs:53:15
-   |
-LL |     } else if a.contains("ah") {
-   |               ^^^^^^^^^^^^^^^^
-   |
-note: same as this
-  --> tests/ui/ifs_same_cond.rs:52:8
+error: these `if` branches have the same condition
+  --> tests/ui/ifs_same_cond.rs:58:8
    |
 LL |     if a.contains("ah") {
    |        ^^^^^^^^^^^^^^^^
+LL |
+LL |     } else if a.contains("ah") {
+   |               ^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

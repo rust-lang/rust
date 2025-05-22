@@ -1516,6 +1516,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 } else {
                     expr.span.with_hi(expr.span.lo() + BytePos(1))
                 };
+
+                match self.tcx.sess.source_map().span_to_snippet(span) {
+                    Ok(snippet) if snippet.starts_with("&") => {}
+                    _ => break 'outer,
+                }
+
                 suggestions.push((span, String::new()));
 
                 let ty::Ref(_, inner_ty, _) = suggested_ty.kind() else {
@@ -2118,16 +2124,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         accessed through a specific `impl`",
                     self.tcx.def_kind_descr(assoc_item.as_def_kind(), item_def_id)
                 ));
-                err.span_suggestion(
-                    span,
-                    "use the fully qualified path to an implementation",
-                    format!(
-                        "<Type as {}>::{}",
-                        self.tcx.def_path_str(trait_ref),
-                        assoc_item.name()
-                    ),
-                    Applicability::HasPlaceholders,
-                );
+
+                if !assoc_item.is_impl_trait_in_trait() {
+                    err.span_suggestion(
+                        span,
+                        "use the fully qualified path to an implementation",
+                        format!(
+                            "<Type as {}>::{}",
+                            self.tcx.def_path_str(trait_ref),
+                            assoc_item.name()
+                        ),
+                        Applicability::HasPlaceholders,
+                    );
+                }
             }
         }
     }

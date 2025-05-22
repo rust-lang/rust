@@ -42,7 +42,6 @@ use hir_def::{
 use hir_expand::name::Name;
 use la_arena::{Arena, ArenaMap};
 use rustc_hash::FxHashSet;
-use rustc_pattern_analysis::Captures;
 use stdx::{impl_from, never};
 use triomphe::{Arc, ThinArc};
 
@@ -151,10 +150,10 @@ impl LifetimeElisionKind {
 }
 
 #[derive(Debug)]
-pub struct TyLoweringContext<'a> {
-    pub db: &'a dyn HirDatabase,
-    resolver: &'a Resolver,
-    store: &'a ExpressionStore,
+pub struct TyLoweringContext<'db> {
+    pub db: &'db dyn HirDatabase,
+    resolver: &'db Resolver<'db>,
+    store: &'db ExpressionStore,
     def: GenericDefId,
     generics: OnceCell<Generics>,
     in_binders: DebruijnIndex,
@@ -170,11 +169,11 @@ pub struct TyLoweringContext<'a> {
     lifetime_elision: LifetimeElisionKind,
 }
 
-impl<'a> TyLoweringContext<'a> {
+impl<'db> TyLoweringContext<'db> {
     pub fn new(
-        db: &'a dyn HirDatabase,
-        resolver: &'a Resolver,
-        store: &'a ExpressionStore,
+        db: &'db dyn HirDatabase,
+        resolver: &'db Resolver<'db>,
+        store: &'db ExpressionStore,
         def: GenericDefId,
         lifetime_elision: LifetimeElisionKind,
     ) -> Self {
@@ -1176,13 +1175,13 @@ where
 
 /// Generate implicit `: Sized` predicates for all generics that has no `?Sized` bound.
 /// Exception is Self of a trait def.
-fn implicitly_sized_clauses<'a, 'subst: 'a>(
-    db: &dyn HirDatabase,
+fn implicitly_sized_clauses<'db, 'a, 'subst: 'a>(
+    db: &'db dyn HirDatabase,
     def: GenericDefId,
     explicitly_unsized_tys: &'a FxHashSet<Ty>,
     substitution: &'subst Substitution,
-    resolver: &Resolver,
-) -> Option<impl Iterator<Item = WhereClause> + Captures<'a> + Captures<'subst>> {
+    resolver: &Resolver<'db>,
+) -> Option<impl Iterator<Item = WhereClause>> {
     let sized_trait = LangItem::Sized.resolve_trait(db, resolver.krate()).map(to_chalk_trait_id)?;
 
     let trait_self_idx = trait_self_param_idx(db, def);

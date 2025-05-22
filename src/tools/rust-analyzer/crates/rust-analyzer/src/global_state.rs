@@ -3,7 +3,11 @@
 //!
 //! Each tick provides an immutable snapshot of the state as `WorldSnapshot`.
 
-use std::{ops::Not as _, time::Instant};
+use std::{
+    ops::Not as _,
+    panic::AssertUnwindSafe,
+    time::{Duration, Instant},
+};
 
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use hir::ChangeWithProcMacros;
@@ -19,6 +23,7 @@ use parking_lot::{
 use proc_macro_api::ProcMacroClient;
 use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
 use rustc_hash::{FxHashMap, FxHashSet};
+use stdx::thread;
 use tracing::{Level, span, trace};
 use triomphe::Arc;
 use vfs::{AbsPathBuf, AnchoredPathBuf, ChangeKind, Vfs, VfsPath};
@@ -40,6 +45,7 @@ use crate::{
     test_runner::{CargoTestHandle, CargoTestMessage},
 };
 
+#[derive(Debug)]
 pub(crate) struct FetchWorkspaceRequest {
     pub(crate) path: Option<AbsPathBuf>,
     pub(crate) force_crate_graph_reload: bool,
@@ -78,6 +84,7 @@ pub(crate) struct GlobalState {
 
     pub(crate) task_pool: Handle<TaskPool<Task>, Receiver<Task>>,
     pub(crate) fmt_pool: Handle<TaskPool<Task>, Receiver<Task>>,
+    pub(crate) cancellation_pool: thread::Pool,
 
     pub(crate) config: Arc<Config>,
     pub(crate) config_errors: Option<ConfigErrors>,
@@ -113,6 +120,11 @@ pub(crate) struct GlobalState {
     pub(crate) discover_handle: Option<discover::DiscoverHandle>,
     pub(crate) discover_sender: Sender<discover::DiscoverProjectMessage>,
     pub(crate) discover_receiver: Receiver<discover::DiscoverProjectMessage>,
+
+    // Debouncing channel for fetching the workspace
+    // we want to delay it until the VFS looks stable-ish (and thus is not currently in the middle
+    // of a VCS operation like `git switch`)
+    pub(crate) fetch_ws_receiver: Option<(Receiver<Instant>, FetchWorkspaceRequest)>,
 
     // VFS
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
@@ -210,6 +222,7 @@ impl GlobalState {
             let handle = TaskPool::new_with_threads(sender, 1);
             Handle { handle, receiver }
         };
+        let cancellation_pool = thread::Pool::new(1);
 
         let task_queue = {
             let (sender, receiver) = unbounded();
@@ -230,6 +243,7 @@ impl GlobalState {
             req_queue: ReqQueue::default(),
             task_pool,
             fmt_pool,
+            cancellation_pool,
             loader,
             config: Arc::new(config.clone()),
             analysis_host,
@@ -264,6 +278,8 @@ impl GlobalState {
             discover_sender,
             discover_receiver,
 
+            fetch_ws_receiver: None,
+
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), Default::default()))),
             vfs_config_version: 0,
             vfs_progress_config_version: 0,
@@ -290,7 +306,6 @@ impl GlobalState {
 
     pub(crate) fn process_changes(&mut self) -> bool {
         let _p = span!(Level::INFO, "GlobalState::process_changes").entered();
-
         // We cannot directly resolve a change in a ratoml file to a format
         // that can be used by the config module because config talks
         // in `SourceRootId`s instead of `FileId`s and `FileId` -> `SourceRootId`
@@ -298,66 +313,75 @@ impl GlobalState {
         let mut modified_ratoml_files: FxHashMap<FileId, (ChangeKind, vfs::VfsPath)> =
             FxHashMap::default();
 
-        let (change, modified_rust_files, workspace_structure_change) = {
-            let mut change = ChangeWithProcMacros::default();
-            let mut guard = self.vfs.write();
-            let changed_files = guard.0.take_changes();
-            if changed_files.is_empty() {
-                return false;
-            }
+        let mut change = ChangeWithProcMacros::default();
+        let mut guard = self.vfs.write();
+        let changed_files = guard.0.take_changes();
+        if changed_files.is_empty() {
+            return false;
+        }
 
-            // downgrade to read lock to allow more readers while we are normalizing text
-            let guard = RwLockWriteGuard::downgrade_to_upgradable(guard);
-            let vfs: &Vfs = &guard.0;
+        let (change, modified_rust_files, workspace_structure_change) =
+            self.cancellation_pool.scoped(|s| {
+                // start cancellation in parallel, this will kick off lru eviction
+                // allowing us to do meaningful work while waiting
+                let analysis_host = AssertUnwindSafe(&mut self.analysis_host);
+                s.spawn(thread::ThreadIntent::LatencySensitive, || {
+                    { analysis_host }.0.request_cancellation()
+                });
 
-            let mut workspace_structure_change = None;
-            // A file was added or deleted
-            let mut has_structure_changes = false;
-            let mut bytes = vec![];
-            let mut modified_rust_files = vec![];
-            for file in changed_files.into_values() {
-                let vfs_path = vfs.file_path(file.file_id);
-                if let Some(("rust-analyzer", Some("toml"))) = vfs_path.name_and_extension() {
-                    // Remember ids to use them after `apply_changes`
-                    modified_ratoml_files.insert(file.file_id, (file.kind(), vfs_path.clone()));
-                }
+                // downgrade to read lock to allow more readers while we are normalizing text
+                let guard = RwLockWriteGuard::downgrade_to_upgradable(guard);
+                let vfs: &Vfs = &guard.0;
 
-                if let Some(path) = vfs_path.as_path() {
-                    has_structure_changes |= file.is_created_or_deleted();
-
-                    if file.is_modified() && path.extension() == Some("rs") {
-                        modified_rust_files.push(file.file_id);
+                let mut workspace_structure_change = None;
+                // A file was added or deleted
+                let mut has_structure_changes = false;
+                let mut bytes = vec![];
+                let mut modified_rust_files = vec![];
+                for file in changed_files.into_values() {
+                    let vfs_path = vfs.file_path(file.file_id);
+                    if let Some(("rust-analyzer", Some("toml"))) = vfs_path.name_and_extension() {
+                        // Remember ids to use them after `apply_changes`
+                        modified_ratoml_files.insert(file.file_id, (file.kind(), vfs_path.clone()));
                     }
 
-                    let additional_files = self
-                        .config
-                        .discover_workspace_config()
-                        .map(|cfg| {
-                            cfg.files_to_watch.iter().map(String::as_str).collect::<Vec<&str>>()
-                        })
-                        .unwrap_or_default();
+                    if let Some(path) = vfs_path.as_path() {
+                        has_structure_changes |= file.is_created_or_deleted();
 
-                    let path = path.to_path_buf();
-                    if file.is_created_or_deleted() {
-                        workspace_structure_change.get_or_insert((path, false)).1 |=
-                            self.crate_graph_file_dependencies.contains(vfs_path);
-                    } else if reload::should_refresh_for_change(
-                        &path,
-                        file.kind(),
-                        &additional_files,
-                    ) {
-                        trace!(?path, kind = ?file.kind(), "refreshing for a change");
-                        workspace_structure_change.get_or_insert((path.clone(), false));
+                        if file.is_modified() && path.extension() == Some("rs") {
+                            modified_rust_files.push(file.file_id);
+                        }
+
+                        let additional_files = self
+                            .config
+                            .discover_workspace_config()
+                            .map(|cfg| {
+                                cfg.files_to_watch.iter().map(String::as_str).collect::<Vec<&str>>()
+                            })
+                            .unwrap_or_default();
+
+                        let path = path.to_path_buf();
+                        if file.is_created_or_deleted() {
+                            workspace_structure_change.get_or_insert((path, false)).1 |=
+                                self.crate_graph_file_dependencies.contains(vfs_path);
+                        } else if reload::should_refresh_for_change(
+                            &path,
+                            file.kind(),
+                            &additional_files,
+                        ) {
+                            trace!(?path, kind = ?file.kind(), "refreshing for a change");
+                            workspace_structure_change.get_or_insert((path.clone(), false));
+                        }
                     }
-                }
 
-                // Clear native diagnostics when their file gets deleted
-                if !file.exists() {
-                    self.diagnostics.clear_native_for(file.file_id);
-                }
+                    // Clear native diagnostics when their file gets deleted
+                    if !file.exists() {
+                        self.diagnostics.clear_native_for(file.file_id);
+                    }
 
-                let text =
-                    if let vfs::Change::Create(v, _) | vfs::Change::Modify(v, _) = file.change {
+                    let text = if let vfs::Change::Create(v, _) | vfs::Change::Modify(v, _) =
+                        file.change
+                    {
                         String::from_utf8(v).ok().map(|text| {
                             // FIXME: Consider doing normalization in the `vfs` instead? That allows
                             // getting rid of some locking
@@ -367,29 +391,28 @@ impl GlobalState {
                     } else {
                         None
                     };
-                // delay `line_endings_map` changes until we are done normalizing the text
-                // this allows delaying the re-acquisition of the write lock
-                bytes.push((file.file_id, text));
-            }
-            let (vfs, line_endings_map) = &mut *RwLockUpgradableReadGuard::upgrade(guard);
-            bytes.into_iter().for_each(|(file_id, text)| {
-                let text = match text {
-                    None => None,
-                    Some((text, line_endings)) => {
-                        line_endings_map.insert(file_id, line_endings);
-                        Some(text)
-                    }
-                };
-                change.change_file(file_id, text);
+                    // delay `line_endings_map` changes until we are done normalizing the text
+                    // this allows delaying the re-acquisition of the write lock
+                    bytes.push((file.file_id, text));
+                }
+                let (vfs, line_endings_map) = &mut *RwLockUpgradableReadGuard::upgrade(guard);
+                bytes.into_iter().for_each(|(file_id, text)| {
+                    let text = match text {
+                        None => None,
+                        Some((text, line_endings)) => {
+                            line_endings_map.insert(file_id, line_endings);
+                            Some(text)
+                        }
+                    };
+                    change.change_file(file_id, text);
+                });
+                if has_structure_changes {
+                    let roots = self.source_root_config.partition(vfs);
+                    change.set_roots(roots);
+                }
+                (change, modified_rust_files, workspace_structure_change)
             });
-            if has_structure_changes {
-                let roots = self.source_root_config.partition(vfs);
-                change.set_roots(roots);
-            }
-            (change, modified_rust_files, workspace_structure_change)
-        };
 
-        let _p = span!(Level::INFO, "GlobalState::process_changes/apply_change").entered();
         self.analysis_host.apply_change(change);
         if !modified_ratoml_files.is_empty()
             || !self.config.same_source_root_parent_map(&self.local_roots_parent_map)
@@ -508,11 +531,7 @@ impl GlobalState {
             if let Some((path, force_crate_graph_reload)) = workspace_structure_change {
                 let _p = span!(Level::INFO, "GlobalState::process_changes/ws_structure_change")
                     .entered();
-
-                self.fetch_workspaces_queue.request_op(
-                    format!("workspace vfs file change: {path}"),
-                    FetchWorkspaceRequest { path: Some(path), force_crate_graph_reload },
-                );
+                self.enqueue_workspace_fetch(path, force_crate_graph_reload);
             }
         }
 
@@ -659,6 +678,30 @@ impl GlobalState {
             }
             None
         })
+    }
+
+    fn enqueue_workspace_fetch(&mut self, path: AbsPathBuf, force_crate_graph_reload: bool) {
+        let already_requested = self.fetch_workspaces_queue.op_requested()
+            && !self.fetch_workspaces_queue.op_in_progress();
+        if self.fetch_ws_receiver.is_none() && already_requested {
+            // Don't queue up a new fetch request if we already have done so
+            // Otherwise we will re-fetch in quick succession which is unnecessary
+            // Note though, that if one is already in progress, we *want* to re-queue
+            // as the in-progress fetch might not have the latest changes in it anymore
+            // FIXME: We should cancel the in-progress fetch here
+            return;
+        }
+
+        self.fetch_ws_receiver = Some((
+            crossbeam_channel::after(Duration::from_millis(100)),
+            FetchWorkspaceRequest { path: Some(path), force_crate_graph_reload },
+        ));
+    }
+
+    pub(crate) fn debounce_workspace_fetch(&mut self) {
+        if let Some((fetch_receiver, _)) = &mut self.fetch_ws_receiver {
+            *fetch_receiver = crossbeam_channel::after(Duration::from_millis(100));
+        }
     }
 }
 

@@ -364,4 +364,19 @@ pub fn issue13574() -> Option<()> {
     None
 }
 
+fn issue14754(t: Result<i32, &'static str>) -> Result<i32, &'static str> {
+    let _ = match t {
+        Ok(v) => Ok::<_, &'static str>(v),
+        err @ Err(_) => return err,
+    };
+    println!("Still here");
+    let x = match t {
+        Ok(v) => Ok::<_, &'static str>(v),
+        err @ Err(_) => err,
+    };
+    //~^^^^ needless_match
+    println!("Still here");
+    x
+}
+
 fn main() {}

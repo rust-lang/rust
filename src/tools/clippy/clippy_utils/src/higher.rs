@@ -299,7 +299,7 @@ impl<'a> VecArgs<'a> {
     pub fn hir(cx: &LateContext<'_>, expr: &'a Expr<'_>) -> Option<VecArgs<'a>> {
         if let ExprKind::Call(fun, args) = expr.kind
             && let ExprKind::Path(ref qpath) = fun.kind
-            && is_expn_of(fun.span, "vec").is_some()
+            && is_expn_of(fun.span, sym::vec).is_some()
             && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
         {
             return if cx.tcx.is_diagnostic_item(sym::vec_from_elem, fun_def_id) && args.len() == 2 {

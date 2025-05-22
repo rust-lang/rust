@@ -14,7 +14,7 @@ use dashmap::DashMap;
 use dashmap::mapref::entry::Entry;
 use intern::Symbol;
 use la_arena::{Arena, Idx, RawIdx};
-use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet, FxHasher};
 use salsa::{Durability, Setter};
 use span::Edition;
 use triomphe::Arc;
@@ -23,6 +23,8 @@ use vfs::{AbsPathBuf, AnchoredPath, FileId, VfsPath, file_set::FileSet};
 use crate::{CrateWorkspaceData, EditionedFileId, RootQueryDb};
 
 pub type ProcMacroPaths = FxHashMap<CrateBuilderId, Result<(String, AbsPathBuf), String>>;
+
+type FxIndexSet<T> = indexmap::IndexSet<T, FxBuildHasher>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct SourceRootId(pub u32);
@@ -474,7 +476,9 @@ impl CrateGraphBuilder {
     }
 
     pub fn set_in_db(self, db: &mut dyn RootQueryDb) -> CratesIdMap {
-        let mut all_crates = Vec::with_capacity(self.arena.len());
+        // For some reason in some repositories we have duplicate crates, so we use a set and not `Vec`.
+        // We use an `IndexSet` because the list needs to be topologically sorted.
+        let mut all_crates = FxIndexSet::with_capacity_and_hasher(self.arena.len(), FxBuildHasher);
         let mut visited = FxHashMap::default();
         let mut visited_root_files = FxHashSet::default();
 
@@ -494,9 +498,11 @@ impl CrateGraphBuilder {
             );
         }
 
-        if **old_all_crates != *all_crates {
+        if old_all_crates.len() != all_crates.len()
+            || old_all_crates.iter().any(|&krate| !all_crates.contains(&krate))
+        {
             db.set_all_crates_with_durability(
-                Arc::new(all_crates.into_boxed_slice()),
+                Arc::new(Vec::from_iter(all_crates).into_boxed_slice()),
                 Durability::MEDIUM,
             );
         }
@@ -509,7 +515,7 @@ impl CrateGraphBuilder {
             crates_map: &CratesMap,
             visited: &mut FxHashMap<CrateBuilderId, Crate>,
             visited_root_files: &mut FxHashSet<FileId>,
-            all_crates: &mut Vec<Crate>,
+            all_crates: &mut FxIndexSet<Crate>,
             source: CrateBuilderId,
         ) -> Crate {
             if let Some(&crate_id) = visited.get(&source) {
@@ -597,7 +603,7 @@ impl CrateGraphBuilder {
                     input
                 }
             };
-            all_crates.push(crate_input);
+            all_crates.insert(crate_input);
             visited.insert(source, crate_input);
             crate_input
         }

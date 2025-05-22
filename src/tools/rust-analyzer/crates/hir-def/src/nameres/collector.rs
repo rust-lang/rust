@@ -26,7 +26,7 @@ use syntax::ast;
 use triomphe::Arc;
 
 use crate::{
-    AdtId, AstId, AstIdWithPath, ConstLoc, CrateRootModuleId, EnumLoc, ExternBlockLoc,
+    AdtId, AssocItemId, AstId, AstIdWithPath, ConstLoc, CrateRootModuleId, EnumLoc, ExternBlockLoc,
     ExternCrateId, ExternCrateLoc, FunctionId, FunctionLoc, ImplLoc, Intern, ItemContainerId,
     LocalModuleId, Lookup, Macro2Id, Macro2Loc, MacroExpander, MacroId, MacroRulesId,
     MacroRulesLoc, MacroRulesLocFlags, ModuleDefId, ModuleId, ProcMacroId, ProcMacroLoc, StaticLoc,
@@ -43,9 +43,10 @@ use crate::{
     nameres::{
         BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, ModuleData, ModuleOrigin, ResolveMode,
         attr_resolution::{attr_macro_as_call_id, derive_macro_as_call_id},
+        crate_def_map,
         diagnostics::DefDiagnostic,
         mod_resolution::ModDir,
-        path_resolution::ReachedFixedPoint,
+        path_resolution::{ReachedFixedPoint, ResolvePathResult},
         proc_macro::{ProcMacroDef, ProcMacroKind, parse_macro_name_and_helper_attrs},
         sub_namespace_match,
     },
@@ -61,7 +62,7 @@ pub(super) fn collect_defs(
     db: &dyn DefDatabase,
     def_map: DefMap,
     tree_id: TreeId,
-    crate_local_def_map: Option<Arc<LocalDefMap>>,
+    crate_local_def_map: Option<&LocalDefMap>,
 ) -> (DefMap, LocalDefMap) {
     let krate = &def_map.krate.data(db);
     let cfg_options = def_map.krate.cfg_options(db);
@@ -216,7 +217,7 @@ struct DefCollector<'a> {
     def_map: DefMap,
     local_def_map: LocalDefMap,
     /// Set only in case of blocks.
-    crate_local_def_map: Option<Arc<LocalDefMap>>,
+    crate_local_def_map: Option<&'a LocalDefMap>,
     // The dependencies of the current crate, including optional deps like `test`.
     deps: FxHashMap<Name, BuiltDependency>,
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility, GlobId)>>,
@@ -533,7 +534,7 @@ impl DefCollector<'_> {
         );
 
         let (per_ns, _) = self.def_map.resolve_path(
-            self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map),
+            self.crate_local_def_map.unwrap_or(&self.local_def_map),
             self.db,
             DefMap::ROOT,
             &path,
@@ -556,7 +557,7 @@ impl DefCollector<'_> {
     }
 
     fn local_def_map(&mut self) -> &LocalDefMap {
-        self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map)
+        self.crate_local_def_map.unwrap_or(&self.local_def_map)
     }
 
     /// Adds a definition of procedural macro `name` to the root module.
@@ -688,7 +689,7 @@ impl DefCollector<'_> {
         let vis = self
             .def_map
             .resolve_visibility(
-                self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map),
+                self.crate_local_def_map.unwrap_or(&self.local_def_map),
                 self.db,
                 module_id,
                 vis,
@@ -731,7 +732,7 @@ impl DefCollector<'_> {
         names: Option<Vec<Name>>,
         extern_crate: Option<ExternCrateId>,
     ) {
-        let def_map = self.db.crate_def_map(krate);
+        let def_map = crate_def_map(self.db, krate);
         // `#[macro_use]` brings macros into macro_use prelude. Yes, even non-`macro_rules!`
         // macros.
         let root_scope = &def_map[DefMap::ROOT].scope;
@@ -811,32 +812,35 @@ impl DefCollector<'_> {
         let _p = tracing::info_span!("resolve_import", import_path = %import.path.display(self.db, Edition::LATEST))
             .entered();
         tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.data.edition);
-        let res = self.def_map.resolve_path_fp_with_macro(
-            self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map),
-            self.db,
-            ResolveMode::Import,
-            module_id,
-            &import.path,
-            BuiltinShadowMode::Module,
-            None, // An import may resolve to any kind of macro.
-        );
+        let ResolvePathResult { resolved_def, segment_index, reached_fixedpoint, prefix_info } =
+            self.def_map.resolve_path_fp_with_macro(
+                self.crate_local_def_map.unwrap_or(&self.local_def_map),
+                self.db,
+                ResolveMode::Import,
+                module_id,
+                &import.path,
+                BuiltinShadowMode::Module,
+                None, // An import may resolve to any kind of macro.
+            );
 
-        let def = res.resolved_def;
-        if res.reached_fixedpoint == ReachedFixedPoint::No || def.is_none() {
+        if reached_fixedpoint == ReachedFixedPoint::No
+            || resolved_def.is_none()
+            || segment_index.is_some()
+        {
             return PartialResolvedImport::Unresolved;
         }
 
-        if res.prefix_info.differing_crate {
+        if prefix_info.differing_crate {
             return PartialResolvedImport::Resolved(
-                def.filter_visibility(|v| matches!(v, Visibility::Public)),
+                resolved_def.filter_visibility(|v| matches!(v, Visibility::Public)),
             );
         }
 
         // Check whether all namespaces are resolved.
-        if def.is_full() {
-            PartialResolvedImport::Resolved(def)
+        if resolved_def.is_full() {
+            PartialResolvedImport::Resolved(resolved_def)
         } else {
-            PartialResolvedImport::Indeterminate(def)
+            PartialResolvedImport::Indeterminate(resolved_def)
         }
     }
 
@@ -849,7 +853,7 @@ impl DefCollector<'_> {
         let vis = self
             .def_map
             .resolve_visibility(
-                self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map),
+                self.crate_local_def_map.unwrap_or(&self.local_def_map),
                 self.db,
                 module_id,
                 &directive.import.visibility,
@@ -979,6 +983,43 @@ impl DefCollector<'_> {
                                 (Some(name.clone()), res)
                             })
                             .collect::<Vec<_>>();
+                        self.update(
+                            module_id,
+                            &resolutions,
+                            vis,
+                            Some(ImportOrExternCrate::Glob(glob)),
+                        );
+                    }
+                    Some(ModuleDefId::TraitId(it)) => {
+                        // FIXME: Implement this correctly
+                        // We can't actually call `trait_items`, the reason being that if macro calls
+                        // occur, they will call back into the def map which we might be computing right
+                        // now resulting in a cycle.
+                        // To properly implement this, trait item collection needs to be done in def map
+                        // collection...
+                        let resolutions = if true {
+                            vec![]
+                        } else {
+                            self.db
+                                .trait_items(it)
+                                .items
+                                .iter()
+                                .map(|&(ref name, variant)| {
+                                    let res = match variant {
+                                        AssocItemId::FunctionId(it) => {
+                                            PerNs::values(it.into(), vis, None)
+                                        }
+                                        AssocItemId::ConstId(it) => {
+                                            PerNs::values(it.into(), vis, None)
+                                        }
+                                        AssocItemId::TypeAliasId(it) => {
+                                            PerNs::types(it.into(), vis, None)
+                                        }
+                                    };
+                                    (Some(name.clone()), res)
+                                })
+                                .collect::<Vec<_>>()
+                        };
                         self.update(
                             module_id,
                             &resolutions,
@@ -1240,7 +1281,7 @@ impl DefCollector<'_> {
             };
             let resolver = |path: &_| {
                 let resolved_res = self.def_map.resolve_path_fp_with_macro(
-                    self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map),
+                    self.crate_local_def_map.unwrap_or(&self.local_def_map),
                     self.db,
                     ResolveMode::Other,
                     directive.module_id,
@@ -1307,7 +1348,7 @@ impl DefCollector<'_> {
                         );
                         // Record its helper attributes.
                         if def_id.krate != self.def_map.krate {
-                            let def_map = self.db.crate_def_map(def_id.krate);
+                            let def_map = crate_def_map(self.db, def_id.krate);
                             if let Some(helpers) = def_map.data.exported_derives.get(&def_id) {
                                 self.def_map
                                     .derive_helpers_in_scope
@@ -1553,7 +1594,7 @@ impl DefCollector<'_> {
                         self.def_map.krate,
                         |path| {
                             let resolved_res = self.def_map.resolve_path_fp_with_macro(
-                                self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map),
+                                self.crate_local_def_map.unwrap_or(&self.local_def_map),
                                 self.db,
                                 ResolveMode::Other,
                                 directive.module_id,
@@ -1702,11 +1743,8 @@ impl ModCollector<'_, '_> {
 
             let module = self.def_collector.def_map.module_id(module_id);
             let def_map = &mut self.def_collector.def_map;
-            let local_def_map = self
-                .def_collector
-                .crate_local_def_map
-                .as_deref()
-                .unwrap_or(&self.def_collector.local_def_map);
+            let local_def_map =
+                self.def_collector.crate_local_def_map.unwrap_or(&self.def_collector.local_def_map);
 
             match item {
                 ModItem::Mod(m) => self.collect_module(m, &attrs),
@@ -2133,10 +2171,7 @@ impl ModCollector<'_, '_> {
         let def_map = &mut self.def_collector.def_map;
         let vis = def_map
             .resolve_visibility(
-                self.def_collector
-                    .crate_local_def_map
-                    .as_deref()
-                    .unwrap_or(&self.def_collector.local_def_map),
+                self.def_collector.crate_local_def_map.unwrap_or(&self.def_collector.local_def_map),
                 self.def_collector.db,
                 self.module_id,
                 visibility,

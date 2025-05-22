@@ -212,7 +212,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     }
 
                     if is_type_diagnostic_item(cx, ty, sym::Vec)
-                        && let Some(clone_spans) = get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")])
+                        && let Some(clone_spans) = get_spans(cx, Some(body.id()), idx, &[(sym::clone, ".to_owned()")])
                         && let TyKind::Path(QPath::Resolved(_, path)) = input.kind
                         && let Some(elem_ty) = path
                             .segments
@@ -253,8 +253,12 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     }
 
                     if is_type_lang_item(cx, ty, LangItem::String)
-                        && let Some(clone_spans) =
-                            get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")])
+                        && let Some(clone_spans) = get_spans(
+                            cx,
+                            Some(body.id()),
+                            idx,
+                            &[(sym::clone, ".to_string()"), (sym::as_str, "")],
+                        )
                     {
                         diag.span_suggestion(
                             input.span,

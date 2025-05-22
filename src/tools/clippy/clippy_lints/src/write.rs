@@ -498,9 +498,9 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
                     None => return,
                 },
                 LitKind::Char => (
-                    match lit.symbol.as_str() {
-                        "\"" => "\\\"",
-                        "\\'" => "'",
+                    match lit.symbol {
+                        sym::DOUBLE_QUOTE => "\\\"",
+                        sym::BACKSLASH_SINGLE_QUOTE => "'",
                         _ => match value_string.strip_prefix('\'').and_then(|s| s.strip_suffix('\'')) {
                             Some(stripped) => stripped,
                             None => return,

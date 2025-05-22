@@ -11,9 +11,9 @@ fn issue10272() {
     // should trigger warning
     let x = Cell::new(true);
     if x.get() {
+        //~^ ifs_same_cond
     } else if !x.take() {
     } else if x.get() {
-        //~^ ifs_same_cond
     } else {
     }
 }

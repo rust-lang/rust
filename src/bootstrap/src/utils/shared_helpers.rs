@@ -20,7 +20,7 @@ use std::str::FromStr;
 /// Returns the environment variable which the dynamic library lookup path
 /// resides in for this platform.
 pub fn dylib_path_var() -> &'static str {
-    if cfg!(target_os = "windows") {
+    if cfg!(any(target_os = "windows", target_os = "cygwin")) {
         "PATH"
     } else if cfg!(target_vendor = "apple") {
         "DYLD_LIBRARY_PATH"
@@ -90,7 +90,7 @@ pub fn maybe_dump(dump_name: String, cmd: &Command) {
 
         let mut file = OpenOptions::new().create(true).append(true).open(dump_file).unwrap();
 
-        let cmd_dump = format!("{:?}\n", cmd);
+        let cmd_dump = format!("{cmd:?}\n");
         let cmd_dump = cmd_dump.replace(&env::var("BUILD_OUT").unwrap(), "${BUILD_OUT}");
         let cmd_dump = cmd_dump.replace(&env::var("CARGO_HOME").unwrap(), "${CARGO_HOME}");
 

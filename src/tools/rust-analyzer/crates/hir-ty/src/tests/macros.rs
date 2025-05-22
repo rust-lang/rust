@@ -1505,6 +1505,10 @@ fn main() {
             !119..120 'o': i32
             293..294 'o': i32
             308..317 'thread_id': usize
+            !314..320 'OffPtr': usize
+            !333..338 'OffFn': usize
+            !354..355 '0': i32
+            !371..382 'MEM_RELEASE': usize
         "#]],
     )
 }

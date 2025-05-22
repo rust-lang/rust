@@ -16,10 +16,10 @@ In addition to the directives listed here,
 `rustdoc` tests also support most
 [compiletest directives](../tests/directives.html).
 
-All `PATH`s in directives are relative to the the rustdoc output directory (`build/TARGET/test/rustdoc/TESTNAME`),
+All `PATH`s in directives are relative to the rustdoc output directory (`build/TARGET/test/rustdoc/TESTNAME`),
 so it is conventional to use a `#![crate_name = "foo"]` attribute to avoid
 having to write a long crate name multiple times.
-To avoid repetion, `-` can be used in any `PATH` argument to re-use the previous `PATH` argument.
+To avoid repetition, `-` can be used in any `PATH` argument to re-use the previous `PATH` argument.
 
 All arguments take the form of quoted strings
 (both single and double quotes are supported),
@@ -87,7 +87,7 @@ compiletest's `--bless` flag is forwarded to htmldocck.
 
 Usage: `//@ has-dir PATH`
 
-Checks for the existance of directory `PATH`.
+Checks for the existence of directory `PATH`.
 
 ### `files`
 
@@ -106,7 +106,7 @@ Example: `//@ files "foo/bar" '["index.html", "sidebar-items.js"]'`
 ## Limitations
 `htmldocck.py` uses the xpath implementation from the standard library.
 This leads to several limitations:
-* All `XPATH` arguments must start with `//` due to a flaw in the implemention.
+* All `XPATH` arguments must start with `//` due to a flaw in the implementation.
 * Many XPath features (functions, axies, etc.) are not supported.
 * Only well-formed HTML can be parsed (hopefully rustdoc doesn't output mismatched tags).
 

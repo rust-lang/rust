@@ -1,0 +1,2 @@
+error: incorrect value `maybe` for unstable option `linker-features` - a list of enabled (`+` prefix) and disabled (`-` prefix) features: `lld` was expected
+

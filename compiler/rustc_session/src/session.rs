@@ -371,6 +371,11 @@ impl Session {
         self.opts.unstable_opts.coverage_options.discard_all_spans_in_codegen
     }
 
+    /// True if testing flag `-Zcoverage-options=inject-unused-local-file` was passed.
+    pub fn coverage_inject_unused_local_file(&self) -> bool {
+        self.opts.unstable_opts.coverage_options.inject_unused_local_file
+    }
+
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::CFI)
     }

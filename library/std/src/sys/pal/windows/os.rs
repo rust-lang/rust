@@ -202,6 +202,8 @@ fn home_dir_crt() -> Option<PathBuf> {
             |buf, mut sz| {
                 // GetUserProfileDirectoryW does not quite use the usual protocol for
                 // negotiating the buffer size, so we have to translate.
+                // FIXME(#141254): We rely on the *undocumented* property that this function will
+                // always set the size, not just on failure.
                 match c::GetUserProfileDirectoryW(
                     ptr::without_provenance_mut(CURRENT_PROCESS_TOKEN),
                     buf,

@@ -334,7 +334,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         if let ExprKind::MethodCall(path, recv, [], _) = &e.kind
             && path.ident.name == sym::into_bytes
             && let ExprKind::MethodCall(path, recv, [], _) = &recv.kind
-            && matches!(path.ident.name.as_str(), "to_owned" | "to_string")
+            && matches!(path.ident.name, sym::to_owned | sym::to_string)
             && let ExprKind::Lit(lit) = &recv.kind
             && let LitKind::Str(lit_content, _) = &lit.node
             && lit_content.as_str().is_ascii()

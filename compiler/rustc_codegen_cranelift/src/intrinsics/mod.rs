@@ -1109,6 +1109,43 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, old);
         }
 
+        sym::minimumf32 => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            let val = fx.bcx.ins().fmin(a, b);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f32));
+            ret.write_cvalue(fx, val);
+        }
+        sym::minimumf64 => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            let val = fx.bcx.ins().fmin(a, b);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
+            ret.write_cvalue(fx, val);
+        }
+        sym::maximumf32 => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            let val = fx.bcx.ins().fmax(a, b);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f32));
+            ret.write_cvalue(fx, val);
+        }
+        sym::maximumf64 => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            let val = fx.bcx.ins().fmax(a, b);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
+            ret.write_cvalue(fx, val);
+        }
+
         sym::minnumf32 => {
             intrinsic_args!(fx, args => (a, b); intrinsic);
             let a = a.load_scalar(fx);

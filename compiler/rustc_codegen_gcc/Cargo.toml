@@ -2,7 +2,7 @@
 name = "rustc_codegen_gcc"
 version = "0.1.0"
 authors = ["Antoni Boucher <bouanto@zoho.com>"]
-edition = "2018"
+edition = "2024"
 license = "MIT OR Apache-2.0"
 
 [lib]
@@ -22,7 +22,7 @@ master = ["gccjit/master"]
 default = ["master"]
 
 [dependencies]
-gccjit = "2.5"
+gccjit = "2.7"
 #gccjit = { git = "https://github.com/rust-lang/gccjit.rs" }
 
 # Local copy.

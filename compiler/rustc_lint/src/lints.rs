@@ -59,9 +59,36 @@ pub(crate) enum ShadowedIntoIterDiagSub {
 #[derive(LintDiagnostic)]
 #[diag(lint_implicit_unsafe_autorefs)]
 #[note]
-pub(crate) struct ImplicitUnsafeAutorefsDiag {
+pub(crate) struct ImplicitUnsafeAutorefsDiag<'a> {
+    #[label(lint_raw_ptr)]
+    pub raw_ptr_span: Span,
+    pub raw_ptr_ty: Ty<'a>,
+    #[subdiagnostic]
+    pub origin: ImplicitUnsafeAutorefsOrigin<'a>,
+    #[subdiagnostic]
+    pub method: Option<ImplicitUnsafeAutorefsMethodNote>,
     #[subdiagnostic]
     pub suggestion: ImplicitUnsafeAutorefsSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ImplicitUnsafeAutorefsOrigin<'a> {
+    #[note(lint_autoref)]
+    Autoref {
+        #[primary_span]
+        autoref_span: Span,
+        autoref_ty: Ty<'a>,
+    },
+    #[note(lint_overloaded_deref)]
+    OverloadedDeref,
+}
+
+#[derive(Subdiagnostic)]
+#[note(lint_method_def)]
+pub(crate) struct ImplicitUnsafeAutorefsMethodNote {
+    #[primary_span]
+    pub def_span: Span,
+    pub method_name: Symbol,
 }
 
 #[derive(Subdiagnostic)]

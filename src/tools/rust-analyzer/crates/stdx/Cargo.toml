@@ -17,6 +17,7 @@ jod-thread = "1.0.0"
 crossbeam-channel.workspace = true
 itertools.workspace = true
 tracing.workspace = true
+crossbeam-utils = "0.8.21"
 # Think twice before adding anything here
 
 [target.'cfg(unix)'.dependencies]

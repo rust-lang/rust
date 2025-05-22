@@ -1,0 +1,10 @@
+# The first two `disallowed-methods` paths should generate warnings, but the third should not.
+
+[[disallowed-methods]]
+path = "regex::Regex::new_"
+
+[[disallowed-methods]]
+path = "regex::Regex_::new"
+
+[[disallowed-methods]]
+path = "regex_::Regex::new"

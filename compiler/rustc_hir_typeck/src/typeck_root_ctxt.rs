@@ -1,10 +1,10 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, HirId, HirIdMap, LangItem};
-use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{InferCtxt, InferOk, OpaqueTypeStorageEntries, TyCtxtInferExt};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::Span;
@@ -36,6 +36,11 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
     pub(super) locals: RefCell<HirIdMap<Ty<'tcx>>>,
 
     pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx, FulfillmentError<'tcx>>>>,
+
+    // Used to detect opaque types uses added after we've already checked them.
+    //
+    // See [FnCtxt::detect_opaque_types_added_during_writeback] for more details.
+    pub(super) checked_opaque_types_storage_entries: Cell<Option<OpaqueTypeStorageEntries>>,
 
     /// Some additional `Sized` obligations badly affect type inference.
     /// These obligations are added in a later stage of typeck.
@@ -85,12 +90,14 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
         let infcx =
             tcx.infer_ctxt().ignoring_regions().build(TypingMode::typeck_for_body(tcx, def_id));
         let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
+        let fulfillment_cx = RefCell::new(<dyn TraitEngine<'_, _>>::new(&infcx));
 
         TypeckRootCtxt {
-            typeck_results,
-            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_, _>>::new(&infcx)),
             infcx,
+            typeck_results,
             locals: RefCell::new(Default::default()),
+            fulfillment_cx,
+            checked_opaque_types_storage_entries: Cell::new(None),
             deferred_sized_obligations: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),
             deferred_cast_checks: RefCell::new(Vec::new()),

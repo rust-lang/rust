@@ -287,7 +287,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     }
 
     #[inline]
-    pub(crate) fn non_null(&self) -> NonNull<T> {
+    pub(crate) const fn non_null(&self) -> NonNull<T> {
         self.inner.non_null()
     }
 

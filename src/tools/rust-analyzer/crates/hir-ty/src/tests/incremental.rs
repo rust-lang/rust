@@ -19,7 +19,7 @@ fn foo() -> i32 {
         let events = db.log_executed(|| {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let crate_def_map = module.def_map(&db);
-            visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
+            visit_module(&db, crate_def_map, module.local_id, &mut |def| {
                 if let ModuleDefId::FunctionId(it) = def {
                     db.infer(it.into());
                 }
@@ -41,7 +41,7 @@ fn foo() -> i32 {
         let events = db.log_executed(|| {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let crate_def_map = module.def_map(&db);
-            visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
+            visit_module(&db, crate_def_map, module.local_id, &mut |def| {
                 if let ModuleDefId::FunctionId(it) = def {
                     db.infer(it.into());
                 }
@@ -70,7 +70,7 @@ fn baz() -> i32 {
         let events = db.log_executed(|| {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let crate_def_map = module.def_map(&db);
-            visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
+            visit_module(&db, crate_def_map, module.local_id, &mut |def| {
                 if let ModuleDefId::FunctionId(it) = def {
                     db.infer(it.into());
                 }
@@ -97,7 +97,7 @@ fn baz() -> i32 {
         let events = db.log_executed(|| {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let crate_def_map = module.def_map(&db);
-            visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
+            visit_module(&db, crate_def_map, module.local_id, &mut |def| {
                 if let ModuleDefId::FunctionId(it) = def {
                     db.infer(it.into());
                 }

@@ -10,6 +10,7 @@
 //!  - option-if-let-else
 
 use crate::consts::{ConstEvalCtxt, FullInt};
+use crate::sym;
 use crate::ty::{all_predicates_of, is_copy};
 use crate::visitors::is_const_evaluatable;
 use rustc_hir::def::{DefKind, Res};
@@ -19,7 +20,7 @@ use rustc_hir::{BinOpKind, Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_span::{Symbol, sym};
+use rustc_span::Symbol;
 use std::{cmp, ops};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -49,14 +50,13 @@ impl ops::BitOrAssign for EagernessSuggestion {
 /// Determine the eagerness of the given function call.
 fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: bool) -> EagernessSuggestion {
     use EagernessSuggestion::{Eager, Lazy, NoChange};
-    let name = name.as_str();
 
     let ty = match cx.tcx.impl_of_method(fn_id) {
         Some(id) => cx.tcx.type_of(id).instantiate_identity(),
         None => return Lazy,
     };
 
-    if (name.starts_with("as_") || name == "len" || name == "is_empty") && have_one_arg {
+    if (matches!(name, sym::is_empty | sym::len) || name.as_str().starts_with("as_")) && have_one_arg {
         if matches!(
             cx.tcx.crate_name(fn_id.krate),
             sym::std | sym::core | sym::alloc | sym::proc_macro

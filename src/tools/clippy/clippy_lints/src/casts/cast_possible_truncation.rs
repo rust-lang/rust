@@ -56,7 +56,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
             if signed {
                 return nbits;
             }
-            let max_bits = if method.ident.as_str() == "min" {
+            let max_bits = if method.ident.name == sym::min {
                 get_constant_bits(cx, right)
             } else {
                 None
@@ -64,7 +64,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
             apply_reductions(cx, nbits, left, signed).min(max_bits.unwrap_or(u64::MAX))
         },
         ExprKind::MethodCall(method, _, [lo, hi], _) => {
-            if method.ident.as_str() == "clamp"
+            if method.ident.name == sym::clamp
                 //FIXME: make this a diagnostic item
                 && let (Some(lo_bits), Some(hi_bits)) = (get_constant_bits(cx, lo), get_constant_bits(cx, hi))
             {

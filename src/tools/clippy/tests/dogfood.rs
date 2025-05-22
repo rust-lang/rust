@@ -44,8 +44,8 @@ fn dogfood() {
         "rustc_tools_util",
     ] {
         println!("linting {package}");
-        if !run_clippy_for_package(package, &["-D", "clippy::all", "-D", "clippy::pedantic"]) {
-            failed_packages.push(if package.is_empty() { "root" } else { package });
+        if !run_clippy_for_package(package) {
+            failed_packages.push(package);
         }
     }
 
@@ -57,7 +57,7 @@ fn dogfood() {
 }
 
 #[must_use]
-fn run_clippy_for_package(project: &str, args: &[&str]) -> bool {
+fn run_clippy_for_package(project: &str) -> bool {
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
     let mut command = Command::new(&*test_utils::CARGO_CLIPPY_PATH);
@@ -79,15 +79,17 @@ fn run_clippy_for_package(project: &str, args: &[&str]) -> bool {
         }
     }
 
-    command.arg("--").args(args);
+    command.arg("--");
     command.arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
-    command.args(["-D", "clippy::dbg_macro"]);
-
+    command.args(["-D", "clippy::all", "-D", "clippy::pedantic", "-D", "clippy::dbg_macro"]);
     if !cfg!(feature = "internal") {
         // running a clippy built without internal lints on the clippy source
-        // that contains e.g. `allow(clippy::invalid_paths)`
+        // that contains e.g. `allow(clippy::symbol_as_str)`
         command.args(["-A", "unknown_lints"]);
     }
+
+    // Workaround for not being a workspace, add the crate's directory back to the path
+    command.args(["--remap-path-prefix", &format!("={project}")]);
 
     command.status().unwrap().success()
 }

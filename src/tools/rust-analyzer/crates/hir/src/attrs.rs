@@ -105,11 +105,12 @@ impl HasAttrs for crate::Crate {
 /// Resolves the item `link` points to in the scope of `def`.
 pub fn resolve_doc_path_on(
     db: &dyn HirDatabase,
-    def: impl HasAttrs,
+    def: impl HasAttrs + Copy,
     link: &str,
     ns: Option<Namespace>,
+    is_inner_doc: bool,
 ) -> Option<DocLinkDef> {
-    resolve_doc_path_on_(db, link, def.attr_id(), ns)
+    resolve_doc_path_on_(db, link, def.attr_id(), ns, is_inner_doc)
 }
 
 fn resolve_doc_path_on_(
@@ -117,9 +118,18 @@ fn resolve_doc_path_on_(
     link: &str,
     attr_id: AttrDefId,
     ns: Option<Namespace>,
+    is_inner_doc: bool,
 ) -> Option<DocLinkDef> {
     let resolver = match attr_id {
-        AttrDefId::ModuleId(it) => it.resolver(db),
+        AttrDefId::ModuleId(it) => {
+            if is_inner_doc {
+                it.resolver(db)
+            } else if let Some(parent) = Module::from(it).parent(db) {
+                parent.id.resolver(db)
+            } else {
+                it.resolver(db)
+            }
+        }
         AttrDefId::FieldId(it) => it.parent.resolver(db),
         AttrDefId::AdtId(it) => it.resolver(db),
         AttrDefId::FunctionId(it) => it.resolver(db),
@@ -160,7 +170,7 @@ fn resolve_doc_path_on_(
 
 fn resolve_assoc_or_field(
     db: &dyn HirDatabase,
-    resolver: Resolver,
+    resolver: Resolver<'_>,
     path: ModPath,
     name: Name,
     ns: Option<Namespace>,
@@ -248,7 +258,7 @@ fn resolve_assoc_item(
 
 fn resolve_impl_trait_item(
     db: &dyn HirDatabase,
-    resolver: Resolver,
+    resolver: Resolver<'_>,
     ty: &Type,
     name: &Name,
     ns: Option<Namespace>,

@@ -5,11 +5,16 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::sym;
+use rustc_span::{Symbol, sym};
 
 use super::ITER_CLONED_COLLECT;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, method_name: &str, expr: &hir::Expr<'_>, recv: &'tcx hir::Expr<'_>) {
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    method_name: Symbol,
+    expr: &hir::Expr<'_>,
+    recv: &'tcx hir::Expr<'_>,
+) {
     let expr_ty = cx.typeck_results().expr_ty(expr);
     if is_type_diagnostic_item(cx, expr_ty, sym::Vec)
         && let Some(slice) = derefs_to_slice(cx, recv, cx.typeck_results().expr_ty(recv))

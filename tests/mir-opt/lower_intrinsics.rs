@@ -1,8 +1,10 @@
 //@ test-mir-pass: LowerIntrinsics
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
-#![feature(core_intrinsics, intrinsics, rustc_attrs)]
+#![feature(core_intrinsics)]
 #![crate_type = "lib"]
+
+use std::intrinsics::copy_nonoverlapping;
 
 // EMIT_MIR lower_intrinsics.wrapping.LowerIntrinsics.diff
 pub fn wrapping(a: i32, b: i32) {
@@ -152,11 +154,6 @@ pub fn discriminant<T>(t: T) {
     core::intrinsics::discriminant_value(&());
     core::intrinsics::discriminant_value(&E::B);
 }
-
-// Cannot use `std::intrinsics::copy_nonoverlapping` as that is a wrapper function
-#[rustc_nounwind]
-#[rustc_intrinsic]
-unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
 // EMIT_MIR lower_intrinsics.f_copy_nonoverlapping.LowerIntrinsics.diff
 pub fn f_copy_nonoverlapping() {

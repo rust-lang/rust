@@ -1,8 +1,8 @@
 // tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(array_windows)]
+#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
@@ -32,6 +32,7 @@ mod gather_locals;
 mod intrinsicck;
 mod method;
 mod op;
+mod opaque_types;
 mod pat;
 mod place_op;
 mod rvalue_scopes;
@@ -245,9 +246,7 @@ fn typeck_with_inspect<'tcx>(
 
     let typeck_results = fcx.resolve_type_vars_in_body(body);
 
-    // We clone the defined opaque types during writeback in the new solver
-    // because we have to use them during normalization.
-    let _ = fcx.infcx.take_opaque_types();
+    fcx.detect_opaque_types_added_during_writeback();
 
     // Consistency check our TypeckResults instance can hold all ItemLocalIds
     // it will need to hold.

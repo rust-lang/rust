@@ -112,5 +112,11 @@ error: it is more concise to loop over references to containers instead of using
 LL |     for _ in r.iter() {}
    |              ^^^^^^^^ help: to write this more concisely, try: `r`
 
-error: aborting due to 18 previous errors
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> tests/ui/explicit_iter_loop.rs:194:14
+   |
+LL |     for _ in dbg!([1, 2]).iter() {}
+   |              ^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&dbg!([1, 2])`
+
+error: aborting due to 19 previous errors
 

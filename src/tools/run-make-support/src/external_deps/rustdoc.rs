@@ -5,7 +5,7 @@ use crate::command::Command;
 use crate::env::env_var;
 use crate::util::set_host_compiler_dylib_path;
 
-/// Construct a new `rustdoc` invocation.
+/// Construct a new `rustdoc` invocation. This will configure the host compiler runtime libs.
 #[track_caller]
 pub fn rustdoc() -> Rustdoc {
     Rustdoc::new()
@@ -28,7 +28,7 @@ fn setup_common() -> Command {
 }
 
 impl Rustdoc {
-    /// Construct a bare `rustdoc` invocation.
+    /// Construct a bare `rustdoc` invocation. This will configure the host compiler runtime libs.
     #[track_caller]
     pub fn new() -> Self {
         let cmd = setup_common();

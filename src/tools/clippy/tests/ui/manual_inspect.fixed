@@ -107,7 +107,7 @@ fn main() {
             let _ = || {
                 let _x = x;
             };
-            return ;
+            return;
         }
         println!("test");
     });

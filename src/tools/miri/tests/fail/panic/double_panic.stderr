@@ -14,7 +14,7 @@ thread caused non-unwinding panic. aborting.
 error: abnormal termination: the program aborted execution
   --> RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
    |
-LL |     ABORT();
+LL | ABORT()
    | ^ the program aborted execution
    |
    = note: BACKTRACE:

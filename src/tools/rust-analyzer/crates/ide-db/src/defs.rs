@@ -6,7 +6,7 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use crate::RootDatabase;
-use crate::documentation::{Documentation, HasDocs};
+use crate::documentation::{DocsRangeMap, Documentation, HasDocs};
 use crate::famous_defs::FamousDefs;
 use arrayvec::ArrayVec;
 use either::Either;
@@ -21,7 +21,7 @@ use hir::{
 use span::Edition;
 use stdx::{format_to, impl_from};
 use syntax::{
-    SyntaxKind, SyntaxNode, SyntaxToken,
+    SyntaxKind, SyntaxNode, SyntaxToken, TextSize,
     ast::{self, AstNode},
     match_ast,
 };
@@ -210,29 +210,40 @@ impl Definition {
         famous_defs: Option<&FamousDefs<'_, '_>>,
         display_target: DisplayTarget,
     ) -> Option<Documentation> {
+        self.docs_with_rangemap(db, famous_defs, display_target).map(|(docs, _)| docs)
+    }
+
+    pub fn docs_with_rangemap(
+        &self,
+        db: &RootDatabase,
+        famous_defs: Option<&FamousDefs<'_, '_>>,
+        display_target: DisplayTarget,
+    ) -> Option<(Documentation, Option<DocsRangeMap>)> {
         let docs = match self {
-            Definition::Macro(it) => it.docs(db),
-            Definition::Field(it) => it.docs(db),
-            Definition::Module(it) => it.docs(db),
-            Definition::Crate(it) => it.docs(db),
-            Definition::Function(it) => it.docs(db),
-            Definition::Adt(it) => it.docs(db),
-            Definition::Variant(it) => it.docs(db),
-            Definition::Const(it) => it.docs(db),
-            Definition::Static(it) => it.docs(db),
-            Definition::Trait(it) => it.docs(db),
-            Definition::TraitAlias(it) => it.docs(db),
+            Definition::Macro(it) => it.docs_with_rangemap(db),
+            Definition::Field(it) => it.docs_with_rangemap(db),
+            Definition::Module(it) => it.docs_with_rangemap(db),
+            Definition::Crate(it) => it.docs_with_rangemap(db),
+            Definition::Function(it) => it.docs_with_rangemap(db),
+            Definition::Adt(it) => it.docs_with_rangemap(db),
+            Definition::Variant(it) => it.docs_with_rangemap(db),
+            Definition::Const(it) => it.docs_with_rangemap(db),
+            Definition::Static(it) => it.docs_with_rangemap(db),
+            Definition::Trait(it) => it.docs_with_rangemap(db),
+            Definition::TraitAlias(it) => it.docs_with_rangemap(db),
             Definition::TypeAlias(it) => {
-                it.docs(db).or_else(|| {
+                it.docs_with_rangemap(db).or_else(|| {
                     // docs are missing, try to fall back to the docs of the aliased item.
                     let adt = it.ty(db).as_adt()?;
-                    let docs = adt.docs(db)?;
-                    let docs = format!(
-                        "*This is the documentation for* `{}`\n\n{}",
-                        adt.display(db, display_target),
-                        docs.as_str()
+                    let (docs, range_map) = adt.docs_with_rangemap(db)?;
+                    let header_docs = format!(
+                        "*This is the documentation for* `{}`\n\n",
+                        adt.display(db, display_target)
                     );
-                    Some(Documentation::new(docs))
+                    let offset = TextSize::new(header_docs.len() as u32);
+                    let range_map = range_map.shift_docstring_line_range(offset);
+                    let docs = header_docs + docs.as_str();
+                    Some((Documentation::new(docs), range_map))
                 })
             }
             Definition::BuiltinType(it) => {
@@ -241,17 +252,17 @@ impl Definition {
                     let primitive_mod =
                         format!("prim_{}", it.name().display(fd.0.db, display_target.edition));
                     let doc_owner = find_std_module(fd, &primitive_mod, display_target.edition)?;
-                    doc_owner.docs(fd.0.db)
+                    doc_owner.docs_with_rangemap(fd.0.db)
                 })
             }
             Definition::BuiltinLifetime(StaticLifetime) => None,
             Definition::Local(_) => None,
             Definition::SelfType(impl_def) => {
-                impl_def.self_ty(db).as_adt().map(|adt| adt.docs(db))?
+                impl_def.self_ty(db).as_adt().map(|adt| adt.docs_with_rangemap(db))?
             }
             Definition::GenericParam(_) => None,
             Definition::Label(_) => None,
-            Definition::ExternCrateDecl(it) => it.docs(db),
+            Definition::ExternCrateDecl(it) => it.docs_with_rangemap(db),
 
             Definition::BuiltinAttr(it) => {
                 let name = it.name(db);
@@ -276,7 +287,8 @@ impl Definition {
                         name_value_str
                     );
                 }
-                Some(Documentation::new(docs.replace('*', "\\*")))
+
+                return Some((Documentation::new(docs.replace('*', "\\*")), None));
             }
             Definition::ToolModule(_) => None,
             Definition::DeriveHelper(_) => None,
@@ -291,8 +303,9 @@ impl Definition {
             let trait_ = assoc.implemented_trait(db)?;
             let name = Some(assoc.name(db)?);
             let item = trait_.items(db).into_iter().find(|it| it.name(db) == name)?;
-            item.docs(db)
+            item.docs_with_rangemap(db)
         })
+        .map(|(docs, range_map)| (docs, Some(range_map)))
     }
 
     pub fn label(&self, db: &RootDatabase, display_target: DisplayTarget) -> String {

@@ -1,5 +1,5 @@
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:27:5
+  --> tests/ui/needless_late_init.rs:25:5
    |
 LL |     let a;
    |     ^^^^^^ created here
@@ -17,7 +17,7 @@ LL ~     let a = "zero";
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:31:5
+  --> tests/ui/needless_late_init.rs:29:5
    |
 LL |     let b;
    |     ^^^^^^ created here
@@ -35,7 +35,7 @@ LL ~     let b = 1;
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:33:5
+  --> tests/ui/needless_late_init.rs:31:5
    |
 LL |     let c;
    |     ^^^^^^ created here
@@ -52,7 +52,7 @@ LL ~     let c = 2;
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:38:5
+  --> tests/ui/needless_late_init.rs:36:5
    |
 LL |     let d: usize;
    |     ^^^^^^^^^^^^^ created here
@@ -68,7 +68,7 @@ LL ~     let d: usize = 1;
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:42:5
+  --> tests/ui/needless_late_init.rs:40:5
    |
 LL |     let e;
    |     ^^^^^^ created here
@@ -84,7 +84,7 @@ LL ~     let e = format!("{}", d);
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:48:5
+  --> tests/ui/needless_late_init.rs:46:5
    |
 LL |     let a;
    |     ^^^^^^
@@ -103,7 +103,7 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:58:5
+  --> tests/ui/needless_late_init.rs:56:5
    |
 LL |     let b;
    |     ^^^^^^
@@ -120,7 +120,7 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:66:5
+  --> tests/ui/needless_late_init.rs:64:5
    |
 LL |     let d;
    |     ^^^^^^
@@ -138,7 +138,7 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:75:5
+  --> tests/ui/needless_late_init.rs:73:5
    |
 LL |     let e;
    |     ^^^^^^
@@ -155,7 +155,7 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:83:5
+  --> tests/ui/needless_late_init.rs:81:5
    |
 LL |     let f;
    |     ^^^^^^
@@ -169,7 +169,7 @@ LL ~         1 => "three",
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:90:5
+  --> tests/ui/needless_late_init.rs:88:5
    |
 LL |     let g: usize;
    |     ^^^^^^^^^^^^^
@@ -186,7 +186,7 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:99:5
+  --> tests/ui/needless_late_init.rs:97:5
    |
 LL |     let x;
    |     ^^^^^^ created here
@@ -203,7 +203,7 @@ LL ~     let x = 1;
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:104:5
+  --> tests/ui/needless_late_init.rs:102:5
    |
 LL |     let x;
    |     ^^^^^^ created here
@@ -220,7 +220,7 @@ LL ~     let x = SignificantDrop;
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:109:5
+  --> tests/ui/needless_late_init.rs:107:5
    |
 LL |     let x;
    |     ^^^^^^ created here
@@ -238,7 +238,7 @@ LL ~     let x = SignificantDrop;
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:129:5
+  --> tests/ui/needless_late_init.rs:127:5
    |
 LL |     let a;
    |     ^^^^^^
@@ -257,7 +257,7 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:147:5
+  --> tests/ui/needless_late_init.rs:145:5
    |
 LL |     let a;
    |     ^^^^^^
@@ -276,7 +276,7 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:300:5
+  --> tests/ui/needless_late_init.rs:298:5
    |
 LL |     let r;
    |     ^^^^^^ created here

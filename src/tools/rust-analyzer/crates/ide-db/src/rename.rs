@@ -390,11 +390,6 @@ pub fn source_edit_from_references(
     let mut edited_ranges = Vec::new();
     for &FileReference { range, ref name, .. } in references {
         let name_range = name.text_range();
-        if name_range.len() != range.len() {
-            // This usage comes from a different token kind that was downmapped to a NameLike in a macro
-            // Renaming this will most likely break things syntax-wise
-            continue;
-        }
         let has_emitted_edit = match name {
             // if the ranges differ then the node is inside a macro call, we can't really attempt
             // to make special rewrites like shorthand syntax and such, so just rename the node in

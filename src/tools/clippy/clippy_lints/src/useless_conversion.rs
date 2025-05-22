@@ -3,11 +3,11 @@ use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
 use clippy_utils::ty::{get_type_diagnostic_name, is_copy, is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{
-    get_parent_expr, is_inherent_method_call, is_trait_item, is_trait_method, is_ty_alias, path_to_local,
+    get_parent_expr, is_inherent_method_call, is_trait_item, is_trait_method, is_ty_alias, path_to_local, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Node, PatKind};
+use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, PatKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_lint::{LateContext, LateLintPass};
@@ -15,7 +15,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 declare_clippy_lint! {
@@ -177,7 +177,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
             },
 
             ExprKind::MethodCall(name, recv, [], _) => {
-                if is_trait_method(cx, e, sym::Into) && name.ident.as_str() == "into" {
+                if is_trait_method(cx, e, sym::Into) && name.ident.name == sym::into {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(recv);
                     if same_type_and_consts(a, b) {
@@ -298,6 +298,33 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     // implements Copy, in which case .into_iter() returns a copy of the receiver and
                     // cannot be safely omitted.
                     if same_type_and_consts(a, b) && !is_copy(cx, b) {
+                        // Below we check if the parent method call meets the following conditions:
+                        // 1. First parameter is `&mut self` (requires mutable reference)
+                        // 2. Second parameter implements the `FnMut` trait (e.g., Iterator::any)
+                        // For methods satisfying these conditions (like any), .into_iter() must be preserved.
+                        if let Some(parent) = get_parent_expr(cx, e)
+                            && let ExprKind::MethodCall(_, recv, _, _) = parent.kind
+                            && recv.hir_id == e.hir_id
+                            && let Some(def_id) = cx.typeck_results().type_dependent_def_id(parent.hir_id)
+                            && let sig = cx.tcx.fn_sig(def_id).skip_binder().skip_binder()
+                            && let inputs = sig.inputs()
+                            && inputs.len() >= 2
+                            && let Some(self_ty) = inputs.first()
+                            && let ty::Ref(_, _, Mutability::Mut) = self_ty.kind()
+                            && let Some(second_ty) = inputs.get(1)
+                            && let predicates = cx.tcx.param_env(def_id).caller_bounds()
+                            && predicates.iter().any(|pred| {
+                                if let ty::ClauseKind::Trait(trait_pred) = pred.kind().skip_binder() {
+                                    trait_pred.self_ty() == *second_ty
+                                        && cx.tcx.lang_items().fn_mut_trait() == Some(trait_pred.def_id())
+                                } else {
+                                    false
+                                }
+                            })
+                        {
+                            return;
+                        }
+
                         let sugg = snippet(cx, recv.span, "<expr>").into_owned();
                         span_lint_and_sugg(
                             cx,

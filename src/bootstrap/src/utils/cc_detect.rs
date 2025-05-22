@@ -22,42 +22,12 @@
 //! everything.
 
 use std::collections::HashSet;
+use std::iter;
 use std::path::{Path, PathBuf};
-use std::{env, iter};
 
 use crate::core::config::TargetSelection;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::{Build, CLang, GitRepo};
-
-/// Finds archiver tool for the given target if possible.
-/// FIXME(onur-ozkan): This logic should be replaced by calling into the `cc` crate.
-fn cc2ar(cc: &Path, target: TargetSelection, default_ar: PathBuf) -> Option<PathBuf> {
-    if let Some(ar) = env::var_os(format!("AR_{}", target.triple.replace('-', "_"))) {
-        Some(PathBuf::from(ar))
-    } else if let Some(ar) = env::var_os("AR") {
-        Some(PathBuf::from(ar))
-    } else if target.is_msvc() {
-        None
-    } else if target.contains("musl") || target.contains("openbsd") {
-        Some(PathBuf::from("ar"))
-    } else if target.contains("vxworks") {
-        Some(PathBuf::from("wr-ar"))
-    } else if target.contains("-nto-") {
-        if target.starts_with("i586") {
-            Some(PathBuf::from("ntox86-ar"))
-        } else if target.starts_with("aarch64") {
-            Some(PathBuf::from("ntoaarch64-ar"))
-        } else if target.starts_with("x86_64") {
-            Some(PathBuf::from("ntox86_64-ar"))
-        } else {
-            panic!("Unknown architecture, cannot determine archiver for Neutrino QNX");
-        }
-    } else if target.contains("android") || target.contains("-wasi") {
-        Some(cc.parent().unwrap().join(PathBuf::from("llvm-ar")))
-    } else {
-        Some(default_ar)
-    }
-}
 
 /// Creates and configures a new [`cc::Build`] instance for the given target.
 fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
@@ -140,7 +110,7 @@ pub fn find_target(build: &Build, target: TargetSelection) {
     let ar = if let ar @ Some(..) = config.and_then(|c| c.ar.clone()) {
         ar
     } else {
-        cc2ar(compiler.path(), target, PathBuf::from(cfg.get_archiver().get_program()))
+        cfg.try_get_archiver().map(|c| PathBuf::from(c.get_program())).ok()
     };
 
     build.cc.borrow_mut().insert(target, compiler.clone());

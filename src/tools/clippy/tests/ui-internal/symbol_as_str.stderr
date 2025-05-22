@@ -4,9 +4,10 @@ error: converting a Symbol to a string
 LL |     s.as_str() == "f32";
    |     ^^^^^^^^^^
    |
+   = help: add the symbols to `clippy_utils/src/sym.rs` if needed
    = note: `-D clippy::symbol-as-str` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::symbol_as_str)]`
-help: use the preinterned symbol
+help: use preinterned symbols instead
    |
 LL -     s.as_str() == "f32";
 LL +     s == sym::f32;
@@ -18,7 +19,8 @@ error: converting a Symbol to a string
 LL |     s.as_str() == "proc-macro";
    |     ^^^^^^^^^^
    |
-help: use the preinterned symbol
+   = help: add the symbols to `clippy_utils/src/sym.rs` if needed
+help: use preinterned symbols instead
    |
 LL -     s.as_str() == "proc-macro";
 LL +     s == sym::proc_dash_macro;
@@ -30,7 +32,8 @@ error: converting a Symbol to a string
 LL |     s.as_str() == "self";
    |     ^^^^^^^^^^
    |
-help: use the preinterned symbol
+   = help: add the symbols to `clippy_utils/src/sym.rs` if needed
+help: use preinterned symbols instead
    |
 LL -     s.as_str() == "self";
 LL +     s == kw::SelfLower;
@@ -42,7 +45,8 @@ error: converting a Symbol to a string
 LL |     s.as_str() == "msrv";
    |     ^^^^^^^^^^
    |
-help: use the preinterned symbol
+   = help: add the symbols to `clippy_utils/src/sym.rs` if needed
+help: use preinterned symbols instead
    |
 LL -     s.as_str() == "msrv";
 LL +     s == sym::msrv;
@@ -54,7 +58,8 @@ error: converting a Symbol to a string
 LL |     s.as_str() == "Cargo.toml";
    |     ^^^^^^^^^^
    |
-help: use the preinterned symbol
+   = help: add the symbols to `clippy_utils/src/sym.rs` if needed
+help: use preinterned symbols instead
    |
 LL -     s.as_str() == "Cargo.toml";
 LL +     s == sym::Cargo_toml;
@@ -66,11 +71,27 @@ error: converting a Symbol to a string
 LL |     "get" == s.as_str();
    |              ^^^^^^^^^^
    |
-help: use the preinterned symbol
+   = help: add the symbols to `clippy_utils/src/sym.rs` if needed
+help: use preinterned symbols instead
    |
 LL -     "get" == s.as_str();
 LL +     sym::get == s;
    |
 
-error: aborting due to 6 previous errors
+error: converting a Symbol to a string
+  --> tests/ui-internal/symbol_as_str.rs:22:19
+   |
+LL |     let _ = match s.as_str() {
+   |                   ^^^^^^^^^^
+   |
+   = help: add the symbols to `clippy_utils/src/sym.rs` if needed
+help: use preinterned symbols instead
+   |
+LL ~     let _ = match s {
+LL |
+LL ~         sym::unwrap_err => 1,
+LL ~         sym::unwrap_or_default | sym::unwrap_or_else => 2,
+   |
+
+error: aborting due to 7 previous errors
 

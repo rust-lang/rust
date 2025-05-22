@@ -6,7 +6,7 @@ name = "miri-script"
 repository = "https://github.com/rust-lang/miri"
 version = "0.1.0"
 default-run = "miri-script"
-edition = "2021"
+edition = "2024"
 
 [workspace]
 # We make this a workspace root so that cargo does not go looking in ../Cargo.toml for the workspace root.

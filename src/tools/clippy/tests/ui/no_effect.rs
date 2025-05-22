@@ -221,3 +221,56 @@ fn main() {
     Cout << 142;
     -Cout;
 }
+
+fn issue14592() {
+    struct MyStruct {
+        _inner: MyInner,
+    }
+    struct MyInner {}
+
+    impl Drop for MyInner {
+        fn drop(&mut self) {
+            println!("dropping");
+        }
+    }
+
+    let x = MyStruct { _inner: MyInner {} };
+
+    let closure = || {
+        // Do not lint: dropping the assignment or assigning to `_` would
+        // change the output.
+        let _x = x;
+    };
+
+    println!("1");
+    closure();
+    println!("2");
+
+    struct Innocuous {
+        a: i32,
+    }
+
+    // Do not lint: one of the fields has a side effect.
+    let x = MyInner {};
+    let closure = || {
+        let _x = Innocuous {
+            a: {
+                x;
+                10
+            },
+        };
+    };
+
+    // Do not lint: the base has a side effect.
+    let x = MyInner {};
+    let closure = || {
+        let _x = Innocuous {
+            ..Innocuous {
+                a: {
+                    x;
+                    10
+                },
+            }
+        };
+    };
+}

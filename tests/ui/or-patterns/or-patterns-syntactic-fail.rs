@@ -16,18 +16,18 @@ fn no_top_level_or_patterns() {
 fn no_top_level_or_patterns_2() {
     // ...and for now neither do we allow or-patterns at the top level of functions.
     fn fun1(A | B: E) {}
-    //~^ ERROR top-level or-patterns are not allowed
+    //~^ ERROR function parameters require top-level or-patterns in parentheses
 
     fn fun2(| A | B: E) {}
-    //~^ ERROR top-level or-patterns are not allowed
+    //~^ ERROR function parameters require top-level or-patterns in parentheses
 
     // We don't allow top-level or-patterns before type annotation in let-statements because we
     // want to reserve this syntactic space for possible future type ascription.
     let A | B: E = A;
-    //~^ ERROR top-level or-patterns are not allowed
+    //~^ ERROR `let` bindings require top-level or-patterns in parentheses
 
     let | A | B: E = A;
-    //~^ ERROR top-level or-patterns are not allowed
+    //~^ ERROR `let` bindings require top-level or-patterns in parentheses
 
     let (A | B): E = A; // ok -- wrapped in parens
 }

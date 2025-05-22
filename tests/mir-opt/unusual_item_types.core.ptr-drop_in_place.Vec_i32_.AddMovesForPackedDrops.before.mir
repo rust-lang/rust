@@ -1,6 +1,6 @@
-// MIR for `std::ptr::drop_in_place` before AddMovesForPackedDrops
+// MIR for `drop_in_place` before AddMovesForPackedDrops
 
-fn std::ptr::drop_in_place(_1: *mut Vec<i32>) -> () {
+fn drop_in_place(_1: *mut Vec<i32>) -> () {
     let mut _0: ();
     let mut _2: &mut std::vec::Vec<i32>;
     let mut _3: ();

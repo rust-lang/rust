@@ -17,11 +17,11 @@ pub trait Foo<'a, 't> {
 
 impl<'a, 't> Foo<'a, 't> for &'a isize {
     fn no_bound<'b:'a>(self, b: Inv<'b>) {
-        //~^ ERROR lifetime parameters or bounds on method `no_bound` do not match
+        //~^ ERROR lifetime parameters do not match the trait definition
     }
 
     fn has_bound<'b>(self, b: Inv<'b>) {
-        //~^ ERROR lifetime parameters or bounds on method `has_bound` do not match
+        //~^ ERROR lifetime parameters do not match the trait definition
     }
 
     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
@@ -40,7 +40,7 @@ impl<'a, 't> Foo<'a, 't> for &'a isize {
     }
 
     fn wrong_bound2(self, b: Inv, c: Inv, d: Inv) {
-        //~^ ERROR lifetime parameters or bounds on method `wrong_bound2` do not match the trait
+        //~^ ERROR lifetime parameters do not match the trait definition
     }
 
     fn okay_bound<'b,'c,'e:'b+'c>(self, b: Inv<'b>, c: Inv<'c>, e: Inv<'e>) {

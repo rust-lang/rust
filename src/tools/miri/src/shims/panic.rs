@@ -85,6 +85,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Now we make a function call, and pass `data` as first and only argument.
         let f_instance = this.get_ptr_fn(try_fn)?.as_instance()?;
         trace!("try_fn: {:?}", f_instance);
+        #[allow(clippy::cloned_ref_to_slice_refs)] // the code is clearer as-is
         this.call_function(
             f_instance,
             ExternAbi::Rust,

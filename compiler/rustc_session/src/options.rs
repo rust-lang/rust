@@ -1413,6 +1413,7 @@ pub mod parse {
                 "mcdc" => slot.level = CoverageLevel::Mcdc,
                 "no-mir-spans" => slot.no_mir_spans = true,
                 "discard-all-spans-in-codegen" => slot.discard_all_spans_in_codegen = true,
+                "inject-unused-local-file" => slot.inject_unused_local_file = true,
                 _ => return false,
             }
         }
@@ -2408,10 +2409,8 @@ options! {
         "print codegen statistics (default: no)"),
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "print the LLVM optimization passes being run (default: no)"),
-    print_mono_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
-        "print the result of the monomorphization collection pass. \
-         Value `lazy` means to use normal collection; `eager` means to collect all items.
-         Note that this overwrites the effect `-Clink-dead-code` has on collection!"),
+    print_mono_items: bool = (false, parse_bool, [UNTRACKED],
+        "print the result of the monomorphization collection pass (default: no)"),
     print_type_sizes: bool = (false, parse_bool, [UNTRACKED],
         "print layout information for each type encountered (default: no)"),
     proc_macro_backtrace: bool = (false, parse_bool, [UNTRACKED],

@@ -92,7 +92,7 @@ use crate::{
         Const, Enum, ExternCrate, Function, Impl, ItemTreeId, ItemTreeNode, Macro2, MacroRules,
         Static, Struct, Trait, TraitAlias, TypeAlias, Union, Use, Variant,
     },
-    nameres::LocalDefMap,
+    nameres::{LocalDefMap, block_def_map, crate_def_map, crate_local_def_map},
     signatures::VariantFields,
 };
 
@@ -324,12 +324,13 @@ pub struct CrateRootModuleId {
 }
 
 impl CrateRootModuleId {
-    pub fn def_map(&self, db: &dyn DefDatabase) -> Arc<DefMap> {
-        db.crate_def_map(self.krate)
+    pub fn def_map(self, db: &dyn DefDatabase) -> &DefMap {
+        crate_def_map(db, self.krate)
     }
 
-    pub(crate) fn local_def_map(&self, db: &dyn DefDatabase) -> (Arc<DefMap>, Arc<LocalDefMap>) {
-        db.crate_local_def_map(self.krate)
+    pub(crate) fn local_def_map(self, db: &dyn DefDatabase) -> (&DefMap, &LocalDefMap) {
+        let def_map = crate_local_def_map(db, self.krate);
+        (def_map.def_map(db), def_map.local(db))
     }
 
     pub fn krate(self) -> Crate {
@@ -390,26 +391,29 @@ pub struct ModuleId {
 }
 
 impl ModuleId {
-    pub fn def_map(self, db: &dyn DefDatabase) -> Arc<DefMap> {
+    pub fn def_map(self, db: &dyn DefDatabase) -> &DefMap {
         match self.block {
-            Some(block) => db.block_def_map(block),
-            None => db.crate_def_map(self.krate),
+            Some(block) => block_def_map(db, block),
+            None => crate_def_map(db, self.krate),
         }
     }
 
-    pub(crate) fn local_def_map(self, db: &dyn DefDatabase) -> (Arc<DefMap>, Arc<LocalDefMap>) {
+    pub(crate) fn local_def_map(self, db: &dyn DefDatabase) -> (&DefMap, &LocalDefMap) {
         match self.block {
-            Some(block) => (db.block_def_map(block), self.only_local_def_map(db)),
-            None => db.crate_local_def_map(self.krate),
+            Some(block) => (block_def_map(db, block), self.only_local_def_map(db)),
+            None => {
+                let def_map = crate_local_def_map(db, self.krate);
+                (def_map.def_map(db), def_map.local(db))
+            }
         }
     }
 
-    pub(crate) fn only_local_def_map(self, db: &dyn DefDatabase) -> Arc<LocalDefMap> {
-        db.crate_local_def_map(self.krate).1
+    pub(crate) fn only_local_def_map(self, db: &dyn DefDatabase) -> &LocalDefMap {
+        crate_local_def_map(db, self.krate).local(db)
     }
 
-    pub fn crate_def_map(self, db: &dyn DefDatabase) -> Arc<DefMap> {
-        db.crate_def_map(self.krate)
+    pub fn crate_def_map(self, db: &dyn DefDatabase) -> &DefMap {
+        crate_def_map(db, self.krate)
     }
 
     pub fn krate(self) -> Crate {
@@ -700,6 +704,16 @@ pub enum AssocItemId {
 // require not implementing From, and instead having some checked way of
 // casting them, and somehow making the constructors private, which would be annoying.
 impl_from!(FunctionId, ConstId, TypeAliasId for AssocItemId);
+
+impl From<AssocItemId> for ModuleDefId {
+    fn from(item: AssocItemId) -> Self {
+        match item {
+            AssocItemId::FunctionId(f) => f.into(),
+            AssocItemId::ConstId(c) => c.into(),
+            AssocItemId::TypeAliasId(t) => t.into(),
+        }
+    }
+}
 
 #[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
 pub enum GenericDefId {

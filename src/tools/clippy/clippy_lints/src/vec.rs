@@ -8,14 +8,14 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
-use clippy_utils::{get_parent_expr, higher, is_in_test, is_trait_method, span_contains_comment};
+use clippy_utils::{get_parent_expr, higher, is_in_test, is_trait_method, span_contains_comment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, LetStmt, Mutability, Node, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::impl_lint_pass;
-use rustc_span::{DesugaringKind, Span, sym};
+use rustc_span::{DesugaringKind, Span};
 
 pub struct UselessVec {
     too_large_for_stack: u64,
@@ -249,10 +249,8 @@ fn adjusts_to_slice(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 /// that also exists on slices. If this returns true, it means that
 /// this expression does not actually require a `Vec` and could just work with an array.
 pub fn is_allowed_vec_method(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    const ALLOWED_METHOD_NAMES: &[&str] = &["len", "as_ptr", "is_empty"];
-
     if let ExprKind::MethodCall(path, _, [], _) = e.kind {
-        ALLOWED_METHOD_NAMES.contains(&path.ident.name.as_str())
+        matches!(path.ident.name, sym::as_ptr | sym::is_empty | sym::len)
     } else {
         is_trait_method(cx, e, sym::IntoIterator)
     }

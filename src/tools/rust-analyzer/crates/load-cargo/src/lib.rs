@@ -512,10 +512,6 @@ impl ProcMacroExpander for Expander {
             Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),
         }
     }
-
-    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
-        other.as_any().downcast_ref::<Self>().is_some_and(|other| self == other)
-    }
 }
 
 #[cfg(test)]

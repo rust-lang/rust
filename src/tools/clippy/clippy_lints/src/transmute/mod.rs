@@ -1,13 +1,9 @@
 mod crosspointer_transmute;
 mod eager_transmute;
 mod missing_transmute_annotations;
-mod transmute_float_to_int;
 mod transmute_int_to_bool;
-mod transmute_int_to_char;
-mod transmute_int_to_float;
 mod transmute_int_to_non_zero;
 mod transmute_null_to_fn;
-mod transmute_num_to_bytes;
 mod transmute_ptr_to_ptr;
 mod transmute_ptr_to_ref;
 mod transmute_ref_to_ref;
@@ -143,40 +139,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for transmutes from an integer to a `char`.
-    ///
-    /// ### Why is this bad?
-    /// Not every integer is a Unicode scalar value.
-    ///
-    /// ### Known problems
-    /// - [`from_u32`] which this lint suggests using is slower than `transmute`
-    /// as it needs to validate the input.
-    /// If you are certain that the input is always a valid Unicode scalar value,
-    /// use [`from_u32_unchecked`] which is as fast as `transmute`
-    /// but has a semantically meaningful name.
-    /// - You might want to handle `None` returned from [`from_u32`] instead of calling `unwrap`.
-    ///
-    /// [`from_u32`]: https://doc.rust-lang.org/std/char/fn.from_u32.html
-    /// [`from_u32_unchecked`]: https://doc.rust-lang.org/std/char/fn.from_u32_unchecked.html
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let x = 1_u32;
-    /// unsafe {
-    ///     let _: char = std::mem::transmute(x); // where x: u32
-    /// }
-    ///
-    /// // should be:
-    /// let _ = std::char::from_u32(x).unwrap();
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub TRANSMUTE_INT_TO_CHAR,
-    complexity,
-    "transmutes from an integer to a `char`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for transmutes from a `&[u8]` to a `&str`.
     ///
     /// ### Why is this bad?
@@ -234,29 +196,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for transmutes from an integer to a float.
-    ///
-    /// ### Why is this bad?
-    /// Transmutes are dangerous and error-prone, whereas `from_bits` is intuitive
-    /// and safe.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// unsafe {
-    ///     let _: f32 = std::mem::transmute(1_u32); // where x: u32
-    /// }
-    ///
-    /// // should be:
-    /// let _: f32 = f32::from_bits(1_u32);
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub TRANSMUTE_INT_TO_FLOAT,
-    complexity,
-    "transmutes from an integer to a float"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for transmutes from `T` to `NonZero<T>`, and suggests the `new_unchecked`
     /// method instead.
     ///
@@ -278,52 +217,6 @@ declare_clippy_lint! {
     pub TRANSMUTE_INT_TO_NON_ZERO,
     complexity,
     "transmutes from an integer to a non-zero wrapper"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for transmutes from a float to an integer.
-    ///
-    /// ### Why is this bad?
-    /// Transmutes are dangerous and error-prone, whereas `to_bits` is intuitive
-    /// and safe.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// unsafe {
-    ///     let _: u32 = std::mem::transmute(1f32);
-    /// }
-    ///
-    /// // should be:
-    /// let _: u32 = 1f32.to_bits();
-    /// ```
-    #[clippy::version = "1.41.0"]
-    pub TRANSMUTE_FLOAT_TO_INT,
-    complexity,
-    "transmutes from a float to an integer"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for transmutes from a number to an array of `u8`
-    ///
-    /// ### Why this is bad?
-    /// Transmutes are dangerous and error-prone, whereas `to_ne_bytes`
-    /// is intuitive and safe.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// unsafe {
-    ///     let x: [u8; 8] = std::mem::transmute(1i64);
-    /// }
-    ///
-    /// // should be
-    /// let x: [u8; 8] = 0i64.to_ne_bytes();
-    /// ```
-    #[clippy::version = "1.58.0"]
-    pub TRANSMUTE_NUM_TO_BYTES,
-    complexity,
-    "transmutes from a number to an array of `u8`"
 }
 
 declare_clippy_lint! {
@@ -581,13 +474,9 @@ impl_lint_pass!(Transmute => [
     TRANSMUTE_PTR_TO_PTR,
     USELESS_TRANSMUTE,
     WRONG_TRANSMUTE,
-    TRANSMUTE_INT_TO_CHAR,
     TRANSMUTE_BYTES_TO_STR,
     TRANSMUTE_INT_TO_BOOL,
-    TRANSMUTE_INT_TO_FLOAT,
     TRANSMUTE_INT_TO_NON_ZERO,
-    TRANSMUTE_FLOAT_TO_INT,
-    TRANSMUTE_NUM_TO_BYTES,
     UNSOUND_COLLECTION_TRANSMUTE,
     TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
     TRANSMUTE_UNDEFINED_REPR,
@@ -632,14 +521,10 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 | transmute_null_to_fn::check(cx, e, arg, to_ty)
                 | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, self.msrv)
                 | missing_transmute_annotations::check(cx, path, from_ty, to_ty, e.hir_id)
-                | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg, const_context)
                 | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
                 | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg, self.msrv)
                 | transmute_int_to_bool::check(cx, e, from_ty, to_ty, arg)
-                | transmute_int_to_float::check(cx, e, from_ty, to_ty, arg, const_context, self.msrv)
                 | transmute_int_to_non_zero::check(cx, e, from_ty, to_ty, arg)
-                | transmute_float_to_int::check(cx, e, from_ty, to_ty, arg, const_context, self.msrv)
-                | transmute_num_to_bytes::check(cx, e, from_ty, to_ty, arg, const_context, self.msrv)
                 | (unsound_collection_transmute::check(cx, e, from_ty, to_ty)
                     || transmute_undefined_repr::check(cx, e, from_ty, to_ty))
                 | (eager_transmute::check(cx, e, arg, from_ty, to_ty));

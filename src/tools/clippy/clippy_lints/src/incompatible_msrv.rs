@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_in_test;
 use clippy_utils::msrvs::Msrv;
-use rustc_attr_parsing::{RustcVersion, StabilityLevel, StableSince};
+use rustc_attr_data_structures::{RustcVersion, StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{Expr, ExprKind, HirId, QPath};
 use rustc_lint::{LateContext, LateLintPass};

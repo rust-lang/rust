@@ -129,7 +129,7 @@ fn clean_specific_stage(build: &Build, stage: u32) {
 
         for entry in entries {
             let entry = t!(entry);
-            let stage_prefix = format!("stage{}", stage);
+            let stage_prefix = format!("stage{stage}");
 
             // if current entry is not related with the target stage, continue
             if !entry.file_name().to_str().unwrap_or("").contains(&stage_prefix) {

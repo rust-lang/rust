@@ -59,7 +59,6 @@ This API is completely unstable and subject to change.
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -195,17 +194,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         let _: R = tcx.ensure_ok().crate_inherent_impls_overlap_check(());
     });
 
-    if tcx.features().rustc_attrs() {
-        tcx.sess.time("dumping_rustc_attr_data", || {
-            outlives::dump::inferred_outlives(tcx);
-            variance::dump::variances(tcx);
-            collect::dump::opaque_hidden_types(tcx);
-            collect::dump::predicates_and_item_bounds(tcx);
-            collect::dump::def_parents(tcx);
-            collect::dump::vtables(tcx);
-        });
-    }
-
     // Make sure we evaluate all static and (non-associated) const items, even if unused.
     // If any of these fail to evaluate, we do not want this crate to pass compilation.
     tcx.par_hir_body_owners(|item_def_id| {
@@ -223,15 +211,22 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             }
             _ => (),
         }
-    });
-
-    tcx.par_hir_body_owners(|item_def_id| {
-        let def_kind = tcx.def_kind(item_def_id);
         // Skip `AnonConst`s because we feed their `type_of`.
         if !matches!(def_kind, DefKind::AnonConst) {
             tcx.ensure_ok().typeck(item_def_id);
         }
     });
+
+    if tcx.features().rustc_attrs() {
+        tcx.sess.time("dumping_rustc_attr_data", || {
+            outlives::dump::inferred_outlives(tcx);
+            variance::dump::variances(tcx);
+            collect::dump::opaque_hidden_types(tcx);
+            collect::dump::predicates_and_item_bounds(tcx);
+            collect::dump::def_parents(tcx);
+            collect::dump::vtables(tcx);
+        });
+    }
 
     tcx.ensure_ok().check_unused_traits(());
 }

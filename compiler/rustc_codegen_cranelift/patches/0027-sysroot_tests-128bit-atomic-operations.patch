@@ -17,7 +17,7 @@ index 1e336bf..35e6f54 100644
 @@ -2,5 +2,4 @@
  // tidy-alphabetical-start
 -#![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
- #![cfg_attr(test, feature(cfg_match))]
+ #![cfg_attr(test, feature(cfg_select))]
  #![feature(alloc_layout_extra)]
  #![feature(array_chunks)]
 diff --git a/coretests/tests/atomic.rs b/coretests/tests/atomic.rs

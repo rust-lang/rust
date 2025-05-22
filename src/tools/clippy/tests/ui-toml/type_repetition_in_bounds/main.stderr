@@ -1,4 +1,4 @@
-error: this type has already been used as a bound predicate
+error: type `T` has already been used as a bound predicate
   --> tests/ui-toml/type_repetition_in_bounds/main.rs:14:5
    |
 LL |     T: Unpin + PartialEq,

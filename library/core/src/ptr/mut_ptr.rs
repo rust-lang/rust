@@ -48,6 +48,34 @@ impl<T: ?Sized> *mut T {
         self as _
     }
 
+    /// Try to cast to a pointer of another type by checking aligment.
+    ///
+    /// If the pointer is properly aligned to the target type, it will be
+    /// cast to the target type. Otherwise, `None` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(pointer_try_cast_aligned)]
+    ///
+    /// let aligned: *mut u8 = 0x1000 as _;
+    ///
+    /// // i32 has at most 4-byte alignment, so this will succeed
+    /// assert!(aligned.try_cast_aligned::<i32>().is_some());
+    ///
+    /// let unaligned: *mut u8 = 0x1001 as _;
+    ///
+    /// // i32 has at least 2-byte alignment, so this will fail
+    /// assert!(unaligned.try_cast_aligned::<i32>().is_none());
+    /// ```
+    #[unstable(feature = "pointer_try_cast_aligned", issue = "141221")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    pub fn try_cast_aligned<U>(self) -> Option<*mut U> {
+        if self.is_aligned_to(align_of::<U>()) { Some(self.cast()) } else { None }
+    }
+
     /// Uses the address value in a new pointer of another type.
     ///
     /// This operation will ignore the address part of its `meta` operand and discard existing
@@ -1576,7 +1604,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::replace`]: crate::ptr::replace()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_stable(feature = "const_inherent_ptr_replace", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_inherent_ptr_replace", since = "1.88.0")]
     #[inline(always)]
     pub const unsafe fn replace(self, src: T) -> T
     where
@@ -2159,7 +2187,7 @@ impl<T: ?Sized> PartialOrd for *mut T {
     }
 }
 
-#[stable(feature = "raw_ptr_default", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "raw_ptr_default", since = "1.88.0")]
 impl<T: ?Sized + Thin> Default for *mut T {
     /// Returns the default value of [`null_mut()`][crate::ptr::null_mut].
     fn default() -> Self {

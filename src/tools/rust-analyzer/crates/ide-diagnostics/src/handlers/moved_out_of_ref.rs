@@ -11,7 +11,7 @@ pub(crate) fn moved_out_of_ref(ctx: &DiagnosticsContext<'_>, d: &hir::MovedOutOf
         format!("cannot move `{}` out of reference", d.ty.display(ctx.sema.db, ctx.display_target)),
         d.span,
     )
-    .experimental() // spans are broken, and I'm not sure how precise we can detect copy types
+    // spans are broken, and I'm not sure how precise we can detect copy types
 }
 
 #[cfg(test)]

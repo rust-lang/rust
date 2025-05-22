@@ -2,12 +2,12 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_diag_item_method, is_trait_method, path_to_local_id};
+use clippy_utils::{is_diag_item_method, is_trait_method, path_to_local_id, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::sym;
+use rustc_span::Symbol;
 
 pub struct LinesFilterMapOk {
     msrv: Msrv,
@@ -74,17 +74,17 @@ impl LateLintPass<'_> for LinesFilterMapOk {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let ExprKind::MethodCall(fm_method, fm_receiver, fm_args, fm_span) = expr.kind
             && is_trait_method(cx, expr, sym::Iterator)
-            && let fm_method_str = fm_method.ident.as_str()
-            && matches!(fm_method_str, "filter_map" | "flat_map" | "flatten")
+            && let fm_method_name = fm_method.ident.name
+            && matches!(fm_method_name, sym::filter_map | sym::flat_map | sym::flatten)
             && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty_adjusted(fm_receiver), sym::IoLines)
-            && should_lint(cx, fm_args, fm_method_str)
+            && should_lint(cx, fm_args, fm_method_name)
             && self.msrv.meets(cx, msrvs::MAP_WHILE)
         {
             span_lint_and_then(
                 cx,
                 LINES_FILTER_MAP_OK,
                 fm_span,
-                format!("`{fm_method_str}()` will run forever if the iterator repeatedly produces an `Err`",),
+                format!("`{fm_method_name}()` will run forever if the iterator repeatedly produces an `Err`",),
                 |diag| {
                     diag.span_note(
                         fm_receiver.span,
@@ -101,9 +101,9 @@ impl LateLintPass<'_> for LinesFilterMapOk {
     }
 }
 
-fn should_lint(cx: &LateContext<'_>, args: &[Expr<'_>], method_str: &str) -> bool {
+fn should_lint(cx: &LateContext<'_>, args: &[Expr<'_>], method_name: Symbol) -> bool {
     match args {
-        [] => method_str == "flatten",
+        [] => method_name == sym::flatten,
         [fm_arg] => {
             match &fm_arg.kind {
                 // Detect `Result::ok`
@@ -120,7 +120,7 @@ fn should_lint(cx: &LateContext<'_>, args: &[Expr<'_>], method_str: &str) -> boo
                         && path_to_local_id(receiver, param.pat.hir_id)
                         && let Some(method_did) = cx.typeck_results().type_dependent_def_id(value.hir_id)
                     {
-                        is_diag_item_method(cx, method_did, sym::Result) && method.ident.as_str() == "ok"
+                        is_diag_item_method(cx, method_did, sym::Result) && method.ident.name == sym::ok
                     } else {
                         false
                     }

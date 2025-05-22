@@ -2,7 +2,8 @@
 
 use std::iter;
 
-use hir::{DefMap, InFile, ModuleSource, db::DefDatabase};
+use hir::crate_def_map;
+use hir::{DefMap, InFile, ModuleSource};
 use ide_db::base_db::RootQueryDb;
 use ide_db::text_edit::TextEdit;
 use ide_db::{
@@ -101,7 +102,8 @@ fn fixes(
     // check crate roots, i.e. main.rs, lib.rs, ...
     let relevant_crates = db.relevant_crates(file_id);
     'crates: for &krate in &*relevant_crates {
-        let crate_def_map = ctx.sema.db.crate_def_map(krate);
+        // FIXME: This shouldnt need to access the crate def map directly
+        let crate_def_map = crate_def_map(ctx.sema.db, krate);
 
         let root_module = &crate_def_map[DefMap::ROOT];
         let Some(root_file_id) = root_module.origin.file_id() else { continue };
@@ -156,7 +158,7 @@ fn fixes(
     stack.pop();
     let relevant_crates = db.relevant_crates(parent_id);
     'crates: for &krate in relevant_crates.iter() {
-        let crate_def_map = ctx.sema.db.crate_def_map(krate);
+        let crate_def_map = crate_def_map(ctx.sema.db, krate);
         let Some((_, module)) = crate_def_map.modules().find(|(_, module)| {
             module.origin.file_id().map(|file_id| file_id.file_id(ctx.sema.db)) == Some(parent_id)
                 && !module.origin.is_inline()

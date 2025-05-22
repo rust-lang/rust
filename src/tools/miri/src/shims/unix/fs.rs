@@ -90,7 +90,7 @@ impl UnixFileDescription for FileHandle {
         op: FlockOp,
     ) -> InterpResult<'tcx, io::Result<()>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        cfg_match! {
+        cfg_select! {
             all(target_family = "unix", not(target_os = "solaris")) => {
                 use std::os::fd::AsRawFd;
 

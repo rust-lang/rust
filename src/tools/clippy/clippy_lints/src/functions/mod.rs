@@ -9,8 +9,8 @@ mod too_many_arguments;
 mod too_many_lines;
 
 use clippy_config::Conf;
-use clippy_utils::def_path_def_ids;
 use clippy_utils::msrvs::Msrv;
+use clippy_utils::paths::{PathNS, lookup_path_str};
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_lint::{LateContext, LateLintPass};
@@ -469,7 +469,7 @@ impl Functions {
             trait_ids: conf
                 .allow_renamed_params_for
                 .iter()
-                .flat_map(|p| def_path_def_ids(tcx, &p.split("::").collect::<Vec<_>>()))
+                .flat_map(|p| lookup_path_str(tcx, PathNS::Type, p))
                 .collect(),
             msrv: conf.msrv,
         }

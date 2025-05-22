@@ -17,7 +17,7 @@ fn foo() {
     let b @ (A | B): E = A;
 
     let b @ A | B: E = A; //~ERROR `b` is not bound in all patterns
-    //~^ ERROR top-level or-patterns are not allowed
+    //~^ ERROR `let` bindings require top-level or-patterns in parentheses
 }
 
 enum F {
@@ -32,13 +32,13 @@ fn bar() {
     let (A(x) | B(x)): F = A(3);
 
     let &A(_) | B(_): F = A(3); //~ERROR mismatched types
-    //~^ ERROR top-level or-patterns are not allowed
+    //~^ ERROR `let` bindings require top-level or-patterns in parentheses
     let &&A(_) | B(_): F = A(3); //~ERROR mismatched types
-    //~^ ERROR top-level or-patterns are not allowed
+    //~^ ERROR `let` bindings require top-level or-patterns in parentheses
     let &mut A(_) | B(_): F = A(3); //~ERROR mismatched types
-    //~^ ERROR top-level or-patterns are not allowed
+    //~^ ERROR `let` bindings require top-level or-patterns in parentheses
     let &&mut A(_) | B(_): F = A(3); //~ERROR mismatched types
-    //~^ ERROR top-level or-patterns are not allowed
+    //~^ ERROR `let` bindings require top-level or-patterns in parentheses
 }
 
 fn main() {}

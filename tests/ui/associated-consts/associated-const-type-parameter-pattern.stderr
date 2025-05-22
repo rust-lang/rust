@@ -27,6 +27,19 @@ LL |         B::X => println!("B::X"),
    |         ^^^^ `const` depends on a generic parameter
 
 error[E0158]: constant pattern cannot depend on generic parameters
+  --> $DIR/associated-const-type-parameter-pattern.rs:28:48
+   |
+LL | pub trait Foo {
+   | -------------
+LL |     const X: EFoo;
+   |     ------------- constant defined here
+...
+LL | pub fn test_let_pat<A: Foo, B: Foo>(arg: EFoo, A::X: EFoo) {
+   |                     -                          ^^^^ `const` depends on a generic parameter
+   |                     |
+   |                     constant depends on this generic parameter
+
+error[E0158]: constant pattern cannot depend on generic parameters
   --> $DIR/associated-const-type-parameter-pattern.rs:30:9
    |
 LL | pub trait Foo {
@@ -39,19 +52,6 @@ LL | pub fn test_let_pat<A: Foo, B: Foo>(arg: EFoo, A::X: EFoo) {
 LL |
 LL |     let A::X = arg;
    |         ^^^^ `const` depends on a generic parameter
-
-error[E0158]: constant pattern cannot depend on generic parameters
-  --> $DIR/associated-const-type-parameter-pattern.rs:28:48
-   |
-LL | pub trait Foo {
-   | -------------
-LL |     const X: EFoo;
-   |     ------------- constant defined here
-...
-LL | pub fn test_let_pat<A: Foo, B: Foo>(arg: EFoo, A::X: EFoo) {
-   |                     -                          ^^^^ `const` depends on a generic parameter
-   |                     |
-   |                     constant depends on this generic parameter
 
 error: aborting due to 4 previous errors
 

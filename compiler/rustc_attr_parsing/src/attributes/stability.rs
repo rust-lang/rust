@@ -242,9 +242,9 @@ pub(crate) fn parse_stability(
             return None;
         };
 
-        match param.word_or_empty_without_args().name {
-            sym::feature => insert_value_into_option_or_error(cx, &param, &mut feature)?,
-            sym::since => insert_value_into_option_or_error(cx, &param, &mut since)?,
+        match param.path_without_args().word_sym() {
+            Some(sym::feature) => insert_value_into_option_or_error(cx, &param, &mut feature)?,
+            Some(sym::since) => insert_value_into_option_or_error(cx, &param, &mut since)?,
             _ => {
                 cx.emit_err(session_diagnostics::UnknownMetaItem {
                     span: param_span,
@@ -310,11 +310,10 @@ pub(crate) fn parse_unstability(
             return None;
         };
 
-        let (word, args) = param.word_or_empty();
-        match word.name {
-            sym::feature => insert_value_into_option_or_error(cx, &param, &mut feature)?,
-            sym::reason => insert_value_into_option_or_error(cx, &param, &mut reason)?,
-            sym::issue => {
+        match param.path_without_args().word_sym() {
+            Some(sym::feature) => insert_value_into_option_or_error(cx, &param, &mut feature)?,
+            Some(sym::reason) => insert_value_into_option_or_error(cx, &param, &mut reason)?,
+            Some(sym::issue) => {
                 insert_value_into_option_or_error(cx, &param, &mut issue)?;
 
                 // These unwraps are safe because `insert_value_into_option_or_error` ensures the meta item
@@ -328,7 +327,7 @@ pub(crate) fn parse_unstability(
                                 session_diagnostics::InvalidIssueString {
                                     span: param.span(),
                                     cause: session_diagnostics::InvalidIssueStringCause::from_int_error_kind(
-                                        args.name_value().unwrap().value_span,
+                                        param.args().name_value().unwrap().value_span,
                                         err.kind(),
                                     ),
                                 },
@@ -338,13 +337,15 @@ pub(crate) fn parse_unstability(
                     },
                 };
             }
-            sym::soft => {
-                if !args.no_args() {
+            Some(sym::soft) => {
+                if !param.args().no_args() {
                     cx.emit_err(session_diagnostics::SoftNoArgs { span: param.span() });
                 }
                 is_soft = true;
             }
-            sym::implied_by => insert_value_into_option_or_error(cx, &param, &mut implied_by)?,
+            Some(sym::implied_by) => {
+                insert_value_into_option_or_error(cx, &param, &mut implied_by)?
+            }
             _ => {
                 cx.emit_err(session_diagnostics::UnknownMetaItem {
                     span: param.span(),

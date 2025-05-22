@@ -662,10 +662,6 @@ impl ProcMacroExpander for IdentityProcMacroExpander {
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         Ok(subtree.clone())
     }
-
-    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
-        other.as_any().type_id() == std::any::TypeId::of::<Self>()
-    }
 }
 
 // Expands to a macro_rules! macro, for issue #18089.
@@ -697,10 +693,6 @@ impl ProcMacroExpander for Issue18089ProcMacroExpander {
             #subtree
         })
     }
-
-    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
-        other.as_any().type_id() == std::any::TypeId::of::<Self>()
-    }
 }
 
 // Pastes the attribute input as its output
@@ -720,10 +712,6 @@ impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
         attrs
             .cloned()
             .ok_or_else(|| ProcMacroExpansionError::Panic("Expected attribute input".into()))
-    }
-
-    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
-        other.as_any().type_id() == std::any::TypeId::of::<Self>()
     }
 }
 
@@ -756,10 +744,6 @@ impl ProcMacroExpander for Issue18840ProcMacroExpander {
         top_subtree_delimiter_mut.close = def_site;
         Ok(result)
     }
-
-    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
-        other.as_any().type_id() == std::any::TypeId::of::<Self>()
-    }
 }
 
 #[derive(Debug)]
@@ -790,10 +774,6 @@ impl ProcMacroExpander for MirrorProcMacroExpander {
         let mut builder = TopSubtreeBuilder::new(input.top_subtree().delimiter);
         traverse(&mut builder, input.iter());
         Ok(builder.build())
-    }
-
-    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
-        other.as_any().type_id() == std::any::TypeId::of::<Self>()
     }
 }
 
@@ -835,10 +815,6 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
             }
         }
     }
-
-    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
-        other.as_any().type_id() == std::any::TypeId::of::<Self>()
-    }
 }
 
 // Reads ident type within string quotes, for issue #17479.
@@ -863,10 +839,6 @@ impl ProcMacroExpander for Issue17479ProcMacroExpander {
         Ok(quote! { span =>
             #symbol()
         })
-    }
-
-    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
-        other.as_any().type_id() == std::any::TypeId::of::<Self>()
     }
 }
 
@@ -919,10 +891,6 @@ impl ProcMacroExpander for Issue18898ProcMacroExpander {
             }
         })
     }
-
-    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
-        other.as_any().type_id() == std::any::TypeId::of::<Self>()
-    }
 }
 
 // Reads ident type within string quotes, for issue #17479.
@@ -949,9 +917,5 @@ impl ProcMacroExpander for DisallowCfgProcMacroExpander {
             }
         }
         Ok(subtree.clone())
-    }
-
-    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
-        other.as_any().type_id() == std::any::TypeId::of::<Self>()
     }
 }

@@ -31,10 +31,8 @@ if let StmtKind::Let(local) = stmt.kind
 if let ExprKind::If(cond, then, Some(else_expr)) = expr.kind
     && let ExprKind::Let(let_expr) = cond.kind
     && let PatKind::Expr(lit_expr) = let_expr.pat.kind
-    && let PatExprKind::Lit{ref lit, negated } = lit_expr.kind
+    && let PatExprKind::Lit { ref lit, negated } = lit_expr.kind
     && let LitKind::Bool(true) = lit.node
-    && let ExprKind::Path(ref qpath) = let_expr.init.kind
-    && match_qpath(qpath, &["a"])
     && let ExprKind::Block(block, None) = then.kind
     && block.stmts.is_empty()
     && block.expr.is_none()

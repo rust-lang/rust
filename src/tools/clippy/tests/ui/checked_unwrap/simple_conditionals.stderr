@@ -236,6 +236,92 @@ LL |     if result.is_ok() {
 LL |         result.as_mut().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: called `unwrap` on `option` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:205:17
+   |
+LL |     if option.is_some() {
+   |     ------------------- help: try: `if let Some(<item>) = &option`
+LL |         let _ = option.as_ref().unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:208:17
+   |
+LL |     if option.is_some() {
+   |        ---------------- because of this check
+...
+LL |         let _ = option.as_ref().unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: called `unwrap` on `result` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:216:9
+   |
+LL |     if result.is_ok() {
+   |     ----------------- help: try: `if let Ok(<item>) = &result`
+LL |         let _y = 1;
+LL |         result.as_ref().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:220:9
+   |
+LL |     if result.is_ok() {
+   |        -------------- because of this check
+...
+LL |         result.as_ref().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: called `unwrap` on `x` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:246:17
+   |
+LL |         if x.is_some() {
+   |         -------------- help: try: `if let Some(<item>) = x`
+LL |             _ = x.unwrap();
+   |                 ^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:249:17
+   |
+LL |         if x.is_some() {
+   |            ----------- because of this check
+...
+LL |             _ = x.unwrap();
+   |                 ^^^^^^^^^^
+
+error: called `unwrap` on `r` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:255:17
+   |
+LL |         if r.is_ok() {
+   |         ------------ help: try: `if let Ok(<item>) = &r`
+LL |             _ = r.as_ref().unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:258:17
+   |
+LL |         if r.is_ok() {
+   |            --------- because of this check
+...
+LL |             _ = r.as_ref().unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^
+
+error: called `unwrap` on `x` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:267:17
+   |
+LL |         if x.is_some() {
+   |         -------------- help: try: `if let Some(<item>) = x`
+LL |             _ = x.unwrap();
+   |                 ^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:270:17
+   |
+LL |         if x.is_some() {
+   |            ----------- because of this check
+...
+LL |             _ = x.unwrap();
+   |                 ^^^^^^^^^^
+
 error: creating a shared reference to mutable static
   --> tests/ui/checked_unwrap/simple_conditionals.rs:183:12
    |
@@ -246,5 +332,5 @@ LL |         if X.is_some() {
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
    = note: `#[deny(static_mut_refs)]` on by default
 
-error: aborting due to 26 previous errors
+error: aborting due to 36 previous errors
 
