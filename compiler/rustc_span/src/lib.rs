@@ -2641,6 +2641,7 @@ where
             if def_span.contains(span) {
                 // This span is enclosed in a definition: only hash the relative position.
                 Hash::hash(&TAG_RELATIVE_SPAN, hasher);
+                parent.hash_stable(ctx, hasher);
                 (span.lo - def_span.lo).to_u32().hash_stable(ctx, hasher);
                 (span.hi - def_span.lo).to_u32().hash_stable(ctx, hasher);
                 return;
@@ -2650,31 +2651,16 @@ where
         // If this is not an empty or invalid span, we want to hash the last
         // position that belongs to it, as opposed to hashing the first
         // position past it.
-        let Some((file, line_lo, col_lo, line_hi, col_hi)) = ctx.span_data_to_lines_and_cols(&span)
-        else {
+        let Some((file, line_lo, col_lo, ..)) = ctx.span_data_to_lines_and_cols(&span) else {
             Hash::hash(&TAG_INVALID_SPAN, hasher);
             return;
         };
 
         Hash::hash(&TAG_VALID_SPAN, hasher);
         Hash::hash(&file.stable_id, hasher);
-
-        // Hash both the length and the end location (line/column) of a span. If we
-        // hash only the length, for example, then two otherwise equal spans with
-        // different end locations will have the same hash. This can cause a problem
-        // during incremental compilation wherein a previous result for a query that
-        // depends on the end location of a span will be incorrectly reused when the
-        // end location of the span it depends on has changed (see issue #74890). A
-        // similar analysis applies if some query depends specifically on the length
-        // of the span, but we only hash the end location. So hash both.
-
-        let col_lo_trunc = (col_lo.0 as u64) & 0xFF;
-        let line_lo_trunc = ((line_lo as u64) & 0xFF_FF_FF) << 8;
-        let col_hi_trunc = (col_hi.0 as u64) & 0xFF << 32;
-        let line_hi_trunc = ((line_hi as u64) & 0xFF_FF_FF) << 40;
-        let col_line = col_lo_trunc | line_lo_trunc | col_hi_trunc | line_hi_trunc;
+        Hash::hash(&line_lo, hasher);
+        Hash::hash(&col_lo, hasher);
         let len = (span.hi - span.lo).0;
-        Hash::hash(&col_line, hasher);
         Hash::hash(&len, hasher);
     }
 }
