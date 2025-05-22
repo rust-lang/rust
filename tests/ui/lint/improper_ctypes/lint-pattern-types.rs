@@ -1,3 +1,9 @@
+//@ revisions: size64 size32
+//@[size64] only-64bit
+//@[size32] only-32bit
+// (this is needed because stderr writes out usize::MAX-1)
+
+
 #![feature(pattern_types, rustc_attrs)]
 #![feature(pattern_type_macro)]
 #![feature(pattern_type_range_trait,const_trait_impl)]

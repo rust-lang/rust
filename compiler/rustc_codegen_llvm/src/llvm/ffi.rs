@@ -1332,7 +1332,8 @@ unsafe extern "C" {
     );
 
     // Instruction builders
-    |wrap pub(crate) fn LLVMCreateBuilderInContext(C: &Context) -> &mut Builder<'_>;
+    |wrap #[allow(clippy::mut_from_ref)]  // FIXME?
+    pub(crate) fn LLVMCreateBuilderInContext(C: &Context) -> &mut Builder<'_>;
     pub(crate) fn LLVMPositionBuilderAtEnd<'a>(Builder: &Builder<'a>, Block: &'a BasicBlock);
     |wrap pub(crate) fn LLVMGetInsertBlock<'a>(Builder_: &Builder<'a>) -> &'a BasicBlock;
     pub(crate) fn LLVMDisposeBuilder<'a>(Builder: &'a mut Builder<'a>);
@@ -2587,7 +2588,8 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustRunRestrictionPass(M: &Module, syms: *const *const c_char, len: size_t);
 
     pub(crate) fn LLVMRustOpenArchive(path: *const c_char) -> Option<&'static mut Archive>;
-    |wrap pub(crate) fn LLVMRustArchiveIteratorNew(AR: &Archive) -> &mut ArchiveIterator<'_>;
+    |wrap #[allow(clippy::mut_from_ref)]  // FIXME?
+    pub(crate) fn LLVMRustArchiveIteratorNew(AR: &Archive) -> &mut ArchiveIterator<'_>;
     pub(crate) fn LLVMRustArchiveIteratorNext<'a>(
         AIR: &ArchiveIterator<'a>,
     ) -> Option<&'a mut ArchiveChild<'a>>;
@@ -2702,7 +2704,8 @@ unsafe extern "C" {
         Identifier: *const c_char,
     ) -> Option<&Module>;
 
-    |wrap pub(crate) fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
+    |wrap #[allow(clippy::mut_from_ref)]  // FIXME?
+    pub(crate) fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
     pub(crate) fn LLVMRustLinkerAdd(
         linker: &Linker<'_>,
         bytecode: *const c_char,
