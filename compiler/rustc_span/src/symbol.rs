@@ -2823,7 +2823,7 @@ impl Ident {
     /// Whether this would be the identifier for a tuple field like `self.0`, as
     /// opposed to a named field like `self.thing`.
     pub fn is_numeric(self) -> bool {
-        !self.name.is_empty() && self.as_str().bytes().all(|b| b.is_ascii_digit())
+        self.as_str().bytes().all(|b| b.is_ascii_digit())
     }
 }
 
