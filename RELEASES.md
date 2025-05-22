@@ -567,7 +567,7 @@ Version 1.83.0 (2024-11-28)
 Language
 --------
 - [Stabilize `&mut`, `*mut`, `&Cell`, and `*const Cell` in const.](https://github.com/rust-lang/rust/pull/129195)
-- [Allow creating references to statics in `const` initializers.](https://github.com/rust-lang/rust/pull/129759)
+- [Allow creating references to statistics in `const` initializers.](https://github.com/rust-lang/rust/pull/129759)
 - [Implement raw lifetimes and labels (`'r#ident`).](https://github.com/rust-lang/rust/pull/126452)
 - [Define behavior when atomic and non-atomic reads race.](https://github.com/rust-lang/rust/pull/128778)
 - [Non-exhaustive structs may now be empty.](https://github.com/rust-lang/rust/pull/128934)
@@ -1524,12 +1524,12 @@ Language
 - [Reveal opaque types within the defining body for exhaustiveness checking.](https://github.com/rust-lang/rust/pull/116821/)
 - [Stabilize C-string literals.](https://github.com/rust-lang/rust/pull/117472/)
 - [Stabilize THIR unsafeck.](https://github.com/rust-lang/rust/pull/117673/)
-- [Add lint `static_mut_refs` to warn on references to mutable statics.](https://github.com/rust-lang/rust/pull/117556/)
+- [Add lint `static_mut_refs` to warn on references to mutable statistics.](https://github.com/rust-lang/rust/pull/117556/)
 - [Support async recursive calls (as long as they have indirection).](https://github.com/rust-lang/rust/pull/117703/)
 - [Undeprecate lint `unstable_features` and make use of it in the compiler.](https://github.com/rust-lang/rust/pull/118639/)
 - [Make inductive cycles in coherence ambiguous always.](https://github.com/rust-lang/rust/pull/118649/)
 - [Get rid of type-driven traversal in const-eval interning](https://github.com/rust-lang/rust/pull/119044/),
-  only as a [future compatiblity lint](https://github.com/rust-lang/rust/pull/122204) for now.
+  only as a [future compatibility lint](https://github.com/rust-lang/rust/pull/122204) for now.
 - [Deny braced macro invocations in let-else.](https://github.com/rust-lang/rust/pull/119062/)
 
 <a id="1.77.0-Compiler"></a>
@@ -3005,7 +3005,7 @@ Compatibility Notes
   area, but is unlikely to affect real world usage.
 - [Do not consider a single repeated lifetime eligible for elision in the return type](https://github.com/rust-lang/rust/pull/103450)
   This behavior was unintentionally changed in 1.64.0, and this release reverts that change by making this an error again.
-- [Reenable disabled early syntax gates as future-incompatibility lints](https://github.com/rust-lang/rust/pull/99935/)
+- [Re-enable disabled early syntax gates as future-incompatibility lints](https://github.com/rust-lang/rust/pull/99935/)
 - [Update the minimum external LLVM to 13](https://github.com/rust-lang/rust/pull/100460/)
 - [Don't duplicate file descriptors into stdio fds](https://github.com/rust-lang/rust/pull/101426/)
 - [Sunset RLS](https://github.com/rust-lang/rust/pull/100863/)
@@ -4470,7 +4470,7 @@ Cargo
 Rustdoc
 -------
 - [Added "Go to item on exact match" search option.][85876]
-- [The "Implementors" section on traits no longer shows redundant
+- [The "Implementers" section on traits no longer shows redundant
   method definitions.][85970]
 - [Trait implementations are toggled open by default.][86260] This should make the
   implementations more searchable by tools like `CTRL+F` in your browser.
@@ -5757,7 +5757,7 @@ Language
   function's caller's location information for panic messages.][72445]
 - [Recursively indexing into tuples no longer needs parentheses.][71322] E.g.
   `x.0.0` over `(x.0).0`.
-- [`mem::transmute` can now be used in statics and constants.][72920] **Note**
+- [`mem::transmute` can now be used in statistics and constants.][72920] **Note**
   You currently can't use `mem::transmute` in constant functions.
 
 Compiler
@@ -9834,7 +9834,7 @@ Version 1.17.0 (2017-04-27)
 Language
 --------
 
-* [The lifetime of statics and consts defaults to `'static`][39265]. [RFC 1623]
+* [The lifetime of statistics and consts defaults to `'static`][39265]. [RFC 1623]
 * [Fields of structs may be initialized without duplicating the field/variable
   names][39761]. [RFC 1682]
 * [`Self` may be included in the `where` clause of `impls`][38864]. [RFC 1647]
@@ -9843,7 +9843,7 @@ Language
   coercing `&mut [&'a X; N]` to `&mut [&'b X]` requires `'a` be equal to
   `'b`. Soundness fix.
 * [Values passed to the indexing operator, `[]`, automatically coerce][40166]
-* [Static variables may contain references to other statics][40027]
+* [Static variables may contain references to other statistics][40027]
 
 Compiler
 --------
@@ -10546,7 +10546,7 @@ Compiler
 
 * [Mark enums with non-zero discriminant as non-zero][37224]
 * [Lower-case `static mut` names are linted like other
-  statics and consts][37162]
+  statistics and consts][37162]
 * [Fix ICE on some macros in const integer positions
    (e.g. `[u8; m!()]`)][36819]
 * [Improve error message and snippet for "did you mean `x`"][36798]
@@ -10563,7 +10563,7 @@ Compile-time Optimizations
 * [Avoid more allocations when compiling html5ever][37373]
 * [Use `SmallVector` in `CombineFields::instantiate`][37322]
 * [Avoid some allocations in the macro parser][37318]
-* [Use a faster deflate setting][37298]
+* [Use a faster deflat setting][37298]
 * [Add `ArrayVec` and `AccumulateVec` to reduce heap allocations
   during interning of slices][37270]
 * [Optimize `write_metadata`][37267]
@@ -10895,7 +10895,7 @@ Compatibility Notes
   per [RFC 401].
 * [Fix `#[derive]` for empty tuple structs/variants][35728].
   Part of [RFC 1506].
-* [Issue deprecation warnings for safe accesses to extern statics][36173]
+* [Issue deprecation warnings for safe accesses to extern statistics][36173]
 * [Fix lifetime rules for 'if' conditions][36029].
 * [Inherit overflow checks for sum and product][36372].
 * [Forbid user-defined macros named "macro_rules"][36730].
@@ -13966,7 +13966,7 @@ Version 0.10 (2014-04-03)
     * New lint modes have been added, and older ones have been turned on to be
       warn-by-default.
       * Unnecessary parentheses
-      * Uppercase statics
+      * Uppercase statistics
       * Camel Case types
       * Uppercase variables
       * Publicly visible private types
@@ -13994,7 +13994,7 @@ Version 0.10 (2014-04-03)
     * An `Unsafe` type was introduced for interior mutability. It is now
       considered undefined to transmute from `&T` to `&mut T` without using the
       `Unsafe` type.
-    * The #[linkage] attribute was implemented for extern statics/functions.
+    * The #[linkage] attribute was implemented for extern statistics/functions.
     * The inner attribute syntax has changed from `#[foo];` to `#![foo]`.
     * `Pod` was renamed to `Copy`.
 
@@ -14515,7 +14515,7 @@ Version 0.7 (2013-07-03)
       * std: `Map` now defines `pop` and `swap` methods.
       * std: `Cell` constructors converted to static methods.
       * extra: `rc` module adds the reference counted pointers, `Rc` and `RcMut`.
-      * extra: `flate` module moved from `std` to `extra`.
+      * extra: `flat` module moved from `std` to `extra`.
       * extra: `fileinput` module for iterating over a series of files.
       * extra: `Complex` number type and `complex` module.
       * extra: `Rational` number type and `rational` module.
