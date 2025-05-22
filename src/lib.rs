@@ -521,13 +521,16 @@ fn target_config(sess: &Session, target_info: &LockedTargetInfo) -> TargetConfig
     let target_features = f(false);
     let unstable_target_features = f(true);
 
+    let has_reliable_f16 = target_info.supports_target_dependent_type(CType::Float16);
+    let has_reliable_f128 = target_info.supports_target_dependent_type(CType::Float128);
+
     TargetConfig {
         target_features,
         unstable_target_features,
         // There are no known bugs with GCC support for f16 or f128
-        has_reliable_f16: true,
-        has_reliable_f16_math: true,
-        has_reliable_f128: true,
-        has_reliable_f128_math: true,
+        has_reliable_f16,
+        has_reliable_f16_math: has_reliable_f16,
+        has_reliable_f128,
+        has_reliable_f128_math: has_reliable_f128,
     }
 }
