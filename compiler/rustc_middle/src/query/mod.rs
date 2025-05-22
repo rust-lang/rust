@@ -922,6 +922,12 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query coroutine_hidden_types(
+        def_id: DefId
+    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, ty::CoroutineWitnessTypes<TyCtxt<'tcx>>>> {
+        desc { "looking up the hidden types stored across await points in a coroutine" }
+    }
+
     /// Gets a map with the variances of every item in the local crate.
     ///
     /// <div class="warning">
