@@ -346,11 +346,12 @@ pub(crate) fn target_config(sess: &Session) -> TargetConfig {
     let target_machine = create_informational_target_machine(sess, true);
     // Compute which of the known target features are enabled in the 'base' target machine. We only
     // consider "supported" features; "forbidden" features are not reflected in `cfg` as of now.
+    let mut cpu_implied_features: Vec<(bool, Symbol)> = Vec::new();
     let mut features: FxHashSet<Symbol> = sess
         .target
         .rust_target_features()
         .iter()
-        .filter(|(feature, _, _)| {
+        .filter(|(feature, _, implied)| {
             // skip checking special features, as LLVM may not understand them
             if RUSTC_SPECIAL_FEATURES.contains(feature) {
                 return true;
@@ -365,6 +366,7 @@ pub(crate) fn target_config(sess: &Session) -> TargetConfig {
                         return false;
                     }
                 }
+                cpu_implied_features.extend(implied.iter().map(|f| (true, Symbol::intern(f))));
                 true
             } else {
                 false
@@ -373,14 +375,15 @@ pub(crate) fn target_config(sess: &Session) -> TargetConfig {
         .map(|(feature, _, _)| Symbol::intern(feature))
         .collect();
 
-    // Add enabled and remove disabled features.
-    for (enabled, feature) in
+    // Parse -Ctarget-feature=+feature1,-feature2
+    let cg_target_features =
         sess.opts.cg.target_feature.split(',').filter_map(|s| match s.chars().next() {
             Some('+') => Some((true, Symbol::intern(&s[1..]))),
             Some('-') => Some((false, Symbol::intern(&s[1..]))),
             _ => None,
-        })
-    {
+        });
+    // Add features implied by -Ctarget-cpu followed by enabling/removing those specified by -Ctarget-feature
+    for (enabled, feature) in cpu_implied_features.into_iter().chain(cg_target_features) {
         if enabled {
             // Also add all transitively implied features.
 
