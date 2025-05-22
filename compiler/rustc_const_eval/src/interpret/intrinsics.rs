@@ -17,9 +17,9 @@ use tracing::trace;
 use super::memory::MemoryKind;
 use super::util::ensure_monomorphic_enough;
 use super::{
-    Allocation, CheckInAllocMsg, ConstAllocation, GlobalId, ImmTy, InterpCx, InterpResult,
-    MPlaceTy, Machine, OpTy, Pointer, PointerArithmetic, Provenance, Scalar, err_inval,
-    err_ub_custom, err_unsup_format, interp_ok, throw_inval, throw_ub_custom, throw_ub_format,
+    Allocation, CheckInAllocMsg, ConstAllocation, GlobalId, ImmTy, InterpCx, InterpResult, Machine,
+    OpTy, PlaceTy, Pointer, PointerArithmetic, Provenance, Scalar, err_inval, err_ub_custom,
+    err_unsup_format, interp_ok, throw_inval, throw_ub_custom, throw_ub_format,
 };
 use crate::fluent_generated as fluent;
 
@@ -112,7 +112,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::Provenance>],
-        dest: &MPlaceTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, bool> {
         let instance_args = instance.args;
@@ -587,7 +587,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &mut self,
         a: &ImmTy<'tcx, M::Provenance>,
         b: &ImmTy<'tcx, M::Provenance>,
-        dest: &MPlaceTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         assert_eq!(a.layout.ty, b.layout.ty);
         assert_matches!(a.layout.ty.kind(), ty::Int(..) | ty::Uint(..));
@@ -801,7 +801,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn float_min_intrinsic<F>(
         &mut self,
         args: &[OpTy<'tcx, M::Provenance>],
-        dest: &MPlaceTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
@@ -822,7 +822,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn float_max_intrinsic<F>(
         &mut self,
         args: &[OpTy<'tcx, M::Provenance>],
-        dest: &MPlaceTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
@@ -843,7 +843,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn float_minimum_intrinsic<F>(
         &mut self,
         args: &[OpTy<'tcx, M::Provenance>],
-        dest: &MPlaceTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
@@ -859,7 +859,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn float_maximum_intrinsic<F>(
         &mut self,
         args: &[OpTy<'tcx, M::Provenance>],
-        dest: &MPlaceTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
@@ -875,7 +875,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn float_copysign_intrinsic<F>(
         &mut self,
         args: &[OpTy<'tcx, M::Provenance>],
-        dest: &MPlaceTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
@@ -890,7 +890,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn float_abs_intrinsic<F>(
         &mut self,
         args: &[OpTy<'tcx, M::Provenance>],
-        dest: &MPlaceTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,

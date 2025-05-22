@@ -218,34 +218,37 @@ impl<'tcx> Thread<'tcx> {
         }
     }
 
-    /// Return the top user-relevant frame, if there is one.
+    /// Return the top user-relevant frame, if there is one. `skip` indicates how many top frames
+    /// should be skipped.
     /// Note that the choice to return `None` here when there is no user-relevant frame is part of
     /// justifying the optimization that only pushes of user-relevant frames require updating the
     /// `top_user_relevant_frame` field.
-    fn compute_top_user_relevant_frame(&self) -> Option<usize> {
+    fn compute_top_user_relevant_frame(&self, skip: usize) -> Option<usize> {
         self.stack
             .iter()
             .enumerate()
             .rev()
+            .skip(skip)
             .find_map(|(idx, frame)| if frame.extra.is_user_relevant { Some(idx) } else { None })
     }
 
-    /// Re-compute the top user-relevant frame from scratch.
-    pub fn recompute_top_user_relevant_frame(&mut self) {
-        self.top_user_relevant_frame = self.compute_top_user_relevant_frame();
+    /// Re-compute the top user-relevant frame from scratch. `skip` indicates how many top frames
+    /// should be skipped.
+    pub fn recompute_top_user_relevant_frame(&mut self, skip: usize) {
+        self.top_user_relevant_frame = self.compute_top_user_relevant_frame(skip);
     }
 
     /// Set the top user-relevant frame to the given value. Must be equal to what
     /// `get_top_user_relevant_frame` would return!
     pub fn set_top_user_relevant_frame(&mut self, frame_idx: usize) {
-        debug_assert_eq!(Some(frame_idx), self.compute_top_user_relevant_frame());
+        debug_assert_eq!(Some(frame_idx), self.compute_top_user_relevant_frame(0));
         self.top_user_relevant_frame = Some(frame_idx);
     }
 
     /// Returns the topmost frame that is considered user-relevant, or the
     /// top of the stack if there is no such frame, or `None` if the stack is empty.
     pub fn top_user_relevant_frame(&self) -> Option<usize> {
-        debug_assert_eq!(self.top_user_relevant_frame, self.compute_top_user_relevant_frame());
+        debug_assert_eq!(self.top_user_relevant_frame, self.compute_top_user_relevant_frame(0));
         // This can be called upon creation of an allocation. We create allocations while setting up
         // parts of the Rust runtime when we do not have any stack frames yet, so we need to handle
         // empty stacks.
