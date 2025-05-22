@@ -8,7 +8,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Instance, List, Ty};
+use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
@@ -941,37 +941,55 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             return merging_succ;
                         }
 
-                        let fn_abi = bx.fn_abi_of_instance(instance, List::empty());
+                        let result_layout =
+                            self.cx.layout_of(self.monomorphized_place_ty(destination.as_ref()));
 
-                        let mut llargs = Vec::with_capacity(1);
-                        let ret_dest = self.make_return_dest(
-                            bx,
-                            destination,
-                            &fn_abi.ret,
-                            &mut llargs,
-                            Some(intrinsic),
-                        );
-                        let dest = match ret_dest {
-                            _ if fn_abi.ret.is_indirect() => llargs[0],
-                            ReturnDest::Nothing => bx.const_undef(bx.type_ptr()),
-                            ReturnDest::IndirectOperand(dst, _) | ReturnDest::Store(dst) => {
-                                dst.val.llval
+                        let (result, store_in_local) = if result_layout.is_zst() {
+                            (
+                                PlaceRef::new_sized(bx.const_undef(bx.type_ptr()), result_layout),
+                                None,
+                            )
+                        } else if let Some(local) = destination.as_local() {
+                            match self.locals[local] {
+                                LocalRef::Place(dest) => (dest, None),
+                                LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
+                                LocalRef::PendingOperand => {
+                                    // Currently, intrinsics always need a location to store
+                                    // the result, so we create a temporary `alloca` for the
+                                    // result.
+                                    let tmp = PlaceRef::alloca(bx, result_layout);
+                                    tmp.storage_live(bx);
+                                    (tmp, Some(local))
+                                }
+                                LocalRef::Operand(_) => {
+                                    bug!("place local already assigned to");
+                                }
                             }
-                            ReturnDest::DirectOperand(_) => {
-                                bug!("Cannot use direct operand with an intrinsic call")
-                            }
+                        } else {
+                            (self.codegen_place(bx, destination.as_ref()), None)
                         };
+
+                        if result.val.align < result.layout.align.abi {
+                            // Currently, MIR code generation does not create calls
+                            // that store directly to fields of packed structs (in
+                            // fact, the calls it creates write only to temps).
+                            //
+                            // If someone changes that, please update this code path
+                            // to create a temporary.
+                            span_bug!(self.mir.span, "can't directly store to unaligned value");
+                        }
 
                         let args: Vec<_> =
                             args.iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect();
 
-                        let result = PlaceRef::new_sized(dest, fn_abi.ret.layout);
-
                         match self.codegen_intrinsic_call(bx, instance, &args, result, source_info)
                         {
                             Ok(()) => {
-                                if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
-                                    self.store_return(bx, ret_dest, &fn_abi.ret, dst.val.llval);
+                                if let Some(local) = store_in_local {
+                                    let op = bx.load_operand(result);
+                                    result.storage_dead(bx);
+                                    self.overwrite_local(local, LocalRef::Operand(op));
+                                    self.debug_introduce_local(bx, local);
                                 }
 
                                 return if let Some(target) = target {
@@ -1026,7 +1044,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // We still need to call `make_return_dest` even if there's no `target`, since
         // `fn_abi.ret` could be `PassMode::Indirect`, even if it is uninhabited,
         // and `make_return_dest` adds the return-place indirect pointer to `llargs`.
-        let return_dest = self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, None);
+        let return_dest = self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs);
         let destination = target.map(|target| (return_dest, target));
 
         // Split the rust-call tupled arguments off.
@@ -1857,7 +1875,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         dest: mir::Place<'tcx>,
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>,
-        intrinsic: Option<ty::IntrinsicDef>,
     ) -> ReturnDest<'tcx, Bx::Value> {
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
         if fn_ret.is_ignore() {
@@ -1877,13 +1894,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         tmp.storage_live(bx);
                         llargs.push(tmp.val.llval);
                         ReturnDest::IndirectOperand(tmp, index)
-                    } else if intrinsic.is_some() {
-                        // Currently, intrinsics always need a location to store
-                        // the result, so we create a temporary `alloca` for the
-                        // result.
-                        let tmp = PlaceRef::alloca(bx, fn_ret.layout);
-                        tmp.storage_live(bx);
-                        ReturnDest::IndirectOperand(tmp, index)
                     } else {
                         ReturnDest::DirectOperand(index)
                     };
@@ -1893,7 +1903,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
         } else {
-            self.codegen_place(bx, mir::PlaceRef { local: dest.local, projection: dest.projection })
+            self.codegen_place(bx, dest.as_ref())
         };
         if fn_ret.is_indirect() {
             if dest.val.align < dest.layout.align.abi {
