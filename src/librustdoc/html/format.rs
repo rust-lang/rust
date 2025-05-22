@@ -510,7 +510,7 @@ fn url_parts(
             builder.extend(module_fqp.iter().copied());
             Ok(builder)
         }
-        ExternalLocation::Local => Ok(href_relative_parts(module_fqp, relative_to).collect()),
+        ExternalLocation::Local => Ok(href_relative_parts(module_fqp, relative_to)),
         ExternalLocation::Unknown => Err(HrefError::DocumentationNotBuilt),
     }
 }
@@ -587,7 +587,7 @@ pub(crate) fn href_with_root_path(
         Some(&(ref fqp, shortty)) => (fqp, shortty, {
             let module_fqp = to_module_fqp(shortty, fqp.as_slice());
             debug!(?fqp, ?shortty, ?module_fqp);
-            href_relative_parts(module_fqp, relative_to).collect()
+            href_relative_parts(module_fqp, relative_to)
         }),
         None => {
             // Associated items are handled differently with "jump to def". The anchor is generated
@@ -619,34 +619,30 @@ pub(crate) fn href(
 /// Both paths should only be modules.
 /// This is because modules get their own directories; that is, `std::vec` and `std::vec::Vec` will
 /// both need `../iter/trait.Iterator.html` to get at the iterator trait.
-pub(crate) fn href_relative_parts<'fqp>(
-    fqp: &'fqp [Symbol],
-    relative_to_fqp: &[Symbol],
-) -> Box<dyn Iterator<Item = Symbol> + 'fqp> {
+pub(crate) fn href_relative_parts(fqp: &[Symbol], relative_to_fqp: &[Symbol]) -> UrlPartsBuilder {
     for (i, (f, r)) in fqp.iter().zip(relative_to_fqp.iter()).enumerate() {
         // e.g. linking to std::iter from std::vec (`dissimilar_part_count` will be 1)
         if f != r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
             let fqp_module = &fqp[i..];
-            return Box::new(
-                iter::repeat_n(sym::dotdot, dissimilar_part_count)
-                    .chain(fqp_module.iter().copied()),
-            );
+            return iter::repeat_n(sym::dotdot, dissimilar_part_count)
+                .chain(fqp_module.iter().copied())
+                .collect();
         }
     }
     match relative_to_fqp.len().cmp(&fqp.len()) {
         Ordering::Less => {
             // e.g. linking to std::sync::atomic from std::sync
-            Box::new(fqp[relative_to_fqp.len()..fqp.len()].iter().copied())
+            fqp[relative_to_fqp.len()..fqp.len()].iter().copied().collect()
         }
         Ordering::Greater => {
             // e.g. linking to std::sync from std::sync::atomic
             let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-            Box::new(iter::repeat_n(sym::dotdot, dissimilar_part_count))
+            iter::repeat_n(sym::dotdot, dissimilar_part_count).collect()
         }
         Ordering::Equal => {
             // linking to the same module
-            Box::new(iter::empty())
+            UrlPartsBuilder::new()
         }
     }
 }
