@@ -45,8 +45,10 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     let gcc_name = match name {
         sym::sqrtf32 => "sqrtf",
         sym::sqrtf64 => "sqrt",
+        sym::sqrtf128 => "sqrtl",
         sym::powif32 => "__builtin_powif",
         sym::powif64 => "__builtin_powi",
+        sym::powif128 => "__builtin_powil",
         sym::sinf32 => "sinf",
         sym::sinf64 => "sin",
         sym::cosf32 => "cosf",
@@ -65,6 +67,7 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::log2f64 => "log2",
         sym::fmaf32 => "fmaf",
         sym::fmaf64 => "fma",
+        sym::fmaf128 => "fmal",
         // FIXME: calling `fma` from libc without FMA target feature uses expensive software emulation
         sym::fmuladdf32 => "fmaf", // TODO: use gcc intrinsic analogous to llvm.fmuladd.f32
         sym::fmuladdf64 => "fma",  // TODO: use gcc intrinsic analogous to llvm.fmuladd.f64
@@ -72,22 +75,29 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::fabsf64 => "fabs",
         sym::minnumf32 => "fminf",
         sym::minnumf64 => "fmin",
+        sym::minnumf128 => "fminl",
         sym::maxnumf32 => "fmaxf",
         sym::maxnumf64 => "fmax",
+        sym::maxnumf128 => "fmaxl",
         sym::copysignf32 => "copysignf",
         sym::copysignf64 => "copysign",
         sym::copysignf128 => "copysignl",
         sym::floorf32 => "floorf",
         sym::floorf64 => "floor",
+        sym::floorf128 => "floorl",
         sym::ceilf32 => "ceilf",
         sym::ceilf64 => "ceil",
+        sym::ceilf128 => "ceill",
         sym::truncf32 => "truncf",
         sym::truncf64 => "trunc",
+        sym::truncf128 => "truncl",
         // We match the LLVM backend and lower this to `rint`.
         sym::round_ties_even_f32 => "rintf",
         sym::round_ties_even_f64 => "rint",
+        sym::round_ties_even_f128 => "rintl",
         sym::roundf32 => "roundf",
         sym::roundf64 => "round",
+        sym::roundf128 => "roundl",
         sym::abort => "abort",
         _ => return None,
     };
@@ -160,6 +170,40 @@ fn get_simple_function<'gcc, 'tcx>(
     ))
 }
 
+fn f16_builtin<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    name: Symbol,
+    args: &[OperandRef<'tcx, RValue<'gcc>>],
+) -> RValue<'gcc> {
+    let f32_type = cx.type_f32();
+    let builtin_name = match name {
+        sym::ceilf16 => "__builtin_ceilf",
+        sym::floorf16 => "__builtin_floorf",
+        sym::fmaf16 => "fmaf",
+        sym::maxnumf16 => "__builtin_fmaxf",
+        sym::minnumf16 => "__builtin_fminf",
+        sym::powf16 => "__builtin_powf",
+        sym::powif16 => {
+            let func = cx.context.get_builtin_function("__builtin_powif");
+            let arg0 = cx.context.new_cast(None, args[0].immediate(), f32_type);
+            let args = [arg0, args[1].immediate()];
+            let result = cx.context.new_call(None, func, &args);
+            return cx.context.new_cast(None, result, cx.type_f16());
+        }
+        sym::roundf16 => "__builtin_roundf",
+        sym::round_ties_even_f16 => "__builtin_rintf",
+        sym::sqrtf16 => "__builtin_sqrtf",
+        sym::truncf16 => "__builtin_truncf",
+        _ => unreachable!(),
+    };
+
+    let func = cx.context.get_builtin_function(builtin_name);
+    let args: Vec<_> =
+        args.iter().map(|arg| cx.context.new_cast(None, arg.immediate(), f32_type)).collect();
+    let result = cx.context.new_call(None, func, &args);
+    cx.context.new_cast(None, result, cx.type_f16())
+}
+
 impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn codegen_intrinsic_call(
         &mut self,
@@ -211,18 +255,17 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            sym::fmaf16 => {
-                // TODO(antoyo): use the correct builtin for f16.
-                let func = self.cx.context.get_builtin_function("fmaf");
-                let args: Vec<_> = args
-                    .iter()
-                    .map(|arg| {
-                        self.cx.context.new_cast(self.location, arg.immediate(), self.cx.type_f32())
-                    })
-                    .collect();
-                let result = self.cx.context.new_call(self.location, func, &args);
-                self.cx.context.new_cast(self.location, result, self.cx.type_f16())
-            }
+            sym::ceilf16
+            | sym::floorf16
+            | sym::fmaf16
+            | sym::maxnumf16
+            | sym::minnumf16
+            | sym::powf16
+            | sym::powif16
+            | sym::roundf16
+            | sym::round_ties_even_f16
+            | sym::sqrtf16
+            | sym::truncf16 => f16_builtin(self, name, args),
             sym::is_val_statically_known => {
                 let a = args[0].immediate();
                 let builtin = self.context.get_builtin_function("__builtin_constant_p");

@@ -765,7 +765,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         #[cfg(feature = "master")]
         match self.cx.type_kind(a_type) {
-            TypeKind::Half | TypeKind::Float => {
+            TypeKind::Half => {
+                let fmodf = self.context.get_builtin_function("fmodf");
+                let f32_type = self.type_f32();
+                let a = self.context.new_cast(self.location, a, f32_type);
+                let b = self.context.new_cast(self.location, b, f32_type);
+                let result = self.context.new_call(self.location, fmodf, &[a, b]);
+                return self.context.new_cast(self.location, result, a_type);
+            }
+            TypeKind::Float => {
                 let fmodf = self.context.get_builtin_function("fmodf");
                 return self.context.new_call(self.location, fmodf, &[a, b]);
             }
