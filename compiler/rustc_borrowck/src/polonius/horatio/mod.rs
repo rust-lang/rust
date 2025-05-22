@@ -71,7 +71,7 @@ pub(crate) struct PoloniusContext<'a, 'tcx> {
     ///       d
     /// ```
     /// In this case we have:
-    /// ```
+    /// ```text
     /// a: {}
     /// b: {a}
     /// c: {a}
@@ -89,7 +89,7 @@ pub(crate) struct PoloniusContext<'a, 'tcx> {
     ///       d
     /// ```
     /// In this case we have:
-    /// ```
+    /// ```text
     /// a: {}
     /// b: {a}
     /// c: {a}
