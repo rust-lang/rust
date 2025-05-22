@@ -967,14 +967,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                         let result = PlaceRef::new_sized(dest, fn_abi.ret.layout);
 
-                        match self.codegen_intrinsic_call(
-                            bx,
-                            instance,
-                            fn_abi,
-                            &args,
-                            result,
-                            source_info,
-                        ) {
+                        match self.codegen_intrinsic_call(bx, instance, &args, result, source_info)
+                        {
                             Ok(()) => {
                                 if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
                                     self.store_return(bx, ret_dest, &fn_abi.ret, dst.val.llval);
