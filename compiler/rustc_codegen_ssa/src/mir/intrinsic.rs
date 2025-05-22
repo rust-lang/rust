@@ -4,7 +4,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::sym;
-use rustc_target::callconv::{FnAbi, PassMode};
 
 use super::FunctionCx;
 use super::operand::OperandRef;
@@ -56,7 +55,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         bx: &mut Bx,
         instance: ty::Instance<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, Bx::Value>],
         result: PlaceRef<'tcx, Bx::Value>,
         source_info: SourceInfo,
@@ -536,18 +534,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             _ => {
                 // Need to use backend-specific things in the implementation.
-                return bx.codegen_intrinsic_call(instance, fn_abi, args, result, span);
+                return bx.codegen_intrinsic_call(instance, args, result, span);
             }
         };
 
-        if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast { .. } = &fn_abi.ret.mode {
-                bx.store_to_place(llval, result.val);
-            } else {
-                OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
-                    .val
-                    .store(bx, result);
-            }
+        if result.layout.ty.is_bool() {
+            OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
+                .val
+                .store(bx, result);
+        } else if !result.layout.ty.is_unit() {
+            bx.store_to_place(llval, result.val);
         }
         Ok(())
     }

@@ -15,11 +15,10 @@ use rustc_middle::ty::{self, GenericArgsRef, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 use tracing::debug;
 
-use crate::abi::{FnAbiLlvmExt, LlvmType};
+use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Metadata};
@@ -165,7 +164,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn codegen_intrinsic_call(
         &mut self,
         instance: ty::Instance<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, &'ll Value>],
         result: PlaceRef<'tcx, &'ll Value>,
         span: Span,
@@ -263,7 +261,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 self.call_intrinsic("llvm.va_copy", &[args[0].immediate(), args[1].immediate()])
             }
             sym::va_arg => {
-                match fn_abi.ret.layout.backend_repr {
+                match result.layout.backend_repr {
                     BackendRepr::Scalar(scalar) => {
                         match scalar.primitive() {
                             Primitive::Int(..) => {
@@ -298,18 +296,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             sym::volatile_load | sym::unaligned_volatile_load => {
-                let tp_ty = fn_args.type_at(0);
                 let ptr = args[0].immediate();
-                let load = if let PassMode::Cast { cast: ty, pad_i32: _ } = &fn_abi.ret.mode {
-                    let llty = ty.llvm_type(self);
-                    self.volatile_load(llty, ptr)
-                } else {
-                    self.volatile_load(self.layout_of(tp_ty).llvm_type(self), ptr)
-                };
+                let load = self.volatile_load(result.layout.llvm_type(self), ptr);
                 let align = if name == sym::unaligned_volatile_load {
                     1
                 } else {
-                    self.align_of(tp_ty).bytes() as u32
+                    result.layout.align.abi.bytes() as u32
                 };
                 unsafe {
                     llvm::LLVMSetAlignment(load, align);
@@ -628,14 +620,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
         };
 
-        if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast { .. } = &fn_abi.ret.mode {
-                self.store(llval, result.val.llval, result.val.align);
-            } else {
-                OperandRef::from_immediate_or_packed_pair(self, llval, result.layout)
-                    .val
-                    .store(self, result);
-            }
+        if result.layout.ty.is_bool() {
+            OperandRef::from_immediate_or_packed_pair(self, llval, result.layout)
+                .val
+                .store(self, result);
+        } else if !result.layout.ty.is_unit() {
+            self.store_to_place(llval, result.val);
         }
         Ok(())
     }
