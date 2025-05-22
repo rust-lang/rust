@@ -1,7 +1,7 @@
-//@ignore-target: windows # FIXME: stdin does not work on Windows
 //@error-in-other-file: `read` from stdin not available when isolation is enabled
 //@normalize-stderr-test: "src/sys/.*\.rs" -> "$$FILE"
 //@normalize-stderr-test: "\nLL \| .*" -> ""
+//@normalize-stderr-test: "\n... .*" -> ""
 //@normalize-stderr-test: "\| +[|_^]+" -> "| ^"
 //@normalize-stderr-test: "\n *= note:.*" -> ""
 use std::io::{self, Read};

@@ -544,9 +544,6 @@ pub struct MiriMachine<'tcx> {
     /// Failure rate of compare_exchange_weak, between 0.0 and 1.0
     pub(crate) cmpxchg_weak_failure_rate: f64,
 
-    /// Corresponds to -Zmiri-mute-stdout-stderr and doesn't write the output but acts as if it succeeded.
-    pub(crate) mute_stdout_stderr: bool,
-
     /// The probability of the active thread being preempted at the end of each basic block.
     pub(crate) preemption_rate: f64,
 
@@ -722,7 +719,6 @@ impl<'tcx> MiriMachine<'tcx> {
             track_alloc_accesses: config.track_alloc_accesses,
             check_alignment: config.check_alignment,
             cmpxchg_weak_failure_rate: config.cmpxchg_weak_failure_rate,
-            mute_stdout_stderr: config.mute_stdout_stderr,
             preemption_rate: config.preemption_rate,
             report_progress: config.report_progress,
             basic_block_count: 0,
@@ -925,7 +921,6 @@ impl VisitProvenance for MiriMachine<'_> {
             track_alloc_accesses: _,
             check_alignment: _,
             cmpxchg_weak_failure_rate: _,
-            mute_stdout_stderr: _,
             preemption_rate: _,
             report_progress: _,
             basic_block_count: _,
