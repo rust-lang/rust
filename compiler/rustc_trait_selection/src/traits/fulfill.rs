@@ -428,7 +428,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
                 ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(data)) => {
                     if infcx.considering_regions {
-                        infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data));
+                        infcx.region_outlives_predicate(data, &obligation.cause);
                     }
 
                     ProcessResult::Changed(Default::default())
@@ -439,7 +439,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     r_b,
                 ))) => {
                     if infcx.considering_regions {
-                        infcx.register_region_obligation_with_cause(t_a, r_b, &obligation.cause);
+                        infcx.type_outlives_predicate_with_cause(t_a, r_b, &obligation.cause);
                     }
                     ProcessResult::Changed(Default::default())
                 }
