@@ -903,8 +903,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         fn_span: Span,
         mergeable_succ: bool,
     ) -> MergingSucc {
-        let source_info = terminator.source_info;
-        let span = source_info.span;
+        let source_info = mir::SourceInfo { span: fn_span, ..terminator.source_info };
 
         // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
         let callee = self.codegen_operand(bx, func);
@@ -968,10 +967,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                         if matches!(intrinsic, ty::IntrinsicDef { name: sym::caller_location, .. })
                         {
-                            let location = self.get_caller_location(
-                                bx,
-                                mir::SourceInfo { span: fn_span, ..source_info },
-                            );
+                            let location = self.get_caller_location(bx, source_info);
 
                             assert_eq!(llargs, []);
                             if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
@@ -981,8 +977,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             return helper.funclet_br(self, bx, target.unwrap(), mergeable_succ);
                         }
 
-                        match Self::codegen_intrinsic_call(bx, instance, fn_abi, &args, dest, span)
-                        {
+                        match Self::codegen_intrinsic_call(
+                            bx, instance, fn_abi, &args, dest, fn_span,
+                        ) {
                             Ok(()) => {
                                 if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
                                     self.store_return(bx, ret_dest, &fn_abi.ret, dst.val.llval);
@@ -998,7 +995,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             Err(instance) => {
                                 if intrinsic.must_be_overridden {
                                     span_bug!(
-                                        span,
+                                        fn_span,
                                         "intrinsic {} must be overridden by codegen backend, but isn't",
                                         intrinsic.name,
                                     );
@@ -1113,7 +1110,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // Make sure that we've actually unwrapped the rcvr down
                         // to a pointer or ref to `dyn* Trait`.
                         if !op.layout.ty.builtin_deref(true).unwrap().is_dyn_star() {
-                            span_bug!(span, "can't codegen a virtual call on {:#?}", op);
+                            span_bug!(fn_span, "can't codegen a virtual call on {:#?}", op);
                         }
                         let place = op.deref(bx.cx());
                         let data_place = place.project_field(bx, 0);
@@ -1129,7 +1126,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         continue;
                     }
                     _ => {
-                        span_bug!(span, "can't codegen a virtual call on {:#?}", op);
+                        span_bug!(fn_span, "can't codegen a virtual call on {:#?}", op);
                     }
                 }
             }
@@ -1179,8 +1176,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 mir_args + 1,
                 "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR: {instance:?} {fn_span:?} {fn_abi:?}",
             );
-            let location =
-                self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
+            let location = self.get_caller_location(bx, source_info);
             debug!(
                 "codegen_call_terminator({:?}): location={:?} (fn_span {:?})",
                 terminator, location, fn_span
@@ -1199,9 +1195,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let fn_ptr = match (instance, llfn) {
             (Some(instance), None) => bx.get_fn_addr(instance),
             (_, Some(llfn)) => llfn,
-            _ => span_bug!(span, "no instance or llfn for call"),
+            _ => span_bug!(fn_span, "no instance or llfn for call"),
         };
-        self.set_debug_loc(bx, mir::SourceInfo { span: fn_span, ..source_info });
+        self.set_debug_loc(bx, source_info);
         helper.do_call(
             self,
             bx,
