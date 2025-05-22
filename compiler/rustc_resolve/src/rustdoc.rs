@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
-use rustc_span::{DUMMY_SP, InnerSpan, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, InnerSpan, Span, Symbol, sym};
 use thin_vec::ThinVec;
 use tracing::{debug, trace};
 
@@ -157,7 +157,7 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
     };
 
     for fragment in docs {
-        if fragment.doc == kw::Empty {
+        if fragment.doc == sym::empty {
             continue;
         }
 
@@ -177,7 +177,7 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
 ///
 /// Note: remove the trailing newline where appropriate
 pub fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
-    if frag.doc == kw::Empty {
+    if frag.doc == sym::empty {
         out.push('\n');
         return;
     }
