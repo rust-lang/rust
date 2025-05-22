@@ -21,6 +21,17 @@ note: the lint level is defined here
 LL | #[deny(dead_code)]
    |        ^^^^^^^^^
 
+error: hi
+  --> $DIR/trivial_impl_sized.rs:39:1
+   |
+LL | trait Trait {
+   | ----------- built-in `dyn Trait` implementation for this trait
+...
+LL | impl<T: ?Sized> Trait for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0046]: not all trait items implemented, missing: `foo`
   --> $DIR/trivial_impl_sized.rs:39:1
    |
@@ -32,6 +43,6 @@ LL |   }
 LL |   impl<T: ?Sized> Trait for T {}
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0046`.

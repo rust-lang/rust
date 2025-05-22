@@ -24,6 +24,17 @@ help: add missing generic argument
 LL | impl<Item, D: Debug + Clone> Foo<Item> for D {
    |                                 ++++++
 
+error: hi
+  --> $DIR/ice-mir-const-qualif-125837.rs:8:1
+   |
+LL | trait Foo<Item> {}
+   | --------------- built-in `dyn Foo<{type error}>` implementation for this trait
+LL |
+LL | impl<Item, D: Debug + Clone> Foo for D {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0572]: return statement outside of function body
   --> $DIR/ice-mir-const-qualif-125837.rs:12:17
    |
@@ -35,7 +46,7 @@ LL | |
 LL | |     }
    | |_____- ...not the enclosing function body
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0107, E0407, E0572.
 For more information about an error, try `rustc --explain E0107`.

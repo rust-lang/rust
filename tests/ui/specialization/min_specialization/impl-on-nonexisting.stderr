@@ -4,6 +4,16 @@ error[E0412]: cannot find type `NonExistent` in this scope
 LL | impl Trait for NonExistent {}
    |                ^^^^^^^^^^^ not found in this scope
 
-error: aborting due to 1 previous error
+error: hi
+  --> $DIR/impl-on-nonexisting.rs:4:1
+   |
+LL | trait Trait {}
+   | ----------- built-in `dyn Trait` implementation for this trait
+LL | impl Trait for NonExistent {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0412`.

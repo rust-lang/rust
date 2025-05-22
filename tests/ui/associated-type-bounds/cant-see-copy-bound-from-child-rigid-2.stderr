@@ -1,3 +1,14 @@
+error: hi
+  --> $DIR/cant-see-copy-bound-from-child-rigid-2.rs:4:1
+   |
+LL | trait Id {
+   | -------- built-in `dyn Id<This = _>` implementation for this trait
+...
+LL | impl<T: ?Sized> Id for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0382]: use of moved value: `x`
   --> $DIR/cant-see-copy-bound-from-child-rigid-2.rs:14:9
    |
@@ -8,6 +19,6 @@ LL |     (x, x)
    |      |
    |      value moved here
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0382`.

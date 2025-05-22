@@ -22,7 +22,18 @@ error[E0120]: the `Drop` trait may only be implemented for local structs, enums,
 LL | impl<'a> Drop for &'a mut isize {
    |                   ^^^^^^^^^^^^^ must be a struct, enum, or union in the current crate
 
-error: aborting due to 3 previous errors
+error: hi
+  --> $DIR/drop-on-non-struct.rs:9:1
+   |
+LL | impl Drop for Nonexistent {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+  --> $SRC_DIR/core/src/ops/drop.rs:LL:COL
+   |
+   = note: built-in `dyn Drop` implementation for this trait
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0117, E0120, E0412.
 For more information about an error, try `rustc --explain E0117`.

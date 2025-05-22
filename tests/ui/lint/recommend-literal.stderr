@@ -94,6 +94,16 @@ LL | impl Stuff for short {}
    |                not found in this scope
    |                help: perhaps you intended to use this type: `i16`
 
-error: aborting due to 9 previous errors
+error: hi
+  --> $DIR/recommend-literal.rs:40:1
+   |
+LL | trait Stuff {}
+   | ----------- built-in `dyn Stuff` implementation for this trait
+LL | impl Stuff for short {}
+   | ^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
+error: aborting due to 10 previous errors
 
 For more information about this error, try `rustc --explain E0412`.

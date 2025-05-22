@@ -56,6 +56,17 @@ LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
    = help: add `#![feature(dispatch_from_dyn)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+error: hi
+  --> $DIR/issue-78372.rs:3:1
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+  --> $SRC_DIR/core/src/ops/unsize.rs:LL:COL
+   |
+   = note: built-in `dyn DispatchFromDyn<Smaht<{type error}, {type error}>>` implementation for this trait
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0307]: invalid `self` parameter type: `Smaht<Self, T>`
   --> $DIR/issue-78372.rs:9:18
    |
@@ -71,7 +82,7 @@ error[E0377]: the trait `DispatchFromDyn` may only be implemented for a coercion
 LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0307, E0377, E0412, E0658.
 For more information about an error, try `rustc --explain E0307`.
