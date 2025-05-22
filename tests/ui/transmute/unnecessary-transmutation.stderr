@@ -240,12 +240,6 @@ LL |         let y: i64 = transmute(1f64);
    |                      ^^^^^^^^^^^^^^^ help: replace this with: `f64::to_bits(1f64).cast_signed()`
 
 error: unnecessary transmute
-  --> $DIR/unnecessary-transmutation.rs:84:23
-   |
-LL |         let z: bool = transmute(1u8);
-   |                       ^^^^^^^^^^^^^^ help: replace this with: `(1u8 == 1)`
-
-error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:86:21
    |
 LL |         let z: u8 = transmute(z);
@@ -257,5 +251,5 @@ error: unnecessary transmute
 LL |         let z: i8 = transmute(z);
    |                     ^^^^^^^^^^^^ help: replace this with: `(z) as i8`
 
-error: aborting due to 36 previous errors
+error: aborting due to 35 previous errors
 

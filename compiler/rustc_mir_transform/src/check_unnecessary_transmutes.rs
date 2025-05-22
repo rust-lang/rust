@@ -9,6 +9,7 @@ use crate::errors::UnnecessaryTransmute as Error;
 
 /// Check for transmutes that overlap with stdlib methods.
 /// For example, transmuting `[u8; 4]` to `u32`.
+/// We chose not to lint u8 -> bool transmutes, see #140431
 pub(super) struct CheckUnnecessaryTransmutes;
 
 impl<'tcx> crate::MirLint<'tcx> for CheckUnnecessaryTransmutes {
@@ -98,8 +99,6 @@ impl<'a, 'tcx> UnnecessaryTransmuteChecker<'a, 'tcx> {
             (Uint(_), Float(ty)) => err(format!("{}::from_bits({arg})", ty.name_str())),
             // bool → { x8 }
             (Bool, Int(..) | Uint(..)) => err(format!("({arg}) as {}", fn_sig.output())),
-            // u8 → bool
-            (Uint(_), Bool) => err(format!("({arg} == 1)")),
             _ => return None,
         })
     }

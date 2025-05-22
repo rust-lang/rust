@@ -1179,8 +1179,10 @@ function preLoadCss(cssUrl) {
 
     onEachLazy(document.querySelectorAll(".toggle > summary:not(.hideme)"), el => {
         // @ts-expect-error
+        // Clicking on the summary's contents should not collapse it,
+        // but links within should still fire.
         el.addEventListener("click", e => {
-            if (e.target.tagName !== "SUMMARY" && e.target.tagName !== "A") {
+            if (!e.target.matches("summary, a, a *")) {
                 e.preventDefault();
             }
         });
