@@ -599,7 +599,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                                 skip_recursive_check = !nested;
                             }
                             CtfeValidationMode::Const { .. } => {
-                                // If this is mutable memory on an `extern static`, there's no point in checking it -- we'd
+                                // If this is mutable memory or an `extern static`, there's no point in checking it -- we'd
                                 // just get errors trying to read the value.
                                 if alloc_actual_mutbl.is_mut() || self.ecx.tcx.is_foreign_item(did)
                                 {
