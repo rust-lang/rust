@@ -1,6 +1,9 @@
 //@ run-pass
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
-#![feature(let_chains)]
+#![cfg_attr(edition2021, feature(let_chains))]
 
 fn check_if_let(opt: Option<Option<Option<i32>>>, value: i32) -> bool {
     if let Some(first) = opt

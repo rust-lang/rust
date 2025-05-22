@@ -144,7 +144,6 @@
 #![feature(cfg_ub_checks)]
 #![feature(const_precise_live_drops)]
 #![feature(const_trait_impl)]
-#![feature(core_float_math)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
@@ -182,7 +181,6 @@
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
 #![feature(unboxed_closures)]
-#![feature(unsigned_signed_diff)]
 #![feature(unsized_fn_params)]
 #![feature(with_negative_coherence)]
 // tidy-alphabetical-end

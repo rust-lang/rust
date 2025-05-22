@@ -1,4 +1,8 @@
-#![feature(let_chains)]
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
+
+#![cfg_attr(edition2021, feature(let_chains))]
 
 fn main() {
     let mut x = Some(String::new());
@@ -21,6 +25,11 @@ fn main() {
     }
     match () {
         () if let Some(ref mut y @ ref mut z) = x => {} //~ ERROR: mutable more than once
+        _ => {}
+    }
+    match () {
+        () if let Some(()) = Some(()) && let Some(ref mut y @ ref mut z) = x && true => {}
+        //~^ ERROR: mutable more than once
         _ => {}
     }
 }

@@ -4,8 +4,6 @@
 //@[edition2021] edition:2021
 //@[edition2024] edition:2024
 
-#![feature(let_chains)]
-
 macro_rules! m {
     (pattern $i:ident) => { Some($i) };
     (expression $e:expr) => { $e };

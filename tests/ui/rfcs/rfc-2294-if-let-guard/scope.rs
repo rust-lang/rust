@@ -5,7 +5,6 @@
 //@[edition2021] edition:2021
 //@[edition2024] edition:2024
 
-#![feature(let_chains)]
 #![allow(irrefutable_let_patterns)]
 
 fn lhs_let(opt: Option<bool>) {

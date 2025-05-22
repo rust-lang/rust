@@ -305,7 +305,6 @@
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(lang_items)]
-#![feature(let_chains)]
 #![feature(link_cfg)]
 #![feature(linkage)]
 #![feature(macro_metavar_expr_concat)]
@@ -326,6 +325,7 @@
 #![feature(try_blocks)]
 #![feature(try_trait_v2)]
 #![feature(type_alias_impl_trait)]
+#![feature(unsigned_signed_diff)]
 // tidy-alphabetical-end
 //
 // Library features (core):
@@ -373,7 +373,6 @@
 #![feature(sync_unsafe_cell)]
 #![feature(temporary_niche_types)]
 #![feature(ub_checks)]
-#![feature(unsigned_signed_diff)]
 #![feature(used_with_arg)]
 // tidy-alphabetical-end
 //
@@ -723,7 +722,6 @@ pub use core::todo;
 // Re-export built-in macros defined through core.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated)]
-#[cfg_attr(bootstrap, allow(deprecated_in_future))]
 pub use core::{
     assert, assert_matches, cfg, column, compile_error, concat, concat_idents, const_format_args,
     env, file, format_args, format_args_nl, include, include_bytes, include_str, line, log_syntax,

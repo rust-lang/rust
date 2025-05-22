@@ -3405,8 +3405,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<P<Expr>>> {
-        // Used to check the `if_let_guard` feature mostly by scanning
-        // `&&` tokens.
         if !self.eat_keyword(exp!(If)) {
             // No match arm guard present.
             return Ok(None);
@@ -3414,11 +3412,7 @@ impl<'a> Parser<'a> {
 
         let mut cond = self.parse_match_guard_condition()?;
 
-        CondChecker::new(
-            self,
-            LetChainsPolicy::EditionDependent { current_edition: Edition::Edition2024 },
-        )
-        .visit_expr(&mut cond);
+        CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
 
         Ok(Some(cond))
     }
