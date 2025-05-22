@@ -625,6 +625,12 @@ pub fn try_evaluate_const<'tcx>(
                     // So we are free to simply defer evaluation here.
                     //
                     // FIXME: This assumes that `args` are normalized which is not necessarily true
+                    //
+                    // Const patterns are converted to type system constants before being
+                    // evaluated. However, we don't care about them here as pattern evaluation
+                    // logic does not go through type system normalization. If it did this would
+                    // be a backwards compatibility problem as we do not enforce "syntactic" non-
+                    // usage of generic parameters like we do here.
                     if uv.args.has_non_region_param() || uv.args.has_non_region_infer() {
                         return Err(EvaluateConstErr::HasGenericsOrInfers);
                     }
