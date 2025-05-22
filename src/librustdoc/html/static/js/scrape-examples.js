@@ -127,7 +127,7 @@
      * @param {boolean} isHidden
      */
     function setupLoc(example, isHidden) {
-        const locs_str = example.attributes.getNamedItem("data-locs").textContent;
+        const locs_str = nonnull(example.attributes.getNamedItem("data-locs")).textContent;
         const locs =
               JSON.parse(nonnull(nonnull(locs_str)));
         example.locs = locs;
