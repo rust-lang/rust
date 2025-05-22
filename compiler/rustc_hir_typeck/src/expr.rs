@@ -911,7 +911,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self,
                         &cause,
                         |mut err| {
-                            self.suggest_missing_semicolon(&mut err, expr, e_ty, false);
+                            self.suggest_missing_semicolon(&mut err, expr, e_ty, false, false);
                             self.suggest_mismatched_types_on_tail(
                                 &mut err, expr, ty, e_ty, target_id,
                             );
