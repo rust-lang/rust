@@ -26,6 +26,7 @@ static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[
         "Lints that detect identifiers which will be come keywords in later editions",
     ),
     ("deprecated-safe", "Lints for functions which were erroneously marked as safe in the past"),
+    ("improper-c-boundaries", "Lints for points where rust code interacts with non-rust code"),
 ];
 
 type LintGroups = BTreeMap<String, BTreeSet<String>>;

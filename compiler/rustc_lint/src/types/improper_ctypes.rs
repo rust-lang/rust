@@ -2038,7 +2038,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// # #![unsafe(no_mangle)]
+    /// # #[unsafe(no_mangle)]
+    /// # #[used]
     /// static mut PLUGIN_ABI_MIN_VERSION: &'static str = "0.0.5";
     /// ```
     ///
