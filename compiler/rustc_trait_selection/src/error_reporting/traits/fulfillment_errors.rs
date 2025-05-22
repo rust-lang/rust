@@ -1501,11 +1501,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     return None;
                 };
 
-                let Ok(Some(ImplSource::UserDefined(impl_data))) = SelectionContext::new(self)
-                    .poly_select(&obligation.with(
-                        self.tcx,
-                        predicate.kind().rebind(proj.projection_term.trait_ref(self.tcx)),
-                    ))
+                let trait_ref = self.enter_forall_and_leak_universe(
+                    predicate.kind().rebind(proj.projection_term.trait_ref(self.tcx)),
+                );
+                let Ok(Some(ImplSource::UserDefined(impl_data))) =
+                    SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref))
                 else {
                     return None;
                 };

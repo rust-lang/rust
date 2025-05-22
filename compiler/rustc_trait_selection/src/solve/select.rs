@@ -5,7 +5,7 @@ use rustc_infer::traits::solve::inspect::ProbeKind;
 use rustc_infer::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_infer::traits::{
     BuiltinImplSource, ImplSource, ImplSourceUserDefinedData, Obligation, ObligationCause,
-    PolyTraitObligation, Selection, SelectionError, SelectionResult,
+    Selection, SelectionError, SelectionResult, TraitObligation,
 };
 use rustc_macros::extension;
 use rustc_middle::{bug, span_bug};
@@ -17,7 +17,7 @@ use crate::solve::inspect::{self, ProofTreeInferCtxtExt};
 impl<'tcx> InferCtxt<'tcx> {
     fn select_in_new_trait_solver(
         &self,
-        obligation: &PolyTraitObligation<'tcx>,
+        obligation: &TraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         assert!(self.next_trait_solver());
 
