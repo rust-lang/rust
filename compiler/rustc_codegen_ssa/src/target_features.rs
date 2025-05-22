@@ -224,7 +224,10 @@ fn parse_rust_feature_flag<'a>(
 /// 2nd component of the return value, respectively).
 ///
 /// `target_base_has_feature` should check whether the given feature (a Rust feature name!) is
-/// enabled in the "base" target machine, i.e., without applying `-Ctarget-feature`.
+/// enabled in the "base" target machine, i.e., without applying `-Ctarget-feature`. Note that LLVM
+/// may consider features to be implied that we do not and vice-versa. We want `cfg` to be entirely
+/// consistent with Rust feature implications, and thus only consult LLVM to expand the target CPU
+/// to target features.
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled elsewhere.
 pub fn cfg_target_feature(
@@ -238,7 +241,15 @@ pub fn cfg_target_feature(
         .rust_target_features()
         .iter()
         .filter(|(feature, _, _)| target_base_has_feature(feature))
-        .map(|(feature, _, _)| Symbol::intern(feature))
+        .flat_map(|(base_feature, _, _)| {
+            // Expand the direct base feature into all transitively-implied features. Note that we
+            // cannot simply use the `implied` field of the tuple since that only contains
+            // directly-implied features.
+            //
+            // Iteration order is irrelevant because we're collecting into an `UnordSet`.
+            #[allow(rustc::potential_query_instability)]
+            sess.target.implied_target_features(base_feature).into_iter().map(|f| Symbol::intern(f))
+        })
         .collect();
 
     // Add enabled and remove disabled features.

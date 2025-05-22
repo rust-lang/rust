@@ -333,15 +333,12 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled outside codegen.
 pub(crate) fn target_config(sess: &Session) -> TargetConfig {
-    // Add base features for the target.
-    // We do *not* add the -Ctarget-features there, and instead duplicate the logic for that below.
-    // The reason is that if LLVM considers a feature implied but we do not, we don't want that to
-    // show up in `cfg`. That way, `cfg` is entirely under our control -- except for the handling of
-    // the target CPU, that is still expanded to target features (with all their implied features)
-    // by LLVM.
     let target_machine = create_informational_target_machine(sess, true);
 
     let (unstable_target_features, target_features) = cfg_target_feature(sess, |feature| {
+        // This closure determines whether the target CPU has the feature according to LLVM. We do
+        // *not* consider the `-Ctarget-feature`s here, as that will be handled later in
+        // `cfg_target_feature`.
         if let Some(feat) = to_llvm_features(sess, feature) {
             // All the LLVM features this expands to must be enabled.
             for llvm_feature in feat {
