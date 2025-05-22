@@ -944,6 +944,14 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "Vec::from_raw_parts requires that length is less than or equal to capacity",
+            (
+                length: usize = length,
+                capacity: usize = capacity,
+            ) => length <= capacity,
+        );
         unsafe { Vec { buf: RawVec::from_raw_parts_in(ptr, capacity, alloc), len: length } }
     }
 
