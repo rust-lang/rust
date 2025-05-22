@@ -10,6 +10,7 @@ LL | #[cfg(list_all_well_known_cfgs)]
 `doc`
 `doctest`
 `fmt_debug`
+`has_cfg_version`
 `miri`
 `overflow_checks`
 `panic`

@@ -827,7 +827,7 @@ pub enum BuiltinLintDiag {
     UnexpectedBuiltinCfg {
         cfg: String,
         cfg_name: Symbol,
-        controlled_by: &'static str,
+        controlled_by: Option<&'static str>,
     },
 }
 

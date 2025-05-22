@@ -88,7 +88,7 @@ impl<'a, T: Eq + Hash + Copy + 'a> Extend<&'a T> for ExpectedValues<T> {
 
 /// Disallow builtin cfgs from the CLI.
 pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
-    let disallow = |cfg: &(Symbol, Option<Symbol>), controlled_by| {
+    let disallow_controlled_by = |cfg: &(Symbol, Option<Symbol>), controlled_by| {
         let cfg_name = cfg.0;
         let cfg = if let Some(value) = cfg.1 {
             format!(r#"{}="{}""#, cfg_name, value)
@@ -101,6 +101,9 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             ast::CRATE_NODE_ID,
             BuiltinLintDiag::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by },
         )
+    };
+    let disallow = |cfg: &(Symbol, Option<Symbol>), controlled_by| {
+        disallow_controlled_by(cfg, Some(controlled_by));
     };
 
     // We want to restrict setting builtin cfgs that will produce incoherent behavior
@@ -147,6 +150,7 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_has_reliable_f128, None | Some(_))
             | (sym::target_has_reliable_f128_math, None | Some(_))
             | (sym::target_thread_local, None) => disallow(cfg, "--target"),
+            (sym::has_cfg_version, None) => disallow_controlled_by(cfg, None),
             (sym::fmt_debug, None | Some(_)) => disallow(cfg, "-Z fmt-debug"),
             (sym::emscripten_wasm_eh, None | Some(_)) => disallow(cfg, "-Z emscripten_wasm_eh"),
             _ => {}
@@ -310,6 +314,8 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         ins_none!(sym::contract_checks);
     }
 
+    ins_none!(sym::has_cfg_version);
+
     ret
 }
 
@@ -471,6 +477,8 @@ impl CheckCfg {
 
         ins!(sym::ub_checks, no_values);
         ins!(sym::contract_checks, no_values);
+
+        ins!(sym::has_cfg_version, no_values);
 
         ins!(sym::unix, no_values);
         ins!(sym::windows, no_values);

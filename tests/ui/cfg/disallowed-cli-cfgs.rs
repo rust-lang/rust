@@ -9,6 +9,7 @@
 //@ revisions: fmt_debug_
 //@ revisions: emscripten_wasm_eh_
 //@ revisions: reliable_f16_ reliable_f16_math_ reliable_f128_ reliable_f128_math_
+//@ revisions: has_cfg_version_
 
 //@ [overflow_checks_]compile-flags: --cfg overflow_checks
 //@ [debug_assertions_]compile-flags: --cfg debug_assertions
@@ -40,6 +41,7 @@
 //@ [reliable_f16_math_]compile-flags: --cfg target_has_reliable_f16_math
 //@ [reliable_f128_]compile-flags: --cfg target_has_reliable_f128
 //@ [reliable_f128_math_]compile-flags: --cfg target_has_reliable_f128_math
+//@ [has_cfg_version_]compile-flags: --cfg has_cfg_version
 
 fn main() {}
 

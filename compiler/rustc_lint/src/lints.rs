@@ -2498,11 +2498,17 @@ pub(crate) mod unexpected_cfg_value {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_unexpected_builtin_cfg)]
-#[note(lint_controlled_by)]
 #[note(lint_incoherent)]
 pub(crate) struct UnexpectedBuiltinCfg {
     pub(crate) cfg: String,
     pub(crate) cfg_name: Symbol,
+    #[subdiagnostic]
+    pub(crate) controlled_by: Option<ControlledBy>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(lint_unexpected_builtin_cfg_controlled_by)]
+pub(crate) struct ControlledBy {
     pub(crate) controlled_by: &'static str,
 }
 

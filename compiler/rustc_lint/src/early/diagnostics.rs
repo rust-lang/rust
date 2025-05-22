@@ -448,7 +448,13 @@ pub(super) fn decorate_lint(
             lints::OutOfScopeMacroCalls { span, path, location }.decorate_lint(diag)
         }
         BuiltinLintDiag::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by } => {
-            lints::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.decorate_lint(diag)
+            lints::UnexpectedBuiltinCfg {
+                cfg,
+                cfg_name,
+                controlled_by: controlled_by
+                    .map(|controlled_by| lints::ControlledBy { controlled_by }),
+            }
+            .decorate_lint(diag)
         }
         BuiltinLintDiag::ElidedNamedLifetimes { elided: (span, kind), resolution } => {
             match resolution {

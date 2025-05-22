@@ -70,7 +70,7 @@ warning: unexpected `cfg` condition name: `version`
 LL | #[cfg(version = "1.20")]
    |       ^^^^^^^^^^^^^^^^
    |
-   = help: expected names are: `FALSE` and `test` and 31 more
+   = help: expected names are: `FALSE` and `test` and 32 more
    = help: to expect this configuration use `--check-cfg=cfg(version, values("1.20"))`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default

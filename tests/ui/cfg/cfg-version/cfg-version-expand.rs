@@ -1,7 +1,7 @@
 //@ run-pass
 //@ rustc-env:RUSTC_OVERRIDE_VERSION_STRING=1.50.3
 
-#[cfg(version("1.49.0"))]
+#[cfg_attr(has_cfg_version, cfg(version("1.49.0")))]
 const ON_1_49_0: bool = true;
 #[cfg(version("1.50"))]
 const ON_1_50_0: bool = true;

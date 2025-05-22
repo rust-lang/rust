@@ -1089,6 +1089,7 @@ symbols! {
         guard_patterns,
         half_open_range_patterns,
         half_open_range_patterns_in_slices,
+        has_cfg_version,
         hash,
         hashmap_contains_key,
         hashmap_drain_ty,
