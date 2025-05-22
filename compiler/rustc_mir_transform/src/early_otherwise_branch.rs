@@ -193,8 +193,20 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
             let eq_bb = patch.new_block(eq_switch);
 
             // Jump to it on the basis of the inequality comparison
-            let true_case = opt_data.destination;
-            let false_case = eq_bb;
+            let mut true_case = opt_data.destination;
+            let mut false_case = eq_bb;
+            // Create an indirect BB to add `StorageDead` If the jump target is itself.
+            for bb in [&mut false_case, &mut true_case].into_iter() {
+                if *bb == parent {
+                    *bb = patch.new_block(BasicBlockData::new(
+                        Some(Terminator {
+                            kind: TerminatorKind::Goto { target: parent },
+                            source_info: bbs[parent].terminator().source_info,
+                        }),
+                        bbs[parent].is_cleanup,
+                    ));
+                }
+            }
             patch.patch_terminator(
                 parent,
                 TerminatorKind::if_(Operand::Move(Place::from(comp_temp)), true_case, false_case),
@@ -210,9 +222,9 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
 
             // Generate a StorageDead for comp_temp in each of the targets, since we moved it into
             // the switch
-            for bb in [false_case, true_case].iter() {
+            for bb in [false_case, true_case].into_iter() {
                 patch.add_statement(
-                    Location { block: *bb, statement_index: 0 },
+                    Location { block: bb, statement_index: 0 },
                     StatementKind::StorageDead(comp_temp),
                 );
             }
