@@ -11,8 +11,8 @@ use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, List, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
+use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Span, sym};
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use tracing::{debug, info};
 
@@ -965,20 +965,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let args: Vec<_> =
                             args.iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect();
 
-                        if matches!(intrinsic, ty::IntrinsicDef { name: sym::caller_location, .. })
-                        {
-                            let location = self.get_caller_location(bx, source_info);
-
-                            assert_eq!(llargs, []);
-                            if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
-                                location.val.store(bx, tmp);
-                            }
-                            self.store_return(bx, ret_dest, &fn_abi.ret, location.immediate());
-                            return helper.funclet_br(self, bx, target.unwrap(), mergeable_succ);
-                        }
-
-                        match Self::codegen_intrinsic_call(
-                            bx, instance, fn_abi, &args, dest, fn_span,
+                        match self.codegen_intrinsic_call(
+                            bx,
+                            instance,
+                            fn_abi,
+                            &args,
+                            dest,
+                            source_info,
                         ) {
                             Ok(()) => {
                                 if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
@@ -1667,7 +1660,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         tuple.layout.fields.count()
     }
 
-    fn get_caller_location(
+    pub(super) fn get_caller_location(
         &mut self,
         bx: &mut Bx,
         source_info: mir::SourceInfo,

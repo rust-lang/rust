@@ -1,8 +1,9 @@
 use rustc_abi::WrappingRange;
+use rustc_middle::mir::SourceInfo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
-use rustc_span::{Span, sym};
+use rustc_span::sym;
 use rustc_target::callconv::{FnAbi, PassMode};
 
 use super::FunctionCx;
@@ -52,13 +53,15 @@ fn memset_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// In the `Err` case, returns the instance that should be called instead.
     pub fn codegen_intrinsic_call(
+        &mut self,
         bx: &mut Bx,
         instance: ty::Instance<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, Bx::Value>],
         llresult: Bx::Value,
-        span: Span,
+        source_info: SourceInfo,
     ) -> Result<(), ty::Instance<'tcx>> {
+        let span = source_info.span;
         let callee_ty = instance.ty(bx.tcx(), bx.typing_env());
 
         let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
@@ -102,6 +105,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let llval = match name {
             sym::abort => {
                 bx.abort();
+                return Ok(());
+            }
+
+            sym::caller_location => {
+                let location = self.get_caller_location(bx, source_info);
+                location.val.store(bx, result);
                 return Ok(());
             }
 
