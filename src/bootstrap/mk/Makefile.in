@@ -54,7 +54,8 @@ check-aux:
 		src/etc/test-float-parse \
 		$(BOOTSTRAP_ARGS)
 	# Run standard library tests in Miri.
-	$(Q)$(BOOTSTRAP) miri --stage 2 \
+	$(Q)MIRIFLAGS="-Zmiri-strict-provenance" \
+		$(BOOTSTRAP) miri --stage 2 \
 		library/coretests \
 		library/alloctests \
 		library/alloc \
