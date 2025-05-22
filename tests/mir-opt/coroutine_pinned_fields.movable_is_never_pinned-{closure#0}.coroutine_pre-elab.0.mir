@@ -1,0 +1,109 @@
+// MIR for `movable_is_never_pinned::{closure#0}` 0 coroutine_pre-elab
+/* coroutine_layout = CoroutineLayout {
+    field_tys: {
+        _0: CoroutineSavedTy {
+            ty: i32,
+            source_info: SourceInfo {
+                span: $DIR/coroutine_pinned_fields.rs:71:13: 71:20 (#0),
+                scope: scope[0],
+            },
+            ignore_for_traits: false,
+            pinned: false,
+        },
+    },
+    variant_fields: {
+        Unresumed(0): [],
+        Returned (1): [],
+        Panicked (2): [],
+        Suspend0 (3): [_0],
+        Suspend1 (4): [_0],
+    },
+    storage_conflicts: BitMatrix(1x1) {
+        (_0, _0),
+    },
+} */
+
+fn movable_is_never_pinned::{closure#0}(_1: {coroutine@$DIR/coroutine_pinned_fields.rs:70:5: 70:7}, _2: ()) -> CoroutineState<(), i32> {
+    let mut _0: std::ops::CoroutineState<(), i32>;
+    let mut _3: i32;
+    let _4: ();
+    let mut _5: ();
+    let _6: ();
+    let mut _7: ();
+    let mut _8: i32;
+    let mut _9: ();
+    scope 1 {
+        debug bar => ((_1 as variant#4).0: i32);
+    }
+
+    bb0: {
+        _9 = move _2;
+        nop;
+        ((_1 as variant#4).0: i32) = const 29_i32;
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = ();
+        _0 = CoroutineState::<(), i32>::Yielded(move _5);
+        StorageDead(_4);
+        StorageDead(_5);
+        discriminant(_1) = 3;
+        return;
+    }
+
+    bb1: {
+        StorageDead(_5);
+        StorageDead(_4);
+        ((_1 as variant#4).0: i32) = Add(copy ((_1 as variant#4).0: i32), const 2_i32);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = ();
+        _0 = CoroutineState::<(), i32>::Yielded(move _7);
+        StorageDead(_6);
+        StorageDead(_7);
+        discriminant(_1) = 4;
+        return;
+    }
+
+    bb2: {
+        StorageDead(_7);
+        StorageDead(_6);
+        _8 = copy ((_1 as variant#4).0: i32);
+        nop;
+        drop(_1) -> [return: bb3, unwind unreachable];
+    }
+
+    bb3: {
+        _0 = CoroutineState::<(), i32>::Complete(move _8);
+        discriminant(_1) = 1;
+        return;
+    }
+
+    bb4: {
+        StorageDead(_7);
+        StorageDead(_6);
+        goto -> bb6;
+    }
+
+    bb5: {
+        StorageDead(_5);
+        StorageDead(_4);
+        goto -> bb6;
+    }
+
+    bb6: {
+        nop;
+        drop(_1) -> [return: bb7, unwind unreachable];
+    }
+
+    bb7: {
+        coroutine_drop;
+    }
+
+    bb8: {
+        return;
+    }
+
+    bb9: {
+        drop(_1) -> [return: bb8, unwind continue];
+    }
+}

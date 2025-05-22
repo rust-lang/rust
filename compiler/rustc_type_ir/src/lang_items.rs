@@ -37,6 +37,7 @@ pub enum TraitSolverLangItem {
     TransmuteTrait,
     Tuple,
     Unpin,
+    UnsafeUnpin,
     Unsize,
     // tidy-alphabetical-end
 }
