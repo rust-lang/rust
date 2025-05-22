@@ -58,7 +58,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         instance: ty::Instance<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, Bx::Value>],
-        llresult: Bx::Value,
+        result: PlaceRef<'tcx, Bx::Value>,
         source_info: SourceInfo,
     ) -> Result<(), ty::Instance<'tcx>> {
         let span = source_info.span;
@@ -100,7 +100,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let llret_ty = bx.backend_type(bx.layout_of(ret_ty));
-        let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let llval = match name {
             sym::abort => {
@@ -537,7 +536,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             _ => {
                 // Need to use backend-specific things in the implementation.
-                return bx.codegen_intrinsic_call(instance, fn_abi, args, llresult, span);
+                return bx.codegen_intrinsic_call(instance, fn_abi, args, result, span);
             }
         };
 
