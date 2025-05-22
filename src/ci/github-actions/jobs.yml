@@ -386,8 +386,6 @@ auto:
     <<: *job-linux-4c
 
   - name: x86_64-gnu-tools
-    env:
-      DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
     <<: *job-linux-36c-codebuild
 
   ####################
