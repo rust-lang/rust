@@ -12,9 +12,10 @@ use rustc_pattern_analysis::{
 };
 use smallvec::{SmallVec, smallvec};
 use stdx::never;
+use triomphe::Arc;
 
 use crate::{
-    AdtId, Interner, Scalar, Ty, TyExt, TyKind,
+    AdtId, Interner, Scalar, TraitEnvironment, Ty, TyExt, TyKind,
     db::HirDatabase,
     infer::normalize,
     inhabitedness::{is_enum_variant_uninhabited_from, is_ty_uninhabited_from},
@@ -69,13 +70,19 @@ pub(crate) struct MatchCheckCtx<'db> {
     body: DefWithBodyId,
     pub(crate) db: &'db dyn HirDatabase,
     exhaustive_patterns: bool,
+    env: Arc<TraitEnvironment>,
 }
 
 impl<'db> MatchCheckCtx<'db> {
-    pub(crate) fn new(module: ModuleId, body: DefWithBodyId, db: &'db dyn HirDatabase) -> Self {
+    pub(crate) fn new(
+        module: ModuleId,
+        body: DefWithBodyId,
+        db: &'db dyn HirDatabase,
+        env: Arc<TraitEnvironment>,
+    ) -> Self {
         let def_map = module.crate_def_map(db);
         let exhaustive_patterns = def_map.is_unstable_feature_enabled(&sym::exhaustive_patterns);
-        Self { module, body, db, exhaustive_patterns }
+        Self { module, body, db, exhaustive_patterns, env }
     }
 
     pub(crate) fn compute_match_usefulness(
@@ -100,7 +107,7 @@ impl<'db> MatchCheckCtx<'db> {
     }
 
     fn is_uninhabited(&self, ty: &Ty) -> bool {
-        is_ty_uninhabited_from(self.db, ty, self.module)
+        is_ty_uninhabited_from(self.db, ty, self.module, self.env.clone())
     }
 
     /// Returns whether the given ADT is from another crate declared `#[non_exhaustive]`.
@@ -459,8 +466,13 @@ impl PatCx for MatchCheckCtx<'_> {
                 } else {
                     let mut variants = IndexVec::with_capacity(enum_data.variants.len());
                     for &(variant, _) in enum_data.variants.iter() {
-                        let is_uninhabited =
-                            is_enum_variant_uninhabited_from(cx.db, variant, subst, cx.module);
+                        let is_uninhabited = is_enum_variant_uninhabited_from(
+                            cx.db,
+                            variant,
+                            subst,
+                            cx.module,
+                            self.env.clone(),
+                        );
                         let visibility = if is_uninhabited {
                             VariantVisibility::Empty
                         } else {
