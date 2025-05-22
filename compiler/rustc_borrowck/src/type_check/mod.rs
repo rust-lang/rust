@@ -1098,7 +1098,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             self.prove_predicate(
                                 ty::ClauseKind::WellFormed(src_ty.into()),
                                 location.to_locations(),
-                                ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                                ConstraintCategory::Cast {
+                                    is_raw_ptr_dyn_type_cast: false,
+                                    is_implicit_coercion,
+                                    unsize_to: None,
+                                },
                             );
 
                             let src_ty = self.normalize(src_ty, location);
@@ -1106,7 +1110,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 src_ty,
                                 *ty,
                                 location.to_locations(),
-                                ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                                ConstraintCategory::Cast {
+                                    is_raw_ptr_dyn_type_cast: false,
+                                    is_implicit_coercion,
+                                    unsize_to: None,
+                                },
                             ) {
                                 span_mirbug!(
                                     self,
@@ -1127,7 +1135,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         self.prove_predicate(
                             ty::ClauseKind::WellFormed(src_ty.into()),
                             location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                            ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
+                                is_implicit_coercion,
+                                unsize_to: None,
+                            },
                         );
 
                         // The type that we see in the fcx is like
@@ -1140,7 +1152,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             src_ty,
                             *ty,
                             location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                            ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
+                                is_implicit_coercion,
+                                unsize_to: None,
+                            },
                         ) {
                             span_mirbug!(
                                 self,
@@ -1169,7 +1185,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty_fn_ptr_from,
                             *ty,
                             location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                            ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
+                                is_implicit_coercion,
+                                unsize_to: None,
+                            },
                         ) {
                             span_mirbug!(
                                 self,
@@ -1202,7 +1222,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty_fn_ptr_from,
                             *ty,
                             location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                            ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
+                                is_implicit_coercion,
+                                unsize_to: None,
+                            },
                         ) {
                             span_mirbug!(
                                 self,
@@ -1231,6 +1255,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             trait_ref,
                             location.to_locations(),
                             ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
                                 is_implicit_coercion,
                                 unsize_to: Some(unsize_to),
                             },
@@ -1256,7 +1281,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             *ty_from,
                             *ty_to,
                             location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                            ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
+                                is_implicit_coercion,
+                                unsize_to: None,
+                            },
                         ) {
                             span_mirbug!(
                                 self,
@@ -1319,7 +1348,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             *ty_elem,
                             *ty_to,
                             location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                            ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
+                                is_implicit_coercion,
+                                unsize_to: None,
+                            },
                         ) {
                             span_mirbug!(
                                 self,
@@ -1514,6 +1547,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                         dst_obj,
                                         location.to_locations(),
                                         ConstraintCategory::Cast {
+                                            is_raw_ptr_dyn_type_cast: true,
                                             is_implicit_coercion: false,
                                             unsize_to: None,
                                         },
