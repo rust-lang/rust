@@ -2811,7 +2811,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for Rc<[T], A> {
     #[inline]
     fn from(v: Vec<T, A>) -> Rc<[T], A> {
         unsafe {
-            let (vec_ptr, len, cap, alloc) = v.into_raw_parts_with_alloc();
+            let (vec_ptr, len, cap, alloc) = Vec::into_raw_parts_with_alloc(v);
 
             let rc_ptr = Self::allocate_for_slice_in(len, &alloc);
             ptr::copy_nonoverlapping(vec_ptr, (&raw mut (*rc_ptr).value) as *mut T, len);
