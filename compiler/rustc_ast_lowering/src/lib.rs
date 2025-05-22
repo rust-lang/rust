@@ -2085,10 +2085,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Assumes mgca feature is enabled.
-    fn try_lower_as_const_path(&mut self, expr: &Expr) -> Option<&'hir hir::ConstArg<'hir>> {
-        let ExprKind::Path(qself, path) = &expr.kind else { return None };
+    fn try_lower_as_const_path(&mut self, body: &AnonConst) -> Option<&'hir hir::ConstArg<'hir>> {
+        let ExprKind::Path(qself, path) = &body.value.kind else { return None };
         let qpath = self.lower_qpath(
-            expr.id,
+            body.value.id,
             qself,
             path,
             ParamMode::Optional,
