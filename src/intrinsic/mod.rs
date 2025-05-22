@@ -45,10 +45,8 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     let gcc_name = match name {
         sym::sqrtf32 => "sqrtf",
         sym::sqrtf64 => "sqrt",
-        sym::sqrtf128 => "sqrtl",
         sym::powif32 => "__builtin_powif",
         sym::powif64 => "__builtin_powi",
-        sym::powif128 => "__builtin_powil",
         sym::sinf32 => "sinf",
         sym::sinf64 => "sin",
         sym::cosf32 => "cosf",
@@ -67,7 +65,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::log2f64 => "log2",
         sym::fmaf32 => "fmaf",
         sym::fmaf64 => "fma",
-        sym::fmaf128 => "fmal",
         // FIXME: calling `fma` from libc without FMA target feature uses expensive software emulation
         sym::fmuladdf32 => "fmaf", // TODO: use gcc intrinsic analogous to llvm.fmuladd.f32
         sym::fmuladdf64 => "fma",  // TODO: use gcc intrinsic analogous to llvm.fmuladd.f64
@@ -75,29 +72,22 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::fabsf64 => "fabs",
         sym::minnumf32 => "fminf",
         sym::minnumf64 => "fmin",
-        sym::minnumf128 => "fminl",
         sym::maxnumf32 => "fmaxf",
         sym::maxnumf64 => "fmax",
-        sym::maxnumf128 => "fmaxl",
         sym::copysignf32 => "copysignf",
         sym::copysignf64 => "copysign",
         sym::copysignf128 => "copysignl",
         sym::floorf32 => "floorf",
         sym::floorf64 => "floor",
-        sym::floorf128 => "floorl",
         sym::ceilf32 => "ceilf",
         sym::ceilf64 => "ceil",
-        sym::ceilf128 => "ceill",
         sym::truncf32 => "truncf",
         sym::truncf64 => "trunc",
-        sym::truncf128 => "truncl",
         // We match the LLVM backend and lower this to `rint`.
         sym::round_ties_even_f32 => "rintf",
         sym::round_ties_even_f64 => "rint",
-        sym::round_ties_even_f128 => "rintl",
         sym::roundf32 => "roundf",
         sym::roundf64 => "round",
-        sym::roundf128 => "roundl",
         sym::abort => "abort",
         _ => return None,
     };
@@ -170,6 +160,61 @@ fn get_simple_function<'gcc, 'tcx>(
     ))
 }
 
+fn get_simple_function_f128<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    name: Symbol,
+) -> Option<Function<'gcc>> {
+    if !cx.supports_f128_type {
+        return None;
+    }
+
+    let f128_type = cx.type_f128();
+    let func_name = match name {
+        sym::ceilf128 => "ceilf128",
+        sym::floorf128 => "floorf128",
+        sym::truncf128 => "truncf128",
+        sym::roundf128 => "roundf128",
+        sym::round_ties_even_f128 => "roundevenf128",
+        sym::sqrtf128 => "sqrtf128",
+        _ => return None,
+    };
+    Some(cx.context.new_function(
+        None,
+        FunctionType::Extern,
+        f128_type,
+        &[cx.context.new_parameter(None, f128_type, "a")],
+        func_name,
+        false,
+    ))
+}
+
+fn get_simple_function_f128_2args<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    name: Symbol,
+) -> Option<Function<'gcc>> {
+    if !cx.supports_f128_type {
+        return None;
+    }
+
+    let f128_type = cx.type_f128();
+    let func_name = match name {
+        sym::maxnumf128 => "fmaxf128",
+        sym::minnumf128 => "fminf128",
+        _ => return None,
+    };
+    Some(cx.context.new_function(
+        None,
+        FunctionType::Extern,
+        f128_type,
+        &[
+            cx.context.new_parameter(None, f128_type, "a"),
+            cx.context.new_parameter(None, f128_type, "b"),
+        ],
+        func_name,
+        false,
+    ))
+}
+
 fn f16_builtin<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     name: Symbol,
@@ -232,7 +277,9 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let simple = get_simple_intrinsic(self, name);
-        let simple_func = get_simple_function(self, name);
+        let simple_func = get_simple_function(self, name)
+            .or_else(|| get_simple_function_f128(self, name))
+            .or_else(|| get_simple_function_f128_2args(self, name));
 
         // FIXME(tempdragon): Re-enable `clippy::suspicious_else_formatting` if the following issue is solved:
         // https://github.com/rust-lang/rust-clippy/issues/12497
@@ -266,6 +313,45 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::round_ties_even_f16
             | sym::sqrtf16
             | sym::truncf16 => f16_builtin(self, name, args),
+            sym::fmaf128 => {
+                let f128_type = self.cx.type_f128();
+                let func = self.cx.context.new_function(
+                    None,
+                    FunctionType::Extern,
+                    f128_type,
+                    &[
+                        self.cx.context.new_parameter(None, f128_type, "a"),
+                        self.cx.context.new_parameter(None, f128_type, "b"),
+                        self.cx.context.new_parameter(None, f128_type, "c"),
+                    ],
+                    "fmaf128",
+                    false,
+                );
+                self.cx.context.new_call(
+                    self.location,
+                    func,
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
+            }
+            sym::powif128 => {
+                let f128_type = self.cx.type_f128();
+                let func = self.cx.context.new_function(
+                    None,
+                    FunctionType::Extern,
+                    f128_type,
+                    &[
+                        self.cx.context.new_parameter(None, f128_type, "a"),
+                        self.cx.context.new_parameter(None, self.int_type, "b"),
+                    ],
+                    "__powitf2",
+                    false,
+                );
+                self.cx.context.new_call(
+                    self.location,
+                    func,
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
+            }
             sym::is_val_statically_known => {
                 let a = args[0].immediate();
                 let builtin = self.context.get_builtin_function("__builtin_constant_p");
