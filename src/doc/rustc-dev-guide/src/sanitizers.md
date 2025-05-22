@@ -1,4 +1,4 @@
-# Sanitizers Support
+# Sanitizers support
 
 The rustc compiler contains support for following sanitizers:
 

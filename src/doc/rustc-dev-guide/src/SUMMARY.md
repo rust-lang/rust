@@ -181,7 +181,7 @@
         - [Significant changes and quirks](./solve/significant-changes.md)
     - [`Unsize` and `CoerceUnsized` traits](./traits/unsize.md)
 - [Type checking](./type-checking.md)
-    - [Method Lookup](./method-lookup.md)
+    - [Method lookup](./method-lookup.md)
     - [Variance](./variance.md)
     - [Coherence checking](./coherence.md)
     - [Opaque types](./opaque-types-type-alias-impl-trait.md)
@@ -189,7 +189,7 @@
         - [Return Position Impl Trait In Trait](./return-position-impl-trait-in-trait.md)
         - [Region inference restrictions][opaque-infer]
 - [Const condition checking](./effects.md)
-- [Pattern and Exhaustiveness Checking](./pat-exhaustive-checking.md)
+- [Pattern and exhaustiveness checking](./pat-exhaustive-checking.md)
 - [Unsafety checking](./unsafety-checking.md)
 - [MIR dataflow](./mir/dataflow.md)
 - [Drop elaboration](./mir/drop-elaboration.md)
@@ -209,7 +209,7 @@
 - [Closure capture inference](./closure.md)
 - [Async closures/"coroutine-closures"](coroutine-closures.md)
 
-# MIR to Binaries
+# MIR to binaries
 
 - [Prologue](./part-5-intro.md)
 - [MIR optimizations](./mir/optimizations.md)
@@ -218,15 +218,15 @@
     - [Interpreter](./const-eval/interpret.md)
 - [Monomorphization](./backend/monomorph.md)
 - [Lowering MIR](./backend/lowering-mir.md)
-- [Code Generation](./backend/codegen.md)
+- [Code generation](./backend/codegen.md)
     - [Updating LLVM](./backend/updating-llvm.md)
     - [Debugging LLVM](./backend/debugging.md)
     - [Backend Agnostic Codegen](./backend/backend-agnostic.md)
-    - [Implicit Caller Location](./backend/implicit-caller-location.md)
-- [Libraries and Metadata](./backend/libs-and-metadata.md)
-- [Profile-guided Optimization](./profile-guided-optimization.md)
-- [LLVM Source-Based Code Coverage](./llvm-coverage-instrumentation.md)
-- [Sanitizers Support](./sanitizers.md)
+    - [Implicit caller location](./backend/implicit-caller-location.md)
+- [Libraries and metadata](./backend/libs-and-metadata.md)
+- [Profile-guided optimization](./profile-guided-optimization.md)
+- [LLVM source-based code coverage](./llvm-coverage-instrumentation.md)
+- [Sanitizers support](./sanitizers.md)
 - [Debugging support in the Rust compiler](./debugging-support-in-rustc.md)
 
 ---

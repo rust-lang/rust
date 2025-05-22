@@ -1,4 +1,4 @@
-# LLVM Source-Based Code Coverage
+# LLVM source-based code coverage
 
 <!-- toc -->
 
