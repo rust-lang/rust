@@ -23,6 +23,16 @@ use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter, RegionInferReason};
 /// inferred constraints concerning which regions outlive other regions.
 #[instrument(level = "debug", skip(tcx))]
 pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
+    // Anon const as RHS of const item is the body, so should have the same predicates.
+    // FIXME(mgca): probably should have only the predicates of params that are explicitly referenced,
+    // as should generics_of (maybe only under mgca?)
+    if matches!(tcx.def_kind(def_id), DefKind::AnonConst)
+        && let parent = tcx.parent(def_id)
+        && matches!(tcx.def_kind(parent), DefKind::Const | DefKind::AssocConst)
+    {
+        return tcx.predicates_of(parent);
+    }
+
     let mut result = tcx.explicit_predicates_of(def_id);
     debug!("predicates_of: explicit_predicates_of({:?}) = {:?}", def_id, result);
 
