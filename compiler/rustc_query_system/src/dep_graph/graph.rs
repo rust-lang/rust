@@ -200,6 +200,18 @@ impl<D: Deps> DepGraph<D> {
         }
     }
 
+    pub fn assert_eval_always(&self) {
+        if let Some(..) = self.data {
+            D::read_deps(|task_deps| {
+                assert_matches!(
+                    task_deps,
+                    TaskDepsRef::EvalAlways,
+                    "expected no task dependency tracking"
+                );
+            })
+        }
+    }
+
     pub fn with_ignore<OP, R>(&self, op: OP) -> R
     where
         OP: FnOnce() -> R,
