@@ -705,13 +705,13 @@ fn resolved_path(
                         f,
                         "{path}::{anchor}",
                         path = join_with_double_colon(&fqp[..fqp.len() - 1]),
-                        anchor = anchor(did, *fqp.last().unwrap(), cx)
+                        anchor = print_anchor(did, *fqp.last().unwrap(), cx)
                     )
                 } else {
                     write!(f, "{}", last.name)
                 }
             } else {
-                write!(f, "{}", anchor(did, last.name, cx))
+                write!(f, "{}", print_anchor(did, last.name, cx))
             }
         });
         write!(w, "{path}{args}", args = last.args.print(cx))?;
@@ -797,7 +797,7 @@ fn primitive_link_fragment(
     Ok(())
 }
 
-fn tybounds(
+fn print_tybounds(
     bounds: &[clean::PolyTrait],
     lt: &Option<clean::Lifetime>,
     cx: &Context<'_>,
@@ -829,7 +829,7 @@ fn print_higher_ranked_params_with_space(
     })
 }
 
-pub(crate) fn anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl Display {
+pub(crate) fn print_anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl Display {
     fmt::from_fn(move |f| {
         let parts = href(did, cx);
         if let Ok((url, short_ty, fqp)) = parts {
@@ -863,7 +863,7 @@ fn fmt_type(
         }
         clean::DynTrait(bounds, lt) => {
             f.write_str("dyn ")?;
-            tybounds(bounds, lt, cx).fmt(f)
+            print_tybounds(bounds, lt, cx).fmt(f)
         }
         clean::Infer => write!(f, "_"),
         clean::Primitive(clean::PrimitiveType::Never) => {
@@ -1128,7 +1128,7 @@ impl clean::Impl {
                         self.print_type(inner_type, f, use_absolute, cx)?;
                         write!(f, ">")?;
                     } else {
-                        write!(f, "{}&lt;", anchor(ty.def_id(), last, cx))?;
+                        write!(f, "{}&lt;", print_anchor(ty.def_id(), last, cx))?;
                         self.print_type(inner_type, f, use_absolute, cx)?;
                         write!(f, "&gt;")?;
                     }
@@ -1203,7 +1203,7 @@ impl clean::Impl {
             && self.kind.is_fake_variadic()
         {
             let ty = generics[0];
-            let wrapper = anchor(path.def_id(), path.last(), cx);
+            let wrapper = print_anchor(path.def_id(), path.last(), cx);
             if f.alternate() {
                 write!(f, "{wrapper:#}&lt;")?;
             } else {
@@ -1416,7 +1416,7 @@ pub(crate) fn visibility_print_with_space(item: &clean::Item, cx: &Context<'_>) 
                 debug!("path={path:?}");
                 // modified from `resolved_path()` to work with `DefPathData`
                 let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                let anchor = anchor(vis_did, last_name, cx);
+                let anchor = print_anchor(vis_did, last_name, cx);
 
                 let mut s = "pub(in ".to_owned();
                 for seg in &path.data[..path.data.len() - 1] {
