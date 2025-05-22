@@ -327,7 +327,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
                 // always be called once. It additionally implements `Fn`/`FnMut`
                 // only if it has no upvars referencing the closure-env lifetime,
                 // and if the closure kind permits it.
-                if closure_kind != ty::ClosureKind::FnOnce && args.has_self_borrows() {
+                if goal_kind != ty::ClosureKind::FnOnce && args.has_self_borrows() {
                     return Err(NoSolution);
                 }
 
