@@ -37,12 +37,6 @@ LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
    |                                          ^^^^^^^^^^^^^^^
 
 warning: unmatched `}` found
-  --> $DIR/broken_format.rs:22:42
-   |
-LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-   |                                          ^^^^^^^^^^^^^^^
-
-warning: unmatched `}` found
   --> $DIR/broken_format.rs:2:42
    |
 LL | #[diagnostic::on_unimplemented(message = "{{Test } thing")]
@@ -51,7 +45,7 @@ LL | #[diagnostic::on_unimplemented(message = "{{Test } thing")]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: {{Test } thing
-  --> $DIR/broken_format.rs:36:13
+  --> $DIR/broken_format.rs:34:13
    |
 LL |     check_1(());
    |     ------- ^^ the trait `ImportantTrait1` is not implemented for `()`
@@ -64,7 +58,7 @@ help: this trait has no implementations, consider adding one
 LL | trait ImportantTrait1 {}
    | ^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `check_1`
-  --> $DIR/broken_format.rs:29:20
+  --> $DIR/broken_format.rs:27:20
    |
 LL | fn check_1(_: impl ImportantTrait1) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_1`
@@ -79,7 +73,7 @@ LL | #[diagnostic::on_unimplemented(message = "Test {}")]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: Test {}
-  --> $DIR/broken_format.rs:38:13
+  --> $DIR/broken_format.rs:36:13
    |
 LL |     check_2(());
    |     ------- ^^ the trait `ImportantTrait2` is not implemented for `()`
@@ -92,7 +86,7 @@ help: this trait has no implementations, consider adding one
 LL | trait ImportantTrait2 {}
    | ^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `check_2`
-  --> $DIR/broken_format.rs:30:20
+  --> $DIR/broken_format.rs:28:20
    |
 LL | fn check_2(_: impl ImportantTrait2) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_2`
@@ -107,7 +101,7 @@ LL | #[diagnostic::on_unimplemented(message = "Test {1:}")]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: Test {1}
-  --> $DIR/broken_format.rs:40:13
+  --> $DIR/broken_format.rs:38:13
    |
 LL |     check_3(());
    |     ------- ^^ the trait `ImportantTrait3` is not implemented for `()`
@@ -120,7 +114,7 @@ help: this trait has no implementations, consider adding one
 LL | trait ImportantTrait3 {}
    | ^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `check_3`
-  --> $DIR/broken_format.rs:31:20
+  --> $DIR/broken_format.rs:29:20
    |
 LL | fn check_3(_: impl ImportantTrait3) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_3`
@@ -135,7 +129,7 @@ LL | #[diagnostic::on_unimplemented(message = "Test {Self:123}")]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: Test ()
-  --> $DIR/broken_format.rs:42:13
+  --> $DIR/broken_format.rs:40:13
    |
 LL |     check_4(());
    |     ------- ^^ the trait `ImportantTrait4` is not implemented for `()`
@@ -148,7 +142,7 @@ help: this trait has no implementations, consider adding one
 LL | trait ImportantTrait4 {}
    | ^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `check_4`
-  --> $DIR/broken_format.rs:32:20
+  --> $DIR/broken_format.rs:30:20
    |
 LL | fn check_4(_: impl ImportantTrait4) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_4`
@@ -161,16 +155,8 @@ LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-warning: unmatched `}` found
-  --> $DIR/broken_format.rs:22:42
-   |
-LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-   |                                          ^^^^^^^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
 error[E0277]: Test {Self:!}
-  --> $DIR/broken_format.rs:44:13
+  --> $DIR/broken_format.rs:42:13
    |
 LL |     check_5(());
    |     ------- ^^ the trait `ImportantTrait5` is not implemented for `()`
@@ -178,16 +164,16 @@ LL |     check_5(());
    |     required by a bound introduced by this call
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/broken_format.rs:27:1
+  --> $DIR/broken_format.rs:25:1
    |
 LL | trait ImportantTrait5 {}
    | ^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `check_5`
-  --> $DIR/broken_format.rs:33:20
+  --> $DIR/broken_format.rs:31:20
    |
 LL | fn check_5(_: impl ImportantTrait5) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_5`
 
-error: aborting due to 5 previous errors; 12 warnings emitted
+error: aborting due to 5 previous errors; 10 warnings emitted
 
 For more information about this error, try `rustc --explain E0277`.
