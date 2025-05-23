@@ -49,10 +49,8 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn type_void(&self) -> &'ll Type {
         unsafe { llvm::LLVMVoidTypeInContext(self.llcx()) }
     }
-    pub(crate) fn type_token(&self) -> &'ll Type {
-        unsafe { llvm::LLVMTokenTypeInContext(self.llcx()) }
-    }
 
+    #[expect(unused)]
     pub(crate) fn type_metadata(&self) -> &'ll Type {
         unsafe { llvm::LLVMMetadataTypeInContext(self.llcx()) }
     }

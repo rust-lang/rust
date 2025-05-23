@@ -1077,7 +1077,6 @@ unsafe extern "C" {
 
     // Operations on other types
     pub(crate) fn LLVMVoidTypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMTokenTypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values
@@ -1194,6 +1193,21 @@ unsafe extern "C" {
 
     // Operations on functions
     pub(crate) fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
+
+    // Operations about llvm intrinsics
+    pub(crate) fn LLVMLookupIntrinsicID(Name: *const c_char, NameLen: size_t) -> c_uint;
+    pub(crate) fn LLVMGetIntrinsicDeclaration<'a>(
+        M: &'a Module,
+        ID: c_uint,
+        ParamTypes: *const &'a Type,
+        ParamCount: size_t,
+    ) -> &'a Value;
+    pub(crate) fn LLVMIntrinsicGetType<'a>(
+        C: &'a Context,
+        ID: c_uint,
+        ParamTypes: *const &'a Type,
+        ParamCount: size_t,
+    ) -> &'a Type;
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;
@@ -1731,6 +1745,14 @@ unsafe extern "C" {
     ) -> *mut OperandBundle<'_>;
     pub(crate) fn LLVMDisposeOperandBundle(Bundle: ptr::NonNull<OperandBundle<'_>>);
 
+    pub(crate) fn LLVMBuildCall2<'a>(
+        B: &Builder<'a>,
+        Ty: &'a Type,
+        Fn: &'a Value,
+        Args: *const &'a Value,
+        NumArgs: c_uint,
+        Name: *const c_char,
+    ) -> &'a Value;
     pub(crate) fn LLVMBuildCallWithOperandBundles<'a>(
         B: &Builder<'a>,
         Ty: &'a Type,
