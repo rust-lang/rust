@@ -13,7 +13,7 @@ use crate::lang_items::TraitSolverLangItem;
 use crate::relate::Relate;
 use crate::solve::{CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult};
 use crate::visit::{Flags, TypeVisitable};
-use crate::{self as ty, search_graph};
+use crate::{self as ty, CanonicalParamEnvCacheEntry, search_graph};
 
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
 pub trait Interner:
@@ -149,6 +149,13 @@ pub trait Interner:
     type Clauses: Clauses<Self>;
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
+
+    fn canonical_param_env_cache_get_or_insert<R>(
+        self,
+        param_env: Self::ParamEnv,
+        f: impl FnOnce() -> CanonicalParamEnvCacheEntry<Self>,
+        from_entry: impl FnOnce(&CanonicalParamEnvCacheEntry<Self>) -> R,
+    ) -> R;
 
     fn evaluation_is_concurrent(&self) -> bool;
 
