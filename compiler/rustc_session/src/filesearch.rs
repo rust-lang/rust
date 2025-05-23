@@ -72,7 +72,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
 
             #[cfg(not(target_os = "aix"))]
             unsafe {
-                let addr = current_dll_path as usize as *mut _;
+                let addr = current_dll_path as fn() -> Result<PathBuf, String> as *mut _;
                 let mut info = std::mem::zeroed();
                 if libc::dladdr(addr, &mut info) == 0 {
                     return Err("dladdr failed".into());
