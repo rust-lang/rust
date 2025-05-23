@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
 use std::fmt::Write as _;
 use std::fs::{self, File};
@@ -489,7 +489,9 @@ impl Command {
             sh.read_dir(benches_dir)?
                 .into_iter()
                 .filter(|path| path.is_dir())
-                .map(|path| path.into_os_string().into_string().unwrap())
+                // Only keep the basename: that matches the usage with a manual bench list,
+                // and it ensure the path concatenations below work as intended.
+                .map(|path| path.file_name().unwrap().to_owned().into_string().unwrap())
                 .collect()
         } else {
             benches.into_iter().collect()
@@ -530,14 +532,16 @@ impl Command {
             stddev: f64,
         }
 
-        let gather_results = || -> Result<HashMap<&str, BenchResult>> {
+        let gather_results = || -> Result<BTreeMap<&str, BenchResult>> {
             let baseline_temp_dir = results_json_dir.unwrap();
-            let mut results = HashMap::new();
+            let mut results = BTreeMap::new();
             for bench in &benches {
-                let result = File::open(path!(baseline_temp_dir / format!("{bench}.bench.json")))?;
-                let mut result: serde_json::Value =
-                    serde_json::from_reader(BufReader::new(result))?;
-                let result: BenchResult = serde_json::from_value(result["results"][0].take())?;
+                let result = File::open(path!(baseline_temp_dir / format!("{bench}.bench.json")))
+                    .context("failed to read hyperfine JSON")?;
+                let mut result: serde_json::Value = serde_json::from_reader(BufReader::new(result))
+                    .context("failed to parse hyperfine JSON")?;
+                let result: BenchResult = serde_json::from_value(result["results"][0].take())
+                    .context("failed to interpret hyperfine JSON")?;
                 results.insert(bench as &str, result);
             }
             Ok(results)
@@ -549,15 +553,15 @@ impl Command {
             serde_json::to_writer_pretty(BufWriter::new(baseline), &results)?;
         } else if let Some(baseline_file) = load_baseline {
             let new_results = gather_results()?;
-            let baseline_results: HashMap<String, BenchResult> = {
+            let baseline_results: BTreeMap<String, BenchResult> = {
                 let f = File::open(baseline_file)?;
                 serde_json::from_reader(BufReader::new(f))?
             };
             println!(
                 "Comparison with baseline (relative speed, lower is better for the new results):"
             );
-            for (bench, new_result) in new_results.iter() {
-                let Some(baseline_result) = baseline_results.get(*bench) else { continue };
+            for (bench, new_result) in new_results {
+                let Some(baseline_result) = baseline_results.get(bench) else { continue };
 
                 // Compare results (inspired by hyperfine)
                 let ratio = new_result.mean / baseline_result.mean;
