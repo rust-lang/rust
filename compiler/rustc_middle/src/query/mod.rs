@@ -2592,6 +2592,11 @@ rustc_queries! {
         desc { "estimating codegen size of `{}`", key }
         cache_on_disk_if { true }
     }
+
+    query anon_const_kind(def_id: DefId) -> ty::AnonConstKind {
+        desc { |tcx| "looking up anon const kind of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
 }
 
 rustc_with_all_queries! { define_callbacks! }
