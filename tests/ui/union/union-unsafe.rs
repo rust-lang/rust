@@ -17,6 +17,10 @@ union U4<T: Copy> {
     a: T,
 }
 
+union U5 {
+    a: usize,
+}
+
 union URef {
     p: &'static mut i32,
 }
@@ -29,6 +33,12 @@ union URefCell {
 fn deref_union_field(mut u: URef) {
     // Not an assignment but an access to the union field!
     *(u.p) = 13; //~ ERROR access to union field is unsafe
+}
+
+fn raw_deref_union_field(mut u: URef) {
+    let _p = &raw const *(u.p);
+    //~^ ERROR access to union field is unsafe
+    //~| ERROR access to union field is unsafe
 }
 
 fn assign_noncopy_union_field(mut u: URefCell) {
@@ -64,6 +74,11 @@ fn main() {
     let mut u3 = U1 { a: 10 };
     let a = std::ptr::addr_of_mut!(u3.a); // OK
     unsafe { *a = 14 };
+
+    let u4 = U5 { a: 2 };
+    let vec = vec![1, 2, 3];
+    let _a = &raw const vec[u4.a]; //~ ERROR access to union field is unsafe
+    //~^ ERROR access to union field is unsafe
 
     let U1 { a } = u1; //~ ERROR access to union field is unsafe
     if let U1 { a: 12 } = u1 {} //~ ERROR access to union field is unsafe

@@ -551,7 +551,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::RawBorrow { arg, .. } => {
                 // Set flag when entering raw borrow context
                 let old_in_raw_borrow = self.in_raw_borrow;
-                self.in_raw_borrow = true;
+                self.in_raw_borrow = is_direct_place_expr(self.thir, arg);
 
                 if let ExprKind::Scope { value: arg, .. } = self.thir[arg].kind
                     && let ExprKind::Deref { arg } = self.thir[arg].kind
@@ -559,11 +559,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     // Taking a raw ref to a deref place expr is always safe.
                     // Make sure the expression we're deref'ing is safe, though.
                     visit::walk_expr(self, &self.thir[arg]);
-                } else {
-                    // Handle other raw borrow cases (including field access)
-                    visit::walk_expr(self, &self.thir[arg]);
                 }
 
+                visit::walk_expr(self, &self.thir[arg]);
                 // Restore previous state
                 self.in_raw_borrow = old_in_raw_borrow;
                 return;
@@ -726,6 +724,19 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             _ => {}
         }
         visit::walk_expr(self, expr);
+    }
+}
+
+fn is_direct_place_expr<'a, 'tcx>(thir: &'a Thir<'tcx>, expr_id: ExprId) -> bool {
+    match thir[expr_id].kind {
+        // Direct place expressions that don't read values
+        ExprKind::Field { .. } | ExprKind::VarRef { .. } | ExprKind::UpvarRef { .. } => true,
+
+        // Scope is transparent for place expressions
+        ExprKind::Scope { value, .. } => is_direct_place_expr(thir, value),
+
+        // Any other expression (including Deref, method calls, etc.) reads values
+        _ => false,
     }
 }
 

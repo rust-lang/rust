@@ -1,5 +1,5 @@
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:31:6
+  --> $DIR/union-unsafe.rs:35:6
    |
 LL |     *(u.p) = 13;
    |      ^^^^^ access to union field
@@ -7,7 +7,24 @@ LL |     *(u.p) = 13;
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:43:6
+  --> $DIR/union-unsafe.rs:39:26
+   |
+LL |     let _p = &raw const *(u.p);
+   |                          ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:39:26
+   |
+LL |     let _p = &raw const *(u.p);
+   |                          ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:53:6
    |
 LL |     *u3.a = T::default();
    |      ^^^^ access to union field
@@ -15,7 +32,7 @@ LL |     *u3.a = T::default();
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:49:6
+  --> $DIR/union-unsafe.rs:59:6
    |
 LL |     *u3.a = T::default();
    |      ^^^^ access to union field
@@ -23,7 +40,7 @@ LL |     *u3.a = T::default();
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:57:13
+  --> $DIR/union-unsafe.rs:67:13
    |
 LL |     let a = u1.a;
    |             ^^^^ access to union field
@@ -31,7 +48,24 @@ LL |     let a = u1.a;
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:68:14
+  --> $DIR/union-unsafe.rs:80:29
+   |
+LL |     let _a = &raw const vec[u4.a];
+   |                             ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:80:29
+   |
+LL |     let _a = &raw const vec[u4.a];
+   |                             ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:83:14
    |
 LL |     let U1 { a } = u1;
    |              ^ access to union field
@@ -39,7 +73,7 @@ LL |     let U1 { a } = u1;
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:69:20
+  --> $DIR/union-unsafe.rs:84:20
    |
 LL |     if let U1 { a: 12 } = u1 {}
    |                    ^^ access to union field
@@ -47,7 +81,7 @@ LL |     if let U1 { a: 12 } = u1 {}
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:70:25
+  --> $DIR/union-unsafe.rs:85:25
    |
 LL |     if let Some(U1 { a: 13 }) = Some(u1) {}
    |                         ^^ access to union field
@@ -55,7 +89,7 @@ LL |     if let Some(U1 { a: 13 }) = Some(u1) {}
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:75:6
+  --> $DIR/union-unsafe.rs:90:6
    |
 LL |     *u2.a = String::from("new");
    |      ^^^^ access to union field
@@ -63,7 +97,7 @@ LL |     *u2.a = String::from("new");
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:79:6
+  --> $DIR/union-unsafe.rs:94:6
    |
 LL |     *u3.a = 1;
    |      ^^^^ access to union field
@@ -71,13 +105,13 @@ LL |     *u3.a = 1;
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:83:6
+  --> $DIR/union-unsafe.rs:98:6
    |
 LL |     *u3.a = String::from("new");
    |      ^^^^ access to union field
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
-error: aborting due to 10 previous errors
+error: aborting due to 14 previous errors
 
 For more information about this error, try `rustc --explain E0133`.
