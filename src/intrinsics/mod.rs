@@ -416,7 +416,8 @@ fn codegen_float_intrinsic_call<'tcx>(
         // These intrinsics aren't supported natively by Cranelift.
         // Lower them to a libcall.
         sym::powif32 | sym::powif64 => {
-            let input_tys: Vec<_> = vec![AbiParam::new(clif_ty), AbiParam::new(types::I32)];
+            let input_tys: Vec<_> =
+                vec![AbiParam::new(clif_ty), lib_call_arg_param(fx.tcx, types::I32, true)];
             let ret_val = fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], &args)[0];
             CValue::by_val(ret_val, fx.layout_of(ty))
         }
