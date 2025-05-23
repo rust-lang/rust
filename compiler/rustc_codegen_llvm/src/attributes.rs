@@ -1,5 +1,5 @@
 //! Set and unset common attributes on LLVM values.
-use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr, RtsanSetting};
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
@@ -130,6 +130,18 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     }
     if enabled.contains(SanitizerSet::SAFESTACK) {
         attrs.push(llvm::AttributeKind::SanitizeSafeStack.create_attr(cx.llcx));
+    }
+    if tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::REALTIME) {
+        match sanitizer_fn_attr.rtsan_setting {
+            RtsanSetting::Nonblocking => {
+                attrs.push(llvm::AttributeKind::SanitizeRealtimeNonblocking.create_attr(cx.llcx))
+            }
+            RtsanSetting::Blocking => {
+                attrs.push(llvm::AttributeKind::SanitizeRealtimeBlocking.create_attr(cx.llcx))
+            }
+            // caller is the default, so no llvm attribute
+            RtsanSetting::Caller => (),
+        }
     }
     attrs
 }

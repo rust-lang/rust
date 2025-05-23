@@ -165,6 +165,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-sanitizer-leak",
     "needs-sanitizer-memory",
     "needs-sanitizer-memtag",
+    "needs-sanitizer-realtime",
     "needs-sanitizer-safestack",
     "needs-sanitizer-shadow-call-stack",
     "needs-sanitizer-support",
