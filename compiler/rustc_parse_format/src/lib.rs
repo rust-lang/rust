@@ -34,27 +34,27 @@ pub enum ParseMode {
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Piece<'a> {
+pub enum Piece<'input> {
     /// A literal string which should directly be emitted
-    Lit(&'a str),
+    Lit(&'input str),
     /// This describes that formatting should process the next argument (as
     /// specified inside) for emission.
-    NextArgument(Box<Argument<'a>>),
+    NextArgument(Box<Argument<'input>>),
 }
 
 /// Representation of an argument specification.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Argument<'a> {
+pub struct Argument<'input> {
     /// Where to find this argument
-    pub position: Position<'a>,
+    pub position: Position<'input>,
     /// The span of the position indicator. Includes any whitespace in implicit
     /// positions (`{  }`).
     pub position_span: Range<usize>,
     /// How to format the argument
-    pub format: FormatSpec<'a>,
+    pub format: FormatSpec<'input>,
 }
 
-impl<'a> Argument<'a> {
+impl<'input> Argument<'input> {
     pub fn is_identifier(&self) -> bool {
         matches!(self.position, Position::ArgumentNamed(_)) && self.format == FormatSpec::default()
     }
@@ -62,7 +62,7 @@ impl<'a> Argument<'a> {
 
 /// Specification for the formatting of an argument in the format string.
 #[derive(Clone, Debug, PartialEq, Default)]
-pub struct FormatSpec<'a> {
+pub struct FormatSpec<'input> {
     /// Optionally specified character to fill alignment with.
     pub fill: Option<char>,
     /// Span of the optionally specified fill character.
@@ -78,30 +78,30 @@ pub struct FormatSpec<'a> {
     /// The `x` or `X` flag. (Only for `Debug`.)
     pub debug_hex: Option<DebugHex>,
     /// The integer precision to use.
-    pub precision: Count<'a>,
+    pub precision: Count<'input>,
     /// The span of the precision formatting flag (for diagnostics).
     pub precision_span: Option<Range<usize>>,
     /// The string width requested for the resulting format.
-    pub width: Count<'a>,
+    pub width: Count<'input>,
     /// The span of the width formatting flag (for diagnostics).
     pub width_span: Option<Range<usize>>,
     /// The descriptor string representing the name of the format desired for
     /// this argument, this can be empty or any number of characters, although
     /// it is required to be one word.
-    pub ty: &'a str,
+    pub ty: &'input str,
     /// The span of the descriptor string (for diagnostics).
     pub ty_span: Option<Range<usize>>,
 }
 
 /// Enum describing where an argument for a format can be located.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Position<'a> {
+pub enum Position<'input> {
     /// The argument is implied to be located at an index
     ArgumentImplicitlyIs(usize),
     /// The argument is located at a specific index given in the format,
     ArgumentIs(usize),
     /// The argument has a name.
-    ArgumentNamed(&'a str),
+    ArgumentNamed(&'input str),
 }
 
 impl Position<'_> {
@@ -148,11 +148,11 @@ pub enum DebugHex {
 /// A count is used for the precision and width parameters of an integer, and
 /// can reference either an argument or a literal integer.
 #[derive(Clone, Debug, PartialEq, Default)]
-pub enum Count<'a> {
+pub enum Count<'input> {
     /// The count is specified explicitly.
     CountIs(u16),
     /// The count is specified by the argument with the given name.
-    CountIsName(&'a str, Range<usize>),
+    CountIsName(&'input str, Range<usize>),
     /// The count is specified by the argument at the given index.
     CountIsParam(usize),
     /// The count is specified by a star (like in `{:.*}`) that refers to the argument at the given index.
@@ -192,10 +192,10 @@ pub enum Suggestion {
 ///
 /// This is a recursive-descent parser for the sake of simplicity, and if
 /// necessary there's probably lots of room for improvement performance-wise.
-pub struct Parser<'a> {
+pub struct Parser<'input> {
     mode: ParseMode,
     /// Input to be parsed
-    input: &'a str,
+    input: &'input str,
     /// Tuples of the span in the code snippet (input as written before being unescaped), the pos in input, and the char in input
     input_vec: Vec<(Range<usize>, usize, char)>,
     /// Index into input_vec
@@ -221,10 +221,10 @@ pub struct Parser<'a> {
     pub line_spans: Vec<Range<usize>>,
 }
 
-impl<'a> Iterator for Parser<'a> {
-    type Item = Piece<'a>;
+impl<'input> Iterator for Parser<'input> {
+    type Item = Piece<'input>;
 
-    fn next(&mut self) -> Option<Piece<'a>> {
+    fn next(&mut self) -> Option<Piece<'input>> {
         if let Some((Range { start, end }, idx, ch)) = self.peek() {
             match ch {
                 '{' => {
@@ -287,14 +287,14 @@ impl<'a> Iterator for Parser<'a> {
     }
 }
 
-impl<'a> Parser<'a> {
+impl<'input> Parser<'input> {
     /// Creates a new parser for the given unescaped input string and
     /// optional code snippet (the input as written before being unescaped),
     /// where `style` is `Some(nr_hashes)` when the snippet is a raw string with that many hashes.
     /// If the input comes via `println` or `panic`, then it has a newline already appended,
     /// which is reflected in the `appended_newline` parameter.
     pub fn new(
-        input: &'a str,
+        input: &'input str,
         style: Option<usize>,
         snippet: Option<String>,
         appended_newline: bool,
@@ -471,7 +471,7 @@ impl<'a> Parser<'a> {
 
     /// Parses all of a string which is to be considered a "raw literal" in a
     /// format string. This is everything outside of the braces.
-    fn string(&mut self, start: usize) -> &'a str {
+    fn string(&mut self, start: usize) -> &'input str {
         while let Some((r, i, c)) = self.peek() {
             match c {
                 '{' | '}' => {
@@ -495,7 +495,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `Argument` structure, or what's contained within braces inside the format string.
-    fn argument(&mut self) -> Argument<'a> {
+    fn argument(&mut self) -> Argument<'input> {
         let start_idx = self.input_vec_index;
 
         let position = self.position();
@@ -524,7 +524,7 @@ impl<'a> Parser<'a> {
     /// integer index of an argument, a named argument, or a blank string.
     /// Returns `Some(parsed_position)` if the position is not implicitly
     /// consuming a macro argument, `None` if it's the case.
-    fn position(&mut self) -> Option<Position<'a>> {
+    fn position(&mut self) -> Option<Position<'input>> {
         if let Some(i) = self.integer() {
             Some(ArgumentIs(i.into()))
         } else {
@@ -579,7 +579,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a format specifier at the current position, returning all of the
     /// relevant information in the `FormatSpec` struct.
-    fn format(&mut self) -> FormatSpec<'a> {
+    fn format(&mut self) -> FormatSpec<'input> {
         let mut spec = FormatSpec::default();
 
         if !self.consume(':') {
@@ -697,7 +697,7 @@ impl<'a> Parser<'a> {
 
     /// Parses an inline assembly template modifier at the current position, returning the modifier
     /// in the `ty` field of the `FormatSpec` struct.
-    fn inline_asm(&mut self) -> FormatSpec<'a> {
+    fn inline_asm(&mut self) -> FormatSpec<'input> {
         let mut spec = FormatSpec::default();
 
         if !self.consume(':') {
@@ -718,7 +718,7 @@ impl<'a> Parser<'a> {
     /// Parses a `Count` parameter at the current position. This does not check
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
-    fn count(&mut self) -> Count<'a> {
+    fn count(&mut self) -> Count<'input> {
         if let Some(i) = self.integer() {
             if self.consume('$') { CountIsParam(i.into()) } else { CountIs(i) }
         } else {
@@ -737,7 +737,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a word starting at the current position. A word is the same as a
     /// Rust identifier, except that it can't start with `_` character.
-    fn word(&mut self) -> &'a str {
+    fn word(&mut self) -> &'input str {
         let index = self.input_vec_index;
         match self.peek() {
             Some((ref r, i, c)) if rustc_lexer::is_id_start(c) => {
