@@ -284,3 +284,9 @@ fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
 }
 extern "C-cmse-nonsecure-entry" {}
 //~^ ERROR is not a supported ABI
+
+#[cfg(windows)]
+#[link(name = "foo", kind = "raw-dylib")]
+extern "cdecl" {}
+//[x64_win]~^ WARN use of calling convention not supported on this target
+//[x64_win]~^^ WARN this was previously accepted
