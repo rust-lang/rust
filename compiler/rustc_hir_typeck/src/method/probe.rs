@@ -1,7 +1,9 @@
+use std::assert_matches::debug_assert_matches;
 use std::cell::{Cell, RefCell};
 use std::cmp::max;
 use std::ops::Deref;
 
+use rustc_attr_parsing::is_doc_alias_attrs_contain_symbol;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::Applicability;
@@ -15,7 +17,7 @@ use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
-use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
+use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::{
     self, AssocItem, AssocItemContainer, GenericArgs, GenericArgsRef, GenericParamDefKind,
     ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt, Upcast,
@@ -806,8 +808,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     );
                 }
             }
-            ty::Param(p) => {
-                self.assemble_inherent_candidates_from_param(p);
+            ty::Param(_) => {
+                self.assemble_inherent_candidates_from_param(raw_self_ty);
             }
             ty::Bool
             | ty::Char
@@ -908,18 +910,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn assemble_inherent_candidates_from_param(&mut self, param_ty: ty::ParamTy) {
+    fn assemble_inherent_candidates_from_param(&mut self, param_ty: Ty<'tcx>) {
+        debug_assert_matches!(param_ty.kind(), ty::Param(_));
+
+        let tcx = self.tcx;
         let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
             let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
-                ty::ClauseKind::Trait(trait_predicate) => {
-                    match *trait_predicate.trait_ref.self_ty().kind() {
-                        ty::Param(p) if p == param_ty => {
-                            Some(bound_predicate.rebind(trait_predicate.trait_ref))
-                        }
-                        _ => None,
-                    }
-                }
+                ty::ClauseKind::Trait(trait_predicate) => DeepRejectCtxt::relate_rigid_rigid(tcx)
+                    .types_may_unify(param_ty, trait_predicate.trait_ref.self_ty())
+                    .then(|| bound_predicate.rebind(trait_predicate.trait_ref)),
                 ty::ClauseKind::RegionOutlives(_)
                 | ty::ClauseKind::TypeOutlives(_)
                 | ty::ClauseKind::Projection(_)
@@ -2333,10 +2333,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         };
         let hir_id = self.fcx.tcx.local_def_id_to_hir_id(local_def_id);
         let attrs = self.fcx.tcx.hir_attrs(hir_id);
+
+        if is_doc_alias_attrs_contain_symbol(attrs.into_iter(), method.name) {
+            return true;
+        }
+
         for attr in attrs {
-            if attr.has_name(sym::doc) {
-                // do nothing
-            } else if attr.has_name(sym::rustc_confusables) {
+            if attr.has_name(sym::rustc_confusables) {
                 let Some(confusables) = attr.meta_item_list() else {
                     continue;
                 };
@@ -2347,33 +2350,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     {
                         return true;
                     }
-                }
-                continue;
-            } else {
-                continue;
-            };
-            let Some(values) = attr.meta_item_list() else {
-                continue;
-            };
-            for v in values {
-                if !v.has_name(sym::alias) {
-                    continue;
-                }
-                if let Some(nested) = v.meta_item_list() {
-                    // #[doc(alias("foo", "bar"))]
-                    for n in nested {
-                        if let Some(lit) = n.lit()
-                            && method.name == lit.symbol
-                        {
-                            return true;
-                        }
-                    }
-                } else if let Some(meta) = v.meta_item()
-                    && let Some(lit) = meta.name_value_literal()
-                    && method.name == lit.symbol
-                {
-                    // #[doc(alias = "foo")]
-                    return true;
                 }
             }
         }

@@ -7,7 +7,7 @@ use rustc_hir::{self as hir, LangItem};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use core::ops::ControlFlow;
 
@@ -39,7 +39,7 @@ fn get_enum_ty(enum_ty: Ty<'_>) -> Option<Ty<'_>> {
 }
 
 /// Checks for the `USELESS_ASREF` lint.
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str, recvr: &hir::Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: Symbol, recvr: &hir::Expr<'_>) {
     // when we get here, we've already checked that the call name is "as_ref" or "as_mut"
     // check if the call is to the actual `AsRef` or `AsMut` trait
     let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) else {
@@ -79,9 +79,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
                 applicability,
             );
         }
-    } else if let Some(impl_id) = cx.tcx.opt_parent(def_id)
+    } else if let Some(impl_id) = cx.tcx.impl_of_method(def_id)
         && let Some(adt) = cx.tcx.type_of(impl_id).instantiate_identity().ty_adt_def()
-        && (cx.tcx.lang_items().option_type() == Some(adt.did()) || cx.tcx.is_diagnostic_item(sym::Result, adt.did()))
+        && matches!(cx.tcx.get_diagnostic_name(adt.did()), Some(sym::Option | sym::Result))
     {
         let rcv_ty = cx.typeck_results().expr_ty(recvr).peel_refs();
         let res_ty = cx.typeck_results().expr_ty(expr).peel_refs();
@@ -161,7 +161,7 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
     }
 }
 
-fn lint_as_ref_clone(cx: &LateContext<'_>, span: Span, recvr: &hir::Expr<'_>, call_name: &str) {
+fn lint_as_ref_clone(cx: &LateContext<'_>, span: Span, recvr: &hir::Expr<'_>, call_name: Symbol) {
     let mut applicability = Applicability::MachineApplicable;
     span_lint_and_sugg(
         cx,

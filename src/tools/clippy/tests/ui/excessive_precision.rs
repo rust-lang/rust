@@ -79,6 +79,9 @@ fn main() {
     // issue #2840
     let num = 0.000_000_000_01e-10f64;
 
+    // issue #6341
+    let exponential: f64 = 4.886506780521244E-03;
+
     // issue #7744
     let _ = 2.225_073_858_507_201_1e-308_f64;
     //~^ excessive_precision

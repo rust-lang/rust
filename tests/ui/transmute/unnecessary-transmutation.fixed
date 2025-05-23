@@ -81,13 +81,13 @@ fn main() {
         let y: i64 = f64::to_bits(1f64).cast_signed();
         //~^ ERROR
 
-        let z: bool = (1u8 == 1);
-        //~^ ERROR
+        let z: bool = transmute(1u8);
+        // clippy
         let z: u8 = (z) as u8;
         //~^ ERROR
 
         let z: bool = transmute(1i8);
-        // no error!
+        // clippy
         let z: i8 = (z) as i8;
         //~^ ERROR
     }

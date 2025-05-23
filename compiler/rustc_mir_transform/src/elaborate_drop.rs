@@ -251,7 +251,29 @@ where
                     span_bug!(span, "invalid `AsyncDrop` impl_source: {:?}", impl_source);
                 }
             };
-            let drop_fn_def_id = tcx.associated_item_def_ids(drop_trait)[0];
+            // impl_item_refs may be empty if drop fn is not implemented in 'impl AsyncDrop for ...'
+            // (#140974).
+            // Such code will report error, so just generate sync drop here and return
+            let Some(drop_fn_def_id) =
+                tcx.associated_item_def_ids(drop_trait).into_iter().nth(0).copied()
+            else {
+                tcx.dcx().span_delayed_bug(
+                    self.elaborator.body().span,
+                    "AsyncDrop type without correct `async fn drop(...)`.",
+                );
+                self.elaborator.patch().patch_terminator(
+                    pin_obj_bb,
+                    TerminatorKind::Drop {
+                        place,
+                        target: succ,
+                        unwind: unwind.into_action(),
+                        replace: false,
+                        drop: None,
+                        async_fut: None,
+                    },
+                );
+                return pin_obj_bb;
+            };
             let drop_fn = Ty::new_fn_def(tcx, drop_fn_def_id, trait_args);
             let sig = drop_fn.fn_sig(tcx);
             let sig = tcx.instantiate_bound_regions_with_erased(sig);
@@ -318,15 +340,20 @@ where
                 bug!();
             };
             let obj_ptr_ty = Ty::new_mut_ptr(tcx, drop_ty);
-            let obj_ptr_place = Place::from(self.new_temp(obj_ptr_ty));
             let unwrap_ty = adt_def.non_enum_variant().fields[FieldIdx::ZERO].ty(tcx, adt_args);
-            let addr = Rvalue::RawPtr(
-                RawPtrKind::Mut,
-                pin_obj_place.project_deeper(
-                    &[ProjectionElem::Field(FieldIdx::ZERO, unwrap_ty), ProjectionElem::Deref],
-                    tcx,
-                ),
-            );
+            let obj_ref_place = Place::from(self.new_temp(unwrap_ty));
+            call_statements.push(self.assign(
+                obj_ref_place,
+                Rvalue::Use(Operand::Copy(tcx.mk_place_field(
+                    pin_obj_place,
+                    FieldIdx::ZERO,
+                    unwrap_ty,
+                ))),
+            ));
+
+            let obj_ptr_place = Place::from(self.new_temp(obj_ptr_ty));
+
+            let addr = Rvalue::RawPtr(RawPtrKind::Mut, tcx.mk_place_deref(obj_ref_place));
             call_statements.push(self.assign(obj_ptr_place, addr));
             obj_ptr_place
         };

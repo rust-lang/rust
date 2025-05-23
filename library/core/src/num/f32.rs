@@ -14,7 +14,7 @@
 use crate::convert::FloatToInt;
 use crate::num::FpCategory;
 use crate::panic::const_assert;
-use crate::{cfg_match, intrinsics, mem};
+use crate::{cfg_select, intrinsics, mem};
 
 /// The radix or base of the internal representation of `f32`.
 /// Use [`f32::RADIX`] instead.
@@ -990,7 +990,7 @@ impl f32 {
     #[stable(feature = "num_midpoint", since = "1.85.0")]
     #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
     pub const fn midpoint(self, other: f32) -> f32 {
-        cfg_match! {
+        cfg_select! {
             // Allow faster implementation that have known good 64-bit float
             // implementations. Falling back to the branchy code on targets that don't
             // have 64-bit hardware floats or buggy implementations.

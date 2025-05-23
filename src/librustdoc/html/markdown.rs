@@ -303,7 +303,11 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 attrs: vec![],
                 args_file: PathBuf::new(),
             };
-            let doctest = doctest::DocTestBuilder::new(&test, krate, edition, false, None, None);
+            let mut builder = doctest::BuildDocTestBuilder::new(&test).edition(edition);
+            if let Some(krate) = krate {
+                builder = builder.crate_name(krate);
+            }
+            let doctest = builder.build(None);
             let (test, _) = doctest.generate_unique_doctest(&test, false, &opts, krate);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 

@@ -1,0 +1,26 @@
+// Checks that individual trait impls can only be collapsed via clicking directly on the summary element
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+assert-attribute: ("details:has(#trait-impl-link-in-summary)", {"open": ""})
+
+// Collapse the trait impl doc. The actual clickable area is outside the element, hence offset.
+click-with-offset: ("summary:has(#trait-impl-link-in-summary)", {"x": -15, "y": 5})
+assert-attribute-false: ("details:has(#trait-impl-link-in-summary)", {"open": ""})
+click-with-offset: ("summary:has(#trait-impl-link-in-summary)", {"x": -15, "y": 5})
+assert-attribute: ("details:has(#trait-impl-link-in-summary)", {"open": ""})
+
+// Clicks on the text should be ignored
+click: "summary:has(#trait-impl-link-in-summary) > .impl"
+assert-attribute: ("details:has(#trait-impl-link-in-summary)", {"open": ""})
+
+// But links should still work
+click: "summary:has(#trait-impl-link-in-summary) a:has(#trait-impl-link-in-summary)"
+assert-window-property-false: ({"pageYOffset": "0"})
+assert-attribute: ("details:has(#trait-impl-link-in-summary)", {"open": ""})
+
+// As well as clicks on elements within links
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+assert-window-property: ({"pageYOffset": "0"})
+click: "#trait-impl-link-in-summary"
+assert-window-property-false: ({"pageYOffset": "0"})
+assert-attribute: ("details:has(#trait-impl-link-in-summary)", {"open": ""})

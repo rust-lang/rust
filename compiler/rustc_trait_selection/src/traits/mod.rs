@@ -340,7 +340,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     let mut predicates: Vec<_> = util::elaborate(
         tcx,
         unnormalized_env.caller_bounds().into_iter().map(|predicate| {
-            if tcx.features().generic_const_exprs() {
+            if tcx.features().generic_const_exprs() || tcx.next_trait_solver_globally() {
                 return predicate;
             }
 
@@ -405,8 +405,6 @@ pub fn normalize_param_env_or_error<'tcx>(
             // compatibility. Eventually when lazy norm is implemented this can just be removed.
             // We do not normalize types here as there is no backwards compatibility requirement
             // for us to do so.
-            //
-            // FIXME(-Znext-solver): remove this hack since we have deferred projection equality
             predicate.fold_with(&mut ConstNormalizer(tcx))
         }),
     )

@@ -98,7 +98,7 @@ LL |         if x.is_empty() {
 LL |             let _ = || {
 LL ~                 let _x = x;
 LL |             };
-LL ~             return ;
+LL ~             return;
 LL |         }
 LL ~         println!("test");
    |

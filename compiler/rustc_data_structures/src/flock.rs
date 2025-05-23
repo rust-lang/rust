@@ -4,7 +4,7 @@
 //! green/native threading. This is just a bare-bones enough solution for
 //! librustdoc, it is not production quality at all.
 
-cfg_match! {
+cfg_select! {
     target_os = "linux" => {
         mod linux;
         use linux as imp;
