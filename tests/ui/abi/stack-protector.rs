@@ -5,6 +5,8 @@
 //@ compile-flags: -C opt-level=2
 //@ compile-flags: -g
 
+#![allow(function_casts_as_integer)]
+
 use std::env;
 use std::process::{Command, ExitStatus};
 
