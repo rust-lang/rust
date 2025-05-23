@@ -835,6 +835,7 @@ lint_unexpected_cfg_name_similar_name = there is a config with a similar name
 lint_unexpected_cfg_name_similar_name_different_values = there is a config with a similar name and different values
 lint_unexpected_cfg_name_similar_name_no_value = there is a config with a similar name and no value
 lint_unexpected_cfg_name_similar_name_value = there is a config with a similar name and value
+lint_unexpected_cfg_name_version_syntax = there is a similar config predicate: `version("..")`
 lint_unexpected_cfg_name_with_similar_value = found config with similar value
 
 lint_unexpected_cfg_value = unexpected `cfg` condition value: {$has_value ->
