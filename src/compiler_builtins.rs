@@ -49,15 +49,34 @@ builtin_functions! {
     // integer -> float
     fn __floattisf(i: i128) -> f32;
     fn __floattidf(i: i128) -> f64;
+    fn __floatsitf(i: i32) -> f128;
+    fn __floatditf(i: i64) -> f128;
+    fn __floattitf(i: i128) -> f128;
     fn __floatuntisf(i: u128) -> f32;
     fn __floatuntidf(i: u128) -> f64;
+    fn __floatunsitf(i: u32) -> f128;
+    fn __floatunditf(i: u64) -> f128;
+    fn __floatuntitf(i: u128) -> f128;
     // float -> integer
     fn __fixsfti(f: f32) -> i128;
     fn __fixdfti(f: f64) -> i128;
+    fn __fixtfsi(f: f128) -> i32;
+    fn __fixtfdi(f: f128) -> i64;
+    fn __fixtfti(f: f128) -> i128;
     fn __fixunssfti(f: f32) -> u128;
     fn __fixunsdfti(f: f64) -> u128;
+    fn __fixunstfsi(f: f128) -> u32;
+    fn __fixunstfdi(f: f128) -> u64;
+    fn __fixunstfti(f: f128) -> u128;
     // float -> float
     fn __extendhfsf2(f: f16) -> f32;
+    fn __extendhftf2(f: f16) -> f128;
+    fn __extendsftf2(f: f32) -> f128;
+    fn __extenddftf2(f: f64) -> f128;
+    fn __trunctfdf2(f: f128) -> f64;
+    fn __trunctfsf2(f: f128) -> f32;
+    fn __trunctfhf2(f: f128) -> f16;
+    fn __truncdfhf2(f: f64) -> f16;
     fn __truncsfhf2(f: f32) -> f16;
     // float binops
     fn __addtf3(a: f128, b: f128) -> f128;
