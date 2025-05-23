@@ -121,13 +121,13 @@ impl UnixFileDescription for FileHandle {
                 use std::os::windows::io::AsRawHandle;
 
                 use windows_sys::Win32::Foundation::{
-                    ERROR_IO_PENDING, ERROR_LOCK_VIOLATION, FALSE, HANDLE, TRUE,
+                    ERROR_IO_PENDING, ERROR_LOCK_VIOLATION, FALSE, TRUE,
                 };
                 use windows_sys::Win32::Storage::FileSystem::{
                     LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY, LockFileEx, UnlockFile,
                 };
 
-                let fh = self.file.as_raw_handle() as HANDLE;
+                let fh = self.file.as_raw_handle();
 
                 use FlockOp::*;
                 let (ret, lock_nb) = match op {

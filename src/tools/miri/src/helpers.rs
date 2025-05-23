@@ -1412,3 +1412,26 @@ pub(crate) fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
         u32::try_from(len).unwrap()
     }
 }
+
+/// We don't support 16-bit systems, so let's have ergonomic conversion from `u32` to `usize`.
+pub trait ToUsize {
+    fn to_usize(self) -> usize;
+}
+
+impl ToUsize for u32 {
+    fn to_usize(self) -> usize {
+        self.try_into().unwrap()
+    }
+}
+
+/// Similarly, a maximum address size of `u64` is assumed widely here, so let's have ergonomic
+/// converion from `usize` to `u64`.
+pub trait ToU64 {
+    fn to_u64(self) -> u64;
+}
+
+impl ToU64 for usize {
+    fn to_u64(self) -> u64 {
+        self.try_into().unwrap()
+    }
+}

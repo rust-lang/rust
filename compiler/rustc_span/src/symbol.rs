@@ -34,17 +34,8 @@ symbols! {
         // unnamed method parameters, crate root module, error recovery etc.
         // Matching predicates: `is_special`/`is_reserved`
         //
-        // Notes about `kw::Empty`:
-        // - Its use can blur the lines between "empty symbol" and "no symbol".
-        //   Using `Option<Symbol>` is preferable, where possible, because that
-        //   is unambiguous.
-        // - For dummy symbols that are never used and absolutely must be
-        //   present, it's better to use `sym::dummy` than `kw::Empty`, because
-        //   it's clearer that it's intended as a dummy value, and more likely
-        //   to be detected if it accidentally does get used.
         // tidy-alphabetical-start
         DollarCrate:        "$crate",
-        Empty:              "",
         PathRoot:           "{{root}}",
         Underscore:         "_",
         // tidy-alphabetical-end
@@ -863,7 +854,7 @@ symbols! {
         drop_types_in_const,
         dropck_eyepatch,
         dropck_parametricity,
-        dummy: "<!dummy!>", // use this instead of `kw::Empty` for symbols that won't be used
+        dummy: "<!dummy!>", // use this instead of `sym::empty` for symbols that won't be used
         dummy_cgu_name,
         dylib,
         dyn_compatible_for_dispatch,
@@ -882,6 +873,14 @@ symbols! {
         emit_enum_variant_arg,
         emit_struct,
         emit_struct_field,
+        // Notes about `sym::empty`:
+        // - It should only be used when it genuinely means "empty symbol". Use
+        //   `Option<Symbol>` when "no symbol" is a possibility.
+        // - For dummy symbols that are never used and absolutely must be
+        //   present, it's better to use `sym::dummy` than `sym::empty`, because
+        //   it's clearer that it's intended as a dummy value, and more likely
+        //   to be detected if it accidentally does get used.
+        empty: "",
         emscripten_wasm_eh,
         enable,
         encode,
@@ -2361,7 +2360,7 @@ impl Ident {
     #[inline]
     /// Constructs a new identifier from a symbol and a span.
     pub fn new(name: Symbol, span: Span) -> Ident {
-        debug_assert_ne!(name, kw::Empty);
+        debug_assert_ne!(name, sym::empty);
         Ident { name, span }
     }
 
@@ -2583,7 +2582,7 @@ impl Symbol {
     }
 
     pub fn is_empty(self) -> bool {
-        self == kw::Empty
+        self == sym::empty
     }
 
     /// This method is supposed to be used in error messages, so it's expected to be
@@ -2592,7 +2591,7 @@ impl Symbol {
     /// or edition, so we have to guess the rawness using the global edition.
     pub fn to_ident_string(self) -> String {
         // Avoid creating an empty identifier, because that asserts in debug builds.
-        if self == kw::Empty { String::new() } else { Ident::with_dummy_span(self).to_string() }
+        if self == sym::empty { String::new() } else { Ident::with_dummy_span(self).to_string() }
     }
 }
 
@@ -2772,7 +2771,7 @@ impl Symbol {
 
     /// Returns `true` if this symbol can be a raw identifier.
     pub fn can_be_raw(self) -> bool {
-        self != kw::Empty && self != kw::Underscore && !self.is_path_segment_keyword()
+        self != sym::empty && self != kw::Underscore && !self.is_path_segment_keyword()
     }
 
     /// Was this symbol predefined in the compiler's `symbols!` macro

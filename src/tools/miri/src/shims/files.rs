@@ -135,7 +135,10 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
 
     /// Reads as much as possible into the given buffer `ptr`.
     /// `len` indicates how many bytes we should try to read.
-    /// `dest` is where the return value should be stored: number of bytes read, or `-1` in case of error.
+    ///
+    /// When the read is done, `finish` will be called. Note that `read` itself may return before
+    /// that happens! Everything that should happen "after" the `read` needs to happen inside
+    /// `finish`.
     fn read<'tcx>(
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
@@ -149,7 +152,10 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
 
     /// Writes as much as possible from the given buffer `ptr`.
     /// `len` indicates how many bytes we should try to write.
-    /// `dest` is where the return value should be stored: number of bytes written, or `-1` in case of error.
+    ///
+    /// When the write is done, `finish` will be called. Note that `write` itself may return before
+    /// that happens! Everything that should happen "after" the `write` needs to happen inside
+    /// `finish`.
     fn write<'tcx>(
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,

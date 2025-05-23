@@ -14,7 +14,7 @@ use crate::*;
 // The documentation of glibc complains that the kernel never exposes
 // TASK_COMM_LEN through the headers, so it's assumed to always be 16 bytes
 // long including a null terminator.
-const TASK_COMM_LEN: usize = 16;
+const TASK_COMM_LEN: u64 = 16;
 
 pub fn is_dyn_sym(name: &str) -> bool {
     matches!(name, "statx")
@@ -96,7 +96,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // In case of glibc, the length of the output buffer must
                 // be not shorter than TASK_COMM_LEN.
                 let len = this.read_scalar(len)?;
-                let res = if len.to_target_usize(this)? >= TASK_COMM_LEN as u64 {
+                let res = if len.to_target_usize(this)? >= TASK_COMM_LEN {
                     match this.pthread_getname_np(
                         this.read_scalar(thread)?,
                         this.read_scalar(name)?,

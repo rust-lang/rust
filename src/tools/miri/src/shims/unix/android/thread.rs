@@ -7,7 +7,7 @@ use crate::helpers::check_min_vararg_count;
 use crate::shims::unix::thread::{EvalContextExt as _, ThreadNameResult};
 use crate::*;
 
-const TASK_COMM_LEN: usize = 16;
+const TASK_COMM_LEN: u64 = 16;
 
 pub fn prctl<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
@@ -38,7 +38,7 @@ pub fn prctl<'tcx>(
             let [name] = check_min_vararg_count("prctl(PR_GET_NAME, ...)", varargs)?;
             let name = ecx.read_scalar(name)?;
             let thread = ecx.pthread_self()?;
-            let len = Scalar::from_target_usize(TASK_COMM_LEN as u64, ecx);
+            let len = Scalar::from_target_usize(TASK_COMM_LEN, ecx);
             ecx.check_ptr_access(
                 name.to_pointer(ecx)?,
                 Size::from_bytes(TASK_COMM_LEN),

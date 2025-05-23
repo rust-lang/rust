@@ -85,7 +85,7 @@ impl From<Ident> for LifetimeSyntax {
     fn from(ident: Ident) -> Self {
         let name = ident.name;
 
-        if name == kw::Empty {
+        if name == sym::empty {
             unreachable!("A lifetime name should never be empty");
         } else if name == kw::UnderscoreLifetime {
             LifetimeSyntax::Anonymous
