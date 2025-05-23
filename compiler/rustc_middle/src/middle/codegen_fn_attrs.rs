@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_abi::Align;
-use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, Linkage, OptimizeAttr};
+use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, Linkage, OptimizeAttr, RtsanSetting};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
@@ -245,11 +245,11 @@ impl CodegenFnAttrs {
 #[derive(Clone, Copy, Debug, HashStable, TyEncodable, TyDecodable, Eq, PartialEq)]
 pub struct SanitizerFnAttrs {
     pub disabled: SanitizerSet,
+    pub rtsan_setting: RtsanSetting,
 }
 
 impl const Default for SanitizerFnAttrs {
     fn default() -> Self {
-        Self { disabled: SanitizerSet::empty() }
+        Self { disabled: SanitizerSet::empty(), rtsan_setting: RtsanSetting::default() }
     }
-
 }

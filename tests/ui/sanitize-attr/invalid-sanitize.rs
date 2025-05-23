@@ -19,3 +19,6 @@ fn name_value() {}
 
 #[sanitize] //~ ERROR malformed `sanitize` attribute input
 fn just_word() {}
+
+#[sanitize(realtime = "on")] //~ ERROR malformed `sanitize` attribute input
+fn wrong_value_realtime() {}

@@ -3,7 +3,7 @@ use std::str::FromStr;
 use rustc_abi::{Align, ExternAbi};
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
-use rustc_hir::attrs::{AttributeKind, InlineAttr, InstructionSetAttr, UsedBy};
+use rustc_hir::attrs::{AttributeKind, InlineAttr, InstructionSetAttr, RtsanSetting, UsedBy};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{self as hir, Attribute, LangItem, find_attr, lang_items};
@@ -349,9 +349,12 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
     codegen_fn_attrs.alignment =
         Ord::max(codegen_fn_attrs.alignment, tcx.sess.opts.unstable_opts.min_function_alignment);
 
-    // Compute the disabled sanitizers.
-    codegen_fn_attrs.sanitizers.disabled |=
-        tcx.sanitizer_settings_for(did).disabled;
+    // Per sanitizer override if it's in the default state
+    let sanitizers = tcx.sanitizer_settings_for(did);
+    codegen_fn_attrs.sanitizers.disabled |= sanitizers.disabled;
+    if codegen_fn_attrs.sanitizers.rtsan_setting == RtsanSetting::default() {
+        codegen_fn_attrs.sanitizers.rtsan_setting = sanitizers.rtsan_setting;
+    }
     // On trait methods, inherit the `#[align]` of the trait's method prototype.
     codegen_fn_attrs.alignment = Ord::max(codegen_fn_attrs.alignment, tcx.inherited_align(did));
 
@@ -587,7 +590,7 @@ fn sanitizer_settings_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerFnAttrs 
     };
 
     // Check for a sanitize annotation directly on this def.
-    if let Some((on_set, off_set)) = find_attr!(tcx.get_all_attrs(did), AttributeKind::Sanitize {on_set, off_set, ..} => (on_set, off_set))
+    if let Some((on_set, off_set, rtsan)) = find_attr!(tcx.get_all_attrs(did), AttributeKind::Sanitize {on_set, off_set, rtsan, ..} => (on_set, off_set, rtsan))
     {
         // the on set is the set of sanitizers explicitly enabled.
         // we mask those out since we want the set of disabled sanitizers here
@@ -598,6 +601,11 @@ fn sanitizer_settings_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerFnAttrs 
         // the on set and off set are distjoint since there's a third option: unset.
         // a node may not set the sanitizer setting in which case it inherits from parents.
         // the code above in this function does this backtracking
+
+        // if rtsan was specified here override the parent
+        if let Some(rtsan) = rtsan {
+            settings.rtsan_setting = *rtsan;
+        }
     }
     settings
 }

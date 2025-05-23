@@ -513,7 +513,7 @@ LL | #[sanitize(hwaddress = "on|off")]
    |           ++++++++++++++++++++++
 LL | #[sanitize(kcfi = "on|off")]
    |           +++++++++++++++++
-   = and 5 other candidates
+   = and 6 other candidates
 
 error[E0565]: malformed `no_implicit_prelude` attribute input
   --> $DIR/malformed-attrs.rs:101:1

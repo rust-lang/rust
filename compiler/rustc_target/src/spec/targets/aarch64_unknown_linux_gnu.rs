@@ -30,7 +30,8 @@ pub(crate) fn target() -> Target {
                 | SanitizerSet::MEMORY
                 | SanitizerSet::MEMTAG
                 | SanitizerSet::THREAD
-                | SanitizerSet::HWADDRESS,
+                | SanitizerSet::HWADDRESS
+                | SanitizerSet::REALTIME,
             supports_xray: true,
             ..base::linux_gnu::opts()
         },

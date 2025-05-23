@@ -4,7 +4,7 @@ error[E0539]: malformed `sanitize` attribute input
 LL | #[sanitize(brontosaurus = "off")]
    | ^^^^^^^^^^^------------^^^^^^^^^^
    |            |
-   |            valid arguments are "address", "cfi", "kcfi", "memory", "memtag", "shadow_call_stack", "thread" or "hwaddress"
+   |            valid arguments are "address", "cfi", "kcfi", "memory", "memtag", "shadow_call_stack", "thread", "hwaddress" or "realtime"
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -20,7 +20,7 @@ LL + #[sanitize(hwaddress = "on|off")]
 LL - #[sanitize(brontosaurus = "off")]
 LL + #[sanitize(kcfi = "on|off")]
    |
-   = and 5 other candidates
+   = and 6 other candidates
 
 error: multiple `sanitize` attributes
   --> $DIR/invalid-sanitize.rs:6:1
@@ -68,7 +68,7 @@ LL + #[sanitize(hwaddress = "on|off")]
 LL - #[sanitize(address = "bogus")]
 LL + #[sanitize(kcfi = "on|off")]
    |
-   = and 5 other candidates
+   = and 6 other candidates
 
 error[E0539]: malformed `sanitize` attribute input
   --> $DIR/invalid-sanitize.rs:17:1
@@ -90,7 +90,7 @@ LL + #[sanitize(hwaddress = "on|off")]
 LL - #[sanitize = "off"]
 LL + #[sanitize(kcfi = "on|off")]
    |
-   = and 5 other candidates
+   = and 6 other candidates
 
 error[E0539]: malformed `sanitize` attribute input
   --> $DIR/invalid-sanitize.rs:20:1
@@ -108,8 +108,32 @@ LL | #[sanitize(hwaddress = "on|off")]
    |           ++++++++++++++++++++++
 LL | #[sanitize(kcfi = "on|off")]
    |           +++++++++++++++++
-   = and 5 other candidates
+   = and 6 other candidates
 
-error: aborting due to 6 previous errors
+error[E0539]: malformed `sanitize` attribute input
+  --> $DIR/invalid-sanitize.rs:23:1
+   |
+LL | #[sanitize(realtime = "on")]
+   | ^^^^^^^^^^^^^^^^^^^^^^----^^
+   |                       |
+   |                       valid arguments are "nonblocking", "blocking" or "caller"
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[sanitize(realtime = "on")]
+LL + #[sanitize(address = "on|off")]
+   |
+LL - #[sanitize(realtime = "on")]
+LL + #[sanitize(cfi = "on|off")]
+   |
+LL - #[sanitize(realtime = "on")]
+LL + #[sanitize(hwaddress = "on|off")]
+   |
+LL - #[sanitize(realtime = "on")]
+LL + #[sanitize(kcfi = "on|off")]
+   |
+   = and 6 other candidates
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0539`.
