@@ -119,14 +119,7 @@ pub(crate) const fn maybe_is_aligned_and_not_null(
     is_zst: bool,
 ) -> bool {
     // This is just for safety checks so we can const_eval_select.
-    const_eval_select!(
-        @capture { ptr: *const (), align: usize, is_zst: bool } -> bool:
-        if const {
-            is_zst || !ptr.is_null()
-        } else {
-            ptr.is_aligned_to(align) && (is_zst || !ptr.is_null())
-        }
-    )
+    maybe_is_aligned(ptr, align) && (is_zst || !ptr.is_null())
 }
 
 /// Checks whether `ptr` is properly aligned with respect to the given alignment.
