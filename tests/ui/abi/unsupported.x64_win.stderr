@@ -150,6 +150,15 @@ error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current 
 LL | extern "C-cmse-nonsecure-entry" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+warning: use of calling convention not supported on this target
+  --> $DIR/unsupported.rs:290:1
+   |
+LL | extern "cdecl" {}
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
+
 error[E0570]: `"ptx-kernel"` is not a supported ABI for the current target
   --> $DIR/unsupported.rs:36:1
    |
@@ -216,7 +225,7 @@ error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current 
 LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 15 previous errors; 14 warnings emitted
+error: aborting due to 15 previous errors; 15 warnings emitted
 
 For more information about this error, try `rustc --explain E0570`.
 Future incompatibility report: Future breakage diagnostic:
@@ -350,6 +359,17 @@ LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
    = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+
+Future breakage diagnostic:
+warning: use of calling convention not supported on this target
+  --> $DIR/unsupported.rs:290:1
+   |
+LL | extern "cdecl" {}
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
+   = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 Future breakage diagnostic:
 warning: use of calling convention not supported on this target
