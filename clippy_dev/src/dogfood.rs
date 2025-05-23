@@ -1,6 +1,5 @@
-use crate::utils::run_exit_on_err;
+use crate::utils::{cargo_cmd, run_exit_on_err};
 use itertools::Itertools;
-use std::process::Command;
 
 /// # Panics
 ///
@@ -9,7 +8,7 @@ use std::process::Command;
 pub fn dogfood(fix: bool, allow_dirty: bool, allow_staged: bool, allow_no_vcs: bool) {
     run_exit_on_err(
         "cargo test",
-        Command::new("cargo")
+        cargo_cmd()
             .args(["test", "--test", "dogfood"])
             .args(["--features", "internal"])
             .args(["--", "dogfood_clippy", "--nocapture"])

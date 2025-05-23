@@ -1,10 +1,9 @@
-use crate::utils::run_exit_on_err;
+use crate::utils::{cargo_cmd, run_exit_on_err};
 use std::env::consts::EXE_SUFFIX;
 use std::env::current_dir;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use walkdir::WalkDir;
 
 pub fn create(standalone: bool, force: bool, release: bool, name: &str) {
@@ -46,7 +45,7 @@ pub fn create(standalone: bool, force: bool, release: bool, name: &str) {
 
     run_exit_on_err(
         "cargo build",
-        Command::new("cargo").arg("build").args(release.then_some("--release")),
+        cargo_cmd().arg("build").args(release.then_some("--release")),
     );
 
     install_bin("cargo-clippy", &dest, standalone, release);

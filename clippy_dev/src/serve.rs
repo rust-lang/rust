@@ -1,10 +1,10 @@
-use crate::utils::{ErrAction, expect_action};
+use crate::utils::{ErrAction, cargo_cmd, expect_action};
 use core::fmt::Display;
 use core::mem;
 use std::path::Path;
 use std::process::Command;
 use std::time::{Duration, SystemTime};
-use std::{env, fs, thread};
+use std::{fs, thread};
 use walkdir::WalkDir;
 
 #[cfg(windows)]
@@ -27,9 +27,7 @@ pub fn run(port: u16, lint: Option<String>) -> ! {
         if is_metadata_outdated(mem::replace(&mut last_update, SystemTime::now())) {
             // Ignore the command result; we'll fall back to displaying the old metadata.
             let _ = expect_action(
-                Command::new(env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
-                    .arg("collect-metadata")
-                    .status(),
+                cargo_cmd().arg("collect-metadata").status(),
                 ErrAction::Run,
                 "cargo collect-metadata",
             );
