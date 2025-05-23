@@ -484,12 +484,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                 CanonicalizeMode::Response { .. } => return r,
             },
 
-            ty::ReEarlyParam(_) | ty::ReLateParam(_) => match self.canonicalize_mode {
-                CanonicalizeMode::Input { .. } => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
-                CanonicalizeMode::Response { .. } => {
-                    panic!("unexpected region in response: {r:?}")
-                }
-            },
+            ty::ReEarlyParam(_) | ty::ReLateParam(_) => return r,
 
             ty::RePlaceholder(placeholder) => match self.canonicalize_mode {
                 // We canonicalize placeholder regions as existentials in query inputs.

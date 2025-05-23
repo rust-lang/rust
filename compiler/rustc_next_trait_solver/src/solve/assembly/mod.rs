@@ -1069,7 +1069,7 @@ where
             ty::ReStatic | ty::ReError(_) => ControlFlow::Continue(()),
             ty::ReVar(_) | ty::RePlaceholder(_) => ControlFlow::Break(Ok(())),
             ty::ReErased | ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::ReBound(..) => {
-                unreachable!()
+                ControlFlow::Break(Ok(()))
             }
         }
     }
