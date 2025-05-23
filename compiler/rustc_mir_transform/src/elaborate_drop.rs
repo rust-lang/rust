@@ -1278,6 +1278,23 @@ where
             }
             ty::Slice(ety) => self.drop_loop_trio_for_slice(*ety),
 
+            ty::UnsafeBinder(_) => {
+                // Unsafe binders may elaborate drops if their inner type isn't copy.
+                // This is enforced in typeck, so this should never happen.
+                self.tcx().dcx().span_delayed_bug(
+                    self.source_info.span,
+                    "open drop for unsafe binder shouldn't be encountered",
+                );
+                self.elaborator.patch().new_block(BasicBlockData {
+                    statements: vec![],
+                    terminator: Some(Terminator {
+                        source_info: self.source_info,
+                        kind: TerminatorKind::Unreachable,
+                    }),
+                    is_cleanup: self.unwind.is_cleanup(),
+                })
+            }
+
             _ => span_bug!(self.source_info.span, "open drop from non-ADT `{:?}`", ty),
         }
     }
