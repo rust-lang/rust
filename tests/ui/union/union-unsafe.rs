@@ -57,6 +57,14 @@ fn main() {
     let a = u1.a; //~ ERROR access to union field is unsafe
     u1.a = 11; // OK
 
+    let mut u2 = U1 { a: 10 };
+    let a = &raw mut u2.a; // OK
+    unsafe { *a = 3 };
+
+    let mut u3 = U1 { a: 10 };
+    let a = std::ptr::addr_of_mut!(u3.a); // OK
+    unsafe { *a = 14 };
+
     let U1 { a } = u1; //~ ERROR access to union field is unsafe
     if let U1 { a: 12 } = u1 {} //~ ERROR access to union field is unsafe
     if let Some(U1 { a: 13 }) = Some(u1) {} //~ ERROR access to union field is unsafe

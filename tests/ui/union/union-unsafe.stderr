@@ -31,7 +31,7 @@ LL |     let a = u1.a;
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:60:14
+  --> $DIR/union-unsafe.rs:68:14
    |
 LL |     let U1 { a } = u1;
    |              ^ access to union field
@@ -39,7 +39,7 @@ LL |     let U1 { a } = u1;
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:61:20
+  --> $DIR/union-unsafe.rs:69:20
    |
 LL |     if let U1 { a: 12 } = u1 {}
    |                    ^^ access to union field
@@ -47,7 +47,7 @@ LL |     if let U1 { a: 12 } = u1 {}
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:62:25
+  --> $DIR/union-unsafe.rs:70:25
    |
 LL |     if let Some(U1 { a: 13 }) = Some(u1) {}
    |                         ^^ access to union field
@@ -55,7 +55,7 @@ LL |     if let Some(U1 { a: 13 }) = Some(u1) {}
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:67:6
+  --> $DIR/union-unsafe.rs:75:6
    |
 LL |     *u2.a = String::from("new");
    |      ^^^^ access to union field
@@ -63,7 +63,7 @@ LL |     *u2.a = String::from("new");
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:71:6
+  --> $DIR/union-unsafe.rs:79:6
    |
 LL |     *u3.a = 1;
    |      ^^^^ access to union field
@@ -71,7 +71,7 @@ LL |     *u3.a = 1;
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:75:6
+  --> $DIR/union-unsafe.rs:83:6
    |
 LL |     *u3.a = String::from("new");
    |      ^^^^ access to union field
