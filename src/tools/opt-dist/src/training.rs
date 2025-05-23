@@ -36,7 +36,7 @@ fn init_compiler_benchmarks(
         profiles.join(",").as_str(),
         "--scenarios",
         scenarios.join(",").as_str(),
-        "--include",
+        "--exact-match",
         crates.join(",").as_str(),
     ])
     .env("RUST_LOG", "collector=debug")
