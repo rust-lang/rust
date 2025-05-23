@@ -774,20 +774,11 @@ impl Item {
             .filter_map(|attr| {
                 if is_json {
                     match attr {
-                        hir::Attribute::Parsed(AttributeKind::Deprecation { .. }) => {
-                            // rustdoc-json stores this in `Item::deprecation`, so we
-                            // don't want it it `Item::attrs`.
-                            None
-                        }
-                        rustc_hir::Attribute::Parsed(
-                            rustc_attr_data_structures::AttributeKind::Repr(..),
-                        ) => {
-                            // We have separate pretty-printing logic for `#[repr(..)]` attributes.
-                            // For example, there are circumstances where `#[repr(transparent)]`
-                            // is applied but should not be publicly shown in rustdoc
-                            // because it isn't public API.
-                            None
-                        }
+                        // rustdoc-json stores this in `Item::deprecation`, so we
+                        // don't want it it `Item::attrs`.
+                        hir::Attribute::Parsed(AttributeKind::Deprecation { .. }) => None,
+                        // We have separate pretty-printing logic for `#[repr(..)]` attributes.
+                        hir::Attribute::Parsed(AttributeKind::Repr(..)) => None,
                         _ => Some({
                             let mut s = rustc_hir_pretty::attribute_to_string(&tcx, attr);
                             assert_eq!(s.pop(), Some('\n'));
@@ -820,7 +811,8 @@ impl Item {
             if repr.transparent() {
                 // Render `repr(transparent)` iff the non-1-ZST field is public or at least one
                 // field is public in case all fields are 1-ZST fields.
-                let render_transparent = cache.document_private
+                let render_transparent = is_json
+                    || cache.document_private
                     || adt
                         .all_fields()
                         .find(|field| {
