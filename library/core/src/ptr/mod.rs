@@ -98,6 +98,8 @@
 //!
 //! ## Allocation
 //!
+//! <a id="allocated-object"></a> <!-- keep old URLs working -->
+//!
 //! An *allocation* is a subset of program memory which is addressable
 //! from Rust, and within which pointer arithmetic is possible. Examples of
 //! allocations include heap allocations, stack-allocated variables,
