@@ -836,58 +836,56 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
-        if let Some(requirement) = ValidityRequirement::from_intrinsic(intrinsic.name) {
-            let ty = instance.args.type_at(0);
+        let Some(requirement) = ValidityRequirement::from_intrinsic(intrinsic.name) else {
+            return None;
+        };
 
-            let do_panic = !bx
-                .tcx()
-                .check_validity_requirement((requirement, bx.typing_env().as_query_input(ty)))
-                .expect("expect to have layout during codegen");
+        let ty = instance.args.type_at(0);
 
-            let layout = bx.layout_of(ty);
+        let is_valid = bx
+            .tcx()
+            .check_validity_requirement((requirement, bx.typing_env().as_query_input(ty)))
+            .expect("expect to have layout during codegen");
 
-            Some(if do_panic {
-                let msg_str = with_no_visible_paths!({
-                    with_no_trimmed_paths!({
-                        if layout.is_uninhabited() {
-                            // Use this error even for the other intrinsics as it is more precise.
-                            format!("attempted to instantiate uninhabited type `{ty}`")
-                        } else if requirement == ValidityRequirement::Zero {
-                            format!("attempted to zero-initialize type `{ty}`, which is invalid")
-                        } else {
-                            format!(
-                                "attempted to leave type `{ty}` uninitialized, which is invalid"
-                            )
-                        }
-                    })
-                });
-                let msg = bx.const_str(&msg_str);
-
-                // Obtain the panic entry point.
-                let (fn_abi, llfn, instance) =
-                    common::build_langcall(bx, Some(source_info.span), LangItem::PanicNounwind);
-
-                // Codegen the actual panic invoke/call.
-                helper.do_call(
-                    self,
-                    bx,
-                    fn_abi,
-                    llfn,
-                    &[msg.0, msg.1],
-                    target.as_ref().map(|bb| (ReturnDest::Nothing, *bb)),
-                    unwind,
-                    &[],
-                    Some(instance),
-                    mergeable_succ,
-                )
-            } else {
-                // a NOP
-                let target = target.unwrap();
-                helper.funclet_br(self, bx, target, mergeable_succ)
-            })
-        } else {
-            None
+        if is_valid {
+            // a NOP
+            let target = target.unwrap();
+            return Some(helper.funclet_br(self, bx, target, mergeable_succ));
         }
+
+        let layout = bx.layout_of(ty);
+
+        let msg_str = with_no_visible_paths!({
+            with_no_trimmed_paths!({
+                if layout.is_uninhabited() {
+                    // Use this error even for the other intrinsics as it is more precise.
+                    format!("attempted to instantiate uninhabited type `{ty}`")
+                } else if requirement == ValidityRequirement::Zero {
+                    format!("attempted to zero-initialize type `{ty}`, which is invalid")
+                } else {
+                    format!("attempted to leave type `{ty}` uninitialized, which is invalid")
+                }
+            })
+        });
+        let msg = bx.const_str(&msg_str);
+
+        // Obtain the panic entry point.
+        let (fn_abi, llfn, instance) =
+            common::build_langcall(bx, Some(source_info.span), LangItem::PanicNounwind);
+
+        // Codegen the actual panic invoke/call.
+        Some(helper.do_call(
+            self,
+            bx,
+            fn_abi,
+            llfn,
+            &[msg.0, msg.1],
+            target.as_ref().map(|bb| (ReturnDest::Nothing, *bb)),
+            unwind,
+            &[],
+            Some(instance),
+            mergeable_succ,
+        ))
     }
 
     fn codegen_call_terminator(
