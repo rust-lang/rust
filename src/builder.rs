@@ -924,7 +924,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // dereference after a drop, for instance.
         // FIXME(antoyo): this check that we don't call get_aligned() a second time on a type.
         // Ideally, we shouldn't need to do this check.
-        let aligned_type = if pointee_ty == self.cx.u128_type || pointee_ty == self.cx.i128_type {
+        // FractalFir: the `align == self.int128_align` check ensures we *do* call `get_aligned` if
+        // the alignment of a `u128`/`i128` is not the one mandated by the ABI. This ensures we handle
+        // under-aligned loads correctly.
+        let aligned_type = if (pointee_ty == self.cx.u128_type || pointee_ty == self.cx.i128_type)
+            && align == self.int128_align
+        {
             pointee_ty
         } else {
             pointee_ty.get_aligned(align.bytes())
