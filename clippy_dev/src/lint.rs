@@ -1,4 +1,4 @@
-use crate::utils::{cargo_clippy_path, exit_if_err};
+use crate::utils::{cargo_clippy_path, run_exit_on_err};
 use std::process::{self, Command};
 use std::{env, fs};
 
@@ -12,8 +12,9 @@ pub fn run<'a>(path: &str, edition: &str, args: impl Iterator<Item = &'a String>
     };
 
     if is_file {
-        exit_if_err(
-            Command::new(env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
+        run_exit_on_err(
+            "cargo run",
+            Command::new(env::var("CARGO").unwrap_or("cargo".into()))
                 .args(["run", "--bin", "clippy-driver", "--"])
                 .args(["-L", "./target/debug"])
                 .args(["-Z", "no-codegen"])
@@ -21,24 +22,21 @@ pub fn run<'a>(path: &str, edition: &str, args: impl Iterator<Item = &'a String>
                 .arg(path)
                 .args(args)
                 // Prevent rustc from creating `rustc-ice-*` files the console output is enough.
-                .env("RUSTC_ICE", "0")
-                .status(),
+                .env("RUSTC_ICE", "0"),
         );
     } else {
-        exit_if_err(
-            Command::new(env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
-                .arg("build")
-                .status(),
+        run_exit_on_err(
+            "cargo build",
+            Command::new(env::var("CARGO").unwrap_or_else(|_| "cargo".into())).arg("build"),
         );
-
-        let status = Command::new(cargo_clippy_path())
-            .arg("clippy")
-            .args(args)
-            // Prevent rustc from creating `rustc-ice-*` files the console output is enough.
-            .env("RUSTC_ICE", "0")
-            .current_dir(path)
-            .status();
-
-        exit_if_err(status);
+        run_exit_on_err(
+            "cargo clippy",
+            Command::new(cargo_clippy_path())
+                .arg("clippy")
+                .args(args)
+                // Prevent rustc from creating `rustc-ice-*` files the console output is enough.
+                .env("RUSTC_ICE", "0")
+                .current_dir(path),
+        );
     }
 }

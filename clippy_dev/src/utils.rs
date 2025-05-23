@@ -8,7 +8,7 @@ use std::ffi::OsStr;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use std::process::{self, Command, ExitStatus, Stdio};
+use std::process::{self, Command, Stdio};
 use std::{env, thread};
 use walkdir::WalkDir;
 
@@ -285,19 +285,6 @@ impl ClippyInfo {
                 "error finding project root, please run from inside the clippy directory"
             );
         }
-    }
-}
-
-/// # Panics
-/// Panics if given command result was failed.
-pub fn exit_if_err(status: io::Result<ExitStatus>) {
-    match status.expect("failed to run command").code() {
-        Some(0) => {},
-        Some(n) => process::exit(n),
-        None => {
-            eprintln!("Killed by signal");
-            process::exit(1);
-        },
     }
 }
 
@@ -651,6 +638,17 @@ pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
 
 pub fn write_file(path: &Path, contents: &str) {
     expect_action(fs::write(path, contents), ErrAction::Write, path);
+}
+
+pub fn run_exit_on_err(path: &(impl AsRef<Path> + ?Sized), cmd: &mut Command) {
+    match expect_action(cmd.status(), ErrAction::Run, path.as_ref()).code() {
+        Some(0) => {},
+        Some(n) => process::exit(n),
+        None => {
+            eprintln!("{} killed by signal", path.as_ref().display());
+            process::exit(1);
+        },
+    }
 }
 
 #[must_use]
