@@ -158,34 +158,29 @@ impl FormatString {
         self.span
     }
 
-    pub fn parse<'tcx>(
-        input: Symbol,
-        span: Span,
-        ctx: &Ctx<'tcx>,
-    ) -> Result<Self, Vec<ParseError>> {
+    pub fn parse<'tcx>(input: Symbol, span: Span, ctx: &Ctx<'tcx>) -> Result<Self, ParseError> {
         let s = input.as_str();
         let mut parser = Parser::new(s, None, None, false, ParseMode::Format);
-        let mut pieces = Vec::new();
+        let pieces: Vec<_> = parser.by_ref().collect();
+
+        if let Some(err) = parser.errors.into_iter().next() {
+            return Err(err);
+        }
         let mut warnings = Vec::new();
 
-        for piece in &mut parser {
-            match piece {
-                RpfPiece::Lit(lit) => {
-                    pieces.push(Piece::Lit(lit.into()));
-                }
+        let pieces = pieces
+            .into_iter()
+            .map(|piece| match piece {
+                RpfPiece::Lit(lit) => Piece::Lit(lit.into()),
                 RpfPiece::NextArgument(arg) => {
                     warn_on_format_spec(arg.format.clone(), &mut warnings, span);
                     let arg = parse_arg(&arg, ctx, &mut warnings, span);
-                    pieces.push(Piece::Arg(arg));
+                    Piece::Arg(arg)
                 }
-            }
-        }
+            })
+            .collect();
 
-        if parser.errors.is_empty() {
-            Ok(FormatString { input, pieces, span, warnings })
-        } else {
-            Err(parser.errors)
-        }
+        Ok(FormatString { input, pieces, span, warnings })
     }
 
     pub fn format(&self, args: &FormatArgs<'_>) -> String {

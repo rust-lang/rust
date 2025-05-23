@@ -22,8 +22,6 @@ trait ImportantTrait4 {}
 #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
 //~^WARN expected `}`, found `!`
 //~|WARN expected `}`, found `!`
-//~|WARN unmatched `}` found
-//~|WARN unmatched `}` found
 trait ImportantTrait5 {}
 
 fn check_1(_: impl ImportantTrait1) {}
