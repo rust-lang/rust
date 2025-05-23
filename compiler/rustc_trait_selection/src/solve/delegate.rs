@@ -1,19 +1,21 @@
 use std::ops::Deref;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::LangItem;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarInfo, CanonicalVarValues,
 };
-use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, TyCtxtInferExt};
+use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, TypingMode};
+use rustc_next_trait_solver::solve::HasChanged;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
-use crate::traits::{EvaluateConstErr, specialization_graph};
+use crate::traits::{EvaluateConstErr, ObligationCause, specialization_graph};
 
 #[repr(transparent)]
 pub struct SolverDelegate<'tcx>(InferCtxt<'tcx>);
@@ -53,6 +55,52 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             .with_next_trait_solver(true)
             .build_with_canonical(DUMMY_SP, canonical);
         (SolverDelegate(infcx), value, vars)
+    }
+
+    fn compute_goal_fast_path(
+        &self,
+        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+        span: Span,
+    ) -> Option<HasChanged> {
+        let pred = goal.predicate.kind();
+        match pred.no_bound_vars()? {
+            ty::PredicateKind::DynCompatible(def_id) if self.0.tcx.is_dyn_compatible(def_id) => {
+                Some(HasChanged::No)
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(outlives)) => {
+                self.0.sub_regions(
+                    SubregionOrigin::RelateRegionParamBound(span, None),
+                    outlives.1,
+                    outlives.0,
+                );
+                Some(HasChanged::No)
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(outlives)) => {
+                self.0.register_region_obligation_with_cause(
+                    outlives.0,
+                    outlives.1,
+                    &ObligationCause::dummy_with_span(span),
+                );
+
+                Some(HasChanged::No)
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
+                match self.0.tcx.as_lang_item(trait_pred.def_id()) {
+                    Some(LangItem::Sized)
+                        if trait_pred.self_ty().is_trivially_sized(self.0.tcx) =>
+                    {
+                        Some(HasChanged::No)
+                    }
+                    Some(LangItem::Copy | LangItem::Clone)
+                        if trait_pred.self_ty().is_trivially_pure_clone_copy() =>
+                    {
+                        Some(HasChanged::No)
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
     }
 
     fn fresh_var_for_kind_with_span(

@@ -10,11 +10,6 @@ runners:
     free_disk: true
     <<: *base-job
 
-  # Large runner used mainly for its bigger disk capacity
-  - &job-linux-4c-largedisk
-    os: ubuntu-24.04-4core-16gb
-    <<: *base-job
-
   - &job-linux-8c
     os: ubuntu-24.04-8core-32gb
     <<: *base-job
@@ -167,8 +162,11 @@ auto:
   - name: dist-android
     <<: *job-linux-4c
 
-  - name: dist-arm-linux
-    <<: *job-linux-8c-codebuild
+  - name: dist-arm-linux-gnueabi
+    <<: *job-linux-4c
+
+  - name: dist-arm-linux-musl
+    <<: *job-linux-4c
 
   - name: dist-armhf-linux
     <<: *job-linux-4c
@@ -203,8 +201,11 @@ auto:
   - name: dist-powerpc64-linux
     <<: *job-linux-4c
 
-  - name: dist-powerpc64le-linux
-    <<: *job-linux-4c-largedisk
+  - name: dist-powerpc64le-linux-gnu
+    <<: *job-linux-4c
+
+  - name: dist-powerpc64le-linux-musl
+    <<: *job-linux-4c
 
   - name: dist-riscv64-linux
     <<: *job-linux-4c

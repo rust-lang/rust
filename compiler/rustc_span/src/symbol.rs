@@ -2592,7 +2592,8 @@ impl Symbol {
     /// (`token_to_string`, `Ident::to_string`), except that symbols don't keep the rawness flag
     /// or edition, so we have to guess the rawness using the global edition.
     pub fn to_ident_string(self) -> String {
-        Ident::with_dummy_span(self).to_string()
+        // Avoid creating an empty identifier, because that asserts in debug builds.
+        if self == kw::Empty { String::new() } else { Ident::with_dummy_span(self).to_string() }
     }
 }
 

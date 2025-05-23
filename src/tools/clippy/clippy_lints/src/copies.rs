@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_note, span_lint_and_then};
 use clippy_utils::source::{IntoSpan, SpanRangeExt, first_line_of_span, indent_of, reindent_multiline, snippet};
 use clippy_utils::ty::{InteriorMut, needs_ordered_drop};
 use clippy_utils::visitors::for_each_expr_without_closures;
@@ -258,7 +258,7 @@ fn lint_branches_sharing_code<'tcx>(
         let span = span.with_hi(last_block.span.hi());
         // Improve formatting if the inner block has indentation (i.e. normal Rust formatting)
         let span = span
-            .map_range(cx, |src, range| {
+            .map_range(cx, |_, src, range| {
                 (range.start > 4 && src.get(range.start - 4..range.start)? == "    ")
                     .then_some(range.start - 4..range.end)
             })
@@ -567,7 +567,7 @@ fn method_caller_is_mutable<'tcx>(
 
 /// Implementation of `IFS_SAME_COND`.
 fn lint_same_cond<'tcx>(cx: &LateContext<'tcx>, conds: &[&Expr<'_>], interior_mut: &mut InteriorMut<'tcx>) {
-    for (i, j) in search_same(
+    for group in search_same(
         conds,
         |e| hash_expr(cx, e),
         |lhs, rhs| {
@@ -584,14 +584,8 @@ fn lint_same_cond<'tcx>(cx: &LateContext<'tcx>, conds: &[&Expr<'_>], interior_mu
             }
         },
     ) {
-        span_lint_and_note(
-            cx,
-            IFS_SAME_COND,
-            j.span,
-            "this `if` has the same condition as a previous `if`",
-            Some(i.span),
-            "same as this",
-        );
+        let spans: Vec<_> = group.into_iter().map(|expr| expr.span).collect();
+        span_lint(cx, IFS_SAME_COND, spans, "these `if` branches have the same condition");
     }
 }
 
@@ -609,14 +603,13 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
         SpanlessEq::new(cx).eq_expr(lhs, rhs)
     };
 
-    for (i, j) in search_same(conds, |e| hash_expr(cx, e), eq) {
-        span_lint_and_note(
+    for group in search_same(conds, |e| hash_expr(cx, e), eq) {
+        let spans: Vec<_> = group.into_iter().map(|expr| expr.span).collect();
+        span_lint(
             cx,
             SAME_FUNCTIONS_IN_IF_CONDITION,
-            j.span,
-            "this `if` has the same function call as a previous `if`",
-            Some(i.span),
-            "same as this",
+            spans,
+            "these `if` branches have the same function call",
         );
     }
 }

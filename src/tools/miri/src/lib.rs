@@ -1,5 +1,5 @@
 #![feature(rustc_private)]
-#![feature(cfg_match)]
+#![feature(cfg_select)]
 #![feature(float_gamma)]
 #![feature(float_erf)]
 #![feature(map_try_insert)]

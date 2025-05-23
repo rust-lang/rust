@@ -1,13 +1,13 @@
 use crate::methods::method_call;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::peel_blocks;
+use clippy_utils::{peel_blocks, sym};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::{BytePos, Span, sym};
+use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -57,7 +57,7 @@ fn index_if_arg_is_boolean(args: &[Expr<'_>], call_span: Span) -> Option<Span> {
 
 impl<'tcx> LateLintPass<'tcx> for IneffectiveOpenOptions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let Some(("open", mut receiver, [_arg], _, _)) = method_call(expr) else {
+        let Some((sym::open, mut receiver, [_arg], _, _)) = method_call(expr) else {
             return;
         };
         let receiver_ty = cx.typeck_results().expr_ty(receiver);
@@ -70,9 +70,9 @@ impl<'tcx> LateLintPass<'tcx> for IneffectiveOpenOptions {
         let mut write = None;
 
         while let Some((name, recv, args, _, span)) = method_call(receiver) {
-            if name == "append" {
+            if name == sym::append {
                 append = index_if_arg_is_boolean(args, span);
-            } else if name == "write" {
+            } else if name == sym::write {
                 write = index_if_arg_is_boolean(args, span);
             }
             receiver = recv;

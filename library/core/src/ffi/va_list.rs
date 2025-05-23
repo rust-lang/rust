@@ -223,39 +223,57 @@ impl<'a, 'f: 'a> DerefMut for VaList<'a, 'f> {
     }
 }
 
-// The VaArgSafe trait needs to be used in public interfaces, however, the trait
-// itself must not be allowed to be used outside this module. Allowing users to
-// implement the trait for a new type (thereby allowing the va_arg intrinsic to
-// be used on a new type) is likely to cause undefined behavior.
-//
-// FIXME(dlrobertson): In order to use the VaArgSafe trait in a public interface
-// but also ensure it cannot be used elsewhere, the trait needs to be public
-// within a private module. Once RFC 2145 has been implemented look into
-// improving this.
-mod sealed_trait {
-    /// Trait which permits the allowed types to be used with [super::VaListImpl::arg].
-    pub unsafe trait VaArgSafe {}
+mod sealed {
+    pub trait Sealed {}
+
+    impl Sealed for i32 {}
+    impl Sealed for i64 {}
+    impl Sealed for isize {}
+
+    impl Sealed for u32 {}
+    impl Sealed for u64 {}
+    impl Sealed for usize {}
+
+    impl Sealed for f64 {}
+
+    impl<T> Sealed for *mut T {}
+    impl<T> Sealed for *const T {}
 }
 
-macro_rules! impl_va_arg_safe {
-    ($($t:ty),+) => {
-        $(
-            unsafe impl sealed_trait::VaArgSafe for $t {}
-        )+
-    }
-}
+/// Trait which permits the allowed types to be used with [`VaListImpl::arg`].
+///
+/// # Safety
+///
+/// This trait must only be implemented for types that C passes as varargs without implicit promotion.
+///
+/// In C varargs, integers smaller than [`c_int`] and floats smaller than [`c_double`]
+/// are implicitly promoted to [`c_int`] and [`c_double`] respectively. Implementing this trait for
+/// types that are subject to this promotion rule is invalid.
+///
+/// [`c_int`]: core::ffi::c_int
+/// [`c_double`]: core::ffi::c_double
+pub unsafe trait VaArgSafe: sealed::Sealed {}
 
-impl_va_arg_safe! {i8, i16, i32, i64, usize}
-impl_va_arg_safe! {u8, u16, u32, u64, isize}
-impl_va_arg_safe! {f64}
+// i8 and i16 are implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
+unsafe impl VaArgSafe for i32 {}
+unsafe impl VaArgSafe for i64 {}
+unsafe impl VaArgSafe for isize {}
 
-unsafe impl<T> sealed_trait::VaArgSafe for *mut T {}
-unsafe impl<T> sealed_trait::VaArgSafe for *const T {}
+// u8 and u16 are implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
+unsafe impl VaArgSafe for u32 {}
+unsafe impl VaArgSafe for u64 {}
+unsafe impl VaArgSafe for usize {}
+
+// f32 is implicitly promoted to c_double in C, and cannot implement `VaArgSafe`.
+unsafe impl VaArgSafe for f64 {}
+
+unsafe impl<T> VaArgSafe for *mut T {}
+unsafe impl<T> VaArgSafe for *const T {}
 
 impl<'f> VaListImpl<'f> {
     /// Advance to the next arg.
     #[inline]
-    pub unsafe fn arg<T: sealed_trait::VaArgSafe>(&mut self) -> T {
+    pub unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
         // SAFETY: the caller must uphold the safety contract for `va_arg`.
         unsafe { va_arg(self) }
     }
@@ -317,4 +335,4 @@ unsafe fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
 /// argument `ap` points to.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-unsafe fn va_arg<T: sealed_trait::VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
+unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
