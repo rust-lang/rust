@@ -7,25 +7,18 @@ use std::{ptr, slice, str};
 
 use libc::c_int;
 use rustc_codegen_ssa::base::wants_wasm_eh;
-use rustc_codegen_ssa::codegen_attrs::check_tied_features;
 use rustc_codegen_ssa::{TargetConfig, target_features};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_data_structures::unord::UnordSet;
 use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_session::config::{PrintKind, PrintRequest};
-use rustc_session::features::{StabilityExt, retpoline_features_by_flags};
 use rustc_target::spec::{MergeFunctions, PanicStrategy, SmallDataThresholdSupport};
-use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
 use smallvec::{SmallVec, smallvec};
 
 use crate::back::write::create_informational_target_machine;
-use crate::errors::{
-    FixedX18InvalidArch, PossibleFeature, UnknownCTargetFeature, UnknownCTargetFeaturePrefix,
-};
-use crate::llvm;
+use crate::{errors, llvm};
 
 static INIT: Once = Once::new();
 
@@ -194,15 +187,6 @@ impl<'a> LLVMFeature<'a> {
     ) -> Self {
         Self { llvm_feature_name, dependencies }
     }
-
-    fn contains(&'a self, feat: &str) -> bool {
-        self.iter().any(|dep| dep == feat)
-    }
-
-    fn iter(&'a self) -> impl Iterator<Item = &'a str> {
-        let dependencies = self.dependencies.iter().map(|feat| feat.as_str());
-        std::iter::once(self.llvm_feature_name).chain(dependencies)
-    }
 }
 
 impl<'a> IntoIterator for LLVMFeature<'a> {
@@ -215,18 +199,22 @@ impl<'a> IntoIterator for LLVMFeature<'a> {
     }
 }
 
-// WARNING: the features after applying `to_llvm_features` must be known
-// to LLVM or the feature detection code will walk past the end of the feature
-// array, leading to crashes.
-//
-// To find a list of LLVM's names, see llvm-project/llvm/lib/Target/{ARCH}/*.td
-// where `{ARCH}` is the architecture name. Look for instances of `SubtargetFeature`.
-//
-// Check the current rustc fork of LLVM in the repo at https://github.com/rust-lang/llvm-project/.
-// The commit in use can be found via the `llvm-project` submodule in
-// https://github.com/rust-lang/rust/tree/master/src Though note that Rust can also be build with
-// an external precompiled version of LLVM which might lead to failures if the oldest tested /
-// supported LLVM version doesn't yet support the relevant intrinsics.
+/// Convert a Rust feature name to an LLVM feature name. Returning `None` means the
+/// feature should be skipped, usually because it is not supported by the current
+/// LLVM version.
+///
+/// WARNING: the features after applying `to_llvm_features` must be known
+/// to LLVM or the feature detection code will walk past the end of the feature
+/// array, leading to crashes.
+///
+/// To find a list of LLVM's names, see llvm-project/llvm/lib/Target/{ARCH}/*.td
+/// where `{ARCH}` is the architecture name. Look for instances of `SubtargetFeature`.
+///
+/// Check the current rustc fork of LLVM in the repo at <https://github.com/rust-lang/llvm-project/>.
+/// The commit in use can be found via the `llvm-project` submodule in
+/// <https://github.com/rust-lang/rust/tree/master/src> Though note that Rust can also be build with
+/// an external precompiled version of LLVM which might lead to failures if the oldest tested /
+/// supported LLVM version doesn't yet support the relevant intrinsics.
 pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFeature<'a>> {
     let arch = if sess.target.arch == "x86_64" {
         "x86"
@@ -634,10 +622,9 @@ pub(crate) fn target_cpu(sess: &Session) -> &str {
     handle_native(cpu_name)
 }
 
-fn llvm_features_by_flags(sess: &Session) -> Vec<&str> {
-    let mut features: Vec<&str> = Vec::new();
-    retpoline_features_by_flags(sess, &mut features);
-    features
+/// The target features for compiler flags other than `-Ctarget-features`.
+fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
+    target_features::retpoline_features_by_flags(sess, features);
 }
 
 /// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
@@ -704,6 +691,8 @@ pub(crate) fn global_llvm_features(
             .split(',')
             .filter(|v| !v.is_empty())
             // Drop +v8plus feature introduced in LLVM 20.
+            // (Hard-coded target features do not go through `to_llvm_feature` since they already
+            // are LLVM feature names, hence we need a special case here.)
             .filter(|v| *v != "+v8plus" || get_version() >= (20, 0, 0))
             .map(String::from),
     );
@@ -714,86 +703,23 @@ pub(crate) fn global_llvm_features(
 
     // -Ctarget-features
     if !only_base_features {
-        let known_features = sess.target.rust_target_features();
-        // Will only be filled when `diagnostics` is set!
-        let mut featsmap = FxHashMap::default();
-
-        // Compute implied features
-        let mut all_rust_features = vec![];
-        for feature in sess.opts.cg.target_feature.split(',').chain(llvm_features_by_flags(sess)) {
-            if let Some(feature) = feature.strip_prefix('+') {
-                all_rust_features.extend(
-                    UnordSet::from(sess.target.implied_target_features(feature))
-                        .to_sorted_stable_ord()
-                        .iter()
-                        .map(|&&s| (true, s)),
-                )
-            } else if let Some(feature) = feature.strip_prefix('-') {
-                // FIXME: Why do we not remove implied features on "-" here?
-                // We do the equivalent above in `target_config`.
-                // See <https://github.com/rust-lang/rust/issues/134792>.
-                all_rust_features.push((false, feature));
-            } else if !feature.is_empty() {
-                if diagnostics {
-                    sess.dcx().emit_warn(UnknownCTargetFeaturePrefix { feature });
-                }
-            }
-        }
-        // Remove features that are meant for rustc, not LLVM.
-        all_rust_features.retain(|(_, feature)| {
-            // Retain if it is not a rustc feature
-            !RUSTC_SPECIFIC_FEATURES.contains(feature)
-        });
-
-        // Check feature validity.
-        if diagnostics {
-            for &(enable, feature) in &all_rust_features {
-                let feature_state = known_features.iter().find(|&&(v, _, _)| v == feature);
-                match feature_state {
-                    None => {
-                        let rust_feature =
-                            known_features.iter().find_map(|&(rust_feature, _, _)| {
-                                let llvm_features = to_llvm_features(sess, rust_feature)?;
-                                if llvm_features.contains(feature)
-                                    && !llvm_features.contains(rust_feature)
-                                {
-                                    Some(rust_feature)
-                                } else {
-                                    None
-                                }
-                            });
-                        let unknown_feature = if let Some(rust_feature) = rust_feature {
-                            UnknownCTargetFeature {
-                                feature,
-                                rust_feature: PossibleFeature::Some { rust_feature },
-                            }
-                        } else {
-                            UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
-                        };
-                        sess.dcx().emit_warn(unknown_feature);
-                    }
-                    Some((_, stability, _)) => {
-                        stability.verify_feature_enabled_by_flag(sess, enable, feature);
-                    }
-                }
-
-                // FIXME(nagisa): figure out how to not allocate a full hashset here.
-                featsmap.insert(feature, enable);
-            }
-        }
-
-        // Translate this into LLVM features.
-        let feats = all_rust_features
-            .iter()
-            .filter_map(|&(enable, feature)| {
+        target_features::flag_to_backend_features(
+            sess,
+            diagnostics,
+            |feature| {
+                to_llvm_features(sess, feature)
+                    .map(|f| SmallVec::<[&str; 2]>::from_iter(f.into_iter()))
+                    .unwrap_or_default()
+            },
+            |feature, enable| {
                 let enable_disable = if enable { '+' } else { '-' };
                 // We run through `to_llvm_features` when
                 // passing requests down to LLVM. This means that all in-language
                 // features also work on the command line instead of having two
                 // different names when the LLVM name and the Rust name differ.
-                let llvm_feature = to_llvm_features(sess, feature)?;
+                let Some(llvm_feature) = to_llvm_features(sess, feature) else { return };
 
-                Some(
+                features.extend(
                     std::iter::once(format!(
                         "{}{}",
                         enable_disable, llvm_feature.llvm_feature_name
@@ -808,23 +734,17 @@ pub(crate) fn global_llvm_features(
                         },
                     )),
                 )
-            })
-            .flatten();
-        features.extend(feats);
+            },
+        );
 
-        if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
-            sess.dcx().emit_err(rustc_codegen_ssa::errors::TargetFeatureDisableOrEnable {
-                features: f,
-                span: None,
-                missing_features: None,
-            });
-        }
+        llvm_features_by_flags(sess, &mut features);
     }
 
     // -Zfixed-x18
+    // FIXME: merge with `llvm_features_by_flags`.
     if sess.opts.unstable_opts.fixed_x18 {
         if sess.target.arch != "aarch64" {
-            sess.dcx().emit_fatal(FixedX18InvalidArch { arch: &sess.target.arch });
+            sess.dcx().emit_fatal(errors::FixedX18InvalidArch { arch: &sess.target.arch });
         } else {
             features.push("+reserve-x18".into());
         }

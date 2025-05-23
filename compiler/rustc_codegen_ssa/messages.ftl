@@ -68,6 +68,11 @@ codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 
 codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
 
+codegen_ssa_forbidden_ctarget_feature =
+    target feature `{$feature}` cannot be {$enabled} with `-Ctarget-feature`: {$reason}
+    .note = this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+codegen_ssa_forbidden_ctarget_feature_issue = for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>
+
 codegen_ssa_forbidden_target_feature_attr =
     target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}
 
@@ -368,7 +373,21 @@ codegen_ssa_unexpected_parameter_name = unexpected parameter name
 codegen_ssa_unknown_archive_kind =
     Don't know how to build archive of type: {$kind}
 
+codegen_ssa_unknown_ctarget_feature =
+    unknown and unstable feature specified for `-Ctarget-feature`: `{$feature}`
+    .note = it is still passed through to the codegen backend, but use of this feature might be unsound and the behavior of this feature can change in the future
+    .possible_feature = you might have meant: `{$rust_feature}`
+    .consider_filing_feature_request = consider filing a feature request
+
+codegen_ssa_unknown_ctarget_feature_prefix =
+    unknown feature specified for `-Ctarget-feature`: `{$feature}`
+    .note = features must begin with a `+` to enable or `-` to disable it
+
 codegen_ssa_unknown_reuse_kind = unknown cgu-reuse-kind `{$kind}` specified
+
+codegen_ssa_unstable_ctarget_feature =
+    unstable feature specified for `-Ctarget-feature`: `{$feature}`
+    .note = this feature is not stably supported; its behavior can change in the future
 
 codegen_ssa_unsupported_instruction_set = target does not support `#[instruction_set]`
 

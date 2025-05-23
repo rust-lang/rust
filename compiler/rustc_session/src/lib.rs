@@ -29,7 +29,6 @@ pub use session::*;
 pub mod output;
 
 pub use getopts;
-pub mod features;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
