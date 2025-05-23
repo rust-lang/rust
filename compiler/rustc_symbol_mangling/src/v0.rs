@@ -20,7 +20,7 @@ use rustc_middle::ty::{
     self, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, ReifyReason, Ty, TyCtxt,
     TypeVisitable, TypeVisitableExt, UintTy,
 };
-use rustc_span::kw;
+use rustc_span::sym;
 
 pub(super) fn mangle<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -902,7 +902,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             print_prefix,
             ns,
             disambiguated_data.disambiguator as u64,
-            name.unwrap_or(kw::Empty).as_str(),
+            name.unwrap_or(sym::empty).as_str(),
         )
     }
 

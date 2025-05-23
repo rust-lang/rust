@@ -6,7 +6,7 @@ use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_session::config::FmtDebug;
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 
 use super::LoweringContext;
 
@@ -418,7 +418,7 @@ fn expand_format_args<'hir>(
                 &FormatArgsPiece::Placeholder(_) => {
                     // Inject empty string before placeholders when not already preceded by a literal piece.
                     if i == 0 || matches!(fmt.template[i - 1], FormatArgsPiece::Placeholder(_)) {
-                        Some(ctx.expr_str(fmt.span, kw::Empty))
+                        Some(ctx.expr_str(fmt.span, sym::empty))
                     } else {
                         None
                     }
