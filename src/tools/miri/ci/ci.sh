@@ -142,12 +142,10 @@ case $HOST_TARGET in
     # Host
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
-    # With reduced many-seed count to avoid spending too much time on that.
-    # (All OSes and ABIs are run with 64 seeds at least once though via the macOS runner.)
-    MANY_SEEDS=16 TEST_TARGET=i686-unknown-linux-gnu run_tests
-    MANY_SEEDS=16 TEST_TARGET=aarch64-unknown-linux-gnu run_tests
-    MANY_SEEDS=16 TEST_TARGET=x86_64-apple-darwin run_tests
-    MANY_SEEDS=16 TEST_TARGET=x86_64-pc-windows-gnu run_tests
+    MANY_SEEDS=64 TEST_TARGET=i686-unknown-linux-gnu run_tests
+    MANY_SEEDS=64 TEST_TARGET=aarch64-unknown-linux-gnu run_tests
+    MANY_SEEDS=64 TEST_TARGET=x86_64-apple-darwin run_tests
+    MANY_SEEDS=64 TEST_TARGET=x86_64-pc-windows-gnu run_tests
     ;;
   aarch64-apple-darwin)
     # Host
@@ -178,7 +176,7 @@ case $HOST_TARGET in
     # Host
     # Without GC_STRESS and with reduced many-seeds count as this is the slowest runner.
     # (The macOS runner checks windows-msvc with full many-seeds count.)
-    MIR_OPT=1 MANY_SEEDS=16 TEST_BENCH=1 run_tests
+    MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 run_tests
     # Extra tier 1
     # We really want to ensure a Linux target works on a Windows host,
     # and a 64bit target works on a 32bit host.
