@@ -549,7 +549,7 @@ compiler to ICE, panic or crash in some other way, so that accidental fixes are
 tracked. This was formally done at <https://github.com/rust-lang/glacier> but
 doing it inside the rust-lang/rust testsuite is more convenient.
 
-It is imperative that a test in the suite causes rustc to ICE, panic or crash
+It is imperative that a test in the suite causes rustc to ICE, panic, or
 crash in some other way. A test will "pass" if rustc exits with an exit status
 other than 1 or 0.
 
