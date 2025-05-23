@@ -7,6 +7,7 @@ use derive_where::derive_where;
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
+use crate::data_structures::HashMap;
 use crate::inherent::*;
 use crate::{self as ty, Interner, TypingMode, UniverseIndex};
 
@@ -332,4 +333,12 @@ impl<I: Interner> Index<ty::BoundVar> for CanonicalVarValues<I> {
     fn index(&self, value: ty::BoundVar) -> &I::GenericArg {
         &self.var_values.as_slice()[value.as_usize()]
     }
+}
+
+#[derive_where(Clone, Debug; I: Interner)]
+pub struct CanonicalParamEnvCacheEntry<I: Interner> {
+    pub param_env: I::ParamEnv,
+    pub variables: Vec<I::GenericArg>,
+    pub variable_lookup_table: HashMap<I::GenericArg, usize>,
+    pub var_kinds: Vec<CanonicalVarKind<I>>,
 }
