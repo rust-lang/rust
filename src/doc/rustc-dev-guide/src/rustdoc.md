@@ -93,13 +93,13 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
   interactivity.  For information on how to write this form of test,
   see [`tests/rustdoc-gui/README.md`][rustdoc-gui-readme]
   as well as [the description of the `.goml` format][goml-script]
-* Additionally, JavaScript type annotations are written using [TypeScript-flavored JSDoc]
-  comments and an external d.ts file. The code itself is plain, valid JavaScript; we only
-  use tsc as a linter.
-* The tests on the structure of rustdoc HTML output are located in `tests/rustdoc`,
+* Tests on the structure of rustdoc HTML output are located in `tests/rustdoc`,
   where they're handled by the test runner of bootstrap and
   the supplementary script `src/etc/htmldocck.py`.
   [These tests have several extra directives available to them](./rustdoc-internals/rustdoc-test-suite.md).
+* Additionally, JavaScript type annotations are written using [TypeScript-flavored JSDoc]
+  comments and an external d.ts file. The code itself is plain, valid JavaScript; we only
+  use tsc as a linter.
 
 [TypeScript-flavored JSDoc]: https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html
 [rustdoc-gui-readme]: https://github.com/rust-lang/rust/blob/master/tests/rustdoc-gui/README.md
