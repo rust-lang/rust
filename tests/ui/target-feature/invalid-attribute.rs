@@ -90,18 +90,6 @@ impl Foo {}
 
 trait Quux {
     fn foo(); //~ NOTE `foo` from trait
-    //~^ NOTE: type in trait
-}
-
-impl Quux for Foo {
-    #[target_feature(enable = "sse2")]
-    //~^ ERROR `#[target_feature(..)]` cannot be applied to safe trait method
-    //~| NOTE cannot be applied to safe trait method
-    fn foo() {}
-    //~^ NOTE not an `unsafe` function
-    //~| ERROR: incompatible type for trait
-    //~| NOTE: expected safe fn, found unsafe fn
-    //~| NOTE: expected signature `fn()`
 }
 
 fn main() {

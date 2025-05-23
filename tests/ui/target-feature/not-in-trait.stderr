@@ -1,0 +1,18 @@
+error: attribute should be applied to a function definition
+  --> $DIR/not-in-trait.rs:11:5
+   |
+LL |     #[target_feature(enable = "aes")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     unsafe fn foo() {}
+   |     ------------------ not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/not-in-trait.rs:16:5
+   |
+LL |     #[target_feature(enable = "aes")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     unsafe fn foo() {}
+   |     ------------------ not a function definition
+
+error: aborting due to 2 previous errors
+

@@ -132,7 +132,7 @@ LL | impl Foo {}
    | ----------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:108:5
+  --> $DIR/invalid-attribute.rs:96:5
    |
 LL |       #[target_feature(enable = "sse2")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -143,7 +143,7 @@ LL | |     }
    | |_____- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:115:5
+  --> $DIR/invalid-attribute.rs:103:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -178,30 +178,6 @@ LL | impl Quux for u8 {}
 LL |     fn foo();
    |     --------- `foo` from trait
 
-error: `#[target_feature(..)]` cannot be applied to safe trait method
-  --> $DIR/invalid-attribute.rs:97:5
-   |
-LL |     #[target_feature(enable = "sse2")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be applied to safe trait method
-...
-LL |     fn foo() {}
-   |     -------- not an `unsafe` function
+error: aborting due to 21 previous errors
 
-error[E0053]: method `foo` has an incompatible type for trait
-  --> $DIR/invalid-attribute.rs:100:5
-   |
-LL |     fn foo() {}
-   |     ^^^^^^^^ expected safe fn, found unsafe fn
-   |
-note: type in trait
-  --> $DIR/invalid-attribute.rs:92:5
-   |
-LL |     fn foo();
-   |     ^^^^^^^^^
-   = note: expected signature `fn()`
-              found signature `#[target_features] fn()`
-
-error: aborting due to 23 previous errors
-
-Some errors have detailed explanations: E0046, E0053.
-For more information about an error, try `rustc --explain E0046`.
+For more information about this error, try `rustc --explain E0046`.

@@ -861,8 +861,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         attrs: &[Attribute],
     ) {
         match target {
-            Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
-            | Target::Fn => {
+            Target::Method(MethodKind::Inherent) | Target::Fn => {
                 // `#[target_feature]` is not allowed in lang items.
                 if let Some((lang_item, _)) = hir::lang_items::extract(attrs)
                     // Calling functions with `#[target_feature]` is
