@@ -188,13 +188,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             match e.obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Subtype(_)
-                    if matches! (
-                        outer_expn_data.kind,
-                        ExpnKind::Macro(_, name) if matches!(
-                            name.as_str().rsplit("::").next(),
-                            Some("format_args" | "format_args_nl")
-                        )
-                    ) =>
+                    if let Some(def_id) = outer_expn_data.macro_def_id
+                        && (self
+                            .tcx
+                            .is_diagnostic_item(rustc_span::sym::format_args_nl_macro, def_id)
+                            || self.tcx.is_diagnostic_item(
+                                rustc_span::sym::format_args_macro,
+                                def_id,
+                            )) =>
                 {
                     let sm = self.tcx.sess.source_map();
                     let lc = sm.span_to_location_info(span);
