@@ -158,7 +158,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             fn_abi.llvm_cconv(self),
             llvm::UnnamedAddr::Global,
             llvm::Visibility::Default,
-            fn_abi.llvm_type(self),
+            fn_abi.llvm_type(self, name.as_bytes()),
         );
         fn_abi.apply_attrs_llfn(self, llfn, instance);
 

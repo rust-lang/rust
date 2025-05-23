@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
 use std::cmp;
+use std::iter::zip;
 
 use libc::c_uint;
 use rustc_abi::{BackendRepr, HasDataLayout, Primitive, Reg, RegKind, Size};
@@ -308,7 +309,9 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 }
 
 pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
+    fn llvm_return_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
+    fn llvm_argument_types(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<&'ll Type>;
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>, name: &[u8]) -> &'ll Type;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self, cx: &CodegenCx<'ll, 'tcx>) -> llvm::CallConv;
 
@@ -325,26 +328,29 @@ pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+    fn llvm_return_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+        match &self.ret.mode {
+            PassMode::Ignore => cx.type_void(),
+            PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
+            PassMode::Cast { cast, pad_i32: _ } => cast.llvm_type(cx),
+            PassMode::Indirect { .. } => cx.type_void(),
+        }
+    }
+
+    fn llvm_argument_types(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<&'ll Type> {
+        let indirect_return = matches!(self.ret.mode, PassMode::Indirect { .. });
+
         // Ignore "extra" args from the call site for C variadic functions.
         // Only the "fixed" args are part of the LLVM function signature.
         let args =
             if self.c_variadic { &self.args[..self.fixed_count as usize] } else { &self.args };
 
-        // This capacity calculation is approximate.
-        let mut llargument_tys = Vec::with_capacity(
-            self.args.len() + if let PassMode::Indirect { .. } = self.ret.mode { 1 } else { 0 },
-        );
+        let mut llargument_tys =
+            Vec::with_capacity(args.len() + if indirect_return { 1 } else { 0 });
 
-        let llreturn_ty = match &self.ret.mode {
-            PassMode::Ignore => cx.type_void(),
-            PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
-            PassMode::Cast { cast, pad_i32: _ } => cast.llvm_type(cx),
-            PassMode::Indirect { .. } => {
-                llargument_tys.push(cx.type_ptr());
-                cx.type_void()
-            }
-        };
+        if indirect_return {
+            llargument_tys.push(cx.type_ptr());
+        }
 
         for arg in args {
             // Note that the exact number of arguments pushed here is carefully synchronized with
@@ -391,10 +397,65 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             llargument_tys.push(llarg_ty);
         }
 
+        llargument_tys
+    }
+
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>, name: &[u8]) -> &'ll Type {
+        let actual_return_ty = self.llvm_return_type(cx);
+        let actual_argument_tys = self.llvm_argument_types(cx);
+
+        let is_llvm_intrinsic = name.starts_with(b"llvm.");
+
+        if is_llvm_intrinsic && let Some((_, fn_ty)) = cx.get_intrinsic(name) {
+            let expected_return_ty = cx.get_return_type(fn_ty);
+            let expected_argument_tys = cx.func_params_types(fn_ty);
+
+            if actual_argument_tys.len() != expected_argument_tys.len() {
+                cx.tcx.dcx().fatal(format!(
+                    "Intrinsic signature mismatch: expected {} arguments for `{}`, found {} arguments",
+                    expected_argument_tys.len(),
+                    str::from_utf8(name).unwrap(),
+                    actual_argument_tys.len(),
+                ));
+            }
+
+            if actual_return_ty != expected_return_ty {
+                cx.tcx.dcx().fatal(format!(
+                    "Intrinsic signature mismatch: expected {expected_return_ty:?} as return type for `{}`, found {actual_return_ty:?}",
+                    str::from_utf8(name).unwrap()
+                ));
+            }
+            for (idx, (actual_argument_ty, expected_argument_ty)) in
+                zip(actual_argument_tys, expected_argument_tys).enumerate()
+            {
+                if actual_argument_ty != expected_argument_ty {
+                    cx.tcx.dcx().fatal(format!(
+                        "Intrinsic signature mismatch: expected {expected_argument_ty:?} as argument {idx} for `{}`, found {actual_argument_ty:?}",
+                        str::from_utf8(name).unwrap()
+                    ));
+                }
+            }
+            // todo: verify using `Intrinsic::getIntrinsicSignature`
+
+            return fn_ty;
+        }
+
+        if is_llvm_intrinsic {
+            // it's one of 2 cases,
+            // - either the base name is invalid
+            // - it has been superceded by something else, so the intrinsic was removed entirely
+            // - our parse isn't recognizing it correctly
+            // anyway, let's log it
+            tracing::debug!(
+                "Couldn't parse intrinsic name `{}`, falling back to default implementation",
+                str::from_utf8(name).unwrap()
+            );
+        }
+
         if self.c_variadic {
-            cx.type_variadic_func(&llargument_tys, llreturn_ty)
+            cx.type_variadic_func(&actual_argument_tys, actual_return_ty)
         } else {
-            cx.type_func(&llargument_tys, llreturn_ty)
+            cx.type_func(&actual_argument_tys, actual_return_ty)
         }
     }
 

@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::str;
 
-use rustc_abi::{HasDataLayout, Size, TargetDataLayout, VariantIdx};
+use rustc_abi::{AddressSpace, HasDataLayout, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::TypeKind;
@@ -836,27 +836,189 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
-    pub(crate) fn get_intrinsic(
+    pub(crate) fn intrinsic_type(
         &self,
         intrinsic: llvm::Intrinsic,
         type_params: &[&'ll Type],
-    ) -> (&'ll Type, &'ll Value) {
+    ) -> &'ll Type {
         unsafe {
-            (
-                llvm::LLVMIntrinsicGetType(
-                    self.llcx(),
-                    intrinsic.id(),
-                    type_params.as_ptr(),
-                    type_params.len(),
-                ),
-                llvm::LLVMGetIntrinsicDeclaration(
-                    self.llmod(),
-                    intrinsic.id(),
-                    type_params.as_ptr(),
-                    type_params.len(),
-                ),
+            llvm::LLVMIntrinsicGetType(
+                self.llcx(),
+                intrinsic.id(),
+                type_params.as_ptr(),
+                type_params.len(),
             )
         }
+    }
+
+    /// Returns the llvm intrinsic ID and type parameters for an llvm intrinsic
+    /// `full_name` must start with `b"llvm."`
+    ///
+    /// Returns `None` if this is not a valid intrinsic name
+    fn parse_intrinsic_name(&self, full_name: &[u8]) -> Option<(llvm::Intrinsic, Vec<&'ll Type>)> {
+        let intrinsic = llvm::Intrinsic::lookup(full_name)?;
+        let mut type_params = Vec::new();
+
+        let base_name = intrinsic.base_name();
+        assert!(full_name.starts_with(base_name));
+
+        if intrinsic.is_overloaded() {
+            let mut remainder = &full_name[base_name.len()..];
+            while !remainder.is_empty() {
+                if remainder[0] != b'.' {
+                    let &last_ty = type_params.last()?;
+                    let last_ty_was_ptr = match self.type_kind(last_ty) {
+                        TypeKind::Pointer => true,
+                        TypeKind::Array | TypeKind::Vector | TypeKind::ScalableVector => {
+                            self.type_kind(self.element_type(last_ty)) == TypeKind::Pointer
+                        }
+                        _ => false,
+                    };
+
+                    if last_ty_was_ptr {
+                        // little support for deprecated type-specific pointers, we can disambiguate them only in these cases
+                        let (_element_type, new_remainder) = self.demangle_type_str(remainder)?;
+                        remainder = new_remainder;
+
+                        if remainder.is_empty() {
+                            break;
+                        }
+                        if remainder[0] != b'.' {
+                            return None;
+                        }
+                    }
+                }
+                let (type_param, new_remainder) = self.demangle_type_str(&remainder[1..])?;
+                type_params.push(type_param);
+                remainder = new_remainder;
+            }
+
+            if type_params.is_empty() {
+                // overloaded intrinsic must have at least 1 type parameter
+                return None;
+            }
+        } else {
+            if full_name != base_name {
+                // for non-overloaded intrinsic, the base name is the whole name
+                return None;
+            }
+        }
+
+        Some((intrinsic, type_params))
+    }
+
+    /// Inverse of the llvm function `getMangledTypeStr` (well, not perfect, because the
+    /// mangling is not fully reversible, but this is the best solution we currently have)
+    ///
+    /// FIXME(future): find out a better way to do this
+    fn demangle_type_str<'a>(&self, mangled: &'a [u8]) -> Option<(&'ll Type, &'a [u8])> {
+        fn parse_int(string: &[u8]) -> Option<(u64, &[u8])> {
+            let mut position = 0;
+            let mut number = 0;
+
+            while let Some(&digit @ b'0'..=b'9') = string.get(position) {
+                number = 10 * number + (digit - b'0') as u64;
+                position += 1;
+            }
+
+            if position != 0 { Some((number, &string[position..])) } else { None }
+        }
+
+        Some(if mangled.starts_with(b"isVoid") {
+            (self.type_void(), &mangled[6..])
+        } else if mangled.starts_with(b"Metadata") {
+            (self.type_metadata(), &mangled[8..])
+        } else if mangled.starts_with(b"f16") {
+            (self.type_f16(), &mangled[3..])
+        } else if mangled.starts_with(b"bf16") {
+            (self.type_bf16(), &mangled[4..])
+        } else if mangled.starts_with(b"f32") {
+            (self.type_f32(), &mangled[3..])
+        } else if mangled.starts_with(b"f64") {
+            (self.type_f64(), &mangled[3..])
+        } else if mangled.starts_with(b"f80") {
+            (self.type_x86f80(), &mangled[3..])
+        } else if mangled.starts_with(b"f128") {
+            (self.type_f128(), &mangled[4..])
+        } else if mangled.starts_with(b"ppcf128") {
+            (self.type_ppcf128(), &mangled[7..])
+        } else if mangled.starts_with(b"x86amx") {
+            (self.type_x86amx(), &mangled[6..])
+        } else if mangled.starts_with(b"i") {
+            // integer type
+            let (int_width, remainder) = parse_int(&mangled[1..])?;
+            (self.type_ix(int_width), remainder)
+        } else if mangled.starts_with(b"p") {
+            // pointer type
+            let (address_space, remainder) = parse_int(&mangled[1..])?;
+            let address_space = AddressSpace(address_space.try_into().unwrap());
+            (self.type_ptr_ext(address_space), remainder)
+        } else if mangled.starts_with(b"v") {
+            // vector type
+            let (element_count, remainder) = parse_int(&mangled[1..])?;
+            let (element_type, remainder) = self.demangle_type_str(remainder)?;
+            (self.type_vector(element_type, element_count), remainder)
+        } else if mangled.starts_with(b"nxv") {
+            // scalable vector
+            let (element_count, remainder) = parse_int(&mangled[3..])?;
+            let (element_type, remainder) = self.demangle_type_str(remainder)?;
+            (self.type_scalable_vector(element_type, element_count), remainder)
+        } else if mangled.starts_with(b"a") {
+            // array type
+            let (element_count, remainder) = parse_int(&mangled[1..])?;
+            let (element_type, remainder) = self.demangle_type_str(remainder)?;
+            (self.type_array(element_type, element_count), remainder)
+        } else if mangled.starts_with(b"sl_") {
+            // literal struct
+            let mut remainder = &mangled[3..];
+            let mut fields = Vec::new();
+            loop {
+                if remainder.is_empty() {
+                    // struct types should end with an `s`
+                    return None;
+                }
+                if remainder[0] == b's'
+                    && !remainder.starts_with(b"s_")
+                    && !remainder.starts_with(b"sl_")
+                {
+                    break (self.type_struct(&fields, true), &remainder[1..]);
+                }
+                let (field, new_remainder) = self.demangle_type_str(remainder)?;
+                fields.push(field);
+                remainder = new_remainder;
+            }
+        } else if mangled.starts_with(b"f_") {
+            // function type
+            let (return_type, mut remainder) = self.demangle_type_str(&mangled[2..])?;
+            let mut parameters = Vec::new();
+            loop {
+                if remainder.is_empty() {
+                    // function types should end with an `f`
+                    return None;
+                }
+                if remainder.starts_with(b"varargf") {
+                    break (self.type_variadic_func(&parameters, return_type), &remainder[7..]);
+                }
+                if remainder[0] == b'f' && !remainder.starts_with(b"f_") {
+                    break (self.type_func(&parameters, return_type), &remainder[1..]);
+                }
+                let (parameter, new_remainder) = self.demangle_type_str(remainder)?;
+                parameters.push(parameter);
+                remainder = new_remainder;
+            }
+        } else if mangled.starts_with(b"s_") || mangled.starts_with(b"t") {
+            // non-literal structs and target types
+            // these types can't be parsed unambiguously, because they have their name in the mangling
+            return None;
+        } else {
+            // invalid type
+            return None;
+        })
+    }
+
+    pub(crate) fn get_intrinsic(&self, full_name: &[u8]) -> Option<(llvm::Intrinsic, &'ll Type)> {
+        let (intrinsic, type_params) = self.parse_intrinsic_name(full_name)?;
+        Some((intrinsic, self.intrinsic_type(intrinsic, &type_params)))
     }
 }
 

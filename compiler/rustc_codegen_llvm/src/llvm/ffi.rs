@@ -1050,6 +1050,11 @@ unsafe extern "C" {
     pub(crate) fn LLVMDoubleTypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMFP128TypeInContext(C: &Context) -> &Type;
 
+    // non-IEEE fp types
+    pub(crate) fn LLVMBFloatTypeInContext(C: &Context) -> &Type;
+    pub(crate) fn LLVMX86FP80TypeInContext(C: &Context) -> &Type;
+    pub(crate) fn LLVMPPCFP128TypeInContext(C: &Context) -> &Type;
+
     // Operations on function types
     pub(crate) fn LLVMFunctionType<'a>(
         ReturnType: &'a Type,
@@ -1071,6 +1076,10 @@ unsafe extern "C" {
     // Operations on array, pointer, and vector types (sequence types)
     pub(crate) fn LLVMPointerTypeInContext(C: &Context, AddressSpace: c_uint) -> &Type;
     pub(crate) fn LLVMVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
+    pub(crate) fn LLVMScalableVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
+
+    // Special X86 Type for AMX
+    pub(crate) fn LLVMX86AMXTypeInContext(C: &Context) -> &Type;
 
     pub(crate) fn LLVMGetElementType(Ty: &Type) -> &Type;
     pub(crate) fn LLVMGetVectorSize(VectorTy: &Type) -> c_uint;
@@ -1196,18 +1205,24 @@ unsafe extern "C" {
 
     // Operations about llvm intrinsics
     pub(crate) fn LLVMLookupIntrinsicID(Name: *const c_char, NameLen: size_t) -> c_uint;
-    pub(crate) fn LLVMGetIntrinsicDeclaration<'a>(
-        M: &'a Module,
-        ID: c_uint,
-        ParamTypes: *const &'a Type,
-        ParamCount: size_t,
-    ) -> &'a Value;
     pub(crate) fn LLVMIntrinsicGetType<'a>(
         C: &'a Context,
         ID: c_uint,
         ParamTypes: *const &'a Type,
         ParamCount: size_t,
     ) -> &'a Type;
+    pub(crate) fn LLVMRustIntrinsicGetBaseName(
+        ID: c_uint,
+        NameLength: *mut size_t,
+    ) -> *const c_char;
+    pub(crate) fn LLVMIntrinsicIsOverloaded(ID: c_uint) -> Bool;
+    pub(crate) fn LLVMIntrinsicCopyOverloadedName2<'a>(
+        Mod: &'a Module,
+        ID: c_uint,
+        ParamTypes: *const &'a Type,
+        ParamCount: size_t,
+        NameLength: *mut size_t,
+    ) -> *mut c_char;
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;

@@ -31,7 +31,7 @@ use tracing::{debug, instrument};
 
 use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
-use crate::common::Funclet;
+use crate::common::{AsCCharPtr, Funclet};
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
     self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, GEPNoWrapFlags, Metadata, True,
@@ -1611,15 +1611,33 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         type_params: &[&'ll Type],
         args: &[&'ll Value],
     ) -> &'ll Value {
+        // todo: cache?
+
         let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
             .unwrap_or_else(|| bug!("Intrinsic `{base_name}` not found"));
-        let (fn_ty, llfn) = self.cx.get_intrinsic(intrinsic, type_params);
+
+        let fn_ty = self.cx.intrinsic_type(intrinsic, type_params);
+
+        let full_name = if intrinsic.is_overloaded() {
+            &intrinsic.overloaded_name(self.cx.llmod(), type_params)
+        } else {
+            assert!(type_params.is_empty());
+            base_name.as_bytes()
+        };
+        let llfn = unsafe {
+            llvm::LLVMRustGetOrInsertFunction(
+                self.cx.llmod(),
+                full_name.as_c_char_ptr(),
+                full_name.len(),
+                fn_ty,
+            )
+        };
         self.simple_call(fn_ty, llfn, args)
     }
 }
 
 impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
-    fn call_lifetime_intrinsic(&mut self, intrinsic: &str, ptr: &'ll Value, size: Size) {
+    fn call_lifetime_intrinsic(&mut self, intrinsic: &'static str, ptr: &'ll Value, size: Size) {
         let size = size.bytes();
         if size == 0 {
             return;
