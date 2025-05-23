@@ -35,7 +35,7 @@ use rustc_session::lint::builtin::{
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, edition, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, edition, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -936,7 +936,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let span = meta.name_value_literal_span().unwrap_or_else(|| meta.span());
         let attr_str =
             &format!("`#[doc(alias{})]`", if is_list { "(\"...\")" } else { " = \"...\"" });
-        if doc_alias == kw::Empty {
+        if doc_alias == sym::empty {
             tcx.dcx().emit_err(errors::DocAliasEmpty { span, attr_str });
             return;
         }
@@ -1068,7 +1068,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
 
         let doc_keyword = match meta.value_str() {
-            Some(value) if value != kw::Empty => value,
+            Some(value) if value != sym::empty => value,
             _ => return self.doc_attr_str_error(meta, "keyword"),
         };
 
