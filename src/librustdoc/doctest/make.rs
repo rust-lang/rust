@@ -277,7 +277,7 @@ impl DocTestBuilder {
     /// lines before the test code begins.
     pub(crate) fn generate_unique_doctest(
         &self,
-        test_code: &str,
+        doctest_code: &str,
         dont_insert_main: bool,
         opts: &GlobalTestOptions,
         crate_name: Option<&str>,
@@ -285,12 +285,12 @@ impl DocTestBuilder {
         if self.invalid_ast {
             // If the AST failed to compile, no need to go generate a complete doctest, the error
             // will be better this way.
-            debug!("invalid AST:\n{test_code}");
-            return (DocTestWrapResult::SyntaxError(test_code.to_string()), 0);
+            debug!("invalid AST:\n{doctest_code}");
+            return (DocTestWrapResult::SyntaxError(doctest_code.to_string()), 0);
         }
         let mut line_offset = 0;
         let mut crate_level_code = String::new();
-        let code = self.everything_else.trim().to_string();
+        let processed_code = self.everything_else.trim().to_string();
         if opts.attrs.is_empty() {
             // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
             // lints that are commonly triggered in doctests. The crate-level test attributes are
@@ -337,7 +337,7 @@ impl DocTestBuilder {
             // NOTE: this is terribly inaccurate because it doesn't actually
             // parse the source, but only has false positives, not false
             // negatives.
-            test_code.contains(crate_name)
+            doctest_code.contains(crate_name)
         {
             // rustdoc implicitly inserts an `extern crate` item for the own crate
             // which may be unused, so we need to allow the lint.
@@ -354,7 +354,7 @@ impl DocTestBuilder {
         {
             None
         } else {
-            let returns_result = code.ends_with("(())");
+            let returns_result = processed_code.ends_with("(())");
             // Give each doctest main function a unique name.
             // This is for example needed for the tooling around `-C instrument-coverage`.
             let inner_fn_name = if let Some(ref test_id) = self.test_id {
@@ -396,7 +396,7 @@ impl DocTestBuilder {
             })
         };
 
-        (DocTestWrapResult::Valid { code, wrapper, crate_level_code }, line_offset)
+        (DocTestWrapResult::Valid { code: processed_code, wrapper, crate_level_code }, line_offset)
     }
 }
 
