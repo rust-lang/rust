@@ -100,6 +100,31 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         Canonical { max_universe, variables, value }
     }
 
+    fn canonicalize_param_env(
+        delegate: &'a D,
+        variables: &'a mut Vec<I::GenericArg>,
+        param_env: I::ParamEnv,
+    ) -> (I::ParamEnv, HashMap<I::GenericArg, usize>, Vec<CanonicalVarKind<I>>) {
+        if !param_env.has_type_flags(NEEDS_CANONICAL) {
+            return (param_env, Default::default(), Vec::new());
+        }
+
+        let mut env_canonicalizer = Canonicalizer {
+            delegate,
+            canonicalize_mode: CanonicalizeMode::Input { keep_static: true },
+
+            variables,
+            variable_lookup_table: Default::default(),
+            var_kinds: Vec::new(),
+            binder_index: ty::INNERMOST,
+
+            cache: Default::default(),
+        };
+        let param_env = param_env.fold_with(&mut env_canonicalizer);
+        debug_assert_eq!(env_canonicalizer.binder_index, ty::INNERMOST);
+        (param_env, env_canonicalizer.variable_lookup_table, env_canonicalizer.var_kinds)
+    }
+
     /// When canonicalizing query inputs, we keep `'static` in the `param_env`
     /// but erase it everywhere else. We generally don't want to depend on region
     /// identity, so while it should not matter whether `'static` is kept in the
@@ -114,37 +139,17 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         input: QueryInput<I, P>,
     ) -> ty::Canonical<I, QueryInput<I, P>> {
         // First canonicalize the `param_env` while keeping `'static`
-        let mut env_canonicalizer = Canonicalizer {
-            delegate,
-            canonicalize_mode: CanonicalizeMode::Input { keep_static: true },
-
-            variables,
-            variable_lookup_table: Default::default(),
-            var_kinds: Vec::new(),
-            binder_index: ty::INNERMOST,
-
-            cache: Default::default(),
-        };
-
-        let param_env = input.goal.param_env;
-        let param_env = if param_env.has_type_flags(NEEDS_CANONICAL) {
-            param_env.fold_with(&mut env_canonicalizer)
-        } else {
-            param_env
-        };
-
-        debug_assert_eq!(env_canonicalizer.binder_index, ty::INNERMOST);
+        let (param_env, variable_lookup_table, var_kinds) =
+            Canonicalizer::canonicalize_param_env(delegate, variables, input.goal.param_env);
         // Then canonicalize the rest of the input without keeping `'static`
         // while *mostly* reusing the canonicalizer from above.
         let mut rest_canonicalizer = Canonicalizer {
             delegate,
             canonicalize_mode: CanonicalizeMode::Input { keep_static: false },
 
-            variables: env_canonicalizer.variables,
-            // We're able to reuse the `variable_lookup_table` as whether or not
-            // it already contains an entry for `'static` does not matter.
-            variable_lookup_table: env_canonicalizer.variable_lookup_table,
-            var_kinds: env_canonicalizer.var_kinds,
+            variables,
+            variable_lookup_table,
+            var_kinds,
             binder_index: ty::INNERMOST,
 
             // We do not reuse the cache as it may contain entries whose canonicalized
