@@ -18,7 +18,6 @@ impl<T: ?Sized> Bar<T> for () {}
 fn main() {
     let x: &dyn Foo = &();
     //~^ ERROR the trait `Foo` is not dyn compatible
-    //~| ERROR the trait `Foo` is not dyn compatible
     needs_bar(x);
     //~^ ERROR the trait `Foo` is not dyn compatible
 }
