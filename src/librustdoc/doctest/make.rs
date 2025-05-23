@@ -214,7 +214,14 @@ impl WrapperInfo {
 pub(crate) enum DocTestWrapResult {
     Valid {
         crate_level_code: String,
+        /// This field can be `None` if one of the following conditions is true:
+        ///
+        /// * The doctest's codeblock has the `test_harness` attribute.
+        /// * The doctest has a `main` function.
+        /// * The doctest has the `![no_std]` attribute.
         wrapper: Option<WrapperInfo>,
+        /// Contains the doctest processed code without the wrappers (which are stored in the
+        /// `wrapper` field).
         code: String,
     },
     /// Contains the original source code.
@@ -304,7 +311,7 @@ impl DocTestBuilder {
         }
         let mut line_offset = 0;
         let mut crate_level_code = String::new();
-        let code = self.everything_else.trim();
+        let processed_code = self.everything_else.trim();
         if self.global_crate_attrs.is_empty() {
             // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
             // lints that are commonly triggered in doctests. The crate-level test attributes are
@@ -368,7 +375,7 @@ impl DocTestBuilder {
         {
             None
         } else {
-            let returns_result = code.ends_with("(())");
+            let returns_result = processed_code.ends_with("(())");
             // Give each doctest main function a unique name.
             // This is for example needed for the tooling around `-C instrument-coverage`.
             let inner_fn_name = if let Some(ref test_id) = self.test_id {
@@ -411,7 +418,11 @@ impl DocTestBuilder {
         };
 
         (
-            DocTestWrapResult::Valid { code: code.to_string(), wrapper, crate_level_code },
+            DocTestWrapResult::Valid {
+                code: processed_code.to_string(),
+                wrapper,
+                crate_level_code,
+            },
             line_offset,
         )
     }
