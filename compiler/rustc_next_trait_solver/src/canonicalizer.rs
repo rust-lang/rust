@@ -4,8 +4,8 @@ use rustc_type_ir::data_structures::{HashMap, ensure_sufficient_stack};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
 use rustc_type_ir::{
-    self as ty, Canonical, CanonicalTyVarKind, CanonicalVarKind, InferCtxtLike, Interner,
-    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self as ty, Canonical, CanonicalParamEnvCacheEntry, CanonicalTyVarKind, CanonicalVarKind,
+    InferCtxtLike, Interner, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 
 use crate::delegate::SolverDelegate;
@@ -91,20 +91,58 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         variables: &'a mut Vec<I::GenericArg>,
         param_env: I::ParamEnv,
     ) -> (I::ParamEnv, HashMap<I::GenericArg, usize>, Vec<CanonicalVarKind<I>>) {
-        let mut env_canonicalizer = Canonicalizer {
-            delegate,
-            canonicalize_mode: CanonicalizeMode::Input { keep_static: true },
+        if !param_env.has_non_region_infer() {
+            delegate.cx().canonical_param_env_cache_get_or_insert(
+                param_env,
+                || {
+                    let mut variables = Vec::new();
+                    let mut env_canonicalizer = Canonicalizer {
+                        delegate,
+                        canonicalize_mode: CanonicalizeMode::Input { keep_static: true },
 
-            variables,
-            variable_lookup_table: Default::default(),
-            var_kinds: Vec::new(),
-            binder_index: ty::INNERMOST,
+                        variables: &mut variables,
+                        variable_lookup_table: Default::default(),
+                        var_kinds: Vec::new(),
+                        binder_index: ty::INNERMOST,
 
-            cache: Default::default(),
-        };
-        let param_env = param_env.fold_with(&mut env_canonicalizer);
-        debug_assert_eq!(env_canonicalizer.binder_index, ty::INNERMOST);
-        (param_env, env_canonicalizer.variable_lookup_table, env_canonicalizer.var_kinds)
+                        cache: Default::default(),
+                    };
+                    let param_env = param_env.fold_with(&mut env_canonicalizer);
+                    debug_assert_eq!(env_canonicalizer.binder_index, ty::INNERMOST);
+                    CanonicalParamEnvCacheEntry {
+                        param_env,
+                        variable_lookup_table: env_canonicalizer.variable_lookup_table,
+                        var_kinds: env_canonicalizer.var_kinds,
+                        variables,
+                    }
+                },
+                |&CanonicalParamEnvCacheEntry {
+                     param_env,
+                     variables: ref cache_variables,
+                     ref variable_lookup_table,
+                     ref var_kinds,
+                 }| {
+                    debug_assert!(variables.is_empty());
+                    variables.extend(cache_variables.iter().copied());
+                    (param_env, variable_lookup_table.clone(), var_kinds.clone())
+                },
+            )
+        } else {
+            let mut env_canonicalizer = Canonicalizer {
+                delegate,
+                canonicalize_mode: CanonicalizeMode::Input { keep_static: true },
+
+                variables,
+                variable_lookup_table: Default::default(),
+                var_kinds: Vec::new(),
+                binder_index: ty::INNERMOST,
+
+                cache: Default::default(),
+            };
+            let param_env = param_env.fold_with(&mut env_canonicalizer);
+            debug_assert_eq!(env_canonicalizer.binder_index, ty::INNERMOST);
+            (param_env, env_canonicalizer.variable_lookup_table, env_canonicalizer.var_kinds)
+        }
     }
 
     /// When canonicalizing query inputs, we keep `'static` in the `param_env`
