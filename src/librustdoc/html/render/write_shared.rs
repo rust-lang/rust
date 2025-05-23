@@ -653,7 +653,7 @@ impl TypeAliasPart {
                         )
                         .to_string();
                         let type_alias_fqp = (*type_alias_fqp).iter().join("::");
-                        if Some(&text) == ret.last().map(|s: &AliasSerializableImpl| &s.text) {
+                        if ret.last().map(|s: &AliasSerializableImpl| &s.text).is_some() {
                             ret.last_mut()
                                 .expect("already established that ret.last() is Some()")
                                 .aliases
