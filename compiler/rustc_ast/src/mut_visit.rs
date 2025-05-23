@@ -368,14 +368,6 @@ pub trait MutVisitor: Sized {
 
 super::common_visitor_and_walkers!((mut) MutVisitor);
 
-/// Use a map-style function (`FnOnce(T) -> T`) to overwrite a `&mut T`. Useful
-/// when using a `flat_map_*` or `filter_map_*` method within a `visit_`
-/// method.
-pub fn visit_clobber<T: DummyAstNode>(t: &mut T, f: impl FnOnce(T) -> T) {
-    let old_t = std::mem::replace(t, T::dummy());
-    *t = f(old_t);
-}
-
 #[inline]
 fn visit_vec<T, F>(elems: &mut Vec<T>, mut visit_elem: F)
 where
@@ -1414,101 +1406,6 @@ fn walk_capture_by<T: MutVisitor>(vis: &mut T, capture_by: &mut CaptureBy) {
         CaptureBy::Use { use_kw } => {
             vis.visit_span(use_kw);
         }
-    }
-}
-
-/// Some value for the AST node that is valid but possibly meaningless. Similar
-/// to `Default` but not intended for wide use. The value will never be used
-/// meaningfully, it exists just to support unwinding in `visit_clobber` in the
-/// case where its closure panics.
-pub trait DummyAstNode {
-    fn dummy() -> Self;
-}
-
-impl<T> DummyAstNode for Option<T> {
-    fn dummy() -> Self {
-        Default::default()
-    }
-}
-
-impl<T: DummyAstNode + 'static> DummyAstNode for P<T> {
-    fn dummy() -> Self {
-        P(DummyAstNode::dummy())
-    }
-}
-
-impl DummyAstNode for Item {
-    fn dummy() -> Self {
-        Item {
-            attrs: Default::default(),
-            id: DUMMY_NODE_ID,
-            span: Default::default(),
-            vis: Visibility {
-                kind: VisibilityKind::Public,
-                span: Default::default(),
-                tokens: Default::default(),
-            },
-            kind: ItemKind::ExternCrate(None, Ident::dummy()),
-            tokens: Default::default(),
-        }
-    }
-}
-
-impl DummyAstNode for Expr {
-    fn dummy() -> Self {
-        Expr {
-            id: DUMMY_NODE_ID,
-            kind: ExprKind::Dummy,
-            span: Default::default(),
-            attrs: Default::default(),
-            tokens: Default::default(),
-        }
-    }
-}
-
-impl DummyAstNode for Ty {
-    fn dummy() -> Self {
-        Ty {
-            id: DUMMY_NODE_ID,
-            kind: TyKind::Dummy,
-            span: Default::default(),
-            tokens: Default::default(),
-        }
-    }
-}
-
-impl DummyAstNode for Pat {
-    fn dummy() -> Self {
-        Pat {
-            id: DUMMY_NODE_ID,
-            kind: PatKind::Wild,
-            span: Default::default(),
-            tokens: Default::default(),
-        }
-    }
-}
-
-impl DummyAstNode for Stmt {
-    fn dummy() -> Self {
-        Stmt { id: DUMMY_NODE_ID, kind: StmtKind::Empty, span: Default::default() }
-    }
-}
-
-impl DummyAstNode for Crate {
-    fn dummy() -> Self {
-        Crate {
-            attrs: Default::default(),
-            items: Default::default(),
-            spans: Default::default(),
-            id: DUMMY_NODE_ID,
-            is_placeholder: Default::default(),
-        }
-    }
-}
-
-impl<N: DummyAstNode, T: DummyAstNode> DummyAstNode for crate::ast_traits::AstNodeWrapper<N, T> {
-    fn dummy() -> Self {
-        crate::ast_traits::AstNodeWrapper::new(N::dummy(), T::dummy())
     }
 }
 
