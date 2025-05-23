@@ -43,7 +43,7 @@ verbose-tests = false
 # disabled bootstrap will crash trying to copy llvm tools for the bootstrap
 # compiler.
 llvm-tools = false
-std-features = ["panic-unwind", "compiler-builtins-no-f16-f128"]
+std-features = ["panic-unwind"]
 
 EOF
 
