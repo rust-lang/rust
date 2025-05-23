@@ -349,9 +349,10 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
     codegen_fn_attrs.alignment =
         Ord::max(codegen_fn_attrs.alignment, tcx.sess.opts.unstable_opts.min_function_alignment);
 
-    // Compute the disabled sanitizers.
-    codegen_fn_attrs.sanitizers.disabled |=
-        tcx.sanitizer_settings_for(did).disabled;
+    // Passed in sanitizer settings are always the default.
+    assert!(codegen_fn_attrs.sanitizers == SanitizerFnAttrs::default());
+    // Replace with #[sanitize] value
+    codegen_fn_attrs.sanitizers = tcx.sanitizer_settings_for(did);
     // On trait methods, inherit the `#[align]` of the trait's method prototype.
     codegen_fn_attrs.alignment = Ord::max(codegen_fn_attrs.alignment, tcx.inherited_align(did));
 
@@ -587,7 +588,7 @@ fn sanitizer_settings_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerFnAttrs 
     };
 
     // Check for a sanitize annotation directly on this def.
-    if let Some((on_set, off_set)) = find_attr!(tcx.get_all_attrs(did), AttributeKind::Sanitize {on_set, off_set, ..} => (on_set, off_set))
+    if let Some((on_set, off_set, rtsan)) = find_attr!(tcx.get_all_attrs(did), AttributeKind::Sanitize {on_set, off_set, rtsan, ..} => (on_set, off_set, rtsan))
     {
         // the on set is the set of sanitizers explicitly enabled.
         // we mask those out since we want the set of disabled sanitizers here
@@ -598,6 +599,11 @@ fn sanitizer_settings_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerFnAttrs 
         // the on set and off set are distjoint since there's a third option: unset.
         // a node may not set the sanitizer setting in which case it inherits from parents.
         // the code above in this function does this backtracking
+
+        // if rtsan was specified here override the parent
+        if let Some(rtsan) = rtsan {
+            settings.rtsan_setting = *rtsan;
+        }
     }
     settings
 }

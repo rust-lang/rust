@@ -633,6 +633,7 @@ pub(crate) unsafe fn llvm_optimize(
             sanitize_memory: config.sanitizer.contains(SanitizerSet::MEMORY),
             sanitize_memory_recover: config.sanitizer_recover.contains(SanitizerSet::MEMORY),
             sanitize_memory_track_origins: config.sanitizer_memory_track_origins as c_int,
+            sanitize_realtime: config.sanitizer.contains(SanitizerSet::REALTIME),
             sanitize_thread: config.sanitizer.contains(SanitizerSet::THREAD),
             sanitize_hwaddress: config.sanitizer.contains(SanitizerSet::HWADDRESS),
             sanitize_hwaddress_recover: config.sanitizer_recover.contains(SanitizerSet::HWADDRESS),
