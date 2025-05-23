@@ -56,30 +56,12 @@ pub struct Argument<'a> {
 
 impl<'a> Argument<'a> {
     pub fn is_identifier(&self) -> bool {
-        matches!(self.position, Position::ArgumentNamed(_))
-            && matches!(
-                self.format,
-                FormatSpec {
-                    fill: None,
-                    fill_span: None,
-                    align: AlignUnknown,
-                    sign: None,
-                    alternate: false,
-                    zero_pad: false,
-                    debug_hex: None,
-                    precision: CountImplied,
-                    precision_span: None,
-                    width: CountImplied,
-                    width_span: None,
-                    ty: "",
-                    ty_span: None,
-                },
-            )
+        matches!(self.position, Position::ArgumentNamed(_)) && self.format == FormatSpec::default()
     }
 }
 
 /// Specification for the formatting of an argument in the format string.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct FormatSpec<'a> {
     /// Optionally specified character to fill alignment with.
     pub fill: Option<char>,
@@ -132,7 +114,7 @@ impl Position<'_> {
 }
 
 /// Enum of alignments which are supported.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Default)]
 pub enum Alignment {
     /// The value will be aligned to the left.
     AlignLeft,
@@ -141,6 +123,7 @@ pub enum Alignment {
     /// The value will be aligned in the center.
     AlignCenter,
     /// The value will take on a default alignment.
+    #[default]
     AlignUnknown,
 }
 
@@ -164,7 +147,7 @@ pub enum DebugHex {
 
 /// A count is used for the precision and width parameters of an integer, and
 /// can reference either an argument or a literal integer.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum Count<'a> {
     /// The count is specified explicitly.
     CountIs(u16),
@@ -175,6 +158,7 @@ pub enum Count<'a> {
     /// The count is specified by a star (like in `{:.*}`) that refers to the argument at the given index.
     CountIsStar(usize),
     /// The count is implied and cannot be explicitly specified.
+    #[default]
     CountImplied,
 }
 
@@ -596,21 +580,8 @@ impl<'a> Parser<'a> {
     /// Parses a format specifier at the current position, returning all of the
     /// relevant information in the `FormatSpec` struct.
     fn format(&mut self) -> FormatSpec<'a> {
-        let mut spec = FormatSpec {
-            fill: None,
-            fill_span: None,
-            align: AlignUnknown,
-            sign: None,
-            alternate: false,
-            zero_pad: false,
-            debug_hex: None,
-            precision: CountImplied,
-            precision_span: None,
-            width: CountImplied,
-            width_span: None,
-            ty: &self.input[..0],
-            ty_span: None,
-        };
+        let mut spec = FormatSpec::default();
+
         if !self.consume(':') {
             return spec;
         }
@@ -727,21 +698,8 @@ impl<'a> Parser<'a> {
     /// Parses an inline assembly template modifier at the current position, returning the modifier
     /// in the `ty` field of the `FormatSpec` struct.
     fn inline_asm(&mut self) -> FormatSpec<'a> {
-        let mut spec = FormatSpec {
-            fill: None,
-            fill_span: None,
-            align: AlignUnknown,
-            sign: None,
-            alternate: false,
-            zero_pad: false,
-            debug_hex: None,
-            precision: CountImplied,
-            precision_span: None,
-            width: CountImplied,
-            width_span: None,
-            ty: &self.input[..0],
-            ty_span: None,
-        };
+        let mut spec = FormatSpec::default();
+
         if !self.consume(':') {
             return spec;
         }
