@@ -69,7 +69,6 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
         );
     }
 
-
     debug!("predicates_of({:?}) = {:?}", def_id, result);
     result
 }
@@ -324,9 +323,10 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             for item in list.iter() {
                 // TODO: deal with error later
                 let feature_name = item.name().unwrap();
-                predicates
-                    .insert((ty::ClauseKind::UnstableFeature(feature_name).upcast(tcx), tcx.def_span(def_id)));
-
+                predicates.insert((
+                    ty::ClauseKind::UnstableFeature(feature_name).upcast(tcx),
+                    tcx.def_span(def_id),
+                ));
             }
         }
     }
@@ -760,7 +760,7 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
                     ty::ClauseKind::RegionOutlives(_)
                     | ty::ClauseKind::ConstArgHasType(_, _)
                     | ty::ClauseKind::WellFormed(_)
-                    | ty::ClauseKind::UnstableFeature(_) 
+                    | ty::ClauseKind::UnstableFeature(_)
                     | ty::ClauseKind::ConstEvaluatable(_) => {
                         bug!(
                             "unexpected non-`Self` predicate when computing \
@@ -788,7 +788,7 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
                     | ty::ClauseKind::ConstArgHasType(_, _)
                     | ty::ClauseKind::WellFormed(_)
                     | ty::ClauseKind::ConstEvaluatable(_)
-                    | ty::ClauseKind::UnstableFeature(_) 
+                    | ty::ClauseKind::UnstableFeature(_)
                     | ty::ClauseKind::HostEffect(..) => {
                         bug!(
                             "unexpected non-`Self` predicate when computing \

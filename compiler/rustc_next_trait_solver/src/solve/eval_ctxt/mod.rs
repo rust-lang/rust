@@ -625,8 +625,7 @@ where
                     }),
                 ty::PredicateKind::Ambiguous => {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                },
-
+                }
             }
         } else {
             self.enter_forall(kind, |ecx, kind| {

@@ -1,6 +1,5 @@
 use std::fmt;
 
-
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
@@ -138,7 +137,9 @@ impl<I: Interner> fmt::Debug for ClauseKind<I> {
             ClauseKind::ConstEvaluatable(ct) => {
                 write!(f, "ConstEvaluatable({ct:?})")
             }
-            ClauseKind::UnstableFeature(feature_name) => write!(f, "UnstableFeature({feature_name:?})"),
+            ClauseKind::UnstableFeature(feature_name) => {
+                write!(f, "UnstableFeature({feature_name:?})")
+            }
         }
     }
 }
