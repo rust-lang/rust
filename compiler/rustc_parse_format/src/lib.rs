@@ -424,12 +424,13 @@ impl<'a> Parser<'a> {
     /// returned, otherwise the character is consumed and the current position is
     /// returned.
     fn consume_pos(&mut self, ch: char) -> Option<(Range<usize>, usize)> {
-        if let Some((r, i, c)) = self.peek() {
-            if ch == c {
-                self.input_vec_index += 1;
-                return Some((r, i));
-            }
+        if let Some((r, i, c)) = self.peek()
+            && ch == c
+        {
+            self.input_vec_index += 1;
+            return Some((r, i));
         }
+
         None
     }
 
@@ -549,20 +550,17 @@ impl<'a> Parser<'a> {
                     let word = self.word();
 
                     // Recover from `r#ident` in format strings.
-                    // FIXME: use a let chain
-                    if word == "r" {
-                        if let Some((r, _, '#')) = self.peek() {
-                            if self
-                                .peek_ahead()
-                                .is_some_and(|(_, _, c)| rustc_lexer::is_id_start(c))
-                            {
-                                self.input_vec_index += 1;
-                                let prefix_end = r.end;
-                                let word = self.word();
-                                let prefix_span = start..prefix_end;
-                                let full_span =
-                                    start..self.input_vec_index2range(self.input_vec_index).start;
-                                self.errors.insert(0, ParseError {
+                    if word == "r"
+                        && let Some((r, _, '#')) = self.peek()
+                        && self.peek_ahead().is_some_and(|(_, _, c)| rustc_lexer::is_id_start(c))
+                    {
+                        self.input_vec_index += 1;
+                        let prefix_end = r.end;
+                        let word = self.word();
+                        let prefix_span = start..prefix_end;
+                        let full_span =
+                            start..self.input_vec_index2range(self.input_vec_index).start;
+                        self.errors.insert(0, ParseError {
                                     description: "raw identifiers are not supported".to_owned(),
                                     note: Some("identifiers in format strings can be keywords and don't need to be prefixed with `r#`".to_string()),
                                     label: "raw identifier used here".to_owned(),
@@ -570,9 +568,7 @@ impl<'a> Parser<'a> {
                                     secondary_label: None,
                                     suggestion: Suggestion::RemoveRawIdent(prefix_span),
                                 });
-                                return Some(ArgumentNamed(word));
-                            }
-                        }
+                        return Some(ArgumentNamed(word));
                     }
 
                     Some(ArgumentNamed(word))
@@ -620,12 +616,10 @@ impl<'a> Parser<'a> {
         }
 
         // fill character
-        if let Some((r, _, c)) = self.peek() {
-            if let Some((_, _, '>' | '<' | '^')) = self.peek_ahead() {
-                self.input_vec_index += 1;
-                spec.fill = Some(c);
-                spec.fill_span = Some(r);
-            }
+        if let (Some((r, _, c)), Some((_, _, '>' | '<' | '^'))) = (self.peek(), self.peek_ahead()) {
+            self.input_vec_index += 1;
+            spec.fill = Some(c);
+            spec.fill_span = Some(r);
         }
         // Alignment
         if self.consume('<') {
@@ -703,24 +697,21 @@ impl<'a> Parser<'a> {
             }
         } else if let Some((range, _)) = self.consume_pos('?') {
             spec.ty = "?";
-            if let Some((r, _, c)) = self.peek() {
-                match c {
-                    '#' | 'x' | 'X' => self.errors.insert(
-                        0,
-                        ParseError {
-                            description: format!("expected `}}`, found `{c}`"),
-                            note: None,
-                            label: "expected `'}'`".into(),
-                            span: r.clone(),
-                            secondary_label: None,
-                            suggestion: Suggestion::ReorderFormatParameter(
-                                range.start..r.end,
-                                format!("{c}?"),
-                            ),
-                        },
-                    ),
-                    _ => (),
-                }
+            if let Some((r, _, c @ ('#' | 'x' | 'X'))) = self.peek() {
+                self.errors.insert(
+                    0,
+                    ParseError {
+                        description: format!("expected `}}`, found `{c}`"),
+                        note: None,
+                        label: "expected `'}'`".into(),
+                        span: r.clone(),
+                        secondary_label: None,
+                        suggestion: Suggestion::ReorderFormatParameter(
+                            range.start..r.end,
+                            format!("{c}?"),
+                        ),
+                    },
+                );
             }
         } else {
             spec.ty = self.word();
