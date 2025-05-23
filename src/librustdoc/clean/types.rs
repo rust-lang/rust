@@ -1601,9 +1601,7 @@ impl Type {
                 a.def_id() == b.def_id()
                     && a.generics()
                         .zip(b.generics())
-                        .map(|(ag, bg)| {
-                            ag.iter().zip(bg.iter()).all(|(at, bt)| at.is_doc_subtype_of(bt, cache))
-                        })
+                        .map(|(ag, bg)| ag.zip(bg).all(|(at, bt)| at.is_doc_subtype_of(bt, cache)))
                         .unwrap_or(true)
             }
             // Other cases, such as primitives, just use recursion.
@@ -1676,7 +1674,7 @@ impl Type {
         }
     }
 
-    pub(crate) fn generics(&self) -> Option<Vec<&Type>> {
+    pub(crate) fn generics<'a>(&'a self) -> Option<impl Iterator<Item = &'a Type>> {
         match self {
             Type::Path { path, .. } => path.generics(),
             _ => None,
@@ -2234,17 +2232,13 @@ impl Path {
         self.segments.last().map(|seg| &seg.args)
     }
 
-    pub(crate) fn generics(&self) -> Option<Vec<&Type>> {
+    pub(crate) fn generics<'a>(&'a self) -> Option<impl Iterator<Item = &'a Type>> {
         self.segments.last().and_then(|seg| {
             if let GenericArgs::AngleBracketed { ref args, .. } = seg.args {
-                Some(
-                    args.iter()
-                        .filter_map(|arg| match arg {
-                            GenericArg::Type(ty) => Some(ty),
-                            _ => None,
-                        })
-                        .collect(),
-                )
+                Some(args.iter().filter_map(|arg| match arg {
+                    GenericArg::Type(ty) => Some(ty),
+                    _ => None,
+                }))
             } else {
                 None
             }

@@ -1119,8 +1119,8 @@ impl clean::Impl {
                     write!(f, "!")?;
                 }
                 if self.kind.is_fake_variadic()
-                    && let generics = ty.generics()
-                    && let &[inner_type] = generics.as_ref().map_or(&[][..], |v| &v[..])
+                    && let Some(mut generics) = ty.generics()
+                    && let (Some(inner_type), None) = (generics.next(), generics.next())
                 {
                     let last = ty.last();
                     if f.alternate() {
@@ -1198,11 +1198,10 @@ impl clean::Impl {
                 fmt_type(&bare_fn.decl.output, f, use_absolute, cx)?;
             }
         } else if let clean::Type::Path { path } = type_
-            && let Some(generics) = path.generics()
-            && generics.len() == 1
+            && let Some(mut generics) = path.generics()
+            && let (Some(ty), None) = (generics.next(), generics.next())
             && self.kind.is_fake_variadic()
         {
-            let ty = generics[0];
             let wrapper = print_anchor(path.def_id(), path.last(), cx);
             if f.alternate() {
                 write!(f, "{wrapper:#}&lt;")?;
