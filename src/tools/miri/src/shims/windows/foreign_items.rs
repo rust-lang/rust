@@ -195,69 +195,52 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // File related shims
             "NtWriteFile" => {
-                if !this.frame_in_std() {
-                    throw_unsup_format!(
-                        "`NtWriteFile` support is crude and just enough for stdout to work"
-                    );
-                }
-
                 let [
                     handle,
-                    _event,
-                    _apc_routine,
-                    _apc_context,
+                    event,
+                    apc_routine,
+                    apc_context,
                     io_status_block,
                     buf,
                     n,
                     byte_offset,
-                    _key,
+                    key,
                 ] = this.check_shim(abi, sys_conv, link_name, args)?;
-                let handle = this.read_target_isize(handle)?;
-                let buf = this.read_pointer(buf)?;
-                let n = this.read_scalar(n)?.to_u32()?;
-                let byte_offset = this.read_target_usize(byte_offset)?; // is actually a pointer
-                let io_status_block = this
-                    .deref_pointer_as(io_status_block, this.windows_ty_layout("IO_STATUS_BLOCK"))?;
-
-                if byte_offset != 0 {
-                    throw_unsup_format!(
-                        "`NtWriteFile` `ByteOffset` parameter is non-null, which is unsupported"
-                    );
-                }
-
-                let written = if handle == -11 || handle == -12 {
-                    // stdout/stderr
-                    use io::Write;
-
-                    let buf_cont =
-                        this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(u64::from(n)))?;
-                    let res = if this.machine.mute_stdout_stderr {
-                        Ok(buf_cont.len())
-                    } else if handle == -11 {
-                        io::stdout().write(buf_cont)
-                    } else {
-                        io::stderr().write(buf_cont)
-                    };
-                    // We write at most `n` bytes, which is a `u32`, so we cannot have written more than that.
-                    res.ok().map(|n| u32::try_from(n).unwrap())
-                } else {
-                    throw_unsup_format!(
-                        "on Windows, writing to anything except stdout/stderr is not supported"
-                    )
-                };
-                // We have to put the result into io_status_block.
-                if let Some(n) = written {
-                    let io_status_information =
-                        this.project_field_named(&io_status_block, "Information")?;
-                    this.write_scalar(
-                        Scalar::from_target_usize(n.into(), this),
-                        &io_status_information,
-                    )?;
-                }
-                // Return whether this was a success. >= 0 is success.
-                // For the error code we arbitrarily pick 0xC0000185, STATUS_IO_DEVICE_ERROR.
-                this.write_scalar(
-                    Scalar::from_u32(if written.is_some() { 0 } else { 0xC0000185u32 }),
+                this.NtWriteFile(
+                    handle,
+                    event,
+                    apc_routine,
+                    apc_context,
+                    io_status_block,
+                    buf,
+                    n,
+                    byte_offset,
+                    key,
+                    dest,
+                )?;
+            }
+            "NtReadFile" => {
+                let [
+                    handle,
+                    event,
+                    apc_routine,
+                    apc_context,
+                    io_status_block,
+                    buf,
+                    n,
+                    byte_offset,
+                    key,
+                ] = this.check_shim(abi, sys_conv, link_name, args)?;
+                this.NtReadFile(
+                    handle,
+                    event,
+                    apc_routine,
+                    apc_context,
+                    io_status_block,
+                    buf,
+                    n,
+                    byte_offset,
+                    key,
                     dest,
                 )?;
             }
@@ -320,6 +303,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "DeleteFileW" => {
                 let [file_name] = this.check_shim(abi, sys_conv, link_name, args)?;
                 let res = this.DeleteFileW(file_name)?;
+                this.write_scalar(res, dest)?;
+            }
+            "SetFilePointerEx" => {
+                let [file, distance_to_move, new_file_pointer, move_method] =
+                    this.check_shim(abi, sys_conv, link_name, args)?;
+                let res =
+                    this.SetFilePointerEx(file, distance_to_move, new_file_pointer, move_method)?;
                 this.write_scalar(res, dest)?;
             }
 
@@ -700,12 +690,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "GetStdHandle" => {
                 let [which] = this.check_shim(abi, sys_conv, link_name, args)?;
-                let which = this.read_scalar(which)?.to_i32()?;
-                // We just make this the identity function, so we know later in `NtWriteFile` which
-                // one it is. This is very fake, but libtest needs it so we cannot make it a
-                // std-only shim.
-                // FIXME: this should return real HANDLEs when io support is added
-                this.write_scalar(Scalar::from_target_isize(which.into(), this), dest)?;
+                let res = this.GetStdHandle(which)?;
+                this.write_scalar(res, dest)?;
             }
             "CloseHandle" => {
                 let [handle] = this.check_shim(abi, sys_conv, link_name, args)?;

@@ -25,7 +25,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let frame_count = this.active_thread_stack().len();
 
-        this.write_scalar(Scalar::from_target_usize(frame_count.try_into().unwrap(), this), dest)
+        this.write_scalar(Scalar::from_target_usize(frame_count.to_u64(), this), dest)
     }
 
     fn handle_miri_get_backtrace(
@@ -70,7 +70,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             1 =>
                 for (i, ptr) in ptrs.into_iter().enumerate() {
-                    let offset = ptr_layout.size.checked_mul(i.try_into().unwrap(), this).unwrap();
+                    let offset = ptr_layout.size.checked_mul(i.to_u64(), this).unwrap();
 
                     let op_place = buf_place.offset(offset, ptr_layout, this)?;
 
@@ -158,11 +158,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             1 => {
                 this.write_scalar(
-                    Scalar::from_target_usize(name.len().try_into().unwrap(), this),
+                    Scalar::from_target_usize(name.len().to_u64(), this),
                     &this.project_field(dest, 0)?,
                 )?;
                 this.write_scalar(
-                    Scalar::from_target_usize(filename.len().try_into().unwrap(), this),
+                    Scalar::from_target_usize(filename.len().to_u64(), this),
                     &this.project_field(dest, 1)?,
                 )?;
             }
