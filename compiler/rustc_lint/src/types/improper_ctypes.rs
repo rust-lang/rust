@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::iter;
 use std::ops::ControlFlow;
 
@@ -84,11 +85,6 @@ fn variant_has_complex_ctor(variant: &ty::VariantDef) -> bool {
 enum CItemKind {
     Declaration,
     Definition,
-}
-
-struct ImproperCTypesVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    cache: FxHashSet<Ty<'tcx>>,
 }
 
 #[derive(Clone, Debug)]
@@ -386,9 +382,52 @@ impl CTypesVisitorState {
     }
 }
 
+/// visitor structure responsible for checking the actual FFI-safety
+/// of a given type
+struct ImproperCTypesVisitor<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    /// to prevent problems with recursive types, add a types-in-check cache
+    /// and a depth counter
+    recursion_limiter: RefCell<(FxHashSet<Ty<'tcx>>, usize)>,
+}
+
+/// structure similar to a mutex guard, allocated for each type in-check
+/// to let the ImproperCTypesVisitor know the current depth of the checking process
+struct ImproperCTypesVisitorDepthGuard<'a, 'tcx, 'v>(&'v ImproperCTypesVisitor<'a, 'tcx>);
+
+impl<'a, 'tcx, 'v> Drop for ImproperCTypesVisitorDepthGuard<'a, 'tcx, 'v> {
+    fn drop(&mut self) {
+        let mut limiter_guard = self.0.recursion_limiter.borrow_mut();
+        let (_, ref mut depth) = *limiter_guard;
+        *depth -= 1;
+    }
+}
+
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
+    fn new(cx: &'a LateContext<'tcx>) -> Self {
+        Self { cx, recursion_limiter: RefCell::new((FxHashSet::default(), 0)) }
+    }
+
+    /// Protect against infinite recursion, for example
+    /// `struct S(*mut S);`, or issue #130310.
+    fn can_enter_type<'v>(
+        &'v self,
+        ty: Ty<'tcx>,
+    ) -> Result<ImproperCTypesVisitorDepthGuard<'a, 'tcx, 'v>, FfiResult<'tcx>> {
+        // panic unlikely: this non-recursive function is the only place that
+        // borrows the refcell, outside of ImproperCTypesVisitorDepthGuard::drop()
+        let mut limiter_guard = self.recursion_limiter.borrow_mut();
+        let (ref mut cache, ref mut depth) = *limiter_guard;
+        if (!cache.insert(ty)) || *depth >= 1024 {
+            Err(FfiResult::FfiSafe)
+        } else {
+            *depth += 1;
+            Ok(ImproperCTypesVisitorDepthGuard(self))
+        }
+    }
+
     /// Checks whether an `extern "ABI" fn` function pointer is indeed FFI-safe to call
-    fn visit_fnptr(&mut self, mode: CItemKind, ty: Ty<'tcx>, sig: Sig<'tcx>) -> FfiResult<'tcx> {
+    fn visit_fnptr(&self, mode: CItemKind, ty: Ty<'tcx>, sig: Sig<'tcx>) -> FfiResult<'tcx> {
         use FfiResult::*;
         debug_assert!(!sig.abi().is_rustic_abi());
         let sig = self.cx.tcx.instantiate_bound_regions_with_erased(sig);
@@ -426,7 +465,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     /// Checks if a simple numeric (int, float) type has an actual portable definition
     /// for the compile target
-    fn visit_numeric(&mut self, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+    fn visit_numeric(&self, ty: Ty<'tcx>) -> FfiResult<'tcx> {
         // FIXME: for now, this is very incomplete, and seems to assume a x86_64 target
         match ty.kind() {
             ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => {
@@ -438,7 +477,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     /// Return the right help for Cstring and Cstr-linked unsafety
-    fn visit_cstr(&mut self, outer_ty: Option<Ty<'tcx>>, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+    fn visit_cstr(&self, outer_ty: Option<Ty<'tcx>>, ty: Ty<'tcx>) -> FfiResult<'tcx> {
         debug_assert!(matches!(ty.kind(), ty::Adt(def, _)
             if matches!(
                 self.cx.tcx.get_diagnostic_name(def.did()),
@@ -469,7 +508,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     /// Checks if the given indirection (box,ref,pointer) is "ffi-safe"
     fn visit_indirection(
-        &mut self,
+        &self,
         state: CTypesVisitorState,
         outer_ty: Option<Ty<'tcx>>,
         ty: Ty<'tcx>,
@@ -609,7 +648,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     /// Checks if the given `VariantDef`'s field types are "ffi-safe".
     fn visit_variant_fields(
-        &mut self,
+        &self,
         state: CTypesVisitorState,
         ty: Ty<'tcx>,
         def: ty::AdtDef<'tcx>,
@@ -668,7 +707,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_struct_union(
-        &mut self,
+        &self,
         state: CTypesVisitorState,
         ty: Ty<'tcx>,
         def: ty::AdtDef<'tcx>,
@@ -724,7 +763,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_enum(
-        &mut self,
+        &self,
         state: CTypesVisitorState,
         ty: Ty<'tcx>,
         def: ty::AdtDef<'tcx>,
@@ -792,22 +831,18 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
     fn visit_type(
-        &mut self,
+        &self,
         state: CTypesVisitorState,
         outer_ty: Option<Ty<'tcx>>,
         ty: Ty<'tcx>,
     ) -> FfiResult<'tcx> {
         use FfiResult::*;
 
+        let _depth_guard = match self.can_enter_type(ty) {
+            Ok(guard) => guard,
+            Err(ffi_res) => return ffi_res,
+        };
         let tcx = self.cx.tcx;
-
-        // Protect against infinite recursion, for example
-        // `struct S(*mut S);`.
-        // FIXME: A recursion limit is necessary as well, for irregular
-        // recursive types.
-        if !self.cache.insert(ty) {
-            return FfiSafe;
-        }
 
         match *ty.kind() {
             ty::Adt(def, args) => {
@@ -1007,7 +1042,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_for_opaque_ty(&mut self, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+    fn check_for_opaque_ty(&self, ty: Ty<'tcx>) -> FfiResult<'tcx> {
         struct ProhibitOpaqueTypes;
         impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueTypes {
             type Result = ControlFlow<Ty<'tcx>>;
@@ -1032,7 +1067,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_for_type(&mut self, state: CTypesVisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+    fn check_for_type(&self, state: CTypesVisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
         let ty = normalize_if_possible(self.cx, ty);
 
         match self.check_for_opaque_ty(ty) {
@@ -1042,7 +1077,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         self.visit_type(state, None, ty)
     }
 
-    fn check_for_fnptr(&mut self, mode: CItemKind, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+    fn check_for_fnptr(&self, mode: CItemKind, ty: Ty<'tcx>) -> FfiResult<'tcx> {
         let ty = normalize_if_possible(self.cx, ty);
 
         match self.check_for_opaque_ty(ty) {
@@ -1184,8 +1219,7 @@ impl<'c, 'tcx> ImproperCTypesLint<'c, 'tcx> {
         all_types
             .map(|(fn_ptr_ty, span)| {
                 // FIXME this will probably lead to error deduplication: fix this
-                let mut visitor =
-                    ImproperCTypesVisitor { cx: self.cx, cache: FxHashSet::default() };
+                let visitor = ImproperCTypesVisitor::new(self.cx);
                 let ffi_res = visitor.check_for_fnptr(fn_mode, fn_ptr_ty);
                 (span, ffi_res)
             })
@@ -1218,7 +1252,7 @@ impl<'c, 'tcx> ImproperCTypesLint<'c, 'tcx> {
     /// Check that an extern "ABI" static variable is of a ffi-safe type
     fn check_foreign_static(&self, id: hir::OwnerId, span: Span) {
         let ty = self.cx.tcx.type_of(id).instantiate_identity();
-        let mut visitor = ImproperCTypesVisitor { cx: self.cx, cache: FxHashSet::default() };
+        let visitor = ImproperCTypesVisitor::new(self.cx);
         let ffi_res = visitor.check_for_type(CTypesVisitorState::StaticTy, ty);
         self.process_ffi_result(span, ffi_res, CItemKind::Declaration);
     }
@@ -1234,7 +1268,7 @@ impl<'c, 'tcx> ImproperCTypesLint<'c, 'tcx> {
         let sig = self.cx.tcx.instantiate_bound_regions_with_erased(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
-            let mut visitor = ImproperCTypesVisitor { cx: self.cx, cache: FxHashSet::default() };
+            let visitor = ImproperCTypesVisitor::new(self.cx);
             let visit_state = match fn_mode {
                 CItemKind::Definition => CTypesVisitorState::ArgumentTyInDefinition,
                 CItemKind::Declaration => CTypesVisitorState::ArgumentTyInDeclaration,
@@ -1244,7 +1278,7 @@ impl<'c, 'tcx> ImproperCTypesLint<'c, 'tcx> {
         }
 
         if let hir::FnRetTy::Return(ret_hir) = decl.output {
-            let mut visitor = ImproperCTypesVisitor { cx: self.cx, cache: FxHashSet::default() };
+            let visitor = ImproperCTypesVisitor::new(self.cx);
             let visit_state = match fn_mode {
                 CItemKind::Definition => CTypesVisitorState::ReturnTyInDefinition,
                 CItemKind::Declaration => CTypesVisitorState::ReturnTyInDeclaration,
