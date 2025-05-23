@@ -293,7 +293,7 @@ impl Backtrace {
         if !Backtrace::enabled() {
             return Backtrace { inner: Inner::Disabled };
         }
-        Backtrace::create(Backtrace::capture as usize)
+        Backtrace::create(Backtrace::capture as fn() -> Backtrace as usize)
     }
 
     /// Forcibly captures a full backtrace, regardless of environment variable
@@ -309,7 +309,7 @@ impl Backtrace {
     #[stable(feature = "backtrace", since = "1.65.0")]
     #[inline(never)] // want to make sure there's a frame here to remove
     pub fn force_capture() -> Backtrace {
-        Backtrace::create(Backtrace::force_capture as usize)
+        Backtrace::create(Backtrace::force_capture as fn() -> Backtrace as usize)
     }
 
     /// Forcibly captures a disabled backtrace, regardless of environment
