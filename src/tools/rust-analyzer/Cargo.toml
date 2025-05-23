@@ -132,11 +132,8 @@ pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.6", default-features = false }
 rayon = "1.10.0"
 rowan = "=0.15.15"
-salsa = { version = "0.21.1", default-features = false, features = [
-  "rayon",
-  "salsa_unstable",
-] }
-salsa-macros = "0.21.1"
+salsa = { version = "0.22.0", default-features = false, features = ["rayon","salsa_unstable"] }
+salsa-macros = "0.22.0"
 semver = "1.0.26"
 serde = { version = "1.0.219" }
 serde_derive = { version = "1.0.219" }
