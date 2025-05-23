@@ -659,7 +659,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
         let count_types = required_types.len() + provided_types.len();
         let count_consts = required_consts.len() + provided_consts.len();
         let count_methods = required_methods.len() + provided_methods.len();
-        let must_implement_one_of_functions = tcx.trait_def(t.def_id).must_implement_one_of.clone();
+        let must_implement_one_of_functions = &tcx.trait_def(t.def_id).must_implement_one_of;
 
         // Output the trait definition
         wrap_item(w, |mut w| {
@@ -1095,7 +1095,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                             it,
                             &implementor_dups,
                             &collect_paths_for_type(
-                                implementor.inner_impl().for_.clone(),
+                                &implementor.inner_impl().for_,
                                 &cx.shared.cache,
                             ),
                         )

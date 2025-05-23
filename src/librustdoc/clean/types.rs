@@ -106,7 +106,7 @@ impl From<DefId> for ItemId {
 }
 
 /// The crate currently being documented.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct Crate {
     pub(crate) module: Item,
     /// Only here so that they can be filtered through the rustdoc passes.
