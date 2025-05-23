@@ -254,19 +254,15 @@ impl<'a> Iterator for Parser<'a> {
                         // single open brace
                         self.last_open_brace = Some(start..end);
                         let arg = self.argument();
-                        if let Some(close_brace_range) = self.consume_closing_brace(&arg) {
+                        self.ws();
+                        if let Some((close_brace_range, _)) = self.consume_pos('}') {
                             if self.is_source_literal {
                                 self.arg_places.push(start..close_brace_range.end);
                             }
-                        } else if let Some((_, _, c)) = self.peek() {
-                            match c {
-                                '?' => self.suggest_format_debug(),
-                                '<' | '^' | '>' => self.suggest_format_align(c),
-                                _ => {
-                                    self.suggest_positional_arg_instead_of_captured_arg(arg.clone())
-                                }
-                            }
+                        } else {
+                            self.missing_closing_brace(&arg);
                         }
+
                         Some(Piece::NextArgument(Box::new(arg)))
                     }
                 }
@@ -437,17 +433,9 @@ impl<'a> Parser<'a> {
         None
     }
 
-    /// Forces consumption of the specified character. If the character is not
-    /// found, an error is emitted.
-    fn consume_closing_brace(&mut self, arg: &Argument<'_>) -> Option<Range<usize>> {
-        self.ws();
-
+    /// Called if a closing brace was not found.
+    fn missing_closing_brace(&mut self, arg: &Argument<'_>) {
         let (range, description) = if let Some((r, _, c)) = self.peek() {
-            if c == '}' {
-                self.input_vec_index += 1;
-                return Some(r);
-            }
-            // or r.clone()?
             (r.start..r.start, format!("expected `}}`, found `{}`", c.escape_debug()))
         } else {
             (
@@ -480,7 +468,13 @@ impl<'a> Parser<'a> {
             suggestion: Suggestion::None,
         });
 
-        None
+        if let Some((_, _, c)) = self.peek() {
+            match c {
+                '?' => self.suggest_format_debug(),
+                '<' | '^' | '>' => self.suggest_format_align(c),
+                _ => self.suggest_positional_arg_instead_of_captured_arg(arg),
+            }
+        }
     }
 
     /// Consumes all whitespace characters until the first non-whitespace character
@@ -905,7 +899,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn suggest_positional_arg_instead_of_captured_arg(&mut self, arg: Argument<'a>) {
+    fn suggest_positional_arg_instead_of_captured_arg(&mut self, arg: &Argument<'_>) {
         // If the argument is not an identifier, it is not a field access.
         if !arg.is_identifier() {
             return;
