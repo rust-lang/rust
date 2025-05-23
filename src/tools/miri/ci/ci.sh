@@ -146,6 +146,8 @@ case $HOST_TARGET in
     MANY_SEEDS=64 TEST_TARGET=aarch64-unknown-linux-gnu run_tests
     MANY_SEEDS=64 TEST_TARGET=x86_64-apple-darwin run_tests
     MANY_SEEDS=64 TEST_TARGET=x86_64-pc-windows-gnu run_tests
+    # Extra tier 1 candidate
+    MANY_SEEDS=64 TEST_TARGET=aarch64-pc-windows-msvc run_tests
     ;;
   aarch64-apple-darwin)
     # Host
@@ -154,7 +156,8 @@ case $HOST_TARGET in
     MANY_SEEDS=64 TEST_TARGET=i686-pc-windows-gnu run_tests
     MANY_SEEDS=64 TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
     # Extra tier 2
-    MANY_SEEDS=16 TEST_TARGET=arm-unknown-linux-gnueabi run_tests
+    MANY_SEEDS=16 TEST_TARGET=arm-unknown-linux-gnueabi run_tests # 32bit ARM
+    MANY_SEEDS=16 TEST_TARGET=aarch64-pc-windows-gnullvm run_tests # gnullvm ABI
     MANY_SEEDS=16 TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture of choice
     # Not officially supported tier 2
     MANY_SEEDS=16 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
