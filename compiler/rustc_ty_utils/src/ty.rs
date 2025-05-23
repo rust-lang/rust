@@ -11,7 +11,7 @@ use rustc_middle::ty::{
     fold_regions,
 };
 use rustc_span::DUMMY_SP;
-use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_trait_selection::traits;
 use tracing::instrument;
 
@@ -119,7 +119,7 @@ fn adt_sized_constraint<'tcx>(
 }
 
 /// See `ParamEnv` struct definition for details.
-fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
+fn param_env(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ParamEnv<'_> {
     // Compute the bounds on Self and the type parameters.
     let ty::InstantiatedPredicates { mut predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
@@ -145,7 +145,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         // We accounted for the binder of the fn sig, so skip the binder.
         sig.skip_binder().visit_with(&mut ImplTraitInTraitFinder {
             tcx,
-            fn_def_id: def_id,
+            fn_def_id: def_id.to_def_id(),
             bound_vars: sig.bound_vars(),
             predicates: &mut predicates,
             seen: FxHashSet::default(),
@@ -163,12 +163,9 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         );
     }
 
-    let local_did = def_id.as_local();
-
     let unnormalized_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates));
 
-    let body_id = local_did.unwrap_or(CRATE_DEF_ID);
-    let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
+    let cause = traits::ObligationCause::misc(tcx.def_span(def_id), def_id);
     traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
 }
 

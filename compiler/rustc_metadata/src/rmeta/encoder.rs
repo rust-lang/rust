@@ -1465,6 +1465,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }
             }
+            if should_encode_param_env(def_kind) {
+                record!(self.tables.param_env[def_id] <- tcx.param_env(def_id));
+            }
             if tcx.is_conditionally_const(def_id) {
                 record!(self.tables.const_conditions[def_id] <- self.tcx.const_conditions(def_id));
             }
@@ -2212,6 +2215,22 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
         LazyArray::default()
     }
+}
+
+fn should_encode_param_env(def_kind: DefKind) -> bool {
+    matches!(
+        def_kind,
+        DefKind::Impl { of_trait: _ }
+            | DefKind::Struct
+            | DefKind::Enum
+            | DefKind::Union
+            | DefKind::AnonConst
+            | DefKind::AssocFn
+            | DefKind::AssocConst
+            | DefKind::AssocTy
+            | DefKind::Fn
+            | DefKind::Closure
+    )
 }
 
 /// Used to prefetch queries which will be needed later by metadata encoding.

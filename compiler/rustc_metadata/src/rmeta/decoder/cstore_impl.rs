@@ -247,6 +247,7 @@ provide! { tcx, def_id, other, cdata,
     inferred_outlives_of => { table_defaulted_array }
     explicit_super_predicates_of => { table_defaulted_array }
     explicit_implied_predicates_of => { table_defaulted_array }
+    param_env => { table }
     type_of => { table }
     type_alias_is_lazy => { table_direct }
     variances_of => { table }

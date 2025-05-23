@@ -1569,6 +1569,7 @@ rustc_queries! {
     query param_env(def_id: DefId) -> ty::ParamEnv<'tcx> {
         desc { |tcx| "computing normalized predicates of `{}`", tcx.def_path_str(def_id) }
         feedable
+        separate_provide_extern
     }
 
     /// Like `param_env`, but returns the `ParamEnv` after all opaque types have been

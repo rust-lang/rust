@@ -148,4 +148,5 @@ parameterized_over_tcx! {
     ty::Clause,
     ty::ClauseKind,
     ty::ImplTraitHeader,
+    ty::ParamEnv,
 }
