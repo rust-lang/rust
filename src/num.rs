@@ -416,7 +416,10 @@ pub(crate) fn codegen_float_binop<'tcx>(
                 BinOp::Gt => FloatCC::GreaterThan,
                 _ => unreachable!(),
             };
-            let val = fx.bcx.ins().fcmp(fltcc, lhs, rhs);
+            // FIXME(bytecodealliance/wasmtime#8312): Replace with Cranelift
+            // `fcmp` once `f16`/`f128` backend lowerings have been added to
+            // Cranelift.
+            let val = codegen_f16_f128::fcmp(fx, fltcc, lhs, rhs);
             return CValue::by_val(val, fx.layout_of(fx.tcx.types.bool));
         }
         _ => unreachable!("{:?}({:?}, {:?})", bin_op, in_lhs, in_rhs),
@@ -500,15 +503,19 @@ fn codegen_ptr_binop<'tcx>(
 // and `a.is_nan() ? b : (a <= b ? b : a)` for `maxnumf*`. NaN checks are done by comparing
 // a float against itself. Only in case of NaN is it not equal to itself.
 pub(crate) fn codegen_float_min(fx: &mut FunctionCx<'_, '_, '_>, a: Value, b: Value) -> Value {
-    let a_is_nan = fx.bcx.ins().fcmp(FloatCC::NotEqual, a, a);
-    let a_ge_b = fx.bcx.ins().fcmp(FloatCC::GreaterThanOrEqual, a, b);
+    // FIXME(bytecodealliance/wasmtime#8312): Replace with Cranelift `fcmp` once
+    // `f16`/`f128` backend lowerings have been added to Cranelift.
+    let a_is_nan = codegen_f16_f128::fcmp(fx, FloatCC::NotEqual, a, a);
+    let a_ge_b = codegen_f16_f128::fcmp(fx, FloatCC::GreaterThanOrEqual, a, b);
     let temp = fx.bcx.ins().select(a_ge_b, b, a);
     fx.bcx.ins().select(a_is_nan, b, temp)
 }
 
 pub(crate) fn codegen_float_max(fx: &mut FunctionCx<'_, '_, '_>, a: Value, b: Value) -> Value {
-    let a_is_nan = fx.bcx.ins().fcmp(FloatCC::NotEqual, a, a);
-    let a_le_b = fx.bcx.ins().fcmp(FloatCC::LessThanOrEqual, a, b);
+    // FIXME(bytecodealliance/wasmtime#8312): Replace with Cranelift `fcmp` once
+    // `f16`/`f128` backend lowerings have been added to Cranelift.
+    let a_is_nan = codegen_f16_f128::fcmp(fx, FloatCC::NotEqual, a, a);
+    let a_le_b = codegen_f16_f128::fcmp(fx, FloatCC::LessThanOrEqual, a, b);
     let temp = fx.bcx.ins().select(a_le_b, b, a);
     fx.bcx.ins().select(a_is_nan, b, temp)
 }

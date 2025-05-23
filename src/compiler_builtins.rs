@@ -67,6 +67,15 @@ builtin_functions! {
     fn fmodf(a: f32, b: f32) -> f32;
     fn fmod(a: f64, b: f64) -> f64;
     fn fmodf128(a: f128, b: f128) -> f128;
+    // float comparison
+    fn __eqtf2(a: f128, b: f128) -> i32;
+    fn __netf2(a: f128, b: f128) -> i32;
+    fn __lttf2(a: f128, b: f128) -> i32;
+    fn __letf2(a: f128, b: f128) -> i32;
+    fn __gttf2(a: f128, b: f128) -> i32;
+    fn __getf2(a: f128, b: f128) -> i32;
+    fn fminimumf128(a: f128, b: f128) -> f128;
+    fn fmaximumf128(a: f128, b: f128) -> f128;
     // Cranelift float libcalls
     fn fmaf(a: f32, b: f32, c: f32) -> f32;
     fn fma(a: f64, b: f64, c: f64) -> f64;
