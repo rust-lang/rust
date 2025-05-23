@@ -1,5 +1,7 @@
 use std::iter;
 
+use rustc_ast::Mutability;
+use rustc_hir as hir;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -371,6 +373,41 @@ fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     mir
 }
 
+/// Whether on this target, the `VaList` is a reference to a struct on the stack.
+///
+/// If this function returns `true`, the `core` crate defines a `VaListTag` struct
+/// matching the varargs ABI for this target.
+///
+/// In other cases, the `VaList` is an opaque pointer. Generally this is just a pointer to the
+/// caller's stack where the variadic arguments are stored sequentially.
+fn is_va_list_struct_on_stack<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(bx: &mut Bx) -> bool {
+    let did = bx.tcx().require_lang_item(hir::LangItem::VaList, rustc_span::Span::default());
+    let ty = bx.tcx().type_of(did).instantiate_identity();
+
+    // Check how `VaList` is implemented for the current target. It can be either:
+    //
+    // - a reference to a value on the stack
+    // - a struct wrapping a pointer
+    let Some(adt_def) = ty.ty_adt_def() else { bug!("invalid `VaList`") };
+    let variant = adt_def.non_enum_variant();
+
+    if variant.fields.len() != 1 {
+        bug!("`VaList` must have exactly 1 field")
+    }
+    let field = variant.fields.iter().next().unwrap();
+    let field_ty = bx.tcx().type_of(field.did).instantiate_identity();
+
+    if field_ty.is_adt() {
+        return false;
+    }
+
+    if let Some(Mutability::Mut) = field_ty.ref_mutability() {
+        return true;
+    }
+
+    bug!("invalid `VaList` field type")
+}
+
 /// Produces, for each argument, a `Value` pointing at the
 /// argument's value. As arguments are places, these are always
 /// indirect.
@@ -437,10 +474,35 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             }
 
             if fx.fn_abi.c_variadic && arg_index == fx.fn_abi.args.len() {
-                let va_list = PlaceRef::alloca(bx, bx.layout_of(arg_ty));
-                bx.va_start(va_list.val.llval);
+                use rustc_hir::LangItem;
 
-                return LocalRef::Place(va_list);
+                let va_list_tag_ty = {
+                    let did =
+                        bx.tcx().require_lang_item(LangItem::VaListTag, arg_decl.source_info.span);
+                    let ty = bx.tcx().type_of(did).instantiate_identity();
+                    bx.tcx().normalize_erasing_regions(fx.cx.typing_env(), ty)
+                };
+                let va_list_tag_layout = bx.layout_of(va_list_tag_ty);
+
+                // Construct the `VaListTag` on the stack.
+                let va_list_tag = PlaceRef::alloca(bx, va_list_tag_layout);
+
+                // Initialize the alloca.
+                bx.va_start(va_list_tag.val.llval);
+
+                let va_list_tag = if is_va_list_struct_on_stack(bx) {
+                    va_list_tag.val.llval
+                } else {
+                    bx.load(
+                        bx.backend_type(va_list_tag_layout),
+                        va_list_tag.val.llval,
+                        va_list_tag.layout.align.abi,
+                    )
+                };
+
+                let tmp = PlaceRef::alloca(bx, bx.layout_of(arg_ty));
+                bx.store_to_place(va_list_tag, tmp.val);
+                return LocalRef::Place(tmp);
             }
 
             let arg = &fx.fn_abi.args[idx];

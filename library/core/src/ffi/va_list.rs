@@ -3,12 +3,10 @@
 //! Better known as "varargs".
 
 use crate::ffi::c_void;
-#[allow(unused_imports)]
-use crate::fmt;
-use crate::marker::{PhantomData, PhantomInvariantLifetime};
-use crate::ops::{Deref, DerefMut};
+use crate::marker::PhantomInvariantLifetime;
+use crate::mem::MaybeUninit;
 
-// The name is WIP, using `VaListImpl` for now.
+// The name is WIP, using `VaListTag` for now.
 //
 // Most targets explicitly specify the layout of `va_list`, this layout is matched here.
 crate::cfg_select! {
@@ -23,68 +21,78 @@ crate::cfg_select! {
         ///
         /// [AArch64 Procedure Call Standard]:
         /// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
-        #[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
+        #[doc(hidden)]
+        #[repr(C)]
         #[derive(Debug)]
-        #[lang = "va_list"]
-        pub struct VaListImpl<'f> {
+        #[lang = "va_list_tag"]
+        #[unstable(feature = "va_list_impl", issue = "none")]
+        pub struct VaListTag<'a> {
             stack: *mut c_void,
             gr_top: *mut c_void,
             vr_top: *mut c_void,
             gr_offs: i32,
             vr_offs: i32,
-            _marker: PhantomInvariantLifetime<'f>,
+            _marker: PhantomInvariantLifetime<'a>,
         }
     }
     all(target_arch = "powerpc", not(target_os = "uefi"), not(windows)) => {
         /// PowerPC ABI implementation of a `va_list`.
-        #[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
+        #[doc(hidden)]
+        #[repr(C)]
         #[derive(Debug)]
-        #[lang = "va_list"]
-        pub struct VaListImpl<'f> {
+        #[lang = "va_list_tag"]
+        #[unstable(feature = "va_list_impl", issue = "none")]
+        pub struct VaListTag<'a> {
             gpr: u8,
             fpr: u8,
             reserved: u16,
             overflow_arg_area: *mut c_void,
             reg_save_area: *mut c_void,
-            _marker: PhantomInvariantLifetime<'f>,
+            _marker: PhantomInvariantLifetime<'a>,
         }
     }
     target_arch = "s390x" => {
         /// s390x ABI implementation of a `va_list`.
-        #[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
+        #[doc(hidden)]
+        #[repr(C)]
         #[derive(Debug)]
-        #[lang = "va_list"]
-        pub struct VaListImpl<'f> {
+        #[lang = "va_list_tag"]
+        #[unstable(feature = "va_list_impl", issue = "none")]
+        pub struct VaListTag<'a> {
             gpr: i64,
             fpr: i64,
             overflow_arg_area: *mut c_void,
             reg_save_area: *mut c_void,
-            _marker: PhantomInvariantLifetime<'f>,
+            _marker: PhantomInvariantLifetime<'a>,
         }
     }
     all(target_arch = "x86_64", not(target_os = "uefi"), not(windows)) => {
         /// x86_64 ABI implementation of a `va_list`.
-        #[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
+        #[doc(hidden)]
+        #[repr(C)]
         #[derive(Debug)]
-        #[lang = "va_list"]
-        pub struct VaListImpl<'f> {
+        #[lang = "va_list_tag"]
+        #[unstable(feature = "va_list_impl", issue = "none")]
+        pub struct VaListTag<'a> {
             gp_offset: i32,
             fp_offset: i32,
             overflow_arg_area: *mut c_void,
             reg_save_area: *mut c_void,
-            _marker: PhantomInvariantLifetime<'f>,
+            _marker: PhantomInvariantLifetime<'a>,
         }
     }
     target_arch = "xtensa" => {
         /// Xtensa ABI implementation of a `va_list`.
+        #[doc(hidden)]
         #[repr(C)]
         #[derive(Debug)]
-        #[lang = "va_list"]
-        pub struct VaListImpl<'f> {
+        #[lang = "va_list_tag"]
+        #[unstable(feature = "va_list_impl", issue = "none")]
+        pub struct VaListTag<'a> {
             stk: *mut i32,
             reg: *mut i32,
             ndx: i32,
-            _marker: PhantomInvariantLifetime<'f>,
+            _marker: PhantomInvariantLifetime<'a>,
         }
     }
 
@@ -93,24 +101,23 @@ crate::cfg_select! {
     // - apple aarch64 (see https://github.com/rust-lang/rust/pull/56599)
     // - windows
     // - uefi
-    // - any other target for which we don't specify the `VaListImpl` above
+    // - any other target for which we don't specify the `VaListTag` above
     //
     // In this implementation the `va_list` type is just an alias for an opaque pointer.
     // That pointer is probably just the next variadic argument on the caller's stack.
     _ => {
         /// Basic implementation of a `va_list`.
+        #[doc(hidden)]
         #[repr(transparent)]
-        #[lang = "va_list"]
-        pub struct VaListImpl<'f> {
+        #[lang = "va_list_tag"]
+        #[unstable(feature = "va_list_impl", issue = "none")]
+        pub struct VaListTag<'a> {
             ptr: *mut c_void,
-
-            // Invariant over `'f`, so each `VaListImpl<'f>` object is tied to
-            // the region of the function it's defined in
-            _marker: PhantomInvariantLifetime<'f>,
+            _marker: PhantomInvariantLifetime<'a>,
         }
 
-        impl<'f> fmt::Debug for VaListImpl<'f> {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        impl<'a> crate::fmt::Debug for VaListTag<'a> {
+            fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
                 write!(f, "va_list* {:p}", self.ptr)
             }
         }
@@ -134,53 +141,98 @@ crate::cfg_select! {
         /// A wrapper for a `va_list`
         #[repr(transparent)]
         #[derive(Debug)]
-        pub struct VaList<'a, 'f: 'a> {
-            inner: &'a mut VaListImpl<'f>,
-            _marker: PhantomData<&'a mut VaListImpl<'f>>,
+        #[lang = "va_list"]
+        pub struct VaList<'a> {
+            inner: &'a mut VaListTag<'a>,
         }
 
+        impl<'a> VaList<'a> {
+            #[doc(hidden)]
+            #[unstable(feature = "va_list_impl", issue = "none")]
+            #[inline(always)]
+            pub fn copy<'b>(&self, tag: &'b mut MaybeUninit<VaListTag<'b>>) -> VaList<'b>
+            where
+                'a: 'b,
+            {
+                // The signature of `copy` already enforces the correct lifetime constraints.
+                // `va_copy` is an intrinsic, which makes it less flexible lifetime-wise.
+                let ptr = tag.as_mut_ptr().cast::<VaListTag<'a>>();
 
-        impl<'f> VaListImpl<'f> {
-            /// Converts a [`VaListImpl`] into a [`VaList`] that is binary-compatible with C's `va_list`.
-            #[inline]
-            pub fn as_va_list<'a>(&'a mut self) -> VaList<'a, 'f> {
-                VaList { inner: self, _marker: PhantomData }
+                // SAFETY: `tag` has sufficient space to store a `VaListTag`.
+                unsafe { va_copy_intrinsic::va_copy(ptr, &self.inner) };
+
+                // SAFETY: `va_copy` has initialized the tag.
+                VaList { inner: unsafe { tag.assume_init_mut() } }
             }
         }
+
     }
 
     _ => {
         /// A wrapper for a `va_list`
         #[repr(transparent)]
         #[derive(Debug)]
-        pub struct VaList<'a, 'f: 'a> {
-            inner: VaListImpl<'f>,
-            _marker: PhantomData<&'a mut VaListImpl<'f>>,
+        #[lang = "va_list"]
+        pub struct VaList<'a> {
+            inner: VaListTag<'a>,
         }
 
-        impl<'f> VaListImpl<'f> {
-            /// Converts a [`VaListImpl`] into a [`VaList`] that is binary-compatible with C's `va_list`.
-            #[inline]
-            pub fn as_va_list<'a>(&'a mut self) -> VaList<'a, 'f> {
-                VaList { inner: VaListImpl { ..*self }, _marker: PhantomData }
+
+        impl<'a> VaList<'a> {
+            #[doc(hidden)]
+            #[unstable(feature = "va_list_impl", issue = "none")]
+            #[inline(always)]
+            pub fn copy<'b>(&self, tag: &'b mut MaybeUninit<VaListTag<'b>>) -> VaList<'b>
+            where
+                'a: 'b,
+            {
+                // The signature of `copy` already enforces the correct lifetime constraints.
+                // `va_copy` is an intrinsic, which makes it less flexible lifetime-wise.
+                let ptr = tag.as_mut_ptr().cast::<VaListTag<'a>>();
+
+                // SAFETY: `tag` has sufficient space to store a `VaListTag`.
+                unsafe { va_copy_intrinsic::va_copy(ptr, &self.inner) };
+
+                // SAFETY: `va_copy` has initialized the tag.
+                VaList { inner: unsafe { tag.assume_init_read() } }
             }
         }
     }
 }
 
-impl<'a, 'f: 'a> Deref for VaList<'a, 'f> {
-    type Target = VaListImpl<'f>;
+/// Copy a [`VaList`].
+#[allow_internal_unstable(super_let)]
+#[allow_internal_unstable(va_list_impl)]
+pub macro va_copy($va_list:expr $(,)?) {{
+    super let mut tag = $crate::mem::MaybeUninit::uninit();
+    $va_list.copy(&mut tag)
+}}
 
-    #[inline]
-    fn deref(&self) -> &VaListImpl<'f> {
-        &self.inner
+impl<'a> VaListTag<'a> {
+    /// Advance to the next arg.
+    #[inline(never)]
+    unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
+        // SAFETY: the caller must uphold the safety contract for `va_arg`.
+        unsafe { va_arg(self) }
     }
 }
 
-impl<'a, 'f: 'a> DerefMut for VaList<'a, 'f> {
+impl<'a> VaList<'a> {
+    /// Advance to the next arg.
     #[inline]
-    fn deref_mut(&mut self) -> &mut VaListImpl<'f> {
-        &mut self.inner
+    pub unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
+        // SAFETY: the caller must uphold the safety contract for `va_arg`.
+        unsafe { self.inner.arg() }
+    }
+
+    /// Copies the `va_list` at the current location.
+    pub unsafe fn with_copy<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(VaList<'_>) -> R,
+    {
+        let ap = va_copy!(self);
+        let ret = f(ap);
+        ret
     }
 }
 
@@ -201,7 +253,7 @@ mod sealed {
     impl<T> Sealed for *const T {}
 }
 
-/// Trait which permits the allowed types to be used with [`VaListImpl::arg`].
+/// Trait which permits the allowed types to be used with [`VaList::arg`].
 ///
 /// # Safety
 ///
@@ -231,42 +283,7 @@ unsafe impl VaArgSafe for f64 {}
 unsafe impl<T> VaArgSafe for *mut T {}
 unsafe impl<T> VaArgSafe for *const T {}
 
-impl<'f> VaListImpl<'f> {
-    /// Advance to the next arg.
-    #[inline]
-    pub unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
-        // SAFETY: the caller must uphold the safety contract for `va_arg`.
-        unsafe { va_arg(self) }
-    }
-
-    /// Copies the `va_list` at the current location.
-    pub unsafe fn with_copy<F, R>(&self, f: F) -> R
-    where
-        F: for<'copy> FnOnce(VaList<'copy, 'f>) -> R,
-    {
-        let mut ap = self.clone();
-        let ret = f(ap.as_va_list());
-        // SAFETY: the caller must uphold the safety contract for `va_end`.
-        unsafe {
-            va_end(&mut ap);
-        }
-        ret
-    }
-}
-
-impl<'f> Clone for VaListImpl<'f> {
-    #[inline]
-    fn clone(&self) -> Self {
-        let mut dest = crate::mem::MaybeUninit::uninit();
-        // SAFETY: we write to the `MaybeUninit`, thus it is initialized and `assume_init` is legal
-        unsafe {
-            va_copy(dest.as_mut_ptr(), self);
-            dest.assume_init()
-        }
-    }
-}
-
-impl<'f> Drop for VaListImpl<'f> {
+impl Drop for VaListTag<'_> {
     fn drop(&mut self) {
         // FIXME: this should call `va_end`, but there's no clean way to
         // guarantee that `drop` always gets inlined into its caller,
@@ -285,15 +302,20 @@ impl<'f> Drop for VaListImpl<'f> {
 /// `va_copy`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-unsafe fn va_end(ap: &mut VaListImpl<'_>);
+#[allow(unused)]
+unsafe fn va_end(ap: &mut VaListTag<'_>);
 
-/// Copies the current location of arglist `src` to the arglist `dst`.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-unsafe fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
+// This intrinsic is in a module so that its name does not clash with the `va_copy!` macro.
+mod va_copy_intrinsic {
+    use super::VaListTag;
+    /// Copies the current location of arglist `src` to the arglist `dst`.
+    #[rustc_intrinsic]
+    #[rustc_nounwind]
+    pub(super) unsafe fn va_copy<'a>(dest: *mut VaListTag<'a>, src: &VaListTag<'a>);
+}
 
 /// Loads an argument of type `T` from the `va_list` `ap` and increment the
 /// argument `ap` points to.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
+unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaListTag<'_>) -> T;

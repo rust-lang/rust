@@ -175,8 +175,8 @@ pub(crate) fn check_intrinsic_type(
         ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
         ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
     ]);
-    let mk_va_list_ty = |mutbl| {
-        let did = tcx.require_lang_item(LangItem::VaList, span);
+    let mk_va_list_tag_ty = |mutbl| {
+        let did = tcx.require_lang_item(LangItem::VaListTag, span);
         let region = ty::Region::new_bound(
             tcx,
             ty::INNERMOST,
@@ -507,16 +507,16 @@ pub(crate) fn check_intrinsic_type(
         }
 
         sym::va_start | sym::va_end => {
-            (0, 0, vec![mk_va_list_ty(hir::Mutability::Mut).0], tcx.types.unit)
+            (0, 0, vec![mk_va_list_tag_ty(hir::Mutability::Mut).0], tcx.types.unit)
         }
 
         sym::va_copy => {
-            let (va_list_ref_ty, va_list_ty) = mk_va_list_ty(hir::Mutability::Not);
+            let (va_list_ref_ty, va_list_ty) = mk_va_list_tag_ty(hir::Mutability::Not);
             let va_list_ptr_ty = Ty::new_mut_ptr(tcx, va_list_ty);
             (0, 0, vec![va_list_ptr_ty, va_list_ref_ty], tcx.types.unit)
         }
 
-        sym::va_arg => (1, 0, vec![mk_va_list_ty(hir::Mutability::Mut).0], param(0)),
+        sym::va_arg => (1, 0, vec![mk_va_list_tag_ty(hir::Mutability::Mut).0], param(0)),
 
         sym::nontemporal_store => {
             (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit)

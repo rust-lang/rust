@@ -2312,6 +2312,7 @@ symbols! {
         va_copy,
         va_end,
         va_list,
+        va_list_tag,
         va_start,
         val,
         validity,

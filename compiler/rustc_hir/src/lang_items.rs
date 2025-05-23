@@ -230,6 +230,7 @@ language_item_table! {
     UnsafePinned,            sym::unsafe_pinned,       unsafe_pinned_type,         Target::Struct,         GenericRequirement::None;
 
     VaList,                  sym::va_list,             va_list,                    Target::Struct,         GenericRequirement::None;
+    VaListTag,               sym::va_list_tag,         va_list_tag,                Target::Struct,         GenericRequirement::None;
 
     Deref,                   sym::deref,               deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
     DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait,          GenericRequirement::Exact(0);

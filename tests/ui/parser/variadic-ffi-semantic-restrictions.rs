@@ -31,12 +31,10 @@ extern "C" fn f3_3(..., x: isize) {}
 
 const unsafe extern "C" fn f4_1(x: isize, ...) {}
 //~^ ERROR functions cannot be both `const` and C-variadic
-//~| ERROR destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
 
 const extern "C" fn f4_2(x: isize, ...) {}
 //~^ ERROR functions cannot be both `const` and C-variadic
 //~| ERROR only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
-//~| ERROR destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
 
 const extern "C" fn f4_3(..., x: isize, ...) {}
 //~^ ERROR functions cannot be both `const` and C-variadic
@@ -64,7 +62,6 @@ impl X {
     const fn i_f5(x: isize, ...) {}
     //~^ ERROR only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
     //~| ERROR functions cannot be both `const` and C-variadic
-    //~| ERROR destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
 }
 
 trait T {

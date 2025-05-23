@@ -503,7 +503,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let va_list_arg_idx = self.fn_abi.args.len();
             match self.locals[mir::Local::from_usize(1 + va_list_arg_idx)] {
                 LocalRef::Place(va_list) => {
-                    bx.va_end(va_list.val.llval);
+                    if super::is_va_list_struct_on_stack(bx) {
+                        // Call `va_end` on the `&mut VaListTag` that is stored in `va_list`.
+                        let inner_field = va_list.project_field(bx, 0);
+
+                        let tag_ptr = bx.load(
+                            bx.backend_type(inner_field.layout),
+                            inner_field.val.llval,
+                            inner_field.layout.align.abi,
+                        );
+
+                        bx.va_end(tag_ptr);
+                    } else {
+                        // Call `va_end` on the `VaListTag` that is stored in `va_list`.
+                        let tag_ptr = va_list.project_field(bx, 0);
+                        bx.va_end(tag_ptr.val.llval);
+                    }
                 }
                 _ => bug!("C-variadic function must have a `VaList` place"),
             }

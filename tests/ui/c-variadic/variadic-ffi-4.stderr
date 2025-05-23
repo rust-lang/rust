@@ -1,41 +1,41 @@
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:8:5
    |
-LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f> {
-   |                                     --            -- has type `VaListImpl<'1>`
+LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaList<'f> {
+   |                                     --            -- has type `VaList<'1>`
    |                                     |
    |                                     lifetime `'f` defined here
 LL |     ap
    |     ^^ function was supposed to return data with lifetime `'1` but it is returning data with lifetime `'f`
    |
-   = note: requirement occurs because of the type `VaListImpl<'_>`, which makes the generic argument `'_` invariant
-   = note: the struct `VaListImpl<'f>` is invariant over the parameter `'f`
+   = note: requirement occurs because of the type `VaList<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaList<'a>` is invariant over the parameter `'a`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:8:5
    |
-LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f> {
-   |                                     --            -- has type `VaListImpl<'1>`
+LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaList<'f> {
+   |                                     --            -- has type `VaList<'1>`
    |                                     |
    |                                     lifetime `'f` defined here
 LL |     ap
    |     ^^ function was supposed to return data with lifetime `'f` but it is returning data with lifetime `'1`
    |
-   = note: requirement occurs because of the type `VaListImpl<'_>`, which makes the generic argument `'_` invariant
-   = note: the struct `VaListImpl<'f>` is invariant over the parameter `'f`
+   = note: requirement occurs because of the type `VaList<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaList<'a>` is invariant over the parameter `'a`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:14:5
    |
-LL | pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaListImpl<'static> {
-   |                                               -- has type `VaListImpl<'1>`
+LL | pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaList<'static> {
+   |                                               -- has type `VaList<'1>`
 LL |     ap
    |     ^^ returning this value requires that `'1` must outlive `'static`
    |
-   = note: requirement occurs because of the type `VaListImpl<'_>`, which makes the generic argument `'_` invariant
-   = note: the struct `VaListImpl<'f>` is invariant over the parameter `'f`
+   = note: requirement occurs because of the type `VaList<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaList<'a>` is invariant over the parameter `'a`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -44,70 +44,74 @@ error: lifetime may not live long enough
 LL |     let _ = ap.with_copy(|ap| ap);
    |                           --- ^^ returning this value requires that `'1` must outlive `'2`
    |                           | |
-   |                           | return type of closure is VaList<'2, '_>
-   |                           has type `VaList<'1, '_>`
-
-error: lifetime may not live long enough
-  --> $DIR/variadic-ffi-4.rs:22:5
+   |                           | return type of closure is VaList<'2>
+   |                           has type `VaList<'1>`
    |
-LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               -------                   ------- has type `VaListImpl<'2>`
-   |                                               |
-   |                                               has type `&mut VaListImpl<'1>`
-LL |     *ap0 = ap1;
-   |     ^^^^ assignment requires that `'1` must outlive `'2`
-   |
-   = note: requirement occurs because of the type `VaListImpl<'_>`, which makes the generic argument `'_` invariant
-   = note: the struct `VaListImpl<'f>` is invariant over the parameter `'f`
+   = note: requirement occurs because of the type `VaList<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaList<'a>` is invariant over the parameter `'a`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:22:5
    |
-LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               -------                   ------- has type `VaListImpl<'2>`
+LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+   |                                               -------               ------- has type `VaList<'2>`
    |                                               |
-   |                                               has type `&mut VaListImpl<'1>`
+   |                                               has type `&mut VaList<'1>`
 LL |     *ap0 = ap1;
-   |     ^^^^ assignment requires that `'2` must outlive `'1`
+   |     ^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
    |
-   = note: requirement occurs because of the type `VaListImpl<'_>`, which makes the generic argument `'_` invariant
-   = note: the struct `VaListImpl<'f>` is invariant over the parameter `'f`
+   = note: requirement occurs because of the type `VaList<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaList<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/variadic-ffi-4.rs:22:5
+   |
+LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+   |                                               -------               ------- has type `VaList<'2>`
+   |                                               |
+   |                                               has type `&mut VaList<'1>`
+LL |     *ap0 = ap1;
+   |     ^^^^^^^^^^ assignment requires that `'2` must outlive `'1`
+   |
+   = note: requirement occurs because of the type `VaList<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaList<'a>` is invariant over the parameter `'a`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:28:5
    |
-LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               -------                   ------- has type `VaListImpl<'2>`
+LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+   |                                               -------               ------- has type `VaList<'2>`
    |                                               |
-   |                                               has type `&mut VaListImpl<'1>`
+   |                                               has type `&mut VaList<'1>`
 LL |     ap0 = &mut ap1;
    |     ^^^^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
    |
-   = note: requirement occurs because of a mutable reference to `VaListImpl<'_>`
+   = note: requirement occurs because of a mutable reference to `VaList<'_>`
    = note: mutable references are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:28:5
    |
-LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               -------                   ------- has type `VaListImpl<'2>`
+LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+   |                                               -------               ------- has type `VaList<'2>`
    |                                               |
-   |                                               has type `&mut VaListImpl<'1>`
+   |                                               has type `&mut VaList<'1>`
 LL |     ap0 = &mut ap1;
    |     ^^^^^^^^^^^^^^ assignment requires that `'2` must outlive `'1`
    |
-   = note: requirement occurs because of a mutable reference to `VaListImpl<'_>`
+   = note: requirement occurs because of a mutable reference to `VaList<'_>`
    = note: mutable references are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error[E0597]: `ap1` does not live long enough
   --> $DIR/variadic-ffi-4.rs:28:11
    |
-LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                                        -                ------- binding `ap1` declared here
+LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+   |                                                        -            ------- binding `ap1` declared here
    |                                                        |
    |                                                        let's call the lifetime of this reference `'3`
 LL |     ap0 = &mut ap1;
@@ -117,36 +121,86 @@ LL |     ap0 = &mut ap1;
    |     assignment requires that `ap1` is borrowed for `'3`
 ...
 LL | }
-   | - `ap1` dropped here while still borrowed
+   |  - `ap1` dropped here while still borrowed
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:35:5
    |
-LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               -------                   ------- has type `VaListImpl<'2>`
+LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+   |                                               -------               ------- has type `VaList<'1>`
    |                                               |
-   |                                               has type `&mut VaListImpl<'1>`
-LL |     *ap0 = ap1.clone();
-   |     ^^^^ assignment requires that `'2` must outlive `'1`
+   |                                               has type `&mut VaList<'2>`
+LL |     *ap0 = va_copy!(ap1);
+   |     ^^^^^^^^^^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
    |
-   = note: requirement occurs because of the type `VaListImpl<'_>`, which makes the generic argument `'_` invariant
-   = note: the struct `VaListImpl<'f>` is invariant over the parameter `'f`
+   = note: requirement occurs because of the type `VaList<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaList<'a>` is invariant over the parameter `'a`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-error: lifetime may not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/variadic-ffi-4.rs:35:12
    |
-LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               -------                   ------- has type `VaListImpl<'2>`
-   |                                               |
-   |                                               has type `&mut VaListImpl<'1>`
-LL |     *ap0 = ap1.clone();
-   |            ^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+   |                                               ------- has type `&mut VaList<'2>`
+LL |     *ap0 = va_copy!(ap1);
+   |     -------^^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |     |      |
+   |     |      creates a temporary value which is freed while still in use
+   |     assignment requires that borrow lasts for `'2`
    |
-   = note: requirement occurs because of the type `VaListImpl<'_>`, which makes the generic argument `'_` invariant
-   = note: the struct `VaListImpl<'f>` is invariant over the parameter `'f`
+   = note: this error originates in the macro `va_copy` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: lifetime may not live long enough
+  --> $DIR/variadic-ffi-4.rs:41:5
+   |
+LL | pub unsafe extern "C" fn no_escape6<'f>(ap: ...) -> VaList<'f> {
+   |                                     --  -- has type `VaList<'1>`
+   |                                     |
+   |                                     lifetime `'f` defined here
+LL |     va_copy!(ap)
+   |     ^^^^^^^^^^^^ function was supposed to return data with lifetime `'f` but it is returning data with lifetime `'1`
+   |
+   = note: requirement occurs because of the type `VaList<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaList<'a>` is invariant over the parameter `'a`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+   = note: this error originates in the macro `va_copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 11 previous errors
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/variadic-ffi-4.rs:41:5
+   |
+LL |     va_copy!(ap)
+   |     ^^^^^^^^^^^^
+   |     |
+   |     returns a value referencing data owned by the current function
+   |     temporary value created here
+   |
+   = note: this error originates in the macro `va_copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-For more information about this error, try `rustc --explain E0597`.
+error: lifetime may not live long enough
+  --> $DIR/variadic-ffi-4.rs:47:5
+   |
+LL | pub unsafe extern "C" fn no_escape7(ap: ...) -> VaList<'static> {
+   |                                     -- has type `VaList<'1>`
+LL |     va_copy!(ap)
+   |     ^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
+   |
+   = note: requirement occurs because of the type `VaList<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaList<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+   = note: this error originates in the macro `va_copy` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/variadic-ffi-4.rs:47:5
+   |
+LL |     va_copy!(ap)
+   |     ^^^^^^^^^^^^
+   |     |
+   |     returns a value referencing data owned by the current function
+   |     temporary value created here
+   |
+   = note: this error originates in the macro `va_copy` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 15 previous errors
+
+Some errors have detailed explanations: E0515, E0597, E0716.
+For more information about an error, try `rustc --explain E0515`.
