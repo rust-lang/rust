@@ -151,7 +151,10 @@ fn current_dll_path() -> Result<PathBuf, String> {
     unsafe {
         GetModuleHandleExW(
             GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-            PCWSTR(current_dll_path as *mut u16),
+            PCWSTR(
+                current_dll_path as fn() -> Result<std::path::PathBuf, std::string::String>
+                    as *mut u16,
+            ),
             &mut module,
         )
     }
