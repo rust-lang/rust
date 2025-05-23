@@ -599,7 +599,7 @@ fn sidebar_enum<'a>(
     deref_id_map: &'a DefIdMap<String>,
 ) {
     let mut variants = e
-        .variants()
+        .non_stripped_variants()
         .filter_map(|v| v.name)
         .map(|name| Link::new(format!("variant.{name}"), name.to_string()))
         .collect::<Vec<_>>();
