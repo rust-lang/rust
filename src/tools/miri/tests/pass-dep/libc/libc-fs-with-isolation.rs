@@ -11,6 +11,10 @@ fn main() {
         assert!(libc::fcntl(1, libc::F_DUPFD, 0) >= 0);
     }
 
+    // Although `readlink` and `stat` require disable-isolation mode
+    // to properly run, they are tested with isolation mode on to check the error emitted
+    // with `-Zmiri-isolation-error=warn-nobacktrace`.
+
     // test `readlink`
     let mut buf = vec![0; "foo_link.txt".len() + 1];
     unsafe {
