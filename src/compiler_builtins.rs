@@ -109,6 +109,8 @@ builtin_functions! {
     // float intrinsics
     fn __powisf2(a: f32, b: i32) -> f32;
     fn __powidf2(a: f64, b: i32) -> f64;
+    // FIXME(f16_f128): `compiler-builtins` doesn't currently support `__powitf2` on MSVC.
+    // fn __powitf2(a: f128, b: i32) -> f128;
     fn powf(a: f32, b: f32) -> f32;
     fn pow(a: f64, b: f64) -> f64;
     fn expf(f: f32) -> f32;
@@ -125,6 +127,19 @@ builtin_functions! {
     fn sin(f: f64) -> f64;
     fn cosf(f: f32) -> f32;
     fn cos(f: f64) -> f64;
+    fn fmaf128(a: f128, b: f128, c: f128) -> f128;
+    fn floorf16(f: f16) -> f16;
+    fn floorf128(f: f128) -> f128;
+    fn ceilf16(f: f16) -> f16;
+    fn ceilf128(f: f128) -> f128;
+    fn truncf16(f: f16) -> f16;
+    fn truncf128(f: f128) -> f128;
+    fn rintf16(f: f16) -> f16;
+    fn rintf128(f: f128) -> f128;
+    fn sqrtf16(f: f16) -> f16;
+    fn sqrtf128(f: f128) -> f128;
+    // FIXME(f16_f128): Add other float intrinsics as compiler-builtins gains support (meaning they
+    // are available on all targets).
 
     // allocator
     // NOTE: These need to be mentioned here despite not being part of compiler_builtins because

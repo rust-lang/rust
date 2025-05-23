@@ -119,6 +119,41 @@ pub(crate) fn neg_f128(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
     fx.bcx.ins().bitcast(types::F128, MemFlags::new(), bits)
 }
 
+pub(crate) fn abs_f16(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
+    let bits = fx.bcx.ins().bitcast(types::I16, MemFlags::new(), value);
+    let bits = fx.bcx.ins().band_imm(bits, 0x7fff);
+    fx.bcx.ins().bitcast(types::F16, MemFlags::new(), bits)
+}
+
+pub(crate) fn abs_f128(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
+    let bits = fx.bcx.ins().bitcast(types::I128, MemFlags::new(), value);
+    let (low, high) = fx.bcx.ins().isplit(bits);
+    let high = fx.bcx.ins().band_imm(high, 0x7fff_ffff_ffff_ffff_u64 as i64);
+    let bits = fx.bcx.ins().iconcat(low, high);
+    fx.bcx.ins().bitcast(types::F128, MemFlags::new(), bits)
+}
+
+pub(crate) fn copysign_f16(fx: &mut FunctionCx<'_, '_, '_>, lhs: Value, rhs: Value) -> Value {
+    let lhs = fx.bcx.ins().bitcast(types::I16, MemFlags::new(), lhs);
+    let rhs = fx.bcx.ins().bitcast(types::I16, MemFlags::new(), rhs);
+    let res = fx.bcx.ins().band_imm(lhs, 0x7fff);
+    let sign = fx.bcx.ins().band_imm(rhs, 0x8000);
+    let res = fx.bcx.ins().bor(res, sign);
+    fx.bcx.ins().bitcast(types::F16, MemFlags::new(), res)
+}
+
+pub(crate) fn copysign_f128(fx: &mut FunctionCx<'_, '_, '_>, lhs: Value, rhs: Value) -> Value {
+    let lhs = fx.bcx.ins().bitcast(types::I128, MemFlags::new(), lhs);
+    let rhs = fx.bcx.ins().bitcast(types::I128, MemFlags::new(), rhs);
+    let (low, lhs_high) = fx.bcx.ins().isplit(lhs);
+    let (_, rhs_high) = fx.bcx.ins().isplit(rhs);
+    let high = fx.bcx.ins().band_imm(lhs_high, 0x7fff_ffff_ffff_ffff_u64 as i64);
+    let sign = fx.bcx.ins().band_imm(rhs_high, 0x8000_0000_0000_0000_u64 as i64);
+    let high = fx.bcx.ins().bor(high, sign);
+    let res = fx.bcx.ins().iconcat(low, high);
+    fx.bcx.ins().bitcast(types::F128, MemFlags::new(), res)
+}
+
 pub(crate) fn codegen_cast(
     fx: &mut FunctionCx<'_, '_, '_>,
     from: Value,
@@ -220,6 +255,14 @@ pub(crate) fn codegen_cast(
     } else {
         unreachable!("{from_ty:?} -> {to_ty:?}");
     }
+}
+
+pub(crate) fn fma_f16(fx: &mut FunctionCx<'_, '_, '_>, x: Value, y: Value, z: Value) -> Value {
+    let x = f16_to_f64(fx, x);
+    let y = f16_to_f64(fx, y);
+    let z = f16_to_f64(fx, z);
+    let res = fx.bcx.ins().fma(x, y, z);
+    f64_to_f16(fx, res)
 }
 
 pub(crate) fn fmin_f128(fx: &mut FunctionCx<'_, '_, '_>, a: Value, b: Value) -> Value {
