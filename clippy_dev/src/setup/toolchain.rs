@@ -8,13 +8,7 @@ use walkdir::WalkDir;
 
 use crate::utils::exit_if_err;
 
-use super::verify_inside_clippy_dir;
-
 pub fn create(standalone: bool, force: bool, release: bool, name: &str) {
-    if !verify_inside_clippy_dir() {
-        return;
-    }
-
     let rustup_home = std::env::var("RUSTUP_HOME").unwrap();
     let toolchain = std::env::var("RUSTUP_TOOLCHAIN").unwrap();
 

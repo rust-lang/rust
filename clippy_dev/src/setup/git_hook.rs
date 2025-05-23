@@ -1,8 +1,6 @@
 use std::fs;
 use std::path::Path;
 
-use super::verify_inside_clippy_dir;
-
 /// Rusts setup uses `git rev-parse --git-common-dir` to get the root directory of the repo.
 /// I've decided against this for the sake of simplicity and to make sure that it doesn't install
 /// the hook if `clippy_dev` would be used in the rust tree. The hook also references this tool
@@ -35,10 +33,6 @@ pub fn install_hook(force_override: bool) {
 }
 
 fn check_precondition(force_override: bool) -> bool {
-    if !verify_inside_clippy_dir() {
-        return false;
-    }
-
     // Make sure that we can find the git repository
     let git_path = Path::new(REPO_GIT_DIR);
     if !git_path.exists() || !git_path.is_dir() {
