@@ -1,34 +1,34 @@
 // MIR for `address_of_reborrow` after SimplifyCfg-initial
 
 | User Type Annotations
-| 0: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }] }, span: $DIR/address_of.rs:8:10: 8:18, inferred_ty: *const [i32; 10]
-| 1: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }] }, span: $DIR/address_of.rs:10:10: 10:25, inferred_ty: *const dyn std::marker::Send
-| 2: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }] }, span: $DIR/address_of.rs:14:12: 14:20, inferred_ty: *const [i32; 10]
-| 3: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }] }, span: $DIR/address_of.rs:14:12: 14:20, inferred_ty: *const [i32; 10]
+| 0: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [Ty(General(U0))] }, span: $DIR/address_of.rs:8:10: 8:18, inferred_ty: *const [i32; 10]
+| 1: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [Region(U0)] }, span: $DIR/address_of.rs:10:10: 10:25, inferred_ty: *const dyn std::marker::Send
+| 2: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [Ty(General(U0))] }, span: $DIR/address_of.rs:14:12: 14:20, inferred_ty: *const [i32; 10]
+| 3: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [Ty(General(U0))] }, span: $DIR/address_of.rs:14:12: 14:20, inferred_ty: *const [i32; 10]
 | 4: user_ty: Canonical { value: Ty(*const [i32; 10]), max_universe: U0, variables: [] }, span: $DIR/address_of.rs:15:12: 15:28, inferred_ty: *const [i32; 10]
 | 5: user_ty: Canonical { value: Ty(*const [i32; 10]), max_universe: U0, variables: [] }, span: $DIR/address_of.rs:15:12: 15:28, inferred_ty: *const [i32; 10]
-| 6: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }] }, span: $DIR/address_of.rs:16:12: 16:27, inferred_ty: *const dyn std::marker::Send
-| 7: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }] }, span: $DIR/address_of.rs:16:12: 16:27, inferred_ty: *const dyn std::marker::Send
+| 6: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [Region(U0)] }, span: $DIR/address_of.rs:16:12: 16:27, inferred_ty: *const dyn std::marker::Send
+| 7: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [Region(U0)] }, span: $DIR/address_of.rs:16:12: 16:27, inferred_ty: *const dyn std::marker::Send
 | 8: user_ty: Canonical { value: Ty(*const [i32]), max_universe: U0, variables: [] }, span: $DIR/address_of.rs:17:12: 17:24, inferred_ty: *const [i32]
 | 9: user_ty: Canonical { value: Ty(*const [i32]), max_universe: U0, variables: [] }, span: $DIR/address_of.rs:17:12: 17:24, inferred_ty: *const [i32]
-| 10: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }] }, span: $DIR/address_of.rs:19:10: 19:18, inferred_ty: *const [i32; 10]
-| 11: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }] }, span: $DIR/address_of.rs:21:10: 21:25, inferred_ty: *const dyn std::marker::Send
-| 12: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }] }, span: $DIR/address_of.rs:24:12: 24:20, inferred_ty: *const [i32; 10]
-| 13: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }] }, span: $DIR/address_of.rs:24:12: 24:20, inferred_ty: *const [i32; 10]
+| 10: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [Ty(General(U0))] }, span: $DIR/address_of.rs:19:10: 19:18, inferred_ty: *const [i32; 10]
+| 11: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [Region(U0)] }, span: $DIR/address_of.rs:21:10: 21:25, inferred_ty: *const dyn std::marker::Send
+| 12: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [Ty(General(U0))] }, span: $DIR/address_of.rs:24:12: 24:20, inferred_ty: *const [i32; 10]
+| 13: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [Ty(General(U0))] }, span: $DIR/address_of.rs:24:12: 24:20, inferred_ty: *const [i32; 10]
 | 14: user_ty: Canonical { value: Ty(*const [i32; 10]), max_universe: U0, variables: [] }, span: $DIR/address_of.rs:25:12: 25:28, inferred_ty: *const [i32; 10]
 | 15: user_ty: Canonical { value: Ty(*const [i32; 10]), max_universe: U0, variables: [] }, span: $DIR/address_of.rs:25:12: 25:28, inferred_ty: *const [i32; 10]
-| 16: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }] }, span: $DIR/address_of.rs:26:12: 26:27, inferred_ty: *const dyn std::marker::Send
-| 17: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }] }, span: $DIR/address_of.rs:26:12: 26:27, inferred_ty: *const dyn std::marker::Send
+| 16: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [Region(U0)] }, span: $DIR/address_of.rs:26:12: 26:27, inferred_ty: *const dyn std::marker::Send
+| 17: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [Region(U0)] }, span: $DIR/address_of.rs:26:12: 26:27, inferred_ty: *const dyn std::marker::Send
 | 18: user_ty: Canonical { value: Ty(*const [i32]), max_universe: U0, variables: [] }, span: $DIR/address_of.rs:27:12: 27:24, inferred_ty: *const [i32]
 | 19: user_ty: Canonical { value: Ty(*const [i32]), max_universe: U0, variables: [] }, span: $DIR/address_of.rs:27:12: 27:24, inferred_ty: *const [i32]
-| 20: user_ty: Canonical { value: Ty(*mut ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }] }, span: $DIR/address_of.rs:29:10: 29:16, inferred_ty: *mut [i32; 10]
-| 21: user_ty: Canonical { value: Ty(*mut dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }] }, span: $DIR/address_of.rs:31:10: 31:23, inferred_ty: *mut dyn std::marker::Send
-| 22: user_ty: Canonical { value: Ty(*mut ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }] }, span: $DIR/address_of.rs:34:12: 34:18, inferred_ty: *mut [i32; 10]
-| 23: user_ty: Canonical { value: Ty(*mut ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }] }, span: $DIR/address_of.rs:34:12: 34:18, inferred_ty: *mut [i32; 10]
+| 20: user_ty: Canonical { value: Ty(*mut ^0), max_universe: U0, variables: [Ty(General(U0))] }, span: $DIR/address_of.rs:29:10: 29:16, inferred_ty: *mut [i32; 10]
+| 21: user_ty: Canonical { value: Ty(*mut dyn std::marker::Send), max_universe: U0, variables: [Region(U0)] }, span: $DIR/address_of.rs:31:10: 31:23, inferred_ty: *mut dyn std::marker::Send
+| 22: user_ty: Canonical { value: Ty(*mut ^0), max_universe: U0, variables: [Ty(General(U0))] }, span: $DIR/address_of.rs:34:12: 34:18, inferred_ty: *mut [i32; 10]
+| 23: user_ty: Canonical { value: Ty(*mut ^0), max_universe: U0, variables: [Ty(General(U0))] }, span: $DIR/address_of.rs:34:12: 34:18, inferred_ty: *mut [i32; 10]
 | 24: user_ty: Canonical { value: Ty(*mut [i32; 10]), max_universe: U0, variables: [] }, span: $DIR/address_of.rs:35:12: 35:26, inferred_ty: *mut [i32; 10]
 | 25: user_ty: Canonical { value: Ty(*mut [i32; 10]), max_universe: U0, variables: [] }, span: $DIR/address_of.rs:35:12: 35:26, inferred_ty: *mut [i32; 10]
-| 26: user_ty: Canonical { value: Ty(*mut dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }] }, span: $DIR/address_of.rs:36:12: 36:25, inferred_ty: *mut dyn std::marker::Send
-| 27: user_ty: Canonical { value: Ty(*mut dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }] }, span: $DIR/address_of.rs:36:12: 36:25, inferred_ty: *mut dyn std::marker::Send
+| 26: user_ty: Canonical { value: Ty(*mut dyn std::marker::Send), max_universe: U0, variables: [Region(U0)] }, span: $DIR/address_of.rs:36:12: 36:25, inferred_ty: *mut dyn std::marker::Send
+| 27: user_ty: Canonical { value: Ty(*mut dyn std::marker::Send), max_universe: U0, variables: [Region(U0)] }, span: $DIR/address_of.rs:36:12: 36:25, inferred_ty: *mut dyn std::marker::Send
 | 28: user_ty: Canonical { value: Ty(*mut [i32]), max_universe: U0, variables: [] }, span: $DIR/address_of.rs:37:12: 37:22, inferred_ty: *mut [i32]
 | 29: user_ty: Canonical { value: Ty(*mut [i32]), max_universe: U0, variables: [] }, span: $DIR/address_of.rs:37:12: 37:22, inferred_ty: *mut [i32]
 |

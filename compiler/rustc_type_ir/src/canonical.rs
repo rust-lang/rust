@@ -41,7 +41,7 @@ pub struct CanonicalQueryInput<I: Interner, V> {
 pub struct Canonical<I: Interner, V> {
     pub value: V,
     pub max_universe: UniverseIndex,
-    pub variables: I::CanonicalVars,
+    pub variables: I::CanonicalVarKinds,
 }
 
 impl<I: Interner, V> Canonical<I, V> {
@@ -88,63 +88,6 @@ impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
 /// canonical value. This is sufficient information for code to create
 /// a copy of the canonical value in some other inference context,
 /// with fresh inference variables replacing the canonical values.
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
-)]
-pub struct CanonicalVarInfo<I: Interner> {
-    pub kind: CanonicalVarKind<I>,
-}
-
-impl<I: Interner> CanonicalVarInfo<I> {
-    pub fn universe(self) -> UniverseIndex {
-        self.kind.universe()
-    }
-
-    #[must_use]
-    pub fn with_updated_universe(self, ui: UniverseIndex) -> CanonicalVarInfo<I> {
-        CanonicalVarInfo { kind: self.kind.with_updated_universe(ui) }
-    }
-
-    pub fn is_existential(&self) -> bool {
-        match self.kind {
-            CanonicalVarKind::Ty(_) => true,
-            CanonicalVarKind::PlaceholderTy(_) => false,
-            CanonicalVarKind::Region(_) => true,
-            CanonicalVarKind::PlaceholderRegion(..) => false,
-            CanonicalVarKind::Const(_) => true,
-            CanonicalVarKind::PlaceholderConst(_) => false,
-        }
-    }
-
-    pub fn is_region(&self) -> bool {
-        match self.kind {
-            CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => true,
-            CanonicalVarKind::Ty(_)
-            | CanonicalVarKind::PlaceholderTy(_)
-            | CanonicalVarKind::Const(_)
-            | CanonicalVarKind::PlaceholderConst(_) => false,
-        }
-    }
-
-    pub fn expect_placeholder_index(self) -> usize {
-        match self.kind {
-            CanonicalVarKind::Ty(_) | CanonicalVarKind::Region(_) | CanonicalVarKind::Const(_) => {
-                panic!("expected placeholder: {self:?}")
-            }
-
-            CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.var().as_usize(),
-            CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.var().as_usize(),
-            CanonicalVarKind::PlaceholderConst(placeholder) => placeholder.var().as_usize(),
-        }
-    }
-}
-
-/// Describes the "kind" of the canonical variable. This is a "kind"
-/// in the type-theory sense of the term -- i.e., a "meta" type system
-/// that analyzes type-like values.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
@@ -212,6 +155,39 @@ impl<I: Interner> CanonicalVarKind<I> {
                 assert_eq!(ui, UniverseIndex::ROOT);
                 self
             }
+        }
+    }
+
+    pub fn is_existential(self) -> bool {
+        match self {
+            CanonicalVarKind::Ty(_) => true,
+            CanonicalVarKind::PlaceholderTy(_) => false,
+            CanonicalVarKind::Region(_) => true,
+            CanonicalVarKind::PlaceholderRegion(..) => false,
+            CanonicalVarKind::Const(_) => true,
+            CanonicalVarKind::PlaceholderConst(_) => false,
+        }
+    }
+
+    pub fn is_region(self) -> bool {
+        match self {
+            CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => true,
+            CanonicalVarKind::Ty(_)
+            | CanonicalVarKind::PlaceholderTy(_)
+            | CanonicalVarKind::Const(_)
+            | CanonicalVarKind::PlaceholderConst(_) => false,
+        }
+    }
+
+    pub fn expect_placeholder_index(self) -> usize {
+        match self {
+            CanonicalVarKind::Ty(_) | CanonicalVarKind::Region(_) | CanonicalVarKind::Const(_) => {
+                panic!("expected placeholder: {self:?}")
+            }
+
+            CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.var().as_usize(),
+            CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.var().as_usize(),
+            CanonicalVarKind::PlaceholderConst(placeholder) => placeholder.var().as_usize(),
         }
     }
 }
@@ -306,11 +282,11 @@ impl<I: Interner> CanonicalVarValues<I> {
 
     // Given a list of canonical variables, construct a set of values which are
     // the identity response.
-    pub fn make_identity(cx: I, infos: I::CanonicalVars) -> CanonicalVarValues<I> {
+    pub fn make_identity(cx: I, infos: I::CanonicalVarKinds) -> CanonicalVarValues<I> {
         CanonicalVarValues {
             var_values: cx.mk_args_from_iter(infos.iter().enumerate().map(
-                |(i, info)| -> I::GenericArg {
-                    match info.kind {
+                |(i, kind)| -> I::GenericArg {
+                    match kind {
                         CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => {
                             Ty::new_anon_bound(cx, ty::INNERMOST, ty::BoundVar::from_usize(i))
                                 .into()
