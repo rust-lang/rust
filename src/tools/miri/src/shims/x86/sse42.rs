@@ -440,7 +440,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let crc = if bit_size == 64 {
                     // The 64-bit version will only consider the lower 32 bits,
                     // while the upper 32 bits get discarded.
-                    #[expect(clippy::cast_possible_truncation)]
+                    #[expect(clippy::as_conversions)]
                     u128::from((left.to_u64()? as u32).reverse_bits())
                 } else {
                     u128::from(left.to_u32()?.reverse_bits())

@@ -43,7 +43,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // We reverse the order because x86 is little endian but the copied implementation uses
             // big endian.
             for (i, part) in val.into_iter().rev().enumerate() {
-                let projected = &ecx.project_index(dest, i.try_into().unwrap())?;
+                let projected = &ecx.project_index(dest, i.to_u64())?;
                 ecx.write_scalar(Scalar::from_u32(part), projected)?;
             }
             interp_ok(())

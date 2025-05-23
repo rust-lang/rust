@@ -17,20 +17,20 @@ mod utils;
 
 fn main() {
     test_path_conversion();
+    test_file();
     test_file_create_new();
+    test_metadata();
+    test_seek();
+    test_errors();
+    test_from_raw_os_error();
     // Windows file handling is very incomplete.
     if cfg!(not(windows)) {
-        test_file();
-        test_seek();
         test_file_clone();
-        test_metadata();
         test_file_set_len();
         test_file_sync();
-        test_errors();
         test_rename();
         test_directory();
         test_canonicalize();
-        test_from_raw_os_error();
         #[cfg(unix)]
         test_pread_pwrite();
     }
