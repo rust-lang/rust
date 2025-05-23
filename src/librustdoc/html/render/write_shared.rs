@@ -611,7 +611,7 @@ impl TypeAliasPart {
                 .impl_
                 .values()
                 .flat_map(|AliasedTypeImpl { impl_, type_aliases }| {
-                    let mut ret = Vec::new();
+                    let mut ret: Vec<AliasSerializableImpl> = Vec::new();
                     let trait_ = impl_
                         .inner_impl()
                         .trait_
@@ -624,11 +624,8 @@ impl TypeAliasPart {
                         cx.id_map.borrow_mut().clear();
                         cx.deref_id_map.borrow_mut().clear();
                         let type_alias_fqp = (*type_alias_fqp).iter().join("::");
-                        if ret.last().map(|s: &AliasSerializableImpl| &s.text).is_some() {
-                            ret.last_mut()
-                                .expect("already established that ret.last() is Some()")
-                                .aliases
-                                .push(type_alias_fqp);
+                        if let Some(last) = ret.last_mut() {
+                            last.aliases.push(type_alias_fqp);
                         } else {
                             let target_did = impl_
                                 .inner_impl()
