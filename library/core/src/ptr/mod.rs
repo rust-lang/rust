@@ -1775,15 +1775,13 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///   memory. Here, any address value is possible, including 0 and [`usize::MAX`], so long as the
 ///   semantics of such a read are well-defined by the target hardware. The access must not trap. It
 ///   can (and usually will) cause side-effects, but those must not affect Rust-allocated memory in
-///   any way. In this use-case, the pointer validity rules in the [module documentation][mod-docs]
-///   may not apply.
+///   in any way. In this use-case, the pointer does *not* have to be [valid] for reads.
 ///
 /// Note that volatile memory operations on zero-sized types (e.g., if a zero-sized type is passed
 /// to `read_volatile`) are noops and may be ignored.
 ///
 /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
 /// [allocation]: crate::ptr#allocated-object
-/// [mod-docs]: crate::ptr
 ///
 /// # Safety
 ///
@@ -1852,7 +1850,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// usage that need to be distinguished:
 ///
 /// - When a volatile operation is used for memory inside an [allocation], it behaves exactly like
-///   [`write`], except for the additional guarantee that it won't be elided or reordered (see
+///   [`write()`], except for the additional guarantee that it won't be elided or reordered (see
 ///   above). This implies that the operation will actually access memory and not e.g. be lowered to
 ///   a register access or stack pop. Other than that, all the usual rules for memory accesses
 ///   apply. In particular, just like in C, whether an operation is volatile has no bearing
@@ -1866,8 +1864,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///   memory. Here, any address value is possible, including 0 and [`usize::MAX`], so long as the
 ///   semantics of such a write are well-defined by the target hardware. The access must not trap.
 ///   It can (and usually will) cause side-effects, but those must not affect Rust-allocated memory
-///   in any way. In this use-case, the pointer validity rules in the [module
-///   documentation][mod-docs] may not apply.
+///   in any way. In this use-case, the pointer does *not* have to be [valid] for writes.
 ///
 /// Note that volatile memory operations on zero-sized types (e.g., if a zero-sized type is passed
 /// to `write_volatile`) are noops and may be ignored.
@@ -1881,14 +1878,13 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
 /// [allocation]: crate::ptr#allocated-object
-/// [mod-docs]: crate::ptr
 ///
 /// # Safety
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
 /// * `dst` must be either [valid] for writes, or it must point to memory outside of all Rust
-///   allocations and to that memory must:
+///   allocations and writing to that memory must:
 ///   - not trap, and
 ///   - not cause any memory inside a Rust allocation to be modified.
 ///
