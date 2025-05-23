@@ -11,6 +11,8 @@
 // praying two functions go into separate codegen units and then assuming that
 // if inlining *doesn't* happen the first byte of the functions will differ.
 
+#![allow(function_casts_as_integer)]
+
 extern crate thin_lto_inlines_aux as bar;
 
 pub fn foo() -> u32 {
