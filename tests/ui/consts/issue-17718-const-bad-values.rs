@@ -7,9 +7,4 @@
 const C1: &'static mut [usize] = &mut [];
 //~^ ERROR: mutable references are not allowed
 
-static mut S: i32 = 3;
-const C2: &'static mut i32 = unsafe { &mut S };
-//~^ ERROR: it is undefined behavior to use this value
-//~| NOTE reference to mutable memory
-
 fn main() {}
