@@ -1,5 +1,7 @@
 //@ check-pass
 
+#![allow(function_casts_as_integer)]
+
 use std::ptr;
 
 extern "C" fn c_fn() {}
