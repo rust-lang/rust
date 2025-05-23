@@ -56,9 +56,17 @@ builtin_functions! {
     fn __fixdfti(f: f64) -> i128;
     fn __fixunssfti(f: f32) -> u128;
     fn __fixunsdfti(f: f64) -> u128;
+    // float -> float
+    fn __extendhfsf2(f: f16) -> f32;
+    fn __truncsfhf2(f: f32) -> f16;
     // float binops
+    fn __addtf3(a: f128, b: f128) -> f128;
+    fn __subtf3(a: f128, b: f128) -> f128;
+    fn __multf3(a: f128, b: f128) -> f128;
+    fn __divtf3(a: f128, b: f128) -> f128;
     fn fmodf(a: f32, b: f32) -> f32;
     fn fmod(a: f64, b: f64) -> f64;
+    fn fmodf128(a: f128, b: f128) -> f128;
     // Cranelift float libcalls
     fn fmaf(a: f32, b: f32, c: f32) -> f32;
     fn fma(a: f64, b: f64, c: f64) -> f64;

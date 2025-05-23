@@ -6,6 +6,9 @@
 #![cfg_attr(doc, feature(rustdoc_internals))]
 // Note: please avoid adding other feature gates where possible
 #![feature(rustc_private)]
+// Only used to define intrinsics in `compiler_builtins.rs`.
+#![feature(f16)]
+#![feature(f128)]
 // Note: please avoid adding other feature gates where possible
 #![warn(rust_2018_idioms)]
 #![warn(unreachable_pub)]
@@ -57,6 +60,7 @@ mod allocator;
 mod analyze;
 mod base;
 mod cast;
+mod codegen_f16_f128;
 mod codegen_i128;
 mod common;
 mod compiler_builtins;

@@ -15,9 +15,9 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 
 use crate::constant::ConstantCx;
 use crate::debuginfo::{FunctionDebugContext, TypeDebugContext};
-use crate::enable_verifier;
 use crate::prelude::*;
 use crate::pretty_clif::CommentWriter;
+use crate::{codegen_f16_f128, enable_verifier};
 
 pub(crate) struct CodegenedFunction {
     symbol_name: String,
@@ -635,6 +635,15 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                             let val = operand.load_scalar(fx);
                             match layout.ty.kind() {
                                 ty::Int(_) => CValue::by_val(fx.bcx.ins().ineg(val), layout),
+                                // FIXME(bytecodealliance/wasmtime#8312): Remove
+                                // once backend lowerings have been added to
+                                // Cranelift.
+                                ty::Float(FloatTy::F16) => {
+                                    CValue::by_val(codegen_f16_f128::neg_f16(fx, val), layout)
+                                }
+                                ty::Float(FloatTy::F128) => {
+                                    CValue::by_val(codegen_f16_f128::neg_f128(fx, val), layout)
+                                }
                                 ty::Float(_) => CValue::by_val(fx.bcx.ins().fneg(val), layout),
                                 _ => unreachable!("un op Neg for {:?}", layout.ty),
                             }
