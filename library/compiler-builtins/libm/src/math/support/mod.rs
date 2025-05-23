@@ -11,6 +11,8 @@ mod int_traits;
 
 #[allow(unused_imports)]
 pub use big::{i256, u256};
+#[allow(unused_imports)]
+pub(crate) use cfg_if;
 pub use env::{FpResult, Round, Status};
 #[allow(unused_imports)]
 pub use float_traits::{DFloat, Float, HFloat, IntTy};
