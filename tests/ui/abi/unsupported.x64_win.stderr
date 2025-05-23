@@ -98,11 +98,15 @@ LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
-error[E0570]: `"stdcall"` is not a supported ABI for the current target
+warning: use of calling convention not supported on this target
   --> $DIR/unsupported.rs:199:1
    |
 LL | extern "stdcall" {}
    | ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
+   = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 warning: the calling convention "cdecl" is not supported on this target
   --> $DIR/unsupported.rs:221:17
@@ -121,7 +125,6 @@ LL | extern "cdecl" {}
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
   --> $DIR/unsupported.rs:272:21
@@ -189,11 +192,14 @@ error[E0570]: `"thiscall"` is not a supported ABI for the current target
 LL | extern "thiscall" fn thiscall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0570]: `"stdcall"` is not a supported ABI for the current target
+warning: use of calling convention not supported on this target
   --> $DIR/unsupported.rs:176:1
    |
 LL | extern "stdcall" fn stdcall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
 
 warning: use of calling convention not supported on this target
   --> $DIR/unsupported.rs:208:1
@@ -210,7 +216,7 @@ error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current 
 LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 17 previous errors; 12 warnings emitted
+error: aborting due to 15 previous errors; 14 warnings emitted
 
 For more information about this error, try `rustc --explain E0570`.
 Future incompatibility report: Future breakage diagnostic:
@@ -291,6 +297,17 @@ LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
 
 Future breakage diagnostic:
+warning: use of calling convention not supported on this target
+  --> $DIR/unsupported.rs:199:1
+   |
+LL | extern "stdcall" {}
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
+   = note: `#[warn(unsupported_calling_conventions)]` on by default
+
+Future breakage diagnostic:
 warning: the calling convention "cdecl" is not supported on this target
   --> $DIR/unsupported.rs:221:17
    |
@@ -333,6 +350,17 @@ LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
    = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+
+Future breakage diagnostic:
+warning: use of calling convention not supported on this target
+  --> $DIR/unsupported.rs:176:1
+   |
+LL | extern "stdcall" fn stdcall() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
+   = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 Future breakage diagnostic:
 warning: use of calling convention not supported on this target
