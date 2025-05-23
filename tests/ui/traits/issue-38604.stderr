@@ -14,23 +14,6 @@ LL | trait Foo where u32: Q<Self> {
    |       this trait is not dyn compatible...
    = help: only type `()` implements `Foo`; consider using it directly instead.
 
-error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/issue-38604.rs:15:9
-   |
-LL |         Box::new(());
-   |         ^^^^^^^^^^^^ `Foo` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/issue-38604.rs:2:22
-   |
-LL | trait Foo where u32: Q<Self> {
-   |       ---            ^^^^^^^ ...because it uses `Self` as a type parameter
-   |       |
-   |       this trait is not dyn compatible...
-   = help: only type `()` implements `Foo`; consider using it directly instead.
-   = note: required for the cast from `Box<()>` to `Box<dyn Foo>`
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

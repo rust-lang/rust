@@ -12,5 +12,5 @@ impl Foo for () {
 
 fn main() {
     let _f: Box<dyn Foo> = //~ ERROR `Foo` is not dyn compatible
-        Box::new(()); //~ ERROR `Foo` is not dyn compatible
+        Box::new(());
 }

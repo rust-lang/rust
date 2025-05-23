@@ -13,5 +13,4 @@ fn main() {
     (Box::new(10) as Box<dyn bar>).dup();
     //~^ ERROR E0038
     //~| ERROR E0038
-    //~| ERROR E0038
 }

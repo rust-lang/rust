@@ -30,23 +30,6 @@ LL |     type A<'a> where Self: 'a;
    |          ^ ...because it contains the generic associated type `A`
    = help: consider moving `A` to another trait
 
-error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/gat-in-trait-path.rs:27:5
-   |
-LL |   f(Box::new(foo));
-   |     ^^^^^^^^^^^^^ `Foo` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/gat-in-trait-path.rs:6:10
-   |
-LL | trait Foo {
-   |       --- this trait is not dyn compatible...
-LL |     type A<'a> where Self: 'a;
-   |          ^ ...because it contains the generic associated type `A`
-   = help: consider moving `A` to another trait
-   = note: required for the cast from `Box<Fooer<{integer}>>` to `Box<(dyn Foo<A<'a> = &'a ()> + 'static)>`
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0038`.

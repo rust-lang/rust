@@ -15,5 +15,4 @@ pub fn main() {
     // Check that this does not segfault.
     <dyn X as X>::foo(&());
     //~^ ERROR the trait `X` is not dyn compatible
-    //~| ERROR the trait `X` is not dyn compatible
 }

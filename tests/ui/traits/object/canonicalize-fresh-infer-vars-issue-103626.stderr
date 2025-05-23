@@ -14,30 +14,6 @@ LL |     let b: &dyn FromResidual<R> = &();
    |                             +++
 
 error[E0038]: the trait `FromResidual` is not dyn compatible
-  --> $DIR/canonicalize-fresh-infer-vars-issue-103626.rs:10:32
-   |
-LL |     let b: &dyn FromResidual = &();
-   |                                ^^^ `FromResidual` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/canonicalize-fresh-infer-vars-issue-103626.rs:2:8
-   |
-LL | trait FromResidual<R = <Self as Try>::Residual> {
-   |       ------------ this trait is not dyn compatible...
-LL |     fn from_residual(residual: R) -> Self;
-   |        ^^^^^^^^^^^^^ ...because associated function `from_residual` has no `self` parameter
-   = note: required for the cast from `&()` to `&dyn FromResidual<{type error}>`
-help: consider turning `from_residual` into a method by giving it a `&self` argument
-   |
-LL |     fn from_residual(&self, residual: R) -> Self;
-   |                      ++++++
-help: alternatively, consider constraining `from_residual` so it does not apply to trait objects
-   |
-LL |     fn from_residual(residual: R) -> Self where Self: Sized;
-   |                                           +++++++++++++++++
-
-error[E0038]: the trait `FromResidual` is not dyn compatible
   --> $DIR/canonicalize-fresh-infer-vars-issue-103626.rs:10:12
    |
 LL |     let b: &dyn FromResidual = &();
@@ -60,7 +36,7 @@ help: alternatively, consider constraining `from_residual` so it does not apply 
 LL |     fn from_residual(residual: R) -> Self where Self: Sized;
    |                                           +++++++++++++++++
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0038, E0393.
 For more information about an error, try `rustc --explain E0038`.
