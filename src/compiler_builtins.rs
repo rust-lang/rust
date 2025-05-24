@@ -46,15 +46,49 @@ builtin_functions! {
     fn __rust_u128_mulo(a: u128, b: u128, oflow: &mut i32) -> u128;
     fn __rust_i128_mulo(a: i128, b: i128, oflow: &mut i32) -> i128;
 
-    // floats
+    // integer -> float
     fn __floattisf(i: i128) -> f32;
     fn __floattidf(i: i128) -> f64;
     fn __floatuntisf(i: u128) -> f32;
     fn __floatuntidf(i: u128) -> f64;
+    // float -> integer
     fn __fixsfti(f: f32) -> i128;
     fn __fixdfti(f: f64) -> i128;
     fn __fixunssfti(f: f32) -> u128;
     fn __fixunsdfti(f: f64) -> u128;
+    // float binops
+    fn fmodf(a: f32, b: f32) -> f32;
+    fn fmod(a: f64, b: f64) -> f64;
+    // Cranelift float libcalls
+    fn fmaf(a: f32, b: f32, c: f32) -> f32;
+    fn fma(a: f64, b: f64, c: f64) -> f64;
+    fn floorf(f: f32) -> f32;
+    fn floor(f: f64) -> f64;
+    fn ceilf(f: f32) -> f32;
+    fn ceil(f: f64) -> f64;
+    fn truncf(f: f32) -> f32;
+    fn trunc(f: f64) -> f64;
+    fn nearbyintf(f: f32) -> f32;
+    fn nearbyint(f: f64) -> f64;
+    // float intrinsics
+    fn __powisf2(a: f32, b: i32) -> f32;
+    fn __powidf2(a: f64, b: i32) -> f64;
+    fn powf(a: f32, b: f32) -> f32;
+    fn pow(a: f64, b: f64) -> f64;
+    fn expf(f: f32) -> f32;
+    fn exp(f: f64) -> f64;
+    fn exp2f(f: f32) -> f32;
+    fn exp2(f: f64) -> f64;
+    fn logf(f: f32) -> f32;
+    fn log(f: f64) -> f64;
+    fn log2f(f: f32) -> f32;
+    fn log2(f: f64) -> f64;
+    fn log10f(f: f32) -> f32;
+    fn log10(f: f64) -> f64;
+    fn sinf(f: f32) -> f32;
+    fn sin(f: f64) -> f64;
+    fn cosf(f: f32) -> f32;
+    fn cos(f: f64) -> f64;
 
     // allocator
     // NOTE: These need to be mentioned here despite not being part of compiler_builtins because
