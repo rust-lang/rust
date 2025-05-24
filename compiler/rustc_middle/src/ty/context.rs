@@ -1014,6 +1014,8 @@ const NUM_PREINTERNED_FRESH_TYS: u32 = 20;
 const NUM_PREINTERNED_FRESH_INT_TYS: u32 = 3;
 const NUM_PREINTERNED_FRESH_FLOAT_TYS: u32 = 3;
 
+const NUM_PREINTERNED_CT_VARS: u32 = 100;
+
 // This number may seem high, but it is reached in all but the smallest crates.
 const NUM_PREINTERNED_RE_VARS: u32 = 500;
 const NUM_PREINTERNED_RE_LATE_BOUNDS_I: u32 = 2;
@@ -1084,6 +1086,8 @@ pub struct CommonConsts<'tcx> {
     pub false_: Const<'tcx>,
     /// Use [`ty::ValTree::zst`] instead.
     pub(crate) valtree_zst: ValTree<'tcx>,
+    /// Pre-interned `ConstKind::Infer(InferConst::Var(n))` for small values of `n`.
+    pub ct_vars: Vec<Const<'tcx>>,
 }
 
 impl<'tcx> CommonTypes<'tcx> {
@@ -1197,6 +1201,10 @@ impl<'tcx> CommonConsts<'tcx> {
         let valtree_true = mk_valtree(ty::ValTreeKind::Leaf(ty::ScalarInt::TRUE));
         let valtree_false = mk_valtree(ty::ValTreeKind::Leaf(ty::ScalarInt::FALSE));
 
+        let ct_vars = (0..NUM_PREINTERNED_CT_VARS)
+            .map(|n| mk_const(ty::ConstKind::Infer(ty::InferConst::Var(ty::ConstVid::from(n)))))
+            .collect();
+
         CommonConsts {
             unit: mk_const(ty::ConstKind::Value(ty::Value {
                 ty: types.unit,
@@ -1210,6 +1218,7 @@ impl<'tcx> CommonConsts<'tcx> {
                 ty: types.bool,
                 valtree: valtree_false,
             })),
+            ct_vars,
             valtree_zst,
         }
     }
