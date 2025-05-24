@@ -5,7 +5,7 @@
 #[diagnostic::on_unimplemented(message = "here is a big \
                                          multiline string \
                                          {unknown}")]
-//~^^ ERROR there is no parameter `unknown` on trait `MultiLine` [unknown_or_malformed_diagnostic_attributes]
+//~^ ERROR there is no parameter `unknown` on trait `MultiLine` [unknown_or_malformed_diagnostic_attributes]
 pub trait MultiLine {}
 
 #[diagnostic::on_unimplemented(message = "here is a big \
@@ -25,22 +25,23 @@ pub trait MultiLine3 {}
                                 \
                                                 \
     multiline string {unknown}")]
-//~^^^^ ERROR there is no parameter `unknown` on trait `MultiLine4` [unknown_or_malformed_diagnostic_attributes]
+//~^ ERROR there is no parameter `unknown` on trait `MultiLine4` [unknown_or_malformed_diagnostic_attributes]
 pub trait MultiLine4 {}
 
 #[diagnostic::on_unimplemented(message = "here is a big \
                                          multiline string \
                                          {Self:+}")]
-//~^^^ ERROR invalid format specifier [unknown_or_malformed_diagnostic_attributes]
+//~^ ERROR invalid format specifier [unknown_or_malformed_diagnostic_attributes]
 pub trait MultiLineFmt {}
 
 #[diagnostic::on_unimplemented(message = "here is a big \
                                          multiline string {Self:X}")]
+//~^ ERROR invalid format specifier [unknown_or_malformed_diagnostic_attributes]
 pub trait MultiLineFmt2 {}
 
 #[diagnostic::on_unimplemented(message = "here is a big \
     multiline string {Self:#}")]
-//~^^ ERROR invalid format specifier [unknown_or_malformed_diagnostic_attributes]
+//~^ ERROR invalid format specifier [unknown_or_malformed_diagnostic_attributes]
 pub trait MultiLineFmt3 {}
 
 
@@ -50,4 +51,5 @@ pub trait MultiLineFmt3 {}
                                 \
                                                 \
     multiline string {Self:?}")]
+//~^ ERROR invalid format specifier [unknown_or_malformed_diagnostic_attributes]
 pub trait MultiLineFmt4 {}
