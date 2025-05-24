@@ -91,7 +91,7 @@ where
 
     /// The variable info for the `var_values`, only used to make an ambiguous response
     /// with no constraints.
-    variables: I::CanonicalVars,
+    variables: I::CanonicalVarKinds,
 
     /// What kind of goal we're currently computing, see the enum definition
     /// for more info.
