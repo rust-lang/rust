@@ -29,4 +29,8 @@ pub const RUSTC_PGO_CRATES: &[&str] = &[
     "tuple-stress",
     "diesel-2.2.10",
     "bitmaps-3.2.1",
+    "html5ever-0.31.0-new-solver",
+    "nalgebra-0.33.0-new-solver",
+    "serde-1.0.219-new-solver",
+    "syn-2.0.101-new-solver",
 ];
