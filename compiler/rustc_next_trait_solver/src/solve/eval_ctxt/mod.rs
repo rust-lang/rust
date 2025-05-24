@@ -22,8 +22,9 @@ use crate::delegate::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
-    CanonicalInput, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluationKind, GoalSource,
-    HasChanged, NestedNormalizationGoals, NoSolution, QueryInput, QueryResult,
+    CanonicalGoalCacheKey, CanonicalInput, Certainty, FIXPOINT_STEP_LIMIT, Goal,
+    GoalEvaluationKind, GoalSource, HasChanged, NestedNormalizationGoals, NoSolution, QueryInput,
+    QueryResult,
 };
 
 pub(super) mod canonical;
@@ -115,7 +116,7 @@ where
 
     pub(super) search_graph: &'a mut SearchGraph<D>,
 
-    nested_goals: Vec<(GoalSource, Goal<I, I::Predicate>)>,
+    nested_goals: Vec<(GoalSource, Goal<I, I::Predicate>, Option<CanonicalGoalCacheKey<I>>)>,
 
     pub(super) origin_span: I::Span,
 
@@ -147,8 +148,9 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         generate_proof_tree: GenerateProofTree,
         span: <Self::Interner as Interner>::Span,
+        cache_key: Option<CanonicalGoalCacheKey<Self::Interner>>,
     ) -> (
-        Result<(HasChanged, Certainty), NoSolution>,
+        Result<(HasChanged, Certainty, CanonicalGoalCacheKey<Self::Interner>), NoSolution>,
         Option<inspect::GoalEvaluation<Self::Interner>>,
     );
 
@@ -171,8 +173,17 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         generate_proof_tree: GenerateProofTree,
+        cache_key: Option<CanonicalGoalCacheKey<Self::Interner>>,
     ) -> (
-        Result<(NestedNormalizationGoals<Self::Interner>, HasChanged, Certainty), NoSolution>,
+        Result<
+            (
+                NestedNormalizationGoals<Self::Interner>,
+                HasChanged,
+                Certainty,
+                CanonicalGoalCacheKey<Self::Interner>,
+            ),
+            NoSolution,
+        >,
         Option<inspect::GoalEvaluation<Self::Interner>>,
     );
 }
@@ -188,9 +199,13 @@ where
         goal: Goal<I, I::Predicate>,
         generate_proof_tree: GenerateProofTree,
         span: I::Span,
-    ) -> (Result<(HasChanged, Certainty), NoSolution>, Option<inspect::GoalEvaluation<I>>) {
+        cache_key: Option<CanonicalGoalCacheKey<I>>,
+    ) -> (
+        Result<(HasChanged, Certainty, CanonicalGoalCacheKey<I>), NoSolution>,
+        Option<inspect::GoalEvaluation<I>>,
+    ) {
         EvalCtxt::enter_root(self, self.cx().recursion_limit(), generate_proof_tree, span, |ecx| {
-            ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal)
+            ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal, cache_key)
         })
     }
 
@@ -201,7 +216,7 @@ where
     ) -> bool {
         self.probe(|| {
             EvalCtxt::enter_root(self, root_depth, GenerateProofTree::No, I::Span::dummy(), |ecx| {
-                ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal)
+                ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal, None)
             })
             .0
         })
@@ -213,8 +228,12 @@ where
         &self,
         goal: Goal<I, I::Predicate>,
         generate_proof_tree: GenerateProofTree,
+        cache_key: Option<CanonicalGoalCacheKey<I>>,
     ) -> (
-        Result<(NestedNormalizationGoals<I>, HasChanged, Certainty), NoSolution>,
+        Result<
+            (NestedNormalizationGoals<I>, HasChanged, Certainty, CanonicalGoalCacheKey<I>),
+            NoSolution,
+        >,
         Option<inspect::GoalEvaluation<I>>,
     ) {
         EvalCtxt::enter_root(
@@ -222,7 +241,9 @@ where
             self.cx().recursion_limit(),
             generate_proof_tree,
             I::Span::dummy(),
-            |ecx| ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal),
+            |ecx| {
+                ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal, cache_key)
+            },
         )
     }
 }
@@ -447,11 +468,12 @@ where
         goal_evaluation_kind: GoalEvaluationKind,
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
-    ) -> Result<(HasChanged, Certainty), NoSolution> {
-        let (normalization_nested_goals, has_changed, certainty) =
-            self.evaluate_goal_raw(goal_evaluation_kind, source, goal)?;
+        cache_key: Option<CanonicalGoalCacheKey<I>>,
+    ) -> Result<(HasChanged, Certainty, CanonicalGoalCacheKey<I>), NoSolution> {
+        let (normalization_nested_goals, has_changed, certainty, cache_key) =
+            self.evaluate_goal_raw(goal_evaluation_kind, source, goal, cache_key)?;
         assert!(normalization_nested_goals.is_empty());
-        Ok((has_changed, certainty))
+        Ok((has_changed, certainty, cache_key))
     }
 
     /// Recursively evaluates `goal`, returning the nested goals in case
@@ -466,8 +488,12 @@ where
         goal_evaluation_kind: GoalEvaluationKind,
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
-    ) -> Result<(NestedNormalizationGoals<I>, HasChanged, Certainty), NoSolution> {
-        let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
+        cache_key: Option<CanonicalGoalCacheKey<I>>,
+    ) -> Result<
+        (NestedNormalizationGoals<I>, HasChanged, Certainty, CanonicalGoalCacheKey<I>),
+        NoSolution,
+    > {
+        let (orig_values, canonical_goal) = self.canonicalize_goal(goal, cache_key);
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
         let canonical_response = EvalCtxt::evaluate_canonical_goal(
@@ -488,6 +514,7 @@ where
         let has_changed =
             if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
 
+        let cache_orig_values = self.cx().mk_args(&orig_values);
         let (normalization_nested_goals, certainty) =
             self.instantiate_and_apply_query_response(goal.param_env, orig_values, response);
         self.inspect.goal_evaluation(goal_evaluation);
@@ -502,7 +529,12 @@ where
         // Once we have decided on how to handle trait-system-refactor-initiative#75,
         // we should re-add an assert here.
 
-        Ok((normalization_nested_goals, has_changed, certainty))
+        Ok((
+            normalization_nested_goals,
+            has_changed,
+            certainty,
+            CanonicalGoalCacheKey { canonical_goal, orig_values: cache_orig_values },
+        ))
     }
 
     fn compute_goal(&mut self, goal: Goal<I, I::Predicate>) -> QueryResult<I> {
@@ -602,7 +634,7 @@ where
         let cx = self.cx();
         // If this loop did not result in any progress, what's our final certainty.
         let mut unchanged_certainty = Some(Certainty::Yes);
-        for (source, goal) in mem::take(&mut self.nested_goals) {
+        for (source, goal, cache_key) in mem::take(&mut self.nested_goals) {
             if let Some(has_changed) = self.delegate.compute_goal_fast_path(goal, self.origin_span)
             {
                 if matches!(has_changed, HasChanged::Yes) {
@@ -630,11 +662,16 @@ where
                 let unconstrained_goal =
                     goal.with(cx, ty::NormalizesTo { alias: pred.alias, term: unconstrained_rhs });
 
-                let (NestedNormalizationGoals(nested_goals), _, certainty) =
-                    self.evaluate_goal_raw(GoalEvaluationKind::Nested, source, unconstrained_goal)?;
+                let (NestedNormalizationGoals(nested_goals), _, certainty, _) = self
+                    .evaluate_goal_raw(
+                        GoalEvaluationKind::Nested,
+                        source,
+                        unconstrained_goal,
+                        None,
+                    )?;
                 // Add the nested goals from normalization to our own nested goals.
                 trace!(?nested_goals);
-                self.nested_goals.extend(nested_goals);
+                self.nested_goals.extend(nested_goals.into_iter().map(|(s, g)| (s, g, None)));
 
                 // Finally, equate the goal's RHS with the unconstrained var.
                 //
@@ -668,13 +705,13 @@ where
                 match certainty {
                     Certainty::Yes => {}
                     Certainty::Maybe(_) => {
-                        self.nested_goals.push((source, with_resolved_vars));
+                        self.nested_goals.push((source, with_resolved_vars, None));
                         unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
                 }
             } else {
-                let (has_changed, certainty) =
-                    self.evaluate_goal(GoalEvaluationKind::Nested, source, goal)?;
+                let (has_changed, certainty, cache_key) =
+                    self.evaluate_goal(GoalEvaluationKind::Nested, source, goal, cache_key)?;
                 if has_changed == HasChanged::Yes {
                     unchanged_certainty = None;
                 }
@@ -682,7 +719,7 @@ where
                 match certainty {
                     Certainty::Yes => {}
                     Certainty::Maybe(_) => {
-                        self.nested_goals.push((source, goal));
+                        self.nested_goals.push((source, goal, Some(cache_key)));
                         unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
                 }
@@ -706,7 +743,7 @@ where
         goal.predicate =
             goal.predicate.fold_with(&mut ReplaceAliasWithInfer::new(self, source, goal.param_env));
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
-        self.nested_goals.push((source, goal));
+        self.nested_goals.push((source, goal, None));
     }
 
     #[instrument(level = "trace", skip(self, goals))]

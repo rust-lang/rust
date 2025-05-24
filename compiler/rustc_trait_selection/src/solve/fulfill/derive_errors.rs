@@ -93,10 +93,11 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                 root_obligation.as_goal(),
                 GenerateProofTree::No,
                 root_obligation.cause.span,
+                None,
             )
             .0
         {
-            Ok((_, Certainty::Maybe(MaybeCause::Ambiguity))) => {
+            Ok((_, Certainty::Maybe(MaybeCause::Ambiguity), _)) => {
                 (FulfillmentErrorCode::Ambiguity { overflow: None }, true)
             }
             Ok((
@@ -105,6 +106,7 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                     suggest_increasing_limit,
                     keep_constraints: _,
                 }),
+                _,
             )) => (
                 FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) },
                 // Don't look into overflows because we treat overflows weirdly anyways.
@@ -115,7 +117,7 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                 // FIXME: We should probably just look into overflows here.
                 false,
             ),
-            Ok((_, Certainty::Yes)) => {
+            Ok((_, Certainty::Yes, _)) => {
                 bug!(
                     "did not expect successful goal when collecting ambiguity errors for `{:?}`",
                     infcx.resolve_vars_if_possible(root_obligation.predicate),

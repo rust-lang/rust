@@ -89,6 +89,45 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().opportunistic_resolve_var(self.tcx, vid)
     }
 
+    #[allow(rustc::usage_of_type_ir_traits)]
+    fn is_changed_arg(&self, arg: ty::GenericArg<'tcx>) -> bool {
+        match arg.unpack() {
+            ty::GenericArgKind::Lifetime(lt) => {
+                if let ty::ReVar(vid) = lt.kind() {
+                    self.opportunistic_resolve_lt_var(vid) != lt
+                } else {
+                    true
+                }
+            }
+            ty::GenericArgKind::Type(ty) => {
+                if let ty::Infer(infer_ty) = *ty.kind() {
+                    match infer_ty {
+                        ty::InferTy::TyVar(vid) => self.opportunistic_resolve_ty_var(vid) != ty,
+                        ty::InferTy::IntVar(vid) => self.opportunistic_resolve_int_var(vid) != ty,
+                        ty::InferTy::FloatVar(vid) => {
+                            self.opportunistic_resolve_float_var(vid) != ty
+                        }
+                        ty::InferTy::FreshTy(_)
+                        | ty::InferTy::FreshIntTy(_)
+                        | ty::InferTy::FreshFloatTy(_) => true,
+                    }
+                } else {
+                    true
+                }
+            }
+            ty::GenericArgKind::Const(ct) => {
+                if let ty::ConstKind::Infer(infer_ct) = ct.kind() {
+                    match infer_ct {
+                        ty::InferConst::Var(vid) => self.opportunistic_resolve_ct_var(vid) != ct,
+                        ty::InferConst::Fresh(_) => true,
+                    }
+                } else {
+                    true
+                }
+            }
+        }
+    }
+
     fn next_region_infer(&self) -> ty::Region<'tcx> {
         self.next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
     }

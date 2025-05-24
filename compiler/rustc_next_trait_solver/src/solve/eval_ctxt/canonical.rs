@@ -25,9 +25,9 @@ use crate::delegate::SolverDelegate;
 use crate::resolve::EagerResolver;
 use crate::solve::eval_ctxt::CurrentGoalKind;
 use crate::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, EvalCtxt, ExternalConstraintsData, Goal,
-    MaybeCause, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryInput,
-    QueryResult, Response, inspect, response_no_constraints_raw,
+    CanonicalGoalCacheKey, CanonicalInput, CanonicalResponse, Certainty, EvalCtxt,
+    ExternalConstraintsData, Goal, MaybeCause, NestedNormalizationGoals, NoSolution,
+    PredefinedOpaquesData, QueryInput, QueryResult, Response, inspect, response_no_constraints_raw,
 };
 
 trait ResponseT<I: Interner> {
@@ -53,10 +53,17 @@ where
 {
     /// Canonicalizes the goal remembering the original values
     /// for each bound variable.
-    pub(super) fn canonicalize_goal<T: TypeFoldable<I>>(
+    pub(super) fn canonicalize_goal(
         &self,
-        goal: Goal<I, T>,
-    ) -> (Vec<I::GenericArg>, CanonicalInput<I, T>) {
+        goal: Goal<I, I::Predicate>,
+        cache_key: Option<CanonicalGoalCacheKey<I>>,
+    ) -> (Vec<I::GenericArg>, CanonicalInput<I, I::Predicate>) {
+        if let Some(cache_key) = cache_key {
+            if !cache_key.orig_values.iter().any(|value| self.delegate.is_changed_arg(value)) {
+                return (cache_key.orig_values.to_vec(), cache_key.canonical_goal);
+            }
+        }
+
         // We only care about one entry per `OpaqueTypeKey` here,
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
@@ -130,7 +137,7 @@ where
                     if goals.is_empty() {
                         assert!(matches!(goals_certainty, Certainty::Yes));
                     }
-                    (Certainty::Yes, NestedNormalizationGoals(goals))
+                    (Certainty::Yes, NestedNormalizationGoals::from(goals))
                 }
                 _ => {
                     let certainty = shallow_certainty.and(goals_certainty);
