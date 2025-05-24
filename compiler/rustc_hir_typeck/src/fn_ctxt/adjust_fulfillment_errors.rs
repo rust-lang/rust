@@ -357,7 +357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
         def_id: DefId,
-        param: ty::GenericArg<'tcx>,
+        arg: ty::GenericArg<'tcx>,
         qpath: &hir::QPath<'tcx>,
     ) -> bool {
         match qpath {
@@ -365,7 +365,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for segment in path.segments.iter().rev() {
                     if let Res::Def(kind, def_id) = segment.res
                         && !matches!(kind, DefKind::Mod | DefKind::ForeignMod)
-                        && self.point_at_generic_if_possible(error, def_id, param, segment)
+                        && self.point_at_generic_if_possible(error, def_id, arg, segment)
                     {
                         return true;
                     }
@@ -373,7 +373,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Handle `Self` param specifically, since it's separated in
                 // the path representation
                 if let Some(self_ty) = self_ty
-                    && let ty::GenericArgKind::Type(ty) = param.kind()
+                    && let ty::GenericArgKind::Type(ty) = arg.kind()
                     && ty == self.tcx.types.self_param
                 {
                     error.obligation.cause.span = self_ty
@@ -384,12 +384,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             hir::QPath::TypeRelative(self_ty, segment) => {
-                if self.point_at_generic_if_possible(error, def_id, param, segment) {
+                if self.point_at_generic_if_possible(error, def_id, arg, segment) {
                     return true;
                 }
                 // Handle `Self` param specifically, since it's separated in
                 // the path representation
-                if let ty::GenericArgKind::Type(ty) = param.kind()
+                if let ty::GenericArgKind::Type(ty) = arg.kind()
                     && ty == self.tcx.types.self_param
                 {
                     error.obligation.cause.span = self_ty

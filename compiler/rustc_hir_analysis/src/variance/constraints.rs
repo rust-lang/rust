@@ -200,8 +200,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         // Trait are always invariant so we can take advantage of that.
         let variance_i = self.invariant(variance);
 
-        for k in args {
-            match k.kind() {
+        for arg in args {
+            match arg.kind() {
                 GenericArgKind::Lifetime(lt) => {
                     self.add_constraints_from_region(current, lt, variance_i)
                 }
@@ -373,7 +373,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             (None, Some(self.tcx().variances_of(def_id)))
         };
 
-        for (i, k) in args.iter().enumerate() {
+        for (i, arg) in args.iter().enumerate() {
             let variance_decl = if let Some(InferredIndex(start)) = local {
                 // Parameter on an item defined within current crate:
                 // variance not yet inferred, so return a symbolic
@@ -389,7 +389,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 "add_constraints_from_args: variance_decl={:?} variance_i={:?}",
                 variance_decl, variance_i
             );
-            match k.kind() {
+            match arg.kind() {
                 GenericArgKind::Lifetime(lt) => {
                     self.add_constraints_from_region(current, lt, variance_i)
                 }

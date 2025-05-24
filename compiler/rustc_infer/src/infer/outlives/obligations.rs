@@ -503,8 +503,8 @@ where
         opt_variances: Option<&[ty::Variance]>,
     ) {
         let constraint = origin.to_constraint_category();
-        for (index, k) in args.iter().enumerate() {
-            match k.kind() {
+        for (index, arg) in args.iter().enumerate() {
+            match arg.kind() {
                 GenericArgKind::Lifetime(lt) => {
                     let variance = if let Some(variances) = opt_variances {
                         variances[index]

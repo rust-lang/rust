@@ -527,7 +527,7 @@ impl<'tcx> GenericArgs<'tcx> {
     /// Returns generic arguments that are not lifetimes.
     #[inline]
     pub fn non_erasable_generics(&self) -> impl DoubleEndedIterator<Item = GenericArgKind<'tcx>> {
-        self.iter().filter_map(|k| match k.kind() {
+        self.iter().filter_map(|arg| match arg.kind() {
             ty::GenericArgKind::Lifetime(_) => None,
             generic => Some(generic),
         })
