@@ -3471,3 +3471,16 @@ pub fn desugar_await<'tcx>(expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
         None
     }
 }
+
+/// Checks if the given expression is the `default` method belonging to the `Default` trait.
+pub fn is_expr_default<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    if let ExprKind::Call(fn_expr, []) = &expr.kind
+        && let ExprKind::Path(qpath) = &fn_expr.kind
+        && let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id)
+    {
+        // right hand side of assignment is `Default::default`
+        cx.tcx.is_diagnostic_item(sym::default_fn, def_id)
+    } else {
+        false
+    }
+}

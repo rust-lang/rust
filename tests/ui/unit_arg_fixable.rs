@@ -29,3 +29,9 @@ fn taking_three_units(a: (), b: (), c: ()) {}
 fn main() {
     bad();
 }
+
+fn issue14857() {
+    let fn_take_unit = |_: ()| {};
+    fn_take_unit(Default::default());
+    //~^ unit_arg
+}

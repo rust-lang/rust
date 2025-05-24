@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_from_proc_macro;
 use clippy_utils::source::{SourceText, SpanRangeExt, indent_of, reindent_multiline};
+use clippy_utils::{is_expr_default, is_from_proc_macro};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, MatchSource, Node, StmtKind};
 use rustc_lint::LateContext;
@@ -59,7 +59,7 @@ fn is_questionmark_desugar_marked_call(expr: &Expr<'_>) -> bool {
     }
 }
 
-fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Expr<'_>]) {
+fn lint_unit_args<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, args_to_recover: &[&'tcx Expr<'tcx>]) {
     let mut applicability = Applicability::MachineApplicable;
     let (singular, plural) = if args_to_recover.len() > 1 {
         ("", "s")
@@ -102,9 +102,11 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                 .iter()
                 .filter_map(|arg| arg.span.get_source_text(cx))
                 .collect();
-            let arg_snippets_without_empty_blocks: Vec<_> = args_to_recover
+
+            // If the argument is an empty block or `Default::default()`, we can replace it with `()`.
+            let arg_snippets_without_redundant_exprs: Vec<_> = args_to_recover
                 .iter()
-                .filter(|arg| !is_empty_block(arg))
+                .filter(|arg| !is_empty_block(arg) && !is_expr_default(cx, arg))
                 .filter_map(|arg| arg.span.get_source_text(cx))
                 .collect();
 
@@ -114,10 +116,10 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                     expr,
                     &call_snippet,
                     &arg_snippets,
-                    &arg_snippets_without_empty_blocks,
+                    &arg_snippets_without_redundant_exprs,
                 );
 
-                if arg_snippets_without_empty_blocks.is_empty() {
+                if arg_snippets_without_redundant_exprs.is_empty() {
                     db.multipart_suggestion(
                         format!("use {singular}unit literal{plural} instead"),
                         args_to_recover
@@ -127,7 +129,7 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                         applicability,
                     );
                 } else {
-                    let plural = arg_snippets_without_empty_blocks.len() > 1;
+                    let plural = arg_snippets_without_redundant_exprs.len() > 1;
                     let empty_or_s = if plural { "s" } else { "" };
                     let it_or_them = if plural { "them" } else { "it" };
                     db.span_suggestion(
