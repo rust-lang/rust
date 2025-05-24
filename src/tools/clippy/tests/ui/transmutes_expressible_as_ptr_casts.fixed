@@ -4,6 +4,7 @@
 #![warn(clippy::useless_transmute)]
 #![warn(clippy::transmute_ptr_to_ptr)]
 #![allow(unused, clippy::borrow_as_ptr, clippy::missing_transmute_annotations)]
+#![allow(function_casts_as_integer)]
 
 use std::mem::{size_of, transmute};
 
