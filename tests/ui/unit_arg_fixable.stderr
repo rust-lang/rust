@@ -50,5 +50,49 @@ LL |     fn_take_unit(Default::default());
    |                  |
    |                  help: use a unit literal instead: `()`
 
-error: aborting due to 5 previous errors
+error: passing a unit value to a function
+  --> tests/ui/unit_arg_fixable.rs:49:5
+   |
+LL |     fn_take_unit(another_mac!());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     another_mac!();
+LL ~     fn_take_unit(());
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg_fixable.rs:51:5
+   |
+LL |     fn_take_unit(another_mac!(1));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     another_mac!(1);
+LL ~     fn_take_unit(());
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg_fixable.rs:60:5
+   |
+LL |     fn_take_unit(mac!(nondef Default::default()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^------------------^^
+   |                              |
+   |                              help: use a unit literal instead: `()`
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg_fixable.rs:62:5
+   |
+LL |     fn_take_unit(mac!(empty_block));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     mac!(empty_block);
+LL ~     fn_take_unit(());
+   |
+
+error: aborting due to 9 previous errors
 

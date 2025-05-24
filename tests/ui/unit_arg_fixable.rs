@@ -34,4 +34,31 @@ fn issue14857() {
     let fn_take_unit = |_: ()| {};
     fn_take_unit(Default::default());
     //~^ unit_arg
+
+    fn some_other_fn(_: &i32) {}
+
+    macro_rules! another_mac {
+        () => {
+            some_other_fn(&Default::default())
+        };
+        ($e:expr) => {
+            some_other_fn(&$e)
+        };
+    }
+
+    fn_take_unit(another_mac!());
+    //~^ unit_arg
+    fn_take_unit(another_mac!(1));
+    //~^ unit_arg
+
+    macro_rules! mac {
+        (nondef $e:expr) => {
+            $e
+        };
+        (empty_block) => {{}};
+    }
+    fn_take_unit(mac!(nondef Default::default()));
+    //~^ unit_arg
+    fn_take_unit(mac!(empty_block));
+    //~^ unit_arg
 }

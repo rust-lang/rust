@@ -1,9 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{SourceText, SpanRangeExt, indent_of, reindent_multiline};
+use clippy_utils::source::{SpanRangeExt, indent_of, reindent_multiline};
+use clippy_utils::sugg::Sugg;
 use clippy_utils::{is_expr_default, is_from_proc_macro};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, MatchSource, Node, StmtKind};
 use rustc_lint::LateContext;
+use rustc_span::SyntaxContext;
 
 use super::{UNIT_ARG, utils};
 
@@ -100,14 +102,16 @@ fn lint_unit_args<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, args_to_
 
             let arg_snippets: Vec<_> = args_to_recover
                 .iter()
-                .filter_map(|arg| arg.span.get_source_text(cx))
+                // If the argument is from an expansion and is a `Default::default()`, we skip it
+                .filter(|arg| !arg.span.from_expansion() || !is_expr_default_nested(cx, arg))
+                .filter_map(|arg| get_expr_snippet(cx, arg))
                 .collect();
 
             // If the argument is an empty block or `Default::default()`, we can replace it with `()`.
             let arg_snippets_without_redundant_exprs: Vec<_> = args_to_recover
                 .iter()
-                .filter(|arg| !is_empty_block(arg) && !is_expr_default(cx, arg))
-                .filter_map(|arg| arg.span.get_source_text(cx))
+                .filter(|arg| !is_expr_default_nested(cx, arg) && (arg.span.from_expansion() || !is_empty_block(arg)))
+                .filter_map(|arg| get_expr_snippet(cx, arg))
                 .collect();
 
             if let Some(call_snippet) = expr.span.get_source_text(cx) {
@@ -119,13 +123,17 @@ fn lint_unit_args<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, args_to_
                     &arg_snippets_without_redundant_exprs,
                 );
 
-                if arg_snippets_without_redundant_exprs.is_empty() {
+                if arg_snippets_without_redundant_exprs.is_empty()
+                    && let suggestions = args_to_recover
+                        .iter()
+                        .filter(|arg| !arg.span.from_expansion() || !is_expr_default_nested(cx, arg))
+                        .map(|arg| (arg.span.parent_callsite().unwrap_or(arg.span), "()".to_string()))
+                        .collect::<Vec<_>>()
+                    && !suggestions.is_empty()
+                {
                     db.multipart_suggestion(
                         format!("use {singular}unit literal{plural} instead"),
-                        args_to_recover
-                            .iter()
-                            .map(|arg| (arg.span, "()".to_string()))
-                            .collect::<Vec<_>>(),
+                        suggestions,
                         applicability,
                     );
                 } else {
@@ -146,6 +154,22 @@ fn lint_unit_args<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, args_to_
     );
 }
 
+fn is_expr_default_nested<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    is_expr_default(cx, expr)
+        || matches!(expr.kind, ExprKind::Block(block, _)
+        if block.expr.is_some() && is_expr_default_nested(cx, block.expr.unwrap()))
+}
+
+fn get_expr_snippet<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<Sugg<'tcx>> {
+    let mut app = Applicability::MachineApplicable;
+    let snip = Sugg::hir_with_context(cx, expr, SyntaxContext::root(), "..", &mut app);
+    if app != Applicability::MachineApplicable {
+        return None;
+    }
+
+    Some(snip)
+}
+
 fn is_empty_block(expr: &Expr<'_>) -> bool {
     matches!(
         expr.kind,
@@ -164,17 +188,17 @@ fn fmt_stmts_and_call(
     cx: &LateContext<'_>,
     call_expr: &Expr<'_>,
     call_snippet: &str,
-    args_snippets: &[SourceText],
-    non_empty_block_args_snippets: &[SourceText],
+    args_snippets: &[Sugg<'_>],
+    non_empty_block_args_snippets: &[Sugg<'_>],
 ) -> String {
     let call_expr_indent = indent_of(cx, call_expr.span).unwrap_or(0);
-    let call_snippet_with_replacements = args_snippets
-        .iter()
-        .fold(call_snippet.to_owned(), |acc, arg| acc.replacen(arg.as_ref(), "()", 1));
+    let call_snippet_with_replacements = args_snippets.iter().fold(call_snippet.to_owned(), |acc, arg| {
+        acc.replacen(&arg.to_string(), "()", 1)
+    });
 
     let mut stmts_and_call = non_empty_block_args_snippets
         .iter()
-        .map(|it| it.as_ref().to_owned())
+        .map(ToString::to_string)
         .collect::<Vec<_>>();
     stmts_and_call.push(call_snippet_with_replacements);
     stmts_and_call = stmts_and_call
