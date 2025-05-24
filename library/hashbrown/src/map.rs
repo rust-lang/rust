@@ -5058,6 +5058,10 @@ mod test_map {
             Some(x) => *x = new,
         }
         assert_eq!(m.get(&5), Some(&new));
+        let mut hashmap: HashMap<i32, String> = HashMap::default();
+        let key = &1;
+        let result = hashmap.get_mut(key);
+        assert!(result.is_none());
     }
 
     #[test]
