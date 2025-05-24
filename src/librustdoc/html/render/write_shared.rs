@@ -446,13 +446,13 @@ impl CratesIndexPart {
     /// Might return parts that are duplicate with ones in prexisting index.html
     fn get(crate_name: &str, external_crates: &[String]) -> Result<PartsAndLocations<Self>, Error> {
         let mut ret = PartsAndLocations::default();
-        let path = PathBuf::from("index.html");
+        let path = Path::new("index.html");
         for crate_name in external_crates.iter().map(|s| s.as_str()).chain(once(crate_name)) {
             let part = format!(
                 "<li><a href=\"{trailing_slash}index.html\">{crate_name}</a></li>",
                 trailing_slash = ensure_trailing_slash(crate_name),
             );
-            ret.push(path.clone(), part);
+            ret.push(path.to_path_buf(), part);
         }
         Ok(ret)
     }
