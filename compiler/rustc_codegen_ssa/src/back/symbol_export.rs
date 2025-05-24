@@ -128,7 +128,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                 } else {
                     SymbolExportKind::Text
                 },
-                used: codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
+                used: codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                     || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
                     || used,
             };
