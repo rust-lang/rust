@@ -72,14 +72,6 @@ rm tests/ui/consts/precise-drop-with-coverage.rs
 rm tests/ui/issues/issue-85461.rs
 rm -r tests/ui/instrument-coverage/
 
-# missing f16/f128 support
-rm tests/ui/half-open-range-patterns/half-open-range-pats-semantics.rs
-rm tests/ui/asm/aarch64/type-f16.rs
-rm tests/ui/float/conv-bits-runtime-const.rs
-rm tests/ui/consts/const-eval/float_methods.rs
-rm tests/ui/match/match-float.rs
-rm tests/ui/float/target-has-reliable-nightly-float.rs
-
 # optimization tests
 # ==================
 rm tests/ui/codegen/issue-28950.rs # depends on stack size optimizations
