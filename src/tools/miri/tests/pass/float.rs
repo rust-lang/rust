@@ -1043,11 +1043,6 @@ pub fn libm() {
     assert_eq!(1f32.powf(f32::NAN), 1.0);
     assert_eq!(1f64.powf(f64::NAN), 1.0);
 
-
-    // For pow (powf in rust) the C standard says:
-    // x^0 = 1 for all x even a sNaN
-    assert_eq!(SNAN_F32.powf(0.0), 1.0);
-    assert_eq!(SNAN_F64.powf(0.0), 1.0);
     // f*::NAN is a quiet NAN and should return 1 as well.
     assert_eq!(f32::NAN.powf(0.0), 1.0);
     assert_eq!(f64::NAN.powf(0.0), 1.0);
@@ -1070,6 +1065,16 @@ pub fn libm() {
     assert_eq!((-1f64).powf(f64::INFINITY), 1.0);
     assert_eq!((-1f32).powf(f32::NEG_INFINITY), 1.0);
     assert_eq!((-1f64).powf(f64::NEG_INFINITY), 1.0);
+
+    // For pow (powf in rust) the C standard says:
+    // x^0 = 1 for all x even a sNaN
+    assert_eq!(SNAN_F32.powf(0.0), 1.0);
+    assert_eq!(SNAN_F64.powf(0.0), 1.0);
+
+    // For pown (powi in rust) the C standard says:
+    // x^0 = 1 for all x even a sNaN
+    assert_eq!(SNAN_F32.powi(0), 1.0);
+    assert_eq!(SNAN_F64.powi(0), 1.0);
 
     assert_eq!(0f32.powi(10), 0.0);
     assert_eq!(0f64.powi(100), 0.0);

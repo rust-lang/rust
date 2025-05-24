@@ -604,7 +604,7 @@ fn fixed_float_value<S: Semantics>(
         // (-1)^(±INF) = 1
         ("powf32" | "powf64", [base, exp]) if *base == -one && exp.is_infinite() => Some(one),
 
-        // FIXME(miri/#4286): The C ecosystem is inconsistent with handling sNaN's, some return 1 others propogate
+        // FIXME(#4286): The C ecosystem is inconsistent with handling sNaN's, some return 1 others propogate
         // the NaN. We should return either 1 or the NaN non-deterministically here.
         // But for now, just handle them all the same.
         // x^(±0) = 1 for any x, even a NaN
@@ -621,7 +621,7 @@ fn fixed_float_value<S: Semantics>(
 fn fixed_powi_float_value<S: Semantics>(base: IeeeFloat<S>, exp: i32) -> Option<IeeeFloat<S>> {
     match (base.category(), exp) {
         // x^0 = 1, if x is not a Signaling NaN
-        // FIXME(miri/#4286): The C ecosystem is inconsistent with handling sNaN's, some return 1 others propogate
+        // FIXME(#4286): The C ecosystem is inconsistent with handling sNaN's, some return 1 others propogate
         // the NaN. We should return either 1 or the NaN non-deterministically here.
         // But for now, just handle them all the same.
         (_, 0) => Some(IeeeFloat::<S>::one()),
@@ -638,7 +638,8 @@ fn clamp_float_value<S: Semantics>(intrinsic_name: &str, val: IeeeFloat<S>) -> I
         "sinf32" | "cosf32" | "sinf64" | "cosf64" =>
             val.clamp(IeeeFloat::<S>::one().neg(), IeeeFloat::<S>::one()),
         // exp: [0, +INF]
-        "expf32" | "exp2f32" | "expf64" | "exp2f64" => val.maximum(IeeeFloat::<S>::ZERO),
+        "expf32" | "exp2f32" | "expf64" | "exp2f64" =>
+            IeeeFloat::<S>::maximum(val, IeeeFloat::<S>::ZERO),
         _ => val,
     }
 }
