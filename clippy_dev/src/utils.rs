@@ -434,7 +434,6 @@ pub enum Token<'a> {
     OpenParen,
     Pound,
     Semi,
-    Slash,
 }
 
 pub struct RustSearcher<'txt> {
@@ -512,7 +511,6 @@ impl<'txt> RustSearcher<'txt> {
                 | (Token::OpenParen, lexer::TokenKind::OpenParen)
                 | (Token::Pound, lexer::TokenKind::Pound)
                 | (Token::Semi, lexer::TokenKind::Semi)
-                | (Token::Slash, lexer::TokenKind::Slash)
                 | (
                     Token::LitStr,
                     lexer::TokenKind::Literal {
@@ -586,7 +584,6 @@ impl<'txt> RustSearcher<'txt> {
 }
 
 #[track_caller]
-#[expect(clippy::must_use_candidate)]
 pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
     match OpenOptions::new().create_new(true).write(true).open(new_name) {
         Ok(file) => drop(file),
@@ -609,7 +606,6 @@ pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
 }
 
 #[track_caller]
-#[expect(clippy::must_use_candidate)]
 pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
     match fs::create_dir(new_name) {
         Ok(()) => {},
@@ -633,11 +629,6 @@ pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
             }
         },
     }
-}
-
-#[track_caller]
-pub fn write_file(path: &Path, contents: &str) {
-    expect_action(fs::write(path, contents), ErrAction::Write, path);
 }
 
 #[track_caller]
@@ -739,7 +730,6 @@ pub fn split_args_for_threads(
 }
 
 #[track_caller]
-#[expect(clippy::must_use_candidate)]
 pub fn delete_file_if_exists(path: &Path) -> bool {
     match fs::remove_file(path) {
         Ok(()) => true,
