@@ -189,7 +189,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                             )
                             .emit();
                         }
-                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
+                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER;
                     }
                     Some(_) => {
                         tcx.dcx().emit_err(errors::ExpectedUsedSymbol { span: attr.span() });
@@ -220,7 +220,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                             || tcx.sess.target.is_like_windows
                             || tcx.sess.target.is_like_wasm);
                         codegen_fn_attrs.flags |= if is_like_elf {
-                            CodegenFnAttrFlags::USED
+                            CodegenFnAttrFlags::USED_COMPILER
                         } else {
                             CodegenFnAttrFlags::USED_LINKER
                         };

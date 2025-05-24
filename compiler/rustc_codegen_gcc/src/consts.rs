@@ -154,7 +154,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             // TODO(antoyo): set link section.
         }
 
-        if attrs.flags.contains(CodegenFnAttrFlags::USED)
+        if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
             || attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         {
             self.add_used_global(global.to_rvalue());
