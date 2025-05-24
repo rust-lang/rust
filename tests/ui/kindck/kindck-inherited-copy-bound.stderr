@@ -34,23 +34,7 @@ LL | trait Foo : Copy {
    |       |
    |       this trait is not dyn compatible...
 
-error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/kindck-inherited-copy-bound.rs:23:13
-   |
-LL |     let z = &x as &dyn Foo;
-   |             ^^ `Foo` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/kindck-inherited-copy-bound.rs:6:13
-   |
-LL | trait Foo : Copy {
-   |       ---   ^^^^ ...because it requires `Self: Sized`
-   |       |
-   |       this trait is not dyn compatible...
-   = note: required for the cast from `&Box<{integer}>` to `&dyn Foo`
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0038, E0277.
 For more information about an error, try `rustc --explain E0038`.

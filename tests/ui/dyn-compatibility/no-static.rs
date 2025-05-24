@@ -17,5 +17,4 @@ impl Foo for Bar {}
 fn main() {
     let b: Box<dyn Foo> = Box::new(Bar);
     //~^ ERROR E0038
-    //~| ERROR E0038
 }

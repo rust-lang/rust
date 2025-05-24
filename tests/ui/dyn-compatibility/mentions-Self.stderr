@@ -15,7 +15,7 @@ LL |     fn bar(&self, x: &Self);
    = help: consider moving `bar` to another trait
 
 error[E0038]: the trait `Baz` is not dyn compatible
-  --> $DIR/mentions-Self.rs:24:31
+  --> $DIR/mentions-Self.rs:23:31
    |
 LL | fn make_baz<T:Baz>(t: &T) -> &dyn Baz {
    |                               ^^^^^^^ `Baz` is not dyn compatible
@@ -30,40 +30,6 @@ LL |     fn baz(&self) -> Self;
    |                      ^^^^ ...because method `baz` references the `Self` type in its return type
    = help: consider moving `baz` to another trait
 
-error[E0038]: the trait `Bar` is not dyn compatible
-  --> $DIR/mentions-Self.rs:20:5
-   |
-LL |     t
-   |     ^ `Bar` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/mentions-Self.rs:7:22
-   |
-LL | trait Bar {
-   |       --- this trait is not dyn compatible...
-LL |     fn bar(&self, x: &Self);
-   |                      ^^^^^ ...because method `bar` references the `Self` type in this parameter
-   = help: consider moving `bar` to another trait
-   = note: required for the cast from `&T` to `&dyn Bar`
-
-error[E0038]: the trait `Baz` is not dyn compatible
-  --> $DIR/mentions-Self.rs:26:5
-   |
-LL |     t
-   |     ^ `Baz` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/mentions-Self.rs:11:22
-   |
-LL | trait Baz {
-   |       --- this trait is not dyn compatible...
-LL |     fn baz(&self) -> Self;
-   |                      ^^^^ ...because method `baz` references the `Self` type in its return type
-   = help: consider moving `baz` to another trait
-   = note: required for the cast from `&T` to `&dyn Baz`
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0038`.

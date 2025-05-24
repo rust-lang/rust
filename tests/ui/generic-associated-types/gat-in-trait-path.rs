@@ -26,5 +26,4 @@ fn main() {
   let foo = Fooer(5);
   f(Box::new(foo));
   //~^ ERROR the trait `Foo` is not dyn compatible
-  //~| ERROR the trait `Foo` is not dyn compatible
 }
