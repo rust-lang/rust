@@ -80,19 +80,47 @@ use crate::infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrig
 use crate::traits::{ObligationCause, ObligationCauseCode};
 
 impl<'tcx> InferCtxt<'tcx> {
+    pub fn outlives_predicate_with_cause(
+        &self,
+        ty::OutlivesPredicate(arg, r2): ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
+        cause: &ObligationCause<'tcx>,
+    ) {
+        match arg.unpack() {
+            ty::GenericArgKind::Lifetime(r1) => {
+                self.region_outlives_predicate(ty::OutlivesPredicate(r1, r2), cause);
+            }
+            ty::GenericArgKind::Type(ty1) => {
+                self.type_outlives_predicate_with_cause(ty1, r2, cause);
+            }
+            ty::GenericArgKind::Const(_) => unreachable!(),
+        }
+    }
+
+    pub fn region_outlives_predicate(
+        &self,
+        ty::OutlivesPredicate(r_a, r_b): ty::RegionOutlivesPredicate<'tcx>,
+        cause: &ObligationCause<'tcx>,
+    ) {
+        let origin = SubregionOrigin::from_obligation_cause(cause, || {
+            SubregionOrigin::RelateRegionParamBound(cause.span, None)
+        });
+        // `b : a` ==> `a <= b`
+        self.sub_regions(origin, r_b, r_a);
+    }
+
     /// Registers that the given region obligation must be resolved
     /// from within the scope of `body_id`. These regions are enqueued
     /// and later processed by regionck, when full type information is
     /// available (see `region_obligations` field for more
     /// information).
     #[instrument(level = "debug", skip(self))]
-    pub fn register_region_obligation(&self, obligation: RegionObligation<'tcx>) {
+    pub fn type_outlives_predicate(&self, obligation: RegionObligation<'tcx>) {
         let mut inner = self.inner.borrow_mut();
         inner.undo_log.push(UndoLog::PushRegionObligation);
         inner.region_obligations.push(obligation);
     }
 
-    pub fn register_region_obligation_with_cause(
+    pub fn type_outlives_predicate_with_cause(
         &self,
         sup_type: Ty<'tcx>,
         sub_region: Region<'tcx>,
@@ -124,7 +152,7 @@ impl<'tcx> InferCtxt<'tcx> {
             )
         });
 
-        self.register_region_obligation(RegionObligation { sup_type, sub_region, origin });
+        self.type_outlives_predicate(RegionObligation { sup_type, sub_region, origin });
     }
 
     /// Trait queries just want to pass back type obligations "as is"
