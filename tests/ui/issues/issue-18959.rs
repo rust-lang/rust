@@ -11,7 +11,6 @@ impl Foo for Thing {
 fn foo(b: &dyn Bar) {
     //~^ ERROR E0038
     b.foo(&0)
-    //~^ ERROR E0038
 }
 
 fn main() {
