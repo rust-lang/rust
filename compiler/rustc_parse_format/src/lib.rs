@@ -29,6 +29,11 @@ pub enum ParseMode {
     Format,
     /// An inline assembly template string for `asm!`.
     InlineAsm,
+    /// A format string for use in diagnostic attributes.
+    ///
+    /// Similar to `format_args!`, however only named ("captured") arguments
+    /// are allowed, and no format modifiers are permitted.
+    Diagnostic,
 }
 
 /// A piece is a portion of the format string which represents the next part
@@ -506,6 +511,7 @@ impl<'input> Parser<'input> {
         let format = match self.mode {
             ParseMode::Format => self.format(),
             ParseMode::InlineAsm => self.inline_asm(),
+            ParseMode::Diagnostic => self.diagnostic(),
         };
 
         // Resolve position after parsing format spec.
@@ -712,6 +718,22 @@ impl<'input> Parser<'input> {
             spec.ty_span = Some(start..end);
         }
 
+        spec
+    }
+
+    /// Always returns an empty `FormatSpec`
+    fn diagnostic(&mut self) -> FormatSpec<'input> {
+        let mut spec = FormatSpec::default();
+
+        let Some((Range { start, .. }, start_idx)) = self.consume_pos(':') else {
+            return spec;
+        };
+
+        spec.ty = self.string(start_idx);
+        spec.ty_span = {
+            let end = self.input_vec_index2range(self.input_vec_index).start;
+            Some(start..end)
+        };
         spec
     }
 

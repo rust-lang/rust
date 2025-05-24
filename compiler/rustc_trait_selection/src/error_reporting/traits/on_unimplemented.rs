@@ -810,7 +810,8 @@ impl<'tcx> OnUnimplementedFormatString {
 
         let mut result = Ok(());
 
-        match FormatString::parse(self.symbol, self.span, &ctx) {
+        let snippet = tcx.sess.source_map().span_to_snippet(self.span).ok();
+        match FormatString::parse(self.symbol, snippet, self.span, &ctx) {
             // Warnings about format specifiers, deprecated parameters, wrong parameters etc.
             // In other words we'd like to let the author know, but we can still try to format the string later
             Ok(FormatString { warnings, .. }) => {
@@ -889,7 +890,8 @@ impl<'tcx> OnUnimplementedFormatString {
             Ctx::RustcOnUnimplemented { tcx, trait_def_id }
         };
 
-        if let Ok(s) = FormatString::parse(self.symbol, self.span, &ctx) {
+        // No point passing a snippet here, we already did that in `verify`
+        if let Ok(s) = FormatString::parse(self.symbol, None, self.span, &ctx) {
             s.format(args)
         } else {
             // we cannot return errors from processing the format string as hard error here
