@@ -2273,6 +2273,16 @@ pub(crate) mod unexpected_cfg_name {
     pub(crate) enum CodeSuggestion {
         #[help(lint_unexpected_cfg_define_features)]
         DefineFeatures,
+        #[multipart_suggestion(
+            lint_unexpected_cfg_name_version_syntax,
+            applicability = "machine-applicable"
+        )]
+        VersionSyntax {
+            #[suggestion_part(code = "(")]
+            between_name_and_value: Span,
+            #[suggestion_part(code = ")")]
+            after_value: Span,
+        },
         #[suggestion(
             lint_unexpected_cfg_name_similar_name_value,
             applicability = "maybe-incorrect",
