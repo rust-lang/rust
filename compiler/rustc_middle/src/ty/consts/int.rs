@@ -422,9 +422,9 @@ macro_rules! from_scalar_int_for_x {
             impl From<ScalarInt> for $ty {
                 #[inline]
                 fn from(int: ScalarInt) -> Self {
-                    // The `unwrap` cannot fail because to_bits (if it succeeds)
+                    // The `unwrap` cannot fail because to_uint (if it succeeds)
                     // is guaranteed to return a value that fits into the size.
-                    int.to_bits(Size::from_bytes(size_of::<$ty>()))
+                    int.to_uint(Size::from_bytes(size_of::<$ty>()))
                        .try_into().unwrap()
                 }
             }
@@ -447,6 +447,49 @@ impl From<char> for ScalarInt {
     #[inline]
     fn from(c: char) -> Self {
         (c as u32).into()
+    }
+}
+
+macro_rules! from_x_for_scalar_int_signed {
+    ($($ty:ty),*) => {
+        $(
+            impl From<$ty> for ScalarInt {
+                #[inline]
+                fn from(u: $ty) -> Self {
+                    Self {
+                        data: u128::from(u.cast_unsigned()), // go via the unsigned type of the same size
+                        size: NonZero::new(size_of::<$ty>() as u8).unwrap(),
+                    }
+                }
+            }
+        )*
+    }
+}
+
+macro_rules! from_scalar_int_for_x_signed {
+    ($($ty:ty),*) => {
+        $(
+            impl From<ScalarInt> for $ty {
+                #[inline]
+                fn from(int: ScalarInt) -> Self {
+                    // The `unwrap` cannot fail because to_int (if it succeeds)
+                    // is guaranteed to return a value that fits into the size.
+                    int.to_int(Size::from_bytes(size_of::<$ty>()))
+                       .try_into().unwrap()
+                }
+            }
+        )*
+    }
+}
+
+from_x_for_scalar_int_signed!(i8, i16, i32, i64, i128);
+from_scalar_int_for_x_signed!(i8, i16, i32, i64, i128);
+
+impl From<std::cmp::Ordering> for ScalarInt {
+    #[inline]
+    fn from(c: std::cmp::Ordering) -> Self {
+        // Here we rely on `Ordering` having the same values in host and target!
+        ScalarInt::from(c as i8)
     }
 }
 
