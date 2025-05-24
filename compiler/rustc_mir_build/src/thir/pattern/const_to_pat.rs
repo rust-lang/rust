@@ -382,6 +382,9 @@ fn extend_type_not_partial_eq<'tcx>(
         fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
             match ty.kind() {
                 ty::Dynamic(..) => return ControlFlow::Break(()),
+                // Unsafe binders never implement `PartialEq`, so avoid walking into them
+                // which would require instantiating its binder with placeholders too.
+                ty::UnsafeBinder(..) => return ControlFlow::Break(()),
                 ty::FnPtr(..) => return ControlFlow::Continue(()),
                 ty::Adt(def, _args) => {
                     let ty_def_id = def.did();
