@@ -6,7 +6,7 @@ pub struct Instant(Duration);
 /// When a Timezone is specified, the stored Duration is in UTC. If timezone is unspecified, then
 /// the timezone is assumed to be in UTC.
 ///
-/// UEFI SystemTime is stored as Duration from 1900-01-01-00:00:00
+/// UEFI SystemTime is stored as Duration from 1900-01-01-00:00:00 with timezone -1440 as anchor
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct SystemTime(Duration);
 
@@ -19,6 +19,20 @@ pub const UNIX_EPOCH: SystemTime = SystemTime::from_uefi(r_efi::efi::Time {
     second: 0,
     nanosecond: 0,
     timezone: 0,
+    daylight: 0,
+    pad1: 0,
+    pad2: 0,
+});
+
+const MAX_UEFI_TIME: SystemTime = SystemTime::from_uefi(r_efi::efi::Time {
+    year: 9999,
+    month: 12,
+    day: 31,
+    hour: 23,
+    minute: 59,
+    second: 59,
+    nanosecond: 999_999_999,
+    timezone: 1440,
     daylight: 0,
     pad1: 0,
     pad2: 0,
@@ -56,6 +70,7 @@ impl SystemTime {
         Self(system_time_internal::from_uefi(&t))
     }
 
+    #[expect(dead_code)]
     pub(crate) const fn to_uefi(self, timezone: i16, daylight: u8) -> Option<r_efi::efi::Time> {
         system_time_internal::to_uefi(&self.0, timezone, daylight)
     }
@@ -73,14 +88,11 @@ impl SystemTime {
         let temp = Self(self.0.checked_add(*other)?);
 
         // Check if can be represented in UEFI
-        if temp.to_uefi(0, 0).is_some() { Some(temp) } else { None }
+        if temp <= MAX_UEFI_TIME { Some(temp) } else { None }
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
-        let temp = Self(self.0.checked_sub(*other)?);
-
-        // Check if can be represented in UEFI
-        if temp.to_uefi(0, 0).is_some() { Some(temp) } else { None }
+        self.0.checked_sub(*other).map(Self)
     }
 }
 
@@ -112,13 +124,30 @@ pub(crate) mod system_time_internal {
         Some(SystemTime::from_uefi(t))
     }
 
+    /// This algorithm is a modified form of the one described in the post
+    /// https://blog.reverberate.org/2020/05/12/optimizing-date-algorithms.html
+    ///
+    /// The changes are to use 1900-01-01-00:00:00 with timezone -1440 as anchor instead of UNIX
+    /// epoch used in the original algorithm.
     pub(crate) const fn from_uefi(t: &Time) -> Duration {
-        assert!(t.month <= 12);
-        assert!(t.month != 0);
+        assert!(t.month <= 12 && t.month != 0);
+        assert!(t.year >= 1900 && t.year <= 9999);
+        assert!(t.day <= 31 && t.day != 0);
+
+        assert!(t.second < 60);
+        assert!(t.minute < 60);
+        assert!(t.hour < 24);
+        assert!(t.nanosecond < 1_000_000_000);
+
+        assert!(
+            (t.timezone <= 1440 && t.timezone >= -1440)
+                || t.timezone == r_efi::efi::UNSPECIFIED_TIMEZONE
+        );
 
         const YEAR_BASE: u32 = 4800; /* Before min year, multiple of 400. */
 
-        // Calculate the number of days since 1/1/1900
+        // Calculate the number of days since 1/1/1900. This is the earliest supported date in UEFI
+        // time.
         // Use 1 March as the start
         let (m_adj, overflow): (u32, bool) = (t.month as u32).overflowing_sub(3);
         let (carry, adjust): (u32, u32) = if overflow { (1, 12) } else { (0, 0) };
@@ -146,19 +175,20 @@ pub(crate) mod system_time_internal {
         Duration::new(epoch, t.nanosecond)
     }
 
+    /// This algorithm is a modifed version of the one described in the post:
+    /// https://howardhinnant.github.io/date_algorithms.html#clive_from_days
+    ///
+    /// The changes are to use 1900-01-01-00:00:00 with timezone -1440 as anchor instead of UNIX
+    /// epoch used in the original algorithm.
     pub(crate) const fn to_uefi(dur: &Duration, timezone: i16, daylight: u8) -> Option<Time> {
         // Check timzone validity
-        assert!(timezone <= 1440);
-        assert!(timezone >= -1440);
+        assert!(timezone <= 1440 && timezone >= -1440);
 
-        let secs: u64 = if timezone == r_efi::efi::UNSPECIFIED_TIMEZONE {
-            dur.as_secs()
-        } else {
-            // FIXME: use checked_sub_signed once stablized
-            dur.as_secs().checked_add_signed((-timezone as i64) * SECS_IN_MINUTE as i64).unwrap()
-        };
+        // FIXME(#126043): use checked_sub_signed once stablized
+        let secs =
+            dur.as_secs().checked_add_signed((-timezone as i64) * SECS_IN_MINUTE as i64).unwrap();
 
-        // Convert to UTC
+        // Convert to seconds since 1900-01-01-00:00:00 in timezone.
         let Some(secs) = secs.checked_sub(TIMEZONE_DELTA) else { return None };
 
         let days = secs / SECS_IN_DAY;
