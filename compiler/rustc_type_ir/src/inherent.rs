@@ -297,6 +297,7 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
     + From<I::Ty>
     + From<I::Region>
     + From<I::Const>
+    + From<I::Term>
 {
     fn as_term(&self) -> Option<I::Term> {
         match self.kind() {
