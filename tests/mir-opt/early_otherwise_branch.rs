@@ -132,6 +132,8 @@ fn opt5_failed_type(x: u32, y: u64) -> u32 {
 #[custom_mir(dialect = "runtime")]
 fn target_self(val: i32) {
     // CHECK-LABEL: fn target_self(
+    // CHECK: Ne(
+    // CHECK-NEXT: switchInt
     mir! {
         {
             Goto(bb1)
