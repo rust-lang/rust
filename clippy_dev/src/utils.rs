@@ -12,11 +12,6 @@ use std::process::{self, Command, Stdio};
 use std::{env, thread};
 use walkdir::WalkDir;
 
-#[cfg(not(windows))]
-static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
-#[cfg(windows)]
-static CARGO_CLIPPY_EXE: &str = "cargo-clippy.exe";
-
 #[derive(Clone, Copy)]
 pub enum ErrAction {
     Open,
@@ -116,18 +111,6 @@ impl<'a> File<'a> {
         };
         expect_action(res, ErrAction::Write, self.path);
     }
-}
-
-/// Returns the path to the `cargo-clippy` binary
-///
-/// # Panics
-///
-/// Panics if the path of current executable could not be retrieved.
-#[must_use]
-pub fn cargo_clippy_path() -> PathBuf {
-    let mut path = env::current_exe().expect("failed to get current executable name");
-    path.set_file_name(CARGO_CLIPPY_EXE);
-    path
 }
 
 /// Creates a `Command` for running cargo.
