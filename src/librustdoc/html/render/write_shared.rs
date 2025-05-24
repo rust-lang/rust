@@ -439,12 +439,8 @@ impl CratesIndexPart {
         let content =
             format!("<h1>List of all crates</h1><ul class=\"all-items\">{DELIMITER}</ul>");
         let template = layout::render(layout, &page, "", content, style_files);
-        match SortedTemplate::from_template(&template, DELIMITER) {
-            Ok(template) => template,
-            Err(e) => panic!(
-                "Object Replacement Character (U+FFFC) should not appear in the --index-page: {e}"
-            ),
-        }
+        SortedTemplate::from_template(&template, DELIMITER)
+            .expect("Object Replacement Character (U+FFFC) should not appear in the --index-page")
     }
 
     /// Might return parts that are duplicate with ones in prexisting index.html
