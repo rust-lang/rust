@@ -515,6 +515,7 @@ symbols! {
         async_iterator_poll_next,
         async_trait_bounds,
         atomic,
+        atomic_load,
         atomic_mod,
         atomics,
         att_syntax,
