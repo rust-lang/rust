@@ -9,10 +9,10 @@ use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::{
-    self as ty, Interner, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _,
-    TypeVisitor, TypingMode, Upcast as _, elaborate,
+    self as ty, Interner, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt as _, TypeVisitor, TypingMode, Upcast as _, elaborate,
 };
-use tracing::{debug, instrument};
+use tracing::instrument;
 
 use super::trait_goals::TraitGoalProvenVia;
 use super::{has_only_region_constraints, inspect};
@@ -368,8 +368,7 @@ where
         };
 
         if normalized_self_ty.is_ty_var() {
-            debug!("self type has been normalized to infer");
-            return self.forced_ambiguity(MaybeCause::Ambiguity).into_iter().collect();
+            return self.try_assemble_bounds_via_registered_opaque(goal, normalized_self_ty);
         }
 
         let goal: Goal<I, G> =
@@ -872,6 +871,80 @@ where
 
             i += 1;
         }
+    }
+
+    fn try_assemble_bounds_via_registered_opaque<G: GoalKind<D>>(
+        &mut self,
+        goal: Goal<I, G>,
+        self_ty: I::Ty,
+    ) -> Vec<Candidate<I>> {
+        //println!("for goal {goal:#?} and {self_ty:?}, we found an alias: {:#?}", self.find_sup_as_registered_opaque(self_ty));
+
+        let Some(alias_ty) = self.find_sup_as_registered_opaque(self_ty) else {
+            return self.forced_ambiguity(MaybeCause::Ambiguity).into_iter().collect();
+        };
+
+        let mut candidates = vec![];
+
+        let cx = self.cx();
+        cx.for_each_blanket_impl(goal.predicate.trait_def_id(cx), |impl_def_id| {
+            // For every `default impl`, there's always a non-default `impl`
+            // that will *also* apply. There's no reason to register a candidate
+            // for this impl, since it is *not* proof that the trait goal holds.
+            if cx.impl_is_default(impl_def_id) {
+                return;
+            }
+
+            match G::consider_impl_candidate(self, goal, impl_def_id) {
+                Ok(mut candidate) => {
+                    candidate.result.value.certainty =
+                        candidate.result.value.certainty.and(Certainty::AMBIGUOUS);
+                    candidates.push(candidate);
+                }
+                Err(NoSolution) => (),
+            }
+        });
+
+        for item_bound in
+            self.cx().item_self_bounds(alias_ty.def_id).iter_instantiated(self.cx(), alias_ty.args)
+        {
+            // TODO: comment
+            let assumption =
+                item_bound.fold_with(&mut ReplaceOpaque { cx: self.cx(), alias_ty, self_ty });
+            candidates.extend(G::probe_and_match_goal_against_assumption(
+                self,
+                CandidateSource::AliasBound,
+                goal,
+                assumption,
+                |ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS),
+            ));
+        }
+
+        struct ReplaceOpaque<I: Interner> {
+            cx: I,
+            alias_ty: ty::AliasTy<I>,
+            self_ty: I::Ty,
+        }
+        impl<I: Interner> TypeFolder<I> for ReplaceOpaque<I> {
+            fn cx(&self) -> I {
+                self.cx
+            }
+            fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+                if let ty::Alias(ty::Opaque, alias_ty) = ty.kind() {
+                    if alias_ty == self.alias_ty {
+                        return self.self_ty;
+                    }
+                }
+                ty.super_fold_with(self)
+            }
+        }
+
+        // TODO:
+        if candidates.is_empty() {
+            candidates.extend(self.forced_ambiguity(MaybeCause::Ambiguity));
+        }
+
+        candidates
     }
 
     /// Assemble and merge candidates for goals which are related to an underlying trait
