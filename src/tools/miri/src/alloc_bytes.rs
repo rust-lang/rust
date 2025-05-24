@@ -24,7 +24,7 @@ impl Clone for MiriAllocBytes {
     fn clone(&self) -> Self {
         let bytes: Cow<'_, [u8]> = Cow::Borrowed(self);
         let align = Align::from_bytes(self.layout.align().to_u64()).unwrap();
-        MiriAllocBytes::from_bytes(bytes, align)
+        MiriAllocBytes::from_bytes(bytes, align, ())
     }
 }
 
@@ -86,7 +86,10 @@ impl MiriAllocBytes {
 }
 
 impl AllocBytes for MiriAllocBytes {
-    fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, align: Align) -> Self {
+    /// Placeholder!
+    type AllocParams = ();
+
+    fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, align: Align, _params: ()) -> Self {
         let slice = slice.into();
         let size = slice.len();
         let align = align.bytes();
@@ -102,7 +105,7 @@ impl AllocBytes for MiriAllocBytes {
         alloc_bytes
     }
 
-    fn zeroed(size: Size, align: Align) -> Option<Self> {
+    fn zeroed(size: Size, align: Align, _params: ()) -> Option<Self> {
         let size = size.bytes();
         let align = align.bytes();
         // SAFETY: `alloc_fn` will only be used with `size != 0`.
