@@ -1,3 +1,6 @@
+//! This module defines the core, processed, and operational structures that represent
+//! the final bootstrap configuration.
+
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::str::FromStr;

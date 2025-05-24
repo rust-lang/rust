@@ -1,3 +1,11 @@
+//! This module defines the structures that directly mirror the `bootstrap.toml`
+//! file's format. These types are used for `serde` deserialization, serving as an
+//! intermediate representation that gets processed and merged into the final `Config`
+//! types from the `types` module.
+//!
+//! It also houses the `Merge` trait and `define_config!` macro, which are essential
+//! for handling these raw TOML structures.
+
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 

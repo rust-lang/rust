@@ -1,7 +1,11 @@
-//! Serialized configuration of a build.
+//! This module defines the central `Config` struct, which aggregates all components
+//! of the bootstrap configuration into a single unit.
 //!
-//! This module implements parsing `bootstrap.toml` configuration files to tweak
-//! how the build runs.
+//! It serves as the primary public interface for accessing bootstrap's configuration data.
+//! This module orchestrates the overall configuration parsing process by leveraging
+//! logic from `parsing.rs` and provides top-level methods for initializing (`Config::parse()`)
+//! and querying the comprehensive configuration state. It also contains various utility
+//! methods that operate on the overall configuration.
 
 use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};

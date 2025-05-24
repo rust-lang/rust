@@ -1,3 +1,11 @@
+//! This module contains the core logic for parsing, validating, and inferring the
+//! final bootstrap `Config` from various raw inputs.
+//!
+//! It handles the intricate process of reading command-line arguments, environment variables,
+//! and `bootstrap.toml` files, merging them, applying defaults, and performing
+//! cross-component validations. The main `parse_inner` function and its related
+//! helper functions reside here, transforming the raw `Toml` data into the structured `Config` types
+
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf, absolute};
 use std::str::FromStr;
