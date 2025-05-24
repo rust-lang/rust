@@ -1769,15 +1769,14 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///   behave exactly like non-atomic accesses in that regard.
 ///
 /// - Volatile operations, however, may also be used to access memory that is _outside_ of any Rust
-///   allocation. In this use-case, the pointer does *not* have to be [valid] for reads. The main
-///   usage is CPU and peripheral registers that must be accessed via an I/O memory mapping, most
-///   commonly at fixed addresses reserved by the hardware. These often have special semantics
-///   associated to their manipulation, and cannot be used as general purpose memory. Here, any
-///   address value is possible, including 0 and [`usize::MAX`], so long as the semantics of such a
-///   read are well-defined by the target hardware. The access must not trap. It can (and usually
-///   will) cause side-effects, but those must not affect Rust-allocated memory in in any way. This
-///   access is still not considered [atomic], and as such it cannot be used for inter-thread
-///   synchronization.
+///   allocation. In this use-case, the pointer does *not* have to be [valid] for reads. This is
+///   typically used for CPU and peripheral registers that must be accessed via an I/O memory
+///   mapping, most commonly at fixed addresses reserved by the hardware. These often have special
+///   semantics associated to their manipulation, and cannot be used as general purpose memory.
+///   Here, any address value is possible, including 0 and [`usize::MAX`], so long as the semantics
+///   of such a read are well-defined by the target hardware. The access must not trap. It can cause
+///   side-effects, but those must not affect Rust-allocated memory in in any way. This access is
+///   still not considered [atomic], and as such it cannot be used for inter-thread synchronization.
 ///
 /// Note that volatile memory operations on zero-sized types (e.g., if a zero-sized type is passed
 /// to `read_volatile`) are noops and may be ignored.
@@ -1861,15 +1860,14 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///   behave exactly like non-atomic accesses in that regard.
 ///
 /// - Volatile operations, however, may also be used to access memory that is _outside_ of any Rust
-///   allocation. In this use-case, the pointer does *not* have to be [valid] for writes. The main
-///   usage is CPU and peripheral registers that must be accessed via an I/O memory mapping, most
-///   commonly at fixed addresses reserved by the hardware. These often have special semantics
-///   associated to their manipulation, and cannot be used as general purpose memory. Here, any
-///   address value is possible, including 0 and [`usize::MAX`], so long as the semantics of such a
-///   write are well-defined by the target hardware. The access must not trap.  It can (and usually
-///   will) cause side-effects, but those must not affect Rust-allocated memory in any way. This
-///   access is still not considered [atomic], and as such it cannot be used for inter-thread
-///   synchronization.
+///   allocation. In this use-case, the pointer does *not* have to be [valid] for writes. This is
+///   typically used for CPU and peripheral registers that must be accessed via an I/O memory
+///   mapping, most commonly at fixed addresses reserved by the hardware. These often have special
+///   semantics associated to their manipulation, and cannot be used as general purpose memory.
+///   Here, any address value is possible, including 0 and [`usize::MAX`], so long as the semantics
+///   of such a write are well-defined by the target hardware. The access must not trap. It can
+///   cause side-effects, but those must not affect Rust-allocated memory in any way. This access is
+///   still not considered [atomic], and as such it cannot be used for inter-thread synchronization.
 ///
 /// Note that volatile memory operations on zero-sized types (e.g., if a zero-sized type is passed
 /// to `write_volatile`) are noops and may be ignored.
