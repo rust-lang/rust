@@ -230,7 +230,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(match directories::UserDirs::new() {
             Some(dirs) => {
                 let home = dirs.home_dir();
-                let size_avail = if this.ptr_is_null(size.ptr())? {
+                let size_avail = if this.ptr_is_null(buf)? {
                     0 // if the buf pointer is null, we can't write to it; `size` will be updated to the required length
                 } else {
                     this.read_scalar(&size)?.to_u32()?
@@ -238,8 +238,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Of course we cannot use `windows_check_buffer_size` here since this uses
                 // a different method for dealing with a too-small buffer than the other functions...
                 let (success, len) = this.write_path_to_wide_str(home, buf, size_avail.into())?;
-                // The Windows docs just say that this is written on failure, but std relies on it
-                // always being written. Also see <https://github.com/rust-lang/rust/issues/141254>.
+                // As per <https://github.com/MicrosoftDocs/sdk-api/pull/1810>, the size is always
+                // written, not just on failure.
                 this.write_scalar(Scalar::from_u32(len.try_into().unwrap()), &size)?;
                 if success {
                     Scalar::from_i32(1) // return TRUE
