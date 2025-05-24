@@ -127,7 +127,7 @@ pub(crate) mod filters {
     use askama::filters::Safe;
 
     use crate::html::escape::EscapeBodyTextWithWbr;
-    pub(crate) fn wrapped<T>(v: T) -> askama::Result<Safe<impl Display>>
+    pub(crate) fn wrapped<T, V: askama::Values>(v: T, _: V) -> askama::Result<Safe<impl Display>>
     where
         T: Display,
     {

@@ -9,7 +9,7 @@ path = "lib.rs"
 
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
-askama = { version = "0.13", default-features = false, features = ["alloc", "config", "derive"] }
+askama = { version = "0.14", default-features = false, features = ["alloc", "config", "derive"] }
 base64 = "0.21.7"
 itertools = "0.12"
 indexmap = "2"

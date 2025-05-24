@@ -13,8 +13,8 @@ LL |     std::panic::catch_unwind(|| unwind()).unwrap_err();
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
    = note: inside closure at tests/fail/panic/bad_unwind.rs:LL:CC
-   = note: inside `std::panicking::r#try::do_call::<{closure@tests/fail/panic/bad_unwind.rs:LL:CC}, ()>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panicking::r#try::<(), {closure@tests/fail/panic/bad_unwind.rs:LL:CC}>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panicking::catch_unwind::do_call::<{closure@tests/fail/panic/bad_unwind.rs:LL:CC}, ()>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panicking::catch_unwind::<(), {closure@tests/fail/panic/bad_unwind.rs:LL:CC}>` at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside `std::panic::catch_unwind::<{closure@tests/fail/panic/bad_unwind.rs:LL:CC}, ()>` at RUSTLIB/std/src/panic.rs:LL:CC
 note: inside `main`
   --> tests/fail/panic/bad_unwind.rs:LL:CC
