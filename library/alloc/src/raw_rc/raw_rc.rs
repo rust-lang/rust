@@ -225,6 +225,16 @@ where
         self.weak.into_raw_parts()
     }
 
+    // `is_unique` only exists on `Arc`, so we need this `#[cfg(not(no_sync))]`. It can be removed
+    // if `Rc::is_unique` is added.
+    #[cfg(not(no_sync))]
+    pub(crate) unsafe fn is_unique<R>(&self) -> bool
+    where
+        R: RcOps,
+    {
+        unsafe { is_unique::<R>(self.weak.as_ptr().cast()) }
+    }
+
     #[cfg(not(no_global_oom_handling))]
     pub(crate) unsafe fn make_mut<R>(&mut self) -> &mut T
     where
@@ -695,6 +705,23 @@ impl<T, A> RawRc<[MaybeUninit<T>], A> {
 }
 
 impl<A> RawRc<dyn Any, A> {
+    pub(crate) fn downcast<T>(self) -> Result<RawRc<T, A>, Self>
+    where
+        T: Any,
+    {
+        if self.as_ref().is::<T>() { Ok(unsafe { self.downcast_unchecked() }) } else { Err(self) }
+    }
+
+    pub(crate) unsafe fn downcast_unchecked<T>(self) -> RawRc<T, A>
+    where
+        T: Any,
+    {
+        unsafe { self.cast() }
+    }
+}
+
+#[cfg(not(no_sync))]
+impl<A> RawRc<dyn Any + Send + Sync, A> {
     pub(crate) fn downcast<T>(self) -> Result<RawRc<T, A>, Self>
     where
         T: Any,
