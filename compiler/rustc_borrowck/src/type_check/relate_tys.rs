@@ -139,7 +139,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
                 variance,
                 ty,
             )?;
-            Ok(infcx.resolve_vars_if_possible(Ty::new_infer(infcx.tcx, ty::TyVar(ty_vid))))
+            Ok(infcx.resolve_vars_if_possible(Ty::new_var(infcx.tcx, ty_vid)))
         };
 
         let (a, b) = match (a.kind(), b.kind()) {
