@@ -59,7 +59,16 @@ where
         cache_key: Option<CanonicalGoalCacheKey<I>>,
     ) -> (Vec<I::GenericArg>, CanonicalInput<I, I::Predicate>) {
         if let Some(cache_key) = cache_key {
-            if !cache_key.orig_values.iter().any(|value| self.delegate.is_changed_arg(value)) {
+            if !cache_key.orig_values.iter().any(|value| self.delegate.is_changed_arg(value))
+                && self.delegate.opaque_types_storage_num_unique_entries_raw()
+                    == cache_key
+                        .canonical_goal
+                        .canonical
+                        .value
+                        .predefined_opaques_in_body
+                        .opaque_types
+                        .len()
+            {
                 return (cache_key.orig_values.to_vec(), cache_key.canonical_goal);
             }
         }

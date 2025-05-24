@@ -252,6 +252,7 @@ pub trait InferCtxtLike: Sized {
 
     type OpaqueTypeStorageEntries: Debug + Copy + Default;
     fn opaque_types_storage_num_entries(&self) -> Self::OpaqueTypeStorageEntries;
+    fn opaque_types_storage_num_unique_entries_raw(&self) -> usize;
     fn clone_opaque_types_lookup_table(
         &self,
     ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;

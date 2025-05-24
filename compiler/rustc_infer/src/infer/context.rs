@@ -260,6 +260,9 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn opaque_types_storage_num_entries(&self) -> OpaqueTypeStorageEntries {
         self.inner.borrow_mut().opaque_types().num_entries()
     }
+    fn opaque_types_storage_num_unique_entries_raw(&self) -> usize {
+        self.inner.borrow_mut().opaque_types().num_entries().opaque_types
+    }
     fn clone_opaque_types_lookup_table(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
         self.inner.borrow_mut().opaque_types().iter_lookup_table().map(|(k, h)| (k, h.ty)).collect()
     }

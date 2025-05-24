@@ -20,7 +20,7 @@ pub struct OpaqueTypeStorage<'tcx> {
 /// the opaque types currently in the storage.
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OpaqueTypeStorageEntries {
-    opaque_types: usize,
+    pub opaque_types: usize,
     duplicate_entries: usize,
 }
 
