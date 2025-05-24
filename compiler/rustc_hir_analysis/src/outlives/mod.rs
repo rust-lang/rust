@@ -70,7 +70,7 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
             let predicates =
                 &*tcx.arena.alloc_from_iter(set.as_ref().skip_binder().iter().filter_map(
                     |(ty::OutlivesPredicate(kind1, region2), &span)| {
-                        match kind1.unpack() {
+                        match kind1.kind() {
                             GenericArgKind::Type(ty1) => Some((
                                 ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty1, *region2))
                                     .upcast(tcx),

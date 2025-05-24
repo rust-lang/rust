@@ -607,7 +607,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
     ) -> Option<&'hir hir::Lifetime> {
         for (kind, hir_arg) in iter::zip(args, hir_args.args) {
-            match (kind.unpack(), hir_arg) {
+            match (kind.kind(), hir_arg) {
                 (GenericArgKind::Lifetime(r), hir::GenericArg::Lifetime(lt)) => {
                     if r.as_var() == needle_fr {
                         return Some(lt);
@@ -997,7 +997,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     ) -> bool {
         let tcx = self.infcx.tcx;
         ty.walk().any(|arg| {
-            if let ty::GenericArgKind::Type(ty) = arg.unpack()
+            if let ty::GenericArgKind::Type(ty) = arg.kind()
                 && let ty::Param(_) = ty.kind()
             {
                 clauses.iter().any(|pred| {

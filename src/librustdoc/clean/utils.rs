@@ -124,7 +124,7 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
             elision_has_failed_once_before = true;
         }
 
-        match arg.skip_binder().unpack() {
+        match arg.skip_binder().kind() {
             GenericArgKind::Lifetime(lt) => {
                 Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
             }
@@ -161,7 +161,7 @@ fn can_elide_generic_arg<'tcx>(
     default: ty::Binder<'tcx, ty::GenericArg<'tcx>>,
 ) -> bool {
     debug_assert_matches!(
-        (actual.skip_binder().unpack(), default.skip_binder().unpack()),
+        (actual.skip_binder().kind(), default.skip_binder().kind()),
         (ty::GenericArgKind::Lifetime(_), ty::GenericArgKind::Lifetime(_))
             | (ty::GenericArgKind::Type(_), ty::GenericArgKind::Type(_))
             | (ty::GenericArgKind::Const(_), ty::GenericArgKind::Const(_))

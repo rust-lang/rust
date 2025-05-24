@@ -148,7 +148,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
             let mut next_outlives_predicates = vec![];
             for (ty::OutlivesPredicate(k1, r2), constraint_category) in outlives_predicates {
-                match k1.unpack() {
+                match k1.kind() {
                     GenericArgKind::Lifetime(r1) => {
                         let r1_vid = self.to_region_vid(r1);
                         let r2_vid = self.to_region_vid(r2);

@@ -25,7 +25,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
         return;
     }
 
-    match kind.unpack() {
+    match kind.kind() {
         GenericArgKind::Type(ty) => {
             // `T: 'outlived_region` for some type `T`
             // But T could be a lot of things:

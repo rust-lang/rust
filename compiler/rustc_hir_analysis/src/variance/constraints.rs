@@ -201,7 +201,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         let variance_i = self.invariant(variance);
 
         for k in args {
-            match k.unpack() {
+            match k.kind() {
                 GenericArgKind::Lifetime(lt) => {
                     self.add_constraints_from_region(current, lt, variance_i)
                 }
@@ -294,7 +294,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
 
                 for projection in data.projection_bounds() {
-                    match projection.skip_binder().term.unpack() {
+                    match projection.skip_binder().term.kind() {
                         ty::TermKind::Ty(ty) => {
                             self.add_constraints_from_ty(current, ty, self.invariant);
                         }
@@ -389,7 +389,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 "add_constraints_from_args: variance_decl={:?} variance_i={:?}",
                 variance_decl, variance_i
             );
-            match k.unpack() {
+            match k.kind() {
                 GenericArgKind::Lifetime(lt) => {
                     self.add_constraints_from_region(current, lt, variance_i)
                 }

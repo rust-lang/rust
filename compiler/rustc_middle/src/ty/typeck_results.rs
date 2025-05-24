@@ -778,7 +778,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                 }
 
                 iter::zip(user_args.args, BoundVar::ZERO..).all(|(kind, cvar)| {
-                    match kind.unpack() {
+                    match kind.kind() {
                         GenericArgKind::Type(ty) => match ty.kind() {
                             ty::Bound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in generic parameters.

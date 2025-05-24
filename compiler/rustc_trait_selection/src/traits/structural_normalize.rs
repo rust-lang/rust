@@ -39,7 +39,7 @@ impl<'tcx> At<'_, 'tcx> {
                 return Ok(term);
             }
 
-            let new_infer = match term.unpack() {
+            let new_infer = match term.kind() {
                 ty::TermKind::Ty(_) => self.infcx.next_ty_var(self.cause.span).into(),
                 ty::TermKind::Const(_) => self.infcx.next_const_var(self.cause.span).into(),
             };

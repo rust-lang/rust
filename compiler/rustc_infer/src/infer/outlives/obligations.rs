@@ -87,7 +87,7 @@ impl<'tcx> InferCtxt<'tcx> {
         ty::OutlivesPredicate(arg, r2): ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
         cause: &ObligationCause<'tcx>,
     ) {
-        match arg.unpack() {
+        match arg.kind() {
             ty::GenericArgKind::Lifetime(r1) => {
                 self.register_region_outlives_constraint(ty::OutlivesPredicate(r1, r2), cause);
             }
@@ -504,7 +504,7 @@ where
     ) {
         let constraint = origin.to_constraint_category();
         for (index, k) in args.iter().enumerate() {
-            match k.unpack() {
+            match k.kind() {
                 GenericArgKind::Lifetime(lt) => {
                     let variance = if let Some(variances) = opt_variances {
                         variances[index]
