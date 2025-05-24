@@ -1976,3 +1976,34 @@ fn clone_to_uninit() {
     unsafe { a.clone_to_uninit(ptr::from_mut::<Path>(&mut b).cast()) };
     assert_eq!(a, &*b);
 }
+
+// Test: Only separators (e.g., "/" or "\\")
+// This test checks how Path handles a string that consists only of path separators.
+// It should recognize the root and not treat it as a normal component.
+#[test]
+fn test_only_separators() {
+    let path = Path::new("/////");
+    assert!(path.has_root());
+    assert_eq!(path.iter().count(), 1);
+    assert_eq!(path.parent(), None);
+}
+
+// Test: Non-ASCII/Unicode
+// This test verifies that Path can handle Unicode and non-ASCII characters in the path.
+// It ensures that such paths are not rejected or misinterpreted.
+#[test]
+fn test_non_ascii_unicode() {
+    let path = Path::new("/tmp/❤/🚀/file.txt");
+    assert!(path.to_str().is_some());
+    assert_eq!(path.file_name(), Some(OsStr::new("file.txt")));
+}
+
+// Test: Embedded newlines
+// This test verifies that newlines within path components are preserved and do not break path parsing.
+// It ensures that Path treats newlines as normal characters.
+#[test]
+fn test_embedded_newline() {
+    let path = Path::new("foo\nbar");
+    assert_eq!(path.file_name(), Some(OsStr::new("foo\nbar")));
+    assert_eq!(path.to_str(), Some("foo\nbar"));
+}
