@@ -56,7 +56,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    /// Handles the `try` intrinsic, the underlying implementation of `std::panicking::try`.
+    /// Handles the `catch_unwind` intrinsic.
     fn handle_catch_unwind(
         &mut self,
         args: &[OpTy<'tcx>],
@@ -66,7 +66,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // Signature:
-        //   fn r#try(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32
+        //   fn catch_unwind(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32
         // Calls `try_fn` with `data` as argument. If that executes normally, returns 0.
         // If that unwinds, calls `catch_fn` with the first argument being `data` and
         // then second argument being a target-dependent `payload` (i.e. it is up to us to define
@@ -120,14 +120,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // We only care about `catch_panic` if we're unwinding - if we're doing a normal
         // return, then we don't need to do anything special.
         if let (true, Some(catch_unwind)) = (unwinding, extra.catch_unwind.take()) {
-            // We've just popped a frame that was pushed by `try`,
+            // We've just popped a frame that was pushed by `catch_unwind`,
             // and we are unwinding, so we should catch that.
             trace!(
                 "unwinding: found catch_panic frame during unwinding: {:?}",
                 this.frame().instance()
             );
 
-            // We set the return value of `try` to 1, since there was a panic.
+            // We set the return value of `catch_unwind` to 1, since there was a panic.
             this.write_scalar(Scalar::from_i32(1), &catch_unwind.dest)?;
 
             // The Thread's `panic_payload` holds what was passed to `miri_start_unwind`.
@@ -142,7 +142,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ExternAbi::Rust,
                 &[catch_unwind.data, payload],
                 None,
-                // Directly return to caller of `try`.
+                // Directly return to caller of `catch_unwind`.
                 StackPopCleanup::Goto {
                     ret: catch_unwind.ret,
                     // `catch_fn` must not unwind.
