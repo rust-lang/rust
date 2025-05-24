@@ -435,35 +435,35 @@ pub trait MacResult {
         None
     }
 
-    fn make_arms(self: Box<Self>) -> Option<SmallVec<[ast::Arm; 1]>> {
+    fn make_arm(self: Box<Self>) -> Option<Option<ast::Arm>> {
         None
     }
 
-    fn make_expr_fields(self: Box<Self>) -> Option<SmallVec<[ast::ExprField; 1]>> {
+    fn make_expr_field(self: Box<Self>) -> Option<Option<ast::ExprField>> {
         None
     }
 
-    fn make_pat_fields(self: Box<Self>) -> Option<SmallVec<[ast::PatField; 1]>> {
+    fn make_pat_field(self: Box<Self>) -> Option<Option<ast::PatField>> {
         None
     }
 
-    fn make_generic_params(self: Box<Self>) -> Option<SmallVec<[ast::GenericParam; 1]>> {
+    fn make_generic_param(self: Box<Self>) -> Option<Option<ast::GenericParam>> {
         None
     }
 
-    fn make_params(self: Box<Self>) -> Option<SmallVec<[ast::Param; 1]>> {
+    fn make_param(self: Box<Self>) -> Option<Option<ast::Param>> {
         None
     }
 
-    fn make_field_defs(self: Box<Self>) -> Option<SmallVec<[ast::FieldDef; 1]>> {
+    fn make_field_def(self: Box<Self>) -> Option<Option<ast::FieldDef>> {
         None
     }
 
-    fn make_variants(self: Box<Self>) -> Option<SmallVec<[ast::Variant; 1]>> {
+    fn make_variant(self: Box<Self>) -> Option<Option<ast::Variant>> {
         None
     }
 
-    fn make_where_predicates(self: Box<Self>) -> Option<SmallVec<[ast::WherePredicate; 1]>> {
+    fn make_where_predicate(self: Box<Self>) -> Option<Option<ast::WherePredicate>> {
         None
     }
 
@@ -654,32 +654,32 @@ impl MacResult for DummyResult {
         }))
     }
 
-    fn make_arms(self: Box<DummyResult>) -> Option<SmallVec<[ast::Arm; 1]>> {
-        Some(SmallVec::new())
+    fn make_arm(self: Box<DummyResult>) -> Option<Option<ast::Arm>> {
+        Some(None)
     }
 
-    fn make_expr_fields(self: Box<DummyResult>) -> Option<SmallVec<[ast::ExprField; 1]>> {
-        Some(SmallVec::new())
+    fn make_expr_field(self: Box<DummyResult>) -> Option<Option<ast::ExprField>> {
+        Some(None)
     }
 
-    fn make_pat_fields(self: Box<DummyResult>) -> Option<SmallVec<[ast::PatField; 1]>> {
-        Some(SmallVec::new())
+    fn make_pat_field(self: Box<DummyResult>) -> Option<Option<ast::PatField>> {
+        Some(None)
     }
 
-    fn make_generic_params(self: Box<DummyResult>) -> Option<SmallVec<[ast::GenericParam; 1]>> {
-        Some(SmallVec::new())
+    fn make_generic_param(self: Box<DummyResult>) -> Option<Option<ast::GenericParam>> {
+        Some(None)
     }
 
-    fn make_params(self: Box<DummyResult>) -> Option<SmallVec<[ast::Param; 1]>> {
-        Some(SmallVec::new())
+    fn make_param(self: Box<DummyResult>) -> Option<Option<ast::Param>> {
+        Some(None)
     }
 
-    fn make_field_defs(self: Box<DummyResult>) -> Option<SmallVec<[ast::FieldDef; 1]>> {
-        Some(SmallVec::new())
+    fn make_field_def(self: Box<DummyResult>) -> Option<Option<ast::FieldDef>> {
+        Some(None)
     }
 
-    fn make_variants(self: Box<DummyResult>) -> Option<SmallVec<[ast::Variant; 1]>> {
-        Some(SmallVec::new())
+    fn make_variant(self: Box<DummyResult>) -> Option<Option<ast::Variant>> {
+        Some(None)
     }
 
     fn make_crate(self: Box<DummyResult>) -> Option<ast::Crate> {

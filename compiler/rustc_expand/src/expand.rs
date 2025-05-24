@@ -48,8 +48,9 @@ macro_rules! ast_fragments {
     (
         $($Kind:ident($AstTy:ty) {
             $kind_name:expr;
-            $(one fn $mut_visit_ast:ident; fn $visit_ast:ident;)?
-            $(many fn $flat_map_ast_elt:ident; fn $visit_ast_elt:ident($($args:tt)*);)?
+            $(one fn $mut_visit_ast:ident; fn $one_visit_ast:ident;)?
+            $(option fn $filter_map_ast:ident; fn $option_visit_ast:ident;)?
+            $(many fn $flat_map_ast_elt:ident; fn $many_visit_ast:ident($($many_args:tt)*);)?
             fn $make_ast:ident;
         })*
     ) => {
@@ -131,18 +132,17 @@ macro_rules! ast_fragments {
             pub(crate) fn mut_visit_with<F: MutVisitor>(&mut self, vis: &mut F) {
                 match self {
                     AstFragment::OptExpr(opt_expr) => {
-                        visit_clobber(opt_expr, |opt_expr| {
-                            if let Some(expr) = opt_expr {
-                                vis.filter_map_expr(expr)
-                            } else {
-                                None
-                            }
-                        });
+                        visit_clobber_opt(opt_expr, |expr| vis.filter_map_expr(expr));
                     }
                     AstFragment::MethodReceiverExpr(expr) => vis.visit_method_receiver_expr(expr),
                     $($(AstFragment::$Kind(ast) => vis.$mut_visit_ast(ast),)?)*
                     $($(AstFragment::$Kind(ast) =>
-                        ast.flat_map_in_place(|ast| vis.$flat_map_ast_elt(ast, $($args)*)),)?)*
+                        ast.flat_map_in_place(|ast| vis.$flat_map_ast_elt(ast, $($many_args)*)),)?)*
+                    $($(
+                        AstFragment::$Kind(ast) => {
+                            visit_clobber_opt(ast, |ast| vis.$filter_map_ast(ast));
+                        }
+                    )?)*
                 }
             }
 
@@ -150,9 +150,21 @@ macro_rules! ast_fragments {
                 match self {
                     AstFragment::OptExpr(Some(expr)) => try_visit!(visitor.visit_expr(expr)),
                     AstFragment::OptExpr(None) => {}
-                    AstFragment::MethodReceiverExpr(expr) => try_visit!(visitor.visit_method_receiver_expr(expr)),
-                    $($(AstFragment::$Kind(ast) => try_visit!(visitor.$visit_ast(ast)),)?)*
-                    $($(AstFragment::$Kind(ast) => walk_list!(visitor, $visit_ast_elt, &ast[..], $($args)*),)?)*
+                    AstFragment::MethodReceiverExpr(expr) => {
+                        try_visit!(visitor.visit_method_receiver_expr(expr))
+                    }
+                    $($(
+                        AstFragment::$Kind(ast) => try_visit!(visitor.$one_visit_ast(ast)),
+                    )?)*
+                    $($(
+                        AstFragment::$Kind(ast) => {
+                            walk_list!(visitor, $many_visit_ast, &ast[..], $($many_args)*)
+                        }
+                    )?)*
+                    $($(
+                        AstFragment::$Kind(Some(ast)) => try_visit!(visitor.$option_visit_ast(ast)),
+                        AstFragment::$Kind(None) => {}
+                    )?)*
                 }
                 V::Result::output()
             }
@@ -201,42 +213,39 @@ ast_fragments! {
         fn visit_foreign_item();
         fn make_foreign_items;
     }
-    Arms(SmallVec<[ast::Arm; 1]>) {
-        "match arm"; many fn flat_map_arm; fn visit_arm(); fn make_arms;
+    Arm(Option<ast::Arm>) {
+        "match arm"; option fn filter_map_arm; fn visit_arm; fn make_arm;
     }
-    ExprFields(SmallVec<[ast::ExprField; 1]>) {
-        "field expression"; many fn flat_map_expr_field; fn visit_expr_field(); fn make_expr_fields;
+    ExprField(Option<ast::ExprField>) {
+        "field expression";
+        option fn filter_map_expr_field;
+        fn visit_expr_field;
+        fn make_expr_field;
     }
-    PatFields(SmallVec<[ast::PatField; 1]>) {
-        "field pattern";
-        many fn flat_map_pat_field;
-        fn visit_pat_field();
-        fn make_pat_fields;
+    PatField(Option<ast::PatField>) {
+        "field pattern"; option fn filter_map_pat_field; fn visit_pat_field; fn make_pat_field;
     }
-    GenericParams(SmallVec<[ast::GenericParam; 1]>) {
+    GenericParam(Option<ast::GenericParam>) {
         "generic parameter";
-        many fn flat_map_generic_param;
-        fn visit_generic_param();
-        fn make_generic_params;
+        option fn filter_map_generic_param;
+        fn visit_generic_param;
+        fn make_generic_param;
     }
-    Params(SmallVec<[ast::Param; 1]>) {
-        "function parameter"; many fn flat_map_param; fn visit_param(); fn make_params;
+    Param(Option<ast::Param>) {
+        "function parameter"; option fn filter_map_param; fn visit_param; fn make_param;
     }
-    FieldDefs(SmallVec<[ast::FieldDef; 1]>) {
-        "field";
-        many fn flat_map_field_def;
-        fn visit_field_def();
-        fn make_field_defs;
+    FieldDef(Option<ast::FieldDef>) {
+        "field"; option fn filter_map_field_def; fn visit_field_def; fn make_field_def;
     }
-    Variants(SmallVec<[ast::Variant; 1]>) {
-        "variant"; many fn flat_map_variant; fn visit_variant(); fn make_variants;
+    Variant(Option<ast::Variant>) {
+        "variant"; option fn filter_map_variant; fn visit_variant; fn make_variant;
     }
-    WherePredicates(SmallVec<[ast::WherePredicate; 1]>) {
+    WherePredicate(Option<ast::WherePredicate>) {
         "where predicate";
-        many fn flat_map_where_predicate;
-        fn visit_where_predicate();
-        fn make_where_predicates;
-     }
+        option fn filter_map_where_predicate;
+        fn visit_where_predicate;
+        fn make_where_predicate;
+    }
     Crate(ast::Crate) { "crate"; one fn visit_crate; fn visit_crate; fn make_crate; }
 }
 
@@ -264,14 +273,14 @@ impl AstFragmentKind {
             | AstFragmentKind::TraitImplItems
             | AstFragmentKind::ForeignItems
             | AstFragmentKind::Crate => SupportsMacroExpansion::Yes { supports_inner_attrs: true },
-            AstFragmentKind::Arms
-            | AstFragmentKind::ExprFields
-            | AstFragmentKind::PatFields
-            | AstFragmentKind::GenericParams
-            | AstFragmentKind::Params
-            | AstFragmentKind::FieldDefs
-            | AstFragmentKind::Variants
-            | AstFragmentKind::WherePredicates => SupportsMacroExpansion::No,
+            AstFragmentKind::Arm
+            | AstFragmentKind::ExprField
+            | AstFragmentKind::PatField
+            | AstFragmentKind::GenericParam
+            | AstFragmentKind::Param
+            | AstFragmentKind::FieldDef
+            | AstFragmentKind::Variant
+            | AstFragmentKind::WherePredicate => SupportsMacroExpansion::No,
         }
     }
 
@@ -280,31 +289,48 @@ impl AstFragmentKind {
         items: I,
     ) -> AstFragment {
         let mut items = items.into_iter();
+
+        macro_rules! expect_one {
+            ($items:ident, $expect:ident, $ast_fragment_ctor:path) => {{
+                let fragment = $items.next().expect("expected exactly one AST fragment").$expect();
+                assert!($items.next().is_none());
+                $ast_fragment_ctor(fragment)
+            }};
+        }
+
+        macro_rules! expect_one_as_option {
+            ($items:ident, $expect:ident, $ast_fragment_ctor:path) => {{
+                let fragment = $items.next().expect("expected exactly one AST fragment").$expect();
+                assert!($items.next().is_none());
+                $ast_fragment_ctor(Some(fragment))
+            }};
+        }
+
         match self {
-            AstFragmentKind::Arms => {
-                AstFragment::Arms(items.map(Annotatable::expect_arm).collect())
+            AstFragmentKind::Arm => {
+                expect_one_as_option!(items, expect_arm, AstFragment::Arm)
             }
-            AstFragmentKind::ExprFields => {
-                AstFragment::ExprFields(items.map(Annotatable::expect_expr_field).collect())
+            AstFragmentKind::ExprField => {
+                expect_one_as_option!(items, expect_expr_field, AstFragment::ExprField)
             }
-            AstFragmentKind::PatFields => {
-                AstFragment::PatFields(items.map(Annotatable::expect_pat_field).collect())
+            AstFragmentKind::PatField => {
+                expect_one_as_option!(items, expect_pat_field, AstFragment::PatField)
             }
-            AstFragmentKind::GenericParams => {
-                AstFragment::GenericParams(items.map(Annotatable::expect_generic_param).collect())
+            AstFragmentKind::GenericParam => {
+                expect_one_as_option!(items, expect_generic_param, AstFragment::GenericParam)
             }
-            AstFragmentKind::Params => {
-                AstFragment::Params(items.map(Annotatable::expect_param).collect())
+            AstFragmentKind::Param => {
+                expect_one_as_option!(items, expect_param, AstFragment::Param)
             }
-            AstFragmentKind::FieldDefs => {
-                AstFragment::FieldDefs(items.map(Annotatable::expect_field_def).collect())
+            AstFragmentKind::FieldDef => {
+                expect_one_as_option!(items, expect_field_def, AstFragment::FieldDef)
             }
-            AstFragmentKind::Variants => {
-                AstFragment::Variants(items.map(Annotatable::expect_variant).collect())
+            AstFragmentKind::Variant => {
+                expect_one_as_option!(items, expect_variant, AstFragment::Variant)
             }
-            AstFragmentKind::WherePredicates => AstFragment::WherePredicates(
-                items.map(Annotatable::expect_where_predicate).collect(),
-            ),
+            AstFragmentKind::WherePredicate => {
+                expect_one_as_option!(items, expect_where_predicate, AstFragment::WherePredicate)
+            }
             AstFragmentKind::Items => {
                 AstFragment::Items(items.map(Annotatable::expect_item).collect())
             }
@@ -323,17 +349,19 @@ impl AstFragmentKind {
             AstFragmentKind::Stmts => {
                 AstFragment::Stmts(items.map(Annotatable::expect_stmt).collect())
             }
-            AstFragmentKind::Expr => AstFragment::Expr(
-                items.next().expect("expected exactly one expression").expect_expr(),
-            ),
-            AstFragmentKind::MethodReceiverExpr => AstFragment::MethodReceiverExpr(
-                items.next().expect("expected exactly one expression").expect_expr(),
-            ),
+            AstFragmentKind::Expr => {
+                expect_one!(items, expect_expr, AstFragment::Expr)
+            }
+            AstFragmentKind::MethodReceiverExpr => {
+                expect_one!(items, expect_expr, AstFragment::MethodReceiverExpr)
+            }
             AstFragmentKind::OptExpr => {
-                AstFragment::OptExpr(items.next().map(Annotatable::expect_expr))
+                let fragment = AstFragment::OptExpr(items.next().map(Annotatable::expect_expr));
+                assert!(items.next().is_none());
+                fragment
             }
             AstFragmentKind::Crate => {
-                AstFragment::Crate(items.next().expect("expected exactly one crate").expect_crate())
+                expect_one!(items, expect_crate, AstFragment::Crate)
             }
             AstFragmentKind::Pat | AstFragmentKind::Ty => {
                 panic!("patterns and types aren't annotatable")
@@ -1026,14 +1054,14 @@ pub fn parse_ast_fragment<'a>(
             CommaRecoveryMode::LikelyTuple,
         )?),
         AstFragmentKind::Crate => AstFragment::Crate(this.parse_crate_mod()?),
-        AstFragmentKind::Arms
-        | AstFragmentKind::ExprFields
-        | AstFragmentKind::PatFields
-        | AstFragmentKind::GenericParams
-        | AstFragmentKind::Params
-        | AstFragmentKind::FieldDefs
-        | AstFragmentKind::Variants
-        | AstFragmentKind::WherePredicates => panic!("unexpected AST fragment kind"),
+        AstFragmentKind::Arm
+        | AstFragmentKind::ExprField
+        | AstFragmentKind::PatField
+        | AstFragmentKind::GenericParam
+        | AstFragmentKind::Param
+        | AstFragmentKind::FieldDef
+        | AstFragmentKind::Variant
+        | AstFragmentKind::WherePredicate => panic!("unexpected AST fragment kind"),
     })
 }
 
@@ -1115,7 +1143,7 @@ enum AddSemicolon {
 /// A trait implemented for all `AstFragment` nodes and providing all pieces
 /// of functionality used by `InvocationCollector`.
 trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
-    type OutputTy = SmallVec<[Self; 1]>;
+    type OutputTy;
     type ItemKind = ItemKind;
     const KIND: AstFragmentKind;
     fn to_annotatable(self) -> Annotatable;
@@ -1174,6 +1202,7 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
 }
 
 impl InvocationCollectorNode for P<ast::Item> {
+    type OutputTy = SmallVec<[Self; 1]>;
     const KIND: AstFragmentKind = AstFragmentKind::Items;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::Item(self)
@@ -1450,6 +1479,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitImplItem
 }
 
 impl InvocationCollectorNode for P<ast::ForeignItem> {
+    type OutputTy = SmallVec<[Self; 1]>;
     const KIND: AstFragmentKind = AstFragmentKind::ForeignItems;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::ForeignItem(self)
@@ -1473,110 +1503,119 @@ impl InvocationCollectorNode for P<ast::ForeignItem> {
 }
 
 impl InvocationCollectorNode for ast::Variant {
-    const KIND: AstFragmentKind = AstFragmentKind::Variants;
+    type OutputTy = Option<ast::Variant>;
+    const KIND: AstFragmentKind = AstFragmentKind::Variant;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::Variant(self)
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
-        fragment.make_variants()
+        fragment.make_variant()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_variant(visitor, self)
+        walk_filter_map_variant(visitor, self)
     }
 }
 
 impl InvocationCollectorNode for ast::WherePredicate {
-    const KIND: AstFragmentKind = AstFragmentKind::WherePredicates;
+    type OutputTy = Option<ast::WherePredicate>;
+    const KIND: AstFragmentKind = AstFragmentKind::WherePredicate;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::WherePredicate(self)
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
-        fragment.make_where_predicates()
+        fragment.make_where_predicate()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_where_predicate(visitor, self)
+        walk_filter_map_where_predicate(visitor, self)
     }
 }
 
 impl InvocationCollectorNode for ast::FieldDef {
-    const KIND: AstFragmentKind = AstFragmentKind::FieldDefs;
+    type OutputTy = Option<ast::FieldDef>;
+    const KIND: AstFragmentKind = AstFragmentKind::FieldDef;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::FieldDef(self)
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
-        fragment.make_field_defs()
+        fragment.make_field_def()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_field_def(visitor, self)
+        walk_filter_map_field_def(visitor, self)
     }
 }
 
 impl InvocationCollectorNode for ast::PatField {
-    const KIND: AstFragmentKind = AstFragmentKind::PatFields;
+    type OutputTy = Option<ast::PatField>;
+    const KIND: AstFragmentKind = AstFragmentKind::PatField;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::PatField(self)
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
-        fragment.make_pat_fields()
+        fragment.make_pat_field()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_pat_field(visitor, self)
+        walk_filter_map_pat_field(visitor, self)
     }
 }
 
 impl InvocationCollectorNode for ast::ExprField {
-    const KIND: AstFragmentKind = AstFragmentKind::ExprFields;
+    type OutputTy = Option<ast::ExprField>;
+    const KIND: AstFragmentKind = AstFragmentKind::ExprField;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::ExprField(self)
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
-        fragment.make_expr_fields()
+        fragment.make_expr_field()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_expr_field(visitor, self)
+        walk_filter_map_expr_field(visitor, self)
     }
 }
 
 impl InvocationCollectorNode for ast::Param {
-    const KIND: AstFragmentKind = AstFragmentKind::Params;
+    type OutputTy = Option<ast::Param>;
+    const KIND: AstFragmentKind = AstFragmentKind::Param;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::Param(self)
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
-        fragment.make_params()
+        fragment.make_param()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_param(visitor, self)
+        walk_filter_map_param(visitor, self)
     }
 }
 
 impl InvocationCollectorNode for ast::GenericParam {
-    const KIND: AstFragmentKind = AstFragmentKind::GenericParams;
+    type OutputTy = Option<ast::GenericParam>;
+    const KIND: AstFragmentKind = AstFragmentKind::GenericParam;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::GenericParam(self)
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
-        fragment.make_generic_params()
+        fragment.make_generic_param()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_generic_param(visitor, self)
+        walk_filter_map_generic_param(visitor, self)
     }
 }
 
 impl InvocationCollectorNode for ast::Arm {
-    const KIND: AstFragmentKind = AstFragmentKind::Arms;
+    type OutputTy = Option<ast::Arm>;
+    const KIND: AstFragmentKind = AstFragmentKind::Arm;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::Arm(self)
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
-        fragment.make_arms()
+        fragment.make_arm()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_arm(visitor, self)
+        walk_filter_map_arm(visitor, self)
     }
 }
 
 impl InvocationCollectorNode for ast::Stmt {
+    type OutputTy = SmallVec<[Self; 1]>;
     const KIND: AstFragmentKind = AstFragmentKind::Stmts;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::Stmt(P(self))
@@ -2205,41 +2244,38 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.flat_map_node(node)
     }
 
-    fn flat_map_variant(&mut self, node: ast::Variant) -> SmallVec<[ast::Variant; 1]> {
+    fn filter_map_variant(&mut self, node: ast::Variant) -> Option<ast::Variant> {
         self.flat_map_node(node)
     }
 
-    fn flat_map_where_predicate(
+    fn filter_map_where_predicate(
         &mut self,
         node: ast::WherePredicate,
-    ) -> SmallVec<[ast::WherePredicate; 1]> {
+    ) -> Option<ast::WherePredicate> {
         self.flat_map_node(node)
     }
 
-    fn flat_map_field_def(&mut self, node: ast::FieldDef) -> SmallVec<[ast::FieldDef; 1]> {
+    fn filter_map_field_def(&mut self, node: ast::FieldDef) -> Option<ast::FieldDef> {
         self.flat_map_node(node)
     }
 
-    fn flat_map_pat_field(&mut self, node: ast::PatField) -> SmallVec<[ast::PatField; 1]> {
+    fn filter_map_pat_field(&mut self, node: ast::PatField) -> Option<ast::PatField> {
         self.flat_map_node(node)
     }
 
-    fn flat_map_expr_field(&mut self, node: ast::ExprField) -> SmallVec<[ast::ExprField; 1]> {
+    fn filter_map_expr_field(&mut self, node: ast::ExprField) -> Option<ast::ExprField> {
         self.flat_map_node(node)
     }
 
-    fn flat_map_param(&mut self, node: ast::Param) -> SmallVec<[ast::Param; 1]> {
+    fn filter_map_param(&mut self, node: ast::Param) -> Option<ast::Param> {
         self.flat_map_node(node)
     }
 
-    fn flat_map_generic_param(
-        &mut self,
-        node: ast::GenericParam,
-    ) -> SmallVec<[ast::GenericParam; 1]> {
+    fn filter_map_generic_param(&mut self, node: ast::GenericParam) -> Option<ast::GenericParam> {
         self.flat_map_node(node)
     }
 
-    fn flat_map_arm(&mut self, node: ast::Arm) -> SmallVec<[ast::Arm; 1]> {
+    fn filter_map_arm(&mut self, node: ast::Arm) -> Option<ast::Arm> {
         self.flat_map_node(node)
     }
 

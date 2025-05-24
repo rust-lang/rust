@@ -394,7 +394,7 @@ impl<'a> ast::mut_visit::MutVisitor for TypeSubstitution<'a> {
             rustc_ast::WherePredicateKind::BoundPredicate(bound) => {
                 bound
                     .bound_generic_params
-                    .flat_map_in_place(|param| self.flat_map_generic_param(param));
+                    .flat_map_in_place(|param| self.filter_map_generic_param(param));
                 self.visit_ty(&mut bound.bounded_ty);
                 for bound in &mut bound.bounds {
                     self.visit_param_bound(bound, BoundKind::Bound)
