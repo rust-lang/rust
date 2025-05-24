@@ -1,3 +1,6 @@
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@ ignore-compare-mode-next-solver (explicit revisions)
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]
 
@@ -6,7 +9,9 @@
 struct T;
 
 impl T {
-    type This = Self::This; //~ ERROR overflow evaluating associated type `T::This`
+    type This = Self::This;
+    //[current]~^ ERROR overflow evaluating associated type `T::This`
+    //[next]~^^ ERROR type mismatch resolving `T::This normalizes-to _`
 }
 
 fn main() {}

@@ -1,0 +1,17 @@
+error[E0271]: type mismatch resolving `T::This normalizes-to _`
+  --> $DIR/normalization-overflow.rs:12:17
+   |
+LL |     type This = Self::This;
+   |                 ^^^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `T::This normalizes-to _`
+  --> $DIR/normalization-overflow.rs:12:17
+   |
+LL |     type This = Self::This;
+   |                 ^^^^^^^^^^ types differ
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

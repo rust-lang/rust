@@ -16,4 +16,5 @@ fn main() {
     //[current]~^ ERROR mismatched types
     //[next]~^^ ERROR type mismatch resolving `<() as Trait>::Output normalizes-to _`
     //[next]~| ERROR type mismatch resolving `<() as Trait>::Output normalizes-to _`
+    //[next]~| ERROR type mismatch resolving `<() as Trait>::Output normalizes-to _`
 }
