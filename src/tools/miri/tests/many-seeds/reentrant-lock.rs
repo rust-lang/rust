@@ -1,6 +1,6 @@
 #![feature(reentrant_lock)]
 //! This is a regression test for
-//! <https://rust-lang.zulipchat.com/#narrow/channel/269128-miri/topic/reentrant.20lock.20failure.20on.20musl>.
+//! <https://rust-lang.zulipchat.com/#narrow/channel/269128-miri/topic/reentrant.20lock.20failure.20on.20mips>.
 
 use std::cell::Cell;
 use std::sync::ReentrantLock;
