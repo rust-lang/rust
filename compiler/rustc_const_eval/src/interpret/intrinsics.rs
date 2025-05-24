@@ -26,7 +26,7 @@ use crate::fluent_generated as fluent;
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
 pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAllocation<'tcx> {
     let path = crate::util::type_name(tcx, ty);
-    let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes());
+    let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes(), ());
     tcx.mk_const_alloc(alloc)
 }
 
