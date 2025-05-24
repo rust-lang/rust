@@ -1,0 +1,14 @@
+// Check warning for wrong `cfg(version("1.27"))` syntax
+//
+//@ check-pass
+//@ no-auto-check-cfg
+//@ compile-flags: --check-cfg=cfg()
+//@ run-rustfix
+
+#![feature(cfg_version)]
+
+#[cfg(not(version("1.48.0")))]
+//~^ WARNING unexpected `cfg` condition name: `version`
+pub fn g() {}
+
+pub fn main() {}
