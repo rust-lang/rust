@@ -1,3 +1,4 @@
+#![feature(core_intrinsics)]
 #![feature(rustc_private)]
 #![feature(cfg_select)]
 #![feature(float_gamma)]
@@ -40,6 +41,8 @@
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
     rustc::untranslatable_diagnostic,
+    // For core_intrinsics, which we need for AtomicOrdering
+    internal_features,
 )]
 #![warn(rust_2018_idioms, unqualified_local_imports, clippy::as_conversions)]
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).

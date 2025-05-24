@@ -6,6 +6,7 @@
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(core_intrinsics)]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(negative_impls)]
