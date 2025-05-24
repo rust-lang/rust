@@ -60,7 +60,7 @@ use tracing::{debug, instrument};
 
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
-use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarInfo, CanonicalVarInfos};
+use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind, CanonicalVarKinds};
 use crate::lint::lint_level;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
@@ -107,9 +107,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.mk_predefined_opaques_in_body(data)
     }
     type LocalDefIds = &'tcx ty::List<LocalDefId>;
-    type CanonicalVars = CanonicalVarInfos<'tcx>;
-    fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
-        self.mk_canonical_var_infos(infos)
+    type CanonicalVarKinds = CanonicalVarKinds<'tcx>;
+    fn mk_canonical_var_kinds(
+        self,
+        kinds: &[ty::CanonicalVarKind<Self>],
+    ) -> Self::CanonicalVarKinds {
+        self.mk_canonical_var_kinds(kinds)
     }
 
     type ExternalConstraints = ExternalConstraints<'tcx>;
@@ -833,7 +836,7 @@ pub struct CtxtInterners<'tcx> {
     const_lists: InternedSet<'tcx, List<ty::Const<'tcx>>>,
     args: InternedSet<'tcx, GenericArgs<'tcx>>,
     type_lists: InternedSet<'tcx, List<Ty<'tcx>>>,
-    canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo<'tcx>>>,
+    canonical_var_kinds: InternedSet<'tcx, List<CanonicalVarKind<'tcx>>>,
     region: InternedSet<'tcx, RegionKind<'tcx>>,
     poly_existential_predicates: InternedSet<'tcx, List<PolyExistentialPredicate<'tcx>>>,
     predicate: InternedSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
@@ -872,7 +875,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             type_lists: InternedSet::with_capacity(N * 4),
             region: InternedSet::with_capacity(N * 4),
             poly_existential_predicates: InternedSet::with_capacity(N / 4),
-            canonical_var_infos: InternedSet::with_capacity(N / 2),
+            canonical_var_kinds: InternedSet::with_capacity(N / 2),
             predicate: InternedSet::with_capacity(N),
             clauses: InternedSet::with_capacity(N),
             projs: InternedSet::with_capacity(N * 4),
@@ -2675,7 +2678,7 @@ slice_interners!(
     const_lists: pub mk_const_list(Const<'tcx>),
     args: pub mk_args(GenericArg<'tcx>),
     type_lists: pub mk_type_list(Ty<'tcx>),
-    canonical_var_infos: pub mk_canonical_var_infos(CanonicalVarInfo<'tcx>),
+    canonical_var_kinds: pub mk_canonical_var_kinds(CanonicalVarKind<'tcx>),
     poly_existential_predicates: intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
     projs: pub mk_projs(ProjectionKind),
     place_elems: pub mk_place_elems(PlaceElem<'tcx>),
@@ -3055,9 +3058,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_canonical_var_infos_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: CollectAndApply<CanonicalVarInfo<'tcx>, &'tcx List<CanonicalVarInfo<'tcx>>>,
+        T: CollectAndApply<CanonicalVarKind<'tcx>, &'tcx List<CanonicalVarKind<'tcx>>>,
     {
-        T::collect_and_apply(iter, |xs| self.mk_canonical_var_infos(xs))
+        T::collect_and_apply(iter, |xs| self.mk_canonical_var_kinds(xs))
     }
 
     pub fn mk_place_elems_from_iter<I, T>(self, iter: I) -> T::Output

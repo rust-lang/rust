@@ -354,7 +354,7 @@ where
 fn response_no_constraints_raw<I: Interner>(
     cx: I,
     max_universe: ty::UniverseIndex,
-    variables: I::CanonicalVars,
+    variables: I::CanonicalVarKinds,
     certainty: Certainty,
 ) -> CanonicalResponse<I> {
     ty::Canonical {

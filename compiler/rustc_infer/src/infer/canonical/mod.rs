@@ -81,14 +81,14 @@ impl<'tcx> InferCtxt<'tcx> {
     fn instantiate_canonical_vars(
         &self,
         span: Span,
-        variables: &List<CanonicalVarInfo<'tcx>>,
+        variables: &List<CanonicalVarKind<'tcx>>,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> CanonicalVarValues<'tcx> {
         CanonicalVarValues {
             var_values: self.tcx.mk_args_from_iter(
                 variables
                     .iter()
-                    .map(|info| self.instantiate_canonical_var(span, info, &universe_map)),
+                    .map(|kind| self.instantiate_canonical_var(span, kind, &universe_map)),
             ),
         }
     }
@@ -104,10 +104,10 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn instantiate_canonical_var(
         &self,
         span: Span,
-        cv_info: CanonicalVarInfo<'tcx>,
+        kind: CanonicalVarKind<'tcx>,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> GenericArg<'tcx> {
-        match cv_info.kind {
+        match kind {
             CanonicalVarKind::Ty(ty_kind) => {
                 let ty = match ty_kind {
                     CanonicalTyVarKind::General(ui) => {

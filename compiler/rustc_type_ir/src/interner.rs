@@ -64,13 +64,16 @@ pub trait Interner:
         + TypeVisitable<Self>
         + SliceLike<Item = Self::LocalDefId>;
 
-    type CanonicalVars: Copy
+    type CanonicalVarKinds: Copy
         + Debug
         + Hash
         + Eq
-        + SliceLike<Item = ty::CanonicalVarInfo<Self>>
+        + SliceLike<Item = ty::CanonicalVarKind<Self>>
         + Default;
-    fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
+    fn mk_canonical_var_kinds(
+        self,
+        kinds: &[ty::CanonicalVarKind<Self>],
+    ) -> Self::CanonicalVarKinds;
 
     type ExternalConstraints: Copy
         + Debug
