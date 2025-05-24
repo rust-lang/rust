@@ -8,6 +8,7 @@ Rust for Solaris operating system.
 ## Target maintainers
 
 [@psumbera](https://github.com/psumbera)
+[@kulikjak](https://github.com/kulikjak)
 
 ## Requirements
 
