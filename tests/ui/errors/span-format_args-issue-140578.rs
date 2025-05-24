@@ -24,8 +24,8 @@ fn check_unformatted() {
 {a}
 {a:?}",
         [],
+        //~^ ERROR type annotations needed
  [],
- //~^ ERROR type annotations needed
 a = 1 + 1);
 }
 

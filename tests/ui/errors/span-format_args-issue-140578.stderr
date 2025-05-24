@@ -15,26 +15,26 @@ LL |   println!("{:?} {a} {a:?}", [], a = 1 + 1);
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0282]: type annotations needed
-  --> $DIR/span-format_args-issue-140578.rs:12:39
+  --> $DIR/span-format_args-issue-140578.rs:12:35
    |
 LL |   println!("{:?} {:?} {a} {a:?}", [], [], a = 1 + 1);
-   |                                       ^^ cannot infer type
+   |                                   ^^ cannot infer type
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0282]: type annotations needed
-  --> $DIR/span-format_args-issue-140578.rs:17:64
+  --> $DIR/span-format_args-issue-140578.rs:17:41
    |
 LL |   println!("{:?} {:?} {a} {a:?} {b:?}", [], [], a = 1 + 1, b = []);
-   |                                                                ^^ cannot infer type
+   |                                         ^^ cannot infer type
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0282]: type annotations needed
-  --> $DIR/span-format_args-issue-140578.rs:27:2
+  --> $DIR/span-format_args-issue-140578.rs:26:9
    |
-LL |  [],
-   |  ^^ cannot infer type
+LL |         [],
+   |         ^^ cannot infer type
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 

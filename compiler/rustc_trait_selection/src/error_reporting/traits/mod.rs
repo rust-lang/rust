@@ -7,7 +7,6 @@ pub mod on_unimplemented_format;
 mod overflow;
 pub mod suggestions;
 
-use std::cmp::Reverse;
 use std::{fmt, iter};
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -139,7 +138,7 @@ pub enum DefIdOrName {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum ErrorSortKey {
-    SubtypeFormat(Reverse<(usize, usize)>),
+    SubtypeFormat(usize, usize),
     OtherKind,
     SizedTrait,
     MetaSizedTrait,
@@ -199,7 +198,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             || self.tcx.is_diagnostic_item(sym::format_args_macro, def_id))
                         && span_file.src_hash == source_file.src_hash =>
                 {
-                    ErrorSortKey::SubtypeFormat(Reverse((row, col)))
+                    ErrorSortKey::SubtypeFormat(row, col)
                 }
                 _ if maybe_sizedness_did == self.tcx.lang_items().sized_trait() => ErrorSortKey::SizedTrait,
                 _ if maybe_sizedness_did == self.tcx.lang_items().meta_sized_trait() => ErrorSortKey::MetaSizedTrait,
