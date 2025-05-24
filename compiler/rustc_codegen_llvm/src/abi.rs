@@ -5,6 +5,7 @@ use std::iter::zip;
 use libc::c_uint;
 use rustc_abi::{BackendRepr, HasDataLayout, Primitive, Reg, RegKind, Size};
 use rustc_codegen_ssa::MemFlags;
+use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
@@ -327,6 +328,47 @@ pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
     fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value);
 }
 
+fn equate_ty<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: &'ll Type, llvm_ty: &'ll Type) -> bool {
+    if rust_ty == llvm_ty {
+        return true;
+    }
+    match cx.type_kind(llvm_ty) {
+        TypeKind::X86_AMX => {
+            // we will insert casts from/to x86amx in callsite, so this is fine
+            if cx.type_kind(rust_ty) == TypeKind::Vector {
+                let element_count = cx.vector_length(rust_ty);
+                let element_ty = cx.element_type(rust_ty);
+                let element_size_bits = match cx.type_kind(element_ty) {
+                    TypeKind::Half => 16,
+                    TypeKind::Float => 32,
+                    TypeKind::Double => 64,
+                    TypeKind::FP128 => 128,
+                    TypeKind::Integer => cx.int_width(element_ty),
+                    TypeKind::Pointer => cx.int_width(cx.isize_ty),
+                    _ => bug!(
+                        "Vector element type `{element_ty:?}` not one of integer, float or pointer"
+                    ),
+                };
+                element_size_bits * element_count as u64 == 8192
+            } else {
+                false
+            }
+        }
+        TypeKind::BFloat => rust_ty == cx.type_i16(),
+        TypeKind::Vector => {
+            let element_count = cx.vector_length(llvm_ty);
+            let element_ty = cx.element_type(llvm_ty);
+
+            if element_ty == cx.type_bf16() {
+                rust_ty == cx.type_vector(cx.type_i16(), element_count as u64)
+            } else {
+                false
+            }
+        }
+        _ => false,
+    }
+}
+
 impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn llvm_return_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
         match &self.ret.mode {
@@ -419,7 +461,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 ));
             }
 
-            if actual_return_ty != expected_return_ty {
+            if !equate_ty(cx, actual_return_ty, expected_return_ty) {
                 cx.tcx.dcx().fatal(format!(
                     "Intrinsic signature mismatch: expected {expected_return_ty:?} as return type for `{}`, found {actual_return_ty:?}",
                     str::from_utf8(name).unwrap()
@@ -428,7 +470,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             for (idx, (actual_argument_ty, expected_argument_ty)) in
                 zip(actual_argument_tys, expected_argument_tys).enumerate()
             {
-                if actual_argument_ty != expected_argument_ty {
+                if !equate_ty(cx, actual_argument_ty, expected_argument_ty) {
                     cx.tcx.dcx().fatal(format!(
                         "Intrinsic signature mismatch: expected {expected_argument_ty:?} as argument {idx} for `{}`, found {actual_argument_ty:?}",
                         str::from_utf8(name).unwrap()

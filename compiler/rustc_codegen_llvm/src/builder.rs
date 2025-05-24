@@ -67,7 +67,7 @@ impl<'a, 'll> SBuilder<'a, 'll> {
     ) -> &'ll Value {
         debug!("call {:?} with args ({:?})", llfn, args);
 
-        let args = self.check_call("call", llty, llfn, args);
+        let args = self.cast_arguments("call", llty, llfn, args);
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
@@ -99,6 +99,24 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
 
     pub(crate) fn bitcast(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMBuildBitCast(self.llbuilder, val, dest_ty, UNNAMED) }
+    }
+
+    pub(crate) fn cast_vector_to_tile(&mut self, val: &'ll Value) -> &'ll Value {
+        let vector_type = self.cx.val_ty(val);
+
+        assert!(self.cx.type_kind(vector_type) == TypeKind::Vector);
+        self.call_intrinsic("llvm.x86.cast.vector.to.tile", &[vector_type], &[val])
+    }
+
+    pub(crate) fn cast_tile_to_vector(
+        &mut self,
+        val: &'ll Value,
+        vector_type: &'ll Type,
+    ) -> &'ll Value {
+        assert!(self.cx.val_ty(val) == self.cx.type_x86amx());
+        assert!(self.cx.type_kind(vector_type) == TypeKind::Vector);
+
+        self.call_intrinsic("llvm.x86.cast.tile.to.vector", &[vector_type], &[val])
     }
 
     pub(crate) fn ret_void(&mut self) {
@@ -349,7 +367,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         debug!("invoke {:?} with args ({:?})", llfn, args);
 
-        let args = self.check_call("invoke", llty, llfn, args);
+        let args = self.cast_arguments("invoke", llty, llfn, args);
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
@@ -381,8 +399,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         };
         if let Some(fn_abi) = fn_abi {
             fn_abi.apply_attrs_callsite(self, invoke);
+            self.cast_return(fn_abi, llfn, invoke)
+        } else {
+            invoke
         }
-        invoke
     }
 
     fn unreachable(&mut self) {
@@ -1348,7 +1368,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         debug!("call {:?} with args ({:?})", llfn, args);
 
-        let args = self.check_call("call", llty, llfn, args);
+        let args = self.cast_arguments("call", llty, llfn, args);
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
@@ -1378,8 +1398,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         };
         if let Some(fn_abi) = fn_abi {
             fn_abi.apply_attrs_callsite(self, call);
+            self.cast_return(fn_abi, llfn, call)
+        } else {
+            call
         }
-        call
     }
 
     fn zext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
@@ -1540,7 +1562,7 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         ret.expect("LLVM does not have support for catchret")
     }
 
-    fn check_call<'b>(
+    fn cast_arguments<'b>(
         &mut self,
         typ: &str,
         fn_ty: &'ll Type,
@@ -1571,7 +1593,11 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
                             Expected {:?} for param {}, got {:?}; injecting bitcast",
                         llfn, expected_ty, i, actual_ty
                     );
-                    self.bitcast(actual_val, expected_ty)
+                    if self.cx.type_kind(expected_ty) == TypeKind::X86_AMX {
+                        self.cast_vector_to_tile(actual_val)
+                    } else {
+                        self.bitcast(actual_val, expected_ty)
+                    }
                 } else {
                     actual_val
                 }
@@ -1591,7 +1617,7 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         llfn: &'ll Value,
         args: &[&'ll Value],
     ) -> &'ll Value {
-        let args = self.check_call("simple call", fn_ty, llfn, args);
+        let args = self.cast_arguments("simple call", fn_ty, llfn, args);
 
         unsafe {
             llvm::LLVMBuildCall2(
@@ -1692,6 +1718,31 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         self.simple_call(fn_ty, llfn, &[ptr1, ptr2, num])
     }
 
+    fn cast_return(
+        &mut self,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        llfn: &'ll Value,
+        ret: &'ll Value,
+    ) -> &'ll Value {
+        let expected_ty = fn_abi.llvm_return_type(self.cx);
+        let actual_ty = self.cx.val_ty(ret);
+
+        if expected_ty != actual_ty {
+            debug!(
+                "type mismatch in function call of {:?}. \
+                    Expected {:?} for return value, got {:?}; injecting bitcast",
+                llfn, expected_ty, actual_ty
+            );
+            if self.cx.type_kind(actual_ty) == TypeKind::X86_AMX {
+                self.cast_tile_to_vector(ret, expected_ty)
+            } else {
+                self.bitcast(ret, expected_ty)
+            }
+        } else {
+            ret
+        }
+    }
+
     pub(crate) fn landing_pad(
         &mut self,
         ty: &'ll Type,
@@ -1721,7 +1772,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         debug!("invoke {:?} with args ({:?})", llfn, args);
 
-        let args = self.check_call("callbr", llty, llfn, args);
+        let args = self.cast_arguments("callbr", llty, llfn, args);
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
@@ -1754,8 +1805,10 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         };
         if let Some(fn_abi) = fn_abi {
             fn_abi.apply_attrs_callsite(self, callbr);
+            self.cast_return(fn_abi, llfn, callbr)
+        } else {
+            callbr
         }
-        callbr
     }
 
     // Emits CFI pointer type membership tests.
