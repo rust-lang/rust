@@ -112,6 +112,9 @@ pub unsafe extern "C" fn check_varargs_4(_: c_double, mut ap: ...) -> usize {
     continue_if!(ap.arg::<c_double>() == 8.0);
     continue_if!(ap.arg::<c_double>() == 9.0);
     continue_if!(ap.arg::<c_double>() == 10.0);
+    continue_if!(ap.arg::<c_double>() == 11.0);
+    continue_if!(ap.arg::<c_double>() == 12.0);
+    continue_if!(ap.arg::<c_double>() == 13.0);
     0
 }
 
@@ -137,5 +140,11 @@ pub unsafe extern "C" fn check_varargs_5(_: c_int, mut ap: ...) -> usize {
     continue_if!(ap.arg::<c_double>() == 9.0);
     continue_if!(ap.arg::<c_int>() == 10);
     continue_if!(ap.arg::<c_double>() == 10.0);
+    continue_if!(ap.arg::<c_int>() == 11);
+    continue_if!(ap.arg::<c_double>() == 11.0);
+    continue_if!(ap.arg::<c_int>() == 12);
+    continue_if!(ap.arg::<c_double>() == 12.0);
+    continue_if!(ap.arg::<c_int>() == 13);
+    continue_if!(ap.arg::<c_double>() == 13.0);
     0
 }
