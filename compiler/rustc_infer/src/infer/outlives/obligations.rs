@@ -467,7 +467,7 @@ where
     ) {
         let constraint = origin.to_constraint_category();
         for (index, k) in args.iter().enumerate() {
-            match k.unpack() {
+            match k.kind() {
                 GenericArgKind::Lifetime(lt) => {
                     let variance = if let Some(variances) = opt_variances {
                         variances[index]

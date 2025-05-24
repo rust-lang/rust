@@ -78,7 +78,7 @@ pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
 /// Walks into `ty` and returns `true` if any inner type is an instance of the given adt
 /// constructor.
 pub fn contains_adt_constructor<'tcx>(ty: Ty<'tcx>, adt: AdtDef<'tcx>) -> bool {
-    ty.walk().any(|inner| match inner.unpack() {
+    ty.walk().any(|inner| match inner.kind() {
         GenericArgKind::Type(inner_ty) => inner_ty.ty_adt_def() == Some(adt),
         GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
     })
@@ -96,7 +96,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
         needle: Ty<'tcx>,
         seen: &mut FxHashSet<DefId>,
     ) -> bool {
-        ty.walk().any(|inner| match inner.unpack() {
+        ty.walk().any(|inner| match inner.kind() {
             GenericArgKind::Type(inner_ty) => {
                 if inner_ty == needle {
                     return true;
@@ -129,7 +129,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                             // For `impl Trait<Assoc=U>`, it will register a predicate of `<T as Trait>::Assoc = U`,
                             // so we check the term for `U`.
                             ty::ClauseKind::Projection(projection_predicate) => {
-                                if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack()
+                                if let ty::TermKind::Ty(ty) = projection_predicate.term.kind()
                                     && contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen)
                                 {
                                     return true;
@@ -526,7 +526,7 @@ pub fn same_type_and_consts<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
             args_a
                 .iter()
                 .zip(args_b.iter())
-                .all(|(arg_a, arg_b)| match (arg_a.unpack(), arg_b.unpack()) {
+                .all(|(arg_a, arg_b)| match (arg_a.kind(), arg_b.kind()) {
                     (GenericArgKind::Const(inner_a), GenericArgKind::Const(inner_b)) => inner_a == inner_b,
                     (GenericArgKind::Type(type_a), GenericArgKind::Type(type_b)) => {
                         same_type_and_consts(type_a, type_b)
@@ -996,7 +996,7 @@ fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[Generi
     if let Some((idx, (param, arg))) =
         params
             .clone()
-            .zip(args.iter().map(|&x| x.unpack()))
+            .zip(args.iter().map(|&x| x.kind()))
             .enumerate()
             .find(|(_, (param, arg))| match (param, arg) {
                 (GenericParamDefKind::Lifetime, GenericArgKind::Lifetime(_))

@@ -61,15 +61,15 @@ where
         value
     } else {
         let delegate = FnMutDelegate {
-            regions: &mut |br: ty::BoundRegion| match var_values[br.var].unpack() {
+            regions: &mut |br: ty::BoundRegion| match var_values[br.var].kind() {
                 GenericArgKind::Lifetime(l) => l,
                 r => bug!("{:?} is a region but value is {:?}", br, r),
             },
-            types: &mut |bound_ty: ty::BoundTy| match var_values[bound_ty.var].unpack() {
+            types: &mut |bound_ty: ty::BoundTy| match var_values[bound_ty.var].kind() {
                 GenericArgKind::Type(ty) => ty,
                 r => bug!("{:?} is a type but value is {:?}", bound_ty, r),
             },
-            consts: &mut |bound_ct: ty::BoundVar| match var_values[bound_ct].unpack() {
+            consts: &mut |bound_ct: ty::BoundVar| match var_values[bound_ct].kind() {
                 GenericArgKind::Const(ct) => ct,
                 c => bug!("{:?} is a const but value is {:?}", bound_ct, c),
             },

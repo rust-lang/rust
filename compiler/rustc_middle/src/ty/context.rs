@@ -2778,7 +2778,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 return false;
             }
 
-            if !matches!(args[0].unpack(), ty::GenericArgKind::Type(_)) {
+            if !matches!(args[0].kind(), ty::GenericArgKind::Type(_)) {
                 return false;
             }
 
@@ -2800,7 +2800,7 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         for (param, arg) in std::iter::zip(&generics.own_params, own_args) {
-            match (&param.kind, arg.unpack()) {
+            match (&param.kind, arg.kind()) {
                 (ty::GenericParamDefKind::Type { .. }, ty::GenericArgKind::Type(_))
                 | (ty::GenericParamDefKind::Lifetime, ty::GenericArgKind::Lifetime(_))
                 | (ty::GenericParamDefKind::Const { .. }, ty::GenericArgKind::Const(_)) => {}

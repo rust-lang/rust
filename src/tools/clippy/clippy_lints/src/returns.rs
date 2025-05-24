@@ -487,7 +487,7 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
                 .skip_binder()
                 .output()
                 .walk()
-                .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(re) if !re.is_static()))
+                .any(|arg| matches!(arg.kind(), GenericArgKind::Lifetime(re) if !re.is_static()))
         {
             ControlFlow::Break(())
         } else {

@@ -131,7 +131,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     .dcx()
                     .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
                 for arg in uv.args {
-                    if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                    if let ty::GenericArgKind::Type(ty) = arg.kind()
                         && let ty::Param(param_ty) = ty.kind()
                     {
                         let def_id = self.tcx.hir_enclosing_body_owner(self.id);
