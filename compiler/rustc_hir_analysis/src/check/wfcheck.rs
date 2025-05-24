@@ -19,9 +19,8 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::solve::NoSolution;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, AdtKind, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFlags,
-    TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
-    Upcast,
+    self, AdtKind, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -2349,8 +2348,11 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             if let ty::ClauseKind::WellFormed(..) = pred.kind().skip_binder() {
                 continue;
             }
-            // Match the existing behavior.
-            if pred.is_global() && !pred.has_type_flags(TypeFlags::HAS_BINDER_VARS) {
+            // Match the existing behavior and carve out an exception for `for<'a> Ty: Trait`.
+            if pred.is_global()
+                && !pred.kind().skip_binder().has_escaping_bound_vars()
+                && pred.kind().bound_vars().is_empty()
+            {
                 let pred = self.normalize(span, None, pred);
 
                 // only use the span of the predicate clause (#90869)
