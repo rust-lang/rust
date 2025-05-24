@@ -1584,7 +1584,8 @@ impl Dir {
     ///
     /// # Errors
     ///
-    /// This function will return an error in these (and other) situations:
+    /// This function may return an error in these (and other) situations, depending on the
+    /// specified `opts`:
     /// * The path doesn't exist
     /// * The path doesn't specify a regular file
     /// * The process doesn't have permission to read/write (according to `opts`) the directory
