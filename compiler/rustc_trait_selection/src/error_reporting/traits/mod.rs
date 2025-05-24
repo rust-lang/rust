@@ -139,7 +139,7 @@ pub enum DefIdOrName {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum ErrorSortKey {
-    SubtypeFormat(Reverse<usize>),
+    SubtypeFormat(Reverse<(usize, usize)>),
     OtherKind,
     SizedTrait,
     MetaSizedTrait,
@@ -185,18 +185,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             let span = e.obligation.cause.span;
             let outer_expn_data = span.ctxt().outer_expn_data();
+            let source_span = outer_expn_data.call_site.source_callsite();
+            let source_map = self.tcx.sess.source_map();
 
             match e.obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Subtype(_)
                     if let Some(def_id) = outer_expn_data.macro_def_id
+                        && let (Some(span_file), row, col, ..) =
+                            source_map.span_to_location_info(span)
+                        && let (Some(source_file), ..) =
+                            source_map.span_to_location_info(source_span)
                         && (self.tcx.is_diagnostic_item(sym::format_args_nl_macro, def_id)
                             || self.tcx.is_diagnostic_item(sym::format_args_macro, def_id))
-                        && self.is_source_span(span) =>
+                        && span_file.src_hash == source_file.src_hash =>
                 {
-                    let source_map = self.tcx.sess.source_map();
-                    let (_, _, lo_col, _, _) = source_map.span_to_location_info(span);
-
-                    ErrorSortKey::SubtypeFormat(Reverse(lo_col))
+                    ErrorSortKey::SubtypeFormat(Reverse((row, col)))
                 }
                 _ if maybe_sizedness_did == self.tcx.lang_items().sized_trait() => ErrorSortKey::SizedTrait,
                 _ if maybe_sizedness_did == self.tcx.lang_items().meta_sized_trait() => ErrorSortKey::MetaSizedTrait,
@@ -284,21 +287,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // another source. We should probably be able to fix most of these, but some are delayed
         // bugs that get a proper error after this function.
         reported.unwrap_or_else(|| self.dcx().delayed_bug("failed to report fulfillment errors"))
-    }
-
-    fn is_source_span(&self, span: Span) -> bool {
-        let source_map = self.tcx.sess.source_map();
-
-        let outer_expn_data = span.ctxt().outer_expn_data();
-        let outer_callsite = outer_expn_data.call_site.source_callsite();
-
-        let span_info = source_map.span_to_location_info(span);
-        let outer_info = source_map.span_to_location_info(outer_callsite);
-
-        match (span_info, outer_info) {
-            ((Some(sf1), _, _, _, _), (Some(sf2), _, _, _, _)) => sf1.src_hash == sf2.src_hash,
-            _ => false,
-        }
     }
 
     #[instrument(skip(self), level = "debug")]
