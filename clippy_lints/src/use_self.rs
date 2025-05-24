@@ -319,7 +319,7 @@ fn same_lifetimes<'tcx>(a: MiddleTy<'tcx>, b: MiddleTy<'tcx>) -> bool {
             args_a
                 .iter()
                 .zip(args_b.iter())
-                .all(|(arg_a, arg_b)| match (arg_a.unpack(), arg_b.unpack()) {
+                .all(|(arg_a, arg_b)| match (arg_a.kind(), arg_b.kind()) {
                     // TODO: Handle inferred lifetimes
                     (GenericArgKind::Lifetime(inner_a), GenericArgKind::Lifetime(inner_b)) => inner_a == inner_b,
                     (GenericArgKind::Type(type_a), GenericArgKind::Type(type_b)) => same_lifetimes(type_a, type_b),
@@ -337,7 +337,7 @@ fn has_no_lifetime(ty: MiddleTy<'_>) -> bool {
         &Adt(_, args) => !args
             .iter()
             // TODO: Handle inferred lifetimes
-            .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(..))),
+            .any(|arg| matches!(arg.kind(), GenericArgKind::Lifetime(..))),
         _ => true,
     }
 }
