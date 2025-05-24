@@ -45,9 +45,6 @@ struct UnsafetyVisitor<'a, 'tcx> {
     /// Flag to ensure that we only suggest wrapping the entire function body in
     /// an unsafe block once.
     suggest_unsafe_block: bool,
-    /// Track whether we're currently inside a `&raw const/mut` expression.
-    /// Used to allow safe access to union fields when only taking their address.
-    in_raw_borrow: bool,
 }
 
 impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
@@ -226,7 +223,6 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                 inside_adt: false,
                 warnings: self.warnings,
                 suggest_unsafe_block: self.suggest_unsafe_block,
-                in_raw_borrow: false,
             };
             // params in THIR may be unsafe, e.g. a union pattern.
             for param in &inner_thir.params {
@@ -549,9 +545,19 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 }
             }
             ExprKind::RawBorrow { arg, .. } => {
-                // Set flag when entering raw borrow context
-                let old_in_raw_borrow = self.in_raw_borrow;
-                self.in_raw_borrow = is_direct_place_expr(self.thir, arg);
+                // Handle the case where we're taking a raw pointer to a union field
+                if let ExprKind::Scope { value: arg, .. } = self.thir[arg].kind {
+                    if self.is_union_field_access(arg) {
+                        // Taking a raw pointer to a union field is safe - just check the base expression
+                        // but skip the union field safety check
+                        self.visit_union_field_for_raw_borrow(arg);
+                        return;
+                    }
+                } else if self.is_union_field_access(arg) {
+                    // Direct raw borrow of union field
+                    self.visit_union_field_for_raw_borrow(arg);
+                    return;
+                }
 
                 if let ExprKind::Scope { value: arg, .. } = self.thir[arg].kind
                     && let ExprKind::Deref { arg } = self.thir[arg].kind
@@ -559,12 +565,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     // Taking a raw ref to a deref place expr is always safe.
                     // Make sure the expression we're deref'ing is safe, though.
                     visit::walk_expr(self, &self.thir[arg]);
+                    return;
                 }
-
-                visit::walk_expr(self, &self.thir[arg]);
-                // Restore previous state
-                self.in_raw_borrow = old_in_raw_borrow;
-                return;
             }
             ExprKind::Deref { arg } => {
                 if let ExprKind::StaticRef { def_id, .. } | ExprKind::ThreadLocalRef(def_id) =
@@ -661,6 +663,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     if adt_def.variant(variant_index).fields[name].safety.is_unsafe() {
                         self.requires_unsafe(expr.span, UseOfUnsafeField);
                     } else if adt_def.is_union() {
+                        // Check if this field access is part of a raw borrow operation
+                        // If so, we've already handled it above and shouldn't reach here
                         if let Some(assigned_ty) = self.assignment_info {
                             if assigned_ty.needs_drop(self.tcx, self.typing_env) {
                                 // This would be unsafe, but should be outright impossible since we
@@ -670,10 +674,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                                     "union fields that need dropping should be impossible: {assigned_ty}"
                                 );
                             }
-                        } else if !self.in_raw_borrow {
-                            // Union field access is unsafe because the field may be uninitialized.
-                            // However, `&raw const/mut union.field` is safe since it only computes
-                            // the field's address without reading the potentially uninitialized value.
+                        } else {
+                            // Only require unsafe if this is not a raw borrow operation
                             self.requires_unsafe(expr.span, AccessToUnionField);
                         }
                     }
@@ -727,16 +729,43 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
     }
 }
 
-fn is_direct_place_expr<'a, 'tcx>(thir: &'a Thir<'tcx>, expr_id: ExprId) -> bool {
-    match thir[expr_id].kind {
-        // Direct place expressions that don't read values
-        ExprKind::Field { .. } | ExprKind::VarRef { .. } | ExprKind::UpvarRef { .. } => true,
+impl<'a, 'tcx> UnsafetyVisitor<'a, 'tcx> {
+    /// Check if an expression is a union field access
+    fn is_union_field_access(&self, expr_id: ExprId) -> bool {
+        match self.thir[expr_id].kind {
+            ExprKind::Field { lhs, .. } => {
+                let lhs = &self.thir[lhs];
+                if let ty::Adt(adt_def, _) = lhs.ty.kind() { adt_def.is_union() } else { false }
+            }
+            _ => false,
+        }
+    }
 
-        // Scope is transparent for place expressions
-        ExprKind::Scope { value, .. } => is_direct_place_expr(thir, value),
-
-        // Any other expression (including Deref, method calls, etc.) reads values
-        _ => false,
+    /// Visit a union field access in the context of a raw borrow operation
+    /// This ensures we still check safety of nested operations while allowing
+    /// the raw pointer creation itself
+    fn visit_union_field_for_raw_borrow(&mut self, expr_id: ExprId) {
+        match self.thir[expr_id].kind {
+            ExprKind::Field { lhs, variant_index, name } => {
+                let lhs_expr = &self.thir[lhs];
+                if let ty::Adt(adt_def, _) = lhs_expr.ty.kind() {
+                    // Check for unsafe fields but skip the union access check
+                    if adt_def.variant(variant_index).fields[name].safety.is_unsafe() {
+                        self.requires_unsafe(self.thir[expr_id].span, UseOfUnsafeField);
+                    }
+                    // For unions, we don't require unsafe for raw pointer creation
+                    // But we still need to check the LHS for safety
+                    self.visit_expr(lhs_expr);
+                } else {
+                    // Not a union, use normal visiting
+                    visit::walk_expr(self, &self.thir[expr_id]);
+                }
+            }
+            _ => {
+                // Not a field access, use normal visiting
+                visit::walk_expr(self, &self.thir[expr_id]);
+            }
+        }
     }
 }
 
@@ -1227,7 +1256,6 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
         inside_adt: false,
         warnings: &mut warnings,
         suggest_unsafe_block: true,
-        in_raw_borrow: false,
     };
     // params in THIR may be unsafe, e.g. a union pattern.
     for param in &thir.params {

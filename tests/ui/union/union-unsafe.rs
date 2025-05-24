@@ -36,9 +36,8 @@ fn deref_union_field(mut u: URef) {
 }
 
 fn raw_deref_union_field(mut u: URef) {
-    let _p = &raw const *(u.p);
-    //~^ ERROR access to union field is unsafe
-    //~| ERROR access to union field is unsafe
+    // This is unsafe because we first dereference u.p (reading uninitialized memory)
+    let _p = &raw const *(u.p); //~ ERROR access to union field is unsafe
 }
 
 fn assign_noncopy_union_field(mut u: URefCell) {
@@ -77,8 +76,9 @@ fn main() {
 
     let u4 = U5 { a: 2 };
     let vec = vec![1, 2, 3];
+    // This is unsafe because we read u4.a (potentially uninitialized memory)
+    // to use as an array index
     let _a = &raw const vec[u4.a]; //~ ERROR access to union field is unsafe
-    //~^ ERROR access to union field is unsafe
 
     let U1 { a } = u1; //~ ERROR access to union field is unsafe
     if let U1 { a: 12 } = u1 {} //~ ERROR access to union field is unsafe
