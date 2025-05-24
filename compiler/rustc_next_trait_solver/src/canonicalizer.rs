@@ -4,8 +4,9 @@ use rustc_type_ir::data_structures::{HashMap, ensure_sufficient_stack};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
 use rustc_type_ir::{
-    self as ty, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, InferCtxtLike,
-    Interner, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self as ty, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, Flags,
+    InferCtxtLike, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt,
 };
 
 use crate::delegate::SolverDelegate;
@@ -79,7 +80,11 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             cache: Default::default(),
         };
 
-        let value = value.fold_with(&mut canonicalizer);
+        let value = if value.has_type_flags(TypeFlags::NEEDS_CANONICAL_NEXT_SOLVER) {
+            value.fold_with(&mut canonicalizer)
+        } else {
+            value
+        };
         assert!(!value.has_infer(), "unexpected infer in {value:?}");
         assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
         let (max_universe, variables) = canonicalizer.finalize();
@@ -111,7 +116,14 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
             cache: Default::default(),
         };
-        let param_env = input.goal.param_env.fold_with(&mut env_canonicalizer);
+
+        let param_env = input.goal.param_env;
+        let param_env = if param_env.has_type_flags(TypeFlags::NEEDS_CANONICAL_NEXT_SOLVER) {
+            param_env.fold_with(&mut env_canonicalizer)
+        } else {
+            param_env
+        };
+
         debug_assert_eq!(env_canonicalizer.binder_index, ty::INNERMOST);
         // Then canonicalize the rest of the input without keeping `'static`
         // while *mostly* reusing the canonicalizer from above.
@@ -134,10 +146,24 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             cache: Default::default(),
         };
 
-        let predicate = input.goal.predicate.fold_with(&mut rest_canonicalizer);
+        let predicate = input.goal.predicate;
+        let predicate = if predicate.has_type_flags(TypeFlags::NEEDS_CANONICAL_NEXT_SOLVER) {
+            predicate.fold_with(&mut rest_canonicalizer)
+        } else {
+            predicate
+        };
         let goal = Goal { param_env, predicate };
-        let predefined_opaques_in_body =
-            input.predefined_opaques_in_body.fold_with(&mut rest_canonicalizer);
+
+        let predefined_opaques_in_body = input.predefined_opaques_in_body;
+        let predefined_opaques_in_body = if input
+            .predefined_opaques_in_body
+            .has_type_flags(TypeFlags::NEEDS_CANONICAL_NEXT_SOLVER)
+        {
+            predefined_opaques_in_body.fold_with(&mut rest_canonicalizer)
+        } else {
+            predefined_opaques_in_body
+        };
+
         let value = QueryInput { goal, predefined_opaques_in_body };
 
         assert!(!value.has_infer(), "unexpected infer in {value:?}");
@@ -387,7 +413,11 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             | ty::Alias(_, _)
             | ty::Bound(_, _)
             | ty::Error(_) => {
-                return ensure_sufficient_stack(|| t.super_fold_with(self));
+                return if t.has_type_flags(TypeFlags::NEEDS_CANONICAL_NEXT_SOLVER) {
+                    ensure_sufficient_stack(|| t.super_fold_with(self))
+                } else {
+                    t
+                };
             }
         };
 
@@ -522,11 +552,25 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             | ty::ConstKind::Unevaluated(_)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
-            | ty::ConstKind::Expr(_) => return c.super_fold_with(self),
+            | ty::ConstKind::Expr(_) => {
+                return if c.has_type_flags(TypeFlags::NEEDS_CANONICAL_NEXT_SOLVER) {
+                    c.super_fold_with(self)
+                } else {
+                    c
+                };
+            }
         };
 
         let var = self.get_or_insert_bound_var(c, CanonicalVarInfo { kind });
 
         Const::new_anon_bound(self.cx(), self.binder_index, var)
+    }
+
+    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+        if p.flags().intersects(TypeFlags::NEEDS_CANONICAL_NEXT_SOLVER) {
+            p.super_fold_with(self)
+        } else {
+            p
+        }
     }
 }

@@ -130,6 +130,13 @@ bitflags::bitflags! {
 
         /// Does this have any binders with bound vars (e.g. that need to be anonymized)?
         const HAS_BINDER_VARS             = 1 << 23;
+
+        // Does this have infer/placeholder/param, free regions or ReErased?
+        const NEEDS_CANONICAL_NEXT_SOLVER = TypeFlags::HAS_INFER.bits()
+                                          | TypeFlags::HAS_PLACEHOLDER.bits()
+                                          | TypeFlags::HAS_PARAM.bits()
+                                          | TypeFlags::HAS_FREE_REGIONS.bits()
+                                          | TypeFlags::HAS_RE_ERASED.bits();
     }
 }
 

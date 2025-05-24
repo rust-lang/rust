@@ -86,4 +86,8 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for EagerResolv
             }
         }
     }
+
+    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+        if p.has_infer() { p.super_fold_with(self) } else { p }
+    }
 }
