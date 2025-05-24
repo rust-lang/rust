@@ -599,7 +599,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
         let mut ty_file = None;
-        let (mut ty_str, short_ty_str) =
+        let (ty_str, short_ty_str) =
             if trait_missing_method && let ty::Dynamic(predicates, _, _) = rcvr_ty.kind() {
                 (predicates.to_string(), with_forced_trimmed_paths!(predicates.to_string()))
             } else {
@@ -736,10 +736,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         if let Some(within_macro_span) = within_macro_span {
             err.span_label(within_macro_span, "due to this macro variable");
-        }
-
-        if short_ty_str.len() < ty_str.len() && ty_str.len() > 10 {
-            ty_str = short_ty_str;
         }
 
         if rcvr_ty.references_error() {
