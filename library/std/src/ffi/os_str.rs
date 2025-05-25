@@ -1711,6 +1711,22 @@ impl AsRef<OsStr> for String {
     }
 }
 
+#[stable(feature = "smart_ptr_as_ref_str", since = "CURRENT_RUSTC_VERSION")]
+impl AsRef<OsStr> for Box<str> {
+    #[inline]
+    fn as_ref(&self) -> &OsStr {
+        (&**self).as_ref()
+    }
+}
+
+#[stable(feature = "smart_ptr_as_ref_str", since = "CURRENT_RUSTC_VERSION")]
+impl AsRef<OsStr> for Rc<str> {
+    #[inline]
+    fn as_ref(&self) -> &OsStr {
+        (&**self).as_ref()
+    }
+}
+
 impl FromInner<Buf> for OsString {
     #[inline]
     fn from_inner(buf: Buf) -> OsString {
