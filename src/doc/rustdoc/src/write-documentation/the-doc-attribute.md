@@ -88,8 +88,10 @@ on your documentation examples make requests to.
 ```
 
 Now, when you press "run", the button will make a request to this domain. The request
-URL will contain 2 query parameters: `code` and `edition` for the code in the documentation
-and the Rust edition respectively.
+URL will contain 3 query parameters:
+1. `code` for the code in the documentation
+2. `version` for the Rust channel, e.g. nightly, which is decided by whether `code` contain unstable features
+3. `edition` for the Rust edition, e.g. 2024
 
 If you don't use this attribute, there will be no run buttons.
 

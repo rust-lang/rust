@@ -193,7 +193,7 @@
 //!
 //! A simple spinlock:
 //!
-//! ```
+//! ```ignore-wasm
 //! use std::sync::Arc;
 //! use std::sync::atomic::{AtomicUsize, Ordering};
 //! use std::{hint, thread};
@@ -622,7 +622,7 @@ impl AtomicBool {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore-wasm
     /// #![feature(atomic_from_mut)]
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
@@ -653,7 +653,7 @@ impl AtomicBool {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust,ignore-wasm
     /// #![feature(atomic_from_mut)]
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
@@ -1548,7 +1548,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore-wasm
     /// #![feature(atomic_from_mut)]
     /// use std::ptr::null_mut;
     /// use std::sync::atomic::{AtomicPtr, Ordering};
@@ -1585,7 +1585,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore-wasm
     /// #![feature(atomic_from_mut)]
     /// use std::ptr::null_mut;
     /// use std::sync::atomic::{AtomicPtr, Ordering};
@@ -2692,7 +2692,7 @@ macro_rules! atomic_int {
             ///
             /// # Examples
             ///
-            /// ```
+            /// ```ignore-wasm
             /// #![feature(atomic_from_mut)]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
@@ -2725,7 +2725,7 @@ macro_rules! atomic_int {
             ///
             /// # Examples
             ///
-            /// ```
+            /// ```ignore-wasm
             /// #![feature(atomic_from_mut)]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///

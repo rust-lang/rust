@@ -78,15 +78,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // We  don't support empty trait objects.
         if regular_traits.is_empty() && auto_traits.is_empty() {
-            let guar = self.report_trait_object_with_no_traits_error(
-                span,
-                user_written_bounds.iter().copied(),
-            );
+            let guar =
+                self.report_trait_object_with_no_traits(span, user_written_bounds.iter().copied());
             return Ty::new_error(tcx, guar);
         }
         // We don't support >1 principal
         if regular_traits.len() > 1 {
-            let guar = self.report_trait_object_addition_traits_error(&regular_traits);
+            let guar = self.report_trait_object_addition_traits(&regular_traits);
             return Ty::new_error(tcx, guar);
         }
         // Don't create a dyn trait if we have errors in the principal.
@@ -132,7 +130,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     if references_self {
                         // With trait alias and type alias combined, type resolver
                         // may not be able to catch all illegal `Self` usages (issue 139082)
-                        let guar = tcx.dcx().emit_err(SelfInTypeAlias { span });
+                        let guar = self.dcx().emit_err(SelfInTypeAlias { span });
                         b.term = replace_dummy_self_with_error(tcx, b.term, guar);
                     }
                 }
@@ -360,7 +358,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     hir_bound.trait_ref.path.res == Res::Def(DefKind::Trait, trait_ref.def_id)
                         && hir_bound.span.contains(span)
                 });
-                self.complain_about_missing_type_params(
+                self.report_missing_type_params(
                     missing_type_params,
                     trait_ref.def_id,
                     span,

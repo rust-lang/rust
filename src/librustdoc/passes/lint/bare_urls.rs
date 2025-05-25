@@ -18,12 +18,15 @@ use crate::html::markdown::main_body_opts;
 
 pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &str) {
     let report_diag = |cx: &DocContext<'_>, msg: &'static str, range: Range<usize>| {
-        let sp = source_span_for_markdown_range(cx.tcx, dox, &range, &item.attrs.doc_strings)
-            .unwrap_or_else(|| item.attr_span(cx.tcx));
+        let maybe_sp = source_span_for_markdown_range(cx.tcx, dox, &range, &item.attrs.doc_strings);
+        let sp = maybe_sp.unwrap_or_else(|| item.attr_span(cx.tcx));
         cx.tcx.node_span_lint(crate::lint::BARE_URLS, hir_id, sp, |lint| {
             lint.primary_message(msg)
-                .note("bare URLs are not automatically turned into clickable links")
-                .multipart_suggestion(
+                .note("bare URLs are not automatically turned into clickable links");
+            // The fallback of using the attribute span is suitable for
+            // highlighting where the error is, but not for placing the < and >
+            if let Some(sp) = maybe_sp {
+                lint.multipart_suggestion(
                     "use an automatic link instead",
                     vec![
                         (sp.shrink_to_lo(), "<".to_string()),
@@ -31,6 +34,7 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                     ],
                     Applicability::MachineApplicable,
                 );
+            }
         });
     };
 

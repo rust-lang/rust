@@ -76,15 +76,13 @@ impl<T: ?Sized> *const T {
     /// ```rust
     /// #![feature(pointer_try_cast_aligned)]
     ///
-    /// let aligned: *const u8 = 0x1000 as _;
+    /// let x = 0u64;
     ///
-    /// // i32 has at most 4-byte alignment, so this will succeed
-    /// assert!(aligned.try_cast_aligned::<i32>().is_some());
+    /// let aligned: *const u64 = &x;
+    /// let unaligned = unsafe { aligned.byte_add(1) };
     ///
-    /// let unaligned: *const u8 = 0x1001 as _;
-    ///
-    /// // i32 has at least 2-byte alignment, so this will fail
-    /// assert!(unaligned.try_cast_aligned::<i32>().is_none());
+    /// assert!(aligned.try_cast_aligned::<u32>().is_some());
+    /// assert!(unaligned.try_cast_aligned::<u32>().is_none());
     /// ```
     #[unstable(feature = "pointer_try_cast_aligned", issue = "141221")]
     #[must_use = "this returns the result of the operation, \

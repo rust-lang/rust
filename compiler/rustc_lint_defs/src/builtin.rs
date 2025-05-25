@@ -16,6 +16,7 @@ declare_lint_pass! {
     /// that are used by other parts of the compiler.
     HardwiredLints => [
         // tidy-alphabetical-start
+        AARCH64_SOFTFLOAT_NEON,
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
         AMBIGUOUS_GLOB_IMPORTS,
@@ -5043,14 +5044,14 @@ declare_lint! {
     ///
     /// ```text
     /// error: this function function definition is affected by the wasm ABI transition: it passes an argument of non-scalar type `MyType`
-    /// --> $DIR/wasm_c_abi_transition.rs:17:1
-    ///  |
-    ///  | pub extern "C" fn my_fun(_x: MyType) {}
-    ///  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ///  |
-    ///  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    ///  = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
-    ///  = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
+    ///   --> $DIR/wasm_c_abi_transition.rs:17:1
+    ///    |
+    ///    | pub extern "C" fn my_fun(_x: MyType) {}
+    ///    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///    |
+    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///    = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
+    ///    = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
     /// ```
     ///
     /// ### Explanation
@@ -5065,5 +5066,46 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #138762 <https://github.com/rust-lang/rust/issues/138762>",
+    };
+}
+
+declare_lint! {
+    /// The `aarch64_softfloat_neon` lint detects usage of `#[target_feature(enable = "neon")]` on
+    /// softfloat aarch64 targets. Enabling this target feature causes LLVM to alter the ABI of
+    /// function calls, making this attribute unsound to use.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs aarch64-unknown-none-softfloat)
+    /// #[target_feature(enable = "neon")]
+    /// fn with_neon() {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// error: enabling the `neon` target feature on the current target is unsound due to ABI issues
+    ///   --> $DIR/abi-incompatible-target-feature-attribute-fcw.rs:11:18
+    ///    |
+    ///    | #[target_feature(enable = "neon")]
+    ///    |                  ^^^^^^^^^^^^^^^
+    ///    |
+    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///    = note: for more information, see issue #134375 <https://github.com/rust-lang/rust/issues/134375>
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// If a function like `with_neon` above ends up containing calls to LLVM builtins, those will
+    /// not use the correct ABI. This is caused by a lack of support in LLVM for mixing code with
+    /// and without the `neon` target feature. The target feature should never have been stabilized
+    /// on this target due to this issue, but the problem was not known at the time of
+    /// stabilization.
+    pub AARCH64_SOFTFLOAT_NEON,
+    Warn,
+    "detects code that could be affected by ABI issues on aarch64 softfloat targets",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #134375 <https://github.com/rust-lang/rust/issues/134375>",
     };
 }

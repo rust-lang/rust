@@ -527,7 +527,7 @@ impl<'ll> CodegenCx<'ll, '_> {
 
             base::set_variable_sanitizer_attrs(g, attrs);
 
-            if attrs.flags.contains(CodegenFnAttrFlags::USED) {
+            if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER) {
                 // `USED` and `USED_LINKER` can't be used together.
                 assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER));
 
@@ -551,7 +551,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             }
             if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
                 // `USED` and `USED_LINKER` can't be used together.
-                assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED));
+                assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER));
 
                 self.add_used_global(g);
             }

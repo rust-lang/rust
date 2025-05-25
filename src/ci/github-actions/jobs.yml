@@ -228,7 +228,7 @@ auto:
   - name: dist-x86_64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-36c-codebuild
+    <<: *job-linux-16c
 
   - name: dist-x86_64-linux-alt
     env:
@@ -324,7 +324,7 @@ auto:
     <<: *job-linux-4c
 
   - name: x86_64-gnu-distcheck
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   # The x86_64-gnu-llvm-20 job is split into multiple jobs to run tests in parallel.
   # x86_64-gnu-llvm-20-1 skips tests that run in x86_64-gnu-llvm-20-{2,3}.

@@ -707,7 +707,7 @@ fn has_allow_dead_code_or_lang_attr(
             // #[used], #[no_mangle], #[export_name], etc also keeps the item alive
             // forcefully, e.g., for placing it in a specific section.
             cg_attrs.contains_extern_indicator()
-                || cg_attrs.flags.contains(CodegenFnAttrFlags::USED)
+                || cg_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                 || cg_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         }
     }
