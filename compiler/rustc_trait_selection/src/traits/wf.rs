@@ -37,7 +37,7 @@ pub fn obligations<'tcx>(
     span: Span,
 ) -> Option<PredicateObligations<'tcx>> {
     // Handle the "cycle" case (see comment above) by bailing out if necessary.
-    let term = match term.unpack() {
+    let term = match term.kind() {
         TermKind::Ty(ty) => {
             match ty.kind() {
                 ty::Infer(ty::TyVar(_)) => {

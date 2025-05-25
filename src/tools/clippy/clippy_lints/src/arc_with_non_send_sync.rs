@@ -50,7 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for ArcWithNonSendSync {
             && let arg_ty = cx.typeck_results().expr_ty(arg)
             // make sure that the type is not and does not contain any type parameters
             && arg_ty.walk().all(|arg| {
-                !matches!(arg.unpack(), GenericArgKind::Type(ty) if matches!(ty.kind(), ty::Param(_)))
+                !matches!(arg.kind(), GenericArgKind::Type(ty) if matches!(ty.kind(), ty::Param(_)))
             })
             && let Some(send) = cx.tcx.get_diagnostic_item(sym::Send)
             && let Some(sync) = cx.tcx.lang_items().sync_trait()

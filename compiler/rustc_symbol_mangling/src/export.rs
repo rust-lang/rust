@@ -147,7 +147,7 @@ impl<'tcx> AbiHashStable<'tcx> for ty::FnSig<'tcx> {
 
 impl<'tcx> AbiHashStable<'tcx> for ty::GenericArg<'tcx> {
     fn abi_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
-        self.unpack().abi_hash(tcx, hasher);
+        self.kind().abi_hash(tcx, hasher);
     }
 }
 

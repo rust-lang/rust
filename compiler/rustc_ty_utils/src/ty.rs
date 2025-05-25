@@ -274,7 +274,7 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> DenseBitSe
     let def = tcx.adt_def(def_id);
     let num_params = tcx.generics_of(def_id).count();
 
-    let maybe_unsizing_param_idx = |arg: ty::GenericArg<'tcx>| match arg.unpack() {
+    let maybe_unsizing_param_idx = |arg: ty::GenericArg<'tcx>| match arg.kind() {
         ty::GenericArgKind::Type(ty) => match ty.kind() {
             ty::Param(p) => Some(p.index),
             _ => None,

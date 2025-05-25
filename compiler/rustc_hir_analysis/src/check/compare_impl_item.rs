@@ -1231,7 +1231,7 @@ fn check_region_late_boundedness<'tcx>(
     for (id_arg, arg) in
         std::iter::zip(ty::GenericArgs::identity_for_item(tcx, impl_m.def_id), impl_m_args)
     {
-        if let ty::GenericArgKind::Lifetime(r) = arg.unpack()
+        if let ty::GenericArgKind::Lifetime(r) = arg.kind()
             && let ty::ReVar(vid) = r.kind()
             && let r = infcx
                 .inner
@@ -1256,7 +1256,7 @@ fn check_region_late_boundedness<'tcx>(
     for (id_arg, arg) in
         std::iter::zip(ty::GenericArgs::identity_for_item(tcx, trait_m.def_id), trait_m_args)
     {
-        if let ty::GenericArgKind::Lifetime(r) = arg.unpack()
+        if let ty::GenericArgKind::Lifetime(r) = arg.kind()
             && let ty::ReVar(vid) = r.kind()
             && let r = infcx
                 .inner

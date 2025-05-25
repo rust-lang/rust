@@ -108,7 +108,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         arg: ty::GenericArg<'tcx>,
         span: Span,
     ) -> ty::GenericArg<'tcx> {
-        match arg.unpack() {
+        match arg.kind() {
             ty::GenericArgKind::Lifetime(_) => {
                 self.next_region_var(RegionVariableOrigin::MiscVariable(span)).into()
             }

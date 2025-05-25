@@ -326,5 +326,5 @@ fn adt_def_id(ty: Ty<'_>) -> Option<DefId> {
 
 fn contains_param(ty: Ty<'_>, index: u32) -> bool {
     ty.walk()
-        .any(|arg| matches!(arg.unpack(), GenericArgKind::Type(ty) if ty.is_param(index)))
+        .any(|arg| matches!(arg.kind(), GenericArgKind::Type(ty) if ty.is_param(index)))
 }

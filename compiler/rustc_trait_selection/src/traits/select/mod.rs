@@ -1784,7 +1784,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             if !generics.is_own_empty()
                 && obligation.predicate.args[generics.parent_count..].iter().any(|&p| {
                     p.has_non_region_infer()
-                        && match p.unpack() {
+                        && match p.kind() {
                             ty::GenericArgKind::Const(ct) => {
                                 self.infcx.shallow_resolve_const(ct) != ct
                             }

@@ -202,7 +202,7 @@ impl<T: fmt::Debug> fmt::Debug for ty::Placeholder<T> {
 
 impl<'tcx> fmt::Debug for GenericArg<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.unpack() {
+        match self.kind() {
             GenericArgKind::Lifetime(lt) => lt.fmt(f),
             GenericArgKind::Type(ty) => ty.fmt(f),
             GenericArgKind::Const(ct) => ct.fmt(f),
@@ -326,7 +326,7 @@ impl<'tcx, T: Lift<TyCtxt<'tcx>>> Lift<TyCtxt<'tcx>> for Option<T> {
 impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Term<'a> {
     type Lifted = ty::Term<'tcx>;
     fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        match self.unpack() {
+        match self.kind() {
             TermKind::Ty(ty) => tcx.lift(ty).map(Into::into),
             TermKind::Const(c) => tcx.lift(c).map(Into::into),
         }

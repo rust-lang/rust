@@ -3316,7 +3316,7 @@ pub fn leaks_droppable_temporary_with_limited_lifetime<'tcx>(cx: &LateContext<'t
         if temporary_ty.has_significant_drop(cx.tcx, cx.typing_env())
             && temporary_ty
                 .walk()
-                .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(re) if !re.is_static()))
+                .any(|arg| matches!(arg.kind(), GenericArgKind::Lifetime(re) if !re.is_static()))
         {
             ControlFlow::Break(())
         } else {

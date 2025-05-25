@@ -504,7 +504,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Term<'tcx> {
     type Kind = TermKind<'tcx>;
 
     fn kind(self) -> Self::Kind {
-        self.unpack()
+        self.kind()
     }
 }
 
@@ -521,7 +521,7 @@ unsafe impl<'tcx> Sync for Term<'tcx> where &'tcx (Ty<'tcx>, Const<'tcx>): Sync 
 
 impl Debug for Term<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.unpack() {
+        match self.kind() {
             TermKind::Ty(ty) => write!(f, "Term::Ty({ty:?})"),
             TermKind::Const(ct) => write!(f, "Term::Const({ct:?})"),
         }
@@ -542,7 +542,7 @@ impl<'tcx> From<Const<'tcx>> for Term<'tcx> {
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Term<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.unpack().hash_stable(hcx, hasher);
+        self.kind().hash_stable(hcx, hasher);
     }
 }
 
@@ -551,14 +551,14 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        match self.unpack() {
+        match self.kind() {
             ty::TermKind::Ty(ty) => ty.try_fold_with(folder).map(Into::into),
             ty::TermKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
         }
     }
 
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        match self.unpack() {
+        match self.kind() {
             ty::TermKind::Ty(ty) => ty.fold_with(folder).into(),
             ty::TermKind::Const(ct) => ct.fold_with(folder).into(),
         }
@@ -567,7 +567,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        match self.unpack() {
+        match self.kind() {
             ty::TermKind::Ty(ty) => ty.visit_with(visitor),
             ty::TermKind::Const(ct) => ct.visit_with(visitor),
         }
@@ -576,7 +576,7 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
 
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Term<'tcx> {
     fn encode(&self, e: &mut E) {
-        self.unpack().encode(e)
+        self.kind().encode(e)
     }
 }
 
@@ -589,7 +589,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Term<'tcx> {
 
 impl<'tcx> Term<'tcx> {
     #[inline]
-    pub fn unpack(self) -> TermKind<'tcx> {
+    pub fn kind(self) -> TermKind<'tcx> {
         let ptr =
             unsafe { self.ptr.map_addr(|addr| NonZero::new_unchecked(addr.get() & !TAG_MASK)) };
         // SAFETY: use of `Interned::new_unchecked` here is ok because these
@@ -609,7 +609,7 @@ impl<'tcx> Term<'tcx> {
     }
 
     pub fn as_type(&self) -> Option<Ty<'tcx>> {
-        if let TermKind::Ty(ty) = self.unpack() { Some(ty) } else { None }
+        if let TermKind::Ty(ty) = self.kind() { Some(ty) } else { None }
     }
 
     pub fn expect_type(&self) -> Ty<'tcx> {
@@ -617,7 +617,7 @@ impl<'tcx> Term<'tcx> {
     }
 
     pub fn as_const(&self) -> Option<Const<'tcx>> {
-        if let TermKind::Const(c) = self.unpack() { Some(c) } else { None }
+        if let TermKind::Const(c) = self.kind() { Some(c) } else { None }
     }
 
     pub fn expect_const(&self) -> Const<'tcx> {
@@ -625,14 +625,14 @@ impl<'tcx> Term<'tcx> {
     }
 
     pub fn into_arg(self) -> GenericArg<'tcx> {
-        match self.unpack() {
+        match self.kind() {
             TermKind::Ty(ty) => ty.into(),
             TermKind::Const(c) => c.into(),
         }
     }
 
     pub fn to_alias_term(self) -> Option<AliasTerm<'tcx>> {
-        match self.unpack() {
+        match self.kind() {
             TermKind::Ty(ty) => match *ty.kind() {
                 ty::Alias(_kind, alias_ty) => Some(alias_ty.into()),
                 _ => None,
@@ -645,7 +645,7 @@ impl<'tcx> Term<'tcx> {
     }
 
     pub fn is_infer(&self) -> bool {
-        match self.unpack() {
+        match self.kind() {
             TermKind::Ty(ty) => ty.is_ty_var(),
             TermKind::Const(ct) => ct.is_ct_infer(),
         }

@@ -1239,7 +1239,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                         p!(write("{} = ", tcx.associated_item(assoc_item_def_id).name()));
 
-                        match term.unpack() {
+                        match term.kind() {
                             TermKind::Ty(ty) => p!(print(ty)),
                             TermKind::Const(c) => p!(print(c)),
                         };
@@ -3386,7 +3386,7 @@ define_print_and_forward_display! {
     }
 
     ty::Term<'tcx> {
-      match self.unpack() {
+      match self.kind() {
         ty::TermKind::Ty(ty) => p!(print(ty)),
         ty::TermKind::Const(c) => p!(print(c)),
       }
@@ -3401,7 +3401,7 @@ define_print_and_forward_display! {
     }
 
     GenericArg<'tcx> {
-        match self.unpack() {
+        match self.kind() {
             GenericArgKind::Lifetime(lt) => p!(print(lt)),
             GenericArgKind::Type(ty) => p!(print(ty)),
             GenericArgKind::Const(ct) => p!(print(ct)),

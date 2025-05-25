@@ -2446,7 +2446,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             if let ty::Adt(def, args) = self_ty.kind()
                 && let [arg] = &args[..]
-                && let ty::GenericArgKind::Type(ty) = arg.unpack()
+                && let ty::GenericArgKind::Type(ty) = arg.kind()
                 && let ty::Adt(inner_def, _) = ty.kind()
                 && inner_def == def
             {
