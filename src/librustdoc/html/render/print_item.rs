@@ -479,9 +479,9 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                         Some(ty::Visibility::Restricted(_)) => {
                             if myitem.is_doc_hidden() {
                                 // Don't separate with a space when there are two of them
-                                "<span title=\"Restricted Visibility\">&nbsp;🔒</span><span title=\"Hidden item\">👻</span> "
+                                "<span class=\"priv-item\" title=\"Restricted Visibility\">&nbsp;🔒</span><span title=\"Hidden item\">👻</span> "
                             } else {
-                                "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
+                                "<span class=\"priv-item\" title=\"Restricted Visibility\">&nbsp;🔒</span> "
                             }
                         }
                         _ if myitem.is_doc_hidden() => {
