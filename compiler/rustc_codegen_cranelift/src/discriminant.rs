@@ -28,7 +28,7 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
             tag_encoding: TagEncoding::Direct,
             variants: _,
         } => {
-            let ptr = place.place_field(fx, FieldIdx::new(tag_field));
+            let ptr = place.place_field(fx, tag_field);
             let to = layout.ty.discriminant_for_variant(fx.tcx, variant_index).unwrap().val;
             let to = match ptr.layout().ty.kind() {
                 ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
@@ -53,7 +53,7 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
             variants: _,
         } => {
             if variant_index != untagged_variant {
-                let niche = place.place_field(fx, FieldIdx::new(tag_field));
+                let niche = place.place_field(fx, tag_field);
                 let niche_type = fx.clif_type(niche.layout().ty).unwrap();
                 let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
                 let niche_value = (niche_value as u128).wrapping_add(niche_start);
@@ -118,7 +118,7 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
     let cast_to = fx.clif_type(dest_layout.ty).unwrap();
 
     // Read the tag/niche-encoded discriminant from memory.
-    let tag = value.value_field(fx, FieldIdx::new(tag_field));
+    let tag = value.value_field(fx, tag_field);
     let tag = tag.load_scalar(fx);
 
     // Decode the discriminant (specifically if it's niche-encoded).
