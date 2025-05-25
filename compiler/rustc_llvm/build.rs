@@ -228,10 +228,10 @@ fn main() {
     let mut cmd = Command::new(&llvm_config);
     cmd.arg(llvm_link_arg).arg("--libs");
 
-    // Don't link system libs if cross-compiling unless targeting Windows.
+    // Don't link system libs if cross-compiling unless targeting Windows from Windows host.
     // On Windows system DLLs aren't linked directly, instead import libraries are used.
     // These import libraries are independent of the host.
-    if !is_crossed || target.contains("windows") {
+    if !is_crossed || target.contains("windows") && host.contains("windows") {
         cmd.arg("--system-libs");
     }
 
