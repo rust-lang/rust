@@ -38,7 +38,25 @@
 
 mod uninit;
 
-/// A common trait for the ability to explicitly duplicate an object.
+/// A common trait that allows explicit creation of a "duplicate" value.
+///
+/// ## Important Note on "Duplication"
+///
+/// What "duplication" means depends on the type implementing `Clone`:
+///
+/// - For most types, calling [`clone`] creates a semantically independent copy with its own
+///   unique identity and state.
+/// - For smart pointers (like [`Arc`], [`Rc`]), [`clone`] increases the reference count but points
+///   to the same underlying data. This means modifications to the underlying data through one
+///   clone will be visible through other clones.
+/// - For reference types (`&T`), [`clone`] just creates another reference to the same value.
+///
+/// This distinction is especially important when using `#[derive(Clone)]` on structs containing
+/// smart pointers like `Arc<Mutex<T>>` - the cloned struct will share mutable state with the
+/// original.
+///
+/// [`Arc`]: ../../std/sync/struct.Arc.html
+/// [`Rc`]: ../../std/rc/struct.Rc.html
 ///
 /// Differs from [`Copy`] in that [`Copy`] is implicit and an inexpensive bit-wise copy, while
 /// `Clone` is always explicit and may or may not be expensive. In order to enforce
@@ -147,7 +165,16 @@ mod uninit;
 #[rustc_diagnostic_item = "Clone"]
 #[rustc_trivial_field_reads]
 pub trait Clone: Sized {
-    /// Returns a copy of the value.
+    /// Returns a duplicate of the value.
+    ///
+    /// Note that what "duplicate" means varies by type:
+    /// - For most types, this creates a deep, independent copy
+    /// - For reference types like `&T`, this creates another reference to the same value
+    /// - For smart pointers like [`Arc`] or [`Rc`], this increments the reference count
+    ///   but still points to the same underlying data
+    ///
+    /// [`Arc`]: ../../std/sync/struct.Arc.html
+    /// [`Rc`]: ../../std/rc/struct.Rc.html
     ///
     /// # Examples
     ///
@@ -156,6 +183,23 @@ pub trait Clone: Sized {
     /// let hello = "Hello"; // &str implements Clone
     ///
     /// assert_eq!("Hello", hello.clone());
+    /// ```
+    ///
+    /// Example with a reference-counted type:
+    ///
+    /// ```
+    /// use std::sync::{Arc, Mutex};
+    ///
+    /// let data = Arc::new(Mutex::new(vec![1, 2, 3]));
+    /// let data_clone = data.clone(); // Creates another Arc pointing to the same Mutex
+    ///
+    /// {
+    ///     let mut lock = data.lock().unwrap();
+    ///     lock.push(4);
+    /// }
+    ///
+    /// // Changes are visible through the clone because they share the same underlying data
+    /// assert_eq!(*data_clone.lock().unwrap(), vec![1, 2, 3, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "cloning is often expensive and is not expected to have side effects"]
