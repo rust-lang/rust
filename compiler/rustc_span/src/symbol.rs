@@ -465,6 +465,7 @@ symbols! {
         as_ref,
         as_str,
         asm,
+        asm_cfg,
         asm_const,
         asm_experimental_arch,
         asm_experimental_reg,

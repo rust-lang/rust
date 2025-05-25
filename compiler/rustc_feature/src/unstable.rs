@@ -371,6 +371,8 @@ declare_features! (
     (unstable, arbitrary_self_types, "1.23.0", Some(44874)),
     /// Allows inherent and trait methods with arbitrary self types that are raw pointers.
     (unstable, arbitrary_self_types_pointers, "1.83.0", Some(44874)),
+    /// Allows #[cfg(...)] on inline assembly templates and operands.
+    (unstable, asm_cfg, "CURRENT_RUSTC_VERSION", Some(140364)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Enables experimental register support in inline assembly.
