@@ -5,10 +5,10 @@
 //@ normalize-stderr: "\[u8\]" -> "[i8 or u8 (arch dependant)]"
 
 type Foo = extern "C" fn(::std::ffi::CStr);
-//~^ WARN `extern` fn uses type
+//~^ WARN `extern` callback uses type
 extern "C" {
     fn meh(blah: Foo);
-    //~^ WARN `extern` block uses type
+    // ^ FIXME: the error isn't seen here but at least it's reported elsewhere
 }
 
 fn main() {

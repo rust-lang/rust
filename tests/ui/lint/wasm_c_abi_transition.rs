@@ -43,7 +43,7 @@ pub fn call_other_fun(x: MyType) {
 // Zero-sized types are safe in both ABIs
 #[repr(C)]
 pub struct MyZstType;
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "C" fn zst_safe(_x: (), _y: MyZstType) {}
 
 // The old and new wasm ABI treats simd types like `v128` the same way, so no

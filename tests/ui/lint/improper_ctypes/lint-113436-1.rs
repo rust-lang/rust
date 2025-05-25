@@ -1,4 +1,4 @@
-#![deny(improper_ctypes_definitions)]
+#![deny(improper_c_fn_definitions)]
 
 #[repr(C)]
 pub struct Foo {
@@ -20,8 +20,8 @@ pub struct Bar {
 }
 
 extern "C" fn bar(x: Bar) -> Bar {
-    //~^ ERROR `extern` fn uses type `NotSafe`, which is not FFI-safe
-    //~^^ ERROR `extern` fn uses type `NotSafe`, which is not FFI-safe
+    //~^ ERROR `extern` fn uses type `Bar`, which is not FFI-safe
+    //~^^ ERROR `extern` fn uses type `Bar`, which is not FFI-safe
     todo!()
 }
 

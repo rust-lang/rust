@@ -1,5 +1,5 @@
 //@ run-pass
-#![allow(improper_ctypes, improper_ctypes_definitions)]
+#![allow(improper_ctypes, improper_c_callbacks)]
 
 #[derive(Copy, Clone)]
 pub struct S {

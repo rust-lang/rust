@@ -64,7 +64,7 @@ fn t1() {}
 #[repr(C)]
 #[non_exhaustive]
 #[non_exhaustive] //~ ERROR unused attribute
-pub struct X;
+pub struct X(i32);
 
 #[automatically_derived]
 #[automatically_derived] //~ ERROR unused attribute
