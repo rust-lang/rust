@@ -608,6 +608,17 @@ impl<T: ?Sized> Mutex<T> {
         let data = self.data.get_mut();
         poison::map_result(self.poison.borrow(), |()| data)
     }
+
+    /// Returns a raw pointer to the underlying data.
+    ///
+    /// The returned pointer is always non-null and properly aligned, but it is
+    /// the user's responsibility to ensure that any reads and writes through it
+    /// are properly synchronized to avoid data races, and that it is not read
+    /// or written through after the mutex is dropped.
+    #[unstable(feature = "mutex_data_ptr", issue = "140368")]
+    pub fn data_ptr(&self) -> *mut T {
+        self.data.get()
+    }
 }
 
 #[stable(feature = "mutex_from", since = "1.24.0")]
