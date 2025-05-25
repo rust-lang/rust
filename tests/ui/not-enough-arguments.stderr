@@ -1,42 +1,88 @@
-error[E0061]: this function takes 4 arguments but 3 arguments were supplied
-  --> $DIR/not-enough-arguments.rs:27:3
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/not-enough-arguments.rs:24:9
    |
-LL |   foo(1, 2, 3);
-   |   ^^^--------- argument #4 of type `isize` is missing
+LL |         <Self>::$method(8)
+   |         ^^^^^^^^^^^^^^^--- argument #2 of type `u8` is missing
+...
+LL |         delegate_local!(foo);
+   |         -------------------- in this macro invocation
    |
-note: function defined here
-  --> $DIR/not-enough-arguments.rs:5:4
+note: associated function defined here
+  --> $DIR/not-enough-arguments.rs:39:8
    |
-LL | fn foo(a: isize, b: isize, c: isize, d:isize) {
-   |    ^^^                               -------
+LL |     fn foo(a: u8, b: u8) {}
+   |        ^^^        -----
+   = note: this error originates in the macro `delegate_local` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: provide the argument
    |
-LL |   foo(1, 2, 3, /* isize */);
-   |              +++++++++++++
+LL |         <Self>::$method(8, /* u8 */)
+   |                          ++++++++++
 
-error[E0061]: this function takes 6 arguments but 3 arguments were supplied
-  --> $DIR/not-enough-arguments.rs:29:3
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/not-enough-arguments.rs:42:9
    |
-LL |   bar(1, 2, 3);
-   |   ^^^--------- three arguments of type `i32`, `i32`, and `i32` are missing
+LL |         delegate!(foo);
+   |         ^^^^^^^^^^^^^^ argument #2 of type `u8` is missing
+   |
+note: associated function defined here
+  --> $DIR/not-enough-arguments.rs:39:8
+   |
+LL |     fn foo(a: u8, b: u8) {}
+   |        ^^^        -----
+   = note: this error originates in the macro `delegate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/not-enough-arguments.rs:31:9
+   |
+LL |         <$from>::$method(8)
+   |         ^^^^^^^^^^^^^^^^--- argument #2 of type `u8` is missing
+...
+LL |         delegate_from!(Bar, foo);
+   |         ------------------------ in this macro invocation
+   |
+note: associated function defined here
+  --> $DIR/not-enough-arguments.rs:39:8
+   |
+LL |     fn foo(a: u8, b: u8) {}
+   |        ^^^        -----
+   = note: this error originates in the macro `delegate_from` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: provide the argument
+   |
+LL |         <$from>::$method(8, /* u8 */)
+   |                           ++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+  --> $DIR/not-enough-arguments.rs:49:5
+   |
+LL |     foo(1, 2, 3);
+   |     ^^^--------- argument #4 of type `isize` is missing
    |
 note: function defined here
-  --> $DIR/not-enough-arguments.rs:10:4
+  --> $DIR/not-enough-arguments.rs:8:4
    |
-LL | fn bar(
-   |    ^^^
-...
-LL |     d: i32,
-   |     ------
-LL |     e: i32,
-   |     ------
-LL |     f: i32,
-   |     ------
+LL | fn foo(a: isize, b: isize, c: isize, d: isize) {
+   |    ^^^                               --------
+help: provide the argument
+   |
+LL |     foo(1, 2, 3, /* isize */);
+   |                +++++++++++++
+
+error[E0061]: this function takes 6 arguments but 3 arguments were supplied
+  --> $DIR/not-enough-arguments.rs:51:5
+   |
+LL |     bar(1, 2, 3);
+   |     ^^^--------- three arguments of type `i32`, `i32`, and `i32` are missing
+   |
+note: function defined here
+  --> $DIR/not-enough-arguments.rs:13:4
+   |
+LL | fn bar(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32) {
+   |    ^^^                         ------  ------  ------
 help: provide the arguments
    |
-LL |   bar(1, 2, 3, /* i32 */, /* i32 */, /* i32 */);
-   |              +++++++++++++++++++++++++++++++++
+LL |     bar(1, 2, 3, /* i32 */, /* i32 */, /* i32 */);
+   |                +++++++++++++++++++++++++++++++++
 
-error: aborting due to 2 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0061`.
