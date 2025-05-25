@@ -46,7 +46,16 @@ pub fn dylib_path() -> Vec<std::path::PathBuf> {
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
 pub fn exe(name: &str, target: &str) -> String {
-    if target.contains("windows") {
+    // On Cygwin, the decision to append .exe or not is not as straightforward.
+    // Executable files do actually have .exe extensions so on hosts other than
+    // Cygwin it is necessary.  But on a Cygwin host there is magic happening
+    // that redirects requests for file X to file X.exe if it exists, and
+    // furthermore /proc/self/exe (and thus std::env::current_exe) always
+    // returns the name *without* the .exe extension.  For comparisons against
+    // that to match, we therefore do not append .exe for Cygwin targets on
+    // a Cygwin host.
+    if target.contains("windows") || (cfg!(not(target_os = "cygwin")) && target.contains("cygwin"))
+    {
         format!("{name}.exe")
     } else if target.contains("uefi") {
         format!("{name}.efi")

@@ -234,8 +234,8 @@ jobs:
           fi
           exit ${STATUS}
         env:
-          AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
+          AWS_ACCESS_KEY_ID: ${{ (github.repository == 'rust-lang/rust' && secrets.CACHES_AWS_ACCESS_KEY_ID) || env.CACHES_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ (github.repository == 'rust-lang/rust' && secrets.CACHES_AWS_SECRET_ACCESS_KEY) || secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
 
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
@@ -257,8 +257,8 @@ jobs:
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
         env:
-          AWS_ACCESS_KEY_ID: ${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}
+          AWS_ACCESS_KEY_ID: ${{ (github.repository == 'rust-lang/rust' && secrets.ARTIFACTS_AWS_ACCESS_KEY_ID) || env.ARTIFACTS_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ (github.repository == 'rust-lang/rust' && secrets.ARTIFACTS_AWS_SECRET_ACCESS_KEY) || secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}
         # Adding a condition on DEPLOY=1 or DEPLOY_ALT=1 is not needed as all deploy
         # builders *should* have the AWS credentials available. Still, explicitly
         # adding the condition is helpful as this way CI will not silently skip

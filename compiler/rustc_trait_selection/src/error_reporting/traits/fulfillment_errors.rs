@@ -841,16 +841,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 return None;
             };
 
-        let (closure_def_id, found_args, by_ref_captures) = match *self_ty.kind() {
+        let (closure_def_id, found_args, has_self_borrows) = match *self_ty.kind() {
             ty::Closure(def_id, args) => {
-                (def_id, args.as_closure().sig().map_bound(|sig| sig.inputs()[0]), None)
+                (def_id, args.as_closure().sig().map_bound(|sig| sig.inputs()[0]), false)
             }
             ty::CoroutineClosure(def_id, args) => (
                 def_id,
                 args.as_coroutine_closure()
                     .coroutine_closure_sig()
                     .map_bound(|sig| sig.tupled_inputs_ty),
-                Some(args.as_coroutine_closure().coroutine_captures_by_ref_ty()),
+                !args.as_coroutine_closure().tupled_upvars_ty().is_ty_var()
+                    && args.as_coroutine_closure().has_self_borrows(),
             ),
             _ => return None,
         };
@@ -884,10 +885,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // If the closure has captures, then perhaps the reason that the trait
         // is unimplemented is because async closures don't implement `Fn`/`FnMut`
         // if they have captures.
-        if let Some(by_ref_captures) = by_ref_captures
-            && let ty::FnPtr(sig_tys, _) = by_ref_captures.kind()
-            && !sig_tys.skip_binder().output().is_unit()
-        {
+        if has_self_borrows && expected_kind != ty::ClosureKind::FnOnce {
             let mut err = self.dcx().create_err(AsyncClosureNotFn {
                 span: self.tcx.def_span(closure_def_id),
                 kind: expected_kind.as_str(),
@@ -1503,11 +1501,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     return None;
                 };
 
-                let Ok(Some(ImplSource::UserDefined(impl_data))) = SelectionContext::new(self)
-                    .poly_select(&obligation.with(
-                        self.tcx,
-                        predicate.kind().rebind(proj.projection_term.trait_ref(self.tcx)),
-                    ))
+                let trait_ref = self.enter_forall_and_leak_universe(
+                    predicate.kind().rebind(proj.projection_term.trait_ref(self.tcx)),
+                );
+                let Ok(Some(ImplSource::UserDefined(impl_data))) =
+                    SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref))
                 else {
                     return None;
                 };

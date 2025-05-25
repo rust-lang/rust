@@ -1854,17 +1854,16 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             fcx.err_ctxt().report_mismatched_types(cause, fcx.param_env, expected, found, ty_err);
 
         let due_to_block = matches!(fcx.tcx.hir_node(block_or_return_id), hir::Node::Block(..));
-
-        let parent_id = fcx.tcx.parent_hir_id(block_or_return_id);
-        let parent = fcx.tcx.hir_node(parent_id);
+        let parent = fcx.tcx.parent_hir_node(block_or_return_id);
         if let Some(expr) = expression
             && let hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { body, .. }),
                 ..
             }) = parent
-            && !matches!(fcx.tcx.hir_body(body).value.kind, hir::ExprKind::Block(..))
         {
-            fcx.suggest_missing_semicolon(&mut err, expr, expected, true);
+            let needs_block =
+                !matches!(fcx.tcx.hir_body(body).value.kind, hir::ExprKind::Block(..));
+            fcx.suggest_missing_semicolon(&mut err, expr, expected, needs_block, true);
         }
         // Verify that this is a tail expression of a function, otherwise the
         // label pointing out the cause for the type coercion will be wrong
@@ -1872,7 +1871,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         if let Some(expr) = expression
             && due_to_block
         {
-            fcx.suggest_missing_semicolon(&mut err, expr, expected, false);
+            fcx.suggest_missing_semicolon(&mut err, expr, expected, false, false);
             let pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
                 &mut err,
                 expr,

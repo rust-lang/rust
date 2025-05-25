@@ -1181,6 +1181,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             (_, Some(llfn)) => llfn,
             _ => span_bug!(span, "no instance or llfn for call"),
         };
+        self.set_debug_loc(bx, mir::SourceInfo { span: fn_span, ..source_info });
         helper.do_call(
             self,
             bx,

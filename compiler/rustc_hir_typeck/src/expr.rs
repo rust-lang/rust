@@ -911,7 +911,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self,
                         &cause,
                         |mut err| {
-                            self.suggest_missing_semicolon(&mut err, expr, e_ty, false);
+                            self.suggest_missing_semicolon(&mut err, expr, e_ty, false, false);
                             self.suggest_mismatched_types_on_tail(
                                 &mut err, expr, ty, e_ty, target_id,
                             );
@@ -1900,60 +1900,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We defer checking whether the element type is `Copy` as it is possible to have
         // an inference variable as a repeat count and it seems unlikely that `Copy` would
         // have inference side effects required for type checking to succeed.
-        if tcx.features().generic_arg_infer() {
-            self.deferred_repeat_expr_checks.borrow_mut().push((element, element_ty, count));
-        // If the length is 0, we don't create any elements, so we don't copy any.
-        // If the length is 1, we don't copy that one element, we move it. Only check
-        // for `Copy` if the length is larger, or unevaluated.
-        } else if count.try_to_target_usize(self.tcx).is_none_or(|x| x > 1) {
-            self.enforce_repeat_element_needs_copy_bound(element, element_ty);
-        }
+        self.deferred_repeat_expr_checks.borrow_mut().push((element, element_ty, count));
 
         let ty = Ty::new_array_with_const_len(tcx, t, count);
         self.register_wf_obligation(ty.into(), expr.span, ObligationCauseCode::WellFormed(None));
         ty
-    }
-
-    /// Requires that `element_ty` is `Copy` (unless it's a const expression itself).
-    pub(super) fn enforce_repeat_element_needs_copy_bound(
-        &self,
-        element: &hir::Expr<'_>,
-        element_ty: Ty<'tcx>,
-    ) {
-        let tcx = self.tcx;
-        // Actual constants as the repeat element get inserted repeatedly instead of getting copied via Copy.
-        match &element.kind {
-            hir::ExprKind::ConstBlock(..) => return,
-            hir::ExprKind::Path(qpath) => {
-                let res = self.typeck_results.borrow().qpath_res(qpath, element.hir_id);
-                if let Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::AnonConst, _) = res
-                {
-                    return;
-                }
-            }
-            _ => {}
-        }
-        // If someone calls a const fn or constructs a const value, they can extract that
-        // out into a separate constant (or a const block in the future), so we check that
-        // to tell them that in the diagnostic. Does not affect typeck.
-        let is_constable = match element.kind {
-            hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
-                ty::FnDef(def_id, _) if tcx.is_stable_const_fn(def_id) => traits::IsConstable::Fn,
-                _ => traits::IsConstable::No,
-            },
-            hir::ExprKind::Path(qpath) => {
-                match self.typeck_results.borrow().qpath_res(&qpath, element.hir_id) {
-                    Res::Def(DefKind::Ctor(_, CtorKind::Const), _) => traits::IsConstable::Ctor,
-                    _ => traits::IsConstable::No,
-                }
-            }
-            _ => traits::IsConstable::No,
-        };
-
-        let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
-        let code =
-            traits::ObligationCauseCode::RepeatElementCopy { is_constable, elt_span: element.span };
-        self.require_type_meets(element_ty, element.span, code, lang_item);
     }
 
     fn check_expr_tuple(

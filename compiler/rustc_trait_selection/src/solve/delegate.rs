@@ -5,7 +5,7 @@ use rustc_hir::LangItem;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
-    Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarInfo, CanonicalVarValues,
+    Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarKind, CanonicalVarValues,
 };
 use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::solve::Goal;
@@ -190,11 +190,11 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
     fn instantiate_canonical_var_with_infer(
         &self,
-        cv_info: CanonicalVarInfo<'tcx>,
+        kind: CanonicalVarKind<'tcx>,
         span: Span,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> ty::GenericArg<'tcx> {
-        self.0.instantiate_canonical_var(span, cv_info, universe_map)
+        self.0.instantiate_canonical_var(span, kind, universe_map)
     }
 
     fn add_item_bounds_for_hidden_type(

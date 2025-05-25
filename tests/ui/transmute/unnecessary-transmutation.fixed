@@ -8,7 +8,27 @@ pub fn bytes_at_home(x: u32) -> [u8; 4] {
     //~^ ERROR
 }
 
+pub const fn intinator_const(from: bool) -> u8 {
+    unsafe { (from) as u8 }
+    //~^ ERROR
+}
+
+pub static X: u8 = unsafe { (true) as u8 };
+//~^ ERROR
+pub const Y: u8 = unsafe { (true) as u8 };
+//~^ ERROR
+
+pub struct Z {}
+impl Z {
+    pub const fn intinator_assoc(x: bool) -> u8 {
+        unsafe { (x) as u8 }
+        //~^ ERROR
+    }
+}
+
 fn main() {
+    const { unsafe { (true) as u8 } };
+    //~^ ERROR
     unsafe {
         let x: u16 = u16::from_ne_bytes(*b"01");
         //~^ ERROR
@@ -83,12 +103,12 @@ fn main() {
 
         let z: bool = transmute(1u8);
         // clippy
-        let z: u8 = (z) as u8;
+        let z: u8 = u8::from(z);
         //~^ ERROR
 
         let z: bool = transmute(1i8);
         // clippy
-        let z: i8 = (z) as i8;
+        let z: i8 = i8::from(z);
         //~^ ERROR
     }
 }

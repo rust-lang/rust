@@ -501,15 +501,13 @@ impl<T: ?Sized> NonNull<T> {
     /// #![feature(pointer_try_cast_aligned)]
     /// use std::ptr::NonNull;
     ///
-    /// let aligned: NonNull<u8> = NonNull::new(0x1000 as _).unwrap();
+    /// let mut x = 0u64;
     ///
-    /// // i32 has at most 4-byte alignment, so this will succeed
-    /// assert!(aligned.try_cast_aligned::<i32>().is_some());
+    /// let aligned = NonNull::from_mut(&mut x);
+    /// let unaligned = unsafe { aligned.byte_add(1) };
     ///
-    /// let unaligned: NonNull<u8> = NonNull::new(0x1001 as _).unwrap();
-    ///
-    /// // i32 has at least 2-byte alignment, so this will fail
-    /// assert!(unaligned.try_cast_aligned::<i32>().is_none());
+    /// assert!(aligned.try_cast_aligned::<u32>().is_some());
+    /// assert!(unaligned.try_cast_aligned::<u32>().is_none());
     /// ```
     #[unstable(feature = "pointer_try_cast_aligned", issue = "141221")]
     #[must_use = "this returns the result of the operation, \

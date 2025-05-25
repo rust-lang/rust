@@ -2,7 +2,13 @@ error[E0223]: ambiguous associated type
   --> $DIR/not-found-self-type-differs-shadowing-trait-item.rs:28:12
    |
 LL |     let _: S::<bool>::Pr = ();
-   |            ^^^^^^^^^^^^^ help: use fully-qualified syntax: `<S<bool> as Tr>::Pr`
+   |            ^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let _: S::<bool>::Pr = ();
+LL +     let _: <S<bool> as Tr>::Pr = ();
+   |
 
 error: aborting due to 1 previous error
 

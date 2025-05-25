@@ -611,7 +611,7 @@ impl TypeAliasPart {
                 .impl_
                 .values()
                 .flat_map(|AliasedTypeImpl { impl_, type_aliases }| {
-                    let mut ret = Vec::new();
+                    let mut ret: Vec<AliasSerializableImpl> = Vec::new();
                     let trait_ = impl_
                         .inner_impl()
                         .trait_
@@ -623,42 +623,43 @@ impl TypeAliasPart {
                     for &(type_alias_fqp, type_alias_item) in type_aliases {
                         cx.id_map.borrow_mut().clear();
                         cx.deref_id_map.borrow_mut().clear();
-                        let target_did = impl_
-                            .inner_impl()
-                            .trait_
-                            .as_ref()
-                            .map(|trait_| trait_.def_id())
-                            .or_else(|| impl_.inner_impl().for_.def_id(&cx.shared.cache));
-                        let provided_methods;
-                        let assoc_link = if let Some(target_did) = target_did {
-                            provided_methods = impl_.inner_impl().provided_trait_methods(cx.tcx());
-                            AssocItemLink::GotoSource(ItemId::DefId(target_did), &provided_methods)
-                        } else {
-                            AssocItemLink::Anchor(None)
-                        };
-                        let text = super::render_impl(
-                            cx,
-                            impl_,
-                            type_alias_item,
-                            assoc_link,
-                            RenderMode::Normal,
-                            None,
-                            &[],
-                            ImplRenderingParameters {
-                                show_def_docs: true,
-                                show_default_items: true,
-                                show_non_assoc_items: true,
-                                toggle_open_by_default: true,
-                            },
-                        )
-                        .to_string();
                         let type_alias_fqp = (*type_alias_fqp).iter().join("::");
-                        if Some(&text) == ret.last().map(|s: &AliasSerializableImpl| &s.text) {
-                            ret.last_mut()
-                                .expect("already established that ret.last() is Some()")
-                                .aliases
-                                .push(type_alias_fqp);
+                        if let Some(last) = ret.last_mut() {
+                            last.aliases.push(type_alias_fqp);
                         } else {
+                            let target_did = impl_
+                                .inner_impl()
+                                .trait_
+                                .as_ref()
+                                .map(|trait_| trait_.def_id())
+                                .or_else(|| impl_.inner_impl().for_.def_id(&cx.shared.cache));
+                            let provided_methods;
+                            let assoc_link = if let Some(target_did) = target_did {
+                                provided_methods =
+                                    impl_.inner_impl().provided_trait_methods(cx.tcx());
+                                AssocItemLink::GotoSource(
+                                    ItemId::DefId(target_did),
+                                    &provided_methods,
+                                )
+                            } else {
+                                AssocItemLink::Anchor(None)
+                            };
+                            let text = super::render_impl(
+                                cx,
+                                impl_,
+                                type_alias_item,
+                                assoc_link,
+                                RenderMode::Normal,
+                                None,
+                                &[],
+                                ImplRenderingParameters {
+                                    show_def_docs: true,
+                                    show_default_items: true,
+                                    show_non_assoc_items: true,
+                                    toggle_open_by_default: true,
+                                },
+                            )
+                            .to_string();
                             ret.push(AliasSerializableImpl {
                                 text,
                                 trait_: trait_.clone(),
