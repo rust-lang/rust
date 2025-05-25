@@ -156,6 +156,7 @@ where
             }
             ty::ClauseKind::ConstEvaluatable(ct) => ct.visit_with(self),
             ty::ClauseKind::WellFormed(term) => term.visit_with(self),
+            ty::ClauseKind::UnstableFeature(_) => todo!(), // TODO: maybe we need a visit with function here too?
         }
     }
 
