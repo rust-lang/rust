@@ -710,29 +710,35 @@ static LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
+#[rustfmt::skip]
 const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("backchain", Unstable(sym::s390x_target_feature), &[]),
+    ("concurrent-functions", Unstable(sym::s390x_target_feature), &[]),
     ("deflate-conversion", Unstable(sym::s390x_target_feature), &[]),
     ("enhanced-sort", Unstable(sym::s390x_target_feature), &[]),
     ("guarded-storage", Unstable(sym::s390x_target_feature), &[]),
     ("high-word", Unstable(sym::s390x_target_feature), &[]),
+    // LLVM does not define message-security-assist-extension versions 1, 2, 6, 10 and 11.
+    ("message-security-assist-extension12", Unstable(sym::s390x_target_feature), &[]),
+    ("message-security-assist-extension3", Unstable(sym::s390x_target_feature), &[]),
+    ("message-security-assist-extension4", Unstable(sym::s390x_target_feature), &[]),
+    ("message-security-assist-extension5", Unstable(sym::s390x_target_feature), &[]),
+    ("message-security-assist-extension8", Unstable(sym::s390x_target_feature), &["message-security-assist-extension3"]),
+    ("message-security-assist-extension9", Unstable(sym::s390x_target_feature), &["message-security-assist-extension3", "message-security-assist-extension4"]),
+    ("miscellaneous-extensions-2", Unstable(sym::s390x_target_feature), &[]),
+    ("miscellaneous-extensions-3", Unstable(sym::s390x_target_feature), &[]),
+    ("miscellaneous-extensions-4", Unstable(sym::s390x_target_feature), &[]),
     ("nnp-assist", Unstable(sym::s390x_target_feature), &["vector"]),
     ("transactional-execution", Unstable(sym::s390x_target_feature), &[]),
     ("vector", Unstable(sym::s390x_target_feature), &[]),
     ("vector-enhancements-1", Unstable(sym::s390x_target_feature), &["vector"]),
     ("vector-enhancements-2", Unstable(sym::s390x_target_feature), &["vector-enhancements-1"]),
+    ("vector-enhancements-3", Unstable(sym::s390x_target_feature), &["vector-enhancements-2"]),
     ("vector-packed-decimal", Unstable(sym::s390x_target_feature), &["vector"]),
-    (
-        "vector-packed-decimal-enhancement",
-        Unstable(sym::s390x_target_feature),
-        &["vector-packed-decimal"],
-    ),
-    (
-        "vector-packed-decimal-enhancement-2",
-        Unstable(sym::s390x_target_feature),
-        &["vector-packed-decimal-enhancement"],
-    ),
+    ("vector-packed-decimal-enhancement", Unstable(sym::s390x_target_feature), &["vector-packed-decimal"]),
+    ("vector-packed-decimal-enhancement-2", Unstable(sym::s390x_target_feature), &["vector-packed-decimal-enhancement"]),
+    ("vector-packed-decimal-enhancement-3", Unstable(sym::s390x_target_feature), &["vector-packed-decimal-enhancement-2"]),
     // tidy-alphabetical-end
 ];
 
