@@ -3,6 +3,14 @@ use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::process::Command;
 
+use super::argument::Argument;
+use super::indentation::Indentation;
+use super::intrinsic::IntrinsicDefinition;
+use super::intrinsic_helpers::IntrinsicTypeDefinition;
+
+// The number of times each intrinsic will be called.
+const PASSES: u32 = 20;
+
 pub fn generate_c_program(
     notices: &str,
     header_files: &[&str],
@@ -88,4 +96,100 @@ pub fn create_c_filenames(identifiers: &Vec<String>) -> BTreeMap<&String, String
             (identifier, c_filename)
         })
         .collect::<BTreeMap<&String, String>>()
+}
+
+pub fn generate_loop_c<T: IntrinsicTypeDefinition + Sized>(
+    intrinsic: &dyn IntrinsicDefinition<T>,
+    indentation: Indentation,
+    additional: &str,
+    passes: u32,
+    _target: &str,
+) -> String {
+    let body_indentation = indentation.nested();
+    format!(
+        "{indentation}for (int i=0; i<{passes}; i++) {{\n\
+            {loaded_args}\
+            {body_indentation}auto __return_value = {intrinsic_call}({args});\n\
+            {print_result}\n\
+        {indentation}}}",
+        loaded_args = intrinsic.arguments().load_values_c(body_indentation),
+        intrinsic_call = intrinsic.name(),
+        args = intrinsic.arguments().as_call_param_c(),
+        print_result = intrinsic.print_result_c(body_indentation, additional)
+    )
+}
+
+pub fn gen_code_c<T: IntrinsicTypeDefinition>(
+    intrinsic: &dyn IntrinsicDefinition<T>,
+    indentation: Indentation,
+    constraints: &[&Argument<T>],
+    name: String,
+    target: &str,
+) -> String {
+    if let Some((current, constraints)) = constraints.split_last() {
+        let range = current
+            .constraint
+            .iter()
+            .map(|c| c.to_range())
+            .flat_map(|r| r.into_iter());
+
+        let body_indentation = indentation.nested();
+        range
+            .map(|i| {
+                format!(
+                    "{indentation}{{\n\
+                        {body_indentation}{ty} {name} = {val};\n\
+                        {pass}\n\
+                    {indentation}}}",
+                    name = current.name,
+                    ty = current.ty.c_type(),
+                    val = i,
+                    pass = gen_code_c(
+                        intrinsic,
+                        body_indentation,
+                        constraints,
+                        format!("{name}-{i}"),
+                        target,
+                    )
+                )
+            })
+            .join("\n")
+    } else {
+        generate_loop_c(intrinsic, indentation, &name, PASSES, target)
+    }
+}
+
+pub fn gen_c_program<T: IntrinsicTypeDefinition>(
+    intrinsic: &dyn IntrinsicDefinition<T>,
+    header_files: &[&str],
+    target: &str,
+    c_target: &str,
+    notices: &str,
+    arch_specific_definitions: &[&str],
+) -> String {
+    let arguments = intrinsic.arguments();
+    let constraints = arguments
+        .iter()
+        .filter(|&i| i.has_constraint())
+        .collect_vec();
+
+    let indentation = Indentation::default();
+    generate_c_program(
+        notices,
+        header_files,
+        c_target,
+        arch_specific_definitions,
+        intrinsic
+            .arguments()
+            .gen_arglists_c(indentation, PASSES)
+            .as_str(),
+        gen_code_c(
+            intrinsic,
+            indentation.nested(),
+            constraints.as_slice(),
+            Default::default(),
+            target,
+        )
+        .as_str(),
+    )
 }

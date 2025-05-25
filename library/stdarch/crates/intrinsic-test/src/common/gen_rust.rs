@@ -5,6 +5,14 @@ use std::fs::File;
 use std::io::Write;
 use std::process::Command;
 
+use super::argument::Argument;
+use super::indentation::Indentation;
+use super::intrinsic::{IntrinsicDefinition, format_f16_return_value};
+use super::intrinsic_helpers::IntrinsicTypeDefinition;
+
+// The number of times each intrinsic will be called.
+const PASSES: u32 = 20;
+
 pub fn generate_rust_program(
     notices: &str,
     definitions: &str,
@@ -128,4 +136,106 @@ pub fn create_rust_filenames(identifiers: &Vec<String>) -> BTreeMap<&String, Str
             (identifier, rust_filename)
         })
         .collect::<BTreeMap<&String, String>>()
+}
+
+pub fn generate_loop_rust<T: IntrinsicTypeDefinition>(
+    intrinsic: &dyn IntrinsicDefinition<T>,
+    indentation: Indentation,
+    additional: &str,
+    passes: u32,
+) -> String {
+    let constraints = intrinsic.arguments().as_constraint_parameters_rust();
+    let constraints = if !constraints.is_empty() {
+        format!("::<{constraints}>")
+    } else {
+        constraints
+    };
+
+    let return_value = format_f16_return_value(intrinsic);
+    let indentation2 = indentation.nested();
+    let indentation3 = indentation2.nested();
+    format!(
+        "{indentation}for i in 0..{passes} {{\n\
+            {indentation2}unsafe {{\n\
+                {loaded_args}\
+                {indentation3}let __return_value = {intrinsic_call}{const}({args});\n\
+                {indentation3}println!(\"Result {additional}-{{}}: {{:?}}\", i + 1, {return_value});\n\
+            {indentation2}}}\n\
+        {indentation}}}",
+        loaded_args = intrinsic.arguments().load_values_rust(indentation3),
+        intrinsic_call = intrinsic.name(),
+        const = constraints,
+        args = intrinsic.arguments().as_call_param_rust(),
+    )
+}
+
+pub fn gen_code_rust<T: IntrinsicTypeDefinition>(
+    intrinsic: &dyn IntrinsicDefinition<T>,
+    indentation: Indentation,
+    constraints: &[&Argument<T>],
+    name: String,
+) -> String {
+    if let Some((current, constraints)) = constraints.split_last() {
+        let range = current
+            .constraint
+            .iter()
+            .map(|c| c.to_range())
+            .flat_map(|r| r.into_iter());
+
+        let body_indentation = indentation.nested();
+        range
+            .map(|i| {
+                format!(
+                    "{indentation}{{\n\
+                        {body_indentation}const {name}: {ty} = {val};\n\
+                        {pass}\n\
+                    {indentation}}}",
+                    name = current.name,
+                    ty = current.ty.rust_type(),
+                    val = i,
+                    pass = gen_code_rust(
+                        intrinsic,
+                        body_indentation,
+                        constraints,
+                        format!("{name}-{i}")
+                    )
+                )
+            })
+            .join("\n")
+    } else {
+        generate_loop_rust(intrinsic, indentation, &name, PASSES)
+    }
+}
+
+pub fn gen_rust_program<T: IntrinsicTypeDefinition>(
+    intrinsic: &dyn IntrinsicDefinition<T>,
+    target: &str,
+    notice: &str,
+    definitions: &str,
+    cfg: &str,
+) -> String {
+    let arguments = intrinsic.arguments();
+    let constraints = arguments
+        .iter()
+        .filter(|i| i.has_constraint())
+        .collect_vec();
+
+    let indentation = Indentation::default();
+    generate_rust_program(
+        notice,
+        definitions,
+        cfg,
+        target,
+        intrinsic
+            .arguments()
+            .gen_arglists_rust(indentation.nested(), PASSES)
+            .as_str(),
+        gen_code_rust(
+            intrinsic,
+            indentation.nested(),
+            &constraints,
+            Default::default(),
+        )
+        .as_str(),
+    )
 }
