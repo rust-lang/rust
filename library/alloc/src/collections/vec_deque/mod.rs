@@ -3140,7 +3140,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
     /// any additional memory.
     #[inline]
     fn from(other: Vec<T, A>) -> Self {
-        let (ptr, len, cap, alloc) = other.into_raw_parts_with_alloc();
+        let (ptr, len, cap, alloc) = Vec::into_raw_parts_with_alloc(other);
         Self { head: 0, len, buf: unsafe { RawVec::from_raw_parts_in(ptr, cap, alloc) } }
     }
 }
