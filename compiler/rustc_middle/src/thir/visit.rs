@@ -79,7 +79,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             visitor.visit_pat(pat);
         }
         Loop { body } => visitor.visit_expr(&visitor.thir()[body]),
-        Match { scrutinee, ref arms, .. } => {
+        LoopMatch { state: scrutinee, ref arms, .. } | Match { scrutinee, ref arms, .. } => {
             visitor.visit_expr(&visitor.thir()[scrutinee]);
             for &arm in &**arms {
                 visitor.visit_arm(&visitor.thir()[arm]);
@@ -104,6 +104,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             }
         }
         Continue { label: _ } => {}
+        ConstContinue { value, label: _ } => visitor.visit_expr(&visitor.thir()[value]),
         Return { value } => {
             if let Some(value) = value {
                 visitor.visit_expr(&visitor.thir()[value])
