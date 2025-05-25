@@ -1454,6 +1454,9 @@ impl Step for Libunwind {
                 cfg.define("_LIBUNWIND_HIDE_SYMBOLS", "1");
                 cfg.define("_LIBUNWIND_IS_NATIVE_ONLY", "1");
             }
+            if self.target.starts_with("aarch64") && self.target.contains("musl") {
+                cfg.define("_LIBUNWIND_IS_NATIVE_ONLY", "1");
+            }
         }
 
         cc_cfg.compiler(builder.cc(self.target));
