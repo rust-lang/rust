@@ -1,14 +1,14 @@
 //@ run-pass
 #![feature(core_intrinsics)]
-use std::intrinsics as rusti;
+use std::intrinsics::{self as rusti, AtomicOrdering};
 
 pub fn main() {
     unsafe {
         let mut x: Box<_> = Box::new(1);
 
-        assert_eq!(rusti::atomic_load_seqcst(&*x), 1);
+        assert_eq!(rusti::atomic_load::<_, { AtomicOrdering::SeqCst }>(&*x), 1);
         *x = 5;
-        assert_eq!(rusti::atomic_load_acquire(&*x), 5);
+        assert_eq!(rusti::atomic_load::<_, { AtomicOrdering::Acquire }>(&*x), 5);
 
         rusti::atomic_store_seqcst(&mut *x, 3);
         assert_eq!(*x, 3);

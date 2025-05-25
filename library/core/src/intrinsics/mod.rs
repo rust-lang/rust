@@ -1,7 +1,10 @@
 //! Compiler intrinsics.
 //!
-//! The corresponding definitions are in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_llvm/src/intrinsic.rs>.
-//! The corresponding const implementations are in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
+//! These are the imports making intrinsics available to Rust code. The actual implementations live in the compiler.
+//! Some of these intrinsics are lowered to MIR in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_transform/src/lower_intrinsics.rs>.
+//! The remaining intrinsics are implemented for the LLVM backend in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_ssa/src/mir/intrinsic.rs>
+//! and <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_llvm/src/intrinsic.rs>,
+//! and for const evaluation in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
 //!
 //! # Const intrinsics
 //!
@@ -20,28 +23,14 @@
 //!
 //! The volatile intrinsics provide operations intended to act on I/O
 //! memory, which are guaranteed to not be reordered by the compiler
-//! across other volatile intrinsics. See the LLVM documentation on
-//! [[volatile]].
-//!
-//! [volatile]: https://llvm.org/docs/LangRef.html#volatile-memory-accesses
+//! across other volatile intrinsics. See [`read_volatile`][ptr::read_volatile]
+//! and [`write_volatile`][ptr::write_volatile].
 //!
 //! # Atomics
 //!
 //! The atomic intrinsics provide common atomic operations on machine
-//! words, with multiple possible memory orderings. They obey the same
-//! semantics as C++11. See the LLVM documentation on [[atomics]].
-//!
-//! [atomics]: https://llvm.org/docs/Atomics.html
-//!
-//! A quick refresher on memory ordering:
-//!
-//! * Acquire - a barrier for acquiring a lock. Subsequent reads and writes
-//!   take place after the barrier.
-//! * Release - a barrier for releasing a lock. Preceding reads and writes
-//!   take place before the barrier.
-//! * Sequentially consistent - sequentially consistent operations are
-//!   guaranteed to happen in order. This is the standard mode for working
-//!   with atomic types and is equivalent to Java's `volatile`.
+//! words, with multiple possible memory orderings. See the
+//! [atomic types][atomic] docs for details.
 //!
 //! # Unwinding
 //!
@@ -61,7 +50,7 @@
 )]
 #![allow(missing_docs)]
 
-use crate::marker::{DiscriminantKind, Tuple};
+use crate::marker::{ConstParamTy, DiscriminantKind, Tuple};
 use crate::ptr;
 
 pub mod fallback;
@@ -72,6 +61,20 @@ pub mod simd;
 #[allow(unused_imports)]
 #[cfg(all(target_has_atomic = "8", target_has_atomic = "32", target_has_atomic = "ptr"))]
 use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
+
+/// A type for atomic ordering parameters for intrinsics. This is a separate type from
+/// `atomic::Ordering` so that we can make it `ConstParamTy` and fix the values used here without a
+/// risk of leaking that to stable code.
+///
+/// The exact values of these discriminants are mirrored in the compiler so they cannot be changed!
+#[derive(Debug, ConstParamTy, PartialEq, Eq)]
+pub enum AtomicOrdering {
+    Relaxed = 0,
+    Release = 1,
+    Acquire = 2,
+    AcqRel = 3,
+    SeqCst = 4,
+}
 
 // N.B., these intrinsics take raw pointers because they mutate aliased
 // memory, which is not valid for either `&` or `&mut`.
@@ -406,10 +409,20 @@ pub unsafe fn atomic_cxchgweak_seqcst_seqcst<T: Copy>(dst: *mut T, old: T, src: 
 /// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
+/// [`atomic`] types via the `load` method. For example, [`AtomicBool::load`].
+#[rustc_intrinsic]
+#[rustc_nounwind]
+#[cfg(not(bootstrap))]
+pub unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering>(src: *const T) -> T;
+/// Loads the current value of the pointer.
+/// `T` must be an integer or pointer type.
+///
+/// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `load` method by passing
 /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::load`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
+#[cfg(bootstrap)]
 pub unsafe fn atomic_load_seqcst<T: Copy>(src: *const T) -> T;
 /// Loads the current value of the pointer.
 /// `T` must be an integer or pointer type.
@@ -419,6 +432,7 @@ pub unsafe fn atomic_load_seqcst<T: Copy>(src: *const T) -> T;
 /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::load`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
+#[cfg(bootstrap)]
 pub unsafe fn atomic_load_acquire<T: Copy>(src: *const T) -> T;
 /// Loads the current value of the pointer.
 /// `T` must be an integer or pointer type.
@@ -428,6 +442,7 @@ pub unsafe fn atomic_load_acquire<T: Copy>(src: *const T) -> T;
 /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::load`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
+#[cfg(bootstrap)]
 pub unsafe fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
 
 /// Stores the value at the specified memory location.

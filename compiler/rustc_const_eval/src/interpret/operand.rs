@@ -310,7 +310,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
         let ty = tcx.ty_ordering_enum(None);
         let layout =
             tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)).unwrap();
-        Self::from_scalar(Scalar::from_i8(c as i8), layout)
+        Self::from_scalar(Scalar::Int(c.into()), layout)
     }
 
     pub fn from_pair(a: Self, b: Self, cx: &(impl HasTypingEnv<'tcx> + HasTyCtxt<'tcx>)) -> Self {

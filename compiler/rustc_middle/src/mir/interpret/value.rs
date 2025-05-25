@@ -180,27 +180,27 @@ impl<Prov> Scalar<Prov> {
 
     #[inline]
     pub fn from_i8(i: i8) -> Self {
-        Self::from_int(i, Size::from_bits(8))
+        Self::Int(i.into())
     }
 
     #[inline]
     pub fn from_i16(i: i16) -> Self {
-        Self::from_int(i, Size::from_bits(16))
+        Self::Int(i.into())
     }
 
     #[inline]
     pub fn from_i32(i: i32) -> Self {
-        Self::from_int(i, Size::from_bits(32))
+        Self::Int(i.into())
     }
 
     #[inline]
     pub fn from_i64(i: i64) -> Self {
-        Self::from_int(i, Size::from_bits(64))
+        Self::Int(i.into())
     }
 
     #[inline]
     pub fn from_i128(i: i128) -> Self {
-        Self::from_int(i, Size::from_bits(128))
+        Self::Int(i.into())
     }
 
     #[inline]
