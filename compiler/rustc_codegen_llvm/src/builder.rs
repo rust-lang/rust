@@ -614,6 +614,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         ptr: &'ll Value,
         order: rustc_codegen_ssa::common::AtomicOrdering,
         size: Size,
+        is_volatile: bool,
     ) -> &'ll Value {
         unsafe {
             let load = llvm::LLVMRustBuildAtomicLoad(
@@ -622,6 +623,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 ptr,
                 UNNAMED,
                 AtomicOrdering::from_generic(order),
+                is_volatile,
             );
             // LLVM requires the alignment of atomic loads to be at least the size of the type.
             llvm::LLVMSetAlignment(load, size.bytes() as c_uint);
@@ -853,6 +855,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         ptr: &'ll Value,
         order: rustc_codegen_ssa::common::AtomicOrdering,
         size: Size,
+        is_volatile: bool,
     ) {
         debug!("Store {:?} -> {:?}", val, ptr);
         assert_eq!(self.cx.type_kind(self.cx.val_ty(ptr)), TypeKind::Pointer);
@@ -862,6 +865,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 val,
                 ptr,
                 AtomicOrdering::from_generic(order),
+                is_volatile,
             );
             // LLVM requires the alignment of atomic stores to be at least the size of the type.
             llvm::LLVMSetAlignment(store, size.bytes() as c_uint);
