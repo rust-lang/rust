@@ -60,31 +60,24 @@ fn analyze_operand(operand: &Expr<'_>, cx: &LateContext<'_>, expr: &Expr<'_>) ->
         Some(Constant::Int(v)) => match *cx.typeck_results().expr_ty(expr).kind() {
             ty::Int(ity) => {
                 let value = sext(cx.tcx, v, ity);
-                return Some(OperandInfo {
+                Some(OperandInfo {
                     string_representation: Some(value.to_string()),
                     is_negative: value < 0,
                     is_integral: true,
-                });
+                })
             },
-            ty::Uint(_) => {
-                return Some(OperandInfo {
-                    string_representation: None,
-                    is_negative: false,
-                    is_integral: true,
-                });
-            },
-            _ => {},
+            ty::Uint(_) => Some(OperandInfo {
+                string_representation: None,
+                is_negative: false,
+                is_integral: true,
+            }),
+            _ => None,
         },
         // FIXME(f16_f128): add when casting is available on all platforms
-        Some(Constant::F32(f)) => {
-            return Some(floating_point_operand_info(&f));
-        },
-        Some(Constant::F64(f)) => {
-            return Some(floating_point_operand_info(&f));
-        },
-        _ => {},
+        Some(Constant::F32(f)) => Some(floating_point_operand_info(&f)),
+        Some(Constant::F64(f)) => Some(floating_point_operand_info(&f)),
+        _ => None,
     }
-    None
 }
 
 fn floating_point_operand_info<T: Display + PartialOrd + From<f32>>(f: &T) -> OperandInfo {
