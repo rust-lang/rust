@@ -320,8 +320,10 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             ))
         });
 
-        let tooltip = if ignore != Ignore::None {
-            highlight::Tooltip::Ignore
+        let tooltip = if ignore == Ignore::All {
+            highlight::Tooltip::IgnoreAll
+        } else if let Ignore::Some(platforms) = ignore {
+            highlight::Tooltip::IgnoreSome(platforms)
         } else if compile_fail {
             highlight::Tooltip::CompileFail
         } else if should_panic {
