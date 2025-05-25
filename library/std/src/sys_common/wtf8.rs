@@ -1049,6 +1049,16 @@ impl Iterator for EncodeWide<'_> {
 #[stable(feature = "encode_wide_fused_iterator", since = "1.62.0")]
 impl FusedIterator for EncodeWide<'_> {}
 
+#[stable(feature = "encode_wide_debug", since = "CURRENT_RUSTC_VERSION")]
+impl fmt::Debug for EncodeWide<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "EncodeWide(")?;
+        f.debug_list().entries(self.clone()).finish()?;
+        write!(f, ")")?;
+        Ok(())
+    }
+}
+
 impl Hash for CodePoint {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
