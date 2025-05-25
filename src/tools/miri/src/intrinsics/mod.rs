@@ -22,7 +22,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: &MPlaceTy<'tcx>,
+        dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
@@ -45,7 +45,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let intrinsic_name = this.tcx.item_name(instance.def_id());
         let intrinsic_name = intrinsic_name.as_str();
 
-        match this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest, ret)? {
+        // FIXME: avoid allocating memory
+        let dest = this.force_allocation(dest)?;
+
+        match this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, &dest, ret)? {
             EmulateItemResult::NotSupported => {
                 // We haven't handled the intrinsic, let's see if we can use a fallback body.
                 if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {

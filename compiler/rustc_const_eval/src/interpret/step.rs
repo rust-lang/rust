@@ -506,7 +506,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
                     self.eval_callee_and_args(terminator, func, args)?;
 
-                let destination = self.force_allocation(&self.eval_place(destination)?)?;
+                let destination = self.eval_place(destination)?;
                 self.init_fn_call(
                     callee,
                     (fn_sig.abi, fn_abi),

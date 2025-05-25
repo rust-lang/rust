@@ -15,9 +15,9 @@ use rustc_span::Span;
 use tracing::{info_span, instrument, trace};
 
 use super::{
-    AllocId, CtfeProvenance, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace,
-    MemPlaceMeta, MemoryKind, Operand, Pointer, Provenance, ReturnAction, Scalar,
-    from_known_layout, interp_ok, throw_ub, throw_unsup,
+    AllocId, CtfeProvenance, Immediate, InterpCx, InterpResult, Machine, MemPlace, MemPlaceMeta,
+    MemoryKind, Operand, PlaceTy, Pointer, Provenance, ReturnAction, Scalar, from_known_layout,
+    interp_ok, throw_ub, throw_unsup,
 };
 use crate::errors;
 
@@ -76,8 +76,10 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     return_to_block: StackPopCleanup,
 
     /// The location where the result of the current stack frame should be written to,
-    /// and its layout in the caller.
-    pub return_place: MPlaceTy<'tcx, Prov>,
+    /// and its layout in the caller. This place is to be interpreted relative to the
+    /// *caller's* stack frame. We use a `PlaceTy` instead of an `MPlaceTy` since this
+    /// avoids having to move *all* return places into Miri's memory.
+    pub return_place: PlaceTy<'tcx, Prov>,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[return_ptr, arguments..., variables..., temporaries...]`.
@@ -129,7 +131,7 @@ pub struct StackPopInfo<'tcx, Prov: Provenance> {
     pub return_to_block: StackPopCleanup,
 
     /// [`return_place`](Frame::return_place) of the popped stack frame.
-    pub return_place: MPlaceTy<'tcx, Prov>,
+    pub return_place: PlaceTy<'tcx, Prov>,
 }
 
 /// State of a local variable including a memoized layout
@@ -353,7 +355,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         body: &'tcx mir::Body<'tcx>,
-        return_place: &MPlaceTy<'tcx, M::Provenance>,
+        return_place: &PlaceTy<'tcx, M::Provenance>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
@@ -404,9 +406,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// it.
     ///
     /// This also deallocates locals, if necessary.
+    /// `copy_ret_val` gets called after the frame has been taken from the stack but before the locals have been deallocated.
     ///
-    /// [`M::before_stack_pop`] should be called before calling this function.
-    /// [`M::after_stack_pop`] is called by this function automatically.
+    /// [`M::before_stack_pop`] and [`M::after_stack_pop`] are called by this function
+    /// automatically.
     ///
     /// The high-level version of this is `return_from_current_stack_frame`.
     ///
@@ -415,47 +418,44 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(super) fn pop_stack_frame_raw(
         &mut self,
         unwinding: bool,
+        copy_ret_val: impl FnOnce(&mut Self, &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx, StackPopInfo<'tcx, M::Provenance>> {
-        let cleanup = self.cleanup_current_frame_locals()?;
-
+        M::before_stack_pop(self)?;
         let frame =
             self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
+
+        // Copy return value (unless we are unwinding).
+        if !unwinding {
+            copy_ret_val(self, &frame.return_place)?;
+        }
 
         let return_to_block = frame.return_to_block;
         let return_place = frame.return_place.clone();
 
-        let return_action;
-        if cleanup {
-            return_action = M::after_stack_pop(self, frame, unwinding)?;
-            assert_ne!(return_action, ReturnAction::NoCleanup);
-        } else {
-            return_action = ReturnAction::NoCleanup;
-        };
-
-        interp_ok(StackPopInfo { return_action, return_to_block, return_place })
-    }
-
-    /// A private helper for [`pop_stack_frame_raw`](InterpCx::pop_stack_frame_raw).
-    /// Returns `true` if cleanup has been done, `false` otherwise.
-    fn cleanup_current_frame_locals(&mut self) -> InterpResult<'tcx, bool> {
         // Cleanup: deallocate locals.
         // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
         // We do this while the frame is still on the stack, so errors point to the callee.
-        let return_to_block = self.frame().return_to_block;
         let cleanup = match return_to_block {
             StackPopCleanup::Goto { .. } => true,
             StackPopCleanup::Root { cleanup, .. } => cleanup,
         };
 
-        if cleanup {
+        let return_action = if cleanup {
             // We need to take the locals out, since we need to mutate while iterating.
-            let locals = mem::take(&mut self.frame_mut().locals);
-            for local in &locals {
+            for local in &frame.locals {
                 self.deallocate_local(local.value)?;
             }
-        }
 
-        interp_ok(cleanup)
+            // Call the machine hook, which determines the next steps.
+            let return_action = M::after_stack_pop(self, frame, unwinding)?;
+            assert_ne!(return_action, ReturnAction::NoCleanup);
+            return_action
+        } else {
+            // We also skip the machine hook when there's no cleanup. This not a real "pop" anyway.
+            ReturnAction::NoCleanup
+        };
+
+        interp_ok(StackPopInfo { return_action, return_to_block, return_place })
     }
 
     /// In the current stack frame, mark all locals as live that are not arguments and don't have

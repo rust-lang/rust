@@ -71,7 +71,12 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
 
     // This can't use `init_stack_frame` since `body` is not a function,
     // so computing its ABI would fail. It's also not worth it since there are no arguments to pass.
-    ecx.push_stack_frame_raw(cid.instance, body, &ret, StackPopCleanup::Root { cleanup: false })?;
+    ecx.push_stack_frame_raw(
+        cid.instance,
+        body,
+        &ret.clone().into(),
+        StackPopCleanup::Root { cleanup: false },
+    )?;
     ecx.storage_live_for_always_live_locals()?;
 
     // The main interpreter loop.
