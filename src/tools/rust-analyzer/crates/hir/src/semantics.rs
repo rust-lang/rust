@@ -407,14 +407,14 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
-    pub fn expand_macro_call(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
+    pub fn expand_macro_call(&self, macro_call: &ast::MacroCall) -> Option<InFile<SyntaxNode>> {
         let sa = self.analyze_no_infer(macro_call.syntax())?;
 
         let macro_call = InFile::new(sa.file_id, macro_call);
         let file_id = sa.expand(self.db, macro_call)?;
 
         let node = self.parse_or_expand(file_id.into());
-        Some(node)
+        Some(InFile::new(file_id.into(), node))
     }
 
     pub fn check_cfg_attr(&self, attr: &ast::TokenTree) -> Option<bool> {
@@ -468,10 +468,10 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     /// If `item` has an attribute macro attached to it, expands it.
-    pub fn expand_attr_macro(&self, item: &ast::Item) -> Option<ExpandResult<SyntaxNode>> {
+    pub fn expand_attr_macro(&self, item: &ast::Item) -> Option<ExpandResult<InFile<SyntaxNode>>> {
         let src = self.wrap_node_infile(item.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(src.as_ref()))?;
-        Some(self.expand(macro_call_id))
+        Some(self.expand(macro_call_id).map(|it| InFile::new(macro_call_id.into(), it)))
     }
 
     pub fn expand_derive_as_pseudo_attr_macro(&self, attr: &ast::Attr) -> Option<SyntaxNode> {
@@ -846,49 +846,35 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
-    // FIXME: This isn't quite right wrt to inner attributes
-    /// Does a syntactic traversal to check whether this token might be inside a macro call
-    pub fn might_be_inside_macro_call(&self, token: &SyntaxToken) -> bool {
-        token.parent_ancestors().any(|ancestor| {
+    pub fn is_inside_macro_call(&self, token: InFile<&SyntaxToken>) -> bool {
+        // FIXME: Maybe `ancestors_with_macros()` is more suitable here? Currently
+        // this is only used on real (not macro) files so this is not a problem.
+        token.value.parent_ancestors().any(|ancestor| {
             if ast::MacroCall::can_cast(ancestor.kind()) {
                 return true;
             }
-            // Check if it is an item (only items can have macro attributes) that has a non-builtin attribute.
-            let Some(item) = ast::Item::cast(ancestor) else { return false };
-            item.attrs().any(|attr| {
-                let Some(meta) = attr.meta() else { return false };
-                let Some(path) = meta.path() else { return false };
-                if let Some(attr_name) = path.as_single_name_ref() {
-                    let attr_name = attr_name.text();
-                    let attr_name = Symbol::intern(attr_name.as_str());
-                    if attr_name == sym::derive {
-                        return true;
-                    }
-                    // We ignore `#[test]` and friends in the def map, so we cannot expand them.
-                    // FIXME: We match by text. This is both hacky and incorrect (people can, and do, create
-                    // other macros named `test`). We cannot fix that unfortunately because we use this method
-                    // for speculative expansion in completion, which we cannot analyze. Fortunately, most macros
-                    // named `test` are test-like, meaning their expansion is not terribly important for IDE.
-                    if attr_name == sym::test
-                        || attr_name == sym::bench
-                        || attr_name == sym::test_case
-                        || find_builtin_attr_idx(&attr_name).is_some()
-                    {
-                        return false;
-                    }
+
+            let Some(item) = ast::Item::cast(ancestor) else {
+                return false;
+            };
+            // Optimization to skip the semantic check.
+            if item.attrs().all(|attr| {
+                attr.simple_name()
+                    .is_some_and(|attr| find_builtin_attr_idx(&Symbol::intern(&attr)).is_some())
+            }) {
+                return false;
+            }
+            self.with_ctx(|ctx| {
+                if ctx.item_to_macro_call(token.with_value(&item)).is_some() {
+                    return true;
                 }
-                let mut segments = path.segments();
-                let mut next_segment_text = || segments.next().and_then(|it| it.name_ref());
-                // `#[core::prelude::rust_2024::test]` or `#[std::prelude::rust_2024::test]`.
-                if next_segment_text().is_some_and(|it| matches!(&*it.text(), "core" | "std"))
-                    && next_segment_text().is_some_and(|it| it.text() == "prelude")
-                    && next_segment_text().is_some()
-                    && next_segment_text()
-                        .is_some_and(|it| matches!(&*it.text(), "test" | "bench" | "test_case"))
-                {
-                    return false;
-                }
-                true
+                let adt = match item {
+                    ast::Item::Struct(it) => it.into(),
+                    ast::Item::Enum(it) => it.into(),
+                    ast::Item::Union(it) => it.into(),
+                    _ => return false,
+                };
+                ctx.has_derives(token.with_value(&adt))
             })
         })
     }
