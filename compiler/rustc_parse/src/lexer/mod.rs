@@ -4,7 +4,7 @@ use diagnostics::make_unclosed_delims_error;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::util::unicode::contains_text_flow_control_chars;
+use rustc_ast::util::unicode::{TEXT_FLOW_CONTROL_CHARS, contains_text_flow_control_chars};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, StashKey};
 use rustc_lexer::{
@@ -14,7 +14,7 @@ use rustc_literal_escaper::{EscapeError, Mode, unescape_mixed, unescape_unicode}
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
-    TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
+    TEXT_DIRECTION_CODEPOINT_IN_COMMENT, TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
 };
 use rustc_session::parse::ParseSess;
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
@@ -174,6 +174,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     // Opening delimiter of the length 3 is not included into the symbol.
                     let content_start = start + BytePos(3);
                     let content = self.str_from(content_start);
+                    self.lint_doc_comment_unicode_text_flow(start, content);
                     self.cook_doc_comment(content_start, content, CommentKind::Line, doc_style)
                 }
                 rustc_lexer::TokenKind::BlockComment { doc_style, terminated } => {
@@ -193,6 +194,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     let content_start = start + BytePos(3);
                     let content_end = self.pos - BytePos(if terminated { 2 } else { 0 });
                     let content = self.str_from_to(content_start, content_end);
+                    self.lint_doc_comment_unicode_text_flow(start, content);
                     self.cook_doc_comment(content_start, content, CommentKind::Block, doc_style)
                 }
                 rustc_lexer::TokenKind::Frontmatter { has_invalid_preceding_whitespace, invalid_infostring } => {
@@ -287,6 +289,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     } else {
                         None
                     };
+                    self.lint_literal_unicode_text_flow(symbol, kind, self.mk_sp(start, self.pos), "literal");
                     token::Literal(token::Lit { kind, symbol, suffix })
                 }
                 rustc_lexer::TokenKind::Lifetime { starts_with_number } => {
@@ -479,6 +482,88 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 BuiltinLintDiag::UnicodeTextFlow(span, content.to_string()),
             );
         }
+    }
+
+    fn lint_doc_comment_unicode_text_flow(&mut self, start: BytePos, content: &str) {
+        if contains_text_flow_control_chars(content) {
+            self.report_text_direction_codepoint(
+                content,
+                self.mk_sp(start, self.pos),
+                0,
+                false,
+                "doc comment",
+            );
+        }
+    }
+
+    fn lint_literal_unicode_text_flow(
+        &mut self,
+        text: Symbol,
+        lit_kind: token::LitKind,
+        span: Span,
+        label: &'static str,
+    ) {
+        if !contains_text_flow_control_chars(text.as_str()) {
+            return;
+        }
+        let (padding, point_at_inner_spans) = match lit_kind {
+            // account for `"` or `'`
+            token::LitKind::Str | token::LitKind::Char => (1, true),
+            // account for `c"`
+            token::LitKind::CStr => (2, true),
+            // account for `r###"`
+            token::LitKind::StrRaw(n) => (n as u32 + 2, true),
+            // account for `cr###"`
+            token::LitKind::CStrRaw(n) => (n as u32 + 3, true),
+            // suppress bad literals.
+            token::LitKind::Err(_) => return,
+            // Be conservative just in case new literals do support these.
+            _ => (0, false),
+        };
+        self.report_text_direction_codepoint(
+            text.as_str(),
+            span,
+            padding,
+            point_at_inner_spans,
+            label,
+        );
+    }
+
+    fn report_text_direction_codepoint(
+        &self,
+        text: &str,
+        span: Span,
+        padding: u32,
+        point_at_inner_spans: bool,
+        label: &str,
+    ) {
+        // Obtain the `Span`s for each of the forbidden chars.
+        let spans: Vec<_> = text
+            .char_indices()
+            .filter_map(|(i, c)| {
+                TEXT_FLOW_CONTROL_CHARS.contains(&c).then(|| {
+                    let lo = span.lo() + BytePos(i as u32 + padding);
+                    (c, span.with_lo(lo).with_hi(lo + BytePos(c.len_utf8() as u32)))
+                })
+            })
+            .collect();
+
+        let count = spans.len();
+        let labels = point_at_inner_spans.then_some(spans.clone());
+
+        self.psess.buffer_lint(
+            TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
+            span,
+            ast::CRATE_NODE_ID,
+            BuiltinLintDiag::HiddenUnicodeCodepoints {
+                label: label.to_string(),
+                count,
+                span_label: span,
+                labels,
+                escape: point_at_inner_spans && !spans.is_empty(),
+                spans,
+            },
+        );
     }
 
     fn validate_frontmatter(
