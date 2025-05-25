@@ -79,4 +79,3 @@ mir_transform_unconditional_recursion = function cannot return without recursing
 mir_transform_unconditional_recursion_call_site_label = recursive call site
 
 mir_transform_unknown_pass_name = MIR pass `{$name}` is unknown and will be ignored
-mir_transform_unnecessary_transmute = unnecessary transmute
