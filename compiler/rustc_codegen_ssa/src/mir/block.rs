@@ -1,6 +1,6 @@
 use std::cmp;
 
-use rustc_abi::{BackendRepr, ExternAbi, HasDataLayout, Reg, WrappingRange};
+use rustc_abi::{BackendRepr, ExternAbi, HasDataLayout, Reg, Size, WrappingRange};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::packed::Pu128;
@@ -158,7 +158,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         llargs: &[Bx::Value],
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,
         mut unwind: mir::UnwindAction,
-        copied_constant_arguments: &[PlaceRef<'tcx, <Bx as BackendTypes>::Value>],
+        lifetime_ends_after_call: &[(Bx::Value, Size)],
         instance: Option<Instance<'tcx>>,
         mergeable_succ: bool,
     ) -> MergingSucc {
@@ -245,8 +245,8 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             if let Some((ret_dest, target)) = destination {
                 bx.switch_to_block(fx.llbb(target));
                 fx.set_debug_loc(bx, self.terminator.source_info);
-                for tmp in copied_constant_arguments {
-                    bx.lifetime_end(tmp.val.llval, tmp.layout.size);
+                for &(tmp, size) in lifetime_ends_after_call {
+                    bx.lifetime_end(tmp, size);
                 }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, invokeret);
             }
@@ -259,8 +259,8 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
 
             if let Some((ret_dest, target)) = destination {
-                for tmp in copied_constant_arguments {
-                    bx.lifetime_end(tmp.val.llval, tmp.layout.size);
+                for &(tmp, size) in lifetime_ends_after_call {
+                    bx.lifetime_end(tmp, size);
                 }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, llret);
                 self.funclet_br(fx, bx, target, mergeable_succ)
@@ -1048,7 +1048,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             (args, None)
         };
 
-        let mut copied_constant_arguments = vec![];
+        // When generating arguments we sometimes introduce temporary allocations with lifetime
+        // that extend for the duration of a call. Keep track of those allocations and their sizes
+        // to generate `lifetime_end` when the call returns.
+        let mut lifetime_ends_after_call: Vec<(Bx::Value, Size)> = Vec::new();
         'make_args: for (i, arg) in first_args.iter().enumerate() {
             let mut op = self.codegen_operand(bx, &arg.node);
 
@@ -1136,12 +1139,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.lifetime_start(tmp.val.llval, tmp.layout.size);
                     op.val.store(bx, tmp);
                     op.val = Ref(tmp.val);
-                    copied_constant_arguments.push(tmp);
+                    lifetime_ends_after_call.push((tmp.val.llval, tmp.layout.size));
                 }
                 _ => {}
             }
 
-            self.codegen_argument(bx, op, &mut llargs, &fn_abi.args[i]);
+            self.codegen_argument(
+                bx,
+                op,
+                &mut llargs,
+                &fn_abi.args[i],
+                &mut lifetime_ends_after_call,
+            );
         }
         let num_untupled = untuple.map(|tup| {
             self.codegen_arguments_untupled(
@@ -1149,6 +1158,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 &tup.node,
                 &mut llargs,
                 &fn_abi.args[first_args.len()..],
+                &mut lifetime_ends_after_call,
             )
         });
 
@@ -1173,7 +1183,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             );
 
             let last_arg = fn_abi.args.last().unwrap();
-            self.codegen_argument(bx, location, &mut llargs, last_arg);
+            self.codegen_argument(
+                bx,
+                location,
+                &mut llargs,
+                last_arg,
+                &mut lifetime_ends_after_call,
+            );
         }
 
         let fn_ptr = match (instance, llfn) {
@@ -1190,7 +1206,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             &llargs,
             destination,
             unwind,
-            &copied_constant_arguments,
+            &lifetime_ends_after_call,
             instance,
             mergeable_succ,
         )
@@ -1480,6 +1496,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         op: OperandRef<'tcx, Bx::Value>,
         llargs: &mut Vec<Bx::Value>,
         arg: &ArgAbi<'tcx, Ty<'tcx>>,
+        lifetime_ends_after_call: &mut Vec<(Bx::Value, Size)>,
     ) {
         match arg.mode {
             PassMode::Ignore => return,
@@ -1518,7 +1535,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         None => arg.layout.align.abi,
                     };
                     let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
+                    bx.lifetime_start(scratch.llval, arg.layout.size);
                     op.val.store(bx, scratch.with_type(arg.layout));
+                    lifetime_ends_after_call.push((scratch.llval, arg.layout.size));
                     (scratch.llval, scratch.align, true)
                 }
                 PassMode::Cast { .. } => {
@@ -1539,7 +1558,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // alignment requirements may be higher than the type's alignment, so copy
                         // to a higher-aligned alloca.
                         let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
+                        bx.lifetime_start(scratch.llval, arg.layout.size);
                         bx.typed_place_copy(scratch, op_place_val, op.layout);
+                        lifetime_ends_after_call.push((scratch.llval, arg.layout.size));
                         (scratch.llval, scratch.align, true)
                     } else {
                         (op_place_val.llval, op_place_val.align, true)
@@ -1621,6 +1642,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         operand: &mir::Operand<'tcx>,
         llargs: &mut Vec<Bx::Value>,
         args: &[ArgAbi<'tcx, Ty<'tcx>>],
+        lifetime_ends_after_call: &mut Vec<(Bx::Value, Size)>,
     ) -> usize {
         let tuple = self.codegen_operand(bx, operand);
 
@@ -1633,13 +1655,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             for i in 0..tuple.layout.fields.count() {
                 let field_ptr = tuple_ptr.project_field(bx, i);
                 let field = bx.load_operand(field_ptr);
-                self.codegen_argument(bx, field, llargs, &args[i]);
+                self.codegen_argument(bx, field, llargs, &args[i], lifetime_ends_after_call);
             }
         } else {
             // If the tuple is immediate, the elements are as well.
             for i in 0..tuple.layout.fields.count() {
                 let op = tuple.extract_field(self, bx, i);
-                self.codegen_argument(bx, op, llargs, &args[i]);
+                self.codegen_argument(bx, op, llargs, &args[i], lifetime_ends_after_call);
             }
         }
         tuple.layout.fields.count()
