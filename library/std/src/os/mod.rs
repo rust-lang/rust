@@ -185,5 +185,5 @@ pub mod xous;
 #[cfg(any(unix, target_os = "hermit", target_os = "trusty", target_os = "wasi", doc))]
 pub mod fd;
 
-#[cfg(any(target_os = "linux", target_os = "android", doc))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "cygwin", doc))]
 mod net;
