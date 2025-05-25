@@ -36,8 +36,22 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn any_free_region_meets(
         self,
         value: &impl TypeVisitable<TyCtxt<'tcx>>,
-        callback: impl FnMut(ty::Region<'tcx>) -> bool,
+        mut callback: impl FnMut(ty::Region<'tcx>) -> bool,
     ) -> bool {
+        self.for_each_free_region_until(value, |r| {
+            if callback(r) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
+        })
+        .is_some()
+    }
+
+    /// Invoke `callback` on every region appearing free in `value` and exit on
+    /// [`ControlFlow::Break`].
+    #[inline]
+    pub fn for_each_free_region_until<T>(
+        self,
+        value: &impl TypeVisitable<TyCtxt<'tcx>>,
+        callback: impl FnMut(ty::Region<'tcx>) -> ControlFlow<T>,
+    ) -> Option<T> {
         struct RegionVisitor<F> {
             /// The index of a binder *just outside* the things we have
             /// traversed. If we encounter a bound region bound by this
@@ -60,15 +74,15 @@ impl<'tcx> TyCtxt<'tcx> {
             callback: F,
         }
 
-        impl<'tcx, F> TypeVisitor<TyCtxt<'tcx>> for RegionVisitor<F>
+        impl<'tcx, F, T> TypeVisitor<TyCtxt<'tcx>> for RegionVisitor<F>
         where
-            F: FnMut(ty::Region<'tcx>) -> bool,
+            F: FnMut(ty::Region<'tcx>) -> ControlFlow<T>,
         {
-            type Result = ControlFlow<()>;
+            type Result = ControlFlow<T>;
 
-            fn visit_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
+            fn visit_binder<Ty: TypeFoldable<TyCtxt<'tcx>>>(
                 &mut self,
-                t: &Binder<'tcx, T>,
+                t: &Binder<'tcx, Ty>,
             ) -> Self::Result {
                 self.outer_index.shift_in(1);
                 let result = t.super_visit_with(self);
@@ -81,13 +95,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     ty::ReBound(debruijn, _) if debruijn < self.outer_index => {
                         ControlFlow::Continue(())
                     }
-                    _ => {
-                        if (self.callback)(r) {
-                            ControlFlow::Break(())
-                        } else {
-                            ControlFlow::Continue(())
-                        }
-                    }
+                    _ => (self.callback)(r),
                 }
             }
 
@@ -101,7 +109,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
 
-        value.visit_with(&mut RegionVisitor { outer_index: ty::INNERMOST, callback }).is_break()
+        value.visit_with(&mut RegionVisitor { outer_index: ty::INNERMOST, callback }).break_value()
     }
 
     /// Returns a set of all late-bound regions that are constrained

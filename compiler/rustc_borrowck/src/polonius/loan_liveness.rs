@@ -8,6 +8,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::points::PointIndex;
 
+use super::horatio::{my_print, my_println};
 use super::{LiveLoans, LocalizedOutlivesConstraintSet};
 use crate::constraints::OutlivesConstraint;
 use crate::dataflow::BorrowIndex;
@@ -45,6 +46,7 @@ pub(super) fn compute_loan_liveness<'tcx>(
     // Compute reachability per loan by traversing each loan's subgraph starting from where it is
     // introduced.
     for (loan_idx, loan) in borrow_set.iter_enumerated() {
+        my_println!("* {:?}:", loan_idx);
         visited.clear();
         stack.clear();
 
@@ -117,6 +119,11 @@ pub(super) fn compute_loan_liveness<'tcx>(
             let is_loan_killed =
                 kills.get(&current_location).is_some_and(|kills| kills.contains(&loan_idx));
 
+            if !is_loan_killed {
+                my_print!("  {:?}, {:?}: ", current_location, node.region);
+            } else {
+                my_print!("  {:?}, {:?} (kill): ", current_location, node.region);
+            }
             for succ in graph.outgoing_edges(node) {
                 // If the loan is killed at this point, it is killed _on exit_. But only during
                 // forward traversal.
@@ -127,7 +134,9 @@ pub(super) fn compute_loan_liveness<'tcx>(
                     }
                 }
                 stack.push(succ);
+                my_print!(" ({:?}, {:?});", liveness.location_from_point(succ.point), succ.region);
             }
+            my_println!();
         }
     }
 
@@ -194,7 +203,7 @@ impl LocalizedConstraintGraph {
 }
 
 /// Traverses the MIR and collects kills.
-fn collect_kills<'tcx>(
+pub(super) fn collect_kills<'tcx>(
     body: &Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
