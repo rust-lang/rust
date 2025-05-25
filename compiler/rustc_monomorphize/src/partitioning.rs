@@ -461,15 +461,15 @@ fn merge_codegen_units<'tcx>(
 
         for cgu in codegen_units.iter_mut() {
             if let Some(new_cgu_name) = new_cgu_names.get(&cgu.name()) {
-                if cx.tcx.sess.opts.unstable_opts.human_readable_cgu_names {
-                    cgu.set_name(Symbol::intern(new_cgu_name));
+                let new_cgu_name = if cx.tcx.sess.opts.unstable_opts.human_readable_cgu_names {
+                    Symbol::intern(&CodegenUnit::shorten_name(new_cgu_name))
                 } else {
                     // If we don't require CGU names to be human-readable,
                     // we use a fixed length hash of the composite CGU name
                     // instead.
-                    let new_cgu_name = CodegenUnit::mangle_name(new_cgu_name);
-                    cgu.set_name(Symbol::intern(&new_cgu_name));
-                }
+                    Symbol::intern(&CodegenUnit::mangle_name(new_cgu_name))
+                };
+                cgu.set_name(new_cgu_name);
             }
         }
 
