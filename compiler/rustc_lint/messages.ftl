@@ -799,6 +799,9 @@ lint_tykind = usage of `ty::TyKind`
 lint_tykind_kind = usage of `ty::TyKind::<kind>`
     .suggestion = try using `ty::<kind>` directly
 
+lint_type_ir_direct_use = do not use `rustc_type_ir` unless you're inside of the trait solver or rustc_middle
+    .note = use rustc_middle instead
+
 lint_type_ir_inherent_usage = do not use `rustc_type_ir::inherent` unless you're inside of the trait solver
     .note = the method or struct you're looking for is likely defined somewhere else downstream in the compiler
 

@@ -14,8 +14,8 @@ use {rustc_ast as ast, rustc_hir as hir};
 use crate::lints::{
     BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand,
     NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked, SpanUseEqCtxtDiag,
-    SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind, TypeIrInherentUsage,
-    TypeIrTraitUsage, UntranslatableDiag,
+    SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind, TypeIrDirectUse,
+    TypeIrInherentUsage, TypeIrTraitUsage, UntranslatableDiag,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -673,6 +673,29 @@ impl<'tcx> LateLintPass<'tcx> for SymbolInternStringLiteral {
                 kind.span,
                 SymbolInternStringLiteralDiag,
             );
+        }
+    }
+}
+
+declare_tool_lint! {
+    /// The `direct_use_of_rustc_type_ir` lint detects usage of `rustc_type_ir`.
+    ///
+    /// This module should only be used within the trait solver and some desirable
+    /// crates like rustc_middle.
+    pub rustc::DIRECT_USE_OF_RUSTC_TYPE_IR,
+    Allow,
+    "usage `rustc_type_ir` abstraction outside of trait system",
+    report_in_external_macro: true
+}
+declare_lint_pass!(UseOfTypeIr => [DIRECT_USE_OF_RUSTC_TYPE_IR]);
+
+impl<'tcx> LateLintPass<'tcx> for UseOfTypeIr {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx rustc_hir::Item<'tcx>) {
+        let rustc_hir::ItemKind::Use(path, _) = item.kind else { return };
+        if let Some(segment) = path.segments.first()
+            && segment.ident.to_string() == "rustc_type_ir"
+        {
+            cx.emit_span_lint(DIRECT_USE_OF_RUSTC_TYPE_IR, item.span, TypeIrDirectUse);
         }
     }
 }
