@@ -6,6 +6,7 @@ use itertools::Itertools;
 use super::argument::Argument;
 use super::gen_c::generate_c_program;
 use super::gen_rust::generate_rust_program;
+use super::intrinsic_helpers::TypeKind;
 
 // The number of times each intrinsic will be called.
 const PASSES: u32 = 20;
@@ -40,6 +41,20 @@ where
     /// rust debug output format for the return type. The generated line assumes
     /// there is an int i in scope which is the current pass number.
     fn print_result_c(&self, _indentation: Indentation, _additional: &str) -> String;
+
+    fn format_f16_return_value(&self) -> String {
+        // the `intrinsic-test` crate compares the output of C and Rust intrinsics. Currently, It uses
+        // a string representation of the output value to compare. In C, f16 values are currently printed
+        // as hexadecimal integers. Since https://github.com/rust-lang/rust/pull/127013, rust does print
+        // them as decimal floating point values. To keep the intrinsics tests working, for now, format
+        // vectors containing f16 values like C prints them.
+        let return_value = match self.results().kind() {
+            TypeKind::Float if self.results().inner_size() == 16 => "debug_f16(__return_value)",
+            _ => "format_args!(\"{__return_value:.150?}\")",
+        };
+
+        String::from(return_value)
+    }
 
     fn generate_loop_c(
         &self,
