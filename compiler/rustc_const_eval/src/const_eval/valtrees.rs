@@ -376,6 +376,8 @@ pub(crate) fn valtree_to_const_alloc<'tcx>(
     let mut ecx = mk_eval_cx_to_read_const_val(tcx, DUMMY_SP, env, CanAccessMutGlobal::No);
     let layout = ecx.layout_of(val.ty).unwrap();
     let mplace = create_valtree_place(&mut ecx, layout, val.valtree);
+    valtree_into_mplace(&mut ecx, &mplace, val.valtree);
+    intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &mplace).unwrap();
     mir::ConstAlloc::make_result(mplace, &mut ecx)
 }
 
