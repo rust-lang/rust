@@ -360,6 +360,8 @@ declare_features! (
     (accepted, relaxed_adts, "1.19.0", Some(35626)),
     /// Lessens the requirements for structs to implement `Unsize`.
     (accepted, relaxed_struct_unsize, "1.58.0", Some(81793)),
+    /// Allows the `#[repr(i128)]` attribute for enums.
+    (accepted, repr128, "CURRENT_RUSTC_VERSION", Some(56071)),
     /// Allows `repr(align(16))` struct attribute (RFC 1358).
     (accepted, repr_align, "1.25.0", Some(33626)),
     /// Allows using `#[repr(align(X))]` on enums with equivalent semantics

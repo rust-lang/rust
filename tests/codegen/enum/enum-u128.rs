@@ -13,9 +13,6 @@
 // CHECK: {{.*}}DIEnumerator{{.*}}name: "Hi",{{.*}}value: 18446744073709551616,{{.*}}
 // CHECK: {{.*}}DIEnumerator{{.*}}name: "Bar",{{.*}}value: 18446745000000000123,{{.*}}
 
-#![allow(incomplete_features)]
-#![feature(repr128)]
-
 #[repr(u128)]
 pub enum Foo {
     Lo,

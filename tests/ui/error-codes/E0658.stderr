@@ -1,11 +1,10 @@
-error[E0658]: repr with 128-bit type is unstable
-  --> $DIR/E0658.rs:2:1
+error[E0658]: use of unstable library feature `core_intrinsics`: intrinsics are unlikely to ever be stabilized, instead they should be used through stabilized interfaces in the rest of the standard library
+  --> $DIR/E0658.rs:1:5
    |
-LL | enum Foo {
-   | ^^^^^^^^
+LL | use std::intrinsics;
+   |     ^^^^^^^^^^^^^^^
    |
-   = note: see issue #56071 <https://github.com/rust-lang/rust/issues/56071> for more information
-   = help: add `#![feature(repr128)]` to the crate attributes to enable
+   = help: add `#![feature(core_intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 1 previous error
