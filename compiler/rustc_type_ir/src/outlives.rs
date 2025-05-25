@@ -58,6 +58,7 @@ pub fn push_outlives_components<I: Interner>(
     ty: I::Ty,
     out: &mut SmallVec<[Component<I>; 4]>,
 ) {
+    let ty = cx.expand_free_alias_tys(ty);
     ty.visit_with(&mut OutlivesCollector { cx, out, visited: Default::default() });
 }
 
@@ -139,6 +140,9 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
             ty::Placeholder(p) => {
                 self.out.push(Component::Placeholder(p));
             }
+
+            // All free alias types should've been expanded beforehand.
+            ty::Alias(ty::Free, _) => panic!("unexpected free alias type"),
 
             // For projections, we prefer to generate an obligation like
             // `<P0 as Trait<P1...Pn>>::Foo: 'a`, because this gives the
