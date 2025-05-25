@@ -924,6 +924,77 @@ macro_rules! test_float {
                 assert!($inf.div_euclid($nan).is_nan());
                 assert!($nan.div_euclid($inf).is_nan());
             }
+            #[test]
+            fn floor() {
+                $fassert!((0.0 as $fty).floor(), 0.0);
+                $fassert!((-0.0 as $fty).floor(), -0.0);
+                $fassert!((0.5 as $fty).floor(), 0.0);
+                $fassert!((-0.5 as $fty).floor(), -1.0);
+                $fassert!((1.5 as $fty).floor(), 1.0);
+                $fassert!(($max as $fty).floor(), $max);
+                $fassert!(($min as $fty).floor(), $min);
+                $fassert!(($min_pos as $fty).floor(), 0.0);
+                $fassert!((-$min_pos as $fty).floor(), -1.0);
+                $fassert!(($nan as $fty).floor().is_nan());
+                $fassert!(($inf as $fty).floor(), $inf);
+                $fassert!(($neginf as $fty).floor(), $neginf);
+            }
+            #[test]
+            fn ceil() {
+                $fassert!((0.0 as $fty).ceil(), 0.0);
+                $fassert!((-0.0 as $fty).ceil(), 0.0);
+                $fassert!((0.5 as $fty).ceil(), 1.0);
+                $fassert!((-0.5 as $fty).ceil(), 0.0);
+                $fassert!(($max as $fty).ceil(), $max);
+                $fassert!(($min as $fty).ceil(), $min);
+                $fassert!(($min_pos as $fty).ceil(), 1.0);
+                $fassert!((-$min_pos as $fty).ceil(), 0.0);
+                $fassert!(($nan as $fty).ceil().is_nan());
+                $fassert!(($inf as $fty).ceil(), $inf);
+                $fassert!(($neginf as $fty).ceil(), $neginf);
+            }
+            #[test]
+            fn round() {
+                $fassert!((0.0 as $fty).round(), 0.0);
+                $fassert!((-0.0 as $fty).round(), 0.0);
+                $fassert!((0.5 as $fty).round(), 1.0);
+                $fassert!((-0.5 as $fty).round(), -1.0);
+                $fassert!(($max as $fty).round(), $max);
+                $fassert!(($min as $fty).round(), $min);
+                $fassert!(($min_pos as $fty).round(), 0.0);
+                $fassert!((-$min_pos as $fty).round(), 0.0);
+                $fassert!(($nan as $fty).round().is_nan());
+                $fassert!(($inf as $fty).round(), $inf);
+                $fassert!(($neginf as $fty).round(), $neginf);
+            }
+            #[test]
+            fn round_ties_even() {
+                $fassert!((0.0 as $fty).round_ties_even(), 0.0);
+                $fassert!((-0.0 as $fty).round_ties_even(), 0.0);
+                $fassert!((0.5 as $fty).round_ties_even(), 0.0);
+                $fassert!((-0.5 as $fty).round_ties_even(), -0.0);
+                $fassert!(($max as $fty).round_ties_even(), $max);
+                $fassert!(($min as $fty).round_ties_even(), $min);
+                $fassert!(($min_pos as $fty).round_ties_even(), 0.0);
+                $fassert!((-$min_pos as $fty).round_ties_even(), 0.0);
+                $fassert!(($nan as $fty).round_ties_even().is_nan());
+                $fassert!(($inf as $fty).round_ties_even(), $inf);
+                $fassert!(($neginf as $fty).round_ties_even(), $neginf);
+            }
+            #[test]
+            fn trunc() {
+                $fassert!((0.0 as $fty).trunc(), 0.0);
+                $fassert!((-0.0 as $fty).trunc(), -0.0);
+                $fassert!((0.5 as $fty).trunc(), 0.0);
+                $fassert!((-0.5 as $fty).trunc(), -0.0);
+                $fassert!(($max as $fty).trunc(), $max);
+                $fassert!(($min as $fty).trunc(), $min);
+                $fassert!(($min_pos as $fty).trunc(), 0.0);
+                $fassert!((-$min_pos as $fty).trunc(), 0.0);
+                $fassert!(($nan as $fty).trunc().is_nan());
+                $fassert!(($inf as $fty).trunc(), $inf);
+                $fassert!(($neginf as $fty).trunc(), $neginf);
+            }
         }
     };
 }

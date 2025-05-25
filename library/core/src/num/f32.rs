@@ -1591,7 +1591,8 @@ pub mod math {
     #[inline]
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn floor(x: f32) -> f32 {
+    #[rustc_allow_const_fn_unstable(core_intrinsics)]
+    pub const fn floor(x: f32) -> f32 {
         // SAFETY: intrinsic with no preconditions
         unsafe { intrinsics::floorf32(x) }
     }
@@ -1620,7 +1621,8 @@ pub mod math {
     #[doc(alias = "ceiling")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
-    pub fn ceil(x: f32) -> f32 {
+    #[rustc_allow_const_fn_unstable(core_intrinsics)]
+    pub const fn ceil(x: f32) -> f32 {
         // SAFETY: intrinsic with no preconditions
         unsafe { intrinsics::ceilf32(x) }
     }
@@ -1654,7 +1656,8 @@ pub mod math {
     #[inline]
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn round(x: f32) -> f32 {
+    #[rustc_allow_const_fn_unstable(core_intrinsics)]
+    pub const fn round(x: f32) -> f32 {
         // SAFETY: intrinsic with no preconditions
         unsafe { intrinsics::roundf32(x) }
     }
@@ -1687,7 +1690,8 @@ pub mod math {
     #[inline]
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn round_ties_even(x: f32) -> f32 {
+    #[rustc_allow_const_fn_unstable(core_intrinsics)]
+    pub const fn round_ties_even(x: f32) -> f32 {
         intrinsics::round_ties_even_f32(x)
     }
 
@@ -1717,7 +1721,8 @@ pub mod math {
     #[doc(alias = "truncate")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
-    pub fn trunc(x: f32) -> f32 {
+    #[rustc_allow_const_fn_unstable(core_intrinsics)]
+    pub const fn trunc(x: f32) -> f32 {
         // SAFETY: intrinsic with no preconditions
         unsafe { intrinsics::truncf32(x) }
     }
@@ -1747,7 +1752,7 @@ pub mod math {
     #[inline]
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn fract(x: f32) -> f32 {
+    pub const fn fract(x: f32) -> f32 {
         x - trunc(x)
     }
 
