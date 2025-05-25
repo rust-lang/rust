@@ -15,7 +15,7 @@ help: consider adjusting the signature so it borrows its argument
 LL |     once::<&str>("str").fuse().filter(|a: &&str| true).count();
    |                                           +
 
-error[E0599]: the method `count` exists for struct `Filter<Fuse<Once<&str>>, {closure@issue-36053-2.rs:7:39}>`, but its trait bounds were not satisfied
+error[E0599]: the method `count` exists for struct `Filter<Fuse<std::iter::Once<&str>>, {closure@$DIR/issue-36053-2.rs:7:39: 7:48}>`, but its trait bounds were not satisfied
   --> $DIR/issue-36053-2.rs:7:55
    |
 LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();

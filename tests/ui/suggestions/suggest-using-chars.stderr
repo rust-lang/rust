@@ -2,7 +2,7 @@ error[E0599]: no method named `iter` found for reference `&'static str` in the c
   --> $DIR/suggest-using-chars.rs:2:19
    |
 LL |     let _ = "foo".iter();
-   |                   ^^^^ method not found in `&str`
+   |                   ^^^^ method not found in `&'static str`
    |
 help: because of the in-memory representation of `&str`, to obtain an `Iterator` over each of its codepoint use method `chars`
    |
@@ -14,7 +14,7 @@ error[E0599]: no method named `foo` found for reference `&'static str` in the cu
   --> $DIR/suggest-using-chars.rs:3:19
    |
 LL |     let _ = "foo".foo();
-   |                   ^^^ method not found in `&str`
+   |                   ^^^ method not found in `&'static str`
 
 error[E0599]: no method named `iter` found for struct `String` in the current scope
   --> $DIR/suggest-using-chars.rs:4:33
