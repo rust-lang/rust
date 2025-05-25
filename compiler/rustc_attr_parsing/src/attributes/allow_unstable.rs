@@ -10,7 +10,7 @@ use crate::session_diagnostics;
 
 pub(crate) struct AllowInternalUnstableParser;
 impl CombineAttributeParser for AllowInternalUnstableParser {
-    const PATH: &'static [rustc_span::Symbol] = &[sym::allow_internal_unstable];
+    const PATH: &'static [Symbol] = &[sym::allow_internal_unstable];
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::AllowInternalUnstable;
 
@@ -24,7 +24,7 @@ impl CombineAttributeParser for AllowInternalUnstableParser {
 
 pub(crate) struct AllowConstFnUnstableParser;
 impl CombineAttributeParser for AllowConstFnUnstableParser {
-    const PATH: &'static [rustc_span::Symbol] = &[sym::rustc_allow_const_fn_unstable];
+    const PATH: &'static [Symbol] = &[sym::rustc_allow_const_fn_unstable];
     type Item = Symbol;
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::AllowConstFnUnstable;
 

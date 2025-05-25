@@ -17,7 +17,7 @@
 use std::marker::PhantomData;
 
 use rustc_attr_data_structures::AttributeKind;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
 use crate::context::{AcceptContext, FinalizeContext};
@@ -33,7 +33,7 @@ pub(crate) mod transparency;
 pub(crate) mod util;
 
 type AcceptFn<T> = fn(&mut T, &AcceptContext<'_>, &ArgParser<'_>);
-type AcceptMapping<T> = &'static [(&'static [rustc_span::Symbol], AcceptFn<T>)];
+type AcceptMapping<T> = &'static [(&'static [Symbol], AcceptFn<T>)];
 
 /// An [`AttributeParser`] is a type which searches for syntactic attributes.
 ///
@@ -72,7 +72,7 @@ pub(crate) trait AttributeParser: Default + 'static {
 /// [`SingleAttributeParser`] can only convert attributes one-to-one, and cannot combine multiple
 /// attributes together like is necessary for `#[stable()]` and `#[unstable()]` for example.
 pub(crate) trait SingleAttributeParser: 'static {
-    const PATH: &'static [rustc_span::Symbol];
+    const PATH: &'static [Symbol];
 
     /// Caled when a duplicate attribute is found.
     ///
@@ -119,7 +119,7 @@ type ConvertFn<E> = fn(ThinVec<E>) -> AttributeKind;
 /// [`CombineAttributeParser`] can only convert a single kind of attribute, and cannot combine multiple
 /// attributes together like is necessary for `#[stable()]` and `#[unstable()]` for example.
 pub(crate) trait CombineAttributeParser: 'static {
-    const PATH: &'static [rustc_span::Symbol];
+    const PATH: &'static [Symbol];
 
     type Item;
     const CONVERT: ConvertFn<Self::Item>;

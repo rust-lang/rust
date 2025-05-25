@@ -42,9 +42,9 @@ fn get(
 }
 
 impl SingleAttributeParser for DeprecationParser {
-    const PATH: &'static [rustc_span::Symbol] = &[sym::deprecated];
+    const PATH: &'static [Symbol] = &[sym::deprecated];
 
-    fn on_duplicate(cx: &AcceptContext<'_>, first_span: rustc_span::Span) {
+    fn on_duplicate(cx: &AcceptContext<'_>, first_span: Span) {
         // FIXME(jdonszelmann): merge with errors from check_attrs.rs
         cx.emit_err(session_diagnostics::UnusedMultiple {
             this: cx.attr_span,
