@@ -34,7 +34,7 @@ extern crate thin_vec;
 extern crate rustc_driver;
 
 use parser::parse_expr;
-use rustc_ast::mut_visit::{visit_clobber, MutVisitor};
+use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust;
@@ -202,15 +202,9 @@ struct AddParens;
 impl MutVisitor for AddParens {
     fn visit_expr(&mut self, e: &mut P<Expr>) {
         mut_visit::walk_expr(self, e);
-        visit_clobber(e, |e| {
-            P(Expr {
-                id: DUMMY_NODE_ID,
-                kind: ExprKind::Paren(e),
-                span: DUMMY_SP,
-                attrs: AttrVec::new(),
-                tokens: None,
-            })
-        });
+        let expr = std::mem::replace(e, Expr::dummy());
+
+        e.kind = ExprKind::Paren(expr);
     }
 }
 
