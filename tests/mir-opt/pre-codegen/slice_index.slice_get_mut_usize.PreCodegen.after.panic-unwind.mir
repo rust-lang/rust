@@ -8,19 +8,11 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
         scope 2 (inlined <usize as SliceIndex<[u32]>>::get_mut) {
             let mut _3: usize;
             let mut _4: bool;
-            let mut _5: *mut [u32];
-            let mut _7: *mut u32;
-            let mut _8: &mut u32;
-            scope 3 (inlined core::slice::index::get_mut_noubcheck::<u32>) {
-                let _6: *mut u32;
-                scope 4 {
-                }
-            }
+            let mut _5: &mut u32;
         }
     }
 
     bb0: {
-        StorageLive(_8);
         StorageLive(_4);
         StorageLive(_3);
         _3 = PtrMetadata(copy _1);
@@ -36,23 +28,15 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
 
     bb2: {
         StorageDead(_3);
-        StorageLive(_7);
         StorageLive(_5);
-        _5 = &raw mut (*_1);
-        StorageLive(_6);
-        _6 = copy _5 as *mut u32 (PtrToPtr);
-        _7 = Offset(copy _6, copy _2);
-        StorageDead(_6);
+        _5 = &mut (*_1)[_2];
+        _0 = Option::<&mut u32>::Some(move _5);
         StorageDead(_5);
-        _8 = &mut (*_7);
-        _0 = Option::<&mut u32>::Some(copy _8);
-        StorageDead(_7);
         goto -> bb3;
     }
 
     bb3: {
         StorageDead(_4);
-        StorageDead(_8);
         return;
     }
 }
