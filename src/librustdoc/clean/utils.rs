@@ -14,7 +14,6 @@ use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, warn};
 use {rustc_ast as ast, rustc_hir as hir};
 
-use crate::clean::auto_trait::synthesize_auto_trait_impls;
 use crate::clean::blanket_impl::synthesize_blanket_impls;
 use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
@@ -495,17 +494,11 @@ pub(crate) fn synthesize_auto_trait_and_blanket_impls(
     cx: &mut DocContext<'_>,
     item_def_id: DefId,
 ) -> impl Iterator<Item = Item> + use<> {
-    let auto_impls = cx
-        .sess()
-        .prof
-        .generic_activity("synthesize_auto_trait_impls")
-        .run(|| synthesize_auto_trait_impls(cx, item_def_id));
-    let blanket_impls = cx
-        .sess()
+    cx.sess()
         .prof
         .generic_activity("synthesize_blanket_impls")
-        .run(|| synthesize_blanket_impls(cx, item_def_id));
-    auto_impls.into_iter().chain(blanket_impls)
+        .run(|| synthesize_blanket_impls(cx, item_def_id))
+        .into_iter()
 }
 
 /// If `res` has a documentation page associated, store it in the cache.
