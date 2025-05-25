@@ -13,6 +13,7 @@ use hir::Expr;
 use hir::def::DefKind;
 use hir::pat_util::EnumerateAndAdjustIterator as _;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
+use rustc_ast::UnsafeBinderCastKind;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def::{CtorOf, Res};
 use rustc_hir::def_id::LocalDefId;
@@ -1393,10 +1394,18 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.cat_res(expr.hir_id, expr.span, expr_ty, res)
             }
 
-            // both type ascription and unsafe binder casts don't affect
-            // the place-ness of the subexpression.
+            // type ascription doesn't affect the place-ness of the subexpression.
             hir::ExprKind::Type(e, _) => self.cat_expr(e),
-            hir::ExprKind::UnsafeBinderCast(_, e, _) => self.cat_expr(e),
+
+            hir::ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Unwrap, e, _) => {
+                let base = self.cat_expr(e)?;
+                Ok(self.cat_projection(
+                    expr.hir_id,
+                    base,
+                    expr_ty,
+                    ProjectionKind::UnwrapUnsafeBinder,
+                ))
+            }
 
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Call(..)
@@ -1427,6 +1436,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             | hir::ExprKind::Repeat(..)
             | hir::ExprKind::InlineAsm(..)
             | hir::ExprKind::OffsetOf(..)
+            | hir::ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Wrap, ..)
             | hir::ExprKind::Err(_) => Ok(self.cat_rvalue(expr.hir_id, expr_ty)),
         }
     }
