@@ -74,8 +74,9 @@ pub unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> 
 /// # Safety
 ///
 /// `bytes` must produce a valid UTF-8-like (UTF-8 or WTF-8) string
+#[unstable(feature = "str_internals", issue = "none")]
 #[inline]
-pub(super) unsafe fn next_code_point_reverse<'a, I>(bytes: &mut I) -> Option<u32>
+pub unsafe fn next_code_point_reverse<'a, I>(bytes: &mut I) -> Option<u32>
 where
     I: DoubleEndedIterator<Item = &'a u8>,
 {

@@ -1156,6 +1156,76 @@ fn test_total_ord() {
     assert_eq!("22".cmp("1234"), Greater);
 }
 
+fn test_next_code_point(iter: impl Iterator<Item = u32>) {
+    for expected in iter {
+        let mut bytes = [0; 4];
+        let mut bytes = std::char::encode_utf8_raw(expected, &mut bytes).iter();
+
+        // SAFETY: `bytes` is UTF8-like
+        let got = unsafe { core::str::next_code_point(&mut bytes) };
+        assert_eq!(got, Some(expected));
+
+        // SAFETY: `bytes` is UTF8-like
+        let got = unsafe { core::str::next_code_point(&mut bytes) };
+        assert_eq!(got, None);
+    }
+}
+
+fn test_next_code_point_reverse(iter: impl Iterator<Item = u32>) {
+    for expected in iter {
+        let mut bytes = [0; 4];
+        let mut bytes = std::char::encode_utf8_raw(expected, &mut bytes).iter();
+
+        // SAFETY: `bytes` is UTF8-like
+        let got = unsafe { core::str::next_code_point_reverse(&mut bytes) };
+        assert_eq!(got, Some(expected));
+
+        // SAFETY: `bytes` is UTF8-like
+        let got = unsafe { core::str::next_code_point_reverse(&mut bytes) };
+        assert_eq!(got, None);
+    }
+}
+
+#[test]
+fn test_next_code_point_1byte() {
+    test_next_code_point(0..0x80);
+}
+
+#[test]
+fn test_next_code_point_2byte() {
+    test_next_code_point(0x80..0x800);
+}
+
+#[test]
+fn test_next_code_point_3byte() {
+    test_next_code_point(0x800..0x10_000);
+}
+
+#[test]
+fn test_next_code_point_4byte() {
+    test_next_code_point(0x010_000..=u32::from(char::MAX));
+}
+
+#[test]
+fn test_next_code_point_reverse_1byte() {
+    test_next_code_point_reverse(0..0x80);
+}
+
+#[test]
+fn test_next_code_point_reverse_2byte() {
+    test_next_code_point_reverse(0x80..0x800);
+}
+
+#[test]
+fn test_next_code_point_reverse_3byte() {
+    test_next_code_point_reverse(0x800..0x10_000);
+}
+
+#[test]
+fn test_next_code_point_reverse_4byte() {
+    test_next_code_point_reverse(0x10_000..=u32::from(char::MAX));
+}
+
 #[test]
 fn test_iterator() {
     let s = "ศไทย中华Việt Nam";
