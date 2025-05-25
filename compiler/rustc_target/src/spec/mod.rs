@@ -3021,6 +3021,7 @@ impl Target {
             Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => true,
             // Reject these calling conventions everywhere else.
             Stdcall { .. } | Fastcall { .. } | Vectorcall { .. } => false,
+            Custom => true,
         }
     }
 
