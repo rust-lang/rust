@@ -4,6 +4,6 @@
 #![warn(unused_extern_crates)]
 
 extern crate test_macros;
-//~^ WARN unused extern crate
+//~^ WARN unused `extern crate`
 
 fn main() {}

@@ -5,6 +5,6 @@
 #![warn(rust_2018_idioms)]
 
 extern crate edition_extern_crate_allowed;
-//~^ WARNING unused extern crate
+//~^ WARNING unused `extern crate`
 
 fn main() {}
