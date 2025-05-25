@@ -1,7 +1,7 @@
 //@ run-pass
 // Regression test for an obscure issue with the projection cache.
 
-fn into_iter<I: Iterator>(a: &I) -> Groups<I> {
+fn into_iter<I: Iterator>(a: &I) -> Groups<'_, I> {
     Groups { _a: a }
 }
 

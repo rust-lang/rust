@@ -77,11 +77,11 @@ fn main() {
 
     struct NoIntoIter();
     impl NoIntoIter {
-        fn iter(&self) -> slice::Iter<u8> {
+        fn iter(&self) -> slice::Iter<'_, u8> {
             unimplemented!()
         }
 
-        fn iter_mut(&mut self) -> slice::IterMut<u8> {
+        fn iter_mut(&mut self) -> slice::IterMut<'_, u8> {
             unimplemented!()
         }
     }
