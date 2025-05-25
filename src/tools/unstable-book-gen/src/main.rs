@@ -12,13 +12,18 @@ use tidy::unstable_book::{
     collect_unstable_feature_names,
 };
 
-fn generate_stub_issue(path: &Path, name: &str, issue: u32) {
-    let content = format!(include_str!("stub-issue.md"), name = name, issue = issue);
+fn generate_stub_issue(path: &Path, name: &str, issue: u32, description: &str) {
+    let content = format!(
+        include_str!("stub-issue.md"),
+        name = name,
+        issue = issue,
+        description = description
+    );
     t!(write(path, content), path);
 }
 
-fn generate_stub_no_issue(path: &Path, name: &str) {
-    let content = format!(include_str!("stub-no-issue.md"), name = name);
+fn generate_stub_no_issue(path: &Path, name: &str, description: &str) {
+    let content = format!(include_str!("stub-no-issue.md"), name = name, description = description);
     t!(write(path, content), path);
 }
 
@@ -58,11 +63,17 @@ fn generate_unstable_book_files(src: &Path, out: &Path, features: &Features) {
         let file_name = format!("{feature_name}.md");
         let out_file_path = out.join(&file_name);
         let feature = &features[&feature_name_underscore];
+        let description = feature.description.as_deref().unwrap_or_default();
 
         if let Some(issue) = feature.tracking_issue {
-            generate_stub_issue(&out_file_path, &feature_name_underscore, issue.get());
+            generate_stub_issue(
+                &out_file_path,
+                &feature_name_underscore,
+                issue.get(),
+                &description,
+            );
         } else {
-            generate_stub_no_issue(&out_file_path, &feature_name_underscore);
+            generate_stub_no_issue(&out_file_path, &feature_name_underscore, &description);
         }
     }
 }
