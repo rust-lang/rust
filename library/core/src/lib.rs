@@ -225,10 +225,11 @@ pub mod assert_matches {
 
 // We don't export this through #[macro_export] for now, to avoid breakage.
 #[unstable(feature = "autodiff", issue = "124509")]
+#[cfg(not(bootstrap))]
 /// Unstable module containing the unstable `autodiff` macro.
 pub mod autodiff {
     #[unstable(feature = "autodiff", issue = "124509")]
-    pub use crate::macros::builtin::autodiff;
+    pub use crate::macros::builtin::{autodiff_forward, autodiff_reverse};
 }
 
 #[unstable(feature = "contracts", issue = "128044")]

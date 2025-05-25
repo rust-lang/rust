@@ -11,14 +11,14 @@
 // identical function calls in the LLVM-IR, while having two different calls in the Rust code.
 #![feature(autodiff)]
 
-use std::autodiff::autodiff;
+use std::autodiff::autodiff_reverse;
 
-#[autodiff(d_square, Reverse, Duplicated, Active)]
+#[autodiff_reverse(d_square, Duplicated, Active)]
 fn square(x: &f64) -> f64 {
     x * x
 }
 
-#[autodiff(d_square2, Reverse, Duplicated, Active)]
+#[autodiff_reverse(d_square2, Duplicated, Active)]
 fn square2(x: &f64) -> f64 {
     x * x
 }

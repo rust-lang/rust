@@ -9,10 +9,10 @@
 
 #![feature(autodiff)]
 
-use std::autodiff::autodiff;
+use std::autodiff::autodiff_reverse;
 
 #[no_mangle]
-#[autodiff(df, Reverse, Active, Active, Active)]
+#[autodiff_reverse(df, Active, Active, Active)]
 fn primal(x: f32, y: f32) -> f64 {
     (x * x * y) as f64
 }

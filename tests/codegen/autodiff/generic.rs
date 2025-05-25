@@ -3,9 +3,9 @@
 //@ needs-enzyme
 #![feature(autodiff)]
 
-use std::autodiff::autodiff;
+use std::autodiff::autodiff_reverse;
 
-#[autodiff(d_square, Reverse, Duplicated, Active)]
+#[autodiff_reverse(d_square, Duplicated, Active)]
 fn square<T: std::ops::Mul<Output = T> + Copy>(x: &T) -> T {
     *x * *x
 }
