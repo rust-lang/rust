@@ -483,7 +483,7 @@ fn generate_item_def_id_path(
     let mut is_remote = false;
 
     let url_parts = url_parts(cx.cache(), def_id, module_fqp, &cx.current, &mut is_remote)?;
-    let (url_parts, shortty, fqp) = make_href(root_path, shortty, url_parts, &fqp, is_remote)?;
+    let (url_parts, shortty) = make_href(root_path, shortty, url_parts, &fqp, is_remote)?;
     if def_id == original_def_id {
         return Ok((url_parts, shortty, fqp));
     }
@@ -521,7 +521,7 @@ fn make_href(
     mut url_parts: UrlPartsBuilder,
     fqp: &[Symbol],
     is_remote: bool,
-) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+) -> Result<(String, ItemType), HrefError> {
     if !is_remote && let Some(root_path) = root_path {
         let root = root_path.trim_end_matches('/');
         url_parts.push_front(root);
@@ -536,7 +536,7 @@ fn make_href(
             url_parts.push_fmt(format_args!("{shortty}.{last}.html"));
         }
     }
-    Ok((url_parts.finish(), shortty, fqp.to_vec()))
+    Ok((url_parts.finish(), shortty))
 }
 
 pub(crate) fn href_with_root_path(
@@ -607,6 +607,7 @@ pub(crate) fn href_with_root_path(
         }
     };
     make_href(root_path, shortty, url_parts, fqp, is_remote)
+        .map(|(url_parts, short_ty)| (url_parts, short_ty, fqp.clone()))
 }
 
 pub(crate) fn href(
