@@ -12,7 +12,6 @@
 #![feature(decl_macro)]
 #![feature(panic_backtrace_config)]
 #![feature(panic_update_hook)]
-#![feature(result_flattening)]
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end

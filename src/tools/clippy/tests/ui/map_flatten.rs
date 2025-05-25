@@ -1,5 +1,5 @@
 #![warn(clippy::map_flatten)]
-#![feature(result_flattening)]
+
 //@no-rustfix
 // issue #8506, multi-line
 #[rustfmt::skip]
