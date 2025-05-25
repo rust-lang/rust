@@ -189,13 +189,13 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
         back::lto::run_thin(cgcx, modules, cached_modules)
     }
-    unsafe fn optimize(
+    fn optimize(
         cgcx: &CodegenContext<Self>,
         dcx: DiagCtxtHandle<'_>,
         module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
-        unsafe { back::write::optimize(cgcx, dcx, module, config) }
+        back::write::optimize(cgcx, dcx, module, config)
     }
     fn optimize_fat(
         cgcx: &CodegenContext<Self>,
@@ -205,19 +205,19 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         let dcx = dcx.handle();
         back::lto::run_pass_manager(cgcx, dcx, module, false)
     }
-    unsafe fn optimize_thin(
+    fn optimize_thin(
         cgcx: &CodegenContext<Self>,
         thin: ThinModule<Self>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        unsafe { back::lto::optimize_thin_module(thin, cgcx) }
+        back::lto::optimize_thin_module(thin, cgcx)
     }
-    unsafe fn codegen(
+    fn codegen(
         cgcx: &CodegenContext<Self>,
         dcx: DiagCtxtHandle<'_>,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError> {
-        unsafe { back::write::codegen(cgcx, dcx, module, config) }
+        back::write::codegen(cgcx, dcx, module, config)
     }
     fn prepare_thin(
         module: ModuleCodegen<Self::Module>,

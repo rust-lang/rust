@@ -2,9 +2,7 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 use rustc_abi::Align;
-use rustc_codegen_ssa::traits::{
-    BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
-};
+use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::IndexVec;
 use rustc_middle::ty::TyCtxt;
@@ -27,7 +25,7 @@ mod unused;
 ///
 /// Those sections are then read and understood by LLVM's `llvm-cov` tool,
 /// which is distributed in the `llvm-tools` rustup component.
-pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
+pub(crate) fn finalize(cx: &mut CodegenCx<'_, '_>) {
     let tcx = cx.tcx;
 
     // Ensure that LLVM is using a version of the coverage mapping format that
@@ -53,7 +51,7 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
         None => return,
     };
 
-    let mut covfun_records = instances_used
+    let mut covfun_records = { instances_used }
         .iter()
         .copied()
         // Sort by symbol name, so that the global file table is built in an
@@ -206,7 +204,7 @@ impl VirtualFileMapping {
 /// Generates the contents of the covmap record for this CGU, which mostly
 /// consists of a header and a list of filenames. The record is then stored
 /// as a global variable in the `__llvm_covmap` section.
-fn generate_covmap_record<'ll>(cx: &CodegenCx<'ll, '_>, version: u32, filenames_buffer: &[u8]) {
+fn generate_covmap_record<'ll>(cx: &mut CodegenCx<'ll, '_>, version: u32, filenames_buffer: &[u8]) {
     // A covmap record consists of four target-endian u32 values, followed by
     // the encoded filenames table. Two of the header fields are unused in
     // modern versions of the LLVM coverage mapping format, and are always 0.

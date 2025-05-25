@@ -514,11 +514,11 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn extract_value(&mut self, agg_val: Self::Value, idx: u64) -> Self::Value;
     fn insert_value(&mut self, agg_val: Self::Value, elt: Self::Value, idx: u64) -> Self::Value;
 
-    fn set_personality_fn(&mut self, personality: Self::Value);
+    fn set_personality_fn(&mut self, personality: Self::Function);
 
     // These are used by everyone except msvc
-    fn cleanup_landing_pad(&mut self, pers_fn: Self::Value) -> (Self::Value, Self::Value);
-    fn filter_landing_pad(&mut self, pers_fn: Self::Value) -> (Self::Value, Self::Value);
+    fn cleanup_landing_pad(&mut self, pers_fn: Self::Function) -> (Self::Value, Self::Value);
+    fn filter_landing_pad(&mut self, pers_fn: Self::Function) -> (Self::Value, Self::Value);
     fn resume(&mut self, exn0: Self::Value, exn1: Self::Value);
 
     // These are used only by msvc

@@ -158,7 +158,6 @@ pub trait ArgAbiBuilderMethods<'tcx>: BackendTypes {
         val: Self::Value,
         dst: PlaceRef<'tcx, Self::Value>,
     );
-    fn arg_memory_ty(&self, arg_abi: &ArgAbi<'tcx, Ty<'tcx>>) -> Self::Type;
 }
 
 pub trait TypeCodegenMethods<'tcx> = DerivedTypeCodegenMethods<'tcx>

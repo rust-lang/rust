@@ -21,12 +21,12 @@ use crate::back::write::TargetMachineFactoryFn;
 use crate::{CodegenResults, ModuleCodegen, TargetConfig};
 
 pub trait BackendTypes {
-    type Value: CodegenObject;
+    type Value: CodegenObject + PartialEq;
     type Metadata: CodegenObject;
     type Function: CodegenObject;
 
     type BasicBlock: Copy;
-    type Type: CodegenObject;
+    type Type: CodegenObject + PartialEq;
     type Funclet;
 
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
@@ -97,13 +97,6 @@ pub trait CodegenBackend {
     fn link(&self, sess: &Session, codegen_results: CodegenResults, outputs: &OutputFilenames) {
         link_binary(sess, &ArArchiveBuilderBuilder, codegen_results, outputs);
     }
-
-    /// Returns `true` if this backend can be safely called from multiple threads.
-    ///
-    /// Defaults to `true`.
-    fn supports_parallel(&self) -> bool {
-        true
-    }
 }
 
 pub trait ExtraBackendMethods:
@@ -143,5 +136,12 @@ pub trait ExtraBackendMethods:
         T: Send + 'static,
     {
         std::thread::Builder::new().name(name).spawn(f)
+    }
+
+    /// Returns `true` if this backend can be safely called from multiple threads.
+    ///
+    /// Defaults to `true`.
+    fn supports_parallel(&self) -> bool {
+        true
     }
 }

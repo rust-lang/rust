@@ -56,7 +56,7 @@ impl<'ll, 'tcx> CguCoverageContext<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
-    pub(crate) fn coverageinfo_finalize(&self) {
+    pub(crate) fn coverageinfo_finalize(&mut self) {
         mapgen::finalize(self)
     }
 

@@ -56,12 +56,7 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
     }
 
     /// Optimize this module within the given codegen context.
-    ///
-    /// This function is unsafe as it'll return a `ModuleCodegen` still
-    /// points to LLVM data structures owned by this `LtoModuleCodegen`.
-    /// It's intended that the module returned is immediately code generated and
-    /// dropped, and then this LTO module is dropped.
-    pub unsafe fn optimize(
+    pub fn optimize(
         self,
         cgcx: &CodegenContext<B>,
     ) -> Result<ModuleCodegen<B::Module>, FatalError> {
@@ -70,7 +65,7 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
                 B::optimize_fat(cgcx, &mut module)?;
                 Ok(module)
             }
-            LtoModuleCodegen::Thin(thin) => unsafe { B::optimize_thin(cgcx, thin) },
+            LtoModuleCodegen::Thin(thin) => B::optimize_thin(cgcx, thin),
         }
     }
 
@@ -85,7 +80,7 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
     }
 
     /// Run autodiff on Fat LTO module
-    pub unsafe fn autodiff(
+    pub fn autodiff(
         self,
         cgcx: &CodegenContext<B>,
         diff_fncs: Vec<AutoDiffItem>,
