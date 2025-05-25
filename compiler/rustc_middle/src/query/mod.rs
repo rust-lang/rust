@@ -1329,6 +1329,11 @@ rustc_queries! {
         desc { "converting type-level constant value to MIR constant value"}
     }
 
+    /// Converts a type-level constant value into a MIR constant allocation.
+    query valtree_to_const_alloc(key: ty::Value<'tcx>) -> mir::ConstAlloc<'tcx> {
+        desc { "converting type-level constant value to MIR constant allocation"}
+    }
+
     /// Destructures array, ADT or tuple constants into the constants
     /// of their fields.
     query destructure_const(key: ty::Const<'tcx>) -> ty::DestructuredConst<'tcx> {
