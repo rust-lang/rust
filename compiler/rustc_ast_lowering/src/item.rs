@@ -199,7 +199,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
-                        let body = this.lower_const_item(body.as_deref().unwrap());
+                        let body = this.lower_anon_const_to_const_arg(body.as_deref().unwrap());
                         (ty, body)
                     },
                 );
@@ -482,16 +482,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 panic!("macros should have been expanded by now")
             }
         }
-    }
-
-    fn lower_const_item(&mut self, body: &AnonConst) -> &'hir hir::ConstArg<'hir> {
-        let mgca = self.tcx.features().min_generic_const_args();
-        if mgca && let Some(ct_arg) = self.try_lower_as_const_path(body) {
-            return ct_arg;
-        }
-        let anon = self.lower_anon_const_to_anon_const(body);
-        self.arena
-            .alloc(hir::ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Anon(anon) })
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -800,7 +790,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
-                        let body = body.as_deref().map(|body| this.lower_const_item(body));
+                        let body =
+                            body.as_deref().map(|body| this.lower_anon_const_to_const_arg(body));
                         hir::TraitItemKind::Const(ty, body)
                     },
                 );
@@ -993,7 +984,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
                         this.lower_define_opaque(hir_id, &define_opaque);
-                        let body = this.lower_const_item(body.as_deref().unwrap());
+                        let body = this.lower_anon_const_to_const_arg(body.as_deref().unwrap());
                         hir::ImplItemKind::Const(ty, body)
                     },
                 ),
