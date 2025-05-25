@@ -422,6 +422,10 @@ impl File {
         self.0.seek(pos)
     }
 
+    pub fn size(&self) -> Option<io::Result<u64>> {
+        None
+    }
+
     pub fn tell(&self) -> io::Result<u64> {
         self.0.tell()
     }
