@@ -1,4 +1,4 @@
-<svg width="1902px" height="4322px" xmlns="http://www.w3.org/2000/svg">
+<svg width="2322px" height="4322px" xmlns="http://www.w3.org/2000/svg">
   <style>
     .fg { fill: #AAAAAA }
     .bg { background: #000000 }
@@ -99,7 +99,7 @@
 </tspan>
     <tspan x="10px" y="712px">
 </tspan>
-    <tspan x="10px" y="730px"><tspan class="fg-ansi256-009 bold">error[E0599]</tspan><tspan class="bold">: the method `collect` exists for struct `Flatten&lt;Map&lt;IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@multiline-removal-suggestion.rs:14:8}&gt;&gt;`, but its trait bounds were not satisfied</tspan>
+    <tspan x="10px" y="730px"><tspan class="fg-ansi256-009 bold">error[E0599]</tspan><tspan class="bold">: the method `collect` exists for struct `Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:14:8: 14:23}&gt;&gt;`, but its trait bounds were not satisfied</tspan>
 </tspan>
     <tspan x="10px" y="748px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:24:4</tspan>
 </tspan>
@@ -213,7 +213,7 @@
 </tspan>
     <tspan x="10px" y="1738px">
 </tspan>
-    <tspan x="10px" y="1756px"><tspan class="fg-ansi256-009 bold">error[E0599]</tspan><tspan class="bold">: the method `collect` exists for struct `Flatten&lt;Map&lt;IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@multiline-removal-suggestion.rs:29:8}&gt;&gt;`, but its trait bounds were not satisfied</tspan>
+    <tspan x="10px" y="1756px"><tspan class="fg-ansi256-009 bold">error[E0599]</tspan><tspan class="bold">: the method `collect` exists for struct `Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:29:8: 29:23}&gt;&gt;`, but its trait bounds were not satisfied</tspan>
 </tspan>
     <tspan x="10px" y="1774px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:35:4</tspan>
 </tspan>
@@ -329,7 +329,7 @@
 </tspan>
     <tspan x="10px" y="2782px">
 </tspan>
-    <tspan x="10px" y="2800px"><tspan class="fg-ansi256-009 bold">error[E0599]</tspan><tspan class="bold">: the method `collect` exists for struct `Flatten&lt;Map&lt;IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@multiline-removal-suggestion.rs:40:8}&gt;&gt;`, but its trait bounds were not satisfied</tspan>
+    <tspan x="10px" y="2800px"><tspan class="fg-ansi256-009 bold">error[E0599]</tspan><tspan class="bold">: the method `collect` exists for struct `Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:40:8: 40:23}&gt;&gt;`, but its trait bounds were not satisfied</tspan>
 </tspan>
     <tspan x="10px" y="2818px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:46:4</tspan>
 </tspan>
@@ -441,7 +441,7 @@
 </tspan>
     <tspan x="10px" y="3790px">
 </tspan>
-    <tspan x="10px" y="3808px"><tspan class="fg-ansi256-009 bold">error[E0599]</tspan><tspan class="bold">: the method `collect` exists for struct `Flatten&lt;Map&lt;IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@multiline-removal-suggestion.rs:51:8}&gt;&gt;`, but its trait bounds were not satisfied</tspan>
+    <tspan x="10px" y="3808px"><tspan class="fg-ansi256-009 bold">error[E0599]</tspan><tspan class="bold">: the method `collect` exists for struct `Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:51:8: 51:23}&gt;&gt;`, but its trait bounds were not satisfied</tspan>
 </tspan>
     <tspan x="10px" y="3826px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:56:4</tspan>
 </tspan>
