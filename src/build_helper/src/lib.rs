@@ -10,23 +10,23 @@ pub mod util;
 
 /// The default set of crates for opt-dist to collect LLVM profiles.
 pub const LLVM_PGO_CRATES: &[&str] = &[
-    "syn-1.0.89",
-    "cargo-0.60.0",
-    "serde-1.0.136",
-    "ripgrep-13.0.0",
-    "regex-1.5.5",
-    "clap-3.1.6",
-    "hyper-0.14.18",
+    "syn-2.0.101",
+    "cargo-0.87.1",
+    "serde-1.0.219",
+    "ripgrep-14.1.1",
+    "regex-automata-0.4.8",
+    "clap_derive-4.5.32",
+    "hyper-1.6.0",
 ];
 
 /// The default set of crates for opt-dist to collect rustc profiles.
 pub const RUSTC_PGO_CRATES: &[&str] = &[
     "externs",
     "ctfe-stress-5",
-    "cargo-0.60.0",
+    "cargo-0.87.1",
     "token-stream-stress",
     "match-stress",
     "tuple-stress",
-    "diesel-1.4.8",
-    "bitmaps-3.1.0",
+    "diesel-2.2.10",
+    "bitmaps-3.2.1",
 ];
