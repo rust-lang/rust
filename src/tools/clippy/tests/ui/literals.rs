@@ -2,10 +2,9 @@
 // does not test any rustfixable lints
 
 #![warn(clippy::mixed_case_hex_literals)]
-#![warn(clippy::zero_prefixed_literal)]
 #![warn(clippy::unseparated_literal_suffix)]
 #![warn(clippy::separated_literal_suffix)]
-#![allow(dead_code, overflowing_literals)]
+#![allow(dead_code, overflowing_literals, leading_zeros_in_decimal_literals)]
 
 fn main() {
     let ok1 = 0xABCD;
@@ -36,14 +35,12 @@ fn main() {
 
     let fail_multi_zero = 000_123usize;
     //~^ unseparated_literal_suffix
-    //~| zero_prefixed_literal
 
     let ok9 = 0;
     let ok10 = 0_i64;
     //~^ separated_literal_suffix
 
-    let fail8 = 0123;
-    //~^ zero_prefixed_literal
+    let ok10andhalf = 0123;
 
     let ok11 = 0o123;
     let ok12 = 0b10_1010;
@@ -75,13 +72,8 @@ fn main() {
 }
 
 fn issue9651() {
-    // lint but octal form is not possible here
+    // octal form is not possible here
     let _ = 08;
-    //~^ zero_prefixed_literal
-
     let _ = 09;
-    //~^ zero_prefixed_literal
-
     let _ = 089;
-    //~^ zero_prefixed_literal
 }
