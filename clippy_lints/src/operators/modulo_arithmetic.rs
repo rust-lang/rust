@@ -34,14 +34,10 @@ pub(super) fn check<'tcx>(
 }
 
 fn used_in_comparison_with_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    let Node::Expr(parent_expr) = cx.tcx.parent_hir_node(expr.hir_id) else {
-        return false;
-    };
-    let ExprKind::Binary(op, lhs, rhs) = parent_expr.kind else {
-        return false;
-    };
-
-    if let BinOpKind::Eq | BinOpKind::Ne = op.node {
+    if let Node::Expr(parent_expr) = cx.tcx.parent_hir_node(expr.hir_id)
+        && let ExprKind::Binary(op, lhs, rhs) = parent_expr.kind
+        && let BinOpKind::Eq | BinOpKind::Ne = op.node
+    {
         let ecx = ConstEvalCtxt::new(cx);
         matches!(ecx.eval(lhs), Some(Constant::Int(0))) || matches!(ecx.eval(rhs), Some(Constant::Int(0)))
     } else {
