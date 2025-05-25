@@ -21,38 +21,24 @@ LL |     writeln!("{}_{}", "{} {}", x, y);
    |                       ++++++++
 
 error[E0599]: cannot write into `&'static str`
-  --> $DIR/missing-writer.rs:5:12
+  --> $DIR/missing-writer.rs:5:5
    |
 LL |     write!("{}_{}", x, y);
-   |     -------^^^^^^^------- method not found in `&str`
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
-note: must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method
-  --> $DIR/missing-writer.rs:5:12
-   |
-LL |     write!("{}_{}", x, y);
-   |            ^^^^^^^
-help: a writer is needed before this format string
-  --> $DIR/missing-writer.rs:5:12
-   |
-LL |     write!("{}_{}", x, y);
-   |            ^
+   = note: type does not implement the `write_fmt` method
+   = help: try adding `use std::fmt::Write;` or `use std::io::Write;` to bring the appropriate trait into scope
+   = note: this error originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0599]: cannot write into `&'static str`
-  --> $DIR/missing-writer.rs:11:14
+  --> $DIR/missing-writer.rs:11:5
    |
 LL |     writeln!("{}_{}", x, y);
-   |     ---------^^^^^^^------- method not found in `&str`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method
-  --> $DIR/missing-writer.rs:11:14
-   |
-LL |     writeln!("{}_{}", x, y);
-   |              ^^^^^^^
-help: a writer is needed before this format string
-  --> $DIR/missing-writer.rs:11:14
-   |
-LL |     writeln!("{}_{}", x, y);
-   |              ^
+   = note: type does not implement the `write_fmt` method
+   = help: try adding `use std::fmt::Write;` or `use std::io::Write;` to bring the appropriate trait into scope
+   = note: this error originates in the macro `writeln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 
