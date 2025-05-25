@@ -2538,7 +2538,6 @@ ui/issues/issue-76077-inaccesible-private-fields/issue-76077-1.rs
 ui/issues/issue-76077-inaccesible-private-fields/issue-76077.rs
 ui/issues/issue-76191.rs
 ui/issues/issue-7660.rs
-ui/issues/issue-7663.rs
 ui/issues/issue-7673-cast-generically-implemented-trait.rs
 ui/issues/issue-77218/issue-77218-2.rs
 ui/issues/issue-77218/issue-77218.rs
@@ -3634,6 +3633,7 @@ ui/resolve/issue-6702.rs
 ui/resolve/issue-69401-trait-fn-no-body-ty-local.rs
 ui/resolve/issue-70736-async-fn-no-body-def-collector.rs
 ui/resolve/issue-73427.rs
+ui/resolve/issue-7663.rs
 ui/resolve/issue-80079.rs
 ui/resolve/issue-81508.rs
 ui/resolve/issue-82156.rs
