@@ -1398,10 +1398,12 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     }
 
     /// Creates an iterator that visits all elements (key-value pairs) in
-    /// ascending key order and uses a closure to determine if an element should
-    /// be removed. If the closure returns `true`, the element is removed from
-    /// the map and yielded. If the closure returns `false`, or panics, the
-    /// element remains in the map and will not be yielded.
+    /// ascending key order and uses a closure to determine if an element
+    /// should be removed.
+    ///
+    /// If the closure returns `true`, the element is removed from the map and
+    /// yielded. If the closure returns `false`, or panics, the element remains
+    /// in the map and will not be yielded.
     ///
     /// The iterator also lets you mutate the value of each element in the
     /// closure, regardless of whether you choose to keep or remove it.
