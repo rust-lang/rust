@@ -42,7 +42,7 @@ walkdir = "2.3"
 filetime = "0.2.9"
 itertools = "0.12"
 pulldown-cmark = { version = "0.11", default-features = false, features = ["html"] }
-askama = { version = "0.13", default-features = false, features = ["alloc", "config", "derive"] }
+askama = { version = "0.14", default-features = false, features = ["alloc", "config", "derive"] }
 
 # UI test dependencies
 if_chain = "1.0"
