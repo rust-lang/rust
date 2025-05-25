@@ -207,7 +207,7 @@ impl CStr {
     /// * `ptr` must be [valid] for reads of bytes up to and including the nul terminator.
     ///   This means in particular:
     ///
-    ///     * The entire memory range of this `CStr` must be contained within a single allocated object!
+    ///     * The entire memory range of this `CStr` must be contained within a single allocation!
     ///     * `ptr` must be non-null even for a zero-length cstr.
     ///
     /// * The memory referenced by the returned `CStr` must not be mutated for

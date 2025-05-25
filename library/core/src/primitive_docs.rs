@@ -1623,7 +1623,7 @@ mod prim_usize {}
 /// * if `size_of_val(t) > 0`, then `t` is dereferenceable for `size_of_val(t)` many bytes
 ///
 /// If `t` points at address `a`, being "dereferenceable" for N bytes means that the memory range
-/// `[a, a + N)` is all contained within a single [allocated object].
+/// `[a, a + N)` is all contained within a single [allocation].
 ///
 /// For instance, this means that unsafe code in a safe function may assume these invariants are
 /// ensured of arguments passed by the caller, and it may assume that these invariants are ensured
@@ -1639,7 +1639,7 @@ mod prim_usize {}
 /// may be unsound or become unsound in future versions of Rust depending on how this question is
 /// decided.
 ///
-/// [allocated object]: ptr#allocated-object
+/// [allocation]: ptr#allocation
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_ref {}
 
