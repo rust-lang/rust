@@ -11,6 +11,8 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-address
 
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+
 use run_make_support::{cc, extra_c_flags, extra_cxx_flags, run_fail, rustc, static_lib_name};
 
 fn main() {
