@@ -204,7 +204,7 @@ fn insert_value_into_option_or_error(
     if item.is_some() {
         cx.emit_err(session_diagnostics::MultipleItem {
             span: param.span(),
-            item: param.path_without_args().to_string(),
+            item: param.path().to_string(),
         });
         None
     } else if let Some(v) = param.args().name_value()
@@ -242,13 +242,13 @@ pub(crate) fn parse_stability(
             return None;
         };
 
-        match param.path_without_args().word_sym() {
+        match param.path().word_sym() {
             Some(sym::feature) => insert_value_into_option_or_error(cx, &param, &mut feature)?,
             Some(sym::since) => insert_value_into_option_or_error(cx, &param, &mut since)?,
             _ => {
                 cx.emit_err(session_diagnostics::UnknownMetaItem {
                     span: param_span,
-                    item: param.path_without_args().to_string(),
+                    item: param.path().to_string(),
                     expected: &["feature", "since"],
                 });
                 return None;
@@ -310,7 +310,7 @@ pub(crate) fn parse_unstability(
             return None;
         };
 
-        match param.path_without_args().word_sym() {
+        match param.path().word_sym() {
             Some(sym::feature) => insert_value_into_option_or_error(cx, &param, &mut feature)?,
             Some(sym::reason) => insert_value_into_option_or_error(cx, &param, &mut reason)?,
             Some(sym::issue) => {
@@ -349,7 +349,7 @@ pub(crate) fn parse_unstability(
             _ => {
                 cx.emit_err(session_diagnostics::UnknownMetaItem {
                     span: param.span(),
-                    item: param.path_without_args().to_string(),
+                    item: param.path().to_string(),
                     expected: &["feature", "reason", "issue", "soft", "implied_by"],
                 });
                 return None;
