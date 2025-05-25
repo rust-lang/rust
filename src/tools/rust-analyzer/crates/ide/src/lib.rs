@@ -514,7 +514,76 @@ impl Analysis {
         self.with_db(|db| goto_type_definition::goto_type_definition(db, position))
     }
 
-    /// Finds all usages of the reference at point.
+    /// Find all references to the item at the cursor position.
+    ///
+    /// # Examples
+    ///
+    /// Basic struct reference search:
+    /// ```rust
+    /// struct S {
+    ///     pub x: usize,
+    /// }
+    ///
+    /// fn print_s(s: S) {
+    ///     println!("{}", s.x)
+    /// }
+    ///
+    /// fn main() {
+    ///     let s = S { x: 42 };  // This is a constructor usage
+    ///     print_s(s);           // This is a type reference
+    /// }
+    /// ```
+    ///
+    /// To find only constructor/initialization usages:
+    /// 1. Position cursor on special tokens in struct/enum definition:
+    ///    ```rust
+    ///    // On '{' - finds record struct initializations
+    ///    struct Point { // <- cursor here on '{'
+    ///        x: i32,
+    ///        y: i32,
+    ///    }
+    ///
+    ///    // On '(' - finds tuple struct initializations
+    ///    struct Tuple(i32, i32); // <- cursor here on '('
+    ///
+    ///    // On ';' - finds unit struct initializations
+    ///    struct Unit; // <- cursor here on ';'
+    ///    ```
+    ///
+    /// 2. Examples of what will be found:
+    ///    ```rust
+    ///    struct Point{x: i32, y: i32};
+    ///    struct Tuple(i32, i32);
+    ///    struct Unit;
+    ///
+    ///
+    ///    let p1 = Point { x: 0, y: 0 };  // Found when cursor on '{'
+    ///    let p2 = Tuple(1, 2);           // Found when cursor on '('
+    ///    let u = Unit;                    // Found when cursor on ';'
+    ///    ```
+    ///
+    /// 3. For enum variants:
+    ///    ```rust
+    ///    enum E {
+    ///        Struct { // <- cursor here on '{'
+    ///            x: i32
+    ///        },
+    ///        Tuple(i32), // <- cursor here on '('
+    ///        Unit        // <- cursor here on identifier
+    ///    }
+    ///
+    ///    let e1 = E::Struct { x: 0 };  // Found for Struct variant
+    ///    let e2 = E::Tuple(1);         // Found for Tuple variant
+    ///    let e3 = E::Unit;             // Found for Unit variant
+    ///    ```
+    ///
+    /// # Parameters
+    /// * `position` - The position in the file to find references for
+    /// * `search_scope` - Optional scope to limit the search
+    ///
+    /// # Returns
+    /// Returns a vector of reference search results if references are found,
+    /// or None if no valid item is found at the position.
     pub fn find_all_refs(
         &self,
         position: FilePosition,
