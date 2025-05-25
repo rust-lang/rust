@@ -22,7 +22,7 @@ impl SymbolExportLevel {
 }
 
 /// Kind of exported symbols.
-#[derive(Eq, PartialEq, Debug, Copy, Clone, Encodable, Decodable, HashStable, Hash)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Encodable, Decodable, HashStable)]
 pub enum SymbolExportKind {
     Text,
     Data,
