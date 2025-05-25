@@ -221,7 +221,7 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
 
     if result.must_apply_modulo_regions() {
         true
-    } else if result.may_apply() {
+    } else if result.may_apply() && !infcx.next_trait_solver() {
         // Sometimes obligations are ambiguous because the recursive evaluator
         // is not smart enough, so we fall back to fulfillment when we're not certain
         // that an obligation holds or not. Even still, we must make sure that
