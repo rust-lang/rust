@@ -14,6 +14,14 @@ LL | #[diagnostic::on_unimplemented(message = "Test {}")]
    |
    = help: only named format arguments with the name of one of the generic types are allowed in this context
 
+warning: invalid format specifier
+  --> $DIR/broken_format.rs:12:50
+   |
+LL | #[diagnostic::on_unimplemented(message = "Test {1:}")]
+   |                                                  ^
+   |
+   = help: no format specifier are supported in this position
+
 warning: positional format arguments are not allowed here
   --> $DIR/broken_format.rs:12:49
    |
@@ -23,24 +31,28 @@ LL | #[diagnostic::on_unimplemented(message = "Test {1:}")]
    = help: only named format arguments with the name of one of the generic types are allowed in this context
 
 warning: invalid format specifier
-  --> $DIR/broken_format.rs:17:42
+  --> $DIR/broken_format.rs:19:53
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:123}")]
-   |                                          ^^^^^^^^^^^^^^^^^
+   |                                                     ^^^^
    |
    = help: no format specifier are supported in this position
 
-warning: expected `}`, found `!`
-  --> $DIR/broken_format.rs:22:42
+warning: invalid format specifier
+  --> $DIR/broken_format.rs:24:53
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-   |                                          ^^^^^^^^^^^^^^^
+   |                                                     ^^
+   |
+   = help: no format specifier are supported in this position
 
-warning: unmatched `}` found
-  --> $DIR/broken_format.rs:22:42
+warning: invalid format specifier
+  --> $DIR/broken_format.rs:29:53
    |
-LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-   |                                          ^^^^^^^^^^^^^^^
+LL | #[diagnostic::on_unimplemented(message = "Test {Self:}")]
+   |                                                     ^
+   |
+   = help: no format specifier are supported in this position
 
 warning: unmatched `}` found
   --> $DIR/broken_format.rs:2:42
@@ -51,7 +63,7 @@ LL | #[diagnostic::on_unimplemented(message = "{{Test } thing")]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: {{Test } thing
-  --> $DIR/broken_format.rs:36:13
+  --> $DIR/broken_format.rs:43:13
    |
 LL |     check_1(());
    |     ------- ^^ the trait `ImportantTrait1` is not implemented for `()`
@@ -64,7 +76,7 @@ help: this trait has no implementations, consider adding one
 LL | trait ImportantTrait1 {}
    | ^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `check_1`
-  --> $DIR/broken_format.rs:29:20
+  --> $DIR/broken_format.rs:35:20
    |
 LL | fn check_1(_: impl ImportantTrait1) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_1`
@@ -79,7 +91,7 @@ LL | #[diagnostic::on_unimplemented(message = "Test {}")]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: Test {}
-  --> $DIR/broken_format.rs:38:13
+  --> $DIR/broken_format.rs:45:13
    |
 LL |     check_2(());
    |     ------- ^^ the trait `ImportantTrait2` is not implemented for `()`
@@ -92,10 +104,19 @@ help: this trait has no implementations, consider adding one
 LL | trait ImportantTrait2 {}
    | ^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `check_2`
-  --> $DIR/broken_format.rs:30:20
+  --> $DIR/broken_format.rs:36:20
    |
 LL | fn check_2(_: impl ImportantTrait2) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_2`
+
+warning: invalid format specifier
+  --> $DIR/broken_format.rs:12:50
+   |
+LL | #[diagnostic::on_unimplemented(message = "Test {1:}")]
+   |                                                  ^
+   |
+   = help: no format specifier are supported in this position
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: positional format arguments are not allowed here
   --> $DIR/broken_format.rs:12:49
@@ -107,7 +128,7 @@ LL | #[diagnostic::on_unimplemented(message = "Test {1:}")]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: Test {1}
-  --> $DIR/broken_format.rs:40:13
+  --> $DIR/broken_format.rs:47:13
    |
 LL |     check_3(());
    |     ------- ^^ the trait `ImportantTrait3` is not implemented for `()`
@@ -115,27 +136,27 @@ LL |     check_3(());
    |     required by a bound introduced by this call
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/broken_format.rs:15:1
+  --> $DIR/broken_format.rs:17:1
    |
 LL | trait ImportantTrait3 {}
    | ^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `check_3`
-  --> $DIR/broken_format.rs:31:20
+  --> $DIR/broken_format.rs:37:20
    |
 LL | fn check_3(_: impl ImportantTrait3) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_3`
 
 warning: invalid format specifier
-  --> $DIR/broken_format.rs:17:42
+  --> $DIR/broken_format.rs:19:53
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:123}")]
-   |                                          ^^^^^^^^^^^^^^^^^
+   |                                                     ^^^^
    |
    = help: no format specifier are supported in this position
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: Test ()
-  --> $DIR/broken_format.rs:42:13
+  --> $DIR/broken_format.rs:49:13
    |
 LL |     check_4(());
    |     ------- ^^ the trait `ImportantTrait4` is not implemented for `()`
@@ -143,34 +164,27 @@ LL |     check_4(());
    |     required by a bound introduced by this call
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/broken_format.rs:20:1
+  --> $DIR/broken_format.rs:22:1
    |
 LL | trait ImportantTrait4 {}
    | ^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `check_4`
-  --> $DIR/broken_format.rs:32:20
+  --> $DIR/broken_format.rs:38:20
    |
 LL | fn check_4(_: impl ImportantTrait4) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_4`
 
-warning: expected `}`, found `!`
-  --> $DIR/broken_format.rs:22:42
+warning: invalid format specifier
+  --> $DIR/broken_format.rs:24:53
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-   |                                          ^^^^^^^^^^^^^^^
+   |                                                     ^^
    |
+   = help: no format specifier are supported in this position
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-warning: unmatched `}` found
-  --> $DIR/broken_format.rs:22:42
-   |
-LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-   |                                          ^^^^^^^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0277]: Test {Self:!}
-  --> $DIR/broken_format.rs:44:13
+error[E0277]: Test ()
+  --> $DIR/broken_format.rs:51:13
    |
 LL |     check_5(());
    |     ------- ^^ the trait `ImportantTrait5` is not implemented for `()`
@@ -183,11 +197,39 @@ help: this trait has no implementations, consider adding one
 LL | trait ImportantTrait5 {}
    | ^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `check_5`
-  --> $DIR/broken_format.rs:33:20
+  --> $DIR/broken_format.rs:39:20
    |
 LL | fn check_5(_: impl ImportantTrait5) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_5`
 
-error: aborting due to 5 previous errors; 12 warnings emitted
+warning: invalid format specifier
+  --> $DIR/broken_format.rs:29:53
+   |
+LL | #[diagnostic::on_unimplemented(message = "Test {Self:}")]
+   |                                                     ^
+   |
+   = help: no format specifier are supported in this position
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: Test ()
+  --> $DIR/broken_format.rs:53:13
+   |
+LL |     check_6(());
+   |     ------- ^^ the trait `ImportantTrait6` is not implemented for `()`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/broken_format.rs:32:1
+   |
+LL | trait ImportantTrait6 {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `check_6`
+  --> $DIR/broken_format.rs:40:20
+   |
+LL | fn check_6(_: impl ImportantTrait6) {}
+   |                    ^^^^^^^^^^^^^^^ required by this bound in `check_6`
+
+error: aborting due to 6 previous errors; 14 warnings emitted
 
 For more information about this error, try `rustc --explain E0277`.
