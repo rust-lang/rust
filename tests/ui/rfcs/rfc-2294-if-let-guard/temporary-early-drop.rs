@@ -4,8 +4,8 @@
 //@ [edition2024] edition: 2024
 //@ check-pass
 
-#![feature(if_let_guard)]
 #![allow(irrefutable_let_patterns)]
+#![cfg_attr(edition2021, feature(let_chains))]
 
 struct Pd;
 

@@ -1,8 +1,9 @@
 // References to by-mutable-ref bindings in an if-let guard *can* be used after the guard.
 
 //@ check-pass
-
-#![feature(if_let_guard)]
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
 fn main() {
     let mut x: Option<Option<String>> = Some(Some(String::new()));

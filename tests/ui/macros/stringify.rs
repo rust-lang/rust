@@ -9,7 +9,6 @@
 #![feature(coroutines)]
 #![feature(decl_macro)]
 #![feature(explicit_tail_calls)]
-#![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]

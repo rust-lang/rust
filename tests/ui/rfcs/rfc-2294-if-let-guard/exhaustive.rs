@@ -1,5 +1,8 @@
-#![feature(if_let_guard)]
 #![allow(irrefutable_let_patterns)]
+
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
 fn match_option(x: Option<u32>) {
     match x {

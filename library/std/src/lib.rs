@@ -268,6 +268,7 @@
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform)
 )]
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![cfg_attr(any(windows, target_os = "uefi"), feature(round_char_boundary))]
 #![cfg_attr(target_family = "wasm", feature(stdarch_wasm_atomic_wait))]
 #![cfg_attr(target_arch = "wasm64", feature(simd_wasm64))]
@@ -300,11 +301,11 @@
 #![feature(f16)]
 #![feature(ffi_const)]
 #![feature(formatting_options)]
-#![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(lang_items)]
+#![feature(let_chains)]
 #![feature(link_cfg)]
 #![feature(linkage)]
 #![feature(macro_metavar_expr_concat)]
@@ -325,7 +326,6 @@
 #![feature(try_blocks)]
 #![feature(try_trait_v2)]
 #![feature(type_alias_impl_trait)]
-#![feature(unsigned_signed_diff)]
 // tidy-alphabetical-end
 //
 // Library features (core):
@@ -373,6 +373,7 @@
 #![feature(sync_unsafe_cell)]
 #![feature(temporary_niche_types)]
 #![feature(ub_checks)]
+#![feature(unsigned_signed_diff)]
 #![feature(used_with_arg)]
 // tidy-alphabetical-end
 //
@@ -719,6 +720,7 @@ pub use core::todo;
 // Re-export built-in macros defined through core.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated)]
+#[cfg_attr(bootstrap, allow(deprecated_in_future))]
 pub use core::{
     assert, assert_matches, cfg, column, compile_error, concat, concat_idents, const_format_args,
     env, file, format_args, format_args_nl, include, include_bytes, include_str, line, log_syntax,

@@ -1,8 +1,11 @@
 // Check shadowing in if let guards works as expected.
-//@ check-pass
-//@ edition: 2024
 
-#![feature(if_let_guard)]
+//@ check-pass
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
+
+#![cfg_attr(edition2021, feature(let_chains))]
 
 fn main() {
     let x: Option<Option<i32>> = Some(Some(6));

@@ -1,6 +1,8 @@
 // Check mutable bindings cannot be mutated by an if-let guard.
 
-#![feature(if_let_guard)]
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
 fn main() {
     let x: Option<Option<i32>> = Some(Some(6));
