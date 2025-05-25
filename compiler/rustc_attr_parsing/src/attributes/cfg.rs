@@ -129,9 +129,9 @@ pub fn eval_condition(
 
             // See https://github.com/rust-lang/rust/issues/64796#issuecomment-640851454 for details
             if sess.psess.assume_incomplete_release {
-                RustcVersion::CURRENT > min_version
+                RustcVersion::current_overridable() > min_version
             } else {
-                RustcVersion::CURRENT >= min_version
+                RustcVersion::current_overridable() >= min_version
             }
         }
         MetaItemKind::List(mis) => {
