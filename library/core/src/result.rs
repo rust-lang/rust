@@ -858,6 +858,35 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /// Maps a `Result<T, E>` to a `U` by applying function `f` if the contained value
+    /// is [`Ok`], otherwise if [`Err`], returns the [default value] for the type `U`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_option_map_or_default)]
+    ///
+    /// let x: Result<_, &str> = Ok("foo");
+    /// let y: Result<&str, _> = Err("bar");
+    ///
+    /// assert_eq!(x.map_or_default(|x| x.len()), 3);
+    /// assert_eq!(y.map_or_default(|y| y.len()), 0);
+    /// ```
+    ///
+    /// [default value]: Default::default
+    #[inline]
+    #[unstable(feature = "result_option_map_or_default", issue = "138099")]
+    pub fn map_or_default<U, F>(self, f: F) -> U
+    where
+        U: Default,
+        F: FnOnce(T) -> U,
+    {
+        match self {
+            Ok(t) => f(t),
+            Err(_) => U::default(),
+        }
+    }
+
     /// Maps a `Result<T, E>` to `Result<T, F>` by applying a function to a
     /// contained [`Err`] value, leaving an [`Ok`] value untouched.
     ///
