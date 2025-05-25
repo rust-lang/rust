@@ -204,7 +204,7 @@ pub(crate) struct BuiltinAnonymousParams<'a> {
 #[diag(lint_builtin_deprecated_attr_link)]
 pub(crate) struct BuiltinDeprecatedAttrLink<'a> {
     pub name: Symbol,
-    pub reason: &'a str,
+    pub message: &'a str,
     pub link: &'a str,
     #[subdiagnostic]
     pub suggestion: BuiltinDeprecatedAttrLinkSuggestion<'a>,
@@ -215,13 +215,13 @@ pub(crate) enum BuiltinDeprecatedAttrLinkSuggestion<'a> {
     #[suggestion(lint_msg_suggestion, code = "", applicability = "machine-applicable")]
     Msg {
         #[primary_span]
-        suggestion: Span,
-        msg: &'a str,
+        span: Span,
+        suggestion: &'a str,
     },
     #[suggestion(lint_default_suggestion, code = "", applicability = "machine-applicable")]
     Default {
         #[primary_span]
-        suggestion: Span,
+        span: Span,
     },
 }
 
