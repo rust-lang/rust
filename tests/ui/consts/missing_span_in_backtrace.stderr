@@ -8,8 +8,6 @@ error[E0080]: evaluation of constant value failed
 18 | |         );
    | |_________^ unable to copy parts of a pointer from memory at ALLOC0
    |
-note: inside `swap_nonoverlapping::<MaybeUninit<u8>>`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `swap_nonoverlapping::compiletime::<MaybeUninit<u8>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `std::ptr::swap_nonoverlapping_const::<MaybeUninit<u8>>`
@@ -18,7 +16,6 @@ note: inside `std::ptr::copy_nonoverlapping::<MaybeUninit<u8>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
-   = note: this error originates in the macro `$crate::intrinsics::const_eval_select` which comes from the expansion of the macro `const_eval_select` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

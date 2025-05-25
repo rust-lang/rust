@@ -30,7 +30,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                 scope 18 {
                     let _22: usize;
                     scope 19 {
-                        scope 22 (inlined core::num::<impl usize>::unchecked_sub) {
+                        scope 22 (inlined #[track_caller] core::num::<impl usize>::unchecked_sub) {
                             scope 23 (inlined core::ub_checks::check_language_ub) {
                                 scope 24 (inlined core::ub_checks::check_language_ub::runtime) {
                                 }
@@ -86,7 +86,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                     }
                     scope 13 (inlined NonNull::<T>::as_ptr) {
                     }
-                    scope 14 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
+                    scope 14 (inlined #[track_caller] std::ptr::mut_ptr::<impl *mut T>::add) {
                     }
                 }
                 scope 8 (inlined NonNull::<[T]>::from_ref) {

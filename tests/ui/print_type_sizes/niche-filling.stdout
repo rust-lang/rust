@@ -1,3 +1,25 @@
+print-type-size type: `std::fmt::Arguments<'_>`: 48 bytes, alignment: 8 bytes
+print-type-size     field `.pieces`: 16 bytes
+print-type-size     field `.args`: 16 bytes
+print-type-size     field `.fmt`: 16 bytes
+print-type-size type: `std::panic::Location<'_>`: 24 bytes, alignment: 8 bytes
+print-type-size     field `.file`: 16 bytes
+print-type-size     field `.line`: 4 bytes
+print-type-size     field `.col`: 4 bytes
+print-type-size type: `core::fmt::rt::Argument<'_>`: 16 bytes, alignment: 8 bytes
+print-type-size     field `.ty`: 16 bytes
+print-type-size type: `core::fmt::rt::ArgumentType<'_>`: 16 bytes, alignment: 8 bytes
+print-type-size     variant `Placeholder`: 16 bytes
+print-type-size         field `.value`: 8 bytes
+print-type-size         field `.formatter`: 8 bytes
+print-type-size         field `._lifetime`: 0 bytes
+print-type-size     variant `Count`: 10 bytes
+print-type-size         padding: 8 bytes
+print-type-size         field `.0`: 2 bytes, alignment: 2 bytes
+print-type-size type: `std::option::Option<&[core::fmt::rt::Placeholder]>`: 16 bytes, alignment: 8 bytes
+print-type-size     variant `Some`: 16 bytes
+print-type-size         field `.0`: 16 bytes
+print-type-size     variant `None`: 0 bytes
 print-type-size type: `IndirectNonZero`: 12 bytes, alignment: 4 bytes
 print-type-size     field `.nested`: 8 bytes
 print-type-size     field `.post`: 2 bytes
@@ -34,6 +56,8 @@ print-type-size     field `.val`: 4 bytes
 print-type-size     field `.post`: 2 bytes
 print-type-size     field `.pre`: 1 bytes
 print-type-size     end padding: 1 bytes
+print-type-size type: `std::ptr::NonNull<()>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.pointer`: 8 bytes
 print-type-size type: `Enum4<(), char, (), ()>`: 4 bytes, alignment: 4 bytes
 print-type-size     variant `Two`: 4 bytes
 print-type-size         field `.0`: 4 bytes
@@ -116,3 +140,4 @@ print-type-size     discriminant: 1 bytes
 print-type-size     variant `Less`: 0 bytes
 print-type-size     variant `Equal`: 0 bytes
 print-type-size     variant `Greater`: 0 bytes
+print-type-size type: `std::marker::PhantomData<&()>`: 0 bytes, alignment: 1 bytes
