@@ -174,10 +174,9 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindOpaqueRegion<'_, 'tcx> {
                 let opaque_region_vid = self.regioncx.to_region_vid(opaque_region);
 
                 // Find a path between the borrow region and our opaque capture.
-                if let Some((path, _)) =
-                    self.regioncx.find_constraint_paths_between_regions(self.borrow_region, |r| {
-                        r == opaque_region_vid
-                    })
+                if let Some(path) = self
+                    .regioncx
+                    .constraint_path_between_regions(self.borrow_region, opaque_region_vid)
                 {
                     for constraint in path {
                         // If we find a call in this path, then check if it defines the opaque.
