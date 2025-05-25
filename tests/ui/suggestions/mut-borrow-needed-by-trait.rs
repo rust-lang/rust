@@ -18,5 +18,5 @@ fn main() {
     //~^ ERROR the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
     //~| ERROR the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
 
-    writeln!(fp, "hello world").unwrap(); //~ ERROR the method
+    writeln!(fp, "hello world").unwrap(); //~ ERROR cannot write into `BufWriter<&dyn std::io::Write>`
 }
