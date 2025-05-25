@@ -1,0 +1,19 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/temporary-lifetime-extension-tuple-ctor.rs:34:19
+   |
+LL |     let g = some(&temp());
+   |                   ^^^^^^ - temporary value is freed at the end of this statement
+   |                   |
+   |                   creates a temporary value which is freed while still in use
+LL |     println!("{a:?} {b:?} {c:?} {d:?} {e:?} {f:?} {g:?}");
+   |                                                   ----- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = temp();
+LL ~     let g = some(&binding);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0716`.
