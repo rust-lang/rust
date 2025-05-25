@@ -1,3 +1,5 @@
+middle_aarch64_softfloat_neon = enabling the `neon` target feature on the current target is unsound due to ABI issues
+
 middle_assert_async_resume_after_drop = `async fn` resumed after async drop
 
 middle_assert_async_resume_after_panic = `async fn` resumed after panicking
@@ -78,6 +80,14 @@ middle_erroneous_constant = erroneous constant encountered
 middle_failed_writing_file =
     failed to write file {$path}: {$error}"
 
+middle_forbidden_ctarget_feature =
+    target feature `{$feature}` cannot be {$enabled} with `-Ctarget-feature`: {$reason}
+    .note = this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+middle_forbidden_ctarget_feature_issue = for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>
+
+middle_forbidden_target_feature_attr =
+    target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}
+
 middle_layout_cycle =
     a cycle occurred during layout computation
 
@@ -94,6 +104,8 @@ middle_layout_too_generic = the type `{$ty}` does not have a fixed layout
 
 middle_layout_unknown =
     the type `{$ty}` has an unknown layout
+
+middle_missing_features = add the missing features in a `target_feature` attribute
 
 middle_opaque_hidden_type_mismatch =
     concrete type differs from previous defining opaque type use
@@ -112,7 +124,28 @@ middle_strict_coherence_needs_negative_coherence =
     to use `strict_coherence` on this trait, the `with_negative_coherence` feature must be enabled
     .label = due to this attribute
 
+middle_target_feature_disable_or_enable =
+    the target features {$features} must all be either enabled or disabled together
+
+middle_target_feature_safe_trait = `#[target_feature(..)]` cannot be applied to safe trait method
+    .label = cannot be applied to safe trait method
+    .label_def = not an `unsafe` function
+
 middle_type_length_limit = reached the type-length limit while instantiating `{$shrunk}`
+
+middle_unknown_ctarget_feature =
+    unknown and unstable feature specified for `-Ctarget-feature`: `{$feature}`
+    .note = it is still passed through to the codegen backend, but use of this feature might be unsound and the behavior of this feature can change in the future
+    .possible_feature = you might have meant: `{$rust_feature}`
+    .consider_filing_feature_request = consider filing a feature request
+
+middle_unknown_ctarget_feature_prefix =
+    unknown feature specified for `-Ctarget-feature`: `{$feature}`
+    .note = features must begin with a `+` to enable or `-` to disable it
+
+middle_unstable_ctarget_feature =
+    unstable feature specified for `-Ctarget-feature`: `{$feature}`
+    .note = this feature is not stably supported; its behavior can change in the future
 
 middle_unsupported_union = we don't support unions yet: '{$ty_name}'
 

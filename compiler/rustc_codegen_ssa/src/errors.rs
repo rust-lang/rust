@@ -10,7 +10,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic};
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{FloatTy, Ty};
 use rustc_span::{Span, Symbol};
@@ -1183,25 +1183,6 @@ pub(crate) struct InvalidLinkOrdinalFormat {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_target_feature_safe_trait)]
-pub(crate) struct TargetFeatureSafeTrait {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[label(codegen_ssa_label_def)]
-    pub def: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_forbidden_target_feature_attr)]
-pub struct ForbiddenTargetFeatureAttr<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub feature: &'a str,
-    pub reason: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_failed_to_get_layout)]
 pub struct FailedToGetLayout<'tcx> {
     #[primary_span]
@@ -1254,30 +1235,6 @@ pub(crate) struct ErrorCreatingImportLibrary<'a> {
     pub error: String,
 }
 
-pub struct TargetFeatureDisableOrEnable<'a> {
-    pub features: &'a [&'a str],
-    pub span: Option<Span>,
-    pub missing_features: Option<MissingFeatures>,
-}
-
-#[derive(Subdiagnostic)]
-#[help(codegen_ssa_missing_features)]
-pub struct MissingFeatures;
-
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(dcx, level, fluent::codegen_ssa_target_feature_disable_or_enable);
-        if let Some(span) = self.span {
-            diag.span(span);
-        };
-        if let Some(missing_features) = self.missing_features {
-            diag.subdiagnostic(missing_features);
-        }
-        diag.arg("features", self.features.join(", "));
-        diag
-    }
-}
-
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_aix_strip_not_used)]
 pub(crate) struct AixStripNotUsed;
@@ -1316,7 +1273,3 @@ pub(crate) struct XcrunSdkPathWarning {
     pub sdk_name: &'static str,
     pub stderr: String,
 }
-
-#[derive(LintDiagnostic)]
-#[diag(codegen_ssa_aarch64_softfloat_neon)]
-pub(crate) struct Aarch64SoftfloatNeon;
