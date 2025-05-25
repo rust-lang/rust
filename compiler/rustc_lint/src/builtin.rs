@@ -2916,7 +2916,7 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
         if let hir::Expr {
             kind:
                 hir::ExprKind::InlineAsm(hir::InlineAsm {
-                    asm_macro: AsmMacro::Asm | AsmMacro::NakedAsm,
+                    asm_macro: AsmMacro::Asm,
                     template_strs,
                     options,
                     ..
