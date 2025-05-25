@@ -12,9 +12,9 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
+use rustc_hir::ItemId;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ItemId, Target};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
@@ -1038,35 +1038,21 @@ impl CrateInfo {
         // by the compiler, but that's ok because all this stuff is unstable anyway.
         let target = &tcx.sess.target;
         if !are_upstream_rust_objects_already_included(tcx.sess) {
-            let add_prefix = match (target.is_like_windows, target.arch.as_ref()) {
-                (true, "x86") => |name: String, _: SymbolExportKind| format!("_{name}"),
-                (true, "arm64ec") => {
-                    // Only functions are decorated for arm64ec.
-                    |name: String, export_kind: SymbolExportKind| match export_kind {
-                        SymbolExportKind::Text => format!("#{name}"),
-                        _ => name,
-                    }
-                }
-                _ => |name: String, _: SymbolExportKind| name,
-            };
-            let missing_weak_lang_items: FxIndexSet<(Symbol, SymbolExportKind)> = info
+            let missing_weak_lang_items: FxIndexSet<Symbol> = info
                 .used_crates
                 .iter()
                 .flat_map(|&cnum| tcx.missing_lang_items(cnum))
                 .filter(|l| l.is_weak())
                 .filter_map(|&l| {
                     let name = l.link_name()?;
-                    let export_kind = match l.target() {
-                        Target::Fn => SymbolExportKind::Text,
-                        Target::Static => SymbolExportKind::Data,
-                        _ => bug!(
-                            "Don't know what the export kind is for lang item of kind {:?}",
-                            l.target()
-                        ),
-                    };
-                    lang_items::required(tcx, l).then_some((name, export_kind))
+                    lang_items::required(tcx, l).then_some(name)
                 })
                 .collect();
+            let prefix = match (target.is_like_windows, target.arch.as_ref()) {
+                (true, "x86") => "_",
+                (true, "arm64ec") => "#",
+                _ => "",
+            };
 
             // This loop only adds new items to values of the hash map, so the order in which we
             // iterate over the values is not important.
@@ -1079,13 +1065,10 @@ impl CrateInfo {
                 .for_each(|(_, linked_symbols)| {
                     let mut symbols = missing_weak_lang_items
                         .iter()
-                        .map(|(item, export_kind)| {
+                        .map(|item| {
                             (
-                                add_prefix(
-                                    mangle_internal_symbol(tcx, item.as_str()),
-                                    *export_kind,
-                                ),
-                                *export_kind,
+                                format!("{prefix}{}", mangle_internal_symbol(tcx, item.as_str())),
+                                SymbolExportKind::Text,
                             )
                         })
                         .collect::<Vec<_>>();
@@ -1100,12 +1083,12 @@ impl CrateInfo {
                         // errors.
                         linked_symbols.extend(ALLOCATOR_METHODS.iter().map(|method| {
                             (
-                                add_prefix(
+                                format!(
+                                    "{prefix}{}",
                                     mangle_internal_symbol(
                                         tcx,
-                                        global_fn_name(method.name).as_str(),
-                                    ),
-                                    SymbolExportKind::Text,
+                                        global_fn_name(method.name).as_str()
+                                    )
                                 ),
                                 SymbolExportKind::Text,
                             )

@@ -2124,16 +2124,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         accessed through a specific `impl`",
                     self.tcx.def_kind_descr(assoc_item.as_def_kind(), item_def_id)
                 ));
-                err.span_suggestion(
-                    span,
-                    "use the fully qualified path to an implementation",
-                    format!(
-                        "<Type as {}>::{}",
-                        self.tcx.def_path_str(trait_ref),
-                        assoc_item.name()
-                    ),
-                    Applicability::HasPlaceholders,
-                );
+
+                if !assoc_item.is_impl_trait_in_trait() {
+                    err.span_suggestion(
+                        span,
+                        "use the fully qualified path to an implementation",
+                        format!(
+                            "<Type as {}>::{}",
+                            self.tcx.def_path_str(trait_ref),
+                            assoc_item.name()
+                        ),
+                        Applicability::HasPlaceholders,
+                    );
+                }
             }
         }
     }

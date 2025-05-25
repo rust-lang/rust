@@ -852,7 +852,8 @@ download-rustc = false
             t!(fs::create_dir_all(&gcc_cache));
         }
         let base = &self.stage0_metadata.config.artifacts_server;
-        let filename = format!("gcc-nightly-{}.tar.xz", self.build.triple);
+        let version = self.artifact_version_part(gcc_sha);
+        let filename = format!("gcc-{version}-{}.tar.xz", self.build.triple);
         let tarball = gcc_cache.join(&filename);
         if !tarball.exists() {
             let help_on_error = "ERROR: failed to download gcc from ci
