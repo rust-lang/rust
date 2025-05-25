@@ -41,7 +41,7 @@ fn used_in_comparison_with_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         return false;
     };
 
-    if op.node == BinOpKind::Eq || op.node == BinOpKind::Ne {
+    if let BinOpKind::Eq | BinOpKind::Ne = op.node {
         let ecx = ConstEvalCtxt::new(cx);
         matches!(ecx.eval(lhs), Some(Constant::Int(0))) || matches!(ecx.eval(rhs), Some(Constant::Int(0)))
     } else {
