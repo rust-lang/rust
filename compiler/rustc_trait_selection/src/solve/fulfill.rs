@@ -13,8 +13,11 @@ use rustc_middle::ty::{
     self, DelayedSet, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, TypingMode,
 };
 use rustc_next_trait_solver::delegate::SolverDelegate as _;
-use rustc_next_trait_solver::solve::{GenerateProofTree, HasChanged, SolverDelegateEvalExt as _};
+use rustc_next_trait_solver::solve::{
+    CanonicalGoalCacheKey, GenerateProofTree, HasChanged, SolverDelegateEvalExt as _,
+};
 use rustc_span::Span;
+use thin_vec::ThinVec;
 use tracing::instrument;
 
 use self::derive_errors::*;
@@ -24,6 +27,9 @@ use super::inspect::{self, ProofTreeInferCtxtExt};
 use crate::traits::{FulfillmentError, ScrubbedTraitError};
 
 mod derive_errors;
+
+type PendingObligations<'tcx> =
+    ThinVec<(PredicateObligation<'tcx>, Option<CanonicalGoalCacheKey<TyCtxt<'tcx>>>)>;
 
 /// A trait engine using the new trait solver.
 ///
@@ -54,13 +60,17 @@ struct ObligationStorage<'tcx> {
     /// We cannot eagerly return these as error so we instead store them here
     /// to avoid recomputing them each time `select_where_possible` is called.
     /// This also allows us to return the correct `FulfillmentError` for them.
-    overflowed: PredicateObligations<'tcx>,
-    pending: PredicateObligations<'tcx>,
+    overflowed: Vec<PredicateObligation<'tcx>>,
+    pending: PendingObligations<'tcx>,
 }
 
 impl<'tcx> ObligationStorage<'tcx> {
-    fn register(&mut self, obligation: PredicateObligation<'tcx>) {
-        self.pending.push(obligation);
+    fn register(
+        &mut self,
+        obligation: PredicateObligation<'tcx>,
+        cache_key: Option<CanonicalGoalCacheKey<TyCtxt<'tcx>>>,
+    ) {
+        self.pending.push((obligation, cache_key));
     }
 
     fn has_pending_obligations(&self) -> bool {
@@ -68,7 +78,8 @@ impl<'tcx> ObligationStorage<'tcx> {
     }
 
     fn clone_pending(&self) -> PredicateObligations<'tcx> {
-        let mut obligations = self.pending.clone();
+        let mut obligations: PredicateObligations<'tcx> =
+            self.pending.iter().map(|(o, _)| o.clone()).collect();
         obligations.extend(self.overflowed.iter().cloned());
         obligations
     }
@@ -76,8 +87,9 @@ impl<'tcx> ObligationStorage<'tcx> {
     fn drain_pending(
         &mut self,
         cond: impl Fn(&PredicateObligation<'tcx>) -> bool,
-    ) -> PredicateObligations<'tcx> {
-        let (unstalled, pending) = mem::take(&mut self.pending).into_iter().partition(cond);
+    ) -> PendingObligations<'tcx> {
+        let (unstalled, pending) =
+            mem::take(&mut self.pending).into_iter().partition(|(o, _)| cond(o));
         self.pending = pending;
         unstalled
     }
@@ -90,13 +102,16 @@ impl<'tcx> ObligationStorage<'tcx> {
             // we were to do another step of `select_where_possible`, which goals would
             // change.
             // FIXME: <https://github.com/Gankra/thin-vec/pull/66> is merged, this can be removed.
-            self.overflowed.extend(ExtractIf::new(&mut self.pending, |o| {
-                let goal = o.as_goal();
-                let result = <&SolverDelegate<'tcx>>::from(infcx)
-                    .evaluate_root_goal(goal, GenerateProofTree::No, o.cause.span)
-                    .0;
-                matches!(result, Ok((HasChanged::Yes, _)))
-            }));
+            self.overflowed.extend(
+                ExtractIf::new(&mut self.pending, |(o, cache_key)| {
+                    let goal = o.as_goal();
+                    let result = <&SolverDelegate<'tcx>>::from(infcx)
+                        .evaluate_root_goal(goal, GenerateProofTree::No, o.cause.span, *cache_key)
+                        .0;
+                    matches!(result, Ok((HasChanged::Yes, _, _)))
+                })
+                .map(|(o, _)| o),
+            );
         })
     }
 }
@@ -119,11 +134,11 @@ impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
         &self,
         infcx: &InferCtxt<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-        result: &Result<(HasChanged, Certainty), NoSolution>,
+        result: &Result<(HasChanged, Certainty, CanonicalGoalCacheKey<TyCtxt<'tcx>>), NoSolution>,
     ) {
         if let Some(inspector) = infcx.obligation_inspector.get() {
             let result = match result {
-                Ok((_, c)) => Ok(*c),
+                Ok((_, c, _)) => Ok(*c),
                 Err(NoSolution) => Err(NoSolution),
             };
             (inspector)(infcx, &obligation, result);
@@ -142,14 +157,14 @@ where
         obligation: PredicateObligation<'tcx>,
     ) {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
-        self.obligations.register(obligation);
+        self.obligations.register(obligation, None);
     }
 
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
         self.obligations
             .pending
             .drain(..)
-            .map(|obligation| NextSolverError::Ambiguity(obligation))
+            .map(|(obligation, _)| NextSolverError::Ambiguity(obligation))
             .chain(
                 self.obligations
                     .overflowed
@@ -165,7 +180,7 @@ where
         let mut errors = Vec::new();
         loop {
             let mut has_changed = false;
-            for mut obligation in self.obligations.drain_pending(|_| true) {
+            for (mut obligation, cache_key) in self.obligations.drain_pending(|_| true) {
                 if !infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
                     self.obligations.on_fulfillment_overflow(infcx);
                     // Only return true errors that we have accumulated while processing.
@@ -182,10 +197,15 @@ where
                 }
 
                 let result = delegate
-                    .evaluate_root_goal(goal, GenerateProofTree::No, obligation.cause.span)
+                    .evaluate_root_goal(
+                        goal,
+                        GenerateProofTree::No,
+                        obligation.cause.span,
+                        cache_key,
+                    )
                     .0;
                 self.inspect_evaluated_obligation(infcx, &obligation, &result);
-                let (changed, certainty) = match result {
+                let (changed, certainty, cache_key) = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {
                         errors.push(E::from_solver_error(
@@ -209,7 +229,7 @@ where
 
                 match certainty {
                     Certainty::Yes => {}
-                    Certainty::Maybe(_) => self.obligations.register(obligation),
+                    Certainty::Maybe(_) => self.obligations.register(obligation, Some(cache_key)),
                 }
             }
 
@@ -247,20 +267,24 @@ where
             return Default::default();
         }
 
-        self.obligations.drain_pending(|obl| {
-            infcx.probe(|_| {
-                infcx
-                    .visit_proof_tree(
-                        obl.as_goal(),
-                        &mut StalledOnCoroutines {
-                            stalled_generators,
-                            span: obl.cause.span,
-                            cache: Default::default(),
-                        },
-                    )
-                    .is_break()
+        self.obligations
+            .drain_pending(|obl| {
+                infcx.probe(|_| {
+                    infcx
+                        .visit_proof_tree(
+                            obl.as_goal(),
+                            &mut StalledOnCoroutines {
+                                stalled_generators,
+                                span: obl.cause.span,
+                                cache: Default::default(),
+                            },
+                        )
+                        .is_break()
+                })
             })
-        })
+            .into_iter()
+            .map(|(o, _)| o)
+            .collect()
     }
 }
 

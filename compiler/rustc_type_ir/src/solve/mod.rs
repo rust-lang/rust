@@ -251,6 +251,16 @@ impl<I: Interner> NestedNormalizationGoals<I> {
     }
 }
 
+impl<I: Interner> From<Vec<(GoalSource, Goal<I, I::Predicate>, Option<CanonicalGoalCacheKey<I>>)>>
+    for NestedNormalizationGoals<I>
+{
+    fn from(
+        value: Vec<(GoalSource, Goal<I, I::Predicate>, Option<CanonicalGoalCacheKey<I>>)>,
+    ) -> Self {
+        NestedNormalizationGoals(value.into_iter().map(|(s, g, _)| (s, g)).collect())
+    }
+}
+
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum Certainty {
@@ -357,4 +367,12 @@ impl MaybeCause {
 pub enum AdtDestructorKind {
     NotConst,
     Const,
+}
+
+#[derive_where(Copy, Clone, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub struct CanonicalGoalCacheKey<I: Interner> {
+    pub canonical_goal: CanonicalInput<I, I::Predicate>,
+    pub orig_values: I::GenericArgs,
 }
