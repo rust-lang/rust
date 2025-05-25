@@ -105,7 +105,7 @@ pub struct Declaration {
 /// - `(` after tuple struct/variant: Shows tuple literal initializations
 /// - `;` after unit struct: Shows unit literal initializations
 /// - Type name in definition: Shows all initialization usages
-///   In these cases, other kinds of references (like type references) are filtered out.
+///  In these cases, other kinds of references (like type references) are filtered out.
 pub(crate) fn find_all_refs(
     sema: &Semantics<'_, RootDatabase>,
     position: FilePosition,
