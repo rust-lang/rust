@@ -92,7 +92,7 @@ impl Buf {
     }
 
     #[inline]
-    pub fn from_string(s: String) -> Buf {
+    pub const fn from_string(s: String) -> Buf {
         Buf { inner: Wtf8Buf::from_string(s) }
     }
 
