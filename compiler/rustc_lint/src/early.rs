@@ -277,7 +277,7 @@ impl<'ast, 'ecx, 'tcx, T: EarlyLintPass> ast_visit::Visitor<'ast>
         ast_visit::walk_attribute(self, attr);
     }
 
-    fn visit_mac_def(&mut self, mac: &'ast ast::MacroDef, id: ast::NodeId) {
+    fn visit_macro_def(&mut self, mac: &'ast ast::MacroDef, id: ast::NodeId) {
         lint_callback!(self, check_mac_def, mac);
         self.check_id(id);
     }
