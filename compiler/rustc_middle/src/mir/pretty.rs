@@ -1624,7 +1624,11 @@ pub fn write_allocations<'tcx>(
             Some(GlobalAlloc::Static(did)) if !tcx.is_foreign_item(did) => {
                 write!(w, " (static: {}", tcx.def_path_str(did))?;
                 if body.phase <= MirPhase::Runtime(RuntimePhase::PostCleanup)
-                    && tcx.hir_body_const_context(body.source.def_id()).is_some()
+                    && body
+                        .source
+                        .def_id()
+                        .as_local()
+                        .is_some_and(|def_id| tcx.hir_body_const_context(def_id).is_some())
                 {
                     // Statics may be cyclic and evaluating them too early
                     // in the MIR pipeline may cause cycle errors even though

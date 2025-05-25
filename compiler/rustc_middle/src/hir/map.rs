@@ -310,7 +310,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// This should only be used for determining the context of a body, a return
     /// value of `Some` does not always suggest that the owner of the body is `const`,
     /// just that it has to be checked as if it were.
-    pub fn hir_body_const_context(self, def_id: impl Into<DefId>) -> Option<ConstContext> {
+    pub fn hir_body_const_context(self, def_id: LocalDefId) -> Option<ConstContext> {
         let def_id = def_id.into();
         let ccx = match self.hir_body_owner_kind(def_id) {
             BodyOwnerKind::Const { inline } => ConstContext::Const { inline },
