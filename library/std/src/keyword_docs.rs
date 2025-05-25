@@ -2109,6 +2109,7 @@ mod type_keyword {}
 /// impl Indexable for i32 {
 ///     const LEN: usize = 1;
 ///
+///     /// See `Indexable` for the safety contract.
 ///     unsafe fn idx_unchecked(&self, idx: usize) -> i32 {
 ///         debug_assert_eq!(idx, 0);
 ///         *self
@@ -2120,6 +2121,7 @@ mod type_keyword {}
 /// impl Indexable for [i32; 42] {
 ///     const LEN: usize = 42;
 ///
+///     /// See `Indexable` for the safety contract.
 ///     unsafe fn idx_unchecked(&self, idx: usize) -> i32 {
 ///         // SAFETY: As per this trait's documentation, the caller ensures
 ///         // that `idx < 42`.
@@ -2132,6 +2134,7 @@ mod type_keyword {}
 /// impl Indexable for ! {
 ///     const LEN: usize = 0;
 ///
+///     /// See `Indexable` for the safety contract.
 ///     unsafe fn idx_unchecked(&self, idx: usize) -> i32 {
 ///         // SAFETY: As per this trait's documentation, the caller ensures
 ///         // that `idx < 0`, which is impossible, so this is dead code.
@@ -2153,11 +2156,15 @@ mod type_keyword {}
 /// contract of `idx_unchecked`. Implementing `Indexable` is safe because when writing
 /// `idx_unchecked`, we don't have to worry: our *callers* need to discharge a proof obligation
 /// (like `use_indexable` does), but the *implementation* of `get_unchecked` has no proof obligation
-/// to contend with. Of course, the implementation of `Indexable` may choose to call other unsafe
-/// operations, and then it needs an `unsafe` *block* to indicate it discharged the proof
-/// obligations of its callees. (We enabled `unsafe_op_in_unsafe_fn`, so the body of `idx_unchecked`
-/// is not implicitly an unsafe block.) For that purpose it can make use of the contract that all
-/// its callers must uphold -- the fact that `idx < LEN`.
+/// to contend with. Note that unlike normal `unsafe fn`, an `unsafe fn` in a trait implementation
+/// does not get to just pick an arbitrary safety contract! It *has* to use the safety contract
+/// defined by the trait (or a stronger contract, i.e., weaker preconditions).
+///
+/// Of course, the implementation may choose to call other unsafe operations, and then it needs an
+/// `unsafe` *block* to indicate it discharged the proof obligations of its callees. (We enabled
+/// `unsafe_op_in_unsafe_fn`, so the body of `idx_unchecked` is not implicitly an unsafe block.) For
+/// that purpose it can make use of the contract that all its callers must uphold -- the fact that
+/// `idx < LEN`.
 ///
 /// Formally speaking, an `unsafe fn` in a trait is a function with *preconditions* that go beyond
 /// those encoded by the argument types (such as `idx < LEN`), whereas an `unsafe trait` can declare
