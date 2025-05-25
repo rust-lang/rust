@@ -692,7 +692,6 @@ fn calling_convention_for_symbol<'tcx>(
 pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
-    export_kind: SymbolExportKind,
     instantiating_crate: CrateNum,
 ) -> String {
     let mut undecorated = symbol_name_for_instance_in_crate(tcx, symbol, instantiating_crate);
@@ -713,9 +712,8 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
     let prefix = match &target.arch[..] {
         "x86" => Some('_'),
         "x86_64" => None,
-        // Only functions are decorated for arm64ec.
-        "arm64ec" if export_kind == SymbolExportKind::Text => Some('#'),
-        // Only x86/64 and arm64ec use symbol decorations.
+        "arm64ec" => Some('#'),
+        // Only x86/64 use symbol decorations.
         _ => return undecorated,
     };
 
@@ -755,10 +753,9 @@ pub(crate) fn exporting_symbol_name_for_instance_in_crate<'tcx>(
 /// Add it to the symbols list for all kernel functions, so that it is exported in the linked
 /// object.
 pub(crate) fn extend_exported_symbols<'tcx>(
-    symbols: &mut Vec<(String, SymbolExportKind)>,
+    symbols: &mut Vec<String>,
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
-    info: SymbolExportInfo,
     instantiating_crate: CrateNum,
 ) {
     let (conv, _) = calling_convention_for_symbol(tcx, symbol);
@@ -770,7 +767,7 @@ pub(crate) fn extend_exported_symbols<'tcx>(
     let undecorated = symbol_name_for_instance_in_crate(tcx, symbol, instantiating_crate);
 
     // Add the symbol for the kernel descriptor (with .kd suffix)
-    symbols.push((format!("{undecorated}.kd"), info.kind));
+    symbols.push(format!("{undecorated}.kd"));
 }
 
 fn maybe_emutls_symbol_name<'tcx>(

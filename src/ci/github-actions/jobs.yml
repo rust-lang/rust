@@ -35,6 +35,8 @@ runners:
     os: windows-2022
     <<: *base-job
 
+  # FIXME(#141022): Windows Server 2025 20250504.1.0 currently experiences
+  # insufficient disk space.
   - &job-windows-25
     os: windows-2025
     <<: *base-job
@@ -165,8 +167,11 @@ auto:
   - name: dist-android
     <<: *job-linux-4c
 
-  - name: dist-arm-linux
-    <<: *job-linux-8c-codebuild
+  - name: dist-arm-linux-gnueabi
+    <<: *job-linux-4c
+
+  - name: dist-arm-linux-musl
+    <<: *job-linux-4c
 
   - name: dist-armhf-linux
     <<: *job-linux-4c
@@ -219,7 +224,7 @@ auto:
   - name: dist-x86_64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-36c-codebuild
+    <<: *job-linux-16c
 
   - name: dist-x86_64-linux-alt
     env:
@@ -476,13 +481,17 @@ auto:
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
       SCRIPT: make ci-msvc-py
-    <<: *job-windows-25
+    # FIXME(#141022): Windows Server 2025 20250504.1.0 currently experiences
+    # insufficient disk space.
+    <<: *job-windows
 
   - name: x86_64-msvc-2
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
       SCRIPT: make ci-msvc-ps1
-    <<: *job-windows-25
+    # FIXME(#141022): Windows Server 2025 20250504.1.0 currently experiences
+    # insufficient disk space.
+    <<: *job-windows
 
   # i686-msvc is split into two jobs to run tests in parallel.
   - name: i686-msvc-1
