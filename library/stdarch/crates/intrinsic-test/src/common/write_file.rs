@@ -7,6 +7,7 @@ use crate::common::write_file;
 pub fn write_c_testfiles<T: IntrinsicTypeDefinition + Sized>(
     intrinsics: &Vec<&dyn IntrinsicDefinition<T>>,
     target: &str,
+    c_target: &str,
     headers: &[&str],
     notice: &str,
     arch_specific_definitions: &[&str],
@@ -18,7 +19,8 @@ pub fn write_c_testfiles<T: IntrinsicTypeDefinition + Sized>(
     let filename_mapping = create_c_filenames(&intrinsics_name_list);
 
     intrinsics.iter().for_each(|i| {
-        let c_code = i.generate_c_program(headers, target, notice, arch_specific_definitions);
+        let c_code =
+            i.generate_c_program(headers, target, c_target, notice, arch_specific_definitions);
         match filename_mapping.get(&i.name()) {
             Some(filename) => write_file(filename, c_code),
             None => {}

@@ -1,13 +1,19 @@
-use crate::base_intrinsictype_trait_def_macro;
 use crate::common::argument::ArgumentList;
-use crate::common::cli::Language;
 use crate::common::indentation::Indentation;
 use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
-use crate::common::intrinsic_helpers::{
-    BaseIntrinsicTypeDefinition, IntrinsicTypeDefinition, TypeKind,
-};
+use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, TypeKind};
+use std::ops::Deref;
 
-base_intrinsictype_trait_def_macro! {ArmIntrinsicType}
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArmIntrinsicType(pub IntrinsicType);
+
+impl Deref for ArmIntrinsicType {
+    type Target = IntrinsicType;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl IntrinsicDefinition<ArmIntrinsicType> for Intrinsic<ArmIntrinsicType> {
     fn arguments(&self) -> ArgumentList<ArmIntrinsicType> {

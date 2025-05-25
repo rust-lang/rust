@@ -11,7 +11,7 @@ use crate::common::cli::ProcessedCli;
 use crate::common::compare::compare_outputs;
 use crate::common::gen_rust::compile_rust;
 use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
-use crate::common::intrinsic_helpers::{BaseIntrinsicTypeDefinition, TypeKind};
+use crate::common::intrinsic_helpers::TypeKind;
 use crate::common::write_file::{write_c_testfiles, write_rust_testfiles};
 use config::{AARCH_CONFIGURATIONS, F16_FORMATTING_DEF, POLY128_OSTREAM_DEF, build_notices};
 use json_parser::get_neon_intrinsics;
@@ -54,6 +54,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
         let compiler = self.cli_options.cpp_compiler.as_deref();
         let target = &self.cli_options.target;
         let cxx_toolchain_dir = self.cli_options.cxx_toolchain_dir.as_deref();
+        let c_target = "aarch64";
 
         let intrinsics_name_list = write_c_testfiles(
             &self
@@ -62,6 +63,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
                 .map(|i| i as &dyn IntrinsicDefinition<_>)
                 .collect::<Vec<_>>(),
             target,
+            c_target,
             &["arm_neon.h", "arm_acle.h", "arm_fp16.h"],
             &build_notices("// "),
             &[POLY128_OSTREAM_DEF],
@@ -76,7 +78,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
     }
 
     fn build_rust_file(&self) -> bool {
-        let final_target = if self.cli_options.target.contains("v7") {
+        let rust_target = if self.cli_options.target.contains("v7") {
             "arm"
         } else {
             "aarch64"
@@ -89,7 +91,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
                 .iter()
                 .map(|i| i as &dyn IntrinsicDefinition<_>)
                 .collect::<Vec<_>>(),
-            final_target,
+            rust_target,
             &build_notices("// "),
             F16_FORMATTING_DEF,
             AARCH_CONFIGURATIONS,

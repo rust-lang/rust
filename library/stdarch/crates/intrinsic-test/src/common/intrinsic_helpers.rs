@@ -1,4 +1,5 @@
 use std::fmt;
+use std::ops::Deref;
 use std::str::FromStr;
 
 use itertools::Itertools as _;
@@ -102,62 +103,12 @@ pub struct IntrinsicType {
     pub target: String,
 }
 
-pub trait BaseIntrinsicTypeDefinition {
-    /// Get the TypeKind for this type, recursing into pointers.
-    fn kind(&self) -> TypeKind;
-
-    /// Get the size of a single element inside this type, recursing into
-    /// pointers, i.e. a pointer to a u16 would be 16 rather than the size
-    /// of a pointer.
-    fn inner_size(&self) -> u32;
-
-    fn num_lanes(&self) -> u32;
-
-    fn num_vectors(&self) -> u32;
-
-    /// Determine if the type is a simd type, this will treat a type such as
-    /// `uint64x1` as simd.
-    fn is_simd(&self) -> bool;
-
-    fn is_ptr(&self) -> bool;
-
-    fn c_scalar_type(&self) -> String;
-
-    fn rust_scalar_type(&self) -> String;
-
-    /// Gets a cast for this type if needs promotion.
-    /// This is required for 8 bit types due to printing as the 8 bit types use
-    /// a char and when using that in `std::cout` it will print as a character,
-    /// which means value of 0 will be printed as a null byte.
-    ///
-    /// This is also needed for polynomial types because we want them to be
-    /// printed as unsigned integers to match Rust's `Debug` impl.
-    fn c_promotion(&self) -> &str;
-
-    /// Generates an initialiser for an array, which can be used to initialise an argument for the
-    /// intrinsic call.
-    ///
-    /// This is determistic based on the pass number.
-    ///
-    /// * `loads`: The number of values that need to be loaded from the argument array
-    /// * e.g for argument type uint32x2, loads=2 results in a string representing 4 32-bit values
-    ///
-    /// Returns a string such as
-    /// * `{0x1, 0x7F, 0xFF}` if `language` is `Language::C`
-    /// * `[0x1 as _, 0x7F as _, 0xFF as _]` if `language` is `Language::Rust`
-    fn populate_random(&self, indentation: Indentation, loads: u32, language: &Language) -> String;
-
-    fn is_rust_vals_array_const(&self) -> bool;
-
-    fn as_call_param_c(&self, name: &String) -> String;
-}
-
-impl BaseIntrinsicTypeDefinition for IntrinsicType {
-    fn kind(&self) -> TypeKind {
+impl IntrinsicType {
+    pub fn kind(&self) -> TypeKind {
         self.kind
     }
 
-    fn inner_size(&self) -> u32 {
+    pub fn inner_size(&self) -> u32 {
         if let Some(bl) = self.bit_len {
             bl
         } else {
@@ -165,23 +116,23 @@ impl BaseIntrinsicTypeDefinition for IntrinsicType {
         }
     }
 
-    fn num_lanes(&self) -> u32 {
+    pub fn num_lanes(&self) -> u32 {
         if let Some(sl) = self.simd_len { sl } else { 1 }
     }
 
-    fn num_vectors(&self) -> u32 {
+    pub fn num_vectors(&self) -> u32 {
         if let Some(vl) = self.vec_len { vl } else { 1 }
     }
 
-    fn is_simd(&self) -> bool {
+    pub fn is_simd(&self) -> bool {
         self.simd_len.is_some() || self.vec_len.is_some()
     }
 
-    fn is_ptr(&self) -> bool {
+    pub fn is_ptr(&self) -> bool {
         self.ptr
     }
 
-    fn c_scalar_type(&self) -> String {
+    pub fn c_scalar_type(&self) -> String {
         format!(
             "{prefix}{bits}_t",
             prefix = self.kind().c_prefix(),
@@ -189,7 +140,7 @@ impl BaseIntrinsicTypeDefinition for IntrinsicType {
         )
     }
 
-    fn rust_scalar_type(&self) -> String {
+    pub fn rust_scalar_type(&self) -> String {
         format!(
             "{prefix}{bits}",
             prefix = self.kind().rust_prefix(),
@@ -197,7 +148,7 @@ impl BaseIntrinsicTypeDefinition for IntrinsicType {
         )
     }
 
-    fn c_promotion(&self) -> &str {
+    pub fn c_promotion(&self) -> &str {
         match *self {
             IntrinsicType {
                 kind,
@@ -225,7 +176,12 @@ impl BaseIntrinsicTypeDefinition for IntrinsicType {
         }
     }
 
-    fn populate_random(&self, indentation: Indentation, loads: u32, language: &Language) -> String {
+    pub fn populate_random(
+        &self,
+        indentation: Indentation,
+        loads: u32,
+        language: &Language,
+    ) -> String {
         match self {
             IntrinsicType {
                 bit_len: Some(bit_len @ (8 | 16 | 32 | 64)),
@@ -293,7 +249,7 @@ impl BaseIntrinsicTypeDefinition for IntrinsicType {
         }
     }
 
-    fn is_rust_vals_array_const(&self) -> bool {
+    pub fn is_rust_vals_array_const(&self) -> bool {
         match self {
             // Floats have to be loaded at runtime for stable NaN conversion.
             IntrinsicType {
@@ -308,7 +264,7 @@ impl BaseIntrinsicTypeDefinition for IntrinsicType {
         }
     }
 
-    fn as_call_param_c(&self, name: &String) -> String {
+    pub fn as_call_param_c(&self, name: &String) -> String {
         if self.ptr {
             format!("&{}", name)
         } else {
@@ -317,92 +273,24 @@ impl BaseIntrinsicTypeDefinition for IntrinsicType {
     }
 }
 
-pub trait IntrinsicTypeDefinition: BaseIntrinsicTypeDefinition {
+pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
     /// Determines the load function for this type.
     /// can be implemented in an `impl` block
-    fn get_load_function(&self, _language: Language) -> String {
-        unimplemented!("Different architectures must implement get_load_function!")
-    }
+    fn get_load_function(&self, _language: Language) -> String;
 
     /// can be implemented in an `impl` block
-    fn get_lane_function(&self) -> String {
-        unimplemented!("Different architectures must implement get_lane_function!")
-    }
+    fn get_lane_function(&self) -> String;
 
     /// can be implemented in an `impl` block
-    fn from_c(_s: &str, _target: &String) -> Result<Box<Self>, String> {
-        unimplemented!("Different architectures must implement from_c!")
-    }
+    fn from_c(_s: &str, _target: &String) -> Result<Box<Self>, String>;
 
     /// Gets a string containing the typename for this type in C format.
     /// can be directly defined in `impl` blocks
-    fn c_type(&self) -> String {
-        unimplemented!("Different architectures must implement c_type!")
-    }
+    fn c_type(&self) -> String;
 
     /// can be directly defined in `impl` blocks
-    fn c_single_vector_type(&self) -> String {
-        unimplemented!("Different architectures must implement c_single_vector_type!")
-    }
+    fn c_single_vector_type(&self) -> String;
 
     /// can be defined in `impl` blocks
-    fn rust_type(&self) -> String {
-        unimplemented!("Different architectures must implement rust_type!")
-    }
-}
-
-/// Defines the basic structure of achitecture-specific derivatives
-/// of IntrinsicType.
-#[macro_export]
-macro_rules! base_intrinsictype_trait_def_macro {
-    ($T:ident) => {
-        use crate::common::intrinsic_helpers::IntrinsicType;
-
-        #[derive(Debug, Clone, PartialEq)]
-        pub struct $T(pub IntrinsicType);
-
-        impl BaseIntrinsicTypeDefinition for $T {
-            fn kind(&self) -> TypeKind {
-                self.0.kind()
-            }
-            fn inner_size(&self) -> u32 {
-                self.0.inner_size()
-            }
-            fn num_lanes(&self) -> u32 {
-                self.0.num_lanes()
-            }
-            fn num_vectors(&self) -> u32 {
-                self.0.num_vectors()
-            }
-            fn is_simd(&self) -> bool {
-                self.0.is_simd()
-            }
-            fn is_ptr(&self) -> bool {
-                self.0.is_ptr()
-            }
-            fn c_scalar_type(&self) -> String {
-                self.0.c_scalar_type()
-            }
-            fn rust_scalar_type(&self) -> String {
-                self.0.rust_scalar_type()
-            }
-            fn c_promotion(&self) -> &str {
-                self.0.c_promotion()
-            }
-            fn populate_random(
-                &self,
-                indentation: Indentation,
-                loads: u32,
-                language: &Language,
-            ) -> String {
-                self.0.populate_random(indentation, loads, language)
-            }
-            fn is_rust_vals_array_const(&self) -> bool {
-                self.0.is_rust_vals_array_const()
-            }
-            fn as_call_param_c(&self, name: &String) -> String {
-                self.0.as_call_param_c(name)
-            }
-        }
-    };
+    fn rust_type(&self) -> String;
 }

@@ -39,9 +39,7 @@ where
     /// Generates a std::cout for the intrinsics results that will match the
     /// rust debug output format for the return type. The generated line assumes
     /// there is an int i in scope which is the current pass number.
-    fn print_result_c(&self, _indentation: Indentation, _additional: &str) -> String {
-        unimplemented!("Architectures need to implement print_result_c!")
-    }
+    fn print_result_c(&self, _indentation: Indentation, _additional: &str) -> String;
 
     fn generate_loop_c(
         &self,
@@ -137,6 +135,7 @@ where
         &self,
         header_files: &[&str],
         target: &str,
+        c_target: &str,
         notices: &str,
         arch_specific_definitions: &[&str],
     ) -> String {
@@ -150,7 +149,7 @@ where
         generate_c_program(
             notices,
             header_files,
-            "aarch64",
+            c_target,
             arch_specific_definitions,
             self.arguments()
                 .gen_arglists_c(indentation, PASSES)
