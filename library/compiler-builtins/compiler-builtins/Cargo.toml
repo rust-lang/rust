@@ -1,0 +1,64 @@
+[package]
+authors = ["Jorge Aparicio <japaricious@gmail.com>"]
+name = "compiler_builtins"
+version = "0.1.159"
+license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
+readme = "README.md"
+repository = "https://github.com/rust-lang/compiler-builtins"
+homepage = "https://github.com/rust-lang/compiler-builtins"
+documentation = "https://docs.rs/compiler_builtins"
+edition = "2021"
+description = "Compiler intrinsics used by the Rust compiler."
+links = "compiler-rt"
+
+[lib]
+bench = false
+doctest = false
+test = false
+
+[dependencies]
+# For more information on this dependency see
+# https://github.com/rust-lang/rust/tree/master/library/rustc-std-workspace-core
+core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
+
+[build-dependencies]
+cc = { optional = true, version = "1.0" }
+
+[dev-dependencies]
+panic-handler = { path = "../crates/panic-handler" }
+
+[features]
+default = ["compiler-builtins"]
+
+# Enable compilation of C code in compiler-rt, filling in some more optimized
+# implementations and also filling in unimplemented intrinsics
+c = ["dep:cc"]
+
+# Workaround for the Cranelift codegen backend. Disables any implementations
+# which use inline assembly and fall back to pure Rust versions (if available).
+no-asm = []
+
+# Workaround for codegen backends which haven't yet implemented `f16` and
+# `f128` support. Disabled any intrinsics which use those types.
+no-f16-f128 = []
+
+# Flag this library as the unstable compiler-builtins lib
+compiler-builtins = []
+
+# Generate memory-related intrinsics like memcpy
+mem = []
+
+# Mangle all names so this can be linked in with other versions or other
+# compiler-rt implementations. Also used for testing
+mangled-names = []
+
+# Only used in the compiler's build system
+rustc-dep-of-std = ["compiler-builtins", "dep:core"]
+
+# This makes certain traits and function specializations public that
+# are not normally public but are required by the `builtins-test`
+unstable-public-internals = []
+
+[lints.rust]
+# The cygwin config can be dropped after our benchmark toolchain is bumped
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)', 'cfg(target_os, values("cygwin"))'] }

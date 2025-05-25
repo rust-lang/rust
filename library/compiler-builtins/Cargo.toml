@@ -1,0 +1,50 @@
+[workspace]
+resolver = "2"
+members = [
+    "builtins-test",
+    "compiler-builtins",
+    "crates/libm-macros",
+    "crates/musl-math-sys",
+    "crates/panic-handler",
+    "crates/util",
+    "libm",
+    "libm-test",
+]
+
+default-members = [
+    "builtins-test",
+    "compiler-builtins",
+    "crates/libm-macros",
+    "libm",
+    "libm-test",
+]
+
+exclude = [
+    # `builtins-test-intrinsics` needs the feature `compiler-builtins` enabled
+    # and `mangled-names` disabled, which is the opposite of what is needed for
+    # other tests, so it makes sense to keep it out of the workspace.
+    "builtins-test-intrinsics",
+]
+
+[profile.release]
+panic = "abort"
+
+[profile.dev]
+panic = "abort"
+
+# Release mode with debug assertions
+[profile.release-checked]
+inherits = "release"
+debug-assertions = true
+overflow-checks = true
+
+# Release with maximum optimizations, which is very slow to build. This is also
+# what is needed to check `no-panic`.
+[profile.release-opt]
+inherits = "release"
+codegen-units = 1
+lto = "fat"
+
+[profile.bench]
+# Required for iai-callgrind
+debug = true

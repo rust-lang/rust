@@ -1,0 +1,74 @@
+[package]
+name = "libm-test"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[features]
+default = ["build-mpfr", "build-musl", "unstable-float"]
+
+# Propagated from libm because this affects which functions we test.
+unstable-float = ["libm/unstable-float", "rug?/nightly-float"]
+
+# Generate tests which are random inputs and the outputs are calculated with
+# musl libc.
+build-mpfr = ["dep:rug", "dep:gmp-mpfr-sys"]
+
+# Build our own musl for testing and benchmarks
+build-musl = ["dep:musl-math-sys"]
+
+# Enable report generation without bringing in more dependencies by default
+benchmarking-reports = ["criterion/plotters", "criterion/html_reports"]
+
+# Enable icount benchmarks (requires iai-callgrind and valgrind)
+icount = ["dep:iai-callgrind"]
+
+# Run with a reduced set of benchmarks, such as for CI
+short-benchmarks = []
+
+[dependencies]
+anyhow = "1.0.97"
+# This is not directly used but is required so we can enable `gmp-mpfr-sys/force-cross`.
+gmp-mpfr-sys = { version = "1.6.4", optional = true, default-features = false }
+iai-callgrind = { version = "0.14.0", optional = true }
+indicatif = { version = "0.17.11", default-features = false }
+libm = { path = "../libm", features = ["unstable-public-internals"] }
+libm-macros = { path = "../crates/libm-macros" }
+musl-math-sys = { path = "../crates/musl-math-sys", optional = true }
+paste = "1.0.15"
+rand = "0.9.0"
+rand_chacha = "0.9.0"
+rayon = "1.10.0"
+rug = { version = "1.27.0", optional = true, default-features = false, features = ["float", "integer", "std"] }
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+getrandom = { version = "0.3.2", features = ["wasm_js"] }
+
+[build-dependencies]
+rand = { version = "0.9.0", optional = true }
+
+[dev-dependencies]
+criterion = { version = "0.5.1", default-features = false, features = ["cargo_bench_support"] }
+libtest-mimic = "0.8.1"
+
+[[bench]]
+name = "icount"
+harness = false
+required-features = ["icount"]
+
+[[bench]]
+name = "random"
+harness = false
+
+[[test]]
+# No harness so that we can skip tests at runtime based on env. Prefixed with
+# `z` so these tests get run last.
+name = "z_extensive"
+harness = false
+
+[lints.rust]
+# Values from the chared config.rs used by `libm` but not the test crate
+unexpected_cfgs = { level = "warn", check-cfg = [
+  'cfg(feature, values("arch", "force-soft-floats", "unstable-intrinsics"))',
+] }

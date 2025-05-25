@@ -1,0 +1,13 @@
+[workspace]
+# As part of the release process, we delete `libm/Cargo.toml`. Since
+# this is only run in CI, we shouldn't need to worry about it.
+allow_dirty = true
+publish_allow_dirty = true
+
+[[package]]
+name = "compiler_builtins"
+semver_check = false
+changelog_include = ["libm"] # libm is included as part of builtins
+
+[[package]]
+name = "libm"
