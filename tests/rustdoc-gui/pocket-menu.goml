@@ -68,16 +68,3 @@ assert-css: ("#settings-menu .popover", {"display": "block"})
 click: ".sidebar-menu-toggle"
 assert: "//*[@class='sidebar shown']"
 assert-css: ("#settings-menu .popover", {"display": "none"})
-// Opening the settings popover should close the sidebar.
-click: "#settings-menu a"
-assert-css: ("#settings-menu .popover", {"display": "block"})
-assert-false: "//*[@class='sidebar shown']"
-
-// Opening the settings popover at start (which async loads stuff) should also close.
-reload:
-click: ".sidebar-menu-toggle"
-assert: "//*[@class='sidebar shown']"
-assert-false: "#settings-menu .popover"
-click: "#settings-menu a"
-assert-false: "//*[@class='sidebar shown']"
-wait-for: "#settings-menu .popover"

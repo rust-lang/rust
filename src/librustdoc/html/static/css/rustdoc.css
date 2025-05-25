@@ -2527,9 +2527,12 @@ in src-script.js and main.js
 		z-index: 11;
 		/* Reduce height slightly to account for mobile topbar. */
 		height: calc(100vh - 45px);
-		width: 200px;
 		/* resize indicator: hide this when on touch or mobile */
 		border-right: none;
+		width: 100%;
+	}
+	.sidebar-elems .block li a {
+		white-space: wrap;
 	}
 
 	/* The source view uses a different design for the sidebar toggle, and doesn't have a topbar,
