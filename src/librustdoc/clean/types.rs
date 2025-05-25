@@ -807,7 +807,7 @@ impl Item {
     ) -> Vec<String> {
         let mut attrs = self.attributes_without_repr(tcx, is_json);
 
-        if let Some(repr_attr) = self.repr(tcx, cache) {
+        if let Some(repr_attr) = self.repr(tcx, cache, is_json) {
             attrs.push(repr_attr);
         }
         attrs

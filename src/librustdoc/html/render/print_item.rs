@@ -1479,6 +1479,7 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
                     self.cx.cache(),
                     self.def_id,
                     ItemType::Union,
+                    false,
                 ) {
                     writeln!(f, "{repr}")?;
                 };

@@ -1222,7 +1222,7 @@ fn render_repr_attributes_in_code(
     def_id: DefId,
     item_type: ItemType,
 ) {
-    if let Some(repr) = clean::repr_attributes(cx.tcx(), cx.cache(), def_id, item_type) {
+    if let Some(repr) = clean::repr_attributes(cx.tcx(), cx.cache(), def_id, item_type, false) {
         render_code_attribute(CodeAttribute(repr), w);
     }
 }
