@@ -1901,6 +1901,13 @@ extern "C" void LLVMRustGetMangledName(LLVMValueRef V, RustStringRef Str) {
   Mangler().getNameWithPrefix(OS, GV, true);
 }
 
+extern "C" const char *LLVMRustIntrinsicGetBaseName(unsigned ID,
+                                                    size_t *NameLength) {
+  auto baseName = Intrinsic::getBaseName(ID);
+  *NameLength = baseName.size();
+  return baseName.data();
+}
+
 extern "C" int32_t LLVMRustGetElementTypeArgIndex(LLVMValueRef CallSite) {
   auto *CB = unwrap<CallBase>(CallSite);
   switch (CB->getIntrinsicID()) {

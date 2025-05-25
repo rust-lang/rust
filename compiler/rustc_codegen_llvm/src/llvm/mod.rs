@@ -1,9 +1,9 @@
 #![allow(non_snake_case)]
 
 use std::ffi::{CStr, CString};
-use std::ptr;
 use std::str::FromStr;
 use std::string::FromUtf8Error;
+use std::{ptr, slice};
 
 use libc::c_uint;
 use rustc_abi::{Align, Size, WrappingRange};
@@ -324,6 +324,82 @@ pub(crate) fn get_value_name(value: &Value) -> &[u8] {
         let mut len = 0;
         let data = LLVMGetValueName2(value, &mut len);
         std::slice::from_raw_parts(data.cast(), len)
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct Intrinsic {
+    id: c_uint,
+}
+
+impl Intrinsic {
+    pub(crate) fn lookup(name: &[u8]) -> Option<Self> {
+        let id = unsafe { LLVMLookupIntrinsicID(name.as_c_char_ptr(), name.len()) };
+        if id == 0 { None } else { Some(Self { id }) }
+    }
+
+    pub(crate) fn id(self) -> c_uint {
+        self.id
+    }
+
+    pub(crate) fn is_overloaded(self) -> bool {
+        unsafe { LLVMIntrinsicIsOverloaded(self.id) == True }
+    }
+
+    pub(crate) fn base_name<'ll>(self) -> &'ll [u8] {
+        let mut len = 0;
+        let ptr = unsafe { LLVMRustIntrinsicGetBaseName(self.id, &mut len) };
+        unsafe { slice::from_raw_parts(ptr.cast(), len) }
+    }
+
+    pub(crate) fn overloaded_name<'ll>(
+        self,
+        llmod: &'ll Module,
+        type_params: &[&'ll Type],
+    ) -> CSlice<u8> {
+        let mut len = 0;
+        let ptr = unsafe {
+            LLVMIntrinsicCopyOverloadedName2(
+                llmod,
+                self.id,
+                type_params.as_ptr(),
+                type_params.len(),
+                &mut len,
+            )
+        };
+        unsafe { CSlice::from_raw(ptr.cast(), len) }
+    }
+}
+
+pub(crate) struct CSlice<T: Copy> {
+    ptr: *mut T,
+    len: usize,
+}
+
+impl<T: Copy> CSlice<T> {
+    pub(crate) unsafe fn from_raw(ptr: *mut T, len: usize) -> Self {
+        assert!(std::mem::size_of::<T>() != 0, "ZSTs aren't supported yet");
+        Self { ptr, len }
+    }
+}
+
+impl<T: Copy> std::ops::Deref for CSlice<T> {
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { slice::from_raw_parts(self.ptr, self.len) }
+    }
+}
+
+impl<T: Copy> std::ops::DerefMut for CSlice<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { slice::from_raw_parts_mut(self.ptr, self.len) }
+    }
+}
+
+impl<T: Copy> Drop for CSlice<T> {
+    fn drop(&mut self) {
+        unsafe { libc::free(self.ptr.cast()) }
     }
 }
 

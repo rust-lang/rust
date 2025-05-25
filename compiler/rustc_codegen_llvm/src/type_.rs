@@ -49,9 +49,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn type_void(&self) -> &'ll Type {
         unsafe { llvm::LLVMVoidTypeInContext(self.llcx()) }
     }
-    pub(crate) fn type_token(&self) -> &'ll Type {
-        unsafe { llvm::LLVMTokenTypeInContext(self.llcx()) }
-    }
 
     pub(crate) fn type_metadata(&self) -> &'ll Type {
         unsafe { llvm::LLVMMetadataTypeInContext(self.llcx()) }
@@ -154,6 +151,26 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
             )
         }
     }
+
+    pub(crate) fn type_bf16(&self) -> &'ll Type {
+        unsafe { llvm::LLVMBFloatTypeInContext(self.llcx()) }
+    }
+
+    pub(crate) fn type_x86f80(&self) -> &'ll Type {
+        unsafe { llvm::LLVMX86FP80TypeInContext(self.llcx()) }
+    }
+
+    pub(crate) fn type_ppcf128(&self) -> &'ll Type {
+        unsafe { llvm::LLVMPPCFP128TypeInContext(self.llcx()) }
+    }
+
+    pub(crate) fn type_scalable_vector(&self, ty: &'ll Type, len: u64) -> &'ll Type {
+        unsafe { llvm::LLVMScalableVectorType(ty, len as c_uint) }
+    }
+
+    pub(crate) fn type_x86amx(&self) -> &'ll Type {
+        unsafe { llvm::LLVMX86AMXTypeInContext(self.llcx()) }
+    }
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
@@ -215,7 +232,9 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
 
     fn element_type(&self, ty: &'ll Type) -> &'ll Type {
         match self.type_kind(ty) {
-            TypeKind::Array | TypeKind::Vector => unsafe { llvm::LLVMGetElementType(ty) },
+            TypeKind::Array | TypeKind::Vector | TypeKind::ScalableVector => unsafe {
+                llvm::LLVMGetElementType(ty)
+            },
             TypeKind::Pointer => bug!("element_type is not supported for opaque pointers"),
             other => bug!("element_type called on unsupported type {other:?}"),
         }
@@ -227,7 +246,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
 
     fn float_width(&self, ty: &'ll Type) -> usize {
         match self.type_kind(ty) {
-            TypeKind::Half => 16,
+            TypeKind::Half | TypeKind::BFloat => 16,
             TypeKind::Float => 32,
             TypeKind::Double => 64,
             TypeKind::X86_FP80 => 80,
@@ -284,8 +303,12 @@ impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn cast_backend_type(&self, ty: &CastTarget) -> &'ll Type {
         ty.llvm_type(self)
     }
-    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
-        fn_abi.llvm_type(self)
+    fn fn_decl_backend_type(
+        &self,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        fn_ptr: &'ll Value,
+    ) -> &'ll Type {
+        fn_abi.llvm_type(self, llvm::get_value_name(fn_ptr))
     }
     fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
         fn_abi.ptr_to_llvm_type(self)
