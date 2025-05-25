@@ -11,3 +11,8 @@ mod iter;
 fn str_validate_emoji(b: &mut Bencher) {
     b.iter(|| str::from_utf8(black_box(corpora::emoji::LARGE.as_bytes())));
 }
+
+#[bench]
+fn str_validate_ascii(b: &mut Bencher) {
+    b.iter(|| str::from_utf8(black_box(corpora::en::LARGE.as_bytes())));
+}
