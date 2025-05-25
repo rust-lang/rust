@@ -411,7 +411,7 @@ impl<'db> SemanticsImpl<'db> {
         let sa = self.analyze_no_infer(macro_call.syntax())?;
 
         let macro_call = InFile::new(sa.file_id, macro_call);
-        let file_id = sa.expand(self.db, macro_call)?;
+        let file_id = sa.expansion(self.db, macro_call)?;
 
         let node = self.parse_or_expand(file_id.into());
         Some(node)
@@ -437,7 +437,7 @@ impl<'db> SemanticsImpl<'db> {
         let sa = self.analyze_no_infer(macro_call.syntax())?;
 
         let macro_call = InFile::new(sa.file_id, macro_call);
-        let file_id = sa.expand(self.db, macro_call)?;
+        let file_id = sa.expansion(self.db, macro_call)?;
         let macro_call = self.db.lookup_intern_macro_call(file_id);
 
         let skip = matches!(
@@ -576,7 +576,7 @@ impl<'db> SemanticsImpl<'db> {
     ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let analyzer = self.analyze_no_infer(actual_macro_call.syntax())?;
         let macro_call = InFile::new(analyzer.file_id, actual_macro_call);
-        let macro_file = analyzer.expansion(macro_call)?;
+        let macro_file = analyzer.expansion(self.db, macro_call)?;
         hir_expand::db::expand_speculative(
             self.db,
             macro_file,
@@ -1120,7 +1120,7 @@ impl<'db> SemanticsImpl<'db> {
                                                 false,
                                             )
                                         })?
-                                        .expand(self.db, mcall.as_ref())?;
+                                        .expansion(self.db, mcall.as_ref())?;
                                     m_cache.insert(mcall, it);
                                     it
                                 }
@@ -1579,7 +1579,7 @@ impl<'db> SemanticsImpl<'db> {
         let sa = self.analyze(macro_call.syntax())?;
         self.db
             .parse_macro_expansion(
-                sa.expand(self.db, self.wrap_node_infile(macro_call.clone()).as_ref())?,
+                sa.expansion(self.db, self.wrap_node_infile(macro_call.clone()).as_ref())?,
             )
             .value
             .1

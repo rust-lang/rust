@@ -26,7 +26,7 @@ use hir_def::{
     },
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
     lang_item::LangItem,
-    nameres::{MacroSubNs, crate_def_map},
+    nameres::{MacroSubNs, block_def_map, crate_def_map},
     resolver::{HasResolver, Resolver, TypeNs, ValueNs, resolver_for_scope},
     type_ref::{Mutability, TypeRefId},
 };
@@ -218,8 +218,16 @@ impl<'db> SourceAnalyzer<'db> {
         })
     }
 
-    pub(crate) fn expansion(&self, node: InFile<&ast::MacroCall>) -> Option<MacroCallId> {
-        self.store_sm()?.expansion(node)
+    pub(crate) fn expansion(
+        &self,
+        db: &dyn HirDatabase,
+        macro_call: InFile<&ast::MacroCall>,
+    ) -> Option<MacroCallId> {
+        self.store_sm().and_then(|sm| sm.expansion(macro_call)).or_else(|| {
+            let ast_id_map = db.ast_id_map(macro_call.file_id);
+            let call_ast_id = macro_call.with_value(ast_id_map.ast_id(macro_call.value));
+            self.resolver.item_scopes().find_map(|scope| scope.macro_invoc(call_ast_id))
+        })
     }
 
     fn trait_environment(&self, db: &'db dyn HirDatabase) -> Arc<TraitEnvironment> {
@@ -747,17 +755,16 @@ impl<'db> SourceAnalyzer<'db> {
 
     pub(crate) fn resolve_macro_call(
         &self,
-        db: &'db dyn HirDatabase,
+        db: &dyn HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
     ) -> Option<Macro> {
-        let bs = self.store_sm()?;
-        bs.expansion(macro_call).and_then(|it| {
-            // FIXME: Block def maps
+        self.expansion(db, macro_call).and_then(|it| {
             let def = it.lookup(db).def;
-            crate_def_map(db, def.krate)
-                .macro_def_to_macro_id
-                .get(&def.kind.erased_ast_id())
-                .map(|it| (*it).into())
+            let def_map = match def.block {
+                Some(block) => block_def_map(db, base_db::salsa::plumbing::FromId::from_id(block)),
+                None => crate_def_map(db, def.krate),
+            };
+            def_map.macro_def_to_macro_id.get(&def.kind.erased_ast_id()).map(|it| (*it).into())
         })
     }
 
@@ -1290,18 +1297,6 @@ impl<'db> SourceAnalyzer<'db> {
                 (field.into(), Type::new_with_resolver_inner(db, &self.resolver, ty))
             })
             .collect()
-    }
-
-    pub(crate) fn expand(
-        &self,
-        db: &'db dyn HirDatabase,
-        macro_call: InFile<&ast::MacroCall>,
-    ) -> Option<MacroCallId> {
-        self.store_sm().and_then(|bs| bs.expansion(macro_call)).or_else(|| {
-            self.resolver.item_scope().macro_invoc(
-                macro_call.with_value(db.ast_id_map(macro_call.file_id).ast_id(macro_call.value)),
-            )
-        })
     }
 
     pub(crate) fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantId> {
