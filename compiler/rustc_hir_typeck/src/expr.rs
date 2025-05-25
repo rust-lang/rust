@@ -1794,7 +1794,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let coerce_to = expected
                 .to_option(self)
                 .and_then(|uty| match *self.try_structurally_resolve_type(expr.span, uty).kind() {
-                    ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
+                    // Avoid using a type variable as the coerce_to type, as it may resolve
+                    // during the first coercion instead of being based on the common type.
+                    ty::Array(ty, _) | ty::Slice(ty) if !ty.is_ty_var() => Some(ty),
                     _ => None,
                 })
                 .unwrap_or_else(|| self.next_ty_var(expr.span));
