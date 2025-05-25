@@ -524,7 +524,11 @@ impl<'a> State<'a> {
                         self.maybe_print_comment(field.span.lo());
                         self.print_outer_attributes(&field.attrs);
                         self.print_visibility(&field.vis);
-                        self.print_ident(field.ident.unwrap());
+                        if let Some(ident) = field.ident {
+                            self.print_ident(ident);
+                        } else {
+                            self.word("_");
+                        }
                         self.word_nbsp(":");
                         self.print_type(&field.ty);
                         self.word(",");
