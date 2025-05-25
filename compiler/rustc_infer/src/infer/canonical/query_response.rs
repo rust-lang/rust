@@ -23,7 +23,7 @@ use crate::infer::canonical::{
     QueryOutlivesConstraint, QueryRegionConstraints, QueryResponse,
 };
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult};
+use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult, SubregionOrigin};
 use crate::traits::query::NoSolution;
 use crate::traits::{
     Obligation, ObligationCause, PredicateObligation, PredicateObligations, ScrubbedTraitError,
@@ -593,10 +593,10 @@ impl<'tcx> InferCtxt<'tcx> {
                     // no action needed
                 }
                 (GenericArgKind::Lifetime(v1), GenericArgKind::Lifetime(v2)) => {
-                    obligations.extend(
-                        self.at(cause, param_env)
-                            .eq(DefineOpaqueTypes::Yes, v1, v2)?
-                            .into_obligations(),
+                    self.inner.borrow_mut().unwrap_region_constraints().make_eqregion(
+                        SubregionOrigin::RelateRegionParamBound(cause.span, None),
+                        v1,
+                        v2,
                     );
                 }
                 (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
