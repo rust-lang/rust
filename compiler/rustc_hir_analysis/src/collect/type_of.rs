@@ -103,11 +103,11 @@ fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: S
             icx.lower_ty(ty)
         }
 
-        Node::Item(hir::Item { kind: hir::ItemKind::Const(_, ty, ..), .. })
-        | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, ..), .. })
-        | Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Const(ty, ..), .. }) => {
-            icx.lower_ty(ty)
-        }
+        Node::Item(hir::Item { kind: hir::ItemKind::Const(..), owner_id, .. })
+        | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), owner_id, .. })
+        | Node::TraitItem(hir::TraitItem {
+            kind: hir::TraitItemKind::Const(..), owner_id, ..
+        }) => tcx.type_of(owner_id.def_id).instantiate_identity(),
 
         // This is not a `bug!` as const arguments in path segments that did not resolve to anything
         // will result in `type_of` never being fed.
