@@ -15,7 +15,7 @@
 //! - `(` for tuple structs/variants
 //! - `;` for unit structs
 //! - The type name in a struct/enum/variant definition
-//! Then only constructor/initialization usages will be shown, filtering out other references.
+//!   Then only constructor/initialization usages will be shown, filtering out other references.
 
 use hir::{PathResolution, Semantics};
 use ide_db::{
@@ -105,7 +105,7 @@ pub struct Declaration {
 /// - `(` after tuple struct/variant: Shows tuple literal initializations
 /// - `;` after unit struct: Shows unit literal initializations
 /// - Type name in definition: Shows all initialization usages
-/// In these cases, other kinds of references (like type references) are filtered out.
+///   In these cases, other kinds of references (like type references) are filtered out.
 pub(crate) fn find_all_refs(
     sema: &Semantics<'_, RootDatabase>,
     position: FilePosition,
