@@ -1,11 +1,12 @@
 use rustc_macros::extension;
 use rustc_middle::span_bug;
+use rustc_next_trait_solver::solve::{Certainty, GenerateProofTree, SolverDelegateEvalExt};
+use rustc_span::DUMMY_SP;
 
 use crate::infer::InferCtxt;
 use crate::infer::canonical::OriginalQueryValues;
-use crate::traits::{
-    EvaluationResult, ObligationCtxt, OverflowError, PredicateObligation, SelectionContext,
-};
+use crate::solve::SolverDelegate;
+use crate::traits::{EvaluationResult, OverflowError, PredicateObligation, SelectionContext};
 
 #[extension(pub trait InferCtxtExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
@@ -69,16 +70,14 @@ impl<'tcx> InferCtxt<'tcx> {
 
         if self.next_trait_solver() {
             self.probe(|snapshot| {
-                let ocx = ObligationCtxt::new(self);
-                ocx.register_obligation(obligation.clone());
-                let mut result = EvaluationResult::EvaluatedToOk;
-                for error in ocx.select_all_or_error() {
-                    if error.is_true_error() {
-                        return Ok(EvaluationResult::EvaluatedToErr);
-                    } else {
-                        result = result.max(EvaluationResult::EvaluatedToAmbig);
-                    }
-                }
+                let mut result = match <&SolverDelegate<'tcx>>::from(self)
+                    .evaluate_root_goal(obligation.as_goal(), GenerateProofTree::No, DUMMY_SP)
+                    .0
+                {
+                    Ok((_, Certainty::Yes)) => EvaluationResult::EvaluatedToOk,
+                    Ok((_, Certainty::Maybe(_))) => EvaluationResult::EvaluatedToAmbig,
+                    Err(_) => EvaluationResult::EvaluatedToErr,
+                };
                 if self.opaque_types_added_in_snapshot(snapshot) {
                     result = result.max(EvaluationResult::EvaluatedToOkModuloOpaqueTypes);
                 } else if self.region_constraints_added_in_snapshot(snapshot) {
