@@ -297,6 +297,7 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
     + From<I::Ty>
     + From<I::Region>
     + From<I::Const>
+    + From<I::Term>
 {
     fn as_term(&self) -> Option<I::Term> {
         match self.kind() {
@@ -594,6 +595,13 @@ pub trait BoundExistentialPredicates<I: Interner>:
 
 pub trait Span<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
     fn dummy() -> Self;
+}
+
+pub trait OpaqueTypeStorageEntries: Debug + Copy + Default {
+    /// Whether the number of opaques has changed in a way that necessitates
+    /// reevaluating a goal. For now, this is only when the number of non-duplicated
+    /// entries changed.
+    fn needs_reevaluation(self, canonicalized: usize) -> bool;
 }
 
 pub trait SliceLike: Sized + Copy {

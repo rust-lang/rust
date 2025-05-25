@@ -89,6 +89,57 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().opportunistic_resolve_var(self.tcx, vid)
     }
 
+    fn is_changed_arg(&self, arg: ty::GenericArg<'tcx>) -> bool {
+        match arg.unpack() {
+            ty::GenericArgKind::Lifetime(_) => {
+                // Lifetimes should not change affect trait selection.
+                false
+            }
+            ty::GenericArgKind::Type(ty) => {
+                if let ty::Infer(infer_ty) = *ty.kind() {
+                    match infer_ty {
+                        ty::InferTy::TyVar(vid) => {
+                            !self.probe_ty_var(vid).is_err_and(|_| self.root_var(vid) == vid)
+                        }
+                        ty::InferTy::IntVar(vid) => {
+                            let mut inner = self.inner.borrow_mut();
+                            !matches!(
+                                inner.int_unification_table().probe_value(vid),
+                                ty::IntVarValue::Unknown
+                                    if inner.int_unification_table().find(vid) == vid
+                            )
+                        }
+                        ty::InferTy::FloatVar(vid) => {
+                            let mut inner = self.inner.borrow_mut();
+                            !matches!(
+                                inner.float_unification_table().probe_value(vid),
+                                ty::FloatVarValue::Unknown
+                                    if inner.float_unification_table().find(vid) == vid
+                            )
+                        }
+                        ty::InferTy::FreshTy(_)
+                        | ty::InferTy::FreshIntTy(_)
+                        | ty::InferTy::FreshFloatTy(_) => true,
+                    }
+                } else {
+                    true
+                }
+            }
+            ty::GenericArgKind::Const(ct) => {
+                if let ty::ConstKind::Infer(infer_ct) = ct.kind() {
+                    match infer_ct {
+                        ty::InferConst::Var(vid) => !self
+                            .probe_const_var(vid)
+                            .is_err_and(|_| self.root_const_var(vid) == vid),
+                        ty::InferConst::Fresh(_) => true,
+                    }
+                } else {
+                    true
+                }
+            }
+        }
+    }
+
     fn next_region_infer(&self) -> ty::Region<'tcx> {
         self.next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
     }
