@@ -628,6 +628,8 @@ pub trait Machine<'tcx>: Sized {
         // Default to no caching.
         Cow::Owned(compute_range())
     }
+
+    fn get_default_byte_mdata(&self) -> <Self::Bytes as AllocBytes>::ByteMetadata;
 }
 
 /// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines

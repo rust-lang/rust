@@ -48,6 +48,7 @@ pub(crate) fn try_new_allocation<'tcx>(
                 size,
                 layout.align.abi,
                 AllocInit::Uninit,
+                (),
             );
             allocation
                 .write_scalar(&tables.tcx, alloc_range(Size::ZERO, size), scalar)
@@ -65,6 +66,7 @@ pub(crate) fn try_new_allocation<'tcx>(
                 layout.size,
                 layout.align.abi,
                 AllocInit::Uninit,
+                (),
             );
             allocation
                 .write_scalar(

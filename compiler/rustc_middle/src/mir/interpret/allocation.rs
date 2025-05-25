@@ -27,12 +27,20 @@ use crate::ty;
 
 /// Functionality required for the bytes of an `Allocation`.
 pub trait AllocBytes: Clone + fmt::Debug + Deref<Target = [u8]> + DerefMut<Target = [u8]> {
+    /// Used for giving extra metadata on creation. Miri uses this to allow
+    /// machine memory to be allocated separately from other allocations.
+    type ByteMetadata: Clone + fmt::Debug;
+
     /// Create an `AllocBytes` from a slice of `u8`.
-    fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self;
+    fn from_bytes<'a>(
+        slice: impl Into<Cow<'a, [u8]>>,
+        _align: Align,
+        _dsc: Self::ByteMetadata,
+    ) -> Self;
 
     /// Create a zeroed `AllocBytes` of the specified size and alignment.
     /// Returns `None` if we ran out of memory on the host.
-    fn zeroed(size: Size, _align: Align) -> Option<Self>;
+    fn zeroed(size: Size, _align: Align, _dsc: Self::ByteMetadata) -> Option<Self>;
 
     /// Gives direct access to the raw underlying storage.
     ///
@@ -47,15 +55,20 @@ pub trait AllocBytes: Clone + fmt::Debug + Deref<Target = [u8]> + DerefMut<Targe
     /// - other pointers returned by this method, and
     /// - references returned from `deref()`, as long as there was no write.
     fn as_ptr(&self) -> *const u8;
+
+    /// Gets the allocation metadata.
+    fn get_mdata(&self) -> Self::ByteMetadata;
 }
 
 /// Default `bytes` for `Allocation` is a `Box<u8>`.
 impl AllocBytes for Box<[u8]> {
-    fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self {
+    type ByteMetadata = ();
+
+    fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align, _dsc: ()) -> Self {
         Box::<[u8]>::from(slice.into())
     }
 
-    fn zeroed(size: Size, _align: Align) -> Option<Self> {
+    fn zeroed(size: Size, _align: Align, _dsc: ()) -> Option<Self> {
         let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes().try_into().ok()?).ok()?;
         // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
         let bytes = unsafe { bytes.assume_init() };
@@ -69,6 +82,8 @@ impl AllocBytes for Box<[u8]> {
     fn as_ptr(&self) -> *const u8 {
         Box::as_ptr(self).cast()
     }
+
+    fn get_mdata(&self) -> () {}
 }
 
 /// This type represents an Allocation in the Miri/CTFE core engine.
@@ -175,6 +190,7 @@ fn all_zero(buf: &[u8]) -> bool {
 impl<Prov: Provenance, Extra, Bytes, E: Encoder> Encodable<E> for Allocation<Prov, Extra, Bytes>
 where
     Bytes: AllocBytes,
+    Bytes::ByteMetadata: Encodable<E>,
     ProvenanceMap<Prov>: Encodable<E>,
     Extra: Encodable<E>,
 {
@@ -186,6 +202,7 @@ where
         if !all_zero {
             encoder.emit_raw_bytes(&self.bytes);
         }
+        self.bytes.get_mdata().encode(encoder);
         self.provenance.encode(encoder);
         self.init_mask.encode(encoder);
         self.extra.encode(encoder);
@@ -195,6 +212,7 @@ where
 impl<Prov: Provenance, Extra, Bytes, D: Decoder> Decodable<D> for Allocation<Prov, Extra, Bytes>
 where
     Bytes: AllocBytes,
+    Bytes::ByteMetadata: Decodable<D>,
     ProvenanceMap<Prov>: Decodable<D>,
     Extra: Decodable<D>,
 {
@@ -203,7 +221,9 @@ where
 
         let len = decoder.read_usize();
         let bytes = if all_zero { vec![0u8; len] } else { decoder.read_raw_bytes(len).to_vec() };
-        let bytes = Bytes::from_bytes(bytes, align);
+
+        let mdata = Decodable::decode(decoder);
+        let bytes = Bytes::from_bytes(bytes, align, mdata);
 
         let provenance = Decodable::decode(decoder);
         let init_mask = Decodable::decode(decoder);
@@ -395,8 +415,9 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         slice: impl Into<Cow<'a, [u8]>>,
         align: Align,
         mutability: Mutability,
+        dsc: <Bytes as AllocBytes>::ByteMetadata,
     ) -> Self {
-        let bytes = Bytes::from_bytes(slice, align);
+        let bytes = Bytes::from_bytes(slice, align, dsc);
         let size = Size::from_bytes(bytes.len());
         Self {
             bytes,
@@ -408,14 +429,18 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         }
     }
 
-    pub fn from_bytes_byte_aligned_immutable<'a>(slice: impl Into<Cow<'a, [u8]>>) -> Self {
-        Allocation::from_bytes(slice, Align::ONE, Mutability::Not)
+    pub fn from_bytes_byte_aligned_immutable<'a>(
+        slice: impl Into<Cow<'a, [u8]>>,
+        dsc: <Bytes as AllocBytes>::ByteMetadata,
+    ) -> Self {
+        Allocation::from_bytes(slice, Align::ONE, Mutability::Not, dsc)
     }
 
     fn new_inner<R>(
         size: Size,
         align: Align,
         init: AllocInit,
+        dsc: <Bytes as AllocBytes>::ByteMetadata,
         fail: impl FnOnce() -> R,
     ) -> Result<Self, R> {
         // We raise an error if we cannot create the allocation on the host.
@@ -424,7 +449,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         // deterministic. However, we can be non-deterministic here because all uses of const
         // evaluation (including ConstProp!) will make compilation fail (via hard error
         // or ICE) upon encountering a `MemoryExhausted` error.
-        let bytes = Bytes::zeroed(size, align).ok_or_else(fail)?;
+        let bytes = Bytes::zeroed(size, align, dsc).ok_or_else(fail)?;
 
         Ok(Allocation {
             bytes,
@@ -444,8 +469,13 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
 
     /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
     /// available to the compiler to do so.
-    pub fn try_new<'tcx>(size: Size, align: Align, init: AllocInit) -> InterpResult<'tcx, Self> {
-        Self::new_inner(size, align, init, || {
+    pub fn try_new<'tcx>(
+        size: Size,
+        align: Align,
+        init: AllocInit,
+        dsc: <Bytes as AllocBytes>::ByteMetadata,
+    ) -> InterpResult<'tcx, Self> {
+        Self::new_inner(size, align, init, dsc, || {
             ty::tls::with(|tcx| tcx.dcx().delayed_bug("exhausted memory during interpretation"));
             InterpErrorKind::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })
@@ -457,8 +487,13 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     ///
     /// Example use case: To obtain an Allocation filled with specific data,
     /// first call this function and then call write_scalar to fill in the right data.
-    pub fn new(size: Size, align: Align, init: AllocInit) -> Self {
-        match Self::new_inner(size, align, init, || {
+    pub fn new(
+        size: Size,
+        align: Align,
+        init: AllocInit,
+        dsc: <Bytes as AllocBytes>::ByteMetadata,
+    ) -> Self {
+        match Self::new_inner(size, align, init, dsc, || {
             panic!(
                 "interpreter ran out of memory: cannot create allocation of {} bytes",
                 size.bytes()

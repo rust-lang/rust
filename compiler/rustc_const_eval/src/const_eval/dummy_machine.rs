@@ -197,4 +197,9 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
     ) -> &'a mut Vec<interpret::Frame<'tcx, Self::Provenance, Self::FrameExtra>> {
         unimplemented!()
     }
+
+    fn get_default_byte_mdata(
+        &self,
+    ) -> <Self::Bytes as rustc_middle::mir::interpret::AllocBytes>::ByteMetadata {
+    }
 }

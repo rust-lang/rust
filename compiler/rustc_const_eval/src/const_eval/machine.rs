@@ -735,6 +735,8 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             Cow::Owned(compute_range())
         }
     }
+
+    fn get_default_byte_mdata(&self) -> <Self::Bytes as mir::interpret::AllocBytes>::ByteMetadata {}
 }
 
 // Please do not add any code below the above `Machine` trait impl. I (oli-obk) plan more cleanups
