@@ -56,8 +56,8 @@ struct OperandInfo {
 }
 
 fn analyze_operand(operand: &Expr<'_>, cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<OperandInfo> {
-    match ConstEvalCtxt::new(cx).eval(operand) {
-        Some(Constant::Int(v)) => match *cx.typeck_results().expr_ty(expr).kind() {
+    match ConstEvalCtxt::new(cx).eval(operand)? {
+        Constant::Int(v) => match *cx.typeck_results().expr_ty(expr).kind() {
             ty::Int(ity) => {
                 let value = sext(cx.tcx, v, ity);
                 Some(OperandInfo {
@@ -74,8 +74,8 @@ fn analyze_operand(operand: &Expr<'_>, cx: &LateContext<'_>, expr: &Expr<'_>) ->
             _ => None,
         },
         // FIXME(f16_f128): add when casting is available on all platforms
-        Some(Constant::F32(f)) => Some(floating_point_operand_info(&f)),
-        Some(Constant::F64(f)) => Some(floating_point_operand_info(&f)),
+        Constant::F32(f) => Some(floating_point_operand_info(&f)),
+        Constant::F64(f) => Some(floating_point_operand_info(&f)),
         _ => None,
     }
 }
