@@ -14,13 +14,14 @@ use std::cell::Cell;
 
 thread_local!(static A: Cell<u32> = const { Cell::new(1) });
 
-// CHECK: [[TLS_AUX:@.+]] = external thread_local local_unnamed_addr global i64
-// CHECK: [[TLS:@.+]] = internal thread_local unnamed_addr global
+// CHECK: [[TLS_AUX:@.+]] = external thread_local{{.*}} global i64
+// CHECK: [[TLS:@.+]] = internal thread_local{{.*}} global
 
 // CHECK-LABEL: @get
 #[no_mangle]
 fn get() -> u32 {
-    // CHECK: [[RET_0:%.+]] = load i32, {{.*}}[[TLS]]{{.*}}
+    // CHECK: [[PTR:%.+]] = tail call {{.*}} ptr @llvm.threadlocal.address.p0(ptr [[TLS]])
+    // CHECK-NEXT: [[RET_0:%.+]] = load i32, ptr [[PTR]]
     // CHECK-NEXT: ret i32 [[RET_0]]
     A.with(|a| a.get())
 }
@@ -28,7 +29,8 @@ fn get() -> u32 {
 // CHECK-LABEL: @set
 #[no_mangle]
 fn set(v: u32) {
-    // CHECK: store i32 %0, {{.*}}[[TLS]]{{.*}}
+    // CHECK: [[PTR:%.+]] = tail call {{.*}} ptr @llvm.threadlocal.address.p0(ptr [[TLS]])
+    // CHECK-NEXT: store i32 %0, ptr [[PTR]]
     // CHECK-NEXT: ret void
     A.with(|a| a.set(v))
 }
@@ -36,7 +38,8 @@ fn set(v: u32) {
 // CHECK-LABEL: @get_aux
 #[no_mangle]
 fn get_aux() -> u64 {
-    // CHECK: [[RET_1:%.+]] = load i64, {{.*}}[[TLS_AUX]]
+    // CHECK: [[PTR:%.+]] = tail call {{.*}} ptr @llvm.threadlocal.address.p0(ptr [[TLS_AUX]])
+    // CHECK-NEXT: [[RET_1:%.+]] = load i64, ptr [[PTR]]
     // CHECK-NEXT: ret i64 [[RET_1]]
     aux::A.with(|a| a.get())
 }
@@ -44,7 +47,8 @@ fn get_aux() -> u64 {
 // CHECK-LABEL: @set_aux
 #[no_mangle]
 fn set_aux(v: u64) {
-    // CHECK: store i64 %0, {{.*}}[[TLS_AUX]]
+    // CHECK: [[PTR:%.+]] = tail call {{.*}} ptr @llvm.threadlocal.address.p0(ptr [[TLS_AUX]])
+    // CHECK-NEXT: store i64 %0, ptr [[PTR]]
     // CHECK-NEXT: ret void
     aux::A.with(|a| a.set(v))
 }
