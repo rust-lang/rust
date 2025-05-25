@@ -75,8 +75,13 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn new_var(tcx: TyCtxt<'tcx>, infer: ty::ConstVid) -> Const<'tcx> {
-        Const::new(tcx, ty::ConstKind::Infer(ty::InferConst::Var(infer)))
+    pub fn new_var(tcx: TyCtxt<'tcx>, v: ty::ConstVid) -> Const<'tcx> {
+        // Use a pre-interned one when possible.
+        tcx.consts
+            .ct_vars
+            .get(v.as_usize())
+            .copied()
+            .unwrap_or_else(|| Const::new(tcx, ty::ConstKind::Infer(ty::InferConst::Var(v))))
     }
 
     #[inline]
