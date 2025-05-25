@@ -364,9 +364,90 @@ pub trait DoubleEndedSearcher<'a>: ReverseSearcher<'a> {}
 // Impl for char
 /////////////////////////////////////////////////////////////////////////////
 
+#[derive(Clone, Debug)]
+/// hah
+pub struct AsciiCharSearcher<'a> {
+    haystack: &'a str,
+    needle: u8,
+    finger: usize,
+    finger_back: usize,
+}
+
+unsafe impl<'a> Searcher<'a> for AsciiCharSearcher<'a> {
+    fn haystack(&self) -> &'a str {
+        self.haystack
+    }
+
+    #[inline]
+    fn next(&mut self) -> SearchStep {
+        let byte = self.haystack.as_bytes().get(self.finger);
+        if let Some(&byte) = byte {
+            self.finger += 1;
+            if byte == self.needle {
+                SearchStep::Match(self.finger - 1, self.finger)
+            } else {
+                SearchStep::Reject(self.finger - 1, self.finger)
+            }
+        } else {
+            SearchStep::Done
+        }
+    }
+
+    #[inline(always)]
+    fn next_match(&mut self) -> Option<(usize, usize)> {
+        match memchr::memchr(self.needle, unsafe {
+            &self.haystack.as_bytes().get_unchecked(self.finger..self.finger_back)
+        }) {
+            Some(x) => {
+                self.finger += x + 1;
+                Some((self.finger - 1, self.finger))
+            }
+            None => None,
+        }
+    }
+
+    // let next_reject use the default implementation from the Searcher trait
+}
+
+unsafe impl<'a> ReverseSearcher<'a> for AsciiCharSearcher<'a> {
+    #[inline]
+    fn next_back(&mut self) -> SearchStep {
+        let old_finger = self.finger_back;
+        let slice = unsafe { self.haystack.get_unchecked(self.finger..old_finger) };
+
+        let mut iter = slice.as_bytes().iter();
+        let old_len = iter.len();
+        if let Some(ch) = iter.next_back() {
+            self.finger_back -= old_len - iter.len();
+            if *ch == self.needle {
+                SearchStep::Match(self.finger_back, old_finger)
+            } else {
+                SearchStep::Reject(self.finger_back, old_finger)
+            }
+        } else {
+            SearchStep::Done
+        }
+    }
+
+    #[inline]
+    fn next_match_back(&mut self) -> Option<(usize, usize)> {
+        match memchr::memrchr(self.needle, self.haystack[self.finger..self.finger_back].as_bytes())
+        {
+            Some(x) => {
+                let index = self.finger + x;
+                self.finger_back = index;
+                Some((self.finger_back, self.finger_back + 1))
+            }
+            None => None,
+        }
+    }
+
+    // let next_reject use the default implementation from the Searcher trait
+}
+
 /// Associated type for `<char as Pattern>::Searcher<'a>`.
 #[derive(Clone, Debug)]
-pub struct CharSearcher<'a> {
+pub struct UnicodeCharSearcher<'a> {
     haystack: &'a str,
     // safety invariant: `finger`/`finger_back` must be a valid utf8 byte index of `haystack`
     // This invariant can be broken *within* next_match and next_match_back, however
@@ -391,13 +472,13 @@ pub struct CharSearcher<'a> {
     utf8_encoded: [u8; 4],
 }
 
-impl CharSearcher<'_> {
+impl UnicodeCharSearcher<'_> {
     fn utf8_size(&self) -> usize {
         self.utf8_size.into()
     }
 }
 
-unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
+unsafe impl<'a> Searcher<'a> for UnicodeCharSearcher<'a> {
     #[inline]
     fn haystack(&self) -> &'a str {
         self.haystack
@@ -450,7 +531,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
                 //
                 // However, this is totally okay. While we have the invariant that
                 // self.finger is on a UTF8 boundary, this invariant is not relied upon
-                // within this method (it is relied upon in CharSearcher::next()).
+                // within this method (it is relied upon in UnicodeCharSearcher::next()).
                 //
                 // We only exit this method when we reach the end of the string, or if we
                 // find something. When we find something the `finger` will be set
@@ -475,7 +556,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     // let next_reject use the default implementation from the Searcher trait
 }
 
-unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
+unsafe impl<'a> ReverseSearcher<'a> for UnicodeCharSearcher<'a> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
         let old_finger = self.finger_back;
@@ -550,6 +631,57 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
 }
 
 impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
+#[derive(Clone, Debug)]
+///h
+pub enum CharSearcher<'a> {
+    ///h
+    AsciiCharSearcher(AsciiCharSearcher<'a>),
+    ///h
+    UnicodeCharSearcher(UnicodeCharSearcher<'a>),
+}
+unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
+    #[inline]
+
+    fn haystack(&self) -> &'a str {
+        let (Self::UnicodeCharSearcher(UnicodeCharSearcher { haystack, .. })
+        | Self::AsciiCharSearcher(AsciiCharSearcher { haystack, .. })) = self;
+        haystack
+    }
+    #[inline]
+
+    fn next_match(&mut self) -> Option<(usize, usize)> {
+        match self {
+            CharSearcher::AsciiCharSearcher(x) => x.next_match(),
+            CharSearcher::UnicodeCharSearcher(x) => x.next_match(),
+        }
+    }
+    #[inline]
+
+    fn next(&mut self) -> SearchStep {
+        match self {
+            CharSearcher::AsciiCharSearcher(x) => x.next(),
+            CharSearcher::UnicodeCharSearcher(x) => x.next(),
+        }
+    }
+}
+unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
+    #[inline]
+
+    fn next_back(&mut self) -> SearchStep {
+        match self {
+            CharSearcher::AsciiCharSearcher(x) => x.next_back(),
+            CharSearcher::UnicodeCharSearcher(x) => x.next_back(),
+        }
+    }
+    #[inline]
+
+    fn next_match_back(&mut self) -> Option<(usize, usize)> {
+        match self {
+            CharSearcher::AsciiCharSearcher(x) => x.next_match_back(),
+            CharSearcher::UnicodeCharSearcher(x) => x.next_match_back(),
+        }
+    }
+}
 
 /// Searches for chars that are equal to a given [`char`].
 ///
@@ -563,20 +695,31 @@ impl Pattern for char {
 
     #[inline]
     fn into_searcher<'a>(self, haystack: &'a str) -> Self::Searcher<'a> {
+        if (self as u32) < 128 {}
         let mut utf8_encoded = [0; MAX_LEN_UTF8];
         let utf8_size = self
             .encode_utf8(&mut utf8_encoded)
             .len()
             .try_into()
             .expect("char len should be less than 255");
-
-        CharSearcher {
-            haystack,
-            finger: 0,
-            finger_back: haystack.len(),
-            needle: self,
-            utf8_size,
-            utf8_encoded,
+        if utf8_size == 1 {
+            CharSearcher::AsciiCharSearcher(AsciiCharSearcher {
+                haystack,
+                needle: utf8_encoded[0],
+                finger: 0,
+                finger_back: haystack.len(),
+                // available: None,
+                // available_back: None,
+            })
+        } else {
+            CharSearcher::UnicodeCharSearcher(UnicodeCharSearcher {
+                haystack,
+                finger: 0,
+                finger_back: haystack.len(),
+                needle: self,
+                utf8_size,
+                utf8_encoded,
+            })
         }
     }
 
