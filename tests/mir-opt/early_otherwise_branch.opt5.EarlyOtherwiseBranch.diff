@@ -20,13 +20,11 @@
           StorageDead(_5);
           StorageDead(_4);
 -         switchInt(copy (_3.0: u32)) -> [1: bb2, 2: bb3, 3: bb4, otherwise: bb1];
-+         StorageLive(_6);
 +         _6 = Ne(copy (_3.0: u32), copy (_3.1: u32));
 +         switchInt(move _6) -> [0: bb6, otherwise: bb1];
       }
   
       bb1: {
-+         StorageDead(_6);
           _0 = const 0_u32;
 -         goto -> bb8;
 +         goto -> bb5;
@@ -70,7 +68,6 @@
 -     bb8: {
 -         StorageDead(_3);
 -         return;
-+         StorageDead(_6);
 +         switchInt(copy (_3.0: u32)) -> [1: bb4, 2: bb3, 3: bb2, otherwise: bb1];
       }
   }
