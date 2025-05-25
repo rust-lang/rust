@@ -483,12 +483,12 @@ fn generate_item_def_id_path(
     let mut is_remote = false;
 
     let url_parts = url_parts(cx.cache(), def_id, module_fqp, &cx.current, &mut is_remote)?;
-    let (url_parts, shortty) = make_href(root_path, shortty, url_parts, &fqp, is_remote)?;
-    if def_id == original_def_id {
-        return Ok((url_parts, shortty, fqp));
-    }
-    let kind = ItemType::from_def_kind(original_def_kind, Some(def_kind));
-    Ok((format!("{url_parts}#{kind}.{}", tcx.item_name(original_def_id)), shortty, fqp))
+    let (mut url_parts, shortty) = make_href(root_path, shortty, url_parts, &fqp, is_remote)?;
+    if def_id != original_def_id {
+        let kind = ItemType::from_def_kind(original_def_kind, Some(def_kind));
+        url_parts = format!("{url_parts}#{kind}.{}", tcx.item_name(original_def_id))
+    };
+    Ok((url_parts, shortty, fqp))
 }
 
 fn to_module_fqp(shortty: ItemType, fqp: &[Symbol]) -> &[Symbol] {
