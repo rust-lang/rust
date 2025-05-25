@@ -559,7 +559,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
                 };
                 let ty = bx.cast_backend_type(cast_ty);
-                bx.load(ty, llslot, self.fn_abi.ret.layout.align.abi)
+                if let Some(offset_from_start) = cast_ty.rest_offset {
+                    assert!(cast_ty.prefix[1..].iter().all(|p| p.is_none()));
+                    assert_eq!(cast_ty.rest.unit.size, cast_ty.rest.total);
+                    let first_ty = bx.reg_backend_type(&cast_ty.prefix[0].unwrap());
+                    let second_ty = bx.reg_backend_type(&cast_ty.rest.unit);
+                    let first = bx.load(first_ty, llslot, self.fn_abi.ret.layout.align.abi);
+                    let second_ptr =
+                        bx.inbounds_ptradd(llslot, bx.const_usize(offset_from_start.bytes()));
+                    let second = bx.load(
+                        second_ty,
+                        second_ptr,
+                        self.fn_abi.ret.layout.align.abi.restrict_for_offset(offset_from_start),
+                    );
+                    let res = bx.cx().const_poison(ty);
+                    let res = bx.insert_value(res, first, 0);
+                    bx.insert_value(res, second, 1)
+                } else {
+                    bx.load(ty, llslot, self.fn_abi.ret.layout.align.abi)
+                }
             }
         };
         bx.ret(llval);
@@ -1593,7 +1611,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
                 // ...and then load it with the ABI type.
                 let cast_ty = bx.cast_backend_type(cast);
-                llval = bx.load(cast_ty, llscratch, scratch_align);
+                llval = if let Some(offset_from_start) = cast.rest_offset {
+                    assert!(cast.prefix[1..].iter().all(|p| p.is_none()));
+                    assert_eq!(cast.rest.unit.size, cast.rest.total);
+                    let first_ty = bx.reg_backend_type(&cast.prefix[0].unwrap());
+                    let second_ty = bx.reg_backend_type(&cast.rest.unit);
+                    let first = bx.load(first_ty, llscratch, self.fn_abi.ret.layout.align.abi);
+                    let second_ptr =
+                        bx.inbounds_ptradd(llscratch, bx.const_usize(offset_from_start.bytes()));
+                    let second = bx.load(
+                        second_ty,
+                        second_ptr,
+                        scratch_align.restrict_for_offset(offset_from_start),
+                    );
+                    let res = bx.cx().const_poison(cast_ty);
+                    let res = bx.insert_value(res, first, 0);
+                    bx.insert_value(res, second, 1)
+                } else {
+                    bx.load(cast_ty, llscratch, scratch_align)
+                };
                 bx.lifetime_end(llscratch, scratch_size);
             } else {
                 // We can't use `PlaceRef::load` here because the argument

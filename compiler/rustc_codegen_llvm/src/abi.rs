@@ -233,7 +233,23 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 let llscratch = bx.alloca(scratch_size, scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);
                 // ...store the value...
-                bx.store(val, llscratch, scratch_align);
+                if let Some(offset_from_start) = cast.rest_offset {
+                    assert!(cast.prefix[1..].iter().all(|p| p.is_none()));
+                    assert_eq!(cast.rest.unit.size, cast.rest.total);
+                    assert!(cast.prefix[0].is_some());
+                    let first = bx.extract_value(val, 0);
+                    let second = bx.extract_value(val, 1);
+                    bx.store(first, llscratch, scratch_align);
+                    let second_ptr =
+                        bx.inbounds_ptradd(llscratch, bx.const_usize(offset_from_start.bytes()));
+                    bx.store(
+                        second,
+                        second_ptr,
+                        scratch_align.restrict_for_offset(offset_from_start),
+                    );
+                } else {
+                    bx.store(val, llscratch, scratch_align);
+                };
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
                     dst.val.llval,
