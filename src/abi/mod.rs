@@ -20,6 +20,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_target::callconv::{Conv, FnAbi, PassMode};
+use smallvec::SmallVec;
 
 use self::pass_mode::*;
 pub(crate) use self::returning::codegen_return;
@@ -153,10 +154,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 
             let ret = self.lib_call_unadjusted(name, params, returns, &args)[0];
 
-            // FIXME(bytecodealliance/wasmtime#6104) use bitcast instead of store to get from i64x2 to i128
-            let ret_ptr = self.create_stack_slot(16, 16);
-            ret_ptr.store(self, ret, MemFlags::trusted());
-            Cow::Owned(vec![ret_ptr.load(self, types::I128, MemFlags::trusted())])
+            Cow::Owned(vec![codegen_bitcast(self, types::I128, ret)])
         } else if ret_single_i128 && self.tcx.sess.target.arch == "s390x" {
             // Return i128 using a return area pointer on s390x.
             let mut params = params;
@@ -184,11 +182,9 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         let sig = Signature { params, returns, call_conv: self.target_config.default_call_conv };
         let func_id = self.module.declare_function(name, Linkage::Import, &sig).unwrap();
         let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
-        if self.clif_comments.enabled() {
-            self.add_comment(func_ref, format!("{:?}", name));
-        }
         let call_inst = self.bcx.ins().call(func_ref, args);
         if self.clif_comments.enabled() {
+            self.add_comment(func_ref, format!("{:?}", name));
             self.add_comment(call_inst, format!("lib_call {}", name));
         }
         let results = self.bcx.inst_results(call_inst);
@@ -384,6 +380,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: Place<'tcx>,
     target: Option<BasicBlock>,
+    _unwind: UnwindAction,
 ) {
     let func = codegen_operand(fx, func);
     let fn_sig = func.layout().ty.fn_sig(fx.tcx);
@@ -529,7 +526,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         Some(Instance { def: InstanceKind::Virtual(_, idx), .. }) => {
             if fx.clif_comments.enabled() {
                 let nop_inst = fx.bcx.ins().nop();
-                fx.add_comment(
+                fx.add_post_comment(
                     nop_inst,
                     with_no_trimmed_paths!(format!(
                         "virtual call; self arg pass mode: {:?}",
@@ -555,7 +552,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         None => {
             if fx.clif_comments.enabled() {
                 let nop_inst = fx.bcx.ins().nop();
-                fx.add_comment(nop_inst, "indirect call");
+                fx.add_post_comment(nop_inst, "indirect call");
             }
 
             let func = func.load_scalar(fx);
@@ -585,17 +582,18 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             adjust_call_for_c_variadic(fx, &fn_abi, source_info, func_ref, &mut call_args);
         }
 
-        if fx.clif_comments.enabled() {
-            let nop_inst = fx.bcx.ins().nop();
-            with_no_trimmed_paths!(fx.add_comment(nop_inst, format!("abi: {:?}", fn_abi)));
-        }
-
-        match func_ref {
+        let call_inst = match func_ref {
             CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, &call_args),
             CallTarget::Indirect(sig, func_ptr) => {
                 fx.bcx.ins().call_indirect(sig, func_ptr, &call_args)
             }
+        };
+
+        if fx.clif_comments.enabled() {
+            with_no_trimmed_paths!(fx.add_comment(call_inst, format!("abi: {:?}", fn_abi)));
         }
+
+        fx.bcx.func.dfg.inst_results(call_inst).iter().copied().collect::<SmallVec<[Value; 2]>>()
     });
 
     if let Some(dest) = target {
@@ -705,13 +703,16 @@ pub(crate) fn codegen_drop<'tcx>(
     source_info: mir::SourceInfo,
     drop_place: CPlace<'tcx>,
     target: BasicBlock,
+    _unwind: UnwindAction,
 ) {
     let ty = drop_place.layout().ty;
     let drop_instance = Instance::resolve_drop_in_place(fx.tcx, ty);
+    let ret_block = fx.get_block(target);
 
     // AsyncDropGlueCtorShim can't be here
     if let ty::InstanceKind::DropGlue(_, None) = drop_instance.def {
         // we don't actually need to drop anything
+        fx.bcx.ins().jump(ret_block, &[]);
     } else {
         match ty.kind() {
             ty::Dynamic(_, _, ty::Dyn) => {
@@ -748,7 +749,9 @@ pub(crate) fn codegen_drop<'tcx>(
 
                 let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
                 let sig = fx.bcx.import_signature(sig);
+                // FIXME implement cleanup on exceptions
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
+                fx.bcx.ins().jump(ret_block, &[]);
             }
             ty::Dynamic(_, _, ty::DynStar) => {
                 // IN THIS ARM, WE HAVE:
@@ -792,6 +795,8 @@ pub(crate) fn codegen_drop<'tcx>(
                 let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
                 let sig = fx.bcx.import_signature(sig);
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[data]);
+                // FIXME implement cleanup on exceptions
+                fx.bcx.ins().jump(ret_block, &[]);
             }
             _ => {
                 assert!(!matches!(drop_instance.def, InstanceKind::Virtual(_, _)));
@@ -817,10 +822,37 @@ pub(crate) fn codegen_drop<'tcx>(
 
                 let func_ref = fx.get_function_ref(drop_instance);
                 fx.bcx.ins().call(func_ref, &call_args);
+                // FIXME implement cleanup on exceptions
+                fx.bcx.ins().jump(ret_block, &[]);
             }
         }
     }
+}
 
-    let target_block = fx.get_block(target);
-    fx.bcx.ins().jump(target_block, &[]);
+pub(crate) fn lib_call_arg_param(tcx: TyCtxt<'_>, ty: Type, is_signed: bool) -> AbiParam {
+    let param = AbiParam::new(ty);
+    if ty.is_int() && u64::from(ty.bits()) < tcx.data_layout.pointer_size.bits() {
+        match (&*tcx.sess.target.arch, &*tcx.sess.target.vendor) {
+            ("x86_64", _) | ("aarch64", "apple") => match (ty, is_signed) {
+                (types::I8 | types::I16, true) => param.sext(),
+                (types::I8 | types::I16, false) => param.uext(),
+                _ => param,
+            },
+            ("aarch64", _) => param,
+            ("riscv64", _) => match (ty, is_signed) {
+                (types::I32, _) | (_, true) => param.sext(),
+                _ => param.uext(),
+            },
+            ("s390x", _) => {
+                if is_signed {
+                    param.sext()
+                } else {
+                    param.uext()
+                }
+            }
+            _ => unimplemented!("{:?}", tcx.sess.target.arch),
+        }
+    } else {
+        param
+    }
 }

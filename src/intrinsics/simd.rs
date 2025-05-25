@@ -283,6 +283,20 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             ret_lane.write_cvalue(fx, val);
         }
 
+        sym::simd_insert_dyn => {
+            intrinsic_args!(fx, args => (base, idx, val); intrinsic);
+
+            if !base.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, base.layout().ty);
+                return;
+            }
+
+            let idx = idx.load_scalar(fx);
+
+            ret.write_cvalue(fx, base);
+            ret.write_lane_dyn(fx, idx, val);
+        }
+
         sym::simd_extract => {
             let (v, idx) = match args {
                 [v, idx] => (v, idx),
@@ -315,6 +329,20 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
 
             let ret_lane = v.value_lane(fx, idx.into());
+            ret.write_cvalue(fx, ret_lane);
+        }
+
+        sym::simd_extract_dyn => {
+            intrinsic_args!(fx, args => (v, idx); intrinsic);
+
+            if !v.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, v.layout().ty);
+                return;
+            }
+
+            let idx = idx.load_scalar(fx);
+
+            let ret_lane = v.value_lane_dyn(fx, idx);
             ret.write_cvalue(fx, ret_lane);
         }
 
@@ -980,10 +1008,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
                 fx.bcx.switch_to_block(if_enabled);
                 let res = fx.bcx.ins().load(lane_clif_ty, MemFlags::trusted(), ptr_lane, 0);
-                fx.bcx.ins().jump(next, &[res]);
+                fx.bcx.ins().jump(next, &[res.into()]);
 
                 fx.bcx.switch_to_block(if_disabled);
-                fx.bcx.ins().jump(next, &[val_lane]);
+                fx.bcx.ins().jump(next, &[val_lane.into()]);
 
                 fx.bcx.seal_block(next);
                 fx.bcx.switch_to_block(next);
@@ -1029,10 +1057,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     ptr_val,
                     Offset32::new(offset),
                 );
-                fx.bcx.ins().jump(next, &[res]);
+                fx.bcx.ins().jump(next, &[res.into()]);
 
                 fx.bcx.switch_to_block(if_disabled);
-                fx.bcx.ins().jump(next, &[val_lane]);
+                fx.bcx.ins().jump(next, &[val_lane.into()]);
 
                 fx.bcx.seal_block(next);
                 fx.bcx.switch_to_block(next);
