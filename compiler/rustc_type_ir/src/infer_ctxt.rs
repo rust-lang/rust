@@ -168,6 +168,8 @@ pub trait InferCtxtLike: Sized {
         vid: ty::RegionVid,
     ) -> <Self::Interner as Interner>::Region;
 
+    fn is_changed_arg(&self, arg: <Self::Interner as Interner>::GenericArg) -> bool;
+
     fn next_region_infer(&self) -> <Self::Interner as Interner>::Region;
     fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;
     fn next_const_infer(&self) -> <Self::Interner as Interner>::Const;
@@ -250,6 +252,7 @@ pub trait InferCtxtLike: Sized {
 
     type OpaqueTypeStorageEntries: Debug + Copy + Default;
     fn opaque_types_storage_num_entries(&self) -> Self::OpaqueTypeStorageEntries;
+    fn opaque_types_storage_num_unique_entries_raw(&self) -> usize;
     fn clone_opaque_types_lookup_table(
         &self,
     ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
