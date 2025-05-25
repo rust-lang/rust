@@ -118,15 +118,25 @@ impl Step for Miri {
     fn run(self, builder: &Builder<'_>) {
         let host = builder.build.build;
         let target = self.target;
-        let stage = builder.top_stage;
+
+        // `x run` uses stage 0 by default but miri does not work well with stage 0.
+        // Change the stage to 1 if it's not set explicitly.
+        let stage = if builder.config.is_explicit_stage() || builder.top_stage >= 1 {
+            builder.top_stage
+        } else {
+            1
+        };
+
         if stage == 0 {
             eprintln!("miri cannot be run at stage 0");
             std::process::exit(1);
         }
 
         // This compiler runs on the host, we'll just use it for the target.
-        let target_compiler = builder.compiler(stage, host);
-        let host_compiler = tool::get_tool_rustc_compiler(builder, target_compiler);
+        let target_compiler = builder.compiler(stage, target);
+        let miri_build = builder.ensure(tool::Miri { compiler: target_compiler, target });
+        // Rustc tools are off by one stage, so use the build compiler to run miri.
+        let host_compiler = miri_build.build_compiler;
 
         // Get a target sysroot for Miri.
         let miri_sysroot = test::Miri::build_miri_sysroot(builder, target_compiler, target);
