@@ -15,6 +15,7 @@ use crate::solve::inspect::{self, ProofTreeInferCtxtExt};
 
 #[extension(pub trait InferCtxtSelectExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
+    /// Do not use this directly. This is called from [`crate::traits::SelectionContext::select`].
     fn select_in_new_trait_solver(
         &self,
         obligation: &TraitObligation<'tcx>,
