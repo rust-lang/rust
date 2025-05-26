@@ -593,6 +593,13 @@ trigger_files = [
     "src/doc/rustc-dev-guide",
 ]
 
+[autolabel."A-LLVM"]
+trigger_files = [
+    "src/llvm-project",
+    "compiler/rustc_llvm",
+    "compiler/rustc_codegen_llvm",
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/prioritization/alerts
 topic = "#{number} {title}"
