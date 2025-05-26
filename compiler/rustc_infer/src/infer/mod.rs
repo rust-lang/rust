@@ -150,7 +150,7 @@ pub struct InferCtxtInner<'tcx> {
     /// for each body-id in this map, which will process the
     /// obligations within. This is expected to be done 'late enough'
     /// that all type inference variables have been bound and so forth.
-    region_obligations: Vec<RegionObligation<'tcx>>,
+    region_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
 
     /// Caches for opaque type inference.
     opaque_type_storage: OpaqueTypeStorage<'tcx>,
@@ -173,7 +173,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    pub fn region_obligations(&self) -> &[RegionObligation<'tcx>] {
+    pub fn region_obligations(&self) -> &[TypeOutlivesConstraint<'tcx>] {
         &self.region_obligations
     }
 
@@ -488,7 +488,7 @@ impl fmt::Display for FixupError {
 
 /// See the `region_obligations` field for more information.
 #[derive(Clone, Debug)]
-pub struct RegionObligation<'tcx> {
+pub struct TypeOutlivesConstraint<'tcx> {
     pub sub_region: ty::Region<'tcx>,
     pub sup_type: Ty<'tcx>,
     pub origin: SubregionOrigin<'tcx>,
@@ -735,19 +735,6 @@ impl<'tcx> InferCtxt<'tcx> {
             } else {
                 Ok(self.at(cause, param_env).sup(DefineOpaqueTypes::Yes, b, a))
             }
-        })
-    }
-
-    pub fn region_outlives_predicate(
-        &self,
-        cause: &traits::ObligationCause<'tcx>,
-        predicate: ty::PolyRegionOutlivesPredicate<'tcx>,
-    ) {
-        self.enter_forall(predicate, |ty::OutlivesPredicate(r_a, r_b)| {
-            let origin = SubregionOrigin::from_obligation_cause(cause, || {
-                RelateRegionParamBound(cause.span, None)
-            });
-            self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
         })
     }
 
