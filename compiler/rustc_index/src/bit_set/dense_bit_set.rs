@@ -8,6 +8,7 @@ use std::ptr::NonNull;
 use std::{fmt, iter, slice};
 
 use itertools::Either;
+#[cfg(feature = "nightly")]
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use super::{
@@ -781,6 +782,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for DenseBitSet<T> {
     }
 }
 
+#[cfg(feature = "nightly")]
 impl<S: Encoder, T> Encodable<S> for DenseBitSet<T> {
     #[inline(never)] // FIXME: For profiling purposes
     fn encode(&self, s: &mut S) {
@@ -815,6 +817,7 @@ impl<S: Encoder, T> Encodable<S> for DenseBitSet<T> {
     }
 }
 
+#[cfg(feature = "nightly")]
 impl<D: Decoder, T> Decodable<D> for DenseBitSet<T> {
     #[inline(never)] // FIXME: For profiling purposes
     fn decode(d: &mut D) -> Self {
