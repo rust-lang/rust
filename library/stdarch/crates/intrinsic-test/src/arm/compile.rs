@@ -1,5 +1,5 @@
 use crate::common::compile_c::CompilationCommandBuilder;
-use crate::common::gen_c::compile_c;
+use crate::common::gen_c::compile_c_programs;
 
 pub fn compile_c_arm(
     intrinsics_name_list: &Vec<String>,
@@ -60,5 +60,5 @@ pub fn compile_c_arm(
         })
         .collect::<Vec<_>>();
 
-    compile_c(&compiler_commands)
+    compile_c_programs(&compiler_commands)
 }

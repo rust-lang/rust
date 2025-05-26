@@ -13,7 +13,7 @@ use super::intrinsic_helpers::IntrinsicTypeDefinition;
 // The number of times each intrinsic will be called.
 const PASSES: u32 = 20;
 
-pub fn generate_rust_program(
+pub fn format_rust_main_template(
     notices: &str,
     definitions: &str,
     configurations: &str,
@@ -38,7 +38,7 @@ fn main() {{
     )
 }
 
-pub fn compile_rust(
+pub fn compile_rust_programs(
     binaries: Vec<String>,
     toolchain: Option<&str>,
     target: &str,
@@ -125,7 +125,8 @@ path = "{binary}/main.rs""#,
     }
 }
 
-pub fn create_rust_filenames(identifiers: &Vec<String>) -> BTreeMap<&String, String> {
+// Creates directory structure and file path mappings
+pub fn setup_rust_file_paths(identifiers: &Vec<String>) -> BTreeMap<&String, String> {
     identifiers
         .par_iter()
         .map(|identifier| {
@@ -138,7 +139,7 @@ pub fn create_rust_filenames(identifiers: &Vec<String>) -> BTreeMap<&String, Str
         .collect::<BTreeMap<&String, String>>()
 }
 
-pub fn generate_loop_rust<T: IntrinsicTypeDefinition>(
+pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
     intrinsic: &dyn IntrinsicDefinition<T>,
     indentation: Indentation,
     additional: &str,
@@ -169,7 +170,7 @@ pub fn generate_loop_rust<T: IntrinsicTypeDefinition>(
     )
 }
 
-pub fn gen_code_rust<T: IntrinsicTypeDefinition>(
+pub fn generate_rust_constraint_blocks<T: IntrinsicTypeDefinition>(
     intrinsic: &dyn IntrinsicDefinition<T>,
     indentation: Indentation,
     constraints: &[&Argument<T>],
@@ -193,7 +194,7 @@ pub fn gen_code_rust<T: IntrinsicTypeDefinition>(
                     name = current.name,
                     ty = current.ty.rust_type(),
                     val = i,
-                    pass = gen_code_rust(
+                    pass = generate_rust_constraint_blocks(
                         intrinsic,
                         body_indentation,
                         constraints,
@@ -203,11 +204,12 @@ pub fn gen_code_rust<T: IntrinsicTypeDefinition>(
             })
             .join("\n")
     } else {
-        generate_loop_rust(intrinsic, indentation, &name, PASSES)
+        generate_rust_test_loop(intrinsic, indentation, &name, PASSES)
     }
 }
 
-pub fn gen_rust_program<T: IntrinsicTypeDefinition>(
+// Top-level function to create complete test program
+pub fn create_rust_test_program<T: IntrinsicTypeDefinition>(
     intrinsic: &dyn IntrinsicDefinition<T>,
     target: &str,
     notice: &str,
@@ -221,7 +223,7 @@ pub fn gen_rust_program<T: IntrinsicTypeDefinition>(
         .collect_vec();
 
     let indentation = Indentation::default();
-    generate_rust_program(
+    format_rust_main_template(
         notice,
         definitions,
         cfg,
@@ -230,7 +232,7 @@ pub fn gen_rust_program<T: IntrinsicTypeDefinition>(
             .arguments()
             .gen_arglists_rust(indentation.nested(), PASSES)
             .as_str(),
-        gen_code_rust(
+        generate_rust_constraint_blocks(
             intrinsic,
             indentation.nested(),
             &constraints,

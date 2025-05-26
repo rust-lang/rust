@@ -4,16 +4,16 @@ mod intrinsic;
 mod json_parser;
 mod types;
 
-use crate::arm::compile::compile_c_arm;
-use crate::arm::intrinsic::ArmIntrinsicType;
 use crate::common::SupportedArchitectureTest;
 use crate::common::cli::ProcessedCli;
 use crate::common::compare::compare_outputs;
-use crate::common::gen_rust::compile_rust;
+use crate::common::gen_rust::compile_rust_programs;
 use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
 use crate::common::intrinsic_helpers::TypeKind;
 use crate::common::write_file::{write_c_testfiles, write_rust_testfiles};
+use compile::compile_c_arm;
 use config::{AARCH_CONFIGURATIONS, F16_FORMATTING_DEF, POLY128_OSTREAM_DEF, build_notices};
+use intrinsic::ArmIntrinsicType;
 use json_parser::get_neon_intrinsics;
 
 pub struct ArmArchitectureTest {
@@ -97,7 +97,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             AARCH_CONFIGURATIONS,
         );
 
-        compile_rust(intrinsics_name_list, toolchain, target, linker)
+        compile_rust_programs(intrinsics_name_list, toolchain, target, linker)
     }
 
     fn compare_outputs(&self) -> bool {

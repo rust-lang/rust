@@ -1,7 +1,7 @@
-use crate::common::cli::Language;
-use crate::common::constraint::Constraint;
-use crate::common::indentation::Indentation;
-use crate::common::intrinsic_helpers::IntrinsicTypeDefinition;
+use super::cli::Language;
+use super::constraint::Constraint;
+use super::indentation::Indentation;
+use super::intrinsic_helpers::IntrinsicTypeDefinition;
 
 /// An argument for the intrinsic.
 #[derive(Debug, PartialEq, Clone)]

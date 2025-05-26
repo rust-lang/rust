@@ -1,7 +1,6 @@
-use super::intrinsic_helpers::TypeKind;
-use crate::common::argument::ArgumentList;
-use crate::common::indentation::Indentation;
-use crate::common::intrinsic_helpers::IntrinsicTypeDefinition;
+use super::argument::ArgumentList;
+use super::indentation::Indentation;
+use super::intrinsic_helpers::{IntrinsicTypeDefinition, TypeKind};
 
 /// An intrinsic
 #[derive(Debug, PartialEq, Clone)]

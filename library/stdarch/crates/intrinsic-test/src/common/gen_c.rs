@@ -11,7 +11,8 @@ use super::intrinsic_helpers::IntrinsicTypeDefinition;
 // The number of times each intrinsic will be called.
 const PASSES: u32 = 20;
 
-pub fn generate_c_program(
+// Formats the main C program template with placeholders
+pub fn format_c_main_template(
     notices: &str,
     header_files: &[&str],
     arch_identifier: &str,
@@ -61,7 +62,7 @@ int main(int argc, char **argv) {{
     )
 }
 
-pub fn compile_c(compiler_commands: &[String]) -> bool {
+pub fn compile_c_programs(compiler_commands: &[String]) -> bool {
     compiler_commands
         .par_iter()
         .map(|compiler_command| {
@@ -86,7 +87,8 @@ pub fn compile_c(compiler_commands: &[String]) -> bool {
         .is_none()
 }
 
-pub fn create_c_filenames(identifiers: &Vec<String>) -> BTreeMap<&String, String> {
+// Creates directory structure and file path mappings
+pub fn setup_c_file_paths(identifiers: &Vec<String>) -> BTreeMap<&String, String> {
     let _ = std::fs::create_dir("c_programs");
     identifiers
         .par_iter()
@@ -98,7 +100,7 @@ pub fn create_c_filenames(identifiers: &Vec<String>) -> BTreeMap<&String, String
         .collect::<BTreeMap<&String, String>>()
 }
 
-pub fn generate_loop_c<T: IntrinsicTypeDefinition + Sized>(
+pub fn generate_c_test_loop<T: IntrinsicTypeDefinition + Sized>(
     intrinsic: &dyn IntrinsicDefinition<T>,
     indentation: Indentation,
     additional: &str,
@@ -119,7 +121,7 @@ pub fn generate_loop_c<T: IntrinsicTypeDefinition + Sized>(
     )
 }
 
-pub fn gen_code_c<T: IntrinsicTypeDefinition>(
+pub fn generate_c_constraint_blocks<T: IntrinsicTypeDefinition>(
     intrinsic: &dyn IntrinsicDefinition<T>,
     indentation: Indentation,
     constraints: &[&Argument<T>],
@@ -144,7 +146,7 @@ pub fn gen_code_c<T: IntrinsicTypeDefinition>(
                     name = current.name,
                     ty = current.ty.c_type(),
                     val = i,
-                    pass = gen_code_c(
+                    pass = generate_c_constraint_blocks(
                         intrinsic,
                         body_indentation,
                         constraints,
@@ -155,11 +157,12 @@ pub fn gen_code_c<T: IntrinsicTypeDefinition>(
             })
             .join("\n")
     } else {
-        generate_loop_c(intrinsic, indentation, &name, PASSES, target)
+        generate_c_test_loop(intrinsic, indentation, &name, PASSES, target)
     }
 }
 
-pub fn gen_c_program<T: IntrinsicTypeDefinition>(
+// Compiles C test programs using specified compiler
+pub fn create_c_test_program<T: IntrinsicTypeDefinition>(
     intrinsic: &dyn IntrinsicDefinition<T>,
     header_files: &[&str],
     target: &str,
@@ -174,7 +177,7 @@ pub fn gen_c_program<T: IntrinsicTypeDefinition>(
         .collect_vec();
 
     let indentation = Indentation::default();
-    generate_c_program(
+    format_c_main_template(
         notices,
         header_files,
         c_target,
@@ -183,7 +186,7 @@ pub fn gen_c_program<T: IntrinsicTypeDefinition>(
             .arguments()
             .gen_arglists_c(indentation, PASSES)
             .as_str(),
-        gen_code_c(
+        generate_c_constraint_blocks(
             intrinsic,
             indentation.nested(),
             constraints.as_slice(),
