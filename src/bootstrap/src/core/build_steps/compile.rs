@@ -1197,7 +1197,7 @@ pub fn rustc_cargo(
         if let Some(llvm_config) = builder.llvm_config(builder.config.build) {
             //let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
             //cargo.rustflag("-l").rustflag(&format!("EnzymeStatic-{llvm_version_major}"));
-            cargo.rustflag(abs_path);
+            cargo.rustflag(abs_path.to_str().unwrap());
         }
     }
 

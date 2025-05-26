@@ -988,9 +988,15 @@ impl Builder<'_> {
                 let llvm_libdir =
                     command(llvm_config).arg("--libdir").run_capture_stdout(self).stdout();
                 if target.is_msvc() {
+                    // FIXME(autodiff): Enzyme does currently not support MSVC.
                     rustflags.arg(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
                 } else {
                     rustflags.arg(&format!("-Clink-arg=-L{llvm_libdir}"));
+                    if self.config.llvm_enzyme {
+                        let arch = self.build.build;
+                        let enzyme_dir = self.build.out.join(arch).join("enzyme").join("lib");
+                        rustflags.arg(&format!("-Clink-arg=-L{enzyme_dir}"));
+                    }
                 }
             }
         }
