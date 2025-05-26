@@ -1803,6 +1803,9 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     ) -> Cow<'e, RangeSet> {
         Cow::Borrowed(ecx.machine.union_data_ranges.entry(ty).or_insert_with(compute_range))
     }
+
+    /// Placeholder!
+    fn get_default_alloc_params(&self) -> <Self::Bytes as AllocBytes>::AllocParams { () }
 }
 
 /// Trait for callbacks handling asynchronous machine operations.

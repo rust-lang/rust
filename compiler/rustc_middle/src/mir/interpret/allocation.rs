@@ -27,12 +27,21 @@ use crate::ty;
 
 /// Functionality required for the bytes of an `Allocation`.
 pub trait AllocBytes: Clone + fmt::Debug + Deref<Target = [u8]> + DerefMut<Target = [u8]> {
+    /// The type of extra parameters passed in when creating an allocation.
+    /// Can be used by `interpret::Machine` instances to make runtime-configuration-dependent
+    /// decisions about the allocation strategy.
+    type AllocParams;
+
     /// Create an `AllocBytes` from a slice of `u8`.
-    fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self;
+    fn from_bytes<'a>(
+        slice: impl Into<Cow<'a, [u8]>>,
+        _align: Align,
+        _params: Self::AllocParams,
+    ) -> Self;
 
     /// Create a zeroed `AllocBytes` of the specified size and alignment.
     /// Returns `None` if we ran out of memory on the host.
-    fn zeroed(size: Size, _align: Align) -> Option<Self>;
+    fn zeroed(size: Size, _align: Align, _params: Self::AllocParams) -> Option<Self>;
 
     /// Gives direct access to the raw underlying storage.
     ///
@@ -51,11 +60,13 @@ pub trait AllocBytes: Clone + fmt::Debug + Deref<Target = [u8]> + DerefMut<Targe
 
 /// Default `bytes` for `Allocation` is a `Box<u8>`.
 impl AllocBytes for Box<[u8]> {
-    fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self {
+    type AllocParams = ();
+
+    fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align, _params: ()) -> Self {
         Box::<[u8]>::from(slice.into())
     }
 
-    fn zeroed(size: Size, _align: Align) -> Option<Self> {
+    fn zeroed(size: Size, _align: Align, _params: ()) -> Option<Self> {
         let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes().try_into().ok()?).ok()?;
         // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
         let bytes = unsafe { bytes.assume_init() };
@@ -172,9 +183,8 @@ fn all_zero(buf: &[u8]) -> bool {
 }
 
 /// Custom encoder for [`Allocation`] to more efficiently represent the case where all bytes are 0.
-impl<Prov: Provenance, Extra, Bytes, E: Encoder> Encodable<E> for Allocation<Prov, Extra, Bytes>
+impl<Prov: Provenance, Extra, E: Encoder> Encodable<E> for Allocation<Prov, Extra, Box<[u8]>>
 where
-    Bytes: AllocBytes,
     ProvenanceMap<Prov>: Encodable<E>,
     Extra: Encodable<E>,
 {
@@ -192,9 +202,8 @@ where
     }
 }
 
-impl<Prov: Provenance, Extra, Bytes, D: Decoder> Decodable<D> for Allocation<Prov, Extra, Bytes>
+impl<Prov: Provenance, Extra, D: Decoder> Decodable<D> for Allocation<Prov, Extra, Box<[u8]>>
 where
-    Bytes: AllocBytes,
     ProvenanceMap<Prov>: Decodable<D>,
     Extra: Decodable<D>,
 {
@@ -203,7 +212,7 @@ where
 
         let len = decoder.read_usize();
         let bytes = if all_zero { vec![0u8; len] } else { decoder.read_raw_bytes(len).to_vec() };
-        let bytes = Bytes::from_bytes(bytes, align);
+        let bytes = <Box<[u8]> as AllocBytes>::from_bytes(bytes, align, ());
 
         let provenance = Decodable::decode(decoder);
         let init_mask = Decodable::decode(decoder);
@@ -395,8 +404,9 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         slice: impl Into<Cow<'a, [u8]>>,
         align: Align,
         mutability: Mutability,
+        params: <Bytes as AllocBytes>::AllocParams,
     ) -> Self {
-        let bytes = Bytes::from_bytes(slice, align);
+        let bytes = Bytes::from_bytes(slice, align, params);
         let size = Size::from_bytes(bytes.len());
         Self {
             bytes,
@@ -408,14 +418,18 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         }
     }
 
-    pub fn from_bytes_byte_aligned_immutable<'a>(slice: impl Into<Cow<'a, [u8]>>) -> Self {
-        Allocation::from_bytes(slice, Align::ONE, Mutability::Not)
+    pub fn from_bytes_byte_aligned_immutable<'a>(
+        slice: impl Into<Cow<'a, [u8]>>,
+        params: <Bytes as AllocBytes>::AllocParams,
+    ) -> Self {
+        Allocation::from_bytes(slice, Align::ONE, Mutability::Not, params)
     }
 
     fn new_inner<R>(
         size: Size,
         align: Align,
         init: AllocInit,
+        params: <Bytes as AllocBytes>::AllocParams,
         fail: impl FnOnce() -> R,
     ) -> Result<Self, R> {
         // We raise an error if we cannot create the allocation on the host.
@@ -424,7 +438,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         // deterministic. However, we can be non-deterministic here because all uses of const
         // evaluation (including ConstProp!) will make compilation fail (via hard error
         // or ICE) upon encountering a `MemoryExhausted` error.
-        let bytes = Bytes::zeroed(size, align).ok_or_else(fail)?;
+        let bytes = Bytes::zeroed(size, align, params).ok_or_else(fail)?;
 
         Ok(Allocation {
             bytes,
@@ -444,8 +458,13 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
 
     /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
     /// available to the compiler to do so.
-    pub fn try_new<'tcx>(size: Size, align: Align, init: AllocInit) -> InterpResult<'tcx, Self> {
-        Self::new_inner(size, align, init, || {
+    pub fn try_new<'tcx>(
+        size: Size,
+        align: Align,
+        init: AllocInit,
+        params: <Bytes as AllocBytes>::AllocParams,
+    ) -> InterpResult<'tcx, Self> {
+        Self::new_inner(size, align, init, params, || {
             ty::tls::with(|tcx| tcx.dcx().delayed_bug("exhausted memory during interpretation"));
             InterpErrorKind::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })
@@ -457,8 +476,13 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     ///
     /// Example use case: To obtain an Allocation filled with specific data,
     /// first call this function and then call write_scalar to fill in the right data.
-    pub fn new(size: Size, align: Align, init: AllocInit) -> Self {
-        match Self::new_inner(size, align, init, || {
+    pub fn new(
+        size: Size,
+        align: Align,
+        init: AllocInit,
+        params: <Bytes as AllocBytes>::AllocParams,
+    ) -> Self {
+        match Self::new_inner(size, align, init, params, || {
             panic!(
                 "interpreter ran out of memory: cannot create allocation of {} bytes",
                 size.bytes()

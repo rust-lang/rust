@@ -735,6 +735,9 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             Cow::Owned(compute_range())
         }
     }
+
+    fn get_default_alloc_params(&self) -> <Self::Bytes as mir::interpret::AllocBytes>::AllocParams {
+    }
 }
 
 // Please do not add any code below the above `Machine` trait impl. I (oli-obk) plan more cleanups

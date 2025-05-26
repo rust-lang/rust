@@ -38,7 +38,7 @@ pub(crate) fn create_static_alloc<'tcx>(
     static_def_id: LocalDefId,
     layout: TyAndLayout<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    let alloc = Allocation::try_new(layout.size, layout.align.abi, AllocInit::Uninit)?;
+    let alloc = Allocation::try_new(layout.size, layout.align.abi, AllocInit::Uninit, ())?;
     let alloc_id = ecx.tcx.reserve_and_set_static_alloc(static_def_id.into());
     assert_eq!(ecx.machine.static_root_ids, None);
     ecx.machine.static_root_ids = Some((alloc_id, static_def_id));
