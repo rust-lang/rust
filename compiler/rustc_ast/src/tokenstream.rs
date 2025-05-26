@@ -696,14 +696,8 @@ impl TokenStream {
 
     /// Compares two `TokenStream`s, checking equality without regarding span information.
     pub fn eq_unspanned(&self, other: &TokenStream) -> bool {
-        let mut iter1 = self.iter();
-        let mut iter2 = other.iter();
-        for (tt1, tt2) in iter::zip(&mut iter1, &mut iter2) {
-            if !tt1.eq_unspanned(tt2) {
-                return false;
-            }
-        }
-        iter1.next().is_none() && iter2.next().is_none()
+        self.len() == other.len()
+            && self.iter().zip(other.iter()).all(|(tt1, tt2)| tt1.eq_unspanned(tt2))
     }
 
     /// Create a token stream containing a single token with alone spacing. The
