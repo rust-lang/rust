@@ -51,17 +51,6 @@ impl<T> P<T> {
         *self.ptr
     }
 
-    /// Produce a new `P<T>` from `self` without reallocating.
-    pub fn map<F>(mut self, f: F) -> P<T>
-    where
-        F: FnOnce(T) -> T,
-    {
-        let x = f(*self.ptr);
-        *self.ptr = x;
-
-        self
-    }
-
     /// Optionally produce a new `P<T>` from `self` without reallocating.
     pub fn filter_map<F>(mut self, f: F) -> Option<P<T>>
     where

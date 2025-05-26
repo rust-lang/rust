@@ -1123,10 +1123,9 @@ impl Stmt {
     pub fn add_trailing_semicolon(mut self) -> Self {
         self.kind = match self.kind {
             StmtKind::Expr(expr) => StmtKind::Semi(expr),
-            StmtKind::MacCall(mac) => {
-                StmtKind::MacCall(mac.map(|MacCallStmt { mac, style: _, attrs, tokens }| {
-                    MacCallStmt { mac, style: MacStmtStyle::Semicolon, attrs, tokens }
-                }))
+            StmtKind::MacCall(mut mac) => {
+                mac.style = MacStmtStyle::Semicolon;
+                StmtKind::MacCall(mac)
             }
             kind => kind,
         };

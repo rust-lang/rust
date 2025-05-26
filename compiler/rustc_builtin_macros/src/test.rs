@@ -381,10 +381,7 @@ pub(crate) fn expand_test_or_bench(
                 .into(),
             ),
         );
-    test_const = test_const.map(|mut tc| {
-        tc.vis.kind = ast::VisibilityKind::Public;
-        tc
-    });
+    test_const.vis.kind = ast::VisibilityKind::Public;
 
     // extern crate test
     let test_extern =
