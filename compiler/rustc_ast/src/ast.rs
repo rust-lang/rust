@@ -1714,7 +1714,7 @@ pub enum ExprKind {
     ///
     /// Usually not written directly in user code but
     /// indirectly via the macro `core::mem::offset_of!(...)`.
-    OffsetOf(P<Ty>, P<[Ident]>),
+    OffsetOf(P<Ty>, Vec<Ident>),
 
     /// A macro invocation; pre-expansion.
     MacCall(P<MacCall>),
