@@ -197,18 +197,16 @@ pub(crate) fn detect_features() -> cache::Initializer {
         // Query whether "I" base and extensions "M" and "A" (as in the ISA
         // manual version 2.2) are enabled.  "I" base at that time corresponds
         // to "I", "Zicsr", "Zicntr" and "Zifencei" (as in the ISA manual version
-        // 20240411) and we chose to imply "Zicsr" and "Zifencei" (not "Zicntr")
-        // because there will be a separate RISCV_HWPROBE_EXT_ZICNTR constant to
-        // determine existence of the "Zicntr" extension in Linux 6.15 (as of rc1).
-        // "fence.i" ("Zifencei") is conditionally valid on the Linux userland
-        // (when CMODX is enabled).
-        // This is a requirement of `RISCV_HWPROBE_KEY_IMA_EXT_0`-based tests.
+        // 20240411).
+        // This is a current requirement of
+        // `RISCV_HWPROBE_KEY_IMA_EXT_0`-based tests.
         let has_ima = (out[0].key != -1) && (out[0].value & RISCV_HWPROBE_BASE_BEHAVIOR_IMA != 0);
         if !has_ima {
             break 'hwprobe;
         }
         has_i |= has_ima;
         enable_feature(Feature::zicsr, has_ima);
+        enable_feature(Feature::zicntr, has_ima);
         enable_feature(Feature::zifencei, has_ima);
         enable_feature(Feature::m, has_ima);
         enable_feature(Feature::a, has_ima);
