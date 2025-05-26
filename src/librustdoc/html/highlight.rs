@@ -81,51 +81,29 @@ fn write_header(
     );
 
     if tooltip != Tooltip::None {
-        // variable for extending lifetimes of temporaries
-        let tmp;
-        write_str(
-            out,
-            format_args!(
-                "<a href=\"#\" class=\"tooltip\" title=\"{}\">ⓘ</a>",
-                match tooltip {
-                    Tooltip::IgnoreAll => "This example is not tested",
-                    Tooltip::IgnoreSome(platforms) => {
-                        tmp = format!(
-                            "This example is not tested on {}",
-                            fmt::from_fn(|f| {
-                                match platforms.len() {
-                                    0 => unreachable!(),
-                                    1 => f.write_str(&platforms[0]),
-                                    2 => write!(f, "{} or {}", &platforms[0], &platforms[1]),
-                                    _ => {
-                                        for (i, plat) in platforms.iter().enumerate() {
-                                            match (platforms.len() - 2).cmp(&i) {
-                                                std::cmp::Ordering::Greater => {
-                                                    write!(f, "{}, ", plat)?
-                                                }
-                                                std::cmp::Ordering::Equal => {
-                                                    write!(f, "{}, or ", plat)?
-                                                }
-                                                std::cmp::Ordering::Less => f.write_str(&plat)?,
-                                            }
-                                        }
-                                        Ok(())
-                                    }
-                                }
-                            })
-                        );
-                        &tmp
+        let tooltip = fmt::from_fn(|f| match &tooltip {
+            Tooltip::IgnoreAll => f.write_str("This example is not tested"),
+            Tooltip::IgnoreSome(platforms) => {
+                f.write_str("This example is not tested on ")?;
+                match &platforms[..] {
+                    [] => unreachable!(),
+                    [platform] => f.write_str(platform)?,
+                    [first, second] => write!(f, "{first} or {second}")?,
+                    [platforms @ .., last] => {
+                        for platform in platforms {
+                            write!(f, "{platform}, ")?;
+                        }
+                        write!(f, "or {last}")?;
                     }
-                    Tooltip::CompileFail => "This example deliberately fails to compile",
-                    Tooltip::ShouldPanic => "This example panics",
-                    Tooltip::Edition(edition) => {
-                        tmp = format!("This example runs with edition {edition}");
-                        &tmp
-                    }
-                    Tooltip::None => unreachable!(),
                 }
-            ),
-        );
+                Ok(())
+            }
+            Tooltip::CompileFail => f.write_str("This example deliberately fails to compile"),
+            Tooltip::ShouldPanic => f.write_str("This example panics"),
+            Tooltip::Edition(edition) => write!(f, "This example runs with edition {edition}"),
+            Tooltip::None => unreachable!(),
+        });
+        write_str(out, format_args!("<a href=\"#\" class=\"tooltip\" title=\"{tooltip}\">ⓘ</a>"));
     }
 
     if let Some(extra) = extra_content {
