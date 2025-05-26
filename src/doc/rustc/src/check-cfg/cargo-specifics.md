@@ -9,8 +9,8 @@ rustc, not Cargo.
 -->
 
 This document is intended to summarize the principal ways Cargo interacts with
-the `unexpected_cfgs` lint and `--check-cfg` flag. It is not intended to provide
-individual details, for that refer to the [`--check-cfg` documentation](../check-cfg.md) and
+the `unexpected_cfgs` lint and `--check-cfg` flag.
+For individual details, refer to the [`--check-cfg` documentation](../check-cfg.md) and
 to the [Cargo book](../../cargo/index.html).
 
 > The full list of well known cfgs (aka builtins) can be found under [Checking conditional configurations / Well known names and values](../check-cfg.md#well-known-names-and-values).
