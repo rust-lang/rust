@@ -25,7 +25,7 @@ use syntax::TextRange;
 use triomphe::Arc;
 
 use crate::{
-    Adjust, Adjustment, AutoBorrow, CallableDefId, TyBuilder, TyExt,
+    Adjust, Adjustment, AutoBorrow, CallableDefId, TraitEnvironment, TyBuilder, TyExt,
     consteval::ConstEvalError,
     db::{HirDatabase, InternedClosure, InternedClosureId},
     display::{DisplayTarget, HirDisplay, hir_display_with_store},
@@ -79,6 +79,7 @@ struct MirLowerCtx<'db> {
     infer: &'db InferenceResult,
     resolver: Resolver<'db>,
     drop_scopes: Vec<DropScope>,
+    env: Arc<TraitEnvironment>,
 }
 
 // FIXME: Make this smaller, its stored in database queries
@@ -288,6 +289,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             closures: vec![],
         };
         let resolver = owner.resolver(db);
+        let env = db.trait_environment_for_body(owner);
 
         MirLowerCtx {
             result: mir,
@@ -300,6 +302,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             labeled_loop_blocks: Default::default(),
             discr_temp: None,
             drop_scopes: vec![DropScope::default()],
+            env,
         }
     }
 
@@ -944,10 +947,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     let cast_kind = if source_ty.as_reference().is_some() {
                         CastKind::PointerCoercion(PointerCast::ArrayToPointer)
                     } else {
-                        let mut table = InferenceTable::new(
-                            self.db,
-                            self.db.trait_environment_for_body(self.owner),
-                        );
+                        let mut table = InferenceTable::new(self.db, self.env.clone());
                         cast_kind(&mut table, &source_ty, &target_ty)?
                     };
 
@@ -1412,11 +1412,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 
     fn lower_literal_to_operand(&mut self, ty: Ty, l: &Literal) -> Result<Operand> {
-        let size = || {
-            self.db
-                .layout_of_ty(ty.clone(), self.db.trait_environment_for_body(self.owner))
-                .map(|it| it.size.bytes_usize())
-        };
+        let size =
+            || self.db.layout_of_ty(ty.clone(), self.env.clone()).map(|it| it.size.bytes_usize());
         const USIZE_SIZE: usize = size_of::<usize>();
         let bytes: Box<[_]> = match l {
             hir_def::hir::Literal::String(b) => {
@@ -1723,7 +1720,12 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 
     fn is_uninhabited(&self, expr_id: ExprId) -> bool {
-        is_ty_uninhabited_from(self.db, &self.infer[expr_id], self.owner.module(self.db))
+        is_ty_uninhabited_from(
+            self.db,
+            &self.infer[expr_id],
+            self.owner.module(self.db),
+            self.env.clone(),
+        )
     }
 
     /// This function push `StorageLive` statement for the binding, and applies changes to add `StorageDead` and
