@@ -98,7 +98,6 @@ Some work is too large to be done by a single person. In this case, it's common 
 issues" to co-ordinate the work between contributors. Here are some example tracking issues where
 it's easy to pick up work without a large time commitment:
 
-- [Rustdoc Askama Migration](https://github.com/rust-lang/rust/issues/108868)
 - [Diagnostic Translation](https://github.com/rust-lang/rust/issues/100717)
 - [Move UI tests to subdirectories](https://github.com/rust-lang/rust/issues/73494)
 
