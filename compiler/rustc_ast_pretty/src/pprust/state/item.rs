@@ -473,6 +473,22 @@ impl<'a> State<'a> {
         }
     }
 
+    // FIXME(jhpratt) make `kw` into a const generic once permitted
+    pub(crate) fn print_restriction(&mut self, kw: &'static str, restriction: &ast::Restriction) {
+        match restriction.kind {
+            ast::RestrictionKind::Unrestricted => self.word_nbsp(kw),
+            ast::RestrictionKind::Restricted { ref path, shorthand, id: _ } => {
+                let path = Self::to_string(|s| s.print_path(path, false, 0));
+                if shorthand {
+                    self.word_nbsp(format!("{kw}({path})"))
+                } else {
+                    self.word_nbsp(format!("{kw}(in {path})"))
+                }
+            }
+            ast::RestrictionKind::Implied => {}
+        }
+    }
+
     fn print_defaultness(&mut self, defaultness: ast::Defaultness) {
         if let ast::Defaultness::Default(_) = defaultness {
             self.word_nbsp("default");

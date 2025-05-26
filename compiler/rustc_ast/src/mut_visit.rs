@@ -327,6 +327,10 @@ pub trait MutVisitor: Sized {
         walk_vis(self, vis);
     }
 
+    fn visit_restriction(&mut self, restriction: &mut Restriction) {
+        walk_restriction(self, restriction);
+    }
+
     fn visit_id(&mut self, _id: &mut NodeId) {
         // Do nothing.
     }
@@ -1398,6 +1402,18 @@ fn walk_vis<T: MutVisitor>(vis: &mut T, visibility: &mut Visibility) {
     match kind {
         VisibilityKind::Public | VisibilityKind::Inherited => {}
         VisibilityKind::Restricted { path, id, shorthand: _ } => {
+            vis.visit_id(id);
+            vis.visit_path(path);
+        }
+    }
+    vis.visit_span(span);
+}
+
+fn walk_restriction<T: MutVisitor>(vis: &mut T, restriction: &mut Restriction) {
+    let Restriction { kind, span, tokens: _ } = restriction;
+    match kind {
+        RestrictionKind::Unrestricted | RestrictionKind::Implied => {}
+        RestrictionKind::Restricted { path, id, shorthand: _ } => {
             vis.visit_id(id);
             vis.visit_path(path);
         }

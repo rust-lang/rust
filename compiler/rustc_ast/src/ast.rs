@@ -32,7 +32,7 @@ use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 pub use rustc_span::AttrId;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 pub use crate::format::*;
@@ -3313,6 +3313,42 @@ pub enum VisibilityKind {
 impl VisibilityKind {
     pub fn is_pub(&self) -> bool {
         matches!(self, VisibilityKind::Public)
+    }
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Restriction {
+    pub kind: RestrictionKind,
+    pub span: Span,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum RestrictionKind {
+    Unrestricted,
+    Restricted { path: P<Path>, id: NodeId, shorthand: bool },
+    Implied,
+}
+
+impl Restriction {
+    pub fn unrestricted() -> Self {
+        Restriction { kind: RestrictionKind::Unrestricted, span: DUMMY_SP, tokens: None }
+    }
+
+    pub fn restricted(path: P<Path>, id: NodeId, shorthand: bool) -> Self {
+        Restriction {
+            kind: RestrictionKind::Restricted { path, id, shorthand },
+            span: DUMMY_SP,
+            tokens: None,
+        }
+    }
+
+    pub fn implied() -> Self {
+        Restriction { kind: RestrictionKind::Implied, span: DUMMY_SP, tokens: None }
+    }
+
+    pub fn with_span(self, span: Span) -> Self {
+        Restriction { span, ..self }
     }
 }
 

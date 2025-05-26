@@ -268,6 +268,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_vis(&mut self, vis: &'ast Visibility) -> Self::Result {
         walk_vis(self, vis)
     }
+    fn visit_restriction(&mut self, restriction: &'ast Restriction) -> Self::Result {
+        walk_restriction(self, restriction)
+    }
     fn visit_fn_ret_ty(&mut self, ret_ty: &'ast FnRetTy) -> Self::Result {
         walk_fn_ret_ty(self, ret_ty)
     }
@@ -1512,6 +1515,20 @@ pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) -> V::
             try_visit!(visitor.visit_path(path, *id));
         }
         VisibilityKind::Public | VisibilityKind::Inherited => {}
+    }
+    V::Result::output()
+}
+
+pub fn walk_restriction<'a, V: Visitor<'a>>(
+    visitor: &mut V,
+    restriction: &'a Restriction,
+) -> V::Result {
+    let Restriction { kind, span: _, tokens: _ } = restriction;
+    match kind {
+        RestrictionKind::Unrestricted | RestrictionKind::Implied => {}
+        RestrictionKind::Restricted { path, id, shorthand: _ } => {
+            try_visit!(visitor.visit_path(path, *id));
+        }
     }
     V::Result::output()
 }
