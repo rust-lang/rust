@@ -32,7 +32,7 @@ where
     <T as Trait>::Assoc: Clone,
 {}
 ```
-If we were conceptually inside of `foo` (for example, type-checking or linting it) we would use this `ParamEnv` everywhere that we interact with the type system. This would allow things such as normalization (TODO: write a chapter about normalization and link it), evaluating generic constants, and proving where clauses/goals, to rely on `T` being sized, implementing `Trait`, etc.
+If we were conceptually inside of `foo` (for example, type-checking or linting it) we would use this `ParamEnv` everywhere that we interact with the type system. This would allow things such as [normalization], evaluating generic constants, and proving where clauses/goals, to rely on `T` being sized, implementing `Trait`, etc.
 
 A more concrete example:
 ```rust
@@ -70,6 +70,7 @@ fn foo2<T>(a: T) {
 [predicates_of]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/collect/predicates_of/fn.predicates_of.html
 [method_pred_entailment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
 [query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.param_env
+[normalization]: normalization.md
 
 ### Acquiring a `ParamEnv`
 
