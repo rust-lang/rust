@@ -961,10 +961,10 @@ rustdoc-topbar {
 	display: inline;
 }
 .example-wrap .expansion > input {
-	display: none;
-}
-.example-wrap .expansion > label {
+	display: block;
 	position: absolute;
+	appearance: none;
+	content: '↕';
 	left: -20px;
 	top: 0;
 	border: 1px solid var(--border-color);
@@ -973,11 +973,9 @@ rustdoc-topbar {
 	color: var(--main-color);
 	padding: 0 2px;
 	line-height: 20px;
-	-moz-user-select: none;
-	-webkit-user-select: none;
-	-ms-user-select: none;
-	user-select: none;
-
+}
+.example-wrap .expansion > input::after {
+	content: "↕";
 }
 .example-wrap .expansion .expanded {
 	display: none;

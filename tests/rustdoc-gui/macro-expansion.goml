@@ -12,14 +12,14 @@ define-function: (
         assert-css: ("a[id='" + |line| + "'] + .expansion .expanded", {"display": "none"})
 
         // We "expand" the macro.
-        click: "a[id='" + |line| + "'] + .expansion label"
+        click: "a[id='" + |line| + "'] + .expansion input[type=checkbox]"
         // The "original" content is hidden.
         assert-css: ("a[id='" + |line| + "'] + .expansion .original", {"display": "none"})
         // The expanded macro is visible.
         assert-css: ("a[id='" + |line| + "'] + .expansion .expanded", {"display": "inline"})
 
         // We collapse the macro.
-        click: "a[id='" + |line| + "'] + .expansion label"
+        click: "a[id='" + |line| + "'] + .expansion input[type=checkbox]"
         // The "original" content is expanded.
         assert-css: ("a[id='" + |line| + "'] + .expansion .original", {"display": "inline"})
         // The expanded macro is hidden.
@@ -31,7 +31,7 @@ define-function: (
 call-function: ("check-expansion", {"line": 33, "original_content": "Debug"})
 // Then we check the `bar` macro expansion at line 41.
 call-function: ("check-expansion", {"line": 41, "original_content": "bar!(y)"})
-// Then we check the `println` macro expansion at line 23-25.
+// Then we check the `println` macro expansion at line 42-44.
 call-function: ("check-expansion", {"line": 42, "original_content": 'println!("
 43    {y}
 44    ")'})
@@ -56,7 +56,7 @@ assert-css: ('//*[@id="expand-50"]' + |repeat_e| + |repeat_e|, {"display": "none
 
 // We "expand" the macro (because the line starts with a string, the label is not at the "top
 // level" of the `<code>`, so we need to use a different selector).
-click: ".expansion label[for='expand-50']"
+click: "#expand-50"
 // The "original" content is hidden.
 assert-css: ('//*[@id="expand-50"]' + |repeat_o|, {"display": "none"})
 assert-css: ('//*[@id="expand-50"]' + |repeat_o| + |repeat_o|, {"display": "none"})
@@ -65,10 +65,49 @@ assert-css: ('//*[@id="expand-50"]' + |repeat_e|, {"display": "inline"})
 assert-css: ('//*[@id="expand-50"]' + |repeat_e| + |repeat_e|, {"display": "inline"})
 
 // We collapse the macro.
-click: ".expansion label[for='expand-50']"
+click: "#expand-50"
 // The "original" content is expanded.
 assert-css: ('//*[@id="expand-50"]' + |repeat_o|, {"display": "inline"})
 assert-css: ('//*[@id="expand-50"]' + |repeat_o| + |repeat_o|, {"display": "inline"})
 // The expanded macro is hidden.
 assert-css: ('//*[@id="expand-50"]' + |repeat_e|, {"display": "none"})
 assert-css: ('//*[@id="expand-50"]' + |repeat_e| + |repeat_e|, {"display": "none"})
+
+// Checking the line 46 `println` which needs to be handled differently because the line number is
+// inside a "comment" span.
+assert-text: ("#expand-46 ~ .original", 'println!("
+47    {y}
+48    ")')
+// The "original" content should be expanded.
+assert-css: ("#expand-46 ~ .original", {"display": "inline"})
+// The expanded macro should be hidden.
+assert-css: ("#expand-46 ~ .expanded", {"display": "none"})
+
+// We "expand" the macro.
+click: "#expand-46"
+// The "original" content is hidden.
+assert-css: ("#expand-46 ~ .original", {"display": "none"})
+// The expanded macro is visible.
+assert-css: ("#expand-46 ~ .expanded", {"display": "inline"})
+
+// We collapse the macro.
+click: "#expand-46"
+// The "original" content is expanded.
+assert-css: ("#expand-46 ~ .original", {"display": "inline"})
+// The expanded macro is hidden.
+assert-css: ("#expand-46 ~ .expanded", {"display": "none"})
+
+// Ensure that the toggles are focusable and can be interacted with keyboard.
+focus: "//a[@id='27']"
+press-key: "Tab"
+assert: "#expand-27:focus"
+assert-css: ("#expand-27 ~ .expanded", {"display": "none"})
+assert-css: ("#expand-27 ~ .original", {"display": "inline"})
+// We now expand the macro.
+press-key: "Space"
+assert-css: ("#expand-27 ~ .expanded", {"display": "inline"})
+assert-css: ("#expand-27 ~ .original", {"display": "none"})
+// We collapse the macro.
+press-key: "Space"
+assert-css: ("#expand-27 ~ .expanded", {"display": "none"})
+assert-css: ("#expand-27 ~ .original", {"display": "inline"})
