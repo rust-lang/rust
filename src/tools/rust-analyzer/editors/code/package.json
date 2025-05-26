@@ -1927,7 +1927,7 @@
                 "properties": {
                     "rust-analyzer.imports.prefix": {
                         "markdownDescription": "The path structure for newly inserted paths to use.",
-                        "default": "plain",
+                        "default": "crate",
                         "type": "string",
                         "enum": [
                             "plain",
