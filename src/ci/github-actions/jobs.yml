@@ -123,7 +123,7 @@ pr:
       DOCKER_SCRIPT: x86_64-gnu-llvm.sh
     <<: *job-linux-16c
   - name: x86_64-gnu-tools
-    <<: *job-linux-16c
+    <<: *job-linux-36c-codebuild
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating
