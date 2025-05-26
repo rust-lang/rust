@@ -75,65 +75,7 @@ help: alternatively, consider constraining `foo` so it does not apply to trait o
 LL |     fn foo() -> Self where Self: Sized;
    |                      +++++++++++++++++
 
-error[E0038]: the trait `DynIncompatible` is not dyn compatible
-  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:32:16
-   |
-LL |         return Box::new(A);
-   |                ^^^^^^^^^^^ `DynIncompatible` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:4:8
-   |
-LL | trait DynIncompatible {
-   |       --------------- this trait is not dyn compatible...
-LL |     fn foo() -> Self;
-   |        ^^^ ...because associated function `foo` has no `self` parameter
-   = help: the following types implement `DynIncompatible`:
-             A
-             B
-           consider defining an enum where each variant holds one of these types,
-           implementing `DynIncompatible` for this new enum and using it instead
-   = note: required for the cast from `Box<A>` to `Box<(dyn DynIncompatible + 'static)>`
-help: consider turning `foo` into a method by giving it a `&self` argument
-   |
-LL |     fn foo(&self) -> Self;
-   |            +++++
-help: alternatively, consider constraining `foo` so it does not apply to trait objects
-   |
-LL |     fn foo() -> Self where Self: Sized;
-   |                      +++++++++++++++++
-
-error[E0038]: the trait `DynIncompatible` is not dyn compatible
-  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:34:5
-   |
-LL |     Box::new(B)
-   |     ^^^^^^^^^^^ `DynIncompatible` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:4:8
-   |
-LL | trait DynIncompatible {
-   |       --------------- this trait is not dyn compatible...
-LL |     fn foo() -> Self;
-   |        ^^^ ...because associated function `foo` has no `self` parameter
-   = help: the following types implement `DynIncompatible`:
-             A
-             B
-           consider defining an enum where each variant holds one of these types,
-           implementing `DynIncompatible` for this new enum and using it instead
-   = note: required for the cast from `Box<B>` to `Box<(dyn DynIncompatible + 'static)>`
-help: consider turning `foo` into a method by giving it a `&self` argument
-   |
-LL |     fn foo(&self) -> Self;
-   |            +++++
-help: alternatively, consider constraining `foo` so it does not apply to trait objects
-   |
-LL |     fn foo() -> Self where Self: Sized;
-   |                      +++++++++++++++++
-
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0038, E0746.
 For more information about an error, try `rustc --explain E0038`.

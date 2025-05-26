@@ -8,24 +8,6 @@ LL | #![feature(async_fn_in_dyn_trait)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0038]: the trait `AsyncTrait` is not dyn compatible
-  --> $DIR/works.rs:27:34
-   |
-LL |         let x: &dyn AsyncTrait = &"hello, world!";
-   |                                  ^^^^^^^^^^^^^^^^ `AsyncTrait` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/works.rs:14:14
-   |
-LL | trait AsyncTrait {
-   |       ---------- this trait is not dyn compatible...
-LL |     async fn async_dispatch(&self);
-   |              ^^^^^^^^^^^^^^ ...because method `async_dispatch` is `async`
-   = help: consider moving `async_dispatch` to another trait
-   = help: only type `&'static str` implements `AsyncTrait`; consider using it directly instead.
-   = note: required for the cast from `&&'static str` to `&dyn AsyncTrait`
-
-error[E0038]: the trait `AsyncTrait` is not dyn compatible
   --> $DIR/works.rs:27:16
    |
 LL |         let x: &dyn AsyncTrait = &"hello, world!";
@@ -42,6 +24,6 @@ LL |     async fn async_dispatch(&self);
    = help: consider moving `async_dispatch` to another trait
    = help: only type `&'static str` implements `AsyncTrait`; consider using it directly instead.
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0038`.

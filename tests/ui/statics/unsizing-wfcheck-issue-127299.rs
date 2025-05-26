@@ -12,6 +12,5 @@ pub struct Lint {
 static FOO: &Lint = &Lint { desc: "desc" };
 //~^ ERROR cannot be shared between threads safely
 //~| ERROR is not dyn compatible
-//~| ERROR is not dyn compatible
 
 fn main() {}

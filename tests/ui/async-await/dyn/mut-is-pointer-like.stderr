@@ -24,24 +24,6 @@ LL |     async fn async_dispatch(self: Pin<&mut Self>) -> Self::Output;
    |              ^^^^^^^^^^^^^^ ...because method `async_dispatch` is `async`
    = help: consider moving `async_dispatch` to another trait
 
-error[E0038]: the trait `AsyncTrait` is not dyn compatible
-  --> $DIR/mut-is-pointer-like.rs:35:56
-   |
-LL |         let x: Pin<&mut dyn AsyncTrait<Output = ()>> = f;
-   |                                                        ^ `AsyncTrait` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/mut-is-pointer-like.rs:16:14
-   |
-LL | trait AsyncTrait {
-   |       ---------- this trait is not dyn compatible...
-...
-LL |     async fn async_dispatch(self: Pin<&mut Self>) -> Self::Output;
-   |              ^^^^^^^^^^^^^^ ...because method `async_dispatch` is `async`
-   = help: consider moving `async_dispatch` to another trait
-   = note: required for the cast from `Pin<&mut {async block@$DIR/mut-is-pointer-like.rs:32:32: 32:37}>` to `Pin<&mut dyn AsyncTrait<Output = ()>>`
-
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0038`.
