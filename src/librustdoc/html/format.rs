@@ -7,7 +7,6 @@
 //! some of them support an alternate format that emits text, but that should
 //! not be used external to this module.
 
-use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
@@ -1390,50 +1389,47 @@ impl clean::FnDecl {
 }
 
 pub(crate) fn visibility_print_with_space(item: &clean::Item, cx: &Context<'_>) -> impl Display {
-    use std::fmt::Write as _;
-    let vis: Cow<'static, str> = match item.visibility(cx.tcx()) {
-        None => "".into(),
-        Some(ty::Visibility::Public) => "pub ".into(),
-        Some(ty::Visibility::Restricted(vis_did)) => {
-            // FIXME(camelid): This may not work correctly if `item_did` is a module.
-            //                 However, rustdoc currently never displays a module's
-            //                 visibility, so it shouldn't matter.
-            let parent_module = find_nearest_parent_module(cx.tcx(), item.item_id.expect_def_id());
-
-            if vis_did.is_crate_root() {
-                "pub(crate) ".into()
-            } else if parent_module == Some(vis_did) {
-                // `pub(in foo)` where `foo` is the parent module
-                // is the same as no visibility modifier
-                "".into()
-            } else if parent_module.and_then(|parent| find_nearest_parent_module(cx.tcx(), parent))
-                == Some(vis_did)
-            {
-                "pub(super) ".into()
-            } else {
-                let path = cx.tcx().def_path(vis_did);
-                debug!("path={path:?}");
-                // modified from `resolved_path()` to work with `DefPathData`
-                let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                let anchor = print_anchor(vis_did, last_name, cx);
-
-                let mut s = "pub(in ".to_owned();
-                for seg in &path.data[..path.data.len() - 1] {
-                    let _ = write!(s, "{}::", seg.data.get_opt_name().unwrap());
-                }
-                let _ = write!(s, "{anchor}) ");
-                s.into()
-            }
-        }
-    };
-
-    let is_doc_hidden = item.is_doc_hidden();
     fmt::from_fn(move |f| {
-        if is_doc_hidden {
+        if item.is_doc_hidden() {
             f.write_str("#[doc(hidden)] ")?;
         }
 
-        f.write_str(&vis)
+        match item.visibility(cx.tcx()) {
+            None => {}
+            Some(ty::Visibility::Public) => f.write_str("pub ")?,
+            Some(ty::Visibility::Restricted(vis_did)) => {
+                // FIXME(camelid): This may not work correctly if `item_did` is a module.
+                //                 However, rustdoc currently never displays a module's
+                //                 visibility, so it shouldn't matter.
+                let parent_module =
+                    find_nearest_parent_module(cx.tcx(), item.item_id.expect_def_id());
+
+                if vis_did.is_crate_root() {
+                    f.write_str("pub(crate) ")?;
+                } else if parent_module == Some(vis_did) {
+                    // `pub(in foo)` where `foo` is the parent module
+                    // is the same as no visibility modifier; do nothing
+                } else if parent_module
+                    .and_then(|parent| find_nearest_parent_module(cx.tcx(), parent))
+                    == Some(vis_did)
+                {
+                    f.write_str("pub(super) ")?;
+                } else {
+                    let path = cx.tcx().def_path(vis_did);
+                    debug!("path={path:?}");
+                    // modified from `resolved_path()` to work with `DefPathData`
+                    let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
+                    let anchor = print_anchor(vis_did, last_name, cx);
+
+                    f.write_str("pub(in ")?;
+                    for seg in &path.data[..path.data.len() - 1] {
+                        write!(f, "{}::", seg.data.get_opt_name().unwrap())?;
+                    }
+                    write!(f, "{anchor}) ")?;
+                }
+            }
+        }
+        Ok(())
     })
 }
 
