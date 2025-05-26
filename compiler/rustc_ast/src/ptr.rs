@@ -17,10 +17,9 @@
 //!   heap, for example). Moreover, a switch to, e.g., `P<'a, T>` would be easy
 //!   and mostly automated.
 
-use std::fmt::{self, Debug, Display};
+use std::fmt::{self, Debug};
 use std::ops::{Deref, DerefMut};
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 /// An owned smart pointer.
@@ -37,27 +36,9 @@ pub fn P<T>(value: T) -> P<T> {
 }
 
 impl<T> P<T> {
-    /// Move out of the pointer.
-    /// Intended for chaining transformations not covered by `map`.
-    pub fn and_then<U, F>(self, f: F) -> U
-    where
-        F: FnOnce(T) -> U,
-    {
-        f(*self.ptr)
-    }
-
-    /// Equivalent to `and_then(|x| x)`.
+    /// Consume the `P` and return the wrapped value.
     pub fn into_inner(self) -> T {
         *self.ptr
-    }
-
-    /// Optionally produce a new `P<T>` from `self` without reallocating.
-    pub fn filter_map<F>(mut self, f: F) -> Option<P<T>>
-    where
-        F: FnOnce(T) -> Option<T>,
-    {
-        *self.ptr = f(*self.ptr)?;
-        Some(self)
     }
 }
 
@@ -87,18 +68,6 @@ impl<T: ?Sized + Debug> Debug for P<T> {
     }
 }
 
-impl<T: Display> Display for P<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt(&**self, f)
-    }
-}
-
-impl<T> fmt::Pointer for P<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Pointer::fmt(&self.ptr, f)
-    }
-}
-
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for P<T> {
     fn decode(d: &mut D) -> P<T> {
         P(Decodable::decode(d))
@@ -108,14 +77,5 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for P<T> {
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<T> {
     fn encode(&self, s: &mut S) {
         (**self).encode(s);
-    }
-}
-
-impl<CTX, T> HashStable<CTX> for P<T>
-where
-    T: ?Sized + HashStable<CTX>,
-{
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        (**self).hash_stable(hcx, hasher);
     }
 }
