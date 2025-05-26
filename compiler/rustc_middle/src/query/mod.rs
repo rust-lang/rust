@@ -230,6 +230,13 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Returns the const of the RHS of a const item.
+    query const_of_item(def_id: DefId) -> ty::EarlyBinder<'tcx, ty::Const<'tcx>> {
+        desc { |tcx| "computing the value for `{}`", tcx.def_path_str(def_id)  }
+        cache_on_disk_if { def_id.is_local() }
+        separate_provide_extern
+    }
+
     /// Returns the *type* of the definition given by `DefId`.
     ///
     /// For type aliases (whether eager or lazy) and associated types, this returns
@@ -1322,6 +1329,11 @@ rustc_queries! {
         desc { "converting type-level constant value to MIR constant value"}
     }
 
+    /// Converts a type-level constant value into a MIR constant allocation.
+    query valtree_to_const_alloc(key: ty::Value<'tcx>) -> mir::ConstAlloc<'tcx> {
+        desc { "converting type-level constant value to MIR constant allocation"}
+    }
+
     /// Destructures array, ADT or tuple constants into the constants
     /// of their fields.
     query destructure_const(key: ty::Const<'tcx>) -> ty::DestructuredConst<'tcx> {
@@ -2298,7 +2310,7 @@ rustc_queries! {
     /// Do not call this query directly: Invoke `normalize` instead.
     ///
     /// </div>
-    query normalize_canonicalized_projection_ty(
+    query normalize_canonicalized_projection(
         goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
@@ -2326,7 +2338,7 @@ rustc_queries! {
     /// Do not call this query directly: Invoke `normalize` instead.
     ///
     /// </div>
-    query normalize_canonicalized_inherent_projection_ty(
+    query normalize_canonicalized_inherent_projection(
         goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,

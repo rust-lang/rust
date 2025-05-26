@@ -1307,12 +1307,12 @@ impl WalkItemKind for AssocItemKind {
 }
 
 fn walk_const_item<T: MutVisitor>(vis: &mut T, item: &mut ConstItem) {
-    let ConstItem { defaultness, ident, generics, ty, expr, define_opaque } = item;
+    let ConstItem { defaultness, ident, generics, ty, body, define_opaque } = item;
     visit_defaultness(vis, defaultness);
     vis.visit_ident(ident);
     vis.visit_generics(generics);
     vis.visit_ty(ty);
-    visit_opt(expr, |expr| vis.visit_expr(expr));
+    visit_opt(body, |body| vis.visit_anon_const(body));
     walk_define_opaques(vis, define_opaque);
 }
 

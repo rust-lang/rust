@@ -2806,7 +2806,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 ident,
                 ref generics,
                 ref ty,
-                ref expr,
+                ref body,
                 ref define_opaque,
                 ..
             }) => {
@@ -2835,8 +2835,11 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             |this| this.visit_ty(ty),
                         );
 
-                        if let Some(expr) = expr {
-                            this.resolve_const_body(expr, Some((ident, ConstantItemKind::Const)));
+                        if let Some(body) = body {
+                            this.resolve_const_body(
+                                &*body.value,
+                                Some((ident, ConstantItemKind::Const)),
+                            );
                         }
                     },
                 );
@@ -3143,7 +3146,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 AssocItemKind::Const(box ast::ConstItem {
                     generics,
                     ty,
-                    expr,
+                    body,
                     define_opaque,
                     ..
                 }) => {
@@ -3167,13 +3170,13 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                                     // Only impose the restrictions of `ConstRibKind` for an
                                     // actual constant expression in a provided default.
-                                    if let Some(expr) = expr {
+                                    if let Some(body) = body {
                                         // We allow arbitrary const expressions inside of associated consts,
                                         // even if they are potentially not const evaluatable.
                                         //
                                         // Type parameters can already be used and as associated consts are
                                         // not used as part of the type system, this is far less surprising.
-                                        this.resolve_const_body(expr, None);
+                                        this.resolve_const_body(&*body.value, None);
                                     }
                                 },
                             )
@@ -3354,7 +3357,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 ident,
                 generics,
                 ty,
-                expr,
+                body,
                 define_opaque,
                 ..
             }) => {
@@ -3397,13 +3400,13 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                                         this.visit_generics(generics);
                                         this.visit_ty(ty);
-                                        if let Some(expr) = expr {
+                                        if let Some(body) = body {
                                             // We allow arbitrary const expressions inside of associated consts,
                                             // even if they are potentially not const evaluatable.
                                             //
                                             // Type parameters can already be used and as associated consts are
                                             // not used as part of the type system, this is far less surprising.
-                                            this.resolve_const_body(expr, None);
+                                            this.resolve_const_body(&*body.value, None);
                                         }
                                     },
                                 )

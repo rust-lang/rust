@@ -89,6 +89,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         rendered_precise_capturing_args,
         const_param_default,
         anon_const_kind,
+        const_of_item,
         ..*providers
     };
 }
@@ -1850,4 +1851,26 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
         }
         _ => ty::AnonConstKind::NonTypeSystem,
     }
+}
+
+fn const_of_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
+    let ct_arg = match tcx.hir_node_by_def_id(def_id) {
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(.., ct), .. }) => ct,
+        hir::Node::TraitItem(hir::TraitItem {
+            kind: hir::TraitItemKind::Const(.., ct), ..
+        }) => ct.expect("no default value for trait assoc const"),
+        hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(.., ct), .. }) => ct,
+        _ => {
+            span_bug!(tcx.def_span(def_id), "`const_of_item` expected a const or assoc const item")
+        }
+    };
+    let icx = ItemCtxt::new(tcx, def_id);
+    let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
+    let ct = icx
+        .lowerer()
+        .lower_const_arg(ct_arg, FeedConstTy::Param(def_id.to_def_id(), identity_args));
+    ty::EarlyBinder::bind(ct)
 }

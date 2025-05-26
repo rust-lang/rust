@@ -95,9 +95,8 @@ use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::middle;
-use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Const, Ty, TyCtxt};
+use rustc_middle::ty::{Const, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{ErrorGuaranteed, Span};
@@ -202,12 +201,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             DefKind::Static { .. } => {
                 tcx.ensure_ok().eval_static_initializer(item_def_id);
                 check::maybe_check_static_with_link_section(tcx, item_def_id);
-            }
-            DefKind::Const if tcx.generics_of(item_def_id).is_empty() => {
-                let instance = ty::Instance::new_raw(item_def_id.into(), ty::GenericArgs::empty());
-                let cid = GlobalId { instance, promoted: None };
-                let typing_env = ty::TypingEnv::fully_monomorphized();
-                tcx.ensure_ok().eval_to_const_value_raw(typing_env.as_query_input(cid));
             }
             _ => (),
         }
