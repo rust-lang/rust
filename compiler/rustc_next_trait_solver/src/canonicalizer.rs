@@ -574,6 +574,13 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
     }
 
     fn fold_clauses(&mut self, c: I::Clauses) -> I::Clauses {
+        match self.canonicalize_mode {
+            CanonicalizeMode::Input { keep_static: true }
+            | CanonicalizeMode::Response { max_input_universe: _ } => {}
+            CanonicalizeMode::Input { keep_static: false } => {
+                panic!("erasing 'static in env")
+            }
+        }
         if c.flags().intersects(NEEDS_CANONICAL) { c.super_fold_with(self) } else { c }
     }
 }
