@@ -3,7 +3,8 @@
     path_add_extension,
     path_file_prefix,
     maybe_uninit_slice,
-    os_string_pathbuf_leak
+    os_string_pathbuf_leak,
+    normalize_lexically
 )]
 
 use std::clone::CloneToUninit;
@@ -2006,4 +2007,57 @@ fn test_embedded_newline() {
     let path = Path::new("foo\nbar");
     assert_eq!(path.file_name(), Some(OsStr::new("foo\nbar")));
     assert_eq!(path.to_str(), Some("foo\nbar"));
+}
+
+#[test]
+fn normalize_lexically() {
+    #[track_caller]
+    fn check_ok(a: &str, b: &str) {
+        assert_eq!(Path::new(a).normalize_lexically().unwrap(), PathBuf::from(b));
+    }
+
+    #[track_caller]
+    fn check_err(a: &str) {
+        assert!(Path::new(a).normalize_lexically().is_err());
+    }
+
+    // Relative paths
+    check_ok("a", "a");
+    check_ok("./a", "./a");
+    check_ok("a/b/c", "a/b/c");
+    check_ok("a/././b/./c/.", "a/b/c");
+    check_ok("a/../c", "c");
+    check_ok("./a/b", "./a/b");
+    check_ok("a/../b/c/..", "b");
+
+    check_err("..");
+    check_err("../..");
+    check_err("a/../..");
+    check_err("a/../../b");
+    check_err("a/../../b/c");
+    check_err("a/../b/../..");
+
+    // Check we don't escape the root or prefix
+    #[cfg(unix)]
+    {
+        check_err("/..");
+        check_err("/a/../..");
+    }
+    #[cfg(windows)]
+    {
+        check_err(r"C:\..");
+        check_err(r"C:\a\..\..");
+
+        check_err(r"C:..");
+        check_err(r"C:a\..\..");
+
+        check_err(r"\\server\share\..");
+        check_err(r"\\server\share\a\..\..");
+
+        check_err(r"\..");
+        check_err(r"\a\..\..");
+
+        check_err(r"\\?\UNC\server\share\..");
+        check_err(r"\\?\UNC\server\share\a\..\..");
+    }
 }
