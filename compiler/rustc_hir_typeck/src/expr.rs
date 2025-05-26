@@ -1793,10 +1793,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let element_ty = if !args.is_empty() {
             let coerce_to = expected
                 .to_option(self)
-                .and_then(|uty| match *self.try_structurally_resolve_type(expr.span, uty).kind() {
-                    ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
-                    _ => None,
-                })
+                .and_then(|uty| self.try_structurally_resolve_type(expr.span, uty).builtin_index())
                 .unwrap_or_else(|| self.next_ty_var(expr.span));
             let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
             assert_eq!(self.diverges.get(), Diverges::Maybe);
@@ -1874,10 +1871,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let uty = match expected {
-            ExpectHasType(uty) => match *uty.kind() {
-                ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
-                _ => None,
-            },
+            ExpectHasType(uty) => uty.builtin_index(),
             _ => None,
         };
 
