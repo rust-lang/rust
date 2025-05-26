@@ -339,7 +339,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         caller_fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
-        destination: &MPlaceTy<'tcx, M::Provenance>,
+        destination: &PlaceTy<'tcx, M::Provenance>,
         mut stack_pop: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         // Compute callee information.
@@ -487,7 +487,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             // Protect return place for in-place return value passing.
-            M::protect_in_place_function_argument(self, &destination)?;
+            // We only need to protect anything if this is actually an in-memory place.
+            if let Left(mplace) = destination.as_mplace_or_local() {
+                M::protect_in_place_function_argument(self, &mplace)?;
+            }
 
             // Don't forget to mark "initially live" locals as live.
             self.storage_live_for_always_live_locals()?;
@@ -512,7 +515,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         (caller_abi, caller_fn_abi): (ExternAbi, &FnAbi<'tcx, Ty<'tcx>>),
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
-        destination: &MPlaceTy<'tcx, M::Provenance>,
+        destination: &PlaceTy<'tcx, M::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
@@ -776,10 +779,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Note that we are using `pop_stack_frame_raw` and not `return_from_current_stack_frame`,
         // as the latter "executes" the goto to the return block, but we don't want to,
         // only the tail called function should return to the current return block.
-        M::before_stack_pop(self, self.frame())?;
-
-        let StackPopInfo { return_action, return_to_block, return_place } =
-            self.pop_stack_frame_raw(false)?;
+        let StackPopInfo { return_action, return_to_block, return_place } = self
+            .pop_stack_frame_raw(false, |_this, _return_place| {
+                // This function's return value is just discarded, the tail-callee will fill in the return place instead.
+                interp_ok(())
+            })?;
 
         assert_eq!(return_action, ReturnAction::Normal);
 
@@ -850,7 +854,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             (ExternAbi::Rust, fn_abi),
             &[FnArg::Copy(arg.into())],
             false,
-            &ret,
+            &ret.into(),
             Some(target),
             unwind,
         )
@@ -891,28 +895,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             throw_ub_custom!(fluent::const_eval_unwind_past_top);
         }
 
-        M::before_stack_pop(self, self.frame())?;
-
-        // Copy return value. Must of course happen *before* we deallocate the locals.
-        // Must be *after* `before_stack_pop` as otherwise the return place might still be protected.
-        let copy_ret_result = if !unwinding {
-            let op = self
-                .local_to_op(mir::RETURN_PLACE, None)
-                .expect("return place should always be live");
-            let dest = self.frame().return_place.clone();
-            let res = self.copy_op_allow_transmute(&op, &dest);
-            trace!("return value: {:?}", self.dump_place(&dest.into()));
-            // We delay actually short-circuiting on this error until *after* the stack frame is
-            // popped, since we want this error to be attributed to the caller, whose type defines
-            // this transmute.
-            res
-        } else {
+        // Get out the return value. Must happen *before* the frame is popped as we have to get the
+        // local's value out.
+        let return_op =
+            self.local_to_op(mir::RETURN_PLACE, None).expect("return place should always be live");
+        // Do the actual pop + copy.
+        let stack_pop_info = self.pop_stack_frame_raw(unwinding, |this, return_place| {
+            this.copy_op_allow_transmute(&return_op, return_place)?;
+            trace!("return value: {:?}", this.dump_place(return_place));
             interp_ok(())
-        };
-
-        // All right, now it is time to actually pop the frame.
-        // An error here takes precedence over the copy error.
-        let (stack_pop_info, ()) = self.pop_stack_frame_raw(unwinding).and(copy_ret_result)?;
+        })?;
 
         match stack_pop_info.return_action {
             ReturnAction::Normal => {}
@@ -924,7 +916,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // If we are not doing cleanup, also skip everything else.
                 assert!(self.stack().is_empty(), "only the topmost frame should ever be leaked");
                 assert!(!unwinding, "tried to skip cleanup during unwinding");
-                // Skip machine hook.
+                // Don't jump anywhere.
                 return interp_ok(());
             }
         }

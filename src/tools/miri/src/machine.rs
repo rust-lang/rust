@@ -1115,7 +1115,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         instance: ty::Instance<'tcx>,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx>,
+        dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
@@ -1142,7 +1142,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         fn_val: DynSym,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx>,
+        dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
@@ -1155,7 +1155,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx: &mut MiriInterpCx<'tcx>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: &MPlaceTy<'tcx>,
+        dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
@@ -1634,14 +1634,20 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         interp_ok(())
     }
 
-    fn before_stack_pop(
-        ecx: &InterpCx<'tcx, Self>,
-        frame: &Frame<'tcx, Self::Provenance, Self::FrameExtra>,
-    ) -> InterpResult<'tcx> {
+    fn before_stack_pop(ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
+        let frame = ecx.frame();
         // We want this *before* the return value copy, because the return place itself is protected
         // until we do `end_call` here.
         if ecx.machine.borrow_tracker.is_some() {
             ecx.on_stack_pop(frame)?;
+        }
+        if frame.extra.is_user_relevant {
+            // All that we store is whether or not the frame we just removed is local, so now we
+            // have no idea where the next topmost local frame is. So we recompute it.
+            // (If this ever becomes a bottleneck, we could have `push` store the previous
+            // user-relevant frame and restore that here.)
+            // We have to skip the frame that is just being popped.
+            ecx.active_thread_mut().recompute_top_user_relevant_frame(/* skip */ 1);
         }
         // tracing-tree can autoamtically annotate scope changes, but it gets very confused by our
         // concurrency and what it prints is just plain wrong. So we print our own information
@@ -1656,15 +1662,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         frame: Frame<'tcx, Provenance, FrameExtra<'tcx>>,
         unwinding: bool,
     ) -> InterpResult<'tcx, ReturnAction> {
-        if frame.extra.is_user_relevant {
-            // All that we store is whether or not the frame we just removed is local, so now we
-            // have no idea where the next topmost local frame is. So we recompute it.
-            // (If this ever becomes a bottleneck, we could have `push` store the previous
-            // user-relevant frame and restore that here.)
-            ecx.active_thread_mut().recompute_top_user_relevant_frame();
-        }
         let res = {
-            // Move `frame`` into a sub-scope so we control when it will be dropped.
+            // Move `frame` into a sub-scope so we control when it will be dropped.
             let mut frame = frame;
             let timing = frame.extra.timing.take();
             let res = ecx.handle_stack_pop_unwind(frame.extra, unwinding);

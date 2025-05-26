@@ -90,7 +90,7 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         _instance: ty::Instance<'tcx>,
         _abi: &FnAbi<'tcx, Ty<'tcx>>,
         _args: &[interpret::FnArg<'tcx, Self::Provenance>],
-        _destination: &interpret::MPlaceTy<'tcx, Self::Provenance>,
+        _destination: &interpret::PlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
         _unwind: UnwindAction,
     ) -> interpret::InterpResult<'tcx, Option<(&'tcx Body<'tcx>, ty::Instance<'tcx>)>> {
@@ -108,7 +108,7 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         _ecx: &mut InterpCx<'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _args: &[interpret::OpTy<'tcx, Self::Provenance>],
-        _destination: &interpret::MPlaceTy<'tcx, Self::Provenance>,
+        _destination: &interpret::PlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
         _unwind: UnwindAction,
     ) -> interpret::InterpResult<'tcx, Option<ty::Instance<'tcx>>> {

@@ -208,7 +208,7 @@ pub trait Machine<'tcx>: Sized {
         instance: ty::Instance<'tcx>,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx, Self::Provenance>],
-        destination: &MPlaceTy<'tcx, Self::Provenance>,
+        destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>>;
@@ -220,7 +220,7 @@ pub trait Machine<'tcx>: Sized {
         fn_val: Self::ExtraFnVal,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx, Self::Provenance>],
-        destination: &MPlaceTy<'tcx, Self::Provenance>,
+        destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
@@ -234,7 +234,7 @@ pub trait Machine<'tcx>: Sized {
         ecx: &mut InterpCx<'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::Provenance>],
-        destination: &MPlaceTy<'tcx, Self::Provenance>,
+        destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>>;
@@ -536,11 +536,9 @@ pub trait Machine<'tcx>: Sized {
         interp_ok(())
     }
 
-    /// Called just before the return value is copied to the caller-provided return place.
-    fn before_stack_pop(
-        _ecx: &InterpCx<'tcx, Self>,
-        _frame: &Frame<'tcx, Self::Provenance, Self::FrameExtra>,
-    ) -> InterpResult<'tcx> {
+    /// Called just before the frame is removed from the stack (followed by return value copy and
+    /// local cleanup).
+    fn before_stack_pop(_ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
         interp_ok(())
     }
 
@@ -675,7 +673,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         fn_val: !,
         _abi: &FnAbi<$tcx, Ty<$tcx>>,
         _args: &[FnArg<$tcx>],
-        _destination: &MPlaceTy<$tcx, Self::Provenance>,
+        _destination: &PlaceTy<$tcx, Self::Provenance>,
         _target: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction,
     ) -> InterpResult<$tcx> {
