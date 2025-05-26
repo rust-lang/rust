@@ -40,6 +40,7 @@ fn emit_direct_ptr_va_arg<'ll, 'tcx>(
     align: Align,
     slot_size: Align,
     allow_higher_align: bool,
+    force_right_adjust: bool,
 ) -> (&'ll Value, Align) {
     let va_list_ty = bx.type_ptr();
     let va_list_addr = list.immediate();
@@ -57,7 +58,10 @@ fn emit_direct_ptr_va_arg<'ll, 'tcx>(
     let next = bx.inbounds_ptradd(addr, full_direct_size);
     bx.store(next, va_list_addr, bx.tcx().data_layout.pointer_align.abi);
 
-    if size.bytes() < slot_size.bytes() && bx.tcx().sess.target.endian == Endian::Big {
+    if size.bytes() < slot_size.bytes()
+        && bx.tcx().sess.target.endian == Endian::Big
+        && force_right_adjust
+    {
         let adjusted_size = bx.cx().const_i32((slot_size.bytes() - size.bytes()) as i32);
         let adjusted = bx.inbounds_ptradd(addr, adjusted_size);
         (adjusted, addr_align)
@@ -81,6 +85,11 @@ enum AllowHigherAlign {
     Yes,
 }
 
+enum ForceRightAdjust {
+    No,
+    Yes,
+}
+
 fn emit_ptr_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     list: OperandRef<'tcx, &'ll Value>,
@@ -88,9 +97,11 @@ fn emit_ptr_va_arg<'ll, 'tcx>(
     pass_mode: PassMode,
     slot_size: SlotSize,
     allow_higher_align: AllowHigherAlign,
+    force_right_adjust: ForceRightAdjust,
 ) -> &'ll Value {
     let indirect = matches!(pass_mode, PassMode::Indirect);
     let allow_higher_align = matches!(allow_higher_align, AllowHigherAlign::Yes);
+    let force_right_adjust = matches!(force_right_adjust, ForceRightAdjust::Yes);
     let slot_size = Align::from_bytes(slot_size as u64).unwrap();
 
     let layout = bx.cx.layout_of(target_ty);
@@ -103,8 +114,15 @@ fn emit_ptr_va_arg<'ll, 'tcx>(
     } else {
         (layout.llvm_type(bx.cx), layout.size, layout.align)
     };
-    let (addr, addr_align) =
-        emit_direct_ptr_va_arg(bx, list, size, align.abi, slot_size, allow_higher_align);
+    let (addr, addr_align) = emit_direct_ptr_va_arg(
+        bx,
+        list,
+        size,
+        align.abi,
+        slot_size,
+        allow_higher_align,
+        force_right_adjust,
+    );
     if indirect {
         let tmp_ret = bx.load(llty, addr, addr_align);
         bx.load(bx.cx.layout_of(target_ty).llvm_type(bx.cx), tmp_ret, align.abi)
@@ -208,6 +226,7 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
         PassMode::Direct,
         SlotSize::Bytes8,
         AllowHigherAlign::Yes,
+        ForceRightAdjust::No,
     );
     bx.br(end);
 
@@ -721,6 +740,17 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
     let target = &bx.cx.tcx.sess.target;
 
     match &*target.arch {
+        // Windows x86
+        "x86" if target.is_like_windows => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            PassMode::Direct,
+            SlotSize::Bytes4,
+            AllowHigherAlign::No,
+            ForceRightAdjust::No,
+        ),
+        // Generic x86
         "x86" => emit_ptr_va_arg(
             bx,
             addr,
@@ -728,6 +758,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             PassMode::Direct,
             SlotSize::Bytes4,
             if target.is_like_windows { AllowHigherAlign::No } else { AllowHigherAlign::Yes },
+            ForceRightAdjust::No,
         ),
         "aarch64" | "arm64ec" if target.is_like_windows || target.is_like_darwin => {
             emit_ptr_va_arg(
@@ -737,10 +768,23 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
                 PassMode::Direct,
                 SlotSize::Bytes8,
                 if target.is_like_windows { AllowHigherAlign::No } else { AllowHigherAlign::Yes },
+                ForceRightAdjust::No,
             )
         }
         "aarch64" => emit_aapcs_va_arg(bx, addr, target_ty),
         "s390x" => emit_s390x_va_arg(bx, addr, target_ty),
+        "powerpc64" | "powerpc64le" => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            PassMode::Direct,
+            SlotSize::Bytes8,
+            AllowHigherAlign::Yes,
+            match &*target.arch {
+                "powerpc64" => ForceRightAdjust::Yes,
+                _ => ForceRightAdjust::No,
+            },
+        ),
         // Windows x86_64
         "x86_64" if target.is_like_windows => {
             let target_ty_size = bx.cx.size_of(target_ty).bytes();
@@ -755,6 +799,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
                 },
                 SlotSize::Bytes8,
                 AllowHigherAlign::No,
+                ForceRightAdjust::No,
             )
         }
         // This includes `target.is_like_darwin`, which on x86_64 targets is like sysv64.
