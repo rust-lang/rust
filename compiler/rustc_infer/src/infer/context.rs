@@ -214,7 +214,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>, span: Span) {
-        self.type_outlives_predicate_with_cause(ty, r, &ObligationCause::dummy_with_span(span));
+        self.register_type_outlives_constraint(ty, r, &ObligationCause::dummy_with_span(span));
     }
 
     type OpaqueTypeStorageEntries = OpaqueTypeStorageEntries;

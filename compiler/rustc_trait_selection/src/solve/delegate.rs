@@ -76,7 +76,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 Some(HasChanged::No)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(outlives)) => {
-                self.0.type_outlives_predicate_with_cause(
+                self.0.register_type_outlives_constraint(
                     outlives.0,
                     outlives.1,
                     &ObligationCause::dummy_with_span(span),

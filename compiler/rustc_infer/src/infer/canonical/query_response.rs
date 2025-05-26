@@ -171,7 +171,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         for (predicate, _category) in &query_response.value.region_constraints.outlives {
             let predicate = instantiate_value(self.tcx, &result_args, *predicate);
-            self.outlives_predicate_with_cause(predicate, cause);
+            self.register_outlives_constraint(predicate, cause);
         }
 
         let user_result: R =

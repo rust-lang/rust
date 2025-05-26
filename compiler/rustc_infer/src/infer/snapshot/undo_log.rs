@@ -26,7 +26,7 @@ pub(crate) enum UndoLog<'tcx> {
     RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
     RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'tcx>>>),
     ProjectionCache(traits::UndoLog<'tcx>),
-    PushRegionObligation,
+    PushTypeOutlivesConstraint,
 }
 
 macro_rules! impl_from {
@@ -72,7 +72,7 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
                 self.region_constraint_storage.as_mut().unwrap().unification_table.reverse(undo)
             }
             UndoLog::ProjectionCache(undo) => self.projection_cache.reverse(undo),
-            UndoLog::PushRegionObligation => {
+            UndoLog::PushTypeOutlivesConstraint => {
                 self.region_obligations.pop();
             }
         }

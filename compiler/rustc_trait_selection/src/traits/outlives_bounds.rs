@@ -81,7 +81,7 @@ fn implied_outlives_bounds<'a, 'tcx>(
         let QueryRegionConstraints { outlives } = constraints;
         let cause = ObligationCause::misc(span, body_id);
         for &(predicate, _) in &outlives {
-            infcx.outlives_predicate_with_cause(predicate, &cause);
+            infcx.register_outlives_constraint(predicate, &cause);
         }
     };
 
