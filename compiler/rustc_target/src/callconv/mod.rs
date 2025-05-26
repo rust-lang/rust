@@ -697,7 +697,6 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
             "nvptx64" => {
-                let abi = cx.target_spec().adjust_abi(abi, self.c_variadic);
                 if abi == ExternAbi::PtxKernel || abi == ExternAbi::GpuKernel {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
                 } else {
