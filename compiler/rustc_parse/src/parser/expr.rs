@@ -3450,10 +3450,8 @@ impl<'a> Parser<'a> {
                 // Detect and recover from `($pat if $cond) => $arm`.
                 // FIXME(guard_patterns): convert this to a normal guard instead
                 let span = pat.span;
-                let ast::PatKind::Paren(subpat) = pat.into_inner().kind else { unreachable!() };
-                let ast::PatKind::Guard(_, mut cond) = subpat.into_inner().kind else {
-                    unreachable!()
-                };
+                let ast::PatKind::Paren(subpat) = pat.kind else { unreachable!() };
+                let ast::PatKind::Guard(_, mut cond) = subpat.kind else { unreachable!() };
                 self.psess.gated_spans.ungate_last(sym::guard_patterns, cond.span);
                 CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
                 let right = self.prev_token.span;
