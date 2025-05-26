@@ -219,8 +219,8 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                 // building their proof tree, the expected term was unconstrained, but when
                 // instantiating the candidate it is already constrained to the result of another
                 // candidate.
-                let proof_tree =
-                    infcx.probe(|_| infcx.evaluate_root_goal_raw(goal, GenerateProofTree::Yes).1);
+                let proof_tree = infcx
+                    .probe(|_| infcx.evaluate_root_goal_raw(goal, GenerateProofTree::Yes, None).1);
                 InspectGoal::new(
                     infcx,
                     self.goal.depth + 1,
@@ -236,7 +236,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                 // constraints, we get an ICE if we already applied the constraints
                 // from the chosen candidate.
                 let proof_tree = infcx
-                    .probe(|_| infcx.evaluate_root_goal(goal, GenerateProofTree::Yes, span).1)
+                    .probe(|_| infcx.evaluate_root_goal(goal, GenerateProofTree::Yes, span, None).1)
                     .unwrap();
                 InspectGoal::new(infcx, self.goal.depth + 1, proof_tree, None, source)
             }
@@ -442,6 +442,7 @@ impl<'tcx> InferCtxt<'tcx> {
             goal,
             GenerateProofTree::Yes,
             visitor.span(),
+            None,
         );
         let proof_tree = proof_tree.unwrap();
         visitor.visit_goal(&InspectGoal::new(self, depth, proof_tree, None, GoalSource::Misc))

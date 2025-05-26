@@ -21,6 +21,7 @@ mod project_goals;
 mod search_graph;
 mod trait_goals;
 
+use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
 use rustc_type_ir::{self as ty, Interner, TypingMode};
@@ -368,4 +369,22 @@ fn response_no_constraints_raw<I: Interner>(
             certainty,
         },
     }
+}
+
+/// The result of evaluating a goal.
+pub struct GoalEvaluation<I: Interner> {
+    pub certainty: Certainty,
+    pub has_changed: HasChanged,
+    /// If the [`Certainty`] was `Maybe`, then keep track of whether the goal has changed
+    /// before rerunning it.
+    pub stalled_on: Option<GoalStalledOn<I>>,
+}
+
+/// The conditions that must change for a goal to warrant
+#[derive_where(Clone, Debug; I: Interner)]
+pub struct GoalStalledOn<I: Interner> {
+    pub num_opaques: usize,
+    pub stalled_vars: Vec<I::GenericArg>,
+    /// The cause that will be returned on subsequent evaluations if this goal remains stalled.
+    pub stalled_cause: MaybeCause,
 }
