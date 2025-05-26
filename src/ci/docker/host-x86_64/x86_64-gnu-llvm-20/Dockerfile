@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   sudo \
   gdb \
+  lldb-20 \
   llvm-20-tools \
   llvm-20-dev \
   libedit-dev \
@@ -32,6 +33,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libmpc3 \
   libmpc-dev \
   && rm -rf /var/lib/apt/lists/*
+
+# The official LLDB symbolic links seems to be broken, this is a workaround to fix them.
+RUN ln -sf ../../../liblldb.so.1 /usr/lib/llvm-20/lib/python3.13/site-packages/lldb/_lldb.cpython-313-x86_64-linux-gnu.so && \
+    ln -sf ../../../../../x86_64-linux-gnu/libLLVM-20.so /usr/lib/llvm-20/lib/python3/dist-packages/lldb/libLLVM-20.*.so.1 && \
+    ln -sf ../../../../../x86_64-linux-gnu/libLLVM-20.so /usr/lib/llvm-20/lib/python3/dist-packages/lldb/libLLVM-20.so.1
+
+# This provides hint for LLDB to find the debug server binary.
+ENV LLDB_DEBUGSERVER_PATH=/usr/bin/lldb-server-20
 
 # Install powershell (universal package) so we can test x.ps1 on Linux
 # FIXME: need a "universal" version that supports libicu74, but for now it still works to ignore that dep.
@@ -52,6 +61,7 @@ ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
       --llvm-root=/usr/lib/llvm-20 \
       --enable-llvm-link-shared \
+      --set build.lldb=lldb-20 \
       --set rust.randomize-layout=true \
       --set rust.thin-lto-import-instr-limit=10
 
