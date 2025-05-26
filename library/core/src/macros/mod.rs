@@ -1519,8 +1519,9 @@ pub(crate) mod builtin {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
 
-    /// the derivative of a given function in the forward mode of differentiation.
-    /// It may only be applied to a function.
+    /// This macro uses forward-mode automatic differentiation to generate a new function.
+    /// It may only be applied to a function. The new function will compute the derivative
+    /// of the function to which the macro was applied.
     ///
     /// The expected usage syntax is:
     /// `#[autodiff_forward(NAME, INPUT_ACTIVITIES, OUTPUT_ACTIVITY)]`
@@ -1537,9 +1538,9 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
-    /// Automatic Differentiation macro which allows generating a new function to compute
-    /// the derivative of a given function in the reverse mode of differentiation.
-    /// It may only be applied to a function.
+    /// This macro uses reverse-mode automatic differentiation to generate a new function.
+    /// It may only be applied to a function. The new function will compute the derivative
+    /// of the function to which the macro was applied.
     ///
     /// The expected usage syntax is:
     /// `#[autodiff_reverse(NAME, INPUT_ACTIVITIES, OUTPUT_ACTIVITY)]`
