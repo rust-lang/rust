@@ -429,8 +429,23 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
             SearchStep::Done
         }
     }
-    #[inline]
+    #[inline(always)]
     fn next_match(&mut self) -> Option<(usize, usize)> {
+        if self.utf8_size == 1 {
+            return match self
+                .haystack
+                .as_bytes()
+                .get(self.finger..self.finger_back)?
+                .iter()
+                .position(|x| *x == self.utf8_encoded[0])
+            {
+                Some(x) => {
+                    self.finger += x + 1;
+                    Some((self.finger - 1, self.finger))
+                }
+                None => None,
+            };
+        }
         loop {
             // get the haystack after the last character found
             let bytes = self.haystack.as_bytes().get(self.finger..self.finger_back)?;
@@ -498,6 +513,21 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
     }
     #[inline]
     fn next_match_back(&mut self) -> Option<(usize, usize)> {
+        if self.utf8_size == 1 {
+            return match self
+                .haystack
+                .get(self.finger..self.finger_back)?
+                .as_bytes()
+                .iter()
+                .rposition(|&x| x == self.utf8_encoded[0])
+            {
+                Some(x) => {
+                    self.finger_back = self.finger + x;
+                    Some((self.finger_back, self.finger_back + 1))
+                }
+                None => None,
+            };
+        }
         let haystack = self.haystack.as_bytes();
         loop {
             // get the haystack up to but not including the last character searched
