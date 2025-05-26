@@ -132,7 +132,7 @@ try:
   - name: dist-x86_64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-16c
+    <<: *job-linux-36c-codebuild
 
 # Main CI jobs that have to be green to merge a commit into master
 # These jobs automatically inherit envs.auto, to avoid repeating
@@ -228,7 +228,7 @@ auto:
   - name: dist-x86_64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-16c
+    <<: *job-linux-36c-codebuild
 
   - name: dist-x86_64-linux-alt
     env:
