@@ -35,7 +35,8 @@ use chalk_ir::{
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, ConstId, DefWithBodyId, FieldId, FunctionId, GenericDefId, GenericParamId,
-    ImplId, ItemContainerId, Lookup, TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
+    ImplId, ItemContainerId, LocalFieldId, Lookup, TraitId, TupleFieldId, TupleId, TypeAliasId,
+    VariantId,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
@@ -203,7 +204,7 @@ pub(crate) type InferResult<T> = Result<InferOk<T>, TypeError>;
 pub enum InferenceDiagnostic {
     NoSuchField {
         field: ExprOrPatId,
-        private: bool,
+        private: Option<LocalFieldId>,
         variant: VariantId,
     },
     PrivateField {
