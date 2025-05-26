@@ -332,8 +332,11 @@ fn get_expansion<'a, W: Write>(
             Cow::Owned(format!(
                 "{closing}\
 <span class=expansion>\
-    <input id={id} type=checkbox>\
-    <label for={id}>↕</label>{reopening}",
+    <input id={id} \
+           tabindex=0 \
+           type=checkbox \
+           aria-label=\"Collapse/expand macro\" \
+           title=\"\"Collapse/expand macro\">{reopening}",
             )),
             Some(Class::Expansion),
         ));
