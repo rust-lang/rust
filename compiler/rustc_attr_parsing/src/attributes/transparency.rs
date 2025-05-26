@@ -1,6 +1,6 @@
 use rustc_attr_data_structures::AttributeKind;
 use rustc_span::hygiene::Transparency;
-use rustc_span::sym;
+use rustc_span::{Span, Symbol, sym};
 
 use super::{AcceptContext, SingleAttributeParser};
 use crate::parser::ArgParser;
@@ -11,9 +11,9 @@ pub(crate) struct TransparencyParser;
 #[allow(rustc::untranslatable_diagnostic)]
 #[allow(rustc::diagnostic_outside_of_impl)]
 impl SingleAttributeParser for TransparencyParser {
-    const PATH: &'static [rustc_span::Symbol] = &[sym::rustc_macro_transparency];
+    const PATH: &'static [Symbol] = &[sym::rustc_macro_transparency];
 
-    fn on_duplicate(cx: &crate::context::AcceptContext<'_>, first_span: rustc_span::Span) {
+    fn on_duplicate(cx: &crate::context::AcceptContext<'_>, first_span: Span) {
         cx.dcx().span_err(vec![first_span, cx.attr_span], "multiple macro transparency attributes");
     }
 
