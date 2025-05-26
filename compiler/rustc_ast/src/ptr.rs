@@ -19,10 +19,10 @@
 
 use std::fmt::{self, Debug, Display};
 use std::ops::{Deref, DerefMut};
-use std::{slice, vec};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+
 /// An owned smart pointer.
 ///
 /// See the [module level documentation][crate::ptr] for details.
@@ -108,83 +108,6 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for P<T> {
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<T> {
     fn encode(&self, s: &mut S) {
         (**self).encode(s);
-    }
-}
-
-impl<T> P<[T]> {
-    // FIXME(const-hack) make this const again
-    pub fn new() -> P<[T]> {
-        P { ptr: Box::default() }
-    }
-
-    #[inline(never)]
-    pub fn from_vec(v: Vec<T>) -> P<[T]> {
-        P { ptr: v.into_boxed_slice() }
-    }
-
-    #[inline(never)]
-    pub fn into_vec(self) -> Vec<T> {
-        self.ptr.into_vec()
-    }
-}
-
-impl<T> Default for P<[T]> {
-    /// Creates an empty `P<[T]>`.
-    fn default() -> P<[T]> {
-        P::new()
-    }
-}
-
-impl<T: Clone> Clone for P<[T]> {
-    fn clone(&self) -> P<[T]> {
-        P::from_vec(self.to_vec())
-    }
-}
-
-impl<T> From<Vec<T>> for P<[T]> {
-    fn from(v: Vec<T>) -> Self {
-        P::from_vec(v)
-    }
-}
-
-impl<T> From<P<[T]>> for Vec<T> {
-    fn from(val: P<[T]>) -> Self {
-        val.into_vec()
-    }
-}
-
-impl<T> FromIterator<T> for P<[T]> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> P<[T]> {
-        P::from_vec(iter.into_iter().collect())
-    }
-}
-
-impl<T> IntoIterator for P<[T]> {
-    type Item = T;
-    type IntoIter = vec::IntoIter<T>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.into_vec().into_iter()
-    }
-}
-
-impl<'a, T> IntoIterator for &'a P<[T]> {
-    type Item = &'a T;
-    type IntoIter = slice::Iter<'a, T>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.ptr.iter()
-    }
-}
-
-impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<[T]> {
-    fn encode(&self, s: &mut S) {
-        Encodable::encode(&**self, s);
-    }
-}
-
-impl<D: Decoder, T: Decodable<D>> Decodable<D> for P<[T]> {
-    fn decode(d: &mut D) -> P<[T]> {
-        P::from_vec(Decodable::decode(d))
     }
 }
 
