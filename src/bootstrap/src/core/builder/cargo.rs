@@ -995,7 +995,7 @@ impl Builder<'_> {
                     if self.config.llvm_enzyme {
                         let arch = self.build.build;
                         let enzyme_dir = self.build.out.join(arch).join("enzyme").join("lib");
-                        rustflags.arg(&format!("-Clink-arg=-L{enzyme_dir}"));
+                        rustflags.arg(&format!("-Clink-arg=-L{}", enzyme_dir.display()));
                     }
                 }
             }
