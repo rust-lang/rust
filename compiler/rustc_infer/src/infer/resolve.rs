@@ -55,6 +55,14 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticVarResolver<'a, 'tcx> {
             ct.super_fold_with(self)
         }
     }
+
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if !p.has_non_region_infer() { p } else { p.super_fold_with(self) }
+    }
+
+    fn fold_clauses(&mut self, c: ty::Clauses<'tcx>) -> ty::Clauses<'tcx> {
+        if !c.has_non_region_infer() { c } else { c.super_fold_with(self) }
+    }
 }
 
 /// The opportunistic region resolver opportunistically resolves regions

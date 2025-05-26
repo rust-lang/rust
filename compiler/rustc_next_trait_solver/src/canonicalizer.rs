@@ -4,11 +4,22 @@ use rustc_type_ir::data_structures::{HashMap, ensure_sufficient_stack};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
 use rustc_type_ir::{
-    self as ty, Canonical, CanonicalTyVarKind, CanonicalVarKind, InferCtxtLike, Interner,
-    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self as ty, Canonical, CanonicalParamEnvCacheEntry, CanonicalTyVarKind, CanonicalVarKind,
+    Flags, InferCtxtLike, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt,
 };
 
 use crate::delegate::SolverDelegate;
+
+/// Does this have infer/placeholder/param, free regions or ReErased?
+const NEEDS_CANONICAL: TypeFlags = TypeFlags::from_bits(
+    TypeFlags::HAS_INFER.bits()
+        | TypeFlags::HAS_PLACEHOLDER.bits()
+        | TypeFlags::HAS_PARAM.bits()
+        | TypeFlags::HAS_FREE_REGIONS.bits()
+        | TypeFlags::HAS_RE_ERASED.bits(),
+)
+.unwrap();
 
 /// Whether we're canonicalizing a query input or the query response.
 ///
@@ -79,11 +90,85 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             cache: Default::default(),
         };
 
-        let value = value.fold_with(&mut canonicalizer);
+        let value = if value.has_type_flags(NEEDS_CANONICAL) {
+            value.fold_with(&mut canonicalizer)
+        } else {
+            value
+        };
         assert!(!value.has_infer(), "unexpected infer in {value:?}");
         assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
         let (max_universe, variables) = canonicalizer.finalize();
         Canonical { max_universe, variables, value }
+    }
+
+    fn canonicalize_param_env(
+        delegate: &'a D,
+        variables: &'a mut Vec<I::GenericArg>,
+        param_env: I::ParamEnv,
+    ) -> (I::ParamEnv, HashMap<I::GenericArg, usize>, Vec<CanonicalVarKind<I>>) {
+        if !param_env.has_type_flags(NEEDS_CANONICAL) {
+            return (param_env, Default::default(), Vec::new());
+        }
+
+        // Check whether we can use the global cache for this param_env. As we only use
+        // the `param_env` itself as the cache key, considering any additional information
+        // durnig its canonicalization would be incorrect. We always canonicalize region
+        // inference variables in a separate universe, so these are fine. However, we do
+        // track the universe of type and const inference variables so these must not be
+        // globally cached. We don't rely on any additional information when canonicalizing
+        // placeholders.
+        if !param_env.has_non_region_infer() {
+            delegate.cx().canonical_param_env_cache_get_or_insert(
+                param_env,
+                || {
+                    let mut variables = Vec::new();
+                    let mut env_canonicalizer = Canonicalizer {
+                        delegate,
+                        canonicalize_mode: CanonicalizeMode::Input { keep_static: true },
+
+                        variables: &mut variables,
+                        variable_lookup_table: Default::default(),
+                        var_kinds: Vec::new(),
+                        binder_index: ty::INNERMOST,
+
+                        cache: Default::default(),
+                    };
+                    let param_env = param_env.fold_with(&mut env_canonicalizer);
+                    debug_assert_eq!(env_canonicalizer.binder_index, ty::INNERMOST);
+                    CanonicalParamEnvCacheEntry {
+                        param_env,
+                        variable_lookup_table: env_canonicalizer.variable_lookup_table,
+                        var_kinds: env_canonicalizer.var_kinds,
+                        variables,
+                    }
+                },
+                |&CanonicalParamEnvCacheEntry {
+                     param_env,
+                     variables: ref cache_variables,
+                     ref variable_lookup_table,
+                     ref var_kinds,
+                 }| {
+                    debug_assert!(variables.is_empty());
+                    variables.extend(cache_variables.iter().copied());
+                    (param_env, variable_lookup_table.clone(), var_kinds.clone())
+                },
+            )
+        } else {
+            let mut env_canonicalizer = Canonicalizer {
+                delegate,
+                canonicalize_mode: CanonicalizeMode::Input { keep_static: true },
+
+                variables,
+                variable_lookup_table: Default::default(),
+                var_kinds: Vec::new(),
+                binder_index: ty::INNERMOST,
+
+                cache: Default::default(),
+            };
+            let param_env = param_env.fold_with(&mut env_canonicalizer);
+            debug_assert_eq!(env_canonicalizer.binder_index, ty::INNERMOST);
+            (param_env, env_canonicalizer.variable_lookup_table, env_canonicalizer.var_kinds)
+        }
     }
 
     /// When canonicalizing query inputs, we keep `'static` in the `param_env`
@@ -100,30 +185,17 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         input: QueryInput<I, P>,
     ) -> ty::Canonical<I, QueryInput<I, P>> {
         // First canonicalize the `param_env` while keeping `'static`
-        let mut env_canonicalizer = Canonicalizer {
-            delegate,
-            canonicalize_mode: CanonicalizeMode::Input { keep_static: true },
-
-            variables,
-            variable_lookup_table: Default::default(),
-            var_kinds: Vec::new(),
-            binder_index: ty::INNERMOST,
-
-            cache: Default::default(),
-        };
-        let param_env = input.goal.param_env.fold_with(&mut env_canonicalizer);
-        debug_assert_eq!(env_canonicalizer.binder_index, ty::INNERMOST);
+        let (param_env, variable_lookup_table, var_kinds) =
+            Canonicalizer::canonicalize_param_env(delegate, variables, input.goal.param_env);
         // Then canonicalize the rest of the input without keeping `'static`
         // while *mostly* reusing the canonicalizer from above.
         let mut rest_canonicalizer = Canonicalizer {
             delegate,
             canonicalize_mode: CanonicalizeMode::Input { keep_static: false },
 
-            variables: env_canonicalizer.variables,
-            // We're able to reuse the `variable_lookup_table` as whether or not
-            // it already contains an entry for `'static` does not matter.
-            variable_lookup_table: env_canonicalizer.variable_lookup_table,
-            var_kinds: env_canonicalizer.var_kinds,
+            variables,
+            variable_lookup_table,
+            var_kinds,
             binder_index: ty::INNERMOST,
 
             // We do not reuse the cache as it may contain entries whose canonicalized
@@ -134,10 +206,22 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             cache: Default::default(),
         };
 
-        let predicate = input.goal.predicate.fold_with(&mut rest_canonicalizer);
+        let predicate = input.goal.predicate;
+        let predicate = if predicate.has_type_flags(NEEDS_CANONICAL) {
+            predicate.fold_with(&mut rest_canonicalizer)
+        } else {
+            predicate
+        };
         let goal = Goal { param_env, predicate };
+
+        let predefined_opaques_in_body = input.predefined_opaques_in_body;
         let predefined_opaques_in_body =
-            input.predefined_opaques_in_body.fold_with(&mut rest_canonicalizer);
+            if input.predefined_opaques_in_body.has_type_flags(NEEDS_CANONICAL) {
+                predefined_opaques_in_body.fold_with(&mut rest_canonicalizer)
+            } else {
+                predefined_opaques_in_body
+            };
+
         let value = QueryInput { goal, predefined_opaques_in_body };
 
         assert!(!value.has_infer(), "unexpected infer in {value:?}");
@@ -387,7 +471,11 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             | ty::Alias(_, _)
             | ty::Bound(_, _)
             | ty::Error(_) => {
-                return ensure_sufficient_stack(|| t.super_fold_with(self));
+                return if t.has_type_flags(NEEDS_CANONICAL) {
+                    ensure_sufficient_stack(|| t.super_fold_with(self))
+                } else {
+                    t
+                };
             }
         };
 
@@ -522,11 +610,28 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             | ty::ConstKind::Unevaluated(_)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
-            | ty::ConstKind::Expr(_) => return c.super_fold_with(self),
+            | ty::ConstKind::Expr(_) => {
+                return if c.has_type_flags(NEEDS_CANONICAL) { c.super_fold_with(self) } else { c };
+            }
         };
 
         let var = self.get_or_insert_bound_var(c, kind);
 
         Const::new_anon_bound(self.cx(), self.binder_index, var)
+    }
+
+    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+        if p.flags().intersects(NEEDS_CANONICAL) { p.super_fold_with(self) } else { p }
+    }
+
+    fn fold_clauses(&mut self, c: I::Clauses) -> I::Clauses {
+        match self.canonicalize_mode {
+            CanonicalizeMode::Input { keep_static: true }
+            | CanonicalizeMode::Response { max_input_universe: _ } => {}
+            CanonicalizeMode::Input { keep_static: false } => {
+                panic!("erasing 'static in env")
+            }
+        }
+        if c.flags().intersects(NEEDS_CANONICAL) { c.super_fold_with(self) } else { c }
     }
 }

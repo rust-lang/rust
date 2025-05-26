@@ -493,6 +493,14 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
             ct
         }
     }
+
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if p.flags().intersects(self.needs_canonical_flags) { p.super_fold_with(self) } else { p }
+    }
+
+    fn fold_clauses(&mut self, c: ty::Clauses<'tcx>) -> ty::Clauses<'tcx> {
+        if c.flags().intersects(self.needs_canonical_flags) { c.super_fold_with(self) } else { c }
+    }
 }
 
 impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {

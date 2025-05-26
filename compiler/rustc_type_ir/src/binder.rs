@@ -711,6 +711,14 @@ impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
             c.super_fold_with(self)
         }
     }
+
+    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+        if p.has_param() { p.super_fold_with(self) } else { p }
+    }
+
+    fn fold_clauses(&mut self, c: I::Clauses) -> I::Clauses {
+        if c.has_param() { c.super_fold_with(self) } else { c }
+    }
 }
 
 impl<'a, I: Interner> ArgFolder<'a, I> {
