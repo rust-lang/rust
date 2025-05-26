@@ -626,6 +626,10 @@ pub trait Machine<'tcx>: Sized {
         // Default to no caching.
         Cow::Owned(compute_range())
     }
+
+    /// Compute the value passed to the constructors of the `AllocBytes` type for
+    /// abstract machine allocations.
+    fn get_default_alloc_params(&self) -> <Self::Bytes as AllocBytes>::AllocParams;
 }
 
 /// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines

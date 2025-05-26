@@ -1101,7 +1101,7 @@ where
     }
 
     pub(super) fn register_region_outlives(&self, a: I::Region, b: I::Region) {
-        // `b : a` ==> `a <= b`
+        // `'a: 'b` ==> `'b <= 'a`
         self.delegate.sub_regions(b, a, self.origin_span);
     }
 

@@ -35,8 +35,12 @@ fn set_to_summary_str(set: &BTreeSet<String>, dir: &str) -> String {
 
 fn generate_summary(path: &Path, lang_features: &Features, lib_features: &Features) {
     let compiler_flags = collect_unstable_book_section_file_names(&path.join("src/compiler-flags"));
+    let compiler_env_vars =
+        collect_unstable_book_section_file_names(&path.join("src/compiler-environment-variables"));
 
     let compiler_flags_str = set_to_summary_str(&compiler_flags, "compiler-flags");
+    let compiler_env_vars_str =
+        set_to_summary_str(&compiler_env_vars, "compiler-environment-variables");
 
     let unstable_lang_features = collect_unstable_feature_names(&lang_features);
     let unstable_lib_features = collect_unstable_feature_names(&lib_features);
@@ -47,6 +51,7 @@ fn generate_summary(path: &Path, lang_features: &Features, lib_features: &Featur
     let summary_path = path.join("src/SUMMARY.md");
     let content = format!(
         include_str!("SUMMARY.md"),
+        compiler_env_vars = compiler_env_vars_str,
         compiler_flags = compiler_flags_str,
         language_features = lang_features_str,
         library_features = lib_features_str

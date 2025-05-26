@@ -12,23 +12,20 @@ use std::iter;
 
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
+use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable};
-use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument};
 
 use crate::infer::canonical::instantiate::{CanonicalExt, instantiate_value};
 use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, Certainty, OriginalQueryValues,
-    QueryOutlivesConstraint, QueryRegionConstraints, QueryResponse,
+    QueryRegionConstraints, QueryResponse,
 };
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult, SubregionOrigin};
 use crate::traits::query::NoSolution;
-use crate::traits::{
-    Obligation, ObligationCause, PredicateObligation, PredicateObligations, ScrubbedTraitError,
-    TraitEngine,
-};
+use crate::traits::{ObligationCause, PredicateObligations, ScrubbedTraitError, TraitEngine};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
@@ -169,15 +166,13 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
-        let InferOk { value: result_args, mut obligations } =
+        let InferOk { value: result_args, obligations } =
             self.query_response_instantiation(cause, param_env, original_values, query_response)?;
 
-        obligations.extend(self.query_outlives_constraints_into_obligations(
-            cause,
-            param_env,
-            &query_response.value.region_constraints.outlives,
-            &result_args,
-        ));
+        for (predicate, _category) in &query_response.value.region_constraints.outlives {
+            let predicate = instantiate_value(self.tcx, &result_args, *predicate);
+            self.register_outlives_constraint(predicate, cause);
+        }
 
         let user_result: R =
             query_response.instantiate_projected(self.tcx, &result_args, |q_r| q_r.value.clone());
@@ -523,47 +518,6 @@ impl<'tcx> InferCtxt<'tcx> {
         // Unify the original value for each variable with the value
         // taken from `query_response` (after applying `result_args`).
         self.unify_canonical_vars(cause, param_env, original_values, instantiated_query_response)
-    }
-
-    /// Converts the region constraints resulting from a query into an
-    /// iterator of obligations.
-    fn query_outlives_constraints_into_obligations(
-        &self,
-        cause: &ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        uninstantiated_region_constraints: &[QueryOutlivesConstraint<'tcx>],
-        result_args: &CanonicalVarValues<'tcx>,
-    ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
-        uninstantiated_region_constraints.iter().map(move |&constraint| {
-            let predicate = instantiate_value(self.tcx, result_args, constraint);
-            self.query_outlives_constraint_to_obligation(predicate, cause.clone(), param_env)
-        })
-    }
-
-    pub fn query_outlives_constraint_to_obligation(
-        &self,
-        (predicate, _): QueryOutlivesConstraint<'tcx>,
-        cause: ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Obligation<'tcx, ty::Predicate<'tcx>> {
-        let ty::OutlivesPredicate(k1, r2) = predicate;
-
-        let atom = match k1.unpack() {
-            GenericArgKind::Lifetime(r1) => ty::PredicateKind::Clause(
-                ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r1, r2)),
-            ),
-            GenericArgKind::Type(t1) => ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
-                ty::OutlivesPredicate(t1, r2),
-            )),
-            GenericArgKind::Const(..) => {
-                // Consts cannot outlive one another, so we don't expect to
-                // encounter this branch.
-                span_bug!(cause.span, "unexpected const outlives {:?}", predicate);
-            }
-        };
-        let predicate = ty::Binder::dummy(atom);
-
-        Obligation::new(self.tcx, cause, param_env, predicate)
     }
 
     /// Given two sets of values for the same set of canonical variables, unify them.
