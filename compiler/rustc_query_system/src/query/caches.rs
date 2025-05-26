@@ -4,9 +4,9 @@ use std::sync::OnceLock;
 
 use rustc_data_structures::sharded::ShardedHashMap;
 pub use rustc_data_structures::vec_cache::VecCache;
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::def_id::LocalDefId;
 use rustc_index::Idx;
-use rustc_span::def_id::{DefId, DefIndex};
+use rustc_span::def_id::DefId;
 
 use crate::dep_graph::DepNodeIndex;
 
@@ -116,7 +116,7 @@ where
 pub struct DefIdCache<V> {
     /// Stores the local DefIds in a dense map. Local queries are much more often dense, so this is
     /// a win over hashing query keys at marginal memory cost (~5% at most) compared to FxHashMap.
-    local: VecCache<DefIndex, V, DepNodeIndex>,
+    local: VecCache<LocalDefId, V, DepNodeIndex>,
     foreign: DefaultCache<DefId, V>,
 }
 
@@ -135,8 +135,8 @@ where
 
     #[inline(always)]
     fn lookup(&self, key: &DefId) -> Option<(V, DepNodeIndex)> {
-        if key.krate == LOCAL_CRATE {
-            self.local.lookup(&key.index)
+        if let Some(local) = key.as_local() {
+            self.local.lookup(&local)
         } else {
             self.foreign.lookup(key)
         }
@@ -144,8 +144,8 @@ where
 
     #[inline]
     fn complete(&self, key: DefId, value: V, index: DepNodeIndex) {
-        if key.krate == LOCAL_CRATE {
-            self.local.complete(key.index, value, index)
+        if let Some(local) = key.as_local() {
+            self.local.complete(local, value, index)
         } else {
             self.foreign.complete(key, value, index)
         }
@@ -153,7 +153,7 @@ where
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
         self.local.iter(&mut |key, value, index| {
-            f(&DefId { krate: LOCAL_CRATE, index: *key }, value, index);
+            f(&key.to_def_id(), value, index);
         });
         self.foreign.iter(f);
     }
