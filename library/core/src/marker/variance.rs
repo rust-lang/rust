@@ -131,6 +131,8 @@ phantom_lifetime! {
     ///
     /// [1]: https://doc.rust-lang.org/stable/reference/subtyping.html#variance
     ///
+    /// Note: If `'a` is otherwise contravariant or invariant, the resulting type is invariant.
+    ///
     /// ## Layout
     ///
     /// For all `'a`, the following are guaranteed:
@@ -145,6 +147,8 @@ phantom_lifetime! {
     /// more information.
     ///
     /// [1]: https://doc.rust-lang.org/stable/reference/subtyping.html#variance
+    ///
+    /// Note: If `'a` is otherwise covariant or invariant, the resulting type is invariant.
     ///
     /// ## Layout
     ///
@@ -180,6 +184,8 @@ phantom_type! {
     ///
     /// [1]: https://doc.rust-lang.org/stable/reference/subtyping.html#variance
     ///
+    /// Note: If `T` is otherwise contravariant or invariant, the resulting type is invariant.
+    ///
     /// ## Layout
     ///
     /// For all `T`, the following are guaranteed:
@@ -195,6 +201,8 @@ phantom_type! {
     /// reference][1] for more information.
     ///
     /// [1]: https://doc.rust-lang.org/stable/reference/subtyping.html#variance
+    ///
+    /// Note: If `T` is otherwise covariant or invariant, the resulting type is invariant.
     ///
     /// ## Layout
     ///
