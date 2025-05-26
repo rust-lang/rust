@@ -1,8 +1,8 @@
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/dyn-compatibility.rs:14:33
+  --> $DIR/dyn-compatibility.rs:14:41
    |
 LL |     let i = Box::new(42_u32) as Box<dyn Foo>;
-   |                                 ^^^^^^^^^^^^ `Foo` is not dyn compatible
+   |                                         ^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>

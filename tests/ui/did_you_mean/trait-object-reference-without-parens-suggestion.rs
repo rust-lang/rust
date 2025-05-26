@@ -4,4 +4,5 @@ fn main() {
     let _: &Copy + 'static; //~ ERROR expected a path
     //~^ ERROR is not dyn compatible
     let _: &'static Copy + 'static; //~ ERROR expected a path
+    //~^ ERROR is not dyn compatible
 }

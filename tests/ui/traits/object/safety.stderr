@@ -1,8 +1,8 @@
 error[E0038]: the trait `Tr` is not dyn compatible
-  --> $DIR/safety.rs:15:12
+  --> $DIR/safety.rs:15:17
    |
 LL |     let _: &dyn Tr = &St;
-   |            ^^^^^^^ `Tr` is not dyn compatible
+   |                 ^^ `Tr` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>

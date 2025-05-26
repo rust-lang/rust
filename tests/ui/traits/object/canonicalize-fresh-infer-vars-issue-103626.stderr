@@ -1,23 +1,8 @@
-error[E0393]: the type parameter `R` must be explicitly specified
+error[E0038]: the trait `FromResidual` is not dyn compatible
   --> $DIR/canonicalize-fresh-infer-vars-issue-103626.rs:10:17
    |
-LL | trait FromResidual<R = <Self as Try>::Residual> {
-   | ----------------------------------------------- type parameter `R` must be specified for this
-...
 LL |     let b: &dyn FromResidual = &();
-   |                 ^^^^^^^^^^^^
-   |
-   = note: because the parameter default references `Self`, the parameter must be specified on the object type
-help: set the type parameter to the desired type
-   |
-LL |     let b: &dyn FromResidual<R> = &();
-   |                             +++
-
-error[E0038]: the trait `FromResidual` is not dyn compatible
-  --> $DIR/canonicalize-fresh-infer-vars-issue-103626.rs:10:12
-   |
-LL |     let b: &dyn FromResidual = &();
-   |            ^^^^^^^^^^^^^^^^^ `FromResidual` is not dyn compatible
+   |                 ^^^^^^^^^^^^ `FromResidual` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
@@ -36,7 +21,6 @@ help: alternatively, consider constraining `from_residual` so it does not apply 
 LL |     fn from_residual(residual: R) -> Self where Self: Sized;
    |                                           +++++++++++++++++
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
-Some errors have detailed explanations: E0038, E0393.
-For more information about an error, try `rustc --explain E0038`.
+For more information about this error, try `rustc --explain E0038`.
