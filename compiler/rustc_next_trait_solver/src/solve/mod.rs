@@ -147,6 +147,29 @@ where
             None => self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS),
         }
     }
+    
+    fn compute_unstable_feature_goal(&mut self, goal: Goal<I, I::Term>, symbol: Symbol) -> QueryResult<I> {
+        // Iterate through all goals in param_env to find the one that has the same 
+        // symbol as the one in the goal
+        for pred in goal.param_env.caller_bounds() {
+            match pred.kind().skip_binder() {
+                ty::ClauseKind::UnstableFeature(sym) => {
+                    if sym == symbol {
+                        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    }
+                }
+                _ => {} // don't care
+            }
+        }
+
+
+        // TODO: If stability attrs feature is enabled
+        //if self.origin_span...
+
+
+        // TODO: If stability attrs feature is not enabled
+
+    }
 
     #[instrument(level = "trace", skip(self))]
     fn compute_const_evaluatable_goal(
