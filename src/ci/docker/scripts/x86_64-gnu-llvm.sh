@@ -2,8 +2,8 @@
 
 set -ex
 
-# NOTE: intentionally uses all of `x.py`, `x`, and `x.ps1` to make sure they all work on Linux.
-../x.py --stage 2 test --skip src/tools/tidy
+# NOTE: intentionally uses `x`, and `x.ps1` to make sure they work on Linux.
+#       Make sure that `x.py` is tested elsewhere.
 
 # Run the `mir-opt` tests again but this time for a 32-bit target.
 # This enforces that tests using `// EMIT_MIR_FOR_EACH_BIT_WIDTH` have
