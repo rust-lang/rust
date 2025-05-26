@@ -524,6 +524,7 @@ impl<'a> FindUsages<'a> {
     fn find_nodes<'b>(
         sema: &'b Semantics<'_, RootDatabase>,
         name: &str,
+        file_id: EditionedFileId,
         node: &syntax::SyntaxNode,
         offset: TextSize,
     ) -> impl Iterator<Item = SyntaxNode> + 'b {
@@ -534,7 +535,7 @@ impl<'a> FindUsages<'a> {
             })
             .into_iter()
             .flat_map(move |token| {
-                if sema.might_be_inside_macro_call(&token) {
+                if sema.is_inside_macro_call(InFile::new(file_id.into(), &token)) {
                     sema.descend_into_macros_exact(token)
                 } else {
                     <_>::from([token])
@@ -654,11 +655,14 @@ impl<'a> FindUsages<'a> {
                     let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
                     for offset in FindUsages::match_indices(&file_text, &finder, search_range) {
-                        let usages =
-                            FindUsages::find_nodes(sema, &current_to_process, &tree, offset)
-                                .filter(|it| {
-                                    matches!(it.kind(), SyntaxKind::NAME | SyntaxKind::NAME_REF)
-                                });
+                        let usages = FindUsages::find_nodes(
+                            sema,
+                            &current_to_process,
+                            file_id,
+                            &tree,
+                            offset,
+                        )
+                        .filter(|it| matches!(it.kind(), SyntaxKind::NAME | SyntaxKind::NAME_REF));
                         for usage in usages {
                             if let Some(alias) = usage.parent().and_then(|it| {
                                 let path = ast::PathSegment::cast(it)?.parent_path();
@@ -813,7 +817,7 @@ impl<'a> FindUsages<'a> {
                 let tree = LazyCell::new(move || this.sema.parse(file_id).syntax().clone());
 
                 for offset in FindUsages::match_indices(&file_text, finder, search_range) {
-                    let usages = FindUsages::find_nodes(this.sema, name, &tree, offset)
+                    let usages = FindUsages::find_nodes(this.sema, name, file_id, &tree, offset)
                         .filter_map(ast::NameRef::cast);
                     for usage in usages {
                         let found_usage = usage
@@ -970,8 +974,8 @@ impl<'a> FindUsages<'a> {
                     return;
                 }
 
-                for name in
-                    Self::find_nodes(sema, name, &tree, offset).filter_map(ast::NameLike::cast)
+                for name in Self::find_nodes(sema, name, file_id, &tree, offset)
+                    .filter_map(ast::NameLike::cast)
                 {
                     if match name {
                         ast::NameLike::NameRef(name_ref) => self.found_name_ref(&name_ref, sink),
@@ -985,8 +989,8 @@ impl<'a> FindUsages<'a> {
             // Search for occurrences of the `Self` referring to our type
             if let Some((self_ty, finder)) = &include_self_kw_refs {
                 for offset in Self::match_indices(&text, finder, search_range) {
-                    for name_ref in
-                        Self::find_nodes(sema, "Self", &tree, offset).filter_map(ast::NameRef::cast)
+                    for name_ref in Self::find_nodes(sema, "Self", file_id, &tree, offset)
+                        .filter_map(ast::NameRef::cast)
                     {
                         if self.found_self_ty_name_ref(self_ty, &name_ref, sink) {
                             return;
@@ -1010,7 +1014,7 @@ impl<'a> FindUsages<'a> {
                 let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
                 for offset in Self::match_indices(&text, finder, search_range) {
-                    for name_ref in Self::find_nodes(sema, "super", &tree, offset)
+                    for name_ref in Self::find_nodes(sema, "super", file_id, &tree, offset)
                         .filter_map(ast::NameRef::cast)
                     {
                         if self.found_name_ref(&name_ref, sink) {
@@ -1020,7 +1024,7 @@ impl<'a> FindUsages<'a> {
                 }
                 if let Some(finder) = &is_crate_root {
                     for offset in Self::match_indices(&text, finder, search_range) {
-                        for name_ref in Self::find_nodes(sema, "crate", &tree, offset)
+                        for name_ref in Self::find_nodes(sema, "crate", file_id, &tree, offset)
                             .filter_map(ast::NameRef::cast)
                         {
                             if self.found_name_ref(&name_ref, sink) {
@@ -1064,8 +1068,8 @@ impl<'a> FindUsages<'a> {
                 let finder = &Finder::new("self");
 
                 for offset in Self::match_indices(&text, finder, search_range) {
-                    for name_ref in
-                        Self::find_nodes(sema, "self", &tree, offset).filter_map(ast::NameRef::cast)
+                    for name_ref in Self::find_nodes(sema, "self", file_id, &tree, offset)
+                        .filter_map(ast::NameRef::cast)
                     {
                         if self.found_self_module_name_ref(&name_ref, sink) {
                             return;

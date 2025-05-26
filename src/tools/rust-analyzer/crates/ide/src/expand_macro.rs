@@ -146,10 +146,11 @@ fn expand_macro_recur(
     offset_in_original_node: TextSize,
 ) -> Option<SyntaxNode> {
     let ExpandResult { value: expanded, err } = match macro_call {
-        item @ ast::Item::MacroCall(macro_call) => {
-            sema.expand_attr_macro(item).or_else(|| sema.expand_allowed_builtins(macro_call))?
-        }
-        item => sema.expand_attr_macro(item)?,
+        item @ ast::Item::MacroCall(macro_call) => sema
+            .expand_attr_macro(item)
+            .map(|it| it.map(|it| it.value))
+            .or_else(|| sema.expand_allowed_builtins(macro_call))?,
+        item => sema.expand_attr_macro(item)?.map(|it| it.value),
     };
     let expanded = expanded.clone_for_update();
     if let Some(err) = err {
