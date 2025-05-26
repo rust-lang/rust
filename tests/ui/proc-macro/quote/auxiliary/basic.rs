@@ -12,6 +12,7 @@ use proc_macro::*;
 pub fn run_tests(_: TokenStream) -> TokenStream {
     test_quote_impl();
     test_substitution();
+    test_array();
     test_advanced();
     test_integer();
     test_floating();
@@ -53,7 +54,6 @@ pub fn run_tests(_: TokenStream) -> TokenStream {
 //   - fn test_format_ident_strip_raw
 // - repetition:
 //   - fn test_iter
-//   - fn test_array
 //   - fn test_fancy_repetition
 //   - fn test_nested_fancy_repetition
 //   - fn test_duplicate_name_repetition
@@ -97,6 +97,29 @@ fn test_substitution() {
     let expected = "X <X > (X) [X] { X }";
 
     assert_eq!(expected, tokens.to_string());
+}
+
+fn test_array() {
+    let array: [u8; 40] = [0; 40];
+    let _ = quote!($($array $array)*);
+
+    let ref_array: &[u8; 40] = &[0; 40];
+    let _ = quote!($($ref_array $ref_array)*);
+
+    let ref_slice: &[u8] = &[0; 40];
+    let _ = quote!($($ref_slice $ref_slice)*);
+
+    let array: [X; 2] = [X, X]; // !Copy
+    let _ = quote!($($array $array)*);
+
+    let ref_array: &[X; 2] = &[X, X];
+    let _ = quote!($($ref_array $ref_array)*);
+
+    let ref_slice: &[X] = &[X, X];
+    let _ = quote!($($ref_slice $ref_slice)*);
+
+    let array_of_array: [[u8; 2]; 2] = [[0; 2]; 2];
+    let _ = quote!($($($array_of_array)*)*);
 }
 
 fn test_advanced() {
