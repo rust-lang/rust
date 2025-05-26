@@ -57,7 +57,9 @@ impl TokenTree {
         match (self, other) {
             (TokenTree::Token(token, _), TokenTree::Token(token2, _)) => token.kind == token2.kind,
             (TokenTree::Delimited(.., delim, tts), TokenTree::Delimited(.., delim2, tts2)) => {
-                delim == delim2 && tts.eq_unspanned(tts2)
+                delim == delim2
+                    && tts.len() == tts2.len()
+                    && tts.iter().zip(tts2.iter()).all(|(a, b)| a.eq_unspanned(b))
             }
             _ => false,
         }
@@ -692,12 +694,6 @@ impl TokenStream {
 
     pub fn iter(&self) -> TokenStreamIter<'_> {
         TokenStreamIter::new(self)
-    }
-
-    /// Compares two `TokenStream`s, checking equality without regarding span information.
-    pub fn eq_unspanned(&self, other: &TokenStream) -> bool {
-        self.len() == other.len()
-            && self.iter().zip(other.iter()).all(|(tt1, tt2)| tt1.eq_unspanned(tt2))
     }
 
     /// Create a token stream containing a single token with alone spacing. The
