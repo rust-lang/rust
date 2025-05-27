@@ -174,9 +174,9 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vpklsfs"] fn vpklsfs(a: vector_unsigned_int, b: vector_unsigned_int) -> PackedTuple<vector_unsigned_short, i32>;
     #[link_name = "llvm.s390.vpklsgs"] fn vpklsgs(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> PackedTuple<vector_unsigned_int, i32>;
 
-    #[link_name = "llvm.s390.vuplbw"] fn vuplbw (a: vector_signed_char) -> vector_signed_short;
+    #[link_name = "llvm.s390.vuplb"] fn vuplb (a: vector_signed_char) -> vector_signed_short;
     #[link_name = "llvm.s390.vuplhw"] fn vuplhw (a: vector_signed_short) -> vector_signed_int;
-    #[link_name = "llvm.s390.vuplfw"] fn vuplfw (a: vector_signed_int) -> vector_signed_long_long;
+    #[link_name = "llvm.s390.vuplf"] fn vuplf (a: vector_signed_int) -> vector_signed_long_long;
     #[link_name = "llvm.s390.vupllb"] fn vupllb (a: vector_unsigned_char) -> vector_unsigned_short;
     #[link_name = "llvm.s390.vupllh"] fn vupllh (a: vector_unsigned_short) -> vector_unsigned_int;
     #[link_name = "llvm.s390.vupllf"] fn vupllf (a: vector_unsigned_int) -> vector_unsigned_long_long;
@@ -2581,9 +2581,9 @@ mod sealed {
     // FIXME(llvm): a shuffle + simd_as does not currently optimize into a single instruction like
     // unpachk above. Tracked in https://github.com/llvm/llvm-project/issues/129576.
 
-    impl_vec_trait! {[VectorUnpackl vec_unpackl] vuplbw (vector_signed_char) -> vector_signed_short}
+    impl_vec_trait! {[VectorUnpackl vec_unpackl] vuplb (vector_signed_char) -> vector_signed_short}
     impl_vec_trait! {[VectorUnpackl vec_unpackl] vuplhw (vector_signed_short) -> vector_signed_int}
-    impl_vec_trait! {[VectorUnpackl vec_unpackl] vuplfw (vector_signed_int) -> vector_signed_long_long}
+    impl_vec_trait! {[VectorUnpackl vec_unpackl] vuplf (vector_signed_int) -> vector_signed_long_long}
 
     impl_vec_trait! {[VectorUnpackl vec_unpackl] vupllb (vector_unsigned_char) -> vector_unsigned_short}
     impl_vec_trait! {[VectorUnpackl vec_unpackl] vupllh (vector_unsigned_short) -> vector_unsigned_int}
@@ -3011,9 +3011,9 @@ mod sealed {
                     #[inline]
                     #[target_feature(enable = "vector")]
                     unsafe fn vec_sel(self, b: Self, c: t_u!($ty)) -> Self {
-                        let b = simd_and(b, transmute(c));
-                        let a = simd_and(self, simd_xor(transmute(c), transmute(vector_signed_char([!0; 16]))));
-                        simd_or(a, b)
+                        let b = simd_and(transmute(b), c);
+                        let a = simd_and(transmute(self), simd_xor(c, transmute(vector_signed_char([!0; 16]))));
+                        transmute(simd_or(a, b))
                     }
                 }
 
@@ -3198,14 +3198,14 @@ mod sealed {
                 #[unstable(feature = "stdarch_s390x", issue = "135681")]
                 impl VectorSearchString for $ty {
                     #[inline]
-                    #[target_feature(enable = "vector")]
+                    #[target_feature(enable = "vector-enhancements-2")]
                     unsafe fn vec_search_string_cc(self, b: Self, c: vector_unsigned_char) -> (vector_unsigned_char, i32) {
                         let PackedTuple { x,y } = $intr_s(transmute(self), transmute(b), c);
                         (x, y)
                     }
 
                     #[inline]
-                    #[target_feature(enable = "vector")]
+                    #[target_feature(enable = "vector-enhancements-2")]
                     unsafe fn vec_search_string_until_zero_cc(self, b: Self, c: vector_unsigned_char) -> (vector_unsigned_char, i32) {
                         let PackedTuple { x,y } = $intr_sz(transmute(self), transmute(b), c);
                         (x, y)
