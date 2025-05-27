@@ -45,12 +45,9 @@ pub(super) fn trace<'tcx>(
     boring_locals: Vec<Local>,
 ) {
     let local_use_map = &LocalUseMap::build(&relevant_live_locals, location_map, typeck.body);
-    let flow_inits = MaybeInitializedPlaces::new(typeck.tcx(), typeck.body, move_data)
-        .iterate_to_fixpoint(typeck.tcx(), typeck.body, Some("borrowck"))
-        .into_results_cursor(typeck.body);
     let cx = LivenessContext {
         typeck,
-        flow_inits,
+        flow_inits: None,
         location_map,
         local_use_map,
         move_data,
@@ -83,8 +80,8 @@ struct LivenessContext<'a, 'typeck, 'tcx> {
     drop_data: FxIndexMap<Ty<'tcx>, DropData<'tcx>>,
 
     /// Results of dataflow tracking which variables (and paths) have been
-    /// initialized.
-    flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
+    /// initialized. Computed lazily when needed by drop-liveness.
+    flow_inits: Option<ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>>,
 
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
@@ -461,6 +458,28 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
     }
 }
 
+impl<'a, 'typeck, 'tcx> LivenessContext<'a, 'typeck, 'tcx> {
+    /// Computes the `MaybeInitializedPlaces` dataflow analysis if it hasn't been done already.
+    ///
+    /// In practice, the results of this dataflow analysis are rarely needed but can be expensive to
+    /// compute on big functions, so we compute them lazily as a fast path when:
+    /// - there are relevant live locals
+    /// - there are drop points for these relevant live locals.
+    ///
+    /// This happens as part of the drop-liveness computation: it's the only place checking for
+    /// maybe-initializedness of `MovePathIndex`es.
+    fn flow_inits(&mut self) -> &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>> {
+        self.flow_inits.get_or_insert_with(|| {
+            let tcx = self.typeck.tcx();
+            let body = self.typeck.body;
+            let flow_inits = MaybeInitializedPlaces::new(tcx, body, self.move_data)
+                .iterate_to_fixpoint(tcx, body, Some("borrowck"))
+                .into_results_cursor(body);
+            flow_inits
+        })
+    }
+}
+
 impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     fn body(&self) -> &Body<'tcx> {
         self.typeck.body
@@ -469,13 +488,14 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     /// Returns `true` if the local variable (or some part of it) is initialized at the current
     /// cursor position. Callers should call one of the `seek` methods immediately before to point
     /// the cursor to the desired location.
-    fn initialized_at_curr_loc(&self, mpi: MovePathIndex) -> bool {
-        let state = self.flow_inits.get();
+    fn initialized_at_curr_loc(&mut self, mpi: MovePathIndex) -> bool {
+        let flow_inits = self.flow_inits();
+        let state = flow_inits.get();
         if state.contains(mpi) {
             return true;
         }
 
-        let move_paths = &self.flow_inits.analysis().move_data().move_paths;
+        let move_paths = &flow_inits.analysis().move_data().move_paths;
         move_paths[mpi].find_descendant(move_paths, |mpi| state.contains(mpi)).is_some()
     }
 
@@ -484,7 +504,8 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     /// DROP of some local variable will have an effect -- note that
     /// drops, as they may unwind, are always terminators.
     fn initialized_at_terminator(&mut self, block: BasicBlock, mpi: MovePathIndex) -> bool {
-        self.flow_inits.seek_before_primary_effect(self.body().terminator_loc(block));
+        let terminator_location = self.body().terminator_loc(block);
+        self.flow_inits().seek_before_primary_effect(terminator_location);
         self.initialized_at_curr_loc(mpi)
     }
 
@@ -494,7 +515,8 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     /// **Warning:** Does not account for the result of `Call`
     /// instructions.
     fn initialized_at_exit(&mut self, block: BasicBlock, mpi: MovePathIndex) -> bool {
-        self.flow_inits.seek_after_primary_effect(self.body().terminator_loc(block));
+        let terminator_location = self.body().terminator_loc(block);
+        self.flow_inits().seek_after_primary_effect(terminator_location);
         self.initialized_at_curr_loc(mpi)
     }
 
