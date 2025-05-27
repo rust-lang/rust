@@ -121,7 +121,7 @@
     };
 
     /**
-     * Intitialize the `locs` field
+     * Initialize the `locs` field
      *
      * @param {HTMLElement & {locs?: rustdoc.ScrapedLoc[]}} example
      * @param {boolean} isHidden
