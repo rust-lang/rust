@@ -3809,7 +3809,8 @@ declare_lint! {
     /// their use.
     pub TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
     Deny,
-    "invisible directionality-changing codepoints in comment"
+    "invisible directionality-changing codepoints in comment",
+    crate_level_only
 }
 
 declare_lint! {
@@ -3844,6 +3845,7 @@ declare_lint! {
     Deny,
     "detect special Unicode codepoints that affect the visual representation of text on screen, \
      changing the direction in which text flows",
+    crate_level_only
 }
 
 declare_lint! {
