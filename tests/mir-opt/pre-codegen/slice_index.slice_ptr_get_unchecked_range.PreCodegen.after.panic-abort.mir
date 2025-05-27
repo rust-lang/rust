@@ -7,7 +7,7 @@ fn slice_ptr_get_unchecked_range(_1: *const [u32], _2: std::ops::Range<usize>) -
     let mut _3: usize;
     let mut _4: usize;
     scope 1 (inlined std::ptr::const_ptr::<impl *const [u32]>::get_unchecked::<std::ops::Range<usize>>) {
-        scope 2 (inlined <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked) {
+        scope 2 (inlined #[track_caller] <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked) {
             let mut _5: usize;
             let _6: ();
             let _7: usize;

@@ -18,7 +18,6 @@ const MISALIGNED_COPY: () = unsafe {
     let mut z = 123;
     y.copy_to_nonoverlapping(&mut z, 1);
     //~^ ERROR evaluation of constant value failed
-    //~| NOTE inside `std::ptr::const_ptr
     //~| NOTE inside `std::ptr::copy_nonoverlapping::<u32>`
     //~| NOTE accessing memory with alignment 1, but alignment 4 is required
     // The actual error points into the implementation of `copy_to_nonoverlapping`.
