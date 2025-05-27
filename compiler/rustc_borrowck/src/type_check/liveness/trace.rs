@@ -37,10 +37,9 @@ use crate::type_check::{NormalizeLocation, TypeChecker};
 /// DROP-LIVE set are to the liveness sets for regions found in the
 /// `dropck_outlives` result of the variable's type (in particular,
 /// this respects `#[may_dangle]` annotations).
-pub(super) fn trace<'a, 'tcx>(
+pub(super) fn trace<'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     location_map: &DenseLocationMap,
-    flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     relevant_live_locals: Vec<Local>,
     boring_locals: Vec<Local>,
@@ -48,7 +47,7 @@ pub(super) fn trace<'a, 'tcx>(
     let local_use_map = &LocalUseMap::build(&relevant_live_locals, location_map, typeck.body);
     let cx = LivenessContext {
         typeck,
-        flow_inits,
+        flow_inits: None,
         location_map,
         local_use_map,
         move_data,
@@ -65,7 +64,7 @@ pub(super) fn trace<'a, 'tcx>(
 }
 
 /// Contextual state for the type-liveness coroutine.
-struct LivenessContext<'a, 'typeck, 'b, 'tcx> {
+struct LivenessContext<'a, 'typeck, 'tcx> {
     /// Current type-checker, giving us our inference context etc.
     ///
     /// This also stores the body we're currently analyzing.
@@ -82,7 +81,7 @@ struct LivenessContext<'a, 'typeck, 'b, 'tcx> {
 
     /// Results of dataflow tracking which variables (and paths) have been
     /// initialized.
-    flow_inits: ResultsCursor<'b, 'tcx, MaybeInitializedPlaces<'b, 'tcx>>,
+    flow_inits: Option<ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>>,
 
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
@@ -94,8 +93,8 @@ struct DropData<'tcx> {
     region_constraint_data: Option<&'tcx QueryRegionConstraints<'tcx>>,
 }
 
-struct LivenessResults<'a, 'typeck, 'b, 'tcx> {
-    cx: LivenessContext<'a, 'typeck, 'b, 'tcx>,
+struct LivenessResults<'a, 'typeck, 'tcx> {
+    cx: LivenessContext<'a, 'typeck, 'tcx>,
 
     /// Set of points that define the current local.
     defs: DenseBitSet<PointIndex>,
@@ -116,8 +115,8 @@ struct LivenessResults<'a, 'typeck, 'b, 'tcx> {
     stack: Vec<PointIndex>,
 }
 
-impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
-    fn new(cx: LivenessContext<'a, 'typeck, 'b, 'tcx>) -> Self {
+impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
+    fn new(cx: LivenessContext<'a, 'typeck, 'tcx>) -> Self {
         let num_points = cx.location_map.num_points();
         LivenessResults {
             cx,
@@ -459,20 +458,39 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
     }
 }
 
-impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
+impl<'a, 'typeck, 'tcx> LivenessContext<'a, 'typeck, 'tcx> {
+    fn ensure(&mut self) -> &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>> {
+        // Lazily compute maybe-init dataflow analysis if it's needed: if there are relevant
+        // live locals with drop points.
+        if self.flow_inits.is_none() {
+            use rustc_mir_dataflow::Analysis;
+            let tcx = self.typeck.tcx();
+            let body = self.typeck.body;
+            let flow_inits = MaybeInitializedPlaces::new(tcx, body, self.move_data)
+                .iterate_to_fixpoint(tcx, body, Some("borrowck"))
+                .into_results_cursor(body);
+            self.flow_inits = Some(flow_inits);
+        }
+        self.flow_inits.as_mut().expect("MaybeInitializedPlaces unavailable for drop-liveness")
+    }
+}
+
+impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     fn body(&self) -> &Body<'tcx> {
         self.typeck.body
     }
+
     /// Returns `true` if the local variable (or some part of it) is initialized at the current
     /// cursor position. Callers should call one of the `seek` methods immediately before to point
     /// the cursor to the desired location.
-    fn initialized_at_curr_loc(&self, mpi: MovePathIndex) -> bool {
-        let state = self.flow_inits.get();
+    fn initialized_at_curr_loc(&mut self, mpi: MovePathIndex) -> bool {
+        let flow_inits = self.ensure();
+        let state = flow_inits.get();
         if state.contains(mpi) {
             return true;
         }
 
-        let move_paths = &self.flow_inits.analysis().move_data().move_paths;
+        let move_paths = &flow_inits.analysis().move_data().move_paths;
         move_paths[mpi].find_descendant(move_paths, |mpi| state.contains(mpi)).is_some()
     }
 
@@ -481,7 +499,8 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     /// DROP of some local variable will have an effect -- note that
     /// drops, as they may unwind, are always terminators.
     fn initialized_at_terminator(&mut self, block: BasicBlock, mpi: MovePathIndex) -> bool {
-        self.flow_inits.seek_before_primary_effect(self.body().terminator_loc(block));
+        let terminator = self.body().terminator_loc(block);
+        self.ensure().seek_before_primary_effect(terminator);
         self.initialized_at_curr_loc(mpi)
     }
 
@@ -491,7 +510,8 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     /// **Warning:** Does not account for the result of `Call`
     /// instructions.
     fn initialized_at_exit(&mut self, block: BasicBlock, mpi: MovePathIndex) -> bool {
-        self.flow_inits.seek_after_primary_effect(self.body().terminator_loc(block));
+        let terminator = self.body().terminator_loc(block);
+        self.ensure().seek_after_primary_effect(terminator);
         self.initialized_at_curr_loc(mpi)
     }
 
