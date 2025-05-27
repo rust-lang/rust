@@ -568,7 +568,11 @@ function preLoadCss(cssUrl) {
                 break;
             case "-":
                 ev.preventDefault();
-                collapseAllDocs();
+                collapseAllDocs(false);
+                break;
+            case "_":
+                ev.preventDefault();
+                collapseAllDocs(true);
                 break;
 
             case "?":
@@ -1038,11 +1042,14 @@ function preLoadCss(cssUrl) {
         innerToggle.children[0].innerText = "Summary";
     }
 
-    function collapseAllDocs() {
+    /**
+     * @param {boolean} collapseImpls - also collapse impl blocks if set to true
+     */
+    function collapseAllDocs(collapseImpls) {
         const innerToggle = document.getElementById(toggleAllDocsId);
         addClass(innerToggle, "will-expand");
         onEachLazy(document.getElementsByClassName("toggle"), e => {
-            if (e.parentNode.id !== "implementations-list" ||
+            if ((collapseImpls || e.parentNode.id !== "implementations-list") ||
                 (!hasClass(e, "implementors-toggle") &&
                  !hasClass(e, "type-contents-toggle"))
             ) {
@@ -1053,7 +1060,10 @@ function preLoadCss(cssUrl) {
         innerToggle.children[0].innerText = "Show all";
     }
 
-    function toggleAllDocs() {
+    /**
+     * @param {MouseEvent=} ev
+     */
+    function toggleAllDocs(ev) {
         const innerToggle = document.getElementById(toggleAllDocsId);
         if (!innerToggle) {
             return;
@@ -1061,7 +1071,7 @@ function preLoadCss(cssUrl) {
         if (hasClass(innerToggle, "will-expand")) {
             expandAllDocs();
         } else {
-            collapseAllDocs();
+            collapseAllDocs(ev !== undefined && ev.shiftKey);
         }
     }
 
@@ -1519,6 +1529,10 @@ function preLoadCss(cssUrl) {
             ["&#9166;", "Go to active search result"],
             ["+", "Expand all sections"],
             ["-", "Collapse all sections"],
+            // for the sake of brevity, we don't say "inherint impl blocks",
+            // although that would be more correct,
+            // since trait impl blocks are collapsed by -
+            ["_", "Collapse all sections, including impl blocks"],
         ].map(x => "<dt>" +
             x[0].split(" ")
                 .map((y, index) => ((index & 1) === 0 ? "<kbd>" + y + "</kbd>" : " " + y + " "))
