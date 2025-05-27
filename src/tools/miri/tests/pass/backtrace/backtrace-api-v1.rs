@@ -1,5 +1,7 @@
 //@normalize-stderr-test: "::<.*>" -> ""
 
+#![allow(function_casts_as_integer)]
+
 #[inline(never)]
 fn func_a() -> Box<[*mut ()]> {
     func_b::<u8>()
