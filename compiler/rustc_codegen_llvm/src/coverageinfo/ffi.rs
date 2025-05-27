@@ -155,20 +155,6 @@ pub(crate) struct Regions {
 impl Regions {
     /// Returns true if none of this structure's tables contain any regions.
     pub(crate) fn has_no_regions(&self) -> bool {
-        // Every region has a span, so if there are no spans then there are no regions.
-        self.all_cov_spans().next().is_none()
-    }
-
-    pub(crate) fn all_cov_spans(&self) -> impl Iterator<Item = &CoverageSpan> {
-        macro_rules! iter_cov_spans {
-            ( $( $regions:expr ),* $(,)? ) => {
-                std::iter::empty()
-                $(
-                    .chain( $regions.iter().map(|region| &region.cov_span) )
-                )*
-            }
-        }
-
         let Self {
             code_regions,
             expansion_regions,
@@ -177,13 +163,11 @@ impl Regions {
             mcdc_decision_regions,
         } = self;
 
-        iter_cov_spans!(
-            code_regions,
-            expansion_regions,
-            branch_regions,
-            mcdc_branch_regions,
-            mcdc_decision_regions,
-        )
+        code_regions.is_empty()
+            && expansion_regions.is_empty()
+            && branch_regions.is_empty()
+            && mcdc_branch_regions.is_empty()
+            && mcdc_decision_regions.is_empty()
     }
 }
 
