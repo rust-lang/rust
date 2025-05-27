@@ -766,14 +766,15 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     AssocSuggestion::Field(field_span) => {
                         if self_is_available {
                             let source_map = self.r.tcx.sess.source_map();
-                            // check if the field is used in a format string, such as `"{x}"`
-                            let field_is_format_named_arg = source_map
+                            // Check if the field is used in a format string, such as `{x}`.
+                            // Note that both `let y = {x}` and `"{x}"` can match this pattern.
+                            let maybe_field_is_format_named_arg = source_map
                                 .span_to_source(span, |s, start, _| {
                                     Ok(s.get(start - 1..start) == Some("{"))
                                 });
-                            if let Ok(true) = field_is_format_named_arg {
+                            if let Ok(true) = maybe_field_is_format_named_arg {
                                 err.help(
-                                    format!("you might have meant to use the available field in a format string: `\"{{}}\", self.{}`", segment.ident.name),
+                                    format!("you might have meant to use the available field, try to bind it: `let {} = self.{}`", segment.ident.name, segment.ident.name),
                                 );
                             } else {
                                 err.span_suggestion_verbose(
