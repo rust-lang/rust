@@ -404,10 +404,10 @@ macro_rules! common_visitor_and_walkers {
 
         fn walk_item_ctxt<$($lt,)? V: $Visitor$(<$lt>)?, K: WalkItemKind>(
             visitor: &mut V,
-            item: &$($mut P<Item<K>>)? $($lt Item<K>)?,
+            item: &$($mut)? $($lt)? Item<K>,
             ctxt: K::Ctxt,
         ) $(-> <V as Visitor<$lt>>::Result)? {
-            let Item { attrs, id, kind, vis, span, tokens: _ } = &$($mut *)? *item;
+            let Item { attrs, id, kind, vis, span, tokens: _ } = item;
             try_visit!(visit_id(visitor, id));
             walk_list!(visitor, visit_attribute, attrs);
             try_visit!(visitor.visit_vis(vis));
@@ -417,14 +417,14 @@ macro_rules! common_visitor_and_walkers {
 
         pub fn walk_item<$($lt,)? V: $Visitor$(<$lt>)?, K: WalkItemKind<Ctxt = ()>>(
             visitor: &mut V,
-            item: &$($mut P<Item<K>>)? $($lt Item<K>)?,
+            item: &$($mut)? $($lt)? Item<K>,
         ) $(-> <V as Visitor<$lt>>::Result)? {
             walk_item_ctxt(visitor, item, ())
         }
 
         pub fn walk_assoc_item<$($lt,)? V: $Visitor$(<$lt>)?>(
             visitor: &mut V,
-            item: &$($mut P<AssocItem>)? $($lt AssocItem)?,
+            item: &$($mut)? $($lt)? AssocItem,
             ctxt: AssocCtxt,
         ) $(-> <V as Visitor<$lt>>::Result)? {
             walk_item_ctxt(visitor, item, ctxt)
