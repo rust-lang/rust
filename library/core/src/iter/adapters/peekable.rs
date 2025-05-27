@@ -1,5 +1,6 @@
 use crate::iter::adapters::SourceIter;
-use crate::iter::{FusedIterator, TrustedLen};
+use crate::iter::adapters::zip::try_get_unchecked;
+use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator with a `peek()` that returns an optional reference to the next
@@ -114,6 +115,31 @@ impl<I: Iterator> Iterator for Peekable<I> {
             None => init,
         };
         self.iter.fold(acc, fold)
+    }
+
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccessNoCoerce,
+    {
+        match &mut self.peeked {
+            Some(Some(item)) => {
+                match idx.checked_sub(1) {
+                    // SAFETY: Caller must pass in a valid index.
+                    Some(idx) => unsafe { try_get_unchecked(&mut self.iter, idx) },
+                    None => {
+                        // SAFETY: we only impl `TrustedRandomAccessNoCoerce` for this type when items are `Copy`.
+                        unsafe { crate::ptr::read(item) }
+                    }
+                }
+            }
+            // `Some(None)` indicates an empty iterator, and it is impossible for the caller
+            // to pass in any valid index if that is true.
+            Some(None) => unreachable!(),
+            None => {
+                // SAFETY: Caller must pass in a valid index.
+                unsafe { try_get_unchecked(&mut self.iter, idx) }
+            }
+        }
     }
 }
 
@@ -334,4 +360,20 @@ where
         // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
+}
+
+#[doc(hidden)]
+#[unstable(issue = "none", feature = "std_internals")]
+#[rustc_unsafe_specialization_marker]
+pub trait NonDrop {}
+
+#[unstable(issue = "none", feature = "std_internals")]
+impl<T: Copy> NonDrop for T {}
+
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I: Iterator + TrustedRandomAccessNoCoerce> TrustedRandomAccessNoCoerce for Peekable<I>
+where
+    I::Item: NonDrop,
+{
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
