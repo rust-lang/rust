@@ -377,6 +377,13 @@ parse_inclusive_range_no_end = inclusive range with no end
 parse_incorrect_parens_trait_bounds = incorrect parentheses around trait bounds
 parse_incorrect_parens_trait_bounds_sugg = fix the parentheses
 
+parse_incorrect_restriction = incorrect {$noun} restriction
+    .help = some possible {$noun} restrictions are:
+            `{$keyword}(crate)`: {$adjective} only in the current crate
+            `{$keyword}(super)`: {$adjective} only in the current module's parent
+            `{$keyword}(in path::to::module)`: {$adjective} only in the specified path
+    .suggestion = make this {$adjective} only to module `{$inner_str}` with `in`
+
 parse_incorrect_semicolon =
     expected item, found `;`
     .suggestion = remove this semicolon
@@ -853,6 +860,7 @@ parse_trailing_vert_not_allowed = a trailing `|` is not allowed in an or-pattern
 parse_trait_alias_cannot_be_auto = trait aliases cannot be `auto`
 parse_trait_alias_cannot_be_unsafe = trait aliases cannot be `unsafe`
 
+parse_trait_alias_cannot_have_impl_restriction = trait alias cannot have `impl` restriction
 parse_transpose_dyn_or_impl = `for<...>` expected after `{$kw}`, not before
     .suggestion = move `{$kw}` before the `for<...>`
 

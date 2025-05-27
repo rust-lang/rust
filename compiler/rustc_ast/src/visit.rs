@@ -557,7 +557,16 @@ macro_rules! common_visitor_and_walkers {
                             <V as Visitor<$lt>>::Result::output()
                         )?
                     }
-                    ItemKind::Trait(box Trait { safety, is_auto: _, ident, generics, bounds, items }) => {
+                    ItemKind::Trait(box Trait {
+                        impl_restriction,
+                        safety,
+                        is_auto: _,
+                        ident,
+                        generics,
+                        bounds,
+                        items,
+                    }) => {
+                        try_visit!(vis.visit_restriction(impl_restriction));
                         try_visit!(visit_safety(vis, safety));
                         try_visit!(vis.visit_ident(ident));
                         try_visit!(vis.visit_generics(generics));

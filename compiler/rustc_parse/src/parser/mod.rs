@@ -31,8 +31,8 @@ use rustc_ast::tokenstream::{
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrId, ByRef, Const, CoroutineKind, DUMMY_NODE_ID,
-    DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit,
-    Visibility, VisibilityKind,
+    DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Restriction,
+    Safety, StrLit, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -45,7 +45,9 @@ use token_type::TokenTypeSet;
 pub use token_type::{ExpKeywordPair, ExpTokenPair, TokenType};
 use tracing::debug;
 
-use crate::errors::{self, IncorrectVisibilityRestriction, NonStringAbiLiteral};
+use crate::errors::{
+    self, IncorrectRestriction, IncorrectVisibilityRestriction, NonStringAbiLiteral,
+};
 use crate::exp;
 
 #[cfg(test)]
@@ -1510,6 +1512,80 @@ impl<'a> Parser<'a> {
         let path_str = pprust::path_to_string(&path);
         self.dcx()
             .emit_err(IncorrectVisibilityRestriction { span: path.span, inner_str: path_str });
+
+        Ok(())
+    }
+
+    /// Parses `kw`, `kw(in path)` plus shortcuts `kw(crate)` for `kw(in crate)`, `kw(self)` for
+    /// `kw(in self)` and `kw(super)` for `kw(in super)`.
+    fn parse_restriction(
+        &mut self,
+        kw: ExpKeywordPair,
+        action: &'static str,
+        description: &'static str,
+        fbt: FollowedByType,
+    ) -> PResult<'a, Restriction> {
+        if !self.eat_keyword(kw) {
+            // We need a span, but there's inherently no keyword to grab a span from for an implied
+            // restriction. An empty span at the beginning of the current token is a reasonable
+            // fallback.
+            return Ok(Restriction::implied().with_span(self.token.span.shrink_to_lo()));
+        }
+
+        let lo = self.prev_token.span;
+
+        if self.check(exp!(OpenParen)) {
+            // We don't `self.bump()` the `(` yet because this might be a struct definition where
+            // `()` or a tuple might be allowed. For example, `struct Struct(kw (), kw (usize));`.
+            // Because of this, we only `bump` the `(` if we're assured it is appropriate to do so
+            // by the following tokens.
+            if self.is_keyword_ahead(1, &[kw::In]) {
+                // Parse `kw(in path)`.
+                self.bump(); // `(`
+                self.bump(); // `in`
+                let path = self.parse_path(PathStyle::Mod)?; // `path`
+                self.expect(exp!(CloseParen))?; // `)`
+                return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID, false)
+                    .with_span(lo.to(self.prev_token.span)));
+            } else if self.look_ahead(2, |t| t == &TokenKind::CloseParen)
+                && self.is_keyword_ahead(1, &[kw::Crate, kw::Super, kw::SelfLower])
+            {
+                // Parse `kw(crate)`, `kw(self)`, or `kw(super)`.
+                self.bump(); // `(`
+                let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
+                self.expect(exp!(CloseParen))?; // `)`
+                return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID, false)
+                    .with_span(lo.to(self.prev_token.span)));
+            } else if let FollowedByType::No = fbt {
+                // Provide this diagnostic if a type cannot follow;
+                // in particular, if this is not a tuple struct.
+                self.recover_incorrect_restriction(kw.kw.as_str(), action, description)?;
+                // Emit diagnostic, but continue unrestricted.
+            }
+        }
+
+        Ok(Restriction::unrestricted().with_span(lo))
+    }
+
+    /// Recovery for e.g. `kw(something) fn ...` or `struct X { kw(something) y: Z }`
+    fn recover_incorrect_restriction<'kw>(
+        &mut self,
+        kw: &'kw str,
+        action: &'static str,
+        description: &'static str,
+    ) -> PResult<'a, ()> {
+        self.bump(); // `(`
+        let path = self.parse_path(PathStyle::Mod)?;
+        self.expect(exp!(CloseParen))?; // `)`
+
+        let path_str = pprust::path_to_string(&path);
+        self.dcx().emit_err(IncorrectRestriction {
+            span: path.span,
+            inner_str: path_str,
+            keyword: kw,
+            adjective: action,
+            noun: description,
+        });
 
         Ok(())
     }

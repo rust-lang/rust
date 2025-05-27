@@ -1042,6 +1042,19 @@ pub(crate) struct IncorrectVisibilityRestriction {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_incorrect_restriction, code = E0704)]
+#[help]
+pub(crate) struct IncorrectRestriction<'kw> {
+    #[primary_span]
+    #[suggestion(code = "in {inner_str}", applicability = "machine-applicable", style = "verbose")]
+    pub span: Span,
+    pub inner_str: String,
+    pub keyword: &'kw str,
+    pub adjective: &'static str,
+    pub noun: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_assignment_else_not_allowed)]
 pub(crate) struct AssignmentElseNotAllowed {
     #[primary_span]
@@ -1944,6 +1957,16 @@ pub(crate) struct ExtraImplKeywordInTraitImpl {
 pub(crate) struct BoundsNotAllowedOnTraitAliases {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_trait_alias_cannot_have_impl_restriction)]
+pub(crate) struct TraitAliasCannotHaveImplRestriction {
+    #[primary_span]
+    #[label(parse_trait_alias_cannot_have_impl_restriction)]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "short")]
+    pub restriction: Span,
 }
 
 #[derive(Diagnostic)]

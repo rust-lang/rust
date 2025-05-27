@@ -1172,6 +1172,7 @@ pub(crate) fn format_trait(
         unreachable!();
     };
     let ast::Trait {
+        impl_restriction: _,
         is_auto,
         safety,
         ident,
