@@ -1805,7 +1805,9 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     }
 
     /// Placeholder!
-    fn get_default_alloc_params(&self) -> <Self::Bytes as AllocBytes>::AllocParams { () }
+    fn get_default_alloc_params(&self) -> <Self::Bytes as AllocBytes>::AllocParams {
+        ()
+    }
 }
 
 /// Trait for callbacks handling asynchronous machine operations.
