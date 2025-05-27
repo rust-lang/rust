@@ -324,6 +324,9 @@ impl ExprValidator {
             let &Statement::Let { pat, initializer, else_branch: None, .. } = stmt else {
                 continue;
             };
+            if self.infer.type_mismatch_for_pat(pat).is_some() {
+                continue;
+            }
             let Some(initializer) = initializer else { continue };
             let ty = &self.infer[initializer];
             if ty.contains_unknown() {
