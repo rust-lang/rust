@@ -148,26 +148,25 @@ where
         }
     }
     
-    fn compute_unstable_feature_goal(&mut self, goal: Goal<I, I::Term>, symbol: Symbol) -> QueryResult<I> {
+    fn compute_unstable_feature_goal(&mut self, param_env: <I as Interner>::ParamEnv, symbol: <I as Interner>::Symbol) -> QueryResult<I> {
         // Iterate through all goals in param_env to find the one that has the same 
         // symbol as the one in the goal
-        for pred in goal.param_env.caller_bounds() {
+        for pred in param_env.caller_bounds().iter() {
             match pred.kind().skip_binder() {
                 ty::ClauseKind::UnstableFeature(sym) => {
                     if sym == symbol {
-                        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                        return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                     }
                 }
                 _ => {} // don't care
             }
         }
 
-
-        // TODO: If stability attrs feature is enabled
-        //if self.origin_span...
-
-
-        // TODO: If stability attrs feature is not enabled
+        if self.cx().features().impl_stability() {
+            return self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity));
+        } else {
+            todo!();
+        }
 
     }
 
