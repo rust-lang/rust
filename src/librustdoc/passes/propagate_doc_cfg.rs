@@ -30,7 +30,8 @@ struct CfgPropagator<'a, 'tcx> {
     cfg_info: CfgInfo,
 }
 
-fn should_retain(token: &TokenTree) -> bool {
+/// Returns true if the provided `token` is a `cfg` ident.
+fn is_cfg_token(token: &TokenTree) -> bool {
     // We only keep `doc(cfg)` items.
     matches!(
         token,
@@ -47,7 +48,9 @@ fn should_retain(token: &TokenTree) -> bool {
     )
 }
 
-fn filter_tokens_from_list(args_tokens: &TokenStream) -> Vec<TokenTree> {
+/// We only want to keep `#[cfg()]` and `#[doc(cfg())]` attributes so we rebuild a vec of
+/// `TokenTree` with only the tokens we're interested into.
+fn filter_non_cfg_tokens_from_list(args_tokens: &TokenStream) -> Vec<TokenTree> {
     let mut tokens = Vec::with_capacity(args_tokens.len());
     let mut skip_next_delimited = false;
     for token in args_tokens.iter() {
@@ -58,7 +61,7 @@ fn filter_tokens_from_list(args_tokens: &TokenStream) -> Vec<TokenTree> {
                 }
                 skip_next_delimited = false;
             }
-            token if should_retain(token) => {
+            token if is_cfg_token(token) => {
                 skip_next_delimited = false;
                 tokens.push(token.clone());
             }
@@ -70,7 +73,8 @@ fn filter_tokens_from_list(args_tokens: &TokenStream) -> Vec<TokenTree> {
     tokens
 }
 
-// We only care about `#[cfg()]` and `#[doc(cfg())]`, we discard everything else.
+/// This function goes through the attributes list (`new_attrs`) and extract the `cfg` tokens from
+/// it and put them into `attrs`.
 fn add_only_cfg_attributes(attrs: &mut Vec<Attribute>, new_attrs: &[Attribute]) {
     for attr in new_attrs {
         if attr.is_doc_comment() {
@@ -84,7 +88,7 @@ fn add_only_cfg_attributes(attrs: &mut Vec<Attribute>, new_attrs: &[Attribute]) 
             if ident == sym::doc
                 && let AttrArgs::Delimited(args) = &mut normal.args
             {
-                let tokens = filter_tokens_from_list(&args.tokens);
+                let tokens = filter_non_cfg_tokens_from_list(&args.tokens);
                 args.tokens = TokenStream::new(tokens);
                 attrs.push(attr);
             } else if ident == sym::cfg_trace {
