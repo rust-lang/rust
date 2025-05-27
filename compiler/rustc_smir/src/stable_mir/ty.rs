@@ -756,6 +756,12 @@ crate_def! {
     pub CoroutineDef;
 }
 
+impl CoroutineDef {
+    pub fn discriminant_for_variant(&self, args: &GenericArgs, idx: VariantIdx) -> Discr {
+        with(|cx| cx.coroutine_discr_for_variant(*self, args, idx))
+    }
+}
+
 crate_def! {
     #[derive(Serialize)]
     pub CoroutineClosureDef;

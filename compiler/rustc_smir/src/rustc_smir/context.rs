@@ -12,7 +12,8 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    GenericPredicates, Instance, List, ScalarInt, TyCtxt, TypeVisitableExt, ValTree,
+    CoroutineArgsExt, GenericPredicates, Instance, List, ScalarInt, TyCtxt, TypeVisitableExt,
+    ValTree,
 };
 use rustc_middle::{mir, ty};
 use rustc_span::def_id::LOCAL_CRATE;
@@ -22,9 +23,9 @@ use stable_mir::mir::mono::{InstanceDef, StaticDef};
 use stable_mir::mir::{BinOp, Body, Place, UnOp};
 use stable_mir::target::{MachineInfo, MachineSize};
 use stable_mir::ty::{
-    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Discr, FieldDef, FnDef, ForeignDef,
-    ForeignItemKind, GenericArgs, IntrinsicDef, LineInfo, MirConst, PolyFnSig, RigidTy, Span, Ty,
-    TyConst, TyKind, UintTy, VariantDef, VariantIdx,
+    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, CoroutineDef, Discr, FieldDef, FnDef,
+    ForeignDef, ForeignItemKind, GenericArgs, IntrinsicDef, LineInfo, MirConst, PolyFnSig, RigidTy,
+    Span, Ty, TyConst, TyKind, UintTy, VariantDef, VariantIdx,
 };
 use stable_mir::{Crate, CrateDef, CrateItem, CrateNum, DefId, Error, Filename, ItemKind, Symbol};
 
@@ -455,6 +456,25 @@ impl<'tcx> SmirCtxt<'tcx> {
         let discr = adt
             .internal(&mut *tables, tcx)
             .discriminant_for_variant(tcx, variant.internal(&mut *tables, tcx));
+
+        Discr { val: discr.val, ty: discr.ty.stable(&mut *tables) }
+    }
+
+    /// Discriminant for a given variand index and args of a coroutine
+    pub fn coroutine_discr_for_variant(
+        &self,
+        coroutine: CoroutineDef,
+        args: &GenericArgs,
+        variant: VariantIdx,
+    ) -> Discr {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+
+        let discr = args.internal(&mut *tables, tcx).as_coroutine().discriminant_for_variant(
+            coroutine.def_id().internal(&mut *tables, tcx),
+            tcx,
+            variant.internal(&mut *tables, tcx),
+        );
 
         Discr { val: discr.val, ty: discr.ty.stable(&mut *tables) }
     }
