@@ -1521,6 +1521,7 @@ impl<'a> Parser<'a> {
     fn parse_restriction(
         &mut self,
         kw: ExpKeywordPair,
+        feature_gate: Option<Symbol>,
         action: &'static str,
         description: &'static str,
         fbt: FollowedByType,
@@ -1531,6 +1532,13 @@ impl<'a> Parser<'a> {
             // fallback.
             return Ok(Restriction::implied().with_span(self.token.span.shrink_to_lo()));
         }
+
+        let gate = |span| {
+            if let Some(feature_gate) = feature_gate {
+                self.psess.gated_spans.gate(feature_gate, span);
+            }
+            span
+        };
 
         let lo = self.prev_token.span;
 
@@ -1546,7 +1554,7 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `path`
                 self.expect(exp!(CloseParen))?; // `)`
                 return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID, false)
-                    .with_span(lo.to(self.prev_token.span)));
+                    .with_span(gate(lo.to(self.prev_token.span))));
             } else if self.look_ahead(2, |t| t == &TokenKind::CloseParen)
                 && self.is_keyword_ahead(1, &[kw::Crate, kw::Super, kw::SelfLower])
             {
@@ -1554,8 +1562,8 @@ impl<'a> Parser<'a> {
                 self.bump(); // `(`
                 let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
                 self.expect(exp!(CloseParen))?; // `)`
-                return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID, false)
-                    .with_span(lo.to(self.prev_token.span)));
+                return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID, true)
+                    .with_span(gate(lo.to(self.prev_token.span))));
             } else if let FollowedByType::No = fbt {
                 // Provide this diagnostic if a type cannot follow;
                 // in particular, if this is not a tuple struct.
@@ -1564,7 +1572,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(Restriction::unrestricted().with_span(lo))
+        Ok(Restriction::unrestricted().with_span(gate(lo)))
     }
 
     /// Recovery for e.g. `kw(something) fn ...` or `struct X { kw(something) y: Z }`

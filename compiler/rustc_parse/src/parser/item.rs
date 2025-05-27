@@ -931,8 +931,13 @@ impl<'a> Parser<'a> {
 
     /// Parses `[ impl(in path) ]? unsafe? auto? trait Foo { ... }` or `trait Foo = Bar;`.
     fn parse_item_trait(&mut self, attrs: &mut AttrVec, lo: Span) -> PResult<'a, ItemKind> {
-        let impl_restriction =
-            self.parse_restriction(exp!(Impl), "implementable", "impl", FollowedByType::No)?;
+        let impl_restriction = self.parse_restriction(
+            exp!(Impl),
+            Some(sym::impl_restriction),
+            "implementable",
+            "impl",
+            FollowedByType::No,
+        )?;
         let safety = self.parse_safety(Case::Sensitive);
         // Parse optional `auto` prefix.
         let is_auto = if self.eat_keyword(exp!(Auto)) {
