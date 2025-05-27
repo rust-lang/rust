@@ -334,8 +334,7 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     // (*va).va_ndx
     let va_reg_offset = 4;
     let va_ndx_offset = va_reg_offset + 4;
-    let offset_ptr =
-        bx.inbounds_gep(bx.type_i8(), va_list_addr, &[bx.cx.const_usize(va_ndx_offset)]);
+    let offset_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(va_ndx_offset));
 
     let offset = bx.load(bx.type_i32(), offset_ptr, bx.tcx().data_layout.i32_align.abi);
     let offset = round_up_to_alignment(bx, offset, layout.align.abi);
@@ -356,11 +355,10 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     bx.store(offset_next, offset_ptr, bx.tcx().data_layout.pointer_align.abi);
 
     // (*va).va_reg
-    let regsave_area_ptr =
-        bx.inbounds_gep(bx.type_i8(), va_list_addr, &[bx.cx.const_usize(va_reg_offset)]);
+    let regsave_area_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(va_reg_offset));
     let regsave_area =
         bx.load(bx.type_ptr(), regsave_area_ptr, bx.tcx().data_layout.pointer_align.abi);
-    let regsave_value_ptr = bx.inbounds_gep(bx.type_i8(), regsave_area, &[offset]);
+    let regsave_value_ptr = bx.inbounds_ptradd(regsave_area, offset);
     bx.br(end);
 
     bx.switch_to_block(from_stack);
@@ -381,9 +379,9 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     bx.store(offset_next_corrected, offset_ptr, bx.tcx().data_layout.pointer_align.abi);
 
     // let stack_value_ptr = unsafe { (*va).va_stk.byte_add(offset_corrected) };
-    let stack_area_ptr = bx.inbounds_gep(bx.type_i8(), va_list_addr, &[bx.cx.const_usize(0)]);
+    let stack_area_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(0));
     let stack_area = bx.load(bx.type_ptr(), stack_area_ptr, bx.tcx().data_layout.pointer_align.abi);
-    let stack_value_ptr = bx.inbounds_gep(bx.type_i8(), stack_area, &[offset_corrected]);
+    let stack_value_ptr = bx.inbounds_ptradd(stack_area, offset_corrected);
     bx.br(end);
 
     bx.switch_to_block(end);
