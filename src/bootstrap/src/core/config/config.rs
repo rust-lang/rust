@@ -45,6 +45,7 @@ use crate::utils::helpers::{self, exe, output, t};
 /// final output/compiler, which can be significantly affected by changes made to the bootstrap sources.
 #[rustfmt::skip] // We don't want rustfmt to oneline this list
 pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
+    "!library",
     ":!src/tools",
     ":!src/librustdoc",
     ":!src/rustdoc-json-types",
@@ -3150,24 +3151,10 @@ impl Config {
             }
         };
 
-        // RUSTC_IF_UNCHANGED_ALLOWED_PATHS
-        let mut allowed_paths = RUSTC_IF_UNCHANGED_ALLOWED_PATHS.to_vec();
-
-        // In CI, disable ci-rustc if there are changes in the library tree. But for non-CI, allow
-        // these changes to speed up the build process for library developers. This provides consistent
-        // functionality for library developers between `download-rustc=true` and `download-rustc="if-unchanged"`
-        // options.
-        //
-        // If you update "library" logic here, update `builder::tests::ci_rustc_if_unchanged_logic` test
-        // logic accordingly.
-        if !self.is_running_on_ci {
-            allowed_paths.push(":!library");
-        }
-
         let commit = if self.rust_info.is_managed_git_subrepository() {
             // Look for a version to compare to based on the current commit.
             // Only commits merged by bors will have CI artifacts.
-            let freshness = self.check_path_modifications(&allowed_paths);
+            let freshness = self.check_path_modifications(RUSTC_IF_UNCHANGED_ALLOWED_PATHS);
             self.verbose(|| {
                 eprintln!("rustc freshness: {freshness:?}");
             });
