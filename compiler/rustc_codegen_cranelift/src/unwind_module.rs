@@ -1,10 +1,10 @@
+use cranelift_codegen::Context;
 use cranelift_codegen::control::ControlPlane;
-use cranelift_codegen::ir::{Function, Signature};
+use cranelift_codegen::ir::Signature;
 use cranelift_codegen::isa::{TargetFrontendConfig, TargetIsa};
-use cranelift_codegen::{Context, FinalizedMachReloc};
 use cranelift_module::{
     DataDescription, DataId, FuncId, FuncOrDataId, Linkage, Module, ModuleDeclarations,
-    ModuleResult,
+    ModuleReloc, ModuleResult,
 };
 use cranelift_object::{ObjectModule, ObjectProduct};
 
@@ -17,8 +17,8 @@ pub(crate) struct UnwindModule<T> {
 }
 
 impl<T: Module> UnwindModule<T> {
-    pub(crate) fn new(module: T, pic_eh_frame: bool) -> Self {
-        let unwind_context = UnwindContext::new(module.isa(), pic_eh_frame);
+    pub(crate) fn new(mut module: T, pic_eh_frame: bool) -> Self {
+        let unwind_context = UnwindContext::new(&mut module, pic_eh_frame);
         UnwindModule { module, unwind_context }
     }
 }
@@ -33,13 +33,10 @@ impl UnwindModule<ObjectModule> {
 
 #[cfg(feature = "jit")]
 impl UnwindModule<cranelift_jit::JITModule> {
-    pub(crate) fn finalize_definitions(&mut self) {
+    pub(crate) fn finalize_definitions(mut self) -> cranelift_jit::JITModule {
         self.module.finalize_definitions().unwrap();
-        let prev_unwind_context = std::mem::replace(
-            &mut self.unwind_context,
-            UnwindContext::new(self.module.isa(), false),
-        );
-        unsafe { prev_unwind_context.register_jit(&self.module) };
+        unsafe { self.unwind_context.register_jit(&self.module) };
+        self.module
     }
 }
 
@@ -94,17 +91,16 @@ impl<T: Module> Module for UnwindModule<T> {
         ctrl_plane: &mut ControlPlane,
     ) -> ModuleResult<()> {
         self.module.define_function_with_control_plane(func, ctx, ctrl_plane)?;
-        self.unwind_context.add_function(func, ctx, self.module.isa());
+        self.unwind_context.add_function(&mut self.module, func, ctx);
         Ok(())
     }
 
     fn define_function_bytes(
         &mut self,
         _func_id: FuncId,
-        _func: &Function,
         _alignment: u64,
         _bytes: &[u8],
-        _relocs: &[FinalizedMachReloc],
+        _relocs: &[ModuleReloc],
     ) -> ModuleResult<()> {
         unimplemented!()
     }

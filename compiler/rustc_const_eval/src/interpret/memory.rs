@@ -233,10 +233,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         kind: MemoryKind<M::MemoryKind>,
         init: AllocInit,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
+        let params = self.machine.get_default_alloc_params();
         let alloc = if M::PANIC_ON_ALLOC_FAIL {
-            Allocation::new(size, align, init)
+            Allocation::new(size, align, init, params)
         } else {
-            Allocation::try_new(size, align, init)?
+            Allocation::try_new(size, align, init, params)?
         };
         self.insert_allocation(alloc, kind)
     }
@@ -248,7 +249,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         kind: MemoryKind<M::MemoryKind>,
         mutability: Mutability,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
-        let alloc = Allocation::from_bytes(bytes, align, mutability);
+        let params = self.machine.get_default_alloc_params();
+        let alloc = Allocation::from_bytes(bytes, align, mutability, params);
         self.insert_allocation(alloc, kind)
     }
 

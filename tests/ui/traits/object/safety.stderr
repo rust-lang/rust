@@ -1,29 +1,4 @@
 error[E0038]: the trait `Tr` is not dyn compatible
-  --> $DIR/safety.rs:15:22
-   |
-LL |     let _: &dyn Tr = &St;
-   |                      ^^^ `Tr` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/safety.rs:4:8
-   |
-LL | trait Tr {
-   |       -- this trait is not dyn compatible...
-LL |     fn foo();
-   |        ^^^ ...because associated function `foo` has no `self` parameter
-   = help: only type `St` implements `Tr`; consider using it directly instead.
-   = note: required for the cast from `&St` to `&dyn Tr`
-help: consider turning `foo` into a method by giving it a `&self` argument
-   |
-LL |     fn foo(&self);
-   |            +++++
-help: alternatively, consider constraining `foo` so it does not apply to trait objects
-   |
-LL |     fn foo() where Self: Sized;
-   |              +++++++++++++++++
-
-error[E0038]: the trait `Tr` is not dyn compatible
   --> $DIR/safety.rs:15:12
    |
 LL |     let _: &dyn Tr = &St;
@@ -47,6 +22,6 @@ help: alternatively, consider constraining `foo` so it does not apply to trait o
 LL |     fn foo() where Self: Sized;
    |              +++++++++++++++++
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

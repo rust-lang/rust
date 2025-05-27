@@ -521,8 +521,26 @@ fn panic_cannot_unwind() -> ! {
 }
 
 #[lang = "eh_personality"]
-fn eh_personality() -> ! {
+// FIXME personality signature depends on target
+fn eh_personality(
+    _version: i32,
+    _actions: i32,
+    _exception_class: u64,
+    _exception_object: *mut (),
+    _context: *mut (),
+) -> i32 {
     loop {}
+}
+
+#[lang = "panic_in_cleanup"]
+fn panic_in_cleanup() -> ! {
+    loop {}
+}
+
+#[cfg(all(unix, not(target_vendor = "apple")))]
+#[link(name = "gcc_s")]
+extern "C" {
+    fn _Unwind_Resume(exc: *mut ()) -> !;
 }
 
 #[lang = "drop_in_place"]

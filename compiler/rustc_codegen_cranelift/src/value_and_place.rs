@@ -309,6 +309,7 @@ impl<'tcx> CValue<'tcx> {
         match self.0 {
             CValueInner::ByVal(_) | CValueInner::ByValPair(_, _) => unreachable!(),
             CValueInner::ByRef(ptr, None) => {
+                let lane_idx = clif_intcast(fx, lane_idx, fx.pointer_type, false);
                 let field_offset = fx.bcx.ins().imul_imm(lane_idx, lane_layout.size.bytes() as i64);
                 let field_ptr = ptr.offset_value(fx, field_offset);
                 CValue::by_ref(field_ptr, lane_layout)
@@ -324,7 +325,7 @@ impl<'tcx> CValue<'tcx> {
         const_val: ty::ScalarInt,
     ) -> CValue<'tcx> {
         assert_eq!(const_val.size(), layout.size, "{:#?}: {:?}", const_val, layout);
-        use cranelift_codegen::ir::immediates::{Ieee32, Ieee64};
+        use cranelift_codegen::ir::immediates::{Ieee16, Ieee32, Ieee64, Ieee128};
 
         let clif_ty = fx.clif_type(layout.ty).unwrap();
 
@@ -345,11 +346,23 @@ impl<'tcx> CValue<'tcx> {
                 let raw_val = const_val.size().truncate(const_val.to_bits(layout.size));
                 fx.bcx.ins().iconst(clif_ty, raw_val as i64)
             }
+            ty::Float(FloatTy::F16) => {
+                fx.bcx.ins().f16const(Ieee16::with_bits(u16::try_from(const_val).unwrap()))
+            }
             ty::Float(FloatTy::F32) => {
                 fx.bcx.ins().f32const(Ieee32::with_bits(u32::try_from(const_val).unwrap()))
             }
             ty::Float(FloatTy::F64) => {
                 fx.bcx.ins().f64const(Ieee64::with_bits(u64::try_from(const_val).unwrap()))
+            }
+            ty::Float(FloatTy::F128) => {
+                let value = fx
+                    .bcx
+                    .func
+                    .dfg
+                    .constants
+                    .insert(Ieee128::with_bits(u128::try_from(const_val).unwrap()).into());
+                fx.bcx.ins().f128const(value)
             }
             _ => panic!(
                 "CValue::const_val for non bool/char/float/integer/pointer type {:?} is not allowed",
@@ -563,27 +576,7 @@ impl<'tcx> CPlace<'tcx> {
                 src_ty,
                 dst_ty,
             );
-            let data = match (src_ty, dst_ty) {
-                (_, _) if src_ty == dst_ty => data,
-
-                // This is a `write_cvalue_transmute`.
-                (types::I32, types::F32)
-                | (types::F32, types::I32)
-                | (types::I64, types::F64)
-                | (types::F64, types::I64) => codegen_bitcast(fx, dst_ty, data),
-                _ if src_ty.is_vector() && dst_ty.is_vector() => codegen_bitcast(fx, dst_ty, data),
-                _ if src_ty.is_vector() || dst_ty.is_vector() => {
-                    // FIXME(bytecodealliance/wasmtime#6104) do something more efficient for transmutes between vectors and integers.
-                    let ptr = fx.create_stack_slot(src_ty.bytes(), src_ty.bytes());
-                    ptr.store(fx, data, MemFlags::trusted());
-                    ptr.load(fx, dst_ty, MemFlags::trusted())
-                }
-
-                // `CValue`s should never contain SSA-only types, so if you ended
-                // up here having seen an error like `B1 -> I8`, then before
-                // calling `write_cvalue` you need to add a `bint` instruction.
-                _ => unreachable!("write_cvalue_transmute: {:?} -> {:?}", src_ty, dst_ty),
-            };
+            let data = if src_ty == dst_ty { data } else { codegen_bitcast(fx, dst_ty, data) };
             //fx.bcx.set_val_label(data, cranelift_codegen::ir::ValueLabel::new(var.index()));
             fx.bcx.def_var(var, data);
         }
@@ -591,13 +584,9 @@ impl<'tcx> CPlace<'tcx> {
         assert_eq!(self.layout().size, from.layout().size);
 
         if fx.clif_comments.enabled() {
-            use cranelift_codegen::cursor::{Cursor, CursorPosition};
-            let cur_block = match fx.bcx.cursor().position() {
-                CursorPosition::After(block) => block,
-                _ => unreachable!(),
-            };
-            fx.add_comment(
-                fx.bcx.func.layout.last_inst(cur_block).unwrap(),
+            let inst = fx.bcx.func.layout.last_inst(fx.bcx.current_block().unwrap()).unwrap();
+            fx.add_post_comment(
+                inst,
                 format!(
                     "{}: {:?}: {:?} <- {:?}: {:?}",
                     method,
@@ -801,6 +790,35 @@ impl<'tcx> CPlace<'tcx> {
                 let field_offset = lane_layout.size * lane_idx;
                 let field_ptr = ptr.offset_i64(fx, i64::try_from(field_offset.bytes()).unwrap());
                 CPlace::for_ptr(field_ptr, lane_layout)
+            }
+            CPlaceInner::Addr(_, Some(_)) => unreachable!(),
+        }
+    }
+
+    /// Write a value to an individual lane in a SIMD vector.
+    pub(crate) fn write_lane_dyn(
+        self,
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
+        lane_idx: Value,
+        value: CValue<'tcx>,
+    ) {
+        let layout = self.layout();
+        assert!(layout.ty.is_simd());
+        let (_lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+        let lane_layout = fx.layout_of(lane_ty);
+        assert_eq!(lane_layout, value.layout());
+
+        match self.inner {
+            CPlaceInner::Var(_, _) => unreachable!(),
+            CPlaceInner::VarPair(_, _, _) => unreachable!(),
+            CPlaceInner::Addr(ptr, None) => {
+                let lane_idx = clif_intcast(fx, lane_idx, fx.pointer_type, false);
+                let field_offset = fx
+                    .bcx
+                    .ins()
+                    .imul_imm(lane_idx, i64::try_from(lane_layout.size.bytes()).unwrap());
+                let field_ptr = ptr.offset_value(fx, field_offset);
+                CPlace::for_ptr(field_ptr, lane_layout).write_cvalue(fx, value);
             }
             CPlaceInner::Addr(_, Some(_)) => unreachable!(),
         }

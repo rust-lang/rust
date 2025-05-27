@@ -42,13 +42,13 @@ error[E0599]: no method named `foo` found for struct `rustc_confusables_across_c
   --> $DIR/rustc_confusables.rs:15:7
    |
 LL |     x.foo();
-   |       ^^^ method not found in `BTreeSet`
+   |       ^^^ method not found in `rustc_confusables_across_crate::BTreeSet`
 
 error[E0599]: no method named `push` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
   --> $DIR/rustc_confusables.rs:17:7
    |
 LL |     x.push();
-   |       ^^^^ method not found in `BTreeSet`
+   |       ^^^^ method not found in `rustc_confusables_across_crate::BTreeSet`
    |
 help: you might have meant to use `insert`
    |
@@ -60,7 +60,7 @@ error[E0599]: no method named `test` found for struct `rustc_confusables_across_
   --> $DIR/rustc_confusables.rs:20:7
    |
 LL |     x.test();
-   |       ^^^^ method not found in `BTreeSet`
+   |       ^^^^ method not found in `rustc_confusables_across_crate::BTreeSet`
 
 error[E0599]: no method named `pulled` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
   --> $DIR/rustc_confusables.rs:22:7

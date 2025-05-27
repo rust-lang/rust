@@ -17,6 +17,5 @@ fn main() {
     let mut thing = Thing;
     let test: &dyn Bar = &mut thing;
     //~^ ERROR E0038
-    //~| ERROR E0038
     foo(test);
 }
