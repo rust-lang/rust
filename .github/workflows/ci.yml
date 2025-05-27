@@ -79,9 +79,8 @@ jobs:
     # This also ensures that PR CI (which doesn't get write access to S3) works, as it cannot
     # access the environment.
     #
-    # We only enable the environment for the rust-lang/rust repository, so that rust-lang-ci/rust
-    # CI works until we migrate off it (since that repository doesn't contain the environment).
-    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/auto')) && 'bors') || '' }}
+    # We only enable the environment for the rust-lang/rust repository, so that CI works on forks.
+    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/auto')) && 'bors') || '' }}
     env:
       CI_JOB_NAME: ${{ matrix.name }}
       CI_JOB_DOC_URL: ${{ matrix.doc_url }}
@@ -234,8 +233,8 @@ jobs:
           fi
           exit ${STATUS}
         env:
-          AWS_ACCESS_KEY_ID: ${{ (github.repository == 'rust-lang/rust' && secrets.CACHES_AWS_ACCESS_KEY_ID) || env.CACHES_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ (github.repository == 'rust-lang/rust' && secrets.CACHES_AWS_SECRET_ACCESS_KEY) || secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.CACHES_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CACHES_AWS_SECRET_ACCESS_KEY }}
 
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
@@ -257,8 +256,8 @@ jobs:
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
         env:
-          AWS_ACCESS_KEY_ID: ${{ (github.repository == 'rust-lang/rust' && secrets.ARTIFACTS_AWS_ACCESS_KEY_ID) || env.ARTIFACTS_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ (github.repository == 'rust-lang/rust' && secrets.ARTIFACTS_AWS_SECRET_ACCESS_KEY) || secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.ARTIFACTS_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.ARTIFACTS_AWS_SECRET_ACCESS_KEY }}
         # Adding a condition on DEPLOY=1 or DEPLOY_ALT=1 is not needed as all deploy
         # builders *should* have the AWS credentials available. Still, explicitly
         # adding the condition is helpful as this way CI will not silently skip
