@@ -2069,7 +2069,7 @@ impl Step for Assemble {
             let enzyme_install = builder.ensure(llvm::Enzyme { target: build_compiler.host });
             let llvm_config = builder.llvm_config(builder.config.build).unwrap();
             let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
-            let lib_ext = "so";
+            let lib_ext = std::env::consts::DLL_EXTENSION;
             let libenzyme = format!("libEnzyme-{llvm_version_major}");
             let src_lib =
                 enzyme_install.join("build/Enzyme").join(&libenzyme).with_extension(lib_ext);
