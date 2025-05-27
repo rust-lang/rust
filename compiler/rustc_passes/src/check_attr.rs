@@ -10,7 +10,7 @@ use std::collections::hash_map::Entry;
 use std::slice;
 
 use rustc_abi::{Align, ExternAbi, Size};
-use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, ast, join_path_syms};
+use rustc_ast::{AttrStyle, LitKind, MetaItem, MetaItemInner, MetaItemKind, ast, join_path_syms};
 use rustc_attr_data_structures::{
     AttributeKind, InlineAttr, PartialConstStability, ReprAttr, Stability, StabilityLevel,
     find_attr,
@@ -1357,10 +1357,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Check that the `#![doc(auto_cfg(..))]` attribute has expected input.
-    fn check_doc_auto_cfg(&self, meta: &MetaItemInner, hir_id: HirId) {
-        let MetaItemInner::MetaItem(meta) = meta else {
-            unreachable!();
-        };
+    fn check_doc_auto_cfg(&self, meta: &MetaItem, hir_id: HirId) {
         match &meta.kind {
             MetaItemKind::Word => {}
             MetaItemKind::NameValue(lit) => {
@@ -1468,7 +1465,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
 
                         Some(sym::auto_cfg) => {
-                            self.check_doc_auto_cfg(meta, hir_id);
+                            self.check_doc_auto_cfg(i_meta, hir_id);
                         }
 
                         Some(sym::inline | sym::no_inline) => {
