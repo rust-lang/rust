@@ -32,26 +32,7 @@ LL |     type SubType<'a>: SubTrait where Self: 'a;
    = help: only type `SuperStruct` implements `SuperTrait` within this crate; consider using it directly instead.
    = note: `SuperTrait` may be implemented in other crates; if you want to support your users passing their own types here, you can't refer to a specific type
 
-error[E0038]: the trait `SuperTrait` is not dyn compatible
-  --> $DIR/issue-76535.rs:34:57
-   |
-LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
-   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SuperTrait` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/issue-76535.rs:4:10
-   |
-LL | pub trait SuperTrait {
-   |           ---------- this trait is not dyn compatible...
-LL |     type SubType<'a>: SubTrait where Self: 'a;
-   |          ^^^^^^^ ...because it contains the generic associated type `SubType`
-   = help: consider moving `SubType` to another trait
-   = help: only type `SuperStruct` implements `SuperTrait` within this crate; consider using it directly instead.
-   = note: `SuperTrait` may be implemented in other crates; if you want to support your users passing their own types here, you can't refer to a specific type
-   = note: required for the cast from `Box<SuperStruct>` to `Box<dyn SuperTrait<SubType<'_> = SubStruct<'_>>>`
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0038, E0107.
 For more information about an error, try `rustc --explain E0038`.

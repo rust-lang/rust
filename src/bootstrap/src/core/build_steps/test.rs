@@ -739,7 +739,7 @@ impl Step for Clippy {
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/clippy")
+        run.suite_path("src/tools/clippy/tests").path("src/tools/clippy")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -782,6 +782,23 @@ impl Step for Clippy {
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
         let host_libs = builder.stage_out(compiler, Mode::ToolRustc).join(builder.cargo_dir());
         cargo.env("HOST_LIBS", host_libs);
+
+        // Collect paths of tests to run
+        'partially_test: {
+            let paths = &builder.config.paths[..];
+            let mut test_names = Vec::new();
+            for path in paths {
+                if let Some(path) =
+                    helpers::is_valid_test_suite_arg(path, "src/tools/clippy/tests", builder)
+                {
+                    test_names.push(path);
+                } else if path.ends_with("src/tools/clippy") {
+                    // When src/tools/clippy is called directly, all tests should be run.
+                    break 'partially_test;
+                }
+            }
+            cargo.env("TESTNAME", test_names.join(","));
+        }
 
         cargo.add_rustc_lib_path(builder);
         let cargo = prepare_cargo_test(cargo, &[], &[], host, builder);
@@ -2947,7 +2964,14 @@ impl Step for Distcheck {
         run.builder.ensure(Distcheck);
     }
 
-    /// Runs "distcheck", a 'make check' from a tarball
+    /// Runs `distcheck`, which is a collection of smoke tests:
+    ///
+    /// - Run `make check` from an unpacked dist tarball to make sure we can at the minimum run
+    ///   check steps from those sources.
+    /// - Check that selected dist components (`rust-src` only at the moment) at least have expected
+    ///   directory shape and crate manifests that cargo can generate a lockfile from.
+    ///
+    /// FIXME(#136822): dist components are under-tested.
     fn run(self, builder: &Builder<'_>) {
         builder.info("Distcheck");
         let dir = builder.tempdir().join("distcheck");

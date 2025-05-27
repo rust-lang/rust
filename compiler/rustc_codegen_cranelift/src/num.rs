@@ -1,8 +1,9 @@
 //! Various operations on integer and floating-point numbers
 
+use crate::codegen_f16_f128;
 use crate::prelude::*;
 
-pub(crate) fn bin_op_to_intcc(bin_op: BinOp, signed: bool) -> IntCC {
+fn bin_op_to_intcc(bin_op: BinOp, signed: bool) -> IntCC {
     use BinOp::*;
     use IntCC::*;
     match bin_op {
@@ -109,7 +110,7 @@ pub(crate) fn codegen_binop<'tcx>(
     }
 }
 
-pub(crate) fn codegen_bool_binop<'tcx>(
+fn codegen_bool_binop<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
@@ -350,25 +351,60 @@ pub(crate) fn codegen_float_binop<'tcx>(
     let lhs = in_lhs.load_scalar(fx);
     let rhs = in_rhs.load_scalar(fx);
 
+    // FIXME(bytecodealliance/wasmtime#8312): Remove once backend lowerings have
+    // been added to Cranelift.
+    let (lhs, rhs) = if *in_lhs.layout().ty.kind() == ty::Float(FloatTy::F16) {
+        (codegen_f16_f128::f16_to_f32(fx, lhs), codegen_f16_f128::f16_to_f32(fx, rhs))
+    } else {
+        (lhs, rhs)
+    };
     let b = fx.bcx.ins();
     let res = match bin_op {
+        // FIXME(bytecodealliance/wasmtime#8312): Remove once backend lowerings
+        // have been added to Cranelift.
+        BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div
+            if *in_lhs.layout().ty.kind() == ty::Float(FloatTy::F128) =>
+        {
+            codegen_f16_f128::codegen_f128_binop(fx, bin_op, lhs, rhs)
+        }
         BinOp::Add => b.fadd(lhs, rhs),
         BinOp::Sub => b.fsub(lhs, rhs),
         BinOp::Mul => b.fmul(lhs, rhs),
         BinOp::Div => b.fdiv(lhs, rhs),
         BinOp::Rem => {
-            let (name, ty) = match in_lhs.layout().ty.kind() {
-                ty::Float(FloatTy::F32) => ("fmodf", types::F32),
-                ty::Float(FloatTy::F64) => ("fmod", types::F64),
+            let (name, ty, lhs, rhs) = match in_lhs.layout().ty.kind() {
+                ty::Float(FloatTy::F16) => (
+                    "fmodf",
+                    types::F32,
+                    // FIXME(bytecodealliance/wasmtime#8312): Already converted
+                    // by the FIXME above.
+                    // fx.bcx.ins().fpromote(types::F32, lhs),
+                    // fx.bcx.ins().fpromote(types::F32, rhs),
+                    lhs,
+                    rhs,
+                ),
+                ty::Float(FloatTy::F32) => ("fmodf", types::F32, lhs, rhs),
+                ty::Float(FloatTy::F64) => ("fmod", types::F64, lhs, rhs),
+                ty::Float(FloatTy::F128) => ("fmodf128", types::F128, lhs, rhs),
                 _ => bug!(),
             };
 
-            fx.lib_call(
+            let ret_val = fx.lib_call(
                 name,
                 vec![AbiParam::new(ty), AbiParam::new(ty)],
                 vec![AbiParam::new(ty)],
                 &[lhs, rhs],
-            )[0]
+            )[0];
+
+            let ret_val = if *in_lhs.layout().ty.kind() == ty::Float(FloatTy::F16) {
+                // FIXME(bytecodealliance/wasmtime#8312): Use native Cranelift
+                // operation once Cranelift backend lowerings have been
+                // implemented.
+                codegen_f16_f128::f32_to_f16(fx, ret_val)
+            } else {
+                ret_val
+            };
+            return CValue::by_val(ret_val, in_lhs.layout());
         }
         BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => {
             let fltcc = match bin_op {
@@ -380,16 +416,26 @@ pub(crate) fn codegen_float_binop<'tcx>(
                 BinOp::Gt => FloatCC::GreaterThan,
                 _ => unreachable!(),
             };
-            let val = fx.bcx.ins().fcmp(fltcc, lhs, rhs);
+            // FIXME(bytecodealliance/wasmtime#8312): Replace with Cranelift
+            // `fcmp` once `f16`/`f128` backend lowerings have been added to
+            // Cranelift.
+            let val = codegen_f16_f128::fcmp(fx, fltcc, lhs, rhs);
             return CValue::by_val(val, fx.layout_of(fx.tcx.types.bool));
         }
         _ => unreachable!("{:?}({:?}, {:?})", bin_op, in_lhs, in_rhs),
     };
 
+    // FIXME(bytecodealliance/wasmtime#8312): Remove once backend lowerings have
+    // been added to Cranelift.
+    let res = if *in_lhs.layout().ty.kind() == ty::Float(FloatTy::F16) {
+        codegen_f16_f128::f32_to_f16(fx, res)
+    } else {
+        res
+    };
     CValue::by_val(res, in_lhs.layout())
 }
 
-pub(crate) fn codegen_ptr_binop<'tcx>(
+fn codegen_ptr_binop<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
@@ -457,15 +503,19 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
 // and `a.is_nan() ? b : (a <= b ? b : a)` for `maxnumf*`. NaN checks are done by comparing
 // a float against itself. Only in case of NaN is it not equal to itself.
 pub(crate) fn codegen_float_min(fx: &mut FunctionCx<'_, '_, '_>, a: Value, b: Value) -> Value {
-    let a_is_nan = fx.bcx.ins().fcmp(FloatCC::NotEqual, a, a);
-    let a_ge_b = fx.bcx.ins().fcmp(FloatCC::GreaterThanOrEqual, a, b);
+    // FIXME(bytecodealliance/wasmtime#8312): Replace with Cranelift `fcmp` once
+    // `f16`/`f128` backend lowerings have been added to Cranelift.
+    let a_is_nan = codegen_f16_f128::fcmp(fx, FloatCC::NotEqual, a, a);
+    let a_ge_b = codegen_f16_f128::fcmp(fx, FloatCC::GreaterThanOrEqual, a, b);
     let temp = fx.bcx.ins().select(a_ge_b, b, a);
     fx.bcx.ins().select(a_is_nan, b, temp)
 }
 
 pub(crate) fn codegen_float_max(fx: &mut FunctionCx<'_, '_, '_>, a: Value, b: Value) -> Value {
-    let a_is_nan = fx.bcx.ins().fcmp(FloatCC::NotEqual, a, a);
-    let a_le_b = fx.bcx.ins().fcmp(FloatCC::LessThanOrEqual, a, b);
+    // FIXME(bytecodealliance/wasmtime#8312): Replace with Cranelift `fcmp` once
+    // `f16`/`f128` backend lowerings have been added to Cranelift.
+    let a_is_nan = codegen_f16_f128::fcmp(fx, FloatCC::NotEqual, a, a);
+    let a_le_b = codegen_f16_f128::fcmp(fx, FloatCC::LessThanOrEqual, a, b);
     let temp = fx.bcx.ins().select(a_le_b, b, a);
     fx.bcx.ins().select(a_is_nan, b, temp)
 }

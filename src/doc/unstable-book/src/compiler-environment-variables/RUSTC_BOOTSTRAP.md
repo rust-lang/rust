@@ -14,7 +14,7 @@ Cargo disallows setting `cargo::rustc-env=RUSTC_BOOTSTRAP` in build scripts.
 Build systems can limit the features they enable with [`-Z allow-features=feature1,feature2`][Z-allow-features].
 Crates can fully opt out of unstable features by using [`#![forbid(unstable_features)]`][unstable-features] at the crate root (or any other way of enabling lints, such as `-F unstable-features`).
 
-[Z-allow-features]: ./allow-features.html
+[Z-allow-features]: ../compiler-flags/allow-features.html
 [unstable-features]: ../../rustc/lints/listing/allowed-by-default.html#unstable-features
 
 ## Why does this environment variable exist?

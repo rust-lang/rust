@@ -53,10 +53,10 @@ where
 {
     /// Canonicalizes the goal remembering the original values
     /// for each bound variable.
-    pub(super) fn canonicalize_goal<T: TypeFoldable<I>>(
+    pub(super) fn canonicalize_goal(
         &self,
-        goal: Goal<I, T>,
-    ) -> (Vec<I::GenericArg>, CanonicalInput<I, T>) {
+        goal: Goal<I, I::Predicate>,
+    ) -> (Vec<I::GenericArg>, CanonicalInput<I, I::Predicate>) {
         // We only care about one entry per `OpaqueTypeKey` here,
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
@@ -130,7 +130,12 @@ where
                     if goals.is_empty() {
                         assert!(matches!(goals_certainty, Certainty::Yes));
                     }
-                    (Certainty::Yes, NestedNormalizationGoals(goals))
+                    (
+                        Certainty::Yes,
+                        NestedNormalizationGoals(
+                            goals.into_iter().map(|(s, g, _)| (s, g)).collect(),
+                        ),
+                    )
                 }
                 _ => {
                     let certainty = shallow_certainty.and(goals_certainty);
@@ -272,7 +277,7 @@ where
     pub(super) fn instantiate_and_apply_query_response(
         &mut self,
         param_env: I::ParamEnv,
-        original_values: Vec<I::GenericArg>,
+        original_values: &[I::GenericArg],
         response: CanonicalResponse<I>,
     ) -> (NestedNormalizationGoals<I>, Certainty) {
         let instantiation = Self::compute_query_response_instantiation_values(
