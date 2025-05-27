@@ -831,6 +831,15 @@ impl AdtDef {
     pub fn repr(&self) -> ReprOptions {
         with(|cx| cx.adt_repr(*self))
     }
+
+    pub fn discriminant_for_variant(&self, idx: VariantIdx) -> Discr {
+        with(|cx| cx.adt_discr_for_variant(*self, idx))
+    }
+}
+
+pub struct Discr {
+    pub val: u128,
+    pub ty: Ty,
 }
 
 /// Definition of a variant, which can be either a struct / union field or an enum variant.
