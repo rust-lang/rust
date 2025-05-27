@@ -15,6 +15,6 @@ mdbook-i18n-helpers = "0.3.3"
 mdbook-spec = { path = "../../doc/reference/mdbook-spec" }
 
 [dependencies.mdbook]
-version = "0.4.50"
+version = "0.4.51"
 default-features = false
 features = ["search"]
