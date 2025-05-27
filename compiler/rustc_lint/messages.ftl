@@ -13,6 +13,8 @@ lint_ambiguous_negative_literals = `-` has lower precedence than method calls, w
 lint_ambiguous_wide_pointer_comparisons = ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
     .addr_metadata_suggestion = use explicit `std::ptr::eq` method to compare metadata and addresses
     .addr_suggestion = use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+    .cast_suggestion = use untyped pointers to only compare their addresses
+    .expect_suggestion = or expect the lint to compare the pointers metadata and addresses
 
 lint_associated_const_elided_lifetime = {$elided ->
         [true] `&` without an explicit lifetime name cannot be used here

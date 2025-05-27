@@ -24,7 +24,8 @@ mod improper_ctypes;
 
 use crate::lints::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
-    AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
+    AmbiguousWidePointerComparisonsAddrSuggestion, AmbiguousWidePointerComparisonsCastSuggestion,
+    AmbiguousWidePointerComparisonsExpectSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
     AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
     InvalidNanComparisonsSuggestion, UnpredictableFunctionPointerComparisons,
     UnpredictableFunctionPointerComparisonsSuggestion, UnusedComparisons, UsesPowerAlignment,
@@ -362,6 +363,7 @@ fn lint_wide_pointer<'tcx>(
     let ne = if cmpop == ComparisonOp::BinOp(hir::BinOpKind::Ne) { "!" } else { "" };
     let is_eq_ne = matches!(cmpop, ComparisonOp::BinOp(hir::BinOpKind::Eq | hir::BinOpKind::Ne));
     let is_dyn_comparison = l_inner_ty_is_dyn && r_inner_ty_is_dyn;
+    let via_method_call = matches!(&e.kind, ExprKind::MethodCall(..) | ExprKind::Call(..));
 
     let left = e.span.shrink_to_lo().until(l_span.shrink_to_lo());
     let middle = l_span.shrink_to_hi().until(r_span.shrink_to_lo());
@@ -376,9 +378,21 @@ fn lint_wide_pointer<'tcx>(
     cx.emit_span_lint(
         AMBIGUOUS_WIDE_POINTER_COMPARISONS,
         e.span,
-        AmbiguousWidePointerComparisons::Spanful {
-            addr_metadata_suggestion: (is_eq_ne && !is_dyn_comparison).then(|| {
-                AmbiguousWidePointerComparisonsAddrMetadataSuggestion {
+        if is_eq_ne {
+            AmbiguousWidePointerComparisons::SpanfulEq {
+                addr_metadata_suggestion: (!is_dyn_comparison).then(|| {
+                    AmbiguousWidePointerComparisonsAddrMetadataSuggestion {
+                        ne,
+                        deref_left,
+                        deref_right,
+                        l_modifiers,
+                        r_modifiers,
+                        left,
+                        middle,
+                        right,
+                    }
+                }),
+                addr_suggestion: AmbiguousWidePointerComparisonsAddrSuggestion {
                     ne,
                     deref_left,
                     deref_right,
@@ -387,21 +401,11 @@ fn lint_wide_pointer<'tcx>(
                     left,
                     middle,
                     right,
-                }
-            }),
-            addr_suggestion: if is_eq_ne {
-                AmbiguousWidePointerComparisonsAddrSuggestion::AddrEq {
-                    ne,
-                    deref_left,
-                    deref_right,
-                    l_modifiers,
-                    r_modifiers,
-                    left,
-                    middle,
-                    right,
-                }
-            } else {
-                AmbiguousWidePointerComparisonsAddrSuggestion::Cast {
+                },
+            }
+        } else {
+            AmbiguousWidePointerComparisons::SpanfulCmp {
+                cast_suggestion: AmbiguousWidePointerComparisonsCastSuggestion {
                     deref_left,
                     deref_right,
                     l_modifiers,
@@ -412,8 +416,14 @@ fn lint_wide_pointer<'tcx>(
                     left_after: l_span.shrink_to_hi(),
                     right_before: (r_ty_refs != 0).then_some(r_span.shrink_to_lo()),
                     right_after: r_span.shrink_to_hi(),
-                }
-            },
+                },
+                expect_suggestion: AmbiguousWidePointerComparisonsExpectSuggestion {
+                    paren_left: if via_method_call { "" } else { "(" },
+                    paren_right: if via_method_call { "" } else { ")" },
+                    before: e.span.shrink_to_lo(),
+                    after: e.span.shrink_to_hi(),
+                },
+            }
         },
     );
 }

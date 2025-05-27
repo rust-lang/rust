@@ -8,10 +8,10 @@ LL | #![feature(async_fn_in_dyn_trait)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0038]: the trait `AsyncTrait` is not dyn compatible
-  --> $DIR/mut-is-pointer-like.rs:35:16
+  --> $DIR/mut-is-pointer-like.rs:35:29
    |
 LL |         let x: Pin<&mut dyn AsyncTrait<Output = ()>> = f;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `AsyncTrait` is not dyn compatible
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^ `AsyncTrait` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>

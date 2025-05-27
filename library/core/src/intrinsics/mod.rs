@@ -1,7 +1,10 @@
 //! Compiler intrinsics.
 //!
-//! The corresponding definitions are in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_llvm/src/intrinsic.rs>.
-//! The corresponding const implementations are in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
+//! These are the imports making intrinsics available to Rust code. The actual implementations live in the compiler.
+//! Some of these intrinsics are lowered to MIR in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_transform/src/lower_intrinsics.rs>.
+//! The remaining intrinsics are implemented for the LLVM backend in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_ssa/src/mir/intrinsic.rs>
+//! and <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_llvm/src/intrinsic.rs>,
+//! and for const evaluation in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
 //!
 //! # Const intrinsics
 //!
@@ -20,28 +23,14 @@
 //!
 //! The volatile intrinsics provide operations intended to act on I/O
 //! memory, which are guaranteed to not be reordered by the compiler
-//! across other volatile intrinsics. See the LLVM documentation on
-//! [[volatile]].
-//!
-//! [volatile]: https://llvm.org/docs/LangRef.html#volatile-memory-accesses
+//! across other volatile intrinsics. See [`read_volatile`][ptr::read_volatile]
+//! and [`write_volatile`][ptr::write_volatile].
 //!
 //! # Atomics
 //!
 //! The atomic intrinsics provide common atomic operations on machine
-//! words, with multiple possible memory orderings. They obey the same
-//! semantics as C++11. See the LLVM documentation on [[atomics]].
-//!
-//! [atomics]: https://llvm.org/docs/Atomics.html
-//!
-//! A quick refresher on memory ordering:
-//!
-//! * Acquire - a barrier for acquiring a lock. Subsequent reads and writes
-//!   take place after the barrier.
-//! * Release - a barrier for releasing a lock. Preceding reads and writes
-//!   take place before the barrier.
-//! * Sequentially consistent - sequentially consistent operations are
-//!   guaranteed to happen in order. This is the standard mode for working
-//!   with atomic types and is equivalent to Java's `volatile`.
+//! words, with multiple possible memory orderings. See the
+//! [atomic types][crate::sync::atomic] docs for details.
 //!
 //! # Unwinding
 //!

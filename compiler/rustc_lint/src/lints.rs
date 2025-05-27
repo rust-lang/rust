@@ -1782,11 +1782,18 @@ pub(crate) enum InvalidNanComparisonsSuggestion {
 #[derive(LintDiagnostic)]
 pub(crate) enum AmbiguousWidePointerComparisons<'a> {
     #[diag(lint_ambiguous_wide_pointer_comparisons)]
-    Spanful {
+    SpanfulEq {
         #[subdiagnostic]
         addr_suggestion: AmbiguousWidePointerComparisonsAddrSuggestion<'a>,
         #[subdiagnostic]
         addr_metadata_suggestion: Option<AmbiguousWidePointerComparisonsAddrMetadataSuggestion<'a>>,
+    },
+    #[diag(lint_ambiguous_wide_pointer_comparisons)]
+    SpanfulCmp {
+        #[subdiagnostic]
+        cast_suggestion: AmbiguousWidePointerComparisonsCastSuggestion<'a>,
+        #[subdiagnostic]
+        expect_suggestion: AmbiguousWidePointerComparisonsExpectSuggestion<'a>,
     },
     #[diag(lint_ambiguous_wide_pointer_comparisons)]
     #[help(lint_addr_metadata_suggestion)]
@@ -1816,48 +1823,67 @@ pub(crate) struct AmbiguousWidePointerComparisonsAddrMetadataSuggestion<'a> {
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
-    #[multipart_suggestion(
-        lint_addr_suggestion,
-        style = "verbose",
-        // FIXME(#53934): make machine-applicable again
-        applicability = "maybe-incorrect"
+#[multipart_suggestion(
+    lint_addr_suggestion,
+    style = "verbose",
+    // FIXME(#53934): make machine-applicable again
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
+    pub(crate) ne: &'a str,
+    pub(crate) deref_left: &'a str,
+    pub(crate) deref_right: &'a str,
+    pub(crate) l_modifiers: &'a str,
+    pub(crate) r_modifiers: &'a str,
+    #[suggestion_part(code = "{ne}std::ptr::addr_eq({deref_left}")]
+    pub(crate) left: Span,
+    #[suggestion_part(code = "{l_modifiers}, {deref_right}")]
+    pub(crate) middle: Span,
+    #[suggestion_part(code = "{r_modifiers})")]
+    pub(crate) right: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    lint_cast_suggestion,
+    style = "verbose",
+    // FIXME(#53934): make machine-applicable again
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct AmbiguousWidePointerComparisonsCastSuggestion<'a> {
+    pub(crate) deref_left: &'a str,
+    pub(crate) deref_right: &'a str,
+    pub(crate) paren_left: &'a str,
+    pub(crate) paren_right: &'a str,
+    pub(crate) l_modifiers: &'a str,
+    pub(crate) r_modifiers: &'a str,
+    #[suggestion_part(code = "({deref_left}")]
+    pub(crate) left_before: Option<Span>,
+    #[suggestion_part(code = "{l_modifiers}{paren_left}.cast::<()>()")]
+    pub(crate) left_after: Span,
+    #[suggestion_part(code = "({deref_right}")]
+    pub(crate) right_before: Option<Span>,
+    #[suggestion_part(code = "{r_modifiers}{paren_right}.cast::<()>()")]
+    pub(crate) right_after: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    lint_expect_suggestion,
+    style = "verbose",
+    // FIXME(#53934): make machine-applicable again
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct AmbiguousWidePointerComparisonsExpectSuggestion<'a> {
+    pub(crate) paren_left: &'a str,
+    pub(crate) paren_right: &'a str,
+    // FIXME(#127436): Adjust once resolved
+    #[suggestion_part(
+        code = r#"{{ #[expect(ambiguous_wide_pointer_comparisons, reason = "...")] {paren_left}"#
     )]
-    AddrEq {
-        ne: &'a str,
-        deref_left: &'a str,
-        deref_right: &'a str,
-        l_modifiers: &'a str,
-        r_modifiers: &'a str,
-        #[suggestion_part(code = "{ne}std::ptr::addr_eq({deref_left}")]
-        left: Span,
-        #[suggestion_part(code = "{l_modifiers}, {deref_right}")]
-        middle: Span,
-        #[suggestion_part(code = "{r_modifiers})")]
-        right: Span,
-    },
-    #[multipart_suggestion(
-        lint_addr_suggestion,
-        style = "verbose",
-        // FIXME(#53934): make machine-applicable again
-        applicability = "maybe-incorrect"
-    )]
-    Cast {
-        deref_left: &'a str,
-        deref_right: &'a str,
-        paren_left: &'a str,
-        paren_right: &'a str,
-        l_modifiers: &'a str,
-        r_modifiers: &'a str,
-        #[suggestion_part(code = "({deref_left}")]
-        left_before: Option<Span>,
-        #[suggestion_part(code = "{l_modifiers}{paren_left}.cast::<()>()")]
-        left_after: Span,
-        #[suggestion_part(code = "({deref_right}")]
-        right_before: Option<Span>,
-        #[suggestion_part(code = "{r_modifiers}{paren_right}.cast::<()>()")]
-        right_after: Span,
-    },
+    pub(crate) before: Span,
+    #[suggestion_part(code = "{paren_right} }}")]
+    pub(crate) after: Span,
 }
 
 #[derive(LintDiagnostic)]

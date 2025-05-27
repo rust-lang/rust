@@ -63,14 +63,33 @@ fn emit_direct_ptr_va_arg<'ll, 'tcx>(
     }
 }
 
+enum PassMode {
+    Direct,
+    Indirect,
+}
+
+enum SlotSize {
+    Bytes8 = 8,
+    Bytes4 = 4,
+}
+
+enum AllowHigherAlign {
+    No,
+    Yes,
+}
+
 fn emit_ptr_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     list: OperandRef<'tcx, &'ll Value>,
     target_ty: Ty<'tcx>,
-    indirect: bool,
-    slot_size: Align,
-    allow_higher_align: bool,
+    pass_mode: PassMode,
+    slot_size: SlotSize,
+    allow_higher_align: AllowHigherAlign,
 ) -> &'ll Value {
+    let indirect = matches!(pass_mode, PassMode::Indirect);
+    let allow_higher_align = matches!(allow_higher_align, AllowHigherAlign::Yes);
+    let slot_size = Align::from_bytes(slot_size as u64).unwrap();
+
     let layout = bx.cx.layout_of(target_ty);
     let (llty, size, align) = if indirect {
         (
@@ -179,8 +198,14 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
 
     // On Stack block
     bx.switch_to_block(on_stack);
-    let stack_value =
-        emit_ptr_va_arg(bx, list, target_ty, false, Align::from_bytes(8).unwrap(), true);
+    let stack_value = emit_ptr_va_arg(
+        bx,
+        list,
+        target_ty,
+        PassMode::Direct,
+        SlotSize::Bytes8,
+        AllowHigherAlign::Yes,
+    );
     bx.br(end);
 
     bx.switch_to_block(end);
@@ -386,29 +411,43 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
     // Determine the va_arg implementation to use. The LLVM va_arg instruction
     // is lacking in some instances, so we should only use it as a fallback.
     let target = &bx.cx.tcx.sess.target;
-    let arch = &bx.cx.tcx.sess.target.arch;
-    match &**arch {
-        // Windows x86
-        "x86" if target.is_like_windows => {
-            emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(4).unwrap(), false)
-        }
-        // Generic x86
-        "x86" => emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(4).unwrap(), true),
-        // Windows AArch64
-        "aarch64" | "arm64ec" if target.is_like_windows => {
-            emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), false)
-        }
-        // macOS / iOS AArch64
-        "aarch64" if target.is_like_darwin => {
-            emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), true)
+
+    match &*target.arch {
+        "x86" => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            PassMode::Direct,
+            SlotSize::Bytes4,
+            if target.is_like_windows { AllowHigherAlign::No } else { AllowHigherAlign::Yes },
+        ),
+        "aarch64" | "arm64ec" if target.is_like_windows || target.is_like_darwin => {
+            emit_ptr_va_arg(
+                bx,
+                addr,
+                target_ty,
+                PassMode::Direct,
+                SlotSize::Bytes8,
+                if target.is_like_windows { AllowHigherAlign::No } else { AllowHigherAlign::Yes },
+            )
         }
         "aarch64" => emit_aapcs_va_arg(bx, addr, target_ty),
         "s390x" => emit_s390x_va_arg(bx, addr, target_ty),
         // Windows x86_64
         "x86_64" if target.is_like_windows => {
             let target_ty_size = bx.cx.size_of(target_ty).bytes();
-            let indirect: bool = target_ty_size > 8 || !target_ty_size.is_power_of_two();
-            emit_ptr_va_arg(bx, addr, target_ty, indirect, Align::from_bytes(8).unwrap(), false)
+            emit_ptr_va_arg(
+                bx,
+                addr,
+                target_ty,
+                if target_ty_size > 8 || !target_ty_size.is_power_of_two() {
+                    PassMode::Indirect
+                } else {
+                    PassMode::Direct
+                },
+                SlotSize::Bytes8,
+                AllowHigherAlign::No,
+            )
         }
         "xtensa" => emit_xtensa_va_arg(bx, addr, target_ty),
         // For all other architecture/OS combinations fall back to using

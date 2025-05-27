@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/copy-check-when-count-inferred-later.rs:8:14
+   |
+LL |     let a = [String::new(); _];
+   |              ^^^^^^^^^^^^^
+   |              |
+   |              the trait `Copy` is not implemented for `String`
+   |              help: create an inline `const` block: `const { String::new() }`
+   |
+   = note: the `Copy` trait is required because this value will be copied for each element of the array
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

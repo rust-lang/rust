@@ -19,5 +19,4 @@ fn main() {
     let x: &dyn Foo = &();
     //~^ ERROR the trait `Foo` is not dyn compatible
     needs_bar(x);
-    //~^ ERROR the trait `Foo` is not dyn compatible
 }
