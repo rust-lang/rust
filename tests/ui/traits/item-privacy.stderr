@@ -131,44 +131,10 @@ LL + use assoc_const::B;
    |
 
 error[E0038]: the trait `assoc_const::C` is not dyn compatible
-  --> $DIR/item-privacy.rs:101:6
+  --> $DIR/item-privacy.rs:101:10
    |
 LL |     <dyn C>::A;
-   |      ^^^^^ `assoc_const::C` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/item-privacy.rs:25:15
-   |
-LL |         const A: u8 = 0;
-   |               ^ ...because it contains this associated `const`
-...
-LL |         const B: u8 = 0;
-   |               ^ ...because it contains this associated `const`
-...
-LL |     pub trait C: A + B {
-   |               - this trait is not dyn compatible...
-LL |         const C: u8 = 0;
-   |               ^ ...because it contains this associated `const`
-   = help: consider moving `C` to another trait
-   = help: consider moving `A` to another trait
-   = help: consider moving `B` to another trait
-   = help: only type `S` implements `assoc_const::C`; consider using it directly instead.
-
-error[E0624]: associated constant `A` is private
-  --> $DIR/item-privacy.rs:101:14
-   |
-LL |         const A: u8 = 0;
-   |         ----------- private associated constant defined here
-...
-LL |     <dyn C>::A;
-   |              ^ private associated constant
-
-error[E0038]: the trait `assoc_const::C` is not dyn compatible
-  --> $DIR/item-privacy.rs:101:5
-   |
-LL |     <dyn C>::A;
-   |     ^^^^^^^^^^ `assoc_const::C` is not dyn compatible
+   |          ^ `assoc_const::C` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
@@ -190,10 +156,10 @@ LL |         const C: u8 = 0;
    = help: only type `S` implements `assoc_const::C`; consider using it directly instead.
 
 error[E0038]: the trait `assoc_const::C` is not dyn compatible
-  --> $DIR/item-privacy.rs:105:5
+  --> $DIR/item-privacy.rs:103:10
    |
 LL |     <dyn C>::B;
-   |     ^^^^^^^^^^ `assoc_const::C` is not dyn compatible
+   |          ^ `assoc_const::C` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
@@ -215,7 +181,7 @@ LL |         const C: u8 = 0;
    = help: only type `S` implements `assoc_const::C`; consider using it directly instead.
 
 error[E0223]: ambiguous associated type
-  --> $DIR/item-privacy.rs:118:12
+  --> $DIR/item-privacy.rs:116:12
    |
 LL |     let _: S::A;
    |            ^^^^
@@ -227,7 +193,7 @@ LL +     let _: <S as Example>::A;
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/item-privacy.rs:119:12
+  --> $DIR/item-privacy.rs:117:12
    |
 LL |     let _: S::B;
    |            ^^^^
@@ -239,7 +205,7 @@ LL +     let _: <S as assoc_ty::B>::B;
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/item-privacy.rs:120:12
+  --> $DIR/item-privacy.rs:118:12
    |
 LL |     let _: S::C;
    |            ^^^^
@@ -251,7 +217,7 @@ LL +     let _: <S as assoc_ty::C>::C;
    |
 
 error[E0624]: associated type `A` is private
-  --> $DIR/item-privacy.rs:122:12
+  --> $DIR/item-privacy.rs:120:12
    |
 LL |         type A = u8;
    |         ------ the associated type is defined here
@@ -260,7 +226,7 @@ LL |     let _: T::A;
    |            ^^^^ private associated type
 
 error[E0624]: associated type `A` is private
-  --> $DIR/item-privacy.rs:131:9
+  --> $DIR/item-privacy.rs:129:9
    |
 LL |         type A = u8;
    |         ------ the associated type is defined here
@@ -268,7 +234,7 @@ LL |         type A = u8;
 LL |         A = u8,
    |         ^^^^^^ private associated type
 
-error: aborting due to 17 previous errors
+error: aborting due to 15 previous errors
 
 Some errors have detailed explanations: E0038, E0223, E0599, E0624.
 For more information about an error, try `rustc --explain E0038`.

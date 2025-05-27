@@ -1,8 +1,8 @@
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/span-bug-issue-121597.rs:14:12
+  --> $DIR/span-bug-issue-121597.rs:14:17
    |
 LL |     let x: &dyn Foo = &();
-   |            ^^^^^^^^ `Foo` is not dyn compatible
+   |                 ^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
@@ -13,23 +13,6 @@ LL | trait Foo: for<T> Bar<T> {}
    |       |
    |       this trait is not dyn compatible...
 
-error[E0308]: mismatched types
-  --> $DIR/span-bug-issue-121597.rs:17:15
-   |
-LL |     needs_bar(x);
-   |     --------- ^ types differ in mutability
-   |     |
-   |     arguments to this function are incorrect
-   |
-   = note: expected raw pointer `*mut Type2`
-                found reference `&dyn Foo`
-note: function defined here
-  --> $DIR/span-bug-issue-121597.rs:11:4
-   |
-LL | fn needs_bar(_: *mut Type2) {}
-   |    ^^^^^^^^^ -------------
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0038, E0308.
-For more information about an error, try `rustc --explain E0038`.
+For more information about this error, try `rustc --explain E0038`.

@@ -27,10 +27,10 @@ LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
    |                                       ^^^^ -
 
 error[E0038]: the trait `bar` is not dyn compatible
-  --> $DIR/test-2.rs:13:22
+  --> $DIR/test-2.rs:13:30
    |
 LL |     (Box::new(10) as Box<dyn bar>).dup();
-   |                      ^^^^^^^^^^^^ `bar` is not dyn compatible
+   |                              ^^^ `bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>

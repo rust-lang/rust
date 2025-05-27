@@ -16,10 +16,10 @@ LL |     fn foo(&self) where Self: Trait;
    = help: only type `()` implements `X`; consider using it directly instead.
 
 error[E0038]: the trait `X` is not dyn compatible
-  --> $DIR/issue-50781.rs:16:6
+  --> $DIR/issue-50781.rs:16:10
    |
 LL |     <dyn X as X>::foo(&());
-   |      ^^^^^ `X` is not dyn compatible
+   |          ^ `X` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>

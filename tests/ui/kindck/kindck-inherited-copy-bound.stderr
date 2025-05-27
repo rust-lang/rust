@@ -20,10 +20,10 @@ LL | fn take_param<T:Foo>(foo: &T) { }
    |                 ^^^ required by this bound in `take_param`
 
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/kindck-inherited-copy-bound.rs:23:19
+  --> $DIR/kindck-inherited-copy-bound.rs:23:24
    |
 LL |     let z = &x as &dyn Foo;
-   |                   ^^^^^^^^ `Foo` is not dyn compatible
+   |                        ^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
