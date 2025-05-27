@@ -329,16 +329,18 @@ pub unsafe fn asrtgt(a: i64, b: i64) {
 
 /// Loads the page table directory entry
 #[inline]
+#[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lddir(a: i64, b: i64) -> i64 {
-    __lddir(a, b)
+pub unsafe fn lddir<const B: i64>(a: i64) -> i64 {
+    __lddir(a, B)
 }
 
 /// Loads the page table entry
 #[inline]
+#[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn ldpte(a: i64, b: i64) {
-    __ldpte(a, b)
+pub unsafe fn ldpte<const B: i64>(a: i64) {
+    __ldpte(a, B)
 }
 
 /// Calculate the approximate single-precision result of 1.0 divided
