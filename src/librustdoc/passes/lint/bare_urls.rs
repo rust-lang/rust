@@ -18,7 +18,8 @@ use crate::html::markdown::main_body_opts;
 
 pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &str) {
     let report_diag = |cx: &DocContext<'_>, msg: &'static str, range: Range<usize>| {
-        let maybe_sp = source_span_for_markdown_range(cx.tcx, dox, &range, &item.attrs.doc_strings);
+        let maybe_sp = source_span_for_markdown_range(cx.tcx, dox, &range, &item.attrs.doc_strings)
+            .map(|(sp, _)| sp);
         let sp = maybe_sp.unwrap_or_else(|| item.attr_span(cx.tcx));
         cx.tcx.node_span_lint(crate::lint::BARE_URLS, hir_id, sp, |lint| {
             lint.primary_message(msg)
