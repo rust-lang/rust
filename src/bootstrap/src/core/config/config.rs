@@ -45,7 +45,7 @@ use crate::utils::helpers::{self, exe, output, t};
 /// final output/compiler, which can be significantly affected by changes made to the bootstrap sources.
 #[rustfmt::skip] // We don't want rustfmt to oneline this list
 pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
-    "!library",
+    ":!library",
     ":!src/tools",
     ":!src/librustdoc",
     ":!src/rustdoc-json-types",
