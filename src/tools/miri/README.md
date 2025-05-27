@@ -419,6 +419,11 @@ to Miri failing to detect cases of undefined behavior in a program.
   Finally, the flag is **unsound** in the sense that Miri stops tracking details such as
   initialization and provenance on memory shared with native code, so it is easily possible to write
   code that has UB which is missed by Miri.
+* `-Zmiri-force-old-native-lib-mode` disables the WIP improved native code access tracking. If for
+  whatever reason enabling native calls leads to odd behaviours or causes Miri to panic, disabling
+  the tracer *might* fix this. This will likely be removed once the tracer has been adequately
+  battle-tested. Note that this flag is only meaningful on Linux systems; other Unixes (currently)
+  exclusively use the old native-lib code.
 * `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
    This can be used to find which parts of your program are executing slowly under Miri.
    The profile is written out to a file inside a directory called `<name>`, and can be processed
