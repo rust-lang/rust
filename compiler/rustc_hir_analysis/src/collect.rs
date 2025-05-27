@@ -414,10 +414,14 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                             // because it allows `impl<T> Foo<T>` to unify with `Foo<u8>::IAT`, while also disallowing
                             // `Foo<T>::IAT` from unifying with `impl Foo<u8>`.
                             //
-                            // We don't really care about a depth limit here because we're only working with user-written types
-                            // and if they wrote a type that would take hours to walk then that's kind of on them. On the other
-                            // hand the default depth limit is relatively low and could realistically be hit by users in normal
-                            // cases.
+                            // We don't really care about a depth limit here because we're only working with user-written
+                            // types and if they wrote a type that would take hours to walk then that's kind of on them. On
+                            // the other hand the default depth limit is relatively low and could realistically be hit by
+                            // users in normal cases.
+                            //
+                            // `DeepRejectCtxt` leads to slightly worse IAT resolution than real type equality in cases
+                            // where the `impl_ty` has repeated uses of generic parameters. E.g. `impl<T> Foo<T, T>` would
+                            // be considered a valid candidate when resolving `Foo<u8, u16>::IAT`.
                             ty::DeepRejectCtxt::relate_rigid_infer(self.tcx)
                                 .types_may_unify_with_depth(self_ty, impl_ty, usize::MAX)
                         })
