@@ -161,15 +161,26 @@ fn check_inline_or_reference_unknown_redundancy(
 
     if dest_res == display_res {
         let link_span =
-            source_span_for_markdown_range(cx.tcx, doc, &link_range, &item.attrs.doc_strings)
-                .unwrap_or(item.attr_span(cx.tcx));
-        let explicit_span = source_span_for_markdown_range(
+            match source_span_for_markdown_range(cx.tcx, doc, &link_range, &item.attrs.doc_strings)
+            {
+                Some((sp, from_expansion)) => {
+                    if from_expansion {
+                        return None;
+                    }
+                    sp
+                }
+                None => item.attr_span(cx.tcx),
+            };
+        let (explicit_span, from_expansion) = source_span_for_markdown_range(
             cx.tcx,
             doc,
             &offset_explicit_range(doc, link_range, open, close),
             &item.attrs.doc_strings,
         )?;
-        let display_span = source_span_for_markdown_range(
+        if from_expansion {
+            return None;
+        }
+        let (display_span, _) = source_span_for_markdown_range(
             cx.tcx,
             doc,
             resolvable_link_range,
@@ -206,21 +217,32 @@ fn check_reference_redundancy(
 
     if dest_res == display_res {
         let link_span =
-            source_span_for_markdown_range(cx.tcx, doc, &link_range, &item.attrs.doc_strings)
-                .unwrap_or(item.attr_span(cx.tcx));
-        let explicit_span = source_span_for_markdown_range(
+            match source_span_for_markdown_range(cx.tcx, doc, &link_range, &item.attrs.doc_strings)
+            {
+                Some((sp, from_expansion)) => {
+                    if from_expansion {
+                        return None;
+                    }
+                    sp
+                }
+                None => item.attr_span(cx.tcx),
+            };
+        let (explicit_span, from_expansion) = source_span_for_markdown_range(
             cx.tcx,
             doc,
             &offset_explicit_range(doc, link_range.clone(), b'[', b']'),
             &item.attrs.doc_strings,
         )?;
-        let display_span = source_span_for_markdown_range(
+        if from_expansion {
+            return None;
+        }
+        let (display_span, _) = source_span_for_markdown_range(
             cx.tcx,
             doc,
             resolvable_link_range,
             &item.attrs.doc_strings,
         )?;
-        let def_span = source_span_for_markdown_range(
+        let (def_span, _) = source_span_for_markdown_range(
             cx.tcx,
             doc,
             &offset_reference_def_range(doc, dest, link_range),
