@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::{join_path_idents, token};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{
     DummyResult, ExpandResult, ExtCtxt, MacEager, MacResult, MacroExpanderResult, resolve_path,
@@ -100,7 +100,7 @@ pub(crate) fn expand_mod(
     let sp = cx.with_def_site_ctxt(sp);
     check_zero_tts(cx, sp, tts, "module_path!");
     let mod_path = &cx.current_expansion.module.mod_path;
-    let string = mod_path.iter().map(|x| x.to_string()).collect::<Vec<String>>().join("::");
+    let string = join_path_idents(mod_path);
 
     ExpandResult::Ready(MacEager::expr(cx.expr_str(sp, Symbol::intern(&string))))
 }

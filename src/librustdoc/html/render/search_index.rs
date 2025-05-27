@@ -4,6 +4,7 @@ use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, VecDeque};
 
 use encode::{bitmap_to_string, write_vlqhex_to_string};
+use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
@@ -17,7 +18,6 @@ use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
 use crate::clean::{self, utils};
 use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
-use crate::html::format::join_with_double_colon;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::ordered_json::OrderedJson;
 use crate::html::render::{self, IndexItem, IndexItemFunctionType, RenderType, RenderTypeId};
@@ -78,7 +78,7 @@ pub(crate) fn build_index(
                 ty: item.type_(),
                 defid: item.item_id.as_def_id(),
                 name: item.name.unwrap(),
-                path: join_with_double_colon(&fqp[..fqp.len() - 1]),
+                path: join_path_syms(&fqp[..fqp.len() - 1]),
                 desc,
                 parent: Some(parent),
                 parent_idx: None,
@@ -416,7 +416,7 @@ pub(crate) fn build_index(
                             if fqp.len() < 2 {
                                 return None;
                             }
-                            join_with_double_colon(&fqp[..fqp.len() - 1])
+                            join_path_syms(&fqp[..fqp.len() - 1])
                         };
                     if path == item.path {
                         return None;
@@ -427,10 +427,10 @@ pub(crate) fn build_index(
                 let i = <isize as TryInto<usize>>::try_into(parent_idx).unwrap();
                 item.path = {
                     let p = &crate_paths[i].1;
-                    join_with_double_colon(&p[..p.len() - 1])
+                    join_path_syms(&p[..p.len() - 1])
                 };
                 item.exact_path =
-                    crate_paths[i].2.as_ref().map(|xp| join_with_double_colon(&xp[..xp.len() - 1]));
+                    crate_paths[i].2.as_ref().map(|xp| join_path_syms(&xp[..xp.len() - 1]));
             }
 
             // Omit the parent path if it is same to that of the prior item.
@@ -549,11 +549,11 @@ pub(crate) fn build_index(
                     });
                     continue;
                 }
-                let full_path = join_with_double_colon(&path[..path.len() - 1]);
+                let full_path = join_path_syms(&path[..path.len() - 1]);
                 let full_exact_path = exact
                     .as_ref()
                     .filter(|exact| exact.last() == path.last() && exact.len() >= 2)
-                    .map(|exact| join_with_double_colon(&exact[..exact.len() - 1]));
+                    .map(|exact| join_path_syms(&exact[..exact.len() - 1]));
                 let exact_path = extra_paths.len() + self.items.len();
                 let exact_path = full_exact_path.as_ref().map(|full_exact_path| match extra_paths
                     .entry(full_exact_path.clone())

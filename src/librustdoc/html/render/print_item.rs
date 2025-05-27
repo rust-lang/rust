@@ -4,6 +4,7 @@ use std::iter;
 
 use askama::Template;
 use rustc_abi::VariantIdx;
+use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -30,8 +31,8 @@ use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyTextWithWbr};
 use crate::html::format::{
-    Ending, PrintWithSpace, join_with_double_colon, print_abi_with_space,
-    print_constness_with_space, print_where_clause, visibility_print_with_space,
+    Ending, PrintWithSpace, print_abi_with_space, print_constness_with_space, print_where_clause,
+    visibility_print_with_space,
 };
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
@@ -1424,7 +1425,7 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
                 iter::repeat_n("..", cx.current.len()).chain(iter::once("type.impl")).collect();
             js_src_path.extend(target_fqp[..target_fqp.len() - 1].iter().copied());
             js_src_path.push_fmt(format_args!("{target_type}.{}.js", target_fqp.last().unwrap()));
-            let self_path = fmt::from_fn(|f| self_fqp.iter().joined("::", f));
+            let self_path = join_path_syms(self_fqp);
             write!(
                 w,
                 "<script src=\"{src}\" data-self-path=\"{self_path}\" async></script>",
@@ -2256,7 +2257,7 @@ pub(crate) fn compare_names(left: &str, right: &str) -> Ordering {
 }
 
 pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
-    let mut s = join_with_double_colon(&cx.current);
+    let mut s = join_path_syms(&cx.current);
     s.push_str("::");
     s.push_str(item.name.unwrap().as_str());
     s
