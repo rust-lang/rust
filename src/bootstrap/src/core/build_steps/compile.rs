@@ -626,18 +626,18 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
 
         // Help the libc crate compile by assisting it in finding various
         // sysroot native libraries.
-        if target.contains("musl") {
-            if let Some(p) = builder.musl_libdir(target) {
-                let root = format!("native={}", p.to_str().unwrap());
-                cargo.rustflag("-L").rustflag(&root);
-            }
+        if target.contains("musl")
+            && let Some(p) = builder.musl_libdir(target)
+        {
+            let root = format!("native={}", p.to_str().unwrap());
+            cargo.rustflag("-L").rustflag(&root);
         }
 
-        if target.contains("-wasi") {
-            if let Some(dir) = builder.wasi_libdir(target) {
-                let root = format!("native={}", dir.to_str().unwrap());
-                cargo.rustflag("-L").rustflag(&root);
-            }
+        if target.contains("-wasi")
+            && let Some(dir) = builder.wasi_libdir(target)
+        {
+            let root = format!("native={}", dir.to_str().unwrap());
+            cargo.rustflag("-L").rustflag(&root);
         }
     }
 
@@ -1391,12 +1391,13 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     // found. This is to avoid the linker errors about undefined references to
     // `__llvm_profile_instrument_memop` when linking `rustc_driver`.
     let mut llvm_linker_flags = String::new();
-    if builder.config.llvm_profile_generate && target.is_msvc() {
-        if let Some(ref clang_cl_path) = builder.config.llvm_clang_cl {
-            // Add clang's runtime library directory to the search path
-            let clang_rt_dir = get_clang_cl_resource_dir(builder, clang_cl_path);
-            llvm_linker_flags.push_str(&format!("-L{}", clang_rt_dir.display()));
-        }
+    if builder.config.llvm_profile_generate
+        && target.is_msvc()
+        && let Some(ref clang_cl_path) = builder.config.llvm_clang_cl
+    {
+        // Add clang's runtime library directory to the search path
+        let clang_rt_dir = get_clang_cl_resource_dir(builder, clang_cl_path);
+        llvm_linker_flags.push_str(&format!("-L{}", clang_rt_dir.display()));
     }
 
     // The config can also specify its own llvm linker flags.

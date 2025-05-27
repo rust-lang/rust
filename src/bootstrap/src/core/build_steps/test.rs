@@ -2417,10 +2417,10 @@ impl Step for ErrorIndex {
 }
 
 fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> bool {
-    if let Ok(contents) = fs::read_to_string(markdown) {
-        if !contents.contains("```") {
-            return true;
-        }
+    if let Ok(contents) = fs::read_to_string(markdown)
+        && !contents.contains("```")
+    {
+        return true;
     }
 
     builder.verbose(|| println!("doc tests for: {}", markdown.display()));

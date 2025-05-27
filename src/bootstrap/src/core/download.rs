@@ -709,10 +709,10 @@ download-rustc = false
 ";
         }
         self.download_file(&format!("{base_url}/{url}"), &tarball, help_on_error);
-        if let Some(sha256) = checksum {
-            if !self.verify(&tarball, sha256) {
-                panic!("failed to verify {}", tarball.display());
-            }
+        if let Some(sha256) = checksum
+            && !self.verify(&tarball, sha256)
+        {
+            panic!("failed to verify {}", tarball.display());
         }
 
         self.unpack(&tarball, &bin_root, prefix);

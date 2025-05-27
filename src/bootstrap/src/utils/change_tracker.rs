@@ -46,10 +46,10 @@ pub fn find_recent_config_change_ids(current_id: usize) -> &'static [ChangeInfo]
         // an empty list (it may be due to switching from a recent branch to an
         // older one); otherwise, return the full list (assuming the user provided
         // the incorrect change-id by accident).
-        if let Some(config) = CONFIG_CHANGE_HISTORY.iter().max_by_key(|config| config.change_id) {
-            if current_id > config.change_id {
-                return &[];
-            }
+        if let Some(config) = CONFIG_CHANGE_HISTORY.iter().max_by_key(|config| config.change_id)
+            && current_id > config.change_id
+        {
+            return &[];
         }
 
         CONFIG_CHANGE_HISTORY
