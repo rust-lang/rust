@@ -1,5 +1,6 @@
 use std::alloc::Layout;
 
+use nix::sys::mman;
 use rustc_index::bit_set::DenseBitSet;
 
 /// How many bytes of memory each bit in the bitset represents.
@@ -304,12 +305,53 @@ impl IsolatedAlloc {
     pub fn pages(&self) -> Vec<usize> {
         let mut pages: Vec<_> =
             self.page_ptrs.clone().into_iter().map(|p| p.expose_provenance()).collect();
-        for (ptr, size) in &self.huge_ptrs {
+        self.huge_ptrs.iter().for_each(|(ptr, size)| {
             for i in 0..size / self.page_size {
                 pages.push(ptr.expose_provenance().strict_add(i * self.page_size));
             }
-        }
+        });
         pages
+    }
+
+    /// Protects all owned memory as `PROT_NONE`, preventing accesses.
+    ///
+    /// SAFETY: Accessing memory after this point will result in a segfault
+    /// unless it is first unprotected.
+    pub unsafe fn prepare_ffi(&mut self) -> Result<(), nix::errno::Errno> {
+        let prot = mman::ProtFlags::PROT_NONE;
+        unsafe { self.mprotect(prot) }
+    }
+
+    /// Deprotects all owned memory by setting it to RW. Erroring here is very
+    /// likely unrecoverable, so it may panic if applying those permissions
+    /// fails.
+    pub fn unprep_ffi(&mut self) {
+        let prot = mman::ProtFlags::PROT_READ | mman::ProtFlags::PROT_WRITE;
+        unsafe {
+            self.mprotect(prot).unwrap();
+        }
+    }
+
+    /// Applies `prot` to every page managed by the allocator.
+    ///
+    /// SAFETY: Accessing memory in violation of the protection flags will
+    /// trigger a segfault.
+    unsafe fn mprotect(&mut self, prot: mman::ProtFlags) -> Result<(), nix::errno::Errno> {
+        for &pg in &self.page_ptrs {
+            unsafe {
+                // We already know only non-null ptrs are pushed to self.pages
+                let addr: std::ptr::NonNull<std::ffi::c_void> =
+                    std::ptr::NonNull::new_unchecked(pg.cast());
+                mman::mprotect(addr, self.page_size, prot)?;
+            }
+        }
+        for &(hpg, size) in &self.huge_ptrs {
+            unsafe {
+                let addr = std::ptr::NonNull::new_unchecked(hpg.cast());
+                mman::mprotect(addr, size.next_multiple_of(self.page_size), prot)?;
+            }
+        }
+        Ok(())
     }
 }
 

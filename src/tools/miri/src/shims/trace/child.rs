@@ -52,30 +52,40 @@ impl Supervisor {
         // If the supervisor is not initialised for whatever reason, fast-fail.
         // This might be desired behaviour, as even on platforms where ptracing
         // is not implemented it enables us to enforce that only one FFI call
-        // happens at a time
+        // happens at a time.
         let Some(sv) = sv_guard.take() else {
             return (sv_guard, None);
         };
 
         // Get pointers to all the pages the supervisor must allow accesses in
-        // and prepare the fake stack
+        // and prepare the fake stack.
         let page_ptrs = alloc.borrow().pages();
         let raw_stack_ptr: *mut [u8; FAKE_STACK_SIZE] =
             Box::leak(Box::new([0u8; FAKE_STACK_SIZE])).as_mut_ptr().cast();
         let stack_ptr = raw_stack_ptr.expose_provenance();
         let start_info = StartFfiInfo { page_ptrs, stack_ptr };
 
+        // SAFETY: We do not access machine memory past this point until the
+        // supervisor is ready to allow it.
+        unsafe {
+            if alloc.borrow_mut().prepare_ffi().is_err() {
+                // Don't mess up unwinding by maybe leaving the memory partly protected
+                alloc.borrow_mut().unprep_ffi();
+                panic!("Cannot protect memory for FFI call!");
+            }
+        }
+
         // Send over the info.
         // NB: if we do not wait to receive a blank confirmation response, it is
         // possible that the supervisor is alerted of the SIGSTOP *before* it has
         // actually received the start_info, thus deadlocking! This way, we can
-        // enforce an ordering for these events
+        // enforce an ordering for these events.
         sv.message_tx.send(TraceRequest::StartFfi(start_info)).unwrap();
         sv.confirm_rx.recv().unwrap();
         *sv_guard = Some(sv);
         // We need to be stopped for the supervisor to be able to make certain
         // modifications to our memory - simply waiting on the recv() doesn't
-        // count
+        // count.
         signal::raise(signal::SIGSTOP).unwrap();
         (sv_guard, Some(raw_stack_ptr))
     }
@@ -90,7 +100,7 @@ impl Supervisor {
     /// one passed to it also.
     pub unsafe fn end_ffi(
         mut sv_guard: std::sync::MutexGuard<'static, Option<Supervisor>>,
-        _alloc: Rc<RefCell<IsolatedAlloc>>,
+        alloc: Rc<RefCell<IsolatedAlloc>>,
         raw_stack_ptr: Option<*mut [u8; FAKE_STACK_SIZE]>,
     ) -> Option<MemEvents> {
         // We can't use IPC channels here to signal that FFI mode has ended,
@@ -99,19 +109,22 @@ impl Supervisor {
         // simpler and more robust to simply use the signals which are left for
         // arbitrary usage. Since this will block until we are continued by the
         // supervisor, we can assume past this point that everything is back to
-        // normal
+        // normal.
         signal::raise(signal::SIGUSR1).unwrap();
+
+        // This is safe! It just sets memory to normal expected permissions.
+        alloc.borrow_mut().unprep_ffi();
 
         // If this is `None`, then `raw_stack_ptr` is None and does not need to
         // be deallocated (and there's no need to worry about the guard, since
-        // it contains nothing)
+        // it contains nothing).
         let sv = sv_guard.take()?;
         // SAFETY: Caller upholds that this pointer was allocated as a box with
-        // this type
+        // this type.
         unsafe {
             drop(Box::from_raw(raw_stack_ptr.unwrap()));
         }
-        // On the off-chance something really weird happens, don't block forever
+        // On the off-chance something really weird happens, don't block forever.
         let ret = sv
             .event_rx
             .try_recv_timeout(std::time::Duration::from_secs(5))
@@ -138,33 +151,34 @@ impl Supervisor {
 /// The invariants for `fork()` must be upheld by the caller.
 pub unsafe fn init_sv() -> Result<(), SvInitError> {
     // FIXME: Much of this could be reimplemented via the mitosis crate if we upstream the
-    // relevant missing bits
+    // relevant missing bits.
 
     // On Linux, this will check whether ptrace is fully disabled by the Yama module.
     // If Yama isn't running or we're not on Linux, we'll still error later, but
-    // this saves a very expensive fork call
+    // this saves a very expensive fork call.
     let ptrace_status = std::fs::read_to_string("/proc/sys/kernel/yama/ptrace_scope");
     if let Ok(stat) = ptrace_status {
         if let Some(stat) = stat.chars().next() {
-            // Fast-error if ptrace is fully disabled on the system
+            // Fast-error if ptrace is fully disabled on the system.
             if stat == '3' {
                 return Err(SvInitError);
             }
         }
     }
 
-    // Initialise the supervisor if it isn't already, placing it into SUPERVISOR
+    // Initialise the supervisor if it isn't already, placing it into SUPERVISOR.
     let mut lock = SUPERVISOR.lock().unwrap();
     if lock.is_some() {
         return Ok(());
     }
 
-    // Prepare the IPC channels we need
+    // Prepare the IPC channels we need.
     let (message_tx, message_rx) = ipc::channel().unwrap();
     let (confirm_tx, confirm_rx) = ipc::channel().unwrap();
     let (event_tx, event_rx) = ipc::channel().unwrap();
-    // SAFETY: Calling sysconf(_SC_PAGESIZE) is always safe and cannot error
+    // SAFETY: Calling sysconf(_SC_PAGESIZE) is always safe and cannot error.
     let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) }.try_into().unwrap();
+    super::parent::PAGE_SIZE.store(page_size, std::sync::atomic::Ordering::Relaxed);
 
     unsafe {
         // TODO: Maybe use clone3() instead for better signalling of when the child exits?
@@ -172,37 +186,36 @@ pub unsafe fn init_sv() -> Result<(), SvInitError> {
         match unistd::fork().unwrap() {
             unistd::ForkResult::Parent { child } => {
                 // If somehow another thread does exist, prevent it from accessing the lock
-                // and thus breaking our safety invariants
+                // and thus breaking our safety invariants.
                 std::mem::forget(lock);
                 // The child process is free to unwind, so we won't to avoid doubly freeing
-                // system resources
+                // system resources.
                 let init = std::panic::catch_unwind(|| {
                     let listener =
                         ChildListener { message_rx, attached: false, override_retcode: None };
-                    // Trace as many things as possible, to be able to handle them as needed
+                    // Trace as many things as possible, to be able to handle them as needed.
                     let options = ptrace::Options::PTRACE_O_TRACESYSGOOD
                         | ptrace::Options::PTRACE_O_TRACECLONE
                         | ptrace::Options::PTRACE_O_TRACEFORK;
-                    // Attach to the child process without stopping it
+                    // Attach to the child process without stopping it.
                     match ptrace::seize(child, options) {
                         // Ptrace works :D
                         Ok(_) => {
-                            let code = sv_loop(listener, child, event_tx, confirm_tx, page_size)
-                                .unwrap_err();
+                            let code = sv_loop(listener, child, event_tx, confirm_tx).unwrap_err();
                             // If a return code of 0 is not explicitly given, assume something went
-                            // wrong and return 1
+                            // wrong and return 1.
                             std::process::exit(code.unwrap_or(1))
                         }
-                        // Ptrace does not work and we failed to catch that
+                        // Ptrace does not work and we failed to catch that.
                         Err(_) => {
-                            // If we can't ptrace, Miri continues being the parent
+                            // If we can't ptrace, Miri continues being the parent.
                             signal::kill(child, signal::SIGKILL).unwrap();
                             SvInitError
                         }
                     }
                 });
                 match init {
-                    // The "Ok" case means that we couldn't ptrace
+                    // The "Ok" case means that we couldn't ptrace.
                     Ok(e) => return Err(e),
                     Err(p) => {
                         eprintln!("Supervisor process panicked!\n{p:?}");
@@ -212,12 +225,12 @@ pub unsafe fn init_sv() -> Result<(), SvInitError> {
             }
             unistd::ForkResult::Child => {
                 // Make sure we never get orphaned and stuck in SIGSTOP or similar
-                // SAFETY: prctl PR_SET_PDEATHSIG is always safe to call
+                // SAFETY: prctl PR_SET_PDEATHSIG is always safe to call.
                 let ret = libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
                 assert_eq!(ret, 0);
                 // First make sure the parent succeeded with ptracing us!
                 signal::raise(signal::SIGSTOP).unwrap();
-                // If we're the child process, save the supervisor info
+                // If we're the child process, save the supervisor info.
                 *lock = Some(Supervisor { message_tx, confirm_rx, event_rx });
             }
         }
