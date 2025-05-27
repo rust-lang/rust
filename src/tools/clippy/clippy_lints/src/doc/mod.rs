@@ -731,7 +731,7 @@ struct Fragments<'a> {
 
 impl Fragments<'_> {
     fn span(self, cx: &LateContext<'_>, range: Range<usize>) -> Option<Span> {
-        source_span_for_markdown_range(cx.tcx, self.doc, &range, self.fragments)
+        source_span_for_markdown_range(cx.tcx, self.doc, &range, self.fragments).map(|(sp, _)| sp)
     }
 }
 
