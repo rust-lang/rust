@@ -10,7 +10,7 @@ set -ex
 #export RUST_TEST_NOCAPTURE=1
 #export RUST_TEST_THREADS=1
 
-export RUSTFLAGS="${RUSTFLAGS} -D warnings -Z merge-functions=disabled "
+export RUSTFLAGS="${RUSTFLAGS} -D warnings -Z merge-functions=disabled -Z verify-llvm-ir"
 export HOST_RUSTFLAGS="${RUSTFLAGS}"
 export PROFILE="${PROFILE:="--profile=release"}"
 

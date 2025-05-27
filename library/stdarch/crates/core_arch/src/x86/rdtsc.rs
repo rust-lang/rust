@@ -46,15 +46,17 @@ pub unsafe fn _rdtsc() -> u64 {
 #[cfg_attr(test, assert_instr(rdtscp))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn __rdtscp(aux: *mut u32) -> u64 {
-    rdtscp(aux as *mut _)
+    let (tsc, auxval) = rdtscp();
+    *aux = auxval;
+    tsc
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.rdtsc"]
     fn rdtsc() -> u64;
     #[link_name = "llvm.x86.rdtscp"]
-    fn rdtscp(aux: *mut u8) -> u64;
+    fn rdtscp() -> (u64, u32);
 }
 
 #[cfg(test)]
