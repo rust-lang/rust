@@ -611,7 +611,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         if !infer_args && has_default {
                             // No type parameter provided, but a default exists.
                             if let Some(prev) =
-                                preceding_args.iter().find_map(|arg| match arg.unpack() {
+                                preceding_args.iter().find_map(|arg| match arg.kind() {
                                     GenericArgKind::Type(ty) => ty.error_reported().err(),
                                     _ => None,
                                 })

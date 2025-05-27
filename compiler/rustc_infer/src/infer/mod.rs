@@ -1372,7 +1372,7 @@ impl<'tcx> TyOrConstInferVar {
     /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
     pub fn maybe_from_generic_arg(arg: GenericArg<'tcx>) -> Option<Self> {
-        match arg.unpack() {
+        match arg.kind() {
             GenericArgKind::Type(ty) => Self::maybe_from_ty(ty),
             GenericArgKind::Const(ct) => Self::maybe_from_const(ct),
             GenericArgKind::Lifetime(_) => None,
@@ -1383,7 +1383,7 @@ impl<'tcx> TyOrConstInferVar {
     /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
     pub fn maybe_from_term(term: Term<'tcx>) -> Option<Self> {
-        match term.unpack() {
+        match term.kind() {
             TermKind::Ty(ty) => Self::maybe_from_ty(ty),
             TermKind::Const(ct) => Self::maybe_from_const(ct),
         }

@@ -108,7 +108,7 @@ fn find_match_true<'tcx>(
 fn try_get_generic_ty(ty: Ty<'_>, index: usize) -> Option<Ty<'_>> {
     if let ty::Adt(_, subs) = ty.kind()
         && let Some(sub) = subs.get(index)
-        && let GenericArgKind::Type(sub_ty) = sub.unpack()
+        && let GenericArgKind::Type(sub_ty) = sub.kind()
     {
         Some(sub_ty)
     } else {

@@ -345,7 +345,7 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
     if ty_adt.repr().packed()
         && ty_subs
             .iter()
-            .any(|arg| matches!(arg.unpack(), GenericArgKind::Type(_) | GenericArgKind::Const(_)))
+            .any(|arg| matches!(arg.kind(), GenericArgKind::Type(_) | GenericArgKind::Const(_)))
     {
         return;
     }
