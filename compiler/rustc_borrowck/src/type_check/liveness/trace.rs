@@ -7,10 +7,10 @@ use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, HasLocalDecls, Loc
 use rustc_middle::traits::query::DropckOutlivesResult;
 use rustc_middle::ty::relate::Relate;
 use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
-use rustc_mir_dataflow::ResultsCursor;
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -37,15 +37,17 @@ use crate::type_check::{NormalizeLocation, TypeChecker};
 /// DROP-LIVE set are to the liveness sets for regions found in the
 /// `dropck_outlives` result of the variable's type (in particular,
 /// this respects `#[may_dangle]` annotations).
-pub(super) fn trace<'a, 'tcx>(
+pub(super) fn trace<'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     location_map: &DenseLocationMap,
-    flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     relevant_live_locals: Vec<Local>,
     boring_locals: Vec<Local>,
 ) {
     let local_use_map = &LocalUseMap::build(&relevant_live_locals, location_map, typeck.body);
+    let flow_inits = MaybeInitializedPlaces::new(typeck.tcx(), typeck.body, move_data)
+        .iterate_to_fixpoint(typeck.tcx(), typeck.body, Some("borrowck"))
+        .into_results_cursor(typeck.body);
     let cx = LivenessContext {
         typeck,
         flow_inits,
