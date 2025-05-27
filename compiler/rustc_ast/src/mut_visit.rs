@@ -40,12 +40,6 @@ pub trait MutVisitor: Sized {
     //   fn flat_map_t(&mut self, t: T) -> SmallVec<[T; 1]>;    // rare
     //   fn filter_map_t(&mut self, t: T) -> Option<T>;         // rarest
     //
-    // Any additions to this trait should happen in form of a call to a public
-    // `noop_*` function that only calls out to the visitor again, not other
-    // `noop_*` functions. This is a necessary API workaround to the problem of
-    // not being able to call out to the super default method in an overridden
-    // default method.
-    //
     // When writing these methods, it is better to use destructuring like this:
     //
     //   fn visit_abc(&mut self, ABC { a, b, c: _ }: &mut ABC) {
@@ -179,7 +173,7 @@ pub trait MutVisitor: Sized {
     }
 
     fn filter_map_expr(&mut self, e: P<Expr>) -> Option<P<Expr>> {
-        noop_filter_map_expr(self, e)
+        walk_filter_map_expr(self, e)
     }
 
     fn visit_generic_arg(&mut self, arg: &mut GenericArg) {
@@ -381,14 +375,11 @@ super::common_visitor_and_walkers!((mut) MutVisitor);
 /// Use a map-style function (`FnOnce(T) -> T`) to overwrite a `&mut T`. Useful
 /// when using a `flat_map_*` or `filter_map_*` method within a `visit_`
 /// method.
-//
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_clobber<T: DummyAstNode>(t: &mut T, f: impl FnOnce(T) -> T) {
     let old_t = std::mem::replace(t, T::dummy());
     *t = f(old_t);
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 #[inline]
 fn visit_vec<T, F>(elems: &mut Vec<T>, mut visit_elem: F)
 where
@@ -399,7 +390,6 @@ where
     }
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 #[inline]
 fn visit_thin_vec<T, F>(elems: &mut ThinVec<T>, mut visit_elem: F)
 where
@@ -410,7 +400,6 @@ where
     }
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 #[inline]
 fn visit_opt<T, F>(opt: &mut Option<T>, mut visit_elem: F)
 where
@@ -421,25 +410,21 @@ where
     }
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 fn visit_attrs<T: MutVisitor>(vis: &mut T, attrs: &mut AttrVec) {
     for attr in attrs.iter_mut() {
         vis.visit_attribute(attr);
     }
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 #[allow(unused)]
 fn visit_exprs<T: MutVisitor>(vis: &mut T, exprs: &mut Vec<P<Expr>>) {
     exprs.flat_map_in_place(|expr| vis.filter_map_expr(expr))
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 fn visit_thin_exprs<T: MutVisitor>(vis: &mut T, exprs: &mut ThinVec<P<Expr>>) {
     exprs.flat_map_in_place(|expr| vis.filter_map_expr(expr))
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 fn visit_attr_args<T: MutVisitor>(vis: &mut T, args: &mut AttrArgs) {
     match args {
         AttrArgs::Empty => {}
@@ -451,7 +436,6 @@ fn visit_attr_args<T: MutVisitor>(vis: &mut T, args: &mut AttrArgs) {
     }
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 fn visit_delim_args<T: MutVisitor>(vis: &mut T, args: &mut DelimArgs) {
     let DelimArgs { dspan, delim: _, tokens: _ } = args;
     let DelimSpan { open, close } = dspan;
@@ -1500,11 +1484,9 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
     vis.visit_span(span);
 }
 
-pub fn noop_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: P<Expr>) -> Option<P<Expr>> {
-    Some({
-        vis.visit_expr(&mut e);
-        e
-    })
+pub fn walk_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: P<Expr>) -> Option<P<Expr>> {
+    vis.visit_expr(&mut e);
+    Some(e)
 }
 
 pub fn walk_flat_map_stmt<T: MutVisitor>(
