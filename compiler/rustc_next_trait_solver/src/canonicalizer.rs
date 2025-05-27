@@ -94,8 +94,8 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         } else {
             value
         };
-        assert!(!value.has_infer(), "unexpected infer in {value:?}");
-        assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
+        debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
+        debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
         let (max_universe, variables) = canonicalizer.finalize();
         Canonical { max_universe, variables, value }
     }
@@ -173,8 +173,8 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
         let value = QueryInput { goal, predefined_opaques_in_body };
 
-        assert!(!value.has_infer(), "unexpected infer in {value:?}");
-        assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
+        debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
+        debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
         let (max_universe, variables) = rest_canonicalizer.finalize();
         Canonical { max_universe, variables, value }
     }
@@ -337,7 +337,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     first_region = false;
                     curr_compressed_uv = curr_compressed_uv.next_universe();
                 }
-                assert!(var.is_existential());
+                debug_assert!(var.is_existential());
                 *var = var.with_updated_universe(curr_compressed_uv);
             }
         }
@@ -350,7 +350,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let kind = match t.kind() {
             ty::Infer(i) => match i {
                 ty::TyVar(vid) => {
-                    assert_eq!(
+                    debug_assert_eq!(
                         self.delegate.opportunistic_resolve_ty_var(vid),
                         t,
                         "ty vid should have been resolved fully before canonicalization"
@@ -363,7 +363,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     ))
                 }
                 ty::IntVar(vid) => {
-                    assert_eq!(
+                    debug_assert_eq!(
                         self.delegate.opportunistic_resolve_int_var(vid),
                         t,
                         "ty vid should have been resolved fully before canonicalization"
@@ -371,7 +371,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     CanonicalVarKind::Ty(CanonicalTyVarKind::Int)
                 }
                 ty::FloatVar(vid) => {
-                    assert_eq!(
+                    debug_assert_eq!(
                         self.delegate.opportunistic_resolve_float_var(vid),
                         t,
                         "ty vid should have been resolved fully before canonicalization"
@@ -496,7 +496,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             },
 
             ty::ReVar(vid) => {
-                assert_eq!(
+                debug_assert_eq!(
                     self.delegate.opportunistic_resolve_lt_var(vid),
                     r,
                     "region vid should have been resolved fully before canonicalization"
@@ -522,7 +522,8 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             ty
         } else {
             let res = self.cached_fold_ty(t);
-            assert!(self.cache.insert((self.binder_index, t), res).is_none());
+            let old = self.cache.insert((self.binder_index, t), res);
+            assert_eq!(old, None);
             res
         }
     }
@@ -531,7 +532,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
         let kind = match c.kind() {
             ty::ConstKind::Infer(i) => match i {
                 ty::InferConst::Var(vid) => {
-                    assert_eq!(
+                    debug_assert_eq!(
                         self.delegate.opportunistic_resolve_ct_var(vid),
                         c,
                         "const vid should have been resolved fully before canonicalization"
