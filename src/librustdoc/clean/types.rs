@@ -922,11 +922,19 @@ pub(crate) fn hir_attr_lists<'a, I: IntoIterator<Item = &'a hir::Attribute>>(
         .flatten()
 }
 
+/// This type keeps track of (doc) cfg information as we go down the item tree.
 #[derive(Clone, Debug)]
 pub(crate) struct CfgInfo {
+    /// List of `doc(auto_cfg(hide(...)))` cfgs.
     hidden_cfg: FxHashSet<Cfg>,
+    /// Current computed `cfg`. Each time we enter a new item, this field is updated as well while
+    /// taking into account the `hidden_cfg` information.
     current_cfg: Cfg,
+    /// Whether the `doc(auto_cfg())` feature is enabled or not at this point.
     auto_cfg_active: bool,
+    /// If the parent item used `doc(cfg(...))`, then we don't want to overwrite `current_cfg`,
+    /// instead we will concatenate with it. However, if it's not the case, we need to overwrite
+    /// `current_cfg`.
     parent_is_doc_cfg: bool,
 }
 
@@ -962,6 +970,11 @@ fn show_hide_show_conflict_error(
     diag.emit();
 }
 
+/// This function checks if a same `cfg` is present in both `auto_cfg(hide(...))` and
+/// `auto_cfg(show(...))` on the same item. If so, it emits an error.
+///
+/// Because we go through a list of `cfg`s, we keep track of the `cfg`s we saw in `new_show_attrs`
+/// and in `new_hide_attrs` arguments.
 fn handle_auto_cfg_hide_show(
     tcx: TyCtxt<'_>,
     cfg_info: &mut CfgInfo,
