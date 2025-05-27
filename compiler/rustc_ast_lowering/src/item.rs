@@ -306,7 +306,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::ItemKind::TyAlias(ident, ty, generics)
             }
-            ItemKind::Enum(ident, enum_definition, generics) => {
+            ItemKind::Enum(ident, generics, enum_definition) => {
                 let ident = self.lower_ident(*ident);
                 let (generics, variants) = self.lower_generics(
                     generics,
@@ -320,7 +320,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::ItemKind::Enum(ident, hir::EnumDef { variants }, generics)
             }
-            ItemKind::Struct(ident, struct_def, generics) => {
+            ItemKind::Struct(ident, generics, struct_def) => {
                 let ident = self.lower_ident(*ident);
                 let (generics, struct_def) = self.lower_generics(
                     generics,
@@ -330,7 +330,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::ItemKind::Struct(ident, struct_def, generics)
             }
-            ItemKind::Union(ident, vdata, generics) => {
+            ItemKind::Union(ident, generics, vdata) => {
                 let ident = self.lower_ident(*ident);
                 let (generics, vdata) = self.lower_generics(
                     generics,

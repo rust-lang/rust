@@ -1424,7 +1424,7 @@ pub fn parse_macro_name_and_helper_attrs(
 /// See #73345 and #83125 for more details.
 /// FIXME(#73933): Remove this eventually.
 fn pretty_printing_compatibility_hack(item: &Item, psess: &ParseSess) {
-    if let ast::ItemKind::Enum(ident, enum_def, _) = &item.kind
+    if let ast::ItemKind::Enum(ident, _, enum_def) = &item.kind
         && ident.name == sym::ProceduralMasqueradeDummyType
         && let [variant] = &*enum_def.variants
         && variant.ident.name == sym::Input
