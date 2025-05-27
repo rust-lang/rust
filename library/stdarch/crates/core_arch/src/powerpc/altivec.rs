@@ -338,26 +338,26 @@ unsafe extern "C" {
     #[link_name = "llvm.ppc.altivec.vlogefp"]
     fn vlogefp(a: vector_float) -> vector_float;
 
-    #[link_name = "llvm.ppc.altivec.sll"]
+    #[link_name = "llvm.ppc.altivec.vsl"]
     fn vsl(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
-    #[link_name = "llvm.ppc.altivec.slo"]
+    #[link_name = "llvm.ppc.altivec.vslo"]
     fn vslo(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
 
-    #[link_name = "llvm.ppc.altivec.srab"]
+    #[link_name = "llvm.ppc.altivec.vsrab"]
     fn vsrab(a: vector_signed_char, b: vector_unsigned_char) -> vector_signed_char;
-    #[link_name = "llvm.ppc.altivec.srah"]
+    #[link_name = "llvm.ppc.altivec.vsrah"]
     fn vsrah(a: vector_signed_short, b: vector_unsigned_short) -> vector_signed_short;
-    #[link_name = "llvm.ppc.altivec.sraw"]
+    #[link_name = "llvm.ppc.altivec.vsraw"]
     fn vsraw(a: vector_signed_int, b: vector_unsigned_int) -> vector_signed_int;
 
-    #[link_name = "llvm.ppc.altivec.srl"]
+    #[link_name = "llvm.ppc.altivec.vsr"]
     fn vsr(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
-    #[link_name = "llvm.ppc.altivec.sro"]
+    #[link_name = "llvm.ppc.altivec.vsro"]
     fn vsro(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
 
-    #[link_name = "llvm.ppc.altivec.slv"]
+    #[link_name = "llvm.ppc.altivec.vslv"]
     fn vslv(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
-    #[link_name = "llvm.ppc.altivec.srv"]
+    #[link_name = "llvm.ppc.altivec.vsrv"]
     fn vsrv(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
 
     #[link_name = "llvm.fshl.v16i8"]
