@@ -472,6 +472,18 @@ impl<'a, 'typeck, 'tcx> LivenessContext<'a, 'typeck, 'tcx> {
         self.flow_inits.get_or_insert_with(|| {
             let tcx = self.typeck.tcx();
             let body = self.typeck.body;
+            // FIXME: reduce the `MaybeInitializedPlaces` domain to the useful `MovePath`s.
+            //
+            // This dataflow analysis computes maybe-initializedness of all move paths, which
+            // explains why it can be expensive on big functions. But this data is only used in
+            // drop-liveness. Therefore, most of the move paths computed here are ultimately unused,
+            // even if the results are computed lazily and "no relevant live locals with drop
+            // points" is the common case.
+            //
+            // So we only need the ones for 1) relevant live locals 2) that have drop points. That's
+            // a much, much smaller domain: in our benchmarks, when it's not zero (the most likely
+            // case), there are a few dozens compared to e.g. thousands or tens of thousands of
+            // locals and move paths.
             let flow_inits = MaybeInitializedPlaces::new(tcx, body, self.move_data)
                 .iterate_to_fixpoint(tcx, body, Some("borrowck"))
                 .into_results_cursor(body);
