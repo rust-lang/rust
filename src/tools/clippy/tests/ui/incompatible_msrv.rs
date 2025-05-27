@@ -1,6 +1,6 @@
 #![warn(clippy::incompatible_msrv)]
-#![feature(custom_inner_attributes)]
-#![feature(panic_internals)]
+#![allow(clippy::diverging_sub_expression)]
+#![feature(custom_inner_attributes, panic_internals)]
 #![clippy::msrv = "1.3.0"]
 
 use std::collections::HashMap;
