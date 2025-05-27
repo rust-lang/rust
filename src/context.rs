@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use gccjit::{
     Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, Location, RValue, Type,
 };
-use rustc_abi::{HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
+use rustc_abi::{Align, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, MiscCodegenMethods};
@@ -135,6 +135,9 @@ pub struct CodegenCx<'gcc, 'tcx> {
 
     #[cfg(feature = "master")]
     pub cleanup_blocks: RefCell<FxHashSet<Block<'gcc>>>,
+    /// The alignment of a u128/i128 type.
+    // We cache this, since it is needed for alignment checks during loads.
+    pub int128_align: Align,
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -226,6 +229,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
 
         let mut cx = Self {
+            int128_align: tcx
+                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tcx.types.i128))
+                .expect("Can't get the layout of `i128`")
+                .align
+                .abi,
             const_cache: Default::default(),
             codegen_unit,
             context,
