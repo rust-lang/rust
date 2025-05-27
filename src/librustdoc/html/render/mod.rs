@@ -49,6 +49,7 @@ use std::{fs, str};
 
 use askama::Template;
 use itertools::Either;
+use rustc_ast::join_path_syms;
 use rustc_attr_data_structures::{
     ConstStability, DeprecatedSince, Deprecation, RustcVersion, StabilityLevel, StableSince,
 };
@@ -74,9 +75,9 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::format::{
-    Ending, HrefError, PrintWithSpace, href, join_with_double_colon, print_abi_with_space,
-    print_constness_with_space, print_default_space, print_generic_bounds, print_where_clause,
-    visibility_print_with_space, write_str,
+    Ending, HrefError, PrintWithSpace, href, print_abi_with_space, print_constness_with_space,
+    print_default_space, print_generic_bounds, print_where_clause, visibility_print_with_space,
+    write_str,
 };
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
@@ -2555,7 +2556,7 @@ fn collect_paths_for_type(first_ty: &clean::Type, cache: &Cache) -> Vec<String> 
         let fqp = cache.exact_paths.get(&did).or_else(get_extern);
 
         if let Some(path) = fqp {
-            out.push(join_with_double_colon(path));
+            out.push(join_path_syms(path));
         }
     };
 
