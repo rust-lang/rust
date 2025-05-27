@@ -67,7 +67,7 @@ pub(super) fn trace<'tcx>(
 }
 
 /// Contextual state for the type-liveness coroutine.
-struct LivenessContext<'a, 'typeck, 'b, 'tcx> {
+struct LivenessContext<'a, 'typeck, 'tcx> {
     /// Current type-checker, giving us our inference context etc.
     ///
     /// This also stores the body we're currently analyzing.
@@ -84,7 +84,7 @@ struct LivenessContext<'a, 'typeck, 'b, 'tcx> {
 
     /// Results of dataflow tracking which variables (and paths) have been
     /// initialized.
-    flow_inits: ResultsCursor<'b, 'tcx, MaybeInitializedPlaces<'b, 'tcx>>,
+    flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
 
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
@@ -96,8 +96,8 @@ struct DropData<'tcx> {
     region_constraint_data: Option<&'tcx QueryRegionConstraints<'tcx>>,
 }
 
-struct LivenessResults<'a, 'typeck, 'b, 'tcx> {
-    cx: LivenessContext<'a, 'typeck, 'b, 'tcx>,
+struct LivenessResults<'a, 'typeck, 'tcx> {
+    cx: LivenessContext<'a, 'typeck, 'tcx>,
 
     /// Set of points that define the current local.
     defs: DenseBitSet<PointIndex>,
@@ -118,8 +118,8 @@ struct LivenessResults<'a, 'typeck, 'b, 'tcx> {
     stack: Vec<PointIndex>,
 }
 
-impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
-    fn new(cx: LivenessContext<'a, 'typeck, 'b, 'tcx>) -> Self {
+impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
+    fn new(cx: LivenessContext<'a, 'typeck, 'tcx>) -> Self {
         let num_points = cx.location_map.num_points();
         LivenessResults {
             cx,
@@ -461,10 +461,11 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
     }
 }
 
-impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
+impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     fn body(&self) -> &Body<'tcx> {
         self.typeck.body
     }
+
     /// Returns `true` if the local variable (or some part of it) is initialized at the current
     /// cursor position. Callers should call one of the `seek` methods immediately before to point
     /// the cursor to the desired location.
