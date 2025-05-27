@@ -306,10 +306,6 @@ pub trait MutVisitor: Sized {
         walk_precise_capturing_arg(self, arg);
     }
 
-    fn visit_mt(&mut self, mt: &mut MutTy) {
-        walk_mt(self, mt);
-    }
-
     fn visit_expr_field(&mut self, f: &mut ExprField) {
         walk_expr_field(self, f);
     }
@@ -535,10 +531,10 @@ pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Dummy | TyKind::Never | TyKind::CVarArgs => {
         }
         TyKind::Slice(ty) => vis.visit_ty(ty),
-        TyKind::Ptr(mt) => vis.visit_mt(mt),
-        TyKind::Ref(lt, mt) | TyKind::PinnedRef(lt, mt) => {
+        TyKind::Ptr(MutTy { ty, mutbl: _ }) => vis.visit_ty(ty),
+        TyKind::Ref(lt, MutTy { ty, mutbl: _ }) | TyKind::PinnedRef(lt, MutTy { ty, mutbl: _ }) => {
             visit_opt(lt, |lt| vis.visit_lifetime(lt));
-            vis.visit_mt(mt);
+            vis.visit_ty(ty);
         }
         TyKind::BareFn(bft) => {
             let BareFnTy { safety, ext: _, generic_params, decl, decl_span } = bft.deref_mut();
@@ -1017,10 +1013,6 @@ pub fn walk_flat_map_expr_field<T: MutVisitor>(
 ) -> SmallVec<[ExprField; 1]> {
     vis.visit_expr_field(&mut f);
     smallvec![f]
-}
-
-fn walk_mt<T: MutVisitor>(vis: &mut T, MutTy { ty, mutbl: _ }: &mut MutTy) {
-    vis.visit_ty(ty);
 }
 
 pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut P<Block>) {
