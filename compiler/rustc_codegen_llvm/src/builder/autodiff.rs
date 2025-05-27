@@ -83,6 +83,9 @@ fn match_args_from_caller_to_enzyme<'ll>(
     let enzyme_dupnoneed = cx.create_metadata("enzyme_dupnoneed".to_string()).unwrap();
     let enzyme_dupnoneedv = cx.create_metadata("enzyme_dupnoneedv".to_string()).unwrap();
 
+    let enzyme_scalar = cx.create_metadata("enzyme_scalar".to_string()).unwrap();
+    let enzyme_vector = cx.create_metadata("enzyme_vector".to_string()).unwrap();
+
     while activity_pos < inputs.len() {
         let diff_activity = inputs[activity_pos as usize];
         // Duplicated arguments received a shadow argument, into which enzyme will write the
@@ -99,7 +102,10 @@ fn match_args_from_caller_to_enzyme<'ll>(
             DiffActivity::Duplicated => (enzyme_dup, true),
             DiffActivity::DuplicatedOnly => (enzyme_dupnoneed, true),
             DiffActivity::FakeActivitySize(_) => (enzyme_const, false),
+            DiffActivity::Vector => (enzyme_vector, true),
+            DiffActivity::Scalar => (enzyme_scalar, true),
         };
+        let no_autodiff_only_batching = matches!(diff_activity, DiffActivity::Scalar | DiffActivity::Vector);
         let outer_arg = outer_args[outer_pos];
         args.push(cx.get_metadata_value(activity));
         if matches!(diff_activity, DiffActivity::Dualv) {
@@ -178,8 +184,19 @@ fn match_args_from_caller_to_enzyme<'ll>(
                 outer_pos += 2;
                 activity_pos += 1;
 
+                dbg!(&width);
+                dbg!(&outer_pos);
+                dbg!(&activity_pos);
+                dbg!(&args);
+                let limit = if no_autodiff_only_batching {
+                    // Usually we have one primal arg + width shadow args.
+                    // Here we have `width` primal args, so one less than normal.
+                    width as usize - 1
+                } else {
+                    width as usize
+                };
                 // Now, if width > 1, we need to account for that
-                for _ in 1..width {
+                for _ in 1..limit {
                     let next_outer_arg = outer_args[outer_pos];
                     args.push(next_outer_arg);
                     outer_pos += 1;
@@ -269,6 +286,12 @@ fn compute_enzyme_fn_ty<'ll>(
                 DiffMode::Reverse => {
                     todo!("Handle sret for reverse mode");
                 }
+                DiffMode::Batch => {
+                    let arr_ty = unsafe {
+                        llvm::LLVMArrayType2(inner_ret_ty, attrs.width as u64)
+                    };
+                    ret_ty = arr_ty;
+                }
                 _ => {
                     bug!("unreachable");
                 }
@@ -299,6 +322,7 @@ fn generate_enzyme_call<'ll>(
     let mut ad_name: String = match attrs.mode {
         DiffMode::Forward => "__enzyme_fwddiff",
         DiffMode::Reverse => "__enzyme_autodiff",
+        DiffMode::Batch => "__enzyme_batch",
         _ => panic!("logic bug in autodiff, unrecognized mode"),
     }
     .to_string();

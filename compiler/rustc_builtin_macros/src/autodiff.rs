@@ -884,6 +884,7 @@ mod llvm_enzyme {
                 DiffActivity::None | DiffActivity::FakeActivitySize(_) => {
                     panic!("Should not happen");
                 }
+                DiffActivity::Vector | DiffActivity::Scalar => todo!()
             }
             if let PatKind::Ident(_, ident, _) = arg.pat.kind {
                 idents.push(ident.clone());
