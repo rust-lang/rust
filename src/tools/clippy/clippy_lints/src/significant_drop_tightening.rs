@@ -184,7 +184,7 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
                     }
                 }
                 for generic_arg in *b {
-                    if let GenericArgKind::Type(ty) = generic_arg.unpack()
+                    if let GenericArgKind::Type(ty) = generic_arg.kind()
                         && self.has_sig_drop_attr(ty, depth)
                     {
                         return true;

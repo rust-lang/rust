@@ -215,7 +215,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         let pred = bound_predicate.rebind(pred);
                         // A `Self` within the original bound will be instantiated with a
                         // `trait_object_dummy_self`, so check for that.
-                        let references_self = match pred.skip_binder().term.unpack() {
+                        let references_self = match pred.skip_binder().term.kind() {
                             ty::TermKind::Ty(ty) => ty.walk().any(|arg| arg == dummy_self.into()),
                             // FIXME(associated_const_equality): We should walk the const instead of not doing anything
                             ty::TermKind::Const(_) => false,

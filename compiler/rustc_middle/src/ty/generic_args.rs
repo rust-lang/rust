@@ -137,7 +137,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for GenericArg<'tcx> {
     type Kind = GenericArgKind<'tcx>;
 
     fn kind(self) -> Self::Kind {
-        self.unpack()
+        self.kind()
     }
 }
 
@@ -218,7 +218,7 @@ impl<'tcx> From<ty::Const<'tcx>> for GenericArg<'tcx> {
 
 impl<'tcx> From<ty::Term<'tcx>> for GenericArg<'tcx> {
     fn from(value: ty::Term<'tcx>) -> Self {
-        match value.unpack() {
+        match value.kind() {
             ty::TermKind::Ty(t) => t.into(),
             ty::TermKind::Const(c) => c.into(),
         }
@@ -227,7 +227,7 @@ impl<'tcx> From<ty::Term<'tcx>> for GenericArg<'tcx> {
 
 impl<'tcx> GenericArg<'tcx> {
     #[inline]
-    pub fn unpack(self) -> GenericArgKind<'tcx> {
+    pub fn kind(self) -> GenericArgKind<'tcx> {
         let ptr =
             unsafe { self.ptr.map_addr(|addr| NonZero::new_unchecked(addr.get() & !TAG_MASK)) };
         // SAFETY: use of `Interned::new_unchecked` here is ok because these
@@ -251,7 +251,7 @@ impl<'tcx> GenericArg<'tcx> {
 
     #[inline]
     pub fn as_region(self) -> Option<ty::Region<'tcx>> {
-        match self.unpack() {
+        match self.kind() {
             GenericArgKind::Lifetime(re) => Some(re),
             _ => None,
         }
@@ -259,7 +259,7 @@ impl<'tcx> GenericArg<'tcx> {
 
     #[inline]
     pub fn as_type(self) -> Option<Ty<'tcx>> {
-        match self.unpack() {
+        match self.kind() {
             GenericArgKind::Type(ty) => Some(ty),
             _ => None,
         }
@@ -267,7 +267,7 @@ impl<'tcx> GenericArg<'tcx> {
 
     #[inline]
     pub fn as_const(self) -> Option<ty::Const<'tcx>> {
-        match self.unpack() {
+        match self.kind() {
             GenericArgKind::Const(ct) => Some(ct),
             _ => None,
         }
@@ -275,7 +275,7 @@ impl<'tcx> GenericArg<'tcx> {
 
     #[inline]
     pub fn as_term(self) -> Option<ty::Term<'tcx>> {
-        match self.unpack() {
+        match self.kind() {
             GenericArgKind::Lifetime(_) => None,
             GenericArgKind::Type(ty) => Some(ty.into()),
             GenericArgKind::Const(ct) => Some(ct.into()),
@@ -300,7 +300,7 @@ impl<'tcx> GenericArg<'tcx> {
     }
 
     pub fn is_non_region_infer(self) -> bool {
-        match self.unpack() {
+        match self.kind() {
             GenericArgKind::Lifetime(_) => false,
             // FIXME: This shouldn't return numerical/float.
             GenericArgKind::Type(ty) => ty.is_ty_or_numeric_infer(),
@@ -327,7 +327,7 @@ impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for GenericArg<'a> {
     type Lifted = GenericArg<'tcx>;
 
     fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        match self.unpack() {
+        match self.kind() {
             GenericArgKind::Lifetime(lt) => tcx.lift(lt).map(|lt| lt.into()),
             GenericArgKind::Type(ty) => tcx.lift(ty).map(|ty| ty.into()),
             GenericArgKind::Const(ct) => tcx.lift(ct).map(|ct| ct.into()),
@@ -340,7 +340,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        match self.unpack() {
+        match self.kind() {
             GenericArgKind::Lifetime(lt) => lt.try_fold_with(folder).map(Into::into),
             GenericArgKind::Type(ty) => ty.try_fold_with(folder).map(Into::into),
             GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
@@ -348,7 +348,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
     }
 
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        match self.unpack() {
+        match self.kind() {
             GenericArgKind::Lifetime(lt) => lt.fold_with(folder).into(),
             GenericArgKind::Type(ty) => ty.fold_with(folder).into(),
             GenericArgKind::Const(ct) => ct.fold_with(folder).into(),
@@ -358,7 +358,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        match self.unpack() {
+        match self.kind() {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
             GenericArgKind::Type(ty) => ty.visit_with(visitor),
             GenericArgKind::Const(ct) => ct.visit_with(visitor),
@@ -368,7 +368,7 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
 
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for GenericArg<'tcx> {
     fn encode(&self, e: &mut E) {
-        self.unpack().encode(e)
+        self.kind().encode(e)
     }
 }
 
@@ -390,7 +390,7 @@ impl<'tcx> GenericArgs<'tcx> {
     ///
     /// If any of the generic arguments are not types.
     pub fn into_type_list(&self, tcx: TyCtxt<'tcx>) -> &'tcx List<Ty<'tcx>> {
-        tcx.mk_type_list_from_iter(self.iter().map(|arg| match arg.unpack() {
+        tcx.mk_type_list_from_iter(self.iter().map(|arg| match arg.kind() {
             GenericArgKind::Type(ty) => ty,
             _ => bug!("`into_type_list` called on generic arg with non-types"),
         }))
@@ -527,7 +527,7 @@ impl<'tcx> GenericArgs<'tcx> {
     /// Returns generic arguments that are not lifetimes.
     #[inline]
     pub fn non_erasable_generics(&self) -> impl DoubleEndedIterator<Item = GenericArgKind<'tcx>> {
-        self.iter().filter_map(|k| match k.unpack() {
+        self.iter().filter_map(|arg| match arg.kind() {
             ty::GenericArgKind::Lifetime(_) => None,
             generic => Some(generic),
         })
