@@ -38,7 +38,7 @@ fn yawning_void_struct() {
     const _: () = {
         assert!(std::mem::size_of::<YawningVoid>() == std::mem::size_of::<u128>());
         // Just to be sure the above constant actually evaluated:
-        assert!(false); //~ ERROR: evaluation of constant value failed
+        assert!(false); //~ ERROR: evaluation panicked: assertion failed: false
     };
 
     // This transmutation is vacuously acceptable; since one cannot construct a
@@ -60,7 +60,7 @@ fn yawning_void_enum() {
     const _: () = {
         assert!(std::mem::size_of::<YawningVoid>() == std::mem::size_of::<u128>());
         // Just to be sure the above constant actually evaluated:
-        assert!(false); //~ ERROR: evaluation of constant value failed
+        assert!(false); //~ ERROR: evaluation panicked: assertion failed: false
     };
 
     // This transmutation is vacuously acceptable; since one cannot construct a
@@ -84,7 +84,7 @@ fn distant_void() {
     const _: () = {
         assert!(std::mem::size_of::<DistantVoid>() == std::mem::size_of::<usize>());
         // Just to be sure the above constant actually evaluated:
-        assert!(false); //~ ERROR: evaluation of constant value failed
+        assert!(false); //~ ERROR: evaluation panicked: assertion failed: false
     };
 
     assert::is_maybe_transmutable::<DistantVoid, ()>();

@@ -12,7 +12,7 @@ static FOO: Foo = Foo(UnsafeCell::new(42));
 
 static BAR: () = unsafe {
     *FOO.0.get() = 5;
-    //~^ ERROR could not evaluate static initializer
+    //~^ ERROR modifying a static's initial value
 };
 
 fn main() {

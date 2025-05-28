@@ -36,8 +36,7 @@ const OFFSET: () = unsafe {
     // This needs to compute the field offset, but we don't know the type's alignment, so this
     // fails.
     let field = &x.a;
-    //~^ ERROR: evaluation of constant value failed
-    //~| NOTE does not have a known offset
+    //~^ ERROR: does not have a known offset
 };
 
 fn main() {}

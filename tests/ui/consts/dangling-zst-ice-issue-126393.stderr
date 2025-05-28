@@ -1,8 +1,8 @@
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: constructing invalid value: encountered a dangling reference (use-after-free)
   --> $DIR/dangling-zst-ice-issue-126393.rs:7:1
    |
 LL | pub static MAGIC_FFI_REF: &'static Wrapper = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling reference (use-after-free)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {

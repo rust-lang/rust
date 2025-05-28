@@ -14,9 +14,9 @@ const fn _foo() {
 
 // ensure that conforming panics don't cause an error beyond the failure to const eval
 const _: () = panic!();
-//~^ ERROR: evaluation of constant value failed
+//~^ ERROR: explicit panic
 static _BAR: () = panic!("panic in static");
-//~^ ERROR could not evaluate static initializer
+//~^ ERROR panic in static
 
 const fn _bar() {
     panic!("panic in const fn");

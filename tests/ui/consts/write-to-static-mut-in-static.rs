@@ -1,10 +1,10 @@
 pub static mut A: u32 = 0;
 pub static mut B: () = unsafe { A = 1; };
-//~^ ERROR could not evaluate static initializer
+//~^ ERROR modifying a static's initial value
 
 pub static mut C: u32 = unsafe { C = 1; 0 };
 
 pub static D: u32 = D;
-//~^ ERROR could not evaluate static initializer
+//~^ ERROR static that tried to initialize itself with itself
 
 fn main() {}

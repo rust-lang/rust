@@ -2,7 +2,7 @@
 
 //@ dont-require-annotations: NOTE
 
-const _CONST: &() = &f(&|_| {}); //~ ERROR evaluation of constant value failed
+const _CONST: &() = &f(&|_| {}); //~ ERROR explicit panic
 //~^ NOTE constant
 
 const fn f<F>(_: &F)
@@ -12,4 +12,4 @@ where
     panic!() //~ NOTE inside `f
 }
 
-fn main() { }
+fn main() {}

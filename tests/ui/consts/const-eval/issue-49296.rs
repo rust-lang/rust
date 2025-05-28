@@ -7,7 +7,7 @@ const fn wat(x: u64) -> &'static u64 {
 }
 
 const X: u64 = *wat(42);
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR dangling
 
 fn main() {
     println!("{}", X);

@@ -2,7 +2,6 @@
 //@ aux-build:static_cross_crate.rs
 //@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 //@ normalize-stderr: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
-//@ dont-require-annotations: NOTE
 
 #![feature(half_open_range_patterns_in_slices)]
 #![allow(static_mut_refs)]
@@ -11,26 +10,25 @@ extern crate static_cross_crate;
 
 // Sneaky: reference to a mutable static.
 // Allowing this would be a disaster for pattern matching, we could violate exhaustiveness checking!
-const SLICE_MUT: &[u8; 1] = { //~ ERROR undefined behavior
-    //~| NOTE encountered reference to mutable memory
+const SLICE_MUT: &[u8; 1] = {
+    //~^ ERROR encountered reference to mutable memory
     unsafe { &static_cross_crate::ZERO }
 };
 
-const U8_MUT: &u8 = { //~ ERROR undefined behavior
-    //~| NOTE encountered reference to mutable memory
+const U8_MUT: &u8 = {
+    //~^ ERROR encountered reference to mutable memory
     unsafe { &static_cross_crate::ZERO[0] }
 };
 
 // Also test indirection that reads from other static.
-const U8_MUT2: &u8 = { //~ ERROR undefined behavior
-    //~| NOTE encountered reference to mutable memory
+const U8_MUT2: &u8 = {
+    //~^ ERROR encountered reference to mutable memory
     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
 };
 const U8_MUT3: &u8 = {
     unsafe {
         match static_cross_crate::OPT_ZERO {
-            //~^ ERROR evaluation of constant value failed
-            //~| NOTE constant accesses mutable global memory
+            //~^ ERROR constant accesses mutable global memory
             Some(ref u) => u,
             None => panic!(),
         }

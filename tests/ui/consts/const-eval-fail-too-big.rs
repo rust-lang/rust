@@ -2,7 +2,7 @@
 struct B<
     A: Sized = [(); {
                    let x = [0u8; !0usize];
-                   //~^ ERROR evaluation of constant value failed
+                   //~^ ERROR too big for the target architecture
                    1
                }],
 > {

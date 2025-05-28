@@ -13,7 +13,7 @@
 //@ normalize-stderr: ".*omitted \d{1,} frame.*\n" -> ""
 #![allow(unconditional_panic)]
 
-const X: i32 = 1 / 0; //~ERROR constant
+const X: i32 = 1 / 0; //~ERROR attempt to divide `1_i32` by zero
 
 fn main() {
     let x: &'static i32 = &X;

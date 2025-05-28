@@ -1,41 +1,41 @@
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: constructing invalid value at .<deref>.v: encountered `UnsafeCell` in read-only memory
   --> $DIR/static-no-inner-mut.rs:8:1
    |
 LL | static REF: &AtomicI32 = &AtomicI32::new(42);
-   | ^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>.v: encountered `UnsafeCell` in read-only memory
+   | ^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
                ╾ALLOC0╼                                     │ ╾──╼
            }
 
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: constructing invalid value: encountered mutable reference or box pointing to read-only memory
   --> $DIR/static-no-inner-mut.rs:11:1
    |
 LL | static REFMUT: &mut i32 = &mut 0;
-   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference or box pointing to read-only memory
+   | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
                ╾ALLOC1╼                                     │ ╾──╼
            }
 
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: constructing invalid value at .<deref>.v: encountered `UnsafeCell` in read-only memory
   --> $DIR/static-no-inner-mut.rs:15:1
    |
 LL | static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}};
-   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>.v: encountered `UnsafeCell` in read-only memory
+   | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
                ╾ALLOC2╼                                     │ ╾──╼
            }
 
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: constructing invalid value: encountered mutable reference or box pointing to read-only memory
   --> $DIR/static-no-inner-mut.rs:17:1
    |
 LL | static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference or box pointing to read-only memory
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {

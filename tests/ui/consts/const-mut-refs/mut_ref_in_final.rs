@@ -25,8 +25,7 @@ const B4: Option<&mut i32> = helper(&mut 42); //~ ERROR temporary value dropped 
 
 // Not ok, since it points to read-only memory.
 const IMMUT_MUT_REF: &mut u16 = unsafe { mem::transmute(&13) };
-//~^ ERROR undefined behavior to use this value
-//~| NOTE pointing to read-only memory
+//~^ ERROR pointing to read-only memory
 
 // Ok, because no references to mutable data exist here, since the `{}` moves
 // its value and then takes a reference to that.

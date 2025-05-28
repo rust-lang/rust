@@ -1,8 +1,8 @@
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
   --> $DIR/issue-63952.rs:17:1
    |
 LL | const SLICE_WAY_TOO_LONG: &[u8] = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {

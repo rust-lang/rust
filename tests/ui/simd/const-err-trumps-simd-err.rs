@@ -16,8 +16,7 @@ struct int8x4_t([u8; 4]);
 
 fn get_elem<const LANE: u32>(a: int8x4_t) -> u8 {
     const { assert!(LANE < 4); } // the error should be here...
-    //~^ ERROR failed
-    //~| NOTE assertion failed
+    //~^ ERROR assertion failed
     unsafe { simd_extract(a, LANE) } // ...not here
 }
 
