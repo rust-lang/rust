@@ -1637,7 +1637,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn before_stack_pop(ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
         let frame = ecx.frame();
         // We want this *before* the return value copy, because the return place itself is protected
-        // until we do `end_call` here.
+        // until we do `on_stack_pop` here, and we need to un-protect it to copy the return value.
         if ecx.machine.borrow_tracker.is_some() {
             ecx.on_stack_pop(frame)?;
         }
