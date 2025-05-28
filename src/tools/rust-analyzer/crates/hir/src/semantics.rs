@@ -408,11 +408,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn expand_macro_call(&self, macro_call: &ast::MacroCall) -> Option<InFile<SyntaxNode>> {
-        let sa = self.analyze_no_infer(macro_call.syntax())?;
-
-        let macro_call = InFile::new(sa.file_id, macro_call);
-        let file_id = sa.expansion(self.db, macro_call)?;
-
+        let file_id = self.to_def(macro_call)?;
         let node = self.parse_or_expand(file_id.into());
         Some(InFile::new(file_id.into(), node))
     }
@@ -434,10 +430,7 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         macro_call: &ast::MacroCall,
     ) -> Option<ExpandResult<SyntaxNode>> {
-        let sa = self.analyze_no_infer(macro_call.syntax())?;
-
-        let macro_call = InFile::new(sa.file_id, macro_call);
-        let file_id = sa.expansion(self.db, macro_call)?;
+        let file_id = self.to_def(macro_call)?;
         let macro_call = self.db.lookup_intern_macro_call(file_id);
 
         let skip = matches!(
@@ -1097,16 +1090,7 @@ impl<'db> SemanticsImpl<'db> {
                             let file_id = match m_cache.get(&mcall) {
                                 Some(&it) => it,
                                 None => {
-                                    let it = token
-                                        .parent()
-                                        .and_then(|parent| {
-                                            self.analyze_impl(
-                                                InFile::new(expansion, &parent),
-                                                None,
-                                                false,
-                                            )
-                                        })?
-                                        .expansion(self.db, mcall.as_ref())?;
+                                    let it = ast::MacroCall::to_def(self, mcall.as_ref())?;
                                     m_cache.insert(mcall, it);
                                     it
                                 }
@@ -1562,14 +1546,8 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn resolve_macro_call_arm(&self, macro_call: &ast::MacroCall) -> Option<u32> {
-        let sa = self.analyze(macro_call.syntax())?;
-        self.db
-            .parse_macro_expansion(
-                sa.expansion(self.db, self.wrap_node_infile(macro_call.clone()).as_ref())?,
-            )
-            .value
-            .1
-            .matched_arm
+        let file_id = self.to_def(macro_call)?;
+        self.db.parse_macro_expansion(file_id).value.1.matched_arm
     }
 
     pub fn get_unsafe_ops(&self, def: DefWithBody) -> FxHashSet<ExprOrPatSource> {
