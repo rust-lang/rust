@@ -39,17 +39,6 @@ const NAN_MASK1: u128 = 0x0000aaaaaaaaaaaaaaaaaaaaaaaaaaaa;
 /// Second pattern over the mantissa
 const NAN_MASK2: u128 = 0x00005555555555555555555555555555;
 
-/// Compare by representation
-#[allow(unused_macros)]
-macro_rules! assert_f128_biteq {
-    ($a:expr, $b:expr) => {
-        let (l, r): (&f128, &f128) = (&$a, &$b);
-        let lb = l.to_bits();
-        let rb = r.to_bits();
-        assert_eq!(lb, rb, "float {l:?} is not bitequal to {r:?}.\na: {lb:#034x}\nb: {rb:#034x}");
-    };
-}
-
 #[test]
 fn test_num_f128() {
     // FIXME(f16_f128): replace with a `test_num` call once the required `fmodl`/`fmodf128`
@@ -401,27 +390,27 @@ fn test_next_up() {
     let max_down = f128::from_bits(MAX_DOWN_BITS);
     let largest_subnormal = f128::from_bits(LARGEST_SUBNORMAL_BITS);
     let smallest_normal = f128::from_bits(SMALLEST_NORMAL_BITS);
-    assert_f128_biteq!(f128::NEG_INFINITY.next_up(), f128::MIN);
-    assert_f128_biteq!(f128::MIN.next_up(), -max_down);
-    assert_f128_biteq!((-1.0 - f128::EPSILON).next_up(), -1.0);
-    assert_f128_biteq!((-smallest_normal).next_up(), -largest_subnormal);
-    assert_f128_biteq!((-tiny_up).next_up(), -tiny);
-    assert_f128_biteq!((-tiny).next_up(), -0.0f128);
-    assert_f128_biteq!((-0.0f128).next_up(), tiny);
-    assert_f128_biteq!(0.0f128.next_up(), tiny);
-    assert_f128_biteq!(tiny.next_up(), tiny_up);
-    assert_f128_biteq!(largest_subnormal.next_up(), smallest_normal);
-    assert_f128_biteq!(1.0f128.next_up(), 1.0 + f128::EPSILON);
-    assert_f128_biteq!(f128::MAX.next_up(), f128::INFINITY);
-    assert_f128_biteq!(f128::INFINITY.next_up(), f128::INFINITY);
+    assert_biteq!(f128::NEG_INFINITY.next_up(), f128::MIN);
+    assert_biteq!(f128::MIN.next_up(), -max_down);
+    assert_biteq!((-1.0 - f128::EPSILON).next_up(), -1.0f128);
+    assert_biteq!((-smallest_normal).next_up(), -largest_subnormal);
+    assert_biteq!((-tiny_up).next_up(), -tiny);
+    assert_biteq!((-tiny).next_up(), -0.0f128);
+    assert_biteq!((-0.0f128).next_up(), tiny);
+    assert_biteq!(0.0f128.next_up(), tiny);
+    assert_biteq!(tiny.next_up(), tiny_up);
+    assert_biteq!(largest_subnormal.next_up(), smallest_normal);
+    assert_biteq!(1.0f128.next_up(), 1.0 + f128::EPSILON);
+    assert_biteq!(f128::MAX.next_up(), f128::INFINITY);
+    assert_biteq!(f128::INFINITY.next_up(), f128::INFINITY);
 
     // Check that NaNs roundtrip.
     let nan0 = f128::NAN;
     let nan1 = f128::from_bits(f128::NAN.to_bits() ^ 0x002a_aaaa);
     let nan2 = f128::from_bits(f128::NAN.to_bits() ^ 0x0055_5555);
-    assert_f128_biteq!(nan0.next_up(), nan0);
-    assert_f128_biteq!(nan1.next_up(), nan1);
-    assert_f128_biteq!(nan2.next_up(), nan2);
+    assert_biteq!(nan0.next_up(), nan0);
+    assert_biteq!(nan1.next_up(), nan1);
+    assert_biteq!(nan2.next_up(), nan2);
 }
 
 #[test]
@@ -431,28 +420,28 @@ fn test_next_down() {
     let max_down = f128::from_bits(MAX_DOWN_BITS);
     let largest_subnormal = f128::from_bits(LARGEST_SUBNORMAL_BITS);
     let smallest_normal = f128::from_bits(SMALLEST_NORMAL_BITS);
-    assert_f128_biteq!(f128::NEG_INFINITY.next_down(), f128::NEG_INFINITY);
-    assert_f128_biteq!(f128::MIN.next_down(), f128::NEG_INFINITY);
-    assert_f128_biteq!((-max_down).next_down(), f128::MIN);
-    assert_f128_biteq!((-1.0f128).next_down(), -1.0 - f128::EPSILON);
-    assert_f128_biteq!((-largest_subnormal).next_down(), -smallest_normal);
-    assert_f128_biteq!((-tiny).next_down(), -tiny_up);
-    assert_f128_biteq!((-0.0f128).next_down(), -tiny);
-    assert_f128_biteq!((0.0f128).next_down(), -tiny);
-    assert_f128_biteq!(tiny.next_down(), 0.0f128);
-    assert_f128_biteq!(tiny_up.next_down(), tiny);
-    assert_f128_biteq!(smallest_normal.next_down(), largest_subnormal);
-    assert_f128_biteq!((1.0 + f128::EPSILON).next_down(), 1.0f128);
-    assert_f128_biteq!(f128::MAX.next_down(), max_down);
-    assert_f128_biteq!(f128::INFINITY.next_down(), f128::MAX);
+    assert_biteq!(f128::NEG_INFINITY.next_down(), f128::NEG_INFINITY);
+    assert_biteq!(f128::MIN.next_down(), f128::NEG_INFINITY);
+    assert_biteq!((-max_down).next_down(), f128::MIN);
+    assert_biteq!((-1.0f128).next_down(), -1.0 - f128::EPSILON);
+    assert_biteq!((-largest_subnormal).next_down(), -smallest_normal);
+    assert_biteq!((-tiny).next_down(), -tiny_up);
+    assert_biteq!((-0.0f128).next_down(), -tiny);
+    assert_biteq!((0.0f128).next_down(), -tiny);
+    assert_biteq!(tiny.next_down(), 0.0f128);
+    assert_biteq!(tiny_up.next_down(), tiny);
+    assert_biteq!(smallest_normal.next_down(), largest_subnormal);
+    assert_biteq!((1.0 + f128::EPSILON).next_down(), 1.0f128);
+    assert_biteq!(f128::MAX.next_down(), max_down);
+    assert_biteq!(f128::INFINITY.next_down(), f128::MAX);
 
     // Check that NaNs roundtrip.
     let nan0 = f128::NAN;
     let nan1 = f128::from_bits(f128::NAN.to_bits() ^ 0x002a_aaaa);
     let nan2 = f128::from_bits(f128::NAN.to_bits() ^ 0x0055_5555);
-    assert_f128_biteq!(nan0.next_down(), nan0);
-    assert_f128_biteq!(nan1.next_down(), nan1);
-    assert_f128_biteq!(nan2.next_down(), nan2);
+    assert_biteq!(nan0.next_down(), nan0);
+    assert_biteq!(nan1.next_down(), nan1);
+    assert_biteq!(nan2.next_down(), nan2);
 }
 
 #[test]
