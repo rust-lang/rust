@@ -79,7 +79,6 @@ declare_lint_pass! {
         PRIVATE_BOUNDS,
         PRIVATE_INTERFACES,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-        PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         REDUNDANT_IMPORTS,
         REDUNDANT_LIFETIMES,
@@ -118,7 +117,6 @@ declare_lint_pass! {
         UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
         UNNAMEABLE_TEST_ITEMS,
         UNNAMEABLE_TYPES,
-        UNNECESSARY_TRANSMUTES,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
         UNSAFE_ATTR_OUTSIDE_UNSAFE,
@@ -4849,64 +4847,6 @@ declare_lint! {
     Allow,
     "detects when a supertrait item is shadowed by a subtrait item",
     @feature_gate = supertrait_item_shadowing;
-}
-
-declare_lint! {
-    /// The `ptr_to_integer_transmute_in_consts` lint detects pointer to integer
-    /// transmute in const functions and associated constants.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// const fn foo(ptr: *const u8) -> usize {
-    ///    unsafe {
-    ///        std::mem::transmute::<*const u8, usize>(ptr)
-    ///    }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Transmuting pointers to integers in a `const` context is undefined behavior.
-    /// Any attempt to use the resulting integer will abort const-evaluation.
-    ///
-    /// But sometimes the compiler might not emit an error for pointer to integer transmutes
-    /// inside const functions and associated consts because they are evaluated only when referenced.
-    /// Therefore, this lint serves as an extra layer of defense to prevent any undefined behavior
-    /// from compiling without any warnings or errors.
-    ///
-    /// See [std::mem::transmute] in the reference for more details.
-    ///
-    /// [std::mem::transmute]: https://doc.rust-lang.org/std/mem/fn.transmute.html
-    pub PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
-    Warn,
-    "detects pointer to integer transmutes in const functions and associated constants",
-}
-
-declare_lint! {
-    /// The `unnecessary_transmutes` lint detects transmutations that have safer alternatives.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// fn bytes_at_home(x: [u8; 4]) -> u32 {
-    ///   unsafe { std::mem::transmute(x) }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Using an explicit method is preferable over calls to
-    /// [`transmute`](https://doc.rust-lang.org/std/mem/fn.transmute.html) as
-    /// they more clearly communicate the intent, are easier to review, and
-    /// are less likely to accidentally result in unsoundness.
-    pub UNNECESSARY_TRANSMUTES,
-    Warn,
-    "detects transmutes that are shadowed by std methods"
 }
 
 declare_lint! {

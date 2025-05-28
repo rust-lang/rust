@@ -18,4 +18,5 @@ fn main() {
     let test: &dyn Bar = &mut thing;
     //~^ ERROR E0038
     foo(test);
+    //~^ ERROR E0038
 }

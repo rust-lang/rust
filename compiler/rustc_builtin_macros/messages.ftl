@@ -1,6 +1,11 @@
 builtin_macros_alloc_error_must_be_fn = alloc_error_handler must be a function
 builtin_macros_alloc_must_statics = allocators must be statics
 
+builtin_macros_asm_attribute_not_supported =
+    this attribute is not supported on assembly
+builtin_macros_asm_cfg =
+    the `#[cfg(/* ... */)]` and `#[cfg_attr(/* ... */)]` attributes on assembly are unstable
+
 builtin_macros_asm_clobber_abi = clobber_abi
 builtin_macros_asm_clobber_no_reg = asm with `clobber_abi` must specify explicit registers for outputs
 builtin_macros_asm_clobber_outputs = generic outputs
@@ -8,17 +13,6 @@ builtin_macros_asm_clobber_outputs = generic outputs
 builtin_macros_asm_duplicate_arg = duplicate argument named `{$name}`
     .label = previously here
     .arg = duplicate argument
-
-builtin_macros_asm_expected_comma = expected token: `,`
-    .label = expected `,`
-
-builtin_macros_asm_expected_other = expected operand, {$is_inline_asm ->
-    [false] options
-    *[true] clobber_abi, options
-    }, or additional template string
-
-builtin_macros_asm_expected_string_literal = expected string literal
-    .label = not a string literal
 
 builtin_macros_asm_explicit_register_name = explicit register arguments cannot have names
 
@@ -45,16 +39,7 @@ builtin_macros_asm_pure_combine = the `pure` option must be combined with either
 
 builtin_macros_asm_pure_no_output = asm with the `pure` option must have at least one output
 
-builtin_macros_asm_requires_template = requires at least a template string argument
-
-builtin_macros_asm_sym_no_path = expected a path for argument to `sym`
-
-builtin_macros_asm_underscore_input = _ cannot be used for input operands
-
 builtin_macros_asm_unsupported_clobber_abi = `clobber_abi` cannot be used with `{$macro_name}!`
-
-builtin_macros_asm_unsupported_operand = the `{$symbol}` operand cannot be used with `{$macro_name}!`
-    .label = the `{$symbol}` operand is not meaningful for global-scoped inline assembly, remove it
 
 builtin_macros_asm_unsupported_option = the `{$symbol}` option cannot be used with `{$macro_name}!`
     .label = the `{$symbol}` option is not meaningful for global-scoped inline assembly
@@ -162,7 +147,10 @@ builtin_macros_expected_comma_in_list = expected token: `,`
 
 builtin_macros_expected_one_cfg_pattern = expected 1 cfg-pattern
 
-builtin_macros_expected_register_class_or_explicit_register = expected register class or explicit register
+builtin_macros_expected_other = expected operand, {$is_inline_asm ->
+    [false] options
+    *[true] clobber_abi, options
+    }, or additional template string
 
 builtin_macros_export_macro_rules = cannot export macro_rules! macros from a `proc-macro` crate type currently
 
@@ -254,8 +242,6 @@ builtin_macros_naked_functions_testing_attribute =
 builtin_macros_no_default_variant = `#[derive(Default)]` on enum with no `#[default]`
     .label = this enum needs a unit variant marked with `#[default]`
     .suggestion = make this unit variant default by placing `#[default]` on it
-
-builtin_macros_non_abi = at least one abi must be provided as an argument to `clobber_abi`
 
 builtin_macros_non_exhaustive_default = default variant must be exhaustive
     .label = declared `#[non_exhaustive]` here

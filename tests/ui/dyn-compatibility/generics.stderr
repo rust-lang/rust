@@ -31,10 +31,10 @@ LL |     fn bar<T>(&self, t: T);
    = help: consider moving `bar` to another trait
 
 error[E0038]: the trait `Bar` is not dyn compatible
-  --> $DIR/generics.rs:22:10
+  --> $DIR/generics.rs:22:15
    |
 LL |     t as &dyn Bar
-   |          ^^^^^^^^ `Bar` is not dyn compatible
+   |               ^^^ `Bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>

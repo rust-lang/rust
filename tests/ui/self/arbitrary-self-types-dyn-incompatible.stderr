@@ -1,11 +1,11 @@
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/arbitrary-self-types-dyn-incompatible.rs:29:32
+  --> $DIR/arbitrary-self-types-dyn-incompatible.rs:29:39
    |
 LL |     fn foo(self: &Rc<Self>) -> usize;
    |                  --------- help: consider changing method `foo`'s `self` parameter to be `&self`: `&Self`
 ...
 LL |     let x = Rc::new(5usize) as Rc<dyn Foo>;
-   |                                ^^^^^^^^^^^ `Foo` is not dyn compatible
+   |                                       ^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>

@@ -516,8 +516,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let item_args = ty::GenericArgs::identity_for_item(self, def.did());
 
         let result = iter::zip(item_args, impl_args)
-            .filter(|&(_, k)| {
-                match k.unpack() {
+            .filter(|&(_, arg)| {
+                match arg.kind() {
                     GenericArgKind::Lifetime(region) => match region.kind() {
                         ty::ReEarlyParam(ebr) => {
                             !impl_generics.region_param(ebr, self).pure_wrt_drop
@@ -554,7 +554,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut seen = GrowableBitSet::default();
         let mut seen_late = FxHashSet::default();
         for arg in args {
-            match arg.unpack() {
+            match arg.kind() {
                 GenericArgKind::Lifetime(lt) => match (ignore_regions, lt.kind()) {
                     (CheckRegions::FromFunction, ty::ReBound(di, reg)) => {
                         if !seen_late.insert((di, reg)) {

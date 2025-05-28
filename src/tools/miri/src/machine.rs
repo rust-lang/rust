@@ -1775,7 +1775,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             let is_generic = instance
                 .args
                 .into_iter()
-                .any(|kind| !matches!(kind.unpack(), ty::GenericArgKind::Lifetime(_)));
+                .any(|arg| !matches!(arg.kind(), ty::GenericArgKind::Lifetime(_)));
             let can_be_inlined = matches!(
                 ecx.tcx.sess.opts.unstable_opts.cross_crate_inline_threshold,
                 InliningThreshold::Always

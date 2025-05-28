@@ -55,7 +55,7 @@ pub fn is_min_const_fn<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, msrv: Ms
 
 fn check_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, msrv: Msrv) -> McfResult {
     for arg in ty.walk() {
-        let ty = match arg.unpack() {
+        let ty = match arg.kind() {
             GenericArgKind::Type(ty) => ty,
 
             // No constraints on lifetimes or constants, except potentially

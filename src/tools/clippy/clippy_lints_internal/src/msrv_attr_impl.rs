@@ -37,7 +37,7 @@ impl LateLintPass<'_> for MsrvAttrImpl {
                     .type_of(f.did)
                     .instantiate_identity()
                     .walk()
-                    .filter(|t| matches!(t.unpack(), GenericArgKind::Type(_)))
+                    .filter(|t| matches!(t.kind(), GenericArgKind::Type(_)))
                     .any(|t| internal_paths::MSRV_STACK.matches_ty(cx, t.expect_ty()))
             })
             && !items.iter().any(|item| item.ident.name.as_str() == "check_attributes")

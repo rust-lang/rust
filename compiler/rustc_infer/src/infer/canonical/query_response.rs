@@ -245,7 +245,7 @@ impl<'tcx> InferCtxt<'tcx> {
             let result_value = query_response.instantiate_projected(self.tcx, &result_args, |v| {
                 v.var_values[BoundVar::new(index)]
             });
-            match (original_value.unpack(), result_value.unpack()) {
+            match (original_value.kind(), result_value.kind()) {
                 (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
                     if re1.is_erased() && re2.is_erased() =>
                 {
@@ -402,7 +402,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // [(?A, Vec<?0>), ('static, '?1), (?B, ?0)]
         for (original_value, result_value) in iter::zip(&original_values.var_values, result_values)
         {
-            match result_value.unpack() {
+            match result_value.kind() {
                 GenericArgKind::Type(result_value) => {
                     // e.g., here `result_value` might be `?0` in the example above...
                     if let ty::Bound(debruijn, b) = *result_value.kind() {
@@ -533,7 +533,7 @@ impl<'tcx> InferCtxt<'tcx> {
         for (index, value1) in variables1.var_values.iter().enumerate() {
             let value2 = variables2(BoundVar::new(index));
 
-            match (value1.unpack(), value2.unpack()) {
+            match (value1.kind(), value2.kind()) {
                 (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
                     obligations.extend(
                         self.at(cause, param_env)

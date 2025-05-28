@@ -15,10 +15,10 @@ LL |         as Box<dyn MapLike<u8, u8, VRefCont<'a> = dyn RefCont<'_, u8>>>;
    |                                            ++++
 
 error[E0038]: the trait `MapLike` is not dyn compatible
-  --> $DIR/issue-79422.rs:45:12
+  --> $DIR/issue-79422.rs:45:20
    |
 LL |         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `MapLike` is not dyn compatible
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `MapLike` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>

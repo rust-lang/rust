@@ -14,7 +14,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId, ItemLocalMap};
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
 use rustc_infer::infer;
-use rustc_infer::traits::Obligation;
+use rustc_infer::traits::{DynCompatibilityViolation, Obligation};
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span, sym};
@@ -387,6 +387,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             hir::FnRetTy::DefaultReturn(..) => self.tcx().types.unit,
         };
         (input_tys, output_ty)
+    }
+
+    fn dyn_compatibility_violations(&self, trait_def_id: DefId) -> Vec<DynCompatibilityViolation> {
+        self.tcx.dyn_compatibility_violations(trait_def_id).to_vec()
     }
 }
 

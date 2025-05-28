@@ -210,6 +210,7 @@ fn generate_item_with_correct_attrs(
             Cow::Owned(attr) => attr,
         }),
         cx.tcx,
+        def_id.as_local().map(|did| cx.tcx.local_def_id_to_hir_id(did)),
         &cx.cache.hidden_cfg,
     );
     let attrs = Attributes::from_hir_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
@@ -449,7 +450,7 @@ fn clean_middle_term<'tcx>(
     term: ty::Binder<'tcx, ty::Term<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> Term {
-    match term.skip_binder().unpack() {
+    match term.skip_binder().kind() {
         ty::TermKind::Ty(ty) => Term::Type(clean_middle_ty(term.rebind(ty), cx, None, None)),
         ty::TermKind::Const(c) => Term::Constant(clean_middle_const(term.rebind(c), cx)),
     }

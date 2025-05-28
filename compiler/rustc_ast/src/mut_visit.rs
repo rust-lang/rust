@@ -40,12 +40,6 @@ pub trait MutVisitor: Sized {
     //   fn flat_map_t(&mut self, t: T) -> SmallVec<[T; 1]>;    // rare
     //   fn filter_map_t(&mut self, t: T) -> Option<T>;         // rarest
     //
-    // Any additions to this trait should happen in form of a call to a public
-    // `noop_*` function that only calls out to the visitor again, not other
-    // `noop_*` functions. This is a necessary API workaround to the problem of
-    // not being able to call out to the super default method in an overridden
-    // default method.
-    //
     // When writing these methods, it is better to use destructuring like this:
     //
     //   fn visit_abc(&mut self, ABC { a, b, c: _ }: &mut ABC) {
@@ -179,7 +173,7 @@ pub trait MutVisitor: Sized {
     }
 
     fn filter_map_expr(&mut self, e: P<Expr>) -> Option<P<Expr>> {
-        noop_filter_map_expr(self, e)
+        walk_filter_map_expr(self, e)
     }
 
     fn visit_generic_arg(&mut self, arg: &mut GenericArg) {
@@ -306,10 +300,6 @@ pub trait MutVisitor: Sized {
         walk_precise_capturing_arg(self, arg);
     }
 
-    fn visit_mt(&mut self, mt: &mut MutTy) {
-        walk_mt(self, mt);
-    }
-
     fn visit_expr_field(&mut self, f: &mut ExprField) {
         walk_expr_field(self, f);
     }
@@ -381,14 +371,11 @@ super::common_visitor_and_walkers!((mut) MutVisitor);
 /// Use a map-style function (`FnOnce(T) -> T`) to overwrite a `&mut T`. Useful
 /// when using a `flat_map_*` or `filter_map_*` method within a `visit_`
 /// method.
-//
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_clobber<T: DummyAstNode>(t: &mut T, f: impl FnOnce(T) -> T) {
     let old_t = std::mem::replace(t, T::dummy());
     *t = f(old_t);
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 #[inline]
 fn visit_vec<T, F>(elems: &mut Vec<T>, mut visit_elem: F)
 where
@@ -399,7 +386,6 @@ where
     }
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 #[inline]
 fn visit_thin_vec<T, F>(elems: &mut ThinVec<T>, mut visit_elem: F)
 where
@@ -410,7 +396,6 @@ where
     }
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 #[inline]
 fn visit_opt<T, F>(opt: &mut Option<T>, mut visit_elem: F)
 where
@@ -421,25 +406,21 @@ where
     }
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 fn visit_attrs<T: MutVisitor>(vis: &mut T, attrs: &mut AttrVec) {
     for attr in attrs.iter_mut() {
         vis.visit_attribute(attr);
     }
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 #[allow(unused)]
 fn visit_exprs<T: MutVisitor>(vis: &mut T, exprs: &mut Vec<P<Expr>>) {
     exprs.flat_map_in_place(|expr| vis.filter_map_expr(expr))
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 fn visit_thin_exprs<T: MutVisitor>(vis: &mut T, exprs: &mut ThinVec<P<Expr>>) {
     exprs.flat_map_in_place(|expr| vis.filter_map_expr(expr))
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 fn visit_attr_args<T: MutVisitor>(vis: &mut T, args: &mut AttrArgs) {
     match args {
         AttrArgs::Empty => {}
@@ -451,7 +432,6 @@ fn visit_attr_args<T: MutVisitor>(vis: &mut T, args: &mut AttrArgs) {
     }
 }
 
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 fn visit_delim_args<T: MutVisitor>(vis: &mut T, args: &mut DelimArgs) {
     let DelimArgs { dspan, delim: _, tokens: _ } = args;
     let DelimSpan { open, close } = dspan;
@@ -535,10 +515,10 @@ pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Dummy | TyKind::Never | TyKind::CVarArgs => {
         }
         TyKind::Slice(ty) => vis.visit_ty(ty),
-        TyKind::Ptr(mt) => vis.visit_mt(mt),
-        TyKind::Ref(lt, mt) | TyKind::PinnedRef(lt, mt) => {
+        TyKind::Ptr(MutTy { ty, mutbl: _ }) => vis.visit_ty(ty),
+        TyKind::Ref(lt, MutTy { ty, mutbl: _ }) | TyKind::PinnedRef(lt, MutTy { ty, mutbl: _ }) => {
             visit_opt(lt, |lt| vis.visit_lifetime(lt));
-            vis.visit_mt(mt);
+            vis.visit_ty(ty);
         }
         TyKind::BareFn(bft) => {
             let BareFnTy { safety, ext: _, generic_params, decl, decl_span } = bft.deref_mut();
@@ -1019,10 +999,6 @@ pub fn walk_flat_map_expr_field<T: MutVisitor>(
     smallvec![f]
 }
 
-fn walk_mt<T: MutVisitor>(vis: &mut T, MutTy { ty, mutbl: _ }: &mut MutTy) {
-    vis.visit_ty(ty);
-}
-
 pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut P<Block>) {
     let Block { id, stmts, rules: _, span, tokens: _ } = block.deref_mut();
     vis.visit_id(id);
@@ -1041,78 +1017,6 @@ pub fn walk_item_kind<K: WalkItemKind>(
     kind.walk(span, id, visibility, ctxt, vis)
 }
 
-impl WalkItemKind for AssocItemKind {
-    type Ctxt = AssocCtxt;
-    fn walk<V: MutVisitor>(
-        &mut self,
-        span: Span,
-        id: NodeId,
-        visibility: &mut Visibility,
-        ctxt: Self::Ctxt,
-        visitor: &mut V,
-    ) {
-        match self {
-            AssocItemKind::Const(item) => {
-                walk_const_item(visitor, item);
-            }
-            AssocItemKind::Fn(func) => {
-                visitor.visit_fn(FnKind::Fn(FnCtxt::Assoc(ctxt), visibility, &mut *func), span, id);
-            }
-            AssocItemKind::Type(box TyAlias {
-                defaultness,
-                ident,
-                generics,
-                where_clauses,
-                bounds,
-                ty,
-            }) => {
-                visit_defaultness(visitor, defaultness);
-                visitor.visit_ident(ident);
-                visitor.visit_generics(generics);
-                visit_bounds(visitor, bounds, BoundKind::Bound);
-                visit_opt(ty, |ty| visitor.visit_ty(ty));
-                walk_ty_alias_where_clauses(visitor, where_clauses);
-            }
-            AssocItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
-            AssocItemKind::Delegation(box Delegation {
-                id,
-                qself,
-                path,
-                ident,
-                rename,
-                body,
-                from_glob: _,
-            }) => {
-                visitor.visit_id(id);
-                visitor.visit_qself(qself);
-                visitor.visit_path(path);
-                visitor.visit_ident(ident);
-                if let Some(rename) = rename {
-                    visitor.visit_ident(rename);
-                }
-                if let Some(body) = body {
-                    visitor.visit_block(body);
-                }
-            }
-            AssocItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
-                visitor.visit_qself(qself);
-                visitor.visit_path(prefix);
-                if let Some(suffixes) = suffixes {
-                    for (ident, rename) in suffixes {
-                        visitor.visit_ident(ident);
-                        if let Some(rename) = rename {
-                            visitor.visit_ident(rename);
-                        }
-                    }
-                }
-                if let Some(body) = body {
-                    visitor.visit_block(body);
-                }
-            }
-        }
-    }
-}
-
 pub fn walk_crate<T: MutVisitor>(vis: &mut T, krate: &mut Crate) {
     let Crate { attrs, items, spans, id, is_placeholder: _ } = krate;
     vis.visit_id(id);
@@ -1121,14 +1025,6 @@ pub fn walk_crate<T: MutVisitor>(vis: &mut T, krate: &mut Crate) {
     let ModSpans { inner_span, inject_use_span } = spans;
     vis.visit_span(inner_span);
     vis.visit_span(inject_use_span);
-}
-
-pub fn walk_item(visitor: &mut impl MutVisitor, item: &mut P<Item<impl WalkItemKind<Ctxt = ()>>>) {
-    walk_item_ctxt(visitor, item, ())
-}
-
-pub fn walk_assoc_item(visitor: &mut impl MutVisitor, item: &mut P<AssocItem>, ctxt: AssocCtxt) {
-    walk_item_ctxt(visitor, item, ctxt)
 }
 
 pub fn walk_flat_map_item(vis: &mut impl MutVisitor, mut item: P<Item>) -> SmallVec<[P<Item>; 1]> {
@@ -1151,53 +1047,6 @@ pub fn walk_flat_map_assoc_item(
 ) -> SmallVec<[P<AssocItem>; 1]> {
     vis.visit_assoc_item(&mut item, ctxt);
     smallvec![item]
-}
-
-impl WalkItemKind for ForeignItemKind {
-    type Ctxt = ();
-    fn walk<V: MutVisitor>(
-        &mut self,
-        span: Span,
-        id: NodeId,
-        visibility: &mut Visibility,
-        _ctxt: Self::Ctxt,
-        visitor: &mut V,
-    ) {
-        match self {
-            ForeignItemKind::Static(box StaticItem {
-                ident,
-                ty,
-                mutability: _,
-                expr,
-                safety: _,
-                define_opaque,
-            }) => {
-                visitor.visit_ident(ident);
-                visitor.visit_ty(ty);
-                visit_opt(expr, |expr| visitor.visit_expr(expr));
-                walk_define_opaques(visitor, define_opaque);
-            }
-            ForeignItemKind::Fn(func) => {
-                visitor.visit_fn(FnKind::Fn(FnCtxt::Foreign, visibility, &mut *func), span, id);
-            }
-            ForeignItemKind::TyAlias(box TyAlias {
-                defaultness,
-                ident,
-                generics,
-                where_clauses,
-                bounds,
-                ty,
-            }) => {
-                visit_defaultness(visitor, defaultness);
-                visitor.visit_ident(ident);
-                visitor.visit_generics(generics);
-                visit_bounds(visitor, bounds, BoundKind::Bound);
-                visit_opt(ty, |ty| visitor.visit_ty(ty));
-                walk_ty_alias_where_clauses(visitor, where_clauses);
-            }
-            ForeignItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
-        }
-    }
 }
 
 pub fn walk_pat<T: MutVisitor>(vis: &mut T, pat: &mut P<Pat>) {
@@ -1500,11 +1349,9 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
     vis.visit_span(span);
 }
 
-pub fn noop_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: P<Expr>) -> Option<P<Expr>> {
-    Some({
-        vis.visit_expr(&mut e);
-        e
-    })
+pub fn walk_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: P<Expr>) -> Option<P<Expr>> {
+    vis.visit_expr(&mut e);
+    Some(e)
 }
 
 pub fn walk_flat_map_stmt<T: MutVisitor>(

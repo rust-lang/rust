@@ -738,7 +738,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 value.push_normal(", ");
             }
 
-            match arg.unpack() {
+            match arg.kind() {
                 ty::GenericArgKind::Lifetime(lt) => {
                     let s = lt.to_string();
                     value.push_normal(if s.is_empty() { "'_" } else { &s });
@@ -1166,7 +1166,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                     for (i, (arg1, arg2)) in sub1.iter().zip(sub2).enumerate().take(len) {
                         self.push_comma(&mut values.0, &mut values.1, i);
-                        match arg1.unpack() {
+                        match arg1.kind() {
                             // At one point we'd like to elide all lifetimes here, they are
                             // irrelevant for all diagnostics that use this output.
                             //
@@ -1509,7 +1509,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 let (is_simple_error, exp_found) = match values {
                     ValuePairs::Terms(ExpectedFound { expected, found }) => {
-                        match (expected.unpack(), found.unpack()) {
+                        match (expected.kind(), found.kind()) {
                             (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => {
                                 let is_simple_err =
                                     expected.is_simple_text() && found.is_simple_text();
@@ -2156,7 +2156,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return None;
         }
 
-        Some(match (exp_found.expected.unpack(), exp_found.found.unpack()) {
+        Some(match (exp_found.expected.kind(), exp_found.found.kind()) {
             (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => {
                 let (mut exp, mut fnd) = self.cmp(expected, found);
                 // Use the terminal width as the basis to determine when to compress the printed

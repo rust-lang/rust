@@ -817,8 +817,8 @@ where
 
     /// Returns a ty infer or a const infer depending on whether `kind` is a `Ty` or `Const`.
     /// If `kind` is an integer inference variable this will still return a ty infer var.
-    pub(super) fn next_term_infer_of_kind(&mut self, kind: I::Term) -> I::Term {
-        match kind.kind() {
+    pub(super) fn next_term_infer_of_kind(&mut self, term: I::Term) -> I::Term {
+        match term.kind() {
             ty::TermKind::Ty(_) => self.next_ty_infer().into(),
             ty::TermKind::Const(_) => self.next_const_infer().into(),
         }

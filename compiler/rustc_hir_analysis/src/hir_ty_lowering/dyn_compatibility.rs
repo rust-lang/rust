@@ -11,7 +11,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
-use rustc_trait_selection::traits::{self, hir_ty_lowering_dyn_compatibility_violations};
+use rustc_trait_selection::traits;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
@@ -97,8 +97,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // to avoid ICEs.
         for (clause, span) in user_written_bounds {
             if let Some(trait_pred) = clause.as_trait_clause() {
-                let violations =
-                    hir_ty_lowering_dyn_compatibility_violations(tcx, trait_pred.def_id());
+                let violations = self.dyn_compatibility_violations(trait_pred.def_id());
                 if !violations.is_empty() {
                     let reported = report_dyn_incompatibility(
                         tcx,
@@ -216,7 +215,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         let pred = bound_predicate.rebind(pred);
                         // A `Self` within the original bound will be instantiated with a
                         // `trait_object_dummy_self`, so check for that.
-                        let references_self = match pred.skip_binder().term.unpack() {
+                        let references_self = match pred.skip_binder().term.kind() {
                             ty::TermKind::Ty(ty) => ty.walk().any(|arg| arg == dummy_self.into()),
                             // FIXME(associated_const_equality): We should walk the const instead of not doing anything
                             ty::TermKind::Const(_) => false,

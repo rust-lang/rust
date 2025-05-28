@@ -2226,7 +2226,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let infer_args = self.tcx.mk_args_from_iter(args.into_iter().map(|arg| {
                     if !arg.is_suggestable(self.tcx, true) {
                         has_unsuggestable_args = true;
-                        match arg.unpack() {
+                        match arg.kind() {
                             GenericArgKind::Lifetime(_) => self
                                 .next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
                                 .into(),
@@ -2843,7 +2843,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let [first] = ***args else {
                     return;
                 };
-                let ty::GenericArgKind::Type(ty) = first.unpack() else {
+                let ty::GenericArgKind::Type(ty) = first.kind() else {
                     return;
                 };
                 let Ok(pick) = self.lookup_probe_for_diagnostic(

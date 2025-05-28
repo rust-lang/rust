@@ -819,7 +819,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATArgsCollector<'tcx> {
         match t.kind() {
             ty::Alias(ty::Projection, p) if p.def_id == self.gat => {
                 for (idx, arg) in p.args.iter().enumerate() {
-                    match arg.unpack() {
+                    match arg.kind() {
                         GenericArgKind::Lifetime(lt) if !lt.is_bound() => {
                             self.regions.insert((lt, idx));
                         }
@@ -1517,7 +1517,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             } else {
                 // If we've got a generic const parameter we still want to check its
                 // type is correct in case both it and the param type are fully concrete.
-                let GenericArgKind::Const(ct) = default.unpack() else {
+                let GenericArgKind::Const(ct) = default.kind() else {
                     continue;
                 };
 

@@ -16,10 +16,10 @@ LL |     fn transmute(&self, t: T) -> <Self as Super<NotActuallySuper>>::Assoc;
    = help: consider moving `transmute` to another trait
 
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/almost-supertrait-associated-type.rs:7:27
+  --> $DIR/almost-supertrait-associated-type.rs:7:32
    |
 LL |     (&PhantomData::<T> as &dyn Foo<T, U>).transmute(t)
-   |                           ^^^^^^^^^^^^^^ `Foo` is not dyn compatible
+   |                                ^^^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>

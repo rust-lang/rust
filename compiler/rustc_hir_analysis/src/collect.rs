@@ -31,7 +31,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt, walk_generics};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
@@ -40,7 +40,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::ObligationCtxt;
+use rustc_trait_selection::traits::{ObligationCtxt, hir_ty_lowering_dyn_compatibility_violations};
 use tracing::{debug, instrument};
 
 use crate::errors;
@@ -624,6 +624,10 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         }
 
         (input_tys, output_ty)
+    }
+
+    fn dyn_compatibility_violations(&self, trait_def_id: DefId) -> Vec<DynCompatibilityViolation> {
+        hir_ty_lowering_dyn_compatibility_violations(self.tcx, trait_def_id)
     }
 }
 
