@@ -2469,7 +2469,7 @@ intrinsics:
       - LLVMLink:
           name: "llvm.frinn.{neon_type}"
           links:
-            - link: "llvm.aarch64.neon.frintn.{neon_type}"
+            - link: "llvm.roundeven.{neon_type}"
               arch: aarch64,arm64ec
             - link: "llvm.arm.neon.vrintn.{neon_type}"
               arch: arm
@@ -2492,7 +2492,7 @@ intrinsics:
       - LLVMLink:
           name: "llvm.frinn.{neon_type}"
           links:
-            - link: "llvm.aarch64.neon.frintn.{neon_type}"
+            - link: "llvm.roundeven.{neon_type}"
               arch: aarch64,arm64ec
             - link: "llvm.arm.neon.vrintn.{neon_type}"
               arch: arm
@@ -13202,6 +13202,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     safety: safe
     attr:
+      - *target-is-arm
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['{type[2]}']]}]]
       - *neon-cfg-arm-unstable
@@ -13227,6 +13228,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     safety: safe
     attr:
+      - *target-is-arm
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['{type[2]}']]}]]
       - *neon-cfg-arm-unstable
@@ -13812,8 +13814,8 @@ intrinsics:
     return_type: "{neon_type[1]}"
     safety: safe
     attr:
-      #- *target-is-arm
-      #- *neon-v7
+      - *target-is-arm
+      - *neon-v7
       - *neon-arm-unstable
     types:
       - ['_v8i8',  "int8x8_t", '8']

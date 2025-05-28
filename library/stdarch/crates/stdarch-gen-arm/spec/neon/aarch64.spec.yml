@@ -2943,7 +2943,7 @@ intrinsics:
       - LLVMLink:
           name: "rbit.{neon_type}"
           links:
-            - link: "llvm.aarch64.neon.rbit.{neon_type}"
+            - link: "llvm.bitreverse.{neon_type}"
               arch: aarch64,arm64ec
 
   - name: "vrbit{neon_type[0].no}"
@@ -3096,7 +3096,7 @@ intrinsics:
       - LLVMLink:
           name: "frintn.{neon_type}"
           links:
-            - link: "llvm.aarch64.neon.frintn.{neon_type}"
+            - link: "llvm.roundeven.{neon_type}"
               arch: aarch64,arm64ec
 
   - name: "vrndns_{type}"

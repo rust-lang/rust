@@ -22,11 +22,11 @@ unsafe extern "C" {
     #[link_name = "llvm.x86.avx512bf16.cvtneps2bf16.512"]
     fn cvtneps2bf16_512(a: f32x16) -> i16x16;
     #[link_name = "llvm.x86.avx512bf16.dpbf16ps.128"]
-    fn dpbf16ps(a: f32x4, b: i32x4, c: i32x4) -> f32x4;
+    fn dpbf16ps(a: f32x4, b: i16x8, c: i16x8) -> f32x4;
     #[link_name = "llvm.x86.avx512bf16.dpbf16ps.256"]
-    fn dpbf16ps_256(a: f32x8, b: i32x8, c: i32x8) -> f32x8;
+    fn dpbf16ps_256(a: f32x8, b: i16x16, c: i16x16) -> f32x8;
     #[link_name = "llvm.x86.avx512bf16.dpbf16ps.512"]
-    fn dpbf16ps_512(a: f32x16, b: i32x16, c: i32x16) -> f32x16;
+    fn dpbf16ps_512(a: f32x16, b: i16x32, c: i16x32) -> f32x16;
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in two 128-bit vectors
@@ -250,7 +250,7 @@ pub fn _mm512_maskz_cvtneps_pbh(k: __mmask16, a: __m512) -> __m256bh {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr("vdpbf16ps"))]
 pub fn _mm_dpbf16_ps(src: __m128, a: __m128bh, b: __m128bh) -> __m128 {
-    unsafe { transmute(dpbf16ps(src.as_f32x4(), a.as_i32x4(), b.as_i32x4())) }
+    unsafe { transmute(dpbf16ps(src.as_f32x4(), a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Compute dot-product of BF16 (16-bit) floating-point pairs in a and b,
@@ -295,7 +295,7 @@ pub fn _mm_maskz_dpbf16_ps(k: __mmask8, src: __m128, a: __m128bh, b: __m128bh) -
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr("vdpbf16ps"))]
 pub fn _mm256_dpbf16_ps(src: __m256, a: __m256bh, b: __m256bh) -> __m256 {
-    unsafe { transmute(dpbf16ps_256(src.as_f32x8(), a.as_i32x8(), b.as_i32x8())) }
+    unsafe { transmute(dpbf16ps_256(src.as_f32x8(), a.as_i16x16(), b.as_i16x16())) }
 }
 
 /// Compute dot-product of BF16 (16-bit) floating-point pairs in a and b,
@@ -341,7 +341,7 @@ pub fn _mm256_maskz_dpbf16_ps(k: __mmask8, src: __m256, a: __m256bh, b: __m256bh
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr("vdpbf16ps"))]
 pub fn _mm512_dpbf16_ps(src: __m512, a: __m512bh, b: __m512bh) -> __m512 {
-    unsafe { transmute(dpbf16ps_512(src.as_f32x16(), a.as_i32x16(), b.as_i32x16())) }
+    unsafe { transmute(dpbf16ps_512(src.as_f32x16(), a.as_i16x32(), b.as_i16x32())) }
 }
 
 /// Compute dot-product of BF16 (16-bit) floating-point pairs in a and b,

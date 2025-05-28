@@ -21420,7 +21420,7 @@ pub fn vrbit_s8(a: int8x8_t) -> int8x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.rbit.v8i8"
+            link_name = "llvm.bitreverse.v8i8"
         )]
         fn _vrbit_s8(a: int8x8_t) -> int8x8_t;
     }
@@ -21436,7 +21436,7 @@ pub fn vrbitq_s8(a: int8x16_t) -> int8x16_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.rbit.v16i8"
+            link_name = "llvm.bitreverse.v16i8"
         )]
         fn _vrbitq_s8(a: int8x16_t) -> int8x16_t;
     }
@@ -23871,7 +23871,7 @@ pub fn vrndn_f64(a: float64x1_t) -> float64x1_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.frintn.v1f64"
+            link_name = "llvm.roundeven.v1f64"
         )]
         fn _vrndn_f64(a: float64x1_t) -> float64x1_t;
     }
@@ -23887,7 +23887,7 @@ pub fn vrndnq_f64(a: float64x2_t) -> float64x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.frintn.v2f64"
+            link_name = "llvm.roundeven.v2f64"
         )]
         fn _vrndnq_f64(a: float64x2_t) -> float64x2_t;
     }

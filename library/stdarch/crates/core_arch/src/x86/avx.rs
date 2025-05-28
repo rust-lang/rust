@@ -573,7 +573,7 @@ pub fn _mm256_blendv_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_dp_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
     static_assert_uimm_bits!(IMM8, 8);
-    unsafe { vdpps(a, b, IMM8) }
+    unsafe { vdpps(a, b, IMM8 as i8) }
 }
 
 /// Horizontal addition of adjacent pairs in the two packed vectors
@@ -3043,7 +3043,7 @@ unsafe extern "C" {
     #[link_name = "llvm.x86.avx.round.ps.256"]
     fn roundps256(a: __m256, b: i32) -> __m256;
     #[link_name = "llvm.x86.avx.dp.ps.256"]
-    fn vdpps(a: __m256, b: __m256, imm8: i32) -> __m256;
+    fn vdpps(a: __m256, b: __m256, imm8: i8) -> __m256;
     #[link_name = "llvm.x86.avx.hadd.pd.256"]
     fn vhaddpd(a: __m256d, b: __m256d) -> __m256d;
     #[link_name = "llvm.x86.avx.hadd.ps.256"]

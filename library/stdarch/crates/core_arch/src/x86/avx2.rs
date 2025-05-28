@@ -2146,7 +2146,7 @@ pub fn _mm256_movemask_epi8(a: __m256i) -> i32 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_mpsadbw_epu8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
-    unsafe { transmute(mpsadbw(a.as_u8x32(), b.as_u8x32(), IMM8)) }
+    unsafe { transmute(mpsadbw(a.as_u8x32(), b.as_u8x32(), IMM8 as i8)) }
 }
 
 /// Multiplies the low 32-bit integers from each packed 64-bit element in
@@ -3800,7 +3800,7 @@ unsafe extern "C" {
     #[link_name = "llvm.x86.avx2.maskstore.q.256"]
     fn maskstoreq256(mem_addr: *mut i8, mask: i64x4, a: i64x4);
     #[link_name = "llvm.x86.avx2.mpsadbw"]
-    fn mpsadbw(a: u8x32, b: u8x32, imm8: i32) -> u16x16;
+    fn mpsadbw(a: u8x32, b: u8x32, imm8: i8) -> u16x16;
     #[link_name = "llvm.x86.avx2.pmul.hr.sw"]
     fn pmulhrsw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.packsswb"]

@@ -204,6 +204,7 @@ pub fn __crc32w(crc: u32, data: u32) -> u32 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/priv_vpadal_s8)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vpadal.s8"))]
 #[cfg_attr(
@@ -221,6 +222,7 @@ fn priv_vpadal_s8(a: int16x4_t, b: int8x8_t) -> int16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/priv_vpadalq_s8)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vpadal.s8"))]
 #[cfg_attr(
@@ -238,6 +240,7 @@ fn priv_vpadalq_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/priv_vpadal_s16)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vpadal.s16"))]
 #[cfg_attr(
@@ -255,6 +258,7 @@ fn priv_vpadal_s16(a: int32x2_t, b: int16x4_t) -> int32x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/priv_vpadalq_s16)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vpadal.s16"))]
 #[cfg_attr(
@@ -272,6 +276,7 @@ fn priv_vpadalq_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/priv_vpadal_s32)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vpadal.s32"))]
 #[cfg_attr(
@@ -289,6 +294,7 @@ fn priv_vpadal_s32(a: int64x1_t, b: int32x2_t) -> int64x1_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/priv_vpadalq_s32)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vpadal.s32"))]
 #[cfg_attr(
@@ -306,6 +312,7 @@ fn priv_vpadalq_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/priv_vpadal_u8)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vpadal.u8"))]
 #[cfg_attr(
@@ -323,6 +330,7 @@ fn priv_vpadal_u8(a: uint16x4_t, b: uint8x8_t) -> uint16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/priv_vpadalq_u8)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vpadal.u8"))]
 #[cfg_attr(
@@ -340,6 +348,7 @@ fn priv_vpadalq_u8(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/priv_vpadal_u16)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vpadal.u16"))]
 #[cfg_attr(
@@ -357,6 +366,7 @@ fn priv_vpadal_u16(a: uint32x2_t, b: uint16x4_t) -> uint32x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/priv_vpadalq_u16)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vpadal.u16"))]
 #[cfg_attr(
@@ -374,6 +384,7 @@ fn priv_vpadalq_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/priv_vpadal_u32)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vpadal.u32"))]
 #[cfg_attr(
@@ -391,6 +402,7 @@ fn priv_vpadal_u32(a: uint64x1_t, b: uint32x2_t) -> uint64x1_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/priv_vpadalq_u32)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vpadal.u32"))]
 #[cfg_attr(
@@ -58712,7 +58724,7 @@ pub fn vrndn_f16(a: float16x4_t) -> float16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.frintn.v4f16"
+            link_name = "llvm.roundeven.v4f16"
         )]
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrintn.v4f16")]
         fn _vrndn_f16(a: float16x4_t) -> float16x4_t;
@@ -58734,7 +58746,7 @@ pub fn vrndnq_f16(a: float16x8_t) -> float16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.frintn.v8f16"
+            link_name = "llvm.roundeven.v8f16"
         )]
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrintn.v8f16")]
         fn _vrndnq_f16(a: float16x8_t) -> float16x8_t;
@@ -58763,7 +58775,7 @@ pub fn vrndn_f32(a: float32x2_t) -> float32x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.frintn.v2f32"
+            link_name = "llvm.roundeven.v2f32"
         )]
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrintn.v2f32")]
         fn _vrndn_f32(a: float32x2_t) -> float32x2_t;
@@ -58792,7 +58804,7 @@ pub fn vrndnq_f32(a: float32x4_t) -> float32x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.frintn.v4f32"
+            link_name = "llvm.roundeven.v4f32"
         )]
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrintn.v4f32")]
         fn _vrndnq_f32(a: float32x4_t) -> float32x4_t;
@@ -61531,6 +61543,8 @@ pub fn vsha256su1q_u32(tw0_3: uint32x4_t, w8_11: uint32x4_t, w12_15: uint32x4_t)
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v16i8)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 fn vshiftins_v16i8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
     unsafe extern "unadjusted" {
@@ -61543,6 +61557,8 @@ fn vshiftins_v16i8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v1i64)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 fn vshiftins_v1i64(a: int64x1_t, b: int64x1_t, c: int64x1_t) -> int64x1_t {
     unsafe extern "unadjusted" {
@@ -61555,6 +61571,8 @@ fn vshiftins_v1i64(a: int64x1_t, b: int64x1_t, c: int64x1_t) -> int64x1_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v2i32)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 fn vshiftins_v2i32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     unsafe extern "unadjusted" {
@@ -61567,6 +61585,8 @@ fn vshiftins_v2i32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v2i64)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 fn vshiftins_v2i64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t {
     unsafe extern "unadjusted" {
@@ -61579,6 +61599,8 @@ fn vshiftins_v2i64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v4i16)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 fn vshiftins_v4i16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     unsafe extern "unadjusted" {
@@ -61591,6 +61613,8 @@ fn vshiftins_v4i16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v4i32)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 fn vshiftins_v4i32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     unsafe extern "unadjusted" {
@@ -61603,6 +61627,8 @@ fn vshiftins_v4i32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v8i16)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 fn vshiftins_v8i16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     unsafe extern "unadjusted" {
@@ -61615,6 +61641,8 @@ fn vshiftins_v8i16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v8i8)"]
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 fn vshiftins_v8i8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
     unsafe extern "unadjusted" {
