@@ -1,8 +1,9 @@
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
 use rustc_attr_data_structures::InstructionSetAttr;
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::mono::{Linkage, MonoItemData, Visibility};
-use rustc_middle::mir::{InlineAsmOperand, START_BLOCK};
+use rustc_middle::mir::{ConstValue, InlineAsmOperand, START_BLOCK};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug, ty};
@@ -53,7 +54,7 @@ pub fn codegen_naked_asm<
     template_vec.extend(template.iter().cloned());
     template_vec.push(rustc_ast::ast::InlineAsmTemplatePiece::String(end.into()));
 
-    cx.codegen_global_asm(&template_vec, &operands, options, line_spans);
+    cx.codegen_global_asm(&template_vec, &operands, options, line_spans, instance);
 }
 
 fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>>(
@@ -78,14 +79,25 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
                 ty::EarlyBinder::bind(value.ty()),
             );
 
-            let string = common::asm_const_to_str(
-                cx.tcx(),
-                value.span,
-                const_value,
-                cx.layout_of(mono_type),
-            );
-
-            GlobalAsmOperandRef::Const { string }
+            let ConstValue::Scalar(scalar) = const_value else {
+                span_bug!(
+                    value.span,
+                    "expected Scalar for promoted asm const, but got {:#?}",
+                    const_value
+                )
+            };
+            match scalar {
+                Scalar::Int(_) => {
+                    let string = common::asm_const_to_str(
+                        cx.tcx(),
+                        value.span,
+                        const_value,
+                        cx.layout_of(mono_type),
+                    );
+                    GlobalAsmOperandRef::Interpolate { string }
+                }
+                Scalar::Ptr(value, _) => GlobalAsmOperandRef::ConstPointer { value },
+            }
         }
         InlineAsmOperand::SymFn { value } => {
             let mono_type = instance.instantiate_mir_and_normalize_erasing_regions(
