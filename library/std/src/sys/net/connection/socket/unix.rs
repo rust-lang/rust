@@ -281,6 +281,14 @@ impl Socket {
         self.0.duplicate().map(Socket)
     }
 
+    pub fn send_with_flags(&self, buf: &[u8], flags: c_int) -> io::Result<usize> {
+        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        let ret = cvt(unsafe {
+            libc::send(self.as_raw_fd(), buf.as_ptr() as *const c_void, len, flags)
+        })?;
+        Ok(ret as usize)
+    }
+
     fn recv_with_flags(&self, mut buf: BorrowedCursor<'_>, flags: c_int) -> io::Result<()> {
         let ret = cvt(unsafe {
             libc::recv(
