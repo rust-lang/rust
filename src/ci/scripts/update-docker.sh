@@ -4,7 +4,7 @@
 set -euo pipefail
 
 echo "previous docker version:"
-docker --version || true
+sudo docker --version || true
 
 # Remove old Docker packages
 for pkg in \
@@ -36,13 +36,13 @@ sudo apt-get install -y \
   containerd.io \
   docker-buildx-plugin
 
-if ! docker --version; then
+if ! sudo docker --version; then
     echo "Docker installation failed"
     exit 1
 fi
 
 echo "Docker updated successfully! New version:"
-docker --version
+sudo docker --version
 # # Start and enable Docker service
 # sudo systemctl start docker
 # sudo systemctl enable docker
