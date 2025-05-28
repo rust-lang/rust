@@ -109,9 +109,10 @@ unsafe extern "C" fn destroy<T>(ptr: *mut u8) {
     abort_on_dtor_unwind(|| {
         let storage = unsafe { &*(ptr as *const Storage<T, ()>) };
         if let State::Alive = storage.state.replace(State::Destroyed(())) {
-            // SAFETY: we ensured the state was Alive, and prevented running the destructor
-            // twice by updating the state to Destroyed. This is necessary as the destructor
-            // may attempt to access the variable.
+            // SAFETY: we ensured the state was Alive so the value was initialized.
+            // We also updated the state to Destroyed to prevent the destructor
+            // from accessing the thread-local variable, as this would violate
+            // the exclusive access provided by &mut T in Drop::drop.
             unsafe {
                 crate::ptr::drop_in_place(storage.value.get().cast::<T>());
             }
