@@ -422,7 +422,6 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             let makro = &item_tree[loc.id.value];
             MacroDefId {
                 krate: loc.container.krate,
-                block: loc.container.block.map(|block| salsa::plumbing::AsId::as_id(&block)),
                 kind: kind(loc.expander, loc.id.file_id(), makro.ast_id.upcast()),
                 local_inner: false,
                 allow_internal_unsafe: loc.allow_internal_unsafe,
@@ -436,7 +435,6 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             let makro = &item_tree[loc.id.value];
             MacroDefId {
                 krate: loc.container.krate,
-                block: loc.container.block.map(|block| salsa::plumbing::AsId::as_id(&block)),
                 kind: kind(loc.expander, loc.id.file_id(), makro.ast_id.upcast()),
                 local_inner: loc.flags.contains(MacroRulesLocFlags::LOCAL_INNER),
                 allow_internal_unsafe: loc
@@ -452,7 +450,6 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             let makro = &item_tree[loc.id.value];
             MacroDefId {
                 krate: loc.container.krate,
-                block: None,
                 kind: MacroDefKind::ProcMacro(
                     InFile::new(loc.id.file_id(), makro.ast_id),
                     loc.expander,

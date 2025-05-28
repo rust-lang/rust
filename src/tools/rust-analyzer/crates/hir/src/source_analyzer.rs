@@ -26,12 +26,12 @@ use hir_def::{
     },
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
     lang_item::LangItem,
-    nameres::{MacroSubNs, block_def_map, crate_def_map},
+    nameres::MacroSubNs,
     resolver::{HasResolver, Resolver, TypeNs, ValueNs, resolver_for_scope},
     type_ref::{Mutability, TypeRefId},
 };
 use hir_expand::{
-    HirFileId, InFile, MacroCallId,
+    HirFileId, InFile,
     mod_path::{ModPath, PathKind, path},
     name::{AsName, Name},
 };
@@ -215,18 +215,6 @@ impl<'db> SourceAnalyzer<'db> {
             BodyOrSig::Sig { source_map, .. } => &**source_map,
             BodyOrSig::VariantFields { source_map, .. } => &**source_map,
             BodyOrSig::Body { source_map, .. } => &source_map.store,
-        })
-    }
-
-    pub(crate) fn expansion(
-        &self,
-        db: &dyn HirDatabase,
-        macro_call: InFile<&ast::MacroCall>,
-    ) -> Option<MacroCallId> {
-        self.store_sm().and_then(|sm| sm.expansion(macro_call)).or_else(|| {
-            let ast_id_map = db.ast_id_map(macro_call.file_id);
-            let call_ast_id = macro_call.with_value(ast_id_map.ast_id(macro_call.value));
-            self.resolver.item_scopes().find_map(|scope| scope.macro_invoc(call_ast_id))
         })
     }
 
@@ -751,21 +739,6 @@ impl<'db> SourceAnalyzer<'db> {
             Type::new_with_resolver(db, &self.resolver, field_ty),
             GenericSubstitution::new(adt.into(), subst.clone(), self.trait_environment(db)),
         ))
-    }
-
-    pub(crate) fn resolve_macro_call(
-        &self,
-        db: &dyn HirDatabase,
-        macro_call: InFile<&ast::MacroCall>,
-    ) -> Option<Macro> {
-        self.expansion(db, macro_call).and_then(|it| {
-            let def = it.lookup(db).def;
-            let def_map = match def.block {
-                Some(block) => block_def_map(db, base_db::salsa::plumbing::FromId::from_id(block)),
-                None => crate_def_map(db, def.krate),
-            };
-            def_map.macro_def_to_macro_id.get(&def.kind.erased_ast_id()).map(|it| (*it).into())
-        })
     }
 
     pub(crate) fn resolve_bind_pat_to_const(

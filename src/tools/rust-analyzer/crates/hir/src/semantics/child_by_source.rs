@@ -36,9 +36,14 @@ impl ChildBySource for TraitId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         let data = db.trait_items(*self);
 
-        data.attribute_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
+        data.macro_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
-                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db), call_id);
+                let ptr = ast_id.to_ptr(db);
+                if let Some(ptr) = ptr.cast::<ast::MacroCall>() {
+                    res[keys::MACRO_CALL].insert(ptr, call_id);
+                } else {
+                    res[keys::ATTR_MACRO_CALL].insert(ptr, call_id);
+                }
             },
         );
         data.items.iter().for_each(|&(_, item)| {
@@ -50,10 +55,14 @@ impl ChildBySource for TraitId {
 impl ChildBySource for ImplId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         let data = db.impl_items(*self);
-        // FIXME: Macro calls
-        data.attribute_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
+        data.macro_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
-                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db), call_id);
+                let ptr = ast_id.to_ptr(db);
+                if let Some(ptr) = ptr.cast::<ast::MacroCall>() {
+                    res[keys::MACRO_CALL].insert(ptr, call_id);
+                } else {
+                    res[keys::ATTR_MACRO_CALL].insert(ptr, call_id);
+                }
             },
         );
         data.items.iter().for_each(|&(_, item)| {

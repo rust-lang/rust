@@ -719,4 +719,44 @@ __log!(written:%; "Test"$0);
             "#]],
         );
     }
+
+    #[test]
+    fn assoc_call() {
+        check(
+            r#"
+macro_rules! mac {
+    () => { fn assoc() {} }
+}
+impl () {
+    mac$0!();
+}
+    "#,
+            expect![[r#"
+                mac!
+                fn assoc(){}"#]],
+        );
+    }
+
+    #[test]
+    fn eager() {
+        check(
+            r#"
+//- minicore: concat
+macro_rules! my_concat {
+    ($head:expr, $($tail:tt)*) => { concat!($head, $($tail)*) };
+}
+
+
+fn test() {
+    _ = my_concat!(
+        conc$0at!("<", ">"),
+        "hi",
+    );
+}
+    "#,
+            expect![[r#"
+                my_concat!
+                "<>hi""#]],
+        );
+    }
 }

@@ -696,15 +696,6 @@ impl<'db> Resolver<'db> {
         &def_map[local_id].scope
     }
 
-    pub fn item_scopes(&self) -> impl Iterator<Item = &ItemScope> {
-        self.scopes()
-            .filter_map(move |scope| match scope {
-                Scope::BlockScope(m) => Some(&m.def_map[m.module_id].scope),
-                _ => None,
-            })
-            .chain(std::iter::once(&self.module_scope.def_map[self.module_scope.module_id].scope))
-    }
-
     pub fn krate(&self) -> Crate {
         self.module_scope.def_map.krate()
     }
