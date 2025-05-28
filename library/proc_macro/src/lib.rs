@@ -1618,11 +1618,11 @@ pub mod tracked_path {
 #[doc(hidden)]
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
 #[derive(Debug)]
-pub struct HasIterator;
+pub struct HasIterator; // True
 #[doc(hidden)]
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
 #[derive(Debug)]
-pub struct ThereIsNoIteratorInRepetition;
+pub struct ThereIsNoIteratorInRepetition; // False
 
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
 impl BitOr<ThereIsNoIteratorInRepetition> for ThereIsNoIteratorInRepetition {

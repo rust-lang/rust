@@ -128,16 +128,23 @@ pub fn quote(stream: TokenStream) -> TokenStream {
                             let _ = iter.next();
 
                             let meta_vars = collect_meta_vars(content.clone());
+
                             minimal_quote!(
                                 use crate::ext::*;
-                                let mut _i = 0usize;
-                                let mut has_iter: crate::ThereIsNoIteratorInRepetition = crate::ThereIsNoIteratorInRepetition;
+                            ).to_tokens(&mut tokens);
+                            if let Some(TokenTree::Punct(_)) = sep_opt {
+                                minimal_quote!(
+                                    let mut _i = 0usize;
+                                ).to_tokens(&mut tokens);
+                            }
+                            minimal_quote!(
+                                let has_iter = crate::ThereIsNoIteratorInRepetition;
                             ).to_tokens(&mut tokens);
                             for meta_var in &meta_vars {
                                 minimal_quote!(
                                     #[allow(unused_mut)]
                                     let (mut (@ meta_var), i) = (@ meta_var).quote_into_iter();
-                                    has_iter = has_iter | i;
+                                    let has_iter = has_iter | i;
                                 )
                                 .to_tokens(&mut tokens);
                             }
