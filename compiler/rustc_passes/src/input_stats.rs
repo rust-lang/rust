@@ -426,10 +426,16 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_fn(self, fk, fd, b, id)
     }
 
-    fn visit_use(&mut self, p: &'v hir::UsePath<'v>, hir_id: HirId) {
+    fn visit_use(&mut self, p: &'v hir::UsePath<'v>, _hir_id: HirId) {
         // This is `visit_use`, but the type is `Path` so record it that way.
         self.record("Path", None, p);
-        hir_visit::walk_use(self, p, hir_id)
+        // Don't call `hir_visit::walk_use(self, p, hir_id)`: it calls
+        // `visit_path` up to three times, once for each namespace result in
+        // `p.res`, by building temporary `Path`s that are not part of the real
+        // HIR, which causes `p` to be double- or triple-counted. Instead just
+        // walk the path internals (i.e. the segments) directly.
+        let hir::Path { span: _, res: _, segments } = *p;
+        ast_visit::walk_list!(self, visit_path_segment, segments);
     }
 
     fn visit_trait_item(&mut self, ti: &'v hir::TraitItem<'v>) {
