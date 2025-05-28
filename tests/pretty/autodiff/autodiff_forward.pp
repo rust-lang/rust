@@ -13,7 +13,7 @@ extern crate std;
 
 // Test that forward mode ad macros are expanded correctly.
 
-use std::autodiff::autodiff;
+use std::autodiff::{autodiff_forward, autodiff_reverse};
 
 #[rustc_autodiff]
 #[inline(never)]
