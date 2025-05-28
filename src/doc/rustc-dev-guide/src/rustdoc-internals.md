@@ -281,10 +281,10 @@ using `XPath` notation to get a precise look at the output. The full
 description of all the commands available to `rustdoc` tests (e.g. [`@has`] and
 [`@matches`]) is in [`htmldocck.py`].
 
-To use multiple crates in a `rustdoc` test, add `// aux-build:filename.rs`
+To use multiple crates in a `rustdoc` test, add `//@ aux-build:filename.rs`
 to the top of the test file. `filename.rs` should be placed in an `auxiliary`
 directory relative to the test file with the comment. If you need to build
-docs for the auxiliary file, use `// build-aux-docs`.
+docs for the auxiliary file, use `//@ build-aux-docs`.
 
 In addition, there are separate tests for the search index and `rustdoc`'s
 ability to query it. The files in `tests/rustdoc-js` each contain a
