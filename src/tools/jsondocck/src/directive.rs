@@ -1,16 +1,18 @@
 use std::borrow::Cow;
+
 use serde_json::Value;
+
 use crate::cache::Cache;
 
 #[derive(Debug)]
-pub struct Command {
-    pub kind: CommandKind,
+pub struct Directive {
+    pub kind: DirectiveKind,
     pub path: String,
     pub lineno: usize,
 }
 
 #[derive(Debug)]
-pub enum CommandKind {
+pub enum DirectiveKind {
     /// `//@ has <path>`
     ///
     /// Checks the path exists.
@@ -55,16 +57,16 @@ pub enum CommandKind {
     Set { variable: String },
 }
 
-impl CommandKind {
+impl DirectiveKind {
     /// Returns both the kind and the path.
     ///
-    /// Returns `None` if the command isn't from jsondocck (e.g. from compiletest).
+    /// Returns `None` if the directive isn't from jsondocck (e.g. from compiletest).
     pub fn parse<'a>(
-        command_name: &str,
+        directive_name: &str,
         negated: bool,
         args: &'a [String],
     ) -> Option<(Self, &'a str)> {
-        let kind = match (command_name, negated) {
+        let kind = match (directive_name, negated) {
             ("count", false) => {
                 assert_eq!(args.len(), 2);
                 let expected = args[1].parse().expect("invalid number for `count`");
@@ -104,11 +106,11 @@ impl CommandKind {
                 _ => panic!("`//@ !has` must have 2 or 3 arguments, but got {args:?}"),
             },
 
-            (_, false) if KNOWN_DIRECTIVE_NAMES.contains(&command_name) => {
+            (_, false) if KNOWN_DIRECTIVE_NAMES.contains(&directive_name) => {
                 return None;
             }
             _ => {
-                panic!("Invalid command `//@ {}{command_name}`", if negated { "!" } else { "" })
+                panic!("Invalid directive `//@ {}{directive_name}`", if negated { "!" } else { "" })
             }
         };
 
@@ -116,22 +118,22 @@ impl CommandKind {
     }
 }
 
-impl Command {
-    /// Performs the actual work of ensuring a command passes.
+impl Directive {
+    /// Performs the actual work of ensuring a directive passes.
     pub fn check(&self, cache: &mut Cache) -> Result<(), String> {
         let matches = cache.select(&self.path);
         match &self.kind {
-            CommandKind::HasPath => {
+            DirectiveKind::HasPath => {
                 if matches.is_empty() {
                     return Err("matched to no values".to_owned());
                 }
             }
-            CommandKind::HasNotPath => {
+            DirectiveKind::HasNotPath => {
                 if !matches.is_empty() {
                     return Err(format!("matched to {matches:?}, but wanted no matches"));
                 }
             }
-            CommandKind::HasValue { value } => {
+            DirectiveKind::HasValue { value } => {
                 let want_value = string_to_value(value, cache);
                 if !matches.contains(&want_value.as_ref()) {
                     return Err(format!(
@@ -139,7 +141,7 @@ impl Command {
                     ));
                 }
             }
-            CommandKind::HasNotValue { value } => {
+            DirectiveKind::HasNotValue { value } => {
                 let wantnt_value = string_to_value(value, cache);
                 if matches.contains(&wantnt_value.as_ref()) {
                     return Err(format!(
@@ -152,14 +154,14 @@ impl Command {
                 }
             }
 
-            CommandKind::Is { value } => {
+            DirectiveKind::Is { value } => {
                 let want_value = string_to_value(value, cache);
                 let matched = get_one(&matches)?;
                 if matched != want_value.as_ref() {
                     return Err(format!("matched to {matched:?} but want {want_value:?}"));
                 }
             }
-            CommandKind::IsNot { value } => {
+            DirectiveKind::IsNot { value } => {
                 let wantnt_value = string_to_value(value, cache);
                 let matched = get_one(&matches)?;
                 if matched == wantnt_value.as_ref() {
@@ -167,7 +169,7 @@ impl Command {
                 }
             }
 
-            CommandKind::IsMany { values } => {
+            DirectiveKind::IsMany { values } => {
                 // Serde json doesn't implement Ord or Hash for Value, so we must
                 // use a Vec here. While in theory that makes setwize equality
                 // O(n^2), in practice n will never be large enough to matter.
@@ -187,7 +189,7 @@ impl Command {
                     }
                 }
             }
-            CommandKind::CountIs { expected } => {
+            DirectiveKind::CountIs { expected } => {
                 if *expected != matches.len() {
                     return Err(format!(
                         "matched to `{matches:?}` with length {}, but expected length {expected}",
@@ -195,7 +197,7 @@ impl Command {
                     ));
                 }
             }
-            CommandKind::Set { variable } => {
+            DirectiveKind::Set { variable } => {
                 let value = get_one(&matches)?;
                 let r = cache.variables.insert(variable.to_owned(), value.clone());
                 assert!(r.is_none(), "name collision: {variable:?} is duplicated");
