@@ -763,6 +763,13 @@ Default: `"hexadecimal"`
 How to render the offset information in a memory layout hover.
 
 
+## rust-analyzer.hover.memoryLayout.padding {#hover.memoryLayout.padding}
+
+Default: `null`
+
+How to render the padding information in a memory layout hover.
+
+
 ## rust-analyzer.hover.memoryLayout.size {#hover.memoryLayout.size}
 
 Default: `"both"`
