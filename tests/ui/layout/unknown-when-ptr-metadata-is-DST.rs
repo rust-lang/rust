@@ -6,7 +6,7 @@ where
     str: std::ptr::Pointee<Metadata = str>,
 {
     [(); { let _a: Option<&str> = None; 0 }];
-    //~^ ERROR evaluation of constant value failed
+    //~^ ERROR the type `str` has an unknown layout
 }
 
 fn main() {}

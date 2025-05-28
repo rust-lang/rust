@@ -4,10 +4,14 @@ trait Project {
     type Assoc;
 }
 
-fn foo() where (): Project {
-    [(); size_of::<<() as Project>::Assoc>()]; //~ ERROR evaluation of constant value failed
-    //~| NOTE the type `<() as Project>::Assoc` has an unknown layout
+fn foo()
+where
+    (): Project,
+{
+    [(); size_of::<<() as Project>::Assoc>()];
+    //~^ ERROR the type `<() as Project>::Assoc` has an unknown layout
     //~| NOTE inside `std::mem::size_of::<<() as Project>::Assoc>`
+    //~| NOTE evaluation of constant value failed
 }
 
 fn main() {}

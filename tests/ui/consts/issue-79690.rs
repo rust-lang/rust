@@ -28,6 +28,6 @@ const FOO: &dyn Bar = &Foo {
     bar: false,
 };
 const G: Fat = unsafe { Transmute { t: FOO }.u };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR dangling reference
 
 fn main() {}
