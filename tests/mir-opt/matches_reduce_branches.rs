@@ -1,6 +1,5 @@
 //@ test-mir-pass: MatchBranchSimplification
 
-#![feature(repr128)]
 #![feature(core_intrinsics)]
 #![feature(custom_mir)]
 #![allow(non_camel_case_types)]
