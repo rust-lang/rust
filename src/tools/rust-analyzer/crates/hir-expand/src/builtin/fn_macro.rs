@@ -140,7 +140,6 @@ register_builtin! {
     EagerExpander:
     (compile_error, CompileError) => compile_error_expand,
     (concat, Concat) => concat_expand,
-    (concat_idents, ConcatIdents) => concat_idents_expand,
     (concat_bytes, ConcatBytes) => concat_bytes_expand,
     (include, Include) => include_expand,
     (include_bytes, IncludeBytes) => include_bytes_expand,
@@ -658,30 +657,6 @@ fn concat_bytes_expand_subtree(
         }
     }
     Ok(())
-}
-
-fn concat_idents_expand(
-    _db: &dyn ExpandDatabase,
-    _arg_id: MacroCallId,
-    tt: &tt::TopSubtree,
-    span: Span,
-) -> ExpandResult<tt::TopSubtree> {
-    let mut err = None;
-    let mut ident = String::new();
-    for (i, t) in tt.iter().enumerate() {
-        match t {
-            TtElement::Leaf(tt::Leaf::Ident(id)) => {
-                ident.push_str(id.sym.as_str());
-            }
-            TtElement::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
-            _ => {
-                err.get_or_insert(ExpandError::other(span, "unexpected token"));
-            }
-        }
-    }
-    // FIXME merge spans
-    let ident = tt::Ident { sym: Symbol::intern(&ident), span, is_raw: tt::IdentIsRaw::No };
-    ExpandResult { value: quote!(span =>#ident), err }
 }
 
 fn relative_file(
