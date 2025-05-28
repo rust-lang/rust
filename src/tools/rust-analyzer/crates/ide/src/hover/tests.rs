@@ -12,6 +12,7 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
         size: Some(MemoryLayoutHoverRenderKind::Both),
         offset: Some(MemoryLayoutHoverRenderKind::Both),
         alignment: Some(MemoryLayoutHoverRenderKind::Both),
+        padding: Some(MemoryLayoutHoverRenderKind::Both),
         niches: true,
     }),
     documentation: true,
@@ -933,7 +934,7 @@ struct Foo$0(pub u32) where u32: Copy;
 
             ---
 
-            size = 4, align = 4, no Drop
+            size = 4, align = 4, largest padding = 0, no Drop
         "#]],
     );
 }
@@ -959,7 +960,7 @@ struct Foo$0 { field: u32 }
 
             ---
 
-            size = 4, align = 4, no Drop
+            size = 4, align = 4, largest padding = 0, no Drop
         "#]],
     );
     check(
@@ -984,7 +985,7 @@ struct Foo$0 where u32: Copy { field: u32 }
 
             ---
 
-            size = 4, align = 4, no Drop
+            size = 4, align = 4, largest padding = 0, no Drop
         "#]],
     );
 }
@@ -1013,7 +1014,7 @@ fn hover_record_struct_limit() {
 
             ---
 
-            size = 12 (0xC), align = 4, no Drop
+            size = 12 (0xC), align = 4, largest padding = 0, no Drop
         "#]],
     );
     check_hover_fields_limit(
@@ -1036,7 +1037,7 @@ fn hover_record_struct_limit() {
 
             ---
 
-            size = 4, align = 4, no Drop
+            size = 4, align = 4, largest padding = 0, no Drop
         "#]],
     );
     check_hover_fields_limit(
@@ -1062,7 +1063,7 @@ fn hover_record_struct_limit() {
 
             ---
 
-            size = 16 (0x10), align = 4, no Drop
+            size = 16 (0x10), align = 4, largest padding = 0, no Drop
         "#]],
     );
     check_hover_fields_limit(
@@ -1083,7 +1084,7 @@ fn hover_record_struct_limit() {
 
             ---
 
-            size = 12 (0xC), align = 4, no Drop
+            size = 12 (0xC), align = 4, largest padding = 0, no Drop
         "#]],
     );
     check_hover_fields_limit(
@@ -1104,7 +1105,7 @@ fn hover_record_struct_limit() {
 
             ---
 
-            size = 12 (0xC), align = 4, no Drop
+            size = 12 (0xC), align = 4, largest padding = 0, no Drop
         "#]],
     );
 
@@ -3114,7 +3115,7 @@ struct S$0<T>(core::marker::PhantomData<T>);
 
             ---
 
-            size = 0, align = 1, no Drop
+            size = 0, align = 1, largest padding = 0, no Drop
         "#]],
     );
 }
@@ -3143,6 +3144,111 @@ fn test_hover_layout_of_enum() {
             ---
 
             size = 16 (0x10), align = 8, niches = 254, no Drop
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_layout_padding_info() {
+    check(
+        r#"struct $0Foo {
+            x: bool,
+            y: i64,
+            z: u32,
+        }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo {
+                x: bool,
+                y: i64,
+                z: u32,
+            }
+            ```
+
+            ---
+
+            size = 16 (0x10), align = 8, largest padding = 3, niches = 254, no Drop
+        "#]],
+    );
+
+    check(
+        r#"#[repr(align(32))]
+        struct $0Foo {
+            x: bool,
+            y: i64,
+            z: u32,
+        }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo {
+                x: bool,
+                y: i64,
+                z: u32,
+            }
+            ```
+
+            ---
+
+            size = 32 (0x20), align = 32 (0x20), largest padding = 19 (0x13), niches = 254, no Drop
+        "#]],
+    );
+
+    check(
+        r#"#[repr(C)]
+        struct $0Foo {
+            x: bool,
+            y: i64,
+            z: u32,
+        }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo {
+                x: bool,
+                y: i64,
+                z: u32,
+            }
+            ```
+
+            ---
+
+            size = 24 (0x18), align = 8, tail padding = 4, niches = 254, no Drop
+        "#]],
+    );
+
+    check(
+        r#"struct $0Foo(i16, u128, u64)"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo(i16, u128, u64)
+            ```
+
+            ---
+
+            size = 32 (0x20), align = 8, largest padding = 6, no Drop
         "#]],
     );
 }
@@ -9198,7 +9304,7 @@ struct Pedro$0<'a> {
 
             ---
 
-            size = 16 (0x10), align = 8, niches = 1, no Drop
+            size = 16 (0x10), align = 8, largest padding = 0, niches = 1, no Drop
         "#]],
     )
 }
@@ -10559,7 +10665,7 @@ struct DropField$0 {
 
             ---
 
-            size = 4, align = 4, needs Drop
+            size = 4, align = 4, largest padding = 0, needs Drop
         "#]],
     );
     check(

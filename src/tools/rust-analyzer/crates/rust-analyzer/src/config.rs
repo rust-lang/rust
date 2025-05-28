@@ -149,6 +149,8 @@ config_data! {
         hover_memoryLayout_niches: Option<bool> = Some(false),
         /// How to render the offset information in a memory layout hover.
         hover_memoryLayout_offset: Option<MemoryLayoutHoverRenderKindDef> = Some(MemoryLayoutHoverRenderKindDef::Hexadecimal),
+        /// How to render the padding information in a memory layout hover.
+        hover_memoryLayout_padding: Option<MemoryLayoutHoverRenderKindDef> = None,
         /// How to render the size information in a memory layout hover.
         hover_memoryLayout_size: Option<MemoryLayoutHoverRenderKindDef> = Some(MemoryLayoutHoverRenderKindDef::Both),
 
@@ -1635,6 +1637,7 @@ impl Config {
                 size: self.hover_memoryLayout_size().map(mem_kind),
                 offset: self.hover_memoryLayout_offset().map(mem_kind),
                 alignment: self.hover_memoryLayout_alignment().map(mem_kind),
+                padding: self.hover_memoryLayout_padding().map(mem_kind),
                 niches: self.hover_memoryLayout_niches().unwrap_or_default(),
             }),
             documentation: self.hover_documentation_enable().to_owned(),
