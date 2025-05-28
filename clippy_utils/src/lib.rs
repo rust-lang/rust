@@ -122,7 +122,7 @@ use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_span::{InnerSpan, Span};
-use source::walk_span_to_context;
+use source::{SpanRangeExt, walk_span_to_context};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
 use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
@@ -2786,6 +2786,16 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
             TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }
         )
     });
+}
+
+/// Checks whether a given span has any non-comment token. This checks for all types of token other
+/// than line comment "//", block comment "/**", doc "///" "//!" and whitespace
+/// This is useful to determine if there are any actual code tokens in the span that are omitted in
+/// the late pass, such as platform-specific code.
+pub fn span_contains_non_comment(cx: &impl source::HasSession, span: Span) -> bool {
+    matches!(span.get_source_text(cx), Some(snippet) if tokenize_with_text(&snippet).any(|(token, _, _)| {
+        !matches!(token, TokenKind::LineComment { .. } | TokenKind::BlockComment { .. } | TokenKind::Whitespace)
+    }))
 }
 
 /// Returns all the comments a given span contains

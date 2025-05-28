@@ -2,12 +2,13 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{IntoSpan as _, SpanRangeExt, snippet, snippet_block, snippet_block_with_applicability};
+use clippy_utils::span_contains_non_comment;
 use rustc_ast::BinOpKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -96,6 +97,8 @@ impl CollapsibleIf {
             && cx.tcx.hir_attrs(else_.hir_id).is_empty()
             && !else_.span.from_expansion()
             && let ExprKind::If(..) = else_.kind
+            && let up_to_if = else_block.span.until(else_.span)
+            && !span_contains_non_comment(cx, up_to_if.with_lo(BytePos(up_to_if.lo().0 + 1)))
         {
             // Prevent "elseif"
             // Check that the "else" is followed by whitespace
@@ -141,7 +144,7 @@ impl CollapsibleIf {
                     let then_open_bracket = then.span.split_at(1).0.with_leading_whitespace(cx).into_span();
                     let then_closing_bracket = {
                         let end = then.span.shrink_to_hi();
-                        end.with_lo(end.lo() - rustc_span::BytePos(1))
+                        end.with_lo(end.lo() - BytePos(1))
                             .with_leading_whitespace(cx)
                             .into_span()
                     };
