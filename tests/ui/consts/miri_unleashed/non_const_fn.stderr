@@ -1,8 +1,8 @@
-error[E0080]: could not evaluate static initializer
+error[E0080]: calling non-const function `foo`
   --> $DIR/non_const_fn.rs:7:16
    |
 LL | static C: () = foo();
-   |                ^^^^^ calling non-const function `foo`
+   |                ^^^^^ could not evaluate static initializer
 
 warning: skipping const checks
    |

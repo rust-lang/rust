@@ -19,7 +19,7 @@ const MAYBE_NULL: () = {
     assert!(!ptr.wrapping_byte_sub(1).is_null());
     // ... but once we shift outside the allocation, with an offset divisible by 4,
     // we might become null.
-    assert!(!ptr.wrapping_sub(512).is_null()); //~ ERROR evaluation of constant value failed
+    assert!(!ptr.wrapping_sub(512).is_null()); //~ ERROR null-ness of this pointer cannot be determined
 };
 
 fn main() {}
