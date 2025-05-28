@@ -249,98 +249,98 @@ fn test_classify() {
 #[cfg(not(miri))]
 #[cfg(target_has_reliable_f128_math)]
 fn test_floor() {
-    assert_approx_eq!(1.0f128.floor(), 1.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.3f128.floor(), 1.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.5f128.floor(), 1.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.7f128.floor(), 1.0f128, TOL_PRECISE);
-    assert_approx_eq!(0.0f128.floor(), 0.0f128, TOL_PRECISE);
-    assert_approx_eq!((-0.0f128).floor(), -0.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.0f128).floor(), -1.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.3f128).floor(), -2.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.5f128).floor(), -2.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.7f128).floor(), -2.0f128, TOL_PRECISE);
+    assert_eq!(1.0f128.floor(), 1.0f128);
+    assert_eq!(1.3f128.floor(), 1.0f128);
+    assert_eq!(1.5f128.floor(), 1.0f128);
+    assert_eq!(1.7f128.floor(), 1.0f128);
+    assert_eq!(0.0f128.floor(), 0.0f128);
+    assert_eq!((-0.0f128).floor(), -0.0f128);
+    assert_eq!((-1.0f128).floor(), -1.0f128);
+    assert_eq!((-1.3f128).floor(), -2.0f128);
+    assert_eq!((-1.5f128).floor(), -2.0f128);
+    assert_eq!((-1.7f128).floor(), -2.0f128);
 }
 
 #[test]
 #[cfg(not(miri))]
 #[cfg(target_has_reliable_f128_math)]
 fn test_ceil() {
-    assert_approx_eq!(1.0f128.ceil(), 1.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.3f128.ceil(), 2.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.5f128.ceil(), 2.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.7f128.ceil(), 2.0f128, TOL_PRECISE);
-    assert_approx_eq!(0.0f128.ceil(), 0.0f128, TOL_PRECISE);
-    assert_approx_eq!((-0.0f128).ceil(), -0.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.0f128).ceil(), -1.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.3f128).ceil(), -1.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.5f128).ceil(), -1.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.7f128).ceil(), -1.0f128, TOL_PRECISE);
+    assert_eq!(1.0f128.ceil(), 1.0f128);
+    assert_eq!(1.3f128.ceil(), 2.0f128);
+    assert_eq!(1.5f128.ceil(), 2.0f128);
+    assert_eq!(1.7f128.ceil(), 2.0f128);
+    assert_eq!(0.0f128.ceil(), 0.0f128);
+    assert_eq!((-0.0f128).ceil(), -0.0f128);
+    assert_eq!((-1.0f128).ceil(), -1.0f128);
+    assert_eq!((-1.3f128).ceil(), -1.0f128);
+    assert_eq!((-1.5f128).ceil(), -1.0f128);
+    assert_eq!((-1.7f128).ceil(), -1.0f128);
 }
 
 #[test]
 #[cfg(not(miri))]
 #[cfg(target_has_reliable_f128_math)]
 fn test_round() {
-    assert_approx_eq!(2.5f128.round(), 3.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.0f128.round(), 1.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.3f128.round(), 1.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.5f128.round(), 2.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.7f128.round(), 2.0f128, TOL_PRECISE);
-    assert_approx_eq!(0.0f128.round(), 0.0f128, TOL_PRECISE);
-    assert_approx_eq!((-0.0f128).round(), -0.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.0f128).round(), -1.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.3f128).round(), -1.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.5f128).round(), -2.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.7f128).round(), -2.0f128, TOL_PRECISE);
+    assert_eq!(2.5f128.round(), 3.0f128);
+    assert_eq!(1.0f128.round(), 1.0f128);
+    assert_eq!(1.3f128.round(), 1.0f128);
+    assert_eq!(1.5f128.round(), 2.0f128);
+    assert_eq!(1.7f128.round(), 2.0f128);
+    assert_eq!(0.0f128.round(), 0.0f128);
+    assert_eq!((-0.0f128).round(), -0.0f128);
+    assert_eq!((-1.0f128).round(), -1.0f128);
+    assert_eq!((-1.3f128).round(), -1.0f128);
+    assert_eq!((-1.5f128).round(), -2.0f128);
+    assert_eq!((-1.7f128).round(), -2.0f128);
 }
 
 #[test]
 #[cfg(not(miri))]
 #[cfg(target_has_reliable_f128_math)]
 fn test_round_ties_even() {
-    assert_approx_eq!(2.5f128.round_ties_even(), 2.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.0f128.round_ties_even(), 1.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.3f128.round_ties_even(), 1.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.5f128.round_ties_even(), 2.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.7f128.round_ties_even(), 2.0f128, TOL_PRECISE);
-    assert_approx_eq!(0.0f128.round_ties_even(), 0.0f128, TOL_PRECISE);
-    assert_approx_eq!((-0.0f128).round_ties_even(), -0.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.0f128).round_ties_even(), -1.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.3f128).round_ties_even(), -1.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.5f128).round_ties_even(), -2.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.7f128).round_ties_even(), -2.0f128, TOL_PRECISE);
+    assert_eq!(2.5f128.round_ties_even(), 2.0f128);
+    assert_eq!(1.0f128.round_ties_even(), 1.0f128);
+    assert_eq!(1.3f128.round_ties_even(), 1.0f128);
+    assert_eq!(1.5f128.round_ties_even(), 2.0f128);
+    assert_eq!(1.7f128.round_ties_even(), 2.0f128);
+    assert_eq!(0.0f128.round_ties_even(), 0.0f128);
+    assert_eq!((-0.0f128).round_ties_even(), -0.0f128);
+    assert_eq!((-1.0f128).round_ties_even(), -1.0f128);
+    assert_eq!((-1.3f128).round_ties_even(), -1.0f128);
+    assert_eq!((-1.5f128).round_ties_even(), -2.0f128);
+    assert_eq!((-1.7f128).round_ties_even(), -2.0f128);
 }
 
 #[test]
 #[cfg(not(miri))]
 #[cfg(target_has_reliable_f128_math)]
 fn test_trunc() {
-    assert_approx_eq!(1.0f128.trunc(), 1.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.3f128.trunc(), 1.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.5f128.trunc(), 1.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.7f128.trunc(), 1.0f128, TOL_PRECISE);
-    assert_approx_eq!(0.0f128.trunc(), 0.0f128, TOL_PRECISE);
-    assert_approx_eq!((-0.0f128).trunc(), -0.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.0f128).trunc(), -1.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.3f128).trunc(), -1.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.5f128).trunc(), -1.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.7f128).trunc(), -1.0f128, TOL_PRECISE);
+    assert_eq!(1.0f128.trunc(), 1.0f128);
+    assert_eq!(1.3f128.trunc(), 1.0f128);
+    assert_eq!(1.5f128.trunc(), 1.0f128);
+    assert_eq!(1.7f128.trunc(), 1.0f128);
+    assert_eq!(0.0f128.trunc(), 0.0f128);
+    assert_eq!((-0.0f128).trunc(), -0.0f128);
+    assert_eq!((-1.0f128).trunc(), -1.0f128);
+    assert_eq!((-1.3f128).trunc(), -1.0f128);
+    assert_eq!((-1.5f128).trunc(), -1.0f128);
+    assert_eq!((-1.7f128).trunc(), -1.0f128);
 }
 
 #[test]
 #[cfg(not(miri))]
 #[cfg(target_has_reliable_f128_math)]
 fn test_fract() {
-    assert_approx_eq!(1.0f128.fract(), 0.0f128, TOL_PRECISE);
-    assert_approx_eq!(1.3f128.fract(), 0.3f128, TOL_PRECISE);
-    assert_approx_eq!(1.5f128.fract(), 0.5f128, TOL_PRECISE);
-    assert_approx_eq!(1.7f128.fract(), 0.7f128, TOL_PRECISE);
-    assert_approx_eq!(0.0f128.fract(), 0.0f128, TOL_PRECISE);
-    assert_approx_eq!((-0.0f128).fract(), -0.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.0f128).fract(), -0.0f128, TOL_PRECISE);
-    assert_approx_eq!((-1.3f128).fract(), -0.3f128, TOL_PRECISE);
-    assert_approx_eq!((-1.5f128).fract(), -0.5f128, TOL_PRECISE);
-    assert_approx_eq!((-1.7f128).fract(), -0.7f128, TOL_PRECISE);
+    assert_eq!(1.0f128.fract(), 0.0f128);
+    assert_eq!(1.3f128.fract(), 0.300000000000000000000000000000000039f128);
+    assert_eq!(1.5f128.fract(), 0.5f128);
+    assert_eq!(1.7f128.fract(), 0.7f128);
+    assert_eq!(0.0f128.fract(), 0.0f128);
+    assert_eq!((-0.0f128).fract(), -0.0f128);
+    assert_eq!((-1.0f128).fract(), -0.0f128);
+    assert_eq!((-1.3f128).fract(), -0.300000000000000000000000000000000039f128);
+    assert_eq!((-1.5f128).fract(), -0.5f128);
+    assert_eq!((-1.7f128).fract(), -0.699999999999999999999999999999999961f128);
 }
 
 #[test]
@@ -451,10 +451,10 @@ fn test_mul_add() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;
     let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_approx_eq!(12.3f128.mul_add(4.5, 6.7), 62.05, TOL_PRECISE);
-    assert_approx_eq!((-12.3f128).mul_add(-4.5, -6.7), 48.65, TOL_PRECISE);
-    assert_approx_eq!(0.0f128.mul_add(8.9, 1.2), 1.2, TOL_PRECISE);
-    assert_approx_eq!(3.4f128.mul_add(-0.0, 5.6), 5.6, TOL_PRECISE);
+    assert_eq!(12.3f128.mul_add(4.5, 6.7), 62.0500000000000000000000000000000037);
+    assert_eq!((-12.3f128).mul_add(-4.5, -6.7), 48.6500000000000000000000000000000049);
+    assert_eq!(0.0f128.mul_add(8.9, 1.2), 1.2);
+    assert_eq!(3.4f128.mul_add(-0.0, 5.6), 5.6);
     assert!(nan.mul_add(7.8, 9.0).is_nan());
     assert_eq!(inf.mul_add(7.8, 9.0), inf);
     assert_eq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
@@ -550,10 +550,10 @@ fn test_float_bits_conv() {
     assert_eq!((12.5f128).to_bits(), 0x40029000000000000000000000000000);
     assert_eq!((1337f128).to_bits(), 0x40094e40000000000000000000000000);
     assert_eq!((-14.25f128).to_bits(), 0xc002c800000000000000000000000000);
-    assert_approx_eq!(f128::from_bits(0x3fff0000000000000000000000000000), 1.0, TOL_PRECISE);
-    assert_approx_eq!(f128::from_bits(0x40029000000000000000000000000000), 12.5, TOL_PRECISE);
-    assert_approx_eq!(f128::from_bits(0x40094e40000000000000000000000000), 1337.0, TOL_PRECISE);
-    assert_approx_eq!(f128::from_bits(0xc002c800000000000000000000000000), -14.25, TOL_PRECISE);
+    assert_eq!(f128::from_bits(0x3fff0000000000000000000000000000), 1.0);
+    assert_eq!(f128::from_bits(0x40029000000000000000000000000000), 12.5);
+    assert_eq!(f128::from_bits(0x40094e40000000000000000000000000), 1337.0);
+    assert_eq!(f128::from_bits(0xc002c800000000000000000000000000), -14.25);
 
     // Check that NaNs roundtrip their bits regardless of signaling-ness
     // 0xA is 0b1010; 0x5 is 0b0101 -- so these two together clobbers all the mantissa bits

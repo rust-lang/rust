@@ -204,88 +204,88 @@ fn test_classify() {
 
 #[test]
 fn test_floor() {
-    assert_approx_eq!(f32::math::floor(1.0f32), 1.0f32);
-    assert_approx_eq!(f32::math::floor(1.3f32), 1.0f32);
-    assert_approx_eq!(f32::math::floor(1.5f32), 1.0f32);
-    assert_approx_eq!(f32::math::floor(1.7f32), 1.0f32);
-    assert_approx_eq!(f32::math::floor(0.0f32), 0.0f32);
-    assert_approx_eq!(f32::math::floor(-0.0f32), -0.0f32);
-    assert_approx_eq!(f32::math::floor(-1.0f32), -1.0f32);
-    assert_approx_eq!(f32::math::floor(-1.3f32), -2.0f32);
-    assert_approx_eq!(f32::math::floor(-1.5f32), -2.0f32);
-    assert_approx_eq!(f32::math::floor(-1.7f32), -2.0f32);
+    assert_eq!(f32::math::floor(1.0f32), 1.0f32);
+    assert_eq!(f32::math::floor(1.3f32), 1.0f32);
+    assert_eq!(f32::math::floor(1.5f32), 1.0f32);
+    assert_eq!(f32::math::floor(1.7f32), 1.0f32);
+    assert_eq!(f32::math::floor(0.0f32), 0.0f32);
+    assert_eq!(f32::math::floor(-0.0f32), -0.0f32);
+    assert_eq!(f32::math::floor(-1.0f32), -1.0f32);
+    assert_eq!(f32::math::floor(-1.3f32), -2.0f32);
+    assert_eq!(f32::math::floor(-1.5f32), -2.0f32);
+    assert_eq!(f32::math::floor(-1.7f32), -2.0f32);
 }
 
 #[test]
 fn test_ceil() {
-    assert_approx_eq!(f32::math::ceil(1.0f32), 1.0f32);
-    assert_approx_eq!(f32::math::ceil(1.3f32), 2.0f32);
-    assert_approx_eq!(f32::math::ceil(1.5f32), 2.0f32);
-    assert_approx_eq!(f32::math::ceil(1.7f32), 2.0f32);
-    assert_approx_eq!(f32::math::ceil(0.0f32), 0.0f32);
-    assert_approx_eq!(f32::math::ceil(-0.0f32), -0.0f32);
-    assert_approx_eq!(f32::math::ceil(-1.0f32), -1.0f32);
-    assert_approx_eq!(f32::math::ceil(-1.3f32), -1.0f32);
-    assert_approx_eq!(f32::math::ceil(-1.5f32), -1.0f32);
-    assert_approx_eq!(f32::math::ceil(-1.7f32), -1.0f32);
+    assert_eq!(f32::math::ceil(1.0f32), 1.0f32);
+    assert_eq!(f32::math::ceil(1.3f32), 2.0f32);
+    assert_eq!(f32::math::ceil(1.5f32), 2.0f32);
+    assert_eq!(f32::math::ceil(1.7f32), 2.0f32);
+    assert_eq!(f32::math::ceil(0.0f32), 0.0f32);
+    assert_eq!(f32::math::ceil(-0.0f32), -0.0f32);
+    assert_eq!(f32::math::ceil(-1.0f32), -1.0f32);
+    assert_eq!(f32::math::ceil(-1.3f32), -1.0f32);
+    assert_eq!(f32::math::ceil(-1.5f32), -1.0f32);
+    assert_eq!(f32::math::ceil(-1.7f32), -1.0f32);
 }
 
 #[test]
 fn test_round() {
-    assert_approx_eq!(f32::math::round(2.5f32), 3.0f32);
-    assert_approx_eq!(f32::math::round(1.0f32), 1.0f32);
-    assert_approx_eq!(f32::math::round(1.3f32), 1.0f32);
-    assert_approx_eq!(f32::math::round(1.5f32), 2.0f32);
-    assert_approx_eq!(f32::math::round(1.7f32), 2.0f32);
-    assert_approx_eq!(f32::math::round(0.0f32), 0.0f32);
-    assert_approx_eq!(f32::math::round(-0.0f32), -0.0f32);
-    assert_approx_eq!(f32::math::round(-1.0f32), -1.0f32);
-    assert_approx_eq!(f32::math::round(-1.3f32), -1.0f32);
-    assert_approx_eq!(f32::math::round(-1.5f32), -2.0f32);
-    assert_approx_eq!(f32::math::round(-1.7f32), -2.0f32);
+    assert_eq!(f32::math::round(2.5f32), 3.0f32);
+    assert_eq!(f32::math::round(1.0f32), 1.0f32);
+    assert_eq!(f32::math::round(1.3f32), 1.0f32);
+    assert_eq!(f32::math::round(1.5f32), 2.0f32);
+    assert_eq!(f32::math::round(1.7f32), 2.0f32);
+    assert_eq!(f32::math::round(0.0f32), 0.0f32);
+    assert_eq!(f32::math::round(-0.0f32), -0.0f32);
+    assert_eq!(f32::math::round(-1.0f32), -1.0f32);
+    assert_eq!(f32::math::round(-1.3f32), -1.0f32);
+    assert_eq!(f32::math::round(-1.5f32), -2.0f32);
+    assert_eq!(f32::math::round(-1.7f32), -2.0f32);
 }
 
 #[test]
 fn test_round_ties_even() {
-    assert_approx_eq!(f32::math::round_ties_even(2.5f32), 2.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(1.0f32), 1.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(1.3f32), 1.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(1.5f32), 2.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(1.7f32), 2.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(0.0f32), 0.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(-0.0f32), -0.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(-1.0f32), -1.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(-1.3f32), -1.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(-1.5f32), -2.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(-1.7f32), -2.0f32);
+    assert_eq!(f32::math::round_ties_even(2.5f32), 2.0f32);
+    assert_eq!(f32::math::round_ties_even(1.0f32), 1.0f32);
+    assert_eq!(f32::math::round_ties_even(1.3f32), 1.0f32);
+    assert_eq!(f32::math::round_ties_even(1.5f32), 2.0f32);
+    assert_eq!(f32::math::round_ties_even(1.7f32), 2.0f32);
+    assert_eq!(f32::math::round_ties_even(0.0f32), 0.0f32);
+    assert_eq!(f32::math::round_ties_even(-0.0f32), -0.0f32);
+    assert_eq!(f32::math::round_ties_even(-1.0f32), -1.0f32);
+    assert_eq!(f32::math::round_ties_even(-1.3f32), -1.0f32);
+    assert_eq!(f32::math::round_ties_even(-1.5f32), -2.0f32);
+    assert_eq!(f32::math::round_ties_even(-1.7f32), -2.0f32);
 }
 
 #[test]
 fn test_trunc() {
-    assert_approx_eq!(f32::math::trunc(1.0f32), 1.0f32);
-    assert_approx_eq!(f32::math::trunc(1.3f32), 1.0f32);
-    assert_approx_eq!(f32::math::trunc(1.5f32), 1.0f32);
-    assert_approx_eq!(f32::math::trunc(1.7f32), 1.0f32);
-    assert_approx_eq!(f32::math::trunc(0.0f32), 0.0f32);
-    assert_approx_eq!(f32::math::trunc(-0.0f32), -0.0f32);
-    assert_approx_eq!(f32::math::trunc(-1.0f32), -1.0f32);
-    assert_approx_eq!(f32::math::trunc(-1.3f32), -1.0f32);
-    assert_approx_eq!(f32::math::trunc(-1.5f32), -1.0f32);
-    assert_approx_eq!(f32::math::trunc(-1.7f32), -1.0f32);
+    assert_eq!(f32::math::trunc(1.0f32), 1.0f32);
+    assert_eq!(f32::math::trunc(1.3f32), 1.0f32);
+    assert_eq!(f32::math::trunc(1.5f32), 1.0f32);
+    assert_eq!(f32::math::trunc(1.7f32), 1.0f32);
+    assert_eq!(f32::math::trunc(0.0f32), 0.0f32);
+    assert_eq!(f32::math::trunc(-0.0f32), -0.0f32);
+    assert_eq!(f32::math::trunc(-1.0f32), -1.0f32);
+    assert_eq!(f32::math::trunc(-1.3f32), -1.0f32);
+    assert_eq!(f32::math::trunc(-1.5f32), -1.0f32);
+    assert_eq!(f32::math::trunc(-1.7f32), -1.0f32);
 }
 
 #[test]
 fn test_fract() {
-    assert_approx_eq!(f32::math::fract(1.0f32), 0.0f32);
-    assert_approx_eq!(f32::math::fract(1.3f32), 0.3f32);
-    assert_approx_eq!(f32::math::fract(1.5f32), 0.5f32);
-    assert_approx_eq!(f32::math::fract(1.7f32), 0.7f32);
-    assert_approx_eq!(f32::math::fract(0.0f32), 0.0f32);
-    assert_approx_eq!(f32::math::fract(-0.0f32), -0.0f32);
-    assert_approx_eq!(f32::math::fract(-1.0f32), -0.0f32);
-    assert_approx_eq!(f32::math::fract(-1.3f32), -0.3f32);
-    assert_approx_eq!(f32::math::fract(-1.5f32), -0.5f32);
-    assert_approx_eq!(f32::math::fract(-1.7f32), -0.7f32);
+    assert_eq!(f32::math::fract(1.0f32), 0.0f32);
+    assert_eq!(f32::math::fract(1.3f32), 0.29999995f32);
+    assert_eq!(f32::math::fract(1.5f32), 0.5f32);
+    assert_eq!(f32::math::fract(1.7f32), 0.70000005f32);
+    assert_eq!(f32::math::fract(0.0f32), 0.0f32);
+    assert_eq!(f32::math::fract(-0.0f32), -0.0f32);
+    assert_eq!(f32::math::fract(-1.0f32), -0.0f32);
+    assert_eq!(f32::math::fract(-1.3f32), -0.29999995f32);
+    assert_eq!(f32::math::fract(-1.5f32), -0.5f32);
+    assert_eq!(f32::math::fract(-1.7f32), -0.70000005f32);
 }
 
 #[test]
@@ -406,10 +406,10 @@ fn test_mul_add() {
     let nan: f32 = f32::NAN;
     let inf: f32 = f32::INFINITY;
     let neg_inf: f32 = f32::NEG_INFINITY;
-    assert_approx_eq!(f32::math::mul_add(12.3f32, 4.5, 6.7), 62.05);
-    assert_approx_eq!(f32::math::mul_add(-12.3f32, -4.5, -6.7), 48.65);
-    assert_approx_eq!(f32::math::mul_add(0.0f32, 8.9, 1.2), 1.2);
-    assert_approx_eq!(f32::math::mul_add(3.4f32, -0.0, 5.6), 5.6);
+    assert_eq!(f32::math::mul_add(12.3f32, 4.5, 6.7), 62.05);
+    assert_eq!(f32::math::mul_add(-12.3f32, -4.5, -6.7), 48.65);
+    assert_eq!(f32::math::mul_add(0.0f32, 8.9, 1.2), 1.2);
+    assert_eq!(f32::math::mul_add(3.4f32, -0.0, 5.6), 5.6);
     assert!(f32::math::mul_add(nan, 7.8, 9.0).is_nan());
     assert_eq!(f32::math::mul_add(inf, 7.8, 9.0), inf);
     assert_eq!(f32::math::mul_add(neg_inf, 7.8, 9.0), neg_inf);
@@ -492,10 +492,10 @@ fn test_float_bits_conv() {
     assert_eq!((12.5f32).to_bits(), 0x41480000);
     assert_eq!((1337f32).to_bits(), 0x44a72000);
     assert_eq!((-14.25f32).to_bits(), 0xc1640000);
-    assert_approx_eq!(f32::from_bits(0x3f800000), 1.0);
-    assert_approx_eq!(f32::from_bits(0x41480000), 12.5);
-    assert_approx_eq!(f32::from_bits(0x44a72000), 1337.0);
-    assert_approx_eq!(f32::from_bits(0xc1640000), -14.25);
+    assert_eq!(f32::from_bits(0x3f800000), 1.0);
+    assert_eq!(f32::from_bits(0x41480000), 12.5);
+    assert_eq!(f32::from_bits(0x44a72000), 1337.0);
+    assert_eq!(f32::from_bits(0xc1640000), -14.25);
 
     // Check that NaNs roundtrip their bits regardless of signaling-ness
     // 0xA is 0b1010; 0x5 is 0b0101 -- so these two together clobbers all the mantissa bits

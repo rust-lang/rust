@@ -191,88 +191,88 @@ fn test_classify() {
 
 #[test]
 fn test_floor() {
-    assert_approx_eq!(f64::math::floor(1.0f64), 1.0f64);
-    assert_approx_eq!(f64::math::floor(1.3f64), 1.0f64);
-    assert_approx_eq!(f64::math::floor(1.5f64), 1.0f64);
-    assert_approx_eq!(f64::math::floor(1.7f64), 1.0f64);
-    assert_approx_eq!(f64::math::floor(0.0f64), 0.0f64);
-    assert_approx_eq!(f64::math::floor(-0.0f64), -0.0f64);
-    assert_approx_eq!(f64::math::floor(-1.0f64), -1.0f64);
-    assert_approx_eq!(f64::math::floor(-1.3f64), -2.0f64);
-    assert_approx_eq!(f64::math::floor(-1.5f64), -2.0f64);
-    assert_approx_eq!(f64::math::floor(-1.7f64), -2.0f64);
+    assert_eq!(f64::math::floor(1.0f64), 1.0f64);
+    assert_eq!(f64::math::floor(1.3f64), 1.0f64);
+    assert_eq!(f64::math::floor(1.5f64), 1.0f64);
+    assert_eq!(f64::math::floor(1.7f64), 1.0f64);
+    assert_eq!(f64::math::floor(0.0f64), 0.0f64);
+    assert_eq!(f64::math::floor(-0.0f64), -0.0f64);
+    assert_eq!(f64::math::floor(-1.0f64), -1.0f64);
+    assert_eq!(f64::math::floor(-1.3f64), -2.0f64);
+    assert_eq!(f64::math::floor(-1.5f64), -2.0f64);
+    assert_eq!(f64::math::floor(-1.7f64), -2.0f64);
 }
 
 #[test]
 fn test_ceil() {
-    assert_approx_eq!(f64::math::ceil(1.0f64), 1.0f64);
-    assert_approx_eq!(f64::math::ceil(1.3f64), 2.0f64);
-    assert_approx_eq!(f64::math::ceil(1.5f64), 2.0f64);
-    assert_approx_eq!(f64::math::ceil(1.7f64), 2.0f64);
-    assert_approx_eq!(f64::math::ceil(0.0f64), 0.0f64);
-    assert_approx_eq!(f64::math::ceil(-0.0f64), -0.0f64);
-    assert_approx_eq!(f64::math::ceil(-1.0f64), -1.0f64);
-    assert_approx_eq!(f64::math::ceil(-1.3f64), -1.0f64);
-    assert_approx_eq!(f64::math::ceil(-1.5f64), -1.0f64);
-    assert_approx_eq!(f64::math::ceil(-1.7f64), -1.0f64);
+    assert_eq!(f64::math::ceil(1.0f64), 1.0f64);
+    assert_eq!(f64::math::ceil(1.3f64), 2.0f64);
+    assert_eq!(f64::math::ceil(1.5f64), 2.0f64);
+    assert_eq!(f64::math::ceil(1.7f64), 2.0f64);
+    assert_eq!(f64::math::ceil(0.0f64), 0.0f64);
+    assert_eq!(f64::math::ceil(-0.0f64), -0.0f64);
+    assert_eq!(f64::math::ceil(-1.0f64), -1.0f64);
+    assert_eq!(f64::math::ceil(-1.3f64), -1.0f64);
+    assert_eq!(f64::math::ceil(-1.5f64), -1.0f64);
+    assert_eq!(f64::math::ceil(-1.7f64), -1.0f64);
 }
 
 #[test]
 fn test_round() {
-    assert_approx_eq!(f64::math::round(2.5f64), 3.0f64);
-    assert_approx_eq!(f64::math::round(1.0f64), 1.0f64);
-    assert_approx_eq!(f64::math::round(1.3f64), 1.0f64);
-    assert_approx_eq!(f64::math::round(1.5f64), 2.0f64);
-    assert_approx_eq!(f64::math::round(1.7f64), 2.0f64);
-    assert_approx_eq!(f64::math::round(0.0f64), 0.0f64);
-    assert_approx_eq!(f64::math::round(-0.0f64), -0.0f64);
-    assert_approx_eq!(f64::math::round(-1.0f64), -1.0f64);
-    assert_approx_eq!(f64::math::round(-1.3f64), -1.0f64);
-    assert_approx_eq!(f64::math::round(-1.5f64), -2.0f64);
-    assert_approx_eq!(f64::math::round(-1.7f64), -2.0f64);
+    assert_eq!(f64::math::round(2.5f64), 3.0f64);
+    assert_eq!(f64::math::round(1.0f64), 1.0f64);
+    assert_eq!(f64::math::round(1.3f64), 1.0f64);
+    assert_eq!(f64::math::round(1.5f64), 2.0f64);
+    assert_eq!(f64::math::round(1.7f64), 2.0f64);
+    assert_eq!(f64::math::round(0.0f64), 0.0f64);
+    assert_eq!(f64::math::round(-0.0f64), -0.0f64);
+    assert_eq!(f64::math::round(-1.0f64), -1.0f64);
+    assert_eq!(f64::math::round(-1.3f64), -1.0f64);
+    assert_eq!(f64::math::round(-1.5f64), -2.0f64);
+    assert_eq!(f64::math::round(-1.7f64), -2.0f64);
 }
 
 #[test]
 fn test_round_ties_even() {
-    assert_approx_eq!(f64::math::round_ties_even(2.5f64), 2.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(1.0f64), 1.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(1.3f64), 1.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(1.5f64), 2.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(1.7f64), 2.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(0.0f64), 0.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(-0.0f64), -0.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(-1.0f64), -1.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(-1.3f64), -1.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(-1.5f64), -2.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(-1.7f64), -2.0f64);
+    assert_eq!(f64::math::round_ties_even(2.5f64), 2.0f64);
+    assert_eq!(f64::math::round_ties_even(1.0f64), 1.0f64);
+    assert_eq!(f64::math::round_ties_even(1.3f64), 1.0f64);
+    assert_eq!(f64::math::round_ties_even(1.5f64), 2.0f64);
+    assert_eq!(f64::math::round_ties_even(1.7f64), 2.0f64);
+    assert_eq!(f64::math::round_ties_even(0.0f64), 0.0f64);
+    assert_eq!(f64::math::round_ties_even(-0.0f64), -0.0f64);
+    assert_eq!(f64::math::round_ties_even(-1.0f64), -1.0f64);
+    assert_eq!(f64::math::round_ties_even(-1.3f64), -1.0f64);
+    assert_eq!(f64::math::round_ties_even(-1.5f64), -2.0f64);
+    assert_eq!(f64::math::round_ties_even(-1.7f64), -2.0f64);
 }
 
 #[test]
 fn test_trunc() {
-    assert_approx_eq!(f64::math::trunc(1.0f64), 1.0f64);
-    assert_approx_eq!(f64::math::trunc(1.3f64), 1.0f64);
-    assert_approx_eq!(f64::math::trunc(1.5f64), 1.0f64);
-    assert_approx_eq!(f64::math::trunc(1.7f64), 1.0f64);
-    assert_approx_eq!(f64::math::trunc(0.0f64), 0.0f64);
-    assert_approx_eq!(f64::math::trunc(-0.0f64), -0.0f64);
-    assert_approx_eq!(f64::math::trunc(-1.0f64), -1.0f64);
-    assert_approx_eq!(f64::math::trunc(-1.3f64), -1.0f64);
-    assert_approx_eq!(f64::math::trunc(-1.5f64), -1.0f64);
-    assert_approx_eq!(f64::math::trunc(-1.7f64), -1.0f64);
+    assert_eq!(f64::math::trunc(1.0f64), 1.0f64);
+    assert_eq!(f64::math::trunc(1.3f64), 1.0f64);
+    assert_eq!(f64::math::trunc(1.5f64), 1.0f64);
+    assert_eq!(f64::math::trunc(1.7f64), 1.0f64);
+    assert_eq!(f64::math::trunc(0.0f64), 0.0f64);
+    assert_eq!(f64::math::trunc(-0.0f64), -0.0f64);
+    assert_eq!(f64::math::trunc(-1.0f64), -1.0f64);
+    assert_eq!(f64::math::trunc(-1.3f64), -1.0f64);
+    assert_eq!(f64::math::trunc(-1.5f64), -1.0f64);
+    assert_eq!(f64::math::trunc(-1.7f64), -1.0f64);
 }
 
 #[test]
 fn test_fract() {
-    assert_approx_eq!(f64::math::fract(1.0f64), 0.0f64);
-    assert_approx_eq!(f64::math::fract(1.3f64), 0.3f64);
-    assert_approx_eq!(f64::math::fract(1.5f64), 0.5f64);
-    assert_approx_eq!(f64::math::fract(1.7f64), 0.7f64);
-    assert_approx_eq!(f64::math::fract(0.0f64), 0.0f64);
-    assert_approx_eq!(f64::math::fract(-0.0f64), -0.0f64);
-    assert_approx_eq!(f64::math::fract(-1.0f64), -0.0f64);
-    assert_approx_eq!(f64::math::fract(-1.3f64), -0.3f64);
-    assert_approx_eq!(f64::math::fract(-1.5f64), -0.5f64);
-    assert_approx_eq!(f64::math::fract(-1.7f64), -0.7f64);
+    assert_eq!(f64::math::fract(1.0f64), 0.0f64);
+    assert_eq!(f64::math::fract(1.3f64), 0.30000000000000004f64);
+    assert_eq!(f64::math::fract(1.5f64), 0.5f64);
+    assert_eq!(f64::math::fract(1.7f64), 0.7f64);
+    assert_eq!(f64::math::fract(0.0f64), 0.0f64);
+    assert_eq!(f64::math::fract(-0.0f64), -0.0f64);
+    assert_eq!(f64::math::fract(-1.0f64), -0.0f64);
+    assert_eq!(f64::math::fract(-1.3f64), -0.30000000000000004f64);
+    assert_eq!(f64::math::fract(-1.5f64), -0.5f64);
+    assert_eq!(f64::math::fract(-1.7f64), -0.69999999999999996f64);
 }
 
 #[test]
@@ -391,10 +391,10 @@ fn test_mul_add() {
     let nan: f64 = f64::NAN;
     let inf: f64 = f64::INFINITY;
     let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_approx_eq!(12.3f64.mul_add(4.5, 6.7), 62.05);
-    assert_approx_eq!((-12.3f64).mul_add(-4.5, -6.7), 48.65);
-    assert_approx_eq!(0.0f64.mul_add(8.9, 1.2), 1.2);
-    assert_approx_eq!(3.4f64.mul_add(-0.0, 5.6), 5.6);
+    assert_eq!(12.3f64.mul_add(4.5, 6.7), 62.050000000000004);
+    assert_eq!((-12.3f64).mul_add(-4.5, -6.7), 48.650000000000006);
+    assert_eq!(0.0f64.mul_add(8.9, 1.2), 1.2);
+    assert_eq!(3.4f64.mul_add(-0.0, 5.6), 5.6);
     assert!(nan.mul_add(7.8, 9.0).is_nan());
     assert_eq!(inf.mul_add(7.8, 9.0), inf);
     assert_eq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
