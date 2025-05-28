@@ -19,12 +19,14 @@ impl Mutex {
     }
 
     #[inline]
+    // Make this a diagnostic item for Miri's concurrency model checker.
     #[cfg_attr(not(test), rustc_diagnostic_item = "sys_mutex_try_lock")]
     pub fn try_lock(&self) -> bool {
         self.futex.compare_exchange(UNLOCKED, LOCKED, Acquire, Relaxed).is_ok()
     }
 
     #[inline]
+    // Make this a diagnostic item for Miri's concurrency model checker.
     #[cfg_attr(not(test), rustc_diagnostic_item = "sys_mutex_lock")]
     pub fn lock(&self) {
         if self.futex.compare_exchange(UNLOCKED, LOCKED, Acquire, Relaxed).is_err() {
@@ -82,6 +84,7 @@ impl Mutex {
     }
 
     #[inline]
+    // Make this a diagnostic item for Miri's concurrency model checker.
     #[cfg_attr(not(test), rustc_diagnostic_item = "sys_mutex_unlock")]
     pub unsafe fn unlock(&self) {
         if self.futex.swap(UNLOCKED, Release) == CONTENDED {

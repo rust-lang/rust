@@ -28,6 +28,7 @@ impl Mutex {
     }
 
     #[inline]
+    // Make this a diagnostic item for Miri's concurrency model checker.
     #[cfg_attr(not(test), rustc_diagnostic_item = "sys_mutex_lock")]
     pub fn lock(&self) {
         // SAFETY: we call `init` above, therefore reentrant locking is safe.
@@ -36,6 +37,7 @@ impl Mutex {
     }
 
     #[inline]
+    // Make this a diagnostic item for Miri's concurrency model checker.
     #[cfg_attr(not(test), rustc_diagnostic_item = "sys_mutex_unlock")]
     pub unsafe fn unlock(&self) {
         // SAFETY: the mutex can only be locked if it is already initialized
@@ -44,6 +46,7 @@ impl Mutex {
     }
 
     #[inline]
+    // Make this a diagnostic item for Miri's concurrency model checker.
     #[cfg_attr(not(test), rustc_diagnostic_item = "sys_mutex_try_lock")]
     pub fn try_lock(&self) -> bool {
         // SAFETY: we call `init` above, therefore reentrant locking is safe.
