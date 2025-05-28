@@ -86,27 +86,23 @@ mod llvm_enzyme {
         ecx: &mut ExtCtxt<'_>,
         meta_item: &ThinVec<MetaItemInner>,
         has_ret: bool,
+        mode: DiffMode,
     ) -> AutoDiffAttrs {
         let dcx = ecx.sess.dcx();
-        let mode = name(&meta_item[1]);
-        let Ok(mode) = DiffMode::from_str(&mode) else {
-            dcx.emit_err(errors::AutoDiffInvalidMode { span: meta_item[1].span(), mode });
-            return AutoDiffAttrs::error();
-        };
 
         // Now we check, whether the user wants autodiff in batch/vector mode, or scalar mode.
         // If he doesn't specify an integer (=width), we default to scalar mode, thus width=1.
-        let mut first_activity = 2;
+        let mut first_activity = 1;
 
-        let width = if let [_, _, x, ..] = &meta_item[..]
+        let width = if let [_, x, ..] = &meta_item[..]
             && let Some(x) = width(x)
         {
-            first_activity = 3;
+            first_activity = 2;
             match x.try_into() {
                 Ok(x) => x,
                 Err(_) => {
                     dcx.emit_err(errors::AutoDiffInvalidWidth {
-                        span: meta_item[2].span(),
+                        span: meta_item[1].span(),
                         width: x,
                     });
                     return AutoDiffAttrs::error();
@@ -165,6 +161,24 @@ mod llvm_enzyme {
         ts.push(TokenTree::Token(comma.clone(), Spacing::Alone));
     }
 
+    pub(crate) fn expand_forward(
+        ecx: &mut ExtCtxt<'_>,
+        expand_span: Span,
+        meta_item: &ast::MetaItem,
+        item: Annotatable,
+    ) -> Vec<Annotatable> {
+        expand_with_mode(ecx, expand_span, meta_item, item, DiffMode::Forward)
+    }
+
+    pub(crate) fn expand_reverse(
+        ecx: &mut ExtCtxt<'_>,
+        expand_span: Span,
+        meta_item: &ast::MetaItem,
+        item: Annotatable,
+    ) -> Vec<Annotatable> {
+        expand_with_mode(ecx, expand_span, meta_item, item, DiffMode::Reverse)
+    }
+
     /// We expand the autodiff macro to generate a new placeholder function which passes
     /// type-checking and can be called by users. The function body of the placeholder function will
     /// later be replaced on LLVM-IR level, so the design of the body is less important and for now
@@ -198,11 +212,12 @@ mod llvm_enzyme {
     /// ```
     /// FIXME(ZuseZ4): Once autodiff is enabled by default, make this a doc comment which is checked
     /// in CI.
-    pub(crate) fn expand(
+    pub(crate) fn expand_with_mode(
         ecx: &mut ExtCtxt<'_>,
         expand_span: Span,
         meta_item: &ast::MetaItem,
         mut item: Annotatable,
+        mode: DiffMode,
     ) -> Vec<Annotatable> {
         if cfg!(not(llvm_enzyme)) {
             ecx.sess.dcx().emit_err(errors::AutoDiffSupportNotBuild { span: meta_item.span });
@@ -245,29 +260,41 @@ mod llvm_enzyme {
         // create TokenStream from vec elemtents:
         // meta_item doesn't have a .tokens field
         let mut ts: Vec<TokenTree> = vec![];
-        if meta_item_vec.len() < 2 {
-            // At the bare minimum, we need a fnc name and a mode, even for a dummy function with no
-            // input and output args.
+        if meta_item_vec.len() < 1 {
+            // At the bare minimum, we need a fnc name.
             dcx.emit_err(errors::AutoDiffMissingConfig { span: item.span() });
             return vec![item];
         }
 
-        meta_item_inner_to_ts(&meta_item_vec[1], &mut ts);
+        let mode_symbol = match mode {
+            DiffMode::Forward => sym::Forward,
+            DiffMode::Reverse => sym::Reverse,
+            _ => unreachable!("Unsupported mode: {:?}", mode),
+        };
+
+        // Insert mode token
+        let mode_token = Token::new(TokenKind::Ident(mode_symbol, false.into()), Span::default());
+        ts.insert(0, TokenTree::Token(mode_token, Spacing::Joint));
+        ts.insert(
+            1,
+            TokenTree::Token(Token::new(TokenKind::Comma, Span::default()), Spacing::Alone),
+        );
 
         // Now, if the user gave a width (vector aka batch-mode ad), then we copy it.
         // If it is not given, we default to 1 (scalar mode).
         let start_position;
         let kind: LitKind = LitKind::Integer;
         let symbol;
-        if meta_item_vec.len() >= 3
-            && let Some(width) = width(&meta_item_vec[2])
+        if meta_item_vec.len() >= 2
+            && let Some(width) = width(&meta_item_vec[1])
         {
-            start_position = 3;
+            start_position = 2;
             symbol = Symbol::intern(&width.to_string());
         } else {
-            start_position = 2;
+            start_position = 1;
             symbol = sym::integer(1);
         }
+
         let l: Lit = Lit { kind, symbol, suffix: None };
         let t = Token::new(TokenKind::Literal(l), Span::default());
         let comma = Token::new(TokenKind::Comma, Span::default());
@@ -289,7 +316,7 @@ mod llvm_enzyme {
         ts.pop();
         let ts: TokenStream = TokenStream::from_iter(ts);
 
-        let x: AutoDiffAttrs = from_ast(ecx, &meta_item_vec, has_ret);
+        let x: AutoDiffAttrs = from_ast(ecx, &meta_item_vec, has_ret, mode);
         if !x.is_active() {
             // We encountered an error, so we return the original item.
             // This allows us to potentially parse other attributes.
@@ -1017,4 +1044,4 @@ mod llvm_enzyme {
     }
 }
 
-pub(crate) use llvm_enzyme::expand;
+pub(crate) use llvm_enzyme::{expand_forward, expand_reverse};
