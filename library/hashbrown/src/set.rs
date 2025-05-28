@@ -2755,6 +2755,22 @@ mod test_set {
     }
 
     #[test]
+    fn test_sub_assign() {
+        let mut a: HashSet<_> = vec![1, 2, 3, 4, 5].into_iter().collect();
+        let b: HashSet<_> = vec![4, 5, 6].into_iter().collect();
+
+        a -= &b;
+
+        let mut i = 0;
+        let expected = [1, 2, 3];
+        for x in &a {
+            assert!(expected.contains(x));
+            i += 1;
+        }
+        assert_eq!(i, expected.len());
+    }
+
+    #[test]
     fn test_union() {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
