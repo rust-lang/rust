@@ -1463,6 +1463,8 @@ impl HirDisplay for Ty {
                     }
                     if f.closure_style == ClosureStyle::RANotation || !sig.ret().is_unit() {
                         write!(f, " -> ")?;
+                        // FIXME: We display `AsyncFn` as `-> impl Future`, but this is hard to fix because
+                        // we don't have a trait environment here, required to normalize `<Ret as Future>::Output`.
                         sig.ret().hir_fmt(f)?;
                     }
                 } else {
