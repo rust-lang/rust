@@ -4,10 +4,10 @@
 #![feature(test)]
 
 extern crate core;
-//~^ ERROR unused extern crate
+//~^ ERROR unused `extern crate`
 //~| HELP remove
 extern crate core as x;
-//~^ ERROR unused extern crate
+//~^ ERROR unused `extern crate`
 //~| HELP remove
 
 extern crate proc_macro;
@@ -29,11 +29,11 @@ mod foo {
     pub(super) extern crate alloc as d;
 
     extern crate core;
-    //~^ ERROR unused extern crate
+    //~^ ERROR unused `extern crate`
     //~| HELP remove
 
     extern crate core as x;
-    //~^ ERROR unused extern crate
+    //~^ ERROR unused `extern crate`
     //~| HELP remove
 
     pub extern crate test;
@@ -42,11 +42,11 @@ mod foo {
 
     mod bar {
         extern crate core;
-        //~^ ERROR unused extern crate
+        //~^ ERROR unused `extern crate`
         //~| HELP remove
 
         extern crate core as x;
-        //~^ ERROR unused extern crate
+        //~^ ERROR unused `extern crate`
         //~| HELP remove
 
         pub(in crate::foo::bar) extern crate alloc as e;

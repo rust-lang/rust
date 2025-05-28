@@ -15,7 +15,7 @@ extern crate core as iso3;
 extern crate core as iso4;
 
 // Doesn't introduce its extern prelude entry, so it's still considered unused.
-extern crate core; //~ ERROR unused extern crate
+extern crate core; //~ ERROR unused `extern crate`
 
 mod m {
     use iso1::any as are_you_okay1;
