@@ -1,9 +1,12 @@
 error: unnecessary transmute
-  --> $DIR/unnecessary-transmutation.rs:16:29
+  --> $DIR/unnecessary-transmutation.rs:7:14
    |
-LL | pub static X: u8 = unsafe { transmute(true) };
-   |                             ^^^^^^^^^^^^^^^ help: replace this with: `(true) as u8`
+LL |     unsafe { transmute(x) }
+   |              ---------^^^
+   |              |
+   |              help: replace this with: `u32::to_ne_bytes`
    |
+   = help: there's also `to_le_bytes` and `to_be_bytes` if you expect a particular byte order
 note: the lint level is defined here
   --> $DIR/unnecessary-transmutation.rs:2:9
    |
@@ -11,36 +14,72 @@ LL | #![deny(unnecessary_transmutes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: unnecessary transmute
-  --> $DIR/unnecessary-transmutation.rs:18:28
-   |
-LL | pub const Y: u8 = unsafe { transmute(true) };
-   |                            ^^^^^^^^^^^^^^^ help: replace this with: `(true) as u8`
-
-error: unnecessary transmute
-  --> $DIR/unnecessary-transmutation.rs:7:14
-   |
-LL |     unsafe { transmute(x) }
-   |              ^^^^^^^^^^^^ help: replace this with: `u32::to_ne_bytes(x)`
-   |
-   = help: there's also `to_le_bytes` and `to_be_bytes` if you expect a particular byte order
-
-error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:12:14
    |
 LL |     unsafe { transmute(from) }
-   |              ^^^^^^^^^^^^^^^ help: replace this with: `(from) as u8`
+   |              ^^^^^^^^^^^^^^^
+   |
+help: replace this with
+   |
+LL -     unsafe { transmute(from) }
+LL +     unsafe { (from) as u8 }
+   |
+
+error: unnecessary transmute
+  --> $DIR/unnecessary-transmutation.rs:16:29
+   |
+LL | pub static X: u8 = unsafe { transmute(true) };
+   |                             ^^^^^^^^^^^^^^^
+   |
+help: replace this with
+   |
+LL - pub static X: u8 = unsafe { transmute(true) };
+LL + pub static X: u8 = unsafe { (true) as u8 };
+   |
+
+error: unnecessary transmute
+  --> $DIR/unnecessary-transmutation.rs:18:28
+   |
+LL | pub const Y: u8 = unsafe { transmute(true) };
+   |                            ^^^^^^^^^^^^^^^
+   |
+help: replace this with
+   |
+LL - pub const Y: u8 = unsafe { transmute(true) };
+LL + pub const Y: u8 = unsafe { (true) as u8 };
+   |
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:24:18
    |
 LL |         unsafe { transmute(x) }
-   |                  ^^^^^^^^^^^^ help: replace this with: `(x) as u8`
+   |                  ^^^^^^^^^^^^
+   |
+help: replace this with
+   |
+LL -         unsafe { transmute(x) }
+LL +         unsafe { (x) as u8 }
+   |
+
+error: unnecessary transmute
+  --> $DIR/unnecessary-transmutation.rs:30:22
+   |
+LL |     const { unsafe { transmute::<_, u8>(true) } };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace this with
+   |
+LL -     const { unsafe { transmute::<_, u8>(true) } };
+LL +     const { unsafe { (true) as u8 } };
+   |
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:33:22
    |
 LL |         let x: u16 = transmute(*b"01");
-   |                      ^^^^^^^^^^^^^^^^^ help: replace this with: `u16::from_ne_bytes(*b"01")`
+   |                      ---------^^^^^^^^
+   |                      |
+   |                      help: replace this with: `u16::from_ne_bytes`
    |
    = help: there's also `from_le_bytes` and `from_be_bytes` if you expect a particular byte order
 
@@ -48,7 +87,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:35:26
    |
 LL |         let x: [u8; 2] = transmute(x);
-   |                          ^^^^^^^^^^^^ help: replace this with: `u16::to_ne_bytes(x)`
+   |                          ---------^^^
+   |                          |
+   |                          help: replace this with: `u16::to_ne_bytes`
    |
    = help: there's also `to_le_bytes` and `to_be_bytes` if you expect a particular byte order
 
@@ -56,7 +97,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:37:22
    |
 LL |         let x: u32 = transmute(*b"0123");
-   |                      ^^^^^^^^^^^^^^^^^^^ help: replace this with: `u32::from_ne_bytes(*b"0123")`
+   |                      ---------^^^^^^^^^^
+   |                      |
+   |                      help: replace this with: `u32::from_ne_bytes`
    |
    = help: there's also `from_le_bytes` and `from_be_bytes` if you expect a particular byte order
 
@@ -64,7 +107,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:39:26
    |
 LL |         let x: [u8; 4] = transmute(x);
-   |                          ^^^^^^^^^^^^ help: replace this with: `u32::to_ne_bytes(x)`
+   |                          ---------^^^
+   |                          |
+   |                          help: replace this with: `u32::to_ne_bytes`
    |
    = help: there's also `to_le_bytes` and `to_be_bytes` if you expect a particular byte order
 
@@ -72,7 +117,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:41:22
    |
 LL |         let x: u64 = transmute(*b"feriscat");
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^ help: replace this with: `u64::from_ne_bytes(*b"feriscat")`
+   |                      ---------^^^^^^^^^^^^^^
+   |                      |
+   |                      help: replace this with: `u64::from_ne_bytes`
    |
    = help: there's also `from_le_bytes` and `from_be_bytes` if you expect a particular byte order
 
@@ -80,7 +127,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:43:26
    |
 LL |         let x: [u8; 8] = transmute(x);
-   |                          ^^^^^^^^^^^^ help: replace this with: `u64::to_ne_bytes(x)`
+   |                          ---------^^^
+   |                          |
+   |                          help: replace this with: `u64::to_ne_bytes`
    |
    = help: there's also `to_le_bytes` and `to_be_bytes` if you expect a particular byte order
 
@@ -88,7 +137,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:46:22
    |
 LL |         let y: i16 = transmute(*b"01");
-   |                      ^^^^^^^^^^^^^^^^^ help: replace this with: `i16::from_ne_bytes(*b"01")`
+   |                      ---------^^^^^^^^
+   |                      |
+   |                      help: replace this with: `i16::from_ne_bytes`
    |
    = help: there's also `from_le_bytes` and `from_be_bytes` if you expect a particular byte order
 
@@ -96,7 +147,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:48:26
    |
 LL |         let y: [u8; 2] = transmute(y);
-   |                          ^^^^^^^^^^^^ help: replace this with: `i16::to_ne_bytes(y)`
+   |                          ---------^^^
+   |                          |
+   |                          help: replace this with: `i16::to_ne_bytes`
    |
    = help: there's also `to_le_bytes` and `to_be_bytes` if you expect a particular byte order
 
@@ -104,7 +157,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:50:22
    |
 LL |         let y: i32 = transmute(*b"0123");
-   |                      ^^^^^^^^^^^^^^^^^^^ help: replace this with: `i32::from_ne_bytes(*b"0123")`
+   |                      ---------^^^^^^^^^^
+   |                      |
+   |                      help: replace this with: `i32::from_ne_bytes`
    |
    = help: there's also `from_le_bytes` and `from_be_bytes` if you expect a particular byte order
 
@@ -112,7 +167,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:52:26
    |
 LL |         let y: [u8; 4] = transmute(y);
-   |                          ^^^^^^^^^^^^ help: replace this with: `i32::to_ne_bytes(y)`
+   |                          ---------^^^
+   |                          |
+   |                          help: replace this with: `i32::to_ne_bytes`
    |
    = help: there's also `to_le_bytes` and `to_be_bytes` if you expect a particular byte order
 
@@ -120,7 +177,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:54:22
    |
 LL |         let y: i64 = transmute(*b"feriscat");
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^ help: replace this with: `i64::from_ne_bytes(*b"feriscat")`
+   |                      ---------^^^^^^^^^^^^^^
+   |                      |
+   |                      help: replace this with: `i64::from_ne_bytes`
    |
    = help: there's also `from_le_bytes` and `from_be_bytes` if you expect a particular byte order
 
@@ -128,7 +187,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:56:26
    |
 LL |         let y: [u8; 8] = transmute(y);
-   |                          ^^^^^^^^^^^^ help: replace this with: `i64::to_ne_bytes(y)`
+   |                          ---------^^^
+   |                          |
+   |                          help: replace this with: `i64::to_ne_bytes`
    |
    = help: there's also `to_le_bytes` and `to_be_bytes` if you expect a particular byte order
 
@@ -136,7 +197,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:59:22
    |
 LL |         let z: f32 = transmute(*b"0123");
-   |                      ^^^^^^^^^^^^^^^^^^^ help: replace this with: `f32::from_ne_bytes(*b"0123")`
+   |                      ---------^^^^^^^^^^
+   |                      |
+   |                      help: replace this with: `f32::from_ne_bytes`
    |
    = help: there's also `from_le_bytes` and `from_be_bytes` if you expect a particular byte order
 
@@ -144,7 +207,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:61:26
    |
 LL |         let z: [u8; 4] = transmute(z);
-   |                          ^^^^^^^^^^^^ help: replace this with: `f32::to_ne_bytes(z)`
+   |                          ---------^^^
+   |                          |
+   |                          help: replace this with: `f32::to_ne_bytes`
    |
    = help: there's also `to_le_bytes` and `to_be_bytes` if you expect a particular byte order
 
@@ -152,7 +217,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:63:22
    |
 LL |         let z: f64 = transmute(*b"feriscat");
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^ help: replace this with: `f64::from_ne_bytes(*b"feriscat")`
+   |                      ---------^^^^^^^^^^^^^^
+   |                      |
+   |                      help: replace this with: `f64::from_ne_bytes`
    |
    = help: there's also `from_le_bytes` and `from_be_bytes` if you expect a particular byte order
 
@@ -160,7 +227,9 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:65:26
    |
 LL |         let z: [u8; 8] = transmute(z);
-   |                          ^^^^^^^^^^^^ help: replace this with: `f64::to_ne_bytes(z)`
+   |                          ---------^^^
+   |                          |
+   |                          help: replace this with: `f64::to_ne_bytes`
    |
    = help: there's also `to_le_bytes` and `to_be_bytes` if you expect a particular byte order
 
@@ -168,119 +237,164 @@ error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:68:22
    |
 LL |         let y: u32 = transmute('🦀');
-   |                      ^^^^^^^^^^^^^^^ help: replace this with: `u32::from('🦀')`
+   |                      ---------^^^^^^
+   |                      |
+   |                      help: replace this with: `u32::from`
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:70:23
    |
 LL |         let y: char = transmute(y);
-   |                       ^^^^^^^^^^^^ help: replace this with: `char::from_u32_unchecked(y)`
+   |                       ---------^^^
+   |                       |
+   |                       help: replace this with: `char::from_u32_unchecked`
    |
-   = help: consider `char::from_u32(…).unwrap()`
+   = help: consider using `char::from_u32(…).unwrap()`
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:72:22
    |
 LL |         let y: i32 = transmute('🐱');
-   |                      ^^^^^^^^^^^^^^^ help: replace this with: `u32::from('🐱').cast_signed()`
+   |                      ^^^^^^^^^^^^^^^
+   |
+help: replace this with
+   |
+LL -         let y: i32 = transmute('🐱');
+LL +         let y: i32 = u32::from('🐱').cast_signed();
+   |
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:74:23
    |
 LL |         let y: char = transmute(y);
-   |                       ^^^^^^^^^^^^ help: replace this with: `char::from_u32_unchecked(i32::cast_unsigned(y))`
+   |                       ^^^^^^^^^^^^
    |
-   = help: consider `char::from_u32(i32::cast_unsigned(…)).unwrap()`
+   = help: consider using `char::from_u32(i32::cast_unsigned(…)).unwrap()`
+help: replace this with
+   |
+LL -         let y: char = transmute(y);
+LL +         let y: char = char::from_u32_unchecked(i32::cast_unsigned(y));
+   |
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:77:22
    |
 LL |         let x: u16 = transmute(8i16);
-   |                      ^^^^^^^^^^^^^^^ help: replace this with: `i16::cast_unsigned(8i16)`
+   |                      ---------^^^^^^
+   |                      |
+   |                      help: replace this with: `i16::cast_unsigned`
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:79:22
    |
 LL |         let x: i16 = transmute(x);
-   |                      ^^^^^^^^^^^^ help: replace this with: `u16::cast_signed(x)`
+   |                      ---------^^^
+   |                      |
+   |                      help: replace this with: `u16::cast_signed`
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:81:22
    |
 LL |         let x: u32 = transmute(4i32);
-   |                      ^^^^^^^^^^^^^^^ help: replace this with: `i32::cast_unsigned(4i32)`
+   |                      ---------^^^^^^
+   |                      |
+   |                      help: replace this with: `i32::cast_unsigned`
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:83:22
    |
 LL |         let x: i32 = transmute(x);
-   |                      ^^^^^^^^^^^^ help: replace this with: `u32::cast_signed(x)`
+   |                      ---------^^^
+   |                      |
+   |                      help: replace this with: `u32::cast_signed`
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:85:22
    |
 LL |         let x: u64 = transmute(7i64);
-   |                      ^^^^^^^^^^^^^^^ help: replace this with: `i64::cast_unsigned(7i64)`
+   |                      ---------^^^^^^
+   |                      |
+   |                      help: replace this with: `i64::cast_unsigned`
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:87:22
    |
 LL |         let x: i64 = transmute(x);
-   |                      ^^^^^^^^^^^^ help: replace this with: `u64::cast_signed(x)`
+   |                      ---------^^^
+   |                      |
+   |                      help: replace this with: `u64::cast_signed`
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:90:22
    |
 LL |         let y: f32 = transmute(1u32);
-   |                      ^^^^^^^^^^^^^^^ help: replace this with: `f32::from_bits(1u32)`
+   |                      ---------^^^^^^
+   |                      |
+   |                      help: replace this with: `f32::from_bits`
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:92:22
    |
 LL |         let y: u32 = transmute(y);
-   |                      ^^^^^^^^^^^^ help: replace this with: `f32::to_bits(y)`
+   |                      ---------^^^
+   |                      |
+   |                      help: replace this with: `f32::to_bits`
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:94:22
    |
 LL |         let y: f64 = transmute(3u64);
-   |                      ^^^^^^^^^^^^^^^ help: replace this with: `f64::from_bits(3u64)`
+   |                      ---------^^^^^^
+   |                      |
+   |                      help: replace this with: `f64::from_bits`
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:96:22
    |
 LL |         let y: u64 = transmute(2.0);
-   |                      ^^^^^^^^^^^^^^ help: replace this with: `f64::to_bits(2.0)`
+   |                      ---------^^^^^
+   |                      |
+   |                      help: replace this with: `f64::to_bits`
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:99:22
    |
 LL |         let y: f64 = transmute(1i64);
-   |                      ^^^^^^^^^^^^^^^ help: replace this with: `f64::from_bits(i64::cast_unsigned(1i64))`
+   |                      ^^^^^^^^^^^^^^^
+   |
+help: replace this with
+   |
+LL -         let y: f64 = transmute(1i64);
+LL +         let y: f64 = f64::from_bits(i64::cast_unsigned(1i64));
+   |
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:101:22
    |
 LL |         let y: i64 = transmute(1f64);
-   |                      ^^^^^^^^^^^^^^^ help: replace this with: `f64::to_bits(1f64).cast_signed()`
+   |                      ^^^^^^^^^^^^^^^
+   |
+help: replace this with
+   |
+LL -         let y: i64 = transmute(1f64);
+LL +         let y: i64 = f64::to_bits(1f64).cast_signed();
+   |
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:106:21
    |
 LL |         let z: u8 = transmute(z);
-   |                     ^^^^^^^^^^^^ help: replace this with: `u8::from(z)`
+   |                     ---------^^^
+   |                     |
+   |                     help: replace this with: `u8::from`
 
 error: unnecessary transmute
   --> $DIR/unnecessary-transmutation.rs:111:21
    |
 LL |         let z: i8 = transmute(z);
-   |                     ^^^^^^^^^^^^ help: replace this with: `i8::from(z)`
-
-error: unnecessary transmute
-  --> $DIR/unnecessary-transmutation.rs:30:22
-   |
-LL |     const { unsafe { transmute::<_, u8>(true) } };
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace this with: `(true) as u8`
+   |                     ---------^^^
+   |                     |
+   |                     help: replace this with: `i8::from`
 
 error: aborting due to 40 previous errors
 
