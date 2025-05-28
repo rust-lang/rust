@@ -482,6 +482,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
         trace!(?curr_projected_ty);
 
+        // Need to renormalize `a` as typecheck may have failed to normalize
+        // higher-ranked aliases if normalization was ambiguous due to inference.
+        let a = self.normalize(a, locations);
         let ty = self.normalize(curr_projected_ty.ty, locations);
         self.relate_types(ty, v.xform(ty::Contravariant), a, locations, category)?;
 
