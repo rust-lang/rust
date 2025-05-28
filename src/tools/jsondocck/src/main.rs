@@ -11,7 +11,7 @@ mod error;
 
 use cache::Cache;
 use config::parse_config;
-use directive::{Command, CommandKind};
+use directive::{Directive, DirectiveKind};
 use error::CkError;
 
 fn main() -> ExitCode {
@@ -19,14 +19,14 @@ fn main() -> ExitCode {
 
     let mut failed = Vec::new();
     let mut cache = Cache::new(&config);
-    let Ok(commands) = get_commands(&config.template) else {
+    let Ok(directives) = get_directives(&config.template) else {
         eprintln!("Jsondocck failed for {}", &config.template);
         return ExitCode::FAILURE;
     };
 
-    for command in commands {
-        if let Err(message) = command.check(            &mut cache) {
-            failed.push(CkError { command, message });
+    for directive in directives {
+        if let Err(message) = directive.check(&mut cache) {
+            failed.push(CkError { directive, message });
         }
     }
 
@@ -34,7 +34,7 @@ fn main() -> ExitCode {
         ExitCode::SUCCESS
     } else {
         for i in failed {
-            eprintln!("{}:{}, command failed", config.template, i.command.lineno);
+            eprintln!("{}:{}, directive failed", config.template, i.directive.lineno);
             eprintln!("{}", i.message)
         }
         ExitCode::FAILURE
@@ -47,7 +47,7 @@ static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
         ^\s*
         //@\s+
         (?P<negated>!?)
-        (?P<cmd>[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)
+        (?P<directive>[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)
         (?P<args>.*)$
     "#,
     )
@@ -70,12 +70,12 @@ static DEPRECATED_LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 fn print_err(msg: &str, lineno: usize) {
-    eprintln!("Invalid command: {} on line {}", msg, lineno)
+    eprintln!("Invalid directive: {} on line {}", msg, lineno)
 }
 
-/// Get a list of commands from a file.
-fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
-    let mut commands = Vec::new();
+/// Get a list of directives from a file.
+fn get_directives(template: &str) -> Result<Vec<Directive>, ()> {
+    let mut directives = Vec::new();
     let mut errors = false;
     let file = fs::read_to_string(template).unwrap();
 
@@ -83,7 +83,7 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
         let lineno = lineno + 1;
 
         if DEPRECATED_LINE_PATTERN.is_match(line) {
-            print_err("Deprecated command syntax, replace `// @` with `//@ `", lineno);
+            print_err("Deprecated directive syntax, replace `// @` with `//@ `", lineno);
             errors = true;
             continue;
         }
@@ -101,10 +101,10 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
             continue;
         };
 
-        if let Some((kind, path)) = CommandKind::parse(&cap["cmd"], negated, &args) {
-            commands.push(Command { kind, lineno, path: path.to_owned() })
+        if let Some((kind, path)) = DirectiveKind::parse(&cap["directive"], negated, &args) {
+            directives.push(Directive { kind, lineno, path: path.to_owned() })
         }
     }
 
-    if !errors { Ok(commands) } else { Err(()) }
+    if !errors { Ok(directives) } else { Err(()) }
 }
