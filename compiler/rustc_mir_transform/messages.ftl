@@ -78,10 +78,4 @@ mir_transform_unconditional_recursion = function cannot return without recursing
 
 mir_transform_unconditional_recursion_call_site_label = recursive call site
 
-mir_transform_undefined_transmute = pointers cannot be transmuted to integers during const eval
-    .note = at compile-time, pointers do not have an integer value
-    .note2 = avoiding this restriction via `union` or raw pointers leads to compile-time undefined behavior
-    .help = for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
-
 mir_transform_unknown_pass_name = MIR pass `{$name}` is unknown and will be ignored
-mir_transform_unnecessary_transmute = unnecessary transmute

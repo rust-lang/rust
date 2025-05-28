@@ -75,6 +75,7 @@ mod reference_casting;
 mod shadowed_into_iter;
 mod static_mut_refs;
 mod traits;
+mod transmute;
 mod types;
 mod unit_bindings;
 mod unqualified_local_imports;
@@ -118,6 +119,7 @@ use shadowed_into_iter::ShadowedIntoIter;
 pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use static_mut_refs::*;
 use traits::*;
+use transmute::CheckTransmutes;
 use types::*;
 use unit_bindings::*;
 use unqualified_local_imports::*;
@@ -246,6 +248,7 @@ late_lint_methods!(
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,
             UnqualifiedLocalImports: UnqualifiedLocalImports,
+            CheckTransmutes: CheckTransmutes,
         ]
     ]
 );
