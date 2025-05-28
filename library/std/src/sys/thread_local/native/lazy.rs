@@ -1,9 +1,9 @@
-use crate::cell::UnsafeCell;
-use crate::hint::unreachable_unchecked;
+use crate::cell::{Cell, UnsafeCell};
+use crate::mem::MaybeUninit;
 use crate::ptr;
 use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
 
-pub unsafe trait DestroyedState: Sized {
+pub unsafe trait DestroyedState: Sized + Copy {
     fn register_dtor<T>(s: &Storage<T, Self>);
 }
 
@@ -19,15 +19,18 @@ unsafe impl DestroyedState for () {
     }
 }
 
-enum State<T, D> {
-    Initial,
-    Alive(T),
+#[derive(Copy, Clone)]
+enum State<D> {
+    Uninitialized,
+    Initializing,
+    Alive,
     Destroyed(D),
 }
 
 #[allow(missing_debug_implementations)]
 pub struct Storage<T, D> {
-    state: UnsafeCell<State<T, D>>,
+    state: Cell<State<D>>,
+    value: UnsafeCell<MaybeUninit<T>>,
 }
 
 impl<T, D> Storage<T, D>
@@ -35,7 +38,10 @@ where
     D: DestroyedState,
 {
     pub const fn new() -> Storage<T, D> {
-        Storage { state: UnsafeCell::new(State::Initial) }
+        Storage {
+            state: Cell::new(State::Uninitialized),
+            value: UnsafeCell::new(MaybeUninit::uninit()),
+        }
     }
 
     /// Gets a pointer to the TLS value, potentially initializing it with the
@@ -49,35 +55,45 @@ where
     /// The `self` reference must remain valid until the TLS destructor is run.
     #[inline]
     pub unsafe fn get_or_init(&self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
-        let state = unsafe { &*self.state.get() };
-        match state {
-            State::Alive(v) => v,
-            State::Destroyed(_) => ptr::null(),
-            State::Initial => unsafe { self.initialize(i, f) },
+        if let State::Alive = self.state.get() {
+            self.value.get().cast()
+        } else {
+            self.get_or_init_slow(i, f)
         }
     }
 
     #[cold]
-    unsafe fn initialize(&self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
-        // Perform initialization
+    fn get_or_init_slow(&self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
+        // Ensure we have unique access to an uninitialized value.
+        match self.state.get() {
+            State::Uninitialized => self.state.set(State::Initializing),
+            State::Initializing => panic!("thread_local initializer recursively depends on itself"),
+            State::Alive => return self.value.get().cast(),
+            State::Destroyed(_) => return ptr::null(),
+        }
 
+        struct BackToUninitOnPanic<'a, D>(&'a Cell<State<D>>);
+        impl<'a, D> Drop for BackToUninitOnPanic<'a, D> {
+            fn drop(&mut self) {
+                self.0.set(State::Uninitialized);
+            }
+        }
+
+        // Get the initial value, making sure that we restore the state to uninitialized
+        // should f panic.
+        let on_panic = BackToUninitOnPanic(&self.state);
         let v = i.and_then(Option::take).unwrap_or_else(f);
+        crate::mem::forget(on_panic);
 
-        let old = unsafe { self.state.get().replace(State::Alive(v)) };
-        match old {
-            // If the variable is not being recursively initialized, register
-            // the destructor. This might be a noop if the value does not need
-            // destruction.
-            State::Initial => D::register_dtor(self),
-            // Else, drop the old value. This might be changed to a panic.
-            val => drop(val),
-        }
-
-        // SAFETY: the state was just set to `Alive`
+        // SAFETY: we are !Sync so we have exclusive access to self.value. We also ensured
+        // that the state was uninitialized so we aren't replacing a value we must keep alive.
         unsafe {
-            let State::Alive(v) = &*self.state.get() else { unreachable_unchecked() };
-            v
+            self.value.get().write(MaybeUninit::new(v));
         }
+
+        self.state.set(State::Alive);
+        D::register_dtor(self);
+        self.value.get().cast()
     }
 }
 
@@ -92,9 +108,13 @@ unsafe extern "C" fn destroy<T>(ptr: *mut u8) {
     // Print a nice abort message if a panic occurs.
     abort_on_dtor_unwind(|| {
         let storage = unsafe { &*(ptr as *const Storage<T, ()>) };
-        // Update the state before running the destructor as it may attempt to
-        // access the variable.
-        let val = unsafe { storage.state.get().replace(State::Destroyed(())) };
-        drop(val);
+        if let State::Alive = storage.state.replace(State::Destroyed(())) {
+            // SAFETY: we ensured the state was Alive, and prevented running the destructor
+            // twice by updating the state to Destroyed. This is necessary as the destructor
+            // may attempt to access the variable.
+            unsafe {
+                crate::ptr::drop_in_place(storage.value.get().cast::<T>());
+            }
+        }
     })
 }
