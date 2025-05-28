@@ -923,7 +923,8 @@ where
 pub struct $0Foo(#[my_custom_attr] u32);
 "#,
             r#"
-pub struct Foo { #[my_custom_attr] field1: u32 }
+pub struct Foo { #[my_custom_attr]
+field1: u32 }
 "#,
         );
     }
