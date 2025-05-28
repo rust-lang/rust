@@ -45,6 +45,8 @@ impl<'a> State<'a> {
                 expr,
                 safety,
                 define_opaque,
+                // FIXME(gr) pretty print global registry
+                distributed_slice: _,
             }) => self.print_item_const(
                 *ident,
                 Some(*mutability),
@@ -195,7 +197,9 @@ impl<'a> State<'a> {
                 mutability: mutbl,
                 expr: body,
                 define_opaque,
+                distributed_slice: _,
             }) => {
+                // FIXME(gr): pretty print global registry
                 self.print_safety(*safety);
                 self.print_item_const(
                     *ident,
@@ -216,7 +220,9 @@ impl<'a> State<'a> {
                 ty,
                 expr,
                 define_opaque,
+                distributed_slice: _,
             }) => {
+                // FIXME(gr): pretty print global registry
                 self.print_item_const(
                     *ident,
                     None,
@@ -565,6 +571,8 @@ impl<'a> State<'a> {
                 ty,
                 expr,
                 define_opaque,
+                // FIXME(gr) pretty print global registry
+                distributed_slice: _,
             }) => {
                 self.print_item_const(
                     *ident,

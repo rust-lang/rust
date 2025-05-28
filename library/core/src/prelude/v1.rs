@@ -81,6 +81,10 @@ pub use crate::macros::builtin::{
     alloc_error_handler, bench, derive, global_allocator, test, test_case,
 };
 
+#[unstable(feature = "crate_local_distributed_slice", issue = "125119")]
+#[cfg(not(bootstrap))]
+pub use crate::macros::builtin::distributed_slice;
+
 #[unstable(feature = "derive_const", issue = "none")]
 pub use crate::macros::builtin::derive_const;
 

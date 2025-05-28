@@ -451,6 +451,7 @@ macro_rules! common_visitor_and_walkers {
                         mutability: _,
                         expr,
                         define_opaque,
+                        distributed_slice: _,
                     }) => {
                         try_visit!(vis.visit_ident(ident));
                         try_visit!(vis.visit_ty(ty));
@@ -614,7 +615,7 @@ macro_rules! common_visitor_and_walkers {
         }
 
         fn walk_const_item<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, item: &$($lt)? $($mut)? ConstItem) $(-> <V as Visitor<$lt>>::Result)? {
-            let ConstItem { defaultness, ident, generics, ty, expr, define_opaque } = item;
+            let ConstItem { defaultness, ident, generics, ty, expr, define_opaque, distributed_slice: _ } = item;
             try_visit!(visit_defaultness(vis, defaultness));
             try_visit!(vis.visit_ident(ident));
             try_visit!(vis.visit_generics(generics));
@@ -739,6 +740,7 @@ macro_rules! common_visitor_and_walkers {
                         expr,
                         safety: _,
                         define_opaque,
+                        distributed_slice: _,
                     }) => {
                         try_visit!(vis.visit_ident(ident));
                         try_visit!(vis.visit_ty(ty));

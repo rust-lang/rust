@@ -1,0 +1,17 @@
+error: free constant item without body
+  --> $DIR/create_slice.rs:5:1
+   |
+LL | const MEOWS: [&str; _];
+   | ^^^^^^^^^^^^^^^^^^^^^^-
+   |                       |
+   |                       help: provide a definition for the constant: `= <expr>;`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/create_slice.rs:5:21
+   |
+LL | const MEOWS: [&str; _];
+   |                     ^ not allowed in type signatures
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

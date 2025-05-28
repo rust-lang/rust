@@ -454,6 +454,8 @@ declare_features! (
     /// Allows function attribute `#[coverage(on/off)]`, to control coverage
     /// instrumentation of that function.
     (unstable, coverage_attribute, "1.74.0", Some(84605)),
+    /// Allows the creation of crate local distributed slices, slices where the elements can be added all throughout the crate
+    (unstable, crate_local_distributed_slice, "CURRENT_RUSTC_VERSION", Some(125119)),
     /// Allows non-builtin attributes in inner attribute position.
     (unstable, custom_inner_attributes, "1.30.0", Some(54726)),
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.
@@ -526,8 +528,6 @@ declare_features! (
     (incomplete, generic_const_parameter_types, "1.87.0", Some(137626)),
     /// Allows any generic constants being used as pattern type range ends
     (incomplete, generic_pattern_types, "1.86.0", Some(136574)),
-    /// Allows the creation of crate local distributed slices, slices where the elements can be added all throughout the crate
-    (unstable, crate_local_distributed_slice, "CURRENT_RUSTC_VERSION", Some(125119)),
     /// Allows using guards in patterns.
     (incomplete, guard_patterns, "1.85.0", Some(129967)),
     /// Allows using `..=X` as a patterns in slices.

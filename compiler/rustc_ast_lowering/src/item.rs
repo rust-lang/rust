@@ -175,6 +175,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 mutability: m,
                 expr: e,
                 define_opaque,
+                distributed_slice,
             }) => {
                 let ident = self.lower_ident(*ident);
                 let (ty, body_id) =
@@ -660,6 +661,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 expr: _,
                 safety,
                 define_opaque,
+                distributed_slice,
             }) => {
                 let ty =
                     self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));

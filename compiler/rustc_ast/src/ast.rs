@@ -3614,6 +3614,18 @@ pub struct DelegationMac {
     pub body: Option<P<Block>>,
 }
 
+#[derive(Clone, Encodable, Decodable, Debug, Default)]
+pub enum DistributedSlice {
+    /// This const or static has nothing to do with global registration whatsoever
+    #[default]
+    None,
+    /// This const or static declares a global registry that can be added to
+    Declaration(Span),
+    /// This const (we never do this to statics) represents an addition to a global registry
+    /// declared somewhere else.
+    Addition { declaration: Path },
+}
+
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct StaticItem {
     pub ident: Ident,
@@ -3622,6 +3634,7 @@ pub struct StaticItem {
     pub mutability: Mutability,
     pub expr: Option<P<Expr>>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
+    pub distributed_slice: DistributedSlice,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3632,6 +3645,7 @@ pub struct ConstItem {
     pub ty: P<Ty>,
     pub expr: Option<P<Expr>>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
+    pub distributed_slice: DistributedSlice,
 }
 
 // Adding a new variant? Please update `test_item` in `tests/ui/macros/stringify.rs`.

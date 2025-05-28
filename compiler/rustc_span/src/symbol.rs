@@ -833,6 +833,7 @@ symbols! {
         discriminant_value,
         disjoint_bitor,
         dispatch_from_dyn,
+        distributed_slice,
         div,
         div_assign,
         diverging_block_default,
