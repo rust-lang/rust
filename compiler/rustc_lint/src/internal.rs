@@ -115,6 +115,9 @@ fn check_into_iter_stability<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
     let Some(into_iterator_def_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator) else {
         return;
     };
+    let Some(into_iter_fn_def_id) = cx.tcx.lang_items().into_iter_fn() else {
+        return;
+    };
     if expr.span.from_expansion() {
         return;
     };
@@ -135,43 +138,30 @@ fn check_into_iter_stability<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
             if trait_ref.def_id != into_iterator_def_id {
                 continue;
             }
-            let self_ty = generic_args[param_index as usize].expect_ty();
-            let Some(self_ty_adt_def) = self_ty.peel_refs().ty_adt_def() else {
-                return;
+            let self_ty_generic_arg = generic_args[param_index as usize];
+            let Ok(Some(instance)) = ty::Instance::try_resolve(
+                cx.tcx,
+                cx.typing_env(),
+                into_iter_fn_def_id,
+                cx.tcx.mk_args(&[self_ty_generic_arg]),
+            ) else {
+                continue;
             };
-            cx.tcx.for_each_relevant_impl(into_iterator_def_id, self_ty, |impl_id| {
-                let impl_ty = cx.tcx.type_of(impl_id).skip_binder();
-                let Some(impl_ty_adt_def) = impl_ty.peel_refs().ty_adt_def() else {
-                    return;
-                };
-                // To reduce false positives, verify that `self_ty` and `impl_ty` refer to the same ADT.
-                if self_ty_adt_def != impl_ty_adt_def {
-                    return;
-                }
-                let Some(into_iter_item) = cx
-                    .tcx
-                    .associated_items(impl_id)
-                    .filter_by_name_unhygienic(sym::into_iter)
-                    .next()
-                else {
-                    return;
-                };
-                // Does the input type's `IntoIterator` implementation have the
-                // `rustc_lint_query_instability` attribute on its `into_iter` method?
-                if !cx.tcx.has_attr(into_iter_item.def_id, sym::rustc_lint_query_instability) {
-                    return;
-                }
-                let span = if let Some(recv) = recv {
-                    if arg_index == 0 { recv.span } else { args[arg_index - 1].span }
-                } else {
-                    args[arg_index].span
-                };
-                cx.emit_span_lint(
-                    POTENTIAL_QUERY_INSTABILITY,
-                    span,
-                    QueryInstability { query: cx.tcx.item_name(into_iter_item.def_id) },
-                );
-            });
+            // Does the input type's `IntoIterator` implementation have the
+            // `rustc_lint_query_instability` attribute on its `into_iter` method?
+            if !cx.tcx.has_attr(instance.def_id(), sym::rustc_lint_query_instability) {
+                return;
+            }
+            let span = if let Some(recv) = recv {
+                if arg_index == 0 { recv.span } else { args[arg_index - 1].span }
+            } else {
+                args[arg_index].span
+            };
+            cx.emit_span_lint(
+                POTENTIAL_QUERY_INSTABILITY,
+                span,
+                QueryInstability { query: cx.tcx.item_name(instance.def_id()) },
+            );
         }
     }
 }
