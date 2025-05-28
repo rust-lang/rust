@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include "bar.h"
 
 extern void foo(char*);
@@ -32,7 +33,7 @@ int main(void)
 
     // Store an arbitrary tag in bits 56-59 of the pointer (where an MTE tag may be),
     // and a different value in the ignored top 4 bits.
-    ptr = (unsigned int *)((uintptr_t)ptr | 0x1fl << 56);
+    ptr = (char *)((uintptr_t)ptr | 0x1fl << 56);
 
     if (mte_enabled()) {
         set_tag(ptr);
