@@ -399,19 +399,6 @@ impl SourceToDefCtx<'_, '_> {
         Some((container, label?))
     }
 
-    pub(super) fn item_to_macro_call(&mut self, src: InFile<&ast::Item>) -> Option<MacroCallId> {
-        let map = self.dyn_map(src)?;
-        map[keys::ATTR_MACRO_CALL].get(&AstPtr::new(src.value)).copied()
-    }
-
-    pub(super) fn macro_call_to_macro_call(
-        &mut self,
-        src: InFile<&ast::MacroCall>,
-    ) -> Option<MacroCallId> {
-        let map = self.dyn_map(src)?;
-        map[keys::MACRO_CALL].get(&AstPtr::new(src.value)).copied()
-    }
-
     /// (AttrId, derive attribute call id, derive call ids)
     pub(super) fn attr_to_derive_macro_call(
         &mut self,
@@ -447,6 +434,17 @@ impl SourceToDefCtx<'_, '_> {
             .dynmap_cache
             .entry((container, file_id))
             .or_insert_with(|| container.child_by_source(db, file_id))
+    }
+
+    pub(super) fn item_to_macro_call(&mut self, src: InFile<&ast::Item>) -> Option<MacroCallId> {
+        self.to_def(src, keys::ATTR_MACRO_CALL)
+    }
+
+    pub(super) fn macro_call_to_macro_call(
+        &mut self,
+        src: InFile<&ast::MacroCall>,
+    ) -> Option<MacroCallId> {
+        self.to_def(src, keys::MACRO_CALL)
     }
 
     pub(super) fn type_param_to_def(

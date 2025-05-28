@@ -769,6 +769,31 @@ impl<'db> SemanticsImpl<'db> {
         })
     }
 
+    /// Descends the token into the include expansion, if its file is an included file.
+    pub fn descend_token_into_include_expansion(
+        &self,
+        tok: InRealFile<SyntaxToken>,
+    ) -> InFile<SyntaxToken> {
+        let Some(include) =
+            self.s2d_cache.borrow_mut().get_or_insert_include_for(self.db, tok.file_id)
+        else {
+            return tok.into();
+        };
+        let span = self.db.real_span_map(tok.file_id).span_for_range(tok.value.text_range());
+        let Some(InMacroFile { file_id, value: mut mapped_tokens }) = self.with_ctx(|ctx| {
+            Some(
+                ctx.cache
+                    .get_or_insert_expansion(ctx.db, include)
+                    .map_range_down(span)?
+                    .map(SmallVec::<[_; 2]>::from_iter),
+            )
+        }) else {
+            return tok.into();
+        };
+        // We should only get one result at most
+        mapped_tokens.pop().map_or_else(|| tok.into(), |(tok, _)| InFile::new(file_id.into(), tok))
+    }
+
     /// Maps a node down by mapping its first and last token down.
     pub fn descend_node_into_attributes<N: AstNode>(&self, node: N) -> SmallVec<[N; 1]> {
         // This might not be the correct way to do this, but it works for now
@@ -1528,11 +1553,9 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn resolve_macro_call2(&self, macro_call: InFile<&ast::MacroCall>) -> Option<Macro> {
-        self.with_ctx(|ctx| {
-            ctx.macro_call_to_macro_call(macro_call)
-                .and_then(|call| macro_call_to_macro_id(ctx, call))
-                .map(Into::into)
-        })
+        self.to_def2(macro_call)
+            .and_then(|call| self.with_ctx(|ctx| macro_call_to_macro_id(ctx, call)))
+            .map(Into::into)
     }
 
     pub fn is_proc_macro_call(&self, macro_call: InFile<&ast::MacroCall>) -> bool {
@@ -1644,6 +1667,10 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn to_def<T: ToDef>(&self, src: &T) -> Option<T::Def> {
         let src = self.find_file(src.syntax()).with_value(src);
+        T::to_def(self, src)
+    }
+
+    pub fn to_def2<T: ToDef>(&self, src: InFile<&T>) -> Option<T::Def> {
         T::to_def(self, src)
     }
 
