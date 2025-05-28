@@ -404,7 +404,28 @@ impl Command {
         // We want to forward the host stdin so apparently we cannot use `cmd!`.
         let mut cmd = process::Command::new("git");
         cmd.arg("rebase").arg(&base).arg("--interactive");
-        cmd.env("GIT_SEQUENCE_EDITOR", env::current_exe()?);
+        let current_exe = {
+            if cfg!(windows) {
+                // Apparently git-for-Windows gets confused by backslashes if we just use
+                // `current_exe()` here. So replace them by forward slashes if this is not a "magic"
+                // path starting with "\\". This is clearly a git bug but we work around it here.
+                // Also see <https://github.com/rust-lang/miri/issues/4340>.
+                let bin = env::current_exe()?;
+                match bin.into_os_string().into_string() {
+                    Err(not_utf8) => not_utf8.into(), // :shrug:
+                    Ok(str) => {
+                        if str.starts_with(r"\\") {
+                            str.into() // don't touch these magic paths, they must use backslashes
+                        } else {
+                            str.replace('\\', "/").into()
+                        }
+                    }
+                }
+            } else {
+                env::current_exe()?
+            }
+        };
+        cmd.env("GIT_SEQUENCE_EDITOR", current_exe);
         cmd.env("MIRI_SCRIPT_IS_GIT_SEQUENCE_EDITOR", "1");
         cmd.current_dir(sh.current_dir());
         let result = cmd.status()?;
