@@ -121,7 +121,17 @@ pr:
     env:
       ENABLE_GCC_CODEGEN: "1"
       DOCKER_SCRIPT: x86_64-gnu-llvm.sh
-    <<: *job-linux-16c
+    <<: *job-linux-4c
+  - name: aarch64-gnu-llvm-19-1
+    env:
+      IMAGE: aarch64-gnu-llvm-19
+      DOCKER_SCRIPT: stage_2_test_set1.sh
+    <<: *job-aarch64-linux-8c
+  - name: aarch64-gnu-llvm-19-2
+    env:
+      IMAGE: aarch64-gnu-llvm-19
+      DOCKER_SCRIPT: stage_2_test_set2.sh
+    <<: *job-aarch64-linux
   - name: x86_64-gnu-tools
     <<: *job-linux-36c-codebuild
 
