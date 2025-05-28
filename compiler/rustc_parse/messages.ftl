@@ -377,12 +377,12 @@ parse_inclusive_range_no_end = inclusive range with no end
 parse_incorrect_parens_trait_bounds = incorrect parentheses around trait bounds
 parse_incorrect_parens_trait_bounds_sugg = fix the parentheses
 
-parse_incorrect_restriction = incorrect {$noun} restriction
-    .help = some possible {$noun} restrictions are:
-            `{$keyword}(crate)`: {$adjective} only in the current crate
-            `{$keyword}(super)`: {$adjective} only in the current module's parent
-            `{$keyword}(in path::to::module)`: {$adjective} only in the specified path
-    .suggestion = make this {$adjective} only to module `{$inner_str}` with `in`
+parse_incorrect_restriction = incorrect {parse_restriction_noun} restriction
+    .help = some possible {parse_restriction_noun} restrictions are:
+            `{$keyword}(crate)`: {parse_restriction_adjective} only in the current crate
+            `{$keyword}(super)`: {parse_restriction_adjective} only in the current module's parent
+            `{$keyword}(in path::to::module)`: {parse_restriction_adjective} only in the specified path
+    .suggestion = make this {parse_restriction_adjective} only to module `{$path}` with `in`
 
 parse_incorrect_semicolon =
     expected item, found `;`
@@ -789,6 +789,18 @@ parse_reserved_multihash = reserved multi-hash token is forbidden
 parse_reserved_string = invalid string literal
     .note = unprefixed guarded string literals are reserved for future use since Rust 2024
     .suggestion_whitespace = consider inserting whitespace here
+
+# internal use only
+parse_restriction_adjective = { $keyword ->
+    [impl] implementable
+    *[DEFAULT_IS_BUG] BUG
+}
+
+# internal use only
+parse_restriction_noun = { $keyword ->
+    [impl] impl
+    *[DEFAULT_IS_BUG] BUG
+}
 
 parse_return_types_use_thin_arrow = return types are denoted using `->`
     .suggestion = use `->` instead

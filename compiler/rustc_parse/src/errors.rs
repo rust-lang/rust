@@ -1046,12 +1046,10 @@ pub(crate) struct IncorrectVisibilityRestriction {
 #[help]
 pub(crate) struct IncorrectRestriction<'kw> {
     #[primary_span]
-    #[suggestion(code = "in {inner_str}", applicability = "machine-applicable", style = "verbose")]
+    #[suggestion(code = "in {path}", applicability = "machine-applicable", style = "verbose")]
     pub span: Span,
-    pub inner_str: String,
+    pub path: String,
     pub keyword: &'kw str,
-    pub adjective: &'static str,
-    pub noun: &'static str,
 }
 
 #[derive(Diagnostic)]

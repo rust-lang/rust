@@ -1522,8 +1522,6 @@ impl<'a> Parser<'a> {
         &mut self,
         kw: ExpKeywordPair,
         feature_gate: Option<Symbol>,
-        action: &'static str,
-        description: &'static str,
         fbt: FollowedByType,
     ) -> PResult<'a, Restriction> {
         if !self.eat_keyword(kw) {
@@ -1567,7 +1565,7 @@ impl<'a> Parser<'a> {
             } else if let FollowedByType::No = fbt {
                 // Provide this diagnostic if a type cannot follow;
                 // in particular, if this is not a tuple struct.
-                self.recover_incorrect_restriction(kw.kw.as_str(), action, description)?;
+                self.recover_incorrect_restriction(kw.kw.as_str())?;
                 // Emit diagnostic, but continue unrestricted.
             }
         }
@@ -1576,24 +1574,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Recovery for e.g. `kw(something) fn ...` or `struct X { kw(something) y: Z }`
-    fn recover_incorrect_restriction<'kw>(
-        &mut self,
-        kw: &'kw str,
-        action: &'static str,
-        description: &'static str,
-    ) -> PResult<'a, ()> {
+    fn recover_incorrect_restriction<'kw>(&mut self, kw: &'kw str) -> PResult<'a, ()> {
         self.bump(); // `(`
         let path = self.parse_path(PathStyle::Mod)?;
         self.expect(exp!(CloseParen))?; // `)`
 
         let path_str = pprust::path_to_string(&path);
-        self.dcx().emit_err(IncorrectRestriction {
-            span: path.span,
-            inner_str: path_str,
-            keyword: kw,
-            adjective: action,
-            noun: description,
-        });
+        self.dcx().emit_err(IncorrectRestriction { span: path.span, path: path_str, keyword: kw });
 
         Ok(())
     }
