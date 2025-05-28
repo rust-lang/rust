@@ -25,7 +25,7 @@ use rustc_span::symbol::sym;
 impl LateLintPass<'_> for CheckIteratorTraitLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
 		let implements_iterator = cx.tcx.get_diagnostic_item(sym::Iterator).map_or(false, |id| {
-    		implements_trait(cx, cx.typeck_results().expr_ty(arg), id, &[])
+    		implements_trait(cx, cx.typeck_results().expr_ty(expr), id, &[])
 		});
 		if implements_iterator {
 			// [...]
