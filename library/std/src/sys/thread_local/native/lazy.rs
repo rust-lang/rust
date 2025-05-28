@@ -77,23 +77,19 @@ where
 
         let v = i.and_then(Option::take).unwrap_or_else(f);
 
+        // SAFETY: we cannot be inside a `LocalKey::with` scope, as the initializer
+        // has already returned and the next scope only starts after we return
+        // the pointer. Therefore, there can be no references to the old value,
+        // even if it was initialized. Thus because we are !Sync we have exclusive
+        // access to self.value and may replace it.
+        let mut old_value = unsafe { self.value.get().replace(MaybeUninit::new(v)) };
         match self.state.replace(State::Alive) {
             State::Uninitialized => D::register_dtor(self),
-
-            State::Alive => {
-                // An init occurred during a recursive call, this could be a panic in the future.
-
-                // SAFETY: we cannot be inside a `LocalKey::with` scope, as the initializer
-                // has already returned and the next scope only starts after we return
-                // the pointer. Therefore, there can be no references to the old value.
-                unsafe { (*self.value.get()).assume_init_drop() }
-            }
-
+            State::Alive => unsafe { old_value.assume_init_drop() },
             State::Destroyed(_) => unreachable!(),
         }
 
-        // SAFETY: we are !Sync so we have exclusive access to self.value.
-        unsafe { (*self.value.get()).write(v) }
+        self.value.get().cast()
     }
 }
 
