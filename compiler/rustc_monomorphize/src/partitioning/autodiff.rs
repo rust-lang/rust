@@ -60,6 +60,9 @@ fn adjust_activity_to_abi<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec
                         | DiffActivity::Duplicated => {
                             DiffActivity::FakeActivitySize(Some(elem_size))
                         }
+                        DiffActivity::Buffer => {
+                            DiffActivity::FakeActivitySize(Some(elem_size))
+                        }
                         DiffActivity::Const => DiffActivity::Const,
                         _ => bug!("unexpected activity for ptr/ref"),
                     };

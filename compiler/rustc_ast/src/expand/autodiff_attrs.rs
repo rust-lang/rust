@@ -73,9 +73,9 @@ pub enum DiffActivity {
     FakeActivitySize(Option<u32>),
     /// Batching mode A
     Vector,
-    /// Batching mode B, missing implementation (only available as part of autodiff through dupv)
-    // Leaf,
-    /// Batching mode C, scalar.
+    /// Batching mode B, equivalent to *v modes above
+    Buffer,
+    /// "Batching" mode C, scalar. Not batched.
     Scalar,
 }
 
@@ -167,6 +167,7 @@ pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
             // We just compute derivatives wrt. the inputs, so we can ignore the return value.
             activity == DiffActivity::Const
                 || activity == DiffActivity::Vector
+                || activity == DiffActivity::Buffer
                 || activity == DiffActivity::Scalar
         }
     }
@@ -205,7 +206,7 @@ pub fn valid_input_activity(mode: DiffMode, activity: DiffActivity) -> bool {
         DiffMode::Batch => {
             // Batching is a special case, since we don't compute derivatives wrt. the return value.
             // We just compute derivatives wrt. the inputs, so we can ignore the return value.
-            matches!(activity, Const | Vector)
+            matches!(activity, Const | Vector | Buffer)
         }
     };
 }
@@ -225,6 +226,7 @@ impl Display for DiffActivity {
             DiffActivity::DuplicatedOnly => write!(f, "DuplicatedOnly"),
             DiffActivity::FakeActivitySize(s) => write!(f, "FakeActivitySize({:?})", s),
             DiffActivity::Vector => write!(f, "Vector"),
+            DiffActivity::Buffer => write!(f, "Buffer"),
             DiffActivity::Scalar => write!(f, "Scalar"),
         }
     }
@@ -261,6 +263,7 @@ impl FromStr for DiffActivity {
             "DuplicatedOnly" => Ok(DiffActivity::DuplicatedOnly),
             "Scalar" => Ok(DiffActivity::Scalar),
             "Vector" => Ok(DiffActivity::Vector),
+            "Buffer" => Ok(DiffActivity::Buffer),
             _ => Err(()),
         }
     }
