@@ -48,7 +48,7 @@ impl_lint_pass!(LargeConstArrays => [LARGE_CONST_ARRAYS]);
 
 impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Const(ident, _, generics, _) = &item.kind
+        if let ItemKind::Const(ident, generics, _, _) = &item.kind
             // Since static items may not have generics, skip generic const items.
             // FIXME(generic_const_items): I don't think checking `generics.hwcp` suffices as it
             // doesn't account for empty where-clauses that only consist of keyword `where` IINM.
