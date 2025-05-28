@@ -164,7 +164,6 @@ define_symbols! {
     completion,
     compile_error,
     concat_bytes,
-    concat_idents,
     concat,
     const_format_args,
     const_panic_fmt,

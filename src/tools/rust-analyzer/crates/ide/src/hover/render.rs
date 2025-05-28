@@ -630,25 +630,55 @@ pub(super) fn definition(
                 }
             },
             |_| None,
+            |_| None,
         ),
-        Definition::Adt(it) => {
-            render_memory_layout(config.memory_layout, || it.layout(db), |_| None, |_| None)
-        }
+        Definition::Adt(it @ Adt::Struct(strukt)) => render_memory_layout(
+            config.memory_layout,
+            || it.layout(db),
+            |_| None,
+            |layout| {
+                let mut field_size =
+                    |i: usize| Some(strukt.fields(db).get(i)?.layout(db).ok()?.size());
+                if strukt.repr(db).is_some_and(|it| it.inhibit_struct_field_reordering()) {
+                    Some(("tail padding", layout.tail_padding(&mut field_size)?))
+                } else {
+                    Some(("largest padding", layout.largest_padding(&mut field_size)?))
+                }
+            },
+            |_| None,
+        ),
+        Definition::Adt(it) => render_memory_layout(
+            config.memory_layout,
+            || it.layout(db),
+            |_| None,
+            |_| None,
+            |_| None,
+        ),
         Definition::Variant(it) => render_memory_layout(
             config.memory_layout,
             || it.layout(db),
             |_| None,
+            |_| None,
             |layout| layout.enum_tag_size(),
         ),
-        Definition::TypeAlias(it) => {
-            render_memory_layout(config.memory_layout, || it.ty(db).layout(db), |_| None, |_| None)
-        }
-        Definition::Local(it) => {
-            render_memory_layout(config.memory_layout, || it.ty(db).layout(db), |_| None, |_| None)
-        }
+        Definition::TypeAlias(it) => render_memory_layout(
+            config.memory_layout,
+            || it.ty(db).layout(db),
+            |_| None,
+            |_| None,
+            |_| None,
+        ),
+        Definition::Local(it) => render_memory_layout(
+            config.memory_layout,
+            || it.ty(db).layout(db),
+            |_| None,
+            |_| None,
+            |_| None,
+        ),
         Definition::SelfType(it) => render_memory_layout(
             config.memory_layout,
             || it.self_ty(db).layout(db),
+            |_| None,
             |_| None,
             |_| None,
         ),
@@ -1055,9 +1085,13 @@ fn closure_ty(
     if let Some(trait_) = c.fn_trait(sema.db).get_id(sema.db, original.krate(sema.db).into()) {
         push_new_def(hir::Trait::from(trait_).into())
     }
-    if let Some(layout) =
-        render_memory_layout(config.memory_layout, || original.layout(sema.db), |_| None, |_| None)
-    {
+    if let Some(layout) = render_memory_layout(
+        config.memory_layout,
+        || original.layout(sema.db),
+        |_| None,
+        |_| None,
+        |_| None,
+    ) {
         format_to!(markup, "\n___\n{layout}");
     }
     format_to!(markup, "{adjusted}\n\n## Captures\n{}", captures_rendered,);
@@ -1142,6 +1176,7 @@ fn render_memory_layout(
     config: Option<MemoryLayoutHoverConfig>,
     layout: impl FnOnce() -> Result<Layout, LayoutError>,
     offset: impl FnOnce(&Layout) -> Option<u64>,
+    padding: impl FnOnce(&Layout) -> Option<(&str, u64)>,
     tag: impl FnOnce(&Layout) -> Option<usize>,
 ) -> Option<String> {
     let config = config?;
@@ -1193,6 +1228,23 @@ fn render_memory_layout(
                 }
                 MemoryLayoutHoverRenderKind::Both => {
                     format_to!(label, "{offset}")
+                }
+            }
+            format_to!(label, ", ");
+        }
+    }
+
+    if let Some(render) = config.padding {
+        if let Some((padding_name, padding)) = padding(&layout) {
+            format_to!(label, "{padding_name} = ");
+            match render {
+                MemoryLayoutHoverRenderKind::Decimal => format_to!(label, "{padding}"),
+                MemoryLayoutHoverRenderKind::Hexadecimal => format_to!(label, "{padding:#X}"),
+                MemoryLayoutHoverRenderKind::Both if padding >= 10 => {
+                    format_to!(label, "{padding} ({padding:#X})")
+                }
+                MemoryLayoutHoverRenderKind::Both => {
+                    format_to!(label, "{padding}")
                 }
             }
             format_to!(label, ", ");

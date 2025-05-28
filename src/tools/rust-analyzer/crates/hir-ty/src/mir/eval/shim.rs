@@ -1121,7 +1121,7 @@ impl Evaluator<'_> {
                 // We don't call any drop glue yet, so there is nothing here
                 Ok(())
             }
-            "transmute" => {
+            "transmute" | "transmute_unchecked" => {
                 let [arg] = args else {
                     return Err(MirEvalError::InternalError(
                         "transmute arg is not provided".into(),

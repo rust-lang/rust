@@ -1782,6 +1782,33 @@
             {
                 "title": "hover",
                 "properties": {
+                    "rust-analyzer.hover.memoryLayout.padding": {
+                        "markdownDescription": "How to render the padding information in a memory layout hover.",
+                        "default": null,
+                        "anyOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "both",
+                                    "decimal",
+                                    "hexadecimal"
+                                ],
+                                "enumDescriptions": [
+                                    "Render as 12 (0xC)",
+                                    "Render as 12",
+                                    "Render as 0xC"
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "title": "hover",
+                "properties": {
                     "rust-analyzer.hover.memoryLayout.size": {
                         "markdownDescription": "How to render the size information in a memory layout hover.",
                         "default": "both",
@@ -1927,7 +1954,7 @@
                 "properties": {
                     "rust-analyzer.imports.prefix": {
                         "markdownDescription": "The path structure for newly inserted paths to use.",
-                        "default": "plain",
+                        "default": "crate",
                         "type": "string",
                         "enum": [
                             "plain",

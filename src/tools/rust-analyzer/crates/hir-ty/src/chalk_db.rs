@@ -259,7 +259,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     }
     fn well_known_trait_id(
         &self,
-        well_known_trait: rust_ir::WellKnownTrait,
+        well_known_trait: WellKnownTrait,
     ) -> Option<chalk_ir::TraitId<Interner>> {
         let lang_attr = lang_item_from_well_known_trait(well_known_trait);
         let trait_ = lang_attr.resolve_trait(self.db, self.krate)?;

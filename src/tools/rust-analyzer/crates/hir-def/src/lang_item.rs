@@ -85,7 +85,7 @@ impl LangItemTarget {
 }
 
 /// Salsa query. This will look for lang items in a specific crate.
-#[salsa_macros::tracked(return_ref)]
+#[salsa_macros::tracked(returns(ref))]
 pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangItems>> {
     let _p = tracing::info_span!("crate_lang_items_query").entered();
 
