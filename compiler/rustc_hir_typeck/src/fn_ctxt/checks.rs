@@ -1556,25 +1556,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             SuggestionText::Reorder => Some("reorder these arguments".to_string()),
             SuggestionText::DidYouMean => Some("did you mean".to_string()),
         };
-        if let Some(suggestion_text) = suggestion_text {
+        if let Some(suggestion_text) = suggestion_text
+            && !full_call_span.in_external_macro(self.sess().source_map())
+        {
             let source_map = self.sess().source_map();
-            let (mut suggestion, suggestion_span) = if let Some(call_span) =
-                full_call_span.find_ancestor_inside_same_ctxt(error_span)
-            {
-                ("(".to_string(), call_span.shrink_to_hi().to(error_span.shrink_to_hi()))
+            let suggestion_span = if let Some(args_span) = error_span.trim_start(full_call_span) {
+                // Span of the braces, e.g. `(a, b, c)`.
+                args_span
             } else {
-                (
-                    format!(
-                        "{}(",
-                        source_map.span_to_snippet(full_call_span).unwrap_or_else(|_| {
-                            fn_def_id.map_or("".to_string(), |fn_def_id| {
-                                tcx.item_name(fn_def_id).to_string()
-                            })
-                        })
-                    ),
-                    error_span,
-                )
+                // The arg span of a function call that wasn't even given braces
+                // like what might happen with delegation reuse.
+                // e.g. `reuse HasSelf::method;` should suggest `reuse HasSelf::method($args);`.
+                full_call_span.shrink_to_hi()
             };
+            let mut suggestion = "(".to_owned();
             let mut needs_comma = false;
             for (expected_idx, provided_idx) in matched_inputs.iter_enumerated() {
                 if needs_comma {

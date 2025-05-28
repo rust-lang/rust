@@ -33,7 +33,7 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
@@ -200,6 +200,10 @@ pub trait HirTyLowerer<'tcx> {
     {
         self
     }
+
+    /// Performs minimalistic dyn compat checks outside of bodies, but full within bodies.
+    /// Outside of bodies we could end up in cycles, so we delay most checks to later phases.
+    fn dyn_compatibility_violations(&self, trait_def_id: DefId) -> Vec<DynCompatibilityViolation>;
 }
 
 /// The "qualified self" of an associated item path.
@@ -607,7 +611,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         if !infer_args && has_default {
                             // No type parameter provided, but a default exists.
                             if let Some(prev) =
-                                preceding_args.iter().find_map(|arg| match arg.unpack() {
+                                preceding_args.iter().find_map(|arg| match arg.kind() {
                                     GenericArgKind::Type(ty) => ty.error_reported().err(),
                                     _ => None,
                                 })

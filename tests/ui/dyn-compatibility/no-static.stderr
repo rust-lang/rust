@@ -23,10 +23,10 @@ LL |     fn foo() where Self: Sized {}
    |              +++++++++++++++++
 
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/no-static.rs:18:12
+  --> $DIR/no-static.rs:18:20
    |
 LL |     let b: Box<dyn Foo> = Box::new(Bar);
-   |            ^^^^^^^^^^^^ `Foo` is not dyn compatible
+   |                    ^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>

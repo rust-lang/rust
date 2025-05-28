@@ -8,10 +8,10 @@ LL | #![feature(async_fn_in_dyn_trait)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0038]: the trait `AsyncTrait` is not dyn compatible
-  --> $DIR/wrong-size.rs:21:12
+  --> $DIR/wrong-size.rs:21:17
    |
 LL |     let x: &dyn AsyncTrait = &"hello, world!";
-   |            ^^^^^^^^^^^^^^^ `AsyncTrait` is not dyn compatible
+   |                 ^^^^^^^^^^ `AsyncTrait` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>

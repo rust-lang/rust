@@ -4,13 +4,28 @@ use rustc_attr_data_structures::RustcVersion;
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
+use rustc_session::lint::{BuiltinLintDiag, Lint};
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::session_diagnostics::{self, UnsupportedLiteralReason};
 use crate::{fluent_generated, parse_version};
+
+/// Emitter of a builtin lint from `cfg_matches`.
+///
+/// Used to support emiting a lint (currently on check-cfg), either:
+///  - as an early buffered lint (in `rustc`)
+///  - or has a "normal" lint from HIR (in `rustdoc`)
+pub trait CfgMatchesLintEmitter {
+    fn emit_span_lint(&self, sess: &Session, lint: &'static Lint, sp: Span, diag: BuiltinLintDiag);
+}
+
+impl CfgMatchesLintEmitter for NodeId {
+    fn emit_span_lint(&self, sess: &Session, lint: &'static Lint, sp: Span, diag: BuiltinLintDiag) {
+        sess.psess.buffer_lint(lint, sp, *self, diag);
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Condition {
@@ -25,17 +40,17 @@ pub struct Condition {
 pub fn cfg_matches(
     cfg: &MetaItemInner,
     sess: &Session,
-    lint_node_id: NodeId,
+    lint_emitter: impl CfgMatchesLintEmitter,
     features: Option<&Features>,
 ) -> bool {
     eval_condition(cfg, sess, features, &mut |cfg| {
         try_gate_cfg(cfg.name, cfg.span, sess, features);
         match sess.psess.check_config.expecteds.get(&cfg.name) {
             Some(ExpectedValues::Some(values)) if !values.contains(&cfg.value) => {
-                sess.psess.buffer_lint(
+                lint_emitter.emit_span_lint(
+                    sess,
                     UNEXPECTED_CFGS,
                     cfg.span,
-                    lint_node_id,
                     BuiltinLintDiag::UnexpectedCfgValue(
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),
@@ -43,10 +58,10 @@ pub fn cfg_matches(
                 );
             }
             None if sess.psess.check_config.exhaustive_names => {
-                sess.psess.buffer_lint(
+                lint_emitter.emit_span_lint(
+                    sess,
                     UNEXPECTED_CFGS,
                     cfg.span,
-                    lint_node_id,
                     BuiltinLintDiag::UnexpectedCfgName(
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),

@@ -776,8 +776,7 @@ fn test_unstable_options_tracking_hash() {
         CoverageOptions {
             level: CoverageLevel::Mcdc,
             no_mir_spans: true,
-            discard_all_spans_in_codegen: true,
-            inject_unused_local_file: true,
+            discard_all_spans_in_codegen: true
         }
     );
     tracked!(crate_attr, vec!["abc".to_string()]);

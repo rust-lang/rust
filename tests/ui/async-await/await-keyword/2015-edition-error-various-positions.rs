@@ -1,3 +1,4 @@
+//@ edition:2015
 #![allow(non_camel_case_types)]
 #![deny(keyword_idents)]
 

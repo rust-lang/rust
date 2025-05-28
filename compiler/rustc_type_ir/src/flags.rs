@@ -479,8 +479,8 @@ impl<I: Interner> FlagComputation<I> {
     }
 
     fn add_args(&mut self, args: &[I::GenericArg]) {
-        for kind in args {
-            match kind.kind() {
+        for arg in args {
+            match arg.kind() {
                 ty::GenericArgKind::Type(ty) => self.add_ty(ty),
                 ty::GenericArgKind::Lifetime(lt) => self.add_region(lt),
                 ty::GenericArgKind::Const(ct) => self.add_const(ct),

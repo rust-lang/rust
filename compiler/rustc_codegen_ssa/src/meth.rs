@@ -77,7 +77,7 @@ fn dyn_trait_in_self<'tcx>(
     ty: Ty<'tcx>,
 ) -> Option<ty::ExistentialTraitRef<'tcx>> {
     for arg in ty.peel_refs().walk() {
-        if let GenericArgKind::Type(ty) = arg.unpack()
+        if let GenericArgKind::Type(ty) = arg.kind()
             && let ty::Dynamic(data, _, _) = ty.kind()
         {
             // FIXME(arbitrary_self_types): This is likely broken for receivers which

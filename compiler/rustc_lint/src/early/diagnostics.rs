@@ -18,7 +18,7 @@ use crate::lints::{self, ElidedNamedLifetime};
 
 mod check_cfg;
 
-pub(super) fn decorate_lint(
+pub fn decorate_builtin_lint(
     sess: &Session,
     tcx: Option<TyCtxt<'_>>,
     diagnostic: BuiltinLintDiag,

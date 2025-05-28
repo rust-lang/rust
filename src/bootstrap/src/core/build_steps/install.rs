@@ -38,7 +38,9 @@ fn sanitize_sh(path: &Path, is_cygwin: bool) -> String {
         if ch.next() != Some('/') {
             return None;
         }
-        Some(format!("/{}/{}", drive, &s[drive.len_utf8() + 2..]))
+        // The prefix for Windows drives in Cygwin/MSYS2 is configurable, but
+        // /proc/cygdrive is available regardless of configuration since 1.7.33
+        Some(format!("/proc/cygdrive/{}/{}", drive, &s[drive.len_utf8() + 2..]))
     }
 }
 

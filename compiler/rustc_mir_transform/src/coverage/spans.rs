@@ -1,8 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span};
+use rustc_span::{DesugaringKind, ExpnKind, MacroKind, Span};
 use tracing::instrument;
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
@@ -84,18 +83,8 @@ pub(super) fn extract_refined_covspans<'tcx>(
     // Discard any span that overlaps with a hole.
     discard_spans_overlapping_holes(&mut covspans, &holes);
 
-    // Discard spans that overlap in unwanted ways.
+    // Perform more refinement steps after holes have been dealt with.
     let mut covspans = remove_unwanted_overlapping_spans(covspans);
-
-    // For all empty spans, either enlarge them to be non-empty, or discard them.
-    let source_map = tcx.sess.source_map();
-    covspans.retain_mut(|covspan| {
-        let Some(span) = ensure_non_empty_span(source_map, covspan.span) else { return false };
-        covspan.span = span;
-        true
-    });
-
-    // Merge covspans that can be merged.
     covspans.dedup_by(|b, a| a.merge_if_eligible(b));
 
     code_mappings.extend(covspans.into_iter().map(|Covspan { span, bcb }| {
@@ -240,27 +229,4 @@ fn compare_spans(a: Span, b: Span) -> std::cmp::Ordering {
         // - Span A extends further left, or
         // - Both have the same start and span A extends further right
         .then_with(|| Ord::cmp(&a.hi(), &b.hi()).reverse())
-}
-
-fn ensure_non_empty_span(source_map: &SourceMap, span: Span) -> Option<Span> {
-    if !span.is_empty() {
-        return Some(span);
-    }
-
-    // The span is empty, so try to enlarge it to cover an adjacent '{' or '}'.
-    source_map
-        .span_to_source(span, |src, start, end| try {
-            // Adjusting span endpoints by `BytePos(1)` is normally a bug,
-            // but in this case we have specifically checked that the character
-            // we're skipping over is one of two specific ASCII characters, so
-            // adjusting by exactly 1 byte is correct.
-            if src.as_bytes().get(end).copied() == Some(b'{') {
-                Some(span.with_hi(span.hi() + BytePos(1)))
-            } else if start > 0 && src.as_bytes()[start - 1] == b'}' {
-                Some(span.with_lo(span.lo() - BytePos(1)))
-            } else {
-                None
-            }
-        })
-        .ok()?
 }

@@ -4,7 +4,7 @@ fn ub_if_b(_1: Thing) -> Thing {
     debug t => _1;
     let mut _0: Thing;
     let mut _2: isize;
-    scope 1 (inlined unreachable_unchecked) {
+    scope 1 (inlined #[track_caller] unreachable_unchecked) {
         scope 2 (inlined core::ub_checks::check_language_ub) {
             scope 3 (inlined core::ub_checks::check_language_ub::runtime) {
             }

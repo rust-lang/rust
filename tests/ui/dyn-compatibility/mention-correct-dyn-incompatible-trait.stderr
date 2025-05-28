@@ -1,8 +1,8 @@
 error[E0038]: the trait `Bar` is not dyn compatible
-  --> $DIR/mention-correct-dyn-incompatible-trait.rs:19:15
+  --> $DIR/mention-correct-dyn-incompatible-trait.rs:19:24
    |
 LL |     let test: &mut dyn Bar = &mut thing;
-   |               ^^^^^^^^^^^^ `Bar` is not dyn compatible
+   |                        ^^^ `Bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>

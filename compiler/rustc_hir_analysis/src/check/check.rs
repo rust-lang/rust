@@ -1575,7 +1575,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
 
     let mut params_used = DenseBitSet::new_empty(generics.own_params.len());
     for leaf in ty.walk() {
-        if let GenericArgKind::Type(leaf_ty) = leaf.unpack()
+        if let GenericArgKind::Type(leaf_ty) = leaf.kind()
             && let ty::Param(param) = leaf_ty.kind()
         {
             debug!("found use of ty param {:?}", param);
@@ -1700,7 +1700,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
 
                     let mut label_match = |ty: Ty<'_>, span| {
                         for arg in ty.walk() {
-                            if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                            if let ty::GenericArgKind::Type(ty) = arg.kind()
                                 && let ty::Alias(
                                     ty::Opaque,
                                     ty::AliasTy { def_id: captured_def_id, .. },
