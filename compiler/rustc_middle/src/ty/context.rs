@@ -821,6 +821,10 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
     fn impl_stability(self) -> bool {
         self.impl_stability()
     }
+
+    fn enabled(self, symbol: <TyCtxt<'tcx> as Interner>::Symbol) -> bool {
+        self.enabled(symbol)
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Span<TyCtxt<'tcx>> for Span {

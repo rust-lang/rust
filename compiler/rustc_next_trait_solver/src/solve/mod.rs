@@ -147,15 +147,19 @@ where
             None => self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS),
         }
     }
-    
-    fn compute_unstable_feature_goal(&mut self, param_env: <I as Interner>::ParamEnv, symbol: <I as Interner>::Symbol) -> QueryResult<I> {
-        // Iterate through all goals in param_env to find the one that has the same 
-        // symbol as the one in the goal
+
+    fn compute_unstable_feature_goal(
+        &mut self,
+        param_env: <I as Interner>::ParamEnv,
+        symbol: <I as Interner>::Symbol,
+    ) -> QueryResult<I> {
+        // Iterate through all goals in param_env to find the one that has the same symbol.
         for pred in param_env.caller_bounds().iter() {
             match pred.kind().skip_binder() {
                 ty::ClauseKind::UnstableFeature(sym) => {
                     if sym == symbol {
-                        return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                        return self
+                            .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                     }
                 }
                 _ => {} // don't care
@@ -163,11 +167,21 @@ where
         }
 
         if self.cx().features().impl_stability() {
-            return self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity));
+            return self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
+                MaybeCause::Ambiguity,
+            ));
         } else {
-            todo!();
+            // Check if feature is enabled at crate level with #[feature(..)] or if we are currently in codegen.
+            if self.cx().features().enabled(symbol)
+                || (self.typing_mode() == TypingMode::PostAnalysis)
+            {
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+            } else {
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
+                    MaybeCause::Ambiguity,
+                ));
+            }
         }
-
     }
 
     #[instrument(level = "trace", skip(self))]

@@ -598,7 +598,7 @@ where
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
                     self.compute_unstable_feature_goal(param_env, symbol)
-                },
+                }
                 ty::PredicateKind::Subtype(predicate) => {
                     self.compute_subtype_goal(Goal { param_env, predicate })
                 }
