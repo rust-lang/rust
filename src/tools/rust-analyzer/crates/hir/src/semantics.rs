@@ -567,9 +567,7 @@ impl<'db> SemanticsImpl<'db> {
         speculative_args: &ast::TokenTree,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
-        let analyzer = self.analyze_no_infer(actual_macro_call.syntax())?;
-        let macro_call = InFile::new(analyzer.file_id, actual_macro_call);
-        let macro_file = analyzer.expansion(self.db, macro_call)?;
+        let macro_file = self.to_def(actual_macro_call)?;
         hir_expand::db::expand_speculative(
             self.db,
             macro_file,
@@ -1534,9 +1532,6 @@ impl<'db> SemanticsImpl<'db> {
             ctx.macro_call_to_macro_call(macro_call)
                 .and_then(|call| macro_call_to_macro_id(ctx, call))
                 .map(Into::into)
-        })
-        .or_else(|| {
-            self.analyze(macro_call.value.syntax())?.resolve_macro_call(self.db, macro_call)
         })
     }
 
