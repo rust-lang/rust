@@ -258,8 +258,6 @@ pub struct MacroCallLoc {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId {
     pub krate: Crate,
-    // FIXME: In `hir-expand` we can't refer to `BlockId`.
-    pub block: Option<salsa::Id>,
     pub edition: Edition,
     pub kind: MacroDefKind,
     pub local_inner: bool,
