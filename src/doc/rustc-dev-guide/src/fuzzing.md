@@ -73,7 +73,7 @@ To build a corpus, you may want to use:
 
 - The rustc/rust-analyzer/clippy test suites (or even source code) --- though avoid
   tests that are already known to cause failures, which often begin with comments
-  like `// failure-status: 101` or `// known-bug: #NNN`.
+  like `//@ failure-status: 101` or `//@ known-bug: #NNN`.
 - The already-fixed ICEs in the archived [Glacier][glacier] repository --- though
   avoid the unfixed ones in `ices/`!
 
