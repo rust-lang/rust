@@ -125,6 +125,17 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
                 Some(Certainty::Yes)
             }
+            ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, .. })
+            | ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => {
+                if self.shallow_resolve(a).is_ty_var() && self.shallow_resolve(b).is_ty_var() {
+                    // FIXME: We also need to register a subtype relation between these vars
+                    // when those are added, and if they aren't in the same sub root then
+                    // we should mark this goal as `has_changed`.
+                    Some(Certainty::AMBIGUOUS)
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
