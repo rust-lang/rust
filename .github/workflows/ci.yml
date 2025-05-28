@@ -110,10 +110,6 @@ jobs:
             echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           fi
 
-      - name: update Docker version
-        if: matrix.codebuild
-        run: src/ci/scripts/update-docker.sh
-
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
 
@@ -121,6 +117,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 2
+
+      - name: update Docker version
+        if: matrix.codebuild
+        run: src/ci/scripts/update-docker.sh
 
       # Free up disk space on Linux by removing preinstalled components that
       # we do not need. We do this to enable some of the less resource
