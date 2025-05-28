@@ -58,25 +58,6 @@ impl LateLintPass<'_> for DefaultHashTypes {
     }
 }
 
-/// Helper function for lints that check for expressions with calls and use typeck results to
-/// get the `DefId` and `GenericArgsRef` of the function.
-fn typeck_results_of_method_fn<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &hir::Expr<'_>,
-) -> Option<(Span, DefId, ty::GenericArgsRef<'tcx>)> {
-    match expr.kind {
-        hir::ExprKind::MethodCall(segment, ..)
-            if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) =>
-        {
-            Some((segment.ident.span, def_id, cx.typeck_results().node_args(expr.hir_id)))
-        }
-        _ => match cx.typeck_results().node_type(expr.hir_id).kind() {
-            &ty::FnDef(def_id, args) => Some((expr.span, def_id, args)),
-            _ => None,
-        },
-    }
-}
-
 declare_tool_lint! {
     /// The `potential_query_instability` lint detects use of methods which can lead to
     /// potential query instability, such as iterating over a `HashMap`.
@@ -105,9 +86,10 @@ declare_lint_pass!(QueryStability => [POTENTIAL_QUERY_INSTABILITY, UNTRACKED_QUE
 
 impl<'tcx> LateLintPass<'tcx> for QueryStability {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if let Some((span, def_id, args)) = typeck_results_of_method_fn(cx, expr)
+        if let Some((def_id, span, generic_args, _recv, _args)) =
+            get_callee_span_generic_args_and_args(cx, expr)
             && let Ok(Some(instance)) =
-                ty::Instance::try_resolve(cx.tcx, cx.typing_env(), def_id, args)
+                ty::Instance::try_resolve(cx.tcx, cx.typing_env(), def_id, generic_args)
         {
             let def_id = instance.def_id();
             if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
@@ -137,8 +119,8 @@ fn check_into_iter_stability<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
         return;
     };
     // Is `expr` a function or method call?
-    let Some((callee_def_id, generic_args, recv, args)) =
-        get_callee_generic_args_and_args(cx, expr)
+    let Some((callee_def_id, _span, generic_args, recv, args)) =
+        get_callee_span_generic_args_and_args(cx, expr)
     else {
         return;
     };
@@ -195,23 +177,23 @@ fn check_into_iter_stability<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
 }
 
 /// Checks whether an expression is a function or method call and, if so, returns its `DefId`,
-/// `GenericArgs`, and arguments.
-fn get_callee_generic_args_and_args<'tcx>(
+/// `Span`, `GenericArgs`, and arguments. This is a slight augmentation of a similarly named Clippy
+/// function, `get_callee_generic_args_and_args`.
+fn get_callee_span_generic_args_and_args<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
-) -> Option<(DefId, GenericArgsRef<'tcx>, Option<&'tcx Expr<'tcx>>, &'tcx [Expr<'tcx>])> {
+) -> Option<(DefId, Span, GenericArgsRef<'tcx>, Option<&'tcx Expr<'tcx>>, &'tcx [Expr<'tcx>])> {
     if let ExprKind::Call(callee, args) = expr.kind
         && let callee_ty = cx.typeck_results().expr_ty(callee)
-        && let ty::FnDef(callee_def_id, _) = callee_ty.kind()
+        && let ty::FnDef(callee_def_id, generic_args) = callee_ty.kind()
     {
-        let generic_args = cx.typeck_results().node_args(callee.hir_id);
-        return Some((*callee_def_id, generic_args, None, args));
+        return Some((*callee_def_id, callee.span, generic_args, None, args));
     }
-    if let ExprKind::MethodCall(_, recv, args, _) = expr.kind
+    if let ExprKind::MethodCall(segment, recv, args, _) = expr.kind
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
     {
         let generic_args = cx.typeck_results().node_args(expr.hir_id);
-        return Some((method_def_id, generic_args, Some(recv), args));
+        return Some((method_def_id, segment.ident.span, generic_args, Some(recv), args));
     }
     None
 }
@@ -552,33 +534,22 @@ declare_tool_lint! {
 declare_lint_pass!(Diagnostics => [UNTRANSLATABLE_DIAGNOSTIC, DIAGNOSTIC_OUTSIDE_OF_IMPL]);
 
 impl LateLintPass<'_> for Diagnostics {
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
+    fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         let collect_args_tys_and_spans = |args: &[hir::Expr<'_>], reserve_one_extra: bool| {
             let mut result = Vec::with_capacity(args.len() + usize::from(reserve_one_extra));
             result.extend(args.iter().map(|arg| (cx.typeck_results().expr_ty(arg), arg.span)));
             result
         };
         // Only check function calls and method calls.
-        let (span, def_id, fn_gen_args, arg_tys_and_spans) = match expr.kind {
-            hir::ExprKind::Call(callee, args) => {
-                match cx.typeck_results().node_type(callee.hir_id).kind() {
-                    &ty::FnDef(def_id, fn_gen_args) => {
-                        (callee.span, def_id, fn_gen_args, collect_args_tys_and_spans(args, false))
-                    }
-                    _ => return, // occurs for fns passed as args
-                }
-            }
-            hir::ExprKind::MethodCall(_segment, _recv, args, _span) => {
-                let Some((span, def_id, fn_gen_args)) = typeck_results_of_method_fn(cx, expr)
-                else {
-                    return;
-                };
-                let mut args = collect_args_tys_and_spans(args, true);
-                args.insert(0, (cx.tcx.types.self_param, _recv.span)); // dummy inserted for `self`
-                (span, def_id, fn_gen_args, args)
-            }
-            _ => return,
+        let Some((def_id, span, fn_gen_args, recv, args)) =
+            get_callee_span_generic_args_and_args(cx, expr)
+        else {
+            return;
         };
+        let mut arg_tys_and_spans = collect_args_tys_and_spans(args, recv.is_some());
+        if let Some(recv) = recv {
+            arg_tys_and_spans.insert(0, (cx.tcx.types.self_param, recv.span)); // dummy inserted for `self`
+        }
 
         Self::diagnostic_outside_of_impl(cx, span, expr.hir_id, def_id, fn_gen_args);
         Self::untranslatable_diagnostic(cx, def_id, &arg_tys_and_spans);
