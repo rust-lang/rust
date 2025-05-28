@@ -110,13 +110,6 @@ pub(crate) struct ProcMacro {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_non_abi)]
-pub(crate) struct NonABI {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(builtin_macros_trace_macros)]
 pub(crate) struct TraceMacros {
     #[primary_span]
@@ -789,49 +782,10 @@ pub(crate) struct AsmModifierInvalid {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_asm_requires_template)]
-pub(crate) struct AsmRequiresTemplate {
+#[diag(builtin_macros_asm_attribute_not_supported)]
+pub(crate) struct AsmAttributeNotSupported {
     #[primary_span]
     pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_asm_expected_comma)]
-pub(crate) struct AsmExpectedComma {
-    #[primary_span]
-    #[label]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_asm_expected_string_literal)]
-pub(crate) struct AsmExpectedStringLiteral {
-    #[primary_span]
-    #[label]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_asm_underscore_input)]
-pub(crate) struct AsmUnderscoreInput {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_asm_sym_no_path)]
-pub(crate) struct AsmSymNoPath {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_asm_expected_other)]
-pub(crate) struct AsmExpectedOther {
-    #[primary_span]
-    #[label(builtin_macros_asm_expected_other)]
-    pub(crate) span: Span,
-    pub(crate) is_inline_asm: bool,
 }
 
 #[derive(Diagnostic)]
@@ -926,16 +880,6 @@ pub(crate) struct AsmUnsupportedOption {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_asm_unsupported_operand)]
-pub(crate) struct AsmUnsupportedOperand<'a> {
-    #[primary_span]
-    #[label]
-    pub(crate) span: Span,
-    pub(crate) symbol: &'a str,
-    pub(crate) macro_name: &'static str,
-}
-
-#[derive(Diagnostic)]
 #[diag(builtin_macros_asm_unsupported_clobber_abi)]
 pub(crate) struct AsmUnsupportedClobberAbi {
     #[primary_span]
@@ -953,13 +897,6 @@ pub(crate) struct TestRunnerInvalid {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_test_runner_nargs)]
 pub(crate) struct TestRunnerNargs {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_expected_register_class_or_explicit_register)]
-pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     #[primary_span]
     pub(crate) span: Span,
 }
@@ -1026,4 +963,13 @@ pub(crate) struct NakedFunctionTestingAttribute {
 pub(crate) struct NonGenericPointee {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_expected_other)]
+pub(crate) struct AsmExpectedOther {
+    #[primary_span]
+    #[label(builtin_macros_expected_other)]
+    pub(crate) span: Span,
+    pub(crate) is_inline_asm: bool,
 }
