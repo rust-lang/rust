@@ -28,6 +28,7 @@ impl Mutex {
     }
 
     #[inline]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "sys_mutex_lock")]
     pub fn lock(&self) {
         // SAFETY: we call `init` above, therefore reentrant locking is safe.
         // In `drop` we ensure that the mutex is not destroyed while locked.
@@ -35,6 +36,7 @@ impl Mutex {
     }
 
     #[inline]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "sys_mutex_unlock")]
     pub unsafe fn unlock(&self) {
         // SAFETY: the mutex can only be locked if it is already initialized
         // and we observed this initialization since we observed the locking.
@@ -42,6 +44,7 @@ impl Mutex {
     }
 
     #[inline]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "sys_mutex_try_lock")]
     pub fn try_lock(&self) -> bool {
         // SAFETY: we call `init` above, therefore reentrant locking is safe.
         // In `drop` we ensure that the mutex is not destroyed while locked.
