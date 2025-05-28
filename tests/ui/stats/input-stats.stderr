@@ -171,8 +171,8 @@ hir-stats - Impl                      88 (NN.N%)             1
 hir-stats - Trait                     88 (NN.N%)             1
 hir-stats - Fn                       176 (NN.N%)             2
 hir-stats - Use                      352 (NN.N%)             4
-hir-stats Path                   1_240 (NN.N%)            31            40
-hir-stats PathSegment            1_920 (NN.N%)            40            48
+hir-stats Path                   1_040 (NN.N%)            26            40
+hir-stats PathSegment            1_776 (NN.N%)            37            48
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_988                   180
+hir-stats Total                  8_644                   172
 hir-stats
