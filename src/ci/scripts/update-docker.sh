@@ -13,7 +13,7 @@ for pkg in \
     docker-compose-v2 \
     docker-doc \
     podman-docker ;
-    do sudo apt-get remove $pkg; done
+    do sudo apt-get remove -y $pkg || true; done
 
 sudo apt-get update
 
@@ -36,8 +36,13 @@ sudo apt-get install -y \
   containerd.io \
   docker-buildx-plugin
 
+if ! docker --version; then
+    echo "Docker installation failed"
+    exit 1
+fi
+
 echo "Docker updated successfully! New version:"
-docker --version || true
+docker --version
 # # Start and enable Docker service
 # sudo systemctl start docker
 # sudo systemctl enable docker
