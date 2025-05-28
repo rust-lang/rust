@@ -7,7 +7,7 @@ LL |         #[rustc_intrinsic]
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0133]: call to unsafe function `atomic_fence` is unsafe and requires unsafe function or block
+error[E0133]: call to unsafe function `main::atomic_fence` is unsafe and requires unsafe function or block
   --> $DIR/feature-gated-feature-in-macro-arg.rs:11:9
    |
 LL |         atomic_fence();

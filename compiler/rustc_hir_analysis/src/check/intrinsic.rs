@@ -9,10 +9,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::check::check_function_signature;
-use crate::errors::{
-    UnrecognizedAtomicOperation, UnrecognizedIntrinsicFunction,
-    WrongNumberOfGenericArgumentsToIntrinsic,
-};
+use crate::errors::{UnrecognizedIntrinsicFunction, WrongNumberOfGenericArgumentsToIntrinsic};
 
 fn equate_intrinsic_type<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -172,7 +169,6 @@ pub(crate) fn check_intrinsic_type(
             Ty::new_error_with_message(tcx, span, "expected param")
         }
     };
-    let name_str = intrinsic_name.as_str();
 
     let bound_vars = tcx.mk_bound_variable_kinds(&[
         ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
@@ -198,32 +194,9 @@ pub(crate) fn check_intrinsic_type(
         (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
     };
 
-    let (n_tps, n_lts, n_cts, inputs, output, safety) = if name_str.starts_with("atomic_") {
-        let split: Vec<&str> = name_str.split('_').collect();
-        assert!(split.len() >= 2, "Atomic intrinsic in an incorrect format");
-
-        // Each atomic op has variants with different suffixes (`_seq_cst`, `_acquire`, etc.). Use
-        // string ops to strip the suffixes, because the variants all get the same treatment here.
-        let (n_tps, n_cts, inputs, output) = match split[1] {
-            "cxchg" | "cxchgweak" => (
-                1,
-                0,
-                vec![Ty::new_mut_ptr(tcx, param(0)), param(0), param(0)],
-                Ty::new_tup(tcx, &[param(0), tcx.types.bool]),
-            ),
-            "load" => (1, 1, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
-            "store" => (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit),
-
-            "xchg" | "xadd" | "xsub" | "and" | "nand" | "or" | "xor" | "max" | "min" | "umax"
-            | "umin" => (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], param(0)),
-            "fence" | "singlethreadfence" => (0, 0, Vec::new(), tcx.types.unit),
-            op => {
-                tcx.dcx().emit_err(UnrecognizedAtomicOperation { span, op });
-                return;
-            }
-        };
-        (n_tps, 0, n_cts, inputs, output, hir::Safety::Unsafe)
-    } else if intrinsic_name == sym::contract_check_ensures {
+    let (n_tps, n_lts, n_cts, inputs, output, safety) = if intrinsic_name
+        == sym::contract_check_ensures
+    {
         // contract_check_ensures::<Ret, C>(Ret, C) -> Ret
         // where C: for<'a> Fn(&'a Ret) -> bool,
         //
@@ -693,6 +666,30 @@ pub(crate) fn check_intrinsic_type(
             | sym::simd_reduce_max => (2, 0, vec![param(0)], param(1)),
             sym::simd_shuffle => (3, 0, vec![param(0), param(0), param(1)], param(2)),
             sym::simd_shuffle_const_generic => (2, 1, vec![param(0), param(0)], param(1)),
+
+            sym::atomic_cxchg | sym::atomic_cxchgweak => (
+                1,
+                2,
+                vec![Ty::new_mut_ptr(tcx, param(0)), param(0), param(0)],
+                Ty::new_tup(tcx, &[param(0), tcx.types.bool]),
+            ),
+            sym::atomic_load => (1, 1, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
+            sym::atomic_store => {
+                (1, 1, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit)
+            }
+
+            sym::atomic_xchg
+            | sym::atomic_xadd
+            | sym::atomic_xsub
+            | sym::atomic_and
+            | sym::atomic_nand
+            | sym::atomic_or
+            | sym::atomic_xor
+            | sym::atomic_max
+            | sym::atomic_min
+            | sym::atomic_umax
+            | sym::atomic_umin => (1, 1, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], param(0)),
+            sym::atomic_fence | sym::atomic_singlethreadfence => (0, 1, Vec::new(), tcx.types.unit),
 
             other => {
                 tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });
