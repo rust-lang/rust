@@ -345,7 +345,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // This requires that atomic intrinsics follow a specific naming pattern:
             // "atomic_<operation>[_<ordering>]"
             name if let Some(atomic) = name_str.strip_prefix("atomic_") => {
-                use crate::common::AtomicOrdering::*;
+                use rustc_middle::ty::AtomicOrdering::*;
+
                 use crate::common::{AtomicRmwBinOp, SynchronizationScope};
 
                 let invalid_monomorphization = |ty| {
@@ -358,16 +359,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 let parse_const_generic_ordering = |ord: ty::Value<'tcx>| {
                     let discr = ord.valtree.unwrap_branch()[0].unwrap_leaf();
-                    let ord = discr.to_atomic_ordering();
-                    // We have to translate from the intrinsic ordering to the backend ordering.
-                    use rustc_middle::ty::AtomicOrdering;
-                    match ord {
-                        AtomicOrdering::Relaxed => Relaxed,
-                        AtomicOrdering::Release => Release,
-                        AtomicOrdering::Acquire => Acquire,
-                        AtomicOrdering::AcqRel => AcquireRelease,
-                        AtomicOrdering::SeqCst => SequentiallyConsistent,
-                    }
+                    discr.to_atomic_ordering()
                 };
 
                 // Some intrinsics have the ordering already converted to a const generic parameter, we handle those first.
@@ -403,8 +395,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     "relaxed" => Relaxed,
                     "acquire" => Acquire,
                     "release" => Release,
-                    "acqrel" => AcquireRelease,
-                    "seqcst" => SequentiallyConsistent,
+                    "acqrel" => AcqRel,
+                    "seqcst" => SeqCst,
                     _ => bx.sess().dcx().emit_fatal(errors::UnknownAtomicOrdering),
                 };
 

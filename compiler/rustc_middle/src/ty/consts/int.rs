@@ -29,7 +29,7 @@ impl ConstInt {
 /// An enum to represent the compiler-side view of `intrinsics::AtomicOrdering`.
 /// This lives here because there's a method in this file that needs it and it is entirely unclear
 /// where else to put this...
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum AtomicOrdering {
     // These values must match `intrinsics::AtomicOrdering`!
     Relaxed = 0,

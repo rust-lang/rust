@@ -4,7 +4,7 @@ use std::ops::Deref;
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{Instance, Ty};
+use rustc_middle::ty::{AtomicOrdering, Instance, Ty};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_target::callconv::FnAbi;
@@ -19,9 +19,7 @@ use super::misc::MiscCodegenMethods;
 use super::type_::{ArgAbiBuilderMethods, BaseTypeCodegenMethods, LayoutTypeCodegenMethods};
 use super::{CodegenMethods, StaticBuilderMethods};
 use crate::MemFlags;
-use crate::common::{
-    AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
-};
+use crate::common::{AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use crate::mir::operand::{OperandRef, OperandValue};
 use crate::mir::place::{PlaceRef, PlaceValue};
 
