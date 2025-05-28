@@ -139,6 +139,7 @@ mod handlers {
     mod destructure_struct_binding;
     mod destructure_tuple_binding;
     mod desugar_doc_comment;
+    mod desugar_try_expr;
     mod expand_glob_import;
     mod expand_rest_pattern;
     mod extract_expressions_from_format_string;
@@ -214,7 +215,6 @@ mod handlers {
     mod replace_named_generic_with_impl;
     mod replace_qualified_name_with_use;
     mod replace_string_with_char;
-    mod replace_try_expr_with_match;
     mod replace_turbofish_with_explicit_type;
     mod sort_items;
     mod split_import;
@@ -273,6 +273,7 @@ mod handlers {
             destructure_struct_binding::destructure_struct_binding,
             destructure_tuple_binding::destructure_tuple_binding,
             desugar_doc_comment::desugar_doc_comment,
+            desugar_try_expr::desugar_try_expr,
             expand_glob_import::expand_glob_import,
             expand_glob_import::expand_glob_reexport,
             expand_rest_pattern::expand_rest_pattern,
@@ -354,7 +355,6 @@ mod handlers {
             replace_method_eager_lazy::replace_with_lazy_method,
             replace_named_generic_with_impl::replace_named_generic_with_impl,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
-            replace_try_expr_with_match::replace_try_expr_with_match,
             replace_turbofish_with_explicit_type::replace_turbofish_with_explicit_type,
             sort_items::sort_items,
             split_import::split_import,

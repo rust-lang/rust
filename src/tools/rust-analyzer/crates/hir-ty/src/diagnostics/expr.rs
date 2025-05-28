@@ -25,7 +25,7 @@ use triomphe::Arc;
 use typed_arena::Arena;
 
 use crate::{
-    Adjust, InferenceResult, Interner, Ty, TyExt, TyKind,
+    Adjust, InferenceResult, Interner, TraitEnvironment, Ty, TyExt, TyKind,
     db::HirDatabase,
     diagnostics::match_check::{
         self,
@@ -74,8 +74,9 @@ impl BodyValidationDiagnostic {
         let _p = tracing::info_span!("BodyValidationDiagnostic::collect").entered();
         let infer = db.infer(owner);
         let body = db.body(owner);
+        let env = db.trait_environment_for_body(owner);
         let mut validator =
-            ExprValidator { owner, body, infer, diagnostics: Vec::new(), validate_lints };
+            ExprValidator { owner, body, infer, diagnostics: Vec::new(), validate_lints, env };
         validator.validate_body(db);
         validator.diagnostics
     }
@@ -85,6 +86,7 @@ struct ExprValidator {
     owner: DefWithBodyId,
     body: Arc<Body>,
     infer: Arc<InferenceResult>,
+    env: Arc<TraitEnvironment>,
     diagnostics: Vec<BodyValidationDiagnostic>,
     validate_lints: bool,
 }
@@ -190,7 +192,7 @@ impl ExprValidator {
             return;
         }
 
-        let cx = MatchCheckCtx::new(self.owner.module(db), self.owner, db);
+        let cx = MatchCheckCtx::new(self.owner.module(db), self.owner, db, self.env.clone());
 
         let pattern_arena = Arena::new();
         let mut m_arms = Vec::with_capacity(arms.len());
@@ -317,11 +319,14 @@ impl ExprValidator {
             return;
         };
         let pattern_arena = Arena::new();
-        let cx = MatchCheckCtx::new(self.owner.module(db), self.owner, db);
+        let cx = MatchCheckCtx::new(self.owner.module(db), self.owner, db, self.env.clone());
         for stmt in &**statements {
             let &Statement::Let { pat, initializer, else_branch: None, .. } = stmt else {
                 continue;
             };
+            if self.infer.type_mismatch_for_pat(pat).is_some() {
+                continue;
+            }
             let Some(initializer) = initializer else { continue };
             let ty = &self.infer[initializer];
             if ty.contains_unknown() {

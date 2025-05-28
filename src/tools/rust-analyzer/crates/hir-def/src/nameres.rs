@@ -381,15 +381,15 @@ mod __ {
     #[salsa_macros::tracked]
     pub(crate) struct DefMapPair<'db> {
         #[tracked]
-        #[return_ref]
+        #[returns(ref)]
         pub(crate) def_map: DefMap,
-        #[return_ref]
+        #[returns(ref)]
         pub(crate) local: LocalDefMap,
     }
 }
 pub(crate) use __::DefMapPair;
 
-#[salsa_macros::tracked(return_ref)]
+#[salsa_macros::tracked(returns(ref))]
 pub(crate) fn crate_local_def_map(db: &dyn DefDatabase, crate_id: Crate) -> DefMapPair<'_> {
     let krate = crate_id.data(db);
     let _p = tracing::info_span!(
@@ -420,7 +420,7 @@ pub(crate) fn crate_local_def_map(db: &dyn DefDatabase, crate_id: Crate) -> DefM
     DefMapPair::new(db, def_map, local_def_map)
 }
 
-#[salsa_macros::tracked(return_ref)]
+#[salsa_macros::tracked(returns(ref))]
 pub fn block_def_map(db: &dyn DefDatabase, block_id: BlockId) -> DefMap {
     let BlockLoc { ast_id, module } = block_id.lookup(db);
 

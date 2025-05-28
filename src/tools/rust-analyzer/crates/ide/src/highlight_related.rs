@@ -653,7 +653,7 @@ impl<'a> WalkExpandedExprCtx<'a> {
                             expr.macro_call().and_then(|call| self.sema.expand_macro_call(&call))
                         {
                             match_ast! {
-                                match expanded {
+                                match (expanded.value) {
                                     ast::MacroStmts(it) => {
                                         self.handle_expanded(it, cb);
                                     },
