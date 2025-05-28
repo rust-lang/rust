@@ -57,12 +57,18 @@ where
         if let State::Alive = self.state.get() {
             self.value.get().cast()
         } else {
-            self.get_or_init_slow(i, f)
+            unsafe { self.get_or_init_slow(i, f) }
         }
     }
 
+    /// # Safety
+    /// The `self` reference must remain valid until the TLS destructor is run.
     #[cold]
-    fn get_or_init_slow(&self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
+    unsafe fn get_or_init_slow(
+        &self,
+        i: Option<&mut Option<T>>,
+        f: impl FnOnce() -> T,
+    ) -> *const T {
         match self.state.get() {
             State::Uninitialized => {}
             State::Alive => return self.value.get().cast(),
