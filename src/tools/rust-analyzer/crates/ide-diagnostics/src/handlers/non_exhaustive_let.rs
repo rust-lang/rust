@@ -106,4 +106,29 @@ fn test(x: Result<i32, &'static !>) {
 "#,
         );
     }
+
+    #[test]
+    fn empty_patterns_normalize() {
+        check_diagnostics(
+            r#"
+enum Infallible {}
+
+trait Foo {
+    type Assoc;
+}
+enum Enum<T: Foo> {
+    A,
+    B(T::Assoc),
+}
+
+impl Foo for () {
+    type Assoc = Infallible;
+}
+
+fn foo(v: Enum<()>) {
+    let Enum::A = v;
+}
+        "#,
+        );
+    }
 }

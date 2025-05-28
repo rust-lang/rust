@@ -1243,4 +1243,18 @@ fn foo(v: &Enum) {
     "#,
         );
     }
+
+    #[test]
+    fn regression_19844() {
+        check_diagnostics(
+            r#"
+fn main() {
+    struct S {}
+    enum E { V() }
+    let E::V() = &S {};
+     // ^^^^^^ error: expected S, found E
+}
+"#,
+        );
+    }
 }

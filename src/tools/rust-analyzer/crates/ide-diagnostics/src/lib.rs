@@ -83,12 +83,11 @@ mod handlers {
 #[cfg(test)]
 mod tests;
 
-use std::{collections::hash_map, iter, sync::LazyLock};
+use std::{iter, sync::LazyLock};
 
 use either::Either;
 use hir::{
-    Crate, DisplayTarget, HirFileId, InFile, Semantics, db::ExpandDatabase,
-    diagnostics::AnyDiagnostic,
+    Crate, DisplayTarget, InFile, Semantics, db::ExpandDatabase, diagnostics::AnyDiagnostic,
 };
 use ide_db::{
     EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
@@ -513,13 +512,7 @@ pub fn semantic_diagnostics(
 
     // The edition isn't accurate (each diagnostics may have its own edition due to macros),
     // but it's okay as it's only being used for error recovery.
-    handle_lints(
-        &ctx.sema,
-        &mut FxHashMap::default(),
-        &mut lints,
-        &mut Vec::new(),
-        editioned_file_id.edition(db),
-    );
+    handle_lints(&ctx.sema, &mut lints, editioned_file_id.edition(db));
 
     res.retain(|d| d.severity != Severity::Allow);
 
@@ -584,8 +577,6 @@ fn handle_diag_from_macros(
     true
 }
 
-// `__RA_EVERY_LINT` is a fake lint group to allow every lint in proc macros
-
 struct BuiltLint {
     lint: &'static Lint,
     groups: Vec<&'static str>,
@@ -629,9 +620,7 @@ fn build_lints_map(
 
 fn handle_lints(
     sema: &Semantics<'_, RootDatabase>,
-    cache: &mut FxHashMap<HirFileId, FxHashMap<SmolStr, SeverityAttr>>,
     diagnostics: &mut [(InFile<SyntaxNode>, &mut Diagnostic)],
-    cache_stack: &mut Vec<HirFileId>,
     edition: Edition,
 ) {
     for (node, diag) in diagnostics {
@@ -645,7 +634,8 @@ fn handle_lints(
             diag.severity = default_severity;
         }
 
-        let mut diag_severity = fill_lint_attrs(sema, node, cache, cache_stack, diag, edition);
+        let mut diag_severity =
+            lint_severity_at(sema, node, &lint_groups(&diag.code, edition), edition);
 
         if let outline_diag_severity @ Some(_) =
             find_outline_mod_lint_severity(sema, node, diag, edition)
@@ -698,155 +688,22 @@ fn find_outline_mod_lint_severity(
     result
 }
 
-#[derive(Debug, Clone, Copy)]
-struct SeverityAttr {
-    severity: Severity,
-    /// This field counts how far we are from the main node. Bigger values mean more far.
-    ///
-    /// Note this isn't accurate: there can be gaps between values (created when merging severity maps).
-    /// The important thing is that if an attr is closer to the main node, it will have smaller value.
-    ///
-    /// This is necessary even though we take care to never overwrite a value from deeper nesting
-    /// because of lint groups. For example, in the following code:
-    /// ```
-    /// #[warn(non_snake_case)]
-    /// mod foo {
-    ///     #[allow(nonstandard_style)]
-    ///     mod bar {}
-    /// }
-    /// ```
-    /// We want to not warn on non snake case inside `bar`. If we are traversing this for the first
-    /// time, everything will be fine, because we will set `diag_severity` on the first matching group
-    /// and never overwrite it since then. But if `bar` is cached, the cache will contain both
-    /// `#[warn(non_snake_case)]` and `#[allow(nonstandard_style)]`, and without this field, we have
-    /// no way of differentiating between the two.
-    depth: u32,
-}
-
-fn fill_lint_attrs(
+fn lint_severity_at(
     sema: &Semantics<'_, RootDatabase>,
     node: &InFile<SyntaxNode>,
-    cache: &mut FxHashMap<HirFileId, FxHashMap<SmolStr, SeverityAttr>>,
-    cache_stack: &mut Vec<HirFileId>,
-    diag: &Diagnostic,
+    lint_groups: &LintGroups,
     edition: Edition,
 ) -> Option<Severity> {
-    let mut collected_lint_attrs = FxHashMap::<SmolStr, SeverityAttr>::default();
-    let mut diag_severity = None;
-
-    let mut ancestors = node.value.ancestors().peekable();
-    let mut depth = 0;
-    loop {
-        let ancestor = ancestors.next().expect("we always return from top-level nodes");
-        depth += 1;
-
-        if ancestors.peek().is_none() {
-            // We don't want to insert too many nodes into cache, but top level nodes (aka. outline modules
-            // or macro expansions) need to touch the database so they seem like a good fit to cache.
-
-            if let Some(cached) = cache.get_mut(&node.file_id) {
-                // This node (and everything above it) is already cached; the attribute is either here or nowhere.
-
-                // Workaround for the borrow checker.
-                let cached = std::mem::take(cached);
-
-                cached.iter().for_each(|(lint, severity)| {
-                    for item in &*cache_stack {
-                        let node_cache_entry = cache
-                            .get_mut(item)
-                            .expect("we always insert cached nodes into the cache map");
-                        let lint_cache_entry = node_cache_entry.entry(lint.clone());
-                        if let hash_map::Entry::Vacant(lint_cache_entry) = lint_cache_entry {
-                            // Do not overwrite existing lint attributes, as we go bottom to top and bottom attrs
-                            // overwrite top attrs.
-                            lint_cache_entry.insert(SeverityAttr {
-                                severity: severity.severity,
-                                depth: severity.depth + depth,
-                            });
-                        }
-                    }
-                });
-
-                let lints = lint_groups(&diag.code, edition);
-                let all_matching_groups =
-                    lints.iter().filter_map(|lint_group| cached.get(lint_group));
-                let cached_severity =
-                    all_matching_groups.min_by_key(|it| it.depth).map(|it| it.severity);
-
-                cache.insert(node.file_id, cached);
-
-                return diag_severity.or(cached_severity);
-            }
-
-            // Insert this node's descendants' attributes into any outline descendant, but not including this node.
-            // This must come before inserting this node's own attributes to preserve order.
-            collected_lint_attrs.drain().for_each(|(lint, severity)| {
-                if diag_severity.is_none() && lint_groups(&diag.code, edition).contains(&lint) {
-                    diag_severity = Some(severity.severity);
-                }
-
-                for item in &*cache_stack {
-                    let node_cache_entry = cache
-                        .get_mut(item)
-                        .expect("we always insert cached nodes into the cache map");
-                    let lint_cache_entry = node_cache_entry.entry(lint.clone());
-                    if let hash_map::Entry::Vacant(lint_cache_entry) = lint_cache_entry {
-                        // Do not overwrite existing lint attributes, as we go bottom to top and bottom attrs
-                        // overwrite top attrs.
-                        lint_cache_entry.insert(severity);
-                    }
-                }
-            });
-
-            cache_stack.push(node.file_id);
-            cache.insert(node.file_id, FxHashMap::default());
-
-            if let Some(ancestor) = ast::AnyHasAttrs::cast(ancestor) {
-                // Insert this node's attributes into any outline descendant, including this node.
-                lint_attrs(sema, ancestor, edition).for_each(|(lint, severity)| {
-                    if diag_severity.is_none() && lint_groups(&diag.code, edition).contains(&lint) {
-                        diag_severity = Some(severity);
-                    }
-
-                    for item in &*cache_stack {
-                        let node_cache_entry = cache
-                            .get_mut(item)
-                            .expect("we always insert cached nodes into the cache map");
-                        let lint_cache_entry = node_cache_entry.entry(lint.clone());
-                        if let hash_map::Entry::Vacant(lint_cache_entry) = lint_cache_entry {
-                            // Do not overwrite existing lint attributes, as we go bottom to top and bottom attrs
-                            // overwrite top attrs.
-                            lint_cache_entry.insert(SeverityAttr { severity, depth });
-                        }
-                    }
-                });
-            }
-
-            let parent_node = sema.find_parent_file(node.file_id);
-            if let Some(parent_node) = parent_node {
-                let parent_severity =
-                    fill_lint_attrs(sema, &parent_node, cache, cache_stack, diag, edition);
-                if diag_severity.is_none() {
-                    diag_severity = parent_severity;
-                }
-            }
-            cache_stack.pop();
-            return diag_severity;
-        } else if let Some(ancestor) = ast::AnyHasAttrs::cast(ancestor) {
-            lint_attrs(sema, ancestor, edition).for_each(|(lint, severity)| {
-                if diag_severity.is_none() && lint_groups(&diag.code, edition).contains(&lint) {
-                    diag_severity = Some(severity);
-                }
-
-                let lint_cache_entry = collected_lint_attrs.entry(lint);
-                if let hash_map::Entry::Vacant(lint_cache_entry) = lint_cache_entry {
-                    // Do not overwrite existing lint attributes, as we go bottom to top and bottom attrs
-                    // overwrite top attrs.
-                    lint_cache_entry.insert(SeverityAttr { severity, depth });
-                }
-            });
-        }
-    }
+    node.value
+        .ancestors()
+        .filter_map(ast::AnyHasAttrs::cast)
+        .find_map(|ancestor| {
+            lint_attrs(sema, ancestor, edition)
+                .find_map(|(lint, severity)| lint_groups.contains(&lint).then_some(severity))
+        })
+        .or_else(|| {
+            lint_severity_at(sema, &sema.find_parent_file(node.file_id)?, lint_groups, edition)
+        })
 }
 
 fn lint_attrs<'a>(
@@ -944,10 +801,6 @@ struct LintGroups {
 impl LintGroups {
     fn contains(&self, group: &str) -> bool {
         self.groups.contains(&group) || (self.inside_warnings && group == "warnings")
-    }
-
-    fn iter(&self) -> impl Iterator<Item = &'static str> {
-        self.groups.iter().copied().chain(self.inside_warnings.then_some("warnings"))
     }
 }
 

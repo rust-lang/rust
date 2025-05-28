@@ -194,7 +194,7 @@ impl MatchFinder<'_> {
                     // nodes that originated entirely from within the token tree of the macro call.
                     // i.e. we don't want to match something that came from the macro itself.
                     if let Some(range) = self.sema.original_range_opt(tt.syntax()) {
-                        self.slow_scan_node(&expanded, rule, &Some(range), matches_out);
+                        self.slow_scan_node(&expanded.value, rule, &Some(range), matches_out);
                     }
                 }
             }

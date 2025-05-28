@@ -915,4 +915,47 @@ fn foo() {
             "#,
         );
     }
+
+    #[test]
+    fn regression_19823() {
+        check_diagnostics(
+            r#"
+pub trait FooTrait {
+    unsafe fn method1();
+    unsafe fn method2();
+}
+
+unsafe fn some_unsafe_fn() {}
+
+macro_rules! impl_foo {
+    () => {
+        unsafe fn method1() {
+            some_unsafe_fn();
+        }
+        unsafe fn method2() {
+            some_unsafe_fn();
+        }
+    };
+}
+
+pub struct S1;
+#[allow(unsafe_op_in_unsafe_fn)]
+impl FooTrait for S1 {
+    unsafe fn method1() {
+        some_unsafe_fn();
+    }
+
+    unsafe fn method2() {
+        some_unsafe_fn();
+    }
+}
+
+pub struct S2;
+#[allow(unsafe_op_in_unsafe_fn)]
+impl FooTrait for S2 {
+    impl_foo!();
+}
+        "#,
+        );
+    }
 }

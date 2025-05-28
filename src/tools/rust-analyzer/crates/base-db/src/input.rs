@@ -395,21 +395,21 @@ impl BuiltDependency {
 pub type CratesIdMap = FxHashMap<CrateBuilderId, Crate>;
 
 #[salsa_macros::input]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct Crate {
-    #[return_ref]
+    #[returns(ref)]
     pub data: BuiltCrateData,
     /// Crate data that is not needed for analysis.
     ///
     /// This is split into a separate field to increase incrementality.
-    #[return_ref]
+    #[returns(ref)]
     pub extra_data: ExtraCrateData,
     // This is in `Arc` because it is shared for all crates in a workspace.
-    #[return_ref]
+    #[returns(ref)]
     pub workspace_data: Arc<CrateWorkspaceData>,
-    #[return_ref]
+    #[returns(ref)]
     pub cfg_options: CfgOptions,
-    #[return_ref]
+    #[returns(ref)]
     pub env: Env,
 }
 

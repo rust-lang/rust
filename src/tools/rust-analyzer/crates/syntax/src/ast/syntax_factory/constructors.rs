@@ -585,6 +585,18 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn expr_underscore(&self) -> ast::UnderscoreExpr {
+        let ast::Expr::UnderscoreExpr(ast) = make::ext::expr_underscore().clone_for_update() else {
+            unreachable!()
+        };
+
+        if let Some(mut mapping) = self.mappings() {
+            SyntaxMappingBuilder::new(ast.syntax().clone()).finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn expr_if(
         &self,
         condition: ast::Expr,
