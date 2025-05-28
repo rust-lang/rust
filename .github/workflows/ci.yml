@@ -110,6 +110,10 @@ jobs:
             echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           fi
 
+      - name: update Docker version
+        if: matrix.codebuild
+        run: src/ci/scripts/update-docker.sh
+
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
 
