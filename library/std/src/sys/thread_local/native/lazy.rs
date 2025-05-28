@@ -22,7 +22,6 @@ unsafe impl DestroyedState for () {
 #[derive(Copy, Clone)]
 enum State<D> {
     Uninitialized,
-    Initializing,
     Alive,
     Destroyed(D),
 }
@@ -64,36 +63,31 @@ where
 
     #[cold]
     fn get_or_init_slow(&self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
-        // Ensure we have unique access to an uninitialized value.
         match self.state.get() {
-            State::Uninitialized => self.state.set(State::Initializing),
-            State::Initializing => panic!("thread_local initializer recursively depends on itself"),
+            State::Uninitialized => {}
             State::Alive => return self.value.get().cast(),
             State::Destroyed(_) => return ptr::null(),
         }
 
-        struct BackToUninitOnPanic<'a, D>(&'a Cell<State<D>>);
-        impl<'a, D> Drop for BackToUninitOnPanic<'a, D> {
-            fn drop(&mut self) {
-                self.0.set(State::Uninitialized);
-            }
-        }
-
-        // Get the initial value, making sure that we restore the state to uninitialized
-        // should f panic.
-        let on_panic = BackToUninitOnPanic(&self.state);
         let v = i.and_then(Option::take).unwrap_or_else(f);
-        crate::mem::forget(on_panic);
 
-        // SAFETY: we are !Sync so we have exclusive access to self.value. We also ensured
-        // that the state was uninitialized so we aren't replacing a value we must keep alive.
-        unsafe {
-            self.value.get().write(MaybeUninit::new(v));
+        match self.state.replace(State::Alive) {
+            State::Uninitialized => D::register_dtor(self),
+
+            State::Alive => {
+                // An init occurred during a recursive call, this could be a panic in the future.
+
+                // SAFETY: we cannot be inside a `LocalKey::with` scope, as the initializer
+                // has already returned and the next scope only starts after we return
+                // the pointer. Therefore, there can be no references to the old value.
+                unsafe { (*self.value.get()).assume_init_drop() }
+            }
+
+            State::Destroyed(_) => unreachable!(),
         }
 
-        self.state.set(State::Alive);
-        D::register_dtor(self);
-        self.value.get().cast()
+        // SAFETY: we are !Sync so we have exclusive access to self.value.
+        unsafe { (*self.value.get()).write(v) }
     }
 }
 
@@ -113,9 +107,7 @@ unsafe extern "C" fn destroy<T>(ptr: *mut u8) {
             // We also updated the state to Destroyed to prevent the destructor
             // from accessing the thread-local variable, as this would violate
             // the exclusive access provided by &mut T in Drop::drop.
-            unsafe {
-                crate::ptr::drop_in_place(storage.value.get().cast::<T>());
-            }
+            unsafe { (*storage.value.get()).assume_init_drop() }
         }
     })
 }
