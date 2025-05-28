@@ -119,7 +119,6 @@ jobs:
         rustup update "$channel" --no-self-update
         rustup default "$channel"
         rustup target add "${{ matrix.target }}"
-        rustup component add llvm-tools-preview
     - uses: taiki-e/install-action@nextest
     - uses: Swatinem/rust-cache@v2
       with:

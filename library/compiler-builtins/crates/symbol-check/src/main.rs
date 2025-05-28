@@ -84,7 +84,7 @@ fn exec_cargo_with_args(args: &[&str]) -> Vec<PathBuf> {
         }
     }
 
-    cmd.wait().expect("failed to wait on Cargo");
+    assert!(cmd.wait().expect("failed to wait on Cargo").success());
 
     assert!(!check_files.is_empty(), "no compiler_builtins rlibs found");
     println!("Collected the following rlibs to check: {check_files:#?}");
