@@ -23,9 +23,9 @@ fn main() {
     test_seek();
     test_errors();
     test_from_raw_os_error();
+    test_file_clone();
     // Windows file handling is very incomplete.
     if cfg!(not(windows)) {
-        test_file_clone();
         test_file_set_len();
         test_file_sync();
         test_rename();

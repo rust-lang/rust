@@ -572,6 +572,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let ret = this.WaitForSingleObject(handle, timeout)?;
                 this.write_scalar(ret, dest)?;
             }
+            "GetCurrentProcess" => {
+                let [] = this.check_shim(abi, sys_conv, link_name, args)?;
+
+                this.write_scalar(
+                    Handle::Pseudo(PseudoHandle::CurrentProcess).to_scalar(this),
+                    dest,
+                )?;
+            }
             "GetCurrentThread" => {
                 let [] = this.check_shim(abi, sys_conv, link_name, args)?;
 
@@ -691,6 +699,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetStdHandle" => {
                 let [which] = this.check_shim(abi, sys_conv, link_name, args)?;
                 let res = this.GetStdHandle(which)?;
+                this.write_scalar(res, dest)?;
+            }
+            "DuplicateHandle" => {
+                let [src_proc, src_handle, target_proc, target_handle, access, inherit, options] =
+                    this.check_shim(abi, sys_conv, link_name, args)?;
+                let res = this.DuplicateHandle(
+                    src_proc,
+                    src_handle,
+                    target_proc,
+                    target_handle,
+                    access,
+                    inherit,
+                    options,
+                )?;
                 this.write_scalar(res, dest)?;
             }
             "CloseHandle" => {
