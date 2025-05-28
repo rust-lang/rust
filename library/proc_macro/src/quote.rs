@@ -119,7 +119,7 @@ pub fn quote(stream: TokenStream) -> TokenStream {
                     let content = inner.stream();
 
                     let sep_opt = match iter.peek() {
-                        Some(TokenTree::Punct(_)) => Some(iter.next().unwrap()),
+                        Some(TokenTree::Punct(_)) => iter.next(),
                         _ => None,
                     };
 
@@ -131,15 +131,18 @@ pub fn quote(stream: TokenStream) -> TokenStream {
 
                             minimal_quote!(
                                 use crate::ext::*;
-                            ).to_tokens(&mut tokens);
+                            )
+                            .to_tokens(&mut tokens);
                             if let Some(TokenTree::Punct(_)) = sep_opt {
                                 minimal_quote!(
                                     let mut _i = 0usize;
-                                ).to_tokens(&mut tokens);
+                                )
+                                .to_tokens(&mut tokens);
                             }
                             minimal_quote!(
                                 let has_iter = crate::ThereIsNoIteratorInRepetition;
-                            ).to_tokens(&mut tokens);
+                            )
+                            .to_tokens(&mut tokens);
                             for meta_var in &meta_vars {
                                 minimal_quote!(
                                     #[allow(unused_mut)]
