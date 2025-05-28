@@ -157,5 +157,20 @@ LL ~     if x == 17 { b = 1; a = 0x99; } else { }
 LL +     a = 0x99;
    |
 
-error: aborting due to 9 previous errors
+error: all if blocks contain the same code at the end
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:274:9
+   |
+LL | /             let y = 1;
+LL | |
+LL | |         }
+   | |_________^
+   |
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements after the if
+   |
+LL ~         }
+LL +         let y = 1;
+   |
+
+error: aborting due to 10 previous errors
 
