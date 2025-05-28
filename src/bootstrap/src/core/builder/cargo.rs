@@ -7,6 +7,7 @@ use crate::core::build_steps::tool::SourceType;
 use crate::core::build_steps::{compile, test};
 use crate::core::config::SplitDebuginfo;
 use crate::core::config::flags::Color;
+use crate::debug;
 use crate::utils::build_stamp;
 use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_args, linker_flags};
 use crate::{
@@ -993,9 +994,18 @@ impl Builder<'_> {
                 let llvm_libdir =
                     command(llvm_config).arg("--libdir").run_capture_stdout(self).stdout();
                 if target.is_msvc() {
+                    // FIXME(autodiff): Enzyme does currently not support MSVC.
                     rustflags.arg(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
                 } else {
                     rustflags.arg(&format!("-Clink-arg=-L{llvm_libdir}"));
+                    if self.config.llvm_enzyme {
+                        let arch = self.build.build;
+                        let enzyme_dir = self.build.out.join(arch).join("enzyme").join("lib");
+                        let enzyme_dir2 = enzyme_dir.display();
+                        debug!("Enzyme dir: {}", enzyme_dir2);
+                        dbg!("Enzyme dir: {}", &enzyme_dir2);
+                        rustflags.arg(&format!("-Clink-arg=-L{enzyme_dir2}"));
+                    }
                 }
             }
         }

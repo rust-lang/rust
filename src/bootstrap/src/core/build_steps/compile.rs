@@ -1187,8 +1187,8 @@ pub fn rustc_cargo(
     // functionality from Enzyme core. For that we need to link against Enzyme.
     if builder.config.llvm_enzyme {
         let arch = builder.build.build;
-        let enzyme_dir = builder.build.out.join(arch).join("enzyme").join("lib");
-        cargo.rustflag("-L").rustflag(enzyme_dir.to_str().expect("Invalid path"));
+        let _enzyme_dir = builder.build.out.join(arch).join("enzyme").join("lib");
+        //cargo.rustflag("-L").rustflag(enzyme_dir.to_str().expect("Invalid path"));
 
         if let Some(llvm_config) = builder.llvm_config(builder.config.build) {
             let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
@@ -2079,6 +2079,12 @@ impl Step for Assemble {
             let target_dst_lib = target_libdir.join(&libenzyme).with_extension(lib_ext);
             builder.copy_link(&src_lib, &dst_lib, FileType::NativeLibrary);
             builder.copy_link(&src_lib, &target_dst_lib, FileType::NativeLibrary);
+            //add_to_sysroot(
+            //    builder,
+            //    &src_lib,
+            //    &target_dst_lib,
+            //    &build_stamp::librustc_stamp(builder, build_compiler, target_compiler.host),
+            //);
         }
 
         // Build the libraries for this compiler to link to (i.e., the libraries
