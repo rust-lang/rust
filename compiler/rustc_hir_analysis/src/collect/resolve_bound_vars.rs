@@ -634,11 +634,11 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
             }
-            hir::ItemKind::TyAlias(_, _, generics)
-            | hir::ItemKind::Const(_, _, generics, _)
-            | hir::ItemKind::Enum(_, _, generics)
-            | hir::ItemKind::Struct(_, _, generics)
-            | hir::ItemKind::Union(_, _, generics)
+            hir::ItemKind::TyAlias(_, generics, _)
+            | hir::ItemKind::Const(_, generics, _, _)
+            | hir::ItemKind::Enum(_, generics, _)
+            | hir::ItemKind::Struct(_, generics, _)
+            | hir::ItemKind::Union(_, generics, _)
             | hir::ItemKind::Trait(_, _, _, generics, ..)
             | hir::ItemKind::TraitAlias(_, generics, ..)
             | hir::ItemKind::Impl(&hir::Impl { generics, .. }) => {

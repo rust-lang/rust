@@ -297,32 +297,30 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         hir::ItemKind::Fn { ident, sig, .. } => {
             check_item_fn(tcx, def_id, ident, item.span, sig.decl)
         }
-        hir::ItemKind::Static(_, ty, ..) => {
+        hir::ItemKind::Static(_, _, ty, _) => {
             check_static_item(tcx, def_id, ty.span, UnsizedHandling::Forbid)
         }
-        hir::ItemKind::Const(_, ty, ..) => check_const_item(tcx, def_id, ty.span, item.span),
-        hir::ItemKind::Struct(_, _, hir_generics) => {
+        hir::ItemKind::Const(_, _, ty, _) => check_const_item(tcx, def_id, ty.span, item.span),
+        hir::ItemKind::Struct(_, generics, _) => {
             let res = check_type_defn(tcx, item, false);
-            check_variances_for_type_defn(tcx, item, hir_generics);
+            check_variances_for_type_defn(tcx, item, generics);
             res
         }
-        hir::ItemKind::Union(_, _, hir_generics) => {
+        hir::ItemKind::Union(_, generics, _) => {
             let res = check_type_defn(tcx, item, true);
-            check_variances_for_type_defn(tcx, item, hir_generics);
+            check_variances_for_type_defn(tcx, item, generics);
             res
         }
-        hir::ItemKind::Enum(_, _, hir_generics) => {
+        hir::ItemKind::Enum(_, generics, _) => {
             let res = check_type_defn(tcx, item, true);
-            check_variances_for_type_defn(tcx, item, hir_generics);
+            check_variances_for_type_defn(tcx, item, generics);
             res
         }
         hir::ItemKind::Trait(..) => check_trait(tcx, item),
         hir::ItemKind::TraitAlias(..) => check_trait(tcx, item),
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => Ok(()),
-        hir::ItemKind::TyAlias(_, hir_ty, hir_generics)
-            if tcx.type_alias_is_lazy(item.owner_id) =>
-        {
+        hir::ItemKind::TyAlias(_, generics, hir_ty) if tcx.type_alias_is_lazy(item.owner_id) => {
             let res = enter_wf_checking_ctxt(tcx, item.span, def_id, |wfcx| {
                 let ty = tcx.type_of(def_id).instantiate_identity();
                 let item_ty =
@@ -335,7 +333,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                 check_where_clauses(wfcx, item.span, def_id);
                 Ok(())
             });
-            check_variances_for_type_defn(tcx, item, hir_generics);
+            check_variances_for_type_defn(tcx, item, generics);
             res
         }
         _ => Ok(()),
