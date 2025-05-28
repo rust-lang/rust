@@ -510,24 +510,6 @@ fn main() { "s"; }
 }
 
 #[test]
-fn test_concat_idents_expand() {
-    check(
-        r##"
-#[rustc_builtin_macro]
-macro_rules! concat_idents {}
-
-fn main() { concat_idents!(foo, bar); }
-"##,
-        expect![[r##"
-#[rustc_builtin_macro]
-macro_rules! concat_idents {}
-
-fn main() { foobar; }
-"##]],
-    );
-}
-
-#[test]
 fn test_quote_string() {
     check(
         r##"
