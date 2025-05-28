@@ -349,6 +349,17 @@ impl<T: ?Sized> ReentrantLock<T> {
         }
     }
 
+    /// Returns a raw pointer to the underlying data.
+    ///
+    /// The returned pointer is always non-null and properly aligned, but it is
+    /// the user's responsibility to ensure that any reads through it are
+    /// properly synchronized to avoid data races, and that it is not read
+    /// through after the lock is dropped.
+    #[unstable(feature = "reentrant_lock_data_ptr", issue = "140368")]
+    pub fn data_ptr(&self) -> *const T {
+        &raw const self.data
+    }
+
     unsafe fn increment_lock_count(&self) -> Option<()> {
         unsafe {
             *self.lock_count.get() = (*self.lock_count.get()).checked_add(1)?;
