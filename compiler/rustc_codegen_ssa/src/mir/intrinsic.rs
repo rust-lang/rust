@@ -1,9 +1,9 @@
 use rustc_abi::WrappingRange;
+use rustc_middle::mir::SourceInfo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
-use rustc_span::{Span, sym};
-use rustc_target::callconv::{FnAbi, PassMode};
+use rustc_span::sym;
 
 use super::FunctionCx;
 use super::operand::OperandRef;
@@ -52,13 +52,14 @@ fn memset_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// In the `Err` case, returns the instance that should be called instead.
     pub fn codegen_intrinsic_call(
+        &mut self,
         bx: &mut Bx,
         instance: ty::Instance<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, Bx::Value>],
-        llresult: Bx::Value,
-        span: Span,
+        result: PlaceRef<'tcx, Bx::Value>,
+        source_info: SourceInfo,
     ) -> Result<(), ty::Instance<'tcx>> {
+        let span = source_info.span;
         let callee_ty = instance.ty(bx.tcx(), bx.typing_env());
 
         let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
@@ -97,11 +98,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let llret_ty = bx.backend_type(bx.layout_of(ret_ty));
-        let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let llval = match name {
             sym::abort => {
                 bx.abort();
+                return Ok(());
+            }
+
+            sym::caller_location => {
+                let location = self.get_caller_location(bx, source_info);
+                location.val.store(bx, result);
                 return Ok(());
             }
 
@@ -528,18 +534,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             _ => {
                 // Need to use backend-specific things in the implementation.
-                return bx.codegen_intrinsic_call(instance, fn_abi, args, llresult, span);
+                return bx.codegen_intrinsic_call(instance, args, result, span);
             }
         };
 
-        if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast { .. } = &fn_abi.ret.mode {
-                bx.store_to_place(llval, result.val);
-            } else {
-                OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
-                    .val
-                    .store(bx, result);
-            }
+        if result.layout.ty.is_bool() {
+            OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
+                .val
+                .store(bx, result);
+        } else if !result.layout.ty.is_unit() {
+            bx.store_to_place(llval, result.val);
         }
         Ok(())
     }
