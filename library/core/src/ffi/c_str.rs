@@ -632,6 +632,30 @@ impl CStr {
         // instead of doing it afterwards.
         str::from_utf8(self.to_bytes())
     }
+
+    /// Returns an object that implements [`Display`] for safely printing a [`CStr`] that may
+    /// contain non-Unicode data.
+    ///
+    /// Behaves as if `self` were first lossily converted to a `str`, with invalid UTF-8 presented
+    /// as the Unicode replacement character: �.
+    ///
+    /// [`Display`]: fmt::Display
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cstr_display)]
+    ///
+    /// let cstr = c"Hello, world!";
+    /// println!("{}", cstr.display());
+    /// ```
+    #[unstable(feature = "cstr_display", issue = "139984")]
+    #[must_use = "this does not display the `CStr`; \
+                  it returns an object that can be displayed"]
+    #[inline]
+    pub fn display(&self) -> impl fmt::Display {
+        crate::bstr::ByteStr::from_bytes(self.to_bytes())
+    }
 }
 
 // `.to_bytes()` representations are compared instead of the inner `[c_char]`s,

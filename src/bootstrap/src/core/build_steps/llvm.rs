@@ -1430,6 +1430,7 @@ impl Step for Libunwind {
             cfg.flag("-funwind-tables");
             cfg.flag("-fvisibility=hidden");
             cfg.define("_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS", None);
+            cfg.define("_LIBUNWIND_IS_NATIVE_ONLY", "1");
             cfg.include(root.join("include"));
             cfg.cargo_metadata(false);
             cfg.out_dir(&out_dir);
@@ -1447,12 +1448,10 @@ impl Step for Libunwind {
                 cfg.define("__NO_STRING_INLINES", None);
                 cfg.define("__NO_MATH_INLINES", None);
                 cfg.define("_LIBUNWIND_IS_BAREMETAL", None);
-                cfg.define("__LIBUNWIND_IS_NATIVE_ONLY", None);
                 cfg.define("NDEBUG", None);
             }
             if self.target.is_windows() {
                 cfg.define("_LIBUNWIND_HIDE_SYMBOLS", "1");
-                cfg.define("_LIBUNWIND_IS_NATIVE_ONLY", "1");
             }
         }
 

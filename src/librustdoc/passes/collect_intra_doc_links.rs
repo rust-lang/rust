@@ -22,6 +22,7 @@ use rustc_resolve::rustdoc::{
     MalformedGenerics, has_primitive_or_keyword_docs, prepare_to_doc_link_resolution,
     source_span_for_markdown_range, strip_generics_from_path,
 };
+use rustc_session::config::CrateType;
 use rustc_session::lint::Lint;
 use rustc_span::BytePos;
 use rustc_span::hygiene::MacroKind;
@@ -1169,7 +1170,6 @@ impl LinkCollector<'_, '_> {
     #[allow(rustc::potential_query_instability)]
     pub(crate) fn resolve_ambiguities(&mut self) {
         let mut ambiguous_links = mem::take(&mut self.ambiguous_links);
-
         for ((item_id, path_str), info_items) in ambiguous_links.iter_mut() {
             for info in info_items {
                 info.resolved.retain(|(res, _)| match res {
@@ -2227,15 +2227,35 @@ fn ambiguity_error(
     emit_error: bool,
 ) -> bool {
     let mut descrs = FxHashSet::default();
-    let kinds = candidates
+    // proc macro can exist in multiple namespaces at once, so we need to compare `DefIds`
+    //  to remove the candidate in the fn namespace.
+    let mut possible_proc_macro_id = None;
+    let is_proc_macro_crate = cx.tcx.crate_types() == &[CrateType::ProcMacro];
+    let mut kinds = candidates
         .iter()
-        .map(
-            |(res, def_id)| {
-                if let Some(def_id) = def_id { Res::from_def_id(cx.tcx, *def_id) } else { *res }
-            },
-        )
-        .filter(|res| descrs.insert(res.descr()))
+        .map(|(res, def_id)| {
+            let r =
+                if let Some(def_id) = def_id { Res::from_def_id(cx.tcx, *def_id) } else { *res };
+            if is_proc_macro_crate && let Res::Def(DefKind::Macro(_), id) = r {
+                possible_proc_macro_id = Some(id);
+            }
+            r
+        })
         .collect::<Vec<_>>();
+    // In order to properly dedup proc macros, we have to do it in two passes:
+    // 1. Completing the full traversal to find the possible duplicate in the macro namespace,
+    // 2. Another full traversal to eliminate the candidate in the fn namespace.
+    //
+    // Thus, we have to do an iteration after collection is finished.
+    //
+    // As an optimization, we only deduplicate if we're in a proc-macro crate,
+    // and only if we already found something that looks like a proc macro.
+    if is_proc_macro_crate && let Some(macro_id) = possible_proc_macro_id {
+        kinds.retain(|res| !matches!(res, Res::Def(DefKind::Fn, fn_id) if macro_id == *fn_id));
+    }
+
+    kinds.retain(|res| descrs.insert(res.descr()));
+
     if descrs.len() == 1 {
         // There is no way for users to disambiguate at this point, so better return the first
         // candidate and not show a warning.

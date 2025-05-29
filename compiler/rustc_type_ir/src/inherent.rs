@@ -511,6 +511,18 @@ pub trait Clause<I: Interner<Clause = Self>>:
     fn instantiate_supertrait(self, cx: I, trait_ref: ty::Binder<I, ty::TraitRef<I>>) -> Self;
 }
 
+pub trait Clauses<I: Interner<Clauses = Self>>:
+    Copy
+    + Debug
+    + Hash
+    + Eq
+    + TypeSuperVisitable<I>
+    + TypeSuperFoldable<I>
+    + Flags
+    + SliceLike<Item = I::Clause>
+{
+}
+
 /// Common capabilities of placeholder kinds
 pub trait PlaceholderLike: Copy + Debug + Hash + Eq {
     fn universe(self) -> ty::UniverseIndex;

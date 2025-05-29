@@ -1,5 +1,7 @@
+//! Test that valid large numeric literals do not trigger the `overflowing_literals` lint.
+
 //@ run-pass
-// Catch mistakes in the overflowing literals lint.
+
 #![deny(overflowing_literals)]
 
 pub fn main() {

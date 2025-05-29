@@ -298,11 +298,9 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             check_item_fn(tcx, def_id, ident, item.span, sig.decl)
         }
         hir::ItemKind::Static(_, ty, ..) => {
-            check_item_type(tcx, def_id, ty.span, UnsizedHandling::Forbid)
+            check_static_item(tcx, def_id, ty.span, UnsizedHandling::Forbid)
         }
-        hir::ItemKind::Const(_, ty, ..) => {
-            check_item_type(tcx, def_id, ty.span, UnsizedHandling::Forbid)
-        }
+        hir::ItemKind::Const(_, ty, ..) => check_const_item(tcx, def_id, ty.span, item.span),
         hir::ItemKind::Struct(_, _, hir_generics) => {
             let res = check_type_defn(tcx, item, false);
             check_variances_for_type_defn(tcx, item, hir_generics);
@@ -366,7 +364,7 @@ fn check_foreign_item<'tcx>(
             check_item_fn(tcx, def_id, item.ident, item.span, sig.decl)
         }
         hir::ForeignItemKind::Static(ty, ..) => {
-            check_item_type(tcx, def_id, ty.span, UnsizedHandling::AllowIfForeignTail)
+            check_static_item(tcx, def_id, ty.span, UnsizedHandling::AllowIfForeignTail)
         }
         hir::ForeignItemKind::Type => Ok(()),
     }
@@ -1048,8 +1046,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                             match ty.kind() {
                                 ty::Adt(adt_def, ..) => adt_def.did().is_local(),
                                 // Arrays and slices use the inner type's `ConstParamTy`.
-                                ty::Array(ty, ..) => ty_is_local(*ty),
-                                ty::Slice(ty) => ty_is_local(*ty),
+                                ty::Array(ty, ..) | ty::Slice(ty) => ty_is_local(*ty),
                                 // `&` references use the inner type's `ConstParamTy`.
                                 // `&mut` are not supported.
                                 ty::Ref(_, ty, ast::Mutability::Not) => ty_is_local(*ty),
@@ -1331,14 +1328,13 @@ enum UnsizedHandling {
     AllowIfForeignTail,
 }
 
-fn check_item_type(
+#[instrument(level = "debug", skip(tcx, ty_span, unsized_handling))]
+fn check_static_item(
     tcx: TyCtxt<'_>,
     item_id: LocalDefId,
     ty_span: Span,
     unsized_handling: UnsizedHandling,
 ) -> Result<(), ErrorGuaranteed> {
-    debug!("check_item_type: {:?}", item_id);
-
     enter_wf_checking_ctxt(tcx, ty_span, item_id, |wfcx| {
         let ty = tcx.type_of(item_id).instantiate_identity();
         let item_ty = wfcx.deeply_normalize(ty_span, Some(WellFormedLoc::Ty(item_id)), ty);
@@ -1384,6 +1380,34 @@ fn check_item_type(
                 tcx.require_lang_item(LangItem::Sync, Some(ty_span)),
             );
         }
+        Ok(())
+    })
+}
+
+fn check_const_item(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+    ty_span: Span,
+    item_span: Span,
+) -> Result<(), ErrorGuaranteed> {
+    enter_wf_checking_ctxt(tcx, ty_span, def_id, |wfcx| {
+        let ty = tcx.type_of(def_id).instantiate_identity();
+        let ty = wfcx.deeply_normalize(ty_span, Some(WellFormedLoc::Ty(def_id)), ty);
+
+        wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(def_id)), ty.into());
+        wfcx.register_bound(
+            traits::ObligationCause::new(
+                ty_span,
+                wfcx.body_def_id,
+                ObligationCauseCode::SizedConstOrStatic,
+            ),
+            wfcx.param_env,
+            ty,
+            tcx.require_lang_item(LangItem::Sized, None),
+        );
+
+        check_where_clauses(wfcx, item_span, def_id);
+
         Ok(())
     })
 }

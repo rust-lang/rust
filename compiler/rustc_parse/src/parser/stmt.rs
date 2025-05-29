@@ -515,8 +515,8 @@ impl<'a> Parser<'a> {
     fn error_block_no_opening_brace_msg(&mut self, msg: Cow<'static, str>) -> Diag<'a> {
         let prev = self.prev_token.span;
         let sp = self.token.span;
-        let mut e = self.dcx().struct_span_err(sp, msg);
-        self.label_expected_raw_ref(&mut e);
+        let mut err = self.dcx().struct_span_err(sp, msg);
+        self.label_expected_raw_ref(&mut err);
 
         let do_not_suggest_help = self.token.is_keyword(kw::In)
             || self.token == token::Colon
@@ -558,20 +558,19 @@ impl<'a> Parser<'a> {
                     stmt.span
                 };
                 self.suggest_fixes_misparsed_for_loop_head(
-                    &mut e,
+                    &mut err,
                     prev.between(sp),
                     stmt_span,
                     &stmt.kind,
                 );
             }
             Err(e) => {
-                self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
-                e.cancel();
+                e.delay_as_bug();
             }
             _ => {}
         }
-        e.span_label(sp, "expected `{`");
-        e
+        err.span_label(sp, "expected `{`");
+        err
     }
 
     fn suggest_fixes_misparsed_for_loop_head(

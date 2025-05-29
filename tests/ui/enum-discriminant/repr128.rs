@@ -1,6 +1,5 @@
 //@ run-pass
-#![feature(repr128, core_intrinsics, discriminant_kind)]
-//~^ WARN the feature `repr128` is incomplete
+#![feature(core_intrinsics, discriminant_kind)]
 
 use std::intrinsics::discriminant_value;
 use std::marker::DiscriminantKind;

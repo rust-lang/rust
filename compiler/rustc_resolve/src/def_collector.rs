@@ -162,8 +162,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         self.with_parent(def_id, |this| {
             this.with_impl_trait(ImplTraitContext::Existential, |this| {
                 match i.kind {
-                    ItemKind::Struct(_, ref struct_def, _)
-                    | ItemKind::Union(_, ref struct_def, _) => {
+                    ItemKind::Struct(_, _, ref struct_def)
+                    | ItemKind::Union(_, _, ref struct_def) => {
                         // If this is a unit or tuple-like struct, register the constructor.
                         if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(struct_def) {
                             this.create_def(

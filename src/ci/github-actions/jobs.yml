@@ -121,7 +121,17 @@ pr:
     env:
       ENABLE_GCC_CODEGEN: "1"
       DOCKER_SCRIPT: x86_64-gnu-llvm.sh
-    <<: *job-linux-16c
+    <<: *job-linux-4c
+  - name: aarch64-gnu-llvm-19-1
+    env:
+      IMAGE: aarch64-gnu-llvm-19
+      DOCKER_SCRIPT: stage_2_test_set1.sh
+    <<: *job-aarch64-linux-8c
+  - name: aarch64-gnu-llvm-19-2
+    env:
+      IMAGE: aarch64-gnu-llvm-19
+      DOCKER_SCRIPT: stage_2_test_set2.sh
+    <<: *job-aarch64-linux
   - name: x86_64-gnu-tools
     <<: *job-linux-36c-codebuild
 
@@ -132,7 +142,7 @@ try:
   - name: dist-x86_64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-16c
+    <<: *job-linux-36c-codebuild
 
 # Main CI jobs that have to be green to merge a commit into master
 # These jobs automatically inherit envs.auto, to avoid repeating
@@ -228,7 +238,7 @@ auto:
   - name: dist-x86_64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-16c
+    <<: *job-linux-36c-codebuild
 
   - name: dist-x86_64-linux-alt
     env:
@@ -459,7 +469,9 @@ auto:
 
   - name: aarch64-apple
     env:
-      SCRIPT: ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
+      SCRIPT: >
+        ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin &&
+        ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin src/tools/cargo
       RUST_CONFIGURE_ARGS: >-
         --enable-sanitizers
         --enable-profiler

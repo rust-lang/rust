@@ -21,7 +21,7 @@ pub(crate) fn expand_deriving_partial_ord(
 
     // Order in which to perform matching
     let discr_then_data = if let Annotatable::Item(item) = item
-        && let ItemKind::Enum(_, def, _) = &item.kind
+        && let ItemKind::Enum(_, _, def) = &item.kind
     {
         let dataful: Vec<bool> = def.variants.iter().map(|v| !v.data.fields().is_empty()).collect();
         match dataful.iter().filter(|&&b| b).count() {

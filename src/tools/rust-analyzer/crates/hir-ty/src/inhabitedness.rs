@@ -7,17 +7,24 @@ use chalk_ir::{
 };
 use hir_def::{AdtId, EnumVariantId, ModuleId, VariantId, visibility::Visibility};
 use rustc_hash::FxHashSet;
+use triomphe::Arc;
 
 use crate::{
-    Binders, Interner, Substitution, Ty, TyKind, consteval::try_const_usize, db::HirDatabase,
+    AliasTy, Binders, Interner, Substitution, TraitEnvironment, Ty, TyKind,
+    consteval::try_const_usize, db::HirDatabase,
 };
 
 // FIXME: Turn this into a query, it can be quite slow
 /// Checks whether a type is visibly uninhabited from a particular module.
-pub(crate) fn is_ty_uninhabited_from(db: &dyn HirDatabase, ty: &Ty, target_mod: ModuleId) -> bool {
+pub(crate) fn is_ty_uninhabited_from(
+    db: &dyn HirDatabase,
+    ty: &Ty,
+    target_mod: ModuleId,
+    env: Arc<TraitEnvironment>,
+) -> bool {
     let _p = tracing::info_span!("is_ty_uninhabited_from", ?ty).entered();
     let mut uninhabited_from =
-        UninhabitedFrom { target_mod, db, max_depth: 500, recursive_ty: FxHashSet::default() };
+        UninhabitedFrom { target_mod, db, max_depth: 500, recursive_ty: FxHashSet::default(), env };
     let inhabitedness = ty.visit_with(&mut uninhabited_from, DebruijnIndex::INNERMOST);
     inhabitedness == BREAK_VISIBLY_UNINHABITED
 }
@@ -29,11 +36,12 @@ pub(crate) fn is_enum_variant_uninhabited_from(
     variant: EnumVariantId,
     subst: &Substitution,
     target_mod: ModuleId,
+    env: Arc<TraitEnvironment>,
 ) -> bool {
     let _p = tracing::info_span!("is_enum_variant_uninhabited_from").entered();
 
     let mut uninhabited_from =
-        UninhabitedFrom { target_mod, db, max_depth: 500, recursive_ty: FxHashSet::default() };
+        UninhabitedFrom { target_mod, db, max_depth: 500, recursive_ty: FxHashSet::default(), env };
     let inhabitedness = uninhabited_from.visit_variant(variant.into(), subst);
     inhabitedness == BREAK_VISIBLY_UNINHABITED
 }
@@ -44,6 +52,7 @@ struct UninhabitedFrom<'a> {
     // guard for preventing stack overflow in non trivial non terminating types
     max_depth: usize,
     db: &'a dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
 }
 
 const CONTINUE_OPAQUELY_INHABITED: ControlFlow<VisiblyUninhabited> = Continue(());
@@ -78,6 +87,12 @@ impl TypeVisitor<Interner> for UninhabitedFrom<'_> {
                 Some(0) | None => CONTINUE_OPAQUELY_INHABITED,
                 Some(1..) => item_ty.super_visit_with(self, outer_binder),
             },
+            TyKind::Alias(AliasTy::Projection(projection)) => {
+                // FIXME: I think this currently isn't used for monomorphized bodies, so there is no need to handle
+                // `TyKind::AssociatedType`, but perhaps in the future it will.
+                let normalized = self.db.normalize_projection(projection.clone(), self.env.clone());
+                self.visit_ty(&normalized, outer_binder)
+            }
             _ => CONTINUE_OPAQUELY_INHABITED,
         };
         self.recursive_ty.remove(ty);

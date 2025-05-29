@@ -11,7 +11,7 @@ use crate::delegate::SolverDelegate;
 // EAGER RESOLUTION
 
 /// Resolves ty, region, and const vars to their inferred values or their root vars.
-pub struct EagerResolver<'a, D, I = <D as SolverDelegate>::Interner>
+struct EagerResolver<'a, D, I = <D as SolverDelegate>::Interner>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -22,8 +22,20 @@ where
     cache: DelayedMap<I::Ty, I::Ty>,
 }
 
+pub fn eager_resolve_vars<D: SolverDelegate, T: TypeFoldable<D::Interner>>(
+    delegate: &D,
+    value: T,
+) -> T {
+    if value.has_infer() {
+        let mut folder = EagerResolver::new(delegate);
+        value.fold_with(&mut folder)
+    } else {
+        value
+    }
+}
+
 impl<'a, D: SolverDelegate> EagerResolver<'a, D> {
-    pub fn new(delegate: &'a D) -> Self {
+    fn new(delegate: &'a D) -> Self {
         EagerResolver { delegate, cache: Default::default() }
     }
 }
@@ -89,5 +101,9 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for EagerResolv
 
     fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
         if p.has_infer() { p.super_fold_with(self) } else { p }
+    }
+
+    fn fold_clauses(&mut self, c: I::Clauses) -> I::Clauses {
+        if c.has_infer() { c.super_fold_with(self) } else { c }
     }
 }

@@ -508,7 +508,7 @@ macro_rules! common_visitor_and_walkers {
                         )?
                         $(<V as Visitor<$lt>>::Result::output())?
                     }
-                    ItemKind::Enum(ident, enum_definition, generics) => {
+                    ItemKind::Enum(ident, generics, enum_definition) => {
                         try_visit!(vis.visit_ident(ident));
                         try_visit!(vis.visit_generics(generics));
                         $(${ignore($mut)}
@@ -516,8 +516,8 @@ macro_rules! common_visitor_and_walkers {
                         )?
                         $(${ignore($lt)}vis.visit_enum_def(enum_definition))?
                     }
-                    ItemKind::Struct(ident, variant_data, generics)
-                    | ItemKind::Union(ident, variant_data, generics) => {
+                    ItemKind::Struct(ident, generics, variant_data)
+                    | ItemKind::Union(ident, generics, variant_data) => {
                         try_visit!(vis.visit_ident(ident));
                         try_visit!(vis.visit_generics(generics));
                         vis.visit_variant_data(variant_data)
