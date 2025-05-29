@@ -28,12 +28,12 @@ pub(crate) fn alloc_type_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> (ConstAllocation<'tcx>, u64) {
-    let mut path = crate::util::type_name(tcx, ty);
+    let mut path = crate::util::type_name(tcx, ty).into_bytes();
     let path_len = path.len().try_into().unwrap();
-    if !path.contains('\0') {
-        path.push('\0');
+    if !path.contains(&0) {
+        path.extend(b"\xff\0");
     };
-    let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes(), ());
+    let alloc = Allocation::from_bytes_byte_aligned_immutable(path, ());
     (tcx.mk_const_alloc(alloc), path_len)
 }
 
