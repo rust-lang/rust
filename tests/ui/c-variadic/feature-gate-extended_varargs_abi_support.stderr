@@ -31,8 +31,8 @@ LL | fn win(f: extern "win64" fn(usize, ...)) {
 error[E0658]: using calling conventions other than `C` or `cdecl` for varargs functions is unstable
   --> $DIR/feature-gate-extended_varargs_abi_support.rs:17:5
    |
-LL |     fn extern_efapi(...);
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |     fn extern_efiapi(...);
+   |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #100189 <https://github.com/rust-lang/rust/issues/100189> for more information
    = help: add `#![feature(extended_varargs_abi_support)]` to the crate attributes to enable

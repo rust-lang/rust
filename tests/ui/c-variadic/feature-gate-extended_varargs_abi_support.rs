@@ -14,7 +14,7 @@ fn win(f: extern "win64" fn(usize, ...)) {
 }
 
 extern "efiapi" {
-    fn extern_efapi(...);
+    fn extern_efiapi(...);
     //~^ ERROR using calling conventions other than `C` or `cdecl` for varargs functions is unstable [E0658]
 }
 

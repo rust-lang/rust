@@ -554,7 +554,21 @@ impl<'a> AstValidator<'a> {
         }
 
         match (fk.ctxt(), fk.header()) {
-            (Some(FnCtxt::Foreign), _) => return,
+            (Some(FnCtxt::Foreign), Some(header)) => match header.safety {
+                Safety::Default | Safety::Unsafe(_) => return,
+                Safety::Safe(span) => {
+                    self.dcx().emit_err(errors::CVariadicSafeForeignFunction {
+                        // The span of the "safe " string that should be removed.
+                        safe_span: self
+                            .sess
+                            .psess
+                            .source_map()
+                            .span_until_non_whitespace(span.until(fk.decl().output.span())),
+                    });
+                    return;
+                }
+            },
+
             (Some(FnCtxt::Free), Some(header)) => match header.ext {
                 Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }, _)
                 | Extern::Explicit(StrLit { symbol_unescaped: sym::C_dash_unwind, .. }, _)

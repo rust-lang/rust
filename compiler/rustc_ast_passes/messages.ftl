@@ -24,8 +24,6 @@ ast_passes_auto_super_lifetime = auto traits cannot have super traits or lifetim
     .label = {ast_passes_auto_super_lifetime}
     .suggestion = remove the super traits or lifetime bounds
 
-ast_passes_bad_c_variadic = only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
-
 ast_passes_bare_fn_invalid_safety = function pointers cannot be declared with `safe` safety qualifier
     .suggestion = remove safe from this item
 
@@ -35,6 +33,13 @@ ast_passes_body_in_extern = incorrect `{$kind}` inside `extern` block
     .existing = `extern` blocks define existing foreign {$kind}s and {$kind}s inside of them cannot have a body
 
 ast_passes_bound_in_context = bounds on `type`s in {$ctx} have no effect
+
+ast_passes_c_variadic_bad_calling_convention =
+    only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+
+ast_passes_c_variadic_safe_foreign_function =
+    foreign functions with a C-variadic argument cannot be safe
+    .suggestion = remove the `safe` keyword from this definition
 
 ast_passes_const_and_c_variadic = functions cannot be both `const` and C-variadic
     .const = `const` because of this
