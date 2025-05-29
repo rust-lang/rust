@@ -4439,7 +4439,7 @@ declare_clippy_lint! {
     /// Checks for usage of `iter().any()` on slices when it can be replaced with `contains()` and suggests doing so.
     ///
     /// ### Why is this bad?
-    /// `contains()` is more concise and idiomatic, sometimes more fast.
+    /// `contains()` is more concise and idiomatic, while also being faster in some cases.
     ///
     /// ### Example
     /// ```no_run
