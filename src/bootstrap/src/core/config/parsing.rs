@@ -898,9 +898,7 @@ impl Config {
             };
         }
 
-        if let Some(t) = toml.target {
-            for (triple, cfg) in t {
-                let mut target = Target::from_triple(&triple);
+        config.apply_gcc_config(toml.gcc);
 
                 if let Some(ref s) = cfg.llvm_config {
                     if config.download_rustc_commit.is_some() && triple == *config.build.triple {
