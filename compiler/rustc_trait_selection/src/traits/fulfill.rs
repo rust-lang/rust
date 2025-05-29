@@ -14,6 +14,7 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, Binder, Const, GenericArgsRef, TypeVisitable, TypeVisitableExt, TypingMode,
+    may_use_unstable_feature,
 };
 use rustc_span::DUMMY_SP;
 use thin_vec::{ThinVec, thin_vec};
