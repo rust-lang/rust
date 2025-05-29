@@ -5,7 +5,7 @@ on:
 
 concurrency:
   # Make sure that new pushes cancel running jobs
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 env:
