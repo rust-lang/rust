@@ -5,7 +5,7 @@ use rustc_ast::*;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_hir::{self as hir, HirId, LifetimeSource, PredicateOrigin};
+use rustc_hir::{self as hir, DistributedSlice, HirId, LifetimeSource, PredicateOrigin};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -148,6 +148,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(item)
     }
 
+    fn lower_distributed_slice(
+        &mut self,
+        distributed_slice: &ast::DistributedSlice,
+    ) -> DistributedSlice<'hir> {
+        match distributed_slice {
+            ast::DistributedSlice::None => DistributedSlice::None,
+            ast::DistributedSlice::Declaration(span) => {
+                DistributedSlice::Declaration(self.lower_span(*span))
+            }
+            ast::DistributedSlice::Addition { declaration } => {
+                // DistributedSlice::Addition(self.lower_qpath(id, qself, p, param_mode, allow_return_type_notation, itctx, modifiers))
+                todo!()
+            }
+        }
+    }
+
     fn lower_item_kind(
         &mut self,
         span: Span,
@@ -181,7 +197,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (ty, body_id) =
                     self.lower_const_item(t, span, e.as_deref(), ImplTraitPosition::StaticTy);
                 self.lower_define_opaque(hir_id, define_opaque);
-                hir::ItemKind::Static(*m, ident, ty, body_id)
+                hir::ItemKind::Static(
+                    *m,
+                    ident,
+                    ty,
+                    body_id,
+                    self.lower_distributed_slice(distributed_slice),
+                )
             }
             ItemKind::Const(box ast::ConstItem {
                 ident,
@@ -189,6 +211,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ty,
                 expr,
                 define_opaque,
+                distributed_slice,
                 ..
             }) => {
                 let ident = self.lower_ident(*ident);
@@ -201,7 +224,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     },
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
-                hir::ItemKind::Const(ident, generics, ty, body_id)
+                hir::ItemKind::Const(
+                    ident,
+                    generics,
+                    ty,
+                    body_id,
+                    self.lower_distributed_slice(distributed_slice),
+                )
             }
             ItemKind::Fn(box Fn {
                 sig: FnSig { decl, header, span: fn_sig_span },

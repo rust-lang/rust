@@ -4106,11 +4106,11 @@ impl<'hir> Item<'hir> {
 
         expect_use, (&'hir UsePath<'hir>, UseKind), ItemKind::Use(p, uk), (p, *uk);
 
-        expect_static, (Mutability, Ident, &'hir Ty<'hir>, BodyId),
-            ItemKind::Static(mutbl, ident, ty, body), (*mutbl, *ident, ty, *body);
+        expect_static, (Mutability, Ident, &'hir Ty<'hir>, BodyId, DistributedSlice<'hir>),
+            ItemKind::Static(mutbl, ident, ty, body, distributed_slice), (*mutbl, *ident, *ty, *body, *distributed_slice);
 
-        expect_const, (Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId),
-            ItemKind::Const(ident, generics, ty, body), (*ident, generics, ty, *body);
+        expect_const, (Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId, DistributedSlice<'hir>),
+            ItemKind::Const(ident, generics, ty, body, distributed_slice), (*ident, generics, *ty, *body, *distributed_slice);
 
         expect_fn, (Ident, &FnSig<'hir>, &'hir Generics<'hir>, BodyId),
             ItemKind::Fn { ident, sig, generics, body, .. }, (*ident, sig, generics, *body);
@@ -4263,6 +4263,14 @@ impl FnHeader {
     }
 }
 
+#[derive(Debug, Clone, Copy, HashStable_Generic, Default)]
+pub enum DistributedSlice<'hir> {
+    #[default]
+    None,
+    Declaration(Span),
+    Addition(QPath<'hir>),
+}
+
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum ItemKind<'hir> {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
@@ -4278,9 +4286,9 @@ pub enum ItemKind<'hir> {
     Use(&'hir UsePath<'hir>, UseKind),
 
     /// A `static` item.
-    Static(Mutability, Ident, &'hir Ty<'hir>, BodyId),
+    Static(Mutability, Ident, &'hir Ty<'hir>, BodyId, DistributedSlice<'hir>),
     /// A `const` item.
-    Const(Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId),
+    Const(Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId, DistributedSlice<'hir>),
     /// A function declaration.
     Fn {
         sig: FnSig<'hir>,
@@ -4375,7 +4383,7 @@ impl ItemKind<'_> {
         Some(match self {
             ItemKind::Fn { generics, .. }
             | ItemKind::TyAlias(_, generics, _)
-            | ItemKind::Const(_, generics, _, _)
+            | ItemKind::Const(_, generics, _, _, _)
             | ItemKind::Enum(_, generics, _)
             | ItemKind::Struct(_, generics, _)
             | ItemKind::Union(_, generics, _)
@@ -4577,8 +4585,8 @@ impl<'hir> OwnerNode<'hir> {
         match self {
             OwnerNode::Item(Item {
                 kind:
-                    ItemKind::Static(_, _, _, body)
-                    | ItemKind::Const(_, _, _, body)
+                    ItemKind::Static(_, _, _, body, _)
+                    | ItemKind::Const(_, _, _, body, _)
                     | ItemKind::Fn { body, .. },
                 ..
             })
@@ -4803,8 +4811,8 @@ impl<'hir> Node<'hir> {
         match self {
             Node::Item(it) => match it.kind {
                 ItemKind::TyAlias(_, _, ty)
-                | ItemKind::Static(_, _, ty, _)
-                | ItemKind::Const(_, _, ty, _) => Some(ty),
+                | ItemKind::Static(_, _, ty, _, _)
+                | ItemKind::Const(_, _, ty, _, _) => Some(ty),
                 ItemKind::Impl(impl_item) => Some(&impl_item.self_ty),
                 _ => None,
             },
@@ -4835,8 +4843,8 @@ impl<'hir> Node<'hir> {
             Node::Item(Item {
                 owner_id,
                 kind:
-                    ItemKind::Const(_, _, _, body)
-                    | ItemKind::Static(.., body)
+                    ItemKind::Const(_, _, _, body, _)
+                    | ItemKind::Static(.., body, _)
                     | ItemKind::Fn { body, .. },
                 ..
             })

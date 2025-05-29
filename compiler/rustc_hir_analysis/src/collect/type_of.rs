@@ -206,7 +206,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         },
 
         Node::Item(item) => match item.kind {
-            ItemKind::Static(_, ident, ty, body_id) => {
+            ItemKind::Static(_, ident, ty, body_id, distributed_slice) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
@@ -220,7 +220,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     icx.lower_ty(ty)
                 }
             }
-            ItemKind::Const(ident, _, ty, body_id) => {
+            ItemKind::Const(ident, _, ty, body_id, distributed_slice) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),

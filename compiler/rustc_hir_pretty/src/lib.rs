@@ -593,7 +593,7 @@ impl<'a> State<'a> {
                 self.end(ib);
                 self.end(cb);
             }
-            hir::ItemKind::Static(m, ident, ty, expr) => {
+            hir::ItemKind::Static(m, ident, ty, expr, distributed_slice) => {
                 let (cb, ib) = self.head("static");
                 if m.is_mut() {
                     self.word_space("mut");
@@ -609,7 +609,7 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(cb);
             }
-            hir::ItemKind::Const(ident, generics, ty, expr) => {
+            hir::ItemKind::Const(ident, generics, ty, expr, distributed_slice) => {
                 let (cb, ib) = self.head("const");
                 self.print_ident(ident);
                 self.print_generic_params(generics.params);

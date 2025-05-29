@@ -545,12 +545,12 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
                 UseKind::Glob | UseKind::ListStem => {}
             }
         }
-        ItemKind::Static(_, ident, ref typ, body) => {
+        ItemKind::Static(_, ident, ref typ, body, _ds) => {
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_ty_unambig(typ));
             try_visit!(visitor.visit_nested_body(body));
         }
-        ItemKind::Const(ident, ref generics, ref typ, body) => {
+        ItemKind::Const(ident, ref generics, ref typ, body, _ds) => {
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_ty_unambig(typ));

@@ -297,10 +297,10 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         hir::ItemKind::Fn { ident, sig, .. } => {
             check_item_fn(tcx, def_id, ident, item.span, sig.decl)
         }
-        hir::ItemKind::Static(_, _, ty, _) => {
+        hir::ItemKind::Static(_, _, ty, _, _) => {
             check_static_item(tcx, def_id, ty.span, UnsizedHandling::Forbid)
         }
-        hir::ItemKind::Const(_, _, ty, _) => check_const_item(tcx, def_id, ty.span, item.span),
+        hir::ItemKind::Const(_, _, ty, _, _) => check_const_item(tcx, def_id, ty.span, item.span),
         hir::ItemKind::Struct(_, generics, _) => {
             let res = check_type_defn(tcx, item, false);
             check_variances_for_type_defn(tcx, item, generics);

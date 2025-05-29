@@ -1735,8 +1735,8 @@ impl ImproperCTypesDefinitions {
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
-            hir::ItemKind::Static(_, _, ty, _)
-            | hir::ItemKind::Const(_, _, ty, _)
+            hir::ItemKind::Static(_, _, ty, _, _)
+            | hir::ItemKind::Const(_, _, ty, _, _)
             | hir::ItemKind::TyAlias(_, _, ty) => {
                 self.check_ty_maybe_containing_foreign_fnptr(
                     cx,

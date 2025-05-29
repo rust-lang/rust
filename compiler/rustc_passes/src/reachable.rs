@@ -204,7 +204,7 @@ impl<'tcx> ReachableContext<'tcx> {
                         }
                     }
 
-                    hir::ItemKind::Const(_, _, _, init) => {
+                    hir::ItemKind::Const(_, _, _, init, distributed_slice) => {
                         // Only things actually ending up in the final constant value are reachable
                         // for codegen. Everything else is only needed during const-eval, so even if
                         // const-eval happens in a downstream crate, all they need is
