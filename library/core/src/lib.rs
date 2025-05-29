@@ -161,6 +161,7 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(doc_cfg_hide))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -176,7 +177,6 @@
 #![feature(deprecated_suggestion)]
 #![feature(derive_const)]
 #![feature(doc_cfg)]
-#![feature(doc_cfg_hide)]
 #![feature(doc_notable_trait)]
 #![feature(extern_types)]
 #![feature(f16)]
