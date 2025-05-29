@@ -486,16 +486,7 @@ impl Config {
         // Verbose flag is a good default for `rust.verbose-tests`.
         config.verbose_tests = config.is_verbose();
 
-        if let Some(install) = toml.install {
-            let Install { prefix, sysconfdir, docdir, bindir, libdir, mandir, datadir } = install;
-            config.prefix = prefix.map(PathBuf::from);
-            config.sysconfdir = sysconfdir.map(PathBuf::from);
-            config.datadir = datadir.map(PathBuf::from);
-            config.docdir = docdir.map(PathBuf::from);
-            set(&mut config.bindir, bindir.map(PathBuf::from));
-            config.libdir = libdir.map(PathBuf::from);
-            config.mandir = mandir.map(PathBuf::from);
-        }
+        config.apply_install_config(toml.install);
 
         config.llvm_assertions =
             toml.llvm.as_ref().is_some_and(|llvm| llvm.assertions.unwrap_or(false));
