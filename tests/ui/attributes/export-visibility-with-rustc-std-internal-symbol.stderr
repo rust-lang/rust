@@ -1,0 +1,8 @@
+error: `#[export_visibility = ...]` cannot be used on internal language items
+  --> $DIR/export-visibility-with-rustc-std-internal-symbol.rs:6:1
+   |
+LL | #[export_visibility = "target_default"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

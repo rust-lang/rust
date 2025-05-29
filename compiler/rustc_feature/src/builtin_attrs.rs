@@ -649,6 +649,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(NameValueStr: "name", "https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute"),
         FutureWarnPreceding, EncodeCrossCrate::No
     ),
+    gated!(export_visibility, Normal, template!(NameValueStr: "visibility"), ErrorPreceding, EncodeCrossCrate::No, experimental!(export_visibility)),
     ungated!(
         unsafe(Edition2024) link_section, Normal,
         template!(NameValueStr: "name", "https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute"),

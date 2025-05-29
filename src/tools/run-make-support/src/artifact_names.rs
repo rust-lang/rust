@@ -2,7 +2,7 @@
 //! libraries which are target-dependent.
 
 use crate::target;
-use crate::targets::is_windows_msvc;
+use crate::targets::{is_wasi, is_windows, is_windows_msvc};
 
 /// Construct the static library name based on the target.
 #[track_caller]
@@ -22,18 +22,24 @@ pub fn dynamic_lib_name(name: &str) -> String {
     format!("{}{name}.{}", dynamic_lib_prefix(), dynamic_lib_extension())
 }
 
+/// Returns the value of `DLL_PREFIX` from `library/std/src/sys/env_consts.rs`
+/// for the target platform indicated by `crate::target()`.
 fn dynamic_lib_prefix() -> &'static str {
-    if target().contains("windows") { "" } else { "lib" }
+    // FIXME: Cover more exotic platform like `uefi`.
+    if is_wasi() || is_windows() { "" } else { "lib" }
 }
 
-/// Construct the dynamic library extension based on the target.
+/// Returns the value of `DLL_EXTENSION` from `library/std/src/sys/env_consts.rs`
+/// for the target platform indicated by `crate::target()`.
 #[must_use]
 pub fn dynamic_lib_extension() -> &'static str {
+    // FIXME: Cover more exotic platform like `uefi`.
     let target = target();
-
     if target.contains("apple") {
         "dylib"
-    } else if target.contains("windows") {
+    } else if is_wasi() {
+        "wasm"
+    } else if is_windows() {
         "dll"
     } else if target.contains("aix") {
         "a"
