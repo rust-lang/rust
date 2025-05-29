@@ -46,15 +46,16 @@ fn main() {
 /// Run `cargo build` with the provided additional arguments, collecting the list of created
 /// libraries.
 fn exec_cargo_with_args(args: &[&str]) -> Vec<PathBuf> {
-    let mut cmd = Command::new("cargo")
-        .arg("build")
+    let mut cmd = Command::new("cargo");
+    cmd.arg("build")
         .arg("--message-format=json")
         .args(args)
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("failed to launch Cargo");
+        .stdout(Stdio::piped());
 
-    let stdout = cmd.stdout.take().unwrap();
+    println!("running: {cmd:?}");
+    let mut child = cmd.spawn().expect("failed to launch Cargo");
+
+    let stdout = child.stdout.take().unwrap();
     let reader = BufReader::new(stdout);
     let mut check_files = Vec::new();
 
@@ -84,7 +85,7 @@ fn exec_cargo_with_args(args: &[&str]) -> Vec<PathBuf> {
         }
     }
 
-    assert!(cmd.wait().expect("failed to wait on Cargo").success());
+    assert!(child.wait().expect("failed to wait on Cargo").success());
 
     assert!(!check_files.is_empty(), "no compiler_builtins rlibs found");
     println!("Collected the following rlibs to check: {check_files:#?}");
