@@ -1,4 +1,14 @@
+# This file's format is documented at
+# https://forge.rust-lang.org/triagebot/pr-assignment.html#configuration
+
 [assign]
+
+[autolabel."needs-triage"]
+new_issue = true
+exclude_labels = [
+    "A-diagnostics",
+    "C-tracking-issue",
+]
 
 [relabel]
 allow-unauthenticated = [
