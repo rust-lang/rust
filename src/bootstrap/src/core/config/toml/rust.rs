@@ -1,3 +1,6 @@
+//! This module defines the `Rust` struct, which represents the `[rust]` table
+//! in the `bootstrap.toml` configuration file.
+
 use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer};

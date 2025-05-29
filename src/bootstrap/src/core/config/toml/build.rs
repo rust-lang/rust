@@ -1,3 +1,11 @@
+//! This module defines the `Build` struct, which represents the `[build]` table
+//! in the `bootstrap.toml` configuration file.
+//!
+//! The `[build]` table contains global options that influence the overall build process,
+//! such as default host and target triples, paths to tools, build directories, and
+//! various feature flags. These options apply across different stages and components
+//! unless specifically overridden by other configuration sections or command-line flags.
+
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::common::StringOrBool;

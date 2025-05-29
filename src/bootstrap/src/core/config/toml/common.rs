@@ -1,3 +1,11 @@
+//! This module defines common types, enums, and helper functions used across
+//! various TOML configuration sections within `bootstrap.toml`.
+//!
+//! It provides shared definitions for:
+//! - Data types that are serialized from TOML.
+//! - Utility enums for specific configuration options.
+//! - Helper functions for managing configuration values.
+
 use std::fmt::Display;
 
 use serde::{Deserialize, Deserializer};

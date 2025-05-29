@@ -1,3 +1,6 @@
+//! This module defines the `Llvm` struct, which represents the `[llvm]` table
+//! in the `bootstrap.toml` configuration file.
+
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::set;

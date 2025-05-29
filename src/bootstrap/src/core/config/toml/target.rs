@@ -1,3 +1,17 @@
+//! This module defines the structures and logic for handling target-specific configuration
+//! within the `bootstrap.toml` file. This allows you to customize build settings, tools,
+//! and flags for individual compilation targets.
+//!
+//! It includes:
+//!
+//! * [`TomlTarget`]: This struct directly mirrors the `[target.<triple>]` sections in your
+//!   `bootstrap.toml`. It's used for deserializing raw TOML data for a specific target.
+//! * [`Target`]: This struct represents the processed and validated configuration for a
+//!   build target, which is is stored in the main [`Config`] structure.
+//! * [`Config::apply_target_config`]: This method processes the `TomlTarget` data and
+//!   applies it to the global [`Config`], ensuring proper path resolution, validation,
+//!   and integration with other build settings.
+
 use std::collections::HashMap;
 
 use serde::{Deserialize, Deserializer};

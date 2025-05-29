@@ -5,7 +5,7 @@
 //! This module orchestrates the overall configuration parsing process by leveraging
 //! logic from `parsing.rs` and provides top-level methods for initializing (`Config::parse()`)
 //! and querying the comprehensive configuration state. It also contains various utility
-//! methods that operate on the overall configuration.
+//! methods that operate on the overall config struct.
 
 use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};

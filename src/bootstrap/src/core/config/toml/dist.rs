@@ -1,3 +1,10 @@
+//! This module defines the `Dist` struct, which represents the `[dist]` table
+//! in the `bootstrap.toml` configuration file.
+//!
+//! The `[dist]` table contains options related to the distribution process,
+//! including signing, uploading artifacts, source tarballs, compression settings,
+//! and inclusion of specific tools.
+
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::set;
@@ -17,6 +24,8 @@ define_config! {
 }
 
 impl Config {
+    /// Applies distribution-related configuration from the `Dist` struct
+    /// to the global `Config` structure.
     pub fn apply_dist_config(&mut self, toml_dist: Option<Dist>) {
         if let Some(dist) = toml_dist {
             let Dist {

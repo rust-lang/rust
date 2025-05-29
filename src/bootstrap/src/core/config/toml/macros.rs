@@ -1,3 +1,11 @@
+//! This module define two macros:
+//!
+//! The `define_config!` macro avoids the use of `#[derive(Deserialize)]` to reduce compile time
+//! and binary size, particularly for the bootstrap binary.
+//!
+//! The `check_ci_llvm!` macro provides a compile-time assertion to ensure certain settings are
+//! not used when `download-ci-llvm` is enabled.
+
 // We are using a decl macro instead of a derive proc macro here to reduce the compile time of bootstrap.
 #[macro_export]
 macro_rules! define_config {
