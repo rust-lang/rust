@@ -4283,8 +4283,8 @@ pub enum ItemKind<'hir> {
     Const(Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId),
     /// A function declaration.
     Fn {
-        ident: Ident,
         sig: FnSig<'hir>,
+        ident: Ident,
         generics: &'hir Generics<'hir>,
         body: BodyId,
         /// Whether this function actually has a body.

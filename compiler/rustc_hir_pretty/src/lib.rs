@@ -477,10 +477,10 @@ impl<'a> State<'a> {
             hir::ForeignItemKind::Fn(sig, arg_idents, generics) => {
                 let (cb, ib) = self.head("");
                 self.print_fn(
-                    sig.decl,
                     sig.header,
                     Some(item.ident.name),
                     generics,
+                    sig.decl,
                     arg_idents,
                     None,
                 );
@@ -626,7 +626,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Fn { ident, sig, generics, body, .. } => {
                 let (cb, ib) = self.head("");
-                self.print_fn(sig.decl, sig.header, Some(ident.name), generics, &[], Some(body));
+                self.print_fn(sig.header, Some(ident.name), generics, sig.decl, &[], Some(body));
                 self.word(" ");
                 self.end(ib);
                 self.end(cb);
@@ -902,7 +902,7 @@ impl<'a> State<'a> {
         arg_idents: &[Option<Ident>],
         body_id: Option<hir::BodyId>,
     ) {
-        self.print_fn(m.decl, m.header, Some(ident.name), generics, arg_idents, body_id);
+        self.print_fn(m.header, Some(ident.name), generics, m.decl, arg_idents, body_id);
     }
 
     fn print_trait_item(&mut self, ti: &hir::TraitItem<'_>) {
@@ -2141,10 +2141,10 @@ impl<'a> State<'a> {
 
     fn print_fn(
         &mut self,
-        decl: &hir::FnDecl<'_>,
         header: hir::FnHeader,
         name: Option<Symbol>,
         generics: &hir::Generics<'_>,
+        decl: &hir::FnDecl<'_>,
         arg_idents: &[Option<Ident>],
         body_id: Option<hir::BodyId>,
     ) {
@@ -2483,7 +2483,6 @@ impl<'a> State<'a> {
         self.print_formal_generic_params(generic_params);
         let generics = hir::Generics::empty();
         self.print_fn(
-            decl,
             hir::FnHeader {
                 safety: safety.into(),
                 abi,
@@ -2492,6 +2491,7 @@ impl<'a> State<'a> {
             },
             name,
             generics,
+            decl,
             arg_idents,
             None,
         );
