@@ -627,13 +627,13 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_from)]
     /// use std::net::Ipv4Addr;
     ///
     /// let addr = Ipv4Addr::from_octets([13u8, 12u8, 11u8, 10u8]);
     /// assert_eq!(Ipv4Addr::new(13, 12, 11, 10), addr);
     /// ```
-    #[unstable(feature = "ip_from", issue = "131360")]
+    #[stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_octets(octets: [u8; 4]) -> Ipv4Addr {
@@ -1460,7 +1460,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_from)]
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::from_segments([
@@ -1475,7 +1474,8 @@ impl Ipv6Addr {
     ///     addr
     /// );
     /// ```
-    #[unstable(feature = "ip_from", issue = "131360")]
+    #[stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_segments(segments: [u16; 8]) -> Ipv6Addr {
@@ -2025,7 +2025,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_from)]
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::from_octets([
@@ -2040,7 +2039,8 @@ impl Ipv6Addr {
     ///     addr
     /// );
     /// ```
-    #[unstable(feature = "ip_from", issue = "131360")]
+    #[stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_octets(octets: [u8; 16]) -> Ipv6Addr {
