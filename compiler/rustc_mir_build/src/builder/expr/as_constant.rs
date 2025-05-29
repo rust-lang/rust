@@ -122,9 +122,9 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
         (ast::LitKind::Str(s, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_str() => {
             let s = s.as_str();
             let allocation = if !s.contains('\0') {
-                let mut s = s.to_owned();
-                s.push('\0');
-                tcx.allocate_bytes_dedup(s.as_bytes(), CTFE_ALLOC_SALT)
+                let mut s = s.as_bytes().to_owned();
+                s.extend(b"\xff\0");
+                tcx.allocate_bytes_dedup(s, CTFE_ALLOC_SALT)
             } else {
                 tcx.allocate_bytes_dedup(s.as_bytes(), CTFE_ALLOC_SALT)
             };

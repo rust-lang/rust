@@ -1026,7 +1026,7 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let ptr = if !s.contains('\0') {
             let mut bytes = s.as_bytes().to_owned();
-            bytes.push(0);
+            bytes.extend(b"\xff\0");
             self.allocate_bytes_dedup(&bytes)?
         } else {
             self.allocate_bytes_dedup(s.as_bytes())?
