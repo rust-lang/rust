@@ -1,0 +1,135 @@
+//! This module defines the structures that directly mirror the `bootstrap.toml`
+//! file's format. These types are used for `serde` deserialization, serving as an
+//! intermediate representation that gets processed and merged into the final `Config`
+//! types from the `types` module.
+//!
+//! It also houses the `Merge` trait and `define_config!` macro, which are essential
+//! for handling these raw TOML structures.
+
+use serde_derive::Deserialize;
+pub mod build;
+pub mod change_id;
+pub mod common;
+pub mod dist;
+pub mod gcc;
+pub mod install;
+pub mod llvm;
+pub mod macros;
+pub mod merge;
+pub mod rust;
+pub mod target;
+
+use build::Build;
+use change_id::ChangeIdWrapper;
+use dist::Dist;
+use gcc::Gcc;
+use install::Install;
+use llvm::Llvm;
+use merge::Merge;
+use rust::Rust;
+use target::TomlTarget;
+
+use crate::core::config::toml::common::ReplaceOpt;
+use crate::{Config, HashMap, HashSet, PathBuf, exit};
+
+/// Structure of the `bootstrap.toml` file that configuration is read from.
+///
+/// This structure uses `Decodable` to automatically decode a TOML configuration
+/// file into this format, and then this is traversed and written into the above
+/// `Config` structure.
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub(crate) struct TomlConfig {
+    #[serde(flatten)]
+    pub(crate) change_id: ChangeIdWrapper,
+    pub(super) build: Option<Build>,
+    pub(super) install: Option<Install>,
+    pub(super) llvm: Option<Llvm>,
+    pub(super) gcc: Option<Gcc>,
+    pub(super) rust: Option<Rust>,
+    pub(super) target: Option<HashMap<String, TomlTarget>>,
+    pub(super) dist: Option<Dist>,
+    pub(super) profile: Option<String>,
+    pub(super) include: Option<Vec<PathBuf>>,
+}
+
+impl Merge for TomlConfig {
+    fn merge(
+        &mut self,
+        parent_config_path: Option<PathBuf>,
+        included_extensions: &mut HashSet<PathBuf>,
+        TomlConfig { build, install, llvm, gcc, rust, dist, target, profile, change_id, include }: Self,
+        replace: ReplaceOpt,
+    ) {
+        fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
+            if let Some(new) = y {
+                if let Some(original) = x {
+                    original.merge(None, &mut Default::default(), new, replace);
+                } else {
+                    *x = Some(new);
+                }
+            }
+        }
+
+        self.change_id.inner.merge(None, &mut Default::default(), change_id.inner, replace);
+        self.profile.merge(None, &mut Default::default(), profile, replace);
+
+        do_merge(&mut self.build, build, replace);
+        do_merge(&mut self.install, install, replace);
+        do_merge(&mut self.llvm, llvm, replace);
+        do_merge(&mut self.gcc, gcc, replace);
+        do_merge(&mut self.rust, rust, replace);
+        do_merge(&mut self.dist, dist, replace);
+
+        match (self.target.as_mut(), target) {
+            (_, None) => {}
+            (None, Some(target)) => self.target = Some(target),
+            (Some(original_target), Some(new_target)) => {
+                for (triple, new) in new_target {
+                    if let Some(original) = original_target.get_mut(&triple) {
+                        original.merge(None, &mut Default::default(), new, replace);
+                    } else {
+                        original_target.insert(triple, new);
+                    }
+                }
+            }
+        }
+
+        let parent_dir = parent_config_path
+            .as_ref()
+            .and_then(|p| p.parent().map(ToOwned::to_owned))
+            .unwrap_or_default();
+
+        // `include` handled later since we ignore duplicates using `ReplaceOpt::IgnoreDuplicate` to
+        // keep the upper-level configuration to take precedence.
+        for include_path in include.clone().unwrap_or_default().iter().rev() {
+            let include_path = parent_dir.join(include_path);
+            let include_path = include_path.canonicalize().unwrap_or_else(|e| {
+                eprintln!("ERROR: Failed to canonicalize '{}' path: {e}", include_path.display());
+                exit!(2);
+            });
+
+            let included_toml = Config::get_toml_inner(&include_path).unwrap_or_else(|e| {
+                eprintln!("ERROR: Failed to parse '{}': {e}", include_path.display());
+                exit!(2);
+            });
+
+            assert!(
+                included_extensions.insert(include_path.clone()),
+                "Cyclic inclusion detected: '{}' is being included again before its previous inclusion was fully processed.",
+                include_path.display()
+            );
+
+            self.merge(
+                Some(include_path.clone()),
+                included_extensions,
+                included_toml,
+                // Ensures that parent configuration always takes precedence
+                // over child configurations.
+                ReplaceOpt::IgnoreDuplicate,
+            );
+
+            included_extensions.remove(&include_path);
+        }
+    }
+}

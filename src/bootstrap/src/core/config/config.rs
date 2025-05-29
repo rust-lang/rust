@@ -23,15 +23,17 @@ use tracing::{instrument, span};
 
 use crate::core::build_steps::llvm;
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
-use crate::core::config::Target;
 use crate::core::config::flags::Color;
 pub use crate::core::config::flags::Subcommand;
 use crate::core::config::parsing::check_incompatible_options_for_ci_rustc;
-use crate::core::config::toml::*;
-use crate::core::config::types::{
-    DebuginfoLevel, DryRun, GccCiMode, LldMode, LlvmLibunwind, RustOptimize, RustcLto,
-    SplitDebuginfo, StringOrBool,
+use crate::core::config::toml::change_id::{ChangeId, ChangeIdWrapper};
+use crate::core::config::toml::common::{
+    DebuginfoLevel, LlvmLibunwind, SplitDebuginfo, StringOrBool,
 };
+use crate::core::config::toml::rust::{LldMode, RustOptimize};
+use crate::core::config::toml::target::Target;
+use crate::core::config::toml::*;
+use crate::core::config::types::{DryRun, GccCiMode, RustcLto};
 use crate::core::download::is_download_ci_available;
 use crate::utils::channel;
 use crate::{Command, Flags, GitInfo, OnceLock, TargetSelection, helpers, output, t};

@@ -10,7 +10,7 @@ use clap::CommandFactory;
 use serde::Deserialize;
 
 use super::flags::Flags;
-use super::toml::ChangeIdWrapper;
+use super::toml::change_id::ChangeIdWrapper;
 use super::{Config, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
 use crate::ChangeId;
 use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};

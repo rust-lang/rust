@@ -18,17 +18,22 @@ use serde::Deserialize;
 use tracing::{instrument, span};
 
 use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
-use crate::core::config::Target;
 pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Flags, Warnings};
-use crate::core::config::toml::{Merge, ReplaceOpt, *};
-use crate::core::config::types::{
-    DebuginfoLevel, DryRun, GccCiMode, LldMode, RustOptimize, RustcLto, StringOrBool,
-    TargetSelectionList,
-};
+use crate::core::config::target_selection::TargetSelectionList;
+use crate::core::config::toml::TomlConfig;
+use crate::core::config::toml::build::Build;
+use crate::core::config::toml::common::{DebuginfoLevel, ReplaceOpt, StringOrBool};
+use crate::core::config::toml::dist::Dist;
+use crate::core::config::toml::install::Install;
+use crate::core::config::toml::llvm::Llvm;
+use crate::core::config::toml::merge::Merge;
+use crate::core::config::toml::rust::{LldMode, Rust, RustOptimize};
+use crate::core::config::toml::target::Target;
+use crate::core::config::{GccCiMode, RustcLto};
 use crate::utils::channel::GitInfo;
 use crate::utils::helpers::{self, exe, t};
-use crate::{Config, TargetSelection, check_ci_llvm};
+use crate::{Config, DryRun, TargetSelection, check_ci_llvm};
 
 /// Compares the current `Llvm` options against those in the CI LLVM builder and detects any incompatible options.
 /// It does this by destructuring the `Llvm` instance to make sure every `Llvm` field is covered and not missing.

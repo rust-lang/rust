@@ -12,8 +12,8 @@ use tracing::instrument;
 use crate::core::build_steps::perf::PerfArgs;
 use crate::core::build_steps::setup::Profile;
 use crate::core::builder::{Builder, Kind};
-use crate::core::config::types::TargetSelectionList;
-use crate::core::config::{Config, target_selection_list};
+use crate::core::config::Config;
+use crate::core::config::target_selection::{TargetSelectionList, target_selection_list};
 use crate::{Build, DocTests};
 
 #[derive(Copy, Clone, Default, Debug, ValueEnum)]
