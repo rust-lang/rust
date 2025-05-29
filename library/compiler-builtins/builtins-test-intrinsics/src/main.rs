@@ -15,9 +15,10 @@
 
 extern crate panic_handler;
 
+// SAFETY: no definitions, only used for linking
 #[cfg(all(not(thumb), not(windows), not(target_arch = "wasm32")))]
 #[link(name = "c")]
-extern "C" {}
+unsafe extern "C" {}
 
 // Every function in this module maps will be lowered to an intrinsic by LLVM, if the platform
 // doesn't have native support for the operation used in the function. ARM has a naming convention
@@ -663,10 +664,11 @@ pub fn _start() -> ! {
     loop {}
 }
 
+// SAFETY: no definitions, only used for linking
 #[cfg(windows)]
 #[link(name = "kernel32")]
 #[link(name = "msvcrt")]
-extern "C" {}
+unsafe extern "C" {}
 
 // ARM targets need these symbols
 #[unsafe(no_mangle)]
