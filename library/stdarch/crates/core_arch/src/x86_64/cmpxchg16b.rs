@@ -48,34 +48,8 @@ pub unsafe fn cmpxchg16b(
     success: Ordering,
     failure: Ordering,
 ) -> u128 {
-    use crate::{intrinsics, sync::atomic::Ordering::*};
-
     debug_assert!(dst as usize % 16 == 0);
 
-    // Copied from `atomic_compare_exchange` in `core`.
-    // https://github.com/rust-lang/rust/blob/f8a2e49/library/core/src/sync/atomic.rs#L3046-L3079
-    let (val, _ok) = match (success, failure) {
-        (Relaxed, Relaxed) => intrinsics::atomic_cxchg_relaxed_relaxed(dst, old, new),
-        (Relaxed, Acquire) => intrinsics::atomic_cxchg_relaxed_acquire(dst, old, new),
-        (Relaxed, SeqCst) => intrinsics::atomic_cxchg_relaxed_seqcst(dst, old, new),
-        (Acquire, Relaxed) => intrinsics::atomic_cxchg_acquire_relaxed(dst, old, new),
-        (Acquire, Acquire) => intrinsics::atomic_cxchg_acquire_acquire(dst, old, new),
-        (Acquire, SeqCst) => intrinsics::atomic_cxchg_acquire_seqcst(dst, old, new),
-        (Release, Relaxed) => intrinsics::atomic_cxchg_release_relaxed(dst, old, new),
-        (Release, Acquire) => intrinsics::atomic_cxchg_release_acquire(dst, old, new),
-        (Release, SeqCst) => intrinsics::atomic_cxchg_release_seqcst(dst, old, new),
-        (AcqRel, Relaxed) => intrinsics::atomic_cxchg_acqrel_relaxed(dst, old, new),
-        (AcqRel, Acquire) => intrinsics::atomic_cxchg_acqrel_acquire(dst, old, new),
-        (AcqRel, SeqCst) => intrinsics::atomic_cxchg_acqrel_seqcst(dst, old, new),
-        (SeqCst, Relaxed) => intrinsics::atomic_cxchg_seqcst_relaxed(dst, old, new),
-        (SeqCst, Acquire) => intrinsics::atomic_cxchg_seqcst_acquire(dst, old, new),
-        (SeqCst, SeqCst) => intrinsics::atomic_cxchg_seqcst_seqcst(dst, old, new),
-        (_, AcqRel) => panic!("there is no such thing as an acquire-release failure ordering"),
-        (_, Release) => panic!("there is no such thing as a release failure ordering"),
-
-        // `atomic::Ordering` is non_exhaustive. It warns when `core_arch` is built as a part of `core`.
-        #[allow(unreachable_patterns)]
-        (_, _) => unreachable!(),
-    };
-    val
+    let res = crate::sync::atomic::atomic_compare_exchange(dst, old, new, success, failure);
+    res.unwrap_or_else(|x| x)
 }
