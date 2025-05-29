@@ -207,5 +207,12 @@ fn ws_between(left: &SyntaxElement, right: &SyntaxElement) -> Option<SyntaxToken
         }
         return Some(make::tokens::whitespace(&format!("\n{indent}")));
     }
+    if left.kind() == SyntaxKind::ATTR {
+        let mut indent = IndentLevel::from_element(right);
+        if right.kind() == SyntaxKind::ATTR {
+            indent.0 = IndentLevel::from_element(left).0.max(indent.0);
+        }
+        return Some(make::tokens::whitespace(&format!("\n{indent}")));
+    }
     Some(make::tokens::single_space())
 }
