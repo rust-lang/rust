@@ -1089,7 +1089,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                 // declarations of global registries have no body deliberately - items are added
                 // later using global registry additions
-                if expr.is_none() && !matches!(distributed_slice, DistributedSlice::Declaration(_))
+                if expr.is_none() && !matches!(distributed_slice, DistributedSlice::Declaration(..))
                 {
                     self.dcx().emit_err(errors::ConstWithoutBody {
                         span: item.span,
@@ -1104,9 +1104,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.dcx().emit_err(errors::UnsafeStatic { span: item.span });
                 }
 
-                // declarations of global registries have no body deliberately - items are added
-                // later using global registry additions
-                if expr.is_none() && !matches!(distributed_slice, DistributedSlice::Declaration(_))
+                // declarations of distributed slices have no body deliberately - items are added
+                // later using `distributed_slice_element`
+                if expr.is_none() && !matches!(distributed_slice, DistributedSlice::Declaration(..))
                 {
                     self.dcx().emit_err(errors::StaticWithoutBody {
                         span: item.span,

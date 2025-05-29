@@ -103,7 +103,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
 
-pub use crate::collect::suggest_impl_trait;
+pub use crate::collect::{suggest_impl_trait, type_of_distributed_slice};
 use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

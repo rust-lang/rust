@@ -1671,6 +1671,9 @@ impl<'a> State<'a> {
                 self.word_space("yield");
                 self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Jump);
             }
+            hir::ExprKind::DistributedSliceDeferredArray => {
+                // literally nothing to print.
+            }
             hir::ExprKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");

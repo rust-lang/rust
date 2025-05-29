@@ -2156,7 +2156,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.arena.alloc(hir::AnonConst {
                     def_id,
                     hir_id,
-                    body: this.lower_const_body(path_expr.span, Some(&path_expr)),
+                    body: this.lower_const_body(path_expr.span, Some(&path_expr), None),
                     span,
                 })
             });
@@ -2223,7 +2223,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir::AnonConst {
                 def_id,
                 hir_id,
-                body: this.lower_const_body(c.value.span, Some(&c.value)),
+                body: this.lower_const_body(c.value.span, Some(&c.value), None),
                 span: this.lower_span(c.value.span),
             }
         }))

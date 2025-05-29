@@ -154,7 +154,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> DistributedSlice {
         match distributed_slice {
             ast::DistributedSlice::None => DistributedSlice::None,
-            ast::DistributedSlice::Declaration(span) => {
+            ast::DistributedSlice::Declaration(span, _) => {
                 DistributedSlice::Declaration(self.lower_span(*span))
             }
             ast::DistributedSlice::Addition { declaration, id } => {
@@ -544,12 +544,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
         impl_trait_position: ImplTraitPosition,
         distributed_slice: &ast::DistributedSlice,
     ) -> (&'hir hir::Ty<'hir>, hir::BodyId) {
+        let distributed_slice_declaration =
+            if let ast::DistributedSlice::Declaration(_, node_id) = distributed_slice {
+                Some(*node_id)
+            } else {
+                None
+            };
+
         let ty = self.lower_ty(
             ty,
             ImplTraitContext::Disallowed(impl_trait_position),
-            matches!(distributed_slice, ast::DistributedSlice::Declaration(..)),
+            distributed_slice_declaration.is_some(),
         );
-        (ty, self.lower_const_body(span, body))
+        (ty, self.lower_const_body(span, body, distributed_slice_declaration))
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -866,7 +873,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy),
                             false,
                         );
-                        let body = expr.as_ref().map(|x| this.lower_const_body(i.span, Some(x)));
+                        let body =
+                            expr.as_ref().map(|x| this.lower_const_body(i.span, Some(x), None));
 
                         hir::TraitItemKind::Const(ty, body)
                     },
@@ -1063,7 +1071,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy),
                             false,
                         );
-                        let body = this.lower_const_body(i.span, expr.as_deref());
+                        let body = this.lower_const_body(i.span, expr.as_deref(), None);
                         this.lower_define_opaque(hir_id, &define_opaque);
                         hir::ImplItemKind::Const(ty, body)
                     },
@@ -1342,13 +1350,29 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.lower_fn_body(decl, contract, |this| this.lower_block_expr(body))
     }
 
-    pub(super) fn lower_const_body(&mut self, span: Span, expr: Option<&Expr>) -> hir::BodyId {
+    pub(super) fn lower_const_body(
+        &mut self,
+        span: Span,
+        expr: Option<&Expr>,
+        global_registry_declaration: Option<NodeId>,
+    ) -> hir::BodyId {
         self.lower_body(|this| {
             (
                 &[],
-                match expr {
-                    Some(expr) => this.lower_expr_mut(expr),
-                    None => this.expr_err(span, this.dcx().span_delayed_bug(span, "no block")),
+                match (expr, global_registry_declaration) {
+                    (Some(expr), None) => this.lower_expr_mut(expr),
+                    (None, Some(node_id)) => {
+                        let expr_hir_id = this.lower_node_id(node_id);
+                        hir::Expr {
+                            hir_id: expr_hir_id,
+                            kind: rustc_hir::ExprKind::DistributedSliceDeferredArray,
+                            span: this.lower_span(span),
+                        }
+                    }
+                    (Some(expr), Some(_)) => panic!("distributed slice with initializer"),
+                    (None, None) => {
+                        this.expr_err(span, this.dcx().span_delayed_bug(span, "no block"))
+                    }
                 },
             )
         })

@@ -70,7 +70,7 @@ pub use core::prelude::v1::{
 
 #[unstable(feature = "crate_local_distributed_slice", issue = "125119")]
 #[cfg(not(bootstrap))]
-pub use core::prelude::v1::{distributed_slice, distributed_slice_element};
+pub use core::prelude::v1::distributed_slice;
 
 #[unstable(feature = "derive_const", issue = "none")]
 pub use core::prelude::v1::derive_const;

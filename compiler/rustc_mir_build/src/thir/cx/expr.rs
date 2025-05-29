@@ -4,6 +4,7 @@ use rustc_ast::UnsafeBinderCastKind;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::def_id::LocalDefId;
 use rustc_index::Idx;
 use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
@@ -18,7 +19,7 @@ use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InlineConstArgs, InlineConstArgsParts, ScalarInt, Ty, UpvarArgs,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::{Span, sym};
+use rustc_span::{DUMMY_SP, Span, sym};
 use tracing::{debug, info, instrument, trace};
 
 use crate::thir::cx::ThirBuildCx;
@@ -928,6 +929,46 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
             hir::ExprKind::DropTemps(source) => ExprKind::Use { source: self.mirror_expr(source) },
             hir::ExprKind::Array(fields) => ExprKind::Array { fields: self.mirror_exprs(fields) },
+            hir::ExprKind::DistributedSliceDeferredArray => {
+                // get the declaration's defid
+                let declaration_def_id = self.body_owner;
+                let elements: &[LocalDefId] = self
+                    .tcx
+                    .distributed_slice_elements(())
+                    .get(&declaration_def_id)
+                    .map(|i| i.as_slice())
+                    .unwrap_or_default();
+
+                // FIXME(gr) proper span in grda
+                let span = DUMMY_SP;
+
+                let ty = match expr_ty.kind() {
+                    ty::Array(element_ty, _) => *element_ty,
+                    _ => panic!("not an array"),
+                };
+
+                let fields = elements
+                    .iter()
+                    .map(|&def_id| {
+                        let (temp_lifetime, backwards_incompatible) = self
+                            .rvalue_scopes
+                            .temporary_scope(self.region_scope_tree, expr.hir_id.local_id);
+
+                        self.thir.exprs.push(Expr {
+                            kind: ExprKind::NamedConst {
+                                def_id: def_id.to_def_id(),
+                                args: GenericArgs::empty(),
+                                user_ty: None,
+                            },
+                            ty,
+                            temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                            span,
+                        })
+                    })
+                    .collect();
+
+                ExprKind::Array { fields }
+            }
             hir::ExprKind::Tup(fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },
 
             hir::ExprKind::Yield(v, _) => ExprKind::Yield { value: self.mirror_expr(v) },

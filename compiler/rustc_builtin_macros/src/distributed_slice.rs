@@ -33,10 +33,10 @@ pub(crate) fn distributed_slice(
 
     match &mut item.kind {
         ItemKind::Static(static_item) => {
-            static_item.distributed_slice = DistributedSlice::Declaration(span);
+            static_item.distributed_slice = DistributedSlice::Declaration(span, DUMMY_NODE_ID);
         }
         ItemKind::Const(const_item) => {
-            const_item.distributed_slice = DistributedSlice::Declaration(span);
+            const_item.distributed_slice = DistributedSlice::Declaration(span, DUMMY_NODE_ID);
         }
         other => {
             panic!(
@@ -49,14 +49,14 @@ pub(crate) fn distributed_slice(
 }
 
 fn parse_element(mut p: Parser<'_>) -> PResult<'_, (Path, P<Expr>)> {
-    let ident = p.parse_path(PathStyle::Expr)?;
+    let path = p.parse_path(PathStyle::Expr)?;
     p.expect(exp![Comma])?;
     let expr = p.parse_expr()?;
 
     // optional trailing comma
     let _ = p.eat(exp![Comma]);
 
-    Ok((ident, expr))
+    Ok((path, expr))
 }
 
 /// ```rust

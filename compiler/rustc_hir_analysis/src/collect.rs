@@ -42,6 +42,7 @@ use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamNa
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{ObligationCtxt, hir_ty_lowering_dyn_compatibility_violations};
 use tracing::{debug, instrument};
+pub use type_of::type_of_distributed_slice;
 
 use crate::errors;
 use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer, RegionInferReason};

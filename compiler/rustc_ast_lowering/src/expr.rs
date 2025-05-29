@@ -428,7 +428,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::ConstBlock {
                 def_id,
                 hir_id: this.lower_node_id(c.id),
-                body: this.lower_const_body(c.value.span, Some(&c.value)),
+                body: this.lower_const_body(c.value.span, Some(&c.value), None),
             }
         })
     }

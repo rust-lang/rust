@@ -920,6 +920,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             visit_opt!(visitor, visit_ty_unambig, ty);
         }
         ExprKind::Lit(lit) => try_visit!(visitor.visit_lit(expression.hir_id, lit, false)),
+        ExprKind::DistributedSliceDeferredArray => {}
         ExprKind::Err(_) => {}
     }
     V::Result::output()

@@ -45,11 +45,11 @@ use fn_ctxt::FnCtxt;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{HirId, HirIdMap, Node};
+use rustc_hir::{self as hir, DistributedSlice, HirId, HirIdMap, ItemKind, Node};
 use rustc_hir_analysis::check::check_abi;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
+use rustc_hir_analysis::type_of_distributed_slice;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -174,6 +174,11 @@ fn typeck_with_inspect<'tcx>(
     } else {
         let expected_type = if let Some(infer_ty) = infer_type_if_missing(&fcx, node) {
             infer_ty
+        } else if let Node::Item(item) = node
+            && let ItemKind::Const(.., DistributedSlice::Declaration(..)) = item.kind
+            && let Some(ty) = node.ty()
+        {
+            type_of_distributed_slice(tcx, fcx.lowerer(), ty, def_id)
         } else if let Some(ty) = node.ty()
             && ty.is_suggestable_infer_ty()
         {
@@ -263,24 +268,6 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
     let def_id = fcx.body_id;
     let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer(()), span, .. }) = node.ty()
     {
-        // if it's a global registration addition, then the type can be infered from the declaration
-        if let Node::Item(hir::Item {
-            span,
-            kind: hir::ItemKind::Const(.., hir::DistributedSlice::Addition(def_id)),
-            ..
-        }) = node
-        {
-            // we reject generic const items (`#![feature(generic_const_items)]`) in
-            // `#[distributed_slice(crate)]`
-            let array_ty: Ty<'tcx> = tcx.type_of(*def_id).instantiate_identity();
-            let normalized_array_ty = fcx.structurally_resolve_type(*span, array_ty);
-
-            match normalized_array_ty.kind() {
-                ty::Array(element_ty, _) => return Some(*element_ty),
-                _ => panic!("not an array"),
-            }
-        }
-
         if let Some(item) = tcx.opt_associated_item(def_id.into())
             && let ty::AssocKind::Const { .. } = item.kind
             && let ty::AssocItemContainer::Impl = item.container
