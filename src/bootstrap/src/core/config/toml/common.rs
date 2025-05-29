@@ -142,3 +142,16 @@ pub enum ReplaceOpt {
     /// Exit with an error on duplicate values
     ErrorOnDuplicate,
 }
+
+pub fn set<T>(field: &mut T, val: Option<T>) {
+    if let Some(v) = val {
+        *field = v;
+    }
+}
+
+pub fn threads_from_config(v: u32) -> u32 {
+    match v {
+        0 => std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32,
+        n => n,
+    }
+}

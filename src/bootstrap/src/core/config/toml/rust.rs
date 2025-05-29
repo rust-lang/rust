@@ -1,8 +1,8 @@
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::common::{DebuginfoLevel, StringOrBool};
-use crate::core::config::toml::{Merge, ReplaceOpt};
-use crate::{BTreeSet, HashSet, PathBuf, define_config, exit};
+use crate::core::config::toml::{Merge, ReplaceOpt, TomlConfig};
+use crate::{BTreeSet, HashSet, PathBuf, TargetSelection, define_config, exit};
 
 define_config! {
     /// TOML representation of how the Rust build is configured.
@@ -219,4 +219,168 @@ impl RustOptimize {
             RustOptimize::Bool(_) => None,
         }
     }
+}
+
+/// Compares the current Rust options against those in the CI rustc builder and detects any incompatible options.
+/// It does this by destructuring the `Rust` instance to make sure every `Rust` field is covered and not missing.
+pub fn check_incompatible_options_for_ci_rustc(
+    host: TargetSelection,
+    current_config_toml: TomlConfig,
+    ci_config_toml: TomlConfig,
+) -> Result<(), String> {
+    macro_rules! err {
+        ($current:expr, $expected:expr, $config_section:expr) => {
+            if let Some(current) = &$current {
+                if Some(current) != $expected.as_ref() {
+                    return Err(format!(
+                        "ERROR: Setting `{}` is incompatible with `rust.download-rustc`. \
+                        Current value: {:?}, Expected value(s): {}{:?}",
+                        format!("{}.{}", $config_section, stringify!($expected).replace("_", "-")),
+                        $current,
+                        if $expected.is_some() { "None/" } else { "" },
+                        $expected,
+                    ));
+                };
+            };
+        };
+    }
+
+    macro_rules! warn {
+        ($current:expr, $expected:expr, $config_section:expr) => {
+            if let Some(current) = &$current {
+                if Some(current) != $expected.as_ref() {
+                    println!(
+                        "WARNING: `{}` has no effect with `rust.download-rustc`. \
+                        Current value: {:?}, Expected value(s): {}{:?}",
+                        format!("{}.{}", $config_section, stringify!($expected).replace("_", "-")),
+                        $current,
+                        if $expected.is_some() { "None/" } else { "" },
+                        $expected,
+                    );
+                };
+            };
+        };
+    }
+
+    let current_profiler = current_config_toml.build.as_ref().and_then(|b| b.profiler);
+    let profiler = ci_config_toml.build.as_ref().and_then(|b| b.profiler);
+    err!(current_profiler, profiler, "build");
+
+    let current_optimized_compiler_builtins =
+        current_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins);
+    let optimized_compiler_builtins =
+        ci_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins);
+    err!(current_optimized_compiler_builtins, optimized_compiler_builtins, "build");
+
+    // We always build the in-tree compiler on cross targets, so we only care
+    // about the host target here.
+    let host_str = host.to_string();
+    if let Some(current_cfg) = current_config_toml.target.as_ref().and_then(|c| c.get(&host_str)) {
+        if current_cfg.profiler.is_some() {
+            let ci_target_toml = ci_config_toml.target.as_ref().and_then(|c| c.get(&host_str));
+            let ci_cfg = ci_target_toml.ok_or(format!(
+                "Target specific config for '{host_str}' is not present for CI-rustc"
+            ))?;
+
+            let profiler = &ci_cfg.profiler;
+            err!(current_cfg.profiler, profiler, "build");
+
+            let optimized_compiler_builtins = &ci_cfg.optimized_compiler_builtins;
+            err!(current_cfg.optimized_compiler_builtins, optimized_compiler_builtins, "build");
+        }
+    }
+
+    let (Some(current_rust_config), Some(ci_rust_config)) =
+        (current_config_toml.rust, ci_config_toml.rust)
+    else {
+        return Ok(());
+    };
+
+    let Rust {
+        // Following options are the CI rustc incompatible ones.
+        optimize,
+        randomize_layout,
+        debug_logging,
+        debuginfo_level_rustc,
+        llvm_tools,
+        llvm_bitcode_linker,
+        lto,
+        stack_protector,
+        strip,
+        lld_mode,
+        jemalloc,
+        rpath,
+        channel,
+        description,
+        incremental,
+        default_linker,
+        std_features,
+
+        // Rest of the options can simply be ignored.
+        debug: _,
+        codegen_units: _,
+        codegen_units_std: _,
+        rustc_debug_assertions: _,
+        std_debug_assertions: _,
+        tools_debug_assertions: _,
+        overflow_checks: _,
+        overflow_checks_std: _,
+        debuginfo_level: _,
+        debuginfo_level_std: _,
+        debuginfo_level_tools: _,
+        debuginfo_level_tests: _,
+        backtrace: _,
+        musl_root: _,
+        verbose_tests: _,
+        optimize_tests: _,
+        codegen_tests: _,
+        omit_git_hash: _,
+        dist_src: _,
+        save_toolstates: _,
+        codegen_backends: _,
+        lld: _,
+        deny_warnings: _,
+        backtrace_on_ice: _,
+        verify_llvm_ir: _,
+        thin_lto_import_instr_limit: _,
+        remap_debuginfo: _,
+        test_compare_mode: _,
+        llvm_libunwind: _,
+        control_flow_guard: _,
+        ehcont_guard: _,
+        new_symbol_mangling: _,
+        profile_generate: _,
+        profile_use: _,
+        download_rustc: _,
+        validate_mir_opts: _,
+        frame_pointers: _,
+    } = ci_rust_config;
+
+    // There are two kinds of checks for CI rustc incompatible options:
+    //    1. Checking an option that may change the compiler behaviour/output.
+    //    2. Checking an option that have no effect on the compiler behaviour/output.
+    //
+    // If the option belongs to the first category, we call `err` macro for a hard error;
+    // otherwise, we just print a warning with `warn` macro.
+
+    err!(current_rust_config.optimize, optimize, "rust");
+    err!(current_rust_config.randomize_layout, randomize_layout, "rust");
+    err!(current_rust_config.debug_logging, debug_logging, "rust");
+    err!(current_rust_config.debuginfo_level_rustc, debuginfo_level_rustc, "rust");
+    err!(current_rust_config.rpath, rpath, "rust");
+    err!(current_rust_config.strip, strip, "rust");
+    err!(current_rust_config.lld_mode, lld_mode, "rust");
+    err!(current_rust_config.llvm_tools, llvm_tools, "rust");
+    err!(current_rust_config.llvm_bitcode_linker, llvm_bitcode_linker, "rust");
+    err!(current_rust_config.jemalloc, jemalloc, "rust");
+    err!(current_rust_config.default_linker, default_linker, "rust");
+    err!(current_rust_config.stack_protector, stack_protector, "rust");
+    err!(current_rust_config.lto, lto, "rust");
+    err!(current_rust_config.std_features, std_features, "rust");
+
+    warn!(current_rust_config.channel, channel, "rust");
+    warn!(current_rust_config.description, description, "rust");
+    warn!(current_rust_config.incremental, incremental, "rust");
+
+    Ok(())
 }
