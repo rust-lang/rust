@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
         if cx.tcx.visibility(item.owner_id.def_id) == ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id())
             && !cx.effective_visibilities.is_exported(item.owner_id.def_id)
             && self.is_exported.last() == Some(&false)
-            && is_not_macro_export(item)
+            && !is_macro_export(item)
             && !item.span.in_external_macro(cx.sess().source_map())
         {
             let span = item
@@ -86,18 +86,18 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
     }
 }
 
-fn is_not_macro_export<'tcx>(item: &'tcx Item<'tcx>) -> bool {
+fn is_macro_export<'tcx>(item: &'tcx Item<'tcx>) -> bool {
     if let ItemKind::Use(path, _) = item.kind {
         if path
             .res
             .iter()
             .all(|res| matches!(res, Res::Def(DefKind::Macro(MacroKind::Bang), _)))
         {
-            return false;
+            return true;
         }
     } else if let ItemKind::Macro(..) = item.kind {
-        return false;
+        return true;
     }
 
-    true
+    false
 }
