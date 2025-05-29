@@ -6,6 +6,7 @@
 //! It also houses the `Merge` trait and `define_config!` macro, which are essential
 //! for handling these raw TOML structures.
 
+use serde::Deserialize;
 use serde_derive::Deserialize;
 pub mod build;
 pub mod change_id;
@@ -20,7 +21,7 @@ pub mod rust;
 pub mod target;
 
 use build::Build;
-use change_id::ChangeIdWrapper;
+use change_id::{ChangeId, ChangeIdWrapper};
 use dist::Dist;
 use gcc::Gcc;
 use install::Install;
@@ -30,7 +31,7 @@ use rust::Rust;
 use target::TomlTarget;
 
 use crate::core::config::toml::common::ReplaceOpt;
-use crate::{Config, HashMap, HashSet, PathBuf, exit};
+use crate::{Config, HashMap, HashSet, Path, PathBuf, exit, fs, t};
 
 /// Structure of the `bootstrap.toml` file that configuration is read from.
 ///
@@ -131,5 +132,56 @@ impl Merge for TomlConfig {
 
             included_extensions.remove(&include_path);
         }
+    }
+}
+
+/// This file is embedded in the overlay directory of the tarball sources. It is
+/// useful in scenarios where developers want to see how the tarball sources were
+/// generated.
+///
+/// We also use this file to compare the host's bootstrap.toml against the CI rustc builder
+/// configuration to detect any incompatible options.
+pub const BUILDER_CONFIG_FILENAME: &str = "builder-config";
+
+impl Config {
+    pub(crate) fn get_builder_toml(&self, build_name: &str) -> Result<TomlConfig, toml::de::Error> {
+        if self.dry_run() {
+            return Ok(TomlConfig::default());
+        }
+
+        let builder_config_path =
+            self.out.join(self.build.triple).join(build_name).join(BUILDER_CONFIG_FILENAME);
+        Self::get_toml(&builder_config_path)
+    }
+
+    pub(crate) fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
+        #[cfg(test)]
+        return Ok(TomlConfig::default());
+
+        #[cfg(not(test))]
+        Self::get_toml_inner(file)
+    }
+
+    pub(crate) fn get_toml_inner(file: &Path) -> Result<TomlConfig, toml::de::Error> {
+        let contents =
+            t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
+        // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
+        // TomlConfig and sub types to be monomorphized 5x by toml.
+        toml::from_str(&contents)
+            .and_then(|table: toml::Value| TomlConfig::deserialize(table))
+            .inspect_err(|_| {
+                if let Ok(ChangeIdWrapper { inner: Some(ChangeId::Id(id)) }) =
+                    toml::from_str::<toml::Value>(&contents)
+                        .and_then(|table: toml::Value| ChangeIdWrapper::deserialize(table))
+                {
+                    let changes = crate::find_recent_config_change_ids(id);
+                    if !changes.is_empty() {
+                        println!(
+                            "WARNING: There have been changes to x.py since you last updated:\n{}",
+                            crate::human_readable_changes(changes)
+                        );
+                    }
+                }
+            })
     }
 }
