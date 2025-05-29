@@ -29,6 +29,10 @@ add_labels = ["S-waiting-on-review"]
 [autolabel."S-waiting-on-review"]
 new_pr = true
 
+# Enable issue transfers within the org
+# Documentation at: https://forge.rust-lang.org/triagebot/transfer.html
+[transfer]
+
 [relabel]
 allow-unauthenticated = [
     "-Z*",
