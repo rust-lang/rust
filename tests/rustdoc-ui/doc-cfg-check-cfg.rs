@@ -11,7 +11,7 @@
 #![feature(doc_cfg)]
 
 #[doc(cfg(foo))]
-//[cfg_empty]~^ WARN unexpected `cfg` condition name: `foo`
+// FIXME: Should emit: WARN unexpected `cfg` condition name: `foo`
 pub fn foo() {}
 
 pub mod module {

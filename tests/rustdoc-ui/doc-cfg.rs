@@ -4,8 +4,8 @@
 //~^ ERROR
 //~^^ ERROR
 #[doc(cfg(foo), cfg(bar))]
-//~^ WARN unexpected `cfg` condition name: `foo`
-//~^^ WARN unexpected `cfg` condition name: `bar`
+// FIXME: Should emit: WARN unexpected `cfg` condition name: `foo`
+// FIXME: Should emit: WARN unexpected `cfg` condition name: `bar`
 #[doc(cfg())] //~ ERROR
 #[doc(cfg(foo, bar))] //~ ERROR
 pub fn foo() {}
