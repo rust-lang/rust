@@ -89,7 +89,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         Some(item)
     }));
 
-    // Split up imports from all other items.
+    // Split up glob imports from all other items.
     //
     // This covers the case where somebody does an import which should pull in an item,
     // but there's already an item with the same namespace and same name. Rust gives
@@ -2761,7 +2761,6 @@ fn clean_maybe_renamed_item<'tcx>(
     import_id: Option<LocalDefId>,
 ) -> Vec<Item> {
     use hir::ItemKind;
-
     fn get_name(
         cx: &DocContext<'_>,
         item: &hir::Item<'_>,
@@ -2973,6 +2972,7 @@ fn clean_extern_crate<'tcx>(
         && !cx.is_json_output();
 
     let krate_owner_def_id = krate.owner_id.def_id;
+
     if please_inline
         && let Some(items) = inline::try_inline(
             cx,
