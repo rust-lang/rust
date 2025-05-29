@@ -51,6 +51,10 @@ allow-unauthenticated = [
     "needs-triage",
 ]
 
+# Enable `@rustbot note` functionality
+# Documentation at: https://forge.rust-lang.org/triagebot/note.html
+[note]
+
 [no-mentions]
 
 [canonicalize-issue-links]
