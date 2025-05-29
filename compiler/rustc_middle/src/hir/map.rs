@@ -9,7 +9,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
@@ -396,9 +396,8 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         V: Visitor<'tcx>,
     {
-        let krate = self.hir_crate(());
-        for info in krate.owners.iter() {
-            if let MaybeOwner::Owner(info) = info {
+        for def_id in self.hir_crate_items(()).definitions().chain([CRATE_DEF_ID]) {
+            if let MaybeOwner::Owner(info) = self.hir_owner(def_id) {
                 for attrs in info.attrs.map.values() {
                     walk_list!(visitor, visit_attribute, *attrs);
                 }

@@ -111,9 +111,9 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap
     }
 }
 
-impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Crate<'_> {
+impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Crate {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let Crate { owners: _, opt_hir_hash } = self;
+        let Crate { opt_hir_hash } = self;
         opt_hir_hash.unwrap().hash_stable(hcx, hasher)
     }
 }
