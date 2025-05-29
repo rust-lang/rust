@@ -22,6 +22,7 @@ use super::{
     AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
     ResolverAstLoweringExt,
 };
+use crate::AllowReturnTypeNotation;
 
 pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
@@ -157,9 +158,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ast::DistributedSlice::Declaration(span) => {
                 DistributedSlice::Declaration(self.lower_span(*span))
             }
-            ast::DistributedSlice::Addition { declaration } => {
-                // DistributedSlice::Addition(self.lower_qpath(id, qself, p, param_mode, allow_return_type_notation, itctx, modifiers))
-                todo!()
+            ast::DistributedSlice::Addition { declaration, id } => {
+                DistributedSlice::Addition(self.lower_qpath(
+                    *id,
+                    &None,
+                    declaration,
+                    ParamMode::Optional,
+                    AllowReturnTypeNotation::No,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    None,
+                ))
             }
         }
     }

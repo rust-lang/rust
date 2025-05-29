@@ -3623,7 +3623,7 @@ pub enum DistributedSlice {
     Declaration(Span),
     /// This const (we never do this to statics) represents an addition to a global registry
     /// declared somewhere else.
-    Addition { declaration: Path },
+    Addition { declaration: Path, id: NodeId },
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]

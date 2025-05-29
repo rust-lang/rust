@@ -451,11 +451,16 @@ macro_rules! common_visitor_and_walkers {
                         mutability: _,
                         expr,
                         define_opaque,
-                        distributed_slice: _,
+                        distributed_slice,
                     }) => {
                         try_visit!(vis.visit_ident(ident));
                         try_visit!(vis.visit_ty(ty));
                         visit_opt!(vis, visit_expr, expr);
+                        match distributed_slice {
+                            DistributedSlice::None => {}
+                            DistributedSlice::Declaration(span) => try_visit!(visit_span(vis, span)),
+                            DistributedSlice::Addition { declaration, id } => try_visit!(vis.visit_path(declaration$(${ignore($lt)}, *id)?)),
+                        }
                         walk_define_opaques(vis, define_opaque)
                     }
                     ItemKind::Const(item) => {
@@ -615,12 +620,20 @@ macro_rules! common_visitor_and_walkers {
         }
 
         fn walk_const_item<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, item: &$($lt)? $($mut)? ConstItem) $(-> <V as Visitor<$lt>>::Result)? {
-            let ConstItem { defaultness, ident, generics, ty, expr, define_opaque, distributed_slice: _ } = item;
+            let ConstItem { defaultness, ident, generics, ty, expr, define_opaque, distributed_slice } = item;
             try_visit!(visit_defaultness(vis, defaultness));
             try_visit!(vis.visit_ident(ident));
             try_visit!(vis.visit_generics(generics));
             try_visit!(vis.visit_ty(ty));
             visit_opt!(vis, visit_expr, expr);
+
+            match distributed_slice {
+                DistributedSlice::None => {}
+                DistributedSlice::Declaration(span) => try_visit!(visit_span(vis, span)),
+                DistributedSlice::Addition { declaration, id } => try_visit!(vis.visit_path(declaration$(${ignore($lt)}, *id)?)),
+            }
+
+
             walk_define_opaques(vis, define_opaque)
         }
 

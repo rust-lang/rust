@@ -4,4 +4,8 @@
 #[distributed_slice(crate)]
 const MEOWS: [&str; _];
 
-fn main() {}
+distributed_slice_element!(MEOWS, "mrow");
+
+fn main() {
+    println!("{MEOWS:?}");
+}
