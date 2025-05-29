@@ -1176,7 +1176,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
             MetaItemKind::List(list) => {
                 for item in list {
-                    let Some(attr_name) = item.name() else { continue };
+                    let Some(attr_name) = item.name() else {
+                        self.tcx.emit_node_span_lint(
+                            INVALID_DOC_ATTRIBUTES,
+                            hir_id,
+                            meta.span,
+                            errors::DocAutoCfgExpectsHideOrShow,
+                        );
+                        continue;
+                    };
                     if attr_name != sym::hide && attr_name != sym::show {
                         self.tcx.emit_node_span_lint(
                             INVALID_DOC_ATTRIBUTES,
@@ -1187,6 +1195,19 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     } else if let Some(list) = item.meta_item_list() {
                         for item in list {
                             if item.meta_item_list().is_some() {
+                                self.tcx.emit_node_span_lint(
+                                    INVALID_DOC_ATTRIBUTES,
+                                    hir_id,
+                                    item.span(),
+                                    errors::DocAutoCfgHideShowUnexpectedItem {
+                                        attr_name: attr_name.as_str(),
+                                    },
+                                );
+                            } else if match item {
+                                MetaItemInner::Lit(_) => true,
+                                // We already checked above that it's not a list.
+                                MetaItemInner::MetaItem(meta) => meta.path.segments.len() != 1,
+                            } {
                                 self.tcx.emit_node_span_lint(
                                     INVALID_DOC_ATTRIBUTES,
                                     hir_id,

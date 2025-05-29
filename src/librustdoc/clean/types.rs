@@ -970,8 +970,10 @@ fn show_hide_show_conflict_error(
     diag.emit();
 }
 
-/// This function checks if a same `cfg` is present in both `auto_cfg(hide(...))` and
-/// `auto_cfg(show(...))` on the same item. If so, it emits an error.
+/// This functions updates the `hidden_cfg` field of the provided `cfg_info` argument.
+///
+/// It also checks if a same `cfg` is present in both `auto_cfg(hide(...))` and
+/// `auto_cfg(show(...))` on the same item and emits an error if it's the case.
 ///
 /// Because we go through a list of `cfg`s, we keep track of the `cfg`s we saw in `new_show_attrs`
 /// and in `new_hide_attrs` arguments.
@@ -1023,6 +1025,31 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
         Some(item)
     }
 
+    fn check_changed_auto_active_status(
+        changed_auto_active_status: &mut Option<rustc_span::Span>,
+        attr: &ast::MetaItem,
+        cfg_info: &mut CfgInfo,
+        tcx: TyCtxt<'_>,
+        new_value: bool,
+    ) -> bool {
+        if let Some(first_change) = changed_auto_active_status {
+            if cfg_info.auto_cfg_active != new_value {
+                tcx.sess
+                    .dcx()
+                    .struct_span_err(
+                        vec![*first_change, attr.span],
+                        "`auto_cfg` was disabled and enabled more than once on the same item",
+                    )
+                    .emit();
+                return true;
+            }
+        } else {
+            *changed_auto_active_status = Some(attr.span);
+        }
+        cfg_info.auto_cfg_active = new_value;
+        false
+    }
+
     let mut new_show_attrs = FxHashMap::default();
     let mut new_hide_attrs = FxHashMap::default();
 
@@ -1070,49 +1097,39 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                 };
                 match &attr.kind {
                     MetaItemKind::Word => {
-                        if let Some(first_change) = changed_auto_active_status {
-                            if !cfg_info.auto_cfg_active {
-                                tcx.sess.dcx().struct_span_err(
-                                    vec![first_change, attr.span],
-                                    "`auto_cfg` was disabled and enabled more than once on the same item",
-                                ).emit();
-                                return None;
-                            }
-                        } else {
-                            changed_auto_active_status = Some(attr.span);
+                        if check_changed_auto_active_status(
+                            &mut changed_auto_active_status,
+                            attr,
+                            cfg_info,
+                            tcx,
+                            true,
+                        ) {
+                            return None;
                         }
-                        cfg_info.auto_cfg_active = true;
                     }
                     MetaItemKind::NameValue(lit) => {
                         if let LitKind::Bool(value) = lit.kind {
-                            if let Some(first_change) = changed_auto_active_status {
-                                if cfg_info.auto_cfg_active != value {
-                                    tcx.sess.dcx().struct_span_err(
-                                        vec![first_change, attr.span],
-                                        "`auto_cfg` was disabled and enabled more than once on the same item",
-                                    ).emit();
-                                    return None;
-                                }
-                            } else {
-                                changed_auto_active_status = Some(attr.span);
+                            if check_changed_auto_active_status(
+                                &mut changed_auto_active_status,
+                                attr,
+                                cfg_info,
+                                tcx,
+                                value,
+                            ) {
+                                return None;
                             }
-                            cfg_info.auto_cfg_active = value;
                         }
                     }
                     MetaItemKind::List(sub_attrs) => {
-                        if let Some(first_change) = changed_auto_active_status {
-                            if !cfg_info.auto_cfg_active {
-                                tcx.sess.dcx().struct_span_err(
-                                    vec![first_change, attr.span],
-                                    "`auto_cfg` was disabled and enabled more than once on the same item",
-                                ).emit();
-                                return None;
-                            }
-                        } else {
-                            changed_auto_active_status = Some(attr.span);
+                        if check_changed_auto_active_status(
+                            &mut changed_auto_active_status,
+                            attr,
+                            cfg_info,
+                            tcx,
+                            true,
+                        ) {
+                            return None;
                         }
-                        // Whatever happens next, the feature is enabled again.
-                        cfg_info.auto_cfg_active = true;
                         for sub_attr in sub_attrs.iter() {
                             if let Some(ident) = sub_attr.ident()
                                 && (ident.name == sym::show || ident.name == sym::hide)

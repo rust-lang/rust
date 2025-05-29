@@ -605,6 +605,10 @@ pub(crate) fn build_impl(
         });
     }
 
+    // In here, we pass an empty `CfgInfo` because the computation of `cfg` happens later, so it
+    // doesn't matter at this point.
+    //
+    // We need to pass this empty `CfgInfo` because `merge_attrs` is used when computing the `cfg`.
     let (merged_attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs, &mut CfgInfo::default());
     trace!("merged_attrs={merged_attrs:?}");
 
