@@ -235,9 +235,7 @@ impl Constant<'_> {
                 _ => None,
             },
             (Self::Vec(l), Self::Vec(r)) => {
-                let (ty::Array(cmp_type, _) | ty::Slice(cmp_type)) = *cmp_type.kind() else {
-                    return None;
-                };
+                let cmp_type = cmp_type.builtin_index()?;
                 iter::zip(l, r)
                     .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
                     .find(|r| r.is_none_or(|o| o != Ordering::Equal))
