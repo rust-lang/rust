@@ -74,7 +74,7 @@ mod int_to_float {
         F::Int: CastFrom<I>,
         Conv: Fn(I::Unsigned) -> F::Int,
     {
-        let sign_bit = F::Int::cast_from(i >> (I::BITS - 1)) << (F::BITS - 1);
+        let sign_bit = F::Int::cast_from_lossy(i >> (I::BITS - 1)) << (F::BITS - 1);
         F::from_bits(conv(i.unsigned_abs()) | sign_bit)
     }
 
@@ -166,7 +166,7 @@ mod int_to_float {
 
         // Within the upper `F::BITS`, everything except for the signifcand
         // gets truncated
-        let d1: u32 = (i_m >> (u128::BITS - f32::BITS - f32::SIG_BITS - 1)).cast();
+        let d1: u32 = (i_m >> (u128::BITS - f32::BITS - f32::SIG_BITS - 1)).cast_lossy();
 
         // The entire rest of `i_m` gets truncated. Zero the upper `F::BITS` then just
         // check if it is nonzero.
@@ -371,7 +371,7 @@ where
         let m_base = if I::Unsigned::BITS >= F::Int::BITS {
             I::Unsigned::cast_from(fbits) << (I::BITS - F::SIG_BITS - 1)
         } else {
-            I::Unsigned::cast_from(fbits >> (F::SIG_BITS - I::BITS + 1))
+            I::Unsigned::cast_from_lossy(fbits >> (F::SIG_BITS - I::BITS + 1))
         };
 
         // Set the implicit 1-bit.

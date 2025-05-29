@@ -374,14 +374,19 @@ impl_h_int!(
 /// Trait to express (possibly lossy) casting of integers
 pub trait CastInto<T: Copy>: Copy {
     /// By default, casts should be exact.
+    #[track_caller]
     fn cast(self) -> T;
 
     /// Call for casts that are expected to truncate.
+    ///
+    /// In practice, this is exactly the same as `cast`; the main difference is to document intent
+    /// in code. `cast` may panic in debug mode.
     fn cast_lossy(self) -> T;
 }
 
 pub trait CastFrom<T: Copy>: Copy {
     /// By default, casts should be exact.
+    #[track_caller]
     fn cast_from(value: T) -> Self;
 
     /// Call for casts that are expected to truncate.

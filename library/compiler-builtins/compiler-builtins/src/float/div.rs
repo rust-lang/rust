@@ -482,7 +482,7 @@ where
 
         let ret = quotient.wrapping_shr(u32::cast_from(res_exponent.wrapping_neg()) + 1);
         residual_lo = a_significand
-            .wrapping_shl(significand_bits.wrapping_add(CastInto::<u32>::cast(res_exponent)))
+            .wrapping_shl(significand_bits.wrapping_add(CastInto::<u32>::cast_lossy(res_exponent)))
             .wrapping_sub(ret.wrapping_mul(b_significand) << 1);
         ret
     };
