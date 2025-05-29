@@ -24,6 +24,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   mingw-w64 \
   && rm -rf /var/lib/apt/lists/*
 
+COPY scripts/nodejs.sh /scripts/
+RUN sh /scripts/nodejs.sh /node
+ENV PATH="/node/bin:${PATH}"
+
+# Install eslint
+RUN npm install eslint@8.6.0
+
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
