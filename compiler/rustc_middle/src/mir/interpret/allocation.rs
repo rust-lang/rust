@@ -512,7 +512,7 @@ impl Allocation {
     pub fn adjust_from_tcx<'tcx, Prov: Provenance, Bytes: AllocBytes>(
         &self,
         cx: &impl HasDataLayout,
-        mut alloc_bytes: impl FnMut(&[u8], Align) -> InterpResult<'tcx, Bytes>,
+        alloc_bytes: impl FnOnce(&[u8], Align) -> InterpResult<'tcx, Bytes>,
         mut adjust_ptr: impl FnMut(Pointer<CtfeProvenance>) -> InterpResult<'tcx, Pointer<Prov>>,
     ) -> InterpResult<'tcx, Allocation<Prov, (), Bytes>> {
         // Copy the data.

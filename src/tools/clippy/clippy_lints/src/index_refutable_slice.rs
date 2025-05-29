@@ -12,7 +12,6 @@ use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::Ident;
@@ -109,11 +108,11 @@ fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<Hir
             }
 
             let bound_ty = cx.typeck_results().node_type(pat.hir_id);
-            if let ty::Slice(inner_ty) | ty::Array(inner_ty, _) = bound_ty.peel_refs().kind() {
+            if let Some(inner_ty) = bound_ty.peel_refs().builtin_index() {
                 // The values need to use the `ref` keyword if they can't be copied.
                 // This will need to be adjusted if the lint want to support mutable access in the future
                 let src_is_ref = bound_ty.is_ref() && by_ref == hir::ByRef::No;
-                let needs_ref = !(src_is_ref || is_copy(cx, *inner_ty));
+                let needs_ref = !(src_is_ref || is_copy(cx, inner_ty));
 
                 let slice_info = slices
                     .entry(value_hir_id)
