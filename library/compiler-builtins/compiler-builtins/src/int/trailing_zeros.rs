@@ -20,18 +20,18 @@ mod implementation {
 
         const { assert!(I::BITS <= 64) };
         if I::BITS >= 64 {
-            r += ((u32::cast_from(x) == 0) as u32) << 5; // if (x has no 32 small bits) t = 32 else 0
+            r += ((u32::cast_from_lossy(x) == 0) as u32) << 5; // if (x has no 32 small bits) t = 32 else 0
             x >>= r; // remove 32 zero bits
         }
 
         if I::BITS >= 32 {
-            t = ((u16::cast_from(x) == 0) as u32) << 4; // if (x has no 16 small bits) t = 16 else 0
+            t = ((u16::cast_from_lossy(x) == 0) as u32) << 4; // if (x has no 16 small bits) t = 16 else 0
             r += t;
             x >>= t; // x = [0 - 0xFFFF] + higher garbage bits
         }
 
         const { assert!(I::BITS >= 16) };
-        t = ((u8::cast_from(x) == 0) as u32) << 3;
+        t = ((u8::cast_from_lossy(x) == 0) as u32) << 3;
         x >>= t; // x = [0 - 0xFF] + higher garbage bits
         r += t;
 

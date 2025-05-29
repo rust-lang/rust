@@ -168,7 +168,7 @@ where
     }
 
     // Low three bits are round, guard, and sticky.
-    let a_significand_i32: i32 = a_significand.cast();
+    let a_significand_i32: i32 = a_significand.cast_lossy();
     let round_guard_sticky: i32 = a_significand_i32 & 0x7;
 
     // Shift the significand into place, and mask off the implicit bit.

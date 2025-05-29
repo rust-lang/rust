@@ -1,4 +1,4 @@
-pub use crate::support::{Int, MinInt};
+pub use crate::support::{CastFrom, CastInto, Int, MinInt};
 
 /// Trait for integers twice the bit width of another integer. This is implemented for all
 /// primitives except for `u8`, because there is not a smaller primitive.
@@ -97,44 +97,3 @@ impl_h_int!(
     i32 u32 i64,
     i64 u64 i128
 );
-
-/// Trait to express (possibly lossy) casting of integers
-pub trait CastInto<T: Copy>: Copy {
-    fn cast(self) -> T;
-}
-
-pub trait CastFrom<T: Copy>: Copy {
-    fn cast_from(value: T) -> Self;
-}
-
-impl<T: Copy, U: CastInto<T> + Copy> CastFrom<U> for T {
-    fn cast_from(value: U) -> Self {
-        value.cast()
-    }
-}
-
-macro_rules! cast_into {
-    ($ty:ty) => {
-        cast_into!($ty; usize, isize, u8, i8, u16, i16, u32, i32, u64, i64, u128, i128);
-    };
-    ($ty:ty; $($into:ty),*) => {$(
-        impl CastInto<$into> for $ty {
-            fn cast(self) -> $into {
-                self as $into
-            }
-        }
-    )*};
-}
-
-cast_into!(usize);
-cast_into!(isize);
-cast_into!(u8);
-cast_into!(i8);
-cast_into!(u16);
-cast_into!(i16);
-cast_into!(u32);
-cast_into!(i32);
-cast_into!(u64);
-cast_into!(i64);
-cast_into!(u128);
-cast_into!(i128);
