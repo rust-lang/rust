@@ -135,11 +135,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if this.machine.native_lib.is_some() {
             // In native lib mode, we use the "real" address of the bytes for this allocation.
             // This ensures the interpreted program and native code have the same view of memory.
+            let params = this.machine.get_default_alloc_params();
             let base_ptr = match info.kind {
                 AllocKind::LiveData => {
                     if memory_kind == MiriMemoryKind::Global.into() {
                         // For new global allocations, we always pre-allocate the memory to be able use the machine address directly.
-                        let prepared_bytes = MiriAllocBytes::zeroed(info.size, info.align, ())
+                        let prepared_bytes = MiriAllocBytes::zeroed(info.size, info.align, params)
                             .unwrap_or_else(|| {
                                 panic!("Miri ran out of memory: cannot create allocation of {size:?} bytes", size = info.size)
                             });
@@ -158,8 +159,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 AllocKind::Function | AllocKind::VTable => {
                     // Allocate some dummy memory to get a unique address for this function/vtable.
-                    let alloc_bytes =
-                        MiriAllocBytes::from_bytes(&[0u8; 1], Align::from_bytes(1).unwrap(), ());
+                    let alloc_bytes = MiriAllocBytes::from_bytes(
+                        &[0u8; 1],
+                        Align::from_bytes(1).unwrap(),
+                        params,
+                    );
                     let ptr = alloc_bytes.as_ptr();
                     // Leak the underlying memory to ensure it remains unique.
                     std::mem::forget(alloc_bytes);
@@ -429,7 +433,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             prepared_alloc_bytes.copy_from_slice(bytes);
             interp_ok(prepared_alloc_bytes)
         } else {
-            interp_ok(MiriAllocBytes::from_bytes(std::borrow::Cow::Borrowed(bytes), align, ()))
+            let params = this.machine.get_default_alloc_params();
+            interp_ok(MiriAllocBytes::from_bytes(std::borrow::Cow::Borrowed(bytes), align, params))
         }
     }
 
