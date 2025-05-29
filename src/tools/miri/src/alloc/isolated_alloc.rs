@@ -6,16 +6,13 @@ use rustc_index::bit_set::DenseBitSet;
 const COMPRESSION_FACTOR: usize = 4;
 
 /// A dedicated allocator for interpreter memory contents, ensuring they are stored on dedicated
-/// pages (not mixed with Miri's own memory). This is very useful for native-lib mode.
+/// pages (not mixed with Miri's own memory). This is used in native-lib mode.
 #[derive(Debug)]
 pub struct IsolatedAlloc {
     /// Pointers to page-aligned memory that has been claimed by the allocator.
     /// Every pointer here must point to a page-sized allocation claimed via
-    /// the global allocator.
+    /// the global allocator. These pointers are used for "small" allocations.
     page_ptrs: Vec<*mut u8>,
-    /// Pointers to multiple-page-sized allocations. These must also be page-aligned,
-    /// with their size stored as the second element of the vector.
-    huge_ptrs: Vec<(*mut u8, usize)>,
     /// Metadata about which bytes have been allocated on each page. The length
     /// of this vector must be the same as that of `page_ptrs`, and the domain
     /// size of the bitset must be exactly `page_size / COMPRESSION_FACTOR`.
@@ -25,6 +22,9 @@ pub struct IsolatedAlloc {
     /// indexing into it should be done with a value one-nth of the corresponding
     /// offset on the matching `page_ptrs` element (n = `COMPRESSION_FACTOR`).
     page_infos: Vec<DenseBitSet<usize>>,
+    /// Pointers to multiple-page-sized allocations. These must also be page-aligned,
+    /// with their size stored as the second element of the vector.
+    huge_ptrs: Vec<(*mut u8, usize)>,
     /// The host (not emulated) page size.
     page_size: usize,
 }
@@ -42,31 +42,23 @@ impl IsolatedAlloc {
         }
     }
 
-    /// Expands the available memory pool by adding one page.
-    fn add_page(&mut self) -> (*mut u8, &mut DenseBitSet<usize>) {
-        let page_layout = Layout::from_size_align(self.page_size, self.page_size).unwrap();
-        // SAFETY: The system page size, which is the layout size, cannot be 0
-        let page_ptr = unsafe { alloc::alloc(page_layout) };
-        // `page_infos` has to have one bit for each `COMPRESSION_FACTOR`-sized chunk of bytes in the page.
-        assert!(self.page_size % COMPRESSION_FACTOR == 0);
-        self.page_infos.push(DenseBitSet::new_empty(self.page_size / COMPRESSION_FACTOR));
-        self.page_ptrs.push(page_ptr);
-        (page_ptr, self.page_infos.last_mut().unwrap())
-    }
-
     /// For simplicity, we serve small allocations in multiples of COMPRESSION_FACTOR
     /// bytes with at least that alignment.
     #[inline]
-    fn normalized_layout(layout: Layout) -> (usize, usize) {
+    fn normalized_layout(layout: Layout) -> Layout {
         let align =
             if layout.align() < COMPRESSION_FACTOR { COMPRESSION_FACTOR } else { layout.align() };
         let size = layout.size().next_multiple_of(COMPRESSION_FACTOR);
-        (size, align)
+        Layout::from_size_align(size, align).unwrap()
+    }
+
+    /// Returns the layout used to allocate the pages that hold small allocations.
+    #[inline]
+    fn page_layout(&self) -> Layout {
+        Layout::from_size_align(self.page_size, self.page_size).unwrap()
     }
 
     /// If the allocation is greater than a page, then round to the nearest page #.
-    /// Since we pass this into the global allocator, it's more useful to return
-    /// a `Layout` instead of a pair of usizes.
     #[inline]
     fn huge_normalized_layout(layout: Layout, page_size: usize) -> Layout {
         // Allocate in page-sized chunks
@@ -76,11 +68,11 @@ impl IsolatedAlloc {
         Layout::from_size_align(size, align).unwrap()
     }
 
-    /// Determined whether a given (size, align) should be sent to `alloc_huge` /
-    /// `dealloc_huge`.
+    /// Determined whether a given normalized (size, align) should be sent to
+    /// `alloc_huge` / `dealloc_huge`.
     #[inline]
-    fn is_huge_alloc(size: usize, align: usize, page_size: usize) -> bool {
-        align >= page_size || size >= page_size
+    fn is_huge_alloc(&self, layout: &Layout) -> bool {
+        layout.align() > self.page_size / 2 || layout.size() >= self.page_size / 2
     }
 
     /// Allocates memory as described in `Layout`. This memory should be deallocated
@@ -106,8 +98,8 @@ impl IsolatedAlloc {
     /// SAFETY: See `alloc::alloc()`, with the added restriction that `page_size`
     /// corresponds to the host pagesize.
     unsafe fn allocate(&mut self, layout: Layout, zeroed: bool) -> *mut u8 {
-        let (size, align) = IsolatedAlloc::normalized_layout(layout);
-        if IsolatedAlloc::is_huge_alloc(size, align, self.page_size) {
+        let layout = IsolatedAlloc::normalized_layout(layout);
+        if self.is_huge_alloc(&layout) {
             // SAFETY: Validity of `layout` upheld by caller; we checked that
             // the size and alignment are appropriate for being a huge alloc
             unsafe { self.alloc_huge(layout, zeroed) }
@@ -116,7 +108,7 @@ impl IsolatedAlloc {
                 // SAFETY: The value in `self.page_size` is used to allocate
                 // `page`, with page alignment
                 if let Some(ptr) =
-                    unsafe { Self::alloc_from_page(self.page_size, layout, page, pinfo, zeroed) }
+                    unsafe { Self::alloc_small(self.page_size, layout, page, pinfo, zeroed) }
                 {
                     return ptr;
                 }
@@ -129,7 +121,7 @@ impl IsolatedAlloc {
             let (page, pinfo) = self.add_page();
 
             // SAFETY: See comment on `alloc_from_page` above
-            unsafe { Self::alloc_from_page(page_size, layout, page, pinfo, zeroed).unwrap() }
+            unsafe { Self::alloc_small(page_size, layout, page, pinfo, zeroed).unwrap() }
         }
     }
 
@@ -137,36 +129,34 @@ impl IsolatedAlloc {
     ///
     /// SAFETY: `page` must be a page-aligned pointer to an allocated page,
     /// where the allocation is (at least) `page_size` bytes.
-    unsafe fn alloc_from_page(
+    unsafe fn alloc_small(
         page_size: usize,
         layout: Layout,
         page: *mut u8,
         pinfo: &mut DenseBitSet<usize>,
         zeroed: bool,
     ) -> Option<*mut u8> {
-        let (size, align) = IsolatedAlloc::normalized_layout(layout);
-
         // Check every alignment-sized block and see if there exists a `size`
         // chunk of empty space i.e. forall idx . !pinfo.contains(idx / n)
-        for idx in (0..page_size).step_by(align) {
-            let idx_pinfo = idx / COMPRESSION_FACTOR;
-            let size_pinfo = size / COMPRESSION_FACTOR;
+        for offset in (0..page_size).step_by(layout.align()) {
+            let offset_pinfo = offset / COMPRESSION_FACTOR;
+            let size_pinfo = layout.size() / COMPRESSION_FACTOR;
             // DenseBitSet::contains() panics if the index is out of bounds
-            if pinfo.domain_size() < idx_pinfo + size_pinfo {
+            if pinfo.domain_size() < offset_pinfo + size_pinfo {
                 break;
             }
             // FIXME: is there a more efficient way to check whether the entire range is unset
             // in the bitset?
-            let range_avail = !(idx_pinfo..idx_pinfo + size_pinfo).any(|idx| pinfo.contains(idx));
+            let range_avail = !(offset_pinfo..offset_pinfo + size_pinfo).any(|i| pinfo.contains(i));
             if range_avail {
-                pinfo.insert_range(idx_pinfo..idx_pinfo + size_pinfo);
+                pinfo.insert_range(offset_pinfo..offset_pinfo + size_pinfo);
                 // SAFETY: We checked the available bytes after `idx` in the call
                 // to `domain_size` above and asserted there are at least `idx +
                 // layout.size()` bytes available and unallocated after it.
                 // `page` must point to the start of the page, so adding `idx`
                 // is safe per the above.
                 unsafe {
-                    let ptr = page.add(idx);
+                    let ptr = page.add(offset);
                     if zeroed {
                         // Only write the bytes we were specifically asked to
                         // zero out, even if we allocated more
@@ -177,6 +167,17 @@ impl IsolatedAlloc {
             }
         }
         None
+    }
+
+    /// Expands the available memory pool by adding one page.
+    fn add_page(&mut self) -> (*mut u8, &mut DenseBitSet<usize>) {
+        // SAFETY: The system page size, which is the layout size, cannot be 0
+        let page_ptr = unsafe { alloc::alloc(self.page_layout()) };
+        // `page_infos` has to have one bit for each `COMPRESSION_FACTOR`-sized chunk of bytes in the page.
+        assert!(self.page_size % COMPRESSION_FACTOR == 0);
+        self.page_infos.push(DenseBitSet::new_empty(self.page_size / COMPRESSION_FACTOR));
+        self.page_ptrs.push(page_ptr);
+        (page_ptr, self.page_infos.last_mut().unwrap())
     }
 
     /// Allocates in multiples of one page on the host system.
@@ -197,52 +198,58 @@ impl IsolatedAlloc {
     /// `alloc_zeroed()`) with the same layout as the one passed on this same
     /// `IsolatedAlloc`.
     pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        let (size, align) = IsolatedAlloc::normalized_layout(layout);
+        let layout = IsolatedAlloc::normalized_layout(layout);
 
-        if IsolatedAlloc::is_huge_alloc(size, align, self.page_size) {
+        if self.is_huge_alloc(&layout) {
             // SAFETY: Partly upheld by caller, and we checked that the size
             // and align, meaning this must have been allocated via `alloc_huge`
             unsafe {
                 self.dealloc_huge(ptr, layout);
             }
         } else {
-            // Offset of the pointer in the current page
-            let ptr_idx = ptr.addr() % self.page_size;
-            // And then the page's base address
-            let page_addr = ptr.addr() - ptr_idx;
-
-            // Find the page this allocation belongs to.
-            // This could be made faster if the list was sorted -- the allocator isn't fully optimized at the moment.
-            let pinfo = std::iter::zip(&mut self.page_ptrs, &mut self.page_infos)
-                .enumerate()
-                .find(|(_, (page, _))| page.addr() == page_addr);
-            let Some((idx_of_pinfo, (_, pinfo))) = pinfo else {
-                panic!(
-                    "Freeing in an unallocated page: {ptr:?}\nHolding pages {:?}",
-                    self.page_ptrs
-                )
-            };
-            // Mark this range as available in the page.
-            let ptr_idx_pinfo = ptr_idx / COMPRESSION_FACTOR;
-            let size_pinfo = size / COMPRESSION_FACTOR;
-            for idx in ptr_idx_pinfo..ptr_idx_pinfo + size_pinfo {
-                pinfo.remove(idx);
-            }
+            // SAFETY: It's not a huge allocation, therefore it is a small one.
+            let idx = unsafe { self.dealloc_small(ptr, layout) };
 
             // This may have been the last allocation on this page. If so, free the entire page.
             // FIXME: this can lead to threshold effects, we should probably add some form
             // of hysteresis.
-            if pinfo.is_empty() {
-                let page_layout = Layout::from_size_align(self.page_size, self.page_size).unwrap();
-                self.page_infos.remove(idx_of_pinfo);
+            if self.page_infos[idx].is_empty() {
+                self.page_infos.remove(idx);
+                let page_ptr = self.page_ptrs.remove(idx);
                 // SAFETY: We checked that there are no outstanding allocations
                 // from us pointing to this page, and we know it was allocated
                 // with this layout
                 unsafe {
-                    alloc::dealloc(self.page_ptrs.remove(idx_of_pinfo), page_layout);
+                    alloc::dealloc(page_ptr, self.page_layout());
                 }
             }
         }
+    }
+
+    /// Returns the index of the page that this was deallocated from
+    ///
+    /// SAFETY: the pointer must have been allocated with `alloc_small`.
+    unsafe fn dealloc_small(&mut self, ptr: *mut u8, layout: Layout) -> usize {
+        // Offset of the pointer in the current page
+        let offset = ptr.addr() % self.page_size;
+        // And then the page's base address
+        let page_addr = ptr.addr() - offset;
+
+        // Find the page this allocation belongs to.
+        // This could be made faster if the list was sorted -- the allocator isn't fully optimized at the moment.
+        let pinfo = std::iter::zip(&mut self.page_ptrs, &mut self.page_infos)
+            .enumerate()
+            .find(|(_, (page, _))| page.addr() == page_addr);
+        let Some((idx_of_pinfo, (_, pinfo))) = pinfo else {
+            panic!("Freeing in an unallocated page: {ptr:?}\nHolding pages {:?}", self.page_ptrs)
+        };
+        // Mark this range as available in the page.
+        let ptr_idx_pinfo = offset / COMPRESSION_FACTOR;
+        let size_pinfo = layout.size() / COMPRESSION_FACTOR;
+        for idx in ptr_idx_pinfo..ptr_idx_pinfo + size_pinfo {
+            pinfo.remove(idx);
+        }
+        idx_of_pinfo
     }
 
     /// SAFETY: Same as `dealloc()` with the added requirement that `layout`
