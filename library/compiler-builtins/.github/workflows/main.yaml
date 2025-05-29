@@ -195,8 +195,14 @@ jobs:
 
   benchmarks:
     name: Benchmarks
-    runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - target: x86_64-unknown-linux-gnu
+          os: ubuntu-24.04
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@master
       with:
@@ -215,12 +221,14 @@ jobs:
         cargo binstall -y iai-callgrind-runner --version "$iai_version"
         sudo apt-get install valgrind
     - uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.target }}
 
     - name: Run icount benchmarks
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
-      run: ./ci/bench-icount.sh
+      run: ./ci/bench-icount.sh ${{ matrix.target }}
 
     - name: Upload the benchmark baseline
       uses: actions/upload-artifact@v4

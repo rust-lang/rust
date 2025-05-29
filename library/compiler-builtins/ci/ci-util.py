@@ -28,10 +28,13 @@ USAGE = cleandoc(
             Calculate a matrix of which functions had source change, print that as
             a JSON object.
 
-        locate-baseline [--download] [--extract]
+        locate-baseline [--download] [--extract] [--tag TAG]
             Locate the most recent benchmark baseline available in CI and, if flags
             specify, download and extract it. Never exits with nonzero status if
             downloading fails.
+
+            `--tag` can be specified to look for artifacts with a specific tag, such as
+            for a specific architecture.
 
             Note that `--extract` will overwrite files in `iai-home`.
 
@@ -50,7 +53,7 @@ REPO_ROOT = Path(__file__).parent.parent
 GIT = ["git", "-C", REPO_ROOT]
 DEFAULT_BRANCH = "master"
 WORKFLOW_NAME = "CI"  # Workflow that generates the benchmark artifacts
-ARTIFACT_GLOB = "baseline-icount*"
+ARTIFACT_PREFIX = "baseline-icount*"
 # Place this in a PR body to skip regression checks (must be at the start of a line).
 REGRESSION_DIRECTIVE = "ci: allow-regressions"
 # Place this in a PR body to skip extensive tests
@@ -278,6 +281,7 @@ def locate_baseline(flags: list[str]) -> None:
 
     download = False
     extract = False
+    tag = ""
 
     while len(flags) > 0:
         match flags[0]:
@@ -285,6 +289,9 @@ def locate_baseline(flags: list[str]) -> None:
                 download = True
             case "--extract":
                 extract = True
+            case "--tag":
+                tag = flags[1]
+                flags = flags[1:]
             case _:
                 eprint(USAGE)
                 exit(1)
@@ -333,8 +340,10 @@ def locate_baseline(flags: list[str]) -> None:
         eprint("skipping download step")
         return
 
+    artifact_glob = f"{ARTIFACT_PREFIX}{f"-{tag}" if tag else ""}*"
+
     sp.run(
-        ["gh", "run", "download", str(job_id), f"--pattern={ARTIFACT_GLOB}"],
+        ["gh", "run", "download", str(job_id), f"--pattern={artifact_glob}"],
         check=False,
     )
 
@@ -344,7 +353,7 @@ def locate_baseline(flags: list[str]) -> None:
 
     # Find the baseline with the most recent timestamp. GH downloads the files to e.g.
     # `some-dirname/some-dirname.tar.xz`, so just glob the whole thing together.
-    candidate_baselines = glob(f"{ARTIFACT_GLOB}/{ARTIFACT_GLOB}")
+    candidate_baselines = glob(f"{artifact_glob}/{artifact_glob}")
     if len(candidate_baselines) == 0:
         eprint("no possible baseline directories found")
         return
