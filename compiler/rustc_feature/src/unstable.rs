@@ -476,6 +476,8 @@ declare_features! (
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
     /// Allows using `#[export_stable]` which indicates that an item is exportable.
     (incomplete, export_stable, "1.88.0", Some(139939)),
+    /// Allows `#[export_visibility]` on definitions of statics and/or functions.
+    (unstable, export_visibility, "CURRENT_RUSTC_VERSION", Some(151425)),
     /// Externally implementable items
     (unstable, extern_item_impls, "1.94.0", Some(125418)),
     /// Allows defining `extern type`s.
