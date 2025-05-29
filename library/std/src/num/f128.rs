@@ -4,6 +4,8 @@
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
 
+#![unstable(feature = "f128", issue = "116909")]
+
 #[unstable(feature = "f128", issue = "116909")]
 pub use core::f128::consts;
 
