@@ -161,16 +161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Resume type defaults to `()` if the coroutine has no argument.
                 let resume_ty = liberated_sig.inputs().get(0).copied().unwrap_or(tcx.types.unit);
 
-                // In the new solver, we can just instantiate this eagerly
-                // with the witness. This will ensure that goals that don't need
-                // to stall on interior types will get processed eagerly.
-                let interior = if self.next_trait_solver() {
-                    Ty::new_coroutine_witness(tcx, expr_def_id.to_def_id(), parent_args)
-                } else {
-                    self.next_ty_var(expr_span)
-                };
-
-                self.deferred_coroutine_interiors.borrow_mut().push((expr_def_id, interior));
+                let interior = Ty::new_coroutine_witness(tcx, expr_def_id.to_def_id(), parent_args);
 
                 // Coroutines that come from coroutine closures have not yet determined
                 // their kind ty, so make a fresh infer var which will be constrained

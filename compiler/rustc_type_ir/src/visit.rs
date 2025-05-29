@@ -269,6 +269,10 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
         self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
     }
 
+    fn has_coroutines(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_CORO)
+    }
+
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_ERROR)
     }
