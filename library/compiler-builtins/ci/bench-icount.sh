@@ -2,10 +2,21 @@
 
 set -eux
 
+target="${1:-}"
+
+if [ -z "$target" ]; then
+    host_target=$(rustc -vV | awk '/^host/ { print $2 }')
+    echo "Defaulted to host target $host_target"
+    target="$host_target"
+fi
+
 iai_home="iai-home"
 
+# Use the arch as a tag to disambiguate artifacts
+tag="$(echo "$target" | cut -d'-' -f1)"
+
 # Download the baseline from master
-./ci/ci-util.py locate-baseline --download --extract
+./ci/ci-util.py locate-baseline --download --extract --tag "$tag"
 
 # Run benchmarks once
 function run_icount_benchmarks() {
@@ -44,6 +55,7 @@ function run_icount_benchmarks() {
         # If this is for a pull request, ignore regressions if specified.
         ./ci/ci-util.py check-regressions --home "$iai_home" --allow-pr-override "$PR_NUMBER"
     else
+        # Disregard regressions after merge
         ./ci/ci-util.py check-regressions --home "$iai_home" || true
     fi
 }
@@ -53,6 +65,6 @@ run_icount_benchmarks --features force-soft-floats -- --save-baseline=softfloat
 run_icount_benchmarks -- --save-baseline=hardfloat
 
 # Name and tar the new baseline
-name="baseline-icount-$(date -u +'%Y%m%d%H%M')-${GITHUB_SHA:0:12}"
+name="baseline-icount-$tag-$(date -u +'%Y%m%d%H%M')-${GITHUB_SHA:0:12}"
 echo "BASELINE_NAME=$name" >>"$GITHUB_ENV"
 tar cJf "$name.tar.xz" "$iai_home"
