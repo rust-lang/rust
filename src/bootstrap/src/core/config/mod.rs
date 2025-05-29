@@ -1,7 +1,6 @@
 #[expect(clippy::module_inception)]
 mod config;
 pub mod flags;
-pub mod parsing;
 pub mod target_selection;
 #[cfg(test)]
 mod tests;

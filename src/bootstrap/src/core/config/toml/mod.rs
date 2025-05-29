@@ -17,6 +17,7 @@ pub mod install;
 pub mod llvm;
 pub mod macros;
 pub mod merge;
+pub mod parsing;
 pub mod rust;
 pub mod target;
 
