@@ -131,8 +131,9 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
             // If however the identifier is different, this means it is an alias (`use foo::bar as baz`). In
             // this case, we need to emit the warning for `baz`.
             if let Some(imported_item_path) = usenode
-                && let Some(Res::Def(_, imported_item_defid)) = imported_item_path.res.first()
-                && cx.tcx.item_name(*imported_item_defid).as_str() == str
+                // use `present_items` because it could be in any of type_ns, value_ns, macro_ns
+                && let Some(Res::Def(_, imported_item_defid)) = imported_item_path.res.value_ns
+                && cx.tcx.item_name(imported_item_defid).as_str() == str
             {
                 return;
             }

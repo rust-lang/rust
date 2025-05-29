@@ -338,7 +338,9 @@ impl<'tcx> LateLintPass<'tcx> for TypeIr {
             cx.emit_span_lint(USAGE_OF_TYPE_IR_INHERENT, seg.ident.span, TypeIrInherentUsage);
         }
         // Final path resolutions, like `use rustc_type_ir::inherent`
-        else if path.res.iter().any(|&res| is_mod_inherent(res)) {
+        else if let Some(type_ns) = path.res.type_ns
+            && is_mod_inherent(type_ns)
+        {
             cx.emit_span_lint(
                 USAGE_OF_TYPE_IR_INHERENT,
                 path.segments.last().unwrap().ident.span,
@@ -351,7 +353,8 @@ impl<'tcx> LateLintPass<'tcx> for TypeIr {
                 (segment.ident.span, item.kind.ident().unwrap().span, "*")
             }
             [.., segment]
-                if path.res.iter().any(|&res| is_mod_inherent(res))
+                if let Some(type_ns) = path.res.type_ns
+                    && is_mod_inherent(type_ns)
                     && let rustc_hir::UseKind::Single(ident) = kind =>
             {
                 let (lo, snippet) =

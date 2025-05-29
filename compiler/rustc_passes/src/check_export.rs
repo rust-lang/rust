@@ -132,7 +132,7 @@ impl<'tcx> Visitor<'tcx> for ExportableItemCollector<'tcx> {
                 self.add_exportable(def_id);
             }
             hir::ItemKind::Use(path, _) => {
-                for res in &path.res {
+                for res in path.res.present_items() {
                     // Only local items are exportable.
                     if let Some(res_id) = res.opt_def_id()
                         && let Some(res_id) = res_id.as_local()

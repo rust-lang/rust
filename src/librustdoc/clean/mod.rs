@@ -1606,7 +1606,7 @@ fn first_non_private<'tcx>(
                     && let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(local_use_def_id)
                     && let hir::ItemKind::Use(path, hir::UseKind::Single(_)) = item.kind
                 {
-                    for res in &path.res {
+                    for res in path.res.present_items() {
                         if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
                             continue;
                         }
@@ -3014,7 +3014,7 @@ fn clean_use_statement<'tcx>(
 ) -> Vec<Item> {
     let mut items = Vec::new();
     let hir::UsePath { segments, ref res, span } = *path;
-    for &res in res {
+    for res in res.present_items() {
         let path = hir::Path { segments, res, span };
         items.append(&mut clean_use_statement_inner(import, name, &path, kind, cx, inlined_names));
     }
