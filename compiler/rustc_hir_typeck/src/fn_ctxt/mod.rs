@@ -81,7 +81,7 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
     /// you get indicates whether any subexpression that was
     /// evaluating up to and including `X` diverged.
     ///
-    /// We currently use this flag only for diagnostic purposes:
+    /// We currently use this flag for the following purposes:
     ///
     /// - To warn about unreachable code: if, after processing a
     ///   sub-expression but before we have applied the effects of the
@@ -94,6 +94,8 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
     ///   warning. This corresponds to something like `{return;
     ///   foo();}` or `{return; 22}`, where we would warn on the
     ///   `foo()` or `22`.
+    /// - To assign the `!` type to block expressions with diverging
+    ///   statements.
     ///
     /// An expression represents dead code if, after checking it,
     /// the diverges flag is set to something other than `Maybe`.
