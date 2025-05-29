@@ -169,6 +169,7 @@ attribute_parsers!(
         Single<DoNotRecommendParser>,
         Single<DummyParser>,
         Single<ExportNameParser>,
+        Single<ExportVisibilityParser>,
         Single<IgnoreParser>,
         Single<InlineParser>,
         Single<InstructionSetParser>,
