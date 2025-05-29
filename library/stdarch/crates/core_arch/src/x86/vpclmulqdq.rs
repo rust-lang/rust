@@ -37,9 +37,9 @@ unsafe extern "C" {
 // technically according to Intel's documentation we don't need avx512f here, however LLVM gets confused otherwise
 #[cfg_attr(test, assert_instr(vpclmul, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn _mm512_clmulepi64_epi128<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
+pub fn _mm512_clmulepi64_epi128<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
-    pclmulqdq_512(a, b, IMM8 as u8)
+    unsafe { pclmulqdq_512(a, b, IMM8 as u8) }
 }
 
 /// Performs a carry-less multiplication of two 64-bit polynomials over the
@@ -55,9 +55,9 @@ pub unsafe fn _mm512_clmulepi64_epi128<const IMM8: i32>(a: __m512i, b: __m512i) 
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpclmul, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn _mm256_clmulepi64_epi128<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
+pub fn _mm256_clmulepi64_epi128<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
-    pclmulqdq_256(a, b, IMM8 as u8)
+    unsafe { pclmulqdq_256(a, b, IMM8 as u8) }
 }
 
 #[cfg(test)]
