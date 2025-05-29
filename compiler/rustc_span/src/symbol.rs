@@ -1106,7 +1106,6 @@ symbols! {
         hashset_iter_ty,
         hexagon_target_feature,
         hidden,
-        hidden_cfg,
         hide,
         hint,
         homogeneous_aggregate,

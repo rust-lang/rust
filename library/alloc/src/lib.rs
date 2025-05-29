@@ -81,7 +81,6 @@
     doc(auto_cfg(hide(
         bootstrap,
         no_global_oom_handling,
-        no_global_oom_handling,
         no_rc,
         no_sync,
         target_has_atomic = "ptr"
