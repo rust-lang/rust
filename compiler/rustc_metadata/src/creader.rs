@@ -307,10 +307,11 @@ impl CStore {
         deps
     }
 
-    fn crate_dependencies_in_reverse_postorder(&self, cnum: CrateNum) -> IndexSet<CrateNum> {
-        let mut deps = self.crate_dependencies_in_postorder(cnum);
-        deps.reverse();
-        deps
+    fn crate_dependencies_in_reverse_postorder(
+        &self,
+        cnum: CrateNum,
+    ) -> impl Iterator<Item = CrateNum> {
+        self.crate_dependencies_in_postorder(cnum).into_iter().rev()
     }
 
     pub(crate) fn injected_panic_runtime(&self) -> Option<CrateNum> {
