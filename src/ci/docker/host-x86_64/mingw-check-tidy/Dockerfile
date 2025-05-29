@@ -29,7 +29,8 @@ RUN sh /scripts/nodejs.sh /node
 ENV PATH="/node/bin:${PATH}"
 
 # Install eslint
-RUN npm install eslint@8.6.0
+COPY host-x86_64/mingw-check-tidy/eslint.version /tmp/
+RUN npm install eslint@$(head -n 1 /tmp/eslint.version)
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

@@ -51,27 +51,35 @@ fn get_eslint_version() -> Option<String> {
     get_eslint_version_inner(false).or_else(|| get_eslint_version_inner(true))
 }
 
-const ESLINT_VERSION: &str = "8.6.0";
-
-pub fn check(librustdoc_path: &Path, tools_path: &Path, bad: &mut bool) {
+pub fn check(librustdoc_path: &Path, tools_path: &Path, src_path: &Path, bad: &mut bool) {
+    let eslint_version_path =
+        src_path.join("ci/docker/host-x86_64/mingw-check-tidy/eslint.version");
+    let eslint_version = match std::fs::read_to_string(&eslint_version_path) {
+        Ok(version) => version.trim().to_string(),
+        Err(error) => {
+            *bad = true;
+            eprintln!("failed to read `{}`: {error:?}", eslint_version_path.display());
+            return;
+        }
+    };
     match get_eslint_version() {
         Some(version) => {
-            if version != ESLINT_VERSION {
+            if version != eslint_version {
                 *bad = true;
                 eprintln!(
                     "⚠️ Installed version of eslint (`{version}`) is different than the \
-                     one used in the CI (`{ESLINT_VERSION}`)",
+                     one used in the CI (`{eslint_version}`)",
                 );
                 eprintln!(
                     "You can install this version using `npm update eslint` or by using \
-                     `npm install eslint@{ESLINT_VERSION}`",
+                     `npm install eslint@{eslint_version}`",
                 );
                 return;
             }
         }
         None => {
             eprintln!("`eslint` doesn't seem to be installed. Skipping tidy check for JS files.");
-            eprintln!("You can install it using `npm install eslint@{ESLINT_VERSION}`");
+            eprintln!("You can install it using `npm install eslint@{eslint_version}`");
             return;
         }
     }
