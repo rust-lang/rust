@@ -732,7 +732,7 @@ assume_usize_width! {
 }
 
 macro_rules! test_float {
-    ($modname: ident, $fassert: ident, $fty: ty, $inf: expr, $neginf: expr, $nan: expr, $min: expr, $max: expr, $min_pos: expr, $max_exp:expr) => {
+    ($modname: ident, $fassert: ident, $fty: ty) => {
         mod $modname {
             #[test]
             fn min() {
@@ -747,19 +747,19 @@ macro_rules! test_float {
                 $fassert!((-0.0 as $fty).min(9.0), -0.0);
                 $fassert!((-0.0 as $fty).min(9.0).is_sign_negative());
                 $fassert!((-0.0 as $fty).min(-9.0), -9.0);
-                $fassert!(($inf as $fty).min(9.0), 9.0);
-                $fassert!((9.0 as $fty).min($inf), 9.0);
-                $fassert!(($inf as $fty).min(-9.0), -9.0);
-                $fassert!((-9.0 as $fty).min($inf), -9.0);
-                $fassert!(($neginf as $fty).min(9.0), $neginf);
-                $fassert!((9.0 as $fty).min($neginf), $neginf);
-                $fassert!(($neginf as $fty).min(-9.0), $neginf);
-                $fassert!((-9.0 as $fty).min($neginf), $neginf);
-                $fassert!(($nan as $fty).min(9.0), 9.0);
-                $fassert!(($nan as $fty).min(-9.0), -9.0);
-                $fassert!((9.0 as $fty).min($nan), 9.0);
-                $fassert!((-9.0 as $fty).min($nan), -9.0);
-                $fassert!(($nan as $fty).min($nan).is_nan());
+                $fassert!(<$fty>::INFINITY.min(9.0), 9.0);
+                $fassert!((9.0 as $fty).min(<$fty>::INFINITY), 9.0);
+                $fassert!(<$fty>::INFINITY.min(-9.0), -9.0);
+                $fassert!((-9.0 as $fty).min(<$fty>::INFINITY), -9.0);
+                $fassert!(<$fty>::NEG_INFINITY.min(9.0), <$fty>::NEG_INFINITY);
+                $fassert!((9.0 as $fty).min(<$fty>::NEG_INFINITY), <$fty>::NEG_INFINITY);
+                $fassert!(<$fty>::NEG_INFINITY.min(-9.0), <$fty>::NEG_INFINITY);
+                $fassert!((-9.0 as $fty).min(<$fty>::NEG_INFINITY), <$fty>::NEG_INFINITY);
+                $fassert!(<$fty>::NAN.min(9.0), 9.0);
+                $fassert!(<$fty>::NAN.min(-9.0), -9.0);
+                $fassert!((9.0 as $fty).min(<$fty>::NAN), 9.0);
+                $fassert!((-9.0 as $fty).min(<$fty>::NAN), -9.0);
+                $fassert!(<$fty>::NAN.min(<$fty>::NAN).is_nan());
             }
             #[test]
             fn max() {
@@ -777,19 +777,19 @@ macro_rules! test_float {
                 $fassert!((0.0 as $fty).max(-9.0).is_sign_positive());
                 $fassert!((-0.0 as $fty).max(-9.0), -0.0);
                 $fassert!((-0.0 as $fty).max(-9.0).is_sign_negative());
-                $fassert!(($inf as $fty).max(9.0), $inf);
-                $fassert!((9.0 as $fty).max($inf), $inf);
-                $fassert!(($inf as $fty).max(-9.0), $inf);
-                $fassert!((-9.0 as $fty).max($inf), $inf);
-                $fassert!(($neginf as $fty).max(9.0), 9.0);
-                $fassert!((9.0 as $fty).max($neginf), 9.0);
-                $fassert!(($neginf as $fty).max(-9.0), -9.0);
-                $fassert!((-9.0 as $fty).max($neginf), -9.0);
-                $fassert!(($nan as $fty).max(9.0), 9.0);
-                $fassert!(($nan as $fty).max(-9.0), -9.0);
-                $fassert!((9.0 as $fty).max($nan), 9.0);
-                $fassert!((-9.0 as $fty).max($nan), -9.0);
-                $fassert!(($nan as $fty).max($nan).is_nan());
+                $fassert!(<$fty>::INFINITY.max(9.0), <$fty>::INFINITY);
+                $fassert!((9.0 as $fty).max(<$fty>::INFINITY), <$fty>::INFINITY);
+                $fassert!(<$fty>::INFINITY.max(-9.0), <$fty>::INFINITY);
+                $fassert!((-9.0 as $fty).max(<$fty>::INFINITY), <$fty>::INFINITY);
+                $fassert!(<$fty>::NEG_INFINITY.max(9.0), 9.0);
+                $fassert!((9.0 as $fty).max(<$fty>::NEG_INFINITY), 9.0);
+                $fassert!(<$fty>::NEG_INFINITY.max(-9.0), -9.0);
+                $fassert!((-9.0 as $fty).max(<$fty>::NEG_INFINITY), -9.0);
+                $fassert!(<$fty>::NAN.max(9.0), 9.0);
+                $fassert!(<$fty>::NAN.max(-9.0), -9.0);
+                $fassert!((9.0 as $fty).max(<$fty>::NAN), 9.0);
+                $fassert!((-9.0 as $fty).max(<$fty>::NAN), -9.0);
+                $fassert!(<$fty>::NAN.max(<$fty>::NAN).is_nan());
             }
             #[test]
             fn minimum() {
@@ -806,19 +806,19 @@ macro_rules! test_float {
                 $fassert!((-0.0 as $fty).minimum(9.0), -0.0);
                 $fassert!((-0.0 as $fty).minimum(9.0).is_sign_negative());
                 $fassert!((-0.0 as $fty).minimum(-9.0), -9.0);
-                $fassert!(($inf as $fty).minimum(9.0), 9.0);
-                $fassert!((9.0 as $fty).minimum($inf), 9.0);
-                $fassert!(($inf as $fty).minimum(-9.0), -9.0);
-                $fassert!((-9.0 as $fty).minimum($inf), -9.0);
-                $fassert!(($neginf as $fty).minimum(9.0), $neginf);
-                $fassert!((9.0 as $fty).minimum($neginf), $neginf);
-                $fassert!(($neginf as $fty).minimum(-9.0), $neginf);
-                $fassert!((-9.0 as $fty).minimum($neginf), $neginf);
-                $fassert!(($nan as $fty).minimum(9.0).is_nan());
-                $fassert!(($nan as $fty).minimum(-9.0).is_nan());
-                $fassert!((9.0 as $fty).minimum($nan).is_nan());
-                $fassert!((-9.0 as $fty).minimum($nan).is_nan());
-                $fassert!(($nan as $fty).minimum($nan).is_nan());
+                $fassert!(<$fty>::INFINITY.minimum(9.0), 9.0);
+                $fassert!((9.0 as $fty).minimum(<$fty>::INFINITY), 9.0);
+                $fassert!(<$fty>::INFINITY.minimum(-9.0), -9.0);
+                $fassert!((-9.0 as $fty).minimum(<$fty>::INFINITY), -9.0);
+                $fassert!(<$fty>::NEG_INFINITY.minimum(9.0), <$fty>::NEG_INFINITY);
+                $fassert!((9.0 as $fty).minimum(<$fty>::NEG_INFINITY), <$fty>::NEG_INFINITY);
+                $fassert!(<$fty>::NEG_INFINITY.minimum(-9.0), <$fty>::NEG_INFINITY);
+                $fassert!((-9.0 as $fty).minimum(<$fty>::NEG_INFINITY), <$fty>::NEG_INFINITY);
+                $fassert!(<$fty>::NAN.minimum(9.0).is_nan());
+                $fassert!(<$fty>::NAN.minimum(-9.0).is_nan());
+                $fassert!((9.0 as $fty).minimum(<$fty>::NAN).is_nan());
+                $fassert!((-9.0 as $fty).minimum(<$fty>::NAN).is_nan());
+                $fassert!(<$fty>::NAN.minimum(<$fty>::NAN).is_nan());
             }
             #[test]
             fn maximum() {
@@ -838,19 +838,19 @@ macro_rules! test_float {
                 $fassert!((0.0 as $fty).maximum(-9.0).is_sign_positive());
                 $fassert!((-0.0 as $fty).maximum(-9.0), -0.0);
                 $fassert!((-0.0 as $fty).maximum(-9.0).is_sign_negative());
-                $fassert!(($inf as $fty).maximum(9.0), $inf);
-                $fassert!((9.0 as $fty).maximum($inf), $inf);
-                $fassert!(($inf as $fty).maximum(-9.0), $inf);
-                $fassert!((-9.0 as $fty).maximum($inf), $inf);
-                $fassert!(($neginf as $fty).maximum(9.0), 9.0);
-                $fassert!((9.0 as $fty).maximum($neginf), 9.0);
-                $fassert!(($neginf as $fty).maximum(-9.0), -9.0);
-                $fassert!((-9.0 as $fty).maximum($neginf), -9.0);
-                $fassert!(($nan as $fty).maximum(9.0).is_nan());
-                $fassert!(($nan as $fty).maximum(-9.0).is_nan());
-                $fassert!((9.0 as $fty).maximum($nan).is_nan());
-                $fassert!((-9.0 as $fty).maximum($nan).is_nan());
-                $fassert!(($nan as $fty).maximum($nan).is_nan());
+                $fassert!(<$fty>::INFINITY.maximum(9.0), <$fty>::INFINITY);
+                $fassert!((9.0 as $fty).maximum(<$fty>::INFINITY), <$fty>::INFINITY);
+                $fassert!(<$fty>::INFINITY.maximum(-9.0), <$fty>::INFINITY);
+                $fassert!((-9.0 as $fty).maximum(<$fty>::INFINITY), <$fty>::INFINITY);
+                $fassert!(<$fty>::NEG_INFINITY.maximum(9.0), 9.0);
+                $fassert!((9.0 as $fty).maximum(<$fty>::NEG_INFINITY), 9.0);
+                $fassert!(<$fty>::NEG_INFINITY.maximum(-9.0), -9.0);
+                $fassert!((-9.0 as $fty).maximum(<$fty>::NEG_INFINITY), -9.0);
+                $fassert!(<$fty>::NAN.maximum(9.0).is_nan());
+                $fassert!(<$fty>::NAN.maximum(-9.0).is_nan());
+                $fassert!((9.0 as $fty).maximum(<$fty>::NAN).is_nan());
+                $fassert!((-9.0 as $fty).maximum(<$fty>::NAN).is_nan());
+                $fassert!(<$fty>::NAN.maximum(<$fty>::NAN).is_nan());
             }
             #[test]
             fn midpoint() {
@@ -863,38 +863,47 @@ macro_rules! test_float {
                 $fassert!((0.0 as $fty).midpoint(0.0), 0.0);
                 $fassert!((-0.0 as $fty).midpoint(-0.0), -0.0);
                 $fassert!((-5.0 as $fty).midpoint(5.0), 0.0);
-                $fassert!(($max as $fty).midpoint($min), 0.0);
-                $fassert!(($min as $fty).midpoint($max), -0.0);
-                $fassert!(($max as $fty).midpoint($min_pos), $max / 2.);
-                $fassert!((-$max as $fty).midpoint($min_pos), -$max / 2.);
-                $fassert!(($max as $fty).midpoint(-$min_pos), $max / 2.);
-                $fassert!((-$max as $fty).midpoint(-$min_pos), -$max / 2.);
-                $fassert!(($min_pos as $fty).midpoint($max), $max / 2.);
-                $fassert!(($min_pos as $fty).midpoint(-$max), -$max / 2.);
-                $fassert!((-$min_pos as $fty).midpoint($max), $max / 2.);
-                $fassert!((-$min_pos as $fty).midpoint(-$max), -$max / 2.);
-                $fassert!(($max as $fty).midpoint($max), $max);
-                $fassert!(($min_pos as $fty).midpoint($min_pos), $min_pos);
-                $fassert!((-$min_pos as $fty).midpoint(-$min_pos), -$min_pos);
-                $fassert!(($max as $fty).midpoint(5.0), $max / 2.0 + 2.5);
-                $fassert!(($max as $fty).midpoint(-5.0), $max / 2.0 - 2.5);
-                $fassert!(($inf as $fty).midpoint($inf), $inf);
-                $fassert!(($neginf as $fty).midpoint($neginf), $neginf);
-                $fassert!(($nan as $fty).midpoint(1.0).is_nan());
-                $fassert!((1.0 as $fty).midpoint($nan).is_nan());
-                $fassert!(($nan as $fty).midpoint($nan).is_nan());
+                $fassert!(<$fty>::MAX.midpoint(<$fty>::MIN), 0.0);
+                $fassert!(<$fty>::MIN.midpoint(<$fty>::MAX), -0.0);
+                $fassert!(<$fty>::MAX.midpoint(<$fty>::MIN_POSITIVE), <$fty>::MAX / 2.);
+                $fassert!((-<$fty>::MAX).midpoint(<$fty>::MIN_POSITIVE), -<$fty>::MAX / 2.);
+                $fassert!(<$fty>::MAX.midpoint(-<$fty>::MIN_POSITIVE), <$fty>::MAX / 2.);
+                $fassert!((-<$fty>::MAX).midpoint(-<$fty>::MIN_POSITIVE), -<$fty>::MAX / 2.);
+                $fassert!((<$fty>::MIN_POSITIVE).midpoint(<$fty>::MAX), <$fty>::MAX / 2.);
+                $fassert!((<$fty>::MIN_POSITIVE).midpoint(-<$fty>::MAX), -<$fty>::MAX / 2.);
+                $fassert!((-<$fty>::MIN_POSITIVE).midpoint(<$fty>::MAX), <$fty>::MAX / 2.);
+                $fassert!((-<$fty>::MIN_POSITIVE).midpoint(-<$fty>::MAX), -<$fty>::MAX / 2.);
+                $fassert!(<$fty>::MAX.midpoint(<$fty>::MAX), <$fty>::MAX);
+                $fassert!(
+                    (<$fty>::MIN_POSITIVE).midpoint(<$fty>::MIN_POSITIVE),
+                    <$fty>::MIN_POSITIVE
+                );
+                $fassert!(
+                    (-<$fty>::MIN_POSITIVE).midpoint(-<$fty>::MIN_POSITIVE),
+                    -<$fty>::MIN_POSITIVE
+                );
+                $fassert!(<$fty>::MAX.midpoint(5.0), <$fty>::MAX / 2.0 + 2.5);
+                $fassert!(<$fty>::MAX.midpoint(-5.0), <$fty>::MAX / 2.0 - 2.5);
+                $fassert!(<$fty>::INFINITY.midpoint(<$fty>::INFINITY), <$fty>::INFINITY);
+                $fassert!(
+                    <$fty>::NEG_INFINITY.midpoint(<$fty>::NEG_INFINITY),
+                    <$fty>::NEG_INFINITY
+                );
+                $fassert!(<$fty>::NAN.midpoint(1.0).is_nan());
+                $fassert!((1.0 as $fty).midpoint(<$fty>::NAN).is_nan());
+                $fassert!(<$fty>::NAN.midpoint(<$fty>::NAN).is_nan());
 
                 // test if large differences in magnitude are still correctly computed.
                 // NOTE: that because of how small x and y are, x + y can never overflow
                 // so (x + y) / 2.0 is always correct
                 // in particular, `2.pow(i)` will  never be at the max exponent, so it could
                 // be safely doubled, while j is significantly smaller.
-                for i in $max_exp.saturating_sub(64)..$max_exp {
+                for i in <$fty>::MAX_EXP.saturating_sub(64)..<$fty>::MAX_EXP {
                     for j in 0..64u8 {
-                        let large = <$fty>::from(2.0f32).powi(i);
+                        let large = (2.0 as $fty).powi(i);
                         // a much smaller number, such that there is no chance of overflow to test
                         // potential double rounding in midpoint's implementation.
-                        let small = <$fty>::from(2.0f32).powi($max_exp - 1)
+                        let small = (2.0 as $fty).powi(<$fty>::MAX_EXP - 1)
                             * <$fty>::EPSILON
                             * <$fty>::from(j);
 
@@ -906,23 +915,37 @@ macro_rules! test_float {
                 }
             }
             #[test]
+            fn abs() {
+                $fassert!((-1.0 as $fty).abs(), 1.0);
+                $fassert!((1.0 as $fty).abs(), 1.0);
+                $fassert!(<$fty>::NEG_INFINITY.abs(), <$fty>::INFINITY);
+                $fassert!(<$fty>::INFINITY.abs(), <$fty>::INFINITY);
+            }
+            #[test]
+            fn copysign() {
+                $fassert!((1.0 as $fty).copysign(-2.0), -1.0);
+                $fassert!((-1.0 as $fty).copysign(2.0), 1.0);
+                $fassert!(<$fty>::INFINITY.copysign(-0.0), <$fty>::NEG_INFINITY);
+                $fassert!(<$fty>::NEG_INFINITY.copysign(0.0), <$fty>::INFINITY);
+            }
+            #[test]
             fn rem_euclid() {
                 // FIXME: Use $fassert when rem_euclid becomes const
-                assert!($inf.rem_euclid((42.0 as $fty)).is_nan());
-                assert_eq!((42.0 as $fty).rem_euclid($inf), (42.0 as $fty));
-                assert!((42.0 as $fty).rem_euclid($nan).is_nan());
-                assert!($inf.rem_euclid($inf).is_nan());
-                assert!($inf.rem_euclid($nan).is_nan());
-                assert!($nan.rem_euclid($inf).is_nan());
+                assert!(<$fty>::INFINITY.rem_euclid((42.0 as $fty)).is_nan());
+                assert_eq!((42.0 as $fty).rem_euclid(<$fty>::INFINITY), (42.0 as $fty));
+                assert!((42.0 as $fty).rem_euclid(<$fty>::NAN).is_nan());
+                assert!(<$fty>::INFINITY.rem_euclid(<$fty>::INFINITY).is_nan());
+                assert!(<$fty>::INFINITY.rem_euclid(<$fty>::NAN).is_nan());
+                assert!(<$fty>::NAN.rem_euclid(<$fty>::INFINITY).is_nan());
             }
             #[test]
             fn div_euclid() {
                 // FIXME: Use $fassert when div_euclid becomes const
-                assert_eq!((42.0 as $fty).div_euclid($inf), 0.0);
-                assert!((42.0 as $fty).div_euclid($nan).is_nan());
-                assert!($inf.div_euclid($inf).is_nan());
-                assert!($inf.div_euclid($nan).is_nan());
-                assert!($nan.div_euclid($inf).is_nan());
+                assert_eq!((42.0 as $fty).div_euclid(<$fty>::INFINITY), 0.0);
+                assert!((42.0 as $fty).div_euclid(<$fty>::NAN).is_nan());
+                assert!(<$fty>::INFINITY.div_euclid(<$fty>::INFINITY).is_nan());
+                assert!(<$fty>::INFINITY.div_euclid(<$fty>::NAN).is_nan());
+                assert!(<$fty>::NAN.div_euclid(<$fty>::INFINITY).is_nan());
             }
         }
     };
@@ -948,51 +971,7 @@ macro_rules! float_const_assert {
     };
 }
 
-test_float!(
-    f32,
-    float_assert,
-    f32,
-    f32::INFINITY,
-    f32::NEG_INFINITY,
-    f32::NAN,
-    f32::MIN,
-    f32::MAX,
-    f32::MIN_POSITIVE,
-    f32::MAX_EXP
-);
-test_float!(
-    f32_const,
-    float_const_assert,
-    f32,
-    f32::INFINITY,
-    f32::NEG_INFINITY,
-    f32::NAN,
-    f32::MIN,
-    f32::MAX,
-    f32::MIN_POSITIVE,
-    f32::MAX_EXP
-);
-test_float!(
-    f64,
-    float_assert,
-    f64,
-    f64::INFINITY,
-    f64::NEG_INFINITY,
-    f64::NAN,
-    f64::MIN,
-    f64::MAX,
-    f64::MIN_POSITIVE,
-    f64::MAX_EXP
-);
-test_float!(
-    f64_const,
-    float_const_assert,
-    f64,
-    f64::INFINITY,
-    f64::NEG_INFINITY,
-    f64::NAN,
-    f64::MIN,
-    f64::MAX,
-    f64::MIN_POSITIVE,
-    f64::MAX_EXP
-);
+test_float!(f32, float_assert, f32);
+test_float!(f32_const, float_const_assert, f32);
+test_float!(f64, float_assert, f64);
+test_float!(f64_const, float_const_assert, f64);
