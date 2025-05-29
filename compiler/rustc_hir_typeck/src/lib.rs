@@ -263,6 +263,24 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
     let def_id = fcx.body_id;
     let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer(()), span, .. }) = node.ty()
     {
+        // if it's a global registration addition, then the type can be infered from the declaration
+        if let Node::Item(hir::Item {
+            span,
+            kind: hir::ItemKind::Const(.., hir::DistributedSlice::Addition(def_id)),
+            ..
+        }) = node
+        {
+            // we reject generic const items (`#![feature(generic_const_items)]`) in
+            // `#[distributed_slice(crate)]`
+            let array_ty: Ty<'tcx> = tcx.type_of(*def_id).instantiate_identity();
+            let normalized_array_ty = fcx.structurally_resolve_type(*span, array_ty);
+
+            match normalized_array_ty.kind() {
+                ty::Array(element_ty, _) => return Some(*element_ty),
+                _ => panic!("not an array"),
+            }
+        }
+
         if let Some(item) = tcx.opt_associated_item(def_id.into())
             && let ty::AssocKind::Const { .. } = item.kind
             && let ty::AssocItemContainer::Impl = item.container

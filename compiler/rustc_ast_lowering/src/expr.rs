@@ -106,7 +106,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::ConstBlock(c) => hir::ExprKind::ConstBlock(self.lower_const_block(c)),
                 ExprKind::Repeat(expr, count) => {
                     let expr = self.lower_expr(expr);
-                    let count = self.lower_array_length_to_const_arg(count);
+                    let count = self.lower_array_length_to_const_arg(count, false);
                     hir::ExprKind::Repeat(expr, count)
                 }
                 ExprKind::Tup(elts) => hir::ExprKind::Tup(self.lower_exprs(elts)),
@@ -154,14 +154,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Cast(expr, ty) => {
                     let expr = self.lower_expr(expr);
-                    let ty =
-                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
+                    let ty = self.lower_ty(
+                        ty,
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Cast),
+                        false,
+                    );
                     hir::ExprKind::Cast(expr, ty)
                 }
                 ExprKind::Type(expr, ty) => {
                     let expr = self.lower_expr(expr);
-                    let ty =
-                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
+                    let ty = self.lower_ty(
+                        ty,
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Cast),
+                        false,
+                    );
                     hir::ExprKind::Type(expr, ty)
                 }
                 ExprKind::AddrOf(k, m, ohs) => {
@@ -329,6 +335,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_ty(
                         container,
                         ImplTraitContext::Disallowed(ImplTraitPosition::OffsetOf),
+                        false,
                     ),
                     self.arena.alloc_from_iter(fields.iter().map(|&ident| self.lower_ident(ident))),
                 ),
@@ -360,7 +367,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     *kind,
                     self.lower_expr(expr),
                     ty.as_ref().map(|ty| {
-                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Cast))
+                        self.lower_ty(
+                            ty,
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Cast),
+                            false,
+                        )
                     }),
                 ),
 

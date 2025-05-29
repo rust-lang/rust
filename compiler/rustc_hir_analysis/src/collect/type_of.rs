@@ -113,6 +113,33 @@ fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: S
     }
 }
 
+fn type_of_distributed_slice<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    icx: &ItemCtxt<'tcx>,
+    ty: &rustc_hir::Ty<'tcx>,
+    def_id: LocalDefId,
+) -> Ty<'tcx> {
+    use rustc_hir::*;
+    use rustc_middle::ty::Ty;
+
+    let TyKind::Array(ty, len) = ty.kind else {
+        panic!("gr should be an array");
+    };
+
+    let ConstArgKind::Infer { .. } = len.kind else {
+        // FIXME(gr) exact
+        todo!("expected infer");
+    };
+
+    let res: Option<&Vec<LocalDefId>> = tcx.distributed_slice_elements(()).get(&def_id.to_def_id());
+
+    Ty::new_array_with_const_len(
+        tcx,
+        icx.lower_ty(ty),
+        ty::Const::from_target_usize(tcx, res.map(|i| i.len()).unwrap_or(0) as u64),
+    )
+}
+
 pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, Ty<'_>> {
     use rustc_hir::*;
     use rustc_middle::ty::Ty;
@@ -207,7 +234,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
 
         Node::Item(item) => match item.kind {
             ItemKind::Static(_, ident, ty, body_id, distributed_slice) => {
-                if ty.is_suggestable_infer_ty() {
+                if let DistributedSlice::Declaration(_) = distributed_slice {
+                    type_of_distributed_slice(tcx, &icx, ty, def_id)
+                } else if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
@@ -221,7 +250,13 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 }
             }
             ItemKind::Const(ident, _, ty, body_id, distributed_slice) => {
-                if ty.is_suggestable_infer_ty() {
+                if let DistributedSlice::Declaration(_) = distributed_slice {
+                    type_of_distributed_slice(tcx, &icx, ty, def_id)
+                } else if let DistributedSlice::Addition(_) = distributed_slice {
+                    // if it's a global registration addition, then the type can be infered from the declaration
+                    // during typeck
+                    icx.lower_ty(ty)
+                } else if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,

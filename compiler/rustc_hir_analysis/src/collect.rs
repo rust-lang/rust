@@ -46,6 +46,7 @@ use tracing::{debug, instrument};
 use crate::errors;
 use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer, RegionInferReason};
 
+mod distributed_slice;
 pub(crate) mod dump;
 mod generics_of;
 mod item_bounds;
@@ -79,6 +80,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         const_conditions: predicates_of::const_conditions,
         explicit_implied_const_bounds: predicates_of::explicit_implied_const_bounds,
         type_param_predicates: predicates_of::type_param_predicates,
+        distributed_slice_elements: distributed_slice::distributed_slice_elements,
         trait_def,
         adt_def,
         fn_sig,

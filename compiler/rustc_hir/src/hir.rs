@@ -4106,10 +4106,10 @@ impl<'hir> Item<'hir> {
 
         expect_use, (&'hir UsePath<'hir>, UseKind), ItemKind::Use(p, uk), (p, *uk);
 
-        expect_static, (Mutability, Ident, &'hir Ty<'hir>, BodyId, DistributedSlice<'hir>),
+        expect_static, (Mutability, Ident, &'hir Ty<'hir>, BodyId, DistributedSlice),
             ItemKind::Static(mutbl, ident, ty, body, distributed_slice), (*mutbl, *ident, *ty, *body, *distributed_slice);
 
-        expect_const, (Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId, DistributedSlice<'hir>),
+        expect_const, (Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId, DistributedSlice),
             ItemKind::Const(ident, generics, ty, body, distributed_slice), (*ident, generics, *ty, *body, *distributed_slice);
 
         expect_fn, (Ident, &FnSig<'hir>, &'hir Generics<'hir>, BodyId),
@@ -4264,11 +4264,11 @@ impl FnHeader {
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic, Default)]
-pub enum DistributedSlice<'hir> {
+pub enum DistributedSlice {
     #[default]
     None,
     Declaration(Span),
-    Addition(QPath<'hir>),
+    Addition(LocalDefId),
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -4286,9 +4286,9 @@ pub enum ItemKind<'hir> {
     Use(&'hir UsePath<'hir>, UseKind),
 
     /// A `static` item.
-    Static(Mutability, Ident, &'hir Ty<'hir>, BodyId, DistributedSlice<'hir>),
+    Static(Mutability, Ident, &'hir Ty<'hir>, BodyId, DistributedSlice),
     /// A `const` item.
-    Const(Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId, DistributedSlice<'hir>),
+    Const(Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId, DistributedSlice),
     /// A function declaration.
     Fn {
         sig: FnSig<'hir>,

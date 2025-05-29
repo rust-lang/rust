@@ -697,6 +697,11 @@ rustc_queries! {
         desc { "getting wasm import module map" }
     }
 
+    query distributed_slice_elements(_: ()) -> &'tcx DefIdMap<Vec<LocalDefId>> {
+        arena_cache
+        desc { "collects all registered items for global registry declarations in the current crate" }
+    }
+
     /// Returns the explicitly user-written *predicates and bounds* of the trait given by `DefId`.
     ///
     /// Traits are unusual, because predicates on associated types are
