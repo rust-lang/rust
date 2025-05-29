@@ -2052,6 +2052,7 @@ symbols! {
         static_recursion,
         staticlib,
         std,
+        std_lib_injection,
         std_panic,
         std_panic_2015_macro,
         std_panic_macro,

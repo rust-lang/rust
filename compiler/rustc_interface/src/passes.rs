@@ -192,7 +192,7 @@ fn configure_and_expand(
         // Create the config for macro expansion
         let recursion_limit = get_recursion_limit(pre_configured_attrs, sess);
         let cfg = rustc_expand::expand::ExpansionConfig {
-            crate_name: crate_name.to_string(),
+            crate_name,
             features,
             recursion_limit,
             trace_mac: sess.opts.unstable_opts.trace_macros,
