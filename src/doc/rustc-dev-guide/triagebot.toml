@@ -2,9 +2,20 @@
 
 [relabel]
 allow-unauthenticated = [
-    "waiting-on-review",
-    "waiting-on-author",
-    "blocked",
+    "-Z*",
+    "A-*",
+    "C-*",
+    "D-*",
+    "E-*",
+    "F-*",
+    "I-*",
+    "L-*",
+    "O-*",
+    "PG-*",
+    "S-*",
+    "T-*",
+    "WG-*",
+    "needs-triage",
 ]
 
 [no-mentions]
