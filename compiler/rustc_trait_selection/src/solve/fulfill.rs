@@ -195,10 +195,15 @@ where
 
                 let goal = obligation.as_goal();
                 let delegate = <&SolverDelegate<'tcx>>::from(infcx);
-                if let Some(fast_path_has_changed) =
+                if let Some(certainty) =
                     delegate.compute_goal_fast_path(goal, obligation.cause.span)
                 {
-                    any_changed |= matches!(fast_path_has_changed, HasChanged::Yes);
+                    match certainty {
+                        Certainty::Yes => {}
+                        Certainty::Maybe(_) => {
+                            self.obligations.register(obligation, None);
+                        }
+                    }
                     continue;
                 }
 
