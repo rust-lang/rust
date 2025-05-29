@@ -118,6 +118,10 @@ extern "stdcall" {}
 //[x64,arm,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
 //[x64_win]~^^ WARN unsupported_calling_conventions
 //[x64_win]~^^^ WARN this was previously accepted
+extern "stdcall-unwind" {}
+//[x64,arm,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
+//[x64_win]~^^ WARN unsupported_calling_conventions
+//[x64_win]~^^^ WARN this was previously accepted
 
 extern "cdecl" fn cdecl() {}
 //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ WARN unsupported_calling_conventions
@@ -128,6 +132,9 @@ fn cdecl_ptr(f: extern "cdecl" fn()) {
     f()
 }
 extern "cdecl" {}
+//[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ WARN unsupported_calling_conventions
+//[x64,x64_win,arm,aarch64,riscv32,riscv64]~^^ WARN this was previously accepted
+extern "cdecl-unwind" {}
 //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ WARN unsupported_calling_conventions
 //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^^ WARN this was previously accepted
 

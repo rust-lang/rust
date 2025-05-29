@@ -4,8 +4,8 @@ use std::ops::ControlFlow;
 use rustc_abi::FieldIdx;
 use rustc_attr_data_structures::ReprAttr::ReprPacked;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
+use rustc_errors::{EmissionGuarantee, MultiSpan};
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::{LangItem, Node, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
@@ -37,20 +37,33 @@ use super::compare_impl_item::check_type_bounds;
 use super::*;
 
 pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi) {
+    fn add_help<T: EmissionGuarantee>(abi: ExternAbi, diag: &mut Diag<'_, T>) {
+        if let ExternAbi::Cdecl { unwind } = abi {
+            let suffix = if unwind { "-unwind" } else { "" };
+            diag.help(format!("use `extern \"C{suffix}\"` instead",));
+        } else if let ExternAbi::Stdcall { unwind } = abi {
+            let suffix = if unwind { "-unwind" } else { "" };
+            diag.help(format!(
+                "if you need `extern \"stdcall{suffix}\"` on win32 and `extern \"C{suffix}\"` everywhere else, use `extern \"system{suffix}\"`"
+            ));
+        }
+    }
     match tcx.sess.target.is_abi_supported(abi) {
         Some(true) => (),
         Some(false) => {
-            struct_span_code_err!(
+            let mut err = struct_span_code_err!(
                 tcx.dcx(),
                 span,
                 E0570,
                 "`{abi}` is not a supported ABI for the current target",
-            )
-            .emit();
+            );
+            add_help(abi, &mut err);
+            err.emit();
         }
         None => {
             tcx.node_span_lint(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
                 lint.primary_message("use of calling convention not supported on this target");
+                add_help(abi, lint);
             });
         }
     }
