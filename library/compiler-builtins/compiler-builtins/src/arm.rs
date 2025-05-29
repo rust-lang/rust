@@ -1,13 +1,16 @@
 #![cfg(not(feature = "no-asm"))]
 
 // Interfaces used by naked trampolines.
-extern "C" {
+// SAFETY: these are defined in compiler-builtins
+unsafe extern "C" {
     fn __udivmodsi4(a: u32, b: u32, rem: *mut u32) -> u32;
     fn __udivmoddi4(a: u64, b: u64, rem: *mut u64) -> u64;
     fn __divmoddi4(a: i64, b: i64, rem: *mut i64) -> i64;
 }
 
-extern "aapcs" {
+// SAFETY: these are defined in compiler-builtins
+// FIXME(extern_custom), this isn't always the correct ABI
+unsafe extern "aapcs" {
     // AAPCS is not always the correct ABI for these intrinsics, but we only use this to
     // forward another `__aeabi_` call so it doesn't matter.
     fn __aeabi_idiv(a: i32, b: i32) -> i32;
