@@ -209,7 +209,7 @@ const ROOT_NODE: DropIdx = DropIdx::ZERO;
 #[derive(Debug)]
 struct DropTree {
     /// Nodes in the drop tree, containing drop data and a link to the next node.
-    drops: IndexVec<DropIdx, DropNode>,
+    drop_nodes: IndexVec<DropIdx, DropNode>,
     /// Map for finding the index of an existing node, given its contents.
     existing_drops_map: FxHashMap<DropNodeKey, DropIdx>,
     /// Edges into the `DropTree` that need to be added once it's lowered.
@@ -230,7 +230,6 @@ struct DropNode {
 struct DropNodeKey {
     next: DropIdx,
     local: Local,
-    kind: DropKind,
 }
 
 impl Scope {
@@ -278,8 +277,8 @@ impl DropTree {
         let fake_source_info = SourceInfo::outermost(DUMMY_SP);
         let fake_data =
             DropData { source_info: fake_source_info, local: Local::MAX, kind: DropKind::Storage };
-        let drops = IndexVec::from_raw(vec![DropNode { data: fake_data, next: DropIdx::MAX }]);
-        Self { drops, entry_points: Vec::new(), existing_drops_map: FxHashMap::default() }
+        let drop_nodes = IndexVec::from_raw(vec![DropNode { data: fake_data, next: DropIdx::MAX }]);
+        Self { drop_nodes, entry_points: Vec::new(), existing_drops_map: FxHashMap::default() }
     }
 
     /// Adds a node to the drop tree, consisting of drop data and the index of
@@ -288,12 +287,12 @@ impl DropTree {
     /// If there is already an equivalent node in the tree, nothing is added, and
     /// that node's index is returned. Otherwise, the new node's index is returned.
     fn add_drop(&mut self, data: DropData, next: DropIdx) -> DropIdx {
-        let drops = &mut self.drops;
+        let drop_nodes = &mut self.drop_nodes;
         *self
             .existing_drops_map
-            .entry(DropNodeKey { next, local: data.local, kind: data.kind })
+            .entry(DropNodeKey { next, local: data.local })
             // Create a new node, and also add its index to the map.
-            .or_insert_with(|| drops.push(DropNode { data, next }))
+            .or_insert_with(|| drop_nodes.push(DropNode { data, next }))
     }
 
     /// Registers `from` as an entry point to this drop tree, at `to`.
@@ -301,7 +300,7 @@ impl DropTree {
     /// During [`Self::build_mir`], `from` will be linked to the corresponding
     /// block within the drop tree.
     fn add_entry_point(&mut self, from: BasicBlock, to: DropIdx) {
-        debug_assert!(to < self.drops.next_index());
+        debug_assert!(to < self.drop_nodes.next_index());
         self.entry_points.push((to, from));
     }
 
@@ -341,10 +340,10 @@ impl DropTree {
             Own,
         }
 
-        let mut blocks = IndexVec::from_elem(None, &self.drops);
+        let mut blocks = IndexVec::from_elem(None, &self.drop_nodes);
         blocks[ROOT_NODE] = root_node;
 
-        let mut needs_block = IndexVec::from_elem(Block::None, &self.drops);
+        let mut needs_block = IndexVec::from_elem(Block::None, &self.drop_nodes);
         if root_node.is_some() {
             // In some cases (such as drops for `continue`) the root node
             // already has a block. In this case, make sure that we don't
@@ -356,7 +355,7 @@ impl DropTree {
         let entry_points = &mut self.entry_points;
         entry_points.sort();
 
-        for (drop_idx, drop_node) in self.drops.iter_enumerated().rev() {
+        for (drop_idx, drop_node) in self.drop_nodes.iter_enumerated().rev() {
             if entry_points.last().is_some_and(|entry_point| entry_point.0 == drop_idx) {
                 let block = *blocks[drop_idx].get_or_insert_with(|| T::make_block(cfg));
                 needs_block[drop_idx] = Block::Own;
@@ -396,7 +395,7 @@ impl DropTree {
         cfg: &mut CFG<'tcx>,
         blocks: &IndexSlice<DropIdx, Option<BasicBlock>>,
     ) {
-        for (drop_idx, drop_node) in self.drops.iter_enumerated().rev() {
+        for (drop_idx, drop_node) in self.drop_nodes.iter_enumerated().rev() {
             let Some(block) = blocks[drop_idx] else { continue };
             match drop_node.data.kind {
                 DropKind::Value => {
@@ -726,11 +725,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             drops
         };
 
-        let drop_idx = self.scopes.scopes[scope_index + 1..]
-            .iter()
-            .flat_map(|scope| &scope.drops)
-            .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
-
+        let mut drop_idx = ROOT_NODE;
+        for scope in &self.scopes.scopes[scope_index + 1..] {
+            for drop in &scope.drops {
+                drop_idx = drops.add_drop(*drop, drop_idx);
+            }
+        }
         drops.add_entry_point(block, drop_idx);
 
         // `build_drop_trees` doesn't have access to our source_info, so we
@@ -829,9 +829,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // `unwind_to` should drop the value that we're about to
                         // schedule. If dropping this value panics, then we continue
                         // with the *next* value on the unwind path.
-                        debug_assert_eq!(unwind_drops.drops[unwind_to].data.local, drop_data.local);
-                        debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
-                        unwind_to = unwind_drops.drops[unwind_to].next;
+                        debug_assert_eq!(
+                            unwind_drops.drop_nodes[unwind_to].data.local,
+                            drop_data.local
+                        );
+                        debug_assert_eq!(
+                            unwind_drops.drop_nodes[unwind_to].data.kind,
+                            drop_data.kind
+                        );
+                        unwind_to = unwind_drops.drop_nodes[unwind_to].next;
 
                         let mut unwind_entry_point = unwind_to;
 
@@ -1551,14 +1557,14 @@ where
                 //
                 // We adjust this BEFORE we create the drop (e.g., `drops[n]`)
                 // because `drops[n]` should unwind to `drops[n-1]`.
-                debug_assert_eq!(unwind_drops.drops[unwind_to].data.local, drop_data.local);
-                debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
-                unwind_to = unwind_drops.drops[unwind_to].next;
+                debug_assert_eq!(unwind_drops.drop_nodes[unwind_to].data.local, drop_data.local);
+                debug_assert_eq!(unwind_drops.drop_nodes[unwind_to].data.kind, drop_data.kind);
+                unwind_to = unwind_drops.drop_nodes[unwind_to].next;
 
                 if let Some(idx) = dropline_to {
-                    debug_assert_eq!(coroutine_drops.drops[idx].data.local, drop_data.local);
-                    debug_assert_eq!(coroutine_drops.drops[idx].data.kind, drop_data.kind);
-                    dropline_to = Some(coroutine_drops.drops[idx].next);
+                    debug_assert_eq!(coroutine_drops.drop_nodes[idx].data.local, drop_data.local);
+                    debug_assert_eq!(coroutine_drops.drop_nodes[idx].data.kind, drop_data.kind);
+                    dropline_to = Some(coroutine_drops.drop_nodes[idx].next);
                 }
 
                 // If the operand has been moved, and we are not on an unwind
@@ -1598,9 +1604,12 @@ where
                 // cases we emit things ALSO on the unwind path, so we need to adjust
                 // `unwind_to` in that case.
                 if storage_dead_on_unwind {
-                    debug_assert_eq!(unwind_drops.drops[unwind_to].data.local, drop_data.local);
-                    debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
-                    unwind_to = unwind_drops.drops[unwind_to].next;
+                    debug_assert_eq!(
+                        unwind_drops.drop_nodes[unwind_to].data.local,
+                        drop_data.local
+                    );
+                    debug_assert_eq!(unwind_drops.drop_nodes[unwind_to].data.kind, drop_data.kind);
+                    unwind_to = unwind_drops.drop_nodes[unwind_to].next;
                 }
 
                 // If the operand has been moved, and we are not on an unwind
@@ -1629,14 +1638,17 @@ where
                 // the storage-dead has completed, we need to adjust the `unwind_to` pointer
                 // so that any future drops we emit will not register storage-dead.
                 if storage_dead_on_unwind {
-                    debug_assert_eq!(unwind_drops.drops[unwind_to].data.local, drop_data.local);
-                    debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
-                    unwind_to = unwind_drops.drops[unwind_to].next;
+                    debug_assert_eq!(
+                        unwind_drops.drop_nodes[unwind_to].data.local,
+                        drop_data.local
+                    );
+                    debug_assert_eq!(unwind_drops.drop_nodes[unwind_to].data.kind, drop_data.kind);
+                    unwind_to = unwind_drops.drop_nodes[unwind_to].next;
                 }
                 if let Some(idx) = dropline_to {
-                    debug_assert_eq!(coroutine_drops.drops[idx].data.local, drop_data.local);
-                    debug_assert_eq!(coroutine_drops.drops[idx].data.kind, drop_data.kind);
-                    dropline_to = Some(coroutine_drops.drops[idx].next);
+                    debug_assert_eq!(coroutine_drops.drop_nodes[idx].data.local, drop_data.local);
+                    debug_assert_eq!(coroutine_drops.drop_nodes[idx].data.kind, drop_data.kind);
+                    dropline_to = Some(coroutine_drops.drop_nodes[idx].next);
                 }
                 // Only temps and vars need their storage dead.
                 assert!(local.index() > arg_count);
@@ -1663,10 +1675,10 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         let is_coroutine = self.coroutine.is_some();
 
         // Link the exit drop tree to unwind drop tree.
-        if drops.drops.iter().any(|drop_node| drop_node.data.kind == DropKind::Value) {
+        if drops.drop_nodes.iter().any(|drop_node| drop_node.data.kind == DropKind::Value) {
             let unwind_target = self.diverge_cleanup_target(else_scope, span);
             let mut unwind_indices = IndexVec::from_elem_n(unwind_target, 1);
-            for (drop_idx, drop_node) in drops.drops.iter_enumerated().skip(1) {
+            for (drop_idx, drop_node) in drops.drop_nodes.iter_enumerated().skip(1) {
                 match drop_node.data.kind {
                     DropKind::Storage | DropKind::ForLint => {
                         if is_coroutine {
@@ -1695,35 +1707,29 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         }
         // Link the exit drop tree to dropline drop tree (coroutine drop path) for async drops
         if is_coroutine
-            && drops.drops.iter().any(|DropNode { data, next: _ }| {
+            && drops.drop_nodes.iter().any(|DropNode { data, next: _ }| {
                 data.kind == DropKind::Value && self.is_async_drop(data.local)
             })
         {
             let dropline_target = self.diverge_dropline_target(else_scope, span);
             let mut dropline_indices = IndexVec::from_elem_n(dropline_target, 1);
-            for (drop_idx, drop_data) in drops.drops.iter_enumerated().skip(1) {
+            for (drop_idx, drop_data) in drops.drop_nodes.iter_enumerated().skip(1) {
+                let coroutine_drop = self
+                    .scopes
+                    .coroutine_drops
+                    .add_drop(drop_data.data, dropline_indices[drop_data.next]);
                 match drop_data.data.kind {
-                    DropKind::Storage | DropKind::ForLint => {
-                        let coroutine_drop = self
-                            .scopes
-                            .coroutine_drops
-                            .add_drop(drop_data.data, dropline_indices[drop_data.next]);
-                        dropline_indices.push(coroutine_drop);
-                    }
+                    DropKind::Storage | DropKind::ForLint => {}
                     DropKind::Value => {
-                        let coroutine_drop = self
-                            .scopes
-                            .coroutine_drops
-                            .add_drop(drop_data.data, dropline_indices[drop_data.next]);
                         if self.is_async_drop(drop_data.data.local) {
                             self.scopes.coroutine_drops.add_entry_point(
                                 blocks[drop_idx].unwrap(),
                                 dropline_indices[drop_data.next],
                             );
                         }
-                        dropline_indices.push(coroutine_drop);
                     }
                 }
+                dropline_indices.push(coroutine_drop);
             }
         }
         blocks[ROOT_NODE].map(BasicBlock::unit)
@@ -1769,11 +1775,11 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         // prevent drop elaboration from creating drop flags that would have
         // to be captured by the coroutine. I'm not sure how important this
         // optimization is, but it is here.
-        for (drop_idx, drop_node) in drops.drops.iter_enumerated() {
+        for (drop_idx, drop_node) in drops.drop_nodes.iter_enumerated() {
             if let DropKind::Value = drop_node.data.kind
                 && let Some(bb) = blocks[drop_idx]
             {
-                debug_assert!(drop_node.next < drops.drops.next_index());
+                debug_assert!(drop_node.next < drops.drop_nodes.next_index());
                 drops.entry_points.push((drop_node.next, bb));
             }
         }

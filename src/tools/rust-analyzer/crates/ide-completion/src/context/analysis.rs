@@ -1,7 +1,7 @@
 //! Module responsible for analyzing the code surrounding the cursor for completion.
 use std::iter;
 
-use hir::{ExpandResult, Semantics, Type, TypeInfo, Variant};
+use hir::{ExpandResult, InFile, Semantics, Type, TypeInfo, Variant};
 use ide_db::{RootDatabase, active_parameter::ActiveParameter};
 use itertools::Either;
 use syntax::{
@@ -50,7 +50,7 @@ pub(super) struct AnalysisResult {
 
 pub(super) fn expand_and_analyze(
     sema: &Semantics<'_, RootDatabase>,
-    original_file: SyntaxNode,
+    original_file: InFile<SyntaxNode>,
     speculative_file: SyntaxNode,
     offset: TextSize,
     original_token: &SyntaxToken,
@@ -72,7 +72,7 @@ pub(super) fn expand_and_analyze(
         relative_offset,
     )
     .unwrap_or(ExpansionResult {
-        original_file,
+        original_file: original_file.value,
         speculative_file,
         original_offset: offset,
         speculative_offset: fake_ident_token.text_range().start(),
@@ -125,7 +125,7 @@ fn token_at_offset_ignore_whitespace(file: &SyntaxNode, offset: TextSize) -> Opt
 /// the best we can do.
 fn expand_maybe_stop(
     sema: &Semantics<'_, RootDatabase>,
-    original_file: SyntaxNode,
+    original_file: InFile<SyntaxNode>,
     speculative_file: SyntaxNode,
     original_offset: TextSize,
     fake_ident_token: SyntaxToken,
@@ -142,17 +142,16 @@ fn expand_maybe_stop(
         return result;
     }
 
-    // This needs to come after the recursive call, because our "inside macro" detection is subtly wrong
-    // with regard to attribute macros named `test` that are not std's test. So hopefully we will expand
-    // them successfully above and be able to analyze.
-    // Left biased since there may already be an identifier token there, and we appended to it.
-    if !sema.might_be_inside_macro_call(&fake_ident_token)
-        && token_at_offset_ignore_whitespace(&original_file, original_offset + relative_offset)
-            .is_some_and(|original_token| !sema.might_be_inside_macro_call(&original_token))
+    // We can't check whether the fake expansion is inside macro call, because that requires semantic info.
+    // But hopefully checking just the real one should be enough.
+    if token_at_offset_ignore_whitespace(&original_file.value, original_offset + relative_offset)
+        .is_some_and(|original_token| {
+            !sema.is_inside_macro_call(original_file.with_value(&original_token))
+        })
     {
         // Recursion base case.
         Some(ExpansionResult {
-            original_file,
+            original_file: original_file.value,
             speculative_file,
             original_offset,
             speculative_offset: fake_ident_token.text_range().start(),
@@ -166,7 +165,7 @@ fn expand_maybe_stop(
 
 fn expand(
     sema: &Semantics<'_, RootDatabase>,
-    original_file: SyntaxNode,
+    original_file: InFile<SyntaxNode>,
     speculative_file: SyntaxNode,
     original_offset: TextSize,
     fake_ident_token: SyntaxToken,
@@ -176,7 +175,7 @@ fn expand(
 
     let parent_item =
         |item: &ast::Item| item.syntax().ancestors().skip(1).find_map(ast::Item::cast);
-    let original_node = token_at_offset_ignore_whitespace(&original_file, original_offset)
+    let original_node = token_at_offset_ignore_whitespace(&original_file.value, original_offset)
         .and_then(|token| token.parent_ancestors().find_map(ast::Item::cast));
     let ancestor_items = iter::successors(
         Option::zip(
@@ -249,7 +248,7 @@ fn expand(
     }
 
     // No attributes have been expanded, so look for macro_call! token trees or derive token trees
-    let orig_tt = ancestors_at_offset(&original_file, original_offset)
+    let orig_tt = ancestors_at_offset(&original_file.value, original_offset)
         .map_while(Either::<ast::TokenTree, ast::Meta>::cast)
         .last()?;
     let spec_tt = ancestors_at_offset(&speculative_file, fake_ident_token.text_range().start())
@@ -292,7 +291,7 @@ fn expand(
                 fake_mapped_tokens.into_iter().min_by_key(|(_, rank)| *rank)
             {
                 return Some(ExpansionResult {
-                    original_file,
+                    original_file: original_file.value,
                     speculative_file,
                     original_offset,
                     speculative_offset: fake_ident_token.text_range().start(),
@@ -349,7 +348,7 @@ fn expand(
                                 }
                                 let result = expand_maybe_stop(
                                     sema,
-                                    actual_expansion.clone(),
+                                    InFile::new(file.into(), actual_expansion.clone()),
                                     fake_expansion.clone(),
                                     new_offset,
                                     fake_mapped_token,

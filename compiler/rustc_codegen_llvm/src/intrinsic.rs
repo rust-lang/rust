@@ -15,11 +15,10 @@ use rustc_middle::ty::{self, GenericArgsRef, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 use tracing::debug;
 
-use crate::abi::{FnAbiLlvmExt, LlvmType};
+use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Metadata};
@@ -165,9 +164,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn codegen_intrinsic_call(
         &mut self,
         instance: ty::Instance<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, &'ll Value>],
-        llresult: &'ll Value,
+        result: PlaceRef<'tcx, &'ll Value>,
         span: Span,
     ) -> Result<(), ty::Instance<'tcx>> {
         let tcx = self.tcx;
@@ -184,7 +182,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let name = tcx.item_name(def_id);
 
         let llret_ty = self.layout_of(ret_ty).llvm_type(self);
-        let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let simple = get_simple_intrinsic(self, name);
         let llval = match name {
@@ -255,7 +252,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     args[0].immediate(),
                     args[1].immediate(),
                     args[2].immediate(),
-                    llresult,
+                    result,
                 );
                 return Ok(());
             }
@@ -264,7 +261,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 self.call_intrinsic("llvm.va_copy", &[args[0].immediate(), args[1].immediate()])
             }
             sym::va_arg => {
-                match fn_abi.ret.layout.backend_repr {
+                match result.layout.backend_repr {
                     BackendRepr::Scalar(scalar) => {
                         match scalar.primitive() {
                             Primitive::Int(..) => {
@@ -299,18 +296,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             sym::volatile_load | sym::unaligned_volatile_load => {
-                let tp_ty = fn_args.type_at(0);
                 let ptr = args[0].immediate();
-                let load = if let PassMode::Cast { cast: ty, pad_i32: _ } = &fn_abi.ret.mode {
-                    let llty = ty.llvm_type(self);
-                    self.volatile_load(llty, ptr)
-                } else {
-                    self.volatile_load(self.layout_of(tp_ty).llvm_type(self), ptr)
-                };
+                let load = self.volatile_load(result.layout.llvm_type(self), ptr);
                 let align = if name == sym::unaligned_volatile_load {
                     1
                 } else {
-                    self.align_of(tp_ty).bytes() as u32
+                    result.layout.align.abi.bytes() as u32
                 };
                 unsafe {
                     llvm::LLVMSetAlignment(load, align);
@@ -629,14 +620,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
         };
 
-        if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast { .. } = &fn_abi.ret.mode {
-                self.store(llval, result.val.llval, result.val.align);
-            } else {
-                OperandRef::from_immediate_or_packed_pair(self, llval, result.layout)
-                    .val
-                    .store(self, result);
-            }
+        if result.layout.ty.is_bool() {
+            OperandRef::from_immediate_or_packed_pair(self, llval, result.layout)
+                .val
+                .store(self, result);
+        } else if !result.layout.ty.is_unit() {
+            self.store_to_place(llval, result.val);
         }
         Ok(())
     }
@@ -688,20 +677,19 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 }
 
-fn catch_unwind_intrinsic<'ll>(
-    bx: &mut Builder<'_, 'll, '_>,
+fn catch_unwind_intrinsic<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
     try_func: &'ll Value,
     data: &'ll Value,
     catch_func: &'ll Value,
-    dest: &'ll Value,
+    dest: PlaceRef<'tcx, &'ll Value>,
 ) {
     if bx.sess().panic_strategy() == PanicStrategy::Abort {
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
         bx.call(try_func_ty, None, None, try_func, &[data], None, None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
-        let ret_align = bx.tcx().data_layout.i32_align.abi;
-        bx.store(bx.const_i32(0), dest, ret_align);
+        OperandValue::Immediate(bx.const_i32(0)).store(bx, dest);
     } else if wants_msvc_seh(bx.sess()) {
         codegen_msvc_try(bx, try_func, data, catch_func, dest);
     } else if wants_wasm_eh(bx.sess()) {
@@ -720,12 +708,12 @@ fn catch_unwind_intrinsic<'ll>(
 // instructions are meant to work for all targets, as of the time of this
 // writing, however, LLVM does not recommend the usage of these new instructions
 // as the old ones are still more optimized.
-fn codegen_msvc_try<'ll>(
-    bx: &mut Builder<'_, 'll, '_>,
+fn codegen_msvc_try<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
     try_func: &'ll Value,
     data: &'ll Value,
     catch_func: &'ll Value,
-    dest: &'ll Value,
+    dest: PlaceRef<'tcx, &'ll Value>,
 ) {
     let (llty, llfn) = get_rust_try_fn(bx, &mut |mut bx| {
         bx.set_personality_fn(bx.eh_personality());
@@ -865,17 +853,16 @@ fn codegen_msvc_try<'ll>(
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
-    let i32_align = bx.tcx().data_layout.i32_align.abi;
-    bx.store(ret, dest, i32_align);
+    OperandValue::Immediate(ret).store(bx, dest);
 }
 
 // WASM's definition of the `rust_try` function.
-fn codegen_wasm_try<'ll>(
-    bx: &mut Builder<'_, 'll, '_>,
+fn codegen_wasm_try<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
     try_func: &'ll Value,
     data: &'ll Value,
     catch_func: &'ll Value,
-    dest: &'ll Value,
+    dest: PlaceRef<'tcx, &'ll Value>,
 ) {
     let (llty, llfn) = get_rust_try_fn(bx, &mut |mut bx| {
         bx.set_personality_fn(bx.eh_personality());
@@ -939,8 +926,7 @@ fn codegen_wasm_try<'ll>(
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
-    let i32_align = bx.tcx().data_layout.i32_align.abi;
-    bx.store(ret, dest, i32_align);
+    OperandValue::Immediate(ret).store(bx, dest);
 }
 
 // Definition of the standard `try` function for Rust using the GNU-like model
@@ -954,12 +940,12 @@ fn codegen_wasm_try<'ll>(
 // function calling it, and that function may already have other personality
 // functions in play. By calling a shim we're guaranteed that our shim will have
 // the right personality function.
-fn codegen_gnu_try<'ll>(
-    bx: &mut Builder<'_, 'll, '_>,
+fn codegen_gnu_try<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
     try_func: &'ll Value,
     data: &'ll Value,
     catch_func: &'ll Value,
-    dest: &'ll Value,
+    dest: PlaceRef<'tcx, &'ll Value>,
 ) {
     let (llty, llfn) = get_rust_try_fn(bx, &mut |mut bx| {
         // Codegens the shims described above:
@@ -1006,19 +992,18 @@ fn codegen_gnu_try<'ll>(
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
-    let i32_align = bx.tcx().data_layout.i32_align.abi;
-    bx.store(ret, dest, i32_align);
+    OperandValue::Immediate(ret).store(bx, dest);
 }
 
 // Variant of codegen_gnu_try used for emscripten where Rust panics are
 // implemented using C++ exceptions. Here we use exceptions of a specific type
 // (`struct rust_panic`) to represent Rust panics.
-fn codegen_emcc_try<'ll>(
-    bx: &mut Builder<'_, 'll, '_>,
+fn codegen_emcc_try<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
     try_func: &'ll Value,
     data: &'ll Value,
     catch_func: &'ll Value,
-    dest: &'ll Value,
+    dest: PlaceRef<'tcx, &'ll Value>,
 ) {
     let (llty, llfn) = get_rust_try_fn(bx, &mut |mut bx| {
         // Codegens the shims described above:
@@ -1089,8 +1074,7 @@ fn codegen_emcc_try<'ll>(
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
-    let i32_align = bx.tcx().data_layout.i32_align.abi;
-    bx.store(ret, dest, i32_align);
+    OperandValue::Immediate(ret).store(bx, dest);
 }
 
 // Helper function to give a Block to a closure to codegen a shim function.

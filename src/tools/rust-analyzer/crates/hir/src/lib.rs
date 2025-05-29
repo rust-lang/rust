@@ -5972,6 +5972,59 @@ impl Layout {
         }
     }
 
+    pub fn tail_padding(&self, field_size: &mut impl FnMut(usize) -> Option<u64>) -> Option<u64> {
+        match self.0.fields {
+            layout::FieldsShape::Primitive => None,
+            layout::FieldsShape::Union(_) => None,
+            layout::FieldsShape::Array { stride, count } => count.checked_sub(1).and_then(|tail| {
+                let tail_field_size = field_size(tail as usize)?;
+                let offset = stride.bytes() * tail;
+                self.0.size.bytes().checked_sub(offset)?.checked_sub(tail_field_size)
+            }),
+            layout::FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
+                let tail = memory_index.last_index()?;
+                let tail_field_size = field_size(tail.0.into_raw().into_u32() as usize)?;
+                let offset = offsets.get(tail)?.bytes();
+                self.0.size.bytes().checked_sub(offset)?.checked_sub(tail_field_size)
+            }
+        }
+    }
+
+    pub fn largest_padding(
+        &self,
+        field_size: &mut impl FnMut(usize) -> Option<u64>,
+    ) -> Option<u64> {
+        match self.0.fields {
+            layout::FieldsShape::Primitive => None,
+            layout::FieldsShape::Union(_) => None,
+            layout::FieldsShape::Array { stride: _, count: 0 } => None,
+            layout::FieldsShape::Array { stride, .. } => {
+                let size = field_size(0)?;
+                stride.bytes().checked_sub(size)
+            }
+            layout::FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
+                let mut reverse_index = vec![None; memory_index.len()];
+                for (src, (mem, offset)) in memory_index.iter().zip(offsets.iter()).enumerate() {
+                    reverse_index[*mem as usize] = Some((src, offset.bytes()));
+                }
+                if reverse_index.iter().any(|it| it.is_none()) {
+                    stdx::never!();
+                    return None;
+                }
+                reverse_index
+                    .into_iter()
+                    .flatten()
+                    .chain(std::iter::once((0, self.0.size.bytes())))
+                    .tuple_windows()
+                    .filter_map(|((i, start), (_, end))| {
+                        let size = field_size(i)?;
+                        end.checked_sub(start)?.checked_sub(size)
+                    })
+                    .max()
+            }
+        }
+    }
+
     pub fn enum_tag_size(&self) -> Option<usize> {
         let tag_size =
             if let layout::Variants::Multiple { tag, tag_encoding, .. } = &self.0.variants {

@@ -203,7 +203,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
                 tcx.ensure_ok().eval_static_initializer(item_def_id);
                 check::maybe_check_static_with_link_section(tcx, item_def_id);
             }
-            DefKind::Const if tcx.generics_of(item_def_id).is_empty() => {
+            DefKind::Const if !tcx.generics_of(item_def_id).own_requires_monomorphization() => {
+                // FIXME(generic_const_items): Passing empty instead of identity args is fishy but
+                //                             seems to be fine for now. Revisit this!
                 let instance = ty::Instance::new_raw(item_def_id.into(), ty::GenericArgs::empty());
                 let cid = GlobalId { instance, promoted: None };
                 let typing_env = ty::TypingEnv::fully_monomorphized();

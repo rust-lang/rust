@@ -925,6 +925,22 @@ where
                     }
                 }
             }
+
+            fn visit_predicate(&mut self, p: I::Predicate) -> Self::Result {
+                if p.has_non_region_infer() || p.has_placeholders() {
+                    p.super_visit_with(self)
+                } else {
+                    ControlFlow::Continue(())
+                }
+            }
+
+            fn visit_clauses(&mut self, c: I::Clauses) -> Self::Result {
+                if c.has_non_region_infer() || c.has_placeholders() {
+                    c.super_visit_with(self)
+                } else {
+                    ControlFlow::Continue(())
+                }
+            }
         }
 
         let mut visitor = ContainsTermOrNotNameable {

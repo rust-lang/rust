@@ -22,7 +22,7 @@ use tracing::{debug, instrument, trace};
 
 use crate::canonicalizer::Canonicalizer;
 use crate::delegate::SolverDelegate;
-use crate::resolve::EagerResolver;
+use crate::resolve::eager_resolve_vars;
 use crate::solve::eval_ctxt::CurrentGoalKind;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, EvalCtxt, ExternalConstraintsData, Goal,
@@ -61,8 +61,7 @@ where
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
-        let (goal, opaque_types) =
-            (goal, opaque_types).fold_with(&mut EagerResolver::new(self.delegate));
+        let (goal, opaque_types) = eager_resolve_vars(self.delegate, (goal, opaque_types));
 
         let mut orig_values = Default::default();
         let canonical = Canonicalizer::canonicalize_input(
@@ -162,8 +161,8 @@ where
 
         let external_constraints =
             self.compute_external_query_constraints(certainty, normalization_nested_goals);
-        let (var_values, mut external_constraints) = (self.var_values, external_constraints)
-            .fold_with(&mut EagerResolver::new(self.delegate));
+        let (var_values, mut external_constraints) =
+            eager_resolve_vars(self.delegate, (self.var_values, external_constraints));
 
         // Remove any trivial or duplicated region constraints once we've resolved regions
         let mut unique = HashSet::default();
@@ -474,7 +473,7 @@ where
 {
     let var_values = CanonicalVarValues { var_values: delegate.cx().mk_args(var_values) };
     let state = inspect::State { var_values, data };
-    let state = state.fold_with(&mut EagerResolver::new(delegate));
+    let state = eager_resolve_vars(delegate, state);
     Canonicalizer::canonicalize_response(delegate, max_input_universe, &mut vec![], state)
 }
 

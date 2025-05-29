@@ -2694,9 +2694,9 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.resolve_define_opaques(define_opaque);
             }
 
-            ItemKind::Enum(_, _, ref generics)
-            | ItemKind::Struct(_, _, ref generics)
-            | ItemKind::Union(_, _, ref generics) => {
+            ItemKind::Enum(_, ref generics, _)
+            | ItemKind::Struct(_, ref generics, _)
+            | ItemKind::Union(_, ref generics, _) => {
                 self.resolve_adt(item, generics);
             }
 
@@ -5243,9 +5243,9 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
             ItemKind::TyAlias(box TyAlias { generics, .. })
             | ItemKind::Const(box ConstItem { generics, .. })
             | ItemKind::Fn(box Fn { generics, .. })
-            | ItemKind::Enum(_, _, generics)
-            | ItemKind::Struct(_, _, generics)
-            | ItemKind::Union(_, _, generics)
+            | ItemKind::Enum(_, generics, _)
+            | ItemKind::Struct(_, generics, _)
+            | ItemKind::Union(_, generics, _)
             | ItemKind::Impl(box Impl { generics, .. })
             | ItemKind::Trait(box Trait { generics, .. })
             | ItemKind::TraitAlias(_, generics, _) => {

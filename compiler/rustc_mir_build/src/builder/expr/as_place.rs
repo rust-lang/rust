@@ -101,12 +101,12 @@ fn convert_to_hir_projections_and_truncate_for_capture(
                 variant = Some(*idx);
                 continue;
             }
+            ProjectionElem::UnwrapUnsafeBinder(_) => HirProjectionKind::UnwrapUnsafeBinder,
             // These do not affect anything, they just make sure we know the right type.
             ProjectionElem::OpaqueCast(_) | ProjectionElem::Subtype(..) => continue,
             ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }
-            | ProjectionElem::Subslice { .. }
-            | ProjectionElem::UnwrapUnsafeBinder(_) => {
+            | ProjectionElem::Subslice { .. } => {
                 // We don't capture array-access projections.
                 // We can stop here as arrays are captured completely.
                 break;

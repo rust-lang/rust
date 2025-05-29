@@ -1023,7 +1023,7 @@ impl flags::AnalysisStats {
             percentage(num_pats_partially_unknown, num_pats),
             num_pat_type_mismatches
         );
-        eprintln!("  panics: {}", panics);
+        eprintln!("  panics: {panics}");
         eprintln!("{:<20} {}", "Inference:", inference_time);
         report_metric("unknown type", num_exprs_unknown, "#");
         report_metric("type mismatches", num_expr_type_mismatches, "#");

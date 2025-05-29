@@ -1782,8 +1782,30 @@ fn test_eq_windows_file_type() {
     // Change the readonly attribute of one file.
     let mut perms = file1.metadata().unwrap().permissions();
     perms.set_readonly(true);
-    file1.set_permissions(perms).unwrap();
+    file1.set_permissions(perms.clone()).unwrap();
+    #[cfg(target_vendor = "win7")]
+    let _g = ReadonlyGuard { file: &file1, perms };
     assert_eq!(file1.metadata().unwrap().file_type(), file2.metadata().unwrap().file_type());
+
+    // Reset the attribute before the `TmpDir`'s drop that removes the
+    // associated directory, which fails with a `PermissionDenied` error when
+    // running under Windows 7.
+    #[cfg(target_vendor = "win7")]
+    struct ReadonlyGuard<'f> {
+        file: &'f File,
+        perms: fs::Permissions,
+    }
+    #[cfg(target_vendor = "win7")]
+    impl<'f> Drop for ReadonlyGuard<'f> {
+        fn drop(&mut self) {
+            self.perms.set_readonly(false);
+            let res = self.file.set_permissions(self.perms.clone());
+
+            if !thread::panicking() {
+                res.unwrap();
+            }
+        }
+    }
 }
 
 /// Regression test for https://github.com/rust-lang/rust/issues/50619.

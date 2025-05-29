@@ -12,7 +12,7 @@ use crate::ir_print::IrPrint;
 use crate::lang_items::TraitSolverLangItem;
 use crate::relate::Relate;
 use crate::solve::{CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult};
-use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
+use crate::visit::{Flags, TypeVisitable};
 use crate::{self as ty, search_graph};
 
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
@@ -146,7 +146,7 @@ pub trait Interner:
     type ParamEnv: ParamEnv<Self>;
     type Predicate: Predicate<Self>;
     type Clause: Clause<Self>;
-    type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
+    type Clauses: Clauses<Self>;
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
 

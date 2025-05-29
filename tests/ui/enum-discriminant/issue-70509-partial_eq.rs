@@ -1,6 +1,4 @@
 //@ run-pass
-#![feature(repr128)]
-//~^ WARN the feature `repr128` is incomplete
 
 #[derive(PartialEq, Debug)]
 #[repr(i128)]
