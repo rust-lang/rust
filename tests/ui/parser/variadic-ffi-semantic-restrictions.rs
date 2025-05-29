@@ -83,3 +83,12 @@ trait T {
     //~^ ERROR only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
     //~| ERROR `...` must be the last argument of a C-variadic function
 }
+
+unsafe extern "C" {
+    safe fn s_f1(...);
+    //~^ ERROR foreign functions with a C-variadic argument cannot be safe
+    safe fn printf(format: *const u8, ...);
+    //~^ ERROR foreign functions with a C-variadic argument cannot be safe
+    safe fn snprintf(s: *mut u8, n: usize, format: *const u8, ...);
+    //~^ ERROR foreign functions with a C-variadic argument cannot be safe
+}
