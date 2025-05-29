@@ -37,6 +37,12 @@ macro_rules! assert_biteq {
             rb = r.to_bits(),
             width = ((bits / 4) + 2) as usize,
         );
+
+        if !l.is_nan() && !r.is_nan() {
+            // Also check that standard equality holds, since most tests use `assert_biteq` rather
+            // than `assert_eq`.
+            assert_eq!(l, r)
+        }
     }};
     ($left:expr, $right:expr , $($tt:tt)*) => {
         assert_biteq!(@inner $left, $right, "\n", $($tt)*)

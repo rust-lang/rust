@@ -52,15 +52,15 @@ fn test_num_f16() {
 #[test]
 #[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_min_nan() {
-    assert_eq!(f16::NAN.min(2.0), 2.0);
-    assert_eq!(2.0f16.min(f16::NAN), 2.0);
+    assert_biteq!(f16::NAN.min(2.0), 2.0);
+    assert_biteq!(2.0f16.min(f16::NAN), 2.0);
 }
 
 #[test]
 #[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_max_nan() {
-    assert_eq!(f16::NAN.max(2.0), 2.0);
-    assert_eq!(2.0f16.max(f16::NAN), 2.0);
+    assert_biteq!(f16::NAN.max(2.0), 2.0);
+    assert_biteq!(2.0f16.max(f16::NAN), 2.0);
 }
 
 #[test]
@@ -118,7 +118,7 @@ fn test_neg_infinity() {
 #[test]
 fn test_zero() {
     let zero: f16 = 0.0f16;
-    assert_eq!(0.0, zero);
+    assert_biteq!(0.0, zero);
     assert!(!zero.is_infinite());
     assert!(zero.is_finite());
     assert!(zero.is_sign_positive());
@@ -132,6 +132,7 @@ fn test_zero() {
 fn test_neg_zero() {
     let neg_zero: f16 = -0.0;
     assert_eq!(0.0, neg_zero);
+    assert_biteq!(-0.0, neg_zero);
     assert!(!neg_zero.is_infinite());
     assert!(neg_zero.is_finite());
     assert!(!neg_zero.is_sign_positive());
@@ -144,7 +145,7 @@ fn test_neg_zero() {
 #[test]
 fn test_one() {
     let one: f16 = 1.0f16;
-    assert_eq!(1.0, one);
+    assert_biteq!(1.0, one);
     assert!(!one.is_infinite());
     assert!(one.is_finite());
     assert!(one.is_sign_positive());
@@ -230,105 +231,105 @@ fn test_classify() {
 #[test]
 #[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_floor() {
-    assert_eq!(1.0f16.floor(), 1.0f16);
-    assert_eq!(1.3f16.floor(), 1.0f16);
-    assert_eq!(1.5f16.floor(), 1.0f16);
-    assert_eq!(1.7f16.floor(), 1.0f16);
-    assert_eq!(0.0f16.floor(), 0.0f16);
-    assert_eq!((-0.0f16).floor(), -0.0f16);
-    assert_eq!((-1.0f16).floor(), -1.0f16);
-    assert_eq!((-1.3f16).floor(), -2.0f16);
-    assert_eq!((-1.5f16).floor(), -2.0f16);
-    assert_eq!((-1.7f16).floor(), -2.0f16);
+    assert_biteq!(1.0f16.floor(), 1.0f16);
+    assert_biteq!(1.3f16.floor(), 1.0f16);
+    assert_biteq!(1.5f16.floor(), 1.0f16);
+    assert_biteq!(1.7f16.floor(), 1.0f16);
+    assert_biteq!(0.0f16.floor(), 0.0f16);
+    assert_biteq!((-0.0f16).floor(), -0.0f16);
+    assert_biteq!((-1.0f16).floor(), -1.0f16);
+    assert_biteq!((-1.3f16).floor(), -2.0f16);
+    assert_biteq!((-1.5f16).floor(), -2.0f16);
+    assert_biteq!((-1.7f16).floor(), -2.0f16);
 }
 
 #[test]
 #[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_ceil() {
-    assert_eq!(1.0f16.ceil(), 1.0f16);
-    assert_eq!(1.3f16.ceil(), 2.0f16);
-    assert_eq!(1.5f16.ceil(), 2.0f16);
-    assert_eq!(1.7f16.ceil(), 2.0f16);
-    assert_eq!(0.0f16.ceil(), 0.0f16);
-    assert_eq!((-0.0f16).ceil(), -0.0f16);
-    assert_eq!((-1.0f16).ceil(), -1.0f16);
-    assert_eq!((-1.3f16).ceil(), -1.0f16);
-    assert_eq!((-1.5f16).ceil(), -1.0f16);
-    assert_eq!((-1.7f16).ceil(), -1.0f16);
+    assert_biteq!(1.0f16.ceil(), 1.0f16);
+    assert_biteq!(1.3f16.ceil(), 2.0f16);
+    assert_biteq!(1.5f16.ceil(), 2.0f16);
+    assert_biteq!(1.7f16.ceil(), 2.0f16);
+    assert_biteq!(0.0f16.ceil(), 0.0f16);
+    assert_biteq!((-0.0f16).ceil(), -0.0f16);
+    assert_biteq!((-1.0f16).ceil(), -1.0f16);
+    assert_biteq!((-1.3f16).ceil(), -1.0f16);
+    assert_biteq!((-1.5f16).ceil(), -1.0f16);
+    assert_biteq!((-1.7f16).ceil(), -1.0f16);
 }
 
 #[test]
 #[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_round() {
-    assert_eq!(2.5f16.round(), 3.0f16);
-    assert_eq!(1.0f16.round(), 1.0f16);
-    assert_eq!(1.3f16.round(), 1.0f16);
-    assert_eq!(1.5f16.round(), 2.0f16);
-    assert_eq!(1.7f16.round(), 2.0f16);
-    assert_eq!(0.0f16.round(), 0.0f16);
-    assert_eq!((-0.0f16).round(), -0.0f16);
-    assert_eq!((-1.0f16).round(), -1.0f16);
-    assert_eq!((-1.3f16).round(), -1.0f16);
-    assert_eq!((-1.5f16).round(), -2.0f16);
-    assert_eq!((-1.7f16).round(), -2.0f16);
+    assert_biteq!(2.5f16.round(), 3.0f16);
+    assert_biteq!(1.0f16.round(), 1.0f16);
+    assert_biteq!(1.3f16.round(), 1.0f16);
+    assert_biteq!(1.5f16.round(), 2.0f16);
+    assert_biteq!(1.7f16.round(), 2.0f16);
+    assert_biteq!(0.0f16.round(), 0.0f16);
+    assert_biteq!((-0.0f16).round(), -0.0f16);
+    assert_biteq!((-1.0f16).round(), -1.0f16);
+    assert_biteq!((-1.3f16).round(), -1.0f16);
+    assert_biteq!((-1.5f16).round(), -2.0f16);
+    assert_biteq!((-1.7f16).round(), -2.0f16);
 }
 
 #[test]
 #[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_round_ties_even() {
-    assert_eq!(2.5f16.round_ties_even(), 2.0f16);
-    assert_eq!(1.0f16.round_ties_even(), 1.0f16);
-    assert_eq!(1.3f16.round_ties_even(), 1.0f16);
-    assert_eq!(1.5f16.round_ties_even(), 2.0f16);
-    assert_eq!(1.7f16.round_ties_even(), 2.0f16);
-    assert_eq!(0.0f16.round_ties_even(), 0.0f16);
-    assert_eq!((-0.0f16).round_ties_even(), -0.0f16);
-    assert_eq!((-1.0f16).round_ties_even(), -1.0f16);
-    assert_eq!((-1.3f16).round_ties_even(), -1.0f16);
-    assert_eq!((-1.5f16).round_ties_even(), -2.0f16);
-    assert_eq!((-1.7f16).round_ties_even(), -2.0f16);
+    assert_biteq!(2.5f16.round_ties_even(), 2.0f16);
+    assert_biteq!(1.0f16.round_ties_even(), 1.0f16);
+    assert_biteq!(1.3f16.round_ties_even(), 1.0f16);
+    assert_biteq!(1.5f16.round_ties_even(), 2.0f16);
+    assert_biteq!(1.7f16.round_ties_even(), 2.0f16);
+    assert_biteq!(0.0f16.round_ties_even(), 0.0f16);
+    assert_biteq!((-0.0f16).round_ties_even(), -0.0f16);
+    assert_biteq!((-1.0f16).round_ties_even(), -1.0f16);
+    assert_biteq!((-1.3f16).round_ties_even(), -1.0f16);
+    assert_biteq!((-1.5f16).round_ties_even(), -2.0f16);
+    assert_biteq!((-1.7f16).round_ties_even(), -2.0f16);
 }
 
 #[test]
 #[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_trunc() {
-    assert_eq!(1.0f16.trunc(), 1.0f16);
-    assert_eq!(1.3f16.trunc(), 1.0f16);
-    assert_eq!(1.5f16.trunc(), 1.0f16);
-    assert_eq!(1.7f16.trunc(), 1.0f16);
-    assert_eq!(0.0f16.trunc(), 0.0f16);
-    assert_eq!((-0.0f16).trunc(), -0.0f16);
-    assert_eq!((-1.0f16).trunc(), -1.0f16);
-    assert_eq!((-1.3f16).trunc(), -1.0f16);
-    assert_eq!((-1.5f16).trunc(), -1.0f16);
-    assert_eq!((-1.7f16).trunc(), -1.0f16);
+    assert_biteq!(1.0f16.trunc(), 1.0f16);
+    assert_biteq!(1.3f16.trunc(), 1.0f16);
+    assert_biteq!(1.5f16.trunc(), 1.0f16);
+    assert_biteq!(1.7f16.trunc(), 1.0f16);
+    assert_biteq!(0.0f16.trunc(), 0.0f16);
+    assert_biteq!((-0.0f16).trunc(), -0.0f16);
+    assert_biteq!((-1.0f16).trunc(), -1.0f16);
+    assert_biteq!((-1.3f16).trunc(), -1.0f16);
+    assert_biteq!((-1.5f16).trunc(), -1.0f16);
+    assert_biteq!((-1.7f16).trunc(), -1.0f16);
 }
 
 #[test]
 #[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_fract() {
-    assert_eq!(1.0f16.fract(), 0.0f16);
-    assert_eq!(1.3f16.fract(), 0.2998f16);
-    assert_eq!(1.5f16.fract(), 0.5f16);
-    assert_eq!(1.7f16.fract(), 0.7f16);
-    assert_eq!(0.0f16.fract(), 0.0f16);
-    assert_eq!((-0.0f16).fract(), -0.0f16);
-    assert_eq!((-1.0f16).fract(), -0.0f16);
-    assert_eq!((-1.3f16).fract(), -0.2998f16);
-    assert_eq!((-1.5f16).fract(), -0.5f16);
-    assert_eq!((-1.7f16).fract(), -0.7f16);
+    assert_biteq!(1.0f16.fract(), 0.0f16);
+    assert_biteq!(1.3f16.fract(), 0.2998f16);
+    assert_biteq!(1.5f16.fract(), 0.5f16);
+    assert_biteq!(1.7f16.fract(), 0.7f16);
+    assert_biteq!(0.0f16.fract(), 0.0f16);
+    assert_biteq!((-0.0f16).fract(), 0.0f16);
+    assert_biteq!((-1.0f16).fract(), 0.0f16);
+    assert_biteq!((-1.3f16).fract(), -0.2998f16);
+    assert_biteq!((-1.5f16).fract(), -0.5f16);
+    assert_biteq!((-1.7f16).fract(), -0.7f16);
 }
 
 #[test]
 #[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_abs() {
-    assert_eq!(f16::INFINITY.abs(), f16::INFINITY);
-    assert_eq!(1f16.abs(), 1f16);
-    assert_eq!(0f16.abs(), 0f16);
-    assert_eq!((-0f16).abs(), 0f16);
-    assert_eq!((-1f16).abs(), 1f16);
-    assert_eq!(f16::NEG_INFINITY.abs(), f16::INFINITY);
-    assert_eq!((1f16 / f16::NEG_INFINITY).abs(), 0f16);
+    assert_biteq!(f16::INFINITY.abs(), f16::INFINITY);
+    assert_biteq!(1f16.abs(), 1f16);
+    assert_biteq!(0f16.abs(), 0f16);
+    assert_biteq!((-0f16).abs(), 0f16);
+    assert_biteq!((-1f16).abs(), 1f16);
+    assert_biteq!(f16::NEG_INFINITY.abs(), f16::INFINITY);
+    assert_biteq!((1f16 / f16::NEG_INFINITY).abs(), 0f16);
     assert!(f16::NAN.abs().is_nan());
 }
 
@@ -426,15 +427,15 @@ fn test_mul_add() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
-    assert_eq!(12.3f16.mul_add(4.5, 6.7), 62.031);
-    assert_eq!((-12.3f16).mul_add(-4.5, -6.7), 48.625);
-    assert_eq!(0.0f16.mul_add(8.9, 1.2), 1.2);
-    assert_eq!(3.4f16.mul_add(-0.0, 5.6), 5.6);
+    assert_biteq!(12.3f16.mul_add(4.5, 6.7), 62.031);
+    assert_biteq!((-12.3f16).mul_add(-4.5, -6.7), 48.625);
+    assert_biteq!(0.0f16.mul_add(8.9, 1.2), 1.2);
+    assert_biteq!(3.4f16.mul_add(-0.0, 5.6), 5.6);
     assert!(nan.mul_add(7.8, 9.0).is_nan());
-    assert_eq!(inf.mul_add(7.8, 9.0), inf);
-    assert_eq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
-    assert_eq!(8.9f16.mul_add(inf, 3.2), inf);
-    assert_eq!((-3.2f16).mul_add(2.4, neg_inf), neg_inf);
+    assert_biteq!(inf.mul_add(7.8, 9.0), inf);
+    assert_biteq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
+    assert_biteq!(8.9f16.mul_add(inf, 3.2), inf);
+    assert_biteq!((-3.2f16).mul_add(2.4, neg_inf), neg_inf);
 }
 
 #[test]
@@ -443,14 +444,14 @@ fn test_recip() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
-    assert_eq!(1.0f16.recip(), 1.0);
-    assert_eq!(2.0f16.recip(), 0.5);
-    assert_eq!((-0.4f16).recip(), -2.5);
-    assert_eq!(0.0f16.recip(), inf);
+    assert_biteq!(1.0f16.recip(), 1.0);
+    assert_biteq!(2.0f16.recip(), 0.5);
+    assert_biteq!((-0.4f16).recip(), -2.5);
+    assert_biteq!(0.0f16.recip(), inf);
     assert_approx_eq!(f16::MAX.recip(), 1.526624e-5f16, 1e-4);
     assert!(nan.recip().is_nan());
-    assert_eq!(inf.recip(), 0.0);
-    assert_eq!(neg_inf.recip(), 0.0);
+    assert_biteq!(inf.recip(), 0.0);
+    assert_biteq!(neg_inf.recip(), -0.0);
 }
 
 #[test]
@@ -460,13 +461,13 @@ fn test_powi() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
-    assert_eq!(1.0f16.powi(1), 1.0);
+    assert_biteq!(1.0f16.powi(1), 1.0);
     assert_approx_eq!((-3.1f16).powi(2), 9.61, TOL_0);
     assert_approx_eq!(5.9f16.powi(-2), 0.028727, TOL_N2);
-    assert_eq!(8.3f16.powi(0), 1.0);
+    assert_biteq!(8.3f16.powi(0), 1.0);
     assert!(nan.powi(2).is_nan());
-    assert_eq!(inf.powi(3), inf);
-    assert_eq!(neg_inf.powi(2), inf);
+    assert_biteq!(inf.powi(3), inf);
+    assert_biteq!(neg_inf.powi(2), inf);
 }
 
 #[test]
@@ -476,10 +477,10 @@ fn test_sqrt_domain() {
     assert!(f16::NAN.sqrt().is_nan());
     assert!(f16::NEG_INFINITY.sqrt().is_nan());
     assert!((-1.0f16).sqrt().is_nan());
-    assert_eq!((-0.0f16).sqrt(), -0.0);
-    assert_eq!(0.0f16.sqrt(), 0.0);
-    assert_eq!(1.0f16.sqrt(), 1.0);
-    assert_eq!(f16::INFINITY.sqrt(), f16::INFINITY);
+    assert_biteq!((-0.0f16).sqrt(), -0.0);
+    assert_biteq!(0.0f16.sqrt(), 0.0);
+    assert_biteq!(1.0f16.sqrt(), 1.0);
+    assert_biteq!(f16::INFINITY.sqrt(), f16::INFINITY);
 }
 
 #[test]
@@ -488,13 +489,13 @@ fn test_to_degrees() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
-    assert_eq!(0.0f16.to_degrees(), 0.0);
+    assert_biteq!(0.0f16.to_degrees(), 0.0);
     assert_approx_eq!((-5.8f16).to_degrees(), -332.315521, TOL_P2);
     assert_approx_eq!(pi.to_degrees(), 180.0, TOL_P2);
     assert!(nan.to_degrees().is_nan());
-    assert_eq!(inf.to_degrees(), inf);
-    assert_eq!(neg_inf.to_degrees(), neg_inf);
-    assert_eq!(1_f16.to_degrees(), 57.2957795130823208767981548141051703);
+    assert_biteq!(inf.to_degrees(), inf);
+    assert_biteq!(neg_inf.to_degrees(), neg_inf);
+    assert_biteq!(1_f16.to_degrees(), 57.2957795130823208767981548141051703);
 }
 
 #[test]
@@ -503,13 +504,13 @@ fn test_to_radians() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
-    assert_eq!(0.0f16.to_radians(), 0.0);
+    assert_biteq!(0.0f16.to_radians(), 0.0);
     assert_approx_eq!(154.6f16.to_radians(), 2.698279, TOL_0);
     assert_approx_eq!((-332.31f16).to_radians(), -5.799903, TOL_0);
     assert_approx_eq!(180.0f16.to_radians(), pi, TOL_0);
     assert!(nan.to_radians().is_nan());
-    assert_eq!(inf.to_radians(), inf);
-    assert_eq!(neg_inf.to_radians(), neg_inf);
+    assert_biteq!(inf.to_radians(), inf);
+    assert_biteq!(neg_inf.to_radians(), neg_inf);
 }
 
 #[test]
@@ -518,10 +519,10 @@ fn test_float_bits_conv() {
     assert_eq!((12.5f16).to_bits(), 0x4a40);
     assert_eq!((1337f16).to_bits(), 0x6539);
     assert_eq!((-14.25f16).to_bits(), 0xcb20);
-    assert_eq!(f16::from_bits(0x3c00), 1.0);
-    assert_eq!(f16::from_bits(0x4a40), 12.5);
-    assert_eq!(f16::from_bits(0x6539), 1337.0);
-    assert_eq!(f16::from_bits(0xcb20), -14.25);
+    assert_biteq!(f16::from_bits(0x3c00), 1.0);
+    assert_biteq!(f16::from_bits(0x4a40), 12.5);
+    assert_biteq!(f16::from_bits(0x6539), 1337.0);
+    assert_biteq!(f16::from_bits(0xcb20), -14.25);
 
     // Check that NaNs roundtrip their bits regardless of signaling-ness
     let masked_nan1 = f16::NAN.to_bits() ^ NAN_MASK1;
@@ -719,12 +720,12 @@ fn test_algebraic() {
 
 #[test]
 fn test_from() {
-    assert_eq!(f16::from(false), 0.0);
-    assert_eq!(f16::from(true), 1.0);
-    assert_eq!(f16::from(u8::MIN), 0.0);
-    assert_eq!(f16::from(42_u8), 42.0);
-    assert_eq!(f16::from(u8::MAX), 255.0);
-    assert_eq!(f16::from(i8::MIN), -128.0);
-    assert_eq!(f16::from(42_i8), 42.0);
-    assert_eq!(f16::from(i8::MAX), 127.0);
+    assert_biteq!(f16::from(false), 0.0);
+    assert_biteq!(f16::from(true), 1.0);
+    assert_biteq!(f16::from(u8::MIN), 0.0);
+    assert_biteq!(f16::from(42_u8), 42.0);
+    assert_biteq!(f16::from(u8::MAX), 255.0);
+    assert_biteq!(f16::from(i8::MIN), -128.0);
+    assert_biteq!(f16::from(42_i8), 42.0);
+    assert_biteq!(f16::from(i8::MAX), 127.0);
 }
