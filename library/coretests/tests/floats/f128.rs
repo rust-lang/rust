@@ -1,12 +1,9 @@
 // FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
 #![cfg(target_has_reliable_f128)]
 
+use core::ops::{Add, Div, Mul, Sub};
 use std::f128::consts;
 use std::num::FpCategory as Fp;
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
-use std::ops::Rem;
-use std::ops::{Add, Div, Mul, Sub};
 
 // Note these tolerances make sense around zero, but not for more extreme exponents.
 
@@ -49,47 +46,36 @@ fn test_num_f128() {
     assert_eq!(ten.sub(two), ten - two);
     assert_eq!(ten.mul(two), ten * two);
     assert_eq!(ten.div(two), ten / two);
+    #[cfg(any(miri, target_has_reliable_f128_math))]
+    assert_eq!(core::ops::Rem::rem(ten, two), ten % two);
 }
 
 // FIXME(f16_f128,miri): many of these have to be disabled since miri does not yet support
 // the intrinsics.
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
-fn test_num_f128_rem() {
-    let ten = 10f128;
-    let two = 2f128;
-    assert_eq!(ten.rem(two), ten % two);
-}
-
-#[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
+#[cfg(any(miri, target_has_reliable_f128_math))]
 fn test_min_nan() {
     assert_eq!(f128::NAN.min(2.0), 2.0);
     assert_eq!(2.0f128.min(f128::NAN), 2.0);
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
+#[cfg(any(miri, target_has_reliable_f128_math))]
 fn test_max_nan() {
     assert_eq!(f128::NAN.max(2.0), 2.0);
     assert_eq!(2.0f128.max(f128::NAN), 2.0);
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
+#[cfg(any(miri, target_has_reliable_f128_math))]
 fn test_minimum() {
     assert!(f128::NAN.minimum(2.0).is_nan());
     assert!(2.0f128.minimum(f128::NAN).is_nan());
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
+#[cfg(any(miri, target_has_reliable_f128_math))]
 fn test_maximum() {
     assert!(f128::NAN.maximum(2.0).is_nan());
     assert!(2.0f128.maximum(f128::NAN).is_nan());
@@ -246,7 +232,6 @@ fn test_classify() {
 }
 
 #[test]
-#[cfg(not(miri))]
 #[cfg(target_has_reliable_f128_math)]
 fn test_floor() {
     assert_eq!(1.0f128.floor(), 1.0f128);
@@ -262,8 +247,7 @@ fn test_floor() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
+#[cfg(any(miri, target_has_reliable_f128_math))]
 fn test_ceil() {
     assert_eq!(1.0f128.ceil(), 1.0f128);
     assert_eq!(1.3f128.ceil(), 2.0f128);
@@ -278,8 +262,7 @@ fn test_ceil() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
+#[cfg(any(miri, target_has_reliable_f128_math))]
 fn test_round() {
     assert_eq!(2.5f128.round(), 3.0f128);
     assert_eq!(1.0f128.round(), 1.0f128);
@@ -295,8 +278,7 @@ fn test_round() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
+#[cfg(any(miri, target_has_reliable_f128_math))]
 fn test_round_ties_even() {
     assert_eq!(2.5f128.round_ties_even(), 2.0f128);
     assert_eq!(1.0f128.round_ties_even(), 1.0f128);
@@ -312,8 +294,7 @@ fn test_round_ties_even() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
+#[cfg(any(miri, target_has_reliable_f128_math))]
 fn test_trunc() {
     assert_eq!(1.0f128.trunc(), 1.0f128);
     assert_eq!(1.3f128.trunc(), 1.0f128);
@@ -328,8 +309,7 @@ fn test_trunc() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
+#[cfg(any(miri, target_has_reliable_f128_math))]
 fn test_fract() {
     assert_eq!(1.0f128.fract(), 0.0f128);
     assert_eq!(1.3f128.fract(), 0.300000000000000000000000000000000039f128);
@@ -344,8 +324,7 @@ fn test_fract() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
+#[cfg(any(miri, target_has_reliable_f128_math))]
 fn test_abs() {
     assert_eq!(f128::INFINITY.abs(), f128::INFINITY);
     assert_eq!(1f128.abs(), 1f128);
@@ -463,8 +442,7 @@ fn test_mul_add() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
+#[cfg(any(miri, target_has_reliable_f128_math))]
 fn test_recip() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;

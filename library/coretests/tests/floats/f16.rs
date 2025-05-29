@@ -50,32 +50,28 @@ fn test_num_f16() {
 // the intrinsics.
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f16_math)]
+#[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_min_nan() {
     assert_eq!(f16::NAN.min(2.0), 2.0);
     assert_eq!(2.0f16.min(f16::NAN), 2.0);
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f16_math)]
+#[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_max_nan() {
     assert_eq!(f16::NAN.max(2.0), 2.0);
     assert_eq!(2.0f16.max(f16::NAN), 2.0);
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f16_math)]
+#[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_minimum() {
     assert!(f16::NAN.minimum(2.0).is_nan());
     assert!(2.0f16.minimum(f16::NAN).is_nan());
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f16_math)]
+#[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_maximum() {
     assert!(f16::NAN.maximum(2.0).is_nan());
     assert!(2.0f16.maximum(f16::NAN).is_nan());
@@ -232,8 +228,7 @@ fn test_classify() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f16_math)]
+#[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_floor() {
     assert_eq!(1.0f16.floor(), 1.0f16);
     assert_eq!(1.3f16.floor(), 1.0f16);
@@ -248,8 +243,7 @@ fn test_floor() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f16_math)]
+#[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_ceil() {
     assert_eq!(1.0f16.ceil(), 1.0f16);
     assert_eq!(1.3f16.ceil(), 2.0f16);
@@ -264,8 +258,7 @@ fn test_ceil() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f16_math)]
+#[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_round() {
     assert_eq!(2.5f16.round(), 3.0f16);
     assert_eq!(1.0f16.round(), 1.0f16);
@@ -281,8 +274,7 @@ fn test_round() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f16_math)]
+#[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_round_ties_even() {
     assert_eq!(2.5f16.round_ties_even(), 2.0f16);
     assert_eq!(1.0f16.round_ties_even(), 1.0f16);
@@ -298,8 +290,7 @@ fn test_round_ties_even() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f16_math)]
+#[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_trunc() {
     assert_eq!(1.0f16.trunc(), 1.0f16);
     assert_eq!(1.3f16.trunc(), 1.0f16);
@@ -314,8 +305,7 @@ fn test_trunc() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f16_math)]
+#[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_fract() {
     assert_eq!(1.0f16.fract(), 0.0f16);
     assert_eq!(1.3f16.fract(), 0.2998f16);
@@ -330,8 +320,7 @@ fn test_fract() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f16_math)]
+#[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_abs() {
     assert_eq!(f16::INFINITY.abs(), f16::INFINITY);
     assert_eq!(1f16.abs(), 1f16);
@@ -449,8 +438,7 @@ fn test_mul_add() {
 }
 
 #[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f16_math)]
+#[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_recip() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
