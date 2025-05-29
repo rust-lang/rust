@@ -435,7 +435,7 @@ impl<'a> CrateLocator<'a> {
                         info!("lib candidate: {}", spf.path.display());
 
                         let (rlibs, rmetas, dylibs, interfaces) =
-                            candidates.entry(hash.to_string()).or_default();
+                            candidates.entry(hash).or_default();
                         {
                             // As a perforamnce optimisation we canonicalize the path and skip
                             // ones we've already seeen. This allows us to ignore crates
