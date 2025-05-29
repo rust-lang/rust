@@ -67,7 +67,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
     }
 
     #[cfg_attr(not(feature = "master"), allow(unused_mut))]
-    fn codegen_static(&self, def_id: DefId) {
+    fn codegen_static(&mut self, def_id: DefId) {
         let attrs = self.tcx.codegen_fn_attrs(def_id);
 
         let Ok((value, alloc)) = codegen_static_initializer(self, def_id) else {
@@ -160,19 +160,14 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             self.add_used_global(global.to_rvalue());
         }
     }
-
-    /// Add a global value to a list to be stored in the `llvm.used` variable, an array of i8*.
-    fn add_used_global(&self, _global: RValue<'gcc>) {
-        // TODO(antoyo)
-    }
-
-    fn add_compiler_used_global(&self, global: RValue<'gcc>) {
-        // NOTE: seems like GCC does not make the distinction between compiler.used and used.
-        self.add_used_global(global);
-    }
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
+    /// Add a global value to a list to be stored in the `llvm.used` variable, an array of i8*.
+    pub fn add_used_global(&mut self, _global: RValue<'gcc>) {
+        // TODO(antoyo)
+    }
+
     #[cfg_attr(not(feature = "master"), allow(unused_variables))]
     pub fn add_used_function(&self, function: Function<'gcc>) {
         #[cfg(feature = "master")]

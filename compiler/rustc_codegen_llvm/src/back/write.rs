@@ -704,7 +704,7 @@ pub(crate) unsafe fn llvm_optimize(
 }
 
 // Unsafe due to LLVM calls.
-pub(crate) unsafe fn optimize(
+pub(crate) fn optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
     module: &mut ModuleCodegen<ModuleLlvm>,
@@ -815,7 +815,7 @@ pub(crate) fn link(
     Ok(modules.remove(0))
 }
 
-pub(crate) unsafe fn codegen(
+pub(crate) fn codegen(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
     module: ModuleCodegen<ModuleLlvm>,
