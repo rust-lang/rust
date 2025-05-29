@@ -1416,8 +1416,10 @@ compiletest = [
 "/src/tools/rustdoc-gui-test" =                          ["bootstrap", "@onur-ozkan"]
 "/src/tools/libcxx-version" =                            ["@onur-ozkan"]
 
-# Enable tracking of PR review assignment
-# Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment-tracking.html
+# Enable review queue tracking
+# Documentation at: https://forge.rust-lang.org/triagebot/review-queue-tracking.html
+[assign.review_prefs]
+
 [pr-tracking]
 
 # Enable issue transfers within the org
