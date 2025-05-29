@@ -6,9 +6,8 @@
 //! cross-component validations. The main `parse_inner` function and its related
 //! helper functions reside here, transforming the raw `Toml` data into the structured `Config` types
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf, absolute};
-use std::str::FromStr;
 use std::{cmp, env, fs};
 
 use build_helper::ci::CiEnv;
@@ -17,20 +16,16 @@ use serde::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
 
-use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
+use crate::core::config::flags::Flags;
 pub use crate::core::config::flags::Subcommand;
-use crate::core::config::flags::{Flags, Warnings};
 use crate::core::config::target_selection::TargetSelectionList;
 use crate::core::config::toml::TomlConfig;
 use crate::core::config::toml::build::Build;
-use crate::core::config::toml::common::{DebuginfoLevel, ReplaceOpt, StringOrBool};
-use crate::core::config::toml::dist::Dist;
-use crate::core::config::toml::install::Install;
-use crate::core::config::toml::llvm::Llvm;
+use crate::core::config::toml::common::{ReplaceOpt, StringOrBool};
 use crate::core::config::toml::merge::Merge;
-use crate::core::config::toml::rust::{LldMode, Rust, RustOptimize};
+use crate::core::config::toml::rust::LldMode;
 use crate::core::config::toml::target::Target;
-use crate::core::config::{GccCiMode, RustcLto, set, threads_from_config};
+use crate::core::config::{set, threads_from_config};
 use crate::utils::channel::GitInfo;
 use crate::utils::helpers::{self, exe, t};
 use crate::{Config, DryRun, TargetSelection, check_ci_llvm};
@@ -491,28 +486,6 @@ impl Config {
         config.llvm_assertions =
             toml.llvm.as_ref().is_some_and(|llvm| llvm.assertions.unwrap_or(false));
 
-        // Store off these values as options because if they're not provided
-        // we'll infer default values for them later
-        let mut llvm_tests = None;
-        let mut llvm_enzyme = None;
-        let mut llvm_offload = None;
-        let mut llvm_plugins = None;
-        let mut debug = None;
-        let mut rustc_debug_assertions = None;
-        let mut std_debug_assertions = None;
-        let mut tools_debug_assertions = None;
-        let mut overflow_checks = None;
-        let mut overflow_checks_std = None;
-        let mut debug_logging = None;
-        let mut debuginfo_level = None;
-        let mut debuginfo_level_rustc = None;
-        let mut debuginfo_level_std = None;
-        let mut debuginfo_level_tools = None;
-        let mut debuginfo_level_tests = None;
-        let mut optimize = None;
-        let mut lld_enabled = None;
-        let mut std_features = None;
-
         let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
         let ci_channel = file_content.trim_end();
 
@@ -556,191 +529,10 @@ impl Config {
             config.channel = ci_channel.into();
         }
 
-        if let Some(rust) = toml.rust {
-            let Rust {
-                optimize: optimize_toml,
-                debug: debug_toml,
-                codegen_units,
-                codegen_units_std,
-                rustc_debug_assertions: rustc_debug_assertions_toml,
-                std_debug_assertions: std_debug_assertions_toml,
-                tools_debug_assertions: tools_debug_assertions_toml,
-                overflow_checks: overflow_checks_toml,
-                overflow_checks_std: overflow_checks_std_toml,
-                debug_logging: debug_logging_toml,
-                debuginfo_level: debuginfo_level_toml,
-                debuginfo_level_rustc: debuginfo_level_rustc_toml,
-                debuginfo_level_std: debuginfo_level_std_toml,
-                debuginfo_level_tools: debuginfo_level_tools_toml,
-                debuginfo_level_tests: debuginfo_level_tests_toml,
-                backtrace,
-                incremental,
-                randomize_layout,
-                default_linker,
-                channel: _, // already handled above
-                description: rust_description,
-                musl_root,
-                rpath,
-                verbose_tests,
-                optimize_tests,
-                codegen_tests,
-                omit_git_hash: _, // already handled above
-                dist_src,
-                save_toolstates,
-                codegen_backends,
-                lld: lld_enabled_toml,
-                llvm_tools,
-                llvm_bitcode_linker,
-                deny_warnings,
-                backtrace_on_ice,
-                verify_llvm_ir,
-                thin_lto_import_instr_limit,
-                remap_debuginfo,
-                jemalloc,
-                test_compare_mode,
-                llvm_libunwind,
-                control_flow_guard,
-                ehcont_guard,
-                new_symbol_mangling,
-                profile_generate,
-                profile_use,
-                download_rustc,
-                lto,
-                validate_mir_opts,
-                frame_pointers,
-                stack_protector,
-                strip,
-                lld_mode,
-                std_features: std_features_toml,
-            } = rust;
+        config.rust_profile_use = flags.rust_profile_use;
+        config.rust_profile_generate = flags.rust_profile_generate;
 
-            // FIXME(#133381): alt rustc builds currently do *not* have rustc debug assertions
-            // enabled. We should not download a CI alt rustc if we need rustc to have debug
-            // assertions (e.g. for crashes test suite). This can be changed once something like
-            // [Enable debug assertions on alt
-            // builds](https://github.com/rust-lang/rust/pull/131077) lands.
-            //
-            // Note that `rust.debug = true` currently implies `rust.debug-assertions = true`!
-            //
-            // This relies also on the fact that the global default for `download-rustc` will be
-            // `false` if it's not explicitly set.
-            let debug_assertions_requested = matches!(rustc_debug_assertions_toml, Some(true))
-                || (matches!(debug_toml, Some(true))
-                    && !matches!(rustc_debug_assertions_toml, Some(false)));
-
-            if debug_assertions_requested {
-                if let Some(ref opt) = download_rustc {
-                    if opt.is_string_or_true() {
-                        eprintln!(
-                            "WARN: currently no CI rustc builds have rustc debug assertions \
-                            enabled. Please either set `rust.debug-assertions` to `false` if you \
-                            want to use download CI rustc or set `rust.download-rustc` to `false`."
-                        );
-                    }
-                }
-            }
-
-            config.download_rustc_commit = config.download_ci_rustc_commit(
-                download_rustc,
-                debug_assertions_requested,
-                config.llvm_assertions,
-            );
-
-            debug = debug_toml;
-            rustc_debug_assertions = rustc_debug_assertions_toml;
-            std_debug_assertions = std_debug_assertions_toml;
-            tools_debug_assertions = tools_debug_assertions_toml;
-            overflow_checks = overflow_checks_toml;
-            overflow_checks_std = overflow_checks_std_toml;
-            debug_logging = debug_logging_toml;
-            debuginfo_level = debuginfo_level_toml;
-            debuginfo_level_rustc = debuginfo_level_rustc_toml;
-            debuginfo_level_std = debuginfo_level_std_toml;
-            debuginfo_level_tools = debuginfo_level_tools_toml;
-            debuginfo_level_tests = debuginfo_level_tests_toml;
-            lld_enabled = lld_enabled_toml;
-            std_features = std_features_toml;
-
-            optimize = optimize_toml;
-            config.rust_new_symbol_mangling = new_symbol_mangling;
-            set(&mut config.rust_optimize_tests, optimize_tests);
-            set(&mut config.codegen_tests, codegen_tests);
-            set(&mut config.rust_rpath, rpath);
-            set(&mut config.rust_strip, strip);
-            set(&mut config.rust_frame_pointers, frame_pointers);
-            config.rust_stack_protector = stack_protector;
-            set(&mut config.jemalloc, jemalloc);
-            set(&mut config.test_compare_mode, test_compare_mode);
-            set(&mut config.backtrace, backtrace);
-            if rust_description.is_some() {
-                eprintln!(
-                    "Warning: rust.description is deprecated. Use build.description instead."
-                );
-            }
-            description = description.or(rust_description);
-            set(&mut config.rust_dist_src, dist_src);
-            set(&mut config.verbose_tests, verbose_tests);
-            // in the case "false" is set explicitly, do not overwrite the command line args
-            if let Some(true) = incremental {
-                config.incremental = true;
-            }
-            set(&mut config.lld_mode, lld_mode);
-            set(&mut config.llvm_bitcode_linker_enabled, llvm_bitcode_linker);
-
-            config.rust_randomize_layout = randomize_layout.unwrap_or_default();
-            config.llvm_tools_enabled = llvm_tools.unwrap_or(true);
-
-            config.llvm_enzyme =
-                llvm_enzyme.unwrap_or(config.channel == "dev" || config.channel == "nightly");
-            config.rustc_default_linker = default_linker;
-            config.musl_root = musl_root.map(PathBuf::from);
-            config.save_toolstates = save_toolstates.map(PathBuf::from);
-            set(
-                &mut config.deny_warnings,
-                match flags.warnings {
-                    Warnings::Deny => Some(true),
-                    Warnings::Warn => Some(false),
-                    Warnings::Default => deny_warnings,
-                },
-            );
-            set(&mut config.backtrace_on_ice, backtrace_on_ice);
-            set(&mut config.rust_verify_llvm_ir, verify_llvm_ir);
-            config.rust_thin_lto_import_instr_limit = thin_lto_import_instr_limit;
-            set(&mut config.rust_remap_debuginfo, remap_debuginfo);
-            set(&mut config.control_flow_guard, control_flow_guard);
-            set(&mut config.ehcont_guard, ehcont_guard);
-            config.llvm_libunwind_default =
-                llvm_libunwind.map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
-
-            if let Some(ref backends) = codegen_backends {
-                let available_backends = ["llvm", "cranelift", "gcc"];
-
-                config.rust_codegen_backends = backends.iter().map(|s| {
-                    if let Some(backend) = s.strip_prefix(CODEGEN_BACKEND_PREFIX) {
-                        if available_backends.contains(&backend) {
-                            panic!("Invalid value '{s}' for 'rust.codegen-backends'. Instead, please use '{backend}'.");
-                        } else {
-                            println!("HELP: '{s}' for 'rust.codegen-backends' might fail. \
-                                Codegen backends are mostly defined without the '{CODEGEN_BACKEND_PREFIX}' prefix. \
-                                In this case, it would be referred to as '{backend}'.");
-                        }
-                    }
-
-                    s.clone()
-                }).collect();
-            }
-
-            config.rust_codegen_units = codegen_units.map(threads_from_config);
-            config.rust_codegen_units_std = codegen_units_std.map(threads_from_config);
-            config.rust_profile_use = flags.rust_profile_use.or(profile_use);
-            config.rust_profile_generate = flags.rust_profile_generate.or(profile_generate);
-            config.rust_lto =
-                lto.as_deref().map(|value| RustcLto::from_str(value).unwrap()).unwrap_or_default();
-            config.rust_validate_mir_opts = validate_mir_opts;
-        } else {
-            config.rust_profile_use = flags.rust_profile_use;
-            config.rust_profile_generate = flags.rust_profile_generate;
-        }
+        config.apply_rust_config(toml.rust, flags.warnings, &mut description);
 
         config.reproducible_artifacts = flags.reproducible_artifact;
         config.description = description;
@@ -763,131 +555,7 @@ impl Config {
             }
         }
 
-        if let Some(llvm) = toml.llvm {
-            let Llvm {
-                optimize: optimize_toml,
-                thin_lto,
-                release_debuginfo,
-                assertions: _,
-                tests,
-                enzyme,
-                plugins,
-                ccache: llvm_ccache,
-                static_libstdcpp,
-                libzstd,
-                ninja,
-                targets,
-                experimental_targets,
-                link_jobs,
-                link_shared,
-                version_suffix,
-                clang_cl,
-                cflags,
-                cxxflags,
-                ldflags,
-                use_libcxx,
-                use_linker,
-                allow_old_toolchain,
-                offload,
-                polly,
-                clang,
-                enable_warnings,
-                download_ci_llvm,
-                build_config,
-            } = llvm;
-            if llvm_ccache.is_some() {
-                eprintln!("Warning: llvm.ccache is deprecated. Use build.ccache instead.");
-            }
-
-            ccache = ccache.or(llvm_ccache);
-            set(&mut config.ninja_in_file, ninja);
-            llvm_tests = tests;
-            llvm_enzyme = enzyme;
-            llvm_offload = offload;
-            llvm_plugins = plugins;
-            set(&mut config.llvm_optimize, optimize_toml);
-            set(&mut config.llvm_thin_lto, thin_lto);
-            set(&mut config.llvm_release_debuginfo, release_debuginfo);
-            set(&mut config.llvm_static_stdcpp, static_libstdcpp);
-            set(&mut config.llvm_libzstd, libzstd);
-            if let Some(v) = link_shared {
-                config.llvm_link_shared.set(Some(v));
-            }
-            config.llvm_targets.clone_from(&targets);
-            config.llvm_experimental_targets.clone_from(&experimental_targets);
-            config.llvm_link_jobs = link_jobs;
-            config.llvm_version_suffix.clone_from(&version_suffix);
-            config.llvm_clang_cl.clone_from(&clang_cl);
-
-            config.llvm_cflags.clone_from(&cflags);
-            config.llvm_cxxflags.clone_from(&cxxflags);
-            config.llvm_ldflags.clone_from(&ldflags);
-            set(&mut config.llvm_use_libcxx, use_libcxx);
-            config.llvm_use_linker.clone_from(&use_linker);
-            config.llvm_allow_old_toolchain = allow_old_toolchain.unwrap_or(false);
-            config.llvm_offload = offload.unwrap_or(false);
-            config.llvm_polly = polly.unwrap_or(false);
-            config.llvm_clang = clang.unwrap_or(false);
-            config.llvm_enable_warnings = enable_warnings.unwrap_or(false);
-            config.llvm_build_config = build_config.clone().unwrap_or(Default::default());
-
-            config.llvm_from_ci =
-                config.parse_download_ci_llvm(download_ci_llvm, config.llvm_assertions);
-
-            if config.llvm_from_ci {
-                let warn = |option: &str| {
-                    println!(
-                        "WARNING: `{option}` will only be used on `compiler/rustc_llvm` build, not for the LLVM build."
-                    );
-                    println!(
-                        "HELP: To use `{option}` for LLVM builds, set `download-ci-llvm` option to false."
-                    );
-                };
-
-                if static_libstdcpp.is_some() {
-                    warn("static-libstdcpp");
-                }
-
-                if link_shared.is_some() {
-                    warn("link-shared");
-                }
-
-                // FIXME(#129153): instead of all the ad-hoc `download-ci-llvm` checks that follow,
-                // use the `builder-config` present in tarballs since #128822 to compare the local
-                // config to the ones used to build the LLVM artifacts on CI, and only notify users
-                // if they've chosen a different value.
-
-                if libzstd.is_some() {
-                    println!(
-                        "WARNING: when using `download-ci-llvm`, the local `llvm.libzstd` option, \
-                        like almost all `llvm.*` options, will be ignored and set by the LLVM CI \
-                        artifacts builder config."
-                    );
-                    println!(
-                        "HELP: To use `llvm.libzstd` for LLVM/LLD builds, set `download-ci-llvm` option to false."
-                    );
-                }
-            }
-
-            if !config.llvm_from_ci && config.llvm_thin_lto && link_shared.is_none() {
-                // If we're building with ThinLTO on, by default we want to link
-                // to LLVM shared, to avoid re-doing ThinLTO (which happens in
-                // the link step) with each stage.
-                config.llvm_link_shared.set(Some(true));
-            }
-        } else {
-            config.llvm_from_ci = config.parse_download_ci_llvm(None, false);
-        }
-
-        if let Some(gcc) = toml.gcc {
-            config.gcc_ci_mode = match gcc.download_ci_gcc {
-                Some(value) => match value {
-                    true => GccCiMode::DownloadFromCi,
-                    false => GccCiMode::BuildLocally,
-                },
-                None => GccCiMode::default(),
-            };
-        }
+        config.apply_llvm_config(toml.llvm, &mut ccache);
 
         config.apply_gcc_config(toml.gcc);
 
@@ -920,43 +588,6 @@ impl Config {
         config.initial_rustfmt =
             if let Some(r) = rustfmt { Some(r) } else { config.maybe_download_rustfmt() };
 
-        // Now that we've reached the end of our configuration, infer the
-        // default values for all options that we haven't otherwise stored yet.
-
-        config.llvm_tests = llvm_tests.unwrap_or(false);
-        config.llvm_enzyme = llvm_enzyme.unwrap_or(false);
-        config.llvm_offload = llvm_offload.unwrap_or(false);
-        config.llvm_plugins = llvm_plugins.unwrap_or(false);
-        config.rust_optimize = optimize.unwrap_or(RustOptimize::Bool(true));
-
-        // We make `x86_64-unknown-linux-gnu` use the self-contained linker by default, so we will
-        // build our internal lld and use it as the default linker, by setting the `rust.lld` config
-        // to true by default:
-        // - on the `x86_64-unknown-linux-gnu` target
-        // - on the `dev` and `nightly` channels
-        // - when building our in-tree llvm (i.e. the target has not set an `llvm-config`), so that
-        //   we're also able to build the corresponding lld
-        // - or when using an external llvm that's downloaded from CI, which also contains our prebuilt
-        //   lld
-        // - otherwise, we'd be using an external llvm, and lld would not necessarily available and
-        //   thus, disabled
-        // - similarly, lld will not be built nor used by default when explicitly asked not to, e.g.
-        //   when the config sets `rust.lld = false`
-        if config.build.triple == "x86_64-unknown-linux-gnu"
-            && config.hosts == [config.build]
-            && (config.channel == "dev" || config.channel == "nightly")
-        {
-            let no_llvm_config = config
-                .target_config
-                .get(&config.build)
-                .is_some_and(|target_config| target_config.llvm_config.is_none());
-            let enable_lld = config.llvm_from_ci || no_llvm_config;
-            // Prefer the config setting in case an explicit opt-out is needed.
-            config.lld_enabled = lld_enabled.unwrap_or(enable_lld);
-        } else {
-            set(&mut config.lld_enabled, lld_enabled);
-        }
-
         if matches!(config.lld_mode, LldMode::SelfContained)
             && !config.lld_enabled
             && flags.stage.unwrap_or(0) > 0
@@ -972,31 +603,6 @@ impl Config {
             );
         }
 
-        let default_std_features = BTreeSet::from([String::from("panic-unwind")]);
-        config.rust_std_features = std_features.unwrap_or(default_std_features);
-
-        let default = debug == Some(true);
-        config.rustc_debug_assertions = rustc_debug_assertions.unwrap_or(default);
-        config.std_debug_assertions = std_debug_assertions.unwrap_or(config.rustc_debug_assertions);
-        config.tools_debug_assertions =
-            tools_debug_assertions.unwrap_or(config.rustc_debug_assertions);
-        config.rust_overflow_checks = overflow_checks.unwrap_or(default);
-        config.rust_overflow_checks_std =
-            overflow_checks_std.unwrap_or(config.rust_overflow_checks);
-
-        config.rust_debug_logging = debug_logging.unwrap_or(config.rustc_debug_assertions);
-
-        let with_defaults = |debuginfo_level_specific: Option<_>| {
-            debuginfo_level_specific.or(debuginfo_level).unwrap_or(if debug == Some(true) {
-                DebuginfoLevel::Limited
-            } else {
-                DebuginfoLevel::None
-            })
-        };
-        config.rust_debuginfo_level_rustc = with_defaults(debuginfo_level_rustc);
-        config.rust_debuginfo_level_std = with_defaults(debuginfo_level_std);
-        config.rust_debuginfo_level_tools = with_defaults(debuginfo_level_tools);
-        config.rust_debuginfo_level_tests = debuginfo_level_tests.unwrap_or(DebuginfoLevel::None);
         config.optimized_compiler_builtins =
             optimized_compiler_builtins.unwrap_or(config.channel != "dev");
         config.compiletest_diff_tool = compiletest_diff_tool;
