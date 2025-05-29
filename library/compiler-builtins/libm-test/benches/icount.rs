@@ -23,7 +23,7 @@ macro_rules! icount_benches {
                 let mut ctx = CheckCtx::new(
                     Op::IDENTIFIER,
                     CheckBasis::None,
-                    GeneratorKind::QuickSpaced
+                    GeneratorKind::Spaced
                 );
                 ctx.override_iterations(BENCH_ITER_ITEMS);
                 let ret = spaced::get_test_cases::<Op>(&ctx).0.collect::<Vec<_>>();
