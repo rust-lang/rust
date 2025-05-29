@@ -30,7 +30,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
     item.visit_with(&mut DetectNonGenericPointeeAttr { cx });
 
     let (name_ident, generics) = if let Annotatable::Item(aitem) = item
-        && let ItemKind::Struct(ident, struct_data, g) = &aitem.kind
+        && let ItemKind::Struct(ident, g, struct_data) = &aitem.kind
     {
         if !matches!(
             struct_data,

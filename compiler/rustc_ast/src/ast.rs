@@ -3417,9 +3417,9 @@ impl Item {
             ItemKind::Fn(i) => Some(&i.generics),
             ItemKind::TyAlias(i) => Some(&i.generics),
             ItemKind::TraitAlias(_, generics, _)
-            | ItemKind::Enum(_, _, generics)
-            | ItemKind::Struct(_, _, generics)
-            | ItemKind::Union(_, _, generics) => Some(&generics),
+            | ItemKind::Enum(_, generics, _)
+            | ItemKind::Struct(_, generics, _)
+            | ItemKind::Union(_, generics, _) => Some(&generics),
             ItemKind::Trait(i) => Some(&i.generics),
             ItemKind::Impl(i) => Some(&i.generics),
         }
@@ -3663,15 +3663,15 @@ pub enum ItemKind {
     /// An enum definition (`enum`).
     ///
     /// E.g., `enum Foo<A, B> { C<A>, D<B> }`.
-    Enum(Ident, EnumDef, Generics),
+    Enum(Ident, Generics, EnumDef),
     /// A struct definition (`struct`).
     ///
     /// E.g., `struct Foo<A> { x: A }`.
-    Struct(Ident, VariantData, Generics),
+    Struct(Ident, Generics, VariantData),
     /// A union definition (`union`).
     ///
     /// E.g., `union Foo<A, B> { x: A, y: B }`.
-    Union(Ident, VariantData, Generics),
+    Union(Ident, Generics, VariantData),
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
@@ -3688,10 +3688,8 @@ pub enum ItemKind {
     ///
     /// E.g., `foo!(..)`.
     MacCall(P<MacCall>),
-
     /// A macro definition.
     MacroDef(Ident, MacroDef),
-
     /// A single delegation item (`reuse`).
     ///
     /// E.g. `reuse <Type as Trait>::name { target_expr_template }`.
@@ -3767,9 +3765,9 @@ impl ItemKind {
             Self::Fn(box Fn { generics, .. })
             | Self::TyAlias(box TyAlias { generics, .. })
             | Self::Const(box ConstItem { generics, .. })
-            | Self::Enum(_, _, generics)
-            | Self::Struct(_, _, generics)
-            | Self::Union(_, _, generics)
+            | Self::Enum(_, generics, _)
+            | Self::Struct(_, generics, _)
+            | Self::Union(_, generics, _)
             | Self::Trait(box Trait { generics, .. })
             | Self::TraitAlias(_, generics, _)
             | Self::Impl(box Impl { generics, .. }) => Some(generics),
