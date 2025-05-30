@@ -62,7 +62,6 @@ pub(crate) struct OngoingCodegen {
     modules: Vec<OngoingModuleCodegen>,
     allocator_module: Option<CompiledModule>,
     metadata_module: Option<CompiledModule>,
-    metadata: EncodedMetadata,
     crate_info: CrateInfo,
     concurrency_limiter: ConcurrencyLimiter,
 }
@@ -135,7 +134,6 @@ impl OngoingCodegen {
             modules,
             allocator_module: self.allocator_module,
             metadata_module: self.metadata_module,
-            metadata: self.metadata,
             crate_info: self.crate_info,
         };
 
@@ -706,11 +704,7 @@ fn emit_allocator_module(tcx: TyCtxt<'_>) -> Option<CompiledModule> {
     }
 }
 
-pub(crate) fn run_aot(
-    tcx: TyCtxt<'_>,
-    metadata: EncodedMetadata,
-    need_metadata_module: bool,
-) -> Box<OngoingCodegen> {
+pub(crate) fn run_aot(tcx: TyCtxt<'_>, metadata: Option<&EncodedMetadata>) -> Box<OngoingCodegen> {
     // FIXME handle `-Ctarget-cpu=native`
     let target_cpu = match tcx.sess.opts.cg.target_cpu {
         Some(ref name) => name,
@@ -727,7 +721,6 @@ pub(crate) fn run_aot(
             modules: vec![],
             allocator_module: None,
             metadata_module: None,
-            metadata,
             crate_info: CrateInfo::new(tcx, target_cpu),
             concurrency_limiter: ConcurrencyLimiter::new(0),
         });
@@ -787,14 +780,12 @@ pub(crate) fn run_aot(
 
     let allocator_module = emit_allocator_module(tcx);
 
-    let metadata_module =
-        if need_metadata_module { Some(emit_metadata_module(tcx, &metadata)) } else { None };
+    let metadata_module = metadata.map(|metadata| emit_metadata_module(tcx, metadata));
 
     Box::new(OngoingCodegen {
         modules,
         allocator_module,
         metadata_module,
-        metadata,
         crate_info: CrateInfo::new(tcx, target_cpu),
         concurrency_limiter: concurrency_limiter.0,
     })

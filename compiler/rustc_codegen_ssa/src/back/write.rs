@@ -24,7 +24,6 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
     copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };
-use rustc_metadata::EncodedMetadata;
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -474,7 +473,6 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     target_cpu: String,
-    metadata: EncodedMetadata,
     metadata_module: Option<CompiledModule>,
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
@@ -506,7 +504,6 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
 
     OngoingCodegen {
         backend,
-        metadata,
         metadata_module,
         crate_info,
 
@@ -2055,7 +2052,6 @@ impl<B: ExtraBackendMethods> Drop for Coordinator<B> {
 
 pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub backend: B,
-    pub metadata: EncodedMetadata,
     pub metadata_module: Option<CompiledModule>,
     pub crate_info: CrateInfo,
     pub codegen_worker_receive: Receiver<CguMessage>,
@@ -2096,7 +2092,6 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
         (
             CodegenResults {
-                metadata: self.metadata,
                 crate_info: self.crate_info,
 
                 modules: compiled_modules.modules,

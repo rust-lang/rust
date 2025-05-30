@@ -669,12 +669,11 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     target_cpu: String,
-    metadata: EncodedMetadata,
-    need_metadata_module: bool,
+    metadata: Option<&EncodedMetadata>,
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, None);
+        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, None);
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -707,7 +706,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    let metadata_module = need_metadata_module.then(|| {
+    let metadata_module = if let Some(metadata) = metadata {
         // Emit compressed metadata object.
         let metadata_cgu_name =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata")).to_string();
@@ -719,13 +718,13 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             );
             let data = create_compressed_metadata_file(
                 tcx.sess,
-                &metadata,
+                metadata,
                 &exported_symbols::metadata_symbol_name(tcx),
             );
             if let Err(error) = std::fs::write(&file_name, data) {
                 tcx.dcx().emit_fatal(errors::MetadataObjectFileWrite { error });
             }
-            CompiledModule {
+            Some(CompiledModule {
                 name: metadata_cgu_name,
                 kind: ModuleKind::Metadata,
                 object: Some(file_name),
@@ -734,12 +733,13 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 assembly: None,
                 llvm_ir: None,
                 links_from_incr_cache: Vec::new(),
-            }
+            })
         })
-    });
+    } else {
+        None
+    };
 
-    let ongoing_codegen =
-        start_async_codegen(backend.clone(), tcx, target_cpu, metadata, metadata_module);
+    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, target_cpu, metadata_module);
 
     // Codegen an allocator shim, if necessary.
     if let Some(kind) = allocator_kind_for_codegen(tcx) {

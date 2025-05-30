@@ -230,20 +230,9 @@ impl CodegenBackend for GccCodegenBackend {
         providers.global_backend_features = |tcx, ()| gcc_util::global_gcc_features(tcx.sess, true)
     }
 
-    fn codegen_crate(
-        &self,
-        tcx: TyCtxt<'_>,
-        metadata: EncodedMetadata,
-        need_metadata_module: bool,
-    ) -> Box<dyn Any> {
+    fn codegen_crate(&self, tcx: TyCtxt<'_>, metadata: Option<&EncodedMetadata>) -> Box<dyn Any> {
         let target_cpu = target_cpu(tcx.sess);
-        let res = codegen_crate(
-            self.clone(),
-            tcx,
-            target_cpu.to_string(),
-            metadata,
-            need_metadata_module,
-        );
+        let res = codegen_crate(self.clone(), tcx, target_cpu.to_string(), metadata);
 
         Box::new(res)
     }
