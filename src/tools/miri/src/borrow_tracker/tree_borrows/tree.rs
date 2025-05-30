@@ -33,18 +33,18 @@ mod tests;
 /// Data for a single *location*.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) struct LocationState {
-    /// A location is initialized when it is child-accessed for the first time (and the initial
+    /// A location is "accessed" when it is child-accessed for the first time (and the initial
     /// retag initializes the location for the range covered by the type), and it then stays
-    /// initialized forever.
-    /// For initialized locations, "permission" is the current permission. However, for
-    /// uninitialized locations, we still need to track the "future initial permission": this will
+    /// accessed forever.
+    /// For accessed locations, "permission" is the current permission. However, for
+    /// non-accessed locations, we still need to track the "future initial permission": this will
     /// start out to be `default_initial_perm`, but foreign accesses need to be taken into account.
     /// Crucially however, while transitions to `Disabled` would usually be UB if this location is
-    /// protected, that is *not* the case for uninitialized locations. Instead we just have a latent
+    /// protected, that is *not* the case for non-accessed locations. Instead we just have a latent
     /// "future initial permission" of `Disabled`, causing UB only if an access is ever actually
     /// performed.
-    /// Note that the tree root is also always initialized, as if the allocation was a write access.
-    initialized: bool,
+    /// Note that the tree root is also always accessed, as if the allocation was a write access.
+    accessed: bool,
     /// This pointer's current permission / future initial permission.
     permission: Permission,
     /// See `foreign_access_skipping.rs`.
@@ -59,30 +59,30 @@ impl LocationState {
     /// to any foreign access yet.
     /// The permission is not allowed to be `Active`.
     /// `sifa` is the (strongest) idempotent foreign access, see `foreign_access_skipping.rs`
-    pub fn new_uninit(permission: Permission, sifa: IdempotentForeignAccess) -> Self {
+    pub fn new_non_accessed(permission: Permission, sifa: IdempotentForeignAccess) -> Self {
         assert!(permission.is_initial() || permission.is_disabled());
-        Self { permission, initialized: false, idempotent_foreign_access: sifa }
+        Self { permission, accessed: false, idempotent_foreign_access: sifa }
     }
 
     /// Constructs a new initial state. It has not yet been subjected
     /// to any foreign access. However, it is already marked as having been accessed.
     /// `sifa` is the (strongest) idempotent foreign access, see `foreign_access_skipping.rs`
-    pub fn new_init(permission: Permission, sifa: IdempotentForeignAccess) -> Self {
-        Self { permission, initialized: true, idempotent_foreign_access: sifa }
+    pub fn new_accessed(permission: Permission, sifa: IdempotentForeignAccess) -> Self {
+        Self { permission, accessed: true, idempotent_foreign_access: sifa }
     }
 
-    /// Check if the location has been initialized, i.e. if it has
+    /// Check if the location has been accessed, i.e. if it has
     /// ever been accessed through a child pointer.
-    pub fn is_initialized(&self) -> bool {
-        self.initialized
+    pub fn is_accessed(&self) -> bool {
+        self.accessed
     }
 
     /// Check if the state can exist as the initial permission of a pointer.
     ///
-    /// Do not confuse with `is_initialized`, the two are almost orthogonal
-    /// as apart from `Active` which is not initial and must be initialized,
+    /// Do not confuse with `is_accessed`, the two are almost orthogonal
+    /// as apart from `Active` which is not initial and must be accessed,
     /// any other permission can have an arbitrary combination of being
-    /// initial/initialized.
+    /// initial/accessed.
     /// FIXME: when the corresponding `assert` in `tree_borrows/mod.rs` finally
     /// passes and can be uncommented, remove this `#[allow(dead_code)]`.
     #[cfg_attr(not(test), allow(dead_code))]
@@ -96,8 +96,8 @@ impl LocationState {
 
     /// Apply the effect of an access to one location, including
     /// - applying `Permission::perform_access` to the inner `Permission`,
-    /// - emitting protector UB if the location is initialized,
-    /// - updating the initialized status (child accesses produce initialized locations).
+    /// - emitting protector UB if the location is accessed,
+    /// - updating the accessed status (child accesses produce accessed locations).
     fn perform_access(
         &mut self,
         access_kind: AccessKind,
@@ -107,14 +107,14 @@ impl LocationState {
         let old_perm = self.permission;
         let transition = Permission::perform_access(access_kind, rel_pos, old_perm, protected)
             .ok_or(TransitionError::ChildAccessForbidden(old_perm))?;
-        self.initialized |= !rel_pos.is_foreign();
+        self.accessed |= !rel_pos.is_foreign();
         self.permission = transition.applied(old_perm).unwrap();
-        // Why do only initialized locations cause protector errors?
+        // Why do only accessed locations cause protector errors?
         // Consider two mutable references `x`, `y` into disjoint parts of
         // the same allocation. A priori, these may actually both be used to
         // access the entire allocation, as long as only reads occur. However,
         // a write to `y` needs to somehow record that `x` can no longer be used
-        // on that location at all. For these uninitialized locations (i.e., locations
+        // on that location at all. For these non-accessed locations (i.e., locations
         // that haven't been accessed with `x` yet), we track the "future initial state":
         // it defaults to whatever the initial state of the tag is,
         // but the access to `y` moves that "future initial state" of `x` to `Disabled`.
@@ -122,8 +122,8 @@ impl LocationState {
         // So clearly protectors shouldn't fire for such "future initial state" transitions.
         //
         // See the test `two_mut_protected_same_alloc` in `tests/pass/tree_borrows/tree-borrows.rs`
-        // for an example of safe code that would be UB if we forgot to check `self.initialized`.
-        if protected && self.initialized && transition.produces_disabled() {
+        // for an example of safe code that would be UB if we forgot to check `self.accessed`.
+        if protected && self.accessed && transition.produces_disabled() {
             return Err(TransitionError::ProtectedDisabled(old_perm));
         }
         Ok(transition)
@@ -158,11 +158,11 @@ impl LocationState {
                 self.idempotent_foreign_access.can_skip_foreign_access(happening_now);
             if self.permission.is_disabled() {
                 // A foreign access to a `Disabled` tag will have almost no observable effect.
-                // It's a theorem that `Disabled` node have no protected initialized children,
+                // It's a theorem that `Disabled` node have no protected accessed children,
                 // and so this foreign access will never trigger any protector.
-                // (Intuition: You're either protected initialized, and thus can't become Disabled
-                // or you're already Disabled protected, but not initialized, and then can't
-                // become initialized since that requires a child access, which Disabled blocks.)
+                // (Intuition: You're either protected accessed, and thus can't become Disabled
+                // or you're already Disabled protected, but not accessed, and then can't
+                // become accessed since that requires a child access, which Disabled blocks.)
                 // Further, the children will never be able to read or write again, since they
                 // have a `Disabled` parent. So this only affects diagnostics, such that the
                 // blocking write will still be identified directly, just at a different tag.
@@ -218,7 +218,7 @@ impl LocationState {
 impl fmt::Display for LocationState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.permission)?;
-        if !self.initialized {
+        if !self.accessed {
             write!(f, "?")?;
         }
         Ok(())
@@ -599,12 +599,15 @@ impl Tree {
         let rperms = {
             let mut perms = UniValMap::default();
             // We manually set it to `Active` on all in-bounds positions.
-            // We also ensure that it is initialized, so that no `Active` but
-            // not yet initialized nodes exist. Essentially, we pretend there
+            // We also ensure that it is accessed, so that no `Active` but
+            // not yet accessed nodes exist. Essentially, we pretend there
             // was a write that initialized these to `Active`.
             perms.insert(
                 root_idx,
-                LocationState::new_init(Permission::new_active(), IdempotentForeignAccess::None),
+                LocationState::new_accessed(
+                    Permission::new_active(),
+                    IdempotentForeignAccess::None,
+                ),
             );
             RangeMap::new(size, perms)
         };
@@ -782,14 +785,14 @@ impl<'tcx> Tree {
     ///
     /// If `access_range_and_kind` is `None`, this is interpreted as the special
     /// access that is applied on protector release:
-    /// - the access will be applied only to initialized locations of the allocation,
+    /// - the access will be applied only to accessed locations of the allocation,
     /// - it will not be visible to children,
     /// - it will be recorded as a `FnExit` diagnostic access
     /// - and it will be a read except if the location is `Active`, i.e. has been written to,
     ///   in which case it will be a write.
     ///
     /// `LocationState::perform_access` will take care of raising transition
-    /// errors and updating the `initialized` status of each location,
+    /// errors and updating the `accessed` status of each location,
     /// this traversal adds to that:
     /// - inserting into the map locations that do not exist yet,
     /// - trimming the traversal,
@@ -882,7 +885,7 @@ impl<'tcx> Tree {
             }
         } else {
             // This is a special access through the entire allocation.
-            // It actually only affects `initialized` locations, so we need
+            // It actually only affects `accessed` locations, so we need
             // to filter on those before initiating the traversal.
             //
             // In addition this implicit access should not be visible to children,
@@ -892,10 +895,10 @@ impl<'tcx> Tree {
             // why this is important.
             for (perms_range, perms) in self.rperms.iter_mut_all() {
                 let idx = self.tag_mapping.get(&tag).unwrap();
-                // Only visit initialized permissions
+                // Only visit accessed permissions
                 if let Some(p) = perms.get(idx)
                     && let Some(access_kind) = p.permission.protector_end_access()
-                    && p.initialized
+                    && p.accessed
                 {
                     let access_cause = diagnostics::AccessCause::FnExit(access_kind);
                     TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
@@ -1059,7 +1062,7 @@ impl Tree {
 
 impl Node {
     pub fn default_location_state(&self) -> LocationState {
-        LocationState::new_uninit(
+        LocationState::new_non_accessed(
             self.default_initial_perm,
             self.default_initial_idempotent_foreign_access,
         )

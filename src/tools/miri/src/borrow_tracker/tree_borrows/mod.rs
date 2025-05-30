@@ -97,7 +97,7 @@ impl<'tcx> Tree {
     /// A tag just lost its protector.
     ///
     /// This emits a special kind of access that is only applied
-    /// to initialized locations, as a protection against other
+    /// to accessed locations, as a protection against other
     /// tags not having been made aware of the existence of this
     /// protector.
     pub fn release_protector(
@@ -318,7 +318,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Store initial permissions and their corresponding range.
         let mut perms_map: RangeMap<LocationState> = RangeMap::new(
             ptr_size,
-            LocationState::new_init(Permission::new_disabled(), IdempotentForeignAccess::None), // this will be overwritten
+            LocationState::new_accessed(Permission::new_disabled(), IdempotentForeignAccess::None), // this will be overwritten
         );
         // Keep track of whether the node has any part that allows for interior mutability.
         // FIXME: This misses `PhantomData<UnsafeCell<T>>` which could be considered a marker
@@ -357,13 +357,13 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let sifa = perm.strongest_idempotent_foreign_access(protected);
                 // NOTE: Currently, `access` is false if and only if `perm` is Cell, so this `if`
                 // doesn't not change whether any code is UB or not. We could just always use
-                // `new_init` and everything would stay the same. But that seems conceptually
+                // `new_accessed` and everything would stay the same. But that seems conceptually
                 // odd, so we keep the initial "accessed" bit of the `LocationState` in sync with whether
                 // a read access is performed below.
                 if access {
-                    *loc = LocationState::new_init(perm, sifa);
+                    *loc = LocationState::new_accessed(perm, sifa);
                 } else {
-                    *loc = LocationState::new_uninit(perm, sifa);
+                    *loc = LocationState::new_non_accessed(perm, sifa);
                 }
             }
 
