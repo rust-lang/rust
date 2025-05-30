@@ -1623,7 +1623,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 }
                 ret
             }
-            _ => unreachable!(),
+            _ => self.bitcast(val, dest_ty), // for `bf16(xN)` <-> `u16(xN)`
         }
     }
 
