@@ -361,6 +361,17 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         }
 
         match self.type_kind(llvm_ty) {
+            TypeKind::BFloat => rust_ty == self.type_i16(),
+            TypeKind::Vector => {
+                let llvm_element_count = self.vector_length(llvm_ty) as u64;
+                let llvm_element_ty = self.element_type(llvm_ty);
+
+                if llvm_element_ty == self.type_bf16() {
+                    rust_ty == self.type_vector(self.type_i16(), llvm_element_count)
+                } else {
+                    false
+                }
+            }
             TypeKind::Struct if self.type_kind(rust_ty) == TypeKind::Struct => {
                 let rust_element_tys = self.struct_element_types(rust_ty);
                 let llvm_element_tys = self.struct_element_types(llvm_ty);
