@@ -74,7 +74,8 @@ fn check_(
         "{}",
         syntax_bridge::prettify_macro_expansion::prettify_macro_expansion(
             node.syntax_node(),
-            &mut |it| it.clone()
+            &mut |_| None,
+            |_| ()
         )
     );
     expect.assert_eq(&expect_res);

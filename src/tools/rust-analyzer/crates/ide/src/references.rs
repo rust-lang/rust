@@ -200,7 +200,7 @@ pub(crate) fn find_defs(
         )
     })?;
 
-    if let Some((_, resolution)) = sema.check_for_format_args_template(token.clone(), offset) {
+    if let Some((.., resolution)) = sema.check_for_format_args_template(token.clone(), offset) {
         return resolution.map(Definition::from).map(|it| vec![it]);
     }
 
