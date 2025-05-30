@@ -1060,6 +1060,7 @@ unsafe extern "C" {
     ) -> &'a Type;
     pub(crate) fn LLVMCountParamTypes(FunctionTy: &Type) -> c_uint;
     pub(crate) fn LLVMGetParamTypes<'a>(FunctionTy: &'a Type, Dest: *mut &'a Type);
+    pub(crate) fn LLVMIsFunctionVarArg(FunctionTy: &Type) -> Bool;
 
     // Operations on struct types
     pub(crate) fn LLVMStructTypeInContext<'a>(
@@ -1206,6 +1207,12 @@ unsafe extern "C" {
         ParamCount: size_t,
         NameLength: *mut size_t,
     ) -> *mut c_char;
+    pub(crate) fn LLVMIntrinsicGetType<'a>(
+        C: &'a Context,
+        ID: NonZero<c_uint>,
+        ParamTypes: *const &'a Type,
+        ParamCount: size_t,
+    ) -> &'a Type;
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;
