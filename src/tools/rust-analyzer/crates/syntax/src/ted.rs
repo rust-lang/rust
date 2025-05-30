@@ -5,6 +5,7 @@
 use std::{mem, ops::RangeInclusive};
 
 use parser::T;
+use rowan::TextSize;
 
 use crate::{
     SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken,
@@ -73,6 +74,12 @@ impl Position {
             None => PositionRepr::FirstChild(node),
         };
         Position { repr }
+    }
+    pub fn offset(&self) -> TextSize {
+        match &self.repr {
+            PositionRepr::FirstChild(node) => node.text_range().start(),
+            PositionRepr::After(elem) => elem.text_range().end(),
+        }
     }
 }
 

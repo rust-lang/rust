@@ -160,7 +160,7 @@ fn highlight_references(
     FilePosition { file_id, offset }: FilePosition,
     vfs_file_id: FileId,
 ) -> Option<Vec<HighlightedRange>> {
-    let defs = if let Some((range, resolution)) =
+    let defs = if let Some((range, _, _, resolution)) =
         sema.check_for_format_args_template(token.clone(), offset)
     {
         match resolution.map(Definition::from) {
