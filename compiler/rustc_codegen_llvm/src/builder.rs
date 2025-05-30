@@ -67,7 +67,6 @@ impl<'a, 'll> SBuilder<'a, 'll> {
     ) -> &'ll Value {
         debug!("call {:?} with args ({:?})", llfn, args);
 
-        let args = self.check_call("call", llty, llfn, args);
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
@@ -349,7 +348,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         debug!("invoke {:?} with args ({:?})", llfn, args);
 
-        let args = self.check_call("invoke", llty, llfn, args);
+        let args = self.cast_arguments("invoke", llty, llfn, args, fn_abi.is_some());
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
@@ -381,8 +380,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         };
         if let Some(fn_abi) = fn_abi {
             fn_abi.apply_attrs_callsite(self, invoke, llfn);
+            self.cast_return(fn_abi, llfn, invoke)
+        } else {
+            invoke
         }
-        invoke
     }
 
     fn unreachable(&mut self) {
@@ -1404,7 +1405,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         debug!("call {:?} with args ({:?})", llfn, args);
 
-        let args = self.check_call("call", llty, llfn, args);
+        let args = self.cast_arguments("call", llty, llfn, args, fn_abi.is_some());
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
@@ -1434,8 +1435,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         };
         if let Some(fn_abi) = fn_abi {
             fn_abi.apply_attrs_callsite(self, call, llfn);
+            self.cast_return(fn_abi, llfn, call)
+        } else {
+            call
         }
-        call
     }
 
     fn zext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
@@ -1602,47 +1605,6 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         ret.expect("LLVM does not have support for catchret")
     }
 
-    fn check_call<'b>(
-        &mut self,
-        typ: &str,
-        fn_ty: &'ll Type,
-        llfn: &'ll Value,
-        args: &'b [&'ll Value],
-    ) -> Cow<'b, [&'ll Value]> {
-        assert!(
-            self.cx.type_kind(fn_ty) == TypeKind::Function,
-            "builder::{typ} not passed a function, but {fn_ty:?}"
-        );
-
-        let param_tys = self.cx.func_params_types(fn_ty);
-
-        let all_args_match = iter::zip(&param_tys, args.iter().map(|&v| self.cx.val_ty(v)))
-            .all(|(expected_ty, actual_ty)| *expected_ty == actual_ty);
-
-        if all_args_match {
-            return Cow::Borrowed(args);
-        }
-
-        let casted_args: Vec<_> = iter::zip(param_tys, args)
-            .enumerate()
-            .map(|(i, (expected_ty, &actual_val))| {
-                let actual_ty = self.cx.val_ty(actual_val);
-                if expected_ty != actual_ty {
-                    debug!(
-                        "type mismatch in function call of {:?}. \
-                            Expected {:?} for param {}, got {:?}; injecting bitcast",
-                        llfn, expected_ty, i, actual_ty
-                    );
-                    self.bitcast(actual_val, expected_ty)
-                } else {
-                    actual_val
-                }
-            })
-            .collect();
-
-        Cow::Owned(casted_args)
-    }
-
     pub(crate) fn va_arg(&mut self, list: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMBuildVAArg(self.llbuilder, list, ty, UNNAMED) }
     }
@@ -1714,6 +1676,93 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         self.call(self.type_func(&[src_ty], dest_ty), None, None, f, &[val], None, None)
     }
 
+    fn autocast(
+        &mut self,
+        llfn: &'ll Value,
+        val: &'ll Value,
+        src_ty: &'ll Type,
+        dest_ty: &'ll Type,
+        is_argument: bool,
+    ) -> &'ll Value {
+        let (rust_ty, llvm_ty) = if is_argument { (src_ty, dest_ty) } else { (dest_ty, src_ty) };
+
+        if rust_ty == llvm_ty {
+            return val;
+        }
+
+        match self.type_kind(llvm_ty) {
+            TypeKind::Struct => {
+                let mut ret = self.const_poison(dest_ty);
+                for (idx, (src_element_ty, dest_element_ty)) in
+                    iter::zip(self.struct_element_types(src_ty), self.struct_element_types(dest_ty))
+                        .enumerate()
+                {
+                    let elt = self.extract_value(val, idx as u64);
+                    let casted_elt =
+                        self.autocast(llfn, elt, src_element_ty, dest_element_ty, is_argument);
+                    ret = self.insert_value(ret, casted_elt, idx as u64);
+                }
+                ret
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn cast_arguments<'b>(
+        &mut self,
+        typ: &str,
+        fn_ty: &'ll Type,
+        llfn: &'ll Value,
+        args: &'b [&'ll Value],
+        has_fnabi: bool,
+    ) -> Cow<'b, [&'ll Value]> {
+        assert_eq!(
+            self.type_kind(fn_ty),
+            TypeKind::Function,
+            "{typ} not passed a function, but {fn_ty:?}"
+        );
+
+        let param_tys = self.func_params_types(fn_ty);
+
+        let mut casted_args = Cow::Borrowed(args);
+
+        for (idx, (dest_ty, &arg)) in iter::zip(param_tys, args).enumerate() {
+            let src_ty = self.val_ty(arg);
+            assert!(
+                self.equate_ty(src_ty, dest_ty),
+                "Cannot match `{dest_ty:?}` (expected) with `{src_ty:?}` (found) in `{llfn:?}`"
+            );
+
+            let casted_arg = self.autocast(llfn, arg, src_ty, dest_ty, true);
+            if arg != casted_arg {
+                assert!(
+                    has_fnabi,
+                    "Should inject autocasts in function call of {llfn:?}, but not able to get Rust signature"
+                );
+
+                casted_args.to_mut()[idx] = casted_arg;
+            }
+        }
+
+        casted_args
+    }
+
+    fn cast_return(
+        &mut self,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        llfn: &'ll Value,
+        ret: &'ll Value,
+    ) -> &'ll Value {
+        let src_ty = self.val_ty(ret);
+        let dest_ty = fn_abi.llvm_return_type(self);
+        assert!(
+            self.equate_ty(dest_ty, src_ty),
+            "Cannot match `{src_ty:?}` (expected) with `{dest_ty:?}` (found) in `{llfn:?}`"
+        );
+
+        self.autocast(llfn, ret, src_ty, dest_ty, false)
+    }
+
     pub(crate) fn landing_pad(
         &mut self,
         ty: &'ll Type,
@@ -1743,7 +1792,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         debug!("invoke {:?} with args ({:?})", llfn, args);
 
-        let args = self.check_call("callbr", llty, llfn, args);
+        let args = self.cast_arguments("callbr", llty, llfn, args, fn_abi.is_some());
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
@@ -1776,8 +1825,10 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         };
         if let Some(fn_abi) = fn_abi {
             fn_abi.apply_attrs_callsite(self, callbr, llfn);
+            self.cast_return(fn_abi, llfn, callbr)
+        } else {
+            callbr
         }
-        callbr
     }
 
     // Emits CFI pointer type membership tests.
