@@ -83,6 +83,10 @@ mod ok {
     #[test]
     fn cast_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/cast_expr.rs"); }
     #[test]
+    fn closure_binder() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/closure_binder.rs");
+    }
+    #[test]
     fn closure_body_underscore_assignment() {
         run_and_expect_no_errors(
             "test_data/parser/inline/ok/closure_body_underscore_assignment.rs",
