@@ -7,6 +7,7 @@ use rustc_abi::{
     X86Call,
 };
 use rustc_codegen_ssa::MemFlags;
+use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
@@ -22,7 +23,7 @@ use smallvec::SmallVec;
 
 use crate::attributes::{self, llfn_attrs_from_instance};
 use crate::builder::Builder;
-use crate::context::CodegenCx;
+use crate::context::{CodegenCx, GenericCx, SCx};
 use crate::llvm::{self, Attribute, AttributePlace};
 use crate::llvm_util;
 use crate::type_::Type;
@@ -359,6 +360,36 @@ pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
     );
 }
 
+impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
+    pub(crate) fn equate_ty(&self, rust_ty: &'ll Type, llvm_ty: &'ll Type) -> bool {
+        if rust_ty == llvm_ty {
+            return true;
+        }
+
+        // Some LLVM intrinsics return **non-packed** structs, but they can't be mimicked from Rust
+        // due to auto field-alignment in non-packed structs (packed structs are represented in LLVM
+        // as, well, packed structs, so they won't match with those either)
+        if self.type_kind(llvm_ty) == TypeKind::Struct
+            && self.type_kind(rust_ty) == TypeKind::Struct
+        {
+            let rust_element_tys = self.struct_element_types(rust_ty);
+            let llvm_element_tys = self.struct_element_types(llvm_ty);
+
+            if rust_element_tys.len() != llvm_element_tys.len() {
+                return false;
+            }
+
+            iter::zip(rust_element_tys, llvm_element_tys).all(
+                |(rust_element_ty, llvm_element_ty)| {
+                    self.equate_ty(rust_element_ty, llvm_element_ty)
+                },
+            )
+        } else {
+            false
+        }
+    }
+}
+
 impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn llvm_return_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
         match &self.ret.mode {
@@ -448,7 +479,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
         iter::once((rust_return_ty, llvm_return_ty))
             .chain(iter::zip(rust_argument_tys, llvm_argument_tys))
-            .all(|(rust_ty, llvm_ty)| rust_ty == llvm_ty)
+            .all(|(rust_ty, llvm_ty)| cx.equate_ty(rust_ty, llvm_ty))
     }
 
     fn llvm_type(

@@ -1267,6 +1267,11 @@ unsafe extern "C" {
         ParamTypes: *const &'a Type,
         ParamCount: size_t,
     ) -> &'a Value;
+    pub(crate) fn LLVMRustUpgradeIntrinsicFunction<'a>(
+        Fn: &'a Value,
+        NewFn: &mut Option<&'a Value>,
+        CanUpgradeDebugIntrinsicsToRecords: bool,
+    ) -> bool;
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;
@@ -1782,6 +1787,9 @@ unsafe extern "C" {
         ElementCount: c_uint,
         Packed: Bool,
     );
+
+    pub(crate) fn LLVMCountStructElementTypes(StructTy: &Type) -> c_uint;
+    pub(crate) fn LLVMGetStructElementTypes<'a>(StructTy: &'a Type, Dest: *mut &'a Type);
 
     pub(crate) safe fn LLVMMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
 
