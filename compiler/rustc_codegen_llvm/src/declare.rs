@@ -177,7 +177,27 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             fn_abi.apply_attrs_llfn(self, llfn, instance);
         }
 
-        // todo: check for upgrades, and emit error if not upgradable
+        if let FunctionSignature::MaybeInvalidIntrinsic(..) = signature {
+            let mut new_llfn = None;
+            let can_upgrade =
+                unsafe { llvm::LLVMRustUpgradeIntrinsicFunction(llfn, &mut new_llfn, false) };
+
+            if can_upgrade {
+                // not all intrinsics are upgraded to some other intrinsics, most are upgraded to instruction sequences
+                if let Some(new_llfn) = new_llfn {
+                    self.tcx.dcx().note(format!(
+                        "Using deprecated intrinsic `{name}`, `{}` can be used instead",
+                        str::from_utf8(llvm::get_value_name(new_llfn)).unwrap()
+                    ));
+                } else if self.tcx.sess.opts.verbose {
+                    self.tcx.dcx().note(format!(
+                        "Using deprecated intrinsic `{name}`, consider using other intrinsics/instructions"
+                    ));
+                }
+            } else {
+                self.tcx.dcx().fatal(format!("Invalid LLVM intrinsic: `{name}`"))
+            }
+        }
 
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
             if let Some(instance) = instance {
