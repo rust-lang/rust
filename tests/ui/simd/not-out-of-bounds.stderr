@@ -79,8 +79,8 @@ LL |         simd_insert(v, 2, 0u8);
 error[E0511]: invalid monomorphization of `simd_extract` intrinsic: SIMD index #1 is out of bounds (limit 2)
   --> $DIR/not-out-of-bounds.rs:85:24
    |
-LL |         let _val: u8 = simd_extract(v, 2);
-   |                        ^^^^^^^^^^^^^^^^^^
+LL | ...   let _val: u8 = simd_extract(v, 2);
+   |                      ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 9 previous errors
 

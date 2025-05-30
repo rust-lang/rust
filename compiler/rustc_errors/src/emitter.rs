@@ -2021,7 +2021,7 @@ impl HumanEmitter {
         if let Some(width) = self.diagnostic_width {
             width.saturating_sub(code_offset)
         } else if self.ui_testing || cfg!(miri) {
-            DEFAULT_COLUMN_WIDTH
+            DEFAULT_COLUMN_WIDTH.saturating_sub(code_offset)
         } else {
             termize::dimensions()
                 .map(|(w, _)| w.saturating_sub(code_offset))
