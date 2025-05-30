@@ -144,59 +144,59 @@ fn report_mismatches<'tcx>(
                 }
 
                 match syntax_source {
-                    // Ignore any other kind of lifetime
+                    // Ignore any other kind of lifetime.
                     (_, Other) => continue,
 
                     // E.g. `&T`.
                     (Implicit, Reference | OutlivesBound | PreciseCapturing) |
-                    // e.g. `&'_ T`
+                    // E.g. `&'_ T`.
                     (ExplicitAnonymous, Reference | OutlivesBound | PreciseCapturing) |
-                    // e.g. `ContainsLifetime<'_>`
+                    // E.g. `ContainsLifetime<'_>`.
                     (ExplicitAnonymous, Path { .. }) => n_elided += 1,
 
-                    // e.g. `ContainsLifetime`
+                    // E.g. `ContainsLifetime`.
                     (Implicit, Path { .. }) => n_hidden += 1,
 
-                    // e.g. `&'a T`
+                    // E.g. `&'a T`.
                     (ExplicitBound, Reference | OutlivesBound | PreciseCapturing) |
-                    // e.g. `ContainsLifetime<'a>`
+                    // E.g. `ContainsLifetime<'a>`.
                     (ExplicitBound, Path { .. }) => n_named += 1,
                 };
 
                 match syntax_source {
-                    // e.g. `&T`
+                    // E.g. `&T`.
                     (Implicit, Reference) => {
                         suggest_change_to_explicit_anonymous.push(info);
                         suggest_change_to_explicit_bound.push(info);
                     }
 
-                    // e.g. `&'_ T`
+                    // E.g. `&'_ T`.
                     (ExplicitAnonymous, Reference) => {
                         suggest_change_to_implicit.push(info);
                         suggest_change_to_mixed_implicit.push(info);
                         suggest_change_to_explicit_bound.push(info);
                     }
 
-                    // e.g. `ContainsLifetime`
+                    // E.g. `ContainsLifetime`.
                     (Implicit, Path { .. }) => {
                         suggest_change_to_mixed_explicit_anonymous.push(info);
                         suggest_change_to_explicit_anonymous.push(info);
                         suggest_change_to_explicit_bound.push(info);
                     }
 
-                    // e.g. `ContainsLifetime<'_>`
+                    // E.g. `ContainsLifetime<'_>`.
                     (ExplicitAnonymous, Path { .. }) => {
                         suggest_change_to_explicit_bound.push(info);
                     }
 
-                    // e.g. `&'a T`
+                    // E.g. `&'a T`.
                     (ExplicitBound, Reference) => {
                         suggest_change_to_implicit.push(info);
                         suggest_change_to_mixed_implicit.push(info);
                         suggest_change_to_explicit_anonymous.push(info);
                     }
 
-                    // e.g. `ContainsLifetime<'a>`
+                    // E.g. `ContainsLifetime<'a>`.
                     (ExplicitBound, Path { .. }) => {
                         suggest_change_to_mixed_explicit_anonymous.push(info);
                         suggest_change_to_explicit_anonymous.push(info);
@@ -206,12 +206,12 @@ fn report_mismatches<'tcx>(
                         panic!("This syntax / source combination is not possible");
                     }
 
-                    // e.g. `+ '_`, `+ use<'_>`
+                    // E.g. `+ '_`, `+ use<'_>`.
                     (ExplicitAnonymous, OutlivesBound | PreciseCapturing) => {
                         suggest_change_to_explicit_bound.push(info);
                     }
 
-                    // e.g. `+ 'a`, `+ use<'a>`
+                    // E.g. `+ 'a`, `+ use<'a>`.
                     (ExplicitBound, OutlivesBound | PreciseCapturing) => {
                         suggest_change_to_mixed_explicit_anonymous.push(info);
                         suggest_change_to_explicit_anonymous.push(info);
@@ -233,7 +233,7 @@ fn report_mismatches<'tcx>(
                 }
             }
 
-            // Check if syntaxes are consistent
+            // Check if syntaxes are consistent.
             let syntax_counts = (n_hidden, n_elided, n_named);
             tracing::debug!(?syntax_counts);
 
@@ -262,7 +262,7 @@ fn report_mismatches<'tcx>(
                 // Is there anything to change?
                 (!suggest_change_to_mixed_implicit.is_empty() ||
                  !suggest_change_to_mixed_explicit_anonymous.is_empty()) &&
-                // If we have `'static`, we don't want to remove it
+                // If we have `'static`, we don't want to remove it.
                 !is_bound_static;
 
             let mixed_suggestion = should_suggest_mixed.then(|| {
@@ -290,9 +290,9 @@ fn report_mismatches<'tcx>(
             let should_suggest_implicit =
                 // Is there anything to change?
                 !suggest_change_to_implicit.is_empty() &&
-                // We never want to hide the lifetime in a path (or similar)
+                // We never want to hide the lifetime in a path (or similar).
                 allow_suggesting_implicit &&
-                // If we have `'static`, we don't want to remove it
+                // If we have `'static`, we don't want to remove it.
                 !is_bound_static;
 
             let implicit_suggestion = should_suggest_implicit.then(|| {
@@ -314,7 +314,7 @@ fn report_mismatches<'tcx>(
             let should_suggest_explicit_anonymous =
                 // Is there anything to change?
                 !suggest_change_to_explicit_anonymous.is_empty() &&
-                // If we have `'static`, we don't want to remove it
+                // If we have `'static`, we don't want to remove it.
                 !is_bound_static;
 
             let explicit_anonymous_suggestion = should_suggest_explicit_anonymous
@@ -393,7 +393,7 @@ impl<'tcx> Info<'tcx> {
     /// fn x(a: &'_ u8) {}
     /// ```
     ///
-    /// Should become
+    /// Should become:
     ///
     /// ```rust
     /// fn x(a: &u8) {}
