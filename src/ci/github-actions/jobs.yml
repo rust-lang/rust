@@ -141,6 +141,7 @@ try:
   - name: dist-x86_64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
+      DOCKER_SCRIPT: dist.sh
     <<: *job-linux-36c-codebuild
 
 # Main CI jobs that have to be green to merge a commit into master
@@ -237,12 +238,14 @@ auto:
   - name: dist-x86_64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
+      DOCKER_SCRIPT: dist.sh
     <<: *job-linux-36c-codebuild
 
   - name: dist-x86_64-linux-alt
     env:
       IMAGE: dist-x86_64-linux
       CODEGEN_BACKENDS: llvm,cranelift
+      DOCKER_SCRIPT: dist-alt.sh
     <<: *job-linux-16c
 
   - name: dist-x86_64-musl
