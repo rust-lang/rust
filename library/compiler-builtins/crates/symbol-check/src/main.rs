@@ -24,6 +24,10 @@ Cargo will get invoked with `CARGO_ARGS` and the specified target. All output
 `compiler_builtins*.rlib` files will be checked.
 
 If TARGET is not specified, the host target is used.
+
+    check ARCHIVE_PATHS ...
+
+Run the same checks on the given set of paths, without invoking Cargo.
 ";
 
 fn main() {
@@ -33,12 +37,14 @@ fn main() {
 
     match &args_ref[1..] {
         ["build-and-check", target, "--", args @ ..] if !args.is_empty() => {
-            check_cargo_args(args);
             run_build_and_check(target, args);
         }
         ["build-and-check", "--", args @ ..] if !args.is_empty() => {
-            check_cargo_args(args);
-            run_build_and_check(&host_target(), args);
+            let target = &host_target();
+            run_build_and_check(target, args);
+        }
+        ["check", paths @ ..] if !paths.is_empty() => {
+            check_paths(paths);
         }
         _ => {
             println!("{USAGE}");
@@ -47,22 +53,25 @@ fn main() {
     }
 }
 
-/// Make sure `--target` isn't passed to avoid confusion (since it should be proivded only once,
-/// positionally).
-fn check_cargo_args(args: &[&str]) {
+fn run_build_and_check(target: &str, args: &[&str]) {
+    // Make sure `--target` isn't passed to avoid confusion (since it should be
+    // proivded only once, positionally).
     for arg in args {
         assert!(
             !arg.contains("--target"),
             "target must be passed positionally. {USAGE}"
         );
     }
+
+    let paths = exec_cargo_with_args(target, args);
+    check_paths(&paths);
 }
 
-fn run_build_and_check(target: &str, args: &[&str]) {
-    let paths = exec_cargo_with_args(target, args);
+fn check_paths<P: AsRef<Path>>(paths: &[P]) {
     for path in paths {
+        let path = path.as_ref();
         println!("Checking {}", path.display());
-        let archive = Archive::from_path(&path);
+        let archive = Archive::from_path(path);
 
         verify_no_duplicates(&archive);
         verify_core_symbols(&archive);
