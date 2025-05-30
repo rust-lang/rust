@@ -46,7 +46,7 @@ jobs:
   # If you want to modify CI jobs, take a look at src/ci/github-actions/jobs.yml.
   calculate_matrix:
     name: Calculate job matrix
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     outputs:
       jobs: ${{ steps.jobs.outputs.jobs }}
       run_type: ${{ steps.jobs.outputs.run_type }}
