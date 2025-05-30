@@ -235,7 +235,11 @@ where
                 .predicates_of(goal.predicate.def_id())
                 .iter_instantiated(cx, goal.predicate.trait_ref.args)
                 .map(|p| goal.with(cx, p));
-            // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
+            // While you could think of trait aliases to have a single builtin impl
+            // which uses its implied trait bounds as where-clauses, using
+            // `GoalSource::ImplWhereClause` here would be incorrect, as we also
+            // impl them, which means we're "stepping out of the impl constructor"
+            // again. To handle this, we treat these cycles as ambiguous for now.
             ecx.add_goals(GoalSource::Misc, nested_obligations);
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
