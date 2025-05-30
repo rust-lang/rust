@@ -84,8 +84,15 @@ where
         // access to self.value and may replace it.
         let mut old_value = unsafe { self.value.get().replace(MaybeUninit::new(v)) };
         match self.state.replace(State::Alive) {
+            // If the variable is not being recursively initialized, register
+            // the destructor. This might be a noop if the value does not need
+            // destruction.
             State::Uninitialized => D::register_dtor(self),
+
+            // Recursive initialization, we only need to drop the old value
+            // as we've already registered the destructor.
             State::Alive => unsafe { old_value.assume_init_drop() },
+
             State::Destroyed(_) => unreachable!(),
         }
 

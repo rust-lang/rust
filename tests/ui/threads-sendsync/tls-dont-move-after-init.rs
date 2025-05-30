@@ -1,5 +1,4 @@
 //@ run-pass
-#![allow(stable_features)]
 //@ needs-threads
 
 use std::cell::Cell;
