@@ -137,6 +137,9 @@ hir_typeck_lossy_provenance_ptr2int =
 
 hir_typeck_missing_parentheses_in_range = can't call method `{$method_name}` on type `{$ty_str}`
 
+hir_typeck_naked_asm_outside_naked_fn =
+    the `naked_asm!` macro can only be used in functions marked with `#[unsafe(naked)]`
+
 hir_typeck_never_type_fallback_flowing_into_unsafe_call = never type fallback affects this call to an `unsafe` function
     .help = specify the type explicitly
 hir_typeck_never_type_fallback_flowing_into_unsafe_deref = never type fallback affects this raw pointer dereference

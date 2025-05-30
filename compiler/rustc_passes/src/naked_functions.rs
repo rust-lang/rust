@@ -5,15 +5,13 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, HirIdSet, StmtKind};
-use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, sym};
 
 use crate::errors::{
-    NakedAsmOutsideNakedFn, NakedFunctionsAsmBlock, NakedFunctionsMustNakedAsm, NoPatterns,
-    ParamsNotAllowed,
+    NakedFunctionsAsmBlock, NakedFunctionsMustNakedAsm, NoPatterns, ParamsNotAllowed,
 };
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -45,10 +43,6 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
             check_no_patterns(tcx, body.params);
             check_no_parameters_use(tcx, body);
             check_asm(tcx, def_id, body);
-        } else {
-            // `naked_asm!` is not allowed outside of functions marked as `#[naked]`
-            let mut visitor = CheckNakedAsmInNakedFn { tcx };
-            visitor.visit_body(body);
         }
     }
 }
@@ -229,27 +223,5 @@ impl<'tcx> Visitor<'tcx> for CheckInlineAssembly {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         self.check_expr(expr, expr.span);
-    }
-}
-
-struct CheckNakedAsmInNakedFn<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
-
-impl<'tcx> Visitor<'tcx> for CheckNakedAsmInNakedFn<'tcx> {
-    type NestedFilter = OnlyBodies;
-
-    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
-        self.tcx
-    }
-
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if let ExprKind::InlineAsm(inline_asm) = expr.kind {
-            if let rustc_ast::AsmMacro::NakedAsm = inline_asm.asm_macro {
-                self.tcx.dcx().emit_err(NakedAsmOutsideNakedFn { span: expr.span });
-            }
-        }
-
-        hir::intravisit::walk_expr(self, expr);
     }
 }

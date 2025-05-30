@@ -983,3 +983,10 @@ pub(crate) struct RegisterTypeUnstable<'a> {
     pub span: Span,
     pub ty: Ty<'a>,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_naked_asm_outside_naked_fn)]
+pub(crate) struct NakedAsmOutsideNakedFn {
+    #[primary_span]
+    pub span: Span,
+}

@@ -509,9 +509,6 @@ passes_must_not_suspend =
 passes_must_use_no_effect =
     `#[must_use]` has no effect when applied to {$article} {$target}
 
-passes_naked_asm_outside_naked_fn =
-    the `naked_asm!` macro can only be used in functions marked with `#[unsafe(naked)]`
-
 passes_naked_functions_asm_block =
     naked functions must contain a single `naked_asm!` invocation
     .label_multiple_asm = multiple `naked_asm!` invocations are not allowed in naked functions
