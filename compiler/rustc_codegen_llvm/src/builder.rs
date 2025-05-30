@@ -1651,6 +1651,15 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         }
 
         match self.type_kind(llvm_ty) {
+            TypeKind::X86_AMX => {
+                let base_name = if is_argument {
+                    "llvm.x86.cast.vector.to.tile"
+                } else {
+                    "llvm.x86.cast.tile.to.vector"
+                };
+
+                self.call_intrinsic(base_name, &[rust_ty], &[val])
+            }
             TypeKind::Vector if self.element_type(llvm_ty) == self.type_i1() => {
                 if is_argument {
                     self.trunc_int_to_i1_vector(val, dest_ty)

@@ -361,6 +361,25 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         }
 
         match self.type_kind(llvm_ty) {
+            TypeKind::X86_AMX if self.type_kind(rust_ty) == TypeKind::Vector => {
+                let element_count = self.vector_length(rust_ty);
+                let element_ty = self.element_type(rust_ty);
+
+                let element_size_bits = match self.type_kind(element_ty) {
+                    TypeKind::Half => 16,
+                    TypeKind::Float => 32,
+                    TypeKind::Double => 64,
+                    TypeKind::FP128 => 128,
+                    TypeKind::Integer => self.int_width(element_ty),
+                    TypeKind::Pointer => self.int_width(self.isize_ty()),
+                    _ => bug!(
+                        "Vector element type `{element_ty:?}` not one of integer, float or pointer"
+                    ),
+                };
+                let vector_size_bits = element_size_bits * element_count as u64;
+
+                vector_size_bits == 8192
+            }
             TypeKind::BFloat => rust_ty == self.type_i16(),
             TypeKind::Vector => {
                 let llvm_element_count = self.vector_length(llvm_ty) as u64;
