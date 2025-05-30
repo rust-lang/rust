@@ -1,6 +1,6 @@
 use std::borrow::{Borrow, Cow};
 use std::ops::Deref;
-use std::{iter, ptr};
+use std::{cmp, iter, ptr};
 
 pub(crate) mod autodiff;
 
@@ -1676,6 +1676,46 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         self.call(self.type_func(&[src_ty], dest_ty), None, None, f, &[val], None, None)
     }
 
+    fn trunc_int_to_i1_vector(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
+        let vector_length = self.vector_length(dest_ty) as u64;
+        let int_width = cmp::max(vector_length.next_power_of_two(), 8);
+
+        let bitcasted = self.bitcast(val, self.type_vector(self.type_i1(), int_width));
+        if vector_length == int_width {
+            bitcasted
+        } else {
+            let shuffle_mask =
+                (0..vector_length).map(|i| self.const_i32(i as i32)).collect::<Vec<_>>();
+            self.shuffle_vector(bitcasted, bitcasted, self.const_vector(&shuffle_mask))
+        }
+    }
+
+    fn zext_i1_vector_to_int(
+        &mut self,
+        mut val: &'ll Value,
+        src_ty: &'ll Type,
+        dest_ty: &'ll Type,
+    ) -> &'ll Value {
+        let vector_length = self.vector_length(src_ty) as u64;
+        let int_width = cmp::max(vector_length.next_power_of_two(), 8);
+
+        if vector_length != int_width {
+            let shuffle_indices = match vector_length {
+                0 => unreachable!("zero length vectors are not allowed"),
+                1 => vec![0, 1, 1, 1, 1, 1, 1, 1],
+                2 => vec![0, 1, 2, 3, 2, 3, 2, 3],
+                3 => vec![0, 1, 2, 3, 4, 5, 3, 4],
+                4.. => (0..int_width as i32).collect(),
+            };
+            let shuffle_mask =
+                shuffle_indices.into_iter().map(|i| self.const_i32(i)).collect::<Vec<_>>();
+            val =
+                self.shuffle_vector(val, self.const_null(src_ty), self.const_vector(&shuffle_mask));
+        }
+
+        self.bitcast(val, dest_ty)
+    }
+
     fn autocast(
         &mut self,
         llfn: &'ll Value,
@@ -1691,6 +1731,13 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         }
 
         match self.type_kind(llvm_ty) {
+            TypeKind::Vector if self.element_type(llvm_ty) == self.type_i1() => {
+                if is_argument {
+                    self.trunc_int_to_i1_vector(val, dest_ty)
+                } else {
+                    self.zext_i1_vector_to_int(val, src_ty, dest_ty)
+                }
+            }
             TypeKind::Struct => {
                 let mut ret = self.const_poison(dest_ty);
                 for (idx, (src_element_ty, dest_element_ty)) in
