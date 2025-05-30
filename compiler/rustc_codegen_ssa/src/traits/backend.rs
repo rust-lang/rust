@@ -74,11 +74,7 @@ pub trait CodegenBackend {
 
     fn provide(&self, _providers: &mut Providers) {}
 
-    fn codegen_crate<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        metadata: Option<&EncodedMetadata>,
-    ) -> Box<dyn Any>;
+    fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any>;
 
     /// This is called on the returned `Box<dyn Any>` from [`codegen_crate`](Self::codegen_crate)
     ///
