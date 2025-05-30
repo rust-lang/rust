@@ -66,6 +66,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe { llvm::LLVMMetadataTypeInContext(self.llcx()) }
     }
 
+    pub(crate) fn type_x86amx(&self) -> &'ll Type {
+        unsafe { llvm::LLVMX86AMXTypeInContext(self.llcx()) }
+    }
+
     ///x Creates an integer type with the given number of bits, e.g., i24
     pub(crate) fn type_ix(&self, num_bits: u64) -> &'ll Type {
         unsafe { llvm::LLVMIntTypeInContext(self.llcx(), num_bits as c_uint) }

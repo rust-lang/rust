@@ -1650,6 +1650,13 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         }
 
         match self.type_kind(llvm_ty) {
+            TypeKind::X86_AMX => {
+                if is_argument {
+                    self.call_intrinsic("llvm.x86.cast.vector.to.tile", &[rust_ty], &[val])
+                } else {
+                    self.call_intrinsic("llvm.x86.cast.tile.to.vector", &[rust_ty], &[val])
+                }
+            }
             TypeKind::Vector if self.element_type(llvm_ty) == self.type_i1() => {
                 if is_argument {
                     self.trunc_int_to_i1_vector(val, dest_ty)

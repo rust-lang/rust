@@ -1084,6 +1084,8 @@ unsafe extern "C" {
     pub(crate) fn LLVMTokenTypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
+    pub(crate) fn LLVMX86AMXTypeInContext(C: &Context) -> &Type;
+
     // Operations on all values
     pub(crate) fn LLVMTypeOf(Val: &Value) -> &Type;
     pub(crate) fn LLVMGetValueName2(Val: &Value, Length: *mut size_t) -> *const c_char;
