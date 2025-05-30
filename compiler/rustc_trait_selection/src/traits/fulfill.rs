@@ -777,12 +777,15 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         }
                     }
                     // Check if feature is enabled at crate level with #[feature(..)] or if we are currently in codegen.
-                    if self.selcx.tcx().features().enabled(symbol) || (self.selcx.infcx.typing_mode() == TypingMode::PostAnalysis) {
+                    if self.selcx.tcx().features().enabled(symbol)
+                        || (self.selcx.infcx.typing_mode() == TypingMode::PostAnalysis)
+                    {
                         return ProcessResult::Changed(Default::default());
                     } else {
-                        return ProcessResult::Error(FulfillmentErrorCode::Ambiguity { overflow: None });
+                        return ProcessResult::Error(FulfillmentErrorCode::Ambiguity {
+                            overflow: None,
+                        });
                     }
-
                 }
             },
         }
