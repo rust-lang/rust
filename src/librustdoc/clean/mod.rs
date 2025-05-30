@@ -204,19 +204,10 @@ fn generate_item_with_correct_attrs(
         // We only keep the item's attributes.
         target_attrs.iter().map(|attr| (Cow::Borrowed(attr), None)).collect()
     };
-    let cfg = extract_cfg_from_attrs(
-        attrs.iter().map(move |(attr, _)| match attr {
-            Cow::Borrowed(attr) => *attr,
-            Cow::Owned(attr) => attr,
-        }),
-        cx.tcx,
-        def_id.as_local().map(|did| cx.tcx.local_def_id_to_hir_id(did)),
-        &cx.cache.hidden_cfg,
-    );
     let attrs = Attributes::from_hir_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
 
     let name = renamed.or(Some(name));
-    let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, attrs, cfg);
+    let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, attrs, None);
     item.inner.inline_stmt_id = import_id;
     item
 }
