@@ -169,13 +169,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         span: Span,
     ) -> Result<(), ty::Instance<'tcx>> {
         let tcx = self.tcx;
-        let callee_ty = instance.ty(tcx, self.typing_env());
 
-        let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
-            bug!("expected fn item type, found {}", callee_ty);
-        };
-
-        let name = tcx.item_name(def_id);
+        let name = tcx.item_name(instance.def_id());
+        let fn_args = instance.args;
 
         let simple = get_simple_intrinsic(self, name);
         let llval = match name {

@@ -1,7 +1,7 @@
 use rustc_abi::WrappingRange;
+use rustc_middle::bug;
 use rustc_middle::mir::SourceInfo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::sym;
 
@@ -60,14 +60,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         source_info: SourceInfo,
     ) -> Result<(), ty::Instance<'tcx>> {
         let span = source_info.span;
-        let callee_ty = instance.ty(bx.tcx(), bx.typing_env());
 
-        let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
-            span_bug!(span, "expected fn item type, found {}", callee_ty);
-        };
-
-        let name = bx.tcx().item_name(def_id);
+        let name = bx.tcx().item_name(instance.def_id());
         let name_str = name.as_str();
+        let fn_args = instance.args;
 
         // If we're swapping something that's *not* an `OperandValue::Ref`,
         // then we can do it directly and avoid the alloca.
@@ -137,7 +133,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
                     _ => bug!(),
                 };
-                let value = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable, callee_ty);
+                let value = meth::VirtualIndex::from_index(idx).get_usize(
+                    bx,
+                    vtable,
+                    instance.ty(bx.tcx(), bx.typing_env()),
+                );
                 match name {
                     // Size is always <= isize::MAX.
                     sym::vtable_size => {

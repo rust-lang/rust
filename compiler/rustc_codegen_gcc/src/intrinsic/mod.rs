@@ -23,7 +23,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_middle::bug;
 #[cfg(feature = "master")]
 use rustc_middle::ty::layout::FnAbiOf;
-use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::callconv::{ArgAbi, PassMode};
@@ -205,15 +205,10 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         span: Span,
     ) -> Result<(), Instance<'tcx>> {
         let tcx = self.tcx;
-        let callee_ty = instance.ty(tcx, self.typing_env());
 
-        let (def_id, fn_args) = match *callee_ty.kind() {
-            ty::FnDef(def_id, fn_args) => (def_id, fn_args),
-            _ => bug!("expected fn item type, found {}", callee_ty),
-        };
-
-        let name = tcx.item_name(def_id);
+        let name = tcx.item_name(instance.def_id());
         let name_str = name.as_str();
+        let fn_args = instance.args;
 
         let simple = get_simple_intrinsic(self, name);
         let simple_func = get_simple_function(self, name);
