@@ -443,7 +443,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             )
         };
         if let Some(fn_abi) = fn_abi {
-            fn_abi.apply_attrs_callsite(self, invoke);
+            fn_abi.apply_attrs_callsite(self, invoke, llfn);
         }
         invoke
     }
@@ -1445,7 +1445,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
 
         if let Some(fn_abi) = fn_abi {
-            fn_abi.apply_attrs_callsite(self, call);
+            fn_abi.apply_attrs_callsite(self, call, llfn);
         }
         call
     }
@@ -1785,7 +1785,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             )
         };
         if let Some(fn_abi) = fn_abi {
-            fn_abi.apply_attrs_callsite(self, callbr);
+            fn_abi.apply_attrs_callsite(self, callbr, llfn);
         }
         callbr
     }
