@@ -2,13 +2,13 @@ error[E0080]: cannot access thread local static `A`
   --> $DIR/tls.rs:11:25
    |
 LL |     unsafe { let _val = A; }
-   |                         ^ could not evaluate static initializer
+   |                         ^ evaluation of static initializer failed here
 
 error[E0080]: cannot access thread local static `A`
   --> $DIR/tls.rs:19:26
    |
 LL |     unsafe { let _val = &A; }
-   |                          ^ could not evaluate static initializer
+   |                          ^ evaluation of static initializer failed here
 
 warning: skipping const checks
    |
