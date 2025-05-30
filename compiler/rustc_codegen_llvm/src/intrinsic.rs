@@ -15,7 +15,7 @@ use rustc_middle::ty::{self, GenericArgsRef, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::spec::{HasTargetSpec, PanicStrategy};
+use rustc_target::spec::PanicStrategy;
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
@@ -27,137 +27,142 @@ use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 use crate::value::Value;
 
-fn get_simple_intrinsic<'ll>(
-    cx: &CodegenCx<'ll, '_>,
+fn call_simple_intrinsic<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
     name: Symbol,
-) -> Option<(&'ll Type, &'ll Value)> {
-    let llvm_name = match name {
-        sym::sqrtf16 => "llvm.sqrt.f16",
-        sym::sqrtf32 => "llvm.sqrt.f32",
-        sym::sqrtf64 => "llvm.sqrt.f64",
-        sym::sqrtf128 => "llvm.sqrt.f128",
+    args: &[OperandRef<'tcx, &'ll Value>],
+) -> Option<&'ll Value> {
+    let (base_name, type_params): (&'static str, &[&'ll Type]) = match name {
+        sym::sqrtf16 => ("llvm.sqrt", &[bx.type_f16()]),
+        sym::sqrtf32 => ("llvm.sqrt", &[bx.type_f32()]),
+        sym::sqrtf64 => ("llvm.sqrt", &[bx.type_f64()]),
+        sym::sqrtf128 => ("llvm.sqrt", &[bx.type_f128()]),
 
-        sym::powif16 => "llvm.powi.f16.i32",
-        sym::powif32 => "llvm.powi.f32.i32",
-        sym::powif64 => "llvm.powi.f64.i32",
-        sym::powif128 => "llvm.powi.f128.i32",
+        sym::powif16 => ("llvm.powi", &[bx.type_f16(), bx.type_i32()]),
+        sym::powif32 => ("llvm.powi", &[bx.type_f32(), bx.type_i32()]),
+        sym::powif64 => ("llvm.powi", &[bx.type_f64(), bx.type_i32()]),
+        sym::powif128 => ("llvm.powi", &[bx.type_f128(), bx.type_i32()]),
 
-        sym::sinf16 => "llvm.sin.f16",
-        sym::sinf32 => "llvm.sin.f32",
-        sym::sinf64 => "llvm.sin.f64",
-        sym::sinf128 => "llvm.sin.f128",
+        sym::sinf16 => ("llvm.sin", &[bx.type_f16()]),
+        sym::sinf32 => ("llvm.sin", &[bx.type_f32()]),
+        sym::sinf64 => ("llvm.sin", &[bx.type_f64()]),
+        sym::sinf128 => ("llvm.sin", &[bx.type_f128()]),
 
-        sym::cosf16 => "llvm.cos.f16",
-        sym::cosf32 => "llvm.cos.f32",
-        sym::cosf64 => "llvm.cos.f64",
-        sym::cosf128 => "llvm.cos.f128",
+        sym::cosf16 => ("llvm.cos", &[bx.type_f16()]),
+        sym::cosf32 => ("llvm.cos", &[bx.type_f32()]),
+        sym::cosf64 => ("llvm.cos", &[bx.type_f64()]),
+        sym::cosf128 => ("llvm.cos", &[bx.type_f128()]),
 
-        sym::powf16 => "llvm.pow.f16",
-        sym::powf32 => "llvm.pow.f32",
-        sym::powf64 => "llvm.pow.f64",
-        sym::powf128 => "llvm.pow.f128",
+        sym::powf16 => ("llvm.pow", &[bx.type_f16()]),
+        sym::powf32 => ("llvm.pow", &[bx.type_f32()]),
+        sym::powf64 => ("llvm.pow", &[bx.type_f64()]),
+        sym::powf128 => ("llvm.pow", &[bx.type_f128()]),
 
-        sym::expf16 => "llvm.exp.f16",
-        sym::expf32 => "llvm.exp.f32",
-        sym::expf64 => "llvm.exp.f64",
-        sym::expf128 => "llvm.exp.f128",
+        sym::expf16 => ("llvm.exp", &[bx.type_f16()]),
+        sym::expf32 => ("llvm.exp", &[bx.type_f32()]),
+        sym::expf64 => ("llvm.exp", &[bx.type_f64()]),
+        sym::expf128 => ("llvm.exp", &[bx.type_f128()]),
 
-        sym::exp2f16 => "llvm.exp2.f16",
-        sym::exp2f32 => "llvm.exp2.f32",
-        sym::exp2f64 => "llvm.exp2.f64",
-        sym::exp2f128 => "llvm.exp2.f128",
+        sym::exp2f16 => ("llvm.exp2", &[bx.type_f16()]),
+        sym::exp2f32 => ("llvm.exp2", &[bx.type_f32()]),
+        sym::exp2f64 => ("llvm.exp2", &[bx.type_f64()]),
+        sym::exp2f128 => ("llvm.exp2", &[bx.type_f128()]),
 
-        sym::logf16 => "llvm.log.f16",
-        sym::logf32 => "llvm.log.f32",
-        sym::logf64 => "llvm.log.f64",
-        sym::logf128 => "llvm.log.f128",
+        sym::logf16 => ("llvm.log", &[bx.type_f16()]),
+        sym::logf32 => ("llvm.log", &[bx.type_f32()]),
+        sym::logf64 => ("llvm.log", &[bx.type_f64()]),
+        sym::logf128 => ("llvm.log", &[bx.type_f128()]),
 
-        sym::log10f16 => "llvm.log10.f16",
-        sym::log10f32 => "llvm.log10.f32",
-        sym::log10f64 => "llvm.log10.f64",
-        sym::log10f128 => "llvm.log10.f128",
+        sym::log10f16 => ("llvm.log10", &[bx.type_f16()]),
+        sym::log10f32 => ("llvm.log10", &[bx.type_f32()]),
+        sym::log10f64 => ("llvm.log10", &[bx.type_f64()]),
+        sym::log10f128 => ("llvm.log10", &[bx.type_f128()]),
 
-        sym::log2f16 => "llvm.log2.f16",
-        sym::log2f32 => "llvm.log2.f32",
-        sym::log2f64 => "llvm.log2.f64",
-        sym::log2f128 => "llvm.log2.f128",
+        sym::log2f16 => ("llvm.log2", &[bx.type_f16()]),
+        sym::log2f32 => ("llvm.log2", &[bx.type_f32()]),
+        sym::log2f64 => ("llvm.log2", &[bx.type_f64()]),
+        sym::log2f128 => ("llvm.log2", &[bx.type_f128()]),
 
-        sym::fmaf16 => "llvm.fma.f16",
-        sym::fmaf32 => "llvm.fma.f32",
-        sym::fmaf64 => "llvm.fma.f64",
-        sym::fmaf128 => "llvm.fma.f128",
+        sym::fmaf16 => ("llvm.fma", &[bx.type_f16()]),
+        sym::fmaf32 => ("llvm.fma", &[bx.type_f32()]),
+        sym::fmaf64 => ("llvm.fma", &[bx.type_f64()]),
+        sym::fmaf128 => ("llvm.fma", &[bx.type_f128()]),
 
-        sym::fmuladdf16 => "llvm.fmuladd.f16",
-        sym::fmuladdf32 => "llvm.fmuladd.f32",
-        sym::fmuladdf64 => "llvm.fmuladd.f64",
-        sym::fmuladdf128 => "llvm.fmuladd.f128",
+        sym::fmuladdf16 => ("llvm.fmuladd", &[bx.type_f16()]),
+        sym::fmuladdf32 => ("llvm.fmuladd", &[bx.type_f32()]),
+        sym::fmuladdf64 => ("llvm.fmuladd", &[bx.type_f64()]),
+        sym::fmuladdf128 => ("llvm.fmuladd", &[bx.type_f128()]),
 
-        sym::fabsf16 => "llvm.fabs.f16",
-        sym::fabsf32 => "llvm.fabs.f32",
-        sym::fabsf64 => "llvm.fabs.f64",
-        sym::fabsf128 => "llvm.fabs.f128",
+        sym::fabsf16 => ("llvm.fabs", &[bx.type_f16()]),
+        sym::fabsf32 => ("llvm.fabs", &[bx.type_f32()]),
+        sym::fabsf64 => ("llvm.fabs", &[bx.type_f64()]),
+        sym::fabsf128 => ("llvm.fabs", &[bx.type_f128()]),
 
-        sym::minnumf16 => "llvm.minnum.f16",
-        sym::minnumf32 => "llvm.minnum.f32",
-        sym::minnumf64 => "llvm.minnum.f64",
-        sym::minnumf128 => "llvm.minnum.f128",
+        sym::minnumf16 => ("llvm.minnum", &[bx.type_f16()]),
+        sym::minnumf32 => ("llvm.minnum", &[bx.type_f32()]),
+        sym::minnumf64 => ("llvm.minnum", &[bx.type_f64()]),
+        sym::minnumf128 => ("llvm.minnum", &[bx.type_f128()]),
 
-        sym::minimumf16 => "llvm.minimum.f16",
-        sym::minimumf32 => "llvm.minimum.f32",
-        sym::minimumf64 => "llvm.minimum.f64",
+        sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
+        sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
+        sym::minimumf64 => ("llvm.minimum", &[bx.type_f64()]),
         // There are issues on x86_64 and aarch64 with the f128 variant,
         // let's instead use the instrinsic fallback body.
-        // sym::minimumf128 => "llvm.minimum.f128",
-        sym::maxnumf16 => "llvm.maxnum.f16",
-        sym::maxnumf32 => "llvm.maxnum.f32",
-        sym::maxnumf64 => "llvm.maxnum.f64",
-        sym::maxnumf128 => "llvm.maxnum.f128",
+        // sym::minimumf128 => ("llvm.minimum", &[cx.type_f128()]),
+        sym::maxnumf16 => ("llvm.maxnum", &[bx.type_f16()]),
+        sym::maxnumf32 => ("llvm.maxnum", &[bx.type_f32()]),
+        sym::maxnumf64 => ("llvm.maxnum", &[bx.type_f64()]),
+        sym::maxnumf128 => ("llvm.maxnum", &[bx.type_f128()]),
 
-        sym::maximumf16 => "llvm.maximum.f16",
-        sym::maximumf32 => "llvm.maximum.f32",
-        sym::maximumf64 => "llvm.maximum.f64",
+        sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
+        sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
+        sym::maximumf64 => ("llvm.maximum", &[bx.type_f64()]),
         // There are issues on x86_64 and aarch64 with the f128 variant,
         // let's instead use the instrinsic fallback body.
-        // sym::maximumf128 => "llvm.maximum.f128",
-        sym::copysignf16 => "llvm.copysign.f16",
-        sym::copysignf32 => "llvm.copysign.f32",
-        sym::copysignf64 => "llvm.copysign.f64",
-        sym::copysignf128 => "llvm.copysign.f128",
+        // sym::maximumf128 => ("llvm.maximum", &[cx.type_f128()]),
+        sym::copysignf16 => ("llvm.copysign", &[bx.type_f16()]),
+        sym::copysignf32 => ("llvm.copysign", &[bx.type_f32()]),
+        sym::copysignf64 => ("llvm.copysign", &[bx.type_f64()]),
+        sym::copysignf128 => ("llvm.copysign", &[bx.type_f128()]),
 
-        sym::floorf16 => "llvm.floor.f16",
-        sym::floorf32 => "llvm.floor.f32",
-        sym::floorf64 => "llvm.floor.f64",
-        sym::floorf128 => "llvm.floor.f128",
+        sym::floorf16 => ("llvm.floor", &[bx.type_f16()]),
+        sym::floorf32 => ("llvm.floor", &[bx.type_f32()]),
+        sym::floorf64 => ("llvm.floor", &[bx.type_f64()]),
+        sym::floorf128 => ("llvm.floor", &[bx.type_f128()]),
 
-        sym::ceilf16 => "llvm.ceil.f16",
-        sym::ceilf32 => "llvm.ceil.f32",
-        sym::ceilf64 => "llvm.ceil.f64",
-        sym::ceilf128 => "llvm.ceil.f128",
+        sym::ceilf16 => ("llvm.ceil", &[bx.type_f16()]),
+        sym::ceilf32 => ("llvm.ceil", &[bx.type_f32()]),
+        sym::ceilf64 => ("llvm.ceil", &[bx.type_f64()]),
+        sym::ceilf128 => ("llvm.ceil", &[bx.type_f128()]),
 
-        sym::truncf16 => "llvm.trunc.f16",
-        sym::truncf32 => "llvm.trunc.f32",
-        sym::truncf64 => "llvm.trunc.f64",
-        sym::truncf128 => "llvm.trunc.f128",
+        sym::truncf16 => ("llvm.trunc", &[bx.type_f16()]),
+        sym::truncf32 => ("llvm.trunc", &[bx.type_f32()]),
+        sym::truncf64 => ("llvm.trunc", &[bx.type_f64()]),
+        sym::truncf128 => ("llvm.trunc", &[bx.type_f128()]),
 
         // We could use any of `rint`, `nearbyint`, or `roundeven`
         // for this -- they are all identical in semantics when
         // assuming the default FP environment.
         // `rint` is what we used for $forever.
-        sym::round_ties_even_f16 => "llvm.rint.f16",
-        sym::round_ties_even_f32 => "llvm.rint.f32",
-        sym::round_ties_even_f64 => "llvm.rint.f64",
-        sym::round_ties_even_f128 => "llvm.rint.f128",
+        sym::round_ties_even_f16 => ("llvm.rint", &[bx.type_f16()]),
+        sym::round_ties_even_f32 => ("llvm.rint", &[bx.type_f32()]),
+        sym::round_ties_even_f64 => ("llvm.rint", &[bx.type_f64()]),
+        sym::round_ties_even_f128 => ("llvm.rint", &[bx.type_f128()]),
 
-        sym::roundf16 => "llvm.round.f16",
-        sym::roundf32 => "llvm.round.f32",
-        sym::roundf64 => "llvm.round.f64",
-        sym::roundf128 => "llvm.round.f128",
+        sym::roundf16 => ("llvm.round", &[bx.type_f16()]),
+        sym::roundf32 => ("llvm.round", &[bx.type_f32()]),
+        sym::roundf64 => ("llvm.round", &[bx.type_f64()]),
+        sym::roundf128 => ("llvm.round", &[bx.type_f128()]),
 
-        sym::ptr_mask => "llvm.ptrmask",
+        sym::ptr_mask => ("llvm.ptrmask", &[bx.type_ptr(), bx.type_isize()]),
 
         _ => return None,
     };
-    Some(cx.get_intrinsic(llvm_name))
+    Some(bx.call_intrinsic(
+        base_name,
+        type_params,
+        &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+    ))
 }
 
 impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
@@ -173,36 +178,16 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let name = tcx.item_name(instance.def_id());
         let fn_args = instance.args;
 
-        let simple = get_simple_intrinsic(self, name);
+        let simple = call_simple_intrinsic(self, name, args);
         let llval = match name {
-            _ if simple.is_some() => {
-                let (simple_ty, simple_fn) = simple.unwrap();
-                self.call(
-                    simple_ty,
-                    None,
-                    None,
-                    simple_fn,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                    None,
-                    Some(instance),
-                )
-            }
+            _ if simple.is_some() => simple.unwrap(),
             sym::is_val_statically_known => {
-                let intrinsic_type = args[0].layout.immediate_llvm_type(self.cx);
-                let kind = self.type_kind(intrinsic_type);
-                let intrinsic_name = match kind {
-                    TypeKind::Pointer | TypeKind::Integer => {
-                        Some(format!("llvm.is.constant.{intrinsic_type:?}"))
-                    }
-                    // LLVM float types' intrinsic names differ from their type names.
-                    TypeKind::Half => Some(format!("llvm.is.constant.f16")),
-                    TypeKind::Float => Some(format!("llvm.is.constant.f32")),
-                    TypeKind::Double => Some(format!("llvm.is.constant.f64")),
-                    TypeKind::FP128 => Some(format!("llvm.is.constant.f128")),
-                    _ => None,
-                };
-                if let Some(intrinsic_name) = intrinsic_name {
-                    self.call_intrinsic(&intrinsic_name, &[args[0].immediate()])
+                if let OperandValue::Immediate(imm) = args[0].val {
+                    self.call_intrinsic(
+                        "llvm.is.constant",
+                        &[args[0].layout.immediate_llvm_type(self.cx)],
+                        &[imm],
+                    )
                 } else {
                     self.const_bool(false)
                 }
@@ -246,10 +231,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 );
                 return Ok(());
             }
-            sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[]),
-            sym::va_copy => {
-                self.call_intrinsic("llvm.va_copy", &[args[0].immediate(), args[1].immediate()])
-            }
+            sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[], &[]),
+            sym::va_copy => self.call_intrinsic(
+                "llvm.va_copy",
+                &[self.type_ptr()],
+                &[args[0].immediate(), args[1].immediate()],
+            ),
             sym::va_arg => {
                 match result.layout.backend_repr {
                     BackendRepr::Scalar(scalar) => {
@@ -324,6 +311,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 };
                 self.call_intrinsic(
                     "llvm.prefetch",
+                    &[self.type_ptr()],
                     &[
                         args[0].immediate(),
                         self.const_i32(rw),
@@ -385,11 +373,13 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
                 let (size, signed) = ty.int_size_and_signed(self.tcx);
                 let width = size.bits();
+                let llty = self.type_ix(width);
                 match name {
                     sym::ctlz | sym::cttz => {
                         let y = self.const_bool(false);
                         let ret = self.call_intrinsic(
-                            &format!("llvm.{name}.i{width}"),
+                            &format!("llvm.{name}"),
+                            &[llty],
                             &[args[0].immediate(), y],
                         );
 
@@ -397,62 +387,54 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     }
                     sym::ctlz_nonzero => {
                         let y = self.const_bool(true);
-                        let llvm_name = &format!("llvm.ctlz.i{width}");
-                        let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
+                        let ret =
+                            self.call_intrinsic("llvm.ctlz", &[llty], &[args[0].immediate(), y]);
                         self.intcast(ret, result.layout.llvm_type(self), false)
                     }
                     sym::cttz_nonzero => {
                         let y = self.const_bool(true);
-                        let llvm_name = &format!("llvm.cttz.i{width}");
-                        let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
+                        let ret =
+                            self.call_intrinsic("llvm.cttz", &[llty], &[args[0].immediate(), y]);
                         self.intcast(ret, result.layout.llvm_type(self), false)
                     }
                     sym::ctpop => {
-                        let ret = self.call_intrinsic(
-                            &format!("llvm.ctpop.i{width}"),
-                            &[args[0].immediate()],
-                        );
+                        let ret =
+                            self.call_intrinsic("llvm.ctpop", &[llty], &[args[0].immediate()]);
                         self.intcast(ret, result.layout.llvm_type(self), false)
                     }
                     sym::bswap => {
                         if width == 8 {
                             args[0].immediate() // byte swap a u8/i8 is just a no-op
                         } else {
-                            self.call_intrinsic(
-                                &format!("llvm.bswap.i{width}"),
-                                &[args[0].immediate()],
-                            )
+                            self.call_intrinsic("llvm.bswap", &[llty], &[args[0].immediate()])
                         }
                     }
-                    sym::bitreverse => self.call_intrinsic(
-                        &format!("llvm.bitreverse.i{width}"),
-                        &[args[0].immediate()],
-                    ),
+                    sym::bitreverse => {
+                        self.call_intrinsic("llvm.bitreverse", &[llty], &[args[0].immediate()])
+                    }
                     sym::rotate_left | sym::rotate_right => {
                         let is_left = name == sym::rotate_left;
                         let val = args[0].immediate();
                         let raw_shift = args[1].immediate();
                         // rotate = funnel shift with first two args the same
-                        let llvm_name =
-                            &format!("llvm.fsh{}.i{}", if is_left { 'l' } else { 'r' }, width);
+                        let llvm_name = format!("llvm.fsh{}", if is_left { 'l' } else { 'r' });
 
                         // llvm expects shift to be the same type as the values, but rust
                         // always uses `u32`.
                         let raw_shift = self.intcast(raw_shift, self.val_ty(val), false);
 
-                        self.call_intrinsic(llvm_name, &[val, val, raw_shift])
+                        self.call_intrinsic(&llvm_name, &[llty], &[val, val, raw_shift])
                     }
                     sym::saturating_add | sym::saturating_sub => {
                         let is_add = name == sym::saturating_add;
                         let lhs = args[0].immediate();
                         let rhs = args[1].immediate();
-                        let llvm_name = &format!(
-                            "llvm.{}{}.sat.i{}",
+                        let llvm_name = format!(
+                            "llvm.{}{}.sat",
                             if signed { 's' } else { 'u' },
                             if is_add { "add" } else { "sub" },
-                            width
                         );
-                        self.call_intrinsic(llvm_name, &[lhs, rhs])
+                        self.call_intrinsic(&llvm_name, &[llty], &[lhs, rhs])
                     }
                     _ => bug!(),
                 }
@@ -484,11 +466,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     self.icmp(IntPredicate::IntEQ, a_val, b_val)
                 } else {
                     let n = self.const_usize(layout.size().bytes());
-                    let cmp = self.call_intrinsic("memcmp", &[a, b, n]);
-                    match self.cx.sess().target.arch.as_ref() {
-                        "avr" | "msp430" => self.icmp(IntPredicate::IntEQ, cmp, self.const_i16(0)),
-                        _ => self.icmp(IntPredicate::IntEQ, cmp, self.const_i32(0)),
-                    }
+                    let cmp = self.call_intrinsic("memcmp", &[], &[a, b, n]);
+                    self.icmp(IntPredicate::IntEQ, cmp, self.const_int(self.type_int(), 0))
                 }
             }
 
@@ -496,6 +475,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 // Here we assume that the `memcmp` provided by the target is a NOP for size 0.
                 let cmp = self.call_intrinsic(
                     "memcmp",
+                    &[],
                     &[args[0].immediate(), args[1].immediate(), args[2].immediate()],
                 );
                 // Some targets have `memcmp` returning `i16`, but the intrinsic is always `i32`.
@@ -619,18 +599,22 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 
     fn abort(&mut self) {
-        self.call_intrinsic("llvm.trap", &[]);
+        self.call_intrinsic("llvm.trap", &[], &[]);
     }
 
     fn assume(&mut self, val: Self::Value) {
         if self.cx.sess().opts.optimize != rustc_session::config::OptLevel::No {
-            self.call_intrinsic("llvm.assume", &[val]);
+            self.call_intrinsic("llvm.assume", &[], &[val]);
         }
     }
 
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value {
         if self.cx.sess().opts.optimize != rustc_session::config::OptLevel::No {
-            self.call_intrinsic("llvm.expect.i1", &[cond, self.const_bool(expected)])
+            self.call_intrinsic(
+                "llvm.expect",
+                &[self.type_i1()],
+                &[cond, self.const_bool(expected)],
+            )
         } else {
             cond
         }
@@ -644,17 +628,20 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     ) -> Self::Value {
         let typeid = self.get_metadata_value(typeid);
         let vtable_byte_offset = self.const_i32(vtable_byte_offset as i32);
-        let type_checked_load =
-            self.call_intrinsic("llvm.type.checked.load", &[llvtable, vtable_byte_offset, typeid]);
+        let type_checked_load = self.call_intrinsic(
+            "llvm.type.checked.load",
+            &[],
+            &[llvtable, vtable_byte_offset, typeid],
+        );
         self.extract_value(type_checked_load, 0)
     }
 
     fn va_start(&mut self, va_list: &'ll Value) -> &'ll Value {
-        self.call_intrinsic("llvm.va_start", &[va_list])
+        self.call_intrinsic("llvm.va_start", &[self.type_ptr()], &[va_list])
     }
 
     fn va_end(&mut self, va_list: &'ll Value) -> &'ll Value {
-        self.call_intrinsic("llvm.va_end", &[va_list])
+        self.call_intrinsic("llvm.va_end", &[self.type_ptr()], &[va_list])
     }
 }
 
@@ -893,8 +880,8 @@ fn codegen_wasm_try<'ll, 'tcx>(
         let null = bx.const_null(bx.type_ptr());
         let funclet = bx.catch_pad(cs, &[null]);
 
-        let ptr = bx.call_intrinsic("llvm.wasm.get.exception", &[funclet.cleanuppad()]);
-        let _sel = bx.call_intrinsic("llvm.wasm.get.ehselector", &[funclet.cleanuppad()]);
+        let ptr = bx.call_intrinsic("llvm.wasm.get.exception", &[], &[funclet.cleanuppad()]);
+        let _sel = bx.call_intrinsic("llvm.wasm.get.ehselector", &[], &[funclet.cleanuppad()]);
 
         let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
         bx.call(catch_ty, None, None, catch_func, &[data, ptr], Some(&funclet), None);
@@ -1031,7 +1018,7 @@ fn codegen_emcc_try<'ll, 'tcx>(
         let selector = bx.extract_value(vals, 1);
 
         // Check if the typeid we got is the one for a Rust panic.
-        let rust_typeid = bx.call_intrinsic("llvm.eh.typeid.for", &[tydesc]);
+        let rust_typeid = bx.call_intrinsic("llvm.eh.typeid.for", &[bx.type_ptr()], &[tydesc]);
         let is_rust_panic = bx.icmp(IntPredicate::IntEQ, selector, rust_typeid);
         let is_rust_panic = bx.zext(is_rust_panic, bx.type_bool());
 
@@ -1522,56 +1509,37 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }};
         }
 
-        let (elem_ty_str, elem_ty) = if let ty::Float(f) = in_elem.kind() {
-            let elem_ty = bx.cx.type_float_from_ty(*f);
-            match f.bit_width() {
-                16 => ("f16", elem_ty),
-                32 => ("f32", elem_ty),
-                64 => ("f64", elem_ty),
-                128 => ("f128", elem_ty),
-                _ => return_error!(InvalidMonomorphization::FloatingPointVector {
-                    span,
-                    name,
-                    f_ty: *f,
-                    in_ty,
-                }),
-            }
+        let elem_ty = if let ty::Float(f) = in_elem.kind() {
+            bx.cx.type_float_from_ty(*f)
         } else {
             return_error!(InvalidMonomorphization::FloatingPointType { span, name, in_ty });
         };
 
         let vec_ty = bx.type_vector(elem_ty, in_len);
 
-        let (intr_name, fn_ty) = match name {
-            sym::simd_ceil => ("ceil", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_fabs => ("fabs", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_fcos => ("cos", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_fexp2 => ("exp2", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_fexp => ("exp", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_flog10 => ("log10", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_flog2 => ("log2", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_flog => ("log", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_floor => ("floor", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_fma => ("fma", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
-            sym::simd_relaxed_fma => ("fmuladd", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
-            sym::simd_fsin => ("sin", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_fsqrt => ("sqrt", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_round => ("round", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_trunc => ("trunc", bx.type_func(&[vec_ty], vec_ty)),
+        let intr_name = match name {
+            sym::simd_ceil => "llvm.ceil",
+            sym::simd_fabs => "llvm.fabs",
+            sym::simd_fcos => "llvm.cos",
+            sym::simd_fexp2 => "llvm.exp2",
+            sym::simd_fexp => "llvm.exp",
+            sym::simd_flog10 => "llvm.log10",
+            sym::simd_flog2 => "llvm.log2",
+            sym::simd_flog => "llvm.log",
+            sym::simd_floor => "llvm.floor",
+            sym::simd_fma => "llvm.fma",
+            sym::simd_relaxed_fma => "llvm.fmuladd",
+            sym::simd_fsin => "llvm.sin",
+            sym::simd_fsqrt => "llvm.sqrt",
+            sym::simd_round => "llvm.round",
+            sym::simd_trunc => "llvm.trunc",
             _ => return_error!(InvalidMonomorphization::UnrecognizedIntrinsic { span, name }),
         };
-        let llvm_name = &format!("llvm.{intr_name}.v{in_len}{elem_ty_str}");
-        let f = bx.declare_cfn(llvm_name, llvm::UnnamedAddr::No, fn_ty);
-        let c = bx.call(
-            fn_ty,
-            None,
-            None,
-            f,
+        Ok(bx.call_intrinsic(
+            intr_name,
+            &[vec_ty],
             &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-            None,
-            None,
-        );
-        Ok(c)
+        ))
     }
 
     if std::matches!(
@@ -1593,29 +1561,6 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             | sym::simd_trunc
     ) {
         return simd_simple_float_intrinsic(name, in_elem, in_ty, in_len, bx, span, args);
-    }
-
-    // FIXME: use:
-    //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Function.h#L182
-    //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
-    fn llvm_vector_str(bx: &Builder<'_, '_, '_>, elem_ty: Ty<'_>, vec_len: u64) -> String {
-        match *elem_ty.kind() {
-            ty::Int(v) => format!(
-                "v{}i{}",
-                vec_len,
-                // Normalize to prevent crash if v: IntTy::Isize
-                v.normalize(bx.target_spec().pointer_width).bit_width().unwrap()
-            ),
-            ty::Uint(v) => format!(
-                "v{}i{}",
-                vec_len,
-                // Normalize to prevent crash if v: UIntTy::Usize
-                v.normalize(bx.target_spec().pointer_width).bit_width().unwrap()
-            ),
-            ty::Float(v) => format!("v{}f{}", vec_len, v.bit_width()),
-            ty::RawPtr(_, _) => format!("v{}p0", vec_len),
-            _ => unreachable!(),
-        }
     }
 
     fn llvm_vector_ty<'ll>(cx: &CodegenCx<'ll, '_>, elem_ty: Ty<'_>, vec_len: u64) -> &'ll Type {
@@ -1698,38 +1643,22 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
 
         // Alignment of T, must be a constant integer value:
-        let alignment_ty = bx.type_i32();
         let alignment = bx.const_i32(bx.align_of(in_elem).bytes() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let mask = vector_mask_to_bitmask(bx, args[2].immediate(), mask_elem_bitwidth, in_len);
-        let mask_ty = bx.type_vector(bx.type_i1(), in_len);
 
         // Type of the vector of pointers:
         let llvm_pointer_vec_ty = llvm_vector_ty(bx, element_ty1, in_len);
-        let llvm_pointer_vec_str = llvm_vector_str(bx, element_ty1, in_len);
 
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, element_ty0, in_len);
-        let llvm_elem_vec_str = llvm_vector_str(bx, element_ty0, in_len);
 
-        let llvm_intrinsic =
-            format!("llvm.masked.gather.{llvm_elem_vec_str}.{llvm_pointer_vec_str}");
-        let fn_ty = bx.type_func(
-            &[llvm_pointer_vec_ty, alignment_ty, mask_ty, llvm_elem_vec_ty],
-            llvm_elem_vec_ty,
-        );
-        let f = bx.declare_cfn(&llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
-        let v = bx.call(
-            fn_ty,
-            None,
-            None,
-            f,
+        return Ok(bx.call_intrinsic(
+            "llvm.masked.gather",
+            &[llvm_elem_vec_ty, llvm_pointer_vec_ty],
             &[args[1].immediate(), alignment, mask, args[0].immediate()],
-            None,
-            None,
-        );
-        return Ok(v);
+        ));
     }
 
     if name == sym::simd_masked_load {
@@ -1795,32 +1724,20 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
 
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
-        let mask_ty = bx.type_vector(bx.type_i1(), mask_len);
 
         // Alignment of T, must be a constant integer value:
-        let alignment_ty = bx.type_i32();
         let alignment = bx.const_i32(bx.align_of(values_elem).bytes() as i32);
 
         let llvm_pointer = bx.type_ptr();
 
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, values_elem, values_len);
-        let llvm_elem_vec_str = llvm_vector_str(bx, values_elem, values_len);
 
-        let llvm_intrinsic = format!("llvm.masked.load.{llvm_elem_vec_str}.p0");
-        let fn_ty = bx
-            .type_func(&[llvm_pointer, alignment_ty, mask_ty, llvm_elem_vec_ty], llvm_elem_vec_ty);
-        let f = bx.declare_cfn(&llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
-        let v = bx.call(
-            fn_ty,
-            None,
-            None,
-            f,
+        return Ok(bx.call_intrinsic(
+            "llvm.masked.load",
+            &[llvm_elem_vec_ty, llvm_pointer],
             &[args[1].immediate(), alignment, mask, args[2].immediate()],
-            None,
-            None,
-        );
-        return Ok(v);
+        ));
     }
 
     if name == sym::simd_masked_store {
@@ -1880,33 +1797,20 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
 
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
-        let mask_ty = bx.type_vector(bx.type_i1(), mask_len);
 
         // Alignment of T, must be a constant integer value:
-        let alignment_ty = bx.type_i32();
         let alignment = bx.const_i32(bx.align_of(values_elem).bytes() as i32);
-
-        let ret_t = bx.type_void();
 
         let llvm_pointer = bx.type_ptr();
 
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, values_elem, values_len);
-        let llvm_elem_vec_str = llvm_vector_str(bx, values_elem, values_len);
 
-        let llvm_intrinsic = format!("llvm.masked.store.{llvm_elem_vec_str}.p0");
-        let fn_ty = bx.type_func(&[llvm_elem_vec_ty, llvm_pointer, alignment_ty, mask_ty], ret_t);
-        let f = bx.declare_cfn(&llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
-        let v = bx.call(
-            fn_ty,
-            None,
-            None,
-            f,
+        return Ok(bx.call_intrinsic(
+            "llvm.masked.store",
+            &[llvm_elem_vec_ty, llvm_pointer],
             &[args[2].immediate(), args[1].immediate(), alignment, mask],
-            None,
-            None,
-        );
-        return Ok(v);
+        ));
     }
 
     if name == sym::simd_scatter {
@@ -1971,38 +1875,22 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
 
         // Alignment of T, must be a constant integer value:
-        let alignment_ty = bx.type_i32();
         let alignment = bx.const_i32(bx.align_of(in_elem).bytes() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let mask = vector_mask_to_bitmask(bx, args[2].immediate(), mask_elem_bitwidth, in_len);
-        let mask_ty = bx.type_vector(bx.type_i1(), in_len);
-
-        let ret_t = bx.type_void();
 
         // Type of the vector of pointers:
         let llvm_pointer_vec_ty = llvm_vector_ty(bx, element_ty1, in_len);
-        let llvm_pointer_vec_str = llvm_vector_str(bx, element_ty1, in_len);
 
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, element_ty0, in_len);
-        let llvm_elem_vec_str = llvm_vector_str(bx, element_ty0, in_len);
 
-        let llvm_intrinsic =
-            format!("llvm.masked.scatter.{llvm_elem_vec_str}.{llvm_pointer_vec_str}");
-        let fn_ty =
-            bx.type_func(&[llvm_elem_vec_ty, llvm_pointer_vec_ty, alignment_ty, mask_ty], ret_t);
-        let f = bx.declare_cfn(&llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
-        let v = bx.call(
-            fn_ty,
-            None,
-            None,
-            f,
+        return Ok(bx.call_intrinsic(
+            "llvm.masked.scatter",
+            &[llvm_elem_vec_ty, llvm_pointer_vec_ty],
             &[args[0].immediate(), args[1].immediate(), alignment, mask],
-            None,
-            None,
-        );
-        return Ok(v);
+        ));
     }
 
     macro_rules! arith_red {
@@ -2431,40 +2319,31 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             },
             in_len as u64,
         );
-        let intrinsic_name = match name {
-            sym::simd_bswap => "bswap",
-            sym::simd_bitreverse => "bitreverse",
-            sym::simd_ctlz => "ctlz",
-            sym::simd_ctpop => "ctpop",
-            sym::simd_cttz => "cttz",
+        let llvm_intrinsic = match name {
+            sym::simd_bswap => "llvm.bswap",
+            sym::simd_bitreverse => "llvm.bitreverse",
+            sym::simd_ctlz => "llvm.ctlz",
+            sym::simd_ctpop => "llvm.ctpop",
+            sym::simd_cttz => "llvm.cttz",
             _ => unreachable!(),
         };
         let int_size = in_elem.int_size_and_signed(bx.tcx()).0.bits();
-        let llvm_intrinsic = &format!("llvm.{}.v{}i{}", intrinsic_name, in_len, int_size,);
 
         return match name {
             // byte swap is no-op for i8/u8
             sym::simd_bswap if int_size == 8 => Ok(args[0].immediate()),
             sym::simd_ctlz | sym::simd_cttz => {
                 // for the (int, i1 immediate) pair, the second arg adds `(0, true) => poison`
-                let fn_ty = bx.type_func(&[vec_ty, bx.type_i1()], vec_ty);
                 let dont_poison_on_zero = bx.const_int(bx.type_i1(), 0);
-                let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
-                Ok(bx.call(
-                    fn_ty,
-                    None,
-                    None,
-                    f,
+                Ok(bx.call_intrinsic(
+                    llvm_intrinsic,
+                    &[vec_ty],
                     &[args[0].immediate(), dont_poison_on_zero],
-                    None,
-                    None,
                 ))
             }
             sym::simd_bswap | sym::simd_bitreverse | sym::simd_ctpop => {
                 // simple unary argument cases
-                let fn_ty = bx.type_func(&[vec_ty], vec_ty);
-                let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
-                Ok(bx.call(fn_ty, None, None, f, &[args[0].immediate()], None, None))
+                Ok(bx.call_intrinsic(llvm_intrinsic, &[vec_ty], &[args[0].immediate()]))
             }
             _ => unreachable!(),
         };
@@ -2495,10 +2374,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let lhs = args[0].immediate();
         let rhs = args[1].immediate();
         let is_add = name == sym::simd_saturating_add;
-        let ptr_bits = bx.tcx().data_layout.pointer_size.bits() as _;
-        let (signed, elem_width, elem_ty) = match *in_elem.kind() {
-            ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_int_from_ty(i)),
-            ty::Uint(i) => (false, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_uint_from_ty(i)),
+        let (signed, elem_ty) = match *in_elem.kind() {
+            ty::Int(i) => (true, bx.cx.type_int_from_ty(i)),
+            ty::Uint(i) => (false, bx.cx.type_uint_from_ty(i)),
             _ => {
                 return_error!(InvalidMonomorphization::ExpectedVectorElementType {
                     span,
@@ -2508,19 +2386,14 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 });
             }
         };
-        let llvm_intrinsic = &format!(
-            "llvm.{}{}.sat.v{}i{}",
+        let llvm_intrinsic = format!(
+            "llvm.{}{}.sat",
             if signed { 's' } else { 'u' },
             if is_add { "add" } else { "sub" },
-            in_len,
-            elem_width
         );
         let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
-        let fn_ty = bx.type_func(&[vec_ty, vec_ty], vec_ty);
-        let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
-        let v = bx.call(fn_ty, None, None, f, &[lhs, rhs], None, None);
-        return Ok(v);
+        return Ok(bx.call_intrinsic(&llvm_intrinsic, &[vec_ty], &[lhs, rhs]));
     }
 
     span_bug!(span, "unknown SIMD intrinsic");
