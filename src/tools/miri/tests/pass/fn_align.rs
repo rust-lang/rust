@@ -1,5 +1,6 @@
 //@compile-flags: -Zmin-function-alignment=8
 #![feature(fn_align)]
+#![allow(function_casts_as_integer)]
 
 // When a function uses `repr(align(N))`, the function address should be a multiple of `N`.
 
