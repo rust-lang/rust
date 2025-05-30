@@ -1,5 +1,3 @@
-use std::fmt::Display;
-use std::str::FromStr;
 use std::{fmt, iter};
 
 use rustc_abi::{
@@ -531,41 +529,6 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
-pub enum Conv {
-    // General language calling conventions, for which every target
-    // should have its own backend (e.g. LLVM) support.
-    C,
-    Rust,
-
-    Cold,
-    PreserveMost,
-    PreserveAll,
-
-    // Target-specific calling conventions.
-    ArmAapcs,
-    CCmseNonSecureCall,
-    CCmseNonSecureEntry,
-
-    Msp430Intr,
-
-    GpuKernel,
-
-    X86Fastcall,
-    X86Intr,
-    X86Stdcall,
-    X86ThisCall,
-    X86VectorCall,
-
-    X86_64SysV,
-    X86_64Win64,
-
-    AvrInterrupt,
-    AvrNonBlockingInterrupt,
-
-    RiscvInterrupt { kind: RiscvInterruptKind },
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum RiscvInterruptKind {
     Machine,
     Supervisor,
@@ -860,70 +823,6 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 _ => {}
             }
         }
-    }
-}
-
-impl FromStr for Conv {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "C" => Ok(Conv::C),
-            "Rust" => Ok(Conv::Rust),
-            "RustCold" => Ok(Conv::Rust),
-            "ArmAapcs" => Ok(Conv::ArmAapcs),
-            "CCmseNonSecureCall" => Ok(Conv::CCmseNonSecureCall),
-            "CCmseNonSecureEntry" => Ok(Conv::CCmseNonSecureEntry),
-            "Msp430Intr" => Ok(Conv::Msp430Intr),
-            "X86Fastcall" => Ok(Conv::X86Fastcall),
-            "X86Intr" => Ok(Conv::X86Intr),
-            "X86Stdcall" => Ok(Conv::X86Stdcall),
-            "X86ThisCall" => Ok(Conv::X86ThisCall),
-            "X86VectorCall" => Ok(Conv::X86VectorCall),
-            "X86_64SysV" => Ok(Conv::X86_64SysV),
-            "X86_64Win64" => Ok(Conv::X86_64Win64),
-            "GpuKernel" => Ok(Conv::GpuKernel),
-            "AvrInterrupt" => Ok(Conv::AvrInterrupt),
-            "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
-            "RiscvInterrupt(machine)" => {
-                Ok(Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine })
-            }
-            "RiscvInterrupt(supervisor)" => {
-                Ok(Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor })
-            }
-            _ => Err(format!("'{s}' is not a valid value for entry function call convention.")),
-        }
-    }
-}
-
-fn conv_to_externabi(conv: &Conv) -> ExternAbi {
-    match conv {
-        Conv::C => ExternAbi::C { unwind: false },
-        Conv::Rust => ExternAbi::Rust,
-        Conv::PreserveMost => ExternAbi::RustCold,
-        Conv::ArmAapcs => ExternAbi::Aapcs { unwind: false },
-        Conv::CCmseNonSecureCall => ExternAbi::CCmseNonSecureCall,
-        Conv::CCmseNonSecureEntry => ExternAbi::CCmseNonSecureEntry,
-        Conv::Msp430Intr => ExternAbi::Msp430Interrupt,
-        Conv::GpuKernel => ExternAbi::GpuKernel,
-        Conv::X86Fastcall => ExternAbi::Fastcall { unwind: false },
-        Conv::X86Intr => ExternAbi::X86Interrupt,
-        Conv::X86Stdcall => ExternAbi::Stdcall { unwind: false },
-        Conv::X86ThisCall => ExternAbi::Thiscall { unwind: false },
-        Conv::X86VectorCall => ExternAbi::Vectorcall { unwind: false },
-        Conv::X86_64SysV => ExternAbi::SysV64 { unwind: false },
-        Conv::X86_64Win64 => ExternAbi::Win64 { unwind: false },
-        Conv::AvrInterrupt => ExternAbi::AvrInterrupt,
-        Conv::AvrNonBlockingInterrupt => ExternAbi::AvrNonBlockingInterrupt,
-        Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine } => ExternAbi::RiscvInterruptM,
-        Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor } => ExternAbi::RiscvInterruptS,
-        Conv::Cold | Conv::PreserveAll => unreachable!(),
-    }
-}
-
-impl Display for Conv {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", conv_to_externabi(self))
     }
 }
 
