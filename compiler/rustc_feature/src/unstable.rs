@@ -526,8 +526,8 @@ declare_features! (
     (incomplete, generic_const_parameter_types, "1.87.0", Some(137626)),
     /// Allows any generic constants being used as pattern type range ends
     (incomplete, generic_pattern_types, "1.86.0", Some(136574)),
-    /// Allows registering static items globally, possibly across crates, to iterate over at runtime.
-    (unstable, global_registration, "1.80.0", Some(125119)),
+    /// Allows the creation of crate local distributed slices, slices where the elements can be added all throughout the crate
+    (unstable, crate_local_distributed_slice, "CURRENT_RUSTC_VERSION", Some(125119)),
     /// Allows using guards in patterns.
     (incomplete, guard_patterns, "1.85.0", Some(129967)),
     /// Allows using `..=X` as a patterns in slices.
