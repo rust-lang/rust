@@ -3812,6 +3812,8 @@ name = "rustc_hir_analysis"
 version = "0.0.0"
 dependencies = [
  "itertools",
+ "rand 0.9.1",
+ "rand_xoshiro",
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
