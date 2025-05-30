@@ -1452,9 +1452,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 impl<'ll> StaticBuilderMethods for Builder<'_, 'll, '_> {
     fn get_static(&mut self, def_id: DefId) -> &'ll Value {
         // Forward to the `get_static` method of `CodegenCx`
-        let s = self.cx().get_static(def_id);
-        // Cast to default address space if globals are in a different addrspace
-        self.cx().const_pointercast(s, self.type_ptr())
+        let global = self.cx().get_static(def_id);
+        if self.cx().tcx.is_thread_local_static(def_id) {
+            let pointer = self.call_intrinsic("llvm.threadlocal.address", &[global]);
+            // Cast to default address space if globals are in a different addrspace
+            self.pointercast(pointer, self.type_ptr())
+        } else {
+            // Cast to default address space if globals are in a different addrspace
+            self.cx().const_pointercast(global, self.type_ptr())
+        }
     }
 }
 
