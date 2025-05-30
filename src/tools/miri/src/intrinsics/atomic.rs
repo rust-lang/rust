@@ -1,4 +1,5 @@
 use rustc_middle::mir::BinOp;
+use rustc_middle::ty::AtomicOrdering;
 use rustc_middle::{mir, ty};
 
 use self::helpers::check_intrinsic_arg_count;
@@ -19,6 +20,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_atomic_intrinsic(
         &mut self,
         intrinsic_name: &str,
+        generic_args: ty::GenericArgsRef<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -32,6 +34,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 "acquire" => AtomicReadOrd::Acquire,
                 "relaxed" => AtomicReadOrd::Relaxed,
                 _ => panic!("invalid read ordering `{ord}`"),
+            }
+        }
+
+        fn read_ord_const_generic(o: AtomicOrdering) -> AtomicReadOrd {
+            match o {
+                AtomicOrdering::SeqCst => AtomicReadOrd::SeqCst,
+                AtomicOrdering::Acquire => AtomicReadOrd::Acquire,
+                AtomicOrdering::Relaxed => AtomicReadOrd::Relaxed,
+                _ => panic!("invalid read ordering `{o:?}`"),
             }
         }
 
@@ -66,7 +77,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         match &*intrinsic_structure {
-            ["load", ord] => this.atomic_load(args, dest, read_ord(ord))?,
+            // New-style intrinsics that use const generics
+            ["load"] => {
+                let ordering = generic_args.const_at(1).to_value();
+                let ordering =
+                    ordering.valtree.unwrap_branch()[0].unwrap_leaf().to_atomic_ordering();
+                this.atomic_load(args, dest, read_ord_const_generic(ordering))?;
+            }
+
+            // Old-style intrinsics that have the ordering in the intrinsic name
             ["store", ord] => this.atomic_store(args, write_ord(ord))?,
 
             ["fence", ord] => this.atomic_fence_intrinsic(args, fence_ord(ord))?,
