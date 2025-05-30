@@ -1,13 +1,12 @@
 //! Checks validity of naked functions.
 
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{LocalDefId, LocalModDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, HirIdSet, StmtKind};
-use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::util::Providers;
 use rustc_span::{Span, sym};
 
 use crate::errors::{
@@ -15,36 +14,14 @@ use crate::errors::{
 };
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_naked_functions, ..*providers };
+    providers.hooks.typeck_naked_fn = typeck_naked_fn;
 }
 
-fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    let items = tcx.hir_module_items(module_def_id);
-    for def_id in items.definitions() {
-        if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
-            continue;
-        }
-
-        let body = match tcx.hir_node_by_def_id(def_id) {
-            hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Fn { body: body_id, .. }, ..
-            })
-            | hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)),
-                ..
-            })
-            | hir::Node::ImplItem(hir::ImplItem {
-                kind: hir::ImplItemKind::Fn(_, body_id), ..
-            }) => tcx.hir_body(*body_id),
-            _ => continue,
-        };
-
-        if tcx.has_attr(def_id, sym::naked) {
-            check_no_patterns(tcx, body.params);
-            check_no_parameters_use(tcx, body);
-            check_asm(tcx, def_id, body);
-        }
-    }
+fn typeck_naked_fn<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &'tcx hir::Body<'tcx>) {
+    debug_assert!(tcx.has_attr(def_id, sym::naked));
+    check_no_patterns(tcx, body.params);
+    check_no_parameters_use(tcx, body);
+    check_asm(tcx, def_id, body);
 }
 
 /// Checks that parameters don't use patterns. Mirrors the checks for function declarations.

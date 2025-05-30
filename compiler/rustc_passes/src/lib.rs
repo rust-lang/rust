@@ -14,7 +14,7 @@
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
-use rustc_middle::query::Providers;
+use rustc_middle::util::Providers;
 
 pub mod abi_test;
 mod check_attr;

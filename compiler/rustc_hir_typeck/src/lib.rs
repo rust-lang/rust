@@ -55,8 +55,8 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config;
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::{Span, sym};
 use tracing::{debug, instrument};
 use typeck_root_ctxt::TypeckRootCtxt;
 
@@ -169,6 +169,10 @@ fn typeck_with_inspect<'tcx>(
                 .enumerate()
                 .map(|(idx, ty)| fcx.normalize(arg_span(idx), ty)),
         );
+
+        if tcx.has_attr(def_id, sym::naked) {
+            tcx.typeck_naked_fn(def_id, body);
+        }
 
         check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params());
     } else {
