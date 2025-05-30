@@ -1832,7 +1832,9 @@ impl Config {
                 .join(exe("rustc", config.build))
         };
 
-        config.initial_sysroot = config.initial_rustc.ancestors().nth(2).unwrap().into();
+        config.initial_sysroot = t!(PathBuf::from_str(
+            output(Command::new(&config.initial_rustc).args(["--print", "sysroot"])).trim()
+        ));
 
         config.initial_cargo_clippy = cargo_clippy;
 
