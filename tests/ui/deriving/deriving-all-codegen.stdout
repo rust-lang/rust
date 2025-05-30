@@ -419,6 +419,100 @@ impl ::core::cmp::Ord for Big {
     }
 }
 
+// It is more efficient to compare scalar types before non-scalar types.
+struct Reorder {
+    b1: Option<f32>,
+    b2: u16,
+    b3: &'static str,
+    b4: i8,
+    b5: u128,
+    _b: *mut &'static dyn FnMut() -> (),
+    b6: f64,
+    b7: &'static mut (),
+    b8: char,
+    b9: &'static [i64],
+    b10: &'static *const bool,
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Reorder { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for Reorder {
+    #[inline]
+    fn eq(&self, other: &Reorder) -> bool {
+        self.b2 == other.b2 && self.b4 == other.b4 && self.b5 == other.b5 &&
+                                        self.b6 == other.b6 && self.b7 == other.b7 &&
+                                self.b8 == other.b8 && self.b10 == other.b10 &&
+                        self.b1 == other.b1 && self.b3 == other.b3 &&
+                self._b == other._b && self.b9 == other.b9
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for Reorder {
+    #[inline]
+    fn partial_cmp(&self, other: &Reorder)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        match ::core::cmp::PartialOrd::partial_cmp(&self.b1, &other.b1) {
+            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
+                match ::core::cmp::PartialOrd::partial_cmp(&self.b2,
+                        &other.b2) {
+                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                        =>
+                        match ::core::cmp::PartialOrd::partial_cmp(&self.b3,
+                                &other.b3) {
+                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                =>
+                                match ::core::cmp::PartialOrd::partial_cmp(&self.b4,
+                                        &other.b4) {
+                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                        =>
+                                        match ::core::cmp::PartialOrd::partial_cmp(&self.b5,
+                                                &other.b5) {
+                                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                =>
+                                                match ::core::cmp::PartialOrd::partial_cmp(&self._b,
+                                                        &other._b) {
+                                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                        =>
+                                                        match ::core::cmp::PartialOrd::partial_cmp(&self.b6,
+                                                                &other.b6) {
+                                                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                                =>
+                                                                match ::core::cmp::PartialOrd::partial_cmp(&self.b7,
+                                                                        &other.b7) {
+                                                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                                        =>
+                                                                        match ::core::cmp::PartialOrd::partial_cmp(&self.b8,
+                                                                                &other.b8) {
+                                                                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                                                =>
+                                                                                match ::core::cmp::PartialOrd::partial_cmp(&self.b9,
+                                                                                        &other.b9) {
+                                                                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                                                        =>
+                                                                                        ::core::cmp::PartialOrd::partial_cmp(&self.b10, &other.b10),
+                                                                                    cmp => cmp,
+                                                                                },
+                                                                            cmp => cmp,
+                                                                        },
+                                                                    cmp => cmp,
+                                                                },
+                                                            cmp => cmp,
+                                                        },
+                                                    cmp => cmp,
+                                                },
+                                            cmp => cmp,
+                                        },
+                                    cmp => cmp,
+                                },
+                            cmp => cmp,
+                        },
+                    cmp => cmp,
+                },
+            cmp => cmp,
+        }
+    }
+}
+
 // A struct that doesn't impl `Copy`, which means it gets the non-simple
 // `clone` implemention that clones the fields individually.
 struct NonCopy(u32);
@@ -1161,6 +1255,77 @@ impl ::core::cmp::Ord for Mixed {
                             cmp => cmp,
                         },
                     _ => ::core::cmp::Ordering::Equal,
+                },
+            cmp => cmp,
+        }
+    }
+}
+
+// When comparing enum variant it is more efficient to compare scalar types before non-scalar types.
+enum ReorderEnum {
+    A(i32),
+    B,
+    C(i8),
+    D,
+    E,
+    F,
+    G(&'static mut str, *const u8, *const dyn Fn() -> ()),
+    H,
+    I,
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for ReorderEnum { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for ReorderEnum {
+    #[inline]
+    fn eq(&self, other: &ReorderEnum) -> bool {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        __self_discr == __arg1_discr &&
+            match (self, other) {
+                (ReorderEnum::A(__self_0), ReorderEnum::A(__arg1_0)) =>
+                    __self_0 == __arg1_0,
+                (ReorderEnum::C(__self_0), ReorderEnum::C(__arg1_0)) =>
+                    __self_0 == __arg1_0,
+                (ReorderEnum::G(__self_0, __self_1, __self_2),
+                    ReorderEnum::G(__arg1_0, __arg1_1, __arg1_2)) =>
+                    __self_1 == __arg1_1 && __self_0 == __arg1_0 &&
+                        __self_2 == __arg1_2,
+                _ => true,
+            }
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for ReorderEnum {
+    #[inline]
+    fn partial_cmp(&self, other: &ReorderEnum)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        match ::core::cmp::PartialOrd::partial_cmp(&__self_discr,
+                &__arg1_discr) {
+            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
+                match (self, other) {
+                    (ReorderEnum::A(__self_0), ReorderEnum::A(__arg1_0)) =>
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+                    (ReorderEnum::C(__self_0), ReorderEnum::C(__arg1_0)) =>
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+                    (ReorderEnum::G(__self_0, __self_1, __self_2),
+                        ReorderEnum::G(__arg1_0, __arg1_1, __arg1_2)) =>
+                        match ::core::cmp::PartialOrd::partial_cmp(__self_0,
+                                __arg1_0) {
+                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                =>
+                                match ::core::cmp::PartialOrd::partial_cmp(__self_1,
+                                        __arg1_1) {
+                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                        => ::core::cmp::PartialOrd::partial_cmp(__self_2, __arg1_2),
+                                    cmp => cmp,
+                                },
+                            cmp => cmp,
+                        },
+                    _ =>
+                        ::core::option::Option::Some(::core::cmp::Ordering::Equal),
                 },
             cmp => cmp,
         }
