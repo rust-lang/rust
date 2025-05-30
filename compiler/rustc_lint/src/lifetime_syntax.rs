@@ -12,7 +12,7 @@ declare_lint! {
     /// lifetime is referred to by different syntaxes between function
     /// arguments and return values.
     ///
-    /// The three kinds of syntax are:
+    /// The three kinds of syntaxes are:
     ///
     /// 1. Named lifetimes. These are references (`&'a str`) or paths
     ///    (`Person<'a>`) that use a lifetime with a name, such as
@@ -20,7 +20,7 @@ declare_lint! {
     ///
     /// 2. Elided lifetimes. These are references with no explicit
     ///    lifetime (`&str`), references using the anonymous lifetime
-    ///    (`&'_ str`) and paths using the anonymous lifetime
+    ///    (`&'_ str`), and paths using the anonymous lifetime
     ///    (`Person<'_>`).
     ///
     /// 3. Hidden lifetimes. These are paths that do not contain any
@@ -68,7 +68,7 @@ declare_lint! {
     /// inconsistent lifetime syntax may result in unsound code.
     pub MISMATCHED_LIFETIME_SYNTAXES,
     Warn,
-    "detects when an elided lifetime uses different syntax between arguments and return values"
+    "detects when a lifetime uses different syntax between arguments and return values"
 }
 
 declare_lint_pass!(LifetimeSyntax => [MISMATCHED_LIFETIME_SYNTAXES]);
