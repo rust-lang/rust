@@ -217,20 +217,14 @@ fn explain_lint_level_source(
     src: LintLevelSource,
     err: &mut Diag<'_, ()>,
 ) {
-    /// Find the name of the lint group that contains the given lint.
-    /// Assumes the lint only belongs to one group.
-    fn lint_group_name(
-        lint: &'static Lint,
-        sess: &Session,
-        allow_external: bool,
-    ) -> Option<&'static str> {
-        let mut lint_groups_iter = sess.lint_groups_iter();
+    // Find the name of the lint group that contains the given lint.
+    // Assumes the lint only belongs to one group.
+    let lint_group_name = |lint| {
+        let lint_groups_iter = sess.lint_groups_iter();
         let lint_id = LintId::of(lint);
         lint_groups_iter
+            .filter(|lint_group| !lint_group.is_externally_loaded)
             .find(|lint_group| {
-                if !allow_external && lint_group.is_externally_loaded {
-                    return false;
-                }
                 lint_group
                     .lints
                     .iter()
@@ -238,7 +232,7 @@ fn explain_lint_level_source(
                     .is_some()
             })
             .map(|lint_group| lint_group.name)
-    }
+    };
     let name = lint.name_lower();
     if let Level::Allow = level {
         // Do not point at `#[allow(compat_lint)]` as the reason for a compatibility lint
@@ -248,7 +242,7 @@ fn explain_lint_level_source(
     match src {
         LintLevelSource::Default => {
             let level_str = level.as_str();
-            match lint_group_name(lint, sess, false) {
+            match lint_group_name(lint) {
                 Some(group_name) => {
                     err.note_once(format!("`#[{level_str}({name})]` (part of `#[{level_str}({group_name})]`) on by default"));
                 }
