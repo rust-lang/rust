@@ -304,6 +304,14 @@ impl Intrinsic {
         NonZero::new(id).map(|id| Self { id })
     }
 
+    pub(crate) fn is_overloaded(self) -> bool {
+        unsafe { LLVMIntrinsicIsOverloaded(self.id) == True }
+    }
+
+    pub(crate) fn get_type<'ll>(self, llcx: &'ll Context, type_params: &[&'ll Type]) -> &'ll Type {
+        unsafe { LLVMIntrinsicGetType(llcx, self.id, type_params.as_ptr(), type_params.len()) }
+    }
+
     pub(crate) fn get_declaration<'ll>(
         self,
         llmod: &'ll Module,
