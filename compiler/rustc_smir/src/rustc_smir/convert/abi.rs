@@ -4,7 +4,7 @@
 
 use rustc_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
 use rustc_middle::ty;
-use rustc_target::callconv::{self, Conv};
+use rustc_target::callconv;
 use stable_mir::abi::{
     AddressSpace, ArgAbi, CallConvention, FieldsShape, FloatLength, FnAbi, IntegerLength, Layout,
     LayoutShape, PassMode, Primitive, Scalar, TagEncoding, TyAndLayout, ValueAbi, VariantsShape,
@@ -89,35 +89,6 @@ impl<'tcx> Stable<'tcx> for callconv::ArgAbi<'tcx, ty::Ty<'tcx>> {
             ty: self.layout.ty.stable(tables),
             layout: self.layout.layout.stable(tables),
             mode: self.mode.stable(tables),
-        }
-    }
-}
-
-impl<'tcx> Stable<'tcx> for callconv::Conv {
-    type T = CallConvention;
-
-    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
-        match self {
-            Conv::C => CallConvention::C,
-            Conv::Rust => CallConvention::Rust,
-            Conv::Cold => CallConvention::Cold,
-            Conv::PreserveMost => CallConvention::PreserveMost,
-            Conv::PreserveAll => CallConvention::PreserveAll,
-            Conv::ArmAapcs => CallConvention::ArmAapcs,
-            Conv::CCmseNonSecureCall => CallConvention::CCmseNonSecureCall,
-            Conv::CCmseNonSecureEntry => CallConvention::CCmseNonSecureEntry,
-            Conv::Msp430Intr => CallConvention::Msp430Intr,
-            Conv::X86Fastcall => CallConvention::X86Fastcall,
-            Conv::X86Intr => CallConvention::X86Intr,
-            Conv::X86Stdcall => CallConvention::X86Stdcall,
-            Conv::X86ThisCall => CallConvention::X86ThisCall,
-            Conv::X86VectorCall => CallConvention::X86VectorCall,
-            Conv::X86_64SysV => CallConvention::X86_64SysV,
-            Conv::X86_64Win64 => CallConvention::X86_64Win64,
-            Conv::GpuKernel => CallConvention::GpuKernel,
-            Conv::AvrInterrupt => CallConvention::AvrInterrupt,
-            Conv::AvrNonBlockingInterrupt => CallConvention::AvrNonBlockingInterrupt,
-            Conv::RiscvInterrupt { .. } => CallConvention::RiscvInterrupt,
         }
     }
 }
