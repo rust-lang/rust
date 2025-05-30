@@ -2940,11 +2940,9 @@ intrinsics:
       - int8x8_t
       - int8x16_t
     compose:
-      - LLVMLink:
-          name: "rbit.{neon_type}"
-          links:
-            - link: "llvm.bitreverse.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall:
+          - simd_bitreverse
+          - - a
 
   - name: "vrbit{neon_type[0].no}"
     doc: Reverse bit order
