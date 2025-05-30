@@ -212,14 +212,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             _ => bug!("expected fn item type, found {}", callee_ty),
         };
 
-        let sig = callee_ty.fn_sig(tcx);
-        let sig = tcx.normalize_erasing_late_bound_regions(self.typing_env(), sig);
-        let arg_tys = sig.inputs();
-        let ret_ty = sig.output();
         let name = tcx.item_name(def_id);
         let name_str = name.as_str();
-
-        let llret_ty = self.layout_of(ret_ty).gcc_type(self);
 
         let simple = get_simple_intrinsic(self, name);
         let simple_func = get_simple_function(self, name);
@@ -320,8 +314,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::rotate_right
             | sym::saturating_add
             | sym::saturating_sub => {
-                let ty = arg_tys[0];
-                match int_type_width_signed(ty, self) {
+                match int_type_width_signed(args[0].layout.ty, self) {
                     Some((width, signed)) => match name {
                         sym::ctlz | sym::cttz => {
                             let func = self.current_func.borrow().expect("func");
@@ -400,7 +393,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
                             span,
                             name,
-                            ty,
+                            ty: args[0].layout.ty,
                         });
                         return Ok(());
                     }
@@ -492,7 +485,15 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             }
 
             _ if name_str.starts_with("simd_") => {
-                match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
+                match generic_simd_intrinsic(
+                    self,
+                    name,
+                    callee_ty,
+                    args,
+                    result.layout.ty,
+                    result.layout.gcc_type(self),
+                    span,
+                ) {
                     Ok(value) => value,
                     Err(()) => return Ok(()),
                 }
