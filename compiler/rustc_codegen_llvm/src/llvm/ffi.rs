@@ -1730,6 +1730,9 @@ unsafe extern "C" {
         Packed: Bool,
     );
 
+    pub(crate) fn LLVMCountStructElementTypes(StructTy: &Type) -> c_uint;
+    pub(crate) fn LLVMGetStructElementTypes<'a>(StructTy: &'a Type, Dest: *mut &'a Type);
+
     pub(crate) safe fn LLVMMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
 
     pub(crate) fn LLVMSetUnnamedAddress(Global: &Value, UnnamedAddr: UnnamedAddr);
