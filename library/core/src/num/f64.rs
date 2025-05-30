@@ -1825,8 +1825,9 @@ pub mod math {
     /// [`f64::div_euclid`]: ../../../std/primitive.f64.html#method.div_euclid
     #[inline]
     #[unstable(feature = "core_float_math", issue = "137578")]
+    #[rustc_const_unstable(feature = "const_float_euclidean_division", issue = "141572")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn div_euclid(x: f64, rhs: f64) -> f64 {
+    pub const fn div_euclid(x: f64, rhs: f64) -> f64 {
         let q = trunc(x / rhs);
         if x % rhs < 0.0 {
             return if rhs > 0.0 { q - 1.0 } else { q + 1.0 };
@@ -1861,7 +1862,7 @@ pub mod math {
     #[doc(alias = "modulo", alias = "mod")]
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn rem_euclid(x: f64, rhs: f64) -> f64 {
+    pub const fn rem_euclid(x: f64, rhs: f64) -> f64 {
         let r = x % rhs;
         if r < 0.0 { r + rhs.abs() } else { r }
     }

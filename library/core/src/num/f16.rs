@@ -1685,8 +1685,9 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_euclidean_division", issue = "141572")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn div_euclid(self, rhs: f16) -> f16 {
+    pub const fn div_euclid(self, rhs: f16) -> f16 {
         let q = (self / rhs).trunc();
         if self % rhs < 0.0 {
             return if rhs > 0.0 { q - 1.0 } else { q + 1.0 };
@@ -1733,8 +1734,9 @@ impl f16 {
     #[rustc_allow_incoherent_impl]
     #[doc(alias = "modulo", alias = "mod")]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_euclidean_division", issue = "141572")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn rem_euclid(self, rhs: f16) -> f16 {
+    pub const fn rem_euclid(self, rhs: f16) -> f16 {
         let r = self % rhs;
         if r < 0.0 { r + rhs.abs() } else { r }
     }

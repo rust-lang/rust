@@ -1709,8 +1709,9 @@ impl f128 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_euclidean_division", issue = "141572")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn div_euclid(self, rhs: f128) -> f128 {
+    pub const fn div_euclid(self, rhs: f128) -> f128 {
         let q = (self / rhs).trunc();
         if self % rhs < 0.0 {
             return if rhs > 0.0 { q - 1.0 } else { q + 1.0 };
@@ -1758,7 +1759,8 @@ impl f128 {
     #[doc(alias = "modulo", alias = "mod")]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn rem_euclid(self, rhs: f128) -> f128 {
+    #[rustc_const_unstable(feature = "const_float_euclidean_division", issue = "141572")]
+    pub const fn rem_euclid(self, rhs: f128) -> f128 {
         let r = self % rhs;
         if r < 0.0 { r + rhs.abs() } else { r }
     }

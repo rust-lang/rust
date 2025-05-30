@@ -247,7 +247,8 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
     #[stable(feature = "euclidean_division", since = "1.38.0")]
-    pub fn div_euclid(self, rhs: f64) -> f64 {
+    #[rustc_const_unstable(feature = "const_float_euclidean_division", issue = "141572")]
+    pub const fn div_euclid(self, rhs: f64) -> f64 {
         core::f64::math::div_euclid(self, rhs)
     }
 
@@ -284,7 +285,8 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
     #[stable(feature = "euclidean_division", since = "1.38.0")]
-    pub fn rem_euclid(self, rhs: f64) -> f64 {
+    #[rustc_const_unstable(feature = "const_float_euclidean_division", issue = "141572")]
+    pub const fn rem_euclid(self, rhs: f64) -> f64 {
         core::f64::math::rem_euclid(self, rhs)
     }
 

@@ -932,23 +932,23 @@ macro_rules! test_float {
                 $fassert!(<$fty>::NEG_INFINITY.copysign(0.0), <$fty>::INFINITY);
             }
             #[test]
+            #[cfg(not(bootstrap))]
             fn rem_euclid() {
-                // FIXME: Use $fassert when rem_euclid becomes const
-                assert!(<$fty>::INFINITY.rem_euclid((42.0 as $fty)).is_nan());
-                assert_eq!((42.0 as $fty).rem_euclid(<$fty>::INFINITY), (42.0 as $fty));
-                assert!((42.0 as $fty).rem_euclid(<$fty>::NAN).is_nan());
-                assert!(<$fty>::INFINITY.rem_euclid(<$fty>::INFINITY).is_nan());
-                assert!(<$fty>::INFINITY.rem_euclid(<$fty>::NAN).is_nan());
-                assert!(<$fty>::NAN.rem_euclid(<$fty>::INFINITY).is_nan());
+                $fassert!(<$fty>::INFINITY.rem_euclid((42.0 as $fty)).is_nan());
+                $fassert!((42.0 as $fty).rem_euclid(<$fty>::INFINITY), (42.0 as $fty));
+                $fassert!((42.0 as $fty).rem_euclid(<$fty>::NAN).is_nan());
+                $fassert!(<$fty>::INFINITY.rem_euclid(<$fty>::INFINITY).is_nan());
+                $fassert!(<$fty>::INFINITY.rem_euclid(<$fty>::NAN).is_nan());
+                $fassert!(<$fty>::NAN.rem_euclid(<$fty>::INFINITY).is_nan());
             }
             #[test]
+            #[cfg(not(bootstrap))]
             fn div_euclid() {
-                // FIXME: Use $fassert when div_euclid becomes const
-                assert_eq!((42.0 as $fty).div_euclid(<$fty>::INFINITY), 0.0);
-                assert!((42.0 as $fty).div_euclid(<$fty>::NAN).is_nan());
-                assert!(<$fty>::INFINITY.div_euclid(<$fty>::INFINITY).is_nan());
-                assert!(<$fty>::INFINITY.div_euclid(<$fty>::NAN).is_nan());
-                assert!(<$fty>::NAN.div_euclid(<$fty>::INFINITY).is_nan());
+                $fassert!((42.0 as $fty).div_euclid(<$fty>::INFINITY), 0.0);
+                $fassert!((42.0 as $fty).div_euclid(<$fty>::NAN).is_nan());
+                $fassert!(<$fty>::INFINITY.div_euclid(<$fty>::INFINITY).is_nan());
+                $fassert!(<$fty>::INFINITY.div_euclid(<$fty>::NAN).is_nan());
+                $fassert!(<$fty>::NAN.div_euclid(<$fty>::INFINITY).is_nan());
             }
             #[test]
             #[cfg(not(bootstrap))]
