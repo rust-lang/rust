@@ -34,7 +34,7 @@ concurrency:
   # For a given workflow, if we push to the same branch, cancel all previous builds on that branch.
   # We add an exception for try builds (try branch) and unrolled rollup builds (try-perf), which
   # are all triggered on the same branch, but which should be able to run concurrently.
-  group: ${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.sha) || github.ref }}
+  group: ${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try') && github.sha) || github.ref }}
   cancel-in-progress: true
 env:
   TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
@@ -80,7 +80,7 @@ jobs:
     # access the environment.
     #
     # We only enable the environment for the rust-lang/rust repository, so that CI works on forks.
-    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/auto')) && 'bors') || '' }}
+    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try' || github.ref == 'refs/heads/auto')) && 'bors') || '' }}
     env:
       CI_JOB_NAME: ${{ matrix.name }}
       CI_JOB_DOC_URL: ${{ matrix.doc_url }}

@@ -999,6 +999,7 @@ impl f32 {
                 target_arch = "x86_64",
                 target_arch = "aarch64",
                 all(any(target_arch = "riscv32", target_arch = "riscv64"), target_feature = "d"),
+                all(target_arch = "loongarch64", target_feature = "d"),
                 all(target_arch = "arm", target_feature = "vfp2"),
                 target_arch = "wasm32",
                 target_arch = "wasm64",

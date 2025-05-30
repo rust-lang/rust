@@ -363,19 +363,35 @@ impl Build {
         let in_tree_llvm_info = config.in_tree_llvm_info.clone();
         let in_tree_gcc_info = config.in_tree_gcc_info.clone();
 
-        let initial_target_libdir_str =
-            config.initial_sysroot.join("lib/rustlib").join(config.build).join("lib");
+        let initial_target_libdir =
+            output(Command::new(&config.initial_rustc).args(["--print", "target-libdir"]))
+                .trim()
+                .to_owned();
 
-        let initial_target_dir = Path::new(&initial_target_libdir_str).parent().unwrap();
+        let initial_target_dir = Path::new(&initial_target_libdir)
+            .parent()
+            .unwrap_or_else(|| panic!("{initial_target_libdir} has no parent"));
+
         let initial_lld = initial_target_dir.join("bin").join("rust-lld");
 
-        let initial_relative_libdir = initial_target_dir
-            .ancestors()
-            .nth(2)
-            .unwrap()
-            .strip_prefix(&config.initial_sysroot)
-            .expect("Couldn’t determine initial relative libdir.")
-            .to_path_buf();
+        let initial_relative_libdir = if cfg!(test) {
+            // On tests, bootstrap uses the shim rustc, not the one from the stage0 toolchain.
+            PathBuf::default()
+        } else {
+            let ancestor = initial_target_dir.ancestors().nth(2).unwrap_or_else(|| {
+                panic!("Not enough ancestors for {}", initial_target_dir.display())
+            });
+
+            ancestor
+                .strip_prefix(&config.initial_sysroot)
+                .unwrap_or_else(|_| {
+                    panic!(
+                        "Couldn’t resolve the initial relative libdir from {}",
+                        initial_target_dir.display()
+                    )
+                })
+                .to_path_buf()
+        };
 
         let version = std::fs::read_to_string(src.join("src").join("version"))
             .expect("failed to read src/version");

@@ -23,17 +23,6 @@ const NAN_MASK1: u64 = 0x000a_aaaa_aaaa_aaaa;
 /// Second pattern over the mantissa
 const NAN_MASK2: u64 = 0x0005_5555_5555_5555;
 
-#[allow(unused_macros)]
-macro_rules! assert_f64_biteq {
-    ($left : expr, $right : expr) => {
-        let l: &f64 = &$left;
-        let r: &f64 = &$right;
-        let lb = l.to_bits();
-        let rb = r.to_bits();
-        assert_eq!(lb, rb, "float {l} ({lb:#018x}) is not bitequal to {r} ({rb:#018x})");
-    };
-}
-
 #[test]
 fn test_num_f64() {
     super::test_num(10f64, 2f64);
@@ -41,14 +30,14 @@ fn test_num_f64() {
 
 #[test]
 fn test_min_nan() {
-    assert_eq!(f64::NAN.min(2.0), 2.0);
-    assert_eq!(2.0f64.min(f64::NAN), 2.0);
+    assert_biteq!(f64::NAN.min(2.0), 2.0);
+    assert_biteq!(2.0f64.min(f64::NAN), 2.0);
 }
 
 #[test]
 fn test_max_nan() {
-    assert_eq!(f64::NAN.max(2.0), 2.0);
-    assert_eq!(2.0f64.max(f64::NAN), 2.0);
+    assert_biteq!(f64::NAN.max(2.0), 2.0);
+    assert_biteq!(2.0f64.max(f64::NAN), 2.0);
 }
 
 #[test]
@@ -92,7 +81,7 @@ fn test_neg_infinity() {
 #[test]
 fn test_zero() {
     let zero: f64 = 0.0f64;
-    assert_eq!(0.0, zero);
+    assert_biteq!(0.0, zero);
     assert!(!zero.is_infinite());
     assert!(zero.is_finite());
     assert!(zero.is_sign_positive());
@@ -106,6 +95,7 @@ fn test_zero() {
 fn test_neg_zero() {
     let neg_zero: f64 = -0.0;
     assert_eq!(0.0, neg_zero);
+    assert_biteq!(-0.0, neg_zero);
     assert!(!neg_zero.is_infinite());
     assert!(neg_zero.is_finite());
     assert!(!neg_zero.is_sign_positive());
@@ -118,7 +108,7 @@ fn test_neg_zero() {
 #[test]
 fn test_one() {
     let one: f64 = 1.0f64;
-    assert_eq!(1.0, one);
+    assert_biteq!(1.0, one);
     assert!(!one.is_infinite());
     assert!(one.is_finite());
     assert!(one.is_sign_positive());
@@ -202,111 +192,111 @@ fn test_classify() {
 
 #[test]
 fn test_floor() {
-    assert_approx_eq!(f64::math::floor(1.0f64), 1.0f64);
-    assert_approx_eq!(f64::math::floor(1.3f64), 1.0f64);
-    assert_approx_eq!(f64::math::floor(1.5f64), 1.0f64);
-    assert_approx_eq!(f64::math::floor(1.7f64), 1.0f64);
-    assert_approx_eq!(f64::math::floor(0.0f64), 0.0f64);
-    assert_approx_eq!(f64::math::floor(-0.0f64), -0.0f64);
-    assert_approx_eq!(f64::math::floor(-1.0f64), -1.0f64);
-    assert_approx_eq!(f64::math::floor(-1.3f64), -2.0f64);
-    assert_approx_eq!(f64::math::floor(-1.5f64), -2.0f64);
-    assert_approx_eq!(f64::math::floor(-1.7f64), -2.0f64);
+    assert_biteq!(f64::math::floor(1.0f64), 1.0f64);
+    assert_biteq!(f64::math::floor(1.3f64), 1.0f64);
+    assert_biteq!(f64::math::floor(1.5f64), 1.0f64);
+    assert_biteq!(f64::math::floor(1.7f64), 1.0f64);
+    assert_biteq!(f64::math::floor(0.0f64), 0.0f64);
+    assert_biteq!(f64::math::floor(-0.0f64), -0.0f64);
+    assert_biteq!(f64::math::floor(-1.0f64), -1.0f64);
+    assert_biteq!(f64::math::floor(-1.3f64), -2.0f64);
+    assert_biteq!(f64::math::floor(-1.5f64), -2.0f64);
+    assert_biteq!(f64::math::floor(-1.7f64), -2.0f64);
 }
 
 #[test]
 fn test_ceil() {
-    assert_approx_eq!(f64::math::ceil(1.0f64), 1.0f64);
-    assert_approx_eq!(f64::math::ceil(1.3f64), 2.0f64);
-    assert_approx_eq!(f64::math::ceil(1.5f64), 2.0f64);
-    assert_approx_eq!(f64::math::ceil(1.7f64), 2.0f64);
-    assert_approx_eq!(f64::math::ceil(0.0f64), 0.0f64);
-    assert_approx_eq!(f64::math::ceil(-0.0f64), -0.0f64);
-    assert_approx_eq!(f64::math::ceil(-1.0f64), -1.0f64);
-    assert_approx_eq!(f64::math::ceil(-1.3f64), -1.0f64);
-    assert_approx_eq!(f64::math::ceil(-1.5f64), -1.0f64);
-    assert_approx_eq!(f64::math::ceil(-1.7f64), -1.0f64);
+    assert_biteq!(f64::math::ceil(1.0f64), 1.0f64);
+    assert_biteq!(f64::math::ceil(1.3f64), 2.0f64);
+    assert_biteq!(f64::math::ceil(1.5f64), 2.0f64);
+    assert_biteq!(f64::math::ceil(1.7f64), 2.0f64);
+    assert_biteq!(f64::math::ceil(0.0f64), 0.0f64);
+    assert_biteq!(f64::math::ceil(-0.0f64), -0.0f64);
+    assert_biteq!(f64::math::ceil(-1.0f64), -1.0f64);
+    assert_biteq!(f64::math::ceil(-1.3f64), -1.0f64);
+    assert_biteq!(f64::math::ceil(-1.5f64), -1.0f64);
+    assert_biteq!(f64::math::ceil(-1.7f64), -1.0f64);
 }
 
 #[test]
 fn test_round() {
-    assert_approx_eq!(f64::math::round(2.5f64), 3.0f64);
-    assert_approx_eq!(f64::math::round(1.0f64), 1.0f64);
-    assert_approx_eq!(f64::math::round(1.3f64), 1.0f64);
-    assert_approx_eq!(f64::math::round(1.5f64), 2.0f64);
-    assert_approx_eq!(f64::math::round(1.7f64), 2.0f64);
-    assert_approx_eq!(f64::math::round(0.0f64), 0.0f64);
-    assert_approx_eq!(f64::math::round(-0.0f64), -0.0f64);
-    assert_approx_eq!(f64::math::round(-1.0f64), -1.0f64);
-    assert_approx_eq!(f64::math::round(-1.3f64), -1.0f64);
-    assert_approx_eq!(f64::math::round(-1.5f64), -2.0f64);
-    assert_approx_eq!(f64::math::round(-1.7f64), -2.0f64);
+    assert_biteq!(f64::math::round(2.5f64), 3.0f64);
+    assert_biteq!(f64::math::round(1.0f64), 1.0f64);
+    assert_biteq!(f64::math::round(1.3f64), 1.0f64);
+    assert_biteq!(f64::math::round(1.5f64), 2.0f64);
+    assert_biteq!(f64::math::round(1.7f64), 2.0f64);
+    assert_biteq!(f64::math::round(0.0f64), 0.0f64);
+    assert_biteq!(f64::math::round(-0.0f64), -0.0f64);
+    assert_biteq!(f64::math::round(-1.0f64), -1.0f64);
+    assert_biteq!(f64::math::round(-1.3f64), -1.0f64);
+    assert_biteq!(f64::math::round(-1.5f64), -2.0f64);
+    assert_biteq!(f64::math::round(-1.7f64), -2.0f64);
 }
 
 #[test]
 fn test_round_ties_even() {
-    assert_approx_eq!(f64::math::round_ties_even(2.5f64), 2.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(1.0f64), 1.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(1.3f64), 1.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(1.5f64), 2.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(1.7f64), 2.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(0.0f64), 0.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(-0.0f64), -0.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(-1.0f64), -1.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(-1.3f64), -1.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(-1.5f64), -2.0f64);
-    assert_approx_eq!(f64::math::round_ties_even(-1.7f64), -2.0f64);
+    assert_biteq!(f64::math::round_ties_even(2.5f64), 2.0f64);
+    assert_biteq!(f64::math::round_ties_even(1.0f64), 1.0f64);
+    assert_biteq!(f64::math::round_ties_even(1.3f64), 1.0f64);
+    assert_biteq!(f64::math::round_ties_even(1.5f64), 2.0f64);
+    assert_biteq!(f64::math::round_ties_even(1.7f64), 2.0f64);
+    assert_biteq!(f64::math::round_ties_even(0.0f64), 0.0f64);
+    assert_biteq!(f64::math::round_ties_even(-0.0f64), -0.0f64);
+    assert_biteq!(f64::math::round_ties_even(-1.0f64), -1.0f64);
+    assert_biteq!(f64::math::round_ties_even(-1.3f64), -1.0f64);
+    assert_biteq!(f64::math::round_ties_even(-1.5f64), -2.0f64);
+    assert_biteq!(f64::math::round_ties_even(-1.7f64), -2.0f64);
 }
 
 #[test]
 fn test_trunc() {
-    assert_approx_eq!(f64::math::trunc(1.0f64), 1.0f64);
-    assert_approx_eq!(f64::math::trunc(1.3f64), 1.0f64);
-    assert_approx_eq!(f64::math::trunc(1.5f64), 1.0f64);
-    assert_approx_eq!(f64::math::trunc(1.7f64), 1.0f64);
-    assert_approx_eq!(f64::math::trunc(0.0f64), 0.0f64);
-    assert_approx_eq!(f64::math::trunc(-0.0f64), -0.0f64);
-    assert_approx_eq!(f64::math::trunc(-1.0f64), -1.0f64);
-    assert_approx_eq!(f64::math::trunc(-1.3f64), -1.0f64);
-    assert_approx_eq!(f64::math::trunc(-1.5f64), -1.0f64);
-    assert_approx_eq!(f64::math::trunc(-1.7f64), -1.0f64);
+    assert_biteq!(f64::math::trunc(1.0f64), 1.0f64);
+    assert_biteq!(f64::math::trunc(1.3f64), 1.0f64);
+    assert_biteq!(f64::math::trunc(1.5f64), 1.0f64);
+    assert_biteq!(f64::math::trunc(1.7f64), 1.0f64);
+    assert_biteq!(f64::math::trunc(0.0f64), 0.0f64);
+    assert_biteq!(f64::math::trunc(-0.0f64), -0.0f64);
+    assert_biteq!(f64::math::trunc(-1.0f64), -1.0f64);
+    assert_biteq!(f64::math::trunc(-1.3f64), -1.0f64);
+    assert_biteq!(f64::math::trunc(-1.5f64), -1.0f64);
+    assert_biteq!(f64::math::trunc(-1.7f64), -1.0f64);
 }
 
 #[test]
 fn test_fract() {
-    assert_approx_eq!(f64::math::fract(1.0f64), 0.0f64);
-    assert_approx_eq!(f64::math::fract(1.3f64), 0.3f64);
-    assert_approx_eq!(f64::math::fract(1.5f64), 0.5f64);
-    assert_approx_eq!(f64::math::fract(1.7f64), 0.7f64);
-    assert_approx_eq!(f64::math::fract(0.0f64), 0.0f64);
-    assert_approx_eq!(f64::math::fract(-0.0f64), -0.0f64);
-    assert_approx_eq!(f64::math::fract(-1.0f64), -0.0f64);
-    assert_approx_eq!(f64::math::fract(-1.3f64), -0.3f64);
-    assert_approx_eq!(f64::math::fract(-1.5f64), -0.5f64);
-    assert_approx_eq!(f64::math::fract(-1.7f64), -0.7f64);
+    assert_biteq!(f64::math::fract(1.0f64), 0.0f64);
+    assert_biteq!(f64::math::fract(1.3f64), 0.30000000000000004f64);
+    assert_biteq!(f64::math::fract(1.5f64), 0.5f64);
+    assert_biteq!(f64::math::fract(1.7f64), 0.7f64);
+    assert_biteq!(f64::math::fract(0.0f64), 0.0f64);
+    assert_biteq!(f64::math::fract(-0.0f64), 0.0f64);
+    assert_biteq!(f64::math::fract(-1.0f64), 0.0f64);
+    assert_biteq!(f64::math::fract(-1.3f64), -0.30000000000000004f64);
+    assert_biteq!(f64::math::fract(-1.5f64), -0.5f64);
+    assert_biteq!(f64::math::fract(-1.7f64), -0.69999999999999996f64);
 }
 
 #[test]
 fn test_abs() {
-    assert_eq!(f64::INFINITY.abs(), f64::INFINITY);
-    assert_eq!(1f64.abs(), 1f64);
-    assert_eq!(0f64.abs(), 0f64);
-    assert_eq!((-0f64).abs(), 0f64);
-    assert_eq!((-1f64).abs(), 1f64);
-    assert_eq!(f64::NEG_INFINITY.abs(), f64::INFINITY);
-    assert_eq!((1f64 / f64::NEG_INFINITY).abs(), 0f64);
+    assert_biteq!(f64::INFINITY.abs(), f64::INFINITY);
+    assert_biteq!(1f64.abs(), 1f64);
+    assert_biteq!(0f64.abs(), 0f64);
+    assert_biteq!((-0f64).abs(), 0f64);
+    assert_biteq!((-1f64).abs(), 1f64);
+    assert_biteq!(f64::NEG_INFINITY.abs(), f64::INFINITY);
+    assert_biteq!((1f64 / f64::NEG_INFINITY).abs(), 0f64);
     assert!(f64::NAN.abs().is_nan());
 }
 
 #[test]
 fn test_signum() {
-    assert_eq!(f64::INFINITY.signum(), 1f64);
-    assert_eq!(1f64.signum(), 1f64);
-    assert_eq!(0f64.signum(), 1f64);
-    assert_eq!((-0f64).signum(), -1f64);
-    assert_eq!((-1f64).signum(), -1f64);
-    assert_eq!(f64::NEG_INFINITY.signum(), -1f64);
-    assert_eq!((1f64 / f64::NEG_INFINITY).signum(), -1f64);
+    assert_biteq!(f64::INFINITY.signum(), 1f64);
+    assert_biteq!(1f64.signum(), 1f64);
+    assert_biteq!(0f64.signum(), 1f64);
+    assert_biteq!((-0f64).signum(), -1f64);
+    assert_biteq!((-1f64).signum(), -1f64);
+    assert_biteq!(f64::NEG_INFINITY.signum(), -1f64);
+    assert_biteq!((1f64 / f64::NEG_INFINITY).signum(), -1f64);
     assert!(f64::NAN.signum().is_nan());
 }
 
@@ -343,26 +333,26 @@ fn test_next_up() {
     let max_down = f64::from_bits(MAX_DOWN_BITS);
     let largest_subnormal = f64::from_bits(LARGEST_SUBNORMAL_BITS);
     let smallest_normal = f64::from_bits(SMALLEST_NORMAL_BITS);
-    assert_f64_biteq!(f64::NEG_INFINITY.next_up(), f64::MIN);
-    assert_f64_biteq!(f64::MIN.next_up(), -max_down);
-    assert_f64_biteq!((-1.0 - f64::EPSILON).next_up(), -1.0);
-    assert_f64_biteq!((-smallest_normal).next_up(), -largest_subnormal);
-    assert_f64_biteq!((-tiny_up).next_up(), -tiny);
-    assert_f64_biteq!((-tiny).next_up(), -0.0f64);
-    assert_f64_biteq!((-0.0f64).next_up(), tiny);
-    assert_f64_biteq!(0.0f64.next_up(), tiny);
-    assert_f64_biteq!(tiny.next_up(), tiny_up);
-    assert_f64_biteq!(largest_subnormal.next_up(), smallest_normal);
-    assert_f64_biteq!(1.0f64.next_up(), 1.0 + f64::EPSILON);
-    assert_f64_biteq!(f64::MAX.next_up(), f64::INFINITY);
-    assert_f64_biteq!(f64::INFINITY.next_up(), f64::INFINITY);
+    assert_biteq!(f64::NEG_INFINITY.next_up(), f64::MIN);
+    assert_biteq!(f64::MIN.next_up(), -max_down);
+    assert_biteq!((-1.0 - f64::EPSILON).next_up(), -1.0f64);
+    assert_biteq!((-smallest_normal).next_up(), -largest_subnormal);
+    assert_biteq!((-tiny_up).next_up(), -tiny);
+    assert_biteq!((-tiny).next_up(), -0.0f64);
+    assert_biteq!((-0.0f64).next_up(), tiny);
+    assert_biteq!(0.0f64.next_up(), tiny);
+    assert_biteq!(tiny.next_up(), tiny_up);
+    assert_biteq!(largest_subnormal.next_up(), smallest_normal);
+    assert_biteq!(1.0f64.next_up(), 1.0 + f64::EPSILON);
+    assert_biteq!(f64::MAX.next_up(), f64::INFINITY);
+    assert_biteq!(f64::INFINITY.next_up(), f64::INFINITY);
 
     let nan0 = f64::NAN;
     let nan1 = f64::from_bits(f64::NAN.to_bits() ^ NAN_MASK1);
     let nan2 = f64::from_bits(f64::NAN.to_bits() ^ NAN_MASK2);
-    assert_f64_biteq!(nan0.next_up(), nan0);
-    assert_f64_biteq!(nan1.next_up(), nan1);
-    assert_f64_biteq!(nan2.next_up(), nan2);
+    assert_biteq!(nan0.next_up(), nan0);
+    assert_biteq!(nan1.next_up(), nan1);
+    assert_biteq!(nan2.next_up(), nan2);
 }
 
 #[test]
@@ -372,27 +362,27 @@ fn test_next_down() {
     let max_down = f64::from_bits(MAX_DOWN_BITS);
     let largest_subnormal = f64::from_bits(LARGEST_SUBNORMAL_BITS);
     let smallest_normal = f64::from_bits(SMALLEST_NORMAL_BITS);
-    assert_f64_biteq!(f64::NEG_INFINITY.next_down(), f64::NEG_INFINITY);
-    assert_f64_biteq!(f64::MIN.next_down(), f64::NEG_INFINITY);
-    assert_f64_biteq!((-max_down).next_down(), f64::MIN);
-    assert_f64_biteq!((-1.0f64).next_down(), -1.0 - f64::EPSILON);
-    assert_f64_biteq!((-largest_subnormal).next_down(), -smallest_normal);
-    assert_f64_biteq!((-tiny).next_down(), -tiny_up);
-    assert_f64_biteq!((-0.0f64).next_down(), -tiny);
-    assert_f64_biteq!((0.0f64).next_down(), -tiny);
-    assert_f64_biteq!(tiny.next_down(), 0.0f64);
-    assert_f64_biteq!(tiny_up.next_down(), tiny);
-    assert_f64_biteq!(smallest_normal.next_down(), largest_subnormal);
-    assert_f64_biteq!((1.0 + f64::EPSILON).next_down(), 1.0f64);
-    assert_f64_biteq!(f64::MAX.next_down(), max_down);
-    assert_f64_biteq!(f64::INFINITY.next_down(), f64::MAX);
+    assert_biteq!(f64::NEG_INFINITY.next_down(), f64::NEG_INFINITY);
+    assert_biteq!(f64::MIN.next_down(), f64::NEG_INFINITY);
+    assert_biteq!((-max_down).next_down(), f64::MIN);
+    assert_biteq!((-1.0f64).next_down(), -1.0 - f64::EPSILON);
+    assert_biteq!((-largest_subnormal).next_down(), -smallest_normal);
+    assert_biteq!((-tiny).next_down(), -tiny_up);
+    assert_biteq!((-0.0f64).next_down(), -tiny);
+    assert_biteq!((0.0f64).next_down(), -tiny);
+    assert_biteq!(tiny.next_down(), 0.0f64);
+    assert_biteq!(tiny_up.next_down(), tiny);
+    assert_biteq!(smallest_normal.next_down(), largest_subnormal);
+    assert_biteq!((1.0 + f64::EPSILON).next_down(), 1.0f64);
+    assert_biteq!(f64::MAX.next_down(), max_down);
+    assert_biteq!(f64::INFINITY.next_down(), f64::MAX);
 
     let nan0 = f64::NAN;
     let nan1 = f64::from_bits(f64::NAN.to_bits() ^ NAN_MASK1);
     let nan2 = f64::from_bits(f64::NAN.to_bits() ^ NAN_MASK2);
-    assert_f64_biteq!(nan0.next_down(), nan0);
-    assert_f64_biteq!(nan1.next_down(), nan1);
-    assert_f64_biteq!(nan2.next_down(), nan2);
+    assert_biteq!(nan0.next_down(), nan0);
+    assert_biteq!(nan1.next_down(), nan1);
+    assert_biteq!(nan2.next_down(), nan2);
 }
 
 // FIXME(#140515): mingw has an incorrect fma https://sourceforge.net/p/mingw-w64/bugs/848/
@@ -402,15 +392,15 @@ fn test_mul_add() {
     let nan: f64 = f64::NAN;
     let inf: f64 = f64::INFINITY;
     let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_approx_eq!(12.3f64.mul_add(4.5, 6.7), 62.05);
-    assert_approx_eq!((-12.3f64).mul_add(-4.5, -6.7), 48.65);
-    assert_approx_eq!(0.0f64.mul_add(8.9, 1.2), 1.2);
-    assert_approx_eq!(3.4f64.mul_add(-0.0, 5.6), 5.6);
+    assert_biteq!(12.3f64.mul_add(4.5, 6.7), 62.050000000000004);
+    assert_biteq!((-12.3f64).mul_add(-4.5, -6.7), 48.650000000000006);
+    assert_biteq!(0.0f64.mul_add(8.9, 1.2), 1.2);
+    assert_biteq!(3.4f64.mul_add(-0.0, 5.6), 5.6);
     assert!(nan.mul_add(7.8, 9.0).is_nan());
-    assert_eq!(inf.mul_add(7.8, 9.0), inf);
-    assert_eq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
-    assert_eq!(8.9f64.mul_add(inf, 3.2), inf);
-    assert_eq!((-3.2f64).mul_add(2.4, neg_inf), neg_inf);
+    assert_biteq!(inf.mul_add(7.8, 9.0), inf);
+    assert_biteq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
+    assert_biteq!(8.9f64.mul_add(inf, 3.2), inf);
+    assert_biteq!((-3.2f64).mul_add(2.4, neg_inf), neg_inf);
 }
 
 #[test]
@@ -418,13 +408,13 @@ fn test_recip() {
     let nan: f64 = f64::NAN;
     let inf: f64 = f64::INFINITY;
     let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_eq!(1.0f64.recip(), 1.0);
-    assert_eq!(2.0f64.recip(), 0.5);
-    assert_eq!((-0.4f64).recip(), -2.5);
-    assert_eq!(0.0f64.recip(), inf);
+    assert_biteq!(1.0f64.recip(), 1.0);
+    assert_biteq!(2.0f64.recip(), 0.5);
+    assert_biteq!((-0.4f64).recip(), -2.5);
+    assert_biteq!(0.0f64.recip(), inf);
     assert!(nan.recip().is_nan());
-    assert_eq!(inf.recip(), 0.0);
-    assert_eq!(neg_inf.recip(), 0.0);
+    assert_biteq!(inf.recip(), 0.0);
+    assert_biteq!(neg_inf.recip(), -0.0);
 }
 
 #[test]
@@ -432,13 +422,13 @@ fn test_powi() {
     let nan: f64 = f64::NAN;
     let inf: f64 = f64::INFINITY;
     let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_eq!(1.0f64.powi(1), 1.0);
+    assert_biteq!(1.0f64.powi(1), 1.0);
     assert_approx_eq!((-3.1f64).powi(2), 9.61);
     assert_approx_eq!(5.9f64.powi(-2), 0.028727);
-    assert_eq!(8.3f64.powi(0), 1.0);
+    assert_biteq!(8.3f64.powi(0), 1.0);
     assert!(nan.powi(2).is_nan());
-    assert_eq!(inf.powi(3), inf);
-    assert_eq!(neg_inf.powi(2), inf);
+    assert_biteq!(inf.powi(3), inf);
+    assert_biteq!(neg_inf.powi(2), inf);
 }
 
 #[test]
@@ -446,10 +436,10 @@ fn test_sqrt_domain() {
     assert!(f64::NAN.sqrt().is_nan());
     assert!(f64::NEG_INFINITY.sqrt().is_nan());
     assert!((-1.0f64).sqrt().is_nan());
-    assert_eq!((-0.0f64).sqrt(), -0.0);
-    assert_eq!(0.0f64.sqrt(), 0.0);
-    assert_eq!(1.0f64.sqrt(), 1.0);
-    assert_eq!(f64::INFINITY.sqrt(), f64::INFINITY);
+    assert_biteq!((-0.0f64).sqrt(), -0.0);
+    assert_biteq!(0.0f64.sqrt(), 0.0);
+    assert_biteq!(1.0f64.sqrt(), 1.0);
+    assert_biteq!(f64::INFINITY.sqrt(), f64::INFINITY);
 }
 
 #[test]
@@ -458,12 +448,12 @@ fn test_to_degrees() {
     let nan: f64 = f64::NAN;
     let inf: f64 = f64::INFINITY;
     let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_eq!(0.0f64.to_degrees(), 0.0);
+    assert_biteq!(0.0f64.to_degrees(), 0.0);
     assert_approx_eq!((-5.8f64).to_degrees(), -332.315521);
-    assert_eq!(pi.to_degrees(), 180.0);
+    assert_biteq!(pi.to_degrees(), 180.0);
     assert!(nan.to_degrees().is_nan());
-    assert_eq!(inf.to_degrees(), inf);
-    assert_eq!(neg_inf.to_degrees(), neg_inf);
+    assert_biteq!(inf.to_degrees(), inf);
+    assert_biteq!(neg_inf.to_degrees(), neg_inf);
 }
 
 #[test]
@@ -472,13 +462,13 @@ fn test_to_radians() {
     let nan: f64 = f64::NAN;
     let inf: f64 = f64::INFINITY;
     let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_eq!(0.0f64.to_radians(), 0.0);
+    assert_biteq!(0.0f64.to_radians(), 0.0);
     assert_approx_eq!(154.6f64.to_radians(), 2.698279);
     assert_approx_eq!((-332.31f64).to_radians(), -5.799903);
-    assert_eq!(180.0f64.to_radians(), pi);
+    assert_biteq!(180.0f64.to_radians(), pi);
     assert!(nan.to_radians().is_nan());
-    assert_eq!(inf.to_radians(), inf);
-    assert_eq!(neg_inf.to_radians(), neg_inf);
+    assert_biteq!(inf.to_radians(), inf);
+    assert_biteq!(neg_inf.to_radians(), neg_inf);
 }
 
 #[test]
@@ -487,10 +477,10 @@ fn test_float_bits_conv() {
     assert_eq!((12.5f64).to_bits(), 0x4029000000000000);
     assert_eq!((1337f64).to_bits(), 0x4094e40000000000);
     assert_eq!((-14.25f64).to_bits(), 0xc02c800000000000);
-    assert_approx_eq!(f64::from_bits(0x3ff0000000000000), 1.0);
-    assert_approx_eq!(f64::from_bits(0x4029000000000000), 12.5);
-    assert_approx_eq!(f64::from_bits(0x4094e40000000000), 1337.0);
-    assert_approx_eq!(f64::from_bits(0xc02c800000000000), -14.25);
+    assert_biteq!(f64::from_bits(0x3ff0000000000000), 1.0);
+    assert_biteq!(f64::from_bits(0x4029000000000000), 12.5);
+    assert_biteq!(f64::from_bits(0x4094e40000000000), 1337.0);
+    assert_biteq!(f64::from_bits(0xc02c800000000000), -14.25);
 
     // Check that NaNs roundtrip their bits regardless of signaling-ness
     let masked_nan1 = f64::NAN.to_bits() ^ NAN_MASK1;

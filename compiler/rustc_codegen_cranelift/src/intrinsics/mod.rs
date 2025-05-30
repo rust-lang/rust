@@ -870,11 +870,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
             // FIXME use a compiler fence once Cranelift supports it
             fx.bcx.ins().fence();
         }
-        _ if intrinsic.as_str().starts_with("atomic_load") => {
+        sym::atomic_load => {
             intrinsic_args!(fx, args => (ptr); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
             let ty = generic_args.type_at(0);
+            let _ord = generic_args.const_at(1).to_value(); // FIXME: forward this to cranelift once they support that
             match ty.kind() {
                 ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
                     // FIXME implement 128bit atomics

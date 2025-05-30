@@ -249,12 +249,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 ty::Ref(_, rty, _) => reveal_and_alloc(cx, once(*rty)),
                 _ => bug!("Unexpected type for `Ref` constructor: {ty:?}"),
             },
-            Slice(slice) => match *ty.kind() {
-                ty::Slice(ty) | ty::Array(ty, _) => {
+            Slice(slice) => match ty.builtin_index() {
+                Some(ty) => {
                     let arity = slice.arity();
                     reveal_and_alloc(cx, (0..arity).map(|_| ty))
                 }
-                _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
+                None => bug!("bad slice pattern {:?} {:?}", ctor, ty),
             },
             DerefPattern(pointee_ty) => reveal_and_alloc(cx, once(pointee_ty.inner())),
             Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)

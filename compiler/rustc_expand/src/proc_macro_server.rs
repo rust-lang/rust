@@ -1,10 +1,6 @@
 use std::ops::{Bound, Range};
 
 use ast::token::IdentIsRaw;
-use pm::bridge::{
-    DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree, server,
-};
-use pm::{Delimiter, Level};
 use rustc_ast as ast;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{self, DelimSpacing, Spacing, TokenStream};
@@ -15,6 +11,10 @@ use rustc_errors::{Diag, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::Parser;
 use rustc_parse::{exp, new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
+use rustc_proc_macro::bridge::{
+    DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree, server,
+};
+use rustc_proc_macro::{Delimiter, Level};
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
 use rustc_span::{BytePos, FileName, Pos, Span, Symbol, sym};
@@ -66,7 +66,7 @@ impl FromInternal<token::LitKind> for LitKind {
             token::CStr => LitKind::CStr,
             token::CStrRaw(n) => LitKind::CStrRaw(n),
             token::Err(_guar) => {
-                // This is the only place a `pm::bridge::LitKind::ErrWithGuar`
+                // This is the only place a `rustc_proc_macro::bridge::LitKind::ErrWithGuar`
                 // is constructed. Note that an `ErrorGuaranteed` is available,
                 // as required. See the comment in `to_internal`.
                 LitKind::ErrWithGuar
@@ -149,7 +149,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     }
 
                     trees.push(TokenTree::Group(Group {
-                        delimiter: pm::Delimiter::from_internal(delim),
+                        delimiter: rustc_proc_macro::Delimiter::from_internal(delim),
                         stream: Some(stream),
                         span: DelimSpan {
                             open: span.open,
@@ -270,7 +270,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     let stream =
                         TokenStream::token_alone(token::Lifetime(ident.name, is_raw), ident.span);
                     trees.push(TokenTree::Group(Group {
-                        delimiter: pm::Delimiter::None,
+                        delimiter: rustc_proc_macro::Delimiter::None,
                         stream: Some(stream),
                         span: DelimSpan::from_single(span),
                     }))
@@ -302,7 +302,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                         trees.push(TokenTree::Punct(Punct { ch: b'!', joint: false, span }));
                     }
                     trees.push(TokenTree::Group(Group {
-                        delimiter: pm::Delimiter::Bracket,
+                        delimiter: rustc_proc_macro::Delimiter::Bracket,
                         stream: Some(stream),
                         span: DelimSpan::from_single(span),
                     }));

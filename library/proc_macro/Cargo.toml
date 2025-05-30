@@ -10,3 +10,7 @@ std = { path = "../std" }
 # loaded from sysroot causing duplicate lang items and other similar errors.
 core = { path = "../core" }
 rustc-literal-escaper = { version = "0.0.2", features = ["rustc-dep-of-std"] }
+
+[features]
+default = ["rustc-dep-of-std"]
+rustc-dep-of-std = []

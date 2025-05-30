@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, c_char, c_uint};
 use std::marker::PhantomData;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::str;
 
 use rustc_abi::{HasDataLayout, Size, TargetDataLayout, VariantIdx};
@@ -77,6 +77,13 @@ impl<'ll, T: Borrow<SCx<'ll>>> Deref for GenericCx<'ll, T> {
     }
 }
 
+impl<'ll, T: Borrow<SCx<'ll>>> DerefMut for GenericCx<'ll, T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 pub(crate) type SimpleCx<'ll> = GenericCx<'ll, SCx<'ll>>;
 
 /// There is one `CodegenCx` per codegen unit. Each one has its own LLVM
@@ -110,11 +117,11 @@ pub(crate) struct FullCx<'ll, 'tcx> {
 
     /// Statics that will be placed in the llvm.used variable
     /// See <https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
-    pub used_statics: RefCell<Vec<&'ll Value>>,
+    pub used_statics: Vec<&'ll Value>,
 
     /// Statics that will be placed in the llvm.compiler.used variable
     /// See <https://llvm.org/docs/LangRef.html#the-llvm-compiler-used-global-variable> for details
-    pub compiler_used_statics: RefCell<Vec<&'ll Value>>,
+    pub compiler_used_statics: Vec<&'ll Value>,
 
     /// Mapping of non-scalar types to llvm types.
     pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
@@ -606,8 +613,8 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 const_str_cache: Default::default(),
                 const_globals: Default::default(),
                 statics_to_rauw: RefCell::new(Vec::new()),
-                used_statics: RefCell::new(Vec::new()),
-                compiler_used_statics: RefCell::new(Vec::new()),
+                used_statics: Vec::new(),
+                compiler_used_statics: Vec::new(),
                 type_lowering: Default::default(),
                 scalar_lltypes: Default::default(),
                 coverage_cx,
@@ -799,10 +806,6 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn sess(&self) -> &Session {
         self.tcx.sess
-    }
-
-    fn codegen_unit(&self) -> &'tcx CodegenUnit<'tcx> {
-        self.codegen_unit
     }
 
     fn set_frame_pointer_type(&self, llfn: &'ll Value) {

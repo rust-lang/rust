@@ -612,7 +612,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         ty: &'ll Type,
         ptr: &'ll Value,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
+        order: rustc_middle::ty::AtomicOrdering,
         size: Size,
     ) -> &'ll Value {
         unsafe {
@@ -851,7 +851,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         val: &'ll Value,
         ptr: &'ll Value,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
+        order: rustc_middle::ty::AtomicOrdering,
         size: Size,
     ) {
         debug!("Store {:?} -> {:?}", val, ptr);
@@ -1307,8 +1307,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         dst: &'ll Value,
         cmp: &'ll Value,
         src: &'ll Value,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
-        failure_order: rustc_codegen_ssa::common::AtomicOrdering,
+        order: rustc_middle::ty::AtomicOrdering,
+        failure_order: rustc_middle::ty::AtomicOrdering,
         weak: bool,
     ) -> (&'ll Value, &'ll Value) {
         let weak = if weak { llvm::True } else { llvm::False };
@@ -1334,7 +1334,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         op: rustc_codegen_ssa::common::AtomicRmwBinOp,
         dst: &'ll Value,
         mut src: &'ll Value,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
+        order: rustc_middle::ty::AtomicOrdering,
     ) -> &'ll Value {
         // The only RMW operation that LLVM supports on pointers is compare-exchange.
         let requires_cast_to_int = self.val_ty(src) == self.type_ptr()
@@ -1360,7 +1360,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn atomic_fence(
         &mut self,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
+        order: rustc_middle::ty::AtomicOrdering,
         scope: SynchronizationScope,
     ) {
         let single_threaded = match scope {

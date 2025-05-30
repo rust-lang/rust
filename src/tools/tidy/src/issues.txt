@@ -939,7 +939,6 @@ ui/enum-discriminant/auxiliary/issue-41394.rs
 ui/enum-discriminant/issue-104519.rs
 ui/enum-discriminant/issue-41394-rpass.rs
 ui/enum-discriminant/issue-41394.rs
-ui/enum-discriminant/issue-43398.rs
 ui/enum-discriminant/issue-46519.rs
 ui/enum-discriminant/issue-50689.rs
 ui/enum-discriminant/issue-51582.rs

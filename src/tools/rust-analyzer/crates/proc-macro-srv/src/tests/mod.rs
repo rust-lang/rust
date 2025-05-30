@@ -144,7 +144,7 @@ fn test_fn_like_macro_clone_ident_subtree() {
             SUBTREE $$ 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024
               IDENT   ident 42:2@0..5#ROOT2024
               PUNCH   , [alone] 42:2@5..6#ROOT2024
-              SUBTREE [] 42:2@7..8#ROOT2024 42:2@7..8#ROOT2024"#]],
+              SUBTREE [] 42:2@7..9#ROOT2024 42:2@7..9#ROOT2024"#]],
     );
 }
 

@@ -960,7 +960,8 @@ lint_unused_doc_comment = unused doc comment
     .help = to document an item produced by a macro, the macro must produce the documentation as part of its expansion
 
 lint_unused_extern_crate = unused extern crate
-    .suggestion = remove it
+    .label = unused
+    .suggestion = remove the unused `extern crate`
 
 lint_unused_import_braces = braces around {$node} is unnecessary
 

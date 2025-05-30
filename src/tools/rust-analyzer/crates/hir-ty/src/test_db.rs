@@ -27,9 +27,18 @@ pub(crate) struct TestDB {
 
 impl Default for TestDB {
     fn default() -> Self {
+        let events = <Arc<Mutex<Option<Vec<salsa::Event>>>>>::default();
         let mut this = Self {
-            storage: Default::default(),
-            events: Default::default(),
+            storage: salsa::Storage::new(Some(Box::new({
+                let events = events.clone();
+                move |event| {
+                    let mut events = events.lock().unwrap();
+                    if let Some(events) = &mut *events {
+                        events.push(event);
+                    }
+                }
+            }))),
+            events,
             files: Default::default(),
             crates_map: Default::default(),
         };
@@ -103,14 +112,7 @@ impl SourceDatabase for TestDB {
 }
 
 #[salsa_macros::db]
-impl salsa::Database for TestDB {
-    fn salsa_event(&self, event: &dyn std::ops::Fn() -> salsa::Event) {
-        let mut events = self.events.lock().unwrap();
-        if let Some(events) = &mut *events {
-            events.push(event());
-        }
-    }
-}
+impl salsa::Database for TestDB {}
 
 impl panic::RefUnwindSafe for TestDB {}
 

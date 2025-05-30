@@ -1,7 +1,7 @@
 use ide_db::famous_defs::FamousDefs;
 use syntax::{
     AstNode,
-    ast::{self, make},
+    ast::{self, edit_in_place::Indent, make},
     ted,
 };
 
@@ -46,6 +46,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let impl_def = ctx.find_node_at_offset::<ast::Impl>()?.clone_for_update();
+    let indent = impl_def.indent_level();
 
     let trait_ = impl_def.trait_()?;
     if let ast::Type::PathType(trait_path) = trait_ {
@@ -97,8 +98,8 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
     })?;
 
     let assoc_list = make::assoc_item_list().clone_for_update();
-    assoc_list.add_item(syntax::ast::AssocItem::Fn(fn_));
     ted::replace(impl_def.assoc_item_list()?.syntax(), assoc_list.syntax());
+    impl_def.get_or_create_assoc_item_list().add_item(syntax::ast::AssocItem::Fn(fn_));
 
     let target = impl_def.syntax().text_range();
     acc.add(
@@ -106,7 +107,7 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
         "Generate `IndexMut` impl from this `Index` trait",
         target,
         |edit| {
-            edit.insert(target.start(), format!("$0{impl_def}\n\n"));
+            edit.insert(target.start(), format!("$0{impl_def}\n\n{indent}"));
         },
     )
 }
@@ -183,6 +184,93 @@ impl<T> core::ops::Index<Axis> for [T; 3] where T: Copy {
     fn index(&self, index: Axis) -> &Self::Output {
         let var_name = &self[index as usize];
         var_name
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_mut_trait_impl_non_zero_indent() {
+        check_assist(
+            generate_mut_trait_impl,
+            r#"
+//- minicore: index
+mod foo {
+    pub enum Axis { X = 0, Y = 1, Z = 2 }
+
+    impl<T> core::ops::Index$0<Axis> for [T; 3] where T: Copy {
+        type Output = T;
+
+        fn index(&self, index: Axis) -> &Self::Output {
+            let var_name = &self[index as usize];
+            var_name
+        }
+    }
+}
+"#,
+            r#"
+mod foo {
+    pub enum Axis { X = 0, Y = 1, Z = 2 }
+
+    $0impl<T> core::ops::IndexMut<Axis> for [T; 3] where T: Copy {
+        fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
+            let var_name = &self[index as usize];
+            var_name
+        }
+    }
+
+    impl<T> core::ops::Index<Axis> for [T; 3] where T: Copy {
+        type Output = T;
+
+        fn index(&self, index: Axis) -> &Self::Output {
+            let var_name = &self[index as usize];
+            var_name
+        }
+    }
+}
+"#,
+        );
+
+        check_assist(
+            generate_mut_trait_impl,
+            r#"
+//- minicore: index
+mod foo {
+    mod bar {
+        pub enum Axis { X = 0, Y = 1, Z = 2 }
+
+        impl<T> core::ops::Index$0<Axis> for [T; 3] where T: Copy {
+            type Output = T;
+
+            fn index(&self, index: Axis) -> &Self::Output {
+                let var_name = &self[index as usize];
+                var_name
+            }
+        }
+    }
+}
+"#,
+            r#"
+mod foo {
+    mod bar {
+        pub enum Axis { X = 0, Y = 1, Z = 2 }
+
+        $0impl<T> core::ops::IndexMut<Axis> for [T; 3] where T: Copy {
+            fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
+                let var_name = &self[index as usize];
+                var_name
+            }
+        }
+
+        impl<T> core::ops::Index<Axis> for [T; 3] where T: Copy {
+            type Output = T;
+
+            fn index(&self, index: Axis) -> &Self::Output {
+                let var_name = &self[index as usize];
+                var_name
+            }
+        }
     }
 }
 "#,

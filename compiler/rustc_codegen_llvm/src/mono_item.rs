@@ -16,7 +16,7 @@ use crate::{base, llvm};
 
 impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
     fn predefine_static(
-        &self,
+        &mut self,
         def_id: DefId,
         linkage: Linkage,
         visibility: Visibility,
@@ -44,7 +44,7 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
     }
 
     fn predefine_fn(
-        &self,
+        &mut self,
         instance: Instance<'tcx>,
         linkage: Linkage,
         visibility: Visibility,

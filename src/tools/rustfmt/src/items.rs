@@ -1110,10 +1110,10 @@ impl<'a> StructParts<'a> {
 
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
         let (prefix, def, ident, generics) = match item.kind {
-            ast::ItemKind::Struct(ident, ref def, ref generics) => {
+            ast::ItemKind::Struct(ident, ref generics, ref def) => {
                 ("struct ", def, ident, generics)
             }
-            ast::ItemKind::Union(ident, ref def, ref generics) => ("union ", def, ident, generics),
+            ast::ItemKind::Union(ident, ref generics, ref def) => ("union ", def, ident, generics),
             _ => unreachable!(),
         };
         StructParts {

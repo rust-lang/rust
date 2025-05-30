@@ -24,6 +24,9 @@ rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_parse_format = { path = "../rustc_parse_format" }
+# We must use the proc_macro version that we will compile proc-macros against,
+# not the one from our own sysroot.
+rustc_proc_macro = { path = "../rustc_proc_macro" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }

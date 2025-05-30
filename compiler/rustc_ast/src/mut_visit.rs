@@ -77,7 +77,7 @@ pub trait MutVisitor: Sized {
         walk_use_tree(self, use_tree);
     }
 
-    fn visit_foreign_item(&mut self, ni: &mut P<ForeignItem>) {
+    fn visit_foreign_item(&mut self, ni: &mut ForeignItem) {
         walk_item(self, ni);
     }
 
@@ -85,7 +85,7 @@ pub trait MutVisitor: Sized {
         walk_flat_map_foreign_item(self, ni)
     }
 
-    fn visit_item(&mut self, i: &mut P<Item>) {
+    fn visit_item(&mut self, i: &mut Item) {
         walk_item(self, i);
     }
 
@@ -105,7 +105,7 @@ pub trait MutVisitor: Sized {
         walk_flat_map_field_def(self, fd)
     }
 
-    fn visit_assoc_item(&mut self, i: &mut P<AssocItem>, ctxt: AssocCtxt) {
+    fn visit_assoc_item(&mut self, i: &mut AssocItem, ctxt: AssocCtxt) {
         walk_assoc_item(self, i, ctxt)
     }
 
@@ -117,11 +117,11 @@ pub trait MutVisitor: Sized {
         walk_flat_map_assoc_item(self, i, ctxt)
     }
 
-    fn visit_contract(&mut self, c: &mut P<FnContract>) {
+    fn visit_contract(&mut self, c: &mut FnContract) {
         walk_contract(self, c);
     }
 
-    fn visit_fn_decl(&mut self, d: &mut P<FnDecl>) {
+    fn visit_fn_decl(&mut self, d: &mut FnDecl) {
         walk_fn_decl(self, d);
     }
 
@@ -138,7 +138,7 @@ pub trait MutVisitor: Sized {
         walk_closure_binder(self, b);
     }
 
-    fn visit_block(&mut self, b: &mut P<Block>) {
+    fn visit_block(&mut self, b: &mut Block) {
         walk_block(self, b);
     }
 
@@ -184,7 +184,7 @@ pub trait MutVisitor: Sized {
         walk_ty(self, t);
     }
 
-    fn visit_ty_pat(&mut self, t: &mut P<TyPat>) {
+    fn visit_ty_pat(&mut self, t: &mut TyPat) {
         walk_ty_pat(self, t);
     }
 
@@ -240,7 +240,7 @@ pub trait MutVisitor: Sized {
         walk_parenthesized_parameter_data(self, p);
     }
 
-    fn visit_local(&mut self, l: &mut P<Local>) {
+    fn visit_local(&mut self, l: &mut Local) {
         walk_local(self, l);
     }
 
@@ -367,14 +367,6 @@ pub trait MutVisitor: Sized {
 }
 
 super::common_visitor_and_walkers!((mut) MutVisitor);
-
-/// Use a map-style function (`FnOnce(T) -> T`) to overwrite a `&mut T`. Useful
-/// when using a `flat_map_*` or `filter_map_*` method within a `visit_`
-/// method.
-pub fn visit_clobber<T: DummyAstNode>(t: &mut T, f: impl FnOnce(T) -> T) {
-    let old_t = std::mem::replace(t, T::dummy());
-    *t = f(old_t);
-}
 
 #[inline]
 fn visit_vec<T, F>(elems: &mut Vec<T>, mut visit_elem: F)
@@ -507,8 +499,8 @@ fn walk_assoc_item_constraint<T: MutVisitor>(
     vis.visit_span(span);
 }
 
-pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
-    let Ty { id, kind, span, tokens: _ } = ty.deref_mut();
+pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut Ty) {
+    let Ty { id, kind, span, tokens: _ } = ty;
     vis.visit_id(id);
     match kind {
         TyKind::Err(_guar) => {}
@@ -559,8 +551,8 @@ pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
     vis.visit_span(span);
 }
 
-pub fn walk_ty_pat<T: MutVisitor>(vis: &mut T, ty: &mut P<TyPat>) {
-    let TyPat { id, kind, span, tokens: _ } = ty.deref_mut();
+pub fn walk_ty_pat<T: MutVisitor>(vis: &mut T, ty: &mut TyPat) {
+    let TyPat { id, kind, span, tokens: _ } = ty;
     vis.visit_id(id);
     match kind {
         TyPatKind::Range(start, end, _include_end) => {
@@ -651,8 +643,8 @@ fn walk_parenthesized_parameter_data<T: MutVisitor>(vis: &mut T, args: &mut Pare
     vis.visit_span(inputs_span);
 }
 
-fn walk_local<T: MutVisitor>(vis: &mut T, local: &mut P<Local>) {
-    let Local { id, super_, pat, ty, kind, span, colon_sp, attrs, tokens: _ } = local.deref_mut();
+fn walk_local<T: MutVisitor>(vis: &mut T, local: &mut Local) {
+    let Local { id, super_, pat, ty, kind, span, colon_sp, attrs, tokens: _ } = local;
     visit_opt(super_, |sp| vis.visit_span(sp));
     vis.visit_id(id);
     visit_attrs(vis, attrs);
@@ -789,8 +781,8 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
     }
 }
 
-fn walk_contract<T: MutVisitor>(vis: &mut T, contract: &mut P<FnContract>) {
-    let FnContract { requires, ensures } = contract.deref_mut();
+fn walk_contract<T: MutVisitor>(vis: &mut T, contract: &mut FnContract) {
+    let FnContract { requires, ensures } = contract;
     if let Some(pred) = requires {
         vis.visit_expr(pred);
     }
@@ -799,8 +791,8 @@ fn walk_contract<T: MutVisitor>(vis: &mut T, contract: &mut P<FnContract>) {
     }
 }
 
-fn walk_fn_decl<T: MutVisitor>(vis: &mut T, decl: &mut P<FnDecl>) {
-    let FnDecl { inputs, output } = decl.deref_mut();
+fn walk_fn_decl<T: MutVisitor>(vis: &mut T, decl: &mut FnDecl) {
+    let FnDecl { inputs, output } = decl;
     inputs.flat_map_in_place(|param| vis.flat_map_param(param));
     vis.visit_fn_ret_ty(output);
 }
@@ -999,8 +991,8 @@ pub fn walk_flat_map_expr_field<T: MutVisitor>(
     smallvec![f]
 }
 
-pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut P<Block>) {
-    let Block { id, stmts, rules: _, span, tokens: _ } = block.deref_mut();
+pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut Block) {
+    let Block { id, stmts, rules: _, span, tokens: _ } = block;
     vis.visit_id(id);
     stmts.flat_map_in_place(|stmt| vis.flat_map_stmt(stmt));
     vis.visit_span(span);
@@ -1049,8 +1041,8 @@ pub fn walk_flat_map_assoc_item(
     smallvec![item]
 }
 
-pub fn walk_pat<T: MutVisitor>(vis: &mut T, pat: &mut P<Pat>) {
-    let Pat { id, kind, span, tokens: _ } = pat.deref_mut();
+pub fn walk_pat<T: MutVisitor>(vis: &mut T, pat: &mut Pat) {
+    let Pat { id, kind, span, tokens: _ } = pat;
     vis.visit_id(id);
     match kind {
         PatKind::Err(_guar) => {}
@@ -1414,101 +1406,6 @@ fn walk_capture_by<T: MutVisitor>(vis: &mut T, capture_by: &mut CaptureBy) {
         CaptureBy::Use { use_kw } => {
             vis.visit_span(use_kw);
         }
-    }
-}
-
-/// Some value for the AST node that is valid but possibly meaningless. Similar
-/// to `Default` but not intended for wide use. The value will never be used
-/// meaningfully, it exists just to support unwinding in `visit_clobber` in the
-/// case where its closure panics.
-pub trait DummyAstNode {
-    fn dummy() -> Self;
-}
-
-impl<T> DummyAstNode for Option<T> {
-    fn dummy() -> Self {
-        Default::default()
-    }
-}
-
-impl<T: DummyAstNode + 'static> DummyAstNode for P<T> {
-    fn dummy() -> Self {
-        P(DummyAstNode::dummy())
-    }
-}
-
-impl DummyAstNode for Item {
-    fn dummy() -> Self {
-        Item {
-            attrs: Default::default(),
-            id: DUMMY_NODE_ID,
-            span: Default::default(),
-            vis: Visibility {
-                kind: VisibilityKind::Public,
-                span: Default::default(),
-                tokens: Default::default(),
-            },
-            kind: ItemKind::ExternCrate(None, Ident::dummy()),
-            tokens: Default::default(),
-        }
-    }
-}
-
-impl DummyAstNode for Expr {
-    fn dummy() -> Self {
-        Expr {
-            id: DUMMY_NODE_ID,
-            kind: ExprKind::Dummy,
-            span: Default::default(),
-            attrs: Default::default(),
-            tokens: Default::default(),
-        }
-    }
-}
-
-impl DummyAstNode for Ty {
-    fn dummy() -> Self {
-        Ty {
-            id: DUMMY_NODE_ID,
-            kind: TyKind::Dummy,
-            span: Default::default(),
-            tokens: Default::default(),
-        }
-    }
-}
-
-impl DummyAstNode for Pat {
-    fn dummy() -> Self {
-        Pat {
-            id: DUMMY_NODE_ID,
-            kind: PatKind::Wild,
-            span: Default::default(),
-            tokens: Default::default(),
-        }
-    }
-}
-
-impl DummyAstNode for Stmt {
-    fn dummy() -> Self {
-        Stmt { id: DUMMY_NODE_ID, kind: StmtKind::Empty, span: Default::default() }
-    }
-}
-
-impl DummyAstNode for Crate {
-    fn dummy() -> Self {
-        Crate {
-            attrs: Default::default(),
-            items: Default::default(),
-            spans: Default::default(),
-            id: DUMMY_NODE_ID,
-            is_placeholder: Default::default(),
-        }
-    }
-}
-
-impl<N: DummyAstNode, T: DummyAstNode> DummyAstNode for crate::ast_traits::AstNodeWrapper<N, T> {
-    fn dummy() -> Self {
-        crate::ast_traits::AstNodeWrapper::new(N::dummy(), T::dummy())
     }
 }
 

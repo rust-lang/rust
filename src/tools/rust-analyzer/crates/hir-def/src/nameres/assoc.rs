@@ -75,7 +75,7 @@ impl TraitItems {
         })
     }
 
-    pub fn attribute_calls(&self) -> impl Iterator<Item = (AstId<ast::Item>, MacroCallId)> + '_ {
+    pub fn macro_calls(&self) -> impl Iterator<Item = (AstId<ast::Item>, MacroCallId)> + '_ {
         self.macro_calls.iter().flat_map(|it| it.iter()).copied()
     }
 }
@@ -109,7 +109,7 @@ impl ImplItems {
         (Arc::new(ImplItems { items, macro_calls }), DefDiagnostics::new(diagnostics))
     }
 
-    pub fn attribute_calls(&self) -> impl Iterator<Item = (AstId<ast::Item>, MacroCallId)> + '_ {
+    pub fn macro_calls(&self) -> impl Iterator<Item = (AstId<ast::Item>, MacroCallId)> + '_ {
         self.macro_calls.iter().flat_map(|it| it.iter()).copied()
     }
 }

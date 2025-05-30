@@ -26,12 +26,12 @@ use hir_def::{
     },
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
     lang_item::LangItem,
-    nameres::{MacroSubNs, crate_def_map},
+    nameres::MacroSubNs,
     resolver::{HasResolver, Resolver, TypeNs, ValueNs, resolver_for_scope},
     type_ref::{Mutability, TypeRefId},
 };
 use hir_expand::{
-    HirFileId, InFile, MacroCallId,
+    HirFileId, InFile,
     mod_path::{ModPath, PathKind, path},
     name::{AsName, Name},
 };
@@ -216,10 +216,6 @@ impl<'db> SourceAnalyzer<'db> {
             BodyOrSig::VariantFields { source_map, .. } => &**source_map,
             BodyOrSig::Body { source_map, .. } => &source_map.store,
         })
-    }
-
-    pub(crate) fn expansion(&self, node: InFile<&ast::MacroCall>) -> Option<MacroCallId> {
-        self.store_sm()?.expansion(node)
     }
 
     fn trait_environment(&self, db: &'db dyn HirDatabase) -> Arc<TraitEnvironment> {
@@ -743,22 +739,6 @@ impl<'db> SourceAnalyzer<'db> {
             Type::new_with_resolver(db, &self.resolver, field_ty),
             GenericSubstitution::new(adt.into(), subst.clone(), self.trait_environment(db)),
         ))
-    }
-
-    pub(crate) fn resolve_macro_call(
-        &self,
-        db: &'db dyn HirDatabase,
-        macro_call: InFile<&ast::MacroCall>,
-    ) -> Option<Macro> {
-        let bs = self.store_sm()?;
-        bs.expansion(macro_call).and_then(|it| {
-            // FIXME: Block def maps
-            let def = it.lookup(db).def;
-            crate_def_map(db, def.krate)
-                .macro_def_to_macro_id
-                .get(&def.kind.erased_ast_id())
-                .map(|it| (*it).into())
-        })
     }
 
     pub(crate) fn resolve_bind_pat_to_const(
@@ -1290,18 +1270,6 @@ impl<'db> SourceAnalyzer<'db> {
                 (field.into(), Type::new_with_resolver_inner(db, &self.resolver, ty))
             })
             .collect()
-    }
-
-    pub(crate) fn expand(
-        &self,
-        db: &'db dyn HirDatabase,
-        macro_call: InFile<&ast::MacroCall>,
-    ) -> Option<MacroCallId> {
-        self.store_sm().and_then(|bs| bs.expansion(macro_call)).or_else(|| {
-            self.resolver.item_scope().macro_invoc(
-                macro_call.with_value(db.ast_id_map(macro_call.file_id).ast_id(macro_call.value)),
-            )
-        })
     }
 
     pub(crate) fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantId> {

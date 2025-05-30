@@ -2112,6 +2112,56 @@ fn foo() {
 }
 
 #[test]
+fn cfg_attr_attr_macro() {
+    check(
+        r#"
+//- proc_macros: identity
+#[cfg_attr(test, proc_macros::identity)]
+fn foo() {
+    $0
+}
+    "#,
+        expect![[r#"
+            fn foo()  fn()
+            md proc_macros
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
 fn escaped_label() {
     check(
         r#"
