@@ -2,13 +2,13 @@ error[E0080]: encountered static that tried to initialize itself with itself
   --> $DIR/recursive-static-definition.rs:1:23
    |
 LL | pub static FOO: u32 = FOO;
-   |                       ^^^ could not evaluate static initializer
+   |                       ^^^ evaluation of static initializer failed here
 
 error[E0080]: encountered static that tried to initialize itself with itself
   --> $DIR/recursive-static-definition.rs:9:23
    |
 LL | pub static BAR: Foo = BAR;
-   |                       ^^^ could not evaluate static initializer
+   |                       ^^^ evaluation of static initializer failed here
 
 error: aborting due to 2 previous errors
 

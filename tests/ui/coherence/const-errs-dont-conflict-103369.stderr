@@ -2,7 +2,7 @@ error[E0080]: evaluation panicked: Some error occurred
   --> $DIR/const-errs-dont-conflict-103369.rs:5:25
    |
 LL | impl ConstGenericTrait<{my_fn(1)}> for () {}
-   |                         ^^^^^^^^ evaluation of constant value failed
+   |                         ^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `my_fn`
   --> $DIR/const-errs-dont-conflict-103369.rs:10:5
@@ -14,7 +14,7 @@ error[E0080]: evaluation panicked: Some error occurred
   --> $DIR/const-errs-dont-conflict-103369.rs:7:25
    |
 LL | impl ConstGenericTrait<{my_fn(2)}> for () {}
-   |                         ^^^^^^^^ evaluation of constant value failed
+   |                         ^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `my_fn`
   --> $DIR/const-errs-dont-conflict-103369.rs:10:5

@@ -2,7 +2,7 @@ error[E0080]: attempt to divide `1_usize` by zero
   --> $DIR/post-mono.rs:7:24
    |
 LL |     post_mono: usize = X / 0,
-   |                        ^^^^^ evaluation of `Z::<1>::post_mono::{constant#0}` failed
+   |                        ^^^^^ evaluation of `Z::<1>::post_mono::{constant#0}` failed here
 
 note: erroneous constant encountered
   --> $DIR/post-mono.rs:17:19

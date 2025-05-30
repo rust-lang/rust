@@ -89,9 +89,9 @@ const_eval_dyn_call_not_a_method =
     `dyn` call trying to call something that is not a method
 
 const_eval_error = {$error_kind ->
-    [static] could not evaluate static initializer
-    [const] evaluation of constant value failed
-    [const_with_path] evaluation of `{$instance}` failed
+    [static] evaluation of static initializer failed here
+    [const] evaluation of constant value failed here
+    [const_with_path] evaluation of `{$instance}` failed here
     *[other] {""}
 }
 

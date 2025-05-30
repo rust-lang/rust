@@ -2,7 +2,7 @@ error[E0080]: index out of bounds: the length is 1 but the index is 1
   --> $DIR/const-err-late.rs:14:21
    |
 LL |     const FOO: u8 = [5u8][1];
-   |                     ^^^^^^^^ evaluation of `S::<i32>::FOO` failed
+   |                     ^^^^^^^^ evaluation of `S::<i32>::FOO` failed here
 
 note: erroneous constant encountered
   --> $DIR/const-err-late.rs:20:16
@@ -14,7 +14,7 @@ error[E0080]: index out of bounds: the length is 1 but the index is 1
   --> $DIR/const-err-late.rs:14:21
    |
 LL |     const FOO: u8 = [5u8][1];
-   |                     ^^^^^^^^ evaluation of `S::<u32>::FOO` failed
+   |                     ^^^^^^^^ evaluation of `S::<u32>::FOO` failed here
 
 note: erroneous constant encountered
   --> $DIR/const-err-late.rs:20:31

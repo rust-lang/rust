@@ -2,7 +2,7 @@ error[E0080]: index out of bounds: the length is 3 but the index is 42
   --> $DIR/issue-50814-2.rs:17:24
    |
 LL |     const BAR: usize = [5, 6, 7][T::BOO];
-   |                        ^^^^^^^^^^^^^^^^^ evaluation of `<A<()> as Foo<()>>::BAR` failed
+   |                        ^^^^^^^^^^^^^^^^^ evaluation of `<A<()> as Foo<()>>::BAR` failed here
 
 note: erroneous constant encountered
   --> $DIR/issue-50814-2.rs:21:6

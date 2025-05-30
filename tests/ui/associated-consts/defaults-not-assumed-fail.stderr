@@ -2,7 +2,7 @@ error[E0080]: attempt to compute `u8::MAX + 1_u8`, which would overflow
   --> $DIR/defaults-not-assumed-fail.rs:9:19
    |
 LL |     const B: u8 = Self::A + 1;
-   |                   ^^^^^^^^^^^ evaluation of `<() as Tr>::B` failed
+   |                   ^^^^^^^^^^^ evaluation of `<() as Tr>::B` failed here
 
 note: erroneous constant encountered
   --> $DIR/defaults-not-assumed-fail.rs:34:16
