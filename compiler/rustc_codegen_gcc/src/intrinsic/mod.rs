@@ -488,7 +488,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 match generic_simd_intrinsic(
                     self,
                     name,
-                    callee_ty,
                     args,
                     result.layout.ty,
                     result.layout.gcc_type(self),

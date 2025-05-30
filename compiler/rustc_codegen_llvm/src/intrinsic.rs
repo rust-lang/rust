@@ -593,7 +593,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 match generic_simd_intrinsic(
                     self,
                     name,
-                    callee_ty,
                     fn_args,
                     &loaded_args,
                     result.layout.ty,
@@ -1145,7 +1144,6 @@ fn get_rust_try_fn<'a, 'll, 'tcx>(
 fn generic_simd_intrinsic<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     name: Symbol,
-    callee_ty: Ty<'tcx>,
     fn_args: GenericArgsRef<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
     ret_ty: Ty<'tcx>,
@@ -1216,26 +1214,22 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         bx.trunc(i_xn_msb, bx.type_vector(bx.type_i1(), in_len))
     }
 
-    let tcx = bx.tcx();
-    let sig = tcx.normalize_erasing_late_bound_regions(bx.typing_env(), callee_ty.fn_sig(tcx));
-    let arg_tys = sig.inputs();
-
     // Sanity-check: all vector arguments must be immediates.
     if cfg!(debug_assertions) {
-        for (ty, arg) in arg_tys.iter().zip(args) {
-            if ty.is_simd() {
+        for arg in args {
+            if arg.layout.ty.is_simd() {
                 assert_matches!(arg.val, OperandValue::Immediate(_));
             }
         }
     }
 
     if name == sym::simd_select_bitmask {
-        let (len, _) = require_simd!(arg_tys[1], SimdArgument);
+        let (len, _) = require_simd!(args[1].layout.ty, SimdArgument);
 
         let expected_int_bits = len.max(8).next_power_of_two();
         let expected_bytes = len.div_ceil(8);
 
-        let mask_ty = arg_tys[0];
+        let mask_ty = args[0].layout.ty;
         let mask = match mask_ty.kind() {
             ty::Int(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
             ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
@@ -1269,8 +1263,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     // every intrinsic below takes a SIMD vector as its first argument
-    let (in_len, in_elem) = require_simd!(arg_tys[0], SimdInput);
-    let in_ty = arg_tys[0];
+    let (in_len, in_elem) = require_simd!(args[0].layout.ty, SimdInput);
+    let in_ty = args[0].layout.ty;
 
     let comparison = match name {
         sym::simd_eq => Some(BinOp::Eq),
@@ -1401,13 +1395,13 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
     if name == sym::simd_insert || name == sym::simd_insert_dyn {
         require!(
-            in_elem == arg_tys[2],
+            in_elem == args[2].layout.ty,
             InvalidMonomorphization::InsertedType {
                 span,
                 name,
                 in_elem,
                 in_ty,
-                out_ty: arg_tys[2]
+                out_ty: args[2].layout.ty
             }
         );
 
@@ -1458,7 +1452,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if name == sym::simd_select {
         let m_elem_ty = in_elem;
         let m_len = in_len;
-        let (v_len, _) = require_simd!(arg_tys[1], SimdArgument);
+        let (v_len, _) = require_simd!(args[1].layout.ty, SimdArgument);
         require!(
             m_len == v_len,
             InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
@@ -1659,9 +1653,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // The second argument must be a simd vector with an element type that's a pointer
         // to the element type of the first argument
         let (_, element_ty0) = require_simd!(in_ty, SimdFirst);
-        let (out_len, element_ty1) = require_simd!(arg_tys[1], SimdSecond);
+        let (out_len, element_ty1) = require_simd!(args[1].layout.ty, SimdSecond);
         // The element type of the third argument must be a signed integer type of any width:
-        let (out_len2, element_ty2) = require_simd!(arg_tys[2], SimdThird);
+        let (out_len2, element_ty2) = require_simd!(args[2].layout.ty, SimdThird);
         require_simd!(ret_ty, SimdReturn);
 
         // Of the same length:
@@ -1672,7 +1666,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 name,
                 in_len,
                 in_ty,
-                arg_ty: arg_tys[1],
+                arg_ty: args[1].layout.ty,
                 out_len
             }
         );
@@ -1683,7 +1677,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 name,
                 in_len,
                 in_ty,
-                arg_ty: arg_tys[2],
+                arg_ty: args[2].layout.ty,
                 out_len: out_len2
             }
         );
@@ -1703,7 +1697,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 span,
                 name,
                 expected_element: element_ty1,
-                second_arg: arg_tys[1],
+                second_arg: args[1].layout.ty,
                 in_elem,
                 in_ty,
                 mutability: ExpectedPointerMutability::Not,
@@ -1764,10 +1758,10 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let (mask_len, mask_elem) = (in_len, in_elem);
 
         // The second argument must be a pointer matching the element type
-        let pointer_ty = arg_tys[1];
+        let pointer_ty = args[1].layout.ty;
 
         // The last argument is a passthrough vector providing values for disabled lanes
-        let values_ty = arg_tys[2];
+        let values_ty = args[2].layout.ty;
         let (values_len, values_elem) = require_simd!(values_ty, SimdThird);
 
         require_simd!(ret_ty, SimdReturn);
@@ -1855,10 +1849,10 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let (mask_len, mask_elem) = (in_len, in_elem);
 
         // The second argument must be a pointer matching the element type
-        let pointer_ty = arg_tys[1];
+        let pointer_ty = args[1].layout.ty;
 
         // The last argument specifies the values to store to memory
-        let values_ty = arg_tys[2];
+        let values_ty = args[2].layout.ty;
         let (values_len, values_elem) = require_simd!(values_ty, SimdThird);
 
         // Of the same length:
@@ -1938,8 +1932,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // The second argument must be a simd vector with an element type that's a pointer
         // to the element type of the first argument
         let (_, element_ty0) = require_simd!(in_ty, SimdFirst);
-        let (element_len1, element_ty1) = require_simd!(arg_tys[1], SimdSecond);
-        let (element_len2, element_ty2) = require_simd!(arg_tys[2], SimdThird);
+        let (element_len1, element_ty1) = require_simd!(args[1].layout.ty, SimdSecond);
+        let (element_len2, element_ty2) = require_simd!(args[2].layout.ty, SimdThird);
 
         // Of the same length:
         require!(
@@ -1949,7 +1943,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 name,
                 in_len,
                 in_ty,
-                arg_ty: arg_tys[1],
+                arg_ty: args[1].layout.ty,
                 out_len: element_len1
             }
         );
@@ -1960,7 +1954,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 name,
                 in_len,
                 in_ty,
-                arg_ty: arg_tys[2],
+                arg_ty: args[2].layout.ty,
                 out_len: element_len2
             }
         );
@@ -1975,7 +1969,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 span,
                 name,
                 expected_element: element_ty1,
-                second_arg: arg_tys[1],
+                second_arg: args[1].layout.ty,
                 in_elem,
                 in_ty,
                 mutability: ExpectedPointerMutability::Mut,
@@ -2497,7 +2491,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let ptrs = args[0].immediate();
         // The second argument must be a ptr-sized integer.
         // (We don't care about the signedness, this is wrapping anyway.)
-        let (_offsets_len, offsets_elem) = arg_tys[1].simd_size_and_type(bx.tcx());
+        let (_offsets_len, offsets_elem) = args[1].layout.ty.simd_size_and_type(bx.tcx());
         if !matches!(offsets_elem.kind(), ty::Int(ty::IntTy::Isize) | ty::Uint(ty::UintTy::Usize)) {
             span_bug!(
                 span,
@@ -2521,8 +2515,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 return_error!(InvalidMonomorphization::ExpectedVectorElementType {
                     span,
                     name,
-                    expected_element: arg_tys[0].simd_size_and_type(bx.tcx()).1,
-                    vector_type: arg_tys[0]
+                    expected_element: args[0].layout.ty.simd_size_and_type(bx.tcx()).1,
+                    vector_type: args[0].layout.ty
                 });
             }
         };
