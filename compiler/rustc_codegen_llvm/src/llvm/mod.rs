@@ -1,9 +1,9 @@
 #![allow(non_snake_case)]
 
 use std::ffi::{CStr, CString};
-use std::ptr;
 use std::str::FromStr;
 use std::string::FromUtf8Error;
+use std::{ptr, slice};
 
 use libc::c_uint;
 use rustc_abi::{Align, Size, WrappingRange};
@@ -344,6 +344,32 @@ impl Intrinsic {
 
     pub(crate) fn is_overloaded(self) -> bool {
         unsafe { LLVMIntrinsicIsOverloaded(self.id) == True }
+    }
+
+    pub(crate) fn overloaded_name<'ll>(
+        self,
+        llmod: &'ll Module,
+        type_params: &[&'ll Type],
+    ) -> String {
+        let mut len = 0;
+        let ptr = unsafe {
+            LLVMIntrinsicCopyOverloadedName2(
+                llmod,
+                self.id,
+                type_params.as_ptr(),
+                type_params.len(),
+                &mut len,
+            )
+        };
+
+        let slice = unsafe { slice::from_raw_parts_mut(ptr.cast(), len) };
+        let copied = str::from_utf8(slice).expect("Non-UTF8 intrinsic name").to_string();
+
+        unsafe {
+            libc::free(ptr.cast());
+        }
+
+        copied
     }
 }
 

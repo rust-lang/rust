@@ -1213,6 +1213,13 @@ unsafe extern "C" {
         NewFn: &mut Option<&'a Value>,
         CanUpgradeDebugIntrinsicsToRecords: bool,
     ) -> bool;
+    pub(crate) fn LLVMIntrinsicCopyOverloadedName2<'a>(
+        Mod: &'a Module,
+        ID: c_uint,
+        ParamTypes: *const &'a Type,
+        ParamCount: size_t,
+        NameLength: *mut size_t,
+    ) -> *mut c_char;
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;
