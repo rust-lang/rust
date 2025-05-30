@@ -32,7 +32,7 @@ use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 pub use rustc_span::AttrId;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 pub use crate::format::*;
@@ -1525,6 +1525,19 @@ impl Expr {
                 | ExprKind::Path(_, _)
                 | ExprKind::Struct(_)
         )
+    }
+
+    /// Creates a dummy `P<Expr>`.
+    ///
+    /// Should only be used when it will be replaced afterwards or as a return value when an error was encountered.
+    pub fn dummy() -> P<Expr> {
+        P(Expr {
+            id: DUMMY_NODE_ID,
+            kind: ExprKind::Dummy,
+            span: DUMMY_SP,
+            attrs: ThinVec::new(),
+            tokens: None,
+        })
     }
 }
 
