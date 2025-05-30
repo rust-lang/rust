@@ -22,12 +22,12 @@ use rustc_target::callconv::FnAbi;
 use smallvec::SmallVec;
 use tracing::debug;
 
-use crate::abi::FnAbiLlvmExt;
-use crate::attributes;
+use crate::abi::{FnAbiLlvmExt, FunctionSignature};
 use crate::common::AsCCharPtr;
 use crate::context::{CodegenCx, GenericCx, SCx, SimpleCx};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, FromGeneric, Type, Value, Visibility};
+use crate::{attributes, errors};
 
 /// Declare a function with a SimpleCx.
 ///
@@ -148,6 +148,22 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     ) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
+        let signature = fn_abi.llvm_type(self, name.as_bytes());
+
+        let span = || instance.map(|instance| self.tcx.def_span(instance.def_id()));
+
+        if let FunctionSignature::LLVMSignature(_, llvm_fn_ty) = signature {
+            // check if the intrinsic signatures match
+            if !fn_abi.verify_intrinsic_signature(self, llvm_fn_ty) {
+                self.tcx.dcx().emit_fatal(errors::IntrinsicSignatureMismatch {
+                    name,
+                    llvm_fn_ty: &format!("{llvm_fn_ty:?}"),
+                    rust_fn_ty: &format!("{:?}", fn_abi.rust_signature(self)),
+                    span: span(),
+                });
+            }
+        }
+
         // Function addresses in Rust are never significant, allowing functions to
         // be merged.
         let llfn = declare_raw_fn(
@@ -156,9 +172,15 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             fn_abi.llvm_cconv(self),
             llvm::UnnamedAddr::Global,
             llvm::Visibility::Default,
-            fn_abi.llvm_type(self),
+            signature.fn_ty(),
         );
-        fn_abi.apply_attrs_llfn(self, llfn, instance);
+
+        if signature.intrinsic().is_none() {
+            // Don't apply any attributes to intrinsics, they will be applied by AutoUpgrade
+            fn_abi.apply_attrs_llfn(self, llfn, instance);
+        }
+
+        // todo: check for upgrades, and emit error if not upgradable
 
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
             if let Some(instance) = instance {
