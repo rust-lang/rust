@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::cmp;
+use std::{cmp, iter};
 
 use libc::c_uint;
 use rustc_abi::{
@@ -300,8 +300,39 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 }
 
+pub(crate) enum FunctionSignature<'ll> {
+    /// The signature is obtained directly from LLVM, and **may not match the Rust signature**
+    Intrinsic(&'ll Type),
+    /// The name starts with `llvm.`, but can't obtain the intrinsic ID. May be invalid or upgradable
+    MaybeInvalidIntrinsic(&'ll Type),
+    /// Just the Rust signature
+    Rust(&'ll Type),
+}
+
+impl<'ll> FunctionSignature<'ll> {
+    pub(crate) fn fn_ty(&self) -> &'ll Type {
+        match self {
+            FunctionSignature::Intrinsic(fn_ty)
+            | FunctionSignature::MaybeInvalidIntrinsic(fn_ty)
+            | FunctionSignature::Rust(fn_ty) => fn_ty,
+        }
+    }
+}
+
 pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
+    fn llvm_return_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
+    fn llvm_argument_types(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<&'ll Type>;
+    /// When `do_verify` is set, this function performs checks for the signature of LLVM intrinsics
+    /// and emits a fatal error if it doesn't match. These checks are important,but somewhat expensive
+    /// So they are only used at function definitions, not at callsites
+    fn llvm_type(
+        &self,
+        cx: &CodegenCx<'ll, 'tcx>,
+        name: &[u8],
+        do_verify: bool,
+    ) -> FunctionSignature<'ll>;
+    /// **If this function is an LLVM intrinsic** checks if the LLVM signature provided matches with this
+    fn verify_intrinsic_signature(&self, cx: &CodegenCx<'ll, 'tcx>, llvm_ty: &'ll Type) -> bool;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self, cx: &CodegenCx<'ll, 'tcx>) -> llvm::CallConv;
 
@@ -314,30 +345,38 @@ pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
     );
 
     /// Apply attributes to a function call.
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value);
+    fn apply_attrs_callsite(
+        &self,
+        bx: &mut Builder<'_, 'll, 'tcx>,
+        callsite: &'ll Value,
+        llfn: &'ll Value,
+    );
 }
 
 impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+    fn llvm_return_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+        match &self.ret.mode {
+            PassMode::Ignore => cx.type_void(),
+            PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
+            PassMode::Cast { cast, pad_i32: _ } => cast.llvm_type(cx),
+            PassMode::Indirect { .. } => cx.type_void(),
+        }
+    }
+
+    fn llvm_argument_types(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<&'ll Type> {
+        let indirect_return = matches!(self.ret.mode, PassMode::Indirect { .. });
+
         // Ignore "extra" args from the call site for C variadic functions.
         // Only the "fixed" args are part of the LLVM function signature.
         let args =
             if self.c_variadic { &self.args[..self.fixed_count as usize] } else { &self.args };
 
-        // This capacity calculation is approximate.
-        let mut llargument_tys = Vec::with_capacity(
-            self.args.len() + if let PassMode::Indirect { .. } = self.ret.mode { 1 } else { 0 },
-        );
+        let mut llargument_tys =
+            Vec::with_capacity(args.len() + if indirect_return { 1 } else { 0 });
 
-        let llreturn_ty = match &self.ret.mode {
-            PassMode::Ignore => cx.type_void(),
-            PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
-            PassMode::Cast { cast, pad_i32: _ } => cast.llvm_type(cx),
-            PassMode::Indirect { .. } => {
-                llargument_tys.push(cx.type_ptr());
-                cx.type_void()
-            }
-        };
+        if indirect_return {
+            llargument_tys.push(cx.type_ptr());
+        }
 
         for arg in args {
             // Note that the exact number of arguments pushed here is carefully synchronized with
@@ -384,10 +423,74 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             llargument_tys.push(llarg_ty);
         }
 
-        if self.c_variadic {
-            cx.type_variadic_func(&llargument_tys, llreturn_ty)
+        llargument_tys
+    }
+
+    fn verify_intrinsic_signature(&self, cx: &CodegenCx<'ll, 'tcx>, llvm_fn_ty: &'ll Type) -> bool {
+        let rust_return_ty = self.llvm_return_type(cx);
+        let rust_argument_tys = self.llvm_argument_types(cx);
+
+        let llvm_return_ty = cx.get_return_type(llvm_fn_ty);
+        let llvm_argument_tys = cx.func_params_types(llvm_fn_ty);
+        let llvm_is_variadic = cx.func_is_variadic(llvm_fn_ty);
+
+        if self.c_variadic != llvm_is_variadic || rust_argument_tys.len() != llvm_argument_tys.len()
+        {
+            return false;
+        }
+
+        // todo: add bypasses for types not accessible from Rust here
+        iter::once((rust_return_ty, llvm_return_ty))
+            .chain(iter::zip(rust_argument_tys, llvm_argument_tys))
+            .all(|(rust_ty, llvm_ty)| rust_ty == llvm_ty)
+    }
+
+    fn llvm_type(
+        &self,
+        cx: &CodegenCx<'ll, 'tcx>,
+        name: &[u8],
+        do_verify: bool,
+    ) -> FunctionSignature<'ll> {
+        let mut maybe_invalid = false;
+
+        if name.starts_with(b"llvm.") {
+            if let Some(intrinsic) = llvm::Intrinsic::lookup(name) {
+                if !intrinsic.is_overloaded() {
+                    // FIXME: also do this for overloaded intrinsics
+                    let llvm_fn_ty = cx.intrinsic_type(intrinsic, &[]);
+                    if do_verify {
+                        if !self.verify_intrinsic_signature(cx, llvm_fn_ty) {
+                            cx.tcx.dcx().fatal(format!(
+                                "Intrinsic signature mismatch for `{}`: expected signature `{llvm_fn_ty:?}`",
+                                str::from_utf8(name).unwrap()
+                            ));
+                        }
+                    }
+                    return FunctionSignature::Intrinsic(llvm_fn_ty);
+                }
+            } else {
+                // it's one of 2 cases,
+                // - either the base name is invalid
+                // - it has been superceded by something else, so the intrinsic was removed entirely
+                // to check for upgrades, we need the `llfn`, so we defer it for now
+
+                maybe_invalid = true;
+            }
+        }
+
+        let return_ty = self.llvm_return_type(cx);
+        let argument_tys = self.llvm_argument_types(cx);
+
+        let fn_ty = if self.c_variadic {
+            cx.type_variadic_func(&argument_tys, return_ty)
         } else {
-            cx.type_func(&llargument_tys, llreturn_ty)
+            cx.type_func(&argument_tys, return_ty)
+        };
+
+        if maybe_invalid {
+            FunctionSignature::MaybeInvalidIntrinsic(fn_ty)
+        } else {
+            FunctionSignature::Rust(fn_ty)
         }
     }
 
@@ -530,7 +633,23 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value) {
+    fn apply_attrs_callsite(
+        &self,
+        bx: &mut Builder<'_, 'll, 'tcx>,
+        callsite: &'ll Value,
+        llfn: &'ll Value,
+    ) {
+        // if we are using the LLVM signature, use the LLVM attributes otherwise it might be problematic
+        let name = llvm::get_value_name(llfn);
+        if name.starts_with(b"llvm.")
+            && let Some(intrinsic) = llvm::Intrinsic::lookup(name)
+        {
+            // FIXME: also do this for overloaded intrinsics
+            if !intrinsic.is_overloaded() {
+                return;
+            }
+        }
+
         let mut func_attrs = SmallVec::<[_; 2]>::new();
         if self.ret.layout.is_uninhabited() {
             func_attrs.push(llvm::AttributeKind::NoReturn.create_attr(bx.cx.llcx));

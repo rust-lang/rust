@@ -327,6 +327,26 @@ pub(crate) fn get_value_name(value: &Value) -> &[u8] {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct Intrinsic {
+    id: c_uint,
+}
+
+impl Intrinsic {
+    pub(crate) fn lookup(name: &[u8]) -> Option<Self> {
+        let id = unsafe { LLVMLookupIntrinsicID(name.as_c_char_ptr(), name.len()) };
+        if id == 0 { None } else { Some(Self { id }) }
+    }
+
+    pub(crate) fn id(self) -> c_uint {
+        self.id
+    }
+
+    pub(crate) fn is_overloaded(self) -> bool {
+        unsafe { LLVMIntrinsicIsOverloaded(self.id) == True }
+    }
+}
+
 /// Safe wrapper for `LLVMSetValueName2` from a byte slice
 pub(crate) fn set_value_name(value: &Value, name: &[u8]) {
     unsafe {
