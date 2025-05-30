@@ -1034,7 +1034,7 @@ pub fn libm() {
     assert_approx_eq!(400f64.powf(0.5f64), 20f64);
 
     // Some inputs to powf and powi result in fixed outputs
-    // and thus must be exactly equal to that value
+    // and thus must be exactly equal to that value.
     // C standard says:
     // 1^y = 1 for any y, even a NaN.
     assert_eq!(1f32.powf(10.0), 1.0);
@@ -1069,11 +1069,13 @@ pub fn libm() {
 
     // For pow (powf in rust) the C standard says:
     // x^0 = 1 for all x even a sNaN
+    // FIXME(#4286): this does not match the behavior of all implementations.
     assert_eq!(SNAN_F32.powf(0.0), 1.0);
     assert_eq!(SNAN_F64.powf(0.0), 1.0);
 
     // For pown (powi in rust) the C standard says:
     // x^0 = 1 for all x even a sNaN
+    // FIXME(#4286): this does not match the behavior of all implementations.
     assert_eq!(SNAN_F32.powi(0), 1.0);
     assert_eq!(SNAN_F64.powi(0), 1.0);
 
