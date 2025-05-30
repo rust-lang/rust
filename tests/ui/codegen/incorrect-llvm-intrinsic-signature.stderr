@@ -1,0 +1,4 @@
+error: Intrinsic signature mismatch for `llvm.assume`: expected signature `void (i1)`
+
+error: aborting due to 1 previous error
+
