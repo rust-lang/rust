@@ -3851,14 +3851,7 @@ pub fn vbicq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(bsl)
 )]
-#[cfg_attr(
-    not(target_arch = "arm"),
-    stable(feature = "neon_intrinsics", since = "1.59.0")
-)]
-#[cfg_attr(
-    target_arch = "arm",
-    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
-)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 pub fn vbsl_f16(a: uint16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
     let not = int16x4_t::splat(-1);
     unsafe {
@@ -3878,14 +3871,7 @@ pub fn vbsl_f16(a: uint16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(bsl)
 )]
-#[cfg_attr(
-    not(target_arch = "arm"),
-    stable(feature = "neon_intrinsics", since = "1.59.0")
-)]
-#[cfg_attr(
-    target_arch = "arm",
-    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
-)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 pub fn vbslq_f16(a: uint16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t {
     let not = int16x8_t::splat(-1);
     unsafe {
