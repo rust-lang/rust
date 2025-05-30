@@ -187,7 +187,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 if let Some(new_llfn) = new_llfn {
                     self.tcx.dcx().note(format!(
                         "Using deprecated intrinsic `{name}`, `{}` can be used instead",
-                        str::from_utf8(llvm::get_value_name(new_llfn)).unwrap()
+                        str::from_utf8(&llvm::get_value_name(new_llfn)).unwrap()
                     ));
                 } else if self.tcx.sess.opts.verbose {
                     self.tcx.dcx().note(format!(

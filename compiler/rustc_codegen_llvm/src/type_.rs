@@ -70,6 +70,12 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe { llvm::LLVMVectorType(ty, len as c_uint) }
     }
 
+    pub(crate) fn get_return_type(&self, ty: &'ll Type) -> &'ll Type {
+        unsafe {
+            llvm::LLVMGetReturnType(ty)
+        }
+    }
+
     pub(crate) fn func_params_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(ty) as usize;
@@ -81,7 +87,17 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     }
 
     pub(crate) fn func_is_variadic(&self, ty: &'ll Type) -> bool {
-        unsafe { llvm::LLVMIsFunctionVarArg(ty) == True }
+        unsafe { llvm::LLVMIsFunctionVarArg(ty).is_true() }
+    }
+
+    pub(crate) fn struct_element_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
+        unsafe {
+            let n_args = llvm::LLVMCountStructElementTypes(ty) as usize;
+            let mut args = Vec::with_capacity(n_args);
+            llvm::LLVMGetStructElementTypes(ty, args.as_mut_ptr());
+            args.set_len(n_args);
+            args
+        }
     }
 }
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
@@ -297,7 +313,7 @@ impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         fn_ptr: &'ll Value,
     ) -> &'ll Type {
-        fn_abi.llvm_type(self, llvm::get_value_name(fn_ptr), false).fn_ty()
+        fn_abi.llvm_type(self, &llvm::get_value_name(fn_ptr), false).fn_ty()
     }
     fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
         fn_abi.ptr_to_llvm_type(self)

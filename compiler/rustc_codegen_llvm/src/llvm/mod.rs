@@ -305,7 +305,7 @@ impl Intrinsic {
     }
 
     pub(crate) fn is_overloaded(self) -> bool {
-        unsafe { LLVMIntrinsicIsOverloaded(self.id) == True }
+        unsafe { LLVMIntrinsicIsOverloaded(self.id).is_true() }
     }
 
     pub(crate) fn get_type<'ll>(self, llcx: &'ll Context, type_params: &[&'ll Type]) -> &'ll Type {
