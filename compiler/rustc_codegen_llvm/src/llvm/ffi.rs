@@ -1195,6 +1195,8 @@ unsafe extern "C" {
 
     // Operations on functions
     pub(crate) fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
+
+    // Operations about llvm intrinsics
     pub(crate) fn LLVMLookupIntrinsicID(Name: *const c_char, NameLen: size_t) -> c_uint;
     pub(crate) fn LLVMIntrinsicGetType<'a>(
         C: &'a Context,
@@ -1203,6 +1205,11 @@ unsafe extern "C" {
         ParamCount: size_t,
     ) -> &'a Type;
     pub(crate) fn LLVMIntrinsicIsOverloaded(ID: c_uint) -> Bool;
+    pub(crate) fn LLVMRustUpgradeIntrinsicFunction<'a>(
+        Fn: &'a Value,
+        NewFn: &mut Option<&'a Value>,
+        CanUpgradeDebugIntrinsicsToRecords: bool,
+    ) -> bool;
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;
