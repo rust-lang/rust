@@ -7,13 +7,12 @@
 //! some of them support an alternate format that emits text, but that should
 //! not be used external to this module.
 
-use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
 use std::slice;
 
-use itertools::Either;
+use itertools::{Either, Itertools};
 use rustc_abi::ExternAbi;
 use rustc_attr_data_structures::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashSet;
@@ -483,12 +482,12 @@ fn generate_item_def_id_path(
     let mut is_remote = false;
 
     let url_parts = url_parts(cx.cache(), def_id, module_fqp, &cx.current, &mut is_remote)?;
-    let (url_parts, shortty, fqp) = make_href(root_path, shortty, url_parts, &fqp, is_remote)?;
-    if def_id == original_def_id {
-        return Ok((url_parts, shortty, fqp));
-    }
-    let kind = ItemType::from_def_kind(original_def_kind, Some(def_kind));
-    Ok((format!("{url_parts}#{kind}.{}", tcx.item_name(original_def_id)), shortty, fqp))
+    let mut url_parts = make_href(root_path, shortty, url_parts, &fqp, is_remote);
+    if def_id != original_def_id {
+        let kind = ItemType::from_def_kind(original_def_kind, Some(def_kind));
+        url_parts = format!("{url_parts}#{kind}.{}", tcx.item_name(original_def_id))
+    };
+    Ok((url_parts, shortty, fqp))
 }
 
 fn to_module_fqp(shortty: ItemType, fqp: &[Symbol]) -> &[Symbol] {
@@ -510,7 +509,7 @@ fn url_parts(
             builder.extend(module_fqp.iter().copied());
             Ok(builder)
         }
-        ExternalLocation::Local => Ok(href_relative_parts(module_fqp, relative_to).collect()),
+        ExternalLocation::Local => Ok(href_relative_parts(module_fqp, relative_to)),
         ExternalLocation::Unknown => Err(HrefError::DocumentationNotBuilt),
     }
 }
@@ -521,7 +520,7 @@ fn make_href(
     mut url_parts: UrlPartsBuilder,
     fqp: &[Symbol],
     is_remote: bool,
-) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+) -> String {
     if !is_remote && let Some(root_path) = root_path {
         let root = root_path.trim_end_matches('/');
         url_parts.push_front(root);
@@ -536,7 +535,7 @@ fn make_href(
             url_parts.push_fmt(format_args!("{shortty}.{last}.html"));
         }
     }
-    Ok((url_parts.finish(), shortty, fqp.to_vec()))
+    url_parts.finish()
 }
 
 pub(crate) fn href_with_root_path(
@@ -587,7 +586,7 @@ pub(crate) fn href_with_root_path(
         Some(&(ref fqp, shortty)) => (fqp, shortty, {
             let module_fqp = to_module_fqp(shortty, fqp.as_slice());
             debug!(?fqp, ?shortty, ?module_fqp);
-            href_relative_parts(module_fqp, relative_to).collect()
+            href_relative_parts(module_fqp, relative_to)
         }),
         None => {
             // Associated items are handled differently with "jump to def". The anchor is generated
@@ -606,7 +605,8 @@ pub(crate) fn href_with_root_path(
             }
         }
     };
-    make_href(root_path, shortty, url_parts, fqp, is_remote)
+    let url_parts = make_href(root_path, shortty, url_parts, &fqp, is_remote);
+    Ok((url_parts, shortty, fqp.clone()))
 }
 
 pub(crate) fn href(
@@ -619,34 +619,30 @@ pub(crate) fn href(
 /// Both paths should only be modules.
 /// This is because modules get their own directories; that is, `std::vec` and `std::vec::Vec` will
 /// both need `../iter/trait.Iterator.html` to get at the iterator trait.
-pub(crate) fn href_relative_parts<'fqp>(
-    fqp: &'fqp [Symbol],
-    relative_to_fqp: &[Symbol],
-) -> Box<dyn Iterator<Item = Symbol> + 'fqp> {
+pub(crate) fn href_relative_parts(fqp: &[Symbol], relative_to_fqp: &[Symbol]) -> UrlPartsBuilder {
     for (i, (f, r)) in fqp.iter().zip(relative_to_fqp.iter()).enumerate() {
         // e.g. linking to std::iter from std::vec (`dissimilar_part_count` will be 1)
         if f != r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
             let fqp_module = &fqp[i..];
-            return Box::new(
-                iter::repeat_n(sym::dotdot, dissimilar_part_count)
-                    .chain(fqp_module.iter().copied()),
-            );
+            return iter::repeat_n(sym::dotdot, dissimilar_part_count)
+                .chain(fqp_module.iter().copied())
+                .collect();
         }
     }
     match relative_to_fqp.len().cmp(&fqp.len()) {
         Ordering::Less => {
             // e.g. linking to std::sync::atomic from std::sync
-            Box::new(fqp[relative_to_fqp.len()..fqp.len()].iter().copied())
+            fqp[relative_to_fqp.len()..fqp.len()].iter().copied().collect()
         }
         Ordering::Greater => {
             // e.g. linking to std::sync from std::sync::atomic
             let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-            Box::new(iter::repeat_n(sym::dotdot, dissimilar_part_count))
+            iter::repeat_n(sym::dotdot, dissimilar_part_count).collect()
         }
         Ordering::Equal => {
             // linking to the same module
-            Box::new(iter::empty())
+            UrlPartsBuilder::new()
         }
     }
 }
@@ -708,13 +704,13 @@ fn resolved_path(
                         f,
                         "{path}::{anchor}",
                         path = join_with_double_colon(&fqp[..fqp.len() - 1]),
-                        anchor = anchor(did, *fqp.last().unwrap(), cx)
+                        anchor = print_anchor(did, *fqp.last().unwrap(), cx)
                     )
                 } else {
                     write!(f, "{}", last.name)
                 }
             } else {
-                write!(f, "{}", anchor(did, last.name, cx))
+                write!(f, "{}", print_anchor(did, last.name, cx))
             }
         });
         write!(w, "{path}{args}", args = last.args.print(cx))?;
@@ -800,7 +796,7 @@ fn primitive_link_fragment(
     Ok(())
 }
 
-fn tybounds(
+fn print_tybounds(
     bounds: &[clean::PolyTrait],
     lt: &Option<clean::Lifetime>,
     cx: &Context<'_>,
@@ -832,7 +828,7 @@ fn print_higher_ranked_params_with_space(
     })
 }
 
-pub(crate) fn anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl Display {
+pub(crate) fn print_anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl Display {
     fmt::from_fn(move |f| {
         let parts = href(did, cx);
         if let Ok((url, short_ty, fqp)) = parts {
@@ -866,7 +862,7 @@ fn fmt_type(
         }
         clean::DynTrait(bounds, lt) => {
             f.write_str("dyn ")?;
-            tybounds(bounds, lt, cx).fmt(f)
+            print_tybounds(bounds, lt, cx).fmt(f)
         }
         clean::Infer => write!(f, "_"),
         clean::Primitive(clean::PrimitiveType::Never) => {
@@ -1122,8 +1118,8 @@ impl clean::Impl {
                     write!(f, "!")?;
                 }
                 if self.kind.is_fake_variadic()
-                    && let generics = ty.generics()
-                    && let &[inner_type] = generics.as_ref().map_or(&[][..], |v| &v[..])
+                    && let Some(generics) = ty.generics()
+                    && let Ok(inner_type) = generics.exactly_one()
                 {
                     let last = ty.last();
                     if f.alternate() {
@@ -1131,7 +1127,7 @@ impl clean::Impl {
                         self.print_type(inner_type, f, use_absolute, cx)?;
                         write!(f, ">")?;
                     } else {
-                        write!(f, "{}&lt;", anchor(ty.def_id(), last, cx))?;
+                        write!(f, "{}&lt;", print_anchor(ty.def_id(), last, cx))?;
                         self.print_type(inner_type, f, use_absolute, cx)?;
                         write!(f, "&gt;")?;
                     }
@@ -1202,11 +1198,10 @@ impl clean::Impl {
             }
         } else if let clean::Type::Path { path } = type_
             && let Some(generics) = path.generics()
-            && generics.len() == 1
+            && let Ok(ty) = generics.exactly_one()
             && self.kind.is_fake_variadic()
         {
-            let ty = generics[0];
-            let wrapper = anchor(path.def_id(), path.last(), cx);
+            let wrapper = print_anchor(path.def_id(), path.last(), cx);
             if f.alternate() {
                 write!(f, "{wrapper:#}&lt;")?;
             } else {
@@ -1394,50 +1389,47 @@ impl clean::FnDecl {
 }
 
 pub(crate) fn visibility_print_with_space(item: &clean::Item, cx: &Context<'_>) -> impl Display {
-    use std::fmt::Write as _;
-    let vis: Cow<'static, str> = match item.visibility(cx.tcx()) {
-        None => "".into(),
-        Some(ty::Visibility::Public) => "pub ".into(),
-        Some(ty::Visibility::Restricted(vis_did)) => {
-            // FIXME(camelid): This may not work correctly if `item_did` is a module.
-            //                 However, rustdoc currently never displays a module's
-            //                 visibility, so it shouldn't matter.
-            let parent_module = find_nearest_parent_module(cx.tcx(), item.item_id.expect_def_id());
-
-            if vis_did.is_crate_root() {
-                "pub(crate) ".into()
-            } else if parent_module == Some(vis_did) {
-                // `pub(in foo)` where `foo` is the parent module
-                // is the same as no visibility modifier
-                "".into()
-            } else if parent_module.and_then(|parent| find_nearest_parent_module(cx.tcx(), parent))
-                == Some(vis_did)
-            {
-                "pub(super) ".into()
-            } else {
-                let path = cx.tcx().def_path(vis_did);
-                debug!("path={path:?}");
-                // modified from `resolved_path()` to work with `DefPathData`
-                let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                let anchor = anchor(vis_did, last_name, cx);
-
-                let mut s = "pub(in ".to_owned();
-                for seg in &path.data[..path.data.len() - 1] {
-                    let _ = write!(s, "{}::", seg.data.get_opt_name().unwrap());
-                }
-                let _ = write!(s, "{anchor}) ");
-                s.into()
-            }
-        }
-    };
-
-    let is_doc_hidden = item.is_doc_hidden();
     fmt::from_fn(move |f| {
-        if is_doc_hidden {
+        if item.is_doc_hidden() {
             f.write_str("#[doc(hidden)] ")?;
         }
 
-        f.write_str(&vis)
+        match item.visibility(cx.tcx()) {
+            None => {}
+            Some(ty::Visibility::Public) => f.write_str("pub ")?,
+            Some(ty::Visibility::Restricted(vis_did)) => {
+                // FIXME(camelid): This may not work correctly if `item_did` is a module.
+                //                 However, rustdoc currently never displays a module's
+                //                 visibility, so it shouldn't matter.
+                let parent_module =
+                    find_nearest_parent_module(cx.tcx(), item.item_id.expect_def_id());
+
+                if vis_did.is_crate_root() {
+                    f.write_str("pub(crate) ")?;
+                } else if parent_module == Some(vis_did) {
+                    // `pub(in foo)` where `foo` is the parent module
+                    // is the same as no visibility modifier; do nothing
+                } else if parent_module
+                    .and_then(|parent| find_nearest_parent_module(cx.tcx(), parent))
+                    == Some(vis_did)
+                {
+                    f.write_str("pub(super) ")?;
+                } else {
+                    let path = cx.tcx().def_path(vis_did);
+                    debug!("path={path:?}");
+                    // modified from `resolved_path()` to work with `DefPathData`
+                    let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
+                    let anchor = print_anchor(vis_did, last_name, cx);
+
+                    f.write_str("pub(in ")?;
+                    for seg in &path.data[..path.data.len() - 1] {
+                        write!(f, "{}::", seg.data.get_opt_name().unwrap())?;
+                    }
+                    write!(f, "{anchor}) ")?;
+                }
+            }
+        }
+        Ok(())
     })
 }
 

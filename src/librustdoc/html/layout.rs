@@ -8,7 +8,6 @@ use super::static_files::{STATIC_FILES, StaticFiles};
 use crate::externalfiles::ExternalHtml;
 use crate::html::render::{StylePath, ensure_trailing_slash};
 
-#[derive(Clone)]
 pub(crate) struct Layout {
     pub(crate) logo: String,
     pub(crate) favicon: String,
