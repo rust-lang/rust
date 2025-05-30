@@ -175,13 +175,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             bug!("expected fn item type, found {}", callee_ty);
         };
 
-        let sig = callee_ty.fn_sig(tcx);
-        let sig = tcx.normalize_erasing_late_bound_regions(self.typing_env(), sig);
-        let arg_tys = sig.inputs();
-        let ret_ty = sig.output();
         let name = tcx.item_name(def_id);
-
-        let llret_ty = self.layout_of(ret_ty).llvm_type(self);
 
         let simple = get_simple_intrinsic(self, name);
         let llval = match name {
@@ -265,22 +259,22 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     BackendRepr::Scalar(scalar) => {
                         match scalar.primitive() {
                             Primitive::Int(..) => {
-                                if self.cx().size_of(ret_ty).bytes() < 4 {
+                                if self.cx().size_of(result.layout.ty).bytes() < 4 {
                                     // `va_arg` should not be called on an integer type
                                     // less than 4 bytes in length. If it is, promote
                                     // the integer to an `i32` and truncate the result
                                     // back to the smaller type.
                                     let promoted_result = emit_va_arg(self, args[0], tcx.types.i32);
-                                    self.trunc(promoted_result, llret_ty)
+                                    self.trunc(promoted_result, result.layout.llvm_type(self))
                                 } else {
-                                    emit_va_arg(self, args[0], ret_ty)
+                                    emit_va_arg(self, args[0], result.layout.ty)
                                 }
                             }
                             Primitive::Float(Float::F16) => {
                                 bug!("the va_arg intrinsic does not work with `f16`")
                             }
                             Primitive::Float(Float::F64) | Primitive::Pointer(_) => {
-                                emit_va_arg(self, args[0], ret_ty)
+                                emit_va_arg(self, args[0], result.layout.ty)
                             }
                             // `va_arg` should never be used with the return type f32.
                             Primitive::Float(Float::F32) => {
@@ -384,7 +378,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::rotate_right
             | sym::saturating_add
             | sym::saturating_sub => {
-                let ty = arg_tys[0];
+                let ty = args[0].layout.ty;
                 if !ty.is_integral() {
                     tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
                         span,
@@ -403,26 +397,26 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             &[args[0].immediate(), y],
                         );
 
-                        self.intcast(ret, llret_ty, false)
+                        self.intcast(ret, result.layout.llvm_type(self), false)
                     }
                     sym::ctlz_nonzero => {
                         let y = self.const_bool(true);
                         let llvm_name = &format!("llvm.ctlz.i{width}");
                         let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
-                        self.intcast(ret, llret_ty, false)
+                        self.intcast(ret, result.layout.llvm_type(self), false)
                     }
                     sym::cttz_nonzero => {
                         let y = self.const_bool(true);
                         let llvm_name = &format!("llvm.cttz.i{width}");
                         let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
-                        self.intcast(ret, llret_ty, false)
+                        self.intcast(ret, result.layout.llvm_type(self), false)
                     }
                     sym::ctpop => {
                         let ret = self.call_intrinsic(
                             &format!("llvm.ctpop.i{width}"),
                             &[args[0].immediate()],
                         );
-                        self.intcast(ret, llret_ty, false)
+                        self.intcast(ret, result.layout.llvm_type(self), false)
                     }
                     sym::bswap => {
                         if width == 8 {
@@ -554,16 +548,16 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 // Unpack non-power-of-2 #[repr(packed, simd)] arguments.
                 // This gives them the expected layout of a regular #[repr(simd)] vector.
                 let mut loaded_args = Vec::new();
-                for (ty, arg) in arg_tys.iter().zip(args) {
+                for arg in args {
                     loaded_args.push(
                         // #[repr(packed, simd)] vectors are passed like arrays (as references,
                         // with reduced alignment and no padding) rather than as immediates.
                         // We can use a vector load to fix the layout and turn the argument
                         // into an immediate.
-                        if ty.is_simd()
+                        if arg.layout.ty.is_simd()
                             && let OperandValue::Ref(place) = arg.val
                         {
-                            let (size, elem_ty) = ty.simd_size_and_type(self.tcx());
+                            let (size, elem_ty) = arg.layout.ty.simd_size_and_type(self.tcx());
                             let elem_ll_ty = match elem_ty.kind() {
                                 ty::Float(f) => self.type_float_from_ty(*f),
                                 ty::Int(i) => self.type_int_from_ty(*i),
@@ -580,10 +574,10 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     );
                 }
 
-                let llret_ty = if ret_ty.is_simd()
-                    && let BackendRepr::Memory { .. } = self.layout_of(ret_ty).layout.backend_repr
+                let llret_ty = if result.layout.ty.is_simd()
+                    && let BackendRepr::Memory { .. } = result.layout.backend_repr
                 {
-                    let (size, elem_ty) = ret_ty.simd_size_and_type(self.tcx());
+                    let (size, elem_ty) = result.layout.ty.simd_size_and_type(self.tcx());
                     let elem_ll_ty = match elem_ty.kind() {
                         ty::Float(f) => self.type_float_from_ty(*f),
                         ty::Int(i) => self.type_int_from_ty(*i),
@@ -593,7 +587,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     };
                     self.type_vector(elem_ll_ty, size)
                 } else {
-                    llret_ty
+                    result.layout.llvm_type(self)
                 };
 
                 match generic_simd_intrinsic(
@@ -602,7 +596,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     callee_ty,
                     fn_args,
                     &loaded_args,
-                    ret_ty,
+                    result.layout.ty,
                     llret_ty,
                     span,
                 ) {
