@@ -2,7 +2,7 @@ error[E0080]: index out of bounds: the length is 1 but the index is 1
   --> $DIR/issue-44578.rs:14:24
    |
 LL |     const AMT: usize = [A::AMT][(A::AMT > B::AMT) as usize];
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `<Bar<u16, u8> as Foo>::AMT` failed
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `<Bar<u16, u8> as Foo>::AMT` failed here
 
 note: erroneous constant encountered
   --> $DIR/issue-44578.rs:26:20
