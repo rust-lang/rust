@@ -94,6 +94,7 @@ impl PermissionPriv {
     }
 
     /// Reject `ReservedIM` that cannot exist in the presence of a protector.
+    #[cfg(test)]
     fn compatible_with_protector(&self) -> bool {
         // FIXME(TB-Cell): It is unclear what to do here.
         // `Cell` will occur with a protector but won't provide the guarantees
@@ -253,10 +254,6 @@ impl Permission {
     pub fn is_disabled(&self) -> bool {
         self.inner == Disabled
     }
-    /// Check if `self` is the post-child-write state of a pointer (is `Active`).
-    pub fn is_active(&self) -> bool {
-        self.inner == Active
-    }
     /// Check if `self` is the never-allow-writes-again state of a pointer (is `Frozen`).
     pub fn is_frozen(&self) -> bool {
         self.inner == Frozen
@@ -289,6 +286,11 @@ impl Permission {
     /// is a protector is relevant because being protected takes priority over being
     /// interior mutable)
     pub fn new_reserved(ty_is_freeze: bool, protected: bool) -> Self {
+        // As demonstrated by `tests/fail/tree_borrows/reservedim_spurious_write.rs`,
+        // interior mutability and protectors interact poorly.
+        // To eliminate the case of Protected Reserved IM we override interior mutability
+        // in the case of a protected reference: protected references are always considered
+        // "freeze" in their reservation phase.
         if ty_is_freeze || protected { Self::new_reserved_frz() } else { Self::new_reserved_im() }
     }
 
@@ -309,6 +311,7 @@ impl Permission {
     }
 
     /// Reject `ReservedIM` that cannot exist in the presence of a protector.
+    #[cfg(test)]
     pub fn compatible_with_protector(&self) -> bool {
         self.inner.compatible_with_protector()
     }
@@ -393,11 +396,6 @@ impl PermTransition {
         self.from <= self.to
     }
 
-    pub fn from(from: Permission, to: Permission) -> Option<Self> {
-        let t = Self { from: from.inner, to: to.inner };
-        t.is_possible().then_some(t)
-    }
-
     pub fn is_noop(self) -> bool {
         self.from == self.to
     }
@@ -405,11 +403,6 @@ impl PermTransition {
     /// Extract result of a transition (checks that the starting point matches).
     pub fn applied(self, starting_point: Permission) -> Option<Permission> {
         (starting_point.inner == self.from).then_some(Permission { inner: self.to })
-    }
-
-    /// Extract starting point of a transition
-    pub fn started(self) -> Permission {
-        Permission { inner: self.from }
     }
 
     /// Determines if this transition would disable the permission.
