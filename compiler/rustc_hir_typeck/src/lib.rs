@@ -172,13 +172,27 @@ fn typeck_with_inspect<'tcx>(
 
         check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params());
     } else {
-        let expected_type = if let Some(infer_ty) = infer_type_if_missing(&fcx, node) {
+        let expected_type = if let Node::Item(item) = node
+            && let ItemKind::Const(.., DistributedSlice::Addition(declaration_def_id, ..)) =
+                item.kind
+        {
+            // we reject generic const items (`#![feature(generic_const_items)]`) in `#[distributed_slice(crate)]`
+            let array_ty = tcx.type_of(declaration_def_id).instantiate_identity();
+
+            let ty = match array_ty.kind() {
+                ty::Array(element_ty, _) => *element_ty,
+                _ => bug!("not an array"),
+            };
+
+            ty
+        } else if let Some(infer_ty) = infer_type_if_missing(&fcx, node) {
             infer_ty
         } else if let Node::Item(item) = node
-            && let ItemKind::Const(.., DistributedSlice::Declaration(..)) = item.kind
+            && let ItemKind::Const(.., DistributedSlice::Declaration(..))
+            | ItemKind::Static(.., DistributedSlice::Declaration(..)) = item.kind
             && let Some(ty) = node.ty()
         {
-            type_of_distributed_slice(tcx, fcx.lowerer(), ty, def_id)
+            type_of_distributed_slice(tcx, fcx.lowerer(), ty, def_id, false)
         } else if let Some(ty) = node.ty()
             && ty.is_suggestable_infer_ty()
         {

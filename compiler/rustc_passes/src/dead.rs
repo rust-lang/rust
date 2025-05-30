@@ -14,7 +14,7 @@ use rustc_errors::MultiSpan;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, Node, PatKind, QPath, TyKind};
+use rustc_hir::{self as hir, DistributedSlice, Node, PatKind, QPath, TyKind};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
@@ -435,6 +435,22 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     }
                     intravisit::walk_item(self, item)
                 }
+                hir::ItemKind::Const(.., DistributedSlice::Declaration(..))
+                | hir::ItemKind::Static(.., DistributedSlice::Declaration(..)) => {
+                    let defid = item.owner_id.to_def_id();
+                    let elements: &[LocalDefId] = self
+                        .tcx
+                        .distributed_slice_elements(())
+                        .get(&defid)
+                        .map(|i| i.as_slice())
+                        .unwrap_or_default();
+
+                    intravisit::walk_item(self, item);
+
+                    for element in elements {
+                        self.check_def_id(element.to_def_id());
+                    }
+                }
                 _ => intravisit::walk_item(self, item),
             },
             Node::TraitItem(trait_item) => {
@@ -805,7 +821,7 @@ fn check_trait_item(
     use hir::TraitItemKind::{Const, Fn};
     if matches!(tcx.def_kind(id.owner_id), DefKind::AssocConst | DefKind::AssocFn) {
         let trait_item = tcx.hir_trait_item(id);
-        if matches!(trait_item.kind, Const(_, Some(_)) | Fn(..))
+        if matches!(trait_item.kind, Const(_, Some(_), _) | Fn(..))
             && let Some(comes_from_allow) =
                 has_allow_dead_code_or_lang_attr(tcx, trait_item.owner_id.def_id)
         {

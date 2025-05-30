@@ -458,6 +458,7 @@ macro_rules! common_visitor_and_walkers {
                         visit_opt!(vis, visit_expr, expr);
                         match distributed_slice {
                             DistributedSlice::None => {}
+                            DistributedSlice::Err(..) => {}
                             DistributedSlice::Declaration(span, id) => {
                                 try_visit!(visit_span(vis, span));
                                 try_visit!(visit_id(vis, id));
@@ -635,6 +636,7 @@ macro_rules! common_visitor_and_walkers {
 
             match distributed_slice {
                 DistributedSlice::None => {}
+                DistributedSlice::Err(..) => {}
                 DistributedSlice::Declaration(span, id) => {
                     try_visit!(visit_span(vis, span));
                     try_visit!(visit_id(vis, id));

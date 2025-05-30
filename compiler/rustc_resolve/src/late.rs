@@ -514,7 +514,7 @@ impl<'a> PathSource<'a> {
             },
             PathSource::ReturnTypeNotation | PathSource::Delegation => "function",
             PathSource::PreciseCapturingArg(..) => "type or const parameter",
-            PathSource::DistributedSlice => "const or static value",
+            PathSource::DistributedSlice => "const or static distributed slice",
         }
     }
 

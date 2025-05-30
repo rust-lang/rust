@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/no_type.rs:4:1
+   |
+LL | const MEOWS: [_; _];
+   | ^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

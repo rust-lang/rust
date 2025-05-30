@@ -1,0 +1,8 @@
+error: distributed slices can't be generic
+  --> $DIR/generic_const.rs:6:1
+   |
+LL | const MEOWS<T>: [T; _];
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

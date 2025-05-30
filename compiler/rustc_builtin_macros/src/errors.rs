@@ -965,3 +965,51 @@ pub(crate) struct AsmExpectedOther {
     pub(crate) span: Span,
     pub(crate) is_inline_asm: bool,
 }
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_distributed_slice_expected_const_static)]
+pub(crate) struct DistributedSliceExpectedConstStatic {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[label]
+    pub(crate) attr_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_distributed_slice_foreign_item)]
+#[note]
+pub(crate) struct DistributedSliceForeignItem {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[label]
+    pub(crate) attr_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_distributed_slice_assoc_item)]
+#[note]
+pub(crate) struct DistributedSliceAssocItem {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[label]
+    pub(crate) attr_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_distributed_slice_expected_crate)]
+pub(crate) struct DistributedSliceExpectedCrate {
+    #[primary_span]
+    #[suggestion(
+        code = "#[distributed_slice(crate)]",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_distributed_slice_generic)]
+pub(crate) struct DistributedSliceGeneric {
+    #[primary_span]
+    pub(crate) span: Span,
+}

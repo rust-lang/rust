@@ -1,0 +1,32 @@
+error: expected this to be a module-level const or a static
+  --> $DIR/wrong_location.rs:7:5
+   |
+LL |     #[distributed_slice(crate)]
+   |     --------------------------- because of this attribute
+LL |     const A: [i32; _];
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: this is an associated item
+
+error: expected this to be a module-level const or a static
+  --> $DIR/wrong_location.rs:14:5
+   |
+LL |     #[distributed_slice(crate)]
+   |     --------------------------- because of this attribute
+LL |     const A: [i32; _];
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: this is an associated item
+
+error: expected this to be a non-extern const or a static
+  --> $DIR/wrong_location.rs:20:5
+   |
+LL |     #[distributed_slice(crate)]
+   |     --------------------------- because of this attribute
+LL |     static A: [i32; _];
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this is inside an `extern` block
+
+error: aborting due to 3 previous errors
+

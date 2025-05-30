@@ -3624,6 +3624,8 @@ pub enum DistributedSlice {
     /// This const (we never do this to statics) represents an addition to a global registry
     /// declared somewhere else.
     Addition { declaration: Path, id: NodeId },
+    /// Applied to an invalid item, error guaranteed to have be emitted
+    Err(ErrorGuaranteed),
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]

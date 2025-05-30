@@ -1,8 +1,8 @@
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{
-    ConstItem, DUMMY_NODE_ID, Defaultness, DistributedSlice, Expr, Generics, Item, ItemKind, Path,
-    Ty, TyKind, ast,
+    AssocItemKind, ConstItem, DUMMY_NODE_ID, Defaultness, DistributedSlice, Expr, ForeignItemKind,
+    Generics, Item, ItemKind, Path, Ty, TyKind, ast,
 };
 use rustc_errors::PResult;
 use rustc_expand::base::{
@@ -14,21 +14,59 @@ use rustc_span::{Ident, Span, kw};
 use smallvec::smallvec;
 use thin_vec::ThinVec;
 
+use crate::errors::{
+    DistributedSliceAssocItem, DistributedSliceExpectedConstStatic, DistributedSliceExpectedCrate,
+    DistributedSliceForeignItem, DistributedSliceGeneric,
+};
+
 /// ```rust
 /// #[distributed_slice(crate)]
 /// const MEOWS: [&str; _];
 /// ```
 pub(crate) fn distributed_slice(
-    _ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_>,
     span: Span,
-    _meta_item: &ast::MetaItem,
+    meta_item: &ast::MetaItem,
     mut orig_item: Annotatable,
 ) -> Vec<Annotatable> {
     // TODO: FIXME(gr)
-    // FIXME(gr): check item
+
+    if let Some([ast::MetaItemInner::MetaItem(mi)]) = meta_item.meta_item_list() {
+        if !mi.is_word() || !mi.path.is_ident(kw::Crate) {
+            ecx.dcx().emit_err(DistributedSliceExpectedCrate { span: meta_item.span });
+        }
+    } else {
+        ecx.dcx().emit_err(DistributedSliceExpectedCrate { span: meta_item.span });
+    };
+
+    let item_span = orig_item.span();
 
     let Annotatable::Item(item) = &mut orig_item else {
-        panic!("expected `#[distributed_slice(crate)]` on an item")
+        if let Annotatable::ForeignItem(fi) = &mut orig_item {
+            let eg = ecx.dcx().emit_err(DistributedSliceForeignItem {
+                span: item_span,
+                attr_span: meta_item.span,
+            });
+
+            if let ForeignItemKind::Static(static_item) = &mut fi.kind {
+                static_item.distributed_slice = DistributedSlice::Err(eg);
+            }
+        } else if let Annotatable::AssocItem(ai, ..) = &mut orig_item {
+            let eg = ecx
+                .dcx()
+                .emit_err(DistributedSliceAssocItem { span: item_span, attr_span: meta_item.span });
+
+            if let AssocItemKind::Const(const_item) = &mut ai.kind {
+                const_item.distributed_slice = DistributedSlice::Err(eg);
+            }
+        } else {
+            ecx.dcx().emit_err(DistributedSliceExpectedConstStatic {
+                span: orig_item.span(),
+                attr_span: meta_item.span,
+            });
+        }
+
+        return vec![orig_item];
     };
 
     match &mut item.kind {
@@ -36,12 +74,20 @@ pub(crate) fn distributed_slice(
             static_item.distributed_slice = DistributedSlice::Declaration(span, DUMMY_NODE_ID);
         }
         ItemKind::Const(const_item) => {
+            if !const_item.generics.params.is_empty()
+                || !const_item.generics.where_clause.is_empty()
+            {
+                ecx.dcx().emit_err(DistributedSliceGeneric { span: item_span });
+            }
+
             const_item.distributed_slice = DistributedSlice::Declaration(span, DUMMY_NODE_ID);
         }
-        other => {
-            panic!(
-                "expected `#[distributed_slice(crate)]` on a const or static item, not {other:?}"
-            );
+        _ => {
+            ecx.dcx().emit_err(DistributedSliceExpectedConstStatic {
+                span: item.span,
+                attr_span: meta_item.span,
+            });
+            return vec![orig_item];
         }
     }
 
@@ -69,7 +115,10 @@ pub(crate) fn distributed_slice_element(
 ) -> MacroExpanderResult<'static> {
     let (path, expr) = match parse_element(cx.new_parser_from_tts(tts)) {
         Ok((ident, expr)) => (ident, expr),
-        Err(err) => {
+        Err(mut err) => {
+            if err.span.is_dummy() {
+                err.span(span);
+            }
             let guar = err.emit();
             return ExpandResult::Ready(DummyResult::any(span, guar));
         }

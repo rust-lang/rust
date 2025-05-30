@@ -1707,3 +1707,40 @@ pub(crate) struct SelfInTypeAlias {
     #[label]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_distributed_slice_wrong_target)]
+pub(crate) struct DistributedSliceWrongTarget {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+
+    #[label(hir_analysis_wrong_declaration)]
+    pub wrong_declaration: Span,
+
+    #[suggestion(
+        code = "#[distributed_slice(crate)]\n",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    pub suggestion_before: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_distributed_slice_non_infer_length)]
+#[note]
+pub(crate) struct DistributedSliceNonInferLength {
+    #[primary_span]
+    #[suggestion(code = "_", style = "verbose", applicability = "maybe-incorrect")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_distributed_slice_non_array)]
+#[note]
+pub(crate) struct DistributedSliceNonArray<'a> {
+    #[primary_span]
+    #[suggestion(code = "[{orig_ty}; _]", style = "verbose", applicability = "maybe-incorrect")]
+    pub span: Span,
+    pub orig_ty: Ty<'a>,
+}

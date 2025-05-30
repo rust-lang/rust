@@ -856,7 +856,7 @@ fn check_dyn_incompatible_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitI
         };
     let mut trait_should_be_self = vec![];
     match &item.kind {
-        hir::TraitItemKind::Const(ty, _) | hir::TraitItemKind::Type(_, Some(ty))
+        hir::TraitItemKind::Const(ty, _, _) | hir::TraitItemKind::Type(_, Some(ty))
             if could_be_self(trait_def_id.def_id, ty) =>
         {
             trait_should_be_self.push(ty.span)

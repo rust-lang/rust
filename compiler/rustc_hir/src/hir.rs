@@ -3104,8 +3104,8 @@ impl<'hir> TraitItem<'hir> {
     }
 
     expect_methods_self_kind! {
-        expect_const, (&'hir Ty<'hir>, Option<BodyId>),
-            TraitItemKind::Const(ty, body), (ty, *body);
+        expect_const, (&'hir Ty<'hir>, Option<BodyId>, InvalidDistributedSliceDeclaration),
+            TraitItemKind::Const(ty, body, idsd), (ty, *body, *idsd);
 
         expect_fn, (&FnSig<'hir>, &TraitFn<'hir>),
             TraitItemKind::Fn(ty, trfn), (ty, trfn);
@@ -3129,7 +3129,7 @@ pub enum TraitFn<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TraitItemKind<'hir> {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
-    Const(&'hir Ty<'hir>, Option<BodyId>),
+    Const(&'hir Ty<'hir>, Option<BodyId>, InvalidDistributedSliceDeclaration),
     /// An associated function with an optional body.
     Fn(FnSig<'hir>, TraitFn<'hir>),
     /// An associated type with (possibly empty) bounds and optional concrete
@@ -3179,7 +3179,7 @@ impl<'hir> ImplItem<'hir> {
     }
 
     expect_methods_self_kind! {
-        expect_const, (&'hir Ty<'hir>, BodyId), ImplItemKind::Const(ty, body), (ty, *body);
+        expect_const, (&'hir Ty<'hir>, BodyId, InvalidDistributedSliceDeclaration), ImplItemKind::Const(ty, body, idsd), (ty, *body, *idsd);
         expect_fn,    (&FnSig<'hir>, BodyId),   ImplItemKind::Fn(ty, body),    (ty, *body);
         expect_type,  &'hir Ty<'hir>,           ImplItemKind::Type(ty),        ty;
     }
@@ -3190,7 +3190,7 @@ impl<'hir> ImplItem<'hir> {
 pub enum ImplItemKind<'hir> {
     /// An associated constant of the given type, set to the constant result
     /// of the expression.
-    Const(&'hir Ty<'hir>, BodyId),
+    Const(&'hir Ty<'hir>, BodyId, InvalidDistributedSliceDeclaration),
     /// An associated function implementation with the given signature and body.
     Fn(FnSig<'hir>, BodyId),
     /// An associated type.
@@ -4511,6 +4511,13 @@ impl ForeignItem<'_> {
     }
 }
 
+/// Some info propagated to limit diagnostics after a distributed slice has already been recognized.
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub enum InvalidDistributedSliceDeclaration {
+    Yes(ErrorGuaranteed),
+    No,
+}
+
 /// An item within an `extern` block.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum ForeignItemKind<'hir> {
@@ -4522,7 +4529,7 @@ pub enum ForeignItemKind<'hir> {
     /// arbitrary patterns for parameters.
     Fn(FnSig<'hir>, &'hir [Option<Ident>], &'hir Generics<'hir>),
     /// A foreign static item (`static ext: u8`).
-    Static(&'hir Ty<'hir>, Mutability, Safety),
+    Static(&'hir Ty<'hir>, Mutability, Safety, InvalidDistributedSliceDeclaration),
     /// A foreign type.
     Type,
 }
@@ -4600,11 +4607,12 @@ impl<'hir> OwnerNode<'hir> {
             })
             | OwnerNode::TraitItem(TraitItem {
                 kind:
-                    TraitItemKind::Fn(_, TraitFn::Provided(body)) | TraitItemKind::Const(_, Some(body)),
+                    TraitItemKind::Fn(_, TraitFn::Provided(body))
+                    | TraitItemKind::Const(_, Some(body), _),
                 ..
             })
             | OwnerNode::ImplItem(ImplItem {
-                kind: ImplItemKind::Fn(_, body) | ImplItemKind::Const(_, body),
+                kind: ImplItemKind::Fn(_, body) | ImplItemKind::Const(_, body, _),
                 ..
             }) => Some(*body),
             _ => None,
@@ -4825,12 +4833,12 @@ impl<'hir> Node<'hir> {
                 _ => None,
             },
             Node::TraitItem(it) => match it.kind {
-                TraitItemKind::Const(ty, _) => Some(ty),
+                TraitItemKind::Const(ty, _, _) => Some(ty),
                 TraitItemKind::Type(_, ty) => ty,
                 _ => None,
             },
             Node::ImplItem(it) => match it.kind {
-                ImplItemKind::Const(ty, _) => Some(ty),
+                ImplItemKind::Const(ty, _, _) => Some(ty),
                 ImplItemKind::Type(ty) => Some(ty),
                 _ => None,
             },
@@ -4859,12 +4867,13 @@ impl<'hir> Node<'hir> {
             | Node::TraitItem(TraitItem {
                 owner_id,
                 kind:
-                    TraitItemKind::Const(_, Some(body)) | TraitItemKind::Fn(_, TraitFn::Provided(body)),
+                    TraitItemKind::Const(_, Some(body), _)
+                    | TraitItemKind::Fn(_, TraitFn::Provided(body)),
                 ..
             })
             | Node::ImplItem(ImplItem {
                 owner_id,
-                kind: ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body),
+                kind: ImplItemKind::Const(_, body, _) | ImplItemKind::Fn(_, body),
                 ..
             }) => Some((owner_id.def_id, *body)),
 

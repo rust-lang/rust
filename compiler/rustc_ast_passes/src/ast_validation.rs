@@ -1443,11 +1443,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         if let AssocCtxt::Impl { .. } = ctxt {
             match &item.kind {
-                AssocItemKind::Const(box ConstItem { expr: None, .. }) => {
-                    self.dcx().emit_err(errors::AssocConstWithoutBody {
-                        span: item.span,
-                        replace_span: self.ending_semi_or_hi(item.span),
-                    });
+                AssocItemKind::Const(box ConstItem { expr: None, distributed_slice, .. }) => {
+                    if !matches!(distributed_slice, DistributedSlice::Err(..)) {
+                        self.dcx().emit_err(errors::AssocConstWithoutBody {
+                            span: item.span,
+                            replace_span: self.ending_semi_or_hi(item.span),
+                        });
+                    }
                 }
                 AssocItemKind::Fn(box Fn { body, .. }) => {
                     if body.is_none() && !self.is_sdylib_interface {

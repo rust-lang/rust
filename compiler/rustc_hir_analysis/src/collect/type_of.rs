@@ -3,7 +3,7 @@ use core::ops::ControlFlow;
 use rustc_errors::{Applicability, StashKey, Suggestions};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::VisitorExt;
-use rustc_hir::{self as hir, AmbigArg, HirId};
+use rustc_hir::{self as hir, AmbigArg, HirId, InvalidDistributedSliceDeclaration};
 use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::util::IntTypeExt;
@@ -14,7 +14,10 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span};
 
 use super::{HirPlaceholderCollector, ItemCtxt, bad_placeholder};
-use crate::errors::TypeofReservedKeywordUsed;
+use crate::errors::{
+    DistributedSliceNonArray, DistributedSliceNonInferLength, DistributedSliceWrongTarget,
+    TypeofReservedKeywordUsed,
+};
 use crate::hir_ty_lowering::HirTyLowerer;
 
 mod opaque;
@@ -118,24 +121,33 @@ pub fn type_of_distributed_slice<'tcx>(
     lowerer: &dyn HirTyLowerer<'tcx>,
     ty: &rustc_hir::Ty<'tcx>,
     def_id: LocalDefId,
+    emit_diagnostics: bool,
 ) -> Ty<'tcx> {
     use rustc_hir::*;
     use rustc_middle::ty::Ty;
 
-    let TyKind::Array(element_ty, len) = ty.kind else {
-        panic!("gr should be an array");
-    };
+    let element_ty = if let TyKind::Array(element_ty, len) = ty.kind {
+        if let ConstArgKind::Infer { .. } = len.kind {
+        } else if emit_diagnostics {
+            tcx.dcx().emit_err(DistributedSliceNonInferLength { span: len.span() });
+        };
 
-    let ConstArgKind::Infer { .. } = len.kind else {
-        // FIXME(gr) exact
-        todo!("expected infer");
+        lowerer.lower_ty(element_ty)
+    } else {
+        let lowered = lowerer.lower_ty(ty);
+
+        if emit_diagnostics {
+            tcx.dcx().emit_err(DistributedSliceNonArray { span: ty.span, orig_ty: lowered });
+        }
+
+        lowered
     };
 
     let res: Option<&Vec<LocalDefId>> = tcx.distributed_slice_elements(()).get(&def_id.to_def_id());
 
     let res = Ty::new_array_with_const_len(
         tcx,
-        lowerer.lower_ty(element_ty),
+        element_ty,
         ty::Const::from_target_usize(tcx, res.map(|i| i.len()).unwrap_or(0) as u64),
     );
 
@@ -186,7 +198,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            TraitItemKind::Const(ty, body_id) => body_id
+            TraitItemKind::Const(ty, body_id, distributed_slice) => body_id
                 .and_then(|body_id| {
                     ty.is_suggestable_infer_ty().then(|| {
                         infer_placeholder_type(
@@ -196,6 +208,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                             ty.span,
                             item.ident,
                             "associated constant",
+                            distributed_slice,
                         )
                     })
                 })
@@ -211,7 +224,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            ImplItemKind::Const(ty, body_id) => {
+            ImplItemKind::Const(ty, body_id, distributed_slice) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
@@ -220,6 +233,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                         ty.span,
                         item.ident,
                         "associated constant",
+                        distributed_slice,
                     )
                 } else {
                     icx.lower_ty(ty)
@@ -237,7 +251,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         Node::Item(item) => match item.kind {
             ItemKind::Static(_, ident, ty, body_id, distributed_slice) => {
                 if let DistributedSlice::Declaration(_) = distributed_slice {
-                    type_of_distributed_slice(tcx, icx.lowerer(), ty, def_id)
+                    type_of_distributed_slice(tcx, icx.lowerer(), ty, def_id, true)
                 } else if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
@@ -246,6 +260,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                         ty.span,
                         ident,
                         "static variable",
+                        // if it was, we would've handled it above
+                        InvalidDistributedSliceDeclaration::No,
                     )
                 } else {
                     icx.lower_ty(ty)
@@ -253,14 +269,32 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             }
             ItemKind::Const(ident, _, ty, body_id, distributed_slice) => {
                 if let DistributedSlice::Declaration(_) = distributed_slice {
-                    type_of_distributed_slice(tcx, &icx, ty, def_id)
+                    type_of_distributed_slice(tcx, &icx, ty, def_id, true)
                 } else if let DistributedSlice::Addition(declaration_def_id) = distributed_slice {
+                    let declaration_item = tcx.hir_expect_item(declaration_def_id);
+                    if let hir::ItemKind::Const(_, _, _, _, ds)
+                    | hir::ItemKind::Static(_, _, _, _, ds) = declaration_item.kind
+                    {
+                        if !matches!(ds, DistributedSlice::Declaration(..)) {
+                            tcx.dcx().emit_err(DistributedSliceWrongTarget {
+                                span: item.span,
+                                wrong_declaration: declaration_item.span,
+                                suggestion_before: declaration_item.span.shrink_to_lo(),
+                            });
+                        }
+                    } else {
+                        tcx.dcx().span_delayed_bug(
+                            item.span,
+                            "should have errored during name resolution",
+                        );
+                    }
+
                     // we reject generic const items (`#![feature(generic_const_items)]`) in `#[distributed_slice(crate)]`
                     let array_ty = tcx.type_of(declaration_def_id).instantiate_identity();
 
                     let ty = match array_ty.kind() {
                         ty::Array(element_ty, _) => *element_ty,
-                        _ => panic!("not an array"),
+                        _ => bug!("not an array"),
                     };
 
                     ty
@@ -272,6 +306,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                         ty.span,
                         ident,
                         "constant",
+                        // if it was, we would've handled it above
+                        InvalidDistributedSliceDeclaration::No,
                     )
                 } else {
                     icx.lower_ty(ty)
@@ -318,7 +354,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            ForeignItemKind::Static(t, _, _) => icx.lower_ty(t),
+            ForeignItemKind::Static(t, _, _, _) => icx.lower_ty(t),
             ForeignItemKind::Type => Ty::new_foreign(tcx, def_id.to_def_id()),
         },
 
@@ -453,9 +489,14 @@ fn infer_placeholder_type<'tcx>(
     span: Span,
     item_ident: Ident,
     kind: &'static str,
+    invalid_distributed_slice: InvalidDistributedSliceDeclaration,
 ) -> Ty<'tcx> {
     let tcx = cx.tcx();
     let ty = tcx.typeck(def_id).node_type(body_id.hir_id);
+
+    if let InvalidDistributedSliceDeclaration::Yes(eg) = invalid_distributed_slice {
+        return Ty::new_error(tcx, eg);
+    }
 
     // If this came from a free `const` or `static mut?` item,
     // then the user may have written e.g. `const A = 42;`.

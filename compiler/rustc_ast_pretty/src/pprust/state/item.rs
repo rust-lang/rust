@@ -222,7 +222,6 @@ impl<'a> State<'a> {
                 define_opaque,
                 distributed_slice: _,
             }) => {
-                // FIXME(gr): pretty print global registry
                 self.print_item_const(
                     *ident,
                     None,

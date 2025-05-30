@@ -29,7 +29,10 @@ use rustc_errors::{
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt, walk_generics};
-use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind};
+use rustc_hir::{
+    self as hir, GenericParamKind, HirId, InvalidDistributedSliceDeclaration, Node,
+    PreciseCapturingArgKind,
+};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_middle::hir::nested_filter;
@@ -165,7 +168,11 @@ pub(crate) fn placeholder_type_error<'tcx>(
     suggest: bool,
     hir_ty: Option<&hir::Ty<'_>>,
     kind: &'static str,
+    distributed_slice_declaration: InvalidDistributedSliceDeclaration,
 ) {
+    if let InvalidDistributedSliceDeclaration::Yes(..) = distributed_slice_declaration {
+        return;
+    }
     if placeholder_types.is_empty() {
         return;
     }
@@ -274,6 +281,7 @@ fn reject_placeholder_type_signatures_in_item<'tcx>(
         suggest && !visitor.may_contain_const_infer,
         None,
         item.kind.descr(),
+        InvalidDistributedSliceDeclaration::No,
     );
 }
 
@@ -700,7 +708,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                         tcx.ensure_ok().codegen_fn_attrs(item.owner_id);
                         tcx.ensure_ok().fn_sig(item.owner_id)
                     }
-                    hir::ForeignItemKind::Static(..) => {
+                    hir::ForeignItemKind::Static(.., distributed_slice) => {
                         tcx.ensure_ok().codegen_fn_attrs(item.owner_id);
                         let mut visitor = HirPlaceholderCollector::default();
                         visitor.visit_foreign_item(item);
@@ -711,6 +719,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                             false,
                             None,
                             "static variable",
+                            distributed_slice,
                         );
                     }
                     _ => (),
@@ -779,6 +788,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                     false,
                     None,
                     it.kind.descr(),
+                    InvalidDistributedSliceDeclaration::No,
                 );
             }
         }
@@ -806,7 +816,7 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
             tcx.ensure_ok().fn_sig(def_id);
         }
 
-        hir::TraitItemKind::Const(ty, body_id) => {
+        hir::TraitItemKind::Const(ty, body_id, distributed_slice) => {
             tcx.ensure_ok().type_of(def_id);
             if !tcx.dcx().has_stashed_diagnostic(ty.span, StashKey::ItemNoType)
                 && !(ty.is_suggestable_infer_ty() && body_id.is_some())
@@ -821,6 +831,7 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
                     false,
                     None,
                     "associated constant",
+                    distributed_slice,
                 );
             }
         }
@@ -839,6 +850,7 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
                 false,
                 None,
                 "associated type",
+                InvalidDistributedSliceDeclaration::No,
             );
         }
 
@@ -857,6 +869,7 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
                 false,
                 None,
                 "associated type",
+                InvalidDistributedSliceDeclaration::No,
             );
         }
     };
@@ -888,9 +901,10 @@ fn lower_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
                 false,
                 None,
                 "associated type",
+                InvalidDistributedSliceDeclaration::No,
             );
         }
-        hir::ImplItemKind::Const(ty, _) => {
+        hir::ImplItemKind::Const(ty, _, distributed_slice) => {
             // Account for `const T: _ = ..;`
             if !ty.is_suggestable_infer_ty() {
                 let mut visitor = HirPlaceholderCollector::default();
@@ -902,6 +916,7 @@ fn lower_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
                     false,
                     None,
                     "associated constant",
+                    distributed_slice,
                 );
             }
         }

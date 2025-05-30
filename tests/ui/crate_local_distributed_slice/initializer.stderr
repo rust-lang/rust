@@ -1,0 +1,8 @@
+error: distributed slice elements are added with `distributed_slice_element!(...)`
+  --> $DIR/initializer.rs:4:1
+   |
+LL | const MEOWS: [&str; _] = ["meow"];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

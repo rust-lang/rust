@@ -5,7 +5,10 @@ use rustc_ast::*;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_hir::{self as hir, DistributedSlice, HirId, LifetimeSource, PredicateOrigin};
+use rustc_hir::{
+    self as hir, DistributedSlice, HirId, InvalidDistributedSliceDeclaration, LifetimeSource,
+    PredicateOrigin,
+};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -22,6 +25,7 @@ use super::{
     AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
     ResolverAstLoweringExt,
 };
+use crate::errors::DistributedSliceWithInitializer;
 
 pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
@@ -154,6 +158,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> DistributedSlice {
         match distributed_slice {
             ast::DistributedSlice::None => DistributedSlice::None,
+            ast::DistributedSlice::Err(_) => DistributedSlice::None,
             ast::DistributedSlice::Declaration(span, _) => {
                 DistributedSlice::Declaration(self.lower_span(*span))
             }
@@ -733,13 +738,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ty = self.lower_ty(
                     ty,
                     ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy),
-                    false,
+                    matches!(distributed_slice, ast::DistributedSlice::Err(_)),
                 );
                 let safety = self.lower_safety(*safety, hir::Safety::Unsafe);
                 if define_opaque.is_some() {
                     self.dcx().span_err(i.span, "foreign statics cannot define opaque types");
                 }
-                (ident, hir::ForeignItemKind::Static(ty, *mutability, safety))
+                (
+                    ident,
+                    hir::ForeignItemKind::Static(
+                        ty,
+                        *mutability,
+                        safety,
+                        if let ast::DistributedSlice::Err(eg) = distributed_slice {
+                            InvalidDistributedSliceDeclaration::Yes(*eg)
+                        } else {
+                            InvalidDistributedSliceDeclaration::No
+                        },
+                    ),
+                )
             }
             ForeignItemKind::TyAlias(box TyAlias { ident, .. }) => {
                 (ident, hir::ForeignItemKind::Type)
@@ -861,6 +878,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ty,
                 expr,
                 define_opaque,
+                distributed_slice,
                 ..
             }) => {
                 let (generics, kind) = self.lower_generics(
@@ -871,12 +889,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let ty = this.lower_ty(
                             ty,
                             ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy),
-                            false,
+                            matches!(distributed_slice, ast::DistributedSlice::Err(_)),
                         );
                         let body =
                             expr.as_ref().map(|x| this.lower_const_body(i.span, Some(x), None));
 
-                        hir::TraitItemKind::Const(ty, body)
+                        hir::TraitItemKind::Const(
+                            ty,
+                            body,
+                            if let ast::DistributedSlice::Err(eg) = distributed_slice {
+                                InvalidDistributedSliceDeclaration::Yes(*eg)
+                            } else {
+                                InvalidDistributedSliceDeclaration::No
+                            },
+                        )
                     },
                 );
 
@@ -1058,6 +1084,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ty,
                 expr,
                 define_opaque,
+                distributed_slice,
                 ..
             }) => (
                 *ident,
@@ -1069,11 +1096,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let ty = this.lower_ty(
                             ty,
                             ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy),
-                            false,
+                            matches!(distributed_slice, ast::DistributedSlice::Err(_)),
                         );
                         let body = this.lower_const_body(i.span, expr.as_deref(), None);
                         this.lower_define_opaque(hir_id, &define_opaque);
-                        hir::ImplItemKind::Const(ty, body)
+                        hir::ImplItemKind::Const(
+                            ty,
+                            body,
+                            if let ast::DistributedSlice::Err(eg) = distributed_slice {
+                                InvalidDistributedSliceDeclaration::Yes(*eg)
+                            } else {
+                                InvalidDistributedSliceDeclaration::No
+                            },
+                        )
                     },
                 ),
             ),
@@ -1369,7 +1404,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             span: this.lower_span(span),
                         }
                     }
-                    (Some(expr), Some(_)) => panic!("distributed slice with initializer"),
+                    (Some(_), Some(node_id)) => {
+                        let eg = this.tcx.dcx().emit_err(DistributedSliceWithInitializer { span });
+
+                        let expr_hir_id = this.lower_node_id(node_id);
+                        hir::Expr {
+                            hir_id: expr_hir_id,
+                            kind: rustc_hir::ExprKind::Err(eg),
+                            span: this.lower_span(span),
+                        }
+                    }
                     (None, None) => {
                         this.expr_err(span, this.dcx().span_delayed_bug(span, "no block"))
                     }

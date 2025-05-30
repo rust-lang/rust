@@ -659,7 +659,7 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(
                 visit_opt!(visitor, visit_ident, ident);
             }
         }
-        ForeignItemKind::Static(ref typ, _, _) => {
+        ForeignItemKind::Static(ref typ, _, _, _) => {
             try_visit!(visitor.visit_ty_unambig(typ));
         }
         ForeignItemKind::Type => (),
@@ -1167,7 +1167,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_defaultness(&defaultness));
     try_visit!(visitor.visit_id(hir_id));
     match *kind {
-        TraitItemKind::Const(ref ty, default) => {
+        TraitItemKind::Const(ref ty, default, _) => {
             try_visit!(visitor.visit_ty_unambig(ty));
             visit_opt!(visitor, visit_nested_body, default);
         }
@@ -1225,7 +1225,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_defaultness(defaultness));
     try_visit!(visitor.visit_id(impl_item.hir_id()));
     match *kind {
-        ImplItemKind::Const(ref ty, body) => {
+        ImplItemKind::Const(ref ty, body, _) => {
             try_visit!(visitor.visit_ty_unambig(ty));
             visitor.visit_nested_body(body)
         }

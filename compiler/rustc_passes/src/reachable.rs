@@ -145,7 +145,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 _ => false,
             },
             Node::TraitItem(trait_method) => match trait_method.kind {
-                hir::TraitItemKind::Const(_, ref default) => default.is_some(),
+                hir::TraitItemKind::Const(_, ref default, _) => default.is_some(),
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => true,
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_))
                 | hir::TraitItemKind::Type(..) => false,
@@ -204,7 +204,7 @@ impl<'tcx> ReachableContext<'tcx> {
                         }
                     }
 
-                    hir::ItemKind::Const(_, _, _, init, distributed_slice) => {
+                    hir::ItemKind::Const(_, _, _, init, ..) => {
                         // Only things actually ending up in the final constant value are reachable
                         // for codegen. Everything else is only needed during const-eval, so even if
                         // const-eval happens in a downstream crate, all they need is
@@ -249,11 +249,11 @@ impl<'tcx> ReachableContext<'tcx> {
             }
             Node::TraitItem(trait_method) => {
                 match trait_method.kind {
-                    hir::TraitItemKind::Const(_, None)
+                    hir::TraitItemKind::Const(_, None, _)
                     | hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_)) => {
                         // Keep going, nothing to get exported
                     }
-                    hir::TraitItemKind::Const(_, Some(body_id))
+                    hir::TraitItemKind::Const(_, Some(body_id), _)
                     | hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)) => {
                         self.visit_nested_body(body_id);
                     }
@@ -261,7 +261,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 }
             }
             Node::ImplItem(impl_item) => match impl_item.kind {
-                hir::ImplItemKind::Const(_, body) => {
+                hir::ImplItemKind::Const(_, body, _) => {
                     self.visit_nested_body(body);
                 }
                 hir::ImplItemKind::Fn(_, body) => {
