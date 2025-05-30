@@ -75,6 +75,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
             args
         }
     }
+
+    pub(crate) fn func_is_variadic(&self, ty: &'ll Type) -> bool {
+        unsafe { llvm::LLVMIsFunctionVarArg(ty) == True }
+    }
 }
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     pub(crate) fn type_bool(&self) -> &'ll Type {
@@ -284,8 +288,12 @@ impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn cast_backend_type(&self, ty: &CastTarget) -> &'ll Type {
         ty.llvm_type(self)
     }
-    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
-        fn_abi.llvm_type(self)
+    fn fn_decl_backend_type(
+        &self,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        fn_ptr: &'ll Value,
+    ) -> &'ll Type {
+        fn_abi.llvm_type(self, llvm::get_value_name(fn_ptr), false).fn_ty()
     }
     fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
         fn_abi.ptr_to_llvm_type(self)
