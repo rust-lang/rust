@@ -18,6 +18,7 @@ use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
+use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepsType;
@@ -1112,7 +1113,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
 pub(crate) fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-) -> Box<dyn Any> {
+) -> (Box<dyn Any>, EncodedMetadata) {
     // Hook for tests.
     if let Some((def_id, _)) = tcx.entry_fn(())
         && tcx.has_attr(def_id, sym::rustc_delayed_bug_from_inside_query)
@@ -1137,8 +1138,9 @@ pub(crate) fn start_codegen<'tcx>(
 
     let (metadata, need_metadata_module) = rustc_metadata::fs::encode_and_write_metadata(tcx);
 
-    let codegen = tcx.sess.time("codegen_crate", move || {
-        codegen_backend.codegen_crate(tcx, metadata, need_metadata_module)
+    let codegen = tcx.sess.time("codegen_crate", || {
+        codegen_backend
+            .codegen_crate(tcx, if need_metadata_module { Some(&metadata) } else { None })
     });
 
     info!("Post-codegen\n{:?}", tcx.debug_stats());
@@ -1149,7 +1151,7 @@ pub(crate) fn start_codegen<'tcx>(
         tcx.sess.code_stats.print_type_sizes();
     }
 
-    codegen
+    (codegen, metadata)
 }
 
 /// Compute and validate the crate name.

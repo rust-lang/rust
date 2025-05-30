@@ -77,8 +77,7 @@ pub trait CodegenBackend {
     fn codegen_crate<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-        metadata: EncodedMetadata,
-        need_metadata_module: bool,
+        metadata: Option<&EncodedMetadata>,
     ) -> Box<dyn Any>;
 
     /// This is called on the returned `Box<dyn Any>` from [`codegen_crate`](Self::codegen_crate)
@@ -94,8 +93,14 @@ pub trait CodegenBackend {
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>);
 
     /// This is called on the returned [`CodegenResults`] from [`join_codegen`](Self::join_codegen).
-    fn link(&self, sess: &Session, codegen_results: CodegenResults, outputs: &OutputFilenames) {
-        link_binary(sess, &ArArchiveBuilderBuilder, codegen_results, outputs);
+    fn link(
+        &self,
+        sess: &Session,
+        codegen_results: CodegenResults,
+        metadata: EncodedMetadata,
+        outputs: &OutputFilenames,
+    ) {
+        link_binary(sess, &ArArchiveBuilderBuilder, codegen_results, metadata, outputs);
     }
 }
 

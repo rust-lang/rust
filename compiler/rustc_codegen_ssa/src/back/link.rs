@@ -23,7 +23,8 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_macros::LintDiagnostic;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
 use rustc_metadata::{
-    NativeLibSearchFallback, find_native_static_library, walk_native_lib_search_dirs,
+    EncodedMetadata, NativeLibSearchFallback, find_native_static_library,
+    walk_native_lib_search_dirs,
 };
 use rustc_middle::bug;
 use rustc_middle::lint::lint_level;
@@ -91,6 +92,7 @@ pub fn link_binary(
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: CodegenResults,
+    metadata: EncodedMetadata,
     outputs: &OutputFilenames,
 ) {
     let _timer = sess.timer("link_binary");
@@ -142,6 +144,7 @@ pub fn link_binary(
                         sess,
                         archive_builder_builder,
                         &codegen_results,
+                        &metadata,
                         RlibFlavor::Normal,
                         &path,
                     )
@@ -152,6 +155,7 @@ pub fn link_binary(
                         sess,
                         archive_builder_builder,
                         &codegen_results,
+                        &metadata,
                         &out_filename,
                         &path,
                     );
@@ -312,6 +316,7 @@ fn link_rlib<'a>(
     sess: &'a Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
+    metadata: &EncodedMetadata,
     flavor: RlibFlavor,
     tmpdir: &MaybeTempDir,
 ) -> Box<dyn ArchiveBuilder + 'a> {
@@ -319,11 +324,8 @@ fn link_rlib<'a>(
 
     let trailing_metadata = match flavor {
         RlibFlavor::Normal => {
-            let (metadata, metadata_position) = create_wrapper_file(
-                sess,
-                ".rmeta".to_string(),
-                codegen_results.metadata.stub_or_full(),
-            );
+            let (metadata, metadata_position) =
+                create_wrapper_file(sess, ".rmeta".to_string(), metadata.stub_or_full());
             let metadata = emit_wrapper_file(sess, &metadata, tmpdir, METADATA_FILENAME);
             match metadata_position {
                 MetadataPosition::First => {
@@ -473,6 +475,7 @@ fn link_staticlib(
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
+    metadata: &EncodedMetadata,
     out_filename: &Path,
     tempdir: &MaybeTempDir,
 ) {
@@ -481,6 +484,7 @@ fn link_staticlib(
         sess,
         archive_builder_builder,
         codegen_results,
+        metadata,
         RlibFlavor::StaticlibBase,
         tempdir,
     );
