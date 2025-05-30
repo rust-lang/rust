@@ -659,7 +659,7 @@ impl<'db> SemanticsImpl<'db> {
 
     /// Checks if renaming `renamed` to `new_name` may introduce conflicts with other locals,
     /// and returns the conflicting locals.
-    pub fn rename_conflicts(&self, to_be_renamed: &Local, new_name: &str) -> Vec<Local> {
+    pub fn rename_conflicts(&self, to_be_renamed: &Local, new_name: &Name) -> Vec<Local> {
         let body = self.db.body(to_be_renamed.parent);
         let resolver = to_be_renamed.parent.resolver(self.db);
         let starting_expr =
@@ -668,7 +668,7 @@ impl<'db> SemanticsImpl<'db> {
             body: &body,
             conflicts: FxHashSet::default(),
             db: self.db,
-            new_name: Symbol::intern(new_name),
+            new_name: new_name.symbol().clone(),
             old_name: to_be_renamed.name(self.db).symbol().clone(),
             owner: to_be_renamed.parent,
             to_be_renamed: to_be_renamed.binding_id,

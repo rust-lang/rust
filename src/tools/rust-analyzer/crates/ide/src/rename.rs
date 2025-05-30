@@ -4,7 +4,7 @@
 //! tests. This module also implements a couple of magic tricks, like renaming
 //! `self` and to `self` (to switch between associated function and method).
 
-use hir::{AsAssocItem, InFile, Name, Semantics};
+use hir::{AsAssocItem, InFile, Name, Semantics, sym};
 use ide_db::{
     FileId, FileRange, RootDatabase,
     defs::{Definition, NameClass, NameRefClass},
@@ -33,7 +33,7 @@ pub(crate) fn prepare_rename(
     let source_file = sema.parse_guess_edition(position.file_id);
     let syntax = source_file.syntax();
 
-    let res = find_definitions(&sema, syntax, position, "?")?
+    let res = find_definitions(&sema, syntax, position, &Name::new_symbol_root(sym::underscore))?
         .map(|(frange, kind, def, _, _)| {
             // ensure all ranges are valid
 
@@ -88,22 +88,28 @@ pub(crate) fn rename(
     let source_file = sema.parse(file_id);
     let syntax = source_file.syntax();
 
-    let defs = find_definitions(&sema, syntax, position, new_name)?;
-    let alias_fallback = alias_fallback(syntax, position, new_name);
+    let edition = file_id.edition(db);
+    let (new_name, kind) = IdentifierKind::classify(edition, new_name)?;
+
+    let defs = find_definitions(&sema, syntax, position, &new_name)?;
+    let alias_fallback =
+        alias_fallback(syntax, position, &new_name.display(db, edition).to_string());
 
     let ops: RenameResult<Vec<SourceChange>> = match alias_fallback {
         Some(_) => defs
             // FIXME: This can use the `ide_db::rename_reference` (or def.rename) method once we can
             // properly find "direct" usages/references.
             .map(|(.., def, new_name, _)| {
-                match IdentifierKind::classify(&new_name)? {
+                match kind {
                     IdentifierKind::Ident => (),
                     IdentifierKind::Lifetime => {
                         bail!("Cannot alias reference to a lifetime identifier")
                     }
                     IdentifierKind::Underscore => bail!("Cannot alias reference to `_`"),
+                    IdentifierKind::LowercaseSelf => {
+                        bail!("Cannot rename alias reference to `self`")
+                    }
                 };
-
                 let mut usages = def.usages(&sema).all();
 
                 // FIXME: hack - removes the usage that triggered this rename operation.
@@ -120,7 +126,7 @@ pub(crate) fn rename(
                 source_change.extend(usages.references.get_mut(&file_id).iter().map(|refs| {
                     (
                         position.file_id,
-                        source_edit_from_references(refs, def, &new_name, file_id.edition(db)),
+                        source_edit_from_references(db, refs, def, &new_name, edition),
                     )
                 }));
 
@@ -132,14 +138,14 @@ pub(crate) fn rename(
                 if let Definition::Local(local) = def {
                     if let Some(self_param) = local.as_self_param(sema.db) {
                         cov_mark::hit!(rename_self_to_param);
-                        return rename_self_to_param(&sema, local, self_param, &new_name);
+                        return rename_self_to_param(&sema, local, self_param, &new_name, kind);
                     }
-                    if new_name == "self" {
+                    if kind == IdentifierKind::LowercaseSelf {
                         cov_mark::hit!(rename_to_self);
                         return rename_to_self(&sema, local);
                     }
                 }
-                def.rename(&sema, &new_name, rename_def)
+                def.rename(&sema, new_name.as_str(), rename_def)
             })
             .collect(),
     };
@@ -200,8 +206,8 @@ fn find_definitions(
     sema: &Semantics<'_, RootDatabase>,
     syntax: &SyntaxNode,
     FilePosition { file_id, offset }: FilePosition,
-    new_name: &str,
-) -> RenameResult<impl Iterator<Item = (FileRange, SyntaxKind, Definition, String, RenameDefinition)>>
+    new_name: &Name,
+) -> RenameResult<impl Iterator<Item = (FileRange, SyntaxKind, Definition, Name, RenameDefinition)>>
 {
     let maybe_format_args =
         syntax.token_at_offset(offset).find(|t| matches!(t.kind(), SyntaxKind::STRING));
@@ -213,7 +219,7 @@ fn find_definitions(
             FileRange { file_id, range },
             SyntaxKind::STRING,
             Definition::from(resolution),
-            new_name.to_owned(),
+            new_name.clone(),
             RenameDefinition::Yes,
         )]
         .into_iter());
@@ -224,7 +230,13 @@ fn find_definitions(
         .max_by_key(|t| {
             t.kind().is_any_identifier() || matches!(t.kind(), SyntaxKind::LIFETIME_IDENT)
         })
-        .map(|t| Name::new_root(t.text()))
+        .map(|t| {
+            if t.kind() == SyntaxKind::LIFETIME_IDENT {
+                Name::new_lifetime(t.text())
+            } else {
+                Name::new_root(t.text())
+            }
+        })
         .ok_or_else(|| format_err!("No references found at position"))?;
     let symbols =
         sema.find_namelike_at_offset_with_descend(syntax, offset).map(|name_like| {
@@ -299,13 +311,12 @@ fn find_definitions(
             res.map(|def| {
                 let n = def.name(sema.db)?;
                 if n == original_ident {
-                    Some((range, kind, def, new_name.to_owned(), RenameDefinition::Yes))
+                    Some((range, kind, def, new_name.clone(), RenameDefinition::Yes))
                 } else if let Some(suffix) =  n.as_str().strip_prefix(original_ident.as_str()) {
-                    Some((range, kind, def, format!("{new_name}{suffix}"), RenameDefinition::No))
-                } else if let Some(prefix) =  n.as_str().strip_suffix(original_ident.as_str()) {
-                    Some((range, kind, def, format!("{prefix}{new_name}"), RenameDefinition::No))
+                    Some((range, kind, def, Name::new_root(&format!("{}{suffix}", new_name.as_str())), RenameDefinition::No))
                 } else {
-                    None
+                     n.as_str().strip_suffix(original_ident.as_str().trim_start_matches('\''))
+                        .map(|prefix| (range, kind, def, Name::new_root(&format!("{prefix}{}", new_name.as_str())), RenameDefinition::No))
                 }
             })
         });
@@ -388,7 +399,13 @@ fn rename_to_self(
     source_change.extend(usages.iter().map(|(file_id, references)| {
         (
             file_id.file_id(sema.db),
-            source_edit_from_references(references, def, "self", file_id.edition(sema.db)),
+            source_edit_from_references(
+                sema.db,
+                references,
+                def,
+                &Name::new_symbol_root(sym::self_),
+                file_id.edition(sema.db),
+            ),
         )
     }));
     source_change.insert_source_edit(
@@ -402,23 +419,25 @@ fn rename_self_to_param(
     sema: &Semantics<'_, RootDatabase>,
     local: hir::Local,
     self_param: hir::SelfParam,
-    new_name: &str,
+    new_name: &Name,
+    identifier_kind: IdentifierKind,
 ) -> RenameResult<SourceChange> {
-    if new_name == "self" {
+    if identifier_kind == IdentifierKind::LowercaseSelf {
         // Let's do nothing rather than complain.
         cov_mark::hit!(rename_self_to_self);
         return Ok(SourceChange::default());
     }
-
-    let identifier_kind = IdentifierKind::classify(new_name)?;
 
     let InFile { file_id, value: self_param } =
         sema.source(self_param).ok_or_else(|| format_err!("cannot find function source"))?;
 
     let def = Definition::Local(local);
     let usages = def.usages(sema).all();
-    let edit = text_edit_from_self_param(&self_param, new_name)
-        .ok_or_else(|| format_err!("No target type found"))?;
+    let edit = text_edit_from_self_param(
+        &self_param,
+        new_name.display(sema.db, file_id.edition(sema.db)).to_string(),
+    )
+    .ok_or_else(|| format_err!("No target type found"))?;
     if usages.len() > 1 && identifier_kind == IdentifierKind::Underscore {
         bail!("Cannot rename reference to `_` as it is being referenced multiple times");
     }
@@ -427,13 +446,19 @@ fn rename_self_to_param(
     source_change.extend(usages.iter().map(|(file_id, references)| {
         (
             file_id.file_id(sema.db),
-            source_edit_from_references(references, def, new_name, file_id.edition(sema.db)),
+            source_edit_from_references(
+                sema.db,
+                references,
+                def,
+                new_name,
+                file_id.edition(sema.db),
+            ),
         )
     }));
     Ok(source_change)
 }
 
-fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Option<TextEdit> {
+fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: String) -> Option<TextEdit> {
     fn target_type_name(impl_def: &ast::Impl) -> Option<String> {
         if let Some(ast::Type::PathType(p)) = impl_def.self_ty() {
             return Some(p.path()?.segment()?.name_ref()?.text().to_string());
@@ -445,7 +470,7 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Opt
         Some(impl_def) => {
             let type_name = target_type_name(&impl_def)?;
 
-            let mut replacement_text = String::from(new_name);
+            let mut replacement_text = new_name;
             replacement_text.push_str(": ");
             match (self_param.amp_token(), self_param.mut_token()) {
                 (Some(_), None) => replacement_text.push('&'),
@@ -458,7 +483,7 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Opt
         }
         None => {
             cov_mark::hit!(rename_self_outside_of_methods);
-            let mut replacement_text = String::from(new_name);
+            let mut replacement_text = new_name;
             replacement_text.push_str(": _");
             Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
         }
@@ -728,7 +753,7 @@ impl Foo {
         check(
             "super",
             r#"fn main() { let i$0 = 1; }"#,
-            "error: Invalid name `super`: not an identifier",
+            "error: Invalid name `super`: cannot rename to a keyword",
         );
     }
 
@@ -777,7 +802,11 @@ impl Foo {
 
     #[test]
     fn test_rename_mod_invalid_raw_ident() {
-        check("r#self", r#"mod foo$0 {}"#, "error: Invalid name `self`: not an identifier");
+        check(
+            "r#self",
+            r#"mod foo$0 {}"#,
+            "error: Invalid name `self`: cannot rename module to self",
+        );
     }
 
     #[test]
@@ -2377,7 +2406,6 @@ fn foo(foo: Foo) {
 
     #[test]
     fn test_rename_lifetimes() {
-        cov_mark::check!(rename_lifetime);
         check(
             "'yeeee",
             r#"
