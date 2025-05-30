@@ -2171,6 +2171,7 @@ dependencies = [
 name = "lint-docs"
 version = "0.1.0"
 dependencies = [
+ "rustc-literal-escaper",
  "serde_json",
  "tempfile",
  "walkdir",
