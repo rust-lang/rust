@@ -782,9 +782,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     {
                         return ProcessResult::Changed(Default::default());
                     } else {
-                        return ProcessResult::Error(FulfillmentErrorCode::Ambiguity {
-                            overflow: None,
-                        });
+                        return ProcessResult::Unchanged;
                     }
                 }
             },
