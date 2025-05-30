@@ -3077,7 +3077,9 @@ pub(crate) struct ByteSliceInPackedStructWithDerive {
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_extern_crate)]
 pub(crate) struct UnusedExternCrate {
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[label]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
     pub removal_span: Span,
 }
 
