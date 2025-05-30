@@ -10,6 +10,18 @@ error: multiple `cfg` predicates are specified
 LL | #[doc(cfg(), cfg(foo, bar))]
    |                       ^^^
 
+error: `cfg` predicate is not specified
+  --> $DIR/doc-cfg.rs:9:7
+   |
+LL | #[doc(cfg())]
+   |       ^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+
+error: multiple `cfg` predicates are specified
+  --> $DIR/doc-cfg.rs:10:16
+   |
+LL | #[doc(cfg(foo, bar))]
+   |                ^^^
+
 warning: unexpected `cfg` condition name: `foo`
   --> $DIR/doc-cfg.rs:6:11
    |
@@ -29,18 +41,6 @@ LL | #[doc(cfg(foo), cfg(bar))]
    |
    = help: to expect this configuration use `--check-cfg=cfg(bar)`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-
-error: `cfg` predicate is not specified
-  --> $DIR/doc-cfg.rs:9:7
-   |
-LL | #[doc(cfg())]
-   |       ^^^^^ help: expected syntax is: `cfg(/* predicate */)`
-
-error: multiple `cfg` predicates are specified
-  --> $DIR/doc-cfg.rs:10:16
-   |
-LL | #[doc(cfg(foo, bar))]
-   |                ^^^
 
 error: aborting due to 4 previous errors; 2 warnings emitted
 
