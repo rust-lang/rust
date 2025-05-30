@@ -835,6 +835,7 @@ symbols! {
         dispatch_from_dyn,
         distributed_slice,
         distributed_slice_element,
+        distributed_slice_elements,
         div,
         div_assign,
         diverging_block_default,

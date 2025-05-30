@@ -4,11 +4,11 @@ use rustc_ast::UnsafeBinderCastKind;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::def_id::LocalDefId;
 use rustc_index::Idx;
 use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
 };
+use rustc_middle::middle::distributed_slice::DistributedSliceAddition;
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, AssignOp, BinOp, BorrowKind, UnOp};
 use rustc_middle::thir::*;
@@ -932,7 +932,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             hir::ExprKind::DistributedSliceDeferredArray => {
                 // get the declaration's defid
                 let declaration_def_id = self.body_owner;
-                let elements: &[LocalDefId] = self
+                let elements: &[DistributedSliceAddition] = self
                     .tcx
                     .distributed_slice_elements(())
                     .get(&declaration_def_id)
@@ -942,28 +942,97 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 // FIXME(gr) proper span in grda
                 let span = DUMMY_SP;
 
-                let ty = match expr_ty.kind() {
+                let element_type = match expr_ty.kind() {
                     ty::Array(element_ty, _) => *element_ty,
                     _ => panic!("not an array"),
                 };
 
+                // all none because we're definitely in const
+                let temp_lifetime =
+                    TempLifetime { temp_lifetime: None, backwards_incompatible: None };
+
                 let fields = elements
                     .iter()
-                    .map(|&def_id| {
-                        let (temp_lifetime, backwards_incompatible) = self
-                            .rvalue_scopes
-                            .temporary_scope(self.region_scope_tree, expr.hir_id.local_id);
+                    .flat_map(|addition| {
+                        match addition {
+                            &DistributedSliceAddition::Single(local_def_id) => {
+                                vec![self.thir.exprs.push(Expr {
+                                    kind: ExprKind::NamedConst {
+                                        def_id: local_def_id.to_def_id(),
+                                        args: GenericArgs::empty(),
+                                        user_ty: None,
+                                    },
+                                    ty: element_type,
+                                    temp_lifetime,
+                                    span,
+                                })]
+                            }
+                            &DistributedSliceAddition::Many(local_def_id) => {
+                                // local_def_id are the elements we want to add to the final
+                                // ditributed slice. We call it `source`.
 
-                        self.thir.exprs.push(Expr {
-                            kind: ExprKind::NamedConst {
-                                def_id: def_id.to_def_id(),
-                                args: GenericArgs::empty(),
-                                user_ty: None,
+                                // we're adding all source elements to a literal that will
+                                // initialize the distributed slice. For single elements that's
+                                // simple, but for multiple elements like here, it's more
+                                // complicated. `res` is the final set of elements we'd like to be
+                                // part of the constructor of the slice
+                                let mut res_elems = Vec::new();
+
+                                let source_ty =
+                                    self.tcx.normalize_erasing_regions(self.typing_env, self.tcx.type_of(local_def_id).instantiate_identity());
+
+
+                                // extract its length, we know for sure it's going to be an array.
+                                let source_len = match source_ty.kind() {
+                                    ty::Array(_, source_len) => source_len.try_to_target_usize(tcx).expect("valid usize"),
+                                    // _ => panic!("not an array"),
+                                    _ => 0,
+                                };
+
+                                // construct a thir expression which is the source elements as an
+                                // array. It's type is `source_ty`
+                                // e.g. [1, 2, 3] added using distributed_slice_elements!([1, 2, 3])
+                                let source_elems = self.thir.exprs.push(Expr {
+                                    kind: ExprKind::NamedConst {
+                                        def_id: local_def_id.to_def_id(),
+                                        args: GenericArgs::empty(),
+                                        user_ty: None,
+                                    },
+                                    ty: source_ty,
+                                    temp_lifetime,
+                                    span,
+                                });
+
+                                // now generate index expressions that index source_elems.
+                                // i.e. source_elems[0], source_elems[1], ... source_elems[n].
+                                // these expressions become part of the initializer of the
+                                // distributed slice, i.e. we add them to res
+                                for i in 0..source_len {
+                                    // index into source_elems
+                                    let index = self.thir.exprs.push(Expr {
+                                        kind: ExprKind::NonHirLiteral {
+                                            lit: ty::ScalarInt::try_from_target_usize(i, tcx)
+                                                .expect("won't overflow because i comes from a `try_to_target_usize`"),
+                                            user_ty: None,
+                                        },
+                                        ty: tcx.types.usize,
+                                        temp_lifetime,
+                                        span,
+                                    });
+
+                                    // index expression, i.e. `source_elems[0], source_elems[1], ...`
+                                    // where 0 and 1 are the indices constructed above
+                                    res_elems.push(self.thir.exprs.push(Expr {
+                                        kind: ExprKind::Index { lhs: source_elems, index },
+                                        ty: element_type,
+                                        temp_lifetime,
+                                        span,
+                                    }));
+                                }
+
+                                res_elems
                             },
-                            ty,
-                            temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
-                            span,
-                        })
+                        }
                     })
                     .collect();
 

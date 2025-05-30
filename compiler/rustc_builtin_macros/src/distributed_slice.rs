@@ -143,3 +143,45 @@ pub(crate) fn distributed_slice_element(
         tokens: None
     })]))
 }
+
+/// ```rust
+/// distributed_slice_elements!(MEOWS, ["mrow"]);
+/// ```
+pub(crate) fn distributed_slice_elements(
+    cx: &mut ExtCtxt<'_>,
+    span: Span,
+    tts: TokenStream,
+) -> MacroExpanderResult<'static> {
+    let (path, expr) = match parse_element(cx.new_parser_from_tts(tts)) {
+        Ok((ident, expr)) => (ident, expr),
+        Err(mut err) => {
+            if err.span.is_dummy() {
+                err.span(span);
+            }
+            let guar = err.emit();
+            return ExpandResult::Ready(DummyResult::any(span, guar));
+        }
+    };
+
+    ExpandResult::Ready(MacEager::items(smallvec![P(Item {
+        attrs: ThinVec::new(),
+        id: DUMMY_NODE_ID,
+        span,
+        vis: ast::Visibility { kind: ast::VisibilityKind::Inherited, span, tokens: None },
+        kind: ItemKind::Const(Box::new(ConstItem {
+            defaultness: Defaultness::Final,
+            ident: Ident { name: kw::Underscore, span },
+            generics: Generics::default(),
+            // leave out the ty, we discover it when
+            // when name-resolving to the registry definition
+            ty: P(Ty { id: DUMMY_NODE_ID, kind: TyKind::Infer, span, tokens: None }),
+            expr: Some(expr),
+            define_opaque: None,
+            distributed_slice: DistributedSlice::AdditionMany {
+                declaration: path,
+                id: DUMMY_NODE_ID
+            }
+        })),
+        tokens: None
+    })]))
+}

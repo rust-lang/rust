@@ -2847,7 +2847,9 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             |this| this.visit_ty(ty),
                         );
 
-                        if let DistributedSlice::Addition { declaration, id } = distributed_slice {
+                        if let DistributedSlice::Addition { declaration, id }
+                        | DistributedSlice::AdditionMany { declaration, id } = distributed_slice
+                        {
                             this.smart_resolve_path(
                                 *id,
                                 &None,

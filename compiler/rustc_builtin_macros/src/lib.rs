@@ -89,6 +89,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         const_format_args: format::expand_format_args,
         core_panic: edition_panic::expand_panic,
         distributed_slice_element: distributed_slice::distributed_slice_element,
+        distributed_slice_elements: distributed_slice::distributed_slice_elements,
         env: env::expand_env,
         file: source_util::expand_file,
         format_args: format::expand_format_args,

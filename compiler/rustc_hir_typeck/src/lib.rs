@@ -181,10 +181,25 @@ fn typeck_with_inspect<'tcx>(
 
             let ty = match array_ty.kind() {
                 ty::Array(element_ty, _) => *element_ty,
-                _ => bug!("not an array"),
+                // totally wrong but we'll have already emitted a diagnostic of this
+                _ => array_ty,
             };
 
             ty
+        } else if let Node::Item(item) = node
+            && let ItemKind::Const(.., DistributedSlice::AdditionMany(declaration_def_id, ..)) =
+                item.kind
+        {
+            // we reject generic const items (`#![feature(generic_const_items)]`) in `#[distributed_slice(crate)]`
+            let array_ty = tcx.type_of(declaration_def_id).instantiate_identity();
+
+            let element_ty = match array_ty.kind() {
+                ty::Array(element_ty, _) => *element_ty,
+                // totally wrong but we'll have already emitted a diagnostic of this
+                _ => array_ty,
+            };
+
+            Ty::new_array_with_const_len(tcx, element_ty, fcx.next_const_var(item.span))
         } else if let Some(infer_ty) = infer_type_if_missing(&fcx, node) {
             infer_ty
         } else if let Node::Item(item) = node

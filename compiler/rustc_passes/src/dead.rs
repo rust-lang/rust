@@ -16,6 +16,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, DistributedSlice, Node, PatKind, QPath, TyKind};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::distributed_slice::DistributedSliceAddition;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
@@ -438,7 +439,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 hir::ItemKind::Const(.., DistributedSlice::Declaration(..))
                 | hir::ItemKind::Static(.., DistributedSlice::Declaration(..)) => {
                     let defid = item.owner_id.to_def_id();
-                    let elements: &[LocalDefId] = self
+                    let elements: &[DistributedSliceAddition] = self
                         .tcx
                         .distributed_slice_elements(())
                         .get(&defid)
@@ -448,7 +449,14 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     intravisit::walk_item(self, item);
 
                     for element in elements {
-                        self.check_def_id(element.to_def_id());
+                        match element {
+                            &DistributedSliceAddition::Single(local_def_id) => {
+                                self.check_def_id(local_def_id.to_def_id());
+                            }
+                            &DistributedSliceAddition::Many(local_def_id) => {
+                                self.check_def_id(local_def_id.to_def_id());
+                            }
+                        }
                     }
                 }
                 _ => intravisit::walk_item(self, item),

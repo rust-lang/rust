@@ -3,7 +3,10 @@ use core::ops::ControlFlow;
 use rustc_errors::{Applicability, StashKey, Suggestions};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::VisitorExt;
-use rustc_hir::{self as hir, AmbigArg, HirId, InvalidDistributedSliceDeclaration};
+use rustc_hir::{
+    self as hir, AmbigArg, DistributedSlice, HirId, InvalidDistributedSliceDeclaration,
+};
+use rustc_middle::middle::distributed_slice::DistributedSliceAddition;
 use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::util::IntTypeExt;
@@ -116,17 +119,15 @@ fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: S
     }
 }
 
-pub fn type_of_distributed_slice<'tcx>(
+fn distributed_slice_element_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     lowerer: &dyn HirTyLowerer<'tcx>,
     ty: &rustc_hir::Ty<'tcx>,
-    def_id: LocalDefId,
     emit_diagnostics: bool,
 ) -> Ty<'tcx> {
     use rustc_hir::*;
-    use rustc_middle::ty::Ty;
 
-    let element_ty = if let TyKind::Array(element_ty, len) = ty.kind {
+    if let TyKind::Array(element_ty, len) = ty.kind {
         if let ConstArgKind::Infer { .. } = len.kind {
         } else if emit_diagnostics {
             tcx.dcx().emit_err(DistributedSliceNonInferLength { span: len.span() });
@@ -141,17 +142,87 @@ pub fn type_of_distributed_slice<'tcx>(
         }
 
         lowered
+    }
+}
+
+pub fn type_of_distributed_slice<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    lowerer: &dyn HirTyLowerer<'tcx>,
+    ty: &rustc_hir::Ty<'tcx>,
+    def_id: LocalDefId,
+    emit_diagnostics: bool,
+) -> Ty<'tcx> {
+    let element_ty = distributed_slice_element_type(tcx, lowerer, ty, emit_diagnostics);
+
+    let elements: Option<&Vec<DistributedSliceAddition>> =
+        tcx.distributed_slice_elements(()).get(&def_id.to_def_id());
+
+    let mut num_elements = 0;
+
+    for i in elements.map(|i| i.as_slice()).unwrap_or_default() {
+        match i {
+            DistributedSliceAddition::Single(_) => {
+                num_elements += 1;
+            }
+            DistributedSliceAddition::Many(local_def_id) => {
+                let ty = tcx.type_of(*local_def_id).instantiate_identity();
+
+                // FIXME(gr): instead generate additions?
+                match ty.kind() {
+                    ty::Array(_, len) => {
+                        num_elements += len
+                            .try_to_target_usize(tcx)
+                            .expect("it's a usize because it's a length");
+                    }
+                    _ => {
+                        tcx.dcx().span_delayed_bug(
+                            tcx.def_span(*local_def_id),
+                            "adding not-an-array with distributed_slice_elements!(",
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    Ty::new_array(tcx, element_ty, num_elements)
+}
+
+fn distributed_slice_addition_element_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    lowerer: &dyn HirTyLowerer<'tcx>,
+    declaration_def_id: LocalDefId,
+    addition_span: Span,
+    emit_diagnostics: bool,
+) -> Ty<'tcx> {
+    let declaration_item = tcx.hir_expect_item(declaration_def_id);
+
+    let hir_ty = if let hir::ItemKind::Const(_, _, ty, _, ds)
+    | hir::ItemKind::Static(_, _, ty, _, ds) = declaration_item.kind
+    {
+        if !matches!(ds, DistributedSlice::Declaration(..)) && emit_diagnostics {
+            tcx.dcx().emit_err(DistributedSliceWrongTarget {
+                span: addition_span,
+                wrong_declaration: declaration_item.span,
+                suggestion_before: declaration_item.span.shrink_to_lo(),
+            });
+        }
+
+        ty
+    } else {
+        bug!("should have errored during name resolution");
     };
 
-    let res: Option<&Vec<LocalDefId>> = tcx.distributed_slice_elements(()).get(&def_id.to_def_id());
-
-    let res = Ty::new_array_with_const_len(
-        tcx,
-        element_ty,
-        ty::Const::from_target_usize(tcx, res.map(|i| i.len()).unwrap_or(0) as u64),
-    );
-
-    res
+    match hir_ty.kind {
+        hir::TyKind::Array(element_ty, _) => lowerer.lower_ty(element_ty),
+        _ => Ty::new_error(
+            tcx,
+            tcx.dcx().span_delayed_bug(
+                declaration_item.span,
+                "adding not-an-array with distributed_slice_elements!(",
+            ),
+        ),
+    }
 }
 
 pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, Ty<'_>> {
@@ -269,35 +340,50 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             }
             ItemKind::Const(ident, _, ty, body_id, distributed_slice) => {
                 if let DistributedSlice::Declaration(_) = distributed_slice {
-                    type_of_distributed_slice(tcx, &icx, ty, def_id, true)
+                    type_of_distributed_slice(tcx, icx.lowerer(), ty, def_id, true)
                 } else if let DistributedSlice::Addition(declaration_def_id) = distributed_slice {
-                    let declaration_item = tcx.hir_expect_item(declaration_def_id);
-                    if let hir::ItemKind::Const(_, _, _, _, ds)
-                    | hir::ItemKind::Static(_, _, _, _, ds) = declaration_item.kind
-                    {
-                        if !matches!(ds, DistributedSlice::Declaration(..)) {
-                            tcx.dcx().emit_err(DistributedSliceWrongTarget {
-                                span: item.span,
-                                wrong_declaration: declaration_item.span,
-                                suggestion_before: declaration_item.span.shrink_to_lo(),
-                            });
+                    distributed_slice_addition_element_type(
+                        tcx,
+                        icx.lowerer(),
+                        declaration_def_id,
+                        item.span,
+                        true,
+                    )
+                } else if let DistributedSlice::AdditionMany(declaration_def_id, am) =
+                    distributed_slice
+                {
+                    let element_ty = distributed_slice_addition_element_type(
+                        tcx,
+                        icx.lowerer(),
+                        declaration_def_id,
+                        item.span,
+                        true,
+                    );
+
+                    'res: {
+                        let length = match am {
+                            DistributedSliceAdditionManyKind::ArrayLit { length } => {
+                                Ok(ty::Const::from_target_usize(tcx, length as u64))
+                            }
+                            DistributedSliceAdditionManyKind::Path { res } => {
+                                let ty = tcx.type_of(res).instantiate_identity();
+
+                                Ok(match ty.kind() {
+                                    ty::Array(_, len) => *len,
+                                    // usually means ty::Error which we can just return
+                                    _ => break 'res ty,
+                                })
+                            }
+                            DistributedSliceAdditionManyKind::Err(eg) => {
+                                Err(Ty::new_error(tcx, eg))
+                            }
+                        };
+
+                        match length {
+                            Ok(length) => Ty::new_array_with_const_len(tcx, element_ty, length),
+                            Err(e) => e,
                         }
-                    } else {
-                        tcx.dcx().span_delayed_bug(
-                            item.span,
-                            "should have errored during name resolution",
-                        );
                     }
-
-                    // we reject generic const items (`#![feature(generic_const_items)]`) in `#[distributed_slice(crate)]`
-                    let array_ty = tcx.type_of(declaration_def_id).instantiate_identity();
-
-                    let ty = match array_ty.kind() {
-                        ty::Array(element_ty, _) => *element_ty,
-                        _ => bug!("not an array"),
-                    };
-
-                    ty
                 } else if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),

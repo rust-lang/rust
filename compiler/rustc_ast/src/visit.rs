@@ -467,6 +467,10 @@ macro_rules! common_visitor_and_walkers {
                                 try_visit!(vis.visit_path(declaration$(${ignore($lt)}, *id)?));
                                 try_visit!(visit_id(vis, id));
                             }
+                            DistributedSlice::AdditionMany { declaration, id } => {
+                                try_visit!(vis.visit_path(declaration$(${ignore($lt)}, *id)?));
+                                try_visit!(visit_id(vis, id));
+                            }
                         }
                         walk_define_opaques(vis, define_opaque)
                     }
@@ -642,6 +646,10 @@ macro_rules! common_visitor_and_walkers {
                     try_visit!(visit_id(vis, id));
                 }
                 DistributedSlice::Addition { declaration, id } => {
+                    try_visit!(vis.visit_path(declaration$(${ignore($lt)}, *id)?));
+                    try_visit!(visit_id(vis, id));
+                }
+                DistributedSlice::AdditionMany { declaration, id } => {
                     try_visit!(vis.visit_path(declaration$(${ignore($lt)}, *id)?));
                     try_visit!(visit_id(vis, id));
                 }

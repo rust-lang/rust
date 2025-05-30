@@ -649,6 +649,17 @@ impl<'a> State<'a> {
                 self.end(ib);
                 self.end(cb);
             }
+            hir::ItemKind::Const(.., expr, DistributedSlice::AdditionMany(d, _)) => {
+                let (cb, ib) = self.head("distributed_slice_elements!");
+                self.popen();
+                self.word(format!("{d:?}"));
+                self.word(",");
+                self.ann.nested(self, Nested::Body(expr));
+                self.pclose();
+                self.word(";");
+                self.end(ib);
+                self.end(cb);
+            }
             hir::ItemKind::Fn { ident, sig, generics, body, .. } => {
                 let (cb, ib) = self.head("");
                 self.print_fn(sig.header, Some(ident.name), generics, sig.decl, &[], Some(body));

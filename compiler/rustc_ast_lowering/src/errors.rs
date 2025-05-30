@@ -482,3 +482,11 @@ pub(crate) struct DistributedSliceWithInitializer {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_distributed_slice_elements_wrong_expr)]
+#[note]
+pub(crate) struct DistributedSliceElementsWrongExpr {
+    #[primary_span]
+    pub span: Span,
+}

@@ -3624,6 +3624,10 @@ pub enum DistributedSlice {
     /// This const (we never do this to statics) represents an addition to a global registry
     /// declared somewhere else.
     Addition { declaration: Path, id: NodeId },
+    /// This const (we never do this to statics) represents an addition of an array
+    /// to a global registry declared somewhere else. All elements are added, though not necessarily
+    /// in the same order as in the original slice.
+    AdditionMany { declaration: Path, id: NodeId },
     /// Applied to an invalid item, error guaranteed to have be emitted
     Err(ErrorGuaranteed),
 }

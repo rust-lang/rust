@@ -83,7 +83,7 @@ pub use crate::macros::builtin::{
 
 #[unstable(feature = "crate_local_distributed_slice", issue = "125119")]
 #[cfg(not(bootstrap))]
-pub use crate::macros::builtin::{distributed_slice, distributed_slice_element};
+pub use crate::macros::builtin::{distributed_slice, distributed_slice_element, distributed_slice_elements};
 
 #[unstable(feature = "derive_const", issue = "none")]
 pub use crate::macros::builtin::derive_const;

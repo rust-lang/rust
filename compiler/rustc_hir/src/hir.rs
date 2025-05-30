@@ -4271,12 +4271,20 @@ impl FnHeader {
     }
 }
 
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub enum DistributedSliceAdditionManyKind {
+    ArrayLit { length: usize },
+    Path { res: DefId },
+    Err(ErrorGuaranteed),
+}
+
 #[derive(Debug, Clone, Copy, HashStable_Generic, Default)]
 pub enum DistributedSlice {
     #[default]
     None,
     Declaration(Span),
     Addition(LocalDefId),
+    AdditionMany(LocalDefId, DistributedSliceAdditionManyKind),
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
