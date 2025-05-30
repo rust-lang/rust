@@ -929,10 +929,12 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     // When matching against a literal or range, we need to
                     // borrow the place to compare it against the pattern.
                     //
+                    // Note that we do this read even if the range matches all
+                    // possible values, such as 0..=u8::MAX. This is because
+                    // we don't want to depend on consteval here.
+                    //
                     // FIXME: What if the type being matched only has one
                     // possible value?
-                    // FIXME: What if the range is the full range of the type
-                    // and doesn't actually require a discriminant read?
                     read_discriminant();
                 }
                 PatKind::Struct(..) | PatKind::TupleStruct(..) => {
