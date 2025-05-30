@@ -19,8 +19,14 @@ unsafe extern "C" fn _Unwind_Resume() {
     intrinsics::unreachable();
 }
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+pub trait Sized: MetaSized {}
 
 #[lang = "destruct"]
 pub trait Destruct {}
@@ -29,35 +35,35 @@ pub trait Destruct {}
 pub trait Tuple {}
 
 #[lang = "unsize"]
-pub trait Unsize<T: ?Sized> {}
+pub trait Unsize<T: PointeeSized>: PointeeSized {}
 
 #[lang = "coerce_unsized"]
 pub trait CoerceUnsized<T> {}
 
-impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
+impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a U> for &'b T {}
+impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a mut U> for &'a mut T {}
+impl<T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<*const U> for *const T {}
+impl<T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<*mut U> for *mut T {}
 
 #[lang = "dispatch_from_dyn"]
 pub trait DispatchFromDyn<T> {}
 
 // &T -> &U
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
+impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a U> for &'a T {}
 // &mut T -> &mut U
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a mut U> for &'a mut T {}
+impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a mut U> for &'a mut T {}
 // *const T -> *const U
-impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
+impl<T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<*const U> for *const T {}
 // *mut T -> *mut U
-impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
-impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U, ()>> for Box<T, ()> {}
+impl<T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<*mut U> for *mut T {}
+impl<T: MetaSized + Unsize<U>, U: MetaSized> DispatchFromDyn<Box<U, ()>> for Box<T, ()> {}
 
 #[lang = "legacy_receiver"]
 pub trait LegacyReceiver {}
 
-impl<T: ?Sized> LegacyReceiver for &T {}
-impl<T: ?Sized> LegacyReceiver for &mut T {}
-impl<T: ?Sized, A: Allocator> LegacyReceiver for Box<T, A> {}
+impl<T: PointeeSized> LegacyReceiver for &T {}
+impl<T: PointeeSized> LegacyReceiver for &mut T {}
+impl<T: MetaSized> LegacyReceiver for Box<T> {}
 
 #[lang = "receiver"]
 trait Receiver {}
@@ -84,9 +90,9 @@ impl Copy for i128 {}
 impl Copy for f32 {}
 impl Copy for f64 {}
 impl Copy for char {}
-impl<'a, T: ?Sized> Copy for &'a T {}
-impl<T: ?Sized> Copy for *const T {}
-impl<T: ?Sized> Copy for *mut T {}
+impl<'a, T: PointeeSized> Copy for &'a T {}
+impl<T: PointeeSized> Copy for *const T {}
+impl<T: PointeeSized> Copy for *mut T {}
 
 #[lang = "sync"]
 pub unsafe trait Sync {}
@@ -102,17 +108,17 @@ unsafe impl Sync for i16 {}
 unsafe impl Sync for i32 {}
 unsafe impl Sync for isize {}
 unsafe impl Sync for char {}
-unsafe impl<'a, T: ?Sized> Sync for &'a T {}
+unsafe impl<'a, T: PointeeSized> Sync for &'a T {}
 unsafe impl Sync for [u8; 16] {}
 
 #[lang = "freeze"]
 unsafe auto trait Freeze {}
 
-unsafe impl<T: ?Sized> Freeze for PhantomData<T> {}
-unsafe impl<T: ?Sized> Freeze for *const T {}
-unsafe impl<T: ?Sized> Freeze for *mut T {}
-unsafe impl<T: ?Sized> Freeze for &T {}
-unsafe impl<T: ?Sized> Freeze for &mut T {}
+unsafe impl<T: PointeeSized> Freeze for PhantomData<T> {}
+unsafe impl<T: PointeeSized> Freeze for *const T {}
+unsafe impl<T: PointeeSized> Freeze for *mut T {}
+unsafe impl<T: PointeeSized> Freeze for &T {}
+unsafe impl<T: PointeeSized> Freeze for &mut T {}
 
 #[lang = "structural_peq"]
 pub trait StructuralPartialEq {}
@@ -456,7 +462,7 @@ pub enum Option<T> {
 pub use Option::*;
 
 #[lang = "phantom_data"]
-pub struct PhantomData<T: ?Sized>;
+pub struct PhantomData<T: PointeeSized>;
 
 #[lang = "fn_once"]
 #[rustc_paren_sugar]
@@ -576,18 +582,18 @@ impl Allocator for Global {}
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
-pub struct NonNull<T: ?Sized>(pub *const T);
+pub struct NonNull<T: PointeeSized>(pub *const T);
 
-impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
-impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
+impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
+impl<T: PointeeSized, U: PointeeSized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 
-pub struct Unique<T: ?Sized> {
+pub struct Unique<T: PointeeSized> {
     pub pointer: NonNull<T>,
     pub _marker: PhantomData<T>,
 }
 
-impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
-impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Unique<U>> for Unique<T> where T: Unsize<U> {}
+impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
+impl<T: PointeeSized, U: PointeeSized> DispatchFromDyn<Unique<U>> for Unique<T> where T: Unsize<U> {}
 
 #[lang = "owned_box"]
 pub struct Box<T: ?Sized, A: Allocator = Global>(Unique<T>, A);

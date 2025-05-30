@@ -6,8 +6,14 @@
 
 //@ set impl_i32 = "$.index[?(@.docs=='Only core can do this')].id"
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+pub trait Sized: MetaSized {}
 
 /// Only core can do this
 impl i32 {

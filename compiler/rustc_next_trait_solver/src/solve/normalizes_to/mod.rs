@@ -6,6 +6,7 @@ mod opaque_types;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{self as ty, Interner, NormalizesTo, PredicateKind, Upcast as _};
 use tracing::instrument;
 
@@ -413,11 +414,12 @@ where
         panic!("trait aliases do not have associated types: {:?}", goal);
     }
 
-    fn consider_builtin_sized_candidate(
+    fn consider_builtin_sizedness_candidates(
         _ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        _sizedness: SizedTraitKind,
     ) -> Result<Candidate<I>, NoSolution> {
-        panic!("`Sized` does not have an associated type: {:?}", goal);
+        panic!("`Sized`/`MetaSized` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_copy_clone_candidate(
