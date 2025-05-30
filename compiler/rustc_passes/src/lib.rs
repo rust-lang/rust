@@ -32,7 +32,6 @@ pub mod layout_test;
 mod lib_features;
 mod liveness;
 pub mod loops;
-mod naked_functions;
 mod reachable;
 pub mod stability;
 mod upvars;
@@ -49,7 +48,6 @@ pub fn provide(providers: &mut Providers) {
     lang_items::provide(providers);
     lib_features::provide(providers);
     loops::provide(providers);
-    naked_functions::provide(providers);
     liveness::provide(providers);
     reachable::provide(providers);
     stability::provide(providers);

@@ -6,18 +6,20 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, HirIdSet, StmtKind};
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::util::Providers;
 use rustc_span::{Span, sym};
 
 use crate::errors::{
     NakedFunctionsAsmBlock, NakedFunctionsMustNakedAsm, NoPatterns, ParamsNotAllowed,
 };
 
-pub(crate) fn provide(providers: &mut Providers) {
-    providers.hooks.typeck_naked_fn = typeck_naked_fn;
-}
-
-fn typeck_naked_fn<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &'tcx hir::Body<'tcx>) {
+/// Naked fns can only have trivial binding patterns in arguments,
+/// may not actually use those arguments, and the body must consist of just
+/// a single asm statement.
+pub(crate) fn typeck_naked_fn<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    body: &'tcx hir::Body<'tcx>,
+) {
     debug_assert!(tcx.has_attr(def_id, sym::naked));
     check_no_patterns(tcx, body.params);
     check_no_parameters_use(tcx, body);

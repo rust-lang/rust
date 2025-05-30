@@ -102,11 +102,6 @@ declare_hooks! {
     /// Ensure the given scalar is valid for the given type.
     /// This checks non-recursive runtime validity.
     hook validate_scalar_in_layout(scalar: crate::ty::ScalarInt, ty: Ty<'tcx>) -> bool;
-
-    /// Naked fns can only have trivial binding patterns in arguments,
-    /// may not actually use those arguments, and the body must consist of just
-    /// a single asm statement.
-    hook typeck_naked_fn(def_id: LocalDefId, body: &'tcx rustc_hir::Body<'tcx>) -> ();
 }
 
 #[cold]

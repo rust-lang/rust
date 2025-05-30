@@ -31,6 +31,7 @@ mod fn_ctxt;
 mod gather_locals;
 mod intrinsicck;
 mod method;
+mod naked_functions;
 mod op;
 mod opaque_types;
 mod pat;
@@ -171,7 +172,7 @@ fn typeck_with_inspect<'tcx>(
         );
 
         if tcx.has_attr(def_id, sym::naked) {
-            tcx.typeck_naked_fn(def_id, body);
+            naked_functions::typeck_naked_fn(tcx, def_id, body);
         }
 
         check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params());
