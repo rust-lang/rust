@@ -610,9 +610,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         };
 
         if result.layout.ty.is_bool() {
-            OperandRef::from_immediate_or_packed_pair(self, llval, result.layout)
-                .val
-                .store(self, result);
+            let val = self.from_immediate(llval);
+            self.store_to_place(val, result.val);
         } else if !result.layout.ty.is_unit() {
             self.store_to_place(llval, result.val);
         }

@@ -498,13 +498,10 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         };
 
         if result.layout.ty.is_bool() {
-            OperandRef::from_immediate_or_packed_pair(self, value, result.layout)
-                .val
-                .store(self, result);
+            let val = self.from_immediate(value);
+            self.store_to_place(val, result.val);
         } else if !result.layout.ty.is_unit() {
-            let ptr_llty = self.type_ptr_to(result.layout.gcc_type(self));
-            let ptr = self.pointercast(result.val.llval, ptr_llty);
-            self.store(value, ptr, result.val.align);
+            self.store_to_place(value, result.val);
         }
         Ok(())
     }

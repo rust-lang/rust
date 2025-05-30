@@ -91,9 +91,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let ret_llval = |bx: &mut Bx, llval| {
             if result.layout.ty.is_bool() {
-                OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
-                    .val
-                    .store(bx, result);
+                let val = bx.from_immediate(llval);
+                bx.store_to_place(val, result.val);
             } else if !result.layout.ty.is_unit() {
                 bx.store_to_place(llval, result.val);
             }
