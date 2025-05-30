@@ -62,8 +62,6 @@ types! {
     pub struct int16x4_t(4 x pub(crate) i16);
     /// Arm-specific 64-bit wide vector of four packed `u16`.
     pub struct uint16x4_t(4 x pub(crate) u16);
-    //  Arm-specific 64-bit wide vector of four packed `f16`.
-    pub struct float16x4_t(4 x pub(crate) f16);
     /// Arm-specific 64-bit wide vector of four packed `p16`.
     pub struct poly16x4_t(4 x pub(crate) p16);
     /// Arm-specific 64-bit wide vector of two packed `i32`.
@@ -89,8 +87,6 @@ types! {
     pub struct int16x8_t(8 x pub(crate) i16);
     /// Arm-specific 128-bit wide vector of eight packed `u16`.
     pub struct uint16x8_t(8 x pub(crate) u16);
-    //  Arm-specific 128-bit wide vector of eight packed `f16`.
-    pub struct float16x8_t(8 x pub(crate) f16);
     /// Arm-specific 128-bit wide vector of eight packed `p16`.
     pub struct poly16x8_t(8 x pub(crate) p16);
     /// Arm-specific 128-bit wide vector of four packed `i32`.
@@ -105,6 +101,15 @@ types! {
     pub struct uint64x2_t(2 x pub(crate) u64);
     /// Arm-specific 128-bit wide vector of two packed `p64`.
     pub struct poly64x2_t(2 x pub(crate) p64);
+}
+
+types! {
+    #![unstable(feature = "stdarch_neon_f16", issue = "136306")]
+
+    /// Arm-specific 64-bit wide vector of four packed `f16`.
+    pub struct float16x4_t(4 x pub(crate) f16);
+    /// Arm-specific 128-bit wide vector of eight packed `f16`.
+    pub struct float16x8_t(8 x pub(crate) f16);
 }
 
 /// Arm-specific type containing two `int8x8_t` vectors.
