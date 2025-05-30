@@ -1085,7 +1085,13 @@ macro_rules! float_const_assert {
     };
 }
 
+#[cfg(any(miri, target_has_reliable_f16_math))]
+test_float!(f16, float_assert, f16);
+test_float!(f16_const, float_const_assert, f16);
 test_float!(f32, float_assert, f32);
 test_float!(f32_const, float_const_assert, f32);
 test_float!(f64, float_assert, f64);
 test_float!(f64_const, float_const_assert, f64);
+#[cfg(any(miri, target_has_reliable_f128_math))]
+test_float!(f128, float_assert, f128);
+test_float!(f128_const, float_const_assert, f128);
