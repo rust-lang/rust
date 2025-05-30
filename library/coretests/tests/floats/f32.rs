@@ -23,17 +23,6 @@ const NAN_MASK1: u32 = 0x002a_aaaa;
 /// Second pattern over the mantissa
 const NAN_MASK2: u32 = 0x0055_5555;
 
-#[allow(unused_macros)]
-macro_rules! assert_f32_biteq {
-    ($left : expr, $right : expr) => {
-        let l: &f32 = &$left;
-        let r: &f32 = &$right;
-        let lb = l.to_bits();
-        let rb = r.to_bits();
-        assert_eq!(lb, rb, "float {l} ({lb:#010x}) is not bitequal to {r} ({rb:#010x})");
-    };
-}
-
 #[test]
 fn test_num_f32() {
     super::test_num(10f32, 2f32);
@@ -41,14 +30,14 @@ fn test_num_f32() {
 
 #[test]
 fn test_min_nan() {
-    assert_eq!(f32::NAN.min(2.0), 2.0);
-    assert_eq!(2.0f32.min(f32::NAN), 2.0);
+    assert_biteq!(f32::NAN.min(2.0), 2.0);
+    assert_biteq!(2.0f32.min(f32::NAN), 2.0);
 }
 
 #[test]
 fn test_max_nan() {
-    assert_eq!(f32::NAN.max(2.0), 2.0);
-    assert_eq!(2.0f32.max(f32::NAN), 2.0);
+    assert_biteq!(f32::NAN.max(2.0), 2.0);
+    assert_biteq!(2.0f32.max(f32::NAN), 2.0);
 }
 
 #[test]
@@ -104,7 +93,7 @@ fn test_neg_infinity() {
 #[test]
 fn test_zero() {
     let zero: f32 = 0.0f32;
-    assert_eq!(0.0, zero);
+    assert_biteq!(0.0, zero);
     assert!(!zero.is_infinite());
     assert!(zero.is_finite());
     assert!(zero.is_sign_positive());
@@ -118,6 +107,7 @@ fn test_zero() {
 fn test_neg_zero() {
     let neg_zero: f32 = -0.0;
     assert_eq!(0.0, neg_zero);
+    assert_biteq!(-0.0, neg_zero);
     assert!(!neg_zero.is_infinite());
     assert!(neg_zero.is_finite());
     assert!(!neg_zero.is_sign_positive());
@@ -130,7 +120,7 @@ fn test_neg_zero() {
 #[test]
 fn test_one() {
     let one: f32 = 1.0f32;
-    assert_eq!(1.0, one);
+    assert_biteq!(1.0, one);
     assert!(!one.is_infinite());
     assert!(one.is_finite());
     assert!(one.is_sign_positive());
@@ -215,111 +205,111 @@ fn test_classify() {
 
 #[test]
 fn test_floor() {
-    assert_approx_eq!(f32::math::floor(1.0f32), 1.0f32);
-    assert_approx_eq!(f32::math::floor(1.3f32), 1.0f32);
-    assert_approx_eq!(f32::math::floor(1.5f32), 1.0f32);
-    assert_approx_eq!(f32::math::floor(1.7f32), 1.0f32);
-    assert_approx_eq!(f32::math::floor(0.0f32), 0.0f32);
-    assert_approx_eq!(f32::math::floor(-0.0f32), -0.0f32);
-    assert_approx_eq!(f32::math::floor(-1.0f32), -1.0f32);
-    assert_approx_eq!(f32::math::floor(-1.3f32), -2.0f32);
-    assert_approx_eq!(f32::math::floor(-1.5f32), -2.0f32);
-    assert_approx_eq!(f32::math::floor(-1.7f32), -2.0f32);
+    assert_biteq!(f32::math::floor(1.0f32), 1.0f32);
+    assert_biteq!(f32::math::floor(1.3f32), 1.0f32);
+    assert_biteq!(f32::math::floor(1.5f32), 1.0f32);
+    assert_biteq!(f32::math::floor(1.7f32), 1.0f32);
+    assert_biteq!(f32::math::floor(0.0f32), 0.0f32);
+    assert_biteq!(f32::math::floor(-0.0f32), -0.0f32);
+    assert_biteq!(f32::math::floor(-1.0f32), -1.0f32);
+    assert_biteq!(f32::math::floor(-1.3f32), -2.0f32);
+    assert_biteq!(f32::math::floor(-1.5f32), -2.0f32);
+    assert_biteq!(f32::math::floor(-1.7f32), -2.0f32);
 }
 
 #[test]
 fn test_ceil() {
-    assert_approx_eq!(f32::math::ceil(1.0f32), 1.0f32);
-    assert_approx_eq!(f32::math::ceil(1.3f32), 2.0f32);
-    assert_approx_eq!(f32::math::ceil(1.5f32), 2.0f32);
-    assert_approx_eq!(f32::math::ceil(1.7f32), 2.0f32);
-    assert_approx_eq!(f32::math::ceil(0.0f32), 0.0f32);
-    assert_approx_eq!(f32::math::ceil(-0.0f32), -0.0f32);
-    assert_approx_eq!(f32::math::ceil(-1.0f32), -1.0f32);
-    assert_approx_eq!(f32::math::ceil(-1.3f32), -1.0f32);
-    assert_approx_eq!(f32::math::ceil(-1.5f32), -1.0f32);
-    assert_approx_eq!(f32::math::ceil(-1.7f32), -1.0f32);
+    assert_biteq!(f32::math::ceil(1.0f32), 1.0f32);
+    assert_biteq!(f32::math::ceil(1.3f32), 2.0f32);
+    assert_biteq!(f32::math::ceil(1.5f32), 2.0f32);
+    assert_biteq!(f32::math::ceil(1.7f32), 2.0f32);
+    assert_biteq!(f32::math::ceil(0.0f32), 0.0f32);
+    assert_biteq!(f32::math::ceil(-0.0f32), -0.0f32);
+    assert_biteq!(f32::math::ceil(-1.0f32), -1.0f32);
+    assert_biteq!(f32::math::ceil(-1.3f32), -1.0f32);
+    assert_biteq!(f32::math::ceil(-1.5f32), -1.0f32);
+    assert_biteq!(f32::math::ceil(-1.7f32), -1.0f32);
 }
 
 #[test]
 fn test_round() {
-    assert_approx_eq!(f32::math::round(2.5f32), 3.0f32);
-    assert_approx_eq!(f32::math::round(1.0f32), 1.0f32);
-    assert_approx_eq!(f32::math::round(1.3f32), 1.0f32);
-    assert_approx_eq!(f32::math::round(1.5f32), 2.0f32);
-    assert_approx_eq!(f32::math::round(1.7f32), 2.0f32);
-    assert_approx_eq!(f32::math::round(0.0f32), 0.0f32);
-    assert_approx_eq!(f32::math::round(-0.0f32), -0.0f32);
-    assert_approx_eq!(f32::math::round(-1.0f32), -1.0f32);
-    assert_approx_eq!(f32::math::round(-1.3f32), -1.0f32);
-    assert_approx_eq!(f32::math::round(-1.5f32), -2.0f32);
-    assert_approx_eq!(f32::math::round(-1.7f32), -2.0f32);
+    assert_biteq!(f32::math::round(2.5f32), 3.0f32);
+    assert_biteq!(f32::math::round(1.0f32), 1.0f32);
+    assert_biteq!(f32::math::round(1.3f32), 1.0f32);
+    assert_biteq!(f32::math::round(1.5f32), 2.0f32);
+    assert_biteq!(f32::math::round(1.7f32), 2.0f32);
+    assert_biteq!(f32::math::round(0.0f32), 0.0f32);
+    assert_biteq!(f32::math::round(-0.0f32), -0.0f32);
+    assert_biteq!(f32::math::round(-1.0f32), -1.0f32);
+    assert_biteq!(f32::math::round(-1.3f32), -1.0f32);
+    assert_biteq!(f32::math::round(-1.5f32), -2.0f32);
+    assert_biteq!(f32::math::round(-1.7f32), -2.0f32);
 }
 
 #[test]
 fn test_round_ties_even() {
-    assert_approx_eq!(f32::math::round_ties_even(2.5f32), 2.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(1.0f32), 1.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(1.3f32), 1.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(1.5f32), 2.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(1.7f32), 2.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(0.0f32), 0.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(-0.0f32), -0.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(-1.0f32), -1.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(-1.3f32), -1.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(-1.5f32), -2.0f32);
-    assert_approx_eq!(f32::math::round_ties_even(-1.7f32), -2.0f32);
+    assert_biteq!(f32::math::round_ties_even(2.5f32), 2.0f32);
+    assert_biteq!(f32::math::round_ties_even(1.0f32), 1.0f32);
+    assert_biteq!(f32::math::round_ties_even(1.3f32), 1.0f32);
+    assert_biteq!(f32::math::round_ties_even(1.5f32), 2.0f32);
+    assert_biteq!(f32::math::round_ties_even(1.7f32), 2.0f32);
+    assert_biteq!(f32::math::round_ties_even(0.0f32), 0.0f32);
+    assert_biteq!(f32::math::round_ties_even(-0.0f32), -0.0f32);
+    assert_biteq!(f32::math::round_ties_even(-1.0f32), -1.0f32);
+    assert_biteq!(f32::math::round_ties_even(-1.3f32), -1.0f32);
+    assert_biteq!(f32::math::round_ties_even(-1.5f32), -2.0f32);
+    assert_biteq!(f32::math::round_ties_even(-1.7f32), -2.0f32);
 }
 
 #[test]
 fn test_trunc() {
-    assert_approx_eq!(f32::math::trunc(1.0f32), 1.0f32);
-    assert_approx_eq!(f32::math::trunc(1.3f32), 1.0f32);
-    assert_approx_eq!(f32::math::trunc(1.5f32), 1.0f32);
-    assert_approx_eq!(f32::math::trunc(1.7f32), 1.0f32);
-    assert_approx_eq!(f32::math::trunc(0.0f32), 0.0f32);
-    assert_approx_eq!(f32::math::trunc(-0.0f32), -0.0f32);
-    assert_approx_eq!(f32::math::trunc(-1.0f32), -1.0f32);
-    assert_approx_eq!(f32::math::trunc(-1.3f32), -1.0f32);
-    assert_approx_eq!(f32::math::trunc(-1.5f32), -1.0f32);
-    assert_approx_eq!(f32::math::trunc(-1.7f32), -1.0f32);
+    assert_biteq!(f32::math::trunc(1.0f32), 1.0f32);
+    assert_biteq!(f32::math::trunc(1.3f32), 1.0f32);
+    assert_biteq!(f32::math::trunc(1.5f32), 1.0f32);
+    assert_biteq!(f32::math::trunc(1.7f32), 1.0f32);
+    assert_biteq!(f32::math::trunc(0.0f32), 0.0f32);
+    assert_biteq!(f32::math::trunc(-0.0f32), -0.0f32);
+    assert_biteq!(f32::math::trunc(-1.0f32), -1.0f32);
+    assert_biteq!(f32::math::trunc(-1.3f32), -1.0f32);
+    assert_biteq!(f32::math::trunc(-1.5f32), -1.0f32);
+    assert_biteq!(f32::math::trunc(-1.7f32), -1.0f32);
 }
 
 #[test]
 fn test_fract() {
-    assert_approx_eq!(f32::math::fract(1.0f32), 0.0f32);
-    assert_approx_eq!(f32::math::fract(1.3f32), 0.3f32);
-    assert_approx_eq!(f32::math::fract(1.5f32), 0.5f32);
-    assert_approx_eq!(f32::math::fract(1.7f32), 0.7f32);
-    assert_approx_eq!(f32::math::fract(0.0f32), 0.0f32);
-    assert_approx_eq!(f32::math::fract(-0.0f32), -0.0f32);
-    assert_approx_eq!(f32::math::fract(-1.0f32), -0.0f32);
-    assert_approx_eq!(f32::math::fract(-1.3f32), -0.3f32);
-    assert_approx_eq!(f32::math::fract(-1.5f32), -0.5f32);
-    assert_approx_eq!(f32::math::fract(-1.7f32), -0.7f32);
+    assert_biteq!(f32::math::fract(1.0f32), 0.0f32);
+    assert_biteq!(f32::math::fract(1.3f32), 0.29999995f32);
+    assert_biteq!(f32::math::fract(1.5f32), 0.5f32);
+    assert_biteq!(f32::math::fract(1.7f32), 0.70000005f32);
+    assert_biteq!(f32::math::fract(0.0f32), 0.0f32);
+    assert_biteq!(f32::math::fract(-0.0f32), 0.0f32);
+    assert_biteq!(f32::math::fract(-1.0f32), 0.0f32);
+    assert_biteq!(f32::math::fract(-1.3f32), -0.29999995f32);
+    assert_biteq!(f32::math::fract(-1.5f32), -0.5f32);
+    assert_biteq!(f32::math::fract(-1.7f32), -0.70000005f32);
 }
 
 #[test]
 fn test_abs() {
-    assert_eq!(f32::INFINITY.abs(), f32::INFINITY);
-    assert_eq!(1f32.abs(), 1f32);
-    assert_eq!(0f32.abs(), 0f32);
-    assert_eq!((-0f32).abs(), 0f32);
-    assert_eq!((-1f32).abs(), 1f32);
-    assert_eq!(f32::NEG_INFINITY.abs(), f32::INFINITY);
-    assert_eq!((1f32 / f32::NEG_INFINITY).abs(), 0f32);
+    assert_biteq!(f32::INFINITY.abs(), f32::INFINITY);
+    assert_biteq!(1f32.abs(), 1f32);
+    assert_biteq!(0f32.abs(), 0f32);
+    assert_biteq!((-0f32).abs(), 0f32);
+    assert_biteq!((-1f32).abs(), 1f32);
+    assert_biteq!(f32::NEG_INFINITY.abs(), f32::INFINITY);
+    assert_biteq!((1f32 / f32::NEG_INFINITY).abs(), 0f32);
     assert!(f32::NAN.abs().is_nan());
 }
 
 #[test]
 fn test_signum() {
-    assert_eq!(f32::INFINITY.signum(), 1f32);
-    assert_eq!(1f32.signum(), 1f32);
-    assert_eq!(0f32.signum(), 1f32);
-    assert_eq!((-0f32).signum(), -1f32);
-    assert_eq!((-1f32).signum(), -1f32);
-    assert_eq!(f32::NEG_INFINITY.signum(), -1f32);
-    assert_eq!((1f32 / f32::NEG_INFINITY).signum(), -1f32);
+    assert_biteq!(f32::INFINITY.signum(), 1f32);
+    assert_biteq!(1f32.signum(), 1f32);
+    assert_biteq!(0f32.signum(), 1f32);
+    assert_biteq!((-0f32).signum(), -1f32);
+    assert_biteq!((-1f32).signum(), -1f32);
+    assert_biteq!(f32::NEG_INFINITY.signum(), -1f32);
+    assert_biteq!((1f32 / f32::NEG_INFINITY).signum(), -1f32);
     assert!(f32::NAN.signum().is_nan());
 }
 
@@ -356,27 +346,27 @@ fn test_next_up() {
     let max_down = f32::from_bits(MAX_DOWN_BITS);
     let largest_subnormal = f32::from_bits(LARGEST_SUBNORMAL_BITS);
     let smallest_normal = f32::from_bits(SMALLEST_NORMAL_BITS);
-    assert_f32_biteq!(f32::NEG_INFINITY.next_up(), f32::MIN);
-    assert_f32_biteq!(f32::MIN.next_up(), -max_down);
-    assert_f32_biteq!((-1.0 - f32::EPSILON).next_up(), -1.0);
-    assert_f32_biteq!((-smallest_normal).next_up(), -largest_subnormal);
-    assert_f32_biteq!((-tiny_up).next_up(), -tiny);
-    assert_f32_biteq!((-tiny).next_up(), -0.0f32);
-    assert_f32_biteq!((-0.0f32).next_up(), tiny);
-    assert_f32_biteq!(0.0f32.next_up(), tiny);
-    assert_f32_biteq!(tiny.next_up(), tiny_up);
-    assert_f32_biteq!(largest_subnormal.next_up(), smallest_normal);
-    assert_f32_biteq!(1.0f32.next_up(), 1.0 + f32::EPSILON);
-    assert_f32_biteq!(f32::MAX.next_up(), f32::INFINITY);
-    assert_f32_biteq!(f32::INFINITY.next_up(), f32::INFINITY);
+    assert_biteq!(f32::NEG_INFINITY.next_up(), f32::MIN);
+    assert_biteq!(f32::MIN.next_up(), -max_down);
+    assert_biteq!((-1.0f32 - f32::EPSILON).next_up(), -1.0f32);
+    assert_biteq!((-smallest_normal).next_up(), -largest_subnormal);
+    assert_biteq!((-tiny_up).next_up(), -tiny);
+    assert_biteq!((-tiny).next_up(), -0.0f32);
+    assert_biteq!((-0.0f32).next_up(), tiny);
+    assert_biteq!(0.0f32.next_up(), tiny);
+    assert_biteq!(tiny.next_up(), tiny_up);
+    assert_biteq!(largest_subnormal.next_up(), smallest_normal);
+    assert_biteq!(1.0f32.next_up(), 1.0 + f32::EPSILON);
+    assert_biteq!(f32::MAX.next_up(), f32::INFINITY);
+    assert_biteq!(f32::INFINITY.next_up(), f32::INFINITY);
 
     // Check that NaNs roundtrip.
     let nan0 = f32::NAN;
     let nan1 = f32::from_bits(f32::NAN.to_bits() ^ NAN_MASK1);
     let nan2 = f32::from_bits(f32::NAN.to_bits() ^ NAN_MASK2);
-    assert_f32_biteq!(nan0.next_up(), nan0);
-    assert_f32_biteq!(nan1.next_up(), nan1);
-    assert_f32_biteq!(nan2.next_up(), nan2);
+    assert_biteq!(nan0.next_up(), nan0);
+    assert_biteq!(nan1.next_up(), nan1);
+    assert_biteq!(nan2.next_up(), nan2);
 }
 
 #[test]
@@ -386,28 +376,28 @@ fn test_next_down() {
     let max_down = f32::from_bits(MAX_DOWN_BITS);
     let largest_subnormal = f32::from_bits(LARGEST_SUBNORMAL_BITS);
     let smallest_normal = f32::from_bits(SMALLEST_NORMAL_BITS);
-    assert_f32_biteq!(f32::NEG_INFINITY.next_down(), f32::NEG_INFINITY);
-    assert_f32_biteq!(f32::MIN.next_down(), f32::NEG_INFINITY);
-    assert_f32_biteq!((-max_down).next_down(), f32::MIN);
-    assert_f32_biteq!((-1.0f32).next_down(), -1.0 - f32::EPSILON);
-    assert_f32_biteq!((-largest_subnormal).next_down(), -smallest_normal);
-    assert_f32_biteq!((-tiny).next_down(), -tiny_up);
-    assert_f32_biteq!((-0.0f32).next_down(), -tiny);
-    assert_f32_biteq!((0.0f32).next_down(), -tiny);
-    assert_f32_biteq!(tiny.next_down(), 0.0f32);
-    assert_f32_biteq!(tiny_up.next_down(), tiny);
-    assert_f32_biteq!(smallest_normal.next_down(), largest_subnormal);
-    assert_f32_biteq!((1.0 + f32::EPSILON).next_down(), 1.0f32);
-    assert_f32_biteq!(f32::MAX.next_down(), max_down);
-    assert_f32_biteq!(f32::INFINITY.next_down(), f32::MAX);
+    assert_biteq!(f32::NEG_INFINITY.next_down(), f32::NEG_INFINITY);
+    assert_biteq!(f32::MIN.next_down(), f32::NEG_INFINITY);
+    assert_biteq!((-max_down).next_down(), f32::MIN);
+    assert_biteq!((-1.0f32).next_down(), -1.0 - f32::EPSILON);
+    assert_biteq!((-largest_subnormal).next_down(), -smallest_normal);
+    assert_biteq!((-tiny).next_down(), -tiny_up);
+    assert_biteq!((-0.0f32).next_down(), -tiny);
+    assert_biteq!((0.0f32).next_down(), -tiny);
+    assert_biteq!(tiny.next_down(), 0.0f32);
+    assert_biteq!(tiny_up.next_down(), tiny);
+    assert_biteq!(smallest_normal.next_down(), largest_subnormal);
+    assert_biteq!((1.0 + f32::EPSILON).next_down(), 1.0f32);
+    assert_biteq!(f32::MAX.next_down(), max_down);
+    assert_biteq!(f32::INFINITY.next_down(), f32::MAX);
 
     // Check that NaNs roundtrip.
     let nan0 = f32::NAN;
     let nan1 = f32::from_bits(f32::NAN.to_bits() ^ NAN_MASK1);
     let nan2 = f32::from_bits(f32::NAN.to_bits() ^ NAN_MASK2);
-    assert_f32_biteq!(nan0.next_down(), nan0);
-    assert_f32_biteq!(nan1.next_down(), nan1);
-    assert_f32_biteq!(nan2.next_down(), nan2);
+    assert_biteq!(nan0.next_down(), nan0);
+    assert_biteq!(nan1.next_down(), nan1);
+    assert_biteq!(nan2.next_down(), nan2);
 }
 
 // FIXME(#140515): mingw has an incorrect fma https://sourceforge.net/p/mingw-w64/bugs/848/
@@ -417,15 +407,15 @@ fn test_mul_add() {
     let nan: f32 = f32::NAN;
     let inf: f32 = f32::INFINITY;
     let neg_inf: f32 = f32::NEG_INFINITY;
-    assert_approx_eq!(f32::math::mul_add(12.3f32, 4.5, 6.7), 62.05);
-    assert_approx_eq!(f32::math::mul_add(-12.3f32, -4.5, -6.7), 48.65);
-    assert_approx_eq!(f32::math::mul_add(0.0f32, 8.9, 1.2), 1.2);
-    assert_approx_eq!(f32::math::mul_add(3.4f32, -0.0, 5.6), 5.6);
+    assert_biteq!(f32::math::mul_add(12.3f32, 4.5, 6.7), 62.05);
+    assert_biteq!(f32::math::mul_add(-12.3f32, -4.5, -6.7), 48.65);
+    assert_biteq!(f32::math::mul_add(0.0f32, 8.9, 1.2), 1.2);
+    assert_biteq!(f32::math::mul_add(3.4f32, -0.0, 5.6), 5.6);
     assert!(f32::math::mul_add(nan, 7.8, 9.0).is_nan());
-    assert_eq!(f32::math::mul_add(inf, 7.8, 9.0), inf);
-    assert_eq!(f32::math::mul_add(neg_inf, 7.8, 9.0), neg_inf);
-    assert_eq!(f32::math::mul_add(8.9f32, inf, 3.2), inf);
-    assert_eq!(f32::math::mul_add(-3.2f32, 2.4, neg_inf), neg_inf);
+    assert_biteq!(f32::math::mul_add(inf, 7.8, 9.0), inf);
+    assert_biteq!(f32::math::mul_add(neg_inf, 7.8, 9.0), neg_inf);
+    assert_biteq!(f32::math::mul_add(8.9f32, inf, 3.2), inf);
+    assert_biteq!(f32::math::mul_add(-3.2f32, 2.4, neg_inf), neg_inf);
 }
 
 #[test]
@@ -433,13 +423,13 @@ fn test_recip() {
     let nan: f32 = f32::NAN;
     let inf: f32 = f32::INFINITY;
     let neg_inf: f32 = f32::NEG_INFINITY;
-    assert_eq!(1.0f32.recip(), 1.0);
-    assert_eq!(2.0f32.recip(), 0.5);
-    assert_eq!((-0.4f32).recip(), -2.5);
-    assert_eq!(0.0f32.recip(), inf);
+    assert_biteq!(1.0f32.recip(), 1.0);
+    assert_biteq!(2.0f32.recip(), 0.5);
+    assert_biteq!((-0.4f32).recip(), -2.5);
+    assert_biteq!(0.0f32.recip(), inf);
     assert!(nan.recip().is_nan());
-    assert_eq!(inf.recip(), 0.0);
-    assert_eq!(neg_inf.recip(), 0.0);
+    assert_biteq!(inf.recip(), 0.0);
+    assert_biteq!(neg_inf.recip(), -0.0);
 }
 
 #[test]
@@ -447,13 +437,13 @@ fn test_powi() {
     let nan: f32 = f32::NAN;
     let inf: f32 = f32::INFINITY;
     let neg_inf: f32 = f32::NEG_INFINITY;
-    assert_eq!(1.0f32.powi(1), 1.0);
+    assert_biteq!(1.0f32.powi(1), 1.0);
     assert_approx_eq!((-3.1f32).powi(2), 9.61);
     assert_approx_eq!(5.9f32.powi(-2), 0.028727);
-    assert_eq!(8.3f32.powi(0), 1.0);
+    assert_biteq!(8.3f32.powi(0), 1.0);
     assert!(nan.powi(2).is_nan());
-    assert_eq!(inf.powi(3), inf);
-    assert_eq!(neg_inf.powi(2), inf);
+    assert_biteq!(inf.powi(3), inf);
+    assert_biteq!(neg_inf.powi(2), inf);
 }
 
 #[test]
@@ -461,10 +451,10 @@ fn test_sqrt_domain() {
     assert!(f32::NAN.sqrt().is_nan());
     assert!(f32::NEG_INFINITY.sqrt().is_nan());
     assert!((-1.0f32).sqrt().is_nan());
-    assert_eq!((-0.0f32).sqrt(), -0.0);
-    assert_eq!(0.0f32.sqrt(), 0.0);
-    assert_eq!(1.0f32.sqrt(), 1.0);
-    assert_eq!(f32::INFINITY.sqrt(), f32::INFINITY);
+    assert_biteq!((-0.0f32).sqrt(), -0.0);
+    assert_biteq!(0.0f32.sqrt(), 0.0);
+    assert_biteq!(1.0f32.sqrt(), 1.0);
+    assert_biteq!(f32::INFINITY.sqrt(), f32::INFINITY);
 }
 
 #[test]
@@ -473,13 +463,13 @@ fn test_to_degrees() {
     let nan: f32 = f32::NAN;
     let inf: f32 = f32::INFINITY;
     let neg_inf: f32 = f32::NEG_INFINITY;
-    assert_eq!(0.0f32.to_degrees(), 0.0);
+    assert_biteq!(0.0f32.to_degrees(), 0.0);
     assert_approx_eq!((-5.8f32).to_degrees(), -332.315521);
-    assert_eq!(pi.to_degrees(), 180.0);
+    assert_biteq!(pi.to_degrees(), 180.0);
     assert!(nan.to_degrees().is_nan());
-    assert_eq!(inf.to_degrees(), inf);
-    assert_eq!(neg_inf.to_degrees(), neg_inf);
-    assert_eq!(1_f32.to_degrees(), 57.2957795130823208767981548141051703);
+    assert_biteq!(inf.to_degrees(), inf);
+    assert_biteq!(neg_inf.to_degrees(), neg_inf);
+    assert_biteq!(1_f32.to_degrees(), 57.2957795130823208767981548141051703);
 }
 
 #[test]
@@ -488,13 +478,13 @@ fn test_to_radians() {
     let nan: f32 = f32::NAN;
     let inf: f32 = f32::INFINITY;
     let neg_inf: f32 = f32::NEG_INFINITY;
-    assert_eq!(0.0f32.to_radians(), 0.0);
+    assert_biteq!(0.0f32.to_radians(), 0.0);
     assert_approx_eq!(154.6f32.to_radians(), 2.698279);
     assert_approx_eq!((-332.31f32).to_radians(), -5.799903);
-    assert_eq!(180.0f32.to_radians(), pi);
+    assert_biteq!(180.0f32.to_radians(), pi);
     assert!(nan.to_radians().is_nan());
-    assert_eq!(inf.to_radians(), inf);
-    assert_eq!(neg_inf.to_radians(), neg_inf);
+    assert_biteq!(inf.to_radians(), inf);
+    assert_biteq!(neg_inf.to_radians(), neg_inf);
 }
 
 #[test]
@@ -503,10 +493,10 @@ fn test_float_bits_conv() {
     assert_eq!((12.5f32).to_bits(), 0x41480000);
     assert_eq!((1337f32).to_bits(), 0x44a72000);
     assert_eq!((-14.25f32).to_bits(), 0xc1640000);
-    assert_approx_eq!(f32::from_bits(0x3f800000), 1.0);
-    assert_approx_eq!(f32::from_bits(0x41480000), 12.5);
-    assert_approx_eq!(f32::from_bits(0x44a72000), 1337.0);
-    assert_approx_eq!(f32::from_bits(0xc1640000), -14.25);
+    assert_biteq!(f32::from_bits(0x3f800000), 1.0);
+    assert_biteq!(f32::from_bits(0x41480000), 12.5);
+    assert_biteq!(f32::from_bits(0x44a72000), 1337.0);
+    assert_biteq!(f32::from_bits(0xc1640000), -14.25);
 
     // Check that NaNs roundtrip their bits regardless of signaling-ness
     // 0xA is 0b1010; 0x5 is 0b0101 -- so these two together clobbers all the mantissa bits

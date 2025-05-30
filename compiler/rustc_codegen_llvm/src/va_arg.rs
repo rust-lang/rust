@@ -1,7 +1,10 @@
-use rustc_abi::{Align, Endian, HasDataLayout, Size};
+use rustc_abi::{Align, BackendRepr, Endian, HasDataLayout, Primitive, Size, TyAndLayout};
+use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::mir::operand::OperandRef;
-use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods};
+use rustc_codegen_ssa::traits::{
+    BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods, LayoutTypeCodegenMethods,
+};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 
@@ -303,6 +306,313 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     bx.load(val_type, val_addr, layout.align.abi)
 }
 
+fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    list: OperandRef<'tcx, &'ll Value>,
+    target_ty: Ty<'tcx>,
+) -> &'ll Value {
+    let dl = bx.cx.data_layout();
+
+    // Implementation of the systemv x86_64 ABI calling convention for va_args, see
+    // https://gitlab.com/x86-psABIs/x86-64-ABI (section 3.5.7). This implementation is heavily
+    // based on the one in clang.
+
+    // We're able to take some shortcuts because the return type of `va_arg` must implement the
+    // `VaArgSafe` trait. Currently, only pointers, f64, i32, u32, i64 and u64 implement this trait.
+
+    // typedef struct __va_list_tag {
+    //     unsigned int gp_offset;
+    //     unsigned int fp_offset;
+    //     void *overflow_arg_area;
+    //     void *reg_save_area;
+    // } va_list[1];
+    let va_list_addr = list.immediate();
+
+    // Peel off any newtype wrappers.
+    //
+    // The "C" ABI does not unwrap newtypes (see `ReprOptions::inhibit_newtype_abi_optimization`).
+    // Here, we do actually want the unwrapped representation, because that is how LLVM/Clang
+    // pass such types to variadic functions.
+    //
+    // An example of a type that must be unwrapped is `Foo` below. Without the unwrapping, it has
+    // `BackendRepr::Memory`, but we need it to be `BackendRepr::Scalar` to generate correct code.
+    //
+    // ```
+    // #[repr(C)]
+    // struct Empty;
+    //
+    // #[repr(C)]
+    // struct Foo([Empty; 8], i32);
+    // ```
+    let layout = {
+        let mut layout = bx.cx.layout_of(target_ty);
+
+        while let Some((_, inner)) = layout.non_1zst_field(bx.cx) {
+            layout = inner;
+        }
+
+        layout
+    };
+
+    // AMD64-ABI 3.5.7p5: Step 1. Determine whether type may be passed
+    // in the registers. If not go to step 7.
+
+    // AMD64-ABI 3.5.7p5: Step 2. Compute num_gp to hold the number of
+    // general purpose registers needed to pass type and num_fp to hold
+    // the number of floating point registers needed.
+
+    let mut num_gp_registers = 0;
+    let mut num_fp_registers = 0;
+
+    let mut registers_for_primitive = |p| match p {
+        Primitive::Int(integer, _is_signed) => {
+            num_gp_registers += integer.size().bytes().div_ceil(8) as u32;
+        }
+        Primitive::Float(float) => {
+            num_fp_registers += float.size().bytes().div_ceil(16) as u32;
+        }
+        Primitive::Pointer(_) => {
+            num_gp_registers += 1;
+        }
+    };
+
+    match layout.layout.backend_repr() {
+        BackendRepr::Scalar(scalar) => {
+            registers_for_primitive(scalar.primitive());
+        }
+        BackendRepr::ScalarPair(scalar1, scalar2) => {
+            registers_for_primitive(scalar1.primitive());
+            registers_for_primitive(scalar2.primitive());
+        }
+        BackendRepr::SimdVector { .. } => {
+            // Because no instance of VaArgSafe uses a non-scalar `BackendRepr`.
+            unreachable!(
+                "No x86-64 SysV va_arg implementation for {:?}",
+                layout.layout.backend_repr()
+            )
+        }
+        BackendRepr::Memory { .. } => {
+            let mem_addr = x86_64_sysv64_va_arg_from_memory(bx, va_list_addr, layout);
+            return bx.load(layout.llvm_type(bx), mem_addr, layout.align.abi);
+        }
+    };
+
+    // AMD64-ABI 3.5.7p5: Step 3. Verify whether arguments fit into
+    // registers. In the case: l->gp_offset > 48 - num_gp * 8 or
+    // l->fp_offset > 176 - num_fp * 16 go to step 7.
+
+    let unsigned_int_offset = 4;
+    let ptr_offset = 8;
+    let gp_offset_ptr = va_list_addr;
+    let fp_offset_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(unsigned_int_offset));
+
+    let gp_offset_v = bx.load(bx.type_i32(), gp_offset_ptr, Align::from_bytes(8).unwrap());
+    let fp_offset_v = bx.load(bx.type_i32(), fp_offset_ptr, Align::from_bytes(4).unwrap());
+
+    let mut use_regs = bx.const_bool(false);
+
+    if num_gp_registers > 0 {
+        let max_offset_val = 48u32 - num_gp_registers * 8;
+        let fits_in_gp = bx.icmp(IntPredicate::IntULE, gp_offset_v, bx.const_u32(max_offset_val));
+        use_regs = fits_in_gp;
+    }
+
+    if num_fp_registers > 0 {
+        let max_offset_val = 176u32 - num_fp_registers * 16;
+        let fits_in_fp = bx.icmp(IntPredicate::IntULE, fp_offset_v, bx.const_u32(max_offset_val));
+        use_regs = if num_gp_registers > 0 { bx.and(use_regs, fits_in_fp) } else { fits_in_fp };
+    }
+
+    let in_reg = bx.append_sibling_block("va_arg.in_reg");
+    let in_mem = bx.append_sibling_block("va_arg.in_mem");
+    let end = bx.append_sibling_block("va_arg.end");
+
+    bx.cond_br(use_regs, in_reg, in_mem);
+
+    // Emit code to load the value if it was passed in a register.
+    bx.switch_to_block(in_reg);
+
+    // AMD64-ABI 3.5.7p5: Step 4. Fetch type from l->reg_save_area with
+    // an offset of l->gp_offset and/or l->fp_offset. This may require
+    // copying to a temporary location in case the parameter is passed
+    // in different register classes or requires an alignment greater
+    // than 8 for general purpose registers and 16 for XMM registers.
+    //
+    // FIXME(llvm): This really results in shameful code when we end up needing to
+    // collect arguments from different places; often what should result in a
+    // simple assembling of a structure from scattered addresses has many more
+    // loads than necessary. Can we clean this up?
+    let reg_save_area_ptr =
+        bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(2 * unsigned_int_offset + ptr_offset));
+    let reg_save_area_v = bx.load(bx.type_ptr(), reg_save_area_ptr, dl.pointer_align.abi);
+
+    let reg_addr = match layout.layout.backend_repr() {
+        BackendRepr::Scalar(scalar) => match scalar.primitive() {
+            Primitive::Int(_, _) | Primitive::Pointer(_) => {
+                let reg_addr = bx.inbounds_ptradd(reg_save_area_v, gp_offset_v);
+
+                // Copy into a temporary if the type is more aligned than the register save area.
+                let gp_align = Align::from_bytes(8).unwrap();
+                copy_to_temporary_if_more_aligned(bx, reg_addr, layout, gp_align)
+            }
+            Primitive::Float(_) => bx.inbounds_ptradd(reg_save_area_v, fp_offset_v),
+        },
+        BackendRepr::ScalarPair(scalar1, scalar2) => {
+            let ty_lo = bx.cx().scalar_pair_element_backend_type(layout, 0, false);
+            let ty_hi = bx.cx().scalar_pair_element_backend_type(layout, 1, false);
+
+            let align_lo = layout.field(bx.cx, 0).layout.align().abi;
+            let align_hi = layout.field(bx.cx, 1).layout.align().abi;
+
+            match (scalar1.primitive(), scalar2.primitive()) {
+                (Primitive::Float(_), Primitive::Float(_)) => {
+                    // SSE registers are spaced 16 bytes apart in the register save
+                    // area, we need to collect the two eightbytes together.
+                    // The ABI isn't explicit about this, but it seems reasonable
+                    // to assume that the slots are 16-byte aligned, since the stack is
+                    // naturally 16-byte aligned and the prologue is expected to store
+                    // all the SSE registers to the RSA.
+                    let reg_lo_addr = bx.inbounds_ptradd(reg_save_area_v, fp_offset_v);
+                    let reg_hi_addr = bx.inbounds_ptradd(reg_lo_addr, bx.const_i32(16));
+
+                    let align = layout.layout.align().abi;
+                    let tmp = bx.alloca(layout.layout.size(), align);
+
+                    let reg_lo = bx.load(ty_lo, reg_lo_addr, align_lo);
+                    let reg_hi = bx.load(ty_hi, reg_hi_addr, align_hi);
+
+                    let offset = scalar1.size(bx.cx).align_to(align_hi).bytes();
+                    let field0 = tmp;
+                    let field1 = bx.inbounds_ptradd(tmp, bx.const_u32(offset as u32));
+
+                    bx.store(reg_lo, field0, align);
+                    bx.store(reg_hi, field1, align);
+
+                    tmp
+                }
+                (Primitive::Float(_), _) | (_, Primitive::Float(_)) => {
+                    let gp_addr = bx.inbounds_ptradd(reg_save_area_v, gp_offset_v);
+                    let fp_addr = bx.inbounds_ptradd(reg_save_area_v, fp_offset_v);
+
+                    let (reg_lo_addr, reg_hi_addr) = match scalar1.primitive() {
+                        Primitive::Float(_) => (fp_addr, gp_addr),
+                        Primitive::Int(_, _) | Primitive::Pointer(_) => (gp_addr, fp_addr),
+                    };
+
+                    let tmp = bx.alloca(layout.layout.size(), layout.layout.align().abi);
+
+                    let reg_lo = bx.load(ty_lo, reg_lo_addr, align_lo);
+                    let reg_hi = bx.load(ty_hi, reg_hi_addr, align_hi);
+
+                    let offset = scalar1.size(bx.cx).align_to(align_hi).bytes();
+                    let field0 = tmp;
+                    let field1 = bx.inbounds_ptradd(tmp, bx.const_u32(offset as u32));
+
+                    bx.store(reg_lo, field0, align_lo);
+                    bx.store(reg_hi, field1, align_hi);
+
+                    tmp
+                }
+                (_, _) => {
+                    // Two integer/pointer values are just contiguous in memory.
+                    let reg_addr = bx.inbounds_ptradd(reg_save_area_v, gp_offset_v);
+
+                    // Copy into a temporary if the type is more aligned than the register save area.
+                    let gp_align = Align::from_bytes(8).unwrap();
+                    copy_to_temporary_if_more_aligned(bx, reg_addr, layout, gp_align)
+                }
+            }
+        }
+        // The Previous match on `BackendRepr` means control flow already escaped.
+        BackendRepr::SimdVector { .. } | BackendRepr::Memory { .. } => unreachable!(),
+    };
+
+    // AMD64-ABI 3.5.7p5: Step 5. Set:
+    // l->gp_offset = l->gp_offset + num_gp * 8
+    if num_gp_registers > 0 {
+        let offset = bx.const_u32(num_gp_registers * 8);
+        let sum = bx.add(gp_offset_v, offset);
+        // An alignment of 8 because `__va_list_tag` is 8-aligned and this is its first field.
+        bx.store(sum, gp_offset_ptr, Align::from_bytes(8).unwrap());
+    }
+
+    // l->fp_offset = l->fp_offset + num_fp * 16.
+    if num_fp_registers > 0 {
+        let offset = bx.const_u32(num_fp_registers * 16);
+        let sum = bx.add(fp_offset_v, offset);
+        bx.store(sum, fp_offset_ptr, Align::from_bytes(4).unwrap());
+    }
+
+    bx.br(end);
+
+    bx.switch_to_block(in_mem);
+    let mem_addr = x86_64_sysv64_va_arg_from_memory(bx, va_list_addr, layout);
+    bx.br(end);
+
+    bx.switch_to_block(end);
+
+    let val_type = layout.llvm_type(bx);
+    let val_addr = bx.phi(bx.type_ptr(), &[reg_addr, mem_addr], &[in_reg, in_mem]);
+
+    bx.load(val_type, val_addr, layout.align.abi)
+}
+
+/// Copy into a temporary if the type is more aligned than the register save area.
+fn copy_to_temporary_if_more_aligned<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    reg_addr: &'ll Value,
+    layout: TyAndLayout<'tcx, Ty<'tcx>>,
+    src_align: Align,
+) -> &'ll Value {
+    if layout.layout.align.abi > src_align {
+        let tmp = bx.alloca(layout.layout.size(), layout.layout.align().abi);
+        bx.memcpy(
+            tmp,
+            layout.layout.align.abi,
+            reg_addr,
+            src_align,
+            bx.const_u32(layout.layout.size().bytes() as u32),
+            MemFlags::empty(),
+        );
+        tmp
+    } else {
+        reg_addr
+    }
+}
+
+fn x86_64_sysv64_va_arg_from_memory<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    va_list_addr: &'ll Value,
+    layout: TyAndLayout<'tcx, Ty<'tcx>>,
+) -> &'ll Value {
+    let dl = bx.cx.data_layout();
+
+    let overflow_arg_area_ptr = bx.inbounds_ptradd(va_list_addr, bx.const_usize(8));
+
+    let overflow_arg_area_v = bx.load(bx.type_ptr(), overflow_arg_area_ptr, dl.pointer_align.abi);
+    // AMD64-ABI 3.5.7p5: Step 7. Align l->overflow_arg_area upwards to a 16
+    // byte boundary if alignment needed by type exceeds 8 byte boundary.
+    // It isn't stated explicitly in the standard, but in practice we use
+    // alignment greater than 16 where necessary.
+    if layout.layout.align.abi.bytes() > 8 {
+        unreachable!("all instances of VaArgSafe have an alignment <= 8");
+    }
+
+    // AMD64-ABI 3.5.7p5: Step 8. Fetch type from l->overflow_arg_area.
+    let mem_addr = overflow_arg_area_v;
+
+    // AMD64-ABI 3.5.7p5: Step 9. Set l->overflow_arg_area to:
+    // l->overflow_arg_area + sizeof(type).
+    // AMD64-ABI 3.5.7p5: Step 10. Align l->overflow_arg_area upwards to
+    // an 8 byte boundary.
+    let size_in_bytes = layout.layout.size().bytes();
+    let offset = bx.const_i32(size_in_bytes.next_multiple_of(8) as i32);
+    let overflow_arg_area = bx.inbounds_ptradd(overflow_arg_area_v, offset);
+    bx.store(overflow_arg_area, overflow_arg_area_ptr, dl.pointer_align.abi);
+
+    mem_addr
+}
+
 fn emit_xtensa_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     list: OperandRef<'tcx, &'ll Value>,
@@ -334,8 +644,7 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     // (*va).va_ndx
     let va_reg_offset = 4;
     let va_ndx_offset = va_reg_offset + 4;
-    let offset_ptr =
-        bx.inbounds_gep(bx.type_i8(), va_list_addr, &[bx.cx.const_usize(va_ndx_offset)]);
+    let offset_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(va_ndx_offset));
 
     let offset = bx.load(bx.type_i32(), offset_ptr, bx.tcx().data_layout.i32_align.abi);
     let offset = round_up_to_alignment(bx, offset, layout.align.abi);
@@ -356,11 +665,10 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     bx.store(offset_next, offset_ptr, bx.tcx().data_layout.pointer_align.abi);
 
     // (*va).va_reg
-    let regsave_area_ptr =
-        bx.inbounds_gep(bx.type_i8(), va_list_addr, &[bx.cx.const_usize(va_reg_offset)]);
+    let regsave_area_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(va_reg_offset));
     let regsave_area =
         bx.load(bx.type_ptr(), regsave_area_ptr, bx.tcx().data_layout.pointer_align.abi);
-    let regsave_value_ptr = bx.inbounds_gep(bx.type_i8(), regsave_area, &[offset]);
+    let regsave_value_ptr = bx.inbounds_ptradd(regsave_area, offset);
     bx.br(end);
 
     bx.switch_to_block(from_stack);
@@ -381,9 +689,9 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     bx.store(offset_next_corrected, offset_ptr, bx.tcx().data_layout.pointer_align.abi);
 
     // let stack_value_ptr = unsafe { (*va).va_stk.byte_add(offset_corrected) };
-    let stack_area_ptr = bx.inbounds_gep(bx.type_i8(), va_list_addr, &[bx.cx.const_usize(0)]);
+    let stack_area_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(0));
     let stack_area = bx.load(bx.type_ptr(), stack_area_ptr, bx.tcx().data_layout.pointer_align.abi);
-    let stack_value_ptr = bx.inbounds_gep(bx.type_i8(), stack_area, &[offset_corrected]);
+    let stack_value_ptr = bx.inbounds_ptradd(stack_area, offset_corrected);
     bx.br(end);
 
     bx.switch_to_block(end);
@@ -449,6 +757,8 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
                 AllowHigherAlign::No,
             )
         }
+        // This includes `target.is_like_darwin`, which on x86_64 targets is like sysv64.
+        "x86_64" => emit_x86_64_sysv64_va_arg(bx, addr, target_ty),
         "xtensa" => emit_xtensa_va_arg(bx, addr, target_ty),
         // For all other architecture/OS combinations fall back to using
         // the LLVM va_arg instruction.

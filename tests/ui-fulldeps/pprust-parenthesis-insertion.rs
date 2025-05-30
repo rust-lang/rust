@@ -42,7 +42,7 @@ use std::process::ExitCode;
 
 use parser::parse_expr;
 use rustc_ast::ast::{Expr, ExprKind};
-use rustc_ast::mut_visit::{self, DummyAstNode as _, MutVisitor};
+use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast_pretty::pprust;
 use rustc_session::parse::ParseSess;
@@ -154,7 +154,7 @@ struct Unparenthesize;
 impl MutVisitor for Unparenthesize {
     fn visit_expr(&mut self, e: &mut P<Expr>) {
         while let ExprKind::Paren(paren) = &mut e.kind {
-            **e = mem::replace(&mut *paren, Expr::dummy());
+            *e = mem::replace(paren, Expr::dummy());
         }
         mut_visit::walk_expr(self, e);
     }
