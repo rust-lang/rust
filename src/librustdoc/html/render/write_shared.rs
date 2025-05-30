@@ -653,7 +653,7 @@ impl TypeAliasPart {
                                 },
                             )
                             .to_string();
-                            // The alternate display disables html escaping of '<' and '>'.
+                            // The alternate display prints it as plaintext instead of HTML.
                             let trait_ = impl_
                                 .inner_impl()
                                 .trait_

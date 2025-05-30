@@ -12,7 +12,7 @@ use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
 use std::slice;
 
-use itertools::Either;
+use itertools::{Either, Itertools};
 use rustc_abi::ExternAbi;
 use rustc_attr_data_structures::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashSet;
@@ -1118,8 +1118,8 @@ impl clean::Impl {
                     write!(f, "!")?;
                 }
                 if self.kind.is_fake_variadic()
-                    && let Some(mut generics) = ty.generics()
-                    && let (Some(inner_type), None) = (generics.next(), generics.next())
+                    && let Some(generics) = ty.generics()
+                    && let Ok(inner_type) = generics.exactly_one()
                 {
                     let last = ty.last();
                     if f.alternate() {
@@ -1197,8 +1197,8 @@ impl clean::Impl {
                 fmt_type(&bare_fn.decl.output, f, use_absolute, cx)?;
             }
         } else if let clean::Type::Path { path } = type_
-            && let Some(mut generics) = path.generics()
-            && let (Some(ty), None) = (generics.next(), generics.next())
+            && let Some(generics) = path.generics()
+            && let Ok(ty) = generics.exactly_one()
             && self.kind.is_fake_variadic()
         {
             let wrapper = print_anchor(path.def_id(), path.last(), cx);
