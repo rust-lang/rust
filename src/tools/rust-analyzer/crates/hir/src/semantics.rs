@@ -222,6 +222,21 @@ impl<DB: HirDatabase> Semantics<'_, DB> {
         self.imp.descend_node_at_offset(node, offset).filter_map(|mut it| it.find_map(N::cast))
     }
 
+    // FIXME: Rethink this API
+    pub fn find_namelike_at_offset_with_descend<'slf>(
+        &'slf self,
+        node: &SyntaxNode,
+        offset: TextSize,
+    ) -> impl Iterator<Item = ast::NameLike> + 'slf {
+        node.token_at_offset(offset)
+            .map(move |token| self.descend_into_macros_no_opaque(token))
+            .map(|descendants| descendants.into_iter().filter_map(move |it| it.value.parent()))
+            // re-order the tokens from token_at_offset by returning the ancestors with the smaller first nodes first
+            // See algo::ancestors_at_offset, which uses the same approach
+            .kmerge_by(|left, right| left.text_range().len().lt(&right.text_range().len()))
+            .filter_map(ast::NameLike::cast)
+    }
+
     pub fn resolve_range_pat(&self, range_pat: &ast::RangePat) -> Option<Struct> {
         self.imp.resolve_range_pat(range_pat).map(Struct::from)
     }
