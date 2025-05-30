@@ -1778,7 +1778,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                     self.zext_i1_vector_to_int(val, src_ty, dest_ty)
                 }
             }
-            _ => unreachable!(),
+            _ => self.bitcast(val, dest_ty), // for `bf16(xN)` <-> `u16(xN)`
         }
     }
 

@@ -376,6 +376,8 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         }
 
         match self.type_kind(llvm_ty) {
+            TypeKind::BFloat => rust_ty == self.type_i16(),
+
             // Some LLVM intrinsics return **non-packed** structs, but they can't be mimicked from Rust
             // due to auto field-alignment in non-packed structs (packed structs are represented in LLVM
             // as, well, packed structs, so they won't match with those either)
@@ -393,11 +395,18 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
                     },
                 )
             }
-            TypeKind::Vector if self.element_type(llvm_ty) == self.type_i1() => {
+            TypeKind::Vector => {
                 let element_count = self.vector_length(llvm_ty) as u64;
-                let int_width = element_count.next_power_of_two().max(8);
+                let llvm_element_ty = self.element_type(llvm_ty);
 
-                rust_ty == self.type_ix(int_width)
+                if llvm_element_ty == self.type_bf16() {
+                    rust_ty == self.type_vector(self.type_i16(), element_count)
+                } else if llvm_element_ty == self.type_i1() {
+                    let int_width = element_count.next_power_of_two().max(8);
+                    rust_ty == self.type_ix(int_width)
+                } else {
+                    false
+                }
             }
             _ => false,
         }
