@@ -6,12 +6,31 @@
 
 use std::simd::{f32x4, i16x8, i64x2};
 
+#[repr(simd)]
+pub struct Tile([i8; 1024]);
+
 #[repr(C, packed)]
 pub struct Bar(u32, i64x2, i64x2, i64x2, i64x2, i64x2, i64x2);
 // CHECK: %Bar = type <{ i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> }>
 
 #[repr(simd)]
 pub struct f16x8([f16; 8]);
+
+// CHECK-LABEL: @amx_autocast
+#[no_mangle]
+pub unsafe fn amx_autocast(m: u16, n: u16, k: u16, a: Tile, b: Tile, c: Tile) -> Tile {
+    extern "unadjusted" {
+        #[link_name = "llvm.x86.tdpbuud.internal"]
+        fn foo(m: u16, n: u16, k: u16, a: Tile, b: Tile, c: Tile) -> Tile;
+    }
+
+    // CHECK: %3 = call x86_amx @llvm.x86.cast.vector.to.tile.v1024i8(<1024 x i8> %0)
+    // CHECK-NEXT: %4 = call x86_amx @llvm.x86.cast.vector.to.tile.v1024i8(<1024 x i8> %1)
+    // CHECK-NEXT: %5 = call x86_amx @llvm.x86.cast.vector.to.tile.v1024i8(<1024 x i8> %2)
+    // CHECK-NEXT: %6 = call x86_amx @llvm.x86.tdpbuud.internal(i16 %m, i16 %n, i16 %k, x86_amx %3, x86_amx %4, x86_amx %5)
+    // CHECK-NEXT: %7 = call <1024 x i8> @llvm.x86.cast.tile.to.vector.v1024i8(x86_amx %6)
+    foo(m, n, k, a, b, c)
+}
 
 // CHECK-LABEL: @struct_with_i1_vector_autocast
 #[no_mangle]
@@ -84,6 +103,12 @@ pub unsafe fn i1_vector_autocast(a: f16x8) -> u8 {
     // CHECK-NEXT: %_0 = bitcast <8 x i1> %0 to i8
     foo(a, 1)
 }
+
+// CHECK: declare x86_amx @llvm.x86.tdpbuud.internal(i16, i16, i16, x86_amx, x86_amx, x86_amx)
+
+// CHECK: declare x86_amx @llvm.x86.cast.vector.to.tile.v1024i8(<1024 x i8>)
+
+// CHECK: declare <1024 x i8> @llvm.x86.cast.tile.to.vector.v1024i8(x86_amx)
 
 // CHECK: declare { <2 x i1>, <2 x i1> } @llvm.x86.avx512.vp2intersect.q.128(<2 x i64>, <2 x i64>)
 
