@@ -1,0 +1,4 @@
+error: Invalid LLVM intrinsic: `llvm.abcde`
+
+error: aborting due to 1 previous error
+
