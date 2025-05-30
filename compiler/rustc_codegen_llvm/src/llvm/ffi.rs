@@ -1050,6 +1050,9 @@ unsafe extern "C" {
     pub(crate) fn LLVMDoubleTypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMFP128TypeInContext(C: &Context) -> &Type;
 
+    // Operations on non-IEEE real types
+    pub(crate) fn LLVMBFloatTypeInContext(C: &Context) -> &Type;
+
     // Operations on function types
     pub(crate) fn LLVMFunctionType<'a>(
         ReturnType: &'a Type,
