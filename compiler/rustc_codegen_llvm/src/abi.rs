@@ -368,6 +368,9 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
 
                 if llvm_element_ty == self.type_bf16() {
                     rust_ty == self.type_vector(self.type_i16(), llvm_element_count)
+                } else if llvm_element_ty == self.type_i1() {
+                    let int_width = cmp::max(llvm_element_count.next_power_of_two(), 8);
+                    rust_ty == self.type_ix(int_width)
                 } else {
                     false
                 }
