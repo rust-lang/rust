@@ -1604,6 +1604,14 @@ pub(crate) fn impl_self_ty_with_diagnostics_query(
     )
 }
 
+pub(crate) fn impl_self_ty_with_diagnostics_cycle_result(
+    db: &dyn HirDatabase,
+    impl_id: ImplId,
+) -> (Binders<Ty>, Diagnostics) {
+    let generics = generics(db, impl_id.into());
+    (make_binders(db, &generics, TyKind::Error.intern(Interner)), None)
+}
+
 pub(crate) fn const_param_ty_query(db: &dyn HirDatabase, def: ConstParamId) -> Ty {
     db.const_param_ty_with_diagnostics(def).0
 }
@@ -1633,12 +1641,12 @@ pub(crate) fn const_param_ty_with_diagnostics_query(
     (ty, create_diagnostics(ctx.diagnostics))
 }
 
-pub(crate) fn impl_self_ty_with_diagnostics_cycle_result(
-    db: &dyn HirDatabase,
-    impl_id: ImplId,
-) -> (Binders<Ty>, Diagnostics) {
-    let generics = generics(db, impl_id.into());
-    (make_binders(db, &generics, TyKind::Error.intern(Interner)), None)
+pub(crate) fn const_param_ty_with_diagnostics_cycle_result(
+    _: &dyn HirDatabase,
+    _: crate::db::HirDatabaseData,
+    _: ConstParamId,
+) -> (Ty, Diagnostics) {
+    (TyKind::Error.intern(Interner), None)
 }
 
 pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<Binders<TraitRef>> {
