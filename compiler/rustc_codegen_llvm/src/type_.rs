@@ -168,6 +168,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
             )
         }
     }
+
+    pub(crate) fn type_bf16(&self) -> &'ll Type {
+        unsafe { llvm::LLVMBFloatTypeInContext(self.llcx()) }
+    }
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
@@ -241,7 +245,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
 
     fn float_width(&self, ty: &'ll Type) -> usize {
         match self.type_kind(ty) {
-            TypeKind::Half => 16,
+            TypeKind::Half | TypeKind::BFloat => 16,
             TypeKind::Float => 32,
             TypeKind::Double => 64,
             TypeKind::X86_FP80 => 80,
