@@ -1118,7 +1118,6 @@ class RustBuild(object):
         if "RUSTFLAGS_BOOTSTRAP" in env:
             env["RUSTFLAGS"] += " " + env["RUSTFLAGS_BOOTSTRAP"]
 
-        env["PATH"] = os.path.join(self.bin_root(), "bin") + os.pathsep + env["PATH"]
         if not os.path.isfile(self.cargo()):
             raise Exception("no cargo executable found at `{}`".format(self.cargo()))
         args = [
