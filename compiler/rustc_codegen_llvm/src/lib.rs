@@ -341,16 +341,11 @@ impl CodegenBackend for LlvmCodegenBackend {
         target_config(sess)
     }
 
-    fn codegen_crate<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        metadata: Option<&EncodedMetadata>,
-    ) -> Box<dyn Any> {
+    fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
         Box::new(rustc_codegen_ssa::base::codegen_crate(
             LlvmCodegenBackend(()),
             tcx,
             crate::llvm_util::target_cpu(tcx.sess).to_string(),
-            metadata,
         ))
     }
 

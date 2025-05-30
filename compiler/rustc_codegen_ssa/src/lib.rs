@@ -170,7 +170,6 @@ pub(crate) struct CachedModuleCodegen {
 #[derive(Copy, Clone, Debug, PartialEq, Encodable, Decodable)]
 pub enum ModuleKind {
     Regular,
-    Metadata,
     Allocator,
 }
 
@@ -234,6 +233,7 @@ pub struct CrateInfo {
     pub windows_subsystem: Option<String>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
     pub lint_levels: CodegenLintLevels,
+    pub metadata_symbol: String,
 }
 
 /// Target-specific options that get set in `cfg(...)`.
@@ -258,7 +258,6 @@ pub struct TargetConfig {
 pub struct CodegenResults {
     pub modules: Vec<CompiledModule>,
     pub allocator_module: Option<CompiledModule>,
-    pub metadata_module: Option<CompiledModule>,
     pub crate_info: CrateInfo,
 }
 

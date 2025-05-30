@@ -1136,12 +1136,9 @@ pub(crate) fn start_codegen<'tcx>(
 
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
-    let (metadata, need_metadata_module) = rustc_metadata::fs::encode_and_write_metadata(tcx);
+    let metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
 
-    let codegen = tcx.sess.time("codegen_crate", || {
-        codegen_backend
-            .codegen_crate(tcx, if need_metadata_module { Some(&metadata) } else { None })
-    });
+    let codegen = tcx.sess.time("codegen_crate", move || codegen_backend.codegen_crate(tcx));
 
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 
