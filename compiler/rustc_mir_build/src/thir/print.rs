@@ -318,6 +318,20 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*body, depth_lvl + 2);
                 print_indented!(self, ")", depth_lvl);
             }
+            LoopMatch { state, region_scope, match_span, arms } => {
+                print_indented!(self, "LoopMatch {", depth_lvl);
+                print_indented!(self, "state:", depth_lvl + 1);
+                self.print_expr(*state, depth_lvl + 2);
+                print_indented!(self, format!("region_scope: {:?}", region_scope), depth_lvl + 1);
+                print_indented!(self, format!("match_span: {:?}", match_span), depth_lvl + 1);
+
+                print_indented!(self, "arms: [", depth_lvl + 1);
+                for arm_id in arms.iter() {
+                    self.print_arm(*arm_id, depth_lvl + 2);
+                }
+                print_indented!(self, "]", depth_lvl + 1);
+                print_indented!(self, "}", depth_lvl);
+            }
             Let { expr, pat } => {
                 print_indented!(self, "Let {", depth_lvl);
                 print_indented!(self, "expr:", depth_lvl + 1);
@@ -414,6 +428,13 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, "Continue {", depth_lvl);
                 print_indented!(self, format!("label: {:?}", label), depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl);
+            }
+            ConstContinue { label, value } => {
+                print_indented!(self, "ConstContinue (", depth_lvl);
+                print_indented!(self, format!("label: {:?}", label), depth_lvl + 1);
+                print_indented!(self, "value:", depth_lvl + 1);
+                self.print_expr(*value, depth_lvl + 2);
+                print_indented!(self, ")", depth_lvl);
             }
             Return { value } => {
                 print_indented!(self, "Return {", depth_lvl);
