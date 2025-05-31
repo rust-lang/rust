@@ -87,6 +87,8 @@ use rustc_session::{EarlyDiagCtxt, getopts};
 use tracing::info;
 
 use crate::clean::utils::DOC_RUST_LANG_ORG_VERSION;
+use crate::error::Error;
+use crate::formats::cache::Cache;
 
 /// A macro to create a FxHashMap.
 ///
@@ -711,6 +713,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information",
             "[rust]",
         ),
+        opt(
+            Unstable,
+            Flag,
+            "",
+            "generate-macro-expansion",
+            "Add possibility to expand macros in the HTML source code pages",
+            "",
+        ),
     ]
 }
 
@@ -733,13 +743,23 @@ pub(crate) fn wrap_return(dcx: DiagCtxtHandle<'_>, res: Result<(), String>) {
     }
 }
 
-fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
+fn run_renderer<
+    'tcx,
+    T: formats::FormatRenderer<'tcx>,
+    F: FnOnce(
+        clean::Crate,
+        config::RenderOptions,
+        Cache,
+        TyCtxt<'tcx>,
+    ) -> Result<(T, clean::Crate), Error>,
+>(
     krate: clean::Crate,
     renderopts: config::RenderOptions,
     cache: formats::cache::Cache,
     tcx: TyCtxt<'tcx>,
+    init: F,
 ) {
-    match formats::run_format::<T>(krate, renderopts, cache, tcx) {
+    match formats::run_format::<T, F>(krate, renderopts, cache, tcx, init) {
         Ok(_) => tcx.dcx().abort_if_errors(),
         Err(e) => {
             let mut msg =
@@ -869,6 +889,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     let scrape_examples_options = options.scrape_examples_options.clone();
     let bin_crate = options.bin_crate;
 
+    let output_format = options.output_format;
     let config = core::create_config(input, options, &render_options);
 
     let registered_lints = config.register_lints.is_some();
@@ -887,9 +908,10 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 sess.dcx().fatal("Compilation failed, aborting rustdoc");
             }
 
-            let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
-                core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
-            });
+            let (krate, render_opts, mut cache, expanded_macros) = sess
+                .time("run_global_ctxt", || {
+                    core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
+                });
             info!("finished with rustc");
 
             if let Some(options) = scrape_examples_options {
@@ -920,10 +942,32 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
             info!("going to format");
             match output_format {
                 config::OutputFormat::Html => sess.time("render_html", || {
-                    run_renderer::<html::render::Context<'_>>(krate, render_opts, cache, tcx)
+                    run_renderer(
+                        krate,
+                        render_opts,
+                        cache,
+                        tcx,
+                        |krate, render_opts, cache, tcx| {
+                            html::render::Context::init(
+                                krate,
+                                render_opts,
+                                cache,
+                                tcx,
+                                expanded_macros,
+                            )
+                        },
+                    )
                 }),
                 config::OutputFormat::Json => sess.time("render_json", || {
-                    run_renderer::<json::JsonRenderer<'_>>(krate, render_opts, cache, tcx)
+                    run_renderer(
+                        krate,
+                        render_opts,
+                        cache,
+                        tcx,
+                        |krate, render_opts, cache, tcx| {
+                            json::JsonRenderer::init(krate, render_opts, cache, tcx)
+                        },
+                    )
                 }),
                 // Already handled above with doctest runners.
                 config::OutputFormat::Doctest => unreachable!(),
