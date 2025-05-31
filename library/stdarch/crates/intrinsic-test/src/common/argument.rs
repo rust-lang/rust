@@ -33,7 +33,7 @@ where
     }
 
     pub fn has_constraint(&self) -> bool {
-        !self.constraint.is_some()
+        self.constraint.is_none()
     }
 
     pub fn type_and_name_from_c(arg: &str) -> (&str, &str) {
@@ -65,7 +65,7 @@ where
     pub fn from_c(
         pos: usize,
         arg: &str,
-        target: &String,
+        target: &str,
         constraint: Option<Constraint>,
     ) -> Argument<T> {
         let (ty, var_name) = Self::type_and_name_from_c(arg);
@@ -127,15 +127,14 @@ where
     /// e.g `const int32x2_t a_vals = {0x3effffff, 0x3effffff, 0x3f7fffff}`, if loads=2.
     pub fn gen_arglists_c(&self, indentation: Indentation, loads: u32) -> String {
         self.iter()
-            .filter_map(|arg| {
-                (!arg.has_constraint()).then(|| {
-                    format!(
-                        "{indentation}const {ty} {name}_vals[] = {values};",
-                        ty = arg.ty.c_scalar_type(),
-                        name = arg.name,
-                        values = arg.ty.populate_random(indentation, loads, &Language::C)
-                    )
-                })
+            .filter(|&arg| !arg.has_constraint())
+            .map(|arg| {
+                format!(
+                    "{indentation}const {ty} {name}_vals[] = {values};",
+                    ty = arg.ty.c_scalar_type(),
+                    name = arg.name,
+                    values = arg.ty.populate_random(indentation, loads, &Language::C)
+                )
             })
             .collect::<Vec<_>>()
             .join("\n")
@@ -145,17 +144,16 @@ where
     /// values can be loaded as a sliding window, e.g `const A_VALS: [u32; 20]  = [...];`
     pub fn gen_arglists_rust(&self, indentation: Indentation, loads: u32) -> String {
         self.iter()
-            .filter_map(|arg| {
-                (!arg.has_constraint()).then(|| {
-                    format!(
-                        "{indentation}{bind} {name}: [{ty}; {load_size}] = {values};",
-                        bind = arg.rust_vals_array_binding(),
-                        name = arg.rust_vals_array_name(),
-                        ty = arg.ty.rust_scalar_type(),
-                        load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
-                        values = arg.ty.populate_random(indentation, loads, &Language::Rust)
-                    )
-                })
+            .filter(|&arg| !arg.has_constraint())
+            .map(|arg| {
+                format!(
+                    "{indentation}{bind} {name}: [{ty}; {load_size}] = {values};",
+                    bind = arg.rust_vals_array_binding(),
+                    name = arg.rust_vals_array_name(),
+                    ty = arg.ty.rust_scalar_type(),
+                    load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
+                    values = arg.ty.populate_random(indentation, loads, &Language::Rust)
+                )
             })
             .collect::<Vec<_>>()
             .join("\n")
@@ -168,22 +166,18 @@ where
     /// ARM-specific
     pub fn load_values_c(&self, indentation: Indentation) -> String {
         self.iter()
-            .filter_map(|arg| {
-                // The ACLE doesn't support 64-bit polynomial loads on Armv7
-                // This and the cast are a workaround for this
-
-                (!arg.has_constraint()).then(|| {
-                    format!(
-                        "{indentation}{ty} {name} = cast<{ty}>({load}(&{name}_vals[i]));\n",
-                        ty = arg.to_c_type(),
-                        name = arg.name,
-                        load = if arg.is_simd() {
-                            arg.ty.get_load_function(Language::C)
-                        } else {
-                            "*".to_string()
-                        }
-                    )
-                })
+            .filter(|&arg| !arg.has_constraint())
+            .map(|arg| {
+                format!(
+                    "{indentation}{ty} {name} = cast<{ty}>({load}(&{name}_vals[i]));\n",
+                    ty = arg.to_c_type(),
+                    name = arg.name,
+                    load = if arg.is_simd() {
+                        arg.ty.get_load_function(Language::C)
+                    } else {
+                        "*".to_string()
+                    }
+                )
             })
             .collect()
     }
@@ -193,19 +187,18 @@ where
     /// e.g `let a = vld1_u8(A_VALS.as_ptr().offset(i));`
     pub fn load_values_rust(&self, indentation: Indentation) -> String {
         self.iter()
-            .filter_map(|arg| {
-                (!arg.has_constraint()).then(|| {
-                    format!(
-                        "{indentation}let {name} = {load}({vals_name}.as_ptr().offset(i));\n",
-                        name = arg.name,
-                        vals_name = arg.rust_vals_array_name(),
-                        load = if arg.is_simd() {
-                            arg.ty.get_load_function(Language::Rust)
-                        } else {
-                            "*".to_string()
-                        },
-                    )
-                })
+            .filter(|&arg| !arg.has_constraint())
+            .map(|arg| {
+                format!(
+                    "{indentation}let {name} = {load}({vals_name}.as_ptr().offset(i));\n",
+                    name = arg.name,
+                    vals_name = arg.rust_vals_array_name(),
+                    load = if arg.is_simd() {
+                        arg.ty.get_load_function(Language::Rust)
+                    } else {
+                        "*".to_string()
+                    },
+                )
             })
             .collect()
     }

@@ -100,14 +100,14 @@ impl ProcessedCli {
         };
 
         Self {
-            toolchain: toolchain,
-            cpp_compiler: cpp_compiler,
-            c_runner: c_runner,
-            target: target,
-            linker: linker,
-            cxx_toolchain_dir: cxx_toolchain_dir,
-            skip: skip,
-            filename: filename,
+            toolchain,
+            cpp_compiler,
+            c_runner,
+            target,
+            linker,
+            cxx_toolchain_dir,
+            skip,
+            filename,
         }
     }
 }

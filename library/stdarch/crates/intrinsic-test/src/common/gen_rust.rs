@@ -130,9 +130,9 @@ pub fn setup_rust_file_paths(identifiers: &Vec<String>) -> BTreeMap<&String, Str
     identifiers
         .par_iter()
         .map(|identifier| {
-            let rust_dir = format!(r#"rust_programs/{}"#, identifier);
+            let rust_dir = format!("rust_programs/{identifier}");
             let _ = std::fs::create_dir_all(&rust_dir);
-            let rust_filename = format!(r#"{rust_dir}/main.rs"#);
+            let rust_filename = format!("{rust_dir}/main.rs");
 
             (identifier, rust_filename)
         })

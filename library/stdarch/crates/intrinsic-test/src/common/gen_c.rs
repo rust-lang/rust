@@ -58,7 +58,7 @@ int main(int argc, char **argv) {{
             .map(|header| format!("#include <{header}>"))
             .collect::<Vec<_>>()
             .join("\n"),
-        arch_specific_definitions = arch_specific_definitions.into_iter().join("\n"),
+        arch_specific_definitions = arch_specific_definitions.join("\n"),
     )
 }
 

@@ -7,7 +7,7 @@ use std::fs::File;
 use std::io::Write;
 
 pub fn write_file(filename: &String, code: String) {
-    let mut file = File::create(&filename).unwrap();
+    let mut file = File::create(filename).unwrap();
     file.write_all(code.into_bytes().as_slice()).unwrap();
 }
 
@@ -34,9 +34,8 @@ pub fn write_c_testfiles<T: IntrinsicTypeDefinition + Sized>(
             notice,
             arch_specific_definitions,
         );
-        match filename_mapping.get(&i.name()) {
-            Some(filename) => write_file(filename, c_code),
-            None => {}
+        if let Some(filename) = filename_mapping.get(&i.name()) {
+            write_file(filename, c_code)
         };
     });
 
@@ -58,9 +57,8 @@ pub fn write_rust_testfiles<T: IntrinsicTypeDefinition>(
 
     intrinsics.iter().for_each(|&i| {
         let rust_code = create_rust_test_program(i, rust_target, notice, definitions, cfg);
-        match filename_mapping.get(&i.name()) {
-            Some(filename) => write_file(filename, rust_code),
-            None => {}
+        if let Some(filename) = filename_mapping.get(&i.name()) {
+            write_file(filename, rust_code)
         }
     });
 

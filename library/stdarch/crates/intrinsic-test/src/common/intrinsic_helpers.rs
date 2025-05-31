@@ -117,11 +117,11 @@ impl IntrinsicType {
     }
 
     pub fn num_lanes(&self) -> u32 {
-        if let Some(sl) = self.simd_len { sl } else { 1 }
+        self.simd_len.unwrap_or(1)
     }
 
     pub fn num_vectors(&self) -> u32 {
-        if let Some(vl) = self.vec_len { vl } else { 1 }
+        self.vec_len.unwrap_or(1)
     }
 
     pub fn is_simd(&self) -> bool {
@@ -266,7 +266,7 @@ impl IntrinsicType {
 
     pub fn as_call_param_c(&self, name: &String) -> String {
         if self.ptr {
-            format!("&{}", name)
+            format!("&{name}")
         } else {
             name.clone()
         }
@@ -282,7 +282,7 @@ pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
     fn get_lane_function(&self) -> String;
 
     /// can be implemented in an `impl` block
-    fn from_c(_s: &str, _target: &String) -> Result<Box<Self>, String>;
+    fn from_c(_s: &str, _target: &str) -> Result<Box<Self>, String>;
 
     /// Gets a string containing the typename for this type in C format.
     /// can be directly defined in `impl` blocks

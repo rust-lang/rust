@@ -2,7 +2,7 @@ use crate::common::compile_c::CompilationCommandBuilder;
 use crate::common::gen_c::compile_c_programs;
 
 pub fn compile_c_arm(
-    intrinsics_name_list: &Vec<String>,
+    intrinsics_name_list: &[String],
     compiler: &str,
     target: &str,
     cxx_toolchain_dir: Option<&str>,
@@ -56,7 +56,7 @@ pub fn compile_c_arm(
                 .clone()
                 .set_input_name(intrinsic_name)
                 .set_output_name(intrinsic_name)
-                .to_string()
+                .make_string()
         })
         .collect::<Vec<_>>();
 

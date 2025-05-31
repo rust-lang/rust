@@ -45,8 +45,8 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
         intrinsics.dedup();
 
         Box::new(Self {
-            intrinsics: intrinsics,
-            cli_options: cli_options,
+            intrinsics,
+            cli_options,
         })
     }
 
@@ -71,9 +71,12 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
 
         match compiler {
             None => true,
-            Some(compiler) => {
-                compile_c_arm(&intrinsics_name_list, compiler, target, cxx_toolchain_dir)
-            }
+            Some(compiler) => compile_c_arm(
+                intrinsics_name_list.as_slice(),
+                compiler,
+                target,
+                cxx_toolchain_dir,
+            ),
         }
     }
 

@@ -100,10 +100,10 @@ impl CompilationCommandBuilder {
 }
 
 impl CompilationCommandBuilder {
-    pub fn to_string(self) -> String {
+    pub fn make_string(self) -> String {
         let arch_flags = self.arch_flags.join("+");
         let flags = std::env::var("CPPFLAGS").unwrap_or("".into());
-        let project_root = self.project_root.unwrap_or(String::new());
+        let project_root = self.project_root.unwrap_or_default();
         let project_root_str = project_root.as_str();
         let mut output = self.output.clone();
         if self.linker.is_some() {

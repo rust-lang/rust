@@ -54,7 +54,7 @@ struct JsonIntrinsic {
 
 pub fn get_neon_intrinsics(
     filename: &Path,
-    target: &String,
+    target: &str,
 ) -> Result<Vec<Intrinsic<ArmIntrinsicType>>, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(filename)?;
     let reader = std::io::BufReader::new(file);
@@ -75,7 +75,7 @@ pub fn get_neon_intrinsics(
 
 fn json_to_intrinsic(
     mut intr: JsonIntrinsic,
-    target: &String,
+    target: &str,
 ) -> Result<Intrinsic<ArmIntrinsicType>, Box<dyn std::error::Error>> {
     let name = intr.name.replace(['[', ']'], "");
 
