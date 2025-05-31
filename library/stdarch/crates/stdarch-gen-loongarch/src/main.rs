@@ -74,7 +74,7 @@ impl TargetFeature {
     }
 
     /// Generate a target_feature attribute
-    fn to_target_feature_attr(&self, ins: &str) -> Lines {
+    fn to_target_feature_attr(self, ins: &str) -> Lines {
         Lines::single(Self::attr(
             "target_feature",
             self.as_target_feature_arg(ins),
