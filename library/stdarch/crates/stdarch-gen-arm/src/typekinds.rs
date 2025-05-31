@@ -135,7 +135,7 @@ pub enum VectorTupleSize {
 }
 
 impl VectorTupleSize {
-    pub fn to_int(&self) -> u32 {
+    pub fn to_int(self) -> u32 {
         match self {
             Self::Two => 2,
             Self::Three => 3,
@@ -453,6 +453,7 @@ impl VectorType {
         is_scalable: bool,
         tuple_size: Option<VectorTupleSize>,
     ) -> VectorType {
+        #[allow(clippy::collapsible_if)]
         if is_scalable {
             if let BaseType::Sized(BaseTypeKind::Bool, size) = base_ty {
                 return Self::make_predicate_from_bitsize(size);
@@ -521,13 +522,12 @@ impl FromStr for VectorType {
                 .transpose()
                 .unwrap();
 
-            let v = Ok(VectorType {
+            Ok(VectorType {
                 base_type,
                 is_scalable: c.name("sv_ty").is_some(),
                 lanes,
                 tuple_size,
-            });
-            return v;
+            })
         } else {
             Err(format!("invalid vector type {s:#?} given"))
         }

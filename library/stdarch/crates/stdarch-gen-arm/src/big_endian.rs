@@ -38,7 +38,7 @@ fn create_array(lanes: u32) -> Option<String> {
         4 => Some("[3, 2, 1, 0]".to_string()),
         8 => Some("[7, 6, 5, 4, 3, 2, 1, 0]".to_string()),
         16 => Some("[15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]".to_string()),
-        _ => panic!("Incorrect vector number of vector lanes: {}", lanes),
+        _ => panic!("Incorrect vector number of vector lanes: {lanes}"),
     }
 }
 
@@ -78,12 +78,7 @@ pub fn type_has_tuple(type_kind: &TypeKind) -> bool {
 }
 
 pub fn make_variable_mutable(variable_name: &str, type_kind: &TypeKind) -> Expression {
-    let mut_variable = format!(
-        "let mut {}: {} = {}",
-        variable_name,
-        type_kind.to_string(),
-        variable_name
-    );
+    let mut_variable = format!("let mut {variable_name}: {type_kind} = {variable_name}");
     let identifier_name = create_single_wild_string(&mut_variable);
     Expression::Identifier(identifier_name, IdentifierType::Symbol)
 }
@@ -114,9 +109,7 @@ fn create_shuffle_internal(
     };
 
     let lane_count = vector_type.lanes();
-    let Some(array_lanes) = create_array(lane_count) else {
-        return None;
-    };
+    let array_lanes = create_array(lane_count)?;
 
     let tuple_count = vector_type.tuple_size().map_or_else(|| 0, |t| t.to_int());
 
@@ -144,10 +137,7 @@ fn create_assigned_tuple_shuffle_call_fmt(
     array_lanes: &String,
 ) -> String {
     format!(
-        "{variable_name}.{idx} = unsafe {{ simd_shuffle!({variable_name}.{idx}, {variable_name}.{idx}, {array_lanes}) }};\n",
-        variable_name = variable_name,
-        idx = idx,
-        array_lanes = array_lanes
+        "{variable_name}.{idx} = unsafe {{ simd_shuffle!({variable_name}.{idx}, {variable_name}.{idx}, {array_lanes}) }};\n"
     )
 }
 
@@ -157,10 +147,7 @@ fn create_assigned_shuffle_call_fmt(
     array_lanes: &String,
 ) -> String {
     format!(
-        "let {variable_name}: {type_kind} = unsafe {{ simd_shuffle!({variable_name}, {variable_name}, {array_lanes}) }}",
-        type_kind = type_kind.to_string(),
-        variable_name = variable_name,
-        array_lanes = array_lanes
+        "let {variable_name}: {type_kind} = unsafe {{ simd_shuffle!({variable_name}, {variable_name}, {array_lanes}) }}"
     )
 }
 
@@ -169,11 +156,7 @@ fn create_shuffle_call_fmt(
     _type_kind: &TypeKind,
     array_lanes: &String,
 ) -> String {
-    format!(
-        "simd_shuffle!({variable_name}, {variable_name}, {array_lanes})",
-        variable_name = variable_name,
-        array_lanes = array_lanes
-    )
+    format!("simd_shuffle!({variable_name}, {variable_name}, {array_lanes})")
 }
 
 /// Create a `simd_shuffle!(<...>, [...])` call, where the output is stored

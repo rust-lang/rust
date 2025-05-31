@@ -61,7 +61,7 @@ fn neon_get_base_and_char(ty: &VectorType) -> (u32, char, bool) {
         BaseType::Sized(BaseTypeKind::Int, size) => (*size, 's', *size * lanes == 128),
         BaseType::Sized(BaseTypeKind::UInt, size) => (*size, 'u', *size * lanes == 128),
         BaseType::Sized(BaseTypeKind::Poly, size) => (*size, 'p', *size * lanes == 128),
-        _ => panic!("Unhandled {:?}", ty),
+        _ => panic!("Unhandled {ty:?}"),
     }
 }
 
@@ -73,169 +73,92 @@ pub fn make_neon_suffix(type_kind: TypeKind, suffix_kind: SuffixKind) -> String 
         TypeKind::Vector(ty) => {
             let tuple_size = ty.tuple_size().map_or(0, |t| t.to_int());
             let (base_size, prefix_char, requires_q) = neon_get_base_and_char(&ty);
+            let prefix_q = if requires_q { "q" } else { "" };
             let lanes = ty.lanes();
             match suffix_kind {
                 SuffixKind::Normal => {
-                    let mut str_suffix: String = String::new();
-                    if requires_q {
-                        str_suffix.push('q');
-                    }
-                    str_suffix.push('_');
-                    str_suffix.push(prefix_char);
-                    str_suffix.push_str(base_size.to_string().as_str());
+                    let mut str_suffix: String = format!("{prefix_q}_{prefix_char}{base_size}");
                     if tuple_size > 0 {
                         str_suffix.push_str("_x");
                         str_suffix.push_str(tuple_size.to_string().as_str());
                     }
-                    return str_suffix;
+                    str_suffix
                 }
                 SuffixKind::NSuffix => {
-                    let mut str_suffix: String = String::new();
-                    if requires_q {
-                        str_suffix.push('q');
-                    }
-                    str_suffix.push_str("_n_");
-                    str_suffix.push(prefix_char);
-                    str_suffix.push_str(base_size.to_string().as_str());
-                    return str_suffix;
+                    format!("{prefix_q}_n_{prefix_char}{base_size}")
                 }
 
-                SuffixKind::NoQ => format!("_{}{}", prefix_char, base_size),
-                SuffixKind::NoQNSuffix => format!("_n{}{}", prefix_char, base_size),
+                SuffixKind::NoQ => format!("_{prefix_char}{base_size}"),
+                SuffixKind::NoQNSuffix => format!("_n{prefix_char}{base_size}"),
 
                 SuffixKind::Unsigned => {
                     let t = type_kind.to_string();
                     if t.starts_with("u") {
                         return t;
                     }
-                    return format!("u{}", t);
+                    format!("u{t}")
                 }
                 SuffixKind::Lane => {
                     if lanes == 0 {
-                        panic!("type {} has no lanes!", type_kind.to_string())
+                        panic!("type {type_kind} has no lanes!")
                     } else {
-                        format!("{}", lanes)
+                        format!("{lanes}")
                     }
                 }
                 SuffixKind::Tuple => {
                     if tuple_size == 0 {
-                        panic!("type {} has no lanes!", type_kind.to_string())
+                        panic!("type {type_kind} has no lanes!")
                     } else {
-                        format!("{}", tuple_size)
+                        format!("{tuple_size}")
                     }
                 }
                 SuffixKind::Base => base_size.to_string(),
                 SuffixKind::NoX => {
-                    let mut str_suffix: String = String::new();
-                    if requires_q {
-                        str_suffix.push('q');
-                    }
-                    str_suffix.push('_');
-                    str_suffix.push(prefix_char);
-                    str_suffix.push_str(base_size.to_string().as_str());
-                    return str_suffix;
+                    format!("{prefix_q}_{prefix_char}{base_size}")
                 }
                 SuffixKind::Dup => {
-                    let mut str_suffix: String = String::new();
-                    if requires_q {
-                        str_suffix.push('q');
-                    }
-                    str_suffix.push('_');
-                    str_suffix.push_str("dup_");
-                    str_suffix.push(prefix_char);
-                    str_suffix.push_str(base_size.to_string().as_str());
+                    let mut str_suffix: String = format!("{prefix_q}_dup_{prefix_char}{base_size}");
                     if tuple_size > 0 {
                         str_suffix.push_str("_x");
                         str_suffix.push_str(tuple_size.to_string().as_str());
                     }
-                    return str_suffix;
+                    str_suffix
                 }
                 SuffixKind::DupNox => {
-                    let mut str_suffix: String = String::new();
-                    if requires_q {
-                        str_suffix.push('q');
-                    }
-                    str_suffix.push('_');
-                    str_suffix.push_str("dup_");
-                    str_suffix.push(prefix_char);
-                    str_suffix.push_str(base_size.to_string().as_str());
-                    return str_suffix;
+                    format!("{prefix_q}_dup_{prefix_char}{base_size}")
                 }
                 SuffixKind::LaneNoX => {
-                    let mut str_suffix: String = String::new();
-                    if requires_q {
-                        str_suffix.push('q');
-                    }
-                    str_suffix.push('_');
-                    str_suffix.push_str("lane_");
-                    str_suffix.push(prefix_char);
-                    str_suffix.push_str(base_size.to_string().as_str());
-                    return str_suffix;
+                    format!("{prefix_q}_lane_{prefix_char}{base_size}")
                 }
                 SuffixKind::LaneQNoX => {
-                    let mut str_suffix: String = String::new();
-                    if requires_q {
-                        str_suffix.push('q');
-                    }
-                    str_suffix.push('_');
-                    str_suffix.push_str("laneq_");
-                    str_suffix.push(prefix_char);
-                    str_suffix.push_str(base_size.to_string().as_str());
-                    return str_suffix;
+                    format!("{prefix_q}_laneq_{prefix_char}{base_size}")
                 }
                 SuffixKind::Rot270 => {
-                    if requires_q {
-                        return format!("q_rot270_{}{}", prefix_char, base_size.to_string());
-                    }
-                    return format!("_rot270_{}{}", prefix_char, base_size.to_string());
+                    format!("{prefix_q}_rot270_{prefix_char}{base_size}")
                 }
                 SuffixKind::Rot270Lane => {
-                    if requires_q {
-                        return format!("q_rot270_lane_{}{}", prefix_char, base_size.to_string());
-                    }
-                    return format!("_rot270_lane_{}{}", prefix_char, base_size.to_string());
+                    format!("{prefix_q}_rot270_lane_{prefix_char}{base_size}")
                 }
                 SuffixKind::Rot270LaneQ => {
-                    if requires_q {
-                        return format!("q_rot270_laneq_{}{}", prefix_char, base_size.to_string());
-                    }
-                    return format!("_rot270_laneq_{}{}", prefix_char, base_size.to_string());
+                    format!("{prefix_q}_rot270_laneq_{prefix_char}{base_size}")
                 }
                 SuffixKind::Rot180 => {
-                    if requires_q {
-                        return format!("q_rot180_{}{}", prefix_char, base_size.to_string());
-                    }
-                    return format!("_rot180_{}{}", prefix_char, base_size.to_string());
+                    format!("{prefix_q}_rot180_{prefix_char}{base_size}")
                 }
                 SuffixKind::Rot180Lane => {
-                    if requires_q {
-                        return format!("q_rot180_lane_{}{}", prefix_char, base_size.to_string());
-                    }
-                    return format!("_rot180_lane_{}{}", prefix_char, base_size.to_string());
+                    format!("{prefix_q}_rot180_lane_{prefix_char}{base_size}")
                 }
                 SuffixKind::Rot180LaneQ => {
-                    if requires_q {
-                        return format!("q_rot180_laneq_{}{}", prefix_char, base_size.to_string());
-                    }
-                    return format!("_rot180_laneq_{}{}", prefix_char, base_size.to_string());
+                    format!("{prefix_q}_rot180_laneq_{prefix_char}{base_size}")
                 }
                 SuffixKind::Rot90 => {
-                    if requires_q {
-                        return format!("q_rot90_{}{}", prefix_char, base_size.to_string());
-                    }
-                    return format!("_rot90_{}{}", prefix_char, base_size.to_string());
+                    format!("{prefix_q}_rot90_{prefix_char}{base_size}")
                 }
                 SuffixKind::Rot90Lane => {
-                    if requires_q {
-                        return format!("q_rot90_lane_{}{}", prefix_char, base_size.to_string());
-                    }
-                    return format!("_rot90_lane_{}{}", prefix_char, base_size.to_string());
+                    format!("{prefix_q}_rot90_lane_{prefix_char}{base_size}")
                 }
                 SuffixKind::Rot90LaneQ => {
-                    if requires_q {
-                        return format!("q_rot90_laneq_{}{}", prefix_char, base_size.to_string());
-                    }
-                    return format!("_rot90_laneq_{}{}", prefix_char, base_size.to_string());
+                    format!("{prefix_q}_rot90_laneq_{prefix_char}{base_size}")
                 }
                 SuffixKind::BaseByteSize => format!("{}", base_size / 8),
             }
@@ -272,7 +195,7 @@ impl FromStr for SuffixKind {
             "base_byte_size" => Ok(SuffixKind::BaseByteSize),
             "lane_nox" => Ok(SuffixKind::LaneNoX),
             "laneq_nox" => Ok(SuffixKind::LaneQNoX),
-            _ => Err(format!("unknown suffix type: {}", s)),
+            _ => Err(format!("unknown suffix type: {s}")),
         }
     }
 }

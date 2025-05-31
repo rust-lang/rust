@@ -66,7 +66,7 @@ impl WildString {
         self.0.is_empty()
     }
 
-    pub fn replace<'a, P>(&'a self, from: P, to: &str) -> WildString
+    pub fn replace<P>(&self, from: P, to: &str) -> WildString
     where
         P: Pattern + Copy,
     {

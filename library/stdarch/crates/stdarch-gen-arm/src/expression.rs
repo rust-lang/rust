@@ -56,7 +56,7 @@ impl FnCall {
         FnCall(Box::new(fn_ptr), arguments, Vec::new(), true).into()
     }
 
-    pub fn is_llvm_link_call(&self, llvm_link_name: &String) -> bool {
+    pub fn is_llvm_link_call(&self, llvm_link_name: &str) -> bool {
         self.is_expected_call(llvm_link_name)
     }
 
@@ -66,7 +66,7 @@ impl FnCall {
 
     pub fn is_expected_call(&self, fn_call_name: &str) -> bool {
         if let Expression::Identifier(fn_name, IdentifierType::Symbol) = self.0.as_ref() {
-            &fn_name.to_string() == fn_call_name
+            fn_name.to_string() == fn_call_name
         } else {
             false
         }
@@ -205,6 +205,7 @@ impl Expression {
             Self::FnCall(fn_call) => {
                 fn_call.build(intrinsic, ctx)?;
 
+                #[allow(clippy::collapsible_if)]
                 if let Some(llvm_link_name) = ctx.local.substitutions.get(&Wildcard::LLVMLink) {
                     if fn_call.is_llvm_link_call(llvm_link_name) {
                         *self = intrinsic
@@ -357,7 +358,7 @@ impl Expression {
                         false
                     }
                 }
-                _ => panic!("Badly defined function call: {:?}", fn_call),
+                _ => panic!("Badly defined function call: {fn_call:?}"),
             },
             _ => false,
         }
@@ -365,11 +366,7 @@ impl Expression {
 
     /// Determine if an espression is a LLVM binding
     pub fn is_llvm_link(&self) -> bool {
-        if let Expression::LLVMLink(_) = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, Expression::LLVMLink(_))
     }
 }
 
@@ -508,7 +505,7 @@ impl ToTokens for Expression {
                 identifier
                     .to_string()
                     .parse::<TokenStream>()
-                    .expect(format!("invalid syntax: {:?}", self).as_str())
+                    .unwrap_or_else(|_| panic!("invalid syntax: {self:?}"))
                     .to_tokens(tokens);
             }
             Self::IntConstant(n) => tokens.append(Literal::i32_unsuffixed(*n)),

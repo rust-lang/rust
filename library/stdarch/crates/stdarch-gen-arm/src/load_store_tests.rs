@@ -129,6 +129,7 @@ fn generate_single_test(
     let chars = LdIntrCharacteristics::new(&load)?;
     let fn_name = load.signature.fn_name().to_string();
 
+    #[allow(clippy::collapsible_if)]
     if let Some(ty) = &chars.gather_bases_type {
         if ty.base_type().unwrap().get_size() == Ok(32)
             && chars.gather_index_type.is_none()
@@ -372,7 +373,7 @@ fn generate_single_test(
             let create = format_ident!("svcreate{tuple_len}_{acle_type}");
             quote!(#create(#(#expecteds),*))
         };
-        let input = store.input.types.get(0).unwrap().get(0).unwrap();
+        let input = store.input.types.first().unwrap().get(0).unwrap();
         let store_type = input
             .get(store.test.get_typeset_index().unwrap())
             .and_then(InputType::typekind)
@@ -579,7 +580,7 @@ struct LdIntrCharacteristics {
 
 impl LdIntrCharacteristics {
     fn new(intr: &Intrinsic) -> Result<LdIntrCharacteristics, String> {
-        let input = intr.input.types.get(0).unwrap().get(0).unwrap();
+        let input = intr.input.types.first().unwrap().get(0).unwrap();
         let load_type = input
             .get(intr.test.get_typeset_index().unwrap())
             .and_then(InputType::typekind)

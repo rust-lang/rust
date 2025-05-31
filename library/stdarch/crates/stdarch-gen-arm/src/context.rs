@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, usize};
+use std::collections::HashMap;
 
 use crate::{
     expression::Expression,
@@ -165,11 +165,12 @@ impl LocalContext {
                 .map_or_else(err, |ty| Ok((ty.size().parse::<i32>().unwrap()-1).to_string())),
             Wildcard::SizeInBytesLog2(idx) => self.input.typekind(*idx)
                 .map_or_else(err, |ty| Ok(ty.size_in_bytes_log2())),
-            Wildcard::NVariant if self.substitutions.get(wildcard).is_none() => Ok(String::new()),
+            Wildcard::NVariant if !self.substitutions.contains_key(wildcard) => Ok(String::new()),
             Wildcard::TypeKind(idx, opts) => {
                 self.input.typekind(*idx)
                     .map_or_else(err, |ty| {
                         let literal = if let Some(opts) = opts {
+                            #[allow(clippy::obfuscated_if_else)]
                             opts.contains(ty.base_type().map(|bt| *bt.kind()).ok_or_else(|| {
                                 format!("cannot retrieve a type literal out of {ty}")
                             })?)

@@ -164,11 +164,11 @@ use stdarch_test::assert_instr;
 use super::*;{uses_neon}
 
 "#,
-        uses_neon = generated_input
-            .ctx
-            .uses_neon_types
-            .then_some("\nuse crate::core_arch::arch::aarch64::*;")
-            .unwrap_or_default(),
+        uses_neon = if generated_input.ctx.uses_neon_types {
+            "\nuse crate::core_arch::arch::aarch64::*;"
+        } else {
+            ""
+        },
     )?;
     let intrinsics = generated_input.intrinsics;
     format_code(out, quote! { #(#intrinsics)* })?;
@@ -198,7 +198,7 @@ pub fn format_code(
 /// Panics if the resulting name is empty, or if file_name() is not UTF-8.
 fn make_output_filepath(in_filepath: &Path, out_dirpath: &Path) -> PathBuf {
     make_filepath(in_filepath, out_dirpath, |_name: &str| {
-        format!("generated.rs")
+        "generated.rs".to_owned()
     })
 }
 

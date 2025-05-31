@@ -254,6 +254,7 @@ impl Constraint {
             }
         }
 
+        #[allow(clippy::collapsible_if)]
         if let Self::SVEMaxElems {
             sve_max_elems_type: ty,
             ..
@@ -331,6 +332,7 @@ impl Signature {
             self.name.build_acle(ctx)?;
         }
 
+        #[allow(clippy::collapsible_if)]
         if let Some(ref mut return_type) = self.return_type {
             if let Some(w) = return_type.clone().wildcard() {
                 return_type.populate_wildcard(ctx.provide_type_wildcard(w)?)?;
@@ -383,10 +385,7 @@ impl ToTokens for Signature {
             .clone()
             .into_iter()
             .map(|mut arg| {
-                if arg
-                    .kind
-                    .vector()
-                    .map_or(false, |ty| ty.base_type().is_bool())
+                if arg.kind.vector().is_some_and(|ty| ty.base_type().is_bool())
                     && self.predicate_needs_conversion
                 {
                     arg.kind = TypeKind::Vector(VectorType::make_predicate_from_bitsize(8))
@@ -400,7 +399,7 @@ impl ToTokens for Signature {
         if let Some(ref return_type) = self.return_type {
             if return_type
                 .vector()
-                .map_or(false, |ty| ty.base_type().is_bool())
+                .is_some_and(|ty| ty.base_type().is_bool())
                 && self.predicate_needs_conversion
             {
                 tokens.append_all(quote! { -> svbool_t })
@@ -475,10 +474,11 @@ pub struct LLVMLink {
 
 impl LLVMLink {
     pub fn resolve(&self, cfg: &ArchitectureSettings) -> String {
-        self.name
-            .starts_with("llvm")
-            .then(|| self.name.to_string())
-            .unwrap_or_else(|| format!("{}.{}", cfg.llvm_link_prefix, self.name))
+        if self.name.starts_with("llvm") {
+            self.name.to_string()
+        } else {
+            format!("{}.{}", cfg.llvm_link_prefix, self.name)
+        }
     }
 
     pub fn build_and_save(&mut self, ctx: &mut Context) -> context::Result {
@@ -529,7 +529,7 @@ impl LLVMLink {
         if let Some(ref mut links) = self.links {
             links.iter_mut().for_each(|ele| {
                 ele.link
-                    .build(&ctx.local, TypeRepr::LLVMMachine)
+                    .build(ctx.local, TypeRepr::LLVMMachine)
                     .expect("Failed to transform to LLVMMachine representation");
             });
         } else {
@@ -1024,15 +1024,14 @@ impl Intrinsic {
         if variant.attr.is_none() && variant.assert_instr.is_none() {
             panic!(
                 "Error: {} is missing both 'attr' and 'assert_instr' fields. You must either manually declare the attributes using the 'attr' field or use 'assert_instr'!",
-                variant.signature.name.to_string()
+                variant.signature.name
             );
         }
 
         if variant.attr.is_some() {
             let attr: &Vec<Expression> = &variant.attr.clone().unwrap();
             let mut expanded_attr: Vec<Expression> = Vec::new();
-            for idx in 0..attr.len() {
-                let mut ex = attr[idx].clone();
+            for mut ex in attr.iter().cloned() {
                 ex.build(&variant, &mut ctx)?;
                 expanded_attr.push(ex);
             }
@@ -1085,6 +1084,7 @@ impl Intrinsic {
                 /* We do not want to be creating a `mut` variant if the type
                  * has one lane. If it has one lane that means it does not need
                  * shuffling */
+                #[allow(clippy::collapsible_if)]
                 if let TypeKind::Vector(vector_type) = &function_parameter.kind {
                     if vector_type.lanes() == 1 {
                         continue;
@@ -1172,7 +1172,7 @@ impl Intrinsic {
 
                 /* Now we shuffle the return value - we are creating a new
                  * return value for the intrinsic. */
-                let return_value_variable = if type_has_tuple(&return_type) {
+                let return_value_variable = if type_has_tuple(return_type) {
                     create_mut_let_variable(&ret_val_name, return_type, return_value.clone())
                 } else {
                     create_let_variable(&ret_val_name, return_type, return_value.clone())
@@ -1542,7 +1542,7 @@ impl Intrinsic {
             .get(0)
             .and_then(|arg| arg.typekind())
             .and_then(|ty| ty.base_type())
-            .map(BaseType::clone);
+            .cloned();
 
         // Add global target features
         self.target_features = ctx
@@ -1766,7 +1766,7 @@ fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut Tok
 
         /* Target feature will get added here */
         let attr_expressions = &mut attr.iter().peekable();
-        while let Some(ex) = attr_expressions.next() {
+        for ex in attr_expressions {
             let mut inner = TokenStream::new();
             ex.to_tokens(&mut inner);
             tokens.append(Punct::new('#', Spacing::Alone));
@@ -1778,9 +1778,10 @@ fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut Tok
         });
     }
 
+    #[allow(clippy::collapsible_if)]
     if let Some(assert_instr) = &intrinsic.assert_instr {
         if !assert_instr.is_empty() {
-            InstructionAssertionsForBaseType(&assert_instr, &intrinsic.base_type.as_ref())
+            InstructionAssertionsForBaseType(assert_instr, &intrinsic.base_type.as_ref())
                 .to_tokens(tokens)
         }
     }
@@ -1825,7 +1826,7 @@ fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut Tok
 
 impl ToTokens for Intrinsic {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        if self.big_endian_compose.len() >= 1 {
+        if !self.big_endian_compose.is_empty() {
             for i in 0..2 {
                 match i {
                     0 => create_tokens(self, Endianness::Little, tokens),
