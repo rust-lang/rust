@@ -8,7 +8,7 @@ LL | const gen fn a() {}
    | `const` because of this
 
 error: functions cannot be both `const` and `async gen`
-  --> $DIR/const_gen_fn.rs:8:1
+  --> $DIR/const_gen_fn.rs:9:1
    |
 LL | const async gen fn b() {}
    | ^^^^^-^^^^^^^^^----------
@@ -16,5 +16,17 @@ LL | const async gen fn b() {}
    | |     `async gen` because of this
    | `const` because of this
 
-error: aborting due to 2 previous errors
+error: `gen` fn bodies are not allowed in constant functions
+  --> $DIR/const_gen_fn.rs:5:18
+   |
+LL | const gen fn a() {}
+   |                  ^^
+
+error: `async gen` fn bodies are not allowed in constant functions
+  --> $DIR/const_gen_fn.rs:9:24
+   |
+LL | const async gen fn b() {}
+   |                        ^^
+
+error: aborting due to 4 previous errors
 

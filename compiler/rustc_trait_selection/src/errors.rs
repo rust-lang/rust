@@ -201,11 +201,12 @@ pub struct ClosureFnMutLabel {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_async_closure_not_fn)]
-pub(crate) struct AsyncClosureNotFn {
+#[diag(trait_selection_coro_closure_not_fn)]
+pub(crate) struct CoroClosureNotFn {
     #[primary_span]
     pub span: Span,
     pub kind: &'static str,
+    pub coro_kind: String,
 }
 
 #[derive(Diagnostic)]

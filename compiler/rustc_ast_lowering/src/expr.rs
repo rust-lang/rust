@@ -1,4 +1,3 @@
-use std::assert_matches::assert_matches;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
@@ -1199,11 +1198,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
-        assert_matches!(
-            coroutine_kind,
-            CoroutineKind::Async { .. },
-            "only async closures are supported currently"
-        );
+        let coroutine_desugaring = match coroutine_kind {
+            CoroutineKind::Async { .. } => hir::CoroutineDesugaring::Async,
+            CoroutineKind::Gen { .. } => hir::CoroutineDesugaring::Gen,
+            CoroutineKind::AsyncGen { span, .. } => {
+                span_bug!(span, "only async closures and `iter!` closures are supported currently")
+            }
+        };
 
         let body = self.with_new_scopes(fn_decl_span, |this| {
             let inner_decl =
@@ -1247,7 +1248,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // Lower this as a `CoroutineClosure`. That will ensure that HIR typeck
             // knows that a `FnDecl` output type like `-> &str` actually means
             // "coroutine that returns &str", rather than directly returning a `&str`.
-            kind: hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async),
+            kind: hir::ClosureKind::CoroutineClosure(coroutine_desugaring),
             constness: hir::Constness::NotConst,
         });
         hir::ExprKind::Closure(c)
