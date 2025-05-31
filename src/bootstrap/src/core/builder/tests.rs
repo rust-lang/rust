@@ -281,14 +281,27 @@ fn ci_rustc_if_unchanged_do_not_invalidate_on_library_changes_outside_ci() {
 }
 
 #[test]
-fn ci_rustc_if_unchanged_do_not_invalidate_on_tool_changes() {
+fn ci_rustc_if_unchanged_do_not_invalidate_on_tool_changes_in_ci() {
+    git_test(|ctx| {
+        prepare_rustc_checkout(ctx);
+        let sha = ctx.create_upstream_merge(&["compiler/bar"]);
+        // This change should invalidate download-ci-rustc
+        ctx.create_nonupstream_merge(&["src/tools/foo"]);
+
+        let config = parse_config_download_rustc_at(ctx.get_path(), "if-unchanged", true);
+        assert_eq!(config.download_rustc_commit, None);
+    });
+}
+
+#[test]
+fn ci_rustc_if_unchanged_do_not_invalidate_on_tool_changes_outside_ci() {
     git_test(|ctx| {
         prepare_rustc_checkout(ctx);
         let sha = ctx.create_upstream_merge(&["compiler/bar"]);
         // This change should not invalidate download-ci-rustc
         ctx.create_nonupstream_merge(&["src/tools/foo"]);
 
-        let config = parse_config_download_rustc_at(ctx.get_path(), "if-unchanged", true);
+        let config = parse_config_download_rustc_at(ctx.get_path(), "if-unchanged", false);
         assert_eq!(config.download_rustc_commit, Some(sha));
     });
 }
