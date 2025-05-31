@@ -633,7 +633,10 @@ pub fn temp_dir() -> PathBuf {
 }
 
 pub fn home_dir() -> Option<PathBuf> {
-    return crate::env::var_os("HOME").or_else(|| unsafe { fallback() }).map(PathBuf::from);
+    return crate::env::var_os("HOME")
+        .filter(|s| !s.is_empty())
+        .or_else(|| unsafe { fallback() })
+        .map(PathBuf::from);
 
     #[cfg(any(
         target_os = "android",
