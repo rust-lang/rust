@@ -79,6 +79,7 @@ pub enum Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<usize> for Error {
+    /// Convert an error code to an `Error`
     fn from(src: usize) -> Self {
         match src {
             0 => Self::NoError,
@@ -115,6 +116,7 @@ impl From<usize> for Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<i32> for Error {
+    /// Convert `i32` to an `Error`, if the conversion fails it `UnknownError` is returned
     fn from(src: i32) -> Self {
         let Ok(src) = core::convert::TryInto::<usize>::try_into(src) else {
             return Self::UnknownError;
@@ -193,6 +195,7 @@ pub struct Connection(u32);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<u32> for Connection {
+    /// Wrap `u32` in `Connection`
     fn from(src: u32) -> Connection {
         Connection(src)
     }
@@ -263,6 +266,7 @@ impl Into<[u32; 4]> for ServerAddress {
 pub(crate) struct ThreadId(usize);
 
 impl From<usize> for ThreadId {
+    /// Make a `ThreadId` with `usize` as the id
     fn from(src: usize) -> ThreadId {
         ThreadId(src)
     }

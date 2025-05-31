@@ -1093,6 +1093,7 @@ impl ExitStatus {
 
 /// Converts a raw `c_int` to a type-safe `ExitStatus` by wrapping it without copying.
 impl From<c_int> for ExitStatus {
+    /// Wrap `c_int` in a type-safe `ExitStatus`
     fn from(a: c_int) -> ExitStatus {
         ExitStatus(a)
     }
