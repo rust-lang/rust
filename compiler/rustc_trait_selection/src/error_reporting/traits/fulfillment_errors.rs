@@ -642,7 +642,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
                         // TODO: write a test that can trigger this path.
                         span_bug!(span, "unstable feature {:?} not enabled", symbol);
-                    } 
+                    }
 
                     // Errors for `ConstEvaluatable` predicates show up as
                     // `SelectionError::ConstEvalFailure`,
