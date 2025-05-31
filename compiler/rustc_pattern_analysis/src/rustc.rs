@@ -226,6 +226,11 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
                         reveal_and_alloc(cx, once(args.type_at(0)))
+                    } else if adt.is_pin()
+                        && let ty::Ref(_, rty, _) = args.type_at(0).kind()
+                        && self.tcx.features().pin_ergonomics()
+                    {
+                        reveal_and_alloc(cx, once(*rty))
                     } else {
                         let variant =
                             &adt.variant(RustcPatCtxt::variant_index_for_adt(&ctor, *adt));
