@@ -31,6 +31,7 @@ fn build2<T>(x: T) -> impl Sized {
     //[next]~^ ERROR type mismatch resolving
     //[next]~| ERROR type mismatch resolving
     //[next]~| ERROR the size for values of type
+    //[next]~| ERROR type mismatch resolving `build2<(_,)>::{opaque#0} normalizes-to _`
 }
 
 // Opaque<T> = Opaque<(T,)>
@@ -40,6 +41,7 @@ fn build3<T>(x: T) -> impl Sized {
     //[current]~^ ERROR cannot resolve opaque type
     let (x,) = (build3((x,)),);
     //[next]~^ ERROR type mismatch resolving
+    //[next]~| ERROR type mismatch resolving
     //[next]~| ERROR type mismatch resolving
     //[next]~| ERROR type mismatch resolving
     //[next]~| ERROR type mismatch resolving
