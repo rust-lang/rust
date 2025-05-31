@@ -88,6 +88,8 @@ pub trait DepContext: Copy {
             f(self, dep_node)
         }
     }
+
+    fn with_reduced_queries<T>(self, _: impl FnOnce() -> T) -> T;
 }
 
 pub trait Deps: DynSync {
