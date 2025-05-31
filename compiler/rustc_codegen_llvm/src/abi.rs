@@ -666,6 +666,11 @@ impl llvm::CallConv {
             Conv::X86VectorCall => llvm::X86_VectorCall,
             Conv::X86_64SysV => llvm::X86_64_SysV,
             Conv::X86_64Win64 => llvm::X86_64_Win64,
+
+            // Functions with this calling convention can only be called from assembly, but it is
+            // possible to declare an `extern "custom"` block, so the backend still needs a calling
+            // convention for declaring foreign functions.
+            Conv::Custom => llvm::CCallConv,
         }
     }
 }

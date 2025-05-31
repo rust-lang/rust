@@ -1,3 +1,16 @@
+ast_passes_abi_custom_invalid_signature =
+    invalid signature for `extern "custom"` function
+    .note = functions with the `"custom"` ABI cannot have any parameters or return type
+    .suggestion = remove the parameters and return type
+
+ast_passes_abi_custom_safe_foreign_function =
+    foreign functions with the `"custom"` ABI cannot be safe
+    .suggestion = remove the `safe` keyword from this definition
+
+ast_passes_abi_custom_safe_function =
+    functions with the `"custom"` ABI must be unsafe
+    .suggestion = add the `unsafe` keyword to this definition
+
 ast_passes_assoc_const_without_body =
     associated constant in `impl` without body
     .suggestion = provide a definition for the constant
