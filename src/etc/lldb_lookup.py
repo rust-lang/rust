@@ -42,6 +42,11 @@ def summary_lookup(valobj: lldb.SBValue, _dict: LLDBOpaque) -> str:
     if rust_type == RustType.STD_HASH_SET:
         return SizeSummaryProvider(valobj, _dict)
 
+    if rust_type == RustType.STD_BTREE_MAP:
+        return SizeSummaryProvider(valobj, _dict)
+    if rust_type == RustType.STD_BTREE_SET:
+        return SizeSummaryProvider(valobj, _dict)
+
     if rust_type == RustType.STD_RC:
         return StdRcSummaryProvider(valobj, _dict)
     if rust_type == RustType.STD_ARC:
@@ -104,6 +109,12 @@ def synthetic_lookup(valobj: lldb.SBValue, _dict: LLDBOpaque) -> object:
             return StdHashMapSyntheticProvider(valobj, _dict, show_values=False)
         else:
             return StdOldHashMapSyntheticProvider(hash_map, _dict, show_values=False)
+
+    if rust_type == RustType.STD_BTREE_MAP:
+        return StdBTreeMapSyntheticProvider(valobj, _dict)
+    if rust_type == RustType.STD_BTREE_SET:
+        btree_map = valobj.GetChildAtIndex(0)
+        return StdBTreeMapSyntheticProvider(btree_map, _dict, show_values=False)
 
     if rust_type == RustType.STD_RC:
         return StdRcSyntheticProvider(valobj, _dict)
