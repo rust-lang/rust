@@ -229,8 +229,7 @@ const MAPMOVEIDX: [[i32; 239]; 4] = [ [// Direction 0
 /// The first dimension is color: Black, White and Empty.\
 /// The second and third one are 2 x 512-bit. Direction 0 and 2 use the first 512-bit. Direction 1 and
 /// 3 use the second 512-bit.\
-/// Each 512-bit is a 32-bit x 16 array. Direction 0 and 1 store at bit 31-16 and Direction 2 and 3 store at bit 15-0.  
-
+/// Each 512-bit is a 32-bit x 16 array. Direction 0 and 1 store at bit 31-16 and Direction 2 and 3 store at bit 15-0.
 pub struct Pos {
     // position
     state: [Color; SQUARE_SIZE as usize],
@@ -473,6 +472,7 @@ fn gen_moves(list: &mut List, pos: &Pos) {
 }
 
 /// AI: use Minimax search with alpha-beta pruning
+#[allow(clippy::manual_range_contains)]
 fn search(pos: &Pos, alpha: i32, beta: i32, depth: i32, _ply: i32) -> i32 {
     assert!(-EVAL_INF <= alpha && alpha < beta && beta <= EVAL_INF);
     // leaf?
@@ -724,12 +724,12 @@ fn check_pattern5(pos: &Pos, sd: Side) -> bool {
         for fl in 0..FILE_SIZE {
             let sq: Square = square_make(fl, rk);
 
-            for pat in 0..4 {
+            for direction in &DIRECTION {
                 let idx0 = sq;
-                let idx1 = sq + DIRECTION[pat][0];
-                let idx2 = sq + DIRECTION[pat][1];
-                let idx3 = sq + DIRECTION[pat][2];
-                let idx4 = sq + DIRECTION[pat][3];
+                let idx1 = sq + direction[0];
+                let idx2 = sq + direction[1];
+                let idx3 = sq + direction[2];
+                let idx4 = sq + direction[3];
 
                 let val0 = pos.state[idx0 as usize];
                 let val1 = pos.state[idx1 as usize];
@@ -754,13 +754,13 @@ fn check_patternlive4(pos: &Pos, sd: Side) -> bool {
         for fl in 0..FILE_SIZE {
             let sq: Square = square_make(fl, rk);
 
-            for pat in 0..4 {
+            for direction in &DIRECTION {
                 let idx0 = sq;
-                let idx1 = sq + DIRECTION[pat][0];
-                let idx2 = sq + DIRECTION[pat][1];
-                let idx3 = sq + DIRECTION[pat][2];
-                let idx4 = sq + DIRECTION[pat][3];
-                let idx5 = sq + DIRECTION[pat][4];
+                let idx1 = sq + direction[0];
+                let idx2 = sq + direction[1];
+                let idx3 = sq + direction[2];
+                let idx4 = sq + direction[3];
+                let idx5 = sq + direction[4];
 
                 let val0 = pos.state[idx0 as usize];
                 let val1 = pos.state[idx1 as usize];
@@ -786,12 +786,12 @@ fn check_patterndead4(pos: &Pos, sd: Side) -> i32 {
         for fl in 0..FILE_SIZE {
             let sq: Square = square_make(fl, rk);
 
-            for dir in 0..4 {
+            for direction in &DIRECTION {
                 let idx0 = sq;
-                let idx1 = sq + DIRECTION[dir][0];
-                let idx2 = sq + DIRECTION[dir][1];
-                let idx3 = sq + DIRECTION[dir][2];
-                let idx4 = sq + DIRECTION[dir][3];
+                let idx1 = sq + direction[0];
+                let idx2 = sq + direction[1];
+                let idx3 = sq + direction[2];
+                let idx4 = sq + direction[3];
 
                 let val0 = pos.state[idx0 as usize];
                 let val1 = pos.state[idx1 as usize];
@@ -824,13 +824,13 @@ fn check_patternlive3(pos: &Pos, sd: Side) -> i32 {
         for fl in 0..FILE_SIZE {
             let sq: Square = square_make(fl, rk);
 
-            for dir in 0..4 {
+            for direction in &DIRECTION {
                 let idx0 = sq;
-                let idx1 = sq + DIRECTION[dir][0];
-                let idx2 = sq + DIRECTION[dir][1];
-                let idx3 = sq + DIRECTION[dir][2];
-                let idx4 = sq + DIRECTION[dir][3];
-                let idx5 = sq + DIRECTION[dir][4];
+                let idx1 = sq + direction[0];
+                let idx2 = sq + direction[1];
+                let idx3 = sq + direction[2];
+                let idx4 = sq + direction[3];
+                let idx5 = sq + direction[4];
 
                 let val0 = pos.state[idx0 as usize];
                 let val1 = pos.state[idx1 as usize];
