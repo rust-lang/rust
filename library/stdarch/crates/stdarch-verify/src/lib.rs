@@ -498,6 +498,7 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
     attrs
         .iter()
         .flat_map(|a| {
+            #[allow(clippy::collapsible_if)]
             if let syn::Meta::List(ref l) = a.meta {
                 if l.path.is_ident("target_feature") {
                     if let Ok(l) =
@@ -526,6 +527,7 @@ fn find_doc(attrs: &[syn::Attribute]) -> String {
     attrs
         .iter()
         .filter_map(|a| {
+            #[allow(clippy::collapsible_if)]
             if let syn::Meta::NameValue(ref l) = a.meta {
                 if l.path.is_ident("doc") {
                     if let syn::Expr::Lit(syn::ExprLit {
