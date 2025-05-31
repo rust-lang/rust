@@ -3,7 +3,7 @@ mod raw_dylib;
 use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::fs::{File, OpenOptions, read};
-use std::io::{BufWriter, Write};
+use std::io::{BufReader, BufWriter, Write};
 use std::ops::{ControlFlow, Deref};
 use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
@@ -182,6 +182,12 @@ pub fn link_binary(
                     artifact_name.to_string_lossy(),
                     file_size,
                 );
+            }
+
+            if sess.target.binary_format == BinaryFormat::Elf {
+                if let Err(err) = warn_if_linked_with_gold(sess, &out_filename) {
+                    info!(?err, "Error while checking if gold was the linker");
+                }
             }
 
             if output.is_stdout() {
@@ -3374,4 +3380,55 @@ fn add_lld_args(
             cmd.cc_arg(format!("--target={}", versioned_llvm_target(sess)));
         }
     }
+}
+
+// gold has been deprecated with binutils 2.44
+// and is known to behave incorrectly around Rust programs.
+// There have been reports of being unable to bootstrap with gold:
+// https://github.com/rust-lang/rust/issues/139425
+// Additionally, gold miscompiles SHF_GNU_RETAIN sections, which are
+// emitted with `#[used(linker)]`.
+fn warn_if_linked_with_gold(sess: &Session, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    use object::read::elf::{FileHeader, SectionHeader};
+    use object::read::{ReadCache, ReadRef, Result};
+    use object::{Endianness, elf};
+
+    fn elf_has_gold_version_note<'a>(
+        elf: &impl FileHeader,
+        data: impl ReadRef<'a>,
+    ) -> Result<bool> {
+        let endian = elf.endian()?;
+
+        let section =
+            elf.sections(endian, data)?.section_by_name(endian, b".note.gnu.gold-version");
+        if let Some((_, section)) = section {
+            if let Some(mut notes) = section.notes(endian, data)? {
+                return Ok(notes.any(|note| {
+                    note.is_ok_and(|note| note.n_type(endian) == elf::NT_GNU_GOLD_VERSION)
+                }));
+            }
+        }
+
+        Ok(false)
+    }
+
+    let data = ReadCache::new(BufReader::new(File::open(path)?));
+
+    let was_linked_with_gold = if sess.target.pointer_width == 64 {
+        let elf = elf::FileHeader64::<Endianness>::parse(&data)?;
+        elf_has_gold_version_note(elf, &data)?
+    } else if sess.target.pointer_width == 32 {
+        let elf = elf::FileHeader32::<Endianness>::parse(&data)?;
+        elf_has_gold_version_note(elf, &data)?
+    } else {
+        return Ok(());
+    };
+
+    if was_linked_with_gold {
+        let mut warn =
+            sess.dcx().struct_warn("the gold linker is deprecated and has known bugs with Rust");
+        warn.help("consider using LLD or ld from GNU binutils instead");
+        warn.emit();
+    }
+    Ok(())
 }
