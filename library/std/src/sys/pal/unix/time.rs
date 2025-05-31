@@ -291,6 +291,13 @@ impl Instant {
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
         Some(Instant { t: self.t.checked_sub_duration(other)? })
     }
+
+    // reason for allow(unused): this is needed by the `sleep_until` implementation
+    // for some unix platforms not all.
+    #[allow(unused)]
+    pub(crate) fn into_timespec(self) -> Timespec {
+        self.t
+    }
 }
 
 impl fmt::Debug for Instant {
