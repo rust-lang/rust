@@ -33,7 +33,7 @@ where
     }
 
     pub fn has_constraint(&self) -> bool {
-        self.constraint.is_none()
+        self.constraint.is_some()
     }
 
     pub fn type_and_name_from_c(arg: &str) -> (&str, &str) {
