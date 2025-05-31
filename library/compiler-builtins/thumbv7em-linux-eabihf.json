@@ -1,0 +1,28 @@
+{
+    "abi-blacklist": [
+        "stdcall",
+        "fastcall",
+        "vectorcall",
+        "win64",
+        "sysv64"
+    ],
+    "arch": "arm",
+    "data-layout": "e-m:e-p:32:32-i64:64-v128:64:128-a:0:32-n32-S64",
+    "env": "",
+    "executables": true,
+    "features": "+vfp4,+d16,+fp-only-sp",
+    "linker": "arm-none-eabi-gcc",
+    "linker-flavor": "gcc",
+    "llvm-target": "thumbv7em-none-eabihf",
+    "max-atomic-width": 32,
+    "os": "linux",
+    "panic-strategy": "abort",
+    "pre-link-args": {
+        "gcc": ["-nostartfiles"]
+    },
+    "relocation-model": "static",
+    "target-endian": "little",
+    "target-pointer-width": "32",
+    "target-c-int-width": "32",
+    "vendor": ""
+}
