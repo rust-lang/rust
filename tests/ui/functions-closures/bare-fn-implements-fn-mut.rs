@@ -1,3 +1,7 @@
+//! Tests that bare functions implement the `FnMut` trait.
+//!
+//! See <https://github.com/rust-lang/rust/issues/15448>.
+
 //@ run-pass
 
 fn call_f<F:FnMut()>(mut f: F) {

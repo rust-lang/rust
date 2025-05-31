@@ -1,12 +1,12 @@
 error[E0599]: no method named `test_mut` found for struct `Vec<{integer}>` in the current scope
-  --> $DIR/auto-ref-slice-plus-ref.rs:7:7
+  --> $DIR/vec-autoderef-autoref.rs:6:7
    |
 LL |     a.test_mut();
    |       ^^^^^^^^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `MyIter` defines an item `test_mut`, perhaps you need to implement it
-  --> $DIR/auto-ref-slice-plus-ref.rs:14:1
+  --> $DIR/vec-autoderef-autoref.rs:13:1
    |
 LL | trait MyIter {
    | ^^^^^^^^^^^^
@@ -14,40 +14,40 @@ help: there is a method `get_mut` with a similar name, but with different argume
   --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
 
 error[E0599]: no method named `test` found for struct `Vec<{integer}>` in the current scope
-  --> $DIR/auto-ref-slice-plus-ref.rs:8:7
+  --> $DIR/vec-autoderef-autoref.rs:7:7
    |
 LL |     a.test();
    |       ^^^^ method not found in `Vec<{integer}>`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `MyIter` defines an item `test`, perhaps you need to implement it
-  --> $DIR/auto-ref-slice-plus-ref.rs:14:1
+  --> $DIR/vec-autoderef-autoref.rs:13:1
    |
 LL | trait MyIter {
    | ^^^^^^^^^^^^
 
 error[E0599]: no method named `test` found for array `[{integer}; 1]` in the current scope
-  --> $DIR/auto-ref-slice-plus-ref.rs:10:11
+  --> $DIR/vec-autoderef-autoref.rs:9:11
    |
 LL |     ([1]).test();
    |           ^^^^ method not found in `[{integer}; 1]`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `MyIter` defines an item `test`, perhaps you need to implement it
-  --> $DIR/auto-ref-slice-plus-ref.rs:14:1
+  --> $DIR/vec-autoderef-autoref.rs:13:1
    |
 LL | trait MyIter {
    | ^^^^^^^^^^^^
 
 error[E0599]: no method named `test` found for reference `&[{integer}; 1]` in the current scope
-  --> $DIR/auto-ref-slice-plus-ref.rs:11:12
+  --> $DIR/vec-autoderef-autoref.rs:10:12
    |
 LL |     (&[1]).test();
    |            ^^^^ method not found in `&[{integer}; 1]`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `MyIter` defines an item `test`, perhaps you need to implement it
-  --> $DIR/auto-ref-slice-plus-ref.rs:14:1
+  --> $DIR/vec-autoderef-autoref.rs:13:1
    |
 LL | trait MyIter {
    | ^^^^^^^^^^^^
