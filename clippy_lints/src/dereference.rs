@@ -305,7 +305,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                     RefOp::Method { mutbl, is_ufcs }
                         if !is_lint_allowed(cx, EXPLICIT_DEREF_METHODS, expr.hir_id)
                             // Allow explicit deref in method chains. e.g. `foo.deref().bar()`
-                            && (is_ufcs || !in_postfix_position(cx, expr)) =>
+                            && (is_ufcs || !is_in_method_chain(cx, expr)) =>
                     {
                         let ty_changed_count = usize::from(!deref_method_same_type(expr_ty, typeck.expr_ty(sub_expr)));
                         self.state = Some((
@@ -728,7 +728,13 @@ fn deref_method_same_type<'tcx>(result_ty: Ty<'tcx>, arg_ty: Ty<'tcx>) -> bool {
     }
 }
 
-fn in_postfix_position<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool {
+fn is_in_method_chain<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool {
+    if let ExprKind::MethodCall(_, recv, _, _) = e.kind
+        && matches!(recv.kind, ExprKind::MethodCall(..))
+    {
+        return true;
+    }
+
     if let Some(parent) = get_parent_expr(cx, e)
         && parent.span.eq_ctxt(e.span)
     {
@@ -986,6 +992,15 @@ fn report<'tcx>(
             );
         },
         State::DerefedBorrow(state) => {
+            // Do not suggest removing a non-mandatory `&` in `&*rawptr` in an `unsafe` context,
+            // as this may make rustc trigger its `dangerous_implicit_autorefs` lint.
+            if let ExprKind::AddrOf(BorrowKind::Ref, _, subexpr) = data.first_expr.kind
+                && let ExprKind::Unary(UnOp::Deref, subsubexpr) = subexpr.kind
+                && cx.typeck_results().expr_ty_adjusted(subsubexpr).is_raw_ptr()
+            {
+                return;
+            }
+
             let mut app = Applicability::MachineApplicable;
             let (snip, snip_is_macro) =
                 snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
