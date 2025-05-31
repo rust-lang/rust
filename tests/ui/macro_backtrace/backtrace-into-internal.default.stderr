@@ -1,0 +1,15 @@
+error[E0369]: cannot add `{integer}` to `&str`
+  --> $DIR/backtrace-into-internal.rs:20:20
+   |
+LL |         { $($arg)* + 1 }
+   |                    ^ - {integer}
+...
+LL |     let _ = macro_one!("boo");
+   |             -----------------
+   |             |          |
+   |             |          &str
+   |             in this macro invocation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

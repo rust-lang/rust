@@ -1,0 +1,29 @@
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/backtrace-into-internal2.rs:11:15
+   |
+LL |     let x: u32;
+   |         - binding declared here but left uninitialized
+LL |
+LL |     println!("{x}");
+   |     ----------^^^--
+   |     |         |
+   |     |         `x` used here but it isn't initialized
+   |     in this macro invocation (#1)
+  --> $SRC_DIR/std/src/macros.rs:LL:COL
+   |
+   = note: in this expansion of `println!` (#1)
+  ::: $SRC_DIR/std/src/macros.rs:LL:COL
+   |
+   = note: in this macro invocation (#2)
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
+   |
+   = note: in this expansion of `$crate::format_args_nl!` (#2)
+   |
+help: consider assigning a value
+   |
+LL |     let x: u32 = 42;
+   |                ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0381`.
