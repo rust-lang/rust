@@ -451,7 +451,7 @@ pub(crate) mod rustc {
 
                     // For enums (but not coroutines), the tag field is
                     // currently always the first field of the layout.
-                    assert_eq!(*tag_field, 0);
+                    assert_eq!(*tag_field, FieldIdx::ZERO);
 
                     let variants = def.discriminants(cx.tcx()).try_fold(
                         Self::uninhabited(),
