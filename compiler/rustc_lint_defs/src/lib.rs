@@ -698,6 +698,14 @@ pub enum BuiltinLintDiag {
         is_string: bool,
         suggestion: Span,
     },
+    HiddenUnicodeCodepoints {
+        label: String,
+        count: usize,
+        span_label: Span,
+        labels: Option<Vec<(char, Span)>>,
+        escape: bool,
+        spans: Vec<(char, Span)>,
+    },
     TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
     UnicodeTextFlow(Span, String),
@@ -736,6 +744,7 @@ pub enum BuiltinLintDiag {
         ty: String,
     },
     UnusedExternCrate {
+        span: Span,
         removal_span: Span,
     },
     ExternCrateNotIdiomatic {

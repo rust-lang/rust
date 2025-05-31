@@ -607,16 +607,9 @@ impl TypeAliasPart {
         let cx = type_impl_collector.cx;
         let aliased_types = type_impl_collector.aliased_types;
         for aliased_type in aliased_types.values() {
-            let impls = aliased_type
-                .impl_
-                .values()
-                .flat_map(|AliasedTypeImpl { impl_, type_aliases }| {
-                    let mut ret: Vec<AliasSerializableImpl> = Vec::new();
-                    let trait_ = impl_
-                        .inner_impl()
-                        .trait_
-                        .as_ref()
-                        .map(|trait_| format!("{:#}", trait_.print(cx)));
+            let impls = aliased_type.impl_.values().filter_map(
+                |AliasedTypeImpl { impl_, type_aliases }| {
+                    let mut ret: Option<AliasSerializableImpl> = None;
                     // render_impl will filter out "impossible-to-call" methods
                     // to make that functionality work here, it needs to be called with
                     // each type alias, and if it gives a different result, split the impl
@@ -624,8 +617,8 @@ impl TypeAliasPart {
                         cx.id_map.borrow_mut().clear();
                         cx.deref_id_map.borrow_mut().clear();
                         let type_alias_fqp = (*type_alias_fqp).iter().join("::");
-                        if let Some(last) = ret.last_mut() {
-                            last.aliases.push(type_alias_fqp);
+                        if let Some(ret) = &mut ret {
+                            ret.aliases.push(type_alias_fqp);
                         } else {
                             let target_did = impl_
                                 .inner_impl()
@@ -660,16 +653,22 @@ impl TypeAliasPart {
                                 },
                             )
                             .to_string();
-                            ret.push(AliasSerializableImpl {
+                            // The alternate display prints it as plaintext instead of HTML.
+                            let trait_ = impl_
+                                .inner_impl()
+                                .trait_
+                                .as_ref()
+                                .map(|trait_| format!("{:#}", trait_.print(cx)));
+                            ret = Some(AliasSerializableImpl {
                                 text,
-                                trait_: trait_.clone(),
+                                trait_,
                                 aliases: vec![type_alias_fqp],
                             })
                         }
                     }
                     ret
-                })
-                .collect::<Vec<_>>();
+                },
+            );
 
             let mut path = PathBuf::from("type.impl");
             for component in &aliased_type.target_fqp[..aliased_type.target_fqp.len() - 1] {
@@ -682,7 +681,7 @@ impl TypeAliasPart {
             ));
 
             let part = OrderedJson::array_sorted(
-                impls.iter().map(OrderedJson::serialize).collect::<Result<Vec<_>, _>>().unwrap(),
+                impls.map(|impl_| OrderedJson::serialize(impl_).unwrap()),
             );
             path_parts.push(path, OrderedJson::array_unsorted([crate_name_json, &part]));
         }
@@ -760,7 +759,7 @@ impl TraitAliasPart {
                         Some(Implementor {
                             text: imp.inner_impl().print(false, cx).to_string(),
                             synthetic: imp.inner_impl().kind.is_auto(),
-                            types: collect_paths_for_type(imp.inner_impl().for_.clone(), cache),
+                            types: collect_paths_for_type(&imp.inner_impl().for_, cache),
                         })
                     }
                 })

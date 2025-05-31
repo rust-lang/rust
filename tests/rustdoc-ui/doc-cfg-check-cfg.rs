@@ -9,11 +9,15 @@
 //@[cfg_foo] compile-flags: --check-cfg cfg(foo)
 
 #![feature(doc_cfg)]
+#![doc(cfg(foo))]
+//[cfg_empty]~^ WARN unexpected `cfg` condition name: `foo`
 
 #[doc(cfg(foo))]
 //[cfg_empty]~^ WARN unexpected `cfg` condition name: `foo`
 pub fn foo() {}
 
+#[doc(cfg(foo))]
+//[cfg_empty]~^ WARN unexpected `cfg` condition name: `foo`
 pub mod module {
     #[allow(unexpected_cfgs)]
     #[doc(cfg(bar))]

@@ -14,7 +14,6 @@ pub(crate) struct UrlPartsBuilder {
 
 impl UrlPartsBuilder {
     /// Create an empty buffer.
-    #[allow(dead_code)]
     pub(crate) fn new() -> Self {
         Self { buf: String::new() }
     }

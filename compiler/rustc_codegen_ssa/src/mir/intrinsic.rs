@@ -99,6 +99,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let llret_ty = bx.backend_type(bx.layout_of(ret_ty));
 
+        let ret_llval = |bx: &mut Bx, llval| {
+            if result.layout.ty.is_bool() {
+                OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
+                    .val
+                    .store(bx, result);
+            } else if !result.layout.ty.is_unit() {
+                bx.store_to_place(llval, result.val);
+            }
+            Ok(())
+        };
+
         let llval = match name {
             sym::abort => {
                 bx.abort();
@@ -334,8 +345,47 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // This requires that atomic intrinsics follow a specific naming pattern:
             // "atomic_<operation>[_<ordering>]"
             name if let Some(atomic) = name_str.strip_prefix("atomic_") => {
-                use crate::common::AtomicOrdering::*;
+                use rustc_middle::ty::AtomicOrdering::*;
+
                 use crate::common::{AtomicRmwBinOp, SynchronizationScope};
+
+                let invalid_monomorphization = |ty| {
+                    bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
+                        span,
+                        name,
+                        ty,
+                    });
+                };
+
+                let parse_const_generic_ordering = |ord: ty::Value<'tcx>| {
+                    let discr = ord.valtree.unwrap_branch()[0].unwrap_leaf();
+                    discr.to_atomic_ordering()
+                };
+
+                // Some intrinsics have the ordering already converted to a const generic parameter, we handle those first.
+                match name {
+                    sym::atomic_load => {
+                        let ty = fn_args.type_at(0);
+                        let ordering = fn_args.const_at(1).to_value();
+                        if !(int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr()) {
+                            invalid_monomorphization(ty);
+                            return Ok(());
+                        }
+                        let layout = bx.layout_of(ty);
+                        let source = args[0].immediate();
+                        let llval = bx.atomic_load(
+                            bx.backend_type(layout),
+                            source,
+                            parse_const_generic_ordering(ordering),
+                            layout.size,
+                        );
+
+                        return ret_llval(bx, llval);
+                    }
+
+                    // The rest falls back to below.
+                    _ => {}
+                }
 
                 let Some((instruction, ordering)) = atomic.split_once('_') else {
                     bx.sess().dcx().emit_fatal(errors::MissingMemoryOrdering);
@@ -345,17 +395,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     "relaxed" => Relaxed,
                     "acquire" => Acquire,
                     "release" => Release,
-                    "acqrel" => AcquireRelease,
-                    "seqcst" => SequentiallyConsistent,
+                    "acqrel" => AcqRel,
+                    "seqcst" => SeqCst,
                     _ => bx.sess().dcx().emit_fatal(errors::UnknownAtomicOrdering),
-                };
-
-                let invalid_monomorphization = |ty| {
-                    bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
-                        span,
-                        name,
-                        ty,
-                    });
                 };
 
                 match instruction {
@@ -388,24 +430,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             invalid_monomorphization(ty);
                         }
                         return Ok(());
-                    }
-
-                    "load" => {
-                        let ty = fn_args.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
-                            let layout = bx.layout_of(ty);
-                            let size = layout.size;
-                            let source = args[0].immediate();
-                            bx.atomic_load(
-                                bx.backend_type(layout),
-                                source,
-                                parse_ordering(bx, ordering),
-                                size,
-                            )
-                        } else {
-                            invalid_monomorphization(ty);
-                            return Ok(());
-                        }
                     }
 
                     "store" => {
@@ -538,14 +562,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         };
 
-        if result.layout.ty.is_bool() {
-            OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
-                .val
-                .store(bx, result);
-        } else if !result.layout.ty.is_unit() {
-            bx.store_to_place(llval, result.val);
-        }
-        Ok(())
+        ret_llval(bx, llval)
     }
 }
 

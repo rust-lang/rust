@@ -6,7 +6,7 @@ use std::fs::{File, OpenOptions, read};
 use std::io::{BufWriter, Write};
 use std::ops::{ControlFlow, Deref};
 use std::path::{Path, PathBuf};
-use std::process::{ExitStatus, Output, Stdio};
+use std::process::{Output, Stdio};
 use std::{env, fmt, fs, io, mem, str};
 
 use cc::windows_registry;
@@ -736,13 +736,10 @@ fn link_natively(
 
     // Invoke the system linker
     info!("{cmd:?}");
-    let retry_on_segfault = env::var("RUSTC_RETRY_LINKER_ON_SEGFAULT").is_ok();
     let unknown_arg_regex =
         Regex::new(r"(unknown|unrecognized) (command line )?(option|argument)").unwrap();
     let mut prog;
-    let mut i = 0;
     loop {
-        i += 1;
         prog = sess.time("run_linker", || exec_linker(sess, &cmd, out_filename, flavor, tmpdir));
         let Ok(ref output) = prog else {
             break;
@@ -858,54 +855,7 @@ fn link_natively(
             continue;
         }
 
-        // Here's a terribly awful hack that really shouldn't be present in any
-        // compiler. Here an environment variable is supported to automatically
-        // retry the linker invocation if the linker looks like it segfaulted.
-        //
-        // Gee that seems odd, normally segfaults are things we want to know
-        // about!  Unfortunately though in rust-lang/rust#38878 we're
-        // experiencing the linker segfaulting on Travis quite a bit which is
-        // causing quite a bit of pain to land PRs when they spuriously fail
-        // due to a segfault.
-        //
-        // The issue #38878 has some more debugging information on it as well,
-        // but this unfortunately looks like it's just a race condition in
-        // macOS's linker with some thread pool working in the background. It
-        // seems that no one currently knows a fix for this so in the meantime
-        // we're left with this...
-        if !retry_on_segfault || i > 3 {
-            break;
-        }
-        let msg_segv = "clang: error: unable to execute command: Segmentation fault: 11";
-        let msg_bus = "clang: error: unable to execute command: Bus error: 10";
-        if out.contains(msg_segv) || out.contains(msg_bus) {
-            warn!(
-                ?cmd, %out,
-                "looks like the linker segfaulted when we tried to call it, \
-                 automatically retrying again",
-            );
-            continue;
-        }
-
-        if is_illegal_instruction(&output.status) {
-            warn!(
-                ?cmd, %out, status = %output.status,
-                "looks like the linker hit an illegal instruction when we \
-                 tried to call it, automatically retrying again.",
-            );
-            continue;
-        }
-
-        #[cfg(unix)]
-        fn is_illegal_instruction(status: &ExitStatus) -> bool {
-            use std::os::unix::prelude::*;
-            status.signal() == Some(libc::SIGILL)
-        }
-
-        #[cfg(not(unix))]
-        fn is_illegal_instruction(_status: &ExitStatus) -> bool {
-            false
-        }
+        break;
     }
 
     match prog {
