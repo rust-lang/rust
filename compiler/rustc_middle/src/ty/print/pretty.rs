@@ -3250,6 +3250,7 @@ define_print! {
             ty::ClauseKind::ConstEvaluatable(ct) => {
                 p!("the constant `", print(ct), "` can be evaluated")
             }
+            ty::ClauseKind::UnstableFeature(_) => p!("unstable feature"), // TODO: fix this later
         }
     }
 

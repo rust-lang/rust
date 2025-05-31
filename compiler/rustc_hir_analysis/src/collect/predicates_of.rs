@@ -9,7 +9,7 @@ use rustc_middle::ty::{
     self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitor, Upcast,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Ident, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use tracing::{debug, instrument, trace};
 
 use super::item_bounds::explicit_item_bounds_with_filter;
@@ -316,6 +316,19 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
     if tcx.features().generic_const_exprs() {
         predicates.extend(const_evaluatable_predicates_of(tcx, def_id, &predicates));
+    }
+
+    for attr in tcx.get_attrs(def_id, sym::allow_unstable_feature) {
+        if let Some(list) = attr.meta_item_list() {
+            for item in list.iter() {
+                // TODO: deal with error later
+                let feature_name = item.name().unwrap();
+                predicates.insert((
+                    ty::ClauseKind::UnstableFeature(feature_name).upcast(tcx),
+                    tcx.def_span(def_id),
+                ));
+            }
+        }
     }
 
     let mut predicates: Vec<_> = predicates.into_iter().collect();
@@ -747,6 +760,7 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
                     ty::ClauseKind::RegionOutlives(_)
                     | ty::ClauseKind::ConstArgHasType(_, _)
                     | ty::ClauseKind::WellFormed(_)
+                    | ty::ClauseKind::UnstableFeature(_)
                     | ty::ClauseKind::ConstEvaluatable(_) => {
                         bug!(
                             "unexpected non-`Self` predicate when computing \
@@ -774,6 +788,7 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
                     | ty::ClauseKind::ConstArgHasType(_, _)
                     | ty::ClauseKind::WellFormed(_)
                     | ty::ClauseKind::ConstEvaluatable(_)
+                    | ty::ClauseKind::UnstableFeature(_)
                     | ty::ClauseKind::HostEffect(..) => {
                         bug!(
                             "unexpected non-`Self` predicate when computing \

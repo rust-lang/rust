@@ -410,6 +410,7 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_term(t1);
                 self.add_term(t2);
             }
+            ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => todo!(),
         }
     }
 
