@@ -329,9 +329,9 @@ pub(crate) fn get_tool_rustc_compiler(
         return target_compiler;
     }
 
-    if builder.download_rustc() && target_compiler.stage > 0 {
-        // We already have the stage N compiler, we don't need to cut the stage.
-        return builder.compiler(target_compiler.stage, builder.config.build);
+    if builder.download_rustc() && target_compiler.stage == 1 {
+        // We shouldn't drop to stage0 compiler when using CI rustc.
+        return builder.compiler(1, builder.config.build);
     }
 
     // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise

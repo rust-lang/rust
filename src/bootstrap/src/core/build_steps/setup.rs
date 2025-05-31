@@ -241,10 +241,10 @@ impl Step for Link {
         if run.builder.config.dry_run() {
             return;
         }
-        if let [cmd] = &run.paths[..] {
-            if cmd.assert_single_path().path.as_path().as_os_str() == "link" {
-                run.builder.ensure(Link);
-            }
+        if let [cmd] = &run.paths[..]
+            && cmd.assert_single_path().path.as_path().as_os_str() == "link"
+        {
+            run.builder.ensure(Link);
         }
     }
     fn run(self, builder: &Builder<'_>) -> Self::Output {
@@ -457,10 +457,10 @@ impl Step for Hook {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        if let [cmd] = &run.paths[..] {
-            if cmd.assert_single_path().path.as_path().as_os_str() == "hook" {
-                run.builder.ensure(Hook);
-            }
+        if let [cmd] = &run.paths[..]
+            && cmd.assert_single_path().path.as_path().as_os_str() == "hook"
+        {
+            run.builder.ensure(Hook);
         }
     }
 
@@ -672,10 +672,10 @@ impl Step for Editor {
         if run.builder.config.dry_run() {
             return;
         }
-        if let [cmd] = &run.paths[..] {
-            if cmd.assert_single_path().path.as_path().as_os_str() == "editor" {
-                run.builder.ensure(Editor);
-            }
+        if let [cmd] = &run.paths[..]
+            && cmd.assert_single_path().path.as_path().as_os_str() == "editor"
+        {
+            run.builder.ensure(Editor);
         }
     }
 

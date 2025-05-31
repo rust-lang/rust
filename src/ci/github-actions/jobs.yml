@@ -111,7 +111,9 @@ envs:
 # These jobs automatically inherit envs.pr, to avoid repeating
 # it in each job definition.
 pr:
-  - name: mingw-check
+  - name: mingw-check-1
+    <<: *job-linux-4c
+  - name: mingw-check-2
     <<: *job-linux-4c
   - name: mingw-check-tidy
     continue_on_error: true
@@ -281,11 +283,14 @@ auto:
     env:
       IMAGE: i686-gnu-nopt
       DOCKER_SCRIPT: >-
-        python3 ../x.py test --stage 0 --config /config/nopt-std-config.toml library/std &&
+        python3 ../x.py test --stage 1 --config /config/nopt-std-config.toml library/std &&
         /scripts/stage_2_test_set2.sh
     <<: *job-linux-4c
 
-  - name: mingw-check
+  - name: mingw-check-1
+    <<: *job-linux-4c
+
+  - name: mingw-check-2
     <<: *job-linux-4c
 
   - name: test-various

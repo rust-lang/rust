@@ -237,7 +237,7 @@ fn alias_and_path_for_library() {
     );
     assert_eq!(
         first(cache.all::<doc::Std>()),
-        &[doc_std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0)]
+        &[doc_std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1)]
     );
 }
 
@@ -248,19 +248,6 @@ fn ci_rustc_if_unchanged_invalidate_on_compiler_changes() {
         ctx.create_upstream_merge(&["compiler/bar"]);
         // This change should invalidate download-ci-rustc
         ctx.create_nonupstream_merge(&["compiler/foo"]);
-
-        let config = parse_config_download_rustc_at(ctx.get_path(), "if-unchanged", true);
-        assert_eq!(config.download_rustc_commit, None);
-    });
-}
-
-#[test]
-fn ci_rustc_if_unchanged_invalidate_on_library_changes_in_ci() {
-    git_test(|ctx| {
-        prepare_rustc_checkout(ctx);
-        ctx.create_upstream_merge(&["compiler/bar"]);
-        // This change should invalidate download-ci-rustc
-        ctx.create_nonupstream_merge(&["library/foo"]);
 
         let config = parse_config_download_rustc_at(ctx.get_path(), "if-unchanged", true);
         assert_eq!(config.download_rustc_commit, None);
@@ -433,14 +420,14 @@ mod defaults {
         assert_eq!(first(cache.all::<doc::ErrorIndex>()), &[doc::ErrorIndex { target: a },]);
         assert_eq!(
             first(cache.all::<tool::ErrorIndex>()),
-            &[tool::ErrorIndex { compiler: Compiler::new(0, a) }]
+            &[tool::ErrorIndex { compiler: Compiler::new(1, a) }]
         );
-        // docs should be built with the beta compiler, not with the stage0 artifacts.
+        // docs should be built with the stage0 compiler, not with the stage0 artifacts.
         // recall that rustdoc is off-by-one: `stage` is the compiler rustdoc is _linked_ to,
         // not the one it was built by.
         assert_eq!(
             first(cache.all::<tool::Rustdoc>()),
-            &[tool::Rustdoc { compiler: Compiler::new(0, a) },]
+            &[tool::Rustdoc { compiler: Compiler::new(1, a) },]
         );
     }
 }

@@ -859,8 +859,19 @@ fn get_thread_id() -> u32 {
     std::thread::current().id().as_u64().get() as u32
 }
 
+// cfg(bootstrap)
+macro_rules! cfg_select_dispatch {
+    ($($tokens:tt)*) => {
+        #[cfg(bootstrap)]
+        cfg_match! { $($tokens)* }
+
+        #[cfg(not(bootstrap))]
+        cfg_select! { $($tokens)* }
+    };
+}
+
 // Memory reporting
-cfg_select! {
+cfg_select_dispatch! {
     windows => {
         pub fn get_resident_set_size() -> Option<usize> {
             use windows::{

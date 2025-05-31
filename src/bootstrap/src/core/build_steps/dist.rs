@@ -2276,11 +2276,12 @@ impl Step for LlvmTools {
         let target = self.target;
 
         // Run only if a custom llvm-config is not used
-        if let Some(config) = builder.config.target_config.get(&target) {
-            if !builder.config.llvm_from_ci && config.llvm_config.is_some() {
-                builder.info(&format!("Skipping LlvmTools ({target}): external LLVM"));
-                return None;
-            }
+        if let Some(config) = builder.config.target_config.get(&target)
+            && !builder.config.llvm_from_ci
+            && config.llvm_config.is_some()
+        {
+            builder.info(&format!("Skipping LlvmTools ({target}): external LLVM"));
+            return None;
         }
 
         if !builder.config.dry_run() {
@@ -2398,11 +2399,11 @@ impl Step for RustDev {
         let target = self.target;
 
         /* run only if llvm-config isn't used */
-        if let Some(config) = builder.config.target_config.get(&target) {
-            if let Some(ref _s) = config.llvm_config {
-                builder.info(&format!("Skipping RustDev ({target}): external LLVM"));
-                return None;
-            }
+        if let Some(config) = builder.config.target_config.get(&target)
+            && let Some(ref _s) = config.llvm_config
+        {
+            builder.info(&format!("Skipping RustDev ({target}): external LLVM"));
+            return None;
         }
 
         if !builder.config.dry_run() {

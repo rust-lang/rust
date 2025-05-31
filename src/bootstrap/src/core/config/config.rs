@@ -45,6 +45,7 @@ use crate::utils::helpers::{self, exe, output, t};
 /// final output/compiler, which can be significantly affected by changes made to the bootstrap sources.
 #[rustfmt::skip] // We don't want rustfmt to oneline this list
 pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
+    ":!library",
     ":!src/tools",
     ":!src/librustdoc",
     ":!src/rustdoc-json-types",
@@ -1699,20 +1700,20 @@ impl Config {
             };
             // We want to be able to set string values without quotes,
             // like in `configure.py`. Try adding quotes around the right hand side
-            if let Some((key, value)) = option.split_once('=') {
-                if !value.contains('"') {
-                    match get_table(&format!(r#"{key}="{value}""#)) {
-                        Ok(v) => {
-                            override_toml.merge(
-                                None,
-                                &mut Default::default(),
-                                v,
-                                ReplaceOpt::ErrorOnDuplicate,
-                            );
-                            continue;
-                        }
-                        Err(e) => err = e,
+            if let Some((key, value)) = option.split_once('=')
+                && !value.contains('"')
+            {
+                match get_table(&format!(r#"{key}="{value}""#)) {
+                    Ok(v) => {
+                        override_toml.merge(
+                            None,
+                            &mut Default::default(),
+                            v,
+                            ReplaceOpt::ErrorOnDuplicate,
+                        );
+                        continue;
                     }
+                    Err(e) => err = e,
                 }
             }
             eprintln!("failed to parse override `{option}`: `{err}");
@@ -2056,16 +2057,15 @@ impl Config {
                 || (matches!(debug_toml, Some(true))
                     && !matches!(rustc_debug_assertions_toml, Some(false)));
 
-            if debug_assertions_requested {
-                if let Some(ref opt) = download_rustc {
-                    if opt.is_string_or_true() {
-                        eprintln!(
-                            "WARN: currently no CI rustc builds have rustc debug assertions \
+            if debug_assertions_requested
+                && let Some(ref opt) = download_rustc
+                && opt.is_string_or_true()
+            {
+                eprintln!(
+                    "WARN: currently no CI rustc builds have rustc debug assertions \
                             enabled. Please either set `rust.debug-assertions` to `false` if you \
                             want to use download CI rustc or set `rust.download-rustc` to `false`."
-                        );
-                    }
-                }
+                );
             }
 
             config.download_rustc_commit = config.download_ci_rustc_commit(
@@ -2176,19 +2176,17 @@ impl Config {
         // We need to override `rust.channel` if it's manually specified when using the CI rustc.
         // This is because if the compiler uses a different channel than the one specified in bootstrap.toml,
         // tests may fail due to using a different channel than the one used by the compiler during tests.
-        if let Some(commit) = &config.download_rustc_commit {
-            if is_user_configured_rust_channel {
-                println!(
-                    "WARNING: `rust.download-rustc` is enabled. The `rust.channel` option will be overridden by the CI rustc's channel."
-                );
+        if let Some(commit) = &config.download_rustc_commit
+            && is_user_configured_rust_channel
+        {
+            println!(
+                "WARNING: `rust.download-rustc` is enabled. The `rust.channel` option will be overridden by the CI rustc's channel."
+            );
 
-                let channel = config
-                    .read_file_by_commit(Path::new("src/ci/channel"), commit)
-                    .trim()
-                    .to_owned();
+            let channel =
+                config.read_file_by_commit(Path::new("src/ci/channel"), commit).trim().to_owned();
 
-                config.channel = channel;
-            }
+            config.channel = channel;
         }
 
         if let Some(llvm) = toml.llvm {
@@ -2533,10 +2531,12 @@ impl Config {
             || bench_stage.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
         config.stage = match config.cmd {
-            Subcommand::Check { .. } => flags.stage.or(check_stage).unwrap_or(0),
+            Subcommand::Check { .. } | Subcommand::Clippy { .. } | Subcommand::Fix => {
+                flags.stage.or(check_stage).unwrap_or(1)
+            }
             // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
             Subcommand::Doc { .. } => {
-                flags.stage.or(doc_stage).unwrap_or(if download_rustc { 2 } else { 0 })
+                flags.stage.or(doc_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Build => {
                 flags.stage.or(build_stage).unwrap_or(if download_rustc { 2 } else { 1 })
@@ -2551,8 +2551,6 @@ impl Config {
             // These are all bootstrap tools, which don't depend on the compiler.
             // The stage we pass shouldn't matter, but use 0 just in case.
             Subcommand::Clean { .. }
-            | Subcommand::Clippy { .. }
-            | Subcommand::Fix
             | Subcommand::Run { .. }
             | Subcommand::Setup { .. }
             | Subcommand::Format { .. }
@@ -2698,10 +2696,10 @@ impl Config {
         let bindir = &self.bindir;
         if bindir.is_absolute() {
             // Try to make it relative to the prefix.
-            if let Some(prefix) = &self.prefix {
-                if let Ok(stripped) = bindir.strip_prefix(prefix) {
-                    return stripped;
-                }
+            if let Some(prefix) = &self.prefix
+                && let Ok(stripped) = bindir.strip_prefix(prefix)
+            {
+                return stripped;
             }
         }
         bindir
@@ -3150,24 +3148,10 @@ impl Config {
             }
         };
 
-        // RUSTC_IF_UNCHANGED_ALLOWED_PATHS
-        let mut allowed_paths = RUSTC_IF_UNCHANGED_ALLOWED_PATHS.to_vec();
-
-        // In CI, disable ci-rustc if there are changes in the library tree. But for non-CI, allow
-        // these changes to speed up the build process for library developers. This provides consistent
-        // functionality for library developers between `download-rustc=true` and `download-rustc="if-unchanged"`
-        // options.
-        //
-        // If you update "library" logic here, update `builder::tests::ci_rustc_if_unchanged_logic` test
-        // logic accordingly.
-        if !self.is_running_on_ci {
-            allowed_paths.push(":!library");
-        }
-
         let commit = if self.rust_info.is_managed_git_subrepository() {
             // Look for a version to compare to based on the current commit.
             // Only commits merged by bors will have CI artifacts.
-            let freshness = self.check_path_modifications(&allowed_paths);
+            let freshness = self.check_path_modifications(RUSTC_IF_UNCHANGED_ALLOWED_PATHS);
             self.verbose(|| {
                 eprintln!("rustc freshness: {freshness:?}");
             });
@@ -3493,19 +3477,19 @@ fn check_incompatible_options_for_ci_rustc(
     // We always build the in-tree compiler on cross targets, so we only care
     // about the host target here.
     let host_str = host.to_string();
-    if let Some(current_cfg) = current_config_toml.target.as_ref().and_then(|c| c.get(&host_str)) {
-        if current_cfg.profiler.is_some() {
-            let ci_target_toml = ci_config_toml.target.as_ref().and_then(|c| c.get(&host_str));
-            let ci_cfg = ci_target_toml.ok_or(format!(
-                "Target specific config for '{host_str}' is not present for CI-rustc"
-            ))?;
+    if let Some(current_cfg) = current_config_toml.target.as_ref().and_then(|c| c.get(&host_str))
+        && current_cfg.profiler.is_some()
+    {
+        let ci_target_toml = ci_config_toml.target.as_ref().and_then(|c| c.get(&host_str));
+        let ci_cfg = ci_target_toml.ok_or(format!(
+            "Target specific config for '{host_str}' is not present for CI-rustc"
+        ))?;
 
-            let profiler = &ci_cfg.profiler;
-            err!(current_cfg.profiler, profiler, "build");
+        let profiler = &ci_cfg.profiler;
+        err!(current_cfg.profiler, profiler, "build");
 
-            let optimized_compiler_builtins = &ci_cfg.optimized_compiler_builtins;
-            err!(current_cfg.optimized_compiler_builtins, optimized_compiler_builtins, "build");
-        }
+        let optimized_compiler_builtins = &ci_cfg.optimized_compiler_builtins;
+        err!(current_cfg.optimized_compiler_builtins, optimized_compiler_builtins, "build");
     }
 
     let (Some(current_rust_config), Some(ci_rust_config)) =

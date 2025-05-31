@@ -89,8 +89,19 @@ impl UnixFileDescription for FileHandle {
         communicate_allowed: bool,
         op: FlockOp,
     ) -> InterpResult<'tcx, io::Result<()>> {
+        // cfg(bootstrap)
+        macro_rules! cfg_select_dispatch {
+            ($($tokens:tt)*) => {
+                #[cfg(bootstrap)]
+                cfg_match! { $($tokens)* }
+
+                #[cfg(not(bootstrap))]
+                cfg_select! { $($tokens)* }
+            };
+        }
+
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        cfg_select! {
+        cfg_select_dispatch! {
             all(target_family = "unix", not(target_os = "solaris")) => {
                 use std::os::fd::AsRawFd;
 

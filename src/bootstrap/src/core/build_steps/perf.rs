@@ -154,10 +154,10 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
     let compiler = builder.compiler(builder.top_stage, builder.config.build);
     builder.ensure(Std::new(compiler, builder.config.build));
 
-    if let Some(opts) = args.cmd.shared_opts() {
-        if opts.profiles.contains(&Profile::Doc) {
-            builder.ensure(Rustdoc { compiler });
-        }
+    if let Some(opts) = args.cmd.shared_opts()
+        && opts.profiles.contains(&Profile::Doc)
+    {
+        builder.ensure(Rustdoc { compiler });
     }
 
     let sysroot = builder.ensure(Sysroot::new(compiler));

@@ -29,7 +29,18 @@ pub(crate) fn analyze_source_file(src: &str) -> (Vec<RelativeBytePos>, Vec<Multi
     (lines, multi_byte_chars)
 }
 
-cfg_select! {
+// cfg(bootstrap)
+macro_rules! cfg_select_dispatch {
+    ($($tokens:tt)*) => {
+        #[cfg(bootstrap)]
+        cfg_match! { $($tokens)* }
+
+        #[cfg(not(bootstrap))]
+        cfg_select! { $($tokens)* }
+    };
+}
+
+cfg_select_dispatch! {
     any(target_arch = "x86", target_arch = "x86_64") => {
         fn analyze_source_file_dispatch(
             src: &str,
