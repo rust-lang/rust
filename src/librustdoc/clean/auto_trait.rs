@@ -16,6 +16,7 @@ use crate::clean::{
 use crate::core::DocContext;
 
 #[instrument(level = "debug", skip(cx))]
+#[allow(dead_code)]
 pub(crate) fn synthesize_auto_trait_impls<'tcx>(
     cx: &mut DocContext<'tcx>,
     item_def_id: DefId,
