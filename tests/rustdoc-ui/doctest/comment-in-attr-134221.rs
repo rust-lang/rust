@@ -2,7 +2,7 @@
 // It checks that even if there are comments in the attributes, the attributes
 // will still be generated correctly (and therefore fail in this test).
 
-//@ compile-flags:--test --test-args --test-threads=1
+//@ compile-flags:--test --test-arg --test-threads=1
 //@ failure-status: 101
 //@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
