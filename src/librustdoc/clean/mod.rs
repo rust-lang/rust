@@ -66,8 +66,8 @@ use crate::visit_ast::Module as DocModule;
 pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let mut items: Vec<Item> = vec![];
     let mut inserted = FxHashSet::default();
-    items.extend(doc.foreigns.iter().map(|(item, renamed)| {
-        let item = clean_maybe_renamed_foreign_item(cx, item, *renamed);
+    items.extend(doc.foreigns.iter().map(|(item, renamed, import_id)| {
+        let item = clean_maybe_renamed_foreign_item(cx, item, *renamed, *import_id);
         if let Some(name) = item.name
             && (cx.render_options.document_hidden || !item.is_doc_hidden())
         {
@@ -3134,6 +3134,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     cx: &mut DocContext<'tcx>,
     item: &hir::ForeignItem<'tcx>,
     renamed: Option<Symbol>,
+    import_id: Option<LocalDefId>,
 ) -> Item {
     let def_id = item.owner_id.to_def_id();
     cx.with_param_env(def_id, |cx| {
@@ -3149,11 +3150,13 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
             hir::ForeignItemKind::Type => ForeignTypeItem,
         };
 
-        Item::from_def_id_and_parts(
-            item.owner_id.def_id.to_def_id(),
-            Some(renamed.unwrap_or(item.ident.name)),
-            kind,
+        generate_item_with_correct_attrs(
             cx,
+            kind,
+            item.owner_id.def_id.to_def_id(),
+            item.ident.name,
+            import_id,
+            renamed,
         )
     })
 }
