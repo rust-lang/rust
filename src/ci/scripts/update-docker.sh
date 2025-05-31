@@ -1,0 +1,52 @@
+#!/bin/bash
+# Update Docker to the latest version on Ubuntu
+
+set -euo pipefail
+
+echo "previous docker version:"
+sudo docker --version || true
+
+echo "Remove old Docker packages"
+for pkg in \
+    docker.io \
+    docker-compose \
+    docker-compose-v2 \
+    docker-doc \
+    podman-docker ;
+    do sudo apt-get remove -y $pkg || true; done
+
+echo "Add Docker's official GPG key"
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+echo "Add the repository to Apt sources"
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
+  https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+echo "Update the package database"
+sudo apt-get update
+
+echo "Install the latest version of Docker"
+sudo apt-get install -y \
+  docker-ce \
+  docker-ce-cli \
+  containerd.io \
+  docker-buildx-plugin
+
+if ! sudo docker --version; then
+    echo "Docker installation failed"
+    exit 1
+fi
+
+echo "Docker updated successfully! New version:"
+sudo docker --version
+# # Start and enable Docker service
+# sudo systemctl start docker
+# sudo systemctl enable docker
+
+# # Add current user to docker group (if not already)
+# sudo usermod -aG docker $USER || true
