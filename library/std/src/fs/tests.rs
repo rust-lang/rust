@@ -1,5 +1,6 @@
 use rand::RngCore;
 
+use super::Dir;
 #[cfg(any(
     windows,
     target_os = "freebsd",
@@ -17,7 +18,7 @@ use crate::char::MAX_LEN_UTF8;
     target_vendor = "apple",
 ))]
 use crate::fs::TryLockError;
-use crate::fs::{self, File, FileTimes, OpenOptions};
+use crate::fs::{self, File, FileTimes, OpenOptions, create_dir};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
 use crate::mem::MaybeUninit;
@@ -2083,4 +2084,94 @@ fn test_rename_junction() {
     // Make sure that renaming `original` to `dest` preserves the junction point.
     // Junction links are always absolute so we just check the file name is correct.
     assert_eq!(fs::read_link(&dest).unwrap().file_name(), Some(not_exist.as_os_str()));
+}
+
+#[test]
+fn test_dir_smoke_test() {
+    let tmpdir = tmpdir();
+    check!(Dir::new(tmpdir.path()));
+}
+
+#[test]
+fn test_dir_read_file() {
+    let tmpdir = tmpdir();
+    let mut f = check!(File::create(tmpdir.join("foo.txt")));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let dir = check!(Dir::new(tmpdir.path()));
+    let mut f = check!(dir.open("foo.txt"));
+    let mut buf = [0u8; 3];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"bar", &buf);
+}
+
+#[test]
+fn test_dir_write_file() {
+    let tmpdir = tmpdir();
+    let dir = check!(Dir::new(tmpdir.path()));
+    let mut f = check!(dir.open_with("foo.txt", &OpenOptions::new().write(true).create(true)));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let mut f = check!(File::open(tmpdir.join("foo.txt")));
+    let mut buf = [0u8; 3];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"bar", &buf);
+}
+
+#[test]
+fn test_dir_remove_file() {
+    let tmpdir = tmpdir();
+    let mut f = check!(File::create(tmpdir.join("foo.txt")));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let dir = check!(Dir::new(tmpdir.path()));
+    check!(dir.remove_file("foo.txt"));
+    let result = File::open(tmpdir.join("foo.txt"));
+    #[cfg(all(unix, not(target_os = "vxworks")))]
+    error!(result, "No such file or directory");
+    #[cfg(target_os = "vxworks")]
+    error!(result, "no such file or directory");
+    #[cfg(windows)]
+    error!(result, 2); // ERROR_FILE_NOT_FOUND
+}
+
+#[test]
+fn test_dir_remove_dir() {
+    let tmpdir = tmpdir();
+    check!(create_dir(tmpdir.join("foo")));
+    let dir = check!(Dir::new(tmpdir.path()));
+    check!(dir.remove_dir("foo"));
+    let result = Dir::new(tmpdir.join("foo"));
+    #[cfg(all(unix, not(target_os = "vxworks")))]
+    error!(result, "No such file or directory");
+    #[cfg(target_os = "vxworks")]
+    error!(result, "no such file or directory");
+    #[cfg(windows)]
+    error!(result, 2); // ERROR_FILE_NOT_FOUND
+}
+
+#[test]
+fn test_dir_rename_file() {
+    let tmpdir = tmpdir();
+    let mut f = check!(File::create(tmpdir.join("foo.txt")));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let dir = check!(Dir::new(tmpdir.path()));
+    check!(dir.rename("foo.txt", &dir, "baz.txt"));
+    let mut f = check!(File::open(tmpdir.join("baz.txt")));
+    let mut buf = [0u8; 3];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"bar", &buf);
+}
+
+#[test]
+fn test_dir_create_dir() {
+    let tmpdir = tmpdir();
+    let dir = check!(Dir::new(tmpdir.path()));
+    check!(dir.create_dir("foo"));
+    check!(Dir::new(tmpdir.join("foo")));
 }
