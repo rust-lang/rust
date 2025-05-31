@@ -234,6 +234,32 @@ impl<T: Idx> DenseBitSet<T> {
         self.clear_excess_bits();
     }
 
+    /// Checks whether any bit in the given range is a 1.
+    #[inline]
+    pub fn contains_any(&self, elems: impl RangeBounds<T>) -> bool {
+        let Some((start, end)) = inclusive_start_end(elems, self.domain_size) else {
+            return false;
+        };
+        let (start_word_index, start_mask) = word_index_and_mask(start);
+        let (end_word_index, end_mask) = word_index_and_mask(end);
+
+        if start_word_index == end_word_index {
+            self.words[start_word_index] & (end_mask | (end_mask - start_mask)) != 0
+        } else {
+            if self.words[start_word_index] & !(start_mask - 1) != 0 {
+                return true;
+            }
+
+            let remaining = start_word_index + 1..end_word_index;
+            if remaining.start <= remaining.end {
+                self.words[remaining].iter().any(|&w| w != 0)
+                    || self.words[end_word_index] & (end_mask | (end_mask - 1)) != 0
+            } else {
+                false
+            }
+        }
+    }
+
     /// Returns `true` if the set has changed.
     #[inline]
     pub fn remove(&mut self, elem: T) -> bool {
