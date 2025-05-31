@@ -24,10 +24,17 @@ use super::{
 use crate::fluent_generated as fluent;
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
-pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAllocation<'tcx> {
-    let path = crate::util::type_name(tcx, ty);
-    let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes(), ());
-    tcx.mk_const_alloc(alloc)
+pub(crate) fn alloc_type_name<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> (ConstAllocation<'tcx>, u64) {
+    let mut path = crate::util::type_name(tcx, ty).into_bytes();
+    let path_len = path.len().try_into().unwrap();
+    if !path.contains(&0) {
+        path.extend(b"\xff\0");
+    };
+    let alloc = Allocation::from_bytes_byte_aligned_immutable(path, ());
+    (tcx.mk_const_alloc(alloc), path_len)
 }
 
 /// The logic for all nullary intrinsics is implemented here. These intrinsics don't get evaluated
@@ -43,8 +50,8 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
     interp_ok(match name {
         sym::type_name => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            let alloc = alloc_type_name(tcx, tp_ty);
-            ConstValue::Slice { data: alloc, meta: alloc.inner().size().bytes() }
+            let (alloc, path_len) = alloc_type_name(tcx, tp_ty);
+            ConstValue::Slice { data: alloc, meta: path_len }
         }
         sym::needs_drop => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
