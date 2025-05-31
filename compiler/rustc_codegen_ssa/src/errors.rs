@@ -551,6 +551,11 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
 pub(crate) struct LinkExeUnexpectedError;
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_link_exe_status_stack_buffer_overrun)]
+#[note]
+pub(crate) struct LinkExeStatusStackBufferOverrun;
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_repair_vs_build_tools)]
 pub(crate) struct RepairVSBuildTools;
 
