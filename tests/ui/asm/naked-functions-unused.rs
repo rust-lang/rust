@@ -8,6 +8,7 @@
 pub trait Trait {
     extern "C" fn trait_associated(a: usize, b: usize) -> usize;
     extern "C" fn trait_method(&self, a: usize, b: usize) -> usize;
+    //~^ WARN uses type `&Self`
 }
 
 pub mod normal {
@@ -33,7 +34,8 @@ pub mod normal {
         }
 
         pub extern "C" fn method(&self, a: usize, b: usize) -> usize {
-            //~^ ERROR unused variable: `a`
+            //~^ WARN uses type `&normal::Normal`
+            //~| ERROR unused variable: `a`
             //~| ERROR unused variable: `b`
             unsafe {
                 asm!("", options(noreturn));
@@ -51,7 +53,8 @@ pub mod normal {
         }
 
         extern "C" fn trait_method(&self, a: usize, b: usize) -> usize {
-            //~^ ERROR unused variable: `a`
+            //~^ WARN uses type `&normal::Normal`
+            //~| ERROR unused variable: `a`
             //~| ERROR unused variable: `b`
             unsafe {
                 asm!("", options(noreturn));
@@ -78,6 +81,7 @@ pub mod naked {
 
         #[unsafe(naked)]
         pub extern "C" fn method(&self, a: usize, b: usize) -> usize {
+            //~^ WARN uses type `&Naked`
             naked_asm!("")
         }
     }
@@ -90,6 +94,7 @@ pub mod naked {
 
         #[unsafe(naked)]
         extern "C" fn trait_method(&self, a: usize, b: usize) -> usize {
+            //~^ WARN uses type `&Naked`
             naked_asm!("")
         }
     }

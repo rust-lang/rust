@@ -24,7 +24,9 @@ struct A<T: Foo> {
 }
 
 extern "C" {
-    fn lint_me() -> A<()>; //~ ERROR: uses type `Qux`
+    // possible FIXME: currenty, the error comes from the non-option'd reference, not the unsafety
+    // of Qux
+    fn lint_me() -> A<()>; //~ ERROR: uses type `A<()>`
 }
 
 fn main() {}

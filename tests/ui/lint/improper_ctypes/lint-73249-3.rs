@@ -12,13 +12,13 @@ fn assign() -> Qux {
     3
 }
 
-#[repr(transparent)]
+#[repr(C)]
 pub struct A {
     x: Qux,
 }
 
 extern "C" {
-    pub fn lint_me() -> A; //~ ERROR: uses type `Qux`
+    pub fn lint_me() -> A; //~ ERROR: `extern` block uses type `A`
 }
 
 fn main() {}

@@ -6,7 +6,7 @@ use std::mem::offset_of;
 #[repr(C)]
 struct S {
     a: u8,
-    b: (u8, u8),
+    b: [u8;2],
     c: [i32],
 }
 
