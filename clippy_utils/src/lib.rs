@@ -2788,16 +2788,19 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
     });
 }
 
-/// Checks whether a given span has any non-comment token. This checks for all types of token other
-/// than line comment "//", block comment "/**", doc "///" "//!" and whitespace
+/// Checks whether a given span has any significant token. A significant token is a non-whitespace
+/// token, including comments unless `skip_comments` is set.
 /// This is useful to determine if there are any actual code tokens in the span that are omitted in
 /// the late pass, such as platform-specific code.
-pub fn span_contains_non_comment(cx: &impl source::HasSession, span: Span) -> bool {
-    matches!(span.get_source_text(cx), Some(snippet) if tokenize_with_text(&snippet).any(|(token, _, _)| {
-        !matches!(token, TokenKind::LineComment { .. } | TokenKind::BlockComment { .. } | TokenKind::Whitespace)
-    }))
+pub fn span_contains_non_whitespace(cx: &impl source::HasSession, span: Span, skip_comments: bool) -> bool {
+    matches!(span.get_source_text(cx), Some(snippet) if tokenize_with_text(&snippet).any(|(token, _, _)|
+        match token {
+            TokenKind::Whitespace => false,
+            TokenKind::BlockComment { .. } | TokenKind::LineComment { .. } => !skip_comments,
+            _ => true,
+        }
+    ))
 }
-
 /// Returns all the comments a given span contains
 ///
 /// Comments are returned wrapped with their relevant delimiters

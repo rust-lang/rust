@@ -651,13 +651,14 @@ The maximum size of the `Err`-variant in a `Result` returned from a function
 
 
 ## `lint-commented-code`
-Whether collapsible `if` chains are linted if they contain comments inside the parts
+Whether collapsible `if` and `else if` chains are linted if they contain comments inside the parts
 that would be collapsed.
 
 **Default Value:** `false`
 
 ---
 **Affected lints:**
+* [`collapsible_else_if`](https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_else_if)
 * [`collapsible_if`](https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if)
 
 
