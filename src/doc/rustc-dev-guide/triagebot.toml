@@ -1,8 +1,6 @@
 # This file's format is documented at
 # https://forge.rust-lang.org/triagebot/pr-assignment.html#configuration
 
-[assign]
-
 [autolabel."needs-triage"]
 new_issue = true
 exclude_labels = [
@@ -69,6 +67,10 @@ allow-unauthenticated = [
 
 [behind-upstream]
 days-threshold = 7
+
+# Enable triagebot (PR) assignment.
+# Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment.html
+[assign]
 
 # Keep members alphanumerically sorted.
 [assign.adhoc_groups]
