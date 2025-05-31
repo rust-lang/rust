@@ -381,29 +381,43 @@ impl<T, R> CollectAndApply<T, R> for T {
         I: Iterator<Item = T>,
         F: FnOnce(&[T]) -> R,
     {
-        // This code is hot enough that it's worth specializing for the most
-        // common length lists, to avoid the overhead of `SmallVec` creation.
-        // Lengths 0, 1, and 2 typically account for ~95% of cases. If
-        // `size_hint` is incorrect a panic will occur via an `unwrap` or an
-        // `assert`.
-        match iter.size_hint() {
-            (0, Some(0)) => {
-                assert!(iter.next().is_none());
-                f(&[])
-            }
-            (1, Some(1)) => {
-                let t0 = iter.next().unwrap();
-                assert!(iter.next().is_none());
-                f(&[t0])
-            }
-            (2, Some(2)) => {
-                let t0 = iter.next().unwrap();
-                let t1 = iter.next().unwrap();
-                assert!(iter.next().is_none());
-                f(&[t0, t1])
-            }
-            _ => f(&iter.collect::<SmallVec<[_; 8]>>()),
-        }
+        let Some(t0) = iter.next() else {
+            return f(&[]);
+        };
+
+        let Some(t1) = iter.next() else {
+            return f(&[t0]);
+        };
+
+        let Some(t2) = iter.next() else {
+            return f(&[t0, t1]);
+        };
+
+        let Some(t3) = iter.next() else {
+            return f(&[t0, t1, t2]);
+        };
+
+        let Some(t4) = iter.next() else {
+            return f(&[t0, t1, t2, t3]);
+        };
+
+        let Some(t5) = iter.next() else {
+            return f(&[t0, t1, t2, t3, t4]);
+        };
+
+        let Some(t6) = iter.next() else {
+            return f(&[t0, t1, t2, t3, t4, t5]);
+        };
+
+        let Some(t7) = iter.next() else {
+            return f(&[t0, t1, t2, t3, t4, t5, t6]);
+        };
+
+        let Some(t8) = iter.next() else {
+            return f(&[t0, t1, t2, t3, t4, t5, t6, t7]);
+        };
+
+        f(&[t0, t1, t2, t3, t4, t5, t6, t7, t8].into_iter().chain(iter).collect::<Vec<_>>())
     }
 }
 
@@ -439,6 +453,51 @@ impl<T, R, E> CollectAndApply<T, R> for Result<T, E> {
                 let t1 = iter.next().unwrap()?;
                 assert!(iter.next().is_none());
                 f(&[t0, t1])
+            }
+            (3, Some(3)) => {
+                let t0 = iter.next().unwrap()?;
+                let t1 = iter.next().unwrap()?;
+                let t2 = iter.next().unwrap()?;
+                assert!(iter.next().is_none());
+                f(&[t0, t1, t2])
+            }
+            (4, Some(4)) => {
+                let t0 = iter.next().unwrap()?;
+                let t1 = iter.next().unwrap()?;
+                let t2 = iter.next().unwrap()?;
+                let t3 = iter.next().unwrap()?;
+                assert!(iter.next().is_none());
+                f(&[t0, t1, t2, t3])
+            }
+            (5, Some(5)) => {
+                let t0 = iter.next().unwrap()?;
+                let t1 = iter.next().unwrap()?;
+                let t2 = iter.next().unwrap()?;
+                let t3 = iter.next().unwrap()?;
+                let t4 = iter.next().unwrap()?;
+                assert!(iter.next().is_none());
+                f(&[t0, t1, t2, t3, t4])
+            }
+            (6, Some(6)) => {
+                let t0 = iter.next().unwrap()?;
+                let t1 = iter.next().unwrap()?;
+                let t2 = iter.next().unwrap()?;
+                let t3 = iter.next().unwrap()?;
+                let t4 = iter.next().unwrap()?;
+                let t5 = iter.next().unwrap()?;
+                assert!(iter.next().is_none());
+                f(&[t0, t1, t2, t3, t4, t5])
+            }
+            (7, Some(7)) => {
+                let t0 = iter.next().unwrap()?;
+                let t1 = iter.next().unwrap()?;
+                let t2 = iter.next().unwrap()?;
+                let t3 = iter.next().unwrap()?;
+                let t4 = iter.next().unwrap()?;
+                let t5 = iter.next().unwrap()?;
+                let t6 = iter.next().unwrap()?;
+                assert!(iter.next().is_none());
+                f(&[t0, t1, t2, t3, t4, t5, t6])
             }
             _ => f(&iter.collect::<Result<SmallVec<[_; 8]>, _>>()?),
         })
