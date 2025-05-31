@@ -184,30 +184,22 @@ impl Argument<'_> {
         }
     }
 
-    /// Used by `format_args` when all arguments are gone after inlining,
-    /// when using `&[]` would incorrectly allow for a bigger lifetime.
-    ///
-    /// This fails without format argument inlining, and that shouldn't be different
-    /// when the argument is inlined:
-    ///
-    /// ```compile_fail,E0716
-    /// let f = format_args!("{}", "a");
-    /// println!("{f}");
-    /// ```
+    /// Bootstrap only.
     #[inline]
+    #[cfg(bootstrap)]
     pub const fn none() -> [Self; 0] {
         []
     }
 }
 
-/// This struct represents the unsafety of constructing an `Arguments`.
-/// It exists, rather than an unsafe function, in order to simplify the expansion
-/// of `format_args!(..)` and reduce the scope of the `unsafe` block.
+/// Bootstrap only.
+#[cfg(bootstrap)]
 #[lang = "format_unsafe_arg"]
 pub struct UnsafeArg {
     _private: (),
 }
 
+#[cfg(bootstrap)]
 impl UnsafeArg {
     /// See documentation where `UnsafeArg` is required to know when it is safe to
     /// create and use `UnsafeArg`.
@@ -248,8 +240,7 @@ impl<'a> Arguments<'a> {
 
     /// Specifies nonstandard formatting parameters.
     ///
-    /// An `rt::UnsafeArg` is required because the following invariants must be held
-    /// in order for this function to be safe:
+    /// SAFETY: the following invariants must be held:
     /// 1. The `pieces` slice must be at least as long as `fmt`.
     /// 2. Every `rt::Placeholder::position` value within `fmt` must be a valid index of `args`.
     /// 3. Every `rt::Count::Param` within `fmt` must contain a valid index of `args`.
@@ -261,6 +252,18 @@ impl<'a> Arguments<'a> {
     /// const _: () = if false { panic!("a {:1}", "a") };
     /// ```
     #[inline]
+    #[cfg(not(bootstrap))]
+    pub unsafe fn new_v1_formatted(
+        pieces: &'a [&'static str],
+        args: &'a [rt::Argument<'a>],
+        fmt: &'a [rt::Placeholder],
+    ) -> Arguments<'a> {
+        Arguments { pieces, fmt: Some(fmt), args }
+    }
+
+    /// Bootstrap only.
+    #[inline]
+    #[cfg(bootstrap)]
     pub fn new_v1_formatted(
         pieces: &'a [&'static str],
         args: &'a [rt::Argument<'a>],

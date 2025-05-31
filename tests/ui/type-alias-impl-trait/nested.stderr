@@ -15,10 +15,13 @@ error[E0277]: `Bar` doesn't implement `Debug`
   --> $DIR/nested.rs:17:22
    |
 LL |     println!("{:?}", bar());
-   |                      ^^^^^ `Bar` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               ----   ^^^^^ `Bar` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               |
+   |               required by a bound introduced by this call
    |
    = help: the trait `Debug` is not implemented for `Bar`
-   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+note: required by a bound in `core::fmt::rt::Argument::<'_>::new_debug`
+  --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
 
 error: aborting due to 2 previous errors
 
