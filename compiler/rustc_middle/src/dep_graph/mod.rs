@@ -2,6 +2,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Session;
 
+use crate::ty::print::with_reduced_queries;
 use crate::ty::{self, TyCtxt};
 
 #[macro_use]
@@ -83,5 +84,9 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     #[inline]
     fn dep_kind_info(&self, dk: DepKind) -> &DepKindStruct<'tcx> {
         &self.query_kinds[dk.as_usize()]
+    }
+
+    fn with_reduced_queries<T>(self, f: impl FnOnce() -> T) -> T {
+        with_reduced_queries!(f())
     }
 }
