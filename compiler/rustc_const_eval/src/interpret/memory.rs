@@ -979,12 +979,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Handle the effect an FFI call might have on the state of allocations.
-    /// This overapproximates the modifications which external code might make to memory:
-    /// We set all reachable allocations as initialized, mark all reachable provenances as exposed
-    /// and overwrite them with `Provenance::WILDCARD`.
+    /// If `paranoid` is true, overapproximates the modifications which external code might make
+    /// to memory: We set all reachable allocations as initialized, mark all reachable provenances
+    /// as exposed and overwrite them with `Provenance::WILDCARD`. Otherwise, it just makes sure
+    /// that all allocations are properly set up so that we don't leak whatever was in the uninit
+    /// bytes on FFI call.
     ///
     /// The allocations in `ids` are assumed to be already exposed.
-    pub fn prepare_for_native_call(&mut self, ids: Vec<AllocId>) -> InterpResult<'tcx> {
+    pub fn prepare_for_native_call(
+        &mut self,
+        ids: Vec<AllocId>,
+        paranoid: bool,
+    ) -> InterpResult<'tcx> {
         let mut done = FxHashSet::default();
         let mut todo = ids;
         while let Some(id) = todo.pop() {
@@ -999,25 +1005,117 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 continue;
             }
 
-            // Expose all provenances in this allocation, and add them to `todo`.
+            // Make sure we iterate over everything recursively, preparing the extra alloc info.
             let alloc = self.get_alloc_raw(id)?;
             for prov in alloc.provenance().provenances() {
-                M::expose_provenance(self, prov)?;
+                if paranoid {
+                    // Expose all provenances in this allocation, and add them to `todo`.
+                    M::expose_provenance(self, prov)?;
+                }
                 if let Some(id) = prov.get_alloc_id() {
                     todo.push(id);
                 }
             }
+
             // Also expose the provenance of the interpreter-level allocation, so it can
             // be read by FFI. The `black_box` is defensive programming as LLVM likes
             // to (incorrectly) optimize away ptr2int casts whose result is unused.
-            std::hint::black_box(alloc.get_bytes_unchecked_raw().expose_provenance());
+            if paranoid {
+                std::hint::black_box(alloc.get_bytes_unchecked_raw().expose_provenance());
+                // Prepare for possible write from native code if mutable.
+                if info.mutbl.is_mut() {
+                    self.get_alloc_raw_mut(id)?.0.prepare_for_native_write();
+                }
+            }
+        }
+        interp_ok(())
+    }
 
-            // Prepare for possible write from native code if mutable.
-            if info.mutbl.is_mut() {
-                self.get_alloc_raw_mut(id)?
-                    .0
-                    .prepare_for_native_write()
-                    .map_err(|e| e.to_interp_error(id))?;
+    /// Updates the machine state "as if" the accesses given had been performed.
+    /// Used only by Miri for FFI, for taking note of events that were intercepted from foreign
+    /// code and properly (but still conservatively) marking their effects. Remember to call
+    /// `prepare_for_native_call` with `paranoid` set to false first on the same `AllocId`s, or
+    /// some writes may be discarded!
+    ///
+    /// The allocations in `ids` are assumed to be already exposed.
+    pub fn apply_accesses(
+        &mut self,
+        mut ids: Vec<AllocId>,
+        reads: Vec<std::ops::Range<u64>>,
+        writes: Vec<std::ops::Range<u64>>,
+    ) -> InterpResult<'tcx> {
+        /// Helper function to avoid some code duplication over range overlaps.
+        fn get_start_size(
+            rg: std::ops::Range<u64>,
+            alloc_base: u64,
+            alloc_size: u64,
+        ) -> Option<(u64, u64)> {
+            // A bunch of range bounds nonsense that effectively simplifies to
+            // "get the starting point of the overlap and the length from there".
+            // Needs to also account for the allocation being in the middle of the
+            // range or completely containing it
+            let signed_start = rg.start.cast_signed() - alloc_base.cast_signed();
+            let size_uncapped = if signed_start < 0 {
+                // If this returns, they don't overlap
+                (signed_start + (rg.end - rg.start).cast_signed()).try_into().ok()?
+            } else {
+                rg.end - rg.start
+            };
+            let start: u64 = signed_start.try_into().unwrap_or(0);
+            let size = std::cmp::min(size_uncapped, alloc_size - start);
+            Some((start, size))
+        }
+
+        let mut done = FxHashSet::default();
+        while let Some(id) = ids.pop() {
+            if !done.insert(id) {
+                continue;
+            }
+            let info = self.get_alloc_info(id);
+
+            // If there is no data behind this pointer, skip this.
+            if !matches!(info.kind, AllocKind::LiveData) {
+                continue;
+            }
+
+            let alloc_base: u64 = {
+                // Keep the alloc here so the borrow checker is happy
+                let alloc = self.get_alloc_raw(id)?;
+                // No need for black_box trickery since we actually use the address
+                alloc.get_bytes_unchecked_raw().expose_provenance().try_into().unwrap()
+            };
+            let alloc_size = info.size.bytes();
+
+            // Find reads which overlap with the current allocation
+            for rg in &reads {
+                if let Some((start, size)) = get_start_size(rg.clone(), alloc_base, alloc_size) {
+                    let alloc = self.get_alloc_raw(id)?;
+                    let prov_map = alloc.provenance();
+                    // Only iterate on the bytes that overlap with the access
+                    for i in start..start + size {
+                        // We can be conservative and only expose provenances actually read
+                        if let Some(prov) = prov_map.get(Size::from_bytes(1), self)
+                            && rg.contains(&(alloc_base + i))
+                        {
+                            M::expose_provenance(self, prov)?;
+                            if let Some(id) = prov.get_alloc_id() {
+                                ids.push(id);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Then do the same thing for writes, marking down that a write happened
+            for rg in &writes {
+                if let Some((start, size)) = get_start_size(rg.clone(), alloc_base, alloc_size)
+                    && self.get_alloc_mutability(id)?.is_mut()
+                {
+                    let alloc_mut = self.get_alloc_raw_mut(id)?.0;
+                    let range =
+                        AllocRange { start: Size::from_bytes(start), size: Size::from_bytes(size) };
+                    alloc_mut.mark_foreign_write(range);
+                }
             }
         }
         interp_ok(())

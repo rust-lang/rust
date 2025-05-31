@@ -476,7 +476,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // for the search within `prepare_for_native_call`.
         let exposed: Vec<AllocId> =
             this.machine.alloc_addresses.get_mut().exposed.iter().copied().collect();
-        this.prepare_for_native_call(exposed)
+        this.prepare_for_native_call(exposed, true)
     }
 }
 

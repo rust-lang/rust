@@ -799,7 +799,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     /// Initialize all previously uninitialized bytes in the entire allocation, and set
     /// provenance of everything to `Wildcard`. Before calling this, make sure all
     /// provenance in this allocation is exposed!
-    pub fn prepare_for_native_write(&mut self) -> AllocResult {
+    pub fn prepare_for_native_write(&mut self) {
         let full_range = AllocRange { start: Size::ZERO, size: Size::from_bytes(self.len()) };
         // Overwrite uninitialized bytes with 0, to ensure we don't leak whatever their value happens to be.
         for chunk in self.init_mask.range_as_init_chunks(full_range) {
@@ -809,18 +809,23 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
                 uninit_bytes.fill(0);
             }
         }
-        // Mark everything as initialized now.
-        self.mark_init(full_range, true);
+        self.mark_foreign_write(full_range);
+    }
 
-        // Set provenance of all bytes to wildcard.
-        self.provenance.write_wildcards(self.len());
+    /// Initialise previously uninitialised bytes in the given range, and set provenance of
+    /// everything in it to `Wildcard`. Before calling this, make sure all provenance in this
+    /// range is exposed!
+    pub fn mark_foreign_write(&mut self, range: AllocRange) {
+        // Mark everything as initialized now.
+        self.mark_init(range, true);
+
+        // Set provenance of affected bytes to wildcard.
+        self.provenance.write_wildcards(range);
 
         // Also expose the provenance of the interpreter-level allocation, so it can
         // be written by FFI. The `black_box` is defensive programming as LLVM likes
         // to (incorrectly) optimize away ptr2int casts whose result is unused.
         std::hint::black_box(self.get_bytes_unchecked_raw_mut().expose_provenance());
-
-        Ok(())
     }
 
     /// Remove all provenance in the given memory range.
