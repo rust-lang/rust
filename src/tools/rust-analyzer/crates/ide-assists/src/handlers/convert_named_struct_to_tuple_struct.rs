@@ -356,7 +356,7 @@ impl A {
 }"#,
             r#"
 struct Inner;
-struct A(Inner);
+pub struct A(Inner);
 
 impl A {
     fn new(inner: Inner) -> A {
