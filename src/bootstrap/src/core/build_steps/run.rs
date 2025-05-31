@@ -5,7 +5,6 @@
 
 use std::path::PathBuf;
 
-use crate::Mode;
 use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::{self, SourceType, Tool};
@@ -14,6 +13,7 @@ use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::get_completion;
 use crate::utils::exec::command;
+use crate::{Mode, t};
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct BuildManifest;
@@ -253,6 +253,7 @@ impl Step for GenerateCopyright {
         cmd.env("SRC_DIR", &builder.src);
         cmd.env("VENDOR_DIR", &vendored_sources);
         cmd.env("CARGO", &builder.initial_cargo);
+        cmd.env("CARGO_HOME", t!(home::cargo_home()));
         // it is important that generate-copyright runs from the root of the
         // source tree, because it uses relative paths
         cmd.current_dir(&builder.src);
