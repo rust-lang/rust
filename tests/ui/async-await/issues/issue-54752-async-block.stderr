@@ -4,7 +4,7 @@ warning: unnecessary parentheses around assigned value
 LL | fn main() { let _a = (async { }); }
    |                      ^         ^
    |
-   = note: `#[warn(unused_parens)]` on by default
+   = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default
 help: remove these parentheses
    |
 LL - fn main() { let _a = (async { }); }
