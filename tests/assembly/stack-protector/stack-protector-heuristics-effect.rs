@@ -16,8 +16,8 @@
 // See comments on https://github.com/rust-lang/rust/issues/114903.
 
 #![crate_type = "lib"]
-#![allow(incomplete_features)]
-#![feature(unsized_locals, unsized_fn_params)]
+#![allow(internal_features)]
+#![feature(unsized_fn_params)]
 
 // CHECK-LABEL: emptyfn{{:|\[}}
 #[no_mangle]
@@ -340,25 +340,6 @@ pub fn unsized_fn_param(s: [u8], l: bool, f: fn([u8])) {
     // all: __stack_chk_fail
     // strong-NOT: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
-    // none-NOT: __stack_chk_fail
-    // missing-NOT: __stack_chk_fail
-}
-
-// CHECK-LABEL: unsized_local{{:|\[}}
-#[no_mangle]
-pub fn unsized_local(s: &[u8], l: bool, f: fn(&mut [u8])) {
-    let n = if l { 1 } else { 2 };
-    let mut a: [u8] = *Box::<[u8]>::from(&s[0..n]); // slice-copy with Box::from
-    f(&mut a);
-
-    // This function allocates a slice as a local variable in its stack
-    // frame. Since the size is not a compile-time constant, an array
-    // alloca is required, and the function is protected by both the
-    // `strong` and `basic` heuristic.
-
-    // all: __stack_chk_fail
-    // strong: __stack_chk_fail
-    // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }

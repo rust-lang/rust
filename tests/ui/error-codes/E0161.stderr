@@ -1,5 +1,5 @@
 error[E0161]: cannot move a value of type `dyn Bar`
-  --> $DIR/E0161.rs:16:5
+  --> $DIR/E0161.rs:11:5
    |
 LL |     x.f();
    |     ^ the size of `dyn Bar` cannot be statically determined

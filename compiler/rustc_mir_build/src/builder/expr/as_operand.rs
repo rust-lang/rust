@@ -55,9 +55,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// local variable of unsized type. For example, consider this program:
     ///
     /// ```
-    /// #![feature(unsized_locals, unsized_fn_params)]
+    /// #![feature(unsized_fn_params)]
     /// # use core::fmt::Debug;
-    /// fn foo(p: dyn Debug) { dbg!(p); }
+    /// fn foo(_p: dyn Debug) { /* ... */ }
     ///
     /// fn bar(box_p: Box<dyn Debug>) { foo(*box_p); }
     /// ```
@@ -84,7 +84,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// will actually provide a pointer to the interior of the box, and not move the `dyn Debug`
     /// value to the stack.
     ///
-    /// See #68304 for more details.
+    /// See <https://github.com/rust-lang/rust/issues/68304> for more details.
     pub(crate) fn as_local_call_operand(
         &mut self,
         block: BasicBlock,

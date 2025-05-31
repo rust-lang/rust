@@ -25,7 +25,6 @@ LL |   let v = s[..2];
    |
    = help: the trait `Sized` is not implemented for `str`
    = note: all local variables must have a statically known size
-   = help: unsized locals are gated as an unstable feature
 help: consider borrowing here
    |
 LL |   let v = &s[..2];

@@ -1,7 +1,5 @@
 #![feature(coroutine_trait)]
 #![feature(coroutines)]
-#![feature(unsized_locals)]
-//~^ WARN the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
 
 use std::ops::Coroutine;
 

@@ -1,80 +1,39 @@
-warning: the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/move-out-of-slice-2.rs:1:12
+error[E0277]: the size for values of type `[A]` cannot be known at compilation time
+  --> $DIR/move-out-of-slice-2.rs:10:10
    |
-LL | #![feature(unsized_locals)]
-   |            ^^^^^^^^^^^^^^
-   |
-   = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
-error[E0508]: cannot move out of type `[A]`, a non-copy slice
-  --> $DIR/move-out-of-slice-2.rs:11:11
-   |
-LL |     match *a {
-   |           ^^ cannot move out of here
-LL |
 LL |         [a @ ..] => {}
-   |          -
-   |          |
-   |          data moved here
-   |          move occurs because `a` has type `[A]`, which does not implement the `Copy` trait
+   |          ^^^^^^ doesn't have a size known at compile-time
    |
-help: consider borrowing the pattern binding
-   |
-LL |         [ref a @ ..] => {}
-   |          +++
+   = help: the trait `Sized` is not implemented for `[A]`
+   = note: all local variables must have a statically known size
 
-error[E0508]: cannot move out of type `[A]`, a non-copy slice
-  --> $DIR/move-out-of-slice-2.rs:17:11
+error[E0277]: the size for values of type `[A]` cannot be known at compilation time
+  --> $DIR/move-out-of-slice-2.rs:15:16
    |
-LL |     match *b {
-   |           ^^ cannot move out of here
-LL |
 LL |         [_, _, b @ .., _] => {}
-   |                -
-   |                |
-   |                data moved here
-   |                move occurs because `b` has type `[A]`, which does not implement the `Copy` trait
+   |                ^^^^^^ doesn't have a size known at compile-time
    |
-help: consider borrowing the pattern binding
-   |
-LL |         [_, _, ref b @ .., _] => {}
-   |                +++
+   = help: the trait `Sized` is not implemented for `[A]`
+   = note: all local variables must have a statically known size
 
-error[E0508]: cannot move out of type `[C]`, a non-copy slice
-  --> $DIR/move-out-of-slice-2.rs:25:11
+error[E0277]: the size for values of type `[C]` cannot be known at compilation time
+  --> $DIR/move-out-of-slice-2.rs:22:10
    |
-LL |     match *c {
-   |           ^^ cannot move out of here
-LL |
 LL |         [c @ ..] => {}
-   |          -
-   |          |
-   |          data moved here
-   |          move occurs because `c` has type `[C]`, which does not implement the `Copy` trait
+   |          ^^^^^^ doesn't have a size known at compile-time
    |
-help: consider borrowing the pattern binding
-   |
-LL |         [ref c @ ..] => {}
-   |          +++
+   = help: the trait `Sized` is not implemented for `[C]`
+   = note: all local variables must have a statically known size
 
-error[E0508]: cannot move out of type `[C]`, a non-copy slice
-  --> $DIR/move-out-of-slice-2.rs:31:11
+error[E0277]: the size for values of type `[C]` cannot be known at compilation time
+  --> $DIR/move-out-of-slice-2.rs:27:16
    |
-LL |     match *d {
-   |           ^^ cannot move out of here
-LL |
 LL |         [_, _, d @ .., _] => {}
-   |                -
-   |                |
-   |                data moved here
-   |                move occurs because `d` has type `[C]`, which does not implement the `Copy` trait
+   |                ^^^^^^ doesn't have a size known at compile-time
    |
-help: consider borrowing the pattern binding
-   |
-LL |         [_, _, ref d @ .., _] => {}
-   |                +++
+   = help: the trait `Sized` is not implemented for `[C]`
+   = note: all local variables must have a statically known size
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0508`.
+For more information about this error, try `rustc --explain E0277`.

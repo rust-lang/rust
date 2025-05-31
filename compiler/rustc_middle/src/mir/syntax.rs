@@ -1133,13 +1133,6 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 /// Each local naturally corresponds to the place `Place { local, projection: [] }`. This place has
 /// the address of the local's allocation and the type of the local.
 ///
-/// **Needs clarification:** Unsized locals seem to present a bit of an issue. Their allocation
-/// can't actually be created on `StorageLive`, because it's unclear how big to make the allocation.
-/// Furthermore, MIR produces assignments to unsized locals, although that is not permitted under
-/// `#![feature(unsized_locals)]` in Rust. Besides just putting "unsized locals are special and
-/// different" in a bunch of places, I (JakobDegen) don't know how to incorporate this behavior into
-/// the current MIR semantics in a clean way - possibly this needs some design work first.
-///
 /// For places that are not locals, ie they have a non-empty list of projections, we define the
 /// values as a function of the parent place, that is the place with its last [`ProjectionElem`]
 /// stripped. The way this is computed of course depends on the kind of that last projection

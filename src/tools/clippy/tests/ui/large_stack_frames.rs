@@ -1,8 +1,8 @@
 //@ normalize-stderr-test: "\b10000(08|16|32)\b" -> "100$$PTR"
 //@ normalize-stderr-test: "\b2500(060|120)\b" -> "250$$PTR"
-#![allow(unused, incomplete_features)]
+#![allow(unused)]
 #![warn(clippy::large_stack_frames)]
-#![feature(unsized_locals)]
+
 
 use std::hint::black_box;
 
@@ -11,10 +11,10 @@ fn generic<T: Default>() {
     black_box(&x);
 }
 
-fn unsized_local() {
-    let x: dyn std::fmt::Display = *(Box::new(1) as Box<dyn std::fmt::Display>);
-    black_box(&x);
-}
+
+
+
+
 
 struct ArrayDefault<const N: usize>([u8; N]);
 
