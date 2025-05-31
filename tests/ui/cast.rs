@@ -1,7 +1,5 @@
 //@no-rustfix: only some diagnostics have suggestions
 
-#![feature(repr128)]
-#![allow(incomplete_features)]
 #![warn(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,

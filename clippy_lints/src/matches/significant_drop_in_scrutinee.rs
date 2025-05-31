@@ -208,12 +208,12 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
                     // (to avoid false positive on `Ref<'a, MutexGuard<Foo>>`)
                     || (args
                         .iter()
-                        .all(|arg| !matches!(arg.unpack(), GenericArgKind::Lifetime(_)))
+                        .all(|arg| !matches!(arg.kind(), GenericArgKind::Lifetime(_)))
                         // some generic parameter has significant drop
                         // (to avoid false negative on `Box<MutexGuard<Foo>>`)
                         && args
                             .iter()
-                            .filter_map(|arg| match arg.unpack() {
+                            .filter_map(|arg| match arg.kind() {
                                 GenericArgKind::Type(ty) => Some(ty),
                                 _ => None,
                             })
