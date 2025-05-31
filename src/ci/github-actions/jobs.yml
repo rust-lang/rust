@@ -253,6 +253,12 @@ auto:
   - name: dist-x86_64-netbsd
     <<: *job-linux-4c
 
+  - name: dist-x86_64-solaris
+    <<: *job-linux-4c
+
+  - name: dist-sparcv9-solaris
+    <<: *job-linux-4c
+
   # The i686-gnu job is split into multiple jobs to run tests in parallel.
   # i686-gnu-1 skips tests that run in i686-gnu-2.
   - name: i686-gnu-1
