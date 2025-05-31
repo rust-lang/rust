@@ -155,14 +155,12 @@ where
     ) -> QueryResult<I> {
         // Iterate through all goals in param_env to find the one that has the same symbol.
         for pred in param_env.caller_bounds().iter() {
-            match pred.kind().skip_binder() {
-                ty::ClauseKind::UnstableFeature(sym) => {
-                    if sym == symbol {
-                        return self
-                            .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
-                    }
+            if let ty::ClauseKind::UnstableFeature(sym) = pred.kind().skip_binder() {
+                if sym == symbol {
+                    return self
+                        .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                 }
-                _ => {} // don't care
+
             }
         }
 

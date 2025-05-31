@@ -840,13 +840,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
                     for pred in obligation.param_env.caller_bounds().iter() {
-                        match pred.kind().skip_binder() {
-                            ty::ClauseKind::UnstableFeature(sym) => {
-                                if sym == symbol {
-                                    return Ok(EvaluatedToOk);
-                                }
+                        if let ty::ClauseKind::UnstableFeature(sym) = pred.kind().skip_binder() {
+                            if sym == symbol {
+                                return Ok(EvaluatedToOk);
                             }
-                            _ => {} // don't care
                         }
                     }
                     // Check if feature is enabled at crate level with #[feature(..)] or if we are currently in codegen.
