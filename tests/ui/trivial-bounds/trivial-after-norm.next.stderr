@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `u32: Trait` is not satisfied
+  --> $DIR/trivial-after-norm.rs:18:5
+   |
+LL |     T::Assoc: Trait,
+   |     ^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `u32`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/trivial-after-norm.rs:12:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
