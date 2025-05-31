@@ -408,6 +408,16 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     self.expr_ty,
                     fcx.ty_to_string(self.cast_ty)
                 );
+
+                if let Ok(snippet) = fcx.tcx.sess.source_map().span_to_snippet(self.expr_span)
+                    && matches!(self.expr.kind, ExprKind::AddrOf(..))
+                {
+                    err.note(format!(
+                        "casting reference expression `{}` because `&` binds tighter than `as`",
+                        snippet
+                    ));
+                }
+
                 let mut sugg = None;
                 let mut sugg_mutref = false;
                 if let ty::Ref(reg, cast_ty, mutbl) = *self.cast_ty.kind() {
