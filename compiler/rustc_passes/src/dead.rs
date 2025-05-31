@@ -244,6 +244,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             let index = self.typeck_results().field_index(pat.hir_id);
             self.insert_def_id(variant.fields[index].did);
         }
+        self.check_def_id(variant.def_id);
     }
 
     fn handle_tuple_field_pattern_match(
@@ -270,6 +271,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
             self.insert_def_id(variant.fields[FieldIdx::from_usize(idx)].did);
         }
+        self.check_def_id(variant.def_id);
     }
 
     fn handle_offset_of(&mut self, expr: &'tcx hir::Expr<'tcx>) {
