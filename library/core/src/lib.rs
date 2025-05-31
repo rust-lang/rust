@@ -153,7 +153,6 @@
 #![feature(f16)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
-#![feature(generic_arg_infer)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]

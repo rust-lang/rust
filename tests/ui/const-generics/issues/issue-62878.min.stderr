@@ -16,17 +16,6 @@ help: add `#![feature(adt_const_params)]` to the crate attributes to enable more
 LL + #![feature(adt_const_params)]
    |
 
-error[E0658]: const arguments cannot yet be inferred with `_`
-  --> $DIR/issue-62878.rs:10:11
-   |
-LL |     foo::<_, { [1] }>();
-   |           ^
-   |
-   = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
-   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0658, E0770.
-For more information about an error, try `rustc --explain E0658`.
+For more information about this error, try `rustc --explain E0770`.
