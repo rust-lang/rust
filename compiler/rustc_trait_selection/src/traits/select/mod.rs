@@ -838,7 +838,26 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => todo!(),
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
+                    for pred in obligation.param_env.caller_bounds().iter() {
+                        match pred.kind().skip_binder() {
+                            ty::ClauseKind::UnstableFeature(sym) => {
+                                if sym == symbol {
+                                    return Ok(EvaluatedToOk);
+                                }
+                            }
+                            _ => {} // don't care
+                        }
+                    }
+                    // Check if feature is enabled at crate level with #[feature(..)] or if we are currently in codegen.
+                    if self.tcx().features().enabled(symbol)
+                        || (self.infcx.typing_mode() == TypingMode::PostAnalysis)
+                    {
+                        return Ok(EvaluatedToOk);
+                    } else {
+                        return Ok(EvaluatedToAmbig);
+                    }
+                }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
                     match const_evaluatable::is_const_evaluatable(
