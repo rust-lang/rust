@@ -6,7 +6,9 @@
                                        :overrideCommand ["python3"
                                                          "x.py"
                                                          "check"
-                                                         "--json-output"])
+                                                         "--json-output"
+                                                         "--build-dir"
+                                                         "build/rust-analyzer"])
                  :linkedProjects ["Cargo.toml"
                                   "compiler/rustc_codegen_cranelift/Cargo.toml"
                                   "compiler/rustc_codegen_gcc/Cargo.toml"
@@ -23,7 +25,9 @@
                                                   :overrideCommand ["python3"
                                                                     "x.py"
                                                                     "check"
-                                                                    "--json-output"])
+                                                                    "--json-output"
+                                                                    "--build-dir"
+                                                                    "build/rust-analyzer"])
                                         :sysrootSrc "./library"
                                         :extraEnv (:RUSTC_BOOTSTRAP "1"))
                  :rustc ( :source "./Cargo.toml" )))))))
