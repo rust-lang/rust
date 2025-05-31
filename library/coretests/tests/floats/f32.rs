@@ -23,6 +23,22 @@ const NAN_MASK1: u32 = 0x002a_aaaa;
 /// Second pattern over the mantissa
 const NAN_MASK2: u32 = 0x0055_5555;
 
+/// Miri adds some extra errors to float functions; make sure the tests still pass.
+/// These values are purely used as a canary to test against and are thus not a stable guarantee Rust provides.
+/// They serve as a way to get an idea of the real precision of floating point operations on different platforms.
+const APPROX_DELTA: f32 = if cfg!(miri) { 1e-4 } else { 1e-6 };
+
+#[allow(unused_macros)]
+macro_rules! assert_f32_biteq {
+    ($left : expr, $right : expr) => {
+        let l: &f32 = &$left;
+        let r: &f32 = &$right;
+        let lb = l.to_bits();
+        let rb = r.to_bits();
+        assert_eq!(lb, rb, "float {l} ({lb:#010x}) is not bitequal to {r} ({rb:#010x})");
+    };
+}
+
 #[test]
 fn test_num_f32() {
     super::test_num(10f32, 2f32);
@@ -437,8 +453,8 @@ fn test_powi() {
     let nan: f32 = f32::NAN;
     let inf: f32 = f32::INFINITY;
     let neg_inf: f32 = f32::NEG_INFINITY;
-    assert_biteq!(1.0f32.powi(1), 1.0);
-    assert_approx_eq!((-3.1f32).powi(2), 9.61);
+    assert_approx_eq!(1.0f32.powi(1), 1.0);
+    assert_approx_eq!((-3.1f32).powi(2), 9.61, APPROX_DELTA);
     assert_approx_eq!(5.9f32.powi(-2), 0.028727);
     assert_biteq!(8.3f32.powi(0), 1.0);
     assert!(nan.powi(2).is_nan());
