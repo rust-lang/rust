@@ -69,3 +69,12 @@ allow-unauthenticated = [
 
 [behind-upstream]
 days-threshold = 7
+
+# Keep members alphanumerically sorted.
+[assign.adhoc_groups]
+rustc-dev-guide = [
+    "@BoxyUwU",
+    "@jieyouxu",
+    "@jyn514",
+    "@tshepang",
+]
