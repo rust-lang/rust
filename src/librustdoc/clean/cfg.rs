@@ -169,33 +169,36 @@ impl Cfg {
         msg
     }
 
-    /// Renders the configuration for long display, as a long HTML description.
-    pub(crate) fn render_long_html(&self) -> String {
+    fn render_long_inner(&self, format: Format) -> String {
         let on = if self.omit_preposition() {
-            ""
+            " "
         } else if self.should_use_with_in_description() {
-            "with "
+            " with "
         } else {
-            "on "
+            " on "
         };
 
-        let mut msg = format!("Available {on}<strong>{}</strong>", Display(self, Format::LongHtml));
+        let mut msg = if matches!(format, Format::LongHtml) {
+            format!("Available{on}<strong>{}</strong>", Display(self, format))
+        } else {
+            format!("Available{on}{}", Display(self, format))
+        };
         if self.should_append_only_to_description() {
             msg.push_str(" only");
         }
+        msg
+    }
+
+    /// Renders the configuration for long display, as a long HTML description.
+    pub(crate) fn render_long_html(&self) -> String {
+        let mut msg = self.render_long_inner(Format::LongHtml);
         msg.push('.');
         msg
     }
 
     /// Renders the configuration for long display, as a long plain text description.
     pub(crate) fn render_long_plain(&self) -> String {
-        let on = if self.should_use_with_in_description() { "with" } else { "on" };
-
-        let mut msg = format!("Available {on} {}", Display(self, Format::LongPlain));
-        if self.should_append_only_to_description() {
-            msg.push_str(" only");
-        }
-        msg
+        self.render_long_inner(Format::LongPlain)
     }
 
     fn should_capitalize_first_letter(&self) -> bool {
