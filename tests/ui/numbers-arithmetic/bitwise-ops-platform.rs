@@ -1,3 +1,5 @@
+//! Tests bitwise operations with platform-specific and negative number behavior.
+
 //@ run-pass
 
 #[cfg(any(target_pointer_width = "32"))]
