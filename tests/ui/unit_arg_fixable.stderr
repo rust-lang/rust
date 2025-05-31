@@ -94,5 +94,17 @@ LL ~     mac!(empty_block);
 LL ~     fn_take_unit(());
    |
 
-error: aborting due to 9 previous errors
+error: passing a unit value to a function
+  --> tests/ui/unit_arg_fixable.rs:69:5
+   |
+LL |     fn_take_unit(def());
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     let _: () = def();
+LL ~     fn_take_unit(());
+   |
+
+error: aborting due to 10 previous errors
 

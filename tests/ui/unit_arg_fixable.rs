@@ -61,4 +61,11 @@ fn issue14857() {
     //~^ unit_arg
     fn_take_unit(mac!(empty_block));
     //~^ unit_arg
+
+    fn def<T: Default>() -> T {
+        Default::default()
+    }
+
+    fn_take_unit(def());
+    //~^ unit_arg
 }
