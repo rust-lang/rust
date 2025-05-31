@@ -168,7 +168,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
     Ok(OsString::from_wide(&filename).into())
 }
 
-#[cfg(all(target_os = "wasi", target_env = "p2"))]
+#[cfg(target_os = "wasi")]
 fn current_dll_path() -> Result<PathBuf, String> {
     Err("current_dll_path is not supported on WASI".to_string())
 }
