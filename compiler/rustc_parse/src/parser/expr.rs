@@ -847,7 +847,7 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(errors::LifetimeInBorrowExpression { span, lifetime_span: lt_span });
     }
 
-    /// Parse `mut?` or `raw [ const | mut ]`.
+    /// Parse `mut?` or `[ raw | pin ] [ const | mut ]`.
     fn parse_borrow_modifiers(&mut self) -> (ast::BorrowKind, ast::Mutability) {
         if self.check_keyword(exp!(Raw)) && self.look_ahead(1, Token::is_mutability) {
             // `raw [ const | mut ]`.
@@ -855,6 +855,11 @@ impl<'a> Parser<'a> {
             assert!(found_raw);
             let mutability = self.parse_const_or_mut().unwrap();
             (ast::BorrowKind::Raw, mutability)
+        } else if let Some((ast::Pinnedness::Pinned, mutbl)) = self.parse_pin_and_mut() {
+            // `pin [ const | mut ]`.
+            // `pin` has been gated in `self.parse_pin_and_mut()` so we don't
+            // need to gate it here.
+            (ast::BorrowKind::Pin, mutbl)
         } else {
             // `mut?`
             (ast::BorrowKind::Ref, self.parse_mutability())
