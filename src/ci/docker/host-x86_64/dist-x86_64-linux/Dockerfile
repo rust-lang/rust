@@ -96,14 +96,13 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.lto=thin \
       --set rust.codegen-units=1
 
-# Note that `rust.debug` is set to true *only* for `opt-dist`
-ENV SCRIPT python3 ../x.py build --set rust.debug=true opt-dist && \
-    ./build/$HOSTS/stage0-tools-bin/opt-dist linux-ci -- python3 ../x.py dist \
-    --host $HOSTS --target $HOSTS \
-    --include-default-paths \
-    build-manifest bootstrap && \
-    # Use GCC for building GCC, as it seems to behave badly when built with Clang
-    CC=/rustroot/bin/cc CXX=/rustroot/bin/c++ python3 ../x.py dist gcc
+ARG SCRIPT_ARG
+
+COPY host-x86_64/dist-x86_64-linux/dist.sh /scripts/
+COPY host-x86_64/dist-x86_64-linux/dist-alt.sh /scripts/
+
+ENV SCRIPT /scripts/${SCRIPT_ARG}
+
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang
 
 # This is the only builder which will create source tarballs
