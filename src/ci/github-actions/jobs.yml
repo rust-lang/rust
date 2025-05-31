@@ -239,6 +239,7 @@ auto:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-linux-36c-codebuild
 
+  # Foo
   - name: dist-x86_64-linux-alt
     env:
       IMAGE: dist-x86_64-linux
