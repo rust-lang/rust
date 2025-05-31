@@ -436,6 +436,14 @@ lint_incomplete_include =
 
 lint_inner_macro_attribute_unstable = inner macro attributes are unstable
 
+lint_interior_mutable_consts = interior mutability in `const` items have no effect on the `const` item itself
+    .label = `{$ty_name}` is an interior mutable type
+    .temporary = each usage of a `const` item creates a new temporary
+    .never_original = only the temporaries and never the original `const` item `{$const_name}` will be modified
+    .suggestion_inline_const = for use as an initializer, consider using an inline-const `const {"{"} /* ... */ {"}"}` at the usage site instead
+    .suggestion_static = for a shared instance of `{$const_name}`, consider using a `static` item instead
+    .suggestion_expect = alternatively consider expecting the lint
+
 lint_invalid_asm_label_binary = avoid using labels containing only the digits `0` and `1` in inline assembly
     .label = use a different label that doesn't start with `0` or `1`
     .help = start numbering with `2` instead
