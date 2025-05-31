@@ -13,11 +13,6 @@ LL | ||     };
    | ||_____|
    |  |_____`if` and `else` have incompatible types
    |        expected `&()`, found `()`
-   |
-help: consider borrowing here
-   |
-LL |     } else &if false {
-   |            +
 
 error: aborting due to 1 previous error
 
