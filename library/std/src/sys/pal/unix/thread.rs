@@ -6,7 +6,7 @@ use crate::sys::weak::dlsym;
 #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto",))]
 use crate::sys::weak::weak;
 use crate::sys::{os, stack_overflow};
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{cmp, io, ptr};
 #[cfg(not(any(
     target_os = "l4re",
@@ -293,6 +293,75 @@ impl Thread {
             }
 
             micros -= st as u128;
+        }
+    }
+
+    // Any unix that has clock_nanosleep
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "dragonfly",
+        target_os = "hurd",
+        target_os = "fuchsia",
+        target_os = "vxworks",
+    ))]
+    pub fn sleep_until(deadline: Instant) {
+        let Some(ts) = deadline.into_inner().into_timespec().to_timespec() else {
+            // The deadline is further in the future then can be passed to
+            // clock_nanosleep. We have to use Self::sleep instead. This might
+            // happen on 32 bit platforms, especially closer to 2038.
+            let now = Instant::now();
+            if let Some(delay) = deadline.checked_duration_since(now) {
+                Self::sleep(delay);
+            }
+            return;
+        };
+
+        unsafe {
+            // When we get interrupted (res = EINTR) call clock_nanosleep again
+            loop {
+                let res = libc::clock_nanosleep(
+                    super::time::Instant::CLOCK_ID,
+                    libc::TIMER_ABSTIME,
+                    &ts,
+                    core::ptr::null_mut(), // not required with TIMER_ABSTIME
+                );
+
+                if res == 0 {
+                    break;
+                } else {
+                    assert_eq!(
+                        res,
+                        libc::EINTR,
+                        "timespec is in range,
+                         clockid is valid and kernel should support it"
+                    );
+                }
+            }
+        }
+    }
+
+    // Any unix that does not have clock_nanosleep
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "dragonfly",
+        target_os = "hurd",
+        target_os = "fuchsia",
+        target_os = "vxworks",
+    )))]
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
         }
     }
 
