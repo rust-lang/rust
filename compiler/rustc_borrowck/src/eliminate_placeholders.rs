@@ -172,7 +172,7 @@ fn region_definitions<'tcx>(
 /// graph. For each strongly connected component in the constraint
 /// graph such that there is a series of constraints
 ///    A: B: C: ... : X  where
-/// A's universe is smaller than X's and A is a placeholder,
+/// A contains a placeholder whose universe cannot be named by X,
 /// add a constraint that A: 'static. This is a safe upper bound
 /// in the face of borrow checker/trait solver limitations that will
 /// eventually go away.
