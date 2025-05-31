@@ -44,8 +44,9 @@ impl f64 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[inline]
-    pub fn floor(self) -> f64 {
+    pub const fn floor(self) -> f64 {
         core::f64::math::floor(self)
     }
 
@@ -66,8 +67,9 @@ impl f64 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[inline]
-    pub fn ceil(self) -> f64 {
+    pub const fn ceil(self) -> f64 {
         core::f64::math::ceil(self)
     }
 
@@ -94,8 +96,9 @@ impl f64 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[inline]
-    pub fn round(self) -> f64 {
+    pub const fn round(self) -> f64 {
         core::f64::math::round(self)
     }
 
@@ -120,8 +123,9 @@ impl f64 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "round_ties_even", since = "1.77.0")]
+    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[inline]
-    pub fn round_ties_even(self) -> f64 {
+    pub const fn round_ties_even(self) -> f64 {
         core::f64::math::round_ties_even(self)
     }
 
@@ -145,8 +149,9 @@ impl f64 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[inline]
-    pub fn trunc(self) -> f64 {
+    pub const fn trunc(self) -> f64 {
         core::f64::math::trunc(self)
     }
 
@@ -168,8 +173,9 @@ impl f64 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[inline]
-    pub fn fract(self) -> f64 {
+    pub const fn fract(self) -> f64 {
         core::f64::math::fract(self)
     }
 
