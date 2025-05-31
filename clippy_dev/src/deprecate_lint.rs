@@ -1,4 +1,5 @@
-use crate::update_lints::{DeprecatedLint, Lint, find_lint_decls, generate_lint_files, read_deprecated_lints};
+use crate::parse::{DeprecatedLint, Lint, find_lint_decls, read_deprecated_lints};
+use crate::update_lints::generate_lint_files;
 use crate::utils::{UpdateMode, Version};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};

@@ -1,7 +1,8 @@
-use crate::update_lints::{RenamedLint, find_lint_decls, generate_lint_files, read_deprecated_lints};
+use crate::parse::{RenamedLint, RustSearcher, Token, find_lint_decls, read_deprecated_lints};
+use crate::update_lints::generate_lint_files;
 use crate::utils::{
-    ErrAction, FileUpdater, RustSearcher, Token, UpdateMode, UpdateStatus, Version, delete_dir_if_exists,
-    delete_file_if_exists, expect_action, try_rename_dir, try_rename_file, walk_dir_no_dot_or_target,
+    ErrAction, FileUpdater, UpdateMode, UpdateStatus, Version, delete_dir_if_exists, delete_file_if_exists,
+    expect_action, try_rename_dir, try_rename_file, walk_dir_no_dot_or_target,
 };
 use rustc_lexer::TokenKind;
 use std::ffi::OsString;

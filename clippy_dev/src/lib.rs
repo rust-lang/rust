@@ -34,3 +34,5 @@ pub mod update_lints;
 
 mod utils;
 pub use utils::{ClippyInfo, UpdateMode};
+
+mod parse;

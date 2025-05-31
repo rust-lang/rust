@@ -1,4 +1,5 @@
-use crate::utils::{RustSearcher, Token, Version};
+use crate::parse::{RustSearcher, Token};
+use crate::utils::Version;
 use clap::ValueEnum;
 use indoc::{formatdoc, writedoc};
 use std::fmt::{self, Write as _};
