@@ -53,6 +53,7 @@
 use crate::marker::{ConstParamTy, DiscriminantKind, Tuple};
 use crate::ptr;
 
+mod bounds;
 pub mod fallback;
 pub mod mir;
 pub mod simd;
@@ -1730,7 +1731,7 @@ pub const fn needs_drop<T: ?Sized>() -> bool;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
+pub const unsafe fn offset<Ptr: bounds::BuiltinDeref, Delta>(dst: Ptr, offset: Delta) -> Ptr;
 
 /// Calculates the offset from a pointer, potentially wrapping.
 ///
@@ -1750,6 +1751,33 @@ pub const unsafe fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const unsafe fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
+
+/// Projects to the `index`-th element of `slice_ptr`, as the same kind of pointer
+/// as the slice was provided -- so `&mut [T] → &mut T`, `&[T] → &T`,
+/// `*mut [T] → *mut T`, or `*const [T] → *const T` -- without a bounds check.
+///
+/// This is exposed via `<usize as SliceIndex>::get(_unchecked)(_mut)`,
+/// and isn't intended to be used elsewhere.
+///
+/// Expands in MIR to `{&, &mut, &raw const, &raw mut} (*slice_ptr)[index]`,
+/// depending on the types involved, so no backend support is needed.
+///
+/// # Safety
+///
+/// - `index < PtrMetadata(slice_ptr)`, so the indexing is in-bounds for the slice
+/// - the resulting offsetting is in-bounds of the allocated object, which is
+///   always the case for references, but needs to be upheld manually for pointers
+#[cfg(not(bootstrap))]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn slice_get_unchecked<
+    ItemPtr: bounds::ChangePointee<[T], Pointee = T, Output = SlicePtr>,
+    SlicePtr,
+    T,
+>(
+    slice_ptr: SlicePtr,
+    index: usize,
+) -> ItemPtr;
 
 /// Masks out bits of the pointer according to a mask.
 ///
@@ -3575,18 +3603,9 @@ pub const fn type_id<T: ?Sized + 'static>() -> u128;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn aggregate_raw_ptr<P: AggregateRawPtr<D, Metadata = M>, D, M>(data: D, meta: M) -> P;
-
-#[unstable(feature = "core_intrinsics", issue = "none")]
-pub trait AggregateRawPtr<D> {
-    type Metadata: Copy;
-}
-impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*const T> for *const P {
-    type Metadata = <P as ptr::Pointee>::Metadata;
-}
-impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
-    type Metadata = <P as ptr::Pointee>::Metadata;
-}
+pub const fn aggregate_raw_ptr<P: bounds::BuiltinDeref, D, M>(data: D, meta: M) -> P
+where
+    <P as bounds::BuiltinDeref>::Pointee: ptr::Pointee<Metadata = M>;
 
 /// Lowers in MIR to `Rvalue::UnaryOp` with `UnOp::PtrMetadata`.
 ///
