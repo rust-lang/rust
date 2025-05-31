@@ -96,7 +96,7 @@ fn parse_repr(cx: &AcceptContext<'_>, param: &MetaItemParser<'_>) -> Option<Repr
 
     // FIXME(jdonszelmann): invert the parsing here to match on the word first and then the
     // structure.
-    let (name, ident_span) = if let Some(ident) = param.path_without_args().word() {
+    let (name, ident_span) = if let Some(ident) = param.path().word() {
         (Some(ident.name), ident.span)
     } else {
         (None, DUMMY_SP)

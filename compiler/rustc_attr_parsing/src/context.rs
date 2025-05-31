@@ -264,7 +264,8 @@ impl<'sess> AttributeParser<'sess> {
                 // }
                 ast::AttrKind::Normal(n) => {
                     let parser = MetaItemParser::from_attr(n, self.dcx());
-                    let (path, args) = parser.deconstruct();
+                    let path = parser.path();
+                    let args = parser.args();
                     let parts = path.segments().map(|i| i.name).collect::<Vec<_>>();
 
                     if let Some(accept) = ATTRIBUTE_MAPPING.0.get(parts.as_slice()) {

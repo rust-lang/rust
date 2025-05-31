@@ -252,35 +252,18 @@ impl<'a> MetaItemParser<'a> {
         }
     }
 
-    /// Gets just the path, without the args.
-    pub fn path_without_args(&self) -> PathParser<'a> {
-        self.path.clone()
+    /// Gets just the path, without the args. Some examples:
+    ///
+    /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path
+    /// - `#[allow(clippy::complexity)]`: `clippy::complexity` is a path
+    /// - `#[inline]`: `inline` is a single segment path
+    pub fn path(&self) -> &PathParser<'a> {
+        &self.path
     }
 
     /// Gets just the args parser, without caring about the path.
     pub fn args(&self) -> &ArgParser<'a> {
         &self.args
-    }
-
-    pub fn deconstruct(&self) -> (PathParser<'a>, &ArgParser<'a>) {
-        (self.path_without_args(), self.args())
-    }
-
-    /// Asserts that this MetaItem starts with a path. Some examples:
-    ///
-    /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path
-    /// - `#[allow(clippy::complexity)]`: `clippy::complexity` is a path
-    /// - `#[inline]`: `inline` is a single segment path
-    pub fn path(&self) -> (PathParser<'a>, &ArgParser<'a>) {
-        self.deconstruct()
-    }
-
-    /// Asserts that this MetaItem starts with a word, or single segment path.
-    /// Doesn't return the args parser.
-    ///
-    /// For examples. see [`Self::word`]
-    pub fn word_without_args(&self) -> Option<Ident> {
-        Some(self.word()?.0)
     }
 
     /// Asserts that this MetaItem starts with a word, or single segment path.
@@ -289,23 +272,8 @@ impl<'a> MetaItemParser<'a> {
     /// - `#[inline]`: `inline` is a word
     /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path,
     ///   and not a word and should instead be parsed using [`path`](Self::path)
-    pub fn word(&self) -> Option<(Ident, &ArgParser<'a>)> {
-        let (path, args) = self.deconstruct();
-        Some((path.word()?, args))
-    }
-
-    /// Asserts that this MetaItem starts with some specific word.
-    ///
-    /// See [`word`](Self::word) for examples of what a word is.
     pub fn word_is(&self, sym: Symbol) -> Option<&ArgParser<'a>> {
-        self.path_without_args().word_is(sym).then(|| self.args())
-    }
-
-    /// Asserts that this MetaItem starts with some specific path.
-    ///
-    /// See [`word`](Self::path) for examples of what a word is.
-    pub fn path_is(&self, segments: &[Symbol]) -> Option<&ArgParser<'a>> {
-        self.path_without_args().segments_is(segments).then(|| self.args())
+        self.path().word_is(sym).then(|| self.args())
     }
 }
 
@@ -548,7 +516,7 @@ impl<'a> MetaItemListParser<'a> {
     }
 
     /// Lets you pick and choose as what you want to parse each element in the list
-    pub fn mixed<'s>(&'s self) -> impl Iterator<Item = &'s MetaItemOrLitParser<'a>> + 's {
+    pub fn mixed(&self) -> impl Iterator<Item = &MetaItemOrLitParser<'a>> {
         self.sub_parsers.iter()
     }
 
@@ -558,20 +526,6 @@ impl<'a> MetaItemListParser<'a> {
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
-    }
-
-    /// Asserts that every item in the list is another list starting with a word.
-    ///
-    /// See [`MetaItemParser::word`] for examples of words.
-    pub fn all_word_list<'s>(&'s self) -> Option<Vec<(Ident, &'s ArgParser<'a>)>> {
-        self.mixed().map(|i| i.meta_item()?.word()).collect()
-    }
-
-    /// Asserts that every item in the list is another list starting with a full path.
-    ///
-    /// See [`MetaItemParser::path`] for examples of paths.
-    pub fn all_path_list<'s>(&'s self) -> Option<Vec<(PathParser<'a>, &'s ArgParser<'a>)>> {
-        self.mixed().map(|i| Some(i.meta_item()?.path())).collect()
     }
 
     /// Returns Some if the list contains only a single element.
