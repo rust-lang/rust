@@ -137,7 +137,7 @@ Task] instead:
 
 ### Neovim
 
-For Neovim users there are several options for configuring for rustc. The
+For Neovim users, there are a few options. The
 easiest way is by using [neoconf.nvim](https://github.com/folke/neoconf.nvim/),
 which allows for project-local configuration files with the native LSP. The
 steps for how to use it are below. Note that they require rust-analyzer to
