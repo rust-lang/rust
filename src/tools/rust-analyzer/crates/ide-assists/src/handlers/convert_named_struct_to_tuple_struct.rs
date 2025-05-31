@@ -7,7 +7,10 @@ use syntax::{
     match_ast, ted,
 };
 
-use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder, utils::find_struct_definition_from_cursor};
+use crate::{
+    AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder,
+    utils::find_struct_definition_from_cursor,
+};
 
 // Assist: convert_named_struct_to_tuple_struct
 //
@@ -373,7 +376,6 @@ impl A {
 }"#,
         );
     }
-
 
     #[test]
     fn convert_struct_referenced_via_self_kw() {

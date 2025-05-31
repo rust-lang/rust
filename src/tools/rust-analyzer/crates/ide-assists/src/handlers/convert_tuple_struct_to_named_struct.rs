@@ -6,7 +6,10 @@ use syntax::{
     match_ast, ted,
 };
 
-use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder, utils::find_struct_definition_from_cursor};
+use crate::{
+    AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder,
+    utils::find_struct_definition_from_cursor,
+};
 
 // Assist: convert_tuple_struct_to_named_struct
 //
@@ -356,7 +359,7 @@ impl A {
         );
     }
 
-        #[test]
+    #[test]
     fn convert_simple_struct_cursor_on_visibility_keyword() {
         check_assist(
             convert_tuple_struct_to_named_struct,
