@@ -776,7 +776,8 @@ impl Step for RustcDev {
         copy_src_dirs(
             builder,
             &builder.src,
-            &["compiler"],
+            // The compiler has a path dependency on proc_macro, so make sure to include it.
+            &["compiler", "library/proc_macro"],
             &[],
             &tarball.image_dir().join("lib/rustlib/rustc-src/rust"),
         );

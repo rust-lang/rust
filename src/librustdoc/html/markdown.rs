@@ -195,7 +195,7 @@ fn slugify(c: char) -> Option<char> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Playground {
     pub crate_name: Option<Symbol>,
     pub url: String,

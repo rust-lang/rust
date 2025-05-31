@@ -1,12 +1,30 @@
 warning: unexpected `cfg` condition name: `foo`
-  --> $DIR/doc-cfg-check-cfg.rs:13:11
+  --> $DIR/doc-cfg-check-cfg.rs:12:12
+   |
+LL | #![doc(cfg(foo))]
+   |            ^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(foo)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `foo`
+  --> $DIR/doc-cfg-check-cfg.rs:19:11
    |
 LL | #[doc(cfg(foo))]
    |           ^^^
    |
    = help: to expect this configuration use `--check-cfg=cfg(foo)`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-   = note: `#[warn(unexpected_cfgs)]` on by default
 
-warning: 1 warning emitted
+warning: unexpected `cfg` condition name: `foo`
+  --> $DIR/doc-cfg-check-cfg.rs:15:11
+   |
+LL | #[doc(cfg(foo))]
+   |           ^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(foo)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: 3 warnings emitted
 

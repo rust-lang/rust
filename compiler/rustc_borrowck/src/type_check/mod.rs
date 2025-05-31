@@ -474,17 +474,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let projected_ty = curr_projected_ty.projection_ty_core(
                 tcx,
                 proj,
-                |this, field, ()| {
-                    let ty = this.field_ty(tcx, field);
-                    self.structurally_resolve(ty, locations)
-                },
-                |_, _| unreachable!(),
+                |ty| self.structurally_resolve(ty, locations),
+                |ty, variant_index, field, ()| PlaceTy::field_ty(tcx, ty, variant_index, field),
+                |_| unreachable!(),
             );
             curr_projected_ty = projected_ty;
         }
         trace!(?curr_projected_ty);
 
-        let ty = curr_projected_ty.ty;
+        // Need to renormalize `a` as typecheck may have failed to normalize
+        // higher-ranked aliases if normalization was ambiguous due to inference.
+        let a = self.normalize(a, locations);
+        let ty = self.normalize(curr_projected_ty.ty, locations);
         self.relate_types(ty, v.xform(ty::Contravariant), a, locations, category)?;
 
         Ok(())
@@ -1852,7 +1853,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | ProjectionElem::Downcast(..) => {}
             ProjectionElem::Field(field, fty) => {
                 let fty = self.normalize(fty, location);
-                let ty = base_ty.field_ty(tcx, field);
+                let ty = PlaceTy::field_ty(tcx, base_ty.ty, base_ty.variant_index, field);
                 let ty = self.normalize(ty, location);
                 debug!(?fty, ?ty);
 

@@ -65,7 +65,4 @@ ENV SCRIPT \
            python3 ../x.py test collect-license-metadata && \
            # Runs checks to ensure that there are no issues in our JS code.
            es-check es2019 ../src/librustdoc/html/static/js/*.js && \
-           eslint -c ../src/librustdoc/html/static/.eslintrc.js ../src/librustdoc/html/static/js/*.js && \
-           eslint -c ../src/tools/rustdoc-js/.eslintrc.js ../src/tools/rustdoc-js/tester.js && \
-           eslint -c ../src/tools/rustdoc-gui/.eslintrc.js ../src/tools/rustdoc-gui/tester.js && \
            tsc --project ../src/librustdoc/html/static/js/tsconfig.json

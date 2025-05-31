@@ -627,6 +627,37 @@ fn match_i128_u128(i: EnumAi128) -> u128 {
     }
 }
 
+// EMIT_MIR matches_reduce_branches.match_non_int_failed.MatchBranchSimplification.diff
+#[custom_mir(dialect = "runtime")]
+fn match_non_int_failed(i: char) -> u8 {
+    // CHECK-LABEL: fn match_non_int_failed(
+    // CHECK: switchInt
+    // CHECK: return
+    mir! {
+        {
+            match i {
+                'a' => bb1,
+                'b' => bb2,
+                _ => unreachable_bb,
+            }
+        }
+        bb1 = {
+            RET = 97;
+            Goto(ret)
+        }
+        bb2 = {
+            RET = 98;
+            Goto(ret)
+        }
+        unreachable_bb = {
+            Unreachable()
+        }
+        ret = {
+            Return()
+        }
+    }
+}
+
 fn main() {
     let _ = foo(None);
     let _ = foo(Some(()));
@@ -664,4 +695,5 @@ fn main() {
     let _ = match_i128_u128(EnumAi128::A);
 
     let _ = my_is_some(None);
+    let _ = match_non_int_failed('a');
 }

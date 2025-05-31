@@ -7,7 +7,6 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{cmp, env, iter};
 
-use proc_macro::bridge::client::ProcMacro;
 use rustc_ast::expand::allocator::{AllocatorKind, alloc_error_handler_name, global_fn_name};
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::FxHashSet;
@@ -23,6 +22,7 @@ use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
+use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_session::config::{
     self, CrateType, ExtendedTargetModifierInfo, ExternLocation, OptionsTargetModifiers,
     TargetModifier,

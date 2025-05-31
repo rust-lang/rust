@@ -187,6 +187,27 @@ pub fn decorate_builtin_lint(
                 lints::ReservedMultihash { suggestion }.decorate_lint(diag);
             }
         }
+        BuiltinLintDiag::HiddenUnicodeCodepoints {
+            label,
+            count,
+            span_label,
+            labels,
+            escape,
+            spans,
+        } => {
+            lints::HiddenUnicodeCodepointsDiag {
+                label: &label,
+                count,
+                span_label,
+                labels: labels.map(|spans| lints::HiddenUnicodeCodepointsDiagLabels { spans }),
+                sub: if escape {
+                    lints::HiddenUnicodeCodepointsDiagSub::Escape { spans }
+                } else {
+                    lints::HiddenUnicodeCodepointsDiagSub::NoEscape { spans }
+                },
+            }
+            .decorate_lint(diag);
+        }
         BuiltinLintDiag::UnusedBuiltinAttribute { attr_name, macro_name, invoc_span } => {
             lints::UnusedBuiltinAttribute { invoc_span, attr_name, macro_name }.decorate_lint(diag);
         }
@@ -292,8 +313,8 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::ByteSliceInPackedStructWithDerive { ty } => {
             lints::ByteSliceInPackedStructWithDerive { ty }.decorate_lint(diag);
         }
-        BuiltinLintDiag::UnusedExternCrate { removal_span } => {
-            lints::UnusedExternCrate { removal_span }.decorate_lint(diag);
+        BuiltinLintDiag::UnusedExternCrate { span, removal_span } => {
+            lints::UnusedExternCrate { span, removal_span }.decorate_lint(diag);
         }
         BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span } => {
             let suggestion_span = vis_span.between(ident_span);

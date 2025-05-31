@@ -2548,7 +2548,7 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
 /// types are re-exported, we don't use the corresponding
 /// entry from the js file, as inlining will have already
 /// picked up the impl
-fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
+fn collect_paths_for_type(first_ty: &clean::Type, cache: &Cache) -> Vec<String> {
     let mut out = Vec::new();
     let mut visited = FxHashSet::default();
     let mut work = VecDeque::new();
@@ -2565,7 +2565,7 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
     work.push_back(first_ty);
 
     while let Some(ty) = work.pop_front() {
-        if !visited.insert(ty.clone()) {
+        if !visited.insert(ty) {
             continue;
         }
 
@@ -2575,16 +2575,16 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
                 work.extend(tys.into_iter());
             }
             clean::Type::Slice(ty) => {
-                work.push_back(*ty);
+                work.push_back(ty);
             }
             clean::Type::Array(ty, _) => {
-                work.push_back(*ty);
+                work.push_back(ty);
             }
             clean::Type::RawPointer(_, ty) => {
-                work.push_back(*ty);
+                work.push_back(ty);
             }
             clean::Type::BorrowedRef { type_, .. } => {
-                work.push_back(*type_);
+                work.push_back(type_);
             }
             clean::Type::QPath(box clean::QPathData { self_type, trait_, .. }) => {
                 work.push_back(self_type);

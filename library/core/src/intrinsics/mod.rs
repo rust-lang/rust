@@ -30,7 +30,7 @@
 //!
 //! The atomic intrinsics provide common atomic operations on machine
 //! words, with multiple possible memory orderings. See the
-//! [atomic types][crate::sync::atomic] docs for details.
+//! [atomic types][atomic] docs for details.
 //!
 //! # Unwinding
 //!
@@ -50,7 +50,7 @@
 )]
 #![allow(missing_docs)]
 
-use crate::marker::{DiscriminantKind, Tuple};
+use crate::marker::{ConstParamTy, DiscriminantKind, Tuple};
 use crate::ptr;
 
 pub mod fallback;
@@ -61,6 +61,20 @@ pub mod simd;
 #[allow(unused_imports)]
 #[cfg(all(target_has_atomic = "8", target_has_atomic = "32", target_has_atomic = "ptr"))]
 use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
+
+/// A type for atomic ordering parameters for intrinsics. This is a separate type from
+/// `atomic::Ordering` so that we can make it `ConstParamTy` and fix the values used here without a
+/// risk of leaking that to stable code.
+#[derive(Debug, ConstParamTy, PartialEq, Eq)]
+pub enum AtomicOrdering {
+    // These values must match the compiler's `AtomicOrdering` defined in
+    // `rustc_middle/src/ty/consts/int.rs`!
+    Relaxed = 0,
+    Release = 1,
+    Acquire = 2,
+    AcqRel = 3,
+    SeqCst = 4,
+}
 
 // N.B., these intrinsics take raw pointers because they mutate aliased
 // memory, which is not valid for either `&` or `&mut`.
@@ -395,10 +409,20 @@ pub unsafe fn atomic_cxchgweak_seqcst_seqcst<T: Copy>(dst: *mut T, old: T, src: 
 /// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
+/// [`atomic`] types via the `load` method. For example, [`AtomicBool::load`].
+#[rustc_intrinsic]
+#[rustc_nounwind]
+#[cfg(not(bootstrap))]
+pub unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering>(src: *const T) -> T;
+/// Loads the current value of the pointer.
+/// `T` must be an integer or pointer type.
+///
+/// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `load` method by passing
 /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::load`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
+#[cfg(bootstrap)]
 pub unsafe fn atomic_load_seqcst<T: Copy>(src: *const T) -> T;
 /// Loads the current value of the pointer.
 /// `T` must be an integer or pointer type.
@@ -408,6 +432,7 @@ pub unsafe fn atomic_load_seqcst<T: Copy>(src: *const T) -> T;
 /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::load`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
+#[cfg(bootstrap)]
 pub unsafe fn atomic_load_acquire<T: Copy>(src: *const T) -> T;
 /// Loads the current value of the pointer.
 /// `T` must be an integer or pointer type.
@@ -417,6 +442,7 @@ pub unsafe fn atomic_load_acquire<T: Copy>(src: *const T) -> T;
 /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::load`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
+#[cfg(bootstrap)]
 pub unsafe fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
 
 /// Stores the value at the specified memory location.

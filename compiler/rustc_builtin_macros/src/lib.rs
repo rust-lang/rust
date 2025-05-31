@@ -20,8 +20,6 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
-extern crate proc_macro;
-
 use std::sync::Arc;
 
 use rustc_expand::base::{MacroExpanderFn, ResolverExpand, SyntaxExtensionKind};
@@ -140,7 +138,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         CoercePointee: coerce_pointee::expand_deriving_coerce_pointee,
     }
 
-    let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
+    let client = rustc_proc_macro::bridge::client::Client::expand1(rustc_proc_macro::quote);
     register(sym::quote, SyntaxExtensionKind::Bang(Arc::new(BangProcMacro { client })));
     let requires = SyntaxExtensionKind::Attr(Arc::new(contracts::ExpandRequires));
     register(sym::contracts_requires, requires);

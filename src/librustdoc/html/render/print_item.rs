@@ -413,7 +413,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
 
             match myitem.kind {
                 clean::ExternCrateItem { ref src } => {
-                    use crate::html::format::anchor;
+                    use crate::html::format::print_anchor;
 
                     match *src {
                         Some(src) => {
@@ -421,7 +421,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                                 w,
                                 "<dt><code>{}extern crate {} as {};",
                                 visibility_print_with_space(myitem, cx),
-                                anchor(myitem.item_id.expect_def_id(), src, cx),
+                                print_anchor(myitem.item_id.expect_def_id(), src, cx),
                                 EscapeBodyTextWithWbr(myitem.name.unwrap().as_str())
                             )?;
                         }
@@ -430,7 +430,11 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                                 w,
                                 "<dt><code>{}extern crate {};",
                                 visibility_print_with_space(myitem, cx),
-                                anchor(myitem.item_id.expect_def_id(), myitem.name.unwrap(), cx)
+                                print_anchor(
+                                    myitem.item_id.expect_def_id(),
+                                    myitem.name.unwrap(),
+                                    cx
+                                )
                             )?;
                         }
                     }
@@ -439,7 +443,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
 
                 clean::ImportItem(ref import) => {
                     let stab_tags = import.source.did.map_or_else(String::new, |import_def_id| {
-                        extra_info_tags(tcx, myitem, item, Some(import_def_id)).to_string()
+                        print_extra_info_tags(tcx, myitem, item, Some(import_def_id)).to_string()
                     });
 
                     let id = match import.kind {
@@ -497,7 +501,9 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                     write!(
                         w,
                         "<dt>\
-                            <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
+                            <a class=\"{class}\" href=\"{href}\" title=\"{title1} {title2}\">\
+                            {name}\
+                            </a>\
                             {visibility_and_hidden}\
                             {unsafety_flag}\
                             {stab_tags}\
@@ -505,11 +511,12 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                         {docs_before}{docs}{docs_after}",
                         name = EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
                         visibility_and_hidden = visibility_and_hidden,
-                        stab_tags = extra_info_tags(tcx, myitem, item, None),
+                        stab_tags = print_extra_info_tags(tcx, myitem, item, None),
                         class = myitem.type_(),
                         unsafety_flag = unsafety_flag,
-                        href = item_path(myitem.type_(), myitem.name.unwrap().as_str()),
-                        title = format_args!("{} {}", myitem.type_(), full_path(cx, myitem)),
+                        href = print_item_path(myitem.type_(), myitem.name.unwrap().as_str()),
+                        title1 = myitem.type_(),
+                        title2 = full_path(cx, myitem),
                     )?;
                 }
             }
@@ -524,7 +531,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
 
 /// Render the stability, deprecation and portability tags that are displayed in the item's summary
 /// at the module level.
-fn extra_info_tags(
+fn print_extra_info_tags(
     tcx: TyCtxt<'_>,
     item: &clean::Item,
     parent: &clean::Item,
@@ -639,7 +646,7 @@ fn item_function(cx: &Context<'_>, it: &clean::Item, f: &clean::Function) -> imp
 fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt::Display {
     fmt::from_fn(|w| {
         let tcx = cx.tcx();
-        let bounds = bounds(&t.bounds, false, cx);
+        let bounds = print_bounds(&t.bounds, false, cx);
         let required_types =
             t.items.iter().filter(|m| m.is_required_associated_type()).collect::<Vec<_>>();
         let provided_types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
@@ -652,7 +659,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
         let count_types = required_types.len() + provided_types.len();
         let count_consts = required_consts.len() + provided_consts.len();
         let count_methods = required_methods.len() + provided_methods.len();
-        let must_implement_one_of_functions = tcx.trait_def(t.def_id).must_implement_one_of.clone();
+        let must_implement_one_of_functions = &tcx.trait_def(t.def_id).must_implement_one_of;
 
         // Output the trait definition
         wrap_item(w, |mut w| {
@@ -1088,7 +1095,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                             it,
                             &implementor_dups,
                             &collect_paths_for_type(
-                                implementor.inner_impl().for_.clone(),
+                                &implementor.inner_impl().for_,
                                 &cx.shared.cache,
                             ),
                         )
@@ -1236,7 +1243,7 @@ fn item_trait_alias(
                 attrs = render_attributes_in_pre(it, "", cx),
                 name = it.name.unwrap(),
                 generics = t.generics.print(cx),
-                bounds = bounds(&t.bounds, true, cx),
+                bounds = print_bounds(&t.bounds, true, cx),
                 where_clause =
                     print_where_clause(&t.generics, cx, 0, Ending::NoNewline).maybe_display(),
             )
@@ -2254,14 +2261,18 @@ pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
     s
 }
 
-pub(super) fn item_path(ty: ItemType, name: &str) -> impl Display {
+pub(super) fn print_item_path(ty: ItemType, name: &str) -> impl Display {
     fmt::from_fn(move |f| match ty {
         ItemType::Module => write!(f, "{}index.html", ensure_trailing_slash(name)),
         _ => write!(f, "{ty}.{name}.html"),
     })
 }
 
-fn bounds(bounds: &[clean::GenericBound], trait_alias: bool, cx: &Context<'_>) -> impl Display {
+fn print_bounds(
+    bounds: &[clean::GenericBound],
+    trait_alias: bool,
+    cx: &Context<'_>,
+) -> impl Display {
     (!bounds.is_empty())
         .then_some(fmt::from_fn(move |f| {
             let has_lots_of_bounds = bounds.len() > 2;

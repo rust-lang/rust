@@ -72,7 +72,6 @@ envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
     SCRIPT: ./x.py check compiletest --set build.compiletest-use-stage0-libtest=true && ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
     RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
-    RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
     # Ensure that host tooling is tested on our minimum supported macOS version.
     MACOSX_DEPLOYMENT_TARGET: 10.12
     MACOSX_STD_DEPLOYMENT_TARGET: 10.12
@@ -402,7 +401,6 @@ auto:
     env:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
       RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin --set rust.codegen-units=1
-      RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       # Ensure that host tooling is built to support our minimum support macOS version.
       MACOSX_DEPLOYMENT_TARGET: 10.12
       MACOSX_STD_DEPLOYMENT_TARGET: 10.12
@@ -420,7 +418,6 @@ auto:
       # Mac Catalyst cannot currently compile the sanitizer:
       # https://github.com/rust-lang/rust/issues/129069
       RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc --set target.aarch64-apple-ios-macabi.sanitizers=false --set target.x86_64-apple-ios-macabi.sanitizers=false
-      RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       # Ensure that host tooling is built to support our minimum support macOS version.
       # FIXME(madsmtm): This might be redundant, as we're not building host tooling here (?)
       MACOSX_DEPLOYMENT_TARGET: 10.12
@@ -453,7 +450,6 @@ auto:
         --set llvm.ninja=false
         --set rust.lto=thin
         --set rust.codegen-units=1
-      RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       SELECT_XCODE: /Applications/Xcode_15.4.app
       USE_XCODE_CLANG: 1
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
@@ -476,7 +472,6 @@ auto:
         --enable-sanitizers
         --enable-profiler
         --set rust.jemalloc
-      RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       SELECT_XCODE: /Applications/Xcode_15.4.app
       USE_XCODE_CLANG: 1
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
