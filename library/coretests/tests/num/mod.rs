@@ -731,6 +731,9 @@ assume_usize_width! {
     }
 }
 
+// FIXME(141726): there is a lot of duplication between the following tests and
+// the tests in `coretests/tests/floats/f*.rs`
+// See issue https://github.com/rust-lang/rust/issues/141726 for more details.
 macro_rules! test_float {
     ($modname: ident, $fassert: ident, $fty: ty) => {
         mod $modname {
@@ -946,6 +949,117 @@ macro_rules! test_float {
                 assert!(<$fty>::INFINITY.div_euclid(<$fty>::INFINITY).is_nan());
                 assert!(<$fty>::INFINITY.div_euclid(<$fty>::NAN).is_nan());
                 assert!(<$fty>::NAN.div_euclid(<$fty>::INFINITY).is_nan());
+            }
+            #[test]
+            #[cfg(not(bootstrap))]
+            fn floor() {
+                $fassert!((0.0 as $fty).floor(), 0.0);
+                $fassert!((0.0 as $fty).floor().is_sign_positive());
+                $fassert!((-0.0 as $fty).floor(), -0.0);
+                $fassert!((-0.0 as $fty).floor().is_sign_negative());
+                $fassert!((0.5 as $fty).floor(), 0.0);
+                $fassert!((-0.5 as $fty).floor(), -1.0);
+                $fassert!((1.5 as $fty).floor(), 1.0);
+                $fassert!(<$fty>::MAX.floor(), <$fty>::MAX);
+                $fassert!(<$fty>::MIN.floor(), <$fty>::MIN);
+                $fassert!(<$fty>::MIN_POSITIVE.floor(), 0.0);
+                $fassert!((-<$fty>::MIN_POSITIVE).floor(), -1.0);
+                $fassert!(<$fty>::NAN.floor().is_nan());
+                $fassert!(<$fty>::INFINITY.floor(), <$fty>::INFINITY);
+                $fassert!(<$fty>::NEG_INFINITY.floor(), <$fty>::NEG_INFINITY);
+            }
+            #[test]
+            #[cfg(not(bootstrap))]
+            fn ceil() {
+                $fassert!((0.0 as $fty).ceil(), 0.0);
+                $fassert!((0.0 as $fty).ceil().is_sign_positive());
+                $fassert!((-0.0 as $fty).ceil(), 0.0);
+                $fassert!((-0.0 as $fty).ceil().is_sign_negative());
+                $fassert!((0.5 as $fty).ceil(), 1.0);
+                $fassert!((-0.5 as $fty).ceil(), 0.0);
+                $fassert!(<$fty>::MAX.ceil(), <$fty>::MAX);
+                $fassert!(<$fty>::MIN.ceil(), <$fty>::MIN);
+                $fassert!(<$fty>::MIN_POSITIVE.ceil(), 1.0);
+                $fassert!((-<$fty>::MIN_POSITIVE).ceil(), 0.0);
+                $fassert!(<$fty>::NAN.ceil().is_nan());
+                $fassert!(<$fty>::INFINITY.ceil(), <$fty>::INFINITY);
+                $fassert!(<$fty>::NEG_INFINITY.ceil(), <$fty>::NEG_INFINITY);
+            }
+            #[test]
+            #[cfg(not(bootstrap))]
+            fn round() {
+                $fassert!((0.0 as $fty).round(), 0.0);
+                $fassert!((0.0 as $fty).round().is_sign_positive());
+                $fassert!((-0.0 as $fty).round(), -0.0);
+                $fassert!((-0.0 as $fty).round().is_sign_negative());
+                $fassert!((0.5 as $fty).round(), 1.0);
+                $fassert!((-0.5 as $fty).round(), -1.0);
+                $fassert!(<$fty>::MAX.round(), <$fty>::MAX);
+                $fassert!(<$fty>::MIN.round(), <$fty>::MIN);
+                $fassert!(<$fty>::MIN_POSITIVE.round(), 0.0);
+                $fassert!((-<$fty>::MIN_POSITIVE).round(), 0.0);
+                $fassert!(<$fty>::NAN.round().is_nan());
+                $fassert!(<$fty>::INFINITY.round(), <$fty>::INFINITY);
+                $fassert!(<$fty>::NEG_INFINITY.round(), <$fty>::NEG_INFINITY);
+            }
+            #[test]
+            #[cfg(not(bootstrap))]
+            fn round_ties_even() {
+                $fassert!((0.0 as $fty).round_ties_even(), 0.0);
+                $fassert!((0.0 as $fty).round_ties_even().is_sign_positive());
+                $fassert!((-0.0 as $fty).round_ties_even(), -0.0);
+                $fassert!((-0.0 as $fty).round_ties_even().is_sign_negative());
+                $fassert!((0.5 as $fty).round_ties_even(), 0.0);
+                $fassert!((0.5 as $fty).round_ties_even().is_sign_positive());
+                $fassert!((-0.5 as $fty).round_ties_even(), -0.0);
+                $fassert!((-0.5 as $fty).round_ties_even().is_sign_negative());
+                $fassert!(<$fty>::MAX.round_ties_even(), <$fty>::MAX);
+                $fassert!(<$fty>::MIN.round_ties_even(), <$fty>::MIN);
+                $fassert!(<$fty>::MIN_POSITIVE.round_ties_even(), 0.0);
+                $fassert!((-<$fty>::MIN_POSITIVE).round_ties_even(), 0.0);
+                $fassert!(<$fty>::NAN.round_ties_even().is_nan());
+                $fassert!(<$fty>::INFINITY.round_ties_even(), <$fty>::INFINITY);
+                $fassert!(<$fty>::NEG_INFINITY.round_ties_even(), <$fty>::NEG_INFINITY);
+            }
+            #[test]
+            #[cfg(not(bootstrap))]
+            fn trunc() {
+                $fassert!((0.0 as $fty).trunc(), 0.0);
+                $fassert!((0.0 as $fty).trunc().is_sign_positive());
+                $fassert!((-0.0 as $fty).trunc(), -0.0);
+                $fassert!((-0.0 as $fty).trunc().is_sign_negative());
+                $fassert!((0.5 as $fty).trunc(), 0.0);
+                $fassert!((0.5 as $fty).trunc().is_sign_positive());
+                $fassert!((-0.5 as $fty).trunc(), -0.0);
+                $fassert!((-0.5 as $fty).trunc().is_sign_negative());
+                $fassert!(<$fty>::MAX.trunc(), <$fty>::MAX);
+                $fassert!(<$fty>::MIN.trunc(), <$fty>::MIN);
+                $fassert!(<$fty>::MIN_POSITIVE.trunc(), 0.0);
+                $fassert!((-<$fty>::MIN_POSITIVE).trunc(), 0.0);
+                $fassert!(<$fty>::NAN.trunc().is_nan());
+                $fassert!(<$fty>::INFINITY.trunc(), <$fty>::INFINITY);
+                $fassert!(<$fty>::NEG_INFINITY.trunc(), <$fty>::NEG_INFINITY);
+            }
+            #[test]
+            #[cfg(not(bootstrap))]
+            fn fract() {
+                $fassert!((0.0 as $fty).fract(), 0.0);
+                $fassert!((0.0 as $fty).fract().is_sign_positive());
+                $fassert!((-0.0 as $fty).fract(), 0.0);
+                $fassert!((-0.0 as $fty).fract().is_sign_positive());
+                $fassert!((0.5 as $fty).fract(), 0.5);
+                $fassert!((0.5 as $fty).fract().is_sign_positive());
+                $fassert!((-0.5 as $fty).fract(), -0.5);
+                $fassert!((-0.5 as $fty).fract().is_sign_negative());
+                $fassert!(<$fty>::MAX.fract(), 0.0);
+                $fassert!(<$fty>::MIN.fract(), 0.0);
+                $fassert!(<$fty>::MIN_POSITIVE.fract(), <$fty>::MIN_POSITIVE);
+                $fassert!(<$fty>::MIN_POSITIVE.fract().is_sign_positive());
+                $fassert!((-<$fty>::MIN_POSITIVE).fract(), -<$fty>::MIN_POSITIVE);
+                $fassert!((-<$fty>::MIN_POSITIVE).fract().is_sign_negative());
+                $fassert!(<$fty>::NAN.fract().is_nan());
+                $fassert!(<$fty>::INFINITY.fract().is_nan());
+                $fassert!(<$fty>::NEG_INFINITY.fract().is_nan());
             }
         }
     };
