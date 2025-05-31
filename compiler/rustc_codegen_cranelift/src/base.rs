@@ -407,6 +407,18 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             Some(source_info.span),
                         )
                     }
+                    AssertKind::InvalidEnumConstruction(source) => {
+                        let source = codegen_operand(fx, source).load_scalar(fx);
+                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+
+                        codegen_panic_inner(
+                            fx,
+                            rustc_hir::LangItem::PanicInvalidEnumConstruction,
+                            &[source, location],
+                            *unwind,
+                            Some(source_info.span),
+                        )
+                    }
                     _ => {
                         let location = fx.get_caller_location(source_info).load_scalar(fx);
 

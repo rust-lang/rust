@@ -17,6 +17,9 @@ middle_assert_gen_resume_after_drop = `gen` fn or block cannot be further iterat
 
 middle_assert_gen_resume_after_panic = `gen` fn or block cannot be further iterated on after it panicked
 
+middle_assert_invalid_enum_construction =
+    trying to construct an enum from an invalid value `{$source}`
+
 middle_assert_misaligned_ptr_deref =
     misaligned pointer dereference: address must be a multiple of {$required} but is {$found}
 
