@@ -63,7 +63,7 @@ impl Attribute {
 
     pub fn unwrap_normal_item(self) -> AttrItem {
         match self.kind {
-            AttrKind::Normal(normal) => normal.into_inner().item,
+            AttrKind::Normal(normal) => normal.item,
             AttrKind::DocComment(..) => panic!("unexpected doc comment"),
         }
     }

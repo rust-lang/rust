@@ -354,30 +354,28 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
         })
         .collect();
 
-    let decls_static = cx
-        .item_static(
+    let mut decls_static = cx.item_static(
+        span,
+        Ident::new(sym::_DECLS, span),
+        cx.ty_ref(
             span,
-            Ident::new(sym::_DECLS, span),
-            cx.ty_ref(
+            cx.ty(
                 span,
-                cx.ty(
-                    span,
-                    ast::TyKind::Slice(
-                        cx.ty_path(cx.path(span, vec![proc_macro, bridge, client, proc_macro_ty])),
-                    ),
+                ast::TyKind::Slice(
+                    cx.ty_path(cx.path(span, vec![proc_macro, bridge, client, proc_macro_ty])),
                 ),
-                None,
-                ast::Mutability::Not,
             ),
+            None,
             ast::Mutability::Not,
-            cx.expr_array_ref(span, decls),
-        )
-        .map(|mut i| {
-            i.attrs.push(cx.attr_word(sym::rustc_proc_macro_decls, span));
-            i.attrs.push(cx.attr_word(sym::used, span));
-            i.attrs.push(cx.attr_nested_word(sym::allow, sym::deprecated, span));
-            i
-        });
+        ),
+        ast::Mutability::Not,
+        cx.expr_array_ref(span, decls),
+    );
+    decls_static.attrs.extend([
+        cx.attr_word(sym::rustc_proc_macro_decls, span),
+        cx.attr_word(sym::used, span),
+        cx.attr_nested_word(sym::allow, sym::deprecated, span),
+    ]);
 
     let block = cx.expr_block(
         cx.block(span, thin_vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)]),

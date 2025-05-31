@@ -145,7 +145,7 @@ impl<'a> Parser<'a> {
         {
             let mut item = item.expect("an actual item");
             attrs.prepend_to_nt_inner(&mut item.attrs);
-            return Ok(Some(item.into_inner()));
+            return Ok(Some(*item));
         }
 
         self.collect_tokens(None, attrs, force_collect, |this, mut attrs| {
@@ -637,7 +637,7 @@ impl<'a> Parser<'a> {
                     self.dcx().emit_err(errors::MissingForInTraitImpl { span: missing_for_span });
                 }
 
-                let ty_first = ty_first.into_inner();
+                let ty_first = *ty_first;
                 let path = match ty_first.kind {
                     // This notably includes paths passed through `ty` macro fragments (#46438).
                     TyKind::Path(None, path) => path,
