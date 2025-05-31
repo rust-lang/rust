@@ -21,6 +21,7 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
+use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_session::config::{
@@ -281,7 +282,7 @@ impl CStore {
             .filter_map(|(cnum, data)| data.as_deref_mut().map(|data| (cnum, data)))
     }
 
-    fn push_dependencies_in_postorder(&self, deps: &mut Vec<CrateNum>, cnum: CrateNum) {
+    fn push_dependencies_in_postorder(&self, deps: &mut IndexSet<CrateNum>, cnum: CrateNum) {
         if !deps.contains(&cnum) {
             let data = self.get_crate_data(cnum);
             for dep in data.dependencies() {
@@ -290,12 +291,12 @@ impl CStore {
                 }
             }
 
-            deps.push(cnum);
+            deps.insert(cnum);
         }
     }
 
-    pub(crate) fn crate_dependencies_in_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
-        let mut deps = Vec::new();
+    pub(crate) fn crate_dependencies_in_postorder(&self, cnum: CrateNum) -> IndexSet<CrateNum> {
+        let mut deps = IndexSet::default();
         if cnum == LOCAL_CRATE {
             for (cnum, _) in self.iter_crate_data() {
                 self.push_dependencies_in_postorder(&mut deps, cnum);
@@ -306,10 +307,11 @@ impl CStore {
         deps
     }
 
-    fn crate_dependencies_in_reverse_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
-        let mut deps = self.crate_dependencies_in_postorder(cnum);
-        deps.reverse();
-        deps
+    fn crate_dependencies_in_reverse_postorder(
+        &self,
+        cnum: CrateNum,
+    ) -> impl Iterator<Item = CrateNum> {
+        self.crate_dependencies_in_postorder(cnum).into_iter().rev()
     }
 
     pub(crate) fn injected_panic_runtime(&self) -> Option<CrateNum> {
