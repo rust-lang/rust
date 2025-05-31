@@ -3,7 +3,7 @@ use super::utils::make_iterator_snippet;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{higher, path_to_local_id, peel_blocks_with_stmt};
+use clippy_utils::{higher, is_refutable, path_to_local_id, peel_blocks_with_stmt};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, Pat, PatKind};
@@ -28,7 +28,7 @@ pub(super) fn check<'tcx>(
         && let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind
         && path_to_local_id(let_expr, pat_hir_id)
         // Ensure the `if let` statement is for the `Some` variant of `Option` or the `Ok` variant of `Result`
-        && let PatKind::TupleStruct(ref qpath, _, _) = let_pat.kind
+        && let PatKind::TupleStruct(ref qpath, [inner_pat], _) = let_pat.kind
         && let Res::Def(DefKind::Ctor(..), ctor_id) = cx.qpath_res(qpath, let_pat.hir_id)
         && let Some(variant_id) = cx.tcx.opt_parent(ctor_id)
         && let some_ctor = cx.tcx.lang_items().option_some_variant() == Some(variant_id)
@@ -37,6 +37,7 @@ pub(super) fn check<'tcx>(
         // Ensure expr in `if let` is not used afterwards
         && !is_local_used(cx, if_then, pat_hir_id)
         && msrv.meets(cx, msrvs::ITER_FLATTEN)
+        && !is_refutable(cx, inner_pat)
     {
         let if_let_type = if some_ctor { "Some" } else { "Ok" };
         // Prepare the error message

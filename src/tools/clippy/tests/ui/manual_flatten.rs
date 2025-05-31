@@ -123,6 +123,13 @@ fn main() {
         println!("{}", n);
     }
 
+    // Using nested `Some` pattern should not trigger the lint
+    for n in vec![Some((1, Some(2)))] {
+        if let Some((_, Some(n))) = n {
+            println!("{}", n);
+        }
+    }
+
     run_unformatted_tests();
 }
 
