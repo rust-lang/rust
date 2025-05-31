@@ -1,3 +1,5 @@
+//! Tests moving an `Arc` value out of an `Option` in a match expression.
+
 //@ run-pass
 
 use std::sync::Arc;
