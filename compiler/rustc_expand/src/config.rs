@@ -80,9 +80,20 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
 
             // If the enabled feature has been removed, issue an error.
             if let Some(f) = REMOVED_LANG_FEATURES.iter().find(|f| name == f.feature.name) {
+                let pull_note = if let Some(pull) = f.pull {
+                    format!(
+                        "; see <https://github.com/rust-lang/rust/pull/{}> for more information",
+                        pull
+                    )
+                } else {
+                    "".to_owned()
+                };
                 sess.dcx().emit_err(FeatureRemoved {
                     span: mi.span(),
                     reason: f.reason.map(|reason| FeatureRemovedReason { reason }),
+                    removed_rustc_version: f.feature.since,
+                    current_rustc_version: sess.cfg_version,
+                    pull_note,
                 });
                 continue;
             }

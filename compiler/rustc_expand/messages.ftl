@@ -62,6 +62,7 @@ expand_feature_not_allowed =
 expand_feature_removed =
     feature has been removed
     .label = feature has been removed
+    .note = removed in {$removed_rustc_version} (you are using {$current_rustc_version}){$pull_note}
     .reason = {$reason}
 
 expand_glob_delegation_outside_impls =

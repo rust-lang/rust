@@ -1,5 +1,7 @@
 //! List of the removed feature gates.
 
+use std::num::{NonZero, NonZeroU32};
+
 use rustc_span::sym;
 
 use super::{Feature, to_nonzero};
@@ -7,11 +9,21 @@ use super::{Feature, to_nonzero};
 pub struct RemovedFeature {
     pub feature: Feature,
     pub reason: Option<&'static str>,
+    pub pull: Option<NonZero<u32>>,
+}
+
+macro_rules! opt_nonzero_u32 {
+    () => {
+        None
+    };
+    ($val:expr) => {
+        Some(NonZeroU32::new($val).unwrap())
+    };
 }
 
 macro_rules! declare_features {
     ($(
-        $(#[doc = $doc:tt])* (removed, $feature:ident, $ver:expr, $issue:expr, $reason:expr),
+        $(#[doc = $doc:tt])* (removed, $feature:ident, $ver:expr, $issue:expr, $reason:expr $(, $pull:expr)?),
     )+) => {
         /// Formerly unstable features that have now been removed.
         pub static REMOVED_LANG_FEATURES: &[RemovedFeature] = &[
@@ -21,7 +33,8 @@ macro_rules! declare_features {
                     since: $ver,
                     issue: to_nonzero($issue),
                 },
-                reason: $reason
+                reason: $reason,
+                pull:  opt_nonzero_u32!($($pull)?),
             }),+
         ];
     };
@@ -120,7 +133,7 @@ declare_features! (
      Some("subsumed by `::foo::bar` paths")),
     /// Allows `#[doc(include = "some-file")]`.
     (removed, external_doc, "1.54.0", Some(44732),
-     Some("use #[doc = include_str!(\"filename\")] instead, which handles macro invocations")),
+     Some("use #[doc = include_str!(\"filename\")] instead, which handles macro invocations"), 85457),
     /// Allows using `#[ffi_returns_twice]` on foreign functions.
     (removed, ffi_returns_twice, "1.78.0", Some(58314),
      Some("being investigated by the ffi-unwind project group")),
