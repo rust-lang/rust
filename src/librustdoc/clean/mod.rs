@@ -1749,7 +1749,7 @@ fn maybe_expand_private_type_alias<'tcx>(
     } else {
         return None;
     };
-    let hir::ItemKind::TyAlias(_, ty, generics) = alias else { return None };
+    let hir::ItemKind::TyAlias(_, generics, ty) = alias else { return None };
 
     let final_seg = &path.segments.last().expect("segments were empty");
     let mut args = DefIdMap::default();
@@ -2803,21 +2803,21 @@ fn clean_maybe_renamed_item<'tcx>(
         let mut name = get_name(cx, item, renamed).unwrap();
 
         let kind = match item.kind {
-            ItemKind::Static(_, ty, mutability, body_id) => StaticItem(Static {
+            ItemKind::Static(mutability, _, ty, body_id) => StaticItem(Static {
                 type_: Box::new(clean_ty(ty, cx)),
                 mutability,
                 expr: Some(body_id),
             }),
-            ItemKind::Const(_, ty, generics, body_id) => ConstantItem(Box::new(Constant {
+            ItemKind::Const(_, generics, ty, body_id) => ConstantItem(Box::new(Constant {
                 generics: clean_generics(generics, cx),
                 type_: clean_ty(ty, cx),
                 kind: ConstantKind::Local { body: body_id, def_id },
             })),
-            ItemKind::TyAlias(_, hir_ty, generics) => {
+            ItemKind::TyAlias(_, generics, ty) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
-                let rustdoc_ty = clean_ty(hir_ty, cx);
+                let rustdoc_ty = clean_ty(ty, cx);
                 let type_ =
-                    clean_middle_ty(ty::Binder::dummy(lower_ty(cx.tcx, hir_ty)), cx, None, None);
+                    clean_middle_ty(ty::Binder::dummy(lower_ty(cx.tcx, ty)), cx, None, None);
                 let generics = clean_generics(generics, cx);
                 if let Some(count) = cx.current_type_aliases.get_mut(&def_id) {
                     *count -= 1;
@@ -2846,7 +2846,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 ));
                 return ret;
             }
-            ItemKind::Enum(_, def, generics) => EnumItem(Enum {
+            ItemKind::Enum(_, generics, def) => EnumItem(Enum {
                 variants: def.variants.iter().map(|v| clean_variant(v, cx)).collect(),
                 generics: clean_generics(generics, cx),
             }),
@@ -2854,11 +2854,11 @@ fn clean_maybe_renamed_item<'tcx>(
                 generics: clean_generics(generics, cx),
                 bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
             }),
-            ItemKind::Union(_, variant_data, generics) => UnionItem(Union {
+            ItemKind::Union(_, generics, variant_data) => UnionItem(Union {
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
-            ItemKind::Struct(_, variant_data, generics) => StructItem(Struct {
+            ItemKind::Struct(_, generics, variant_data) => StructItem(Struct {
                 ctor_kind: variant_data.ctor_kind(),
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),

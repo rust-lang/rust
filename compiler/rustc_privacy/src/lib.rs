@@ -599,8 +599,8 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             DefKind::Struct | DefKind::Union => {
                 // While structs and unions have type privacy, their fields do not.
                 let item = self.tcx.hir_expect_item(def_id);
-                if let hir::ItemKind::Struct(_, ref struct_def, _)
-                | hir::ItemKind::Union(_, ref struct_def, _) = item.kind
+                if let hir::ItemKind::Struct(_, _, ref struct_def)
+                | hir::ItemKind::Union(_, _, ref struct_def) = item.kind
                 {
                     for field in struct_def.fields() {
                         let field_vis = self.tcx.local_visibility(field.def_id);
@@ -725,7 +725,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Enum(_, ref def, _) => {
+            hir::ItemKind::Enum(_, _, ref def) => {
                 if let Some(item_ev) = item_ev {
                     self.reach(item.owner_id.def_id, item_ev).generics().predicates();
                 }
@@ -763,8 +763,8 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Struct(_, ref struct_def, _)
-            | hir::ItemKind::Union(_, ref struct_def, _) => {
+            hir::ItemKind::Struct(_, _, ref struct_def)
+            | hir::ItemKind::Union(_, _, ref struct_def) => {
                 if let Some(item_ev) = item_ev {
                     self.reach(item.owner_id.def_id, item_ev).generics().predicates();
                     for field in struct_def.fields() {
@@ -868,7 +868,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TestReachabilityVisitor<'a, 'tcx> {
         self.effective_visibility_diagnostic(item.owner_id.def_id);
 
         match item.kind {
-            hir::ItemKind::Enum(_, ref def, _) => {
+            hir::ItemKind::Enum(_, _, ref def) => {
                 for variant in def.variants.iter() {
                     self.effective_visibility_diagnostic(variant.def_id);
                     if let Some(ctor_def_id) = variant.data.ctor_def_id() {
@@ -879,7 +879,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TestReachabilityVisitor<'a, 'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Struct(_, ref def, _) | hir::ItemKind::Union(_, ref def, _) => {
+            hir::ItemKind::Struct(_, _, ref def) | hir::ItemKind::Union(_, _, ref def) => {
                 if let Some(ctor_def_id) = def.ctor_def_id() {
                     self.effective_visibility_diagnostic(ctor_def_id);
                 }
@@ -1651,7 +1651,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             }
             DefKind::Enum => {
                 let item = tcx.hir_item(id);
-                if let hir::ItemKind::Enum(_, ref def, _) = item.kind {
+                if let hir::ItemKind::Enum(_, _, ref def) = item.kind {
                     self.check_unnameable(item.owner_id.def_id, effective_vis);
 
                     self.check(item.owner_id.def_id, item_visibility, effective_vis)
@@ -1689,8 +1689,8 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             // Subitems of structs and unions have their own publicity.
             DefKind::Struct | DefKind::Union => {
                 let item = tcx.hir_item(id);
-                if let hir::ItemKind::Struct(_, ref struct_def, _)
-                | hir::ItemKind::Union(_, ref struct_def, _) = item.kind
+                if let hir::ItemKind::Struct(_, _, ref struct_def)
+                | hir::ItemKind::Union(_, _, ref struct_def) = item.kind
                 {
                     self.check_unnameable(item.owner_id.def_id, effective_vis);
                     self.check(item.owner_id.def_id, item_visibility, effective_vis)

@@ -2964,7 +2964,14 @@ impl Step for Distcheck {
         run.builder.ensure(Distcheck);
     }
 
-    /// Runs "distcheck", a 'make check' from a tarball
+    /// Runs `distcheck`, which is a collection of smoke tests:
+    ///
+    /// - Run `make check` from an unpacked dist tarball to make sure we can at the minimum run
+    ///   check steps from those sources.
+    /// - Check that selected dist components (`rust-src` only at the moment) at least have expected
+    ///   directory shape and crate manifests that cargo can generate a lockfile from.
+    ///
+    /// FIXME(#136822): dist components are under-tested.
     fn run(self, builder: &Builder<'_>) {
         builder.info("Distcheck");
         let dir = builder.tempdir().join("distcheck");

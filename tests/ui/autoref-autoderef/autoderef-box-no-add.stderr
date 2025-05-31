@@ -1,5 +1,5 @@
 error[E0369]: cannot add `Box<isize>` to `Box<isize>`
-  --> $DIR/autoderef-full-lval.rs:15:24
+  --> $DIR/autoderef-box-no-add.rs:25:24
    |
 LL |     let z: isize = a.x + b.y;
    |                    --- ^ --- Box<isize>
@@ -13,7 +13,7 @@ note: the foreign item type `Box<isize>` doesn't implement `Add`
    = note: not implement `Add`
 
 error[E0369]: cannot add `Box<isize>` to `Box<isize>`
-  --> $DIR/autoderef-full-lval.rs:21:33
+  --> $DIR/autoderef-box-no-add.rs:31:33
    |
 LL |     let answer: isize = forty.a + two.a;
    |                         ------- ^ ----- Box<isize>
