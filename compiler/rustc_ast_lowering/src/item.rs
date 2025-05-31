@@ -180,7 +180,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (ty, body_id) =
                     self.lower_const_item(t, span, e.as_deref(), ImplTraitPosition::StaticTy);
                 self.lower_define_opaque(hir_id, define_opaque);
-                hir::ItemKind::Static(ident, ty, *m, body_id)
+                hir::ItemKind::Static(*m, ident, ty, body_id)
             }
             ItemKind::Const(box ast::ConstItem {
                 ident,
@@ -200,7 +200,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     },
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
-                hir::ItemKind::Const(ident, ty, generics, body_id)
+                hir::ItemKind::Const(ident, generics, ty, body_id)
             }
             ItemKind::Fn(box Fn {
                 sig: FnSig { decl, header, span: fn_sig_span },
@@ -304,7 +304,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ),
                     },
                 );
-                hir::ItemKind::TyAlias(ident, ty, generics)
+                hir::ItemKind::TyAlias(ident, generics, ty)
             }
             ItemKind::Enum(ident, generics, enum_definition) => {
                 let ident = self.lower_ident(*ident);
@@ -318,7 +318,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         )
                     },
                 );
-                hir::ItemKind::Enum(ident, hir::EnumDef { variants }, generics)
+                hir::ItemKind::Enum(ident, generics, hir::EnumDef { variants })
             }
             ItemKind::Struct(ident, generics, struct_def) => {
                 let ident = self.lower_ident(*ident);
@@ -328,7 +328,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| this.lower_variant_data(hir_id, struct_def),
                 );
-                hir::ItemKind::Struct(ident, struct_def, generics)
+                hir::ItemKind::Struct(ident, generics, struct_def)
             }
             ItemKind::Union(ident, generics, vdata) => {
                 let ident = self.lower_ident(*ident);
@@ -338,7 +338,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| this.lower_variant_data(hir_id, vdata),
                 );
-                hir::ItemKind::Union(ident, vdata, generics)
+                hir::ItemKind::Union(ident, generics, vdata)
             }
             ItemKind::Impl(box Impl {
                 safety,
@@ -467,8 +467,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::Delegation(box delegation) => {
                 let delegation_results = self.lower_delegation(delegation, id, false);
                 hir::ItemKind::Fn {
-                    ident: delegation_results.ident,
                     sig: delegation_results.sig,
+                    ident: delegation_results.ident,
                     generics: delegation_results.generics,
                     body: delegation_results.body_id,
                     has_body: true,

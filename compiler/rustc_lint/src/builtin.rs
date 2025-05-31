@@ -545,22 +545,22 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
             return;
         }
         let (def, ty) = match item.kind {
-            hir::ItemKind::Struct(_, _, ast_generics) => {
-                if !ast_generics.params.is_empty() {
+            hir::ItemKind::Struct(_, generics, _) => {
+                if !generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
                 (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
             }
-            hir::ItemKind::Union(_, _, ast_generics) => {
-                if !ast_generics.params.is_empty() {
+            hir::ItemKind::Union(_, generics, _) => {
+                if !generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
                 (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
             }
-            hir::ItemKind::Enum(_, _, ast_generics) => {
-                if !ast_generics.params.is_empty() {
+            hir::ItemKind::Enum(_, generics, _) => {
+                if !generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
@@ -1422,7 +1422,7 @@ impl TypeAliasBounds {
 
 impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        let hir::ItemKind::TyAlias(_, hir_ty, generics) = item.kind else { return };
+        let hir::ItemKind::TyAlias(_, generics, hir_ty) = item.kind else { return };
 
         // There must not be a where clause.
         if generics.predicates.is_empty() {
@@ -2125,9 +2125,9 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
         use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 
         let def_id = item.owner_id.def_id;
-        if let hir::ItemKind::Struct(_, _, hir_generics)
-        | hir::ItemKind::Enum(_, _, hir_generics)
-        | hir::ItemKind::Union(_, _, hir_generics) = item.kind
+        if let hir::ItemKind::Struct(_, generics, _)
+        | hir::ItemKind::Enum(_, generics, _)
+        | hir::ItemKind::Union(_, generics, _) = item.kind
         {
             let inferred_outlives = cx.tcx.inferred_outlives_of(def_id);
             if inferred_outlives.is_empty() {
@@ -2135,7 +2135,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
             }
 
             let ty_generics = cx.tcx.generics_of(def_id);
-            let num_where_predicates = hir_generics
+            let num_where_predicates = generics
                 .predicates
                 .iter()
                 .filter(|predicate| predicate.kind.in_where_clause())
@@ -2145,7 +2145,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
             let mut lint_spans = Vec::new();
             let mut where_lint_spans = Vec::new();
             let mut dropped_where_predicate_count = 0;
-            for (i, where_predicate) in hir_generics.predicates.iter().enumerate() {
+            for (i, where_predicate) in generics.predicates.iter().enumerate() {
                 let (relevant_lifetimes, bounds, predicate_span, in_where_clause) =
                     match where_predicate.kind {
                         hir::WherePredicateKind::RegionPredicate(predicate) => {
@@ -2228,7 +2228,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     } else if i + 1 < num_where_predicates {
                         // If all the bounds on a predicate were inferable and there are
                         // further predicates, we want to eat the trailing comma.
-                        let next_predicate_span = hir_generics.predicates[i + 1].span;
+                        let next_predicate_span = generics.predicates[i + 1].span;
                         if next_predicate_span.from_expansion() {
                             where_lint_spans.push(predicate_span);
                         } else {
@@ -2237,7 +2237,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                         }
                     } else {
                         // Eat the optional trailing comma after the last predicate.
-                        let where_span = hir_generics.where_clause_span;
+                        let where_span = generics.where_clause_span;
                         if where_span.from_expansion() {
                             where_lint_spans.push(predicate_span);
                         } else {
@@ -2255,18 +2255,18 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
 
             // If all predicates in where clause are inferable, drop the entire clause
             // (including the `where`)
-            if hir_generics.has_where_clause_predicates
+            if generics.has_where_clause_predicates
                 && dropped_where_predicate_count == num_where_predicates
             {
-                let where_span = hir_generics.where_clause_span;
+                let where_span = generics.where_clause_span;
                 // Extend the where clause back to the closing `>` of the
                 // generics, except for tuple struct, which have the `where`
                 // after the fields of the struct.
                 let full_where_span =
-                    if let hir::ItemKind::Struct(_, hir::VariantData::Tuple(..), _) = item.kind {
+                    if let hir::ItemKind::Struct(_, _, hir::VariantData::Tuple(..)) = item.kind {
                         where_span
                     } else {
-                        hir_generics.span.shrink_to_hi().to(where_span)
+                        generics.span.shrink_to_hi().to(where_span)
                     };
 
                 // Due to macro expansions, the `full_where_span` might not actually contain all
