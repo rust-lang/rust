@@ -12,6 +12,7 @@
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
+#![feature(iter_chain)]
 #![feature(iterator_try_collect)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
