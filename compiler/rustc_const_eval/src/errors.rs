@@ -439,38 +439,6 @@ pub struct LiveDrop<'tcx> {
     pub dropped_at: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(const_eval_error, code = E0080)]
-pub struct ConstEvalError {
-    #[primary_span]
-    pub span: Span,
-    /// One of "const", "const_with_path", and "static"
-    pub error_kind: &'static str,
-    pub instance: String,
-    #[subdiagnostic]
-    pub frame_notes: Vec<FrameNote>,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_nullary_intrinsic_fail)]
-pub struct NullaryIntrinsicError {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_validation_failure, code = E0080)]
-pub struct ValidationFailure {
-    #[primary_span]
-    pub span: Span,
-    #[note(const_eval_validation_failure_note)]
-    pub ub_note: (),
-    #[subdiagnostic]
-    pub frames: Vec<FrameNote>,
-    #[subdiagnostic]
-    pub raw_bytes: RawBytesNote,
-}
-
 pub trait ReportErrorExt {
     /// Returns the diagnostic message for this error.
     fn diagnostic_message(&self) -> DiagMessage;

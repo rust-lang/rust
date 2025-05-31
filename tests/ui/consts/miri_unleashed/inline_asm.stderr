@@ -1,8 +1,8 @@
-error[E0080]: could not evaluate static initializer
+error[E0080]: inline assembly is not supported
   --> $DIR/inline_asm.rs:10:14
    |
 LL |     unsafe { asm!("nop"); }
-   |              ^^^^^^^^^^^ inline assembly is not supported
+   |              ^^^^^^^^^^^ evaluation of static initializer failed here
 
 warning: skipping const checks
    |

@@ -11,7 +11,7 @@ struct Meh {
 }
 
 const MUH: Meh = Meh { x: unsafe { &mut *(&READONLY as *const _ as *mut _) } };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR: invalid value at .x.<deref>: encountered `UnsafeCell` in read-only memory
 
 static READONLY: i32 = 0;
 

@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: explicit panic
   --> $DIR/ctfe-tail-call-panic.rs:13:15
    |
 LL | const _: () = f();
-   |               ^^^ evaluation panicked: explicit panic
+   |               ^^^ evaluation of constant value failed here
    |
 note: inside `g`
   --> $DIR/ctfe-tail-call-panic.rs:9:5

@@ -1,68 +1,68 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by -$BYTES bytes, but got ALLOC0 which is at the beginning of the allocation
   --> $DIR/offset_ub.rs:8:46
    |
 LL | pub const BEFORE_START: *const u8 = unsafe { (&0u8 as *const u8).offset(-1) };
-   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in-bounds pointer arithmetic failed: attempting to offset pointer by -$BYTES bytes, but got ALLOC0 which is at the beginning of the allocation
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by $BYTES bytes, but got ALLOC1 which is only 1 byte from the end of the allocation
   --> $DIR/offset_ub.rs:9:43
    |
 LL | pub const AFTER_END: *const u8 = unsafe { (&0u8 as *const u8).offset(2) };
-   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in-bounds pointer arithmetic failed: attempting to offset pointer by $BYTES bytes, but got ALLOC1 which is only 1 byte from the end of the allocation
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by $BYTES bytes, but got ALLOC2 which is only $BYTES bytes from the end of the allocation
   --> $DIR/offset_ub.rs:10:45
    |
 LL | pub const AFTER_ARRAY: *const u8 = unsafe { [0u8; 100].as_ptr().offset(101) };
-   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in-bounds pointer arithmetic failed: attempting to offset pointer by $BYTES bytes, but got ALLOC2 which is only $BYTES bytes from the end of the allocation
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
   --> $DIR/offset_ub.rs:12:43
    |
 LL | pub const OVERFLOW: *const u16 = unsafe { [0u16; 1].as_ptr().offset(isize::MAX) };
-   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
   --> $DIR/offset_ub.rs:13:44
    |
 LL | pub const UNDERFLOW: *const u16 = unsafe { [0u16; 1].as_ptr().offset(isize::MIN) };
-   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by $BYTES bytes, but got 0xf..f[noalloc] which is a dangling pointer (it has no provenance)
   --> $DIR/offset_ub.rs:14:56
    |
 LL | pub const OVERFLOW_ADDRESS_SPACE: *const u8 = unsafe { (usize::MAX as *const u8).offset(2) };
-   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in-bounds pointer arithmetic failed: attempting to offset pointer by $BYTES bytes, but got 0xf..f[noalloc] which is a dangling pointer (it has no provenance)
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by -$BYTES bytes, but got 0x1[noalloc] which is a dangling pointer (it has no provenance)
   --> $DIR/offset_ub.rs:15:57
    |
 LL | pub const UNDERFLOW_ADDRESS_SPACE: *const u8 = unsafe { (1 as *const u8).offset(-2) };
-   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ in-bounds pointer arithmetic failed: attempting to offset pointer by -$BYTES bytes, but got 0x1[noalloc] which is a dangling pointer (it has no provenance)
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by -$BYTES bytes, but got ALLOC3-0x2 which is only $BYTES bytes from the beginning of the allocation
   --> $DIR/offset_ub.rs:16:49
    |
 LL | pub const NEGATIVE_OFFSET: *const u8 = unsafe { [0u8; 1].as_ptr().wrapping_offset(-2).offset(-2) };
-   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in-bounds pointer arithmetic failed: attempting to offset pointer by -$BYTES bytes, but got ALLOC3-0x2 which is only $BYTES bytes from the beginning of the allocation
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 1 byte, but got ALLOC4 which is at or beyond the end of the allocation of size $BYTES bytes
   --> $DIR/offset_ub.rs:18:50
    |
 LL | pub const ZERO_SIZED_ALLOC: *const u8 = unsafe { [0u8; 0].as_ptr().offset(1) };
-   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ in-bounds pointer arithmetic failed: attempting to offset pointer by 1 byte, but got ALLOC4 which is at or beyond the end of the allocation of size $BYTES bytes
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by $BYTES bytes, but got 0x1[noalloc] which is a dangling pointer (it has no provenance)
   --> $DIR/offset_ub.rs:19:42
    |
 LL | pub const DANGLING: *const u8 = unsafe { ptr::NonNull::<u8>::dangling().as_ptr().offset(4) };
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in-bounds pointer arithmetic failed: attempting to offset pointer by $BYTES bytes, but got 0x1[noalloc] which is a dangling pointer (it has no provenance)
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by -$BYTES bytes, but got 0xf..f[noalloc] which is a dangling pointer (it has no provenance)
   --> $DIR/offset_ub.rs:22:47
    |
 LL | pub const UNDERFLOW_ABS: *const u8 = unsafe { (usize::MAX as *const u8).offset(isize::MIN) };
-   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in-bounds pointer arithmetic failed: attempting to offset pointer by -$BYTES bytes, but got 0xf..f[noalloc] which is a dangling pointer (it has no provenance)
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 11 previous errors
 

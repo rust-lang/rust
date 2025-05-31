@@ -1,8 +1,8 @@
-error[E0080]: evaluation of `POSITIVE::<0>::{constant#0}` failed
+error[E0080]: attempt to compute `0_usize - 1_usize`, which would overflow
   --> $DIR/unsatisfied-evaluatable-bounds.rs:8:10
    |
 LL |     [(); N - 1]:;
-   |          ^^^^^ attempt to compute `0_usize - 1_usize`, which would overflow
+   |          ^^^^^ evaluation of `POSITIVE::<0>::{constant#0}` failed here
 
 error: aborting due to 1 previous error
 

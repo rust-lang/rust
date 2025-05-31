@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: writing to ALLOC0 which is read-only
   --> $DIR/issue-100313.rs:18:5
    |
 LL |     x.set_false();
-   |     ^^^^^^^^^^^^^ writing to ALLOC0 which is read-only
+   |     ^^^^^^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `T::<&true>::set_false`
   --> $DIR/issue-100313.rs:11:13

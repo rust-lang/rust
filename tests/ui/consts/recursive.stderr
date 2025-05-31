@@ -9,11 +9,11 @@ LL |     f(x);
    = help: a `loop` may express intention better if this is on purpose
    = note: `#[warn(unconditional_recursion)]` on by default
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: reached the configured maximum number of stack frames
   --> $DIR/recursive.rs:7:15
    |
 LL | const X: () = f(1);
-   |               ^^^^ reached the configured maximum number of stack frames
+   |               ^^^^ evaluation of constant value failed here
    |
 note: [... 126 additional calls inside `f::<i32>` ...]
   --> $DIR/recursive.rs:4:5

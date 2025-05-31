@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `1_usize - 2_usize`, which would overflow
   --> $DIR/const-len-underflow-subspans.rs:8:17
    |
 LL |     let a: [i8; ONE - TWO] = unimplemented!();
-   |                 ^^^^^^^^^ attempt to compute `1_usize - 2_usize`, which would overflow
+   |                 ^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 1 previous error
 

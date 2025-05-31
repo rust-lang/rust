@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: entering unreachable code
   --> $DIR/const_unsafe_unreachable_ub.rs:10:28
    |
 LL | const BAR: bool = unsafe { foo(false) };
-   |                            ^^^^^^^^^^ entering unreachable code
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `foo`
   --> $DIR/const_unsafe_unreachable_ub.rs:4:18

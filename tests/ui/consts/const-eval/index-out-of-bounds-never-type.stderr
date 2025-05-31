@@ -1,8 +1,8 @@
-error[E0080]: evaluation of `PrintName::<()>::VOID` failed
+error[E0080]: index out of bounds: the length is 0 but the index is 0
   --> $DIR/index-out-of-bounds-never-type.rs:10:61
    |
 LL |     const VOID: ! = { let x = 0 * std::mem::size_of::<T>(); [][x] };
-   |                                                             ^^^^^ index out of bounds: the length is 0 but the index is 0
+   |                                                             ^^^^^ evaluation of `PrintName::<()>::VOID` failed here
 
 note: erroneous constant encountered
   --> $DIR/index-out-of-bounds-never-type.rs:16:13

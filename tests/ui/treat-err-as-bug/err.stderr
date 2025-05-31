@@ -1,8 +1,8 @@
-error: internal compiler error[E0080]: could not evaluate static initializer
+error: internal compiler error[E0080]: attempt to compute `0_u32 - 1_u32`, which would overflow
   --> $DIR/err.rs:9:21
    |
 LL | pub static C: u32 = 0 - 1;
-   |                     ^^^^^ attempt to compute `0_u32 - 1_u32`, which would overflow
+   |                     ^^^^^ evaluation of static initializer failed here
 
 
 error: the compiler unexpectedly panicked. this is a bug.

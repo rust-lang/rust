@@ -68,7 +68,7 @@ fn main() {
     // This should be linted, since `suppress-restriction-lint-in-const` default is false.
     const { &ARR[idx4()] };
     //~^ ERROR: indexing may panic
-    //~| ERROR: evaluation of `main
+    //~| ERROR: index out of bounds
 
     let y = &x;
     // Ok, referencing shouldn't affect this lint. See the issue 6021

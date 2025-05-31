@@ -6,7 +6,7 @@
 
 struct Late<T>(T);
 impl<T> Late<T> {
-    const FAIL: () = panic!(); //~ERROR evaluation of `Late::<i32>::FAIL` failed
+    const FAIL: () = panic!(); //~ERROR evaluation panicked: explicit panic
     const FNPTR: fn() = || Self::FAIL;
 }
 

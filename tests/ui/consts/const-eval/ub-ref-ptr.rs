@@ -15,57 +15,53 @@ union MaybeUninit<T: Copy> {
 }
 
 const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
-//~^ ERROR it is undefined behavior to use this value
-//~| NOTE constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
+//~^ ERROR constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
 
 const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
-//~^ ERROR it is undefined behavior to use this value
-//~| NOTE constructing invalid value: encountered an unaligned box (required 2 byte alignment but found 1)
+//~^ ERROR constructing invalid value: encountered an unaligned box (required 2 byte alignment but found 1)
 
 const NULL: &u16 = unsafe { mem::transmute(0usize) };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR invalid value
 
 const NULL_BOX: Box<u16> = unsafe { mem::transmute(0usize) };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR invalid value
 
 
 // It is very important that we reject this: We do promote `&(4 * REF_AS_USIZE)`,
 // but that would fail to compile; so we ended up breaking user code that would
 // have worked fine had we not promoted.
 const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR unable to turn pointer into integer
 
 const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR unable to turn pointer into integer
 
 const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR unable to turn pointer into integer
 
 const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR invalid value
 
 const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR invalid value
 
 const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
-//~^ ERROR evaluation of constant value failed
-//~| NOTE uninitialized
+//~^ ERROR uninitialized
 
 const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR invalid value
 const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
-//~^ ERROR evaluation of constant value failed
-//~| NOTE uninitialized
+//~^ ERROR uninitialized
 const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR invalid value
 const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR invalid value
 
 
 const UNALIGNED_READ: () = unsafe {
     let x = &[0u8; 4];
     let ptr = x.as_ptr().cast::<u32>();
-    ptr.read(); //~ ERROR evaluation of constant value failed
+    ptr.read(); //~ ERROR accessing memory
 };
 
 

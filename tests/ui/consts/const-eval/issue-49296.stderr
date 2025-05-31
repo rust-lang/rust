@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: memory access failed: ALLOC0 has been freed, so this pointer is dangling
   --> $DIR/issue-49296.rs:9:16
    |
 LL | const X: u64 = *wat(42);
-   |                ^^^^^^^^ memory access failed: ALLOC0 has been freed, so this pointer is dangling
+   |                ^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 1 previous error
 

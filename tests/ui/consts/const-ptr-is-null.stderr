@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: null-ness of this pointer cannot be determined in const context
   --> $DIR/const-ptr-is-null.rs:22:14
    |
 LL |     assert!(!ptr.wrapping_sub(512).is_null());
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: null-ness of this pointer cannot be determined in const context
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `std::ptr::const_ptr::<impl *const i32>::is_null`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL

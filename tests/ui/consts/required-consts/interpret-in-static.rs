@@ -5,7 +5,7 @@
 
 struct Fail<T>(T);
 impl<T> Fail<T> {
-    const C: () = panic!(); //~ERROR evaluation of `Fail::<i32>::C` failed
+    const C: () = panic!(); //~ERROR explicit panic
                             //~| NOTE in this expansion of panic!
 }
 

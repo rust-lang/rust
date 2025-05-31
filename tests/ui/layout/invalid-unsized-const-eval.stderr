@@ -7,11 +7,11 @@ LL |     data: (dyn Sync, ()),
    = help: the trait `Sized` is not implemented for `(dyn Sync + 'static)`
    = note: only the last element of a tuple may have a dynamically sized type
 
-error[E0080]: could not evaluate static initializer
+error[E0080]: the type `(dyn Sync, ())` has an unknown layout
   --> $DIR/invalid-unsized-const-eval.rs:12:1
    |
 LL | static EMPTY_SET: LazyLock = todo!();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `(dyn Sync, ())` has an unknown layout
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of static initializer failed here
 
 error: aborting due to 2 previous errors
 

@@ -18,11 +18,11 @@ LL | struct MySlice<T>(T);
    |                |
    |                this could be changed to `T: ?Sized`...
 
-error[E0080]: could not evaluate static initializer
+error[E0080]: the type `MySlice<[bool]>` has an unknown layout
   --> $DIR/invalid-unsized-in-always-sized-tail.rs:15:28
    |
 LL | static CHECK: () = assert!(align_of::<P2>() == 1);
-   |                            ^^^^^^^^^^^^^^^^ the type `MySlice<[bool]>` has an unknown layout
+   |                            ^^^^^^^^^^^^^^^^ evaluation of static initializer failed here
    |
 note: inside `align_of::<P2>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL

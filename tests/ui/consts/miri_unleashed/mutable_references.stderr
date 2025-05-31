@@ -1,19 +1,19 @@
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: constructing invalid value at .<deref>: encountered mutable reference or box pointing to read-only memory
   --> $DIR/mutable_references.rs:13:1
    |
 LL | static FOO: &&mut u32 = &&mut 42;
-   | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>: encountered mutable reference or box pointing to read-only memory
+   | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references.rs:16:1
+error[E0080]: constructing invalid value: encountered mutable reference or box pointing to read-only memory
+  --> $DIR/mutable_references.rs:15:1
    |
 LL | static OH_YES: &mut i32 = &mut 42;
-   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference or box pointing to read-only memory
+   | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
@@ -21,126 +21,126 @@ LL | static OH_YES: &mut i32 = &mut 42;
            }
 
 error: encountered mutable pointer in final value of static
-  --> $DIR/mutable_references.rs:19:1
+  --> $DIR/mutable_references.rs:17:1
    |
 LL | static BAR: &mut () = &mut ();
    | ^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of static
-  --> $DIR/mutable_references.rs:24:1
+  --> $DIR/mutable_references.rs:22:1
    |
 LL | static BOO: &mut Foo<()> = &mut Foo(());
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references.rs:27:1
+error[E0080]: constructing invalid value: encountered mutable reference or box pointing to read-only memory
+  --> $DIR/mutable_references.rs:25:1
    |
 LL | const BLUNT: &mut i32 = &mut 42;
-   | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference or box pointing to read-only memory
+   | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references.rs:31:1
+error[E0080]: constructing invalid value: encountered reference to mutable memory in `const`
+  --> $DIR/mutable_references.rs:28:1
    |
 LL | const SUBTLE: &mut i32 = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
+   | ^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references.rs:44:1
+error[E0080]: constructing invalid value at .x.<deref>: encountered `UnsafeCell` in read-only memory
+  --> $DIR/mutable_references.rs:40:1
    |
 LL | static MEH: Meh = Meh { x: &UnsafeCell::new(42) };
-   | ^^^^^^^^^^^^^^^ constructing invalid value at .x.<deref>: encountered `UnsafeCell` in read-only memory
+   | ^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references.rs:50:1
+error[E0080]: constructing invalid value at .x.<deref>: encountered `UnsafeCell` in read-only memory
+  --> $DIR/mutable_references.rs:45:1
    |
 LL | const MUH: Meh = Meh {
-   | ^^^^^^^^^^^^^^ constructing invalid value at .x.<deref>: encountered `UnsafeCell` in read-only memory
+   | ^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references.rs:62:1
+error[E0080]: constructing invalid value at .<deref>.<dyn-downcast>.x: encountered `UnsafeCell` in read-only memory
+  --> $DIR/mutable_references.rs:56:1
    |
 LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>.<dyn-downcast>.x: encountered `UnsafeCell` in read-only memory
+   | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references.rs:69:1
+error[E0080]: constructing invalid value: encountered mutable reference or box pointing to read-only memory
+  --> $DIR/mutable_references.rs:62:1
    |
 LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference or box pointing to read-only memory
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references.rs:76:1
+error[E0080]: constructing invalid value: encountered reference to mutable memory in `const`
+  --> $DIR/mutable_references.rs:68:1
    |
 LL | const POINTS_TO_MUTABLE: &i32 = unsafe { &MUTABLE };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/mutable_references.rs:79:43
+error[E0080]: constant accesses mutable global memory
+  --> $DIR/mutable_references.rs:70:43
    |
 LL | const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
-   |                                           ^^^^^^^^^^^^^ constant accesses mutable global memory
+   |                                           ^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references.rs:83:1
+  --> $DIR/mutable_references.rs:73:1
    |
 LL | const POINTS_TO_MUTABLE_INNER: *const i32 = &mut 42 as *mut _ as *const _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references.rs:86:1
+  --> $DIR/mutable_references.rs:76:1
    |
 LL | const POINTS_TO_MUTABLE_INNER2: *const i32 = &mut 42 as *const _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references.rs:106:1
+  --> $DIR/mutable_references.rs:96:1
    |
 LL | const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x: &mut 42 as *mut _ as *const _ };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references.rs:109:1
+  --> $DIR/mutable_references.rs:99:1
    |
 LL | const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0594]: cannot assign to `*OH_YES`, as `OH_YES` is an immutable static item
-  --> $DIR/mutable_references.rs:116:5
+  --> $DIR/mutable_references.rs:106:5
    |
 LL |     *OH_YES = 99;
    |     ^^^^^^^^^^^^ cannot assign
@@ -153,67 +153,67 @@ help: skipping check that does not even have a feature gate
 LL | static FOO: &&mut u32 = &&mut 42;
    |                          ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:16:27
+  --> $DIR/mutable_references.rs:15:27
    |
 LL | static OH_YES: &mut i32 = &mut 42;
    |                           ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:19:23
+  --> $DIR/mutable_references.rs:17:23
    |
 LL | static BAR: &mut () = &mut ();
    |                       ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:24:28
+  --> $DIR/mutable_references.rs:22:28
    |
 LL | static BOO: &mut Foo<()> = &mut Foo(());
    |                            ^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:27:25
+  --> $DIR/mutable_references.rs:25:25
    |
 LL | const BLUNT: &mut i32 = &mut 42;
    |                         ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:44:28
+  --> $DIR/mutable_references.rs:40:28
    |
 LL | static MEH: Meh = Meh { x: &UnsafeCell::new(42) };
    |                            ^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:53:8
+  --> $DIR/mutable_references.rs:47:8
    |
 LL |     x: &UnsafeCell::new(42),
    |        ^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:62:27
+  --> $DIR/mutable_references.rs:56:27
    |
 LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:83:45
+  --> $DIR/mutable_references.rs:73:45
    |
 LL | const POINTS_TO_MUTABLE_INNER: *const i32 = &mut 42 as *mut _ as *const _;
    |                                             ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:86:46
+  --> $DIR/mutable_references.rs:76:46
    |
 LL | const POINTS_TO_MUTABLE_INNER2: *const i32 = &mut 42 as *const _;
    |                                              ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:91:47
+  --> $DIR/mutable_references.rs:81:47
    |
 LL | const INTERIOR_MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
    |                                               ^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:103:51
+  --> $DIR/mutable_references.rs:93:51
    |
 LL | const RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
    |                                                   ^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:106:49
+  --> $DIR/mutable_references.rs:96:49
    |
 LL | const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x: &mut 42 as *mut _ as *const _ };
    |                                                 ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:109:51
+  --> $DIR/mutable_references.rs:99:51
    |
 LL | const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    |                                                   ^^^^^^

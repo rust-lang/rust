@@ -6,13 +6,13 @@
 use core::panic::PanicInfo;
 
 const Z: () = panic!("cheese");
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR evaluation panicked
 
 const Y: () = unreachable!();
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR evaluation panicked
 
 const X: () = unimplemented!();
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR evaluation panicked
 
 #[lang = "eh_personality"]
 fn eh() {}

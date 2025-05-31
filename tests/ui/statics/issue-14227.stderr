@@ -1,8 +1,8 @@
-error[E0080]: could not evaluate static initializer
+error[E0080]: cannot access extern static `symbol`
   --> $DIR/issue-14227.rs:4:21
    |
 LL | static CRASH: u32 = symbol;
-   |                     ^^^^^^ cannot access extern static `symbol`
+   |                     ^^^^^^ evaluation of static initializer failed here
 
 error[E0133]: use of extern static is unsafe and requires unsafe function or block
   --> $DIR/issue-14227.rs:4:21

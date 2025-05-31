@@ -3,9 +3,9 @@
 fn main() {
     let n: Int = 40;
     match n {
-        0..=10 => {},
-        10..=BAR => {}, // ok, `const` error already emitted
-        _ => {},
+        0..=10 => {}
+        10..=BAR => {} // ok, `const` error already emitted
+        _ => {}
     }
 }
 
@@ -15,11 +15,11 @@ union Foo {
     r: &'static u32,
 }
 
-#[cfg(target_pointer_width="64")]
+#[cfg(target_pointer_width = "64")]
 type Int = u64;
 
-#[cfg(target_pointer_width="32")]
+#[cfg(target_pointer_width = "32")]
 type Int = u32;
 
 const BAR: Int = unsafe { Foo { r: &42 }.f };
-//~^ ERROR constant
+//~^ ERROR unable to turn pointer into integer

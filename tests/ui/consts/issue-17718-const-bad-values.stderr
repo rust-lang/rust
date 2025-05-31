@@ -4,11 +4,11 @@ error[E0764]: mutable references are not allowed in the final value of constants
 LL | const C1: &'static mut [usize] = &mut [];
    |                                  ^^^^^^^
 
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: constructing invalid value: encountered reference to mutable memory in `const`
   --> $DIR/issue-17718-const-bad-values.rs:11:1
    |
 LL | const C2: &'static mut i32 = unsafe { &mut S };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $PTR, align: $PTR) {

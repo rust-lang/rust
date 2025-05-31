@@ -1,14 +1,14 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: writing through a pointer that was derived from a shared (immutable) reference
   --> $DIR/ub-write-through-immutable.rs:10:5
    |
 LL |     *ptr = 0;
-   |     ^^^^^^^^ writing through a pointer that was derived from a shared (immutable) reference
+   |     ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-write-through-immutable.rs:17:5
+error[E0080]: writing through a pointer that was derived from a shared (immutable) reference
+  --> $DIR/ub-write-through-immutable.rs:16:5
    |
 LL |     *ptr = 0;
-   |     ^^^^^^^^ writing through a pointer that was derived from a shared (immutable) reference
+   |     ^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 2 previous errors
 

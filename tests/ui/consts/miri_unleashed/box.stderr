@@ -1,8 +1,8 @@
-error[E0080]: could not evaluate static initializer
+error[E0080]: calling non-const function `Box::<i32>::new`
   --> $DIR/box.rs:8:11
    |
 LL |     &mut *(Box::new(0))
-   |           ^^^^^^^^^^^^^ calling non-const function `Box::<i32>::new`
+   |           ^^^^^^^^^^^^^ evaluation of static initializer failed here
 
 warning: skipping const checks
    |

@@ -3,7 +3,7 @@
 
 //@ dont-require-annotations: NOTE
 
-const _CONST: &[u8] = &f(&[], |_| {}); //~ ERROR evaluation of constant value failed
+const _CONST: &[u8] = &f(&[], |_| {}); //~ ERROR explicit panic
 //~^ NOTE constant
 
 const fn f<F>(_: &[u8], _: F) -> &[u8]

@@ -1,14 +1,14 @@
-error[E0080]: evaluation of `test::<0>::{constant#0}` failed
+error[E0080]: attempt to compute `0_usize - 1_usize`, which would overflow
   --> $DIR/simple_fail.rs:9:10
    |
 LL |     [u8; N - 1]: Sized,
-   |          ^^^^^ attempt to compute `0_usize - 1_usize`, which would overflow
+   |          ^^^^^ evaluation of `test::<0>::{constant#0}` failed here
 
-error[E0080]: evaluation of `Arr::<0>::{constant#0}` failed
+error[E0080]: attempt to compute `0_usize - 1_usize`, which would overflow
   --> $DIR/simple_fail.rs:4:33
    |
 LL | type Arr<const N: usize> = [u8; N - 1];
-   |                                 ^^^^^ attempt to compute `0_usize - 1_usize`, which would overflow
+   |                                 ^^^^^ evaluation of `Arr::<0>::{constant#0}` failed here
 
 error: aborting due to 2 previous errors
 

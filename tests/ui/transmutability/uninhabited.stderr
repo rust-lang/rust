@@ -40,11 +40,11 @@ LL | |                 lifetimes: true,
 LL | |         }>
    | |__________^ required by this bound in `is_maybe_transmutable`
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: assertion failed: false
   --> $DIR/uninhabited.rs:41:9
    |
 LL |         assert!(false);
-   |         ^^^^^^^^^^^^^^ evaluation panicked: assertion failed: false
+   |         ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error[E0277]: `()` cannot be safely transmuted into `yawning_void_enum::Void`
   --> $DIR/uninhabited.rs:71:41
@@ -67,11 +67,11 @@ LL | |                 lifetimes: true,
 LL | |         }>
    | |__________^ required by this bound in `is_maybe_transmutable`
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: assertion failed: false
   --> $DIR/uninhabited.rs:63:9
    |
 LL |         assert!(false);
-   |         ^^^^^^^^^^^^^^ evaluation panicked: assertion failed: false
+   |         ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error[E0277]: `u128` cannot be safely transmuted into `DistantVoid`
   --> $DIR/uninhabited.rs:92:43
@@ -94,11 +94,11 @@ LL | |                 lifetimes: true,
 LL | |         }>
    | |__________^ required by this bound in `is_maybe_transmutable`
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: assertion failed: false
   --> $DIR/uninhabited.rs:87:9
    |
 LL |         assert!(false);
-   |         ^^^^^^^^^^^^^^ evaluation panicked: assertion failed: false
+   |         ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error[E0277]: `Src` cannot be safely transmuted into `issue_126267::Error`
   --> $DIR/uninhabited.rs:108:42

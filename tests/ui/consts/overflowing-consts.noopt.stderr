@@ -1,1022 +1,1022 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:19:22
+error[E0080]: attempt to shift left by `8_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:18:22
    |
 LL | const _NI8_SHL: i8 = 1i8 << 8;
-   |                      ^^^^^^^^ attempt to shift left by `8_i32`, which would overflow
+   |                      ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:20:26
+error[E0080]: attempt to shift left by `8_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:19:26
    |
 LL | const _NI8_SHL_P: &i8 = &(1i8 << 8);
-   |                          ^^^^^^^^^^ attempt to shift left by `8_i32`, which would overflow
+   |                          ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:22:24
+error[E0080]: attempt to shift left by `16_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:21:24
    |
 LL | const _NI16_SHL: i16 = 1i16 << 16;
-   |                        ^^^^^^^^^^ attempt to shift left by `16_i32`, which would overflow
+   |                        ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:23:28
+error[E0080]: attempt to shift left by `16_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:22:28
    |
 LL | const _NI16_SHL_P: &i16 = &(1i16 << 16);
-   |                            ^^^^^^^^^^^^ attempt to shift left by `16_i32`, which would overflow
+   |                            ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:25:24
+error[E0080]: attempt to shift left by `32_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:24:24
    |
 LL | const _NI32_SHL: i32 = 1i32 << 32;
-   |                        ^^^^^^^^^^ attempt to shift left by `32_i32`, which would overflow
+   |                        ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:26:28
+error[E0080]: attempt to shift left by `32_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:25:28
    |
 LL | const _NI32_SHL_P: &i32 = &(1i32 << 32);
-   |                            ^^^^^^^^^^^^ attempt to shift left by `32_i32`, which would overflow
+   |                            ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:28:24
+error[E0080]: attempt to shift left by `64_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:27:24
    |
 LL | const _NI64_SHL: i64 = 1i64 << 64;
-   |                        ^^^^^^^^^^ attempt to shift left by `64_i32`, which would overflow
+   |                        ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:29:28
+error[E0080]: attempt to shift left by `64_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:28:28
    |
 LL | const _NI64_SHL_P: &i64 = &(1i64 << 64);
-   |                            ^^^^^^^^^^^^ attempt to shift left by `64_i32`, which would overflow
+   |                            ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:31:26
+error[E0080]: attempt to shift left by `128_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:30:26
    |
 LL | const _NI128_SHL: i128 = 1i128 << 128;
-   |                          ^^^^^^^^^^^^ attempt to shift left by `128_i32`, which would overflow
+   |                          ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:32:30
+error[E0080]: attempt to shift left by `128_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:31:30
    |
 LL | const _NI128_SHL_P: &i128 = &(1i128 << 128);
-   |                              ^^^^^^^^^^^^^^ attempt to shift left by `128_i32`, which would overflow
+   |                              ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:34:22
+error[E0080]: attempt to shift left by `8_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:33:22
    |
 LL | const _NU8_SHL: u8 = 1u8 << 8;
-   |                      ^^^^^^^^ attempt to shift left by `8_i32`, which would overflow
+   |                      ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:35:26
+error[E0080]: attempt to shift left by `8_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:34:26
    |
 LL | const _NU8_SHL_P: &u8 = &(1u8 << 8);
-   |                          ^^^^^^^^^^ attempt to shift left by `8_i32`, which would overflow
+   |                          ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:37:24
+error[E0080]: attempt to shift left by `16_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:36:24
    |
 LL | const _NU16_SHL: u16 = 1u16 << 16;
-   |                        ^^^^^^^^^^ attempt to shift left by `16_i32`, which would overflow
+   |                        ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:38:28
+error[E0080]: attempt to shift left by `16_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:37:28
    |
 LL | const _NU16_SHL_P: &u16 = &(1u16 << 16);
-   |                            ^^^^^^^^^^^^ attempt to shift left by `16_i32`, which would overflow
+   |                            ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:40:24
+error[E0080]: attempt to shift left by `32_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:39:24
    |
 LL | const _NU32_SHL: u32 = 1u32 << 32;
-   |                        ^^^^^^^^^^ attempt to shift left by `32_i32`, which would overflow
+   |                        ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:41:28
+error[E0080]: attempt to shift left by `32_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:40:28
    |
 LL | const _NU32_SHL_P: &u32 = &(1u32 << 32);
-   |                            ^^^^^^^^^^^^ attempt to shift left by `32_i32`, which would overflow
+   |                            ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:43:24
+error[E0080]: attempt to shift left by `64_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:42:24
    |
 LL | const _NU64_SHL: u64 = 1u64 << 64;
-   |                        ^^^^^^^^^^ attempt to shift left by `64_i32`, which would overflow
+   |                        ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:44:28
+error[E0080]: attempt to shift left by `64_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:43:28
    |
 LL | const _NU64_SHL_P: &u64 = &(1u64 << 64);
-   |                            ^^^^^^^^^^^^ attempt to shift left by `64_i32`, which would overflow
+   |                            ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:46:26
+error[E0080]: attempt to shift left by `128_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:45:26
    |
 LL | const _NU128_SHL: u128 = 1u128 << 128;
-   |                          ^^^^^^^^^^^^ attempt to shift left by `128_i32`, which would overflow
+   |                          ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:47:30
+error[E0080]: attempt to shift left by `128_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:46:30
    |
 LL | const _NU128_SHL_P: &u128 = &(1u128 << 128);
-   |                              ^^^^^^^^^^^^^^ attempt to shift left by `128_i32`, which would overflow
+   |                              ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:49:28
+error[E0080]: attempt to shift left by `%BITS%`, which would overflow
+  --> $DIR/overflowing-consts.rs:48:28
    |
 LL | const _NISIZE_SHL: isize = 1isize << BITS;
-   |                            ^^^^^^^^^^^^^^ attempt to shift left by `%BITS%`, which would overflow
+   |                            ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:50:32
+error[E0080]: attempt to shift left by `%BITS%`, which would overflow
+  --> $DIR/overflowing-consts.rs:49:32
    |
 LL | const _NISIZE_SHL_P: &isize = &(1isize << BITS);
-   |                                ^^^^^^^^^^^^^^^^ attempt to shift left by `%BITS%`, which would overflow
+   |                                ^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:52:28
+error[E0080]: attempt to shift left by `%BITS%`, which would overflow
+  --> $DIR/overflowing-consts.rs:51:28
    |
 LL | const _NUSIZE_SHL: usize = 1usize << BITS;
-   |                            ^^^^^^^^^^^^^^ attempt to shift left by `%BITS%`, which would overflow
+   |                            ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:53:32
+error[E0080]: attempt to shift left by `%BITS%`, which would overflow
+  --> $DIR/overflowing-consts.rs:52:32
    |
 LL | const _NUSIZE_SHL_P: &usize = &(1usize << BITS);
-   |                                ^^^^^^^^^^^^^^^^ attempt to shift left by `%BITS%`, which would overflow
+   |                                ^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:57:22
+error[E0080]: attempt to shift right by `8_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:55:22
    |
 LL | const _NI8_SHR: i8 = 1i8 >> 8;
-   |                      ^^^^^^^^ attempt to shift right by `8_i32`, which would overflow
+   |                      ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:58:26
+error[E0080]: attempt to shift right by `8_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:56:26
    |
 LL | const _NI8_SHR_P: &i8 = &(1i8 >> 8);
-   |                          ^^^^^^^^^^ attempt to shift right by `8_i32`, which would overflow
+   |                          ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:60:24
+error[E0080]: attempt to shift right by `16_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:58:24
    |
 LL | const _NI16_SHR: i16 = 1i16 >> 16;
-   |                        ^^^^^^^^^^ attempt to shift right by `16_i32`, which would overflow
+   |                        ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:61:28
+error[E0080]: attempt to shift right by `16_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:59:28
    |
 LL | const _NI16_SHR_P: &i16 = &(1i16 >> 16);
-   |                            ^^^^^^^^^^^^ attempt to shift right by `16_i32`, which would overflow
+   |                            ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:63:24
+error[E0080]: attempt to shift right by `32_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:61:24
    |
 LL | const _NI32_SHR: i32 = 1i32 >> 32;
-   |                        ^^^^^^^^^^ attempt to shift right by `32_i32`, which would overflow
+   |                        ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:64:28
+error[E0080]: attempt to shift right by `32_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:62:28
    |
 LL | const _NI32_SHR_P: &i32 = &(1i32 >> 32);
-   |                            ^^^^^^^^^^^^ attempt to shift right by `32_i32`, which would overflow
+   |                            ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:66:24
+error[E0080]: attempt to shift right by `64_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:64:24
    |
 LL | const _NI64_SHR: i64 = 1i64 >> 64;
-   |                        ^^^^^^^^^^ attempt to shift right by `64_i32`, which would overflow
+   |                        ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:67:28
+error[E0080]: attempt to shift right by `64_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:65:28
    |
 LL | const _NI64_SHR_P: &i64 = &(1i64 >> 64);
-   |                            ^^^^^^^^^^^^ attempt to shift right by `64_i32`, which would overflow
+   |                            ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:69:26
+error[E0080]: attempt to shift right by `128_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:67:26
    |
 LL | const _NI128_SHR: i128 = 1i128 >> 128;
-   |                          ^^^^^^^^^^^^ attempt to shift right by `128_i32`, which would overflow
+   |                          ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:70:30
+error[E0080]: attempt to shift right by `128_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:68:30
    |
 LL | const _NI128_SHR_P: &i128 = &(1i128 >> 128);
-   |                              ^^^^^^^^^^^^^^ attempt to shift right by `128_i32`, which would overflow
+   |                              ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:72:22
+error[E0080]: attempt to shift right by `8_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:70:22
    |
 LL | const _NU8_SHR: u8 = 1u8 >> 8;
-   |                      ^^^^^^^^ attempt to shift right by `8_i32`, which would overflow
+   |                      ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:73:26
+error[E0080]: attempt to shift right by `8_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:71:26
    |
 LL | const _NU8_SHR_P: &u8 = &(1u8 >> 8);
-   |                          ^^^^^^^^^^ attempt to shift right by `8_i32`, which would overflow
+   |                          ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:75:24
+error[E0080]: attempt to shift right by `16_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:73:24
    |
 LL | const _NU16_SHR: u16 = 1u16 >> 16;
-   |                        ^^^^^^^^^^ attempt to shift right by `16_i32`, which would overflow
+   |                        ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:76:28
+error[E0080]: attempt to shift right by `16_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:74:28
    |
 LL | const _NU16_SHR_P: &u16 = &(1u16 >> 16);
-   |                            ^^^^^^^^^^^^ attempt to shift right by `16_i32`, which would overflow
+   |                            ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:78:24
+error[E0080]: attempt to shift right by `32_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:76:24
    |
 LL | const _NU32_SHR: u32 = 1u32 >> 32;
-   |                        ^^^^^^^^^^ attempt to shift right by `32_i32`, which would overflow
+   |                        ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:79:28
+error[E0080]: attempt to shift right by `32_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:77:28
    |
 LL | const _NU32_SHR_P: &u32 = &(1u32 >> 32);
-   |                            ^^^^^^^^^^^^ attempt to shift right by `32_i32`, which would overflow
+   |                            ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:81:24
+error[E0080]: attempt to shift right by `64_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:79:24
    |
 LL | const _NU64_SHR: u64 = 1u64 >> 64;
-   |                        ^^^^^^^^^^ attempt to shift right by `64_i32`, which would overflow
+   |                        ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:82:28
+error[E0080]: attempt to shift right by `64_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:80:28
    |
 LL | const _NU64_SHR_P: &u64 = &(1u64 >> 64);
-   |                            ^^^^^^^^^^^^ attempt to shift right by `64_i32`, which would overflow
+   |                            ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:84:26
+error[E0080]: attempt to shift right by `128_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:82:26
    |
 LL | const _NU128_SHR: u128 = 1u128 >> 128;
-   |                          ^^^^^^^^^^^^ attempt to shift right by `128_i32`, which would overflow
+   |                          ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:85:30
+error[E0080]: attempt to shift right by `128_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:83:30
    |
 LL | const _NU128_SHR_P: &u128 = &(1u128 >> 128);
-   |                              ^^^^^^^^^^^^^^ attempt to shift right by `128_i32`, which would overflow
+   |                              ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:87:28
+error[E0080]: attempt to shift right by `%BITS%`, which would overflow
+  --> $DIR/overflowing-consts.rs:85:28
    |
 LL | const _NISIZE_SHR: isize = 1isize >> BITS;
-   |                            ^^^^^^^^^^^^^^ attempt to shift right by `%BITS%`, which would overflow
+   |                            ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:88:32
+error[E0080]: attempt to shift right by `%BITS%`, which would overflow
+  --> $DIR/overflowing-consts.rs:86:32
    |
 LL | const _NISIZE_SHR_P: &isize = &(1isize >> BITS);
-   |                                ^^^^^^^^^^^^^^^^ attempt to shift right by `%BITS%`, which would overflow
+   |                                ^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:90:28
+error[E0080]: attempt to shift right by `%BITS%`, which would overflow
+  --> $DIR/overflowing-consts.rs:88:28
    |
 LL | const _NUSIZE_SHR: usize = 1usize >> BITS;
-   |                            ^^^^^^^^^^^^^^ attempt to shift right by `%BITS%`, which would overflow
+   |                            ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:91:32
+error[E0080]: attempt to shift right by `%BITS%`, which would overflow
+  --> $DIR/overflowing-consts.rs:89:32
    |
 LL | const _NUSIZE_SHR_P: &usize = &(1usize >> BITS);
-   |                                ^^^^^^^^^^^^^^^^ attempt to shift right by `%BITS%`, which would overflow
+   |                                ^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:95:22
+error[E0080]: attempt to compute `1_i8 + i8::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:92:22
    |
 LL | const _NI8_ADD: i8 = 1i8 + i8::MAX;
-   |                      ^^^^^^^^^^^^^ attempt to compute `1_i8 + i8::MAX`, which would overflow
+   |                      ^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:96:26
+error[E0080]: attempt to compute `1_i8 + i8::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:93:26
    |
 LL | const _NI8_ADD_P: &i8 = &(1i8 + i8::MAX);
-   |                          ^^^^^^^^^^^^^^^ attempt to compute `1_i8 + i8::MAX`, which would overflow
+   |                          ^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:98:24
+error[E0080]: attempt to compute `1_i16 + i16::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:95:24
    |
 LL | const _NI16_ADD: i16 = 1i16 + i16::MAX;
-   |                        ^^^^^^^^^^^^^^^ attempt to compute `1_i16 + i16::MAX`, which would overflow
+   |                        ^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:99:28
+error[E0080]: attempt to compute `1_i16 + i16::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:96:28
    |
 LL | const _NI16_ADD_P: &i16 = &(1i16 + i16::MAX);
-   |                            ^^^^^^^^^^^^^^^^^ attempt to compute `1_i16 + i16::MAX`, which would overflow
+   |                            ^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:101:24
+error[E0080]: attempt to compute `1_i32 + i32::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:98:24
    |
 LL | const _NI32_ADD: i32 = 1i32 + i32::MAX;
-   |                        ^^^^^^^^^^^^^^^ attempt to compute `1_i32 + i32::MAX`, which would overflow
+   |                        ^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:102:28
+error[E0080]: attempt to compute `1_i32 + i32::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:99:28
    |
 LL | const _NI32_ADD_P: &i32 = &(1i32 + i32::MAX);
-   |                            ^^^^^^^^^^^^^^^^^ attempt to compute `1_i32 + i32::MAX`, which would overflow
+   |                            ^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:104:24
+error[E0080]: attempt to compute `1_i64 + i64::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:101:24
    |
 LL | const _NI64_ADD: i64 = 1i64 + i64::MAX;
-   |                        ^^^^^^^^^^^^^^^ attempt to compute `1_i64 + i64::MAX`, which would overflow
+   |                        ^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:105:28
+error[E0080]: attempt to compute `1_i64 + i64::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:102:28
    |
 LL | const _NI64_ADD_P: &i64 = &(1i64 + i64::MAX);
-   |                            ^^^^^^^^^^^^^^^^^ attempt to compute `1_i64 + i64::MAX`, which would overflow
+   |                            ^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:107:26
+error[E0080]: attempt to compute `1_i128 + i128::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:104:26
    |
 LL | const _NI128_ADD: i128 = 1i128 + i128::MAX;
-   |                          ^^^^^^^^^^^^^^^^^ attempt to compute `1_i128 + i128::MAX`, which would overflow
+   |                          ^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:108:30
+error[E0080]: attempt to compute `1_i128 + i128::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:105:30
    |
 LL | const _NI128_ADD_P: &i128 = &(1i128 + i128::MAX);
-   |                              ^^^^^^^^^^^^^^^^^^^ attempt to compute `1_i128 + i128::MAX`, which would overflow
+   |                              ^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:110:22
+error[E0080]: attempt to compute `1_u8 + u8::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:107:22
    |
 LL | const _NU8_ADD: u8 = 1u8 + u8::MAX;
-   |                      ^^^^^^^^^^^^^ attempt to compute `1_u8 + u8::MAX`, which would overflow
+   |                      ^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:111:26
+error[E0080]: attempt to compute `1_u8 + u8::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:108:26
    |
 LL | const _NU8_ADD_P: &u8 = &(1u8 + u8::MAX);
-   |                          ^^^^^^^^^^^^^^^ attempt to compute `1_u8 + u8::MAX`, which would overflow
+   |                          ^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:113:24
+error[E0080]: attempt to compute `1_u16 + u16::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:110:24
    |
 LL | const _NU16_ADD: u16 = 1u16 + u16::MAX;
-   |                        ^^^^^^^^^^^^^^^ attempt to compute `1_u16 + u16::MAX`, which would overflow
+   |                        ^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:114:28
+error[E0080]: attempt to compute `1_u16 + u16::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:111:28
    |
 LL | const _NU16_ADD_P: &u16 = &(1u16 + u16::MAX);
-   |                            ^^^^^^^^^^^^^^^^^ attempt to compute `1_u16 + u16::MAX`, which would overflow
+   |                            ^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:116:24
+error[E0080]: attempt to compute `1_u32 + u32::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:113:24
    |
 LL | const _NU32_ADD: u32 = 1u32 + u32::MAX;
-   |                        ^^^^^^^^^^^^^^^ attempt to compute `1_u32 + u32::MAX`, which would overflow
+   |                        ^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:117:28
+error[E0080]: attempt to compute `1_u32 + u32::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:114:28
    |
 LL | const _NU32_ADD_P: &u32 = &(1u32 + u32::MAX);
-   |                            ^^^^^^^^^^^^^^^^^ attempt to compute `1_u32 + u32::MAX`, which would overflow
+   |                            ^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:119:24
+error[E0080]: attempt to compute `1_u64 + u64::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:116:24
    |
 LL | const _NU64_ADD: u64 = 1u64 + u64::MAX;
-   |                        ^^^^^^^^^^^^^^^ attempt to compute `1_u64 + u64::MAX`, which would overflow
+   |                        ^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:120:28
+error[E0080]: attempt to compute `1_u64 + u64::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:117:28
    |
 LL | const _NU64_ADD_P: &u64 = &(1u64 + u64::MAX);
-   |                            ^^^^^^^^^^^^^^^^^ attempt to compute `1_u64 + u64::MAX`, which would overflow
+   |                            ^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:122:26
+error[E0080]: attempt to compute `1_u128 + u128::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:119:26
    |
 LL | const _NU128_ADD: u128 = 1u128 + u128::MAX;
-   |                          ^^^^^^^^^^^^^^^^^ attempt to compute `1_u128 + u128::MAX`, which would overflow
+   |                          ^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:123:30
+error[E0080]: attempt to compute `1_u128 + u128::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:120:30
    |
 LL | const _NU128_ADD_P: &u128 = &(1u128 + u128::MAX);
-   |                              ^^^^^^^^^^^^^^^^^^^ attempt to compute `1_u128 + u128::MAX`, which would overflow
+   |                              ^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:125:28
+error[E0080]: attempt to compute `1_isize + isize::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:122:28
    |
 LL | const _NISIZE_ADD: isize = 1isize + isize::MAX;
-   |                            ^^^^^^^^^^^^^^^^^^^ attempt to compute `1_isize + isize::MAX`, which would overflow
+   |                            ^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:126:32
+error[E0080]: attempt to compute `1_isize + isize::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:123:32
    |
 LL | const _NISIZE_ADD_P: &isize = &(1isize + isize::MAX);
-   |                                ^^^^^^^^^^^^^^^^^^^^^ attempt to compute `1_isize + isize::MAX`, which would overflow
+   |                                ^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:128:28
+error[E0080]: attempt to compute `1_usize + usize::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:125:28
    |
 LL | const _NUSIZE_ADD: usize = 1usize + usize::MAX;
-   |                            ^^^^^^^^^^^^^^^^^^^ attempt to compute `1_usize + usize::MAX`, which would overflow
+   |                            ^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:129:32
+error[E0080]: attempt to compute `1_usize + usize::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:126:32
    |
 LL | const _NUSIZE_ADD_P: &usize = &(1usize + usize::MAX);
-   |                                ^^^^^^^^^^^^^^^^^^^^^ attempt to compute `1_usize + usize::MAX`, which would overflow
+   |                                ^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:133:22
+error[E0080]: attempt to compute `-5_i8 - i8::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:129:22
    |
 LL | const _NI8_SUB: i8 = -5i8 - i8::MAX;
-   |                      ^^^^^^^^^^^^^^ attempt to compute `-5_i8 - i8::MAX`, which would overflow
+   |                      ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:134:26
+error[E0080]: attempt to compute `-5_i8 - i8::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:130:26
    |
 LL | const _NI8_SUB_P: &i8 = &(-5i8 - i8::MAX);
-   |                          ^^^^^^^^^^^^^^^^ attempt to compute `-5_i8 - i8::MAX`, which would overflow
+   |                          ^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:136:24
+error[E0080]: attempt to compute `-5_i16 - i16::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:132:24
    |
 LL | const _NI16_SUB: i16 = -5i16 - i16::MAX;
-   |                        ^^^^^^^^^^^^^^^^ attempt to compute `-5_i16 - i16::MAX`, which would overflow
+   |                        ^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:137:28
+error[E0080]: attempt to compute `-5_i16 - i16::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:133:28
    |
 LL | const _NI16_SUB_P: &i16 = &(-5i16 - i16::MAX);
-   |                            ^^^^^^^^^^^^^^^^^^ attempt to compute `-5_i16 - i16::MAX`, which would overflow
+   |                            ^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:139:24
+error[E0080]: attempt to compute `-5_i32 - i32::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:135:24
    |
 LL | const _NI32_SUB: i32 = -5i32 - i32::MAX;
-   |                        ^^^^^^^^^^^^^^^^ attempt to compute `-5_i32 - i32::MAX`, which would overflow
+   |                        ^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:140:28
+error[E0080]: attempt to compute `-5_i32 - i32::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:136:28
    |
 LL | const _NI32_SUB_P: &i32 = &(-5i32 - i32::MAX);
-   |                            ^^^^^^^^^^^^^^^^^^ attempt to compute `-5_i32 - i32::MAX`, which would overflow
+   |                            ^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:142:24
+error[E0080]: attempt to compute `-5_i64 - i64::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:138:24
    |
 LL | const _NI64_SUB: i64 = -5i64 - i64::MAX;
-   |                        ^^^^^^^^^^^^^^^^ attempt to compute `-5_i64 - i64::MAX`, which would overflow
+   |                        ^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:143:28
+error[E0080]: attempt to compute `-5_i64 - i64::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:139:28
    |
 LL | const _NI64_SUB_P: &i64 = &(-5i64 - i64::MAX);
-   |                            ^^^^^^^^^^^^^^^^^^ attempt to compute `-5_i64 - i64::MAX`, which would overflow
+   |                            ^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:145:26
+error[E0080]: attempt to compute `-5_i128 - i128::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:141:26
    |
 LL | const _NI128_SUB: i128 = -5i128 - i128::MAX;
-   |                          ^^^^^^^^^^^^^^^^^^ attempt to compute `-5_i128 - i128::MAX`, which would overflow
+   |                          ^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:146:30
+error[E0080]: attempt to compute `-5_i128 - i128::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:142:30
    |
 LL | const _NI128_SUB_P: &i128 = &(-5i128 - i128::MAX);
-   |                              ^^^^^^^^^^^^^^^^^^^^ attempt to compute `-5_i128 - i128::MAX`, which would overflow
+   |                              ^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:148:22
+error[E0080]: attempt to compute `1_u8 - 5_u8`, which would overflow
+  --> $DIR/overflowing-consts.rs:144:22
    |
 LL | const _NU8_SUB: u8 = 1u8 - 5;
-   |                      ^^^^^^^ attempt to compute `1_u8 - 5_u8`, which would overflow
+   |                      ^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:149:26
+error[E0080]: attempt to compute `1_u8 - 5_u8`, which would overflow
+  --> $DIR/overflowing-consts.rs:145:26
    |
 LL | const _NU8_SUB_P: &u8 = &(1u8 - 5);
-   |                          ^^^^^^^^^ attempt to compute `1_u8 - 5_u8`, which would overflow
+   |                          ^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:151:24
+error[E0080]: attempt to compute `1_u16 - 5_u16`, which would overflow
+  --> $DIR/overflowing-consts.rs:147:24
    |
 LL | const _NU16_SUB: u16 = 1u16 - 5;
-   |                        ^^^^^^^^ attempt to compute `1_u16 - 5_u16`, which would overflow
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:152:28
+error[E0080]: attempt to compute `1_u16 - 5_u16`, which would overflow
+  --> $DIR/overflowing-consts.rs:148:28
    |
 LL | const _NU16_SUB_P: &u16 = &(1u16 - 5);
-   |                            ^^^^^^^^^^ attempt to compute `1_u16 - 5_u16`, which would overflow
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:154:24
+error[E0080]: attempt to compute `1_u32 - 5_u32`, which would overflow
+  --> $DIR/overflowing-consts.rs:150:24
    |
 LL | const _NU32_SUB: u32 = 1u32 - 5;
-   |                        ^^^^^^^^ attempt to compute `1_u32 - 5_u32`, which would overflow
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:155:28
+error[E0080]: attempt to compute `1_u32 - 5_u32`, which would overflow
+  --> $DIR/overflowing-consts.rs:151:28
    |
 LL | const _NU32_SUB_P: &u32 = &(1u32 - 5);
-   |                            ^^^^^^^^^^ attempt to compute `1_u32 - 5_u32`, which would overflow
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:157:24
+error[E0080]: attempt to compute `1_u64 - 5_u64`, which would overflow
+  --> $DIR/overflowing-consts.rs:153:24
    |
 LL | const _NU64_SUB: u64 = 1u64 - 5;
-   |                        ^^^^^^^^ attempt to compute `1_u64 - 5_u64`, which would overflow
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:158:28
+error[E0080]: attempt to compute `1_u64 - 5_u64`, which would overflow
+  --> $DIR/overflowing-consts.rs:154:28
    |
 LL | const _NU64_SUB_P: &u64 = &(1u64 - 5);
-   |                            ^^^^^^^^^^ attempt to compute `1_u64 - 5_u64`, which would overflow
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:160:26
+error[E0080]: attempt to compute `1_u128 - 5_u128`, which would overflow
+  --> $DIR/overflowing-consts.rs:156:26
    |
 LL | const _NU128_SUB: u128 = 1u128 - 5;
-   |                          ^^^^^^^^^ attempt to compute `1_u128 - 5_u128`, which would overflow
+   |                          ^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:161:30
+error[E0080]: attempt to compute `1_u128 - 5_u128`, which would overflow
+  --> $DIR/overflowing-consts.rs:157:30
    |
 LL | const _NU128_SUB_P: &u128 = &(1u128 - 5);
-   |                              ^^^^^^^^^^^ attempt to compute `1_u128 - 5_u128`, which would overflow
+   |                              ^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:163:28
+error[E0080]: attempt to compute `-5_isize - isize::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:159:28
    |
 LL | const _NISIZE_SUB: isize = -5isize - isize::MAX;
-   |                            ^^^^^^^^^^^^^^^^^^^^ attempt to compute `-5_isize - isize::MAX`, which would overflow
+   |                            ^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:164:32
+error[E0080]: attempt to compute `-5_isize - isize::MAX`, which would overflow
+  --> $DIR/overflowing-consts.rs:160:32
    |
 LL | const _NISIZE_SUB_P: &isize = &(-5isize - isize::MAX);
-   |                                ^^^^^^^^^^^^^^^^^^^^^^ attempt to compute `-5_isize - isize::MAX`, which would overflow
+   |                                ^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:166:28
+error[E0080]: attempt to compute `1_usize - 5_usize`, which would overflow
+  --> $DIR/overflowing-consts.rs:162:28
    |
-LL | const _NUSIZE_SUB: usize = 1usize - 5 ;
-   |                            ^^^^^^^^^^ attempt to compute `1_usize - 5_usize`, which would overflow
+LL | const _NUSIZE_SUB: usize = 1usize - 5;
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:167:32
+error[E0080]: attempt to compute `1_usize - 5_usize`, which would overflow
+  --> $DIR/overflowing-consts.rs:163:32
    |
-LL | const _NUSIZE_SUB_P: &usize = &(1usize - 5 );
-   |                                ^^^^^^^^^^^^^ attempt to compute `1_usize - 5_usize`, which would overflow
+LL | const _NUSIZE_SUB_P: &usize = &(1usize - 5);
+   |                                ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:171:22
+error[E0080]: attempt to compute `i8::MAX * 5_i8`, which would overflow
+  --> $DIR/overflowing-consts.rs:166:22
    |
 LL | const _NI8_MUL: i8 = i8::MAX * 5;
-   |                      ^^^^^^^^^^^ attempt to compute `i8::MAX * 5_i8`, which would overflow
+   |                      ^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:172:26
+error[E0080]: attempt to compute `i8::MAX * 5_i8`, which would overflow
+  --> $DIR/overflowing-consts.rs:167:26
    |
 LL | const _NI8_MUL_P: &i8 = &(i8::MAX * 5);
-   |                          ^^^^^^^^^^^^^ attempt to compute `i8::MAX * 5_i8`, which would overflow
+   |                          ^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:174:24
+error[E0080]: attempt to compute `i16::MAX * 5_i16`, which would overflow
+  --> $DIR/overflowing-consts.rs:169:24
    |
 LL | const _NI16_MUL: i16 = i16::MAX * 5;
-   |                        ^^^^^^^^^^^^ attempt to compute `i16::MAX * 5_i16`, which would overflow
+   |                        ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:175:28
+error[E0080]: attempt to compute `i16::MAX * 5_i16`, which would overflow
+  --> $DIR/overflowing-consts.rs:170:28
    |
 LL | const _NI16_MUL_P: &i16 = &(i16::MAX * 5);
-   |                            ^^^^^^^^^^^^^^ attempt to compute `i16::MAX * 5_i16`, which would overflow
+   |                            ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:177:24
+error[E0080]: attempt to compute `i32::MAX * 5_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:172:24
    |
 LL | const _NI32_MUL: i32 = i32::MAX * 5;
-   |                        ^^^^^^^^^^^^ attempt to compute `i32::MAX * 5_i32`, which would overflow
+   |                        ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:178:28
+error[E0080]: attempt to compute `i32::MAX * 5_i32`, which would overflow
+  --> $DIR/overflowing-consts.rs:173:28
    |
 LL | const _NI32_MUL_P: &i32 = &(i32::MAX * 5);
-   |                            ^^^^^^^^^^^^^^ attempt to compute `i32::MAX * 5_i32`, which would overflow
+   |                            ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:180:24
+error[E0080]: attempt to compute `i64::MAX * 5_i64`, which would overflow
+  --> $DIR/overflowing-consts.rs:175:24
    |
 LL | const _NI64_MUL: i64 = i64::MAX * 5;
-   |                        ^^^^^^^^^^^^ attempt to compute `i64::MAX * 5_i64`, which would overflow
+   |                        ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:181:28
+error[E0080]: attempt to compute `i64::MAX * 5_i64`, which would overflow
+  --> $DIR/overflowing-consts.rs:176:28
    |
 LL | const _NI64_MUL_P: &i64 = &(i64::MAX * 5);
-   |                            ^^^^^^^^^^^^^^ attempt to compute `i64::MAX * 5_i64`, which would overflow
+   |                            ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:183:26
+error[E0080]: attempt to compute `i128::MAX * 5_i128`, which would overflow
+  --> $DIR/overflowing-consts.rs:178:26
    |
 LL | const _NI128_MUL: i128 = i128::MAX * 5;
-   |                          ^^^^^^^^^^^^^ attempt to compute `i128::MAX * 5_i128`, which would overflow
+   |                          ^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:184:30
+error[E0080]: attempt to compute `i128::MAX * 5_i128`, which would overflow
+  --> $DIR/overflowing-consts.rs:179:30
    |
 LL | const _NI128_MUL_P: &i128 = &(i128::MAX * 5);
-   |                              ^^^^^^^^^^^^^^^ attempt to compute `i128::MAX * 5_i128`, which would overflow
+   |                              ^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:186:22
+error[E0080]: attempt to compute `u8::MAX * 5_u8`, which would overflow
+  --> $DIR/overflowing-consts.rs:181:22
    |
 LL | const _NU8_MUL: u8 = u8::MAX * 5;
-   |                      ^^^^^^^^^^^ attempt to compute `u8::MAX * 5_u8`, which would overflow
+   |                      ^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:187:26
+error[E0080]: attempt to compute `u8::MAX * 5_u8`, which would overflow
+  --> $DIR/overflowing-consts.rs:182:26
    |
 LL | const _NU8_MUL_P: &u8 = &(u8::MAX * 5);
-   |                          ^^^^^^^^^^^^^ attempt to compute `u8::MAX * 5_u8`, which would overflow
+   |                          ^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:189:24
+error[E0080]: attempt to compute `u16::MAX * 5_u16`, which would overflow
+  --> $DIR/overflowing-consts.rs:184:24
    |
 LL | const _NU16_MUL: u16 = u16::MAX * 5;
-   |                        ^^^^^^^^^^^^ attempt to compute `u16::MAX * 5_u16`, which would overflow
+   |                        ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:190:28
+error[E0080]: attempt to compute `u16::MAX * 5_u16`, which would overflow
+  --> $DIR/overflowing-consts.rs:185:28
    |
 LL | const _NU16_MUL_P: &u16 = &(u16::MAX * 5);
-   |                            ^^^^^^^^^^^^^^ attempt to compute `u16::MAX * 5_u16`, which would overflow
+   |                            ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:192:24
+error[E0080]: attempt to compute `u32::MAX * 5_u32`, which would overflow
+  --> $DIR/overflowing-consts.rs:187:24
    |
 LL | const _NU32_MUL: u32 = u32::MAX * 5;
-   |                        ^^^^^^^^^^^^ attempt to compute `u32::MAX * 5_u32`, which would overflow
+   |                        ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:193:28
+error[E0080]: attempt to compute `u32::MAX * 5_u32`, which would overflow
+  --> $DIR/overflowing-consts.rs:188:28
    |
 LL | const _NU32_MUL_P: &u32 = &(u32::MAX * 5);
-   |                            ^^^^^^^^^^^^^^ attempt to compute `u32::MAX * 5_u32`, which would overflow
+   |                            ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:195:24
+error[E0080]: attempt to compute `u64::MAX * 5_u64`, which would overflow
+  --> $DIR/overflowing-consts.rs:190:24
    |
 LL | const _NU64_MUL: u64 = u64::MAX * 5;
-   |                        ^^^^^^^^^^^^ attempt to compute `u64::MAX * 5_u64`, which would overflow
+   |                        ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:196:28
+error[E0080]: attempt to compute `u64::MAX * 5_u64`, which would overflow
+  --> $DIR/overflowing-consts.rs:191:28
    |
 LL | const _NU64_MUL_P: &u64 = &(u64::MAX * 5);
-   |                            ^^^^^^^^^^^^^^ attempt to compute `u64::MAX * 5_u64`, which would overflow
+   |                            ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:198:26
+error[E0080]: attempt to compute `u128::MAX * 5_u128`, which would overflow
+  --> $DIR/overflowing-consts.rs:193:26
    |
 LL | const _NU128_MUL: u128 = u128::MAX * 5;
-   |                          ^^^^^^^^^^^^^ attempt to compute `u128::MAX * 5_u128`, which would overflow
+   |                          ^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:199:30
+error[E0080]: attempt to compute `u128::MAX * 5_u128`, which would overflow
+  --> $DIR/overflowing-consts.rs:194:30
    |
 LL | const _NU128_MUL_P: &u128 = &(u128::MAX * 5);
-   |                              ^^^^^^^^^^^^^^^ attempt to compute `u128::MAX * 5_u128`, which would overflow
+   |                              ^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:201:28
+error[E0080]: attempt to compute `isize::MAX * 5_isize`, which would overflow
+  --> $DIR/overflowing-consts.rs:196:28
    |
 LL | const _NISIZE_MUL: isize = isize::MAX * 5;
-   |                            ^^^^^^^^^^^^^^ attempt to compute `isize::MAX * 5_isize`, which would overflow
+   |                            ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:202:32
+error[E0080]: attempt to compute `isize::MAX * 5_isize`, which would overflow
+  --> $DIR/overflowing-consts.rs:197:32
    |
 LL | const _NISIZE_MUL_P: &isize = &(isize::MAX * 5);
-   |                                ^^^^^^^^^^^^^^^^ attempt to compute `isize::MAX * 5_isize`, which would overflow
+   |                                ^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:204:28
+error[E0080]: attempt to compute `usize::MAX * 5_usize`, which would overflow
+  --> $DIR/overflowing-consts.rs:199:28
    |
 LL | const _NUSIZE_MUL: usize = usize::MAX * 5;
-   |                            ^^^^^^^^^^^^^^ attempt to compute `usize::MAX * 5_usize`, which would overflow
+   |                            ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:205:32
+error[E0080]: attempt to compute `usize::MAX * 5_usize`, which would overflow
+  --> $DIR/overflowing-consts.rs:200:32
    |
 LL | const _NUSIZE_MUL_P: &usize = &(usize::MAX * 5);
-   |                                ^^^^^^^^^^^^^^^^ attempt to compute `usize::MAX * 5_usize`, which would overflow
+   |                                ^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:209:22
+error[E0080]: attempt to divide `1_i8` by zero
+  --> $DIR/overflowing-consts.rs:203:22
    |
 LL | const _NI8_DIV: i8 = 1i8 / 0;
-   |                      ^^^^^^^ attempt to divide `1_i8` by zero
+   |                      ^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:210:26
+error[E0080]: attempt to divide `1_i8` by zero
+  --> $DIR/overflowing-consts.rs:204:26
    |
 LL | const _NI8_DIV_P: &i8 = &(1i8 / 0);
-   |                          ^^^^^^^^^ attempt to divide `1_i8` by zero
+   |                          ^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:212:24
+error[E0080]: attempt to divide `1_i16` by zero
+  --> $DIR/overflowing-consts.rs:206:24
    |
 LL | const _NI16_DIV: i16 = 1i16 / 0;
-   |                        ^^^^^^^^ attempt to divide `1_i16` by zero
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:213:28
+error[E0080]: attempt to divide `1_i16` by zero
+  --> $DIR/overflowing-consts.rs:207:28
    |
 LL | const _NI16_DIV_P: &i16 = &(1i16 / 0);
-   |                            ^^^^^^^^^^ attempt to divide `1_i16` by zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:215:24
+error[E0080]: attempt to divide `1_i32` by zero
+  --> $DIR/overflowing-consts.rs:209:24
    |
 LL | const _NI32_DIV: i32 = 1i32 / 0;
-   |                        ^^^^^^^^ attempt to divide `1_i32` by zero
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:216:28
+error[E0080]: attempt to divide `1_i32` by zero
+  --> $DIR/overflowing-consts.rs:210:28
    |
 LL | const _NI32_DIV_P: &i32 = &(1i32 / 0);
-   |                            ^^^^^^^^^^ attempt to divide `1_i32` by zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:218:24
+error[E0080]: attempt to divide `1_i64` by zero
+  --> $DIR/overflowing-consts.rs:212:24
    |
 LL | const _NI64_DIV: i64 = 1i64 / 0;
-   |                        ^^^^^^^^ attempt to divide `1_i64` by zero
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:219:28
+error[E0080]: attempt to divide `1_i64` by zero
+  --> $DIR/overflowing-consts.rs:213:28
    |
 LL | const _NI64_DIV_P: &i64 = &(1i64 / 0);
-   |                            ^^^^^^^^^^ attempt to divide `1_i64` by zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:221:26
+error[E0080]: attempt to divide `1_i128` by zero
+  --> $DIR/overflowing-consts.rs:215:26
    |
 LL | const _NI128_DIV: i128 = 1i128 / 0;
-   |                          ^^^^^^^^^ attempt to divide `1_i128` by zero
+   |                          ^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:222:30
+error[E0080]: attempt to divide `1_i128` by zero
+  --> $DIR/overflowing-consts.rs:216:30
    |
 LL | const _NI128_DIV_P: &i128 = &(1i128 / 0);
-   |                              ^^^^^^^^^^^ attempt to divide `1_i128` by zero
+   |                              ^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:224:22
+error[E0080]: attempt to divide `1_u8` by zero
+  --> $DIR/overflowing-consts.rs:218:22
    |
 LL | const _NU8_DIV: u8 = 1u8 / 0;
-   |                      ^^^^^^^ attempt to divide `1_u8` by zero
+   |                      ^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:225:26
+error[E0080]: attempt to divide `1_u8` by zero
+  --> $DIR/overflowing-consts.rs:219:26
    |
 LL | const _NU8_DIV_P: &u8 = &(1u8 / 0);
-   |                          ^^^^^^^^^ attempt to divide `1_u8` by zero
+   |                          ^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:227:24
+error[E0080]: attempt to divide `1_u16` by zero
+  --> $DIR/overflowing-consts.rs:221:24
    |
 LL | const _NU16_DIV: u16 = 1u16 / 0;
-   |                        ^^^^^^^^ attempt to divide `1_u16` by zero
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:228:28
+error[E0080]: attempt to divide `1_u16` by zero
+  --> $DIR/overflowing-consts.rs:222:28
    |
 LL | const _NU16_DIV_P: &u16 = &(1u16 / 0);
-   |                            ^^^^^^^^^^ attempt to divide `1_u16` by zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:230:24
+error[E0080]: attempt to divide `1_u32` by zero
+  --> $DIR/overflowing-consts.rs:224:24
    |
 LL | const _NU32_DIV: u32 = 1u32 / 0;
-   |                        ^^^^^^^^ attempt to divide `1_u32` by zero
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:231:28
+error[E0080]: attempt to divide `1_u32` by zero
+  --> $DIR/overflowing-consts.rs:225:28
    |
 LL | const _NU32_DIV_P: &u32 = &(1u32 / 0);
-   |                            ^^^^^^^^^^ attempt to divide `1_u32` by zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:233:24
+error[E0080]: attempt to divide `1_u64` by zero
+  --> $DIR/overflowing-consts.rs:227:24
    |
 LL | const _NU64_DIV: u64 = 1u64 / 0;
-   |                        ^^^^^^^^ attempt to divide `1_u64` by zero
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:234:28
+error[E0080]: attempt to divide `1_u64` by zero
+  --> $DIR/overflowing-consts.rs:228:28
    |
 LL | const _NU64_DIV_P: &u64 = &(1u64 / 0);
-   |                            ^^^^^^^^^^ attempt to divide `1_u64` by zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:236:26
+error[E0080]: attempt to divide `1_u128` by zero
+  --> $DIR/overflowing-consts.rs:230:26
    |
 LL | const _NU128_DIV: u128 = 1u128 / 0;
-   |                          ^^^^^^^^^ attempt to divide `1_u128` by zero
+   |                          ^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:237:30
+error[E0080]: attempt to divide `1_u128` by zero
+  --> $DIR/overflowing-consts.rs:231:30
    |
 LL | const _NU128_DIV_P: &u128 = &(1u128 / 0);
-   |                              ^^^^^^^^^^^ attempt to divide `1_u128` by zero
+   |                              ^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:239:28
+error[E0080]: attempt to divide `1_isize` by zero
+  --> $DIR/overflowing-consts.rs:233:28
    |
 LL | const _NISIZE_DIV: isize = 1isize / 0;
-   |                            ^^^^^^^^^^ attempt to divide `1_isize` by zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:240:32
+error[E0080]: attempt to divide `1_isize` by zero
+  --> $DIR/overflowing-consts.rs:234:32
    |
 LL | const _NISIZE_DIV_P: &isize = &(1isize / 0);
-   |                                ^^^^^^^^^^^^ attempt to divide `1_isize` by zero
+   |                                ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:242:28
+error[E0080]: attempt to divide `1_usize` by zero
+  --> $DIR/overflowing-consts.rs:236:28
    |
 LL | const _NUSIZE_DIV: usize = 1usize / 0;
-   |                            ^^^^^^^^^^ attempt to divide `1_usize` by zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:243:32
+error[E0080]: attempt to divide `1_usize` by zero
+  --> $DIR/overflowing-consts.rs:237:32
    |
 LL | const _NUSIZE_DIV_P: &usize = &(1usize / 0);
-   |                                ^^^^^^^^^^^^ attempt to divide `1_usize` by zero
+   |                                ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:246:22
+error[E0080]: attempt to calculate the remainder of `1_i8` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:240:22
    |
 LL | const _NI8_MOD: i8 = 1i8 % 0;
-   |                      ^^^^^^^ attempt to calculate the remainder of `1_i8` with a divisor of zero
+   |                      ^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:247:26
+error[E0080]: attempt to calculate the remainder of `1_i8` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:241:26
    |
 LL | const _NI8_MOD_P: &i8 = &(1i8 % 0);
-   |                          ^^^^^^^^^ attempt to calculate the remainder of `1_i8` with a divisor of zero
+   |                          ^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:249:24
+error[E0080]: attempt to calculate the remainder of `1_i16` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:243:24
    |
 LL | const _NI16_MOD: i16 = 1i16 % 0;
-   |                        ^^^^^^^^ attempt to calculate the remainder of `1_i16` with a divisor of zero
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:250:28
+error[E0080]: attempt to calculate the remainder of `1_i16` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:244:28
    |
 LL | const _NI16_MOD_P: &i16 = &(1i16 % 0);
-   |                            ^^^^^^^^^^ attempt to calculate the remainder of `1_i16` with a divisor of zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:252:24
+error[E0080]: attempt to calculate the remainder of `1_i32` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:246:24
    |
 LL | const _NI32_MOD: i32 = 1i32 % 0;
-   |                        ^^^^^^^^ attempt to calculate the remainder of `1_i32` with a divisor of zero
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:253:28
+error[E0080]: attempt to calculate the remainder of `1_i32` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:247:28
    |
 LL | const _NI32_MOD_P: &i32 = &(1i32 % 0);
-   |                            ^^^^^^^^^^ attempt to calculate the remainder of `1_i32` with a divisor of zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:255:24
+error[E0080]: attempt to calculate the remainder of `1_i64` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:249:24
    |
 LL | const _NI64_MOD: i64 = 1i64 % 0;
-   |                        ^^^^^^^^ attempt to calculate the remainder of `1_i64` with a divisor of zero
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:256:28
+error[E0080]: attempt to calculate the remainder of `1_i64` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:250:28
    |
 LL | const _NI64_MOD_P: &i64 = &(1i64 % 0);
-   |                            ^^^^^^^^^^ attempt to calculate the remainder of `1_i64` with a divisor of zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:258:26
+error[E0080]: attempt to calculate the remainder of `1_i128` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:252:26
    |
 LL | const _NI128_MOD: i128 = 1i128 % 0;
-   |                          ^^^^^^^^^ attempt to calculate the remainder of `1_i128` with a divisor of zero
+   |                          ^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:259:30
+error[E0080]: attempt to calculate the remainder of `1_i128` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:253:30
    |
 LL | const _NI128_MOD_P: &i128 = &(1i128 % 0);
-   |                              ^^^^^^^^^^^ attempt to calculate the remainder of `1_i128` with a divisor of zero
+   |                              ^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:261:22
+error[E0080]: attempt to calculate the remainder of `1_u8` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:255:22
    |
 LL | const _NU8_MOD: u8 = 1u8 % 0;
-   |                      ^^^^^^^ attempt to calculate the remainder of `1_u8` with a divisor of zero
+   |                      ^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:262:26
+error[E0080]: attempt to calculate the remainder of `1_u8` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:256:26
    |
 LL | const _NU8_MOD_P: &u8 = &(1u8 % 0);
-   |                          ^^^^^^^^^ attempt to calculate the remainder of `1_u8` with a divisor of zero
+   |                          ^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:264:24
+error[E0080]: attempt to calculate the remainder of `1_u16` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:258:24
    |
 LL | const _NU16_MOD: u16 = 1u16 % 0;
-   |                        ^^^^^^^^ attempt to calculate the remainder of `1_u16` with a divisor of zero
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:265:28
+error[E0080]: attempt to calculate the remainder of `1_u16` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:259:28
    |
 LL | const _NU16_MOD_P: &u16 = &(1u16 % 0);
-   |                            ^^^^^^^^^^ attempt to calculate the remainder of `1_u16` with a divisor of zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:267:24
+error[E0080]: attempt to calculate the remainder of `1_u32` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:261:24
    |
 LL | const _NU32_MOD: u32 = 1u32 % 0;
-   |                        ^^^^^^^^ attempt to calculate the remainder of `1_u32` with a divisor of zero
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:268:28
+error[E0080]: attempt to calculate the remainder of `1_u32` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:262:28
    |
 LL | const _NU32_MOD_P: &u32 = &(1u32 % 0);
-   |                            ^^^^^^^^^^ attempt to calculate the remainder of `1_u32` with a divisor of zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:270:24
+error[E0080]: attempt to calculate the remainder of `1_u64` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:264:24
    |
 LL | const _NU64_MOD: u64 = 1u64 % 0;
-   |                        ^^^^^^^^ attempt to calculate the remainder of `1_u64` with a divisor of zero
+   |                        ^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:271:28
+error[E0080]: attempt to calculate the remainder of `1_u64` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:265:28
    |
 LL | const _NU64_MOD_P: &u64 = &(1u64 % 0);
-   |                            ^^^^^^^^^^ attempt to calculate the remainder of `1_u64` with a divisor of zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:273:26
+error[E0080]: attempt to calculate the remainder of `1_u128` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:267:26
    |
 LL | const _NU128_MOD: u128 = 1u128 % 0;
-   |                          ^^^^^^^^^ attempt to calculate the remainder of `1_u128` with a divisor of zero
+   |                          ^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:274:30
+error[E0080]: attempt to calculate the remainder of `1_u128` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:268:30
    |
 LL | const _NU128_MOD_P: &u128 = &(1u128 % 0);
-   |                              ^^^^^^^^^^^ attempt to calculate the remainder of `1_u128` with a divisor of zero
+   |                              ^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:276:28
+error[E0080]: attempt to calculate the remainder of `1_isize` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:270:28
    |
 LL | const _NISIZE_MOD: isize = 1isize % 0;
-   |                            ^^^^^^^^^^ attempt to calculate the remainder of `1_isize` with a divisor of zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:277:32
+error[E0080]: attempt to calculate the remainder of `1_isize` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:271:32
    |
 LL | const _NISIZE_MOD_P: &isize = &(1isize % 0);
-   |                                ^^^^^^^^^^^^ attempt to calculate the remainder of `1_isize` with a divisor of zero
+   |                                ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:279:28
+error[E0080]: attempt to calculate the remainder of `1_usize` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:273:28
    |
 LL | const _NUSIZE_MOD: usize = 1usize % 0;
-   |                            ^^^^^^^^^^ attempt to calculate the remainder of `1_usize` with a divisor of zero
+   |                            ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:280:32
+error[E0080]: attempt to calculate the remainder of `1_usize` with a divisor of zero
+  --> $DIR/overflowing-consts.rs:274:32
    |
 LL | const _NUSIZE_MOD_P: &usize = &(1usize % 0);
-   |                                ^^^^^^^^^^^^ attempt to calculate the remainder of `1_usize` with a divisor of zero
+   |                                ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:284:24
+error[E0080]: index out of bounds: the length is 3 but the index is 4
+  --> $DIR/overflowing-consts.rs:277:24
    |
 LL | const _NI32_OOB: i32 = [1, 2, 3][4];
-   |                        ^^^^^^^^^^^^ index out of bounds: the length is 3 but the index is 4
+   |                        ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/overflowing-consts.rs:285:28
+error[E0080]: index out of bounds: the length is 3 but the index is 4
+  --> $DIR/overflowing-consts.rs:278:28
    |
 LL | const _NI32_OOB_P: &i32 = &([1, 2, 3][4]);
-   |                            ^^^^^^^^^^^^^^ index out of bounds: the length is 3 but the index is 4
+   |                            ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 170 previous errors
 

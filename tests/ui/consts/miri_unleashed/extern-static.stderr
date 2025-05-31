@@ -1,14 +1,14 @@
-error[E0080]: could not evaluate static initializer
+error[E0080]: cannot access extern static `DATA`
   --> $DIR/extern-static.rs:11:25
    |
 LL |     unsafe { let _val = DATA; }
-   |                         ^^^^ cannot access extern static `DATA`
+   |                         ^^^^ evaluation of static initializer failed here
 
-error[E0080]: could not evaluate static initializer
-  --> $DIR/extern-static.rs:16:14
+error[E0080]: cannot access extern static `DATA`
+  --> $DIR/extern-static.rs:15:14
    |
 LL |     unsafe { DATA = 0; }
-   |              ^^^^^^^^ cannot access extern static `DATA`
+   |              ^^^^^^^^ evaluation of static initializer failed here
 
 error: aborting due to 2 previous errors
 

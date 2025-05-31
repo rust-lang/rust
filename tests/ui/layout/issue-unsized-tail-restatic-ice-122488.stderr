@@ -22,11 +22,11 @@ help: the `Box` type always has a statically known size and allocates its conten
 LL | struct ArenaSet<U: Deref, V: ?Sized = <U as Deref>::Target>(Box<V>, U);
    |                                                             ++++ +
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: the type `ArenaSet<Vec<u8>, [u8]>` has an unknown layout
   --> $DIR/issue-unsized-tail-restatic-ice-122488.rs:8:1
    |
 LL | const DATA: *const ArenaSet<Vec<u8>> = std::ptr::null_mut();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `ArenaSet<Vec<u8>, [u8]>` has an unknown layout
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 2 previous errors
 

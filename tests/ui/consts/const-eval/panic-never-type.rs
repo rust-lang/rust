@@ -2,7 +2,7 @@
 #![feature(never_type)]
 
 const VOID: ! = panic!();
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR explicit panic
 
 fn main() {
     let _ = VOID;

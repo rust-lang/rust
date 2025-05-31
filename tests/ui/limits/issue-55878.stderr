@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: values of the type `[u8; usize::MAX]` are too big for the target architecture
   --> $DIR/issue-55878.rs:4:26
    |
 LL |     println!("Size: {}", std::mem::size_of::<[u8; u64::MAX as usize]>());
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ values of the type `[u8; usize::MAX]` are too big for the target architecture
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `std::mem::size_of::<[u8; usize::MAX]>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL

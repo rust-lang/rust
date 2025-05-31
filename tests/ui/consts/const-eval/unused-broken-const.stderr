@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: index out of bounds: the length is 0 but the index is 0
   --> $DIR/unused-broken-const.rs:5:18
    |
 LL | const FOO: i32 = [][0];
-   |                  ^^^^^ index out of bounds: the length is 0 but the index is 0
+   |                  ^^^^^ evaluation of constant value failed here
 
 error: aborting due to 1 previous error
 

@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `1_usize - 2_usize`, which would overflow
   --> $DIR/const-len-underflow-separate-spans.rs:10:20
    |
 LL | const LEN: usize = ONE - TWO;
-   |                    ^^^^^^^^^ attempt to compute `1_usize - 2_usize`, which would overflow
+   |                    ^^^^^^^^^ evaluation of constant value failed here
 
 note: erroneous constant encountered
   --> $DIR/const-len-underflow-separate-spans.rs:15:17

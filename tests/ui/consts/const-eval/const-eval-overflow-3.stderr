@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `i8::MAX + 1_i8`, which would overflow
   --> $DIR/const-eval-overflow-3.rs:18:11
    |
 LL |     = [0; (i8::MAX + 1) as usize];
-   |           ^^^^^^^^^^^^^ attempt to compute `i8::MAX + 1_i8`, which would overflow
+   |           ^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 1 previous error
 

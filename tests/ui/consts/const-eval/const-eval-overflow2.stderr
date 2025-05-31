@@ -1,50 +1,50 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `i8::MIN - 1_i8`, which would overflow
   --> $DIR/const-eval-overflow2.rs:12:6
    |
 LL |      i8::MIN - 1,
-   |      ^^^^^^^^^^^ attempt to compute `i8::MIN - 1_i8`, which would overflow
+   |      ^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `i16::MIN - 1_i16`, which would overflow
   --> $DIR/const-eval-overflow2.rs:18:6
    |
 LL |      i16::MIN - 1,
-   |      ^^^^^^^^^^^^ attempt to compute `i16::MIN - 1_i16`, which would overflow
+   |      ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `i32::MIN - 1_i32`, which would overflow
   --> $DIR/const-eval-overflow2.rs:24:6
    |
 LL |      i32::MIN - 1,
-   |      ^^^^^^^^^^^^ attempt to compute `i32::MIN - 1_i32`, which would overflow
+   |      ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `i64::MIN - 1_i64`, which would overflow
   --> $DIR/const-eval-overflow2.rs:30:6
    |
 LL |      i64::MIN - 1,
-   |      ^^^^^^^^^^^^ attempt to compute `i64::MIN - 1_i64`, which would overflow
+   |      ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `0_u8 - 1_u8`, which would overflow
   --> $DIR/const-eval-overflow2.rs:36:6
    |
 LL |      u8::MIN - 1,
-   |      ^^^^^^^^^^^ attempt to compute `0_u8 - 1_u8`, which would overflow
+   |      ^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `0_u16 - 1_u16`, which would overflow
   --> $DIR/const-eval-overflow2.rs:41:6
    |
 LL |      u16::MIN - 1,
-   |      ^^^^^^^^^^^^ attempt to compute `0_u16 - 1_u16`, which would overflow
+   |      ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `0_u32 - 1_u32`, which would overflow
   --> $DIR/const-eval-overflow2.rs:46:6
    |
 LL |      u32::MIN - 1,
-   |      ^^^^^^^^^^^^ attempt to compute `0_u32 - 1_u32`, which would overflow
+   |      ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `0_u64 - 1_u64`, which would overflow
   --> $DIR/const-eval-overflow2.rs:52:6
    |
 LL |      u64::MIN - 1,
-   |      ^^^^^^^^^^^^ attempt to compute `0_u64 - 1_u64`, which would overflow
+   |      ^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 8 previous errors
 

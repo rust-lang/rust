@@ -1,14 +1,14 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/const-array-oob.rs:6:19
+error[E0080]: index out of bounds: the length is 3 but the index is 4
+  --> $DIR/const-array-oob.rs:5:19
    |
 LL | const BLUB: [u32; FOO[4]] = [5, 6];
-   |                   ^^^^^^ index out of bounds: the length is 3 but the index is 4
+   |                   ^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: index out of bounds: the length is 3 but the index is 5
   --> $DIR/const-array-oob.rs:2:20
    |
 LL | const BAR: usize = FOO[5];
-   |                    ^^^^^^ index out of bounds: the length is 3 but the index is 5
+   |                    ^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 2 previous errors
 

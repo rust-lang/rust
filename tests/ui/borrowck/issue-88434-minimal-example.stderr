@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: explicit panic
   --> $DIR/issue-88434-minimal-example.rs:5:22
    |
 LL | const _CONST: &() = &f(&|_| {});
-   |                      ^^^^^^^^^^ evaluation panicked: explicit panic
+   |                      ^^^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `f::<{closure@$DIR/issue-88434-minimal-example.rs:5:25: 5:28}>`
   --> $DIR/issue-88434-minimal-example.rs:12:5

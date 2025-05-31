@@ -1,8 +1,8 @@
-error[E0080]: could not evaluate static initializer
+error[E0080]: calling non-const function `<Vec<i32> as Drop>::drop`
   --> $DIR/drop.rs:16:1
    |
 LL | };
-   | ^ calling non-const function `<Vec<i32> as Drop>::drop`
+   | ^ evaluation of static initializer failed here
    |
 note: inside `drop_in_place::<Vec<i32>> - shim(Some(Vec<i32>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL

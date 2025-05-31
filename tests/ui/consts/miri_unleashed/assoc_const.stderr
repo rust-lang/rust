@@ -1,8 +1,8 @@
-error[E0080]: evaluation of `drop_in_place::<Vec<u32>> - shim(Some(Vec<u32>))` failed
+error[E0080]: calling non-const function `<Vec<u32> as Drop>::drop`
   --> $DIR/assoc_const.rs:12:31
    |
 LL |     const F: u32 = (U::X, 42).1;
-   |                               ^ calling non-const function `<Vec<u32> as Drop>::drop`
+   |                               ^ evaluation of `drop_in_place::<Vec<u32>> - shim(Some(Vec<u32>))` failed here
    |
 note: inside `drop_in_place::<(Vec<u32>, u32)> - shim(Some((Vec<u32>, u32)))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL

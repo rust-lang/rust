@@ -1,92 +1,92 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
   --> $DIR/offset_from_ub.rs:20:27
    |
 LL |     let offset = unsafe { ptr_offset_from(field_ptr, base_ptr) };
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
   --> $DIR/offset_from_ub.rs:26:14
    |
 LL |     unsafe { (42 as *const u8).offset_from(&5u8) as usize }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `std::ptr::const_ptr::<impl *const u8>::offset_from`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:33:14
+error[E0080]: exact_div: 1_isize cannot be divided by 2_isize without remainder
+  --> $DIR/offset_from_ub.rs:34:14
    |
 LL |     unsafe { ptr_offset_from(field_ptr, base_ptr as *const u16) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ exact_div: 1_isize cannot be divided by 2_isize without remainder
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:40:14
+error[E0080]: `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
+  --> $DIR/offset_from_ub.rs:42:14
    |
 LL |     unsafe { ptr_offset_from(ptr2, ptr1) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:49:14
+error[E0080]: `ptr_offset_from` called on two different pointers where the memory range between them is not in-bounds of an allocation
+  --> $DIR/offset_from_ub.rs:51:14
    |
 LL |     unsafe { ptr_offset_from(end_ptr, start_ptr) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called on two different pointers where the memory range between them is not in-bounds of an allocation
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:58:14
+error[E0080]: `ptr_offset_from` called on two different pointers where the memory range between them is not in-bounds of an allocation
+  --> $DIR/offset_from_ub.rs:60:14
    |
 LL |     unsafe { ptr_offset_from(start_ptr, end_ptr) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called on two different pointers where the memory range between them is not in-bounds of an allocation
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:67:14
+error[E0080]: `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
+  --> $DIR/offset_from_ub.rs:69:14
    |
 LL |     unsafe { ptr_offset_from_unsigned(field_ptr, base_ptr) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:74:14
+error[E0080]: `ptr_offset_from` called when first pointer is too far ahead of second
+  --> $DIR/offset_from_ub.rs:76:14
    |
 LL |     unsafe { ptr_offset_from(ptr2, ptr1) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called when first pointer is too far ahead of second
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:80:14
+error[E0080]: `ptr_offset_from` called when first pointer is too far before second
+  --> $DIR/offset_from_ub.rs:82:14
    |
 LL |     unsafe { ptr_offset_from(ptr1, ptr2) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called when first pointer is too far before second
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:88:14
+error[E0080]: `ptr_offset_from` called when first pointer is too far before second
+  --> $DIR/offset_from_ub.rs:90:14
    |
 LL |     unsafe { ptr_offset_from(ptr1, ptr2) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called when first pointer is too far before second
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:95:14
+error[E0080]: `ptr_offset_from_unsigned` called when first pointer has smaller offset than second: 0 < 8
+  --> $DIR/offset_from_ub.rs:97:14
    |
-LL |     unsafe { ptr_offset_from_unsigned(p, p.add(2) ) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from_unsigned` called when first pointer has smaller offset than second: 0 < 8
+LL |     unsafe { ptr_offset_from_unsigned(p, p.add(2)) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:102:14
+error[E0080]: `ptr_offset_from_unsigned` called when first pointer is too far ahead of second
+  --> $DIR/offset_from_ub.rs:104:14
    |
 LL |     unsafe { ptr_offset_from_unsigned(ptr2, ptr1) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from_unsigned` called when first pointer is too far ahead of second
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:111:14
+error[E0080]: `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
+  --> $DIR/offset_from_ub.rs:112:14
    |
 LL |     unsafe { ptr2.offset_from(ptr1) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
+   |              ^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `std::ptr::const_ptr::<impl *const u8>::offset_from`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:117:14
+error[E0080]: `ptr_offset_from` called when first pointer is too far before second
+  --> $DIR/offset_from_ub.rs:118:14
    |
 LL |     unsafe { ptr1.offset_from(ptr2.wrapping_offset(1)) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called when first pointer is too far before second
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `std::ptr::const_ptr::<impl *const u8>::offset_from`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL

@@ -9,8 +9,8 @@ const fn call_rust_fn(my_fn: extern "Rust" fn()) {
 }
 
 static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
-//~^ ERROR could not evaluate static initializer
-//~| NOTE calling a function with calling convention "C" using calling convention "Rust"
+//~^ NOTE evaluation of static initializer failed here
+//~| ERROR calling a function with calling convention "C" using calling convention "Rust"
 
 fn main() {}
 

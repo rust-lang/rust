@@ -1,20 +1,20 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: aborted execution: attempted to instantiate uninhabited type `!`
   --> $DIR/assert-type-intrinsics.rs:11:9
    |
 LL |         MaybeUninit::<!>::uninit().assume_init();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: aborted execution: attempted to instantiate uninhabited type `!`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: aborted execution: attempted to leave type `&i32` uninitialized, which is invalid
   --> $DIR/assert-type-intrinsics.rs:15:9
    |
 LL |         intrinsics::assert_mem_uninitialized_valid::<&'static i32>();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: aborted execution: attempted to leave type `&i32` uninitialized, which is invalid
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: aborted execution: attempted to zero-initialize type `&i32`, which is invalid
   --> $DIR/assert-type-intrinsics.rs:19:9
    |
 LL |         intrinsics::assert_zero_valid::<&'static i32>();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: aborted execution: attempted to zero-initialize type `&i32`, which is invalid
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 3 previous errors
 

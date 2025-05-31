@@ -1,26 +1,26 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: calling non-const function `AtomicUsize::fetch_add`
   --> $DIR/const_refers_to_static.rs:11:5
    |
 LL |     FOO.fetch_add(1, Ordering::Relaxed)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling non-const function `AtomicUsize::fetch_add`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: constant accesses mutable global memory
   --> $DIR/const_refers_to_static.rs:16:14
    |
 LL |     unsafe { *(&FOO as *const _ as *const usize) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses mutable global memory
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: constant accesses mutable global memory
   --> $DIR/const_refers_to_static.rs:20:32
    |
 LL | const READ_MUT: u32 = unsafe { MUTABLE };
-   |                                ^^^^^^^ constant accesses mutable global memory
+   |                                ^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: constructing invalid value: encountered reference to mutable memory in `const`
   --> $DIR/const_refers_to_static.rs:23:1
    |
 LL | const REF_INTERIOR_MUT: &usize = {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {

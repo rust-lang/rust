@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: calling non-const function `double`
   --> $DIR/const_fn_ptr_fail2.rs:16:18
    |
 LL | const Y: usize = bar(X, 2); // FIXME: should fail to typeck someday
-   |                  ^^^^^^^^^ calling non-const function `double`
+   |                  ^^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `bar`
   --> $DIR/const_fn_ptr_fail2.rs:9:5
@@ -10,11 +10,11 @@ note: inside `bar`
 LL |     x(y)
    |     ^^^^ the failure occurred here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: calling non-const function `double`
   --> $DIR/const_fn_ptr_fail2.rs:19:18
    |
 LL | const Z: usize = bar(double, 2); // FIXME: should fail to typeck someday
-   |                  ^^^^^^^^^^^^^^ calling non-const function `double`
+   |                  ^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `bar`
   --> $DIR/const_fn_ptr_fail2.rs:9:5

@@ -10,7 +10,7 @@ pub const unsafe fn hint_unreachable() -> ! {
 }
 
 trait Const {
-    const CONSTANT: i32 = unsafe { fake_type() }; //~ ERROR evaluation of `fake_type::<!>` failed
+    const CONSTANT: i32 = unsafe { fake_type() }; //~ ERROR reached the configured maximum number of stack frames
 }
 
 impl<T> Const for T {}

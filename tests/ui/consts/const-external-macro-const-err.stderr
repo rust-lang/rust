@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: index out of bounds: the length is 1 but the index is 1
   --> $DIR/const-external-macro-const-err.rs:12:5
    |
 LL |     static_assert!(2 + 2 == 5);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 1
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
    = note: this error originates in the macro `static_assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 

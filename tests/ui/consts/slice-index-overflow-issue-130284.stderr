@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
   --> $DIR/slice-index-overflow-issue-130284.rs:7:20
    |
 LL |         let _ice = (*fat)[usize::MAX - 1];
-   |                    ^^^^^^^^^^^^^^^^^^^^^^ overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 1 previous error
 

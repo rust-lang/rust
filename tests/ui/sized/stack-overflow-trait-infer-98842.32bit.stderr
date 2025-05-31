@@ -9,11 +9,11 @@ LL | const _: *const Foo = 0 as _;
    | ^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: a cycle occurred during layout computation
   --> $DIR/stack-overflow-trait-infer-98842.rs:14:1
    |
 LL | const _: *const Foo = 0 as _;
-   | ^^^^^^^^^^^^^^^^^^^ a cycle occurred during layout computation
+   | ^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 2 previous errors
 

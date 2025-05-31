@@ -1,14 +1,14 @@
-error[E0080]: could not evaluate static initializer
-  --> $DIR/huge-static.rs:19:1
+error[E0080]: values of the type `[u8; 2305843009213693952]` are too big for the target architecture
+  --> $DIR/huge-static.rs:18:1
    |
 LL | static MY_TOO_BIG_ARRAY_1: TooBigArray = TooBigArray::new();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ values of the type `[u8; 2305843009213693952]` are too big for the target architecture
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of static initializer failed here
 
-error[E0080]: could not evaluate static initializer
-  --> $DIR/huge-static.rs:22:1
+error[E0080]: values of the type `[u8; 2305843009213693952]` are too big for the target architecture
+  --> $DIR/huge-static.rs:20:1
    |
 LL | static MY_TOO_BIG_ARRAY_2: [u8; HUGE_SIZE] = [0x00; HUGE_SIZE];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ values of the type `[u8; 2305843009213693952]` are too big for the target architecture
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of static initializer failed here
 
 error: aborting due to 2 previous errors
 
