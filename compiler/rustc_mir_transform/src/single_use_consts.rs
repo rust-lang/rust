@@ -33,7 +33,9 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
             locals_in_debug_info: DenseBitSet::new_empty(body.local_decls.len()),
         };
 
-        finder.ineligible_locals.insert_range(..=Local::from_usize(body.arg_count));
+        finder
+            .ineligible_locals
+            .insert_range_inclusive(Local::from_usize(0)..=Local::from_usize(body.arg_count));
 
         finder.visit_body(body);
 

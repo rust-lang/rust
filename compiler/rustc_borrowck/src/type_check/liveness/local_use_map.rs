@@ -1,4 +1,5 @@
 use rustc_index::IndexVec;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
@@ -81,7 +82,7 @@ impl<'a> Iterator for AppearancesIter<'a> {
 
 impl LocalUseMap {
     pub(crate) fn build(
-        live_locals: &[Local],
+        live_locals: &DenseBitSet<Local>,
         location_map: &DenseLocationMap,
         body: &Body<'_>,
     ) -> Self {
@@ -99,7 +100,7 @@ impl LocalUseMap {
 
         let mut locals_with_use_data: IndexVec<Local, bool> =
             IndexVec::from_elem(false, &body.local_decls);
-        live_locals.iter().for_each(|&local| locals_with_use_data[local] = true);
+        live_locals.iter().for_each(|local| locals_with_use_data[local] = true);
 
         LocalUseMapBuild { local_use_map: &mut local_use_map, location_map, locals_with_use_data }
             .visit_body(body);

@@ -1,3 +1,4 @@
+use std::cell::OnceCell;
 use std::fmt;
 use std::ops::Index;
 
@@ -84,6 +85,7 @@ pub struct BorrowData<'tcx> {
     pub(crate) borrowed_place: mir::Place<'tcx>,
     /// Place to which the borrow was stored
     pub(crate) assigned_place: mir::Place<'tcx>,
+    pub(crate) dependent_regions: OnceCell<DenseBitSet<RegionVid>>,
 }
 
 // These methods are public to support borrowck consumers.
@@ -261,6 +263,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                 activation_location: TwoPhaseActivation::NotTwoPhase,
                 borrowed_place,
                 assigned_place: *assigned_place,
+                dependent_regions: OnceCell::new(),
             };
             let (idx, _) = self.location_map.insert_full(location, borrow);
             let idx = BorrowIndex::from(idx);

@@ -103,7 +103,7 @@ fn escaping_locals<'tcx>(
     };
 
     let mut set = DenseBitSet::new_empty(body.local_decls.len());
-    set.insert_range(RETURN_PLACE..=Local::from_usize(body.arg_count));
+    set.insert_range_inclusive(RETURN_PLACE..=Local::from_usize(body.arg_count));
     for (local, decl) in body.local_decls().iter_enumerated() {
         if excluded.contains(local) || is_excluded_ty(decl.ty) {
             set.insert(local);
