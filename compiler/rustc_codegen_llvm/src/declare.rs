@@ -22,7 +22,7 @@ use rustc_target::callconv::FnAbi;
 use smallvec::SmallVec;
 use tracing::debug;
 
-use crate::abi::FnAbiLlvmExt;
+use crate::abi::{FnAbiLlvmExt, FunctionSignature};
 use crate::common::AsCCharPtr;
 use crate::context::{CodegenCx, GenericCx, SCx, SimpleCx};
 use crate::llvm::AttributePlace::Function;
@@ -150,17 +150,54 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     ) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
-        // Function addresses in Rust are never significant, allowing functions to
-        // be merged.
-        let llfn = declare_raw_fn(
-            self,
-            name,
-            fn_abi.llvm_cconv(self),
-            llvm::UnnamedAddr::Global,
-            llvm::Visibility::Default,
-            fn_abi.llvm_type(self),
-        );
-        fn_abi.apply_attrs_llfn(self, llfn, instance);
+        let signature = fn_abi.llvm_type(self, name.as_bytes(), true);
+        let llfn;
+
+        if let FunctionSignature::Intrinsic(fn_ty) = signature {
+            // intrinsics have a specified set of attributes, so we don't use the `FnAbi` set for them
+            llfn = declare_simple_fn(
+                self,
+                name,
+                fn_abi.llvm_cconv(self),
+                llvm::UnnamedAddr::Global,
+                llvm::Visibility::Default,
+                fn_ty,
+            );
+        } else {
+            // Function addresses in Rust are never significant, allowing functions to
+            // be merged.
+            llfn = declare_raw_fn(
+                self,
+                name,
+                fn_abi.llvm_cconv(self),
+                llvm::UnnamedAddr::Global,
+                llvm::Visibility::Default,
+                signature.fn_ty(),
+            );
+            fn_abi.apply_attrs_llfn(self, llfn, instance);
+        }
+
+        if let FunctionSignature::MaybeInvalidIntrinsic(..) = signature {
+            let mut new_llfn = None;
+            let can_upgrade =
+                unsafe { llvm::LLVMRustUpgradeIntrinsicFunction(llfn, &mut new_llfn, false) };
+
+            if can_upgrade {
+                // not all intrinsics are upgraded to some other intrinsics, most are upgraded to instruction sequences
+                if let Some(new_llfn) = new_llfn {
+                    self.tcx.dcx().note(format!(
+                        "Using deprecated intrinsic `{name}`, `{}` can be used instead",
+                        str::from_utf8(llvm::get_value_name(new_llfn)).unwrap()
+                    ));
+                } else if self.tcx.sess.opts.verbose {
+                    self.tcx.dcx().note(format!(
+                        "Using deprecated intrinsic `{name}`, consider using other intrinsics/instructions"
+                    ));
+                }
+            } else {
+                self.tcx.dcx().fatal(format!("Invalid LLVM intrinsic: `{name}`"))
+            }
+        }
 
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
             if let Some(instance) = instance {
