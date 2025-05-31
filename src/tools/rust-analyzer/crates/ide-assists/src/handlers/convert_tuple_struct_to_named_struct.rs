@@ -6,7 +6,7 @@ use syntax::{
     match_ast, ted,
 };
 
-use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
+use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder, utils::find_struct_definition_from_cursor};
 
 // Assist: convert_tuple_struct_to_named_struct
 //
@@ -51,8 +51,7 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
 ) -> Option<()> {
-    let name = ctx.find_node_at_offset::<ast::Name>()?;
-    let strukt = name.syntax().parent().and_then(<Either<ast::Struct, ast::Variant>>::cast)?;
+    let strukt = find_struct_definition_from_cursor(ctx)?;
     let field_list = strukt.as_ref().either(|s| s.field_list(), |v| v.field_list())?;
     let tuple_fields = match field_list {
         ast::FieldList::TupleFieldList(it) => it,
@@ -299,6 +298,88 @@ impl A {
             r#"
 struct Inner;
 struct A { field1: Inner }
+
+impl A {
+    fn new(inner: Inner) -> A {
+        A { field1: inner }
+    }
+
+    fn new_with_default() -> A {
+        A::new(Inner)
+    }
+
+    fn into_inner(self) -> Inner {
+        self.field1
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn convert_simple_struct_cursor_on_struct_keyword() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+struct Inner;
+struct$0 A(Inner);
+
+impl A {
+    fn new(inner: Inner) -> A {
+        A(inner)
+    }
+
+    fn new_with_default() -> A {
+        A::new(Inner)
+    }
+
+    fn into_inner(self) -> Inner {
+        self.0
+    }
+}"#,
+            r#"
+struct Inner;
+struct A { field1: Inner }
+
+impl A {
+    fn new(inner: Inner) -> A {
+        A { field1: inner }
+    }
+
+    fn new_with_default() -> A {
+        A::new(Inner)
+    }
+
+    fn into_inner(self) -> Inner {
+        self.field1
+    }
+}"#,
+        );
+    }
+
+        #[test]
+    fn convert_simple_struct_cursor_on_visibility_keyword() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+struct Inner;
+pub$0 struct A(Inner);
+
+impl A {
+    fn new(inner: Inner) -> A {
+        A(inner)
+    }
+
+    fn new_with_default() -> A {
+        A::new(Inner)
+    }
+
+    fn into_inner(self) -> Inner {
+        self.0
+    }
+}"#,
+            r#"
+struct Inner;
+pub struct A { field1: Inner }
 
 impl A {
     fn new(inner: Inner) -> A {

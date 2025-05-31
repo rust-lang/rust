@@ -7,7 +7,7 @@ use syntax::{
     match_ast, ted,
 };
 
-use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
+use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder, utils::find_struct_definition_from_cursor};
 
 // Assist: convert_named_struct_to_tuple_struct
 //
@@ -56,8 +56,7 @@ pub(crate) fn convert_named_struct_to_tuple_struct(
     // XXX: We don't currently provide this assist for struct definitions inside macros, but if we
     // are to lift this limitation, don't forget to make `edit_struct_def()` consider macro files
     // too.
-    let name = ctx.find_node_at_offset::<ast::Name>()?;
-    let strukt = name.syntax().parent().and_then(<Either<ast::Struct, ast::Variant>>::cast)?;
+    let strukt = find_struct_definition_from_cursor(ctx)?;
     let field_list = strukt.as_ref().either(|s| s.field_list(), |v| v.field_list())?;
     let record_fields = match field_list {
         ast::FieldList::RecordFieldList(it) => it,
@@ -292,6 +291,89 @@ impl A {
 }"#,
         );
     }
+
+    #[test]
+    fn convert_simple_struct_cursor_on_struct_keyword() {
+        check_assist(
+            convert_named_struct_to_tuple_struct,
+            r#"
+struct Inner;
+struct$0 A { inner: Inner }
+
+impl A {
+    fn new(inner: Inner) -> A {
+        A { inner }
+    }
+
+    fn new_with_default() -> A {
+        A::new(Inner)
+    }
+
+    fn into_inner(self) -> Inner {
+        self.inner
+    }
+}"#,
+            r#"
+struct Inner;
+struct A(Inner);
+
+impl A {
+    fn new(inner: Inner) -> A {
+        A(inner)
+    }
+
+    fn new_with_default() -> A {
+        A::new(Inner)
+    }
+
+    fn into_inner(self) -> Inner {
+        self.0
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn convert_simple_struct_cursor_on_visibility_keyword() {
+        check_assist(
+            convert_named_struct_to_tuple_struct,
+            r#"
+struct Inner;
+pub$0 struct A { inner: Inner }
+
+impl A {
+    fn new(inner: Inner) -> A {
+        A { inner }
+    }
+
+    fn new_with_default() -> A {
+        A::new(Inner)
+    }
+
+    fn into_inner(self) -> Inner {
+        self.inner
+    }
+}"#,
+            r#"
+struct Inner;
+struct A(Inner);
+
+impl A {
+    fn new(inner: Inner) -> A {
+        A(inner)
+    }
+
+    fn new_with_default() -> A {
+        A::new(Inner)
+    }
+
+    fn into_inner(self) -> Inner {
+        self.0
+    }
+}"#,
+        );
+    }
+
 
     #[test]
     fn convert_struct_referenced_via_self_kw() {

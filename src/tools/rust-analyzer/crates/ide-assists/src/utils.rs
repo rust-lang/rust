@@ -1,5 +1,7 @@
 //! Assorted functions shared by several assists.
 
+use either::Either;
+
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{
     DisplayTarget, HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution,
@@ -1146,3 +1148,24 @@ pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bo
     });
     is_const
 }
+
+/// Gets the struct definition from a context
+pub(crate) fn find_struct_definition_from_cursor(ctx: &AssistContext<'_>)
+-> Option<Either<ast::Struct, ast::Variant>>
+{
+    ctx.find_node_at_offset::<ast::Name>().and_then(|name| name.syntax().parent())
+        .or(find_struct_keyword(ctx).and_then(|kw| kw.parent()))
+        .or(ctx.find_node_at_offset::<ast::Visibility>().and_then(|visibility| visibility.syntax().parent()))
+        .and_then(<Either<ast::Struct, ast::Variant>>::cast)
+}
+
+fn find_struct_keyword(ctx: &AssistContext<'_>) -> Option<SyntaxToken> {
+    // Attempt to find the token at the current cursor offset
+    ctx
+    .token_at_offset()
+    .find(|leaf| match leaf.kind() {
+        STRUCT_KW => true,
+        _ => false,
+    })
+}
+
