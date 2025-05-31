@@ -1665,8 +1665,8 @@ impl BitOr<HasIterator> for HasIterator {
 #[doc(hidden)]
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
 pub mod ext {
+    use core::slice;
     use std::collections::btree_set::{self, BTreeSet};
-    use std::slice;
 
     use super::{
         HasIterator as HasIter, RepInterp, ThereIsNoIteratorInRepetition as DoesNotHaveIter,
@@ -1676,13 +1676,11 @@ pub mod ext {
     /// Extension trait providing the `quote_into_iter` method on iterators.
     #[unstable(feature = "proc_macro_quote", issue = "54722")]
     pub trait RepIteratorExt: Iterator + Sized {
-        #[unstable(feature = "proc_macro_quote", issue = "54722")]
         fn quote_into_iter(self) -> (Self, HasIter) {
             (self, HasIter)
         }
     }
 
-    #[unstable(feature = "proc_macro_quote", issue = "54722")]
     impl<T: Iterator> RepIteratorExt for T {}
 
     /// Extension trait providing the `quote_into_iter` method for
@@ -1719,7 +1717,7 @@ pub mod ext {
     }
 
     #[unstable(feature = "proc_macro_quote", issue = "54722")]
-    impl<'q, 'a, T: RepAsIteratorExt<'q> + ?Sized> RepAsIteratorExt<'q> for &'a T {
+    impl<'q, T: RepAsIteratorExt<'q> + ?Sized> RepAsIteratorExt<'q> for &T {
         type Iter = T::Iter;
 
         fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
@@ -1728,7 +1726,7 @@ pub mod ext {
     }
 
     #[unstable(feature = "proc_macro_quote", issue = "54722")]
-    impl<'q, 'a, T: RepAsIteratorExt<'q> + ?Sized> RepAsIteratorExt<'q> for &'a mut T {
+    impl<'q, T: RepAsIteratorExt<'q> + ?Sized> RepAsIteratorExt<'q> for &mut T {
         type Iter = T::Iter;
 
         fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
@@ -1746,6 +1744,14 @@ pub mod ext {
     }
 
     #[unstable(feature = "proc_macro_quote", issue = "54722")]
+    impl<'q, T: 'q, const N: usize> RepAsIteratorExt<'q> for [T; N] {
+        type Iter = slice::Iter<'q, T>;
+
+        fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
+            (self.iter(), HasIter)
+        }
+    }
+
     impl<'q, T: 'q> RepAsIteratorExt<'q> for Vec<T> {
         type Iter = slice::Iter<'q, T>;
 
