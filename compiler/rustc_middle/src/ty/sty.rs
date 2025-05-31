@@ -1882,10 +1882,8 @@ impl<'tcx> Ty<'tcx> {
             // Needs normalization or revealing to determine, so no is the safe answer.
             ty::Alias(..) => false,
 
-            ty::Param(..) | ty::Placeholder(..) | ty::Infer(..) | ty::Error(..) => false,
-
-            ty::Bound(..) => {
-                bug!("`is_trivially_pure_clone_copy` applied to unexpected type: {:?}", self);
+            ty::Param(..) | ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(..) => {
+                false
             }
         }
     }
