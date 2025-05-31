@@ -4,8 +4,8 @@
 #![stable(feature = "unix_socket", since = "1.10.0")]
 
 mod addr;
-#[doc(cfg(any(target_os = "android", target_os = "linux")))]
-#[cfg(any(doc, target_os = "android", target_os = "linux"))]
+#[doc(cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin")))]
+#[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]
 mod ancillary;
 mod datagram;
 mod listener;
@@ -27,7 +27,7 @@ mod ucred;
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub use self::addr::*;
-#[cfg(any(doc, target_os = "android", target_os = "linux"))]
+#[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 pub use self::ancillary::*;
 #[stable(feature = "unix_socket", since = "1.10.0")]
