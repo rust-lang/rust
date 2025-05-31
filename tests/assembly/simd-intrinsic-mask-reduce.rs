@@ -10,7 +10,7 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 
-#![feature(no_core, lang_items, repr_simd, intrinsics)]
+#![feature(no_core, lang_items, repr_simd)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
@@ -19,11 +19,6 @@ use minicore::*;
 
 #[repr(simd)]
 pub struct mask8x16([i8; 16]);
-
-#[rustc_intrinsic]
-unsafe fn simd_reduce_all<T>(x: T) -> bool;
-#[rustc_intrinsic]
-unsafe fn simd_reduce_any<T>(x: T) -> bool;
 
 // CHECK-LABEL: mask_reduce_all:
 #[no_mangle]
