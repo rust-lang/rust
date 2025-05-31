@@ -137,6 +137,18 @@ hir_typeck_lossy_provenance_ptr2int =
 
 hir_typeck_missing_parentheses_in_range = can't call method `{$method_name}` on type `{$ty_str}`
 
+hir_typeck_naked_asm_outside_naked_fn =
+    the `naked_asm!` macro can only be used in functions marked with `#[unsafe(naked)]`
+
+hir_typeck_naked_functions_asm_block =
+    naked functions must contain a single `naked_asm!` invocation
+    .label_multiple_asm = multiple `naked_asm!` invocations are not allowed in naked functions
+    .label_non_asm = not allowed in naked functions
+
+hir_typeck_naked_functions_must_naked_asm =
+    the `asm!` macro is not allowed in naked functions
+    .label = consider using the `naked_asm!` macro instead
+
 hir_typeck_never_type_fallback_flowing_into_unsafe_call = never type fallback affects this call to an `unsafe` function
     .help = specify the type explicitly
 hir_typeck_never_type_fallback_flowing_into_unsafe_deref = never type fallback affects this raw pointer dereference
@@ -159,6 +171,9 @@ hir_typeck_no_field_on_variant = no field named `{$field}` on enum variant `{$co
 hir_typeck_no_field_on_variant_enum = this enum variant...
 hir_typeck_no_field_on_variant_field = ...does not have this field
 
+hir_typeck_no_patterns =
+    patterns not allowed in naked function parameters
+
 hir_typeck_note_caller_chooses_ty_for_ty_param = the caller chooses a type for `{$ty_param_name}` which can be different from `{$found_ty}`
 
 hir_typeck_note_edition_guide = for more on editions, read https://doc.rust-lang.org/edition-guide
@@ -166,6 +181,10 @@ hir_typeck_note_edition_guide = for more on editions, read https://doc.rust-lang
 hir_typeck_option_result_asref = use `{$def_path}::as_ref` to convert `{$expected_ty}` to `{$expr_ty}`
 hir_typeck_option_result_cloned = use `{$def_path}::cloned` to clone the value inside the `{$def_path}`
 hir_typeck_option_result_copied = use `{$def_path}::copied` to copy the value inside the `{$def_path}`
+
+hir_typeck_params_not_allowed =
+    referencing function parameters is not allowed in naked functions
+    .help = follow the calling convention in asm block to use parameters
 
 hir_typeck_pass_to_variadic_function = can't pass `{$ty}` to variadic function
     .suggestion = cast the value to `{$cast_ty}`
