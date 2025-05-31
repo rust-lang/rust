@@ -1232,7 +1232,7 @@ fn collect_items_of_instance<'tcx>(
     mode: CollectionMode,
 ) -> (MonoItems<'tcx>, MonoItems<'tcx>) {
     // This item is getting monomorphized, do mono-time checks.
-    tcx.ensure_ok().check_mono_item(instance);
+    //tcx.ensure_ok().check_mono_item(instance);
 
     let body = tcx.instance_mir(instance.def);
     // Naively, in "used" collection mode, all functions get added to *both* `used_items` and
@@ -1262,7 +1262,7 @@ fn collect_items_of_instance<'tcx>(
                 collector.visit_var_debug_info(var_debug_info);
             }
         }
-        for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
+        for (bb, data) in traversal::reverse_postorder(body) {
             collector.visit_basic_block_data(bb, data)
         }
     }

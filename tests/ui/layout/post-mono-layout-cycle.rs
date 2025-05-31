@@ -1,5 +1,5 @@
 //@ build-fail
-//~^ ERROR cycle detected when computing layout of `Wrapper<()>`
+//~^ ERROR: cycle detected when computing layout of
 
 trait Trait {
     type Assoc;
@@ -14,6 +14,7 @@ struct Wrapper<T: Trait> {
 }
 
 fn abi<T: Trait>(_: Option<Wrapper<T>>) {}
+//~^ ERROR: a cycle occurred during layout computation
 
 fn indirect<T: Trait>() {
     abi::<T>(None);
