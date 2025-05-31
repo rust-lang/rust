@@ -1519,8 +1519,7 @@ fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>)
 
 fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
     if tcx.type_alias_is_lazy(def_id) {
-        // Since we compute the variances for lazy type aliases and already reject bivariant
-        // parameters as unused, we can and should skip this check for lazy type aliases.
+        // FIXME(fmease): Explainer
         return;
     }
 
