@@ -157,10 +157,8 @@ where
         for pred in param_env.caller_bounds().iter() {
             if let ty::ClauseKind::UnstableFeature(sym) = pred.kind().skip_binder() {
                 if sym == symbol {
-                    return self
-                        .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                    return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                 }
-
             }
         }
 
