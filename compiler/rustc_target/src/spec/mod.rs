@@ -2962,12 +2962,12 @@ impl Target {
         }
     }
 
-    pub fn is_abi_supported(&self, abi: ExternAbi) -> bool {
+    /// Returns `None` if the ABI was accidentally allowed and the UNSUPPORTED_CALLING_CONVENTIONS
+    /// lint should be emitted.
+    pub fn is_abi_supported(&self, abi: ExternAbi) -> Option<bool> {
         use ExternAbi::*;
-        match abi {
-            Rust | C { .. } | System { .. } | RustCall | Unadjusted | Cdecl { .. } | RustCold => {
-                true
-            }
+        Some(match abi {
+            Rust | C { .. } | System { .. } | RustCall | Unadjusted | RustCold => true,
             EfiApi => {
                 ["arm", "aarch64", "riscv32", "riscv64", "x86", "x86_64"].contains(&&self.arch[..])
             }
@@ -2984,44 +2984,30 @@ impl Target {
             RiscvInterruptM | RiscvInterruptS => ["riscv32", "riscv64"].contains(&&self.arch[..]),
             AvrInterrupt | AvrNonBlockingInterrupt => self.arch == "avr",
             Thiscall { .. } => self.arch == "x86",
-            // On windows these fall-back to platform native calling convention (C) when the
-            // architecture is not supported.
-            //
-            // This is I believe a historical accident that has occurred as part of Microsoft
-            // striving to allow most of the code to "just" compile when support for 64-bit x86
-            // was added and then later again, when support for ARM architectures was added.
-            //
-            // This is well documented across MSDN. Support for this in Rust has been added in
-            // #54576. This makes much more sense in context of Microsoft's C++ than it does in
-            // Rust, but there isn't much leeway remaining here to change it back at the time this
-            // comment has been written.
-            //
-            // Following are the relevant excerpts from the MSDN documentation.
-            //
-            // > The __vectorcall calling convention is only supported in native code on x86 and
-            // x64 processors that include Streaming SIMD Extensions 2 (SSE2) and above.
-            // > ...
-            // > On ARM machines, __vectorcall is accepted and ignored by the compiler.
-            //
-            // -- https://docs.microsoft.com/en-us/cpp/cpp/vectorcall?view=msvc-160
-            //
-            // > On ARM and x64 processors, __stdcall is accepted and ignored by the compiler;
-            //
-            // -- https://docs.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-160
-            //
-            // > In most cases, keywords or compiler switches that specify an unsupported
-            // > convention on a particular platform are ignored, and the platform default
-            // > convention is used.
-            //
-            // -- https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions
-            Stdcall { .. } | Fastcall { .. } | Vectorcall { .. } if self.is_like_windows => true,
-            // Outside of Windows we want to only support these calling conventions for the
-            // architectures for which these calling conventions are actually well defined.
-            Stdcall { .. } | Fastcall { .. } if self.arch == "x86" => true,
-            Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => true,
-            // Reject these calling conventions everywhere else.
-            Stdcall { .. } | Fastcall { .. } | Vectorcall { .. } => false,
-        }
+            Stdcall { .. } | Fastcall { .. } => {
+                if self.arch == "x86" {
+                    true
+                } else {
+                    // This *should* be false, but we emit an FCW on Windows since ABIs were not
+                    // properly validated in the past. Also see
+                    // <https://github.com/rust-lang/rust/issues/137018>.
+                    if self.is_like_windows {
+                        return None;
+                    } else {
+                        false
+                    }
+                }
+            }
+            Cdecl { .. } => {
+                if self.arch == "x86" {
+                    true
+                } else {
+                    // Similar to above, we emit an FCW for backwards compatibility.
+                    return None;
+                }
+            }
+            Vectorcall { .. } => ["x86", "x86_64"].contains(&&self.arch[..]),
+        })
     }
 
     /// Minimum integer size in bits that this target can perform atomic
