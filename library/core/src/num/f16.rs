@@ -1423,8 +1423,10 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    // #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn floor(self) -> f16 {
+    pub const fn floor(self) -> f16 {
         // SAFETY: intrinsic with no preconditions
         unsafe { intrinsics::floorf16(self) }
     }
@@ -1453,8 +1455,10 @@ impl f16 {
     #[doc(alias = "ceiling")]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    // #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn ceil(self) -> f16 {
+    pub const fn ceil(self) -> f16 {
         // SAFETY: intrinsic with no preconditions
         unsafe { intrinsics::ceilf16(self) }
     }
@@ -1489,8 +1493,10 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    // #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn round(self) -> f16 {
+    pub const fn round(self) -> f16 {
         // SAFETY: intrinsic with no preconditions
         unsafe { intrinsics::roundf16(self) }
     }
@@ -1523,8 +1529,10 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    // #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn round_ties_even(self) -> f16 {
+    pub const fn round_ties_even(self) -> f16 {
         intrinsics::round_ties_even_f16(self)
     }
 
@@ -1555,8 +1563,10 @@ impl f16 {
     #[doc(alias = "truncate")]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    // #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn trunc(self) -> f16 {
+    pub const fn trunc(self) -> f16 {
         // SAFETY: intrinsic with no preconditions
         unsafe { intrinsics::truncf16(self) }
     }
@@ -1586,8 +1596,10 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    // #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn fract(self) -> f16 {
+    pub const fn fract(self) -> f16 {
         self - self.trunc()
     }
 

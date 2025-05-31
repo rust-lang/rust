@@ -1589,8 +1589,9 @@ pub mod math {
     /// [`f64::floor`]: ../../../std/primitive.f64.html#method.floor
     #[inline]
     #[unstable(feature = "core_float_math", issue = "137578")]
+    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn floor(x: f64) -> f64 {
+    pub const fn floor(x: f64) -> f64 {
         // SAFETY: intrinsic with no preconditions
         unsafe { intrinsics::floorf64(x) }
     }
@@ -1618,8 +1619,9 @@ pub mod math {
     #[inline]
     #[doc(alias = "ceiling")]
     #[unstable(feature = "core_float_math", issue = "137578")]
+    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn ceil(x: f64) -> f64 {
+    pub const fn ceil(x: f64) -> f64 {
         // SAFETY: intrinsic with no preconditions
         unsafe { intrinsics::ceilf64(x) }
     }
@@ -1652,8 +1654,9 @@ pub mod math {
     /// [`f64::round`]: ../../../std/primitive.f64.html#method.round
     #[inline]
     #[unstable(feature = "core_float_math", issue = "137578")]
+    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn round(x: f64) -> f64 {
+    pub const fn round(x: f64) -> f64 {
         // SAFETY: intrinsic with no preconditions
         unsafe { intrinsics::roundf64(x) }
     }
@@ -1685,8 +1688,9 @@ pub mod math {
     /// [`f64::round_ties_even`]: ../../../std/primitive.f64.html#method.round_ties_even
     #[inline]
     #[unstable(feature = "core_float_math", issue = "137578")]
+    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn round_ties_even(x: f64) -> f64 {
+    pub const fn round_ties_even(x: f64) -> f64 {
         intrinsics::round_ties_even_f64(x)
     }
 
@@ -1715,8 +1719,9 @@ pub mod math {
     #[inline]
     #[doc(alias = "truncate")]
     #[unstable(feature = "core_float_math", issue = "137578")]
+    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn trunc(x: f64) -> f64 {
+    pub const fn trunc(x: f64) -> f64 {
         // SAFETY: intrinsic with no preconditions
         unsafe { intrinsics::truncf64(x) }
     }
@@ -1745,8 +1750,9 @@ pub mod math {
     /// [`f64::fract`]: ../../../std/primitive.f64.html#method.fract
     #[inline]
     #[unstable(feature = "core_float_math", issue = "137578")]
+    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn fract(x: f64) -> f64 {
+    pub const fn fract(x: f64) -> f64 {
         x - trunc(x)
     }
 
