@@ -11,8 +11,7 @@ use clippy_utils::{
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::Span;
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::{OR_FUN_CALL, UNWRAP_OR_DEFAULT};

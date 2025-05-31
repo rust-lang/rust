@@ -1,18 +1,22 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::get_parent_expr;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::snippet;
+use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
-use rustc_span::{Span, sym};
+use rustc_middle::ty;
+use rustc_span::{BytePos, Span, sym};
 
 use super::MANUAL_IS_VARIANT_AND;
 
-pub(super) fn check<'tcx>(
+pub(super) fn check(
     cx: &LateContext<'_>,
-    expr: &'tcx rustc_hir::Expr<'_>,
-    map_recv: &'tcx rustc_hir::Expr<'_>,
-    map_arg: &'tcx rustc_hir::Expr<'_>,
+    expr: &Expr<'_>,
+    map_recv: &Expr<'_>,
+    map_arg: &Expr<'_>,
     map_span: Span,
     msrv: Msrv,
 ) {
@@ -56,4 +60,58 @@ pub(super) fn check<'tcx>(
         format!("{}({})", suggestion, snippet(cx, map_arg.span, "..")),
         Applicability::MachineApplicable,
     );
+}
+
+fn emit_lint(cx: &LateContext<'_>, op: BinOpKind, parent: &Expr<'_>, method_span: Span, is_option: bool) {
+    if let Some(before_map_snippet) = snippet_opt(cx, parent.span.with_hi(method_span.lo()))
+        && let Some(after_map_snippet) = snippet_opt(cx, method_span.with_lo(method_span.lo() + BytePos(3)))
+    {
+        span_lint_and_sugg(
+            cx,
+            MANUAL_IS_VARIANT_AND,
+            parent.span,
+            format!(
+                "called `.map() {}= {}()`",
+                if op == BinOpKind::Eq { '=' } else { '!' },
+                if is_option { "Some" } else { "Ok" },
+            ),
+            "use",
+            if is_option && op == BinOpKind::Ne {
+                format!("{before_map_snippet}is_none_or{after_map_snippet}",)
+            } else {
+                format!(
+                    "{}{before_map_snippet}{}{after_map_snippet}",
+                    if op == BinOpKind::Eq { "" } else { "!" },
+                    if is_option { "is_some_and" } else { "is_ok_and" },
+                )
+            },
+            Applicability::MachineApplicable,
+        );
+    }
+}
+
+pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    if let Some(parent_expr) = get_parent_expr(cx, expr)
+        && let ExprKind::Binary(op, left, right) = parent_expr.kind
+        && matches!(op.node, BinOpKind::Eq | BinOpKind::Ne)
+        && op.span.eq_ctxt(expr.span)
+    {
+        // Check `left` and `right` expression in any order, and for `Option` and `Result`
+        for (expr1, expr2) in [(left, right), (right, left)] {
+            for item in [sym::Option, sym::Result] {
+                if let ExprKind::Call(call, ..) = expr1.kind
+                    && let ExprKind::Path(QPath::Resolved(_, path)) = call.kind
+                    && let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), _) = path.res
+                    && let ty = cx.typeck_results().expr_ty(expr1)
+                    && let ty::Adt(adt, args) = ty.kind()
+                    && cx.tcx.is_diagnostic_item(item, adt.did())
+                    && args.type_at(0).is_bool()
+                    && let ExprKind::MethodCall(_, recv, _, span) = expr2.kind
+                    && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), item)
+                {
+                    return emit_lint(cx, op.node, parent_expr, span, item == sym::Option);
+                }
+            }
+        }
+    }
 }

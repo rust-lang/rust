@@ -435,7 +435,9 @@ fn check_final_expr<'tcx>(
         ExprKind::If(_, then, else_clause_opt) => {
             check_block_return(cx, &then.kind, peeled_drop_expr.span, semi_spans.clone());
             if let Some(else_clause) = else_clause_opt {
-                check_block_return(cx, &else_clause.kind, peeled_drop_expr.span, semi_spans);
+                // The `RetReplacement` won't be used there as `else_clause` will be either a block or
+                // a `if` expression.
+                check_final_expr(cx, else_clause, semi_spans, RetReplacement::Empty, match_ty_opt);
             }
         },
         // a match expr, check all arms
