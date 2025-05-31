@@ -12,7 +12,6 @@ use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, TypingMode};
-use rustc_next_trait_solver::solve::HasChanged;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::traits::{EvaluateConstErr, ObligationCause, specialization_graph};
@@ -61,11 +60,22 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         span: Span,
-    ) -> Option<HasChanged> {
+    ) -> Option<Certainty> {
+        if let Some(trait_pred) = goal.predicate.as_trait_clause()
+            && self.shallow_resolve(trait_pred.self_ty().skip_binder()).is_ty_var()
+            // We don't do this fast path when opaques are defined since we may
+            // eventually use opaques to incompletely guide inference via ty var
+            // self types.
+            // FIXME: Properly consider opaques here.
+            && self.inner.borrow_mut().opaque_types().is_empty()
+        {
+            return Some(Certainty::AMBIGUOUS);
+        }
+
         let pred = goal.predicate.kind();
         match pred.no_bound_vars()? {
             ty::PredicateKind::DynCompatible(def_id) if self.0.tcx.is_dyn_compatible(def_id) => {
-                Some(HasChanged::No)
+                Some(Certainty::Yes)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(outlives)) => {
                 self.0.sub_regions(
@@ -73,7 +83,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     outlives.1,
                     outlives.0,
                 );
-                Some(HasChanged::No)
+                Some(Certainty::Yes)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(outlives)) => {
                 self.0.register_type_outlives_constraint(
@@ -82,21 +92,32 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     &ObligationCause::dummy_with_span(span),
                 );
 
-                Some(HasChanged::No)
+                Some(Certainty::Yes)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
                 match self.0.tcx.as_lang_item(trait_pred.def_id()) {
                     Some(LangItem::Sized)
                         if trait_pred.self_ty().is_trivially_sized(self.0.tcx) =>
                     {
-                        Some(HasChanged::No)
+                        Some(Certainty::Yes)
                     }
                     Some(LangItem::Copy | LangItem::Clone)
                         if trait_pred.self_ty().is_trivially_pure_clone_copy() =>
                     {
-                        Some(HasChanged::No)
+                        Some(Certainty::Yes)
                     }
                     _ => None,
+                }
+            }
+            ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, .. })
+            | ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => {
+                if self.shallow_resolve(a).is_ty_var() && self.shallow_resolve(b).is_ty_var() {
+                    // FIXME: We also need to register a subtype relation between these vars
+                    // when those are added, and if they aren't in the same sub root then
+                    // we should mark this goal as `has_changed`.
+                    Some(Certainty::AMBIGUOUS)
+                } else {
+                    None
                 }
             }
             _ => None,

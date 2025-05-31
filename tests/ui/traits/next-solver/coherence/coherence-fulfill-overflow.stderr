@@ -1,13 +1,10 @@
-error[E0119]: conflicting implementations of trait `Trait` for type `W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<_>>>>>>>>>>>>>>>>>>>>>`
+error[E0119]: conflicting implementations of trait `Trait` for type `W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<_>>>>>>>>>>>>>>>>>>>>>>>`
   --> $DIR/coherence-fulfill-overflow.rs:12:1
    |
 LL | impl<T: ?Sized + TwoW> Trait for W<T> {}
    | ------------------------------------- first implementation here
 LL | impl<T: ?Sized + TwoW> Trait for T {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<_>>>>>>>>>>>>>>>>>>>>>`
-   |
-   = note: overflow evaluating the requirement `W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<_>>>>>>>>>>>>>>>>>>>>>: TwoW`
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "20"]` attribute to your crate (`coherence_fulfill_overflow`)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<_>>>>>>>>>>>>>>>>>>>>>>>`
 
 error: aborting due to 1 previous error
 

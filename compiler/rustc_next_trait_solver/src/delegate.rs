@@ -3,8 +3,6 @@ use std::ops::Deref;
 use rustc_type_ir::solve::{Certainty, Goal, NoSolution};
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner, TypeFoldable};
 
-use crate::solve::HasChanged;
-
 pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     type Infcx: InferCtxtLike<Interner = Self::Interner>;
     type Interner: Interner;
@@ -23,7 +21,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         span: <Self::Interner as Interner>::Span,
-    ) -> Option<HasChanged>;
+    ) -> Option<Certainty>;
 
     fn fresh_var_for_kind_with_span(
         &self,
