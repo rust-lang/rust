@@ -62,6 +62,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `c`
 `cache`
 `cmpxchg16b`
+`concurrent-functions`
 `crc`
 `crt-static`
 `cssc`
@@ -159,6 +160,15 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `lzcnt`
 `m`
 `mclass`
+`message-security-assist-extension12`
+`message-security-assist-extension3`
+`message-security-assist-extension4`
+`message-security-assist-extension5`
+`message-security-assist-extension8`
+`message-security-assist-extension9`
+`miscellaneous-extensions-2`
+`miscellaneous-extensions-3`
+`miscellaneous-extensions-4`
 `mops`
 `movbe`
 `movrs`
@@ -287,9 +297,11 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `vector`
 `vector-enhancements-1`
 `vector-enhancements-2`
+`vector-enhancements-3`
 `vector-packed-decimal`
 `vector-packed-decimal-enhancement`
 `vector-packed-decimal-enhancement-2`
+`vector-packed-decimal-enhancement-3`
 `vfp2`
 `vfp3`
 `vfp4`

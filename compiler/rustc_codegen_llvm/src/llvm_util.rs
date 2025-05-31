@@ -282,6 +282,14 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         }
         // Filter out features that are not supported by the current LLVM version
         ("riscv32" | "riscv64", "zacas") if get_version().0 < 20 => None,
+        (
+            "s390x",
+            "message-security-assist-extension12"
+            | "concurrent-functions"
+            | "miscellaneous-extensions-4"
+            | "vector-enhancements-3"
+            | "vector-packed-decimal-enhancement-3",
+        ) if get_version().0 < 20 => None,
         // Enable the evex512 target feature if an avx512 target feature is enabled.
         ("x86", s) if s.starts_with("avx512") => Some(LLVMFeature::with_dependencies(
             s,
