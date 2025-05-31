@@ -251,6 +251,7 @@ fn riscv_linux() {
     println!("zihintntl: {}", is_riscv_feature_detected!("zihintntl"));
     println!("zihintpause: {}", is_riscv_feature_detected!("zihintpause"));
     println!("zimop: {}", is_riscv_feature_detected!("zimop"));
+    println!("zicbom: {}", is_riscv_feature_detected!("zicbom"));
     println!("zicboz: {}", is_riscv_feature_detected!("zicboz"));
     println!("zicond: {}", is_riscv_feature_detected!("zicond"));
     println!("m: {}", is_riscv_feature_detected!("m"));
@@ -267,6 +268,7 @@ fn riscv_linux() {
     println!("zfh: {}", is_riscv_feature_detected!("zfh"));
     println!("zfhmin: {}", is_riscv_feature_detected!("zfhmin"));
     println!("zfa: {}", is_riscv_feature_detected!("zfa"));
+    println!("zfbfmin: {}", is_riscv_feature_detected!("zfbfmin"));
     println!("zfinx: {}", is_riscv_feature_detected!("zfinx"));
     println!("zdinx: {}", is_riscv_feature_detected!("zdinx"));
     println!("zhinx: {}", is_riscv_feature_detected!("zhinx"));
@@ -303,6 +305,8 @@ fn riscv_linux() {
     println!("zve64d: {}", is_riscv_feature_detected!("zve64d"));
     println!("zvfh: {}", is_riscv_feature_detected!("zvfh"));
     println!("zvfhmin: {}", is_riscv_feature_detected!("zvfhmin"));
+    println!("zvfbfmin: {}", is_riscv_feature_detected!("zvfbfmin"));
+    println!("zvfbfwma: {}", is_riscv_feature_detected!("zvfbfwma"));
     println!("zvbb: {}", is_riscv_feature_detected!("zvbb"));
     println!("zvbc: {}", is_riscv_feature_detected!("zvbc"));
     println!("zvkb: {}", is_riscv_feature_detected!("zvkb"));

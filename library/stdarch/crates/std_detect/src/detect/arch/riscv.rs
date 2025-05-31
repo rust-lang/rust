@@ -63,6 +63,7 @@ features! {
     ///   * Zve64x: `"zve64x"`
     ///   * Zve64f: `"zve64f"`
     ///   * Zve64d: `"zve64d"`
+    /// * Zicbom: `"zicbom"`
     /// * Zicboz: `"zicboz"`
     /// * Zicntr: `"zicntr"`
     /// * Zicond: `"zicond"`
@@ -75,6 +76,7 @@ features! {
     /// * Zacas: `"zacas"`
     /// * Zawrs: `"zawrs"`
     /// * Zfa: `"zfa"`
+    /// * Zfbfmin: `"zfbfmin"`
     /// * Zfh: `"zfh"`
     ///   * Zfhmin: `"zfhmin"`
     /// * Zfinx: `"zfinx"`
@@ -99,6 +101,8 @@ features! {
     /// * Zkt: `"zkt"`
     /// * Zvbb: `"zvbb"`
     /// * Zvbc: `"zvbc"`
+    /// * Zvfbfmin: `"zvfbfmin"`
+    /// * Zvfbfwma: `"zvfbfwma"`
     /// * Zvfh: `"zvfh"`
     ///   * Zvfhmin: `"zvfhmin"`
     /// * Zvkb: `"zvkb"`
@@ -173,6 +177,8 @@ features! {
     /// "Zihintpause" Extension for Pause Hint
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zimop: "zimop";
     /// "Zimop" Extension for May-Be-Operations
+    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zicbom: "zicbom";
+    /// "Zicbom" Extension for Cache-Block Management Instructions
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zicboz: "zicboz";
     /// "Zicboz" Extension for Cache-Block Zero Instruction
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zicond: "zicond";
@@ -210,6 +216,8 @@ features! {
     /// "Zfhmin" Extension for Minimal Half-Precision Floating-Point
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zfa: "zfa";
     /// "Zfa" Extension for Additional Floating-Point Instructions
+    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zfbfmin: "zfbfmin";
+    /// "Zfbfmin" Extension for Scalar BF16 Converts
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zfinx: "zfinx";
     /// "Zfinx" Extension for Single-Precision Floating-Point in Integer Registers
@@ -289,6 +297,10 @@ features! {
     /// "Zvfh" Vector Extension for Half-Precision Floating-Point
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zvfhmin: "zvfhmin";
     /// "Zvfhmin" Vector Extension for Minimal Half-Precision Floating-Point
+    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zvfbfmin: "zvfbfmin";
+    /// "Zvfbfmin" Vector Extension for BF16 Converts
+    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zvfbfwma: "zvfbfwma";
+    /// "Zvfbfwma" Vector Extension for BF16 Widening Multiply-Add
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zvbb: "zvbb";
     /// "Zvbb" Extension for Vector Basic Bit-Manipulation

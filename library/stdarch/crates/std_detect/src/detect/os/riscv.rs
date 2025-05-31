@@ -105,6 +105,8 @@ pub(crate) fn imply_features(mut value: cache::Initializer) -> cache::Initialize
         imply!(zvfh => zvfhmin); // functional
         imply!(zvfh => zve32f & zfhmin);
         imply!(zvfhmin => zve32f);
+        imply!(zvfbfwma => zvfbfmin & zfbfmin);
+        imply!(zvfbfmin => zve32f);
 
         imply!(v => zve64d);
         imply!(zve64d => zve64f & d);
@@ -115,6 +117,7 @@ pub(crate) fn imply_features(mut value: cache::Initializer) -> cache::Initialize
         imply!(zfh => zfhmin);
         imply!(q => d);
         imply!(d | zfhmin | zfa => f);
+        imply!(zfbfmin => f); // and some of (not all) "Zfh" instructions.
 
         // Relatively complex implication rules from the "C" extension.
         imply!(c => zca);
