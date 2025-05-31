@@ -9,7 +9,7 @@ use syntax::{
 
 use crate::{
     AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder,
-    utils::find_struct_definition_from_cursor,
+    utils::get_struct_definition_from_context,
 };
 
 // Assist: convert_named_struct_to_tuple_struct
@@ -59,7 +59,7 @@ pub(crate) fn convert_named_struct_to_tuple_struct(
     // XXX: We don't currently provide this assist for struct definitions inside macros, but if we
     // are to lift this limitation, don't forget to make `edit_struct_def()` consider macro files
     // too.
-    let strukt = find_struct_definition_from_cursor(ctx)?;
+    let strukt = get_struct_definition_from_context(ctx)?;
     let field_list = strukt.as_ref().either(|s| s.field_list(), |v| v.field_list())?;
     let record_fields = match field_list {
         ast::FieldList::RecordFieldList(it) => it,

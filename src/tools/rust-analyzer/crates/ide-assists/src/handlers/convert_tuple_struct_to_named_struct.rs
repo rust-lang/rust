@@ -8,7 +8,7 @@ use syntax::{
 
 use crate::{
     AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder,
-    utils::find_struct_definition_from_cursor,
+    utils::get_struct_definition_from_context,
 };
 
 // Assist: convert_tuple_struct_to_named_struct
@@ -54,7 +54,7 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
 ) -> Option<()> {
-    let strukt = find_struct_definition_from_cursor(ctx)?;
+    let strukt = get_struct_definition_from_context(ctx)?;
     let field_list = strukt.as_ref().either(|s| s.field_list(), |v| v.field_list())?;
     let tuple_fields = match field_list {
         ast::FieldList::TupleFieldList(it) => it,

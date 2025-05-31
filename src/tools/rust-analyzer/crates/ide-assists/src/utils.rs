@@ -1150,7 +1150,7 @@ pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bo
 }
 
 /// Gets the struct definition from a context
-pub(crate) fn find_struct_definition_from_cursor(
+pub(crate) fn get_struct_definition_from_context(
     ctx: &AssistContext<'_>,
 ) -> Option<Either<ast::Struct, ast::Variant>> {
     ctx.find_node_at_offset::<ast::Name>()
