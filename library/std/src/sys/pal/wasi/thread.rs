@@ -2,7 +2,7 @@
 
 use crate::ffi::CStr;
 use crate::num::NonZero;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{io, mem};
 
 cfg_if::cfg_if! {
@@ -168,6 +168,14 @@ impl Thread {
                     _ => panic!("thread::sleep(): unexpected result of poll_oneoff"),
                 }
             }
+        }
+    }
+
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
         }
     }
 

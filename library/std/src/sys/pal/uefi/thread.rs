@@ -3,7 +3,7 @@ use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
 use crate::ptr::NonNull;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 
 pub struct Thread(!);
 
@@ -36,6 +36,14 @@ impl Thread {
             let ms = crate::cmp::min(dur_ms, usize::MAX as u128);
             let _ = unsafe { ((*boot_services.as_ptr()).stall)(ms as usize) };
             dur_ms -= ms;
+        }
+    }
+
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
         }
     }
 

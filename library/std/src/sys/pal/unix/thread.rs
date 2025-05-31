@@ -6,7 +6,7 @@ use crate::sys::weak::dlsym;
 #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto",))]
 use crate::sys::weak::weak;
 use crate::sys::{os, stack_overflow};
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{cmp, io, ptr};
 #[cfg(not(any(
     target_os = "l4re",
@@ -293,6 +293,63 @@ impl Thread {
             }
 
             micros -= st as u128;
+        }
+    }
+
+    // Any unix that has clock_nanosleep
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "dragonfly",
+        target_os = "hurd",
+        target_os = "fuchsia",
+        target_os = "vxworks",
+    ))]
+    pub fn sleep_until(deadline: Instant) {
+        let mut ts = deadline
+            .into_inner()
+            .into_timespec()
+            .to_timespec()
+            .expect("Timespec is narrower then libc::timespec thus conversion can't fail");
+        let ts_ptr = &mut ts as *mut _;
+
+        // If we're awoken with a signal and the return value is -1
+        // clock_nanosleep needs to be called again.
+        unsafe {
+            while libc::clock_nanosleep(libc::CLOCK_MONOTONIC, libc::TIMER_ABSTIME, ts_ptr, ts_ptr)
+                == -1
+            {
+                assert_eq!(
+                    os::errno(),
+                    libc::EINTR,
+                    "clock nanosleep should only return an error if interrupted"
+                );
+            }
+        }
+    }
+
+    // Any unix that does not have clock_nanosleep
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "dragonfly",
+        target_os = "hurd",
+        target_os = "fuchsia",
+        target_os = "vxworks",
+    )))]
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
         }
     }
 

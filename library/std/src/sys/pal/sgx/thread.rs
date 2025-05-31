@@ -5,7 +5,7 @@ use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 
 pub struct Thread(task_queue::JoinHandle);
 
@@ -130,6 +130,14 @@ impl Thread {
 
     pub fn sleep(dur: Duration) {
         usercalls::wait_timeout(0, dur, || true);
+    }
+
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
+        }
     }
 
     pub fn join(self) {
