@@ -925,7 +925,16 @@ trait UnusedDelimLint {
                     return;
                 }
                 for arg in args_to_check {
-                    self.check_unused_delims_expr(cx, arg, ctx, false, None, None, false);
+                    let sm = cx.sess().source_map();
+                    let left_pos = if let Ok(snip) = sm.span_to_prev_source(arg.span)
+                        && !snip.ends_with(|c: char| c.is_ascii_punctuation())
+                    {
+                        Some(arg.span.lo())
+                    } else {
+                        None
+                    };
+
+                    self.check_unused_delims_expr(cx, arg, ctx, false, left_pos, None, false);
                 }
                 return;
             }
