@@ -35,7 +35,7 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
 
     fn rust_type(&self) -> String {
         let rust_prefix = self.0.kind.rust_prefix();
-        let c_prefix = self.0.kind.rust_prefix();
+        let c_prefix = self.0.kind.c_prefix();
         if self.0.ptr_constant {
             self.c_type()
         } else if let (Some(bit_len), simd_len, vec_len) =
