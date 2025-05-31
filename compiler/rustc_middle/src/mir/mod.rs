@@ -1575,7 +1575,14 @@ impl Location {
         Location { block: self.block, statement_index: self.statement_index + 1 }
     }
 
-    /// Returns `true` if `other` is earlier in the control flow graph than `self`.
+    /// Returns the location immediately before this one within the enclosing block. Panics if this
+    /// is the first location in the block.
+    #[inline]
+    pub fn predecessor_within_block(&self) -> Location {
+        Location { block: self.block, statement_index: self.statement_index - 1 }
+    }
+
+    /// Returns `true` if `self` is earlier in the control flow graph than `other`.
     pub fn is_predecessor_of<'tcx>(&self, other: Location, body: &Body<'tcx>) -> bool {
         // If we are in the same block as the other location and are an earlier statement
         // then we are a predecessor of `other`.

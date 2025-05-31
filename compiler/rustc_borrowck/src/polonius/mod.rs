@@ -43,8 +43,11 @@
 //! 4) transfer this back to the main borrowck procedure: it handles computing errors and
 //!    diagnostics, debugging and MIR dumping concerns.
 
+#![expect(dead_code, unused_imports)] // FIXME: Most things here are currently not used.
+
 mod constraints;
-mod dump;
+#[deny(dead_code, unused_imports)]
+pub(crate) mod horatio;
 pub(crate) mod legacy;
 mod liveness_constraints;
 mod loan_liveness;
@@ -53,14 +56,13 @@ mod typeck_constraints;
 use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_index::bit_set::SparseBitMatrix;
+use rustc_index::bit_set::{DenseBitSet, SparseBitMatrix};
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::points::PointIndex;
 
 pub(crate) use self::constraints::*;
-pub(crate) use self::dump::dump_polonius_mir;
 use self::liveness_constraints::create_liveness_constraints;
 use self::loan_liveness::compute_loan_liveness;
 use self::typeck_constraints::convert_typeck_constraints;
@@ -71,17 +73,12 @@ pub(crate) type LiveLoans = SparseBitMatrix<PointIndex, BorrowIndex>;
 
 /// This struct holds the liveness data created during MIR typeck, and which will be used later in
 /// the process, to compute the polonius localized constraints.
-#[derive(Default)]
 pub(crate) struct PoloniusLivenessContext {
-    /// The expected edge direction per live region: the kind of directed edge we'll create as
-    /// liveness constraints depends on the variance of types with respect to each contained region.
-    live_region_variances: BTreeMap<RegionVid, ConstraintDirection>,
-
     /// The regions that outlive free regions are used to distinguish relevant live locals from
     /// boring locals. A boring local is one whose type contains only such regions. Polonius
     /// currently has more boring locals than NLLs so we record the latter to use in errors and
     /// diagnostics, to focus on the locals we consider relevant and match NLL diagnostics.
-    pub(crate) boring_nll_locals: FxHashSet<Local>,
+    pub(crate) boring_nll_locals: DenseBitSet<Local>,
 }
 
 /// This struct holds the data needed to create the Polonius localized constraints. Its data is
@@ -98,17 +95,14 @@ pub(crate) struct PoloniusContext {
 /// This struct holds the data needed by the borrowck error computation and diagnostics. Its data is
 /// computed from the [PoloniusContext] when computing NLL regions.
 pub(crate) struct PoloniusDiagnosticsContext {
-    /// The localized outlives constraints that were computed in the main analysis.
-    localized_outlives_constraints: LocalizedOutlivesConstraintSet,
-
     /// The liveness data computed during MIR typeck: [PoloniusLivenessContext::boring_nll_locals].
-    pub(crate) boring_nll_locals: FxHashSet<Local>,
+    pub(crate) boring_nll_locals: DenseBitSet<Local>,
 }
 
 /// The direction a constraint can flow into. Used to create liveness constraints according to
 /// variance.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum ConstraintDirection {
+pub(crate) enum ConstraintDirection {
     /// For covariant cases, we add a forward edge `O at P1 -> O at P2`.
     Forward,
 
@@ -150,6 +144,7 @@ impl PoloniusContext {
     /// liveness, to be used by the loan scope and active loans computations.
     ///
     /// The constraint data will be used to compute errors and diagnostics.
+    #[expect(unused_variables)]
     pub(crate) fn compute_loan_liveness<'tcx>(
         self,
         tcx: TyCtxt<'tcx>,
@@ -157,9 +152,9 @@ impl PoloniusContext {
         body: &Body<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
     ) -> PoloniusDiagnosticsContext {
-        let PoloniusLivenessContext { live_region_variances, boring_nll_locals } =
-            self.liveness_context;
+        let PoloniusLivenessContext { boring_nll_locals } = self.liveness_context;
 
+        /*  Deactivates old Polonius
         let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
         convert_typeck_constraints(
             tcx,
@@ -190,7 +185,8 @@ impl PoloniusContext {
             &localized_outlives_constraints,
         );
         regioncx.record_live_loans(live_loans);
+        */
 
-        PoloniusDiagnosticsContext { localized_outlives_constraints, boring_nll_locals }
+        PoloniusDiagnosticsContext { boring_nll_locals }
     }
 }

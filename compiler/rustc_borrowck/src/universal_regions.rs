@@ -17,6 +17,7 @@
 
 use std::cell::Cell;
 use std::iter;
+use std::ops::Range;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Diag;
@@ -307,6 +308,13 @@ impl<'tcx> UniversalRegions<'tcx> {
         );
 
         region_mapping
+    }
+
+    ///Returns a range of all universal regions.
+    ///
+    ///In some cases we benefit from the fact that all universal regions lie in a contiguous range.
+    pub(crate) fn universal_regions_range(&self) -> Range<RegionVid> {
+        FIRST_GLOBAL_INDEX.into()..self.num_universals.into()
     }
 
     /// Returns `true` if `r` is a member of this set of universal regions.

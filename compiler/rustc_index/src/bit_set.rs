@@ -1595,7 +1595,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         Self { num_columns, rows: IndexVec::new() }
     }
 
-    fn ensure_row(&mut self, row: R) -> &mut DenseBitSet<C> {
+    pub fn ensure_row(&mut self, row: R) -> &mut DenseBitSet<C> {
         // Instantiate any missing rows up to and including row `row` with an empty `DenseBitSet`.
         // Then replace row `row` with a full `DenseBitSet` if necessary.
         self.rows.get_or_insert_with(row, || DenseBitSet::new_empty(self.num_columns))

@@ -223,6 +223,9 @@ pub struct RegionInferenceContext<'tcx> {
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
+
+    /// FIXME: Should these really go here?
+    pub(crate) location_map: Rc<DenseLocationMap>,
 }
 
 /// Each time that `apply_member_constraint` is successful, it appends
@@ -484,8 +487,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             sccs_info(infcx, &constraint_sccs);
         }
 
-        let mut scc_values =
-            RegionValues::new(location_map, universal_regions.len(), placeholder_indices);
+        let mut scc_values = RegionValues::new(
+            Rc::clone(&location_map),
+            universal_regions.len(),
+            placeholder_indices,
+        );
 
         for region in liveness_constraints.regions() {
             let scc = constraint_sccs.scc(region);
@@ -509,6 +515,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             scc_values,
             type_tests,
             universal_region_relations,
+            location_map,
         };
 
         result.init_free_and_bound_regions();
@@ -599,6 +606,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Returns an iterator over all the region indices.
     pub(crate) fn regions(&self) -> impl Iterator<Item = RegionVid> + 'tcx {
         self.definitions.indices()
+    }
+
+    /// Returns the total number of regions.
+    #[inline]
+    pub fn num_regions(&self) -> usize {
+        self.definitions.len()
     }
 
     /// Given a universal region in scope on the MIR, returns the
@@ -2255,6 +2268,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// When using `-Zpolonius=next`, records the given live loans for the loan scopes and active
     /// loans dataflow computations.
+    #[expect(dead_code)] // FIXME: Maybe remove this function?
     pub(crate) fn record_live_loans(&mut self, live_loans: LiveLoans) {
         self.liveness_constraints.record_live_loans(live_loans);
     }
