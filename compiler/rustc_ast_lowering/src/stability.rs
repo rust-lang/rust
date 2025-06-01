@@ -20,10 +20,10 @@ pub(crate) fn extern_abi_enabled(
     features: &rustc_feature::Features,
     span: Span,
     abi: ExternAbi,
-) -> Result<(), UnstableAbi> {
+) -> Result<ExternAbi, UnstableAbi> {
     extern_abi_stability(abi).or_else(|unstable @ UnstableAbi { feature, .. }| {
         if features.enabled(feature) || span.allows_unstable(feature) {
-            Ok(())
+            Ok(abi)
         } else {
             Err(unstable)
         }
@@ -81,7 +81,7 @@ impl fmt::Display for UnstableAbi {
     }
 }
 
-pub fn extern_abi_stability(abi: ExternAbi) -> Result<(), UnstableAbi> {
+pub fn extern_abi_stability(abi: ExternAbi) -> Result<ExternAbi, UnstableAbi> {
     match abi {
         // stable ABIs
         ExternAbi::Rust
@@ -94,7 +94,7 @@ pub fn extern_abi_stability(abi: ExternAbi) -> Result<(), UnstableAbi> {
         | ExternAbi::Win64 { .. }
         | ExternAbi::SysV64 { .. }
         | ExternAbi::System { .. }
-        | ExternAbi::EfiApi => Ok(()),
+        | ExternAbi::EfiApi => Ok(abi),
         ExternAbi::Unadjusted => {
             Err(UnstableAbi { abi, feature: sym::abi_unadjusted, explain: GateReason::ImplDetail })
         }

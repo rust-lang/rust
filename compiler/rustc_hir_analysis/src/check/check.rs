@@ -2,6 +2,7 @@ use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
 use rustc_abi::FieldIdx;
+use rustc_ast_lowering::stability::extern_abi_stability;
 use rustc_attr_data_structures::ReprAttr::ReprPacked;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::MultiSpan;
@@ -35,25 +36,33 @@ use {rustc_attr_data_structures as attrs, rustc_hir as hir};
 use super::compare_impl_item::check_type_bounds;
 use super::*;
 
-pub fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: ExternAbi) {
-    if !tcx.sess.target.is_abi_supported(abi) {
-        struct_span_code_err!(
-            tcx.dcx(),
-            span,
-            E0570,
-            "`{abi}` is not a supported ABI for the current target",
-        )
-        .emit();
+/// check if a stable ABI passes e.g. target support
+///
+/// we are gating unstable target-unsupported ABIs in rustc_ast_lowering which is more foolproof.
+/// but until we finish the FCW associated with check_abi_fn_ptr we can't simply consolidate them.
+pub fn gate_stable_abi(tcx: TyCtxt<'_>, span: Span, abi: ExternAbi) {
+    if let Ok(abi) = extern_abi_stability(abi) {
+        if !tcx.sess.target.is_abi_supported(abi) {
+            struct_span_code_err!(
+                tcx.dcx(),
+                span,
+                E0570,
+                "`{abi}` is not a supported ABI for the current target",
+            )
+            .emit();
+        }
     }
 }
 
-pub fn check_abi_fn_ptr(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi) {
-    if !tcx.sess.target.is_abi_supported(abi) {
-        tcx.node_span_lint(UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS, hir_id, span, |lint| {
-            lint.primary_message(format!(
-                "the calling convention {abi} is not supported on this target"
-            ));
-        });
+pub fn gate_stable_fn_ptr_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi) {
+    if let Ok(abi) = extern_abi_stability(abi) {
+        if !tcx.sess.target.is_abi_supported(abi) {
+            tcx.node_span_lint(UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS, hir_id, span, |lint| {
+                lint.primary_message(format!(
+                    "the calling convention {abi} is not supported on this target"
+                ));
+            });
+        }
     }
 }
 
@@ -779,7 +788,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             let hir::ItemKind::ForeignMod { abi, items } = it.kind else {
                 return;
             };
-            check_abi(tcx, it.span, abi);
+            gate_stable_abi(tcx, it.span, abi);
 
             for item in items {
                 let def_id = item.id.owner_id.def_id;
