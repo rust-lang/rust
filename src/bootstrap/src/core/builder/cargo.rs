@@ -1004,7 +1004,12 @@ impl Builder<'_> {
         // efficient initial-exec TLS model. This doesn't work with `dlopen`,
         // so we can't use it by default in general, but we can use it for tools
         // and our own internal libraries.
-        if !mode.must_support_dlopen() && !target.triple.starts_with("powerpc-") {
+        //
+        // Cygwin only supports emutls.
+        if !mode.must_support_dlopen()
+            && !target.triple.starts_with("powerpc-")
+            && !target.triple.contains("cygwin")
+        {
             cargo.env("RUSTC_TLS_MODEL_INITIAL_EXEC", "1");
         }
 

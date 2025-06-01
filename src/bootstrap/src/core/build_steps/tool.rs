@@ -1197,9 +1197,9 @@ fn run_tool_build_step(
             artifact_kind: ToolArtifactKind::Binary,
         });
 
-    // FIXME: This should just be an if-let-chain, but those are unstable.
-    if let Some(add_bins_to_sysroot) =
-        add_bins_to_sysroot.filter(|bins| !bins.is_empty() && target_compiler.stage > 0)
+    if let Some(add_bins_to_sysroot) = add_bins_to_sysroot
+        && !add_bins_to_sysroot.is_empty()
+        && target_compiler.stage > 0
     {
         let bindir = builder.sysroot(target_compiler).join("bin");
         t!(fs::create_dir_all(&bindir));

@@ -1,3 +1,4 @@
+use std::cell::OnceCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
 
@@ -197,8 +198,8 @@ pub struct RegionInferenceContext<'tcx> {
 
     /// Reverse of the SCC constraint graph --  i.e., an edge `A -> B` exists if
     /// `B: A`. This is used to compute the universal regions that are required
-    /// to outlive a given SCC. Computed lazily.
-    rev_scc_graph: Option<ReverseSccGraph>,
+    /// to outlive a given SCC.
+    rev_scc_graph: OnceCell<ReverseSccGraph>,
 
     /// The "R0 member of [R1..Rn]" constraints, indexed by SCC.
     member_constraints: Rc<MemberConstraintSet<'tcx, ConstraintSccIndex>>,
@@ -502,7 +503,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             constraint_graph,
             constraint_sccs,
             scc_annotations,
-            rev_scc_graph: None,
+            rev_scc_graph: OnceCell::new(),
             member_constraints,
             member_constraints_applied: Vec::new(),
             universe_causes,
@@ -809,9 +810,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         member_constraint_index: NllMemberConstraintIndex,
         choice_regions: &[ty::RegionVid],
     ) {
-        // Lazily compute the reverse graph, we'll need it later.
-        self.compute_reverse_scc_graph();
-
         // Create a mutable vector of the options. We'll try to winnow
         // them down.
         let mut choice_regions: Vec<ty::RegionVid> = choice_regions.to_vec();
@@ -849,7 +847,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // R0`). Therefore, we need only keep an option `O` if `UB: O`
         // for all UB.
         let universal_region_relations = &self.universal_region_relations;
-        for ub in self.rev_scc_graph.as_ref().unwrap().upper_bounds(scc) {
+        for ub in self.reverse_scc_graph().upper_bounds(scc) {
             debug!(?ub);
             choice_regions.retain(|&o_r| universal_region_relations.outlives(ub, o_r));
         }
