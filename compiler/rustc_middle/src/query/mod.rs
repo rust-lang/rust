@@ -51,6 +51,7 @@ use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
+use crate::middle::distributed_slice::DistributedSliceAddition;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
@@ -695,6 +696,11 @@ rustc_queries! {
     query wasm_import_module_map(_: CrateNum) -> &'tcx DefIdMap<String> {
         arena_cache
         desc { "getting wasm import module map" }
+    }
+
+    query distributed_slice_elements(_: ()) -> &'tcx DefIdMap<Vec<DistributedSliceAddition>> {
+        arena_cache
+        desc { "collects all registered items for global registry declarations in the current crate" }
     }
 
     /// Returns the explicitly user-written *predicates and bounds* of the trait given by `DefId`.

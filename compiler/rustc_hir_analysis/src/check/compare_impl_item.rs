@@ -2075,7 +2075,7 @@ fn compare_const_predicate_entailment<'tcx>(
         debug!(?impl_ty, ?trait_ty);
 
         // Locate the Span containing just the type of the offending impl
-        let (ty, _) = tcx.hir_expect_impl_item(impl_ct_def_id).expect_const();
+        let (ty, _, _) = tcx.hir_expect_impl_item(impl_ct_def_id).expect_const();
         cause.span = ty.span;
 
         let mut diag = struct_span_code_err!(
@@ -2088,7 +2088,7 @@ fn compare_const_predicate_entailment<'tcx>(
 
         let trait_c_span = trait_ct.def_id.as_local().map(|trait_ct_def_id| {
             // Add a label to the Span containing just the type of the const
-            let (ty, _) = tcx.hir_expect_trait_item(trait_ct_def_id).expect_const();
+            let (ty, _, _) = tcx.hir_expect_trait_item(trait_ct_def_id).expect_const();
             ty.span
         });
 

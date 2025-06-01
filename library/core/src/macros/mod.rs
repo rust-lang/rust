@@ -1804,4 +1804,34 @@ pub(crate) mod builtin {
     pub macro deref($pat:pat) {
         builtin # deref($pat)
     }
+
+    /// Create a global registry.
+    ///
+    // FIXME(gr): docs
+    #[unstable(feature = "crate_local_distributed_slice", issue = "125119")]
+    #[rustc_builtin_macro]
+    #[cfg(not(bootstrap))]
+    pub macro distributed_slice($item:item) {
+        /* compiler built-in */
+    }
+
+    /// Create a global registry.
+    ///
+    // FIXME(gr): docs
+    #[unstable(feature = "crate_local_distributed_slice", issue = "125119")]
+    #[rustc_builtin_macro]
+    #[cfg(not(bootstrap))]
+    pub macro distributed_slice_element($path:path, $expr:expr) {
+        /* compiler built-in */
+    }
+
+    /// Create a global registry.
+    ///
+    // FIXME(gr): docs
+    #[unstable(feature = "crate_local_distributed_slice", issue = "125119")]
+    #[rustc_builtin_macro]
+    #[cfg(not(bootstrap))]
+    pub macro distributed_slice_elements($path:path, $expr:expr) {
+        /* compiler built-in */
+    }
 }

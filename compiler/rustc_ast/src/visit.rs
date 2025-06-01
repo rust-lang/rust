@@ -451,10 +451,27 @@ macro_rules! common_visitor_and_walkers {
                         mutability: _,
                         expr,
                         define_opaque,
+                        distributed_slice,
                     }) => {
                         try_visit!(vis.visit_ident(ident));
                         try_visit!(vis.visit_ty(ty));
                         visit_opt!(vis, visit_expr, expr);
+                        match distributed_slice {
+                            DistributedSlice::None => {}
+                            DistributedSlice::Err(..) => {}
+                            DistributedSlice::Declaration(span, id) => {
+                                try_visit!(visit_span(vis, span));
+                                try_visit!(visit_id(vis, id));
+                            }
+                            DistributedSlice::Addition { declaration, id } => {
+                                try_visit!(vis.visit_path(declaration$(${ignore($lt)}, *id)?));
+                                try_visit!(visit_id(vis, id));
+                            }
+                            DistributedSlice::AdditionMany { declaration, id } => {
+                                try_visit!(vis.visit_path(declaration$(${ignore($lt)}, *id)?));
+                                try_visit!(visit_id(vis, id));
+                            }
+                        }
                         walk_define_opaques(vis, define_opaque)
                     }
                     ItemKind::Const(item) => {
@@ -614,12 +631,31 @@ macro_rules! common_visitor_and_walkers {
         }
 
         fn walk_const_item<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, item: &$($lt)? $($mut)? ConstItem) $(-> <V as Visitor<$lt>>::Result)? {
-            let ConstItem { defaultness, ident, generics, ty, expr, define_opaque } = item;
+            let ConstItem { defaultness, ident, generics, ty, expr, define_opaque, distributed_slice } = item;
             try_visit!(visit_defaultness(vis, defaultness));
             try_visit!(vis.visit_ident(ident));
             try_visit!(vis.visit_generics(generics));
             try_visit!(vis.visit_ty(ty));
             visit_opt!(vis, visit_expr, expr);
+
+            match distributed_slice {
+                DistributedSlice::None => {}
+                DistributedSlice::Err(..) => {}
+                DistributedSlice::Declaration(span, id) => {
+                    try_visit!(visit_span(vis, span));
+                    try_visit!(visit_id(vis, id));
+                }
+                DistributedSlice::Addition { declaration, id } => {
+                    try_visit!(vis.visit_path(declaration$(${ignore($lt)}, *id)?));
+                    try_visit!(visit_id(vis, id));
+                }
+                DistributedSlice::AdditionMany { declaration, id } => {
+                    try_visit!(vis.visit_path(declaration$(${ignore($lt)}, *id)?));
+                    try_visit!(visit_id(vis, id));
+                }
+            }
+
+
             walk_define_opaques(vis, define_opaque)
         }
 
@@ -739,6 +775,7 @@ macro_rules! common_visitor_and_walkers {
                         expr,
                         safety: _,
                         define_opaque,
+                        distributed_slice: _,
                     }) => {
                         try_visit!(vis.visit_ident(ident));
                         try_visit!(vis.visit_ty(ty));

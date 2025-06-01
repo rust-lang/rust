@@ -153,7 +153,10 @@ fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
 fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
     match expr.kind {
         // Const is not temporary.
-        ExprKind::ConstBlock(..) | ExprKind::Repeat(..) | ExprKind::Lit(..) => false,
+        ExprKind::ConstBlock(..)
+        | ExprKind::Repeat(..)
+        | ExprKind::Lit(..)
+        | ExprKind::DistributedSliceDeferredArray => false,
 
         // This is literally lvalue.
         ExprKind::Path(..) => false,

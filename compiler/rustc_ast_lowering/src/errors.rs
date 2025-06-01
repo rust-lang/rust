@@ -475,3 +475,18 @@ pub(crate) struct UseConstGenericArg {
     #[suggestion_part(code = "{other_args}")]
     pub call_args: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_distributed_slice_with_initializer)]
+pub(crate) struct DistributedSliceWithInitializer {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_distributed_slice_elements_wrong_expr)]
+#[note]
+pub(crate) struct DistributedSliceElementsWrongExpr {
+    #[primary_span]
+    pub span: Span,
+}

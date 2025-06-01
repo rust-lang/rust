@@ -41,6 +41,7 @@ mod concat_idents;
 mod define_opaque;
 mod derive;
 mod deriving;
+mod distributed_slice;
 mod edition_panic;
 mod env;
 mod errors;
@@ -87,6 +88,8 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         concat_idents: concat_idents::expand_concat_idents,
         const_format_args: format::expand_format_args,
         core_panic: edition_panic::expand_panic,
+        distributed_slice_element: distributed_slice::distributed_slice_element,
+        distributed_slice_elements: distributed_slice::distributed_slice_elements,
         env: env::expand_env,
         file: source_util::expand_file,
         format_args: format::expand_format_args,
@@ -121,6 +124,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         global_allocator: global_allocator::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,
+        distributed_slice: distributed_slice::distributed_slice,
     }
 
     register_derive! {

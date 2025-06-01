@@ -30,6 +30,7 @@ pub mod lib_features {
         }
     }
 }
+pub mod distributed_slice;
 pub mod privacy;
 pub mod region;
 pub mod resolve_bound_vars;

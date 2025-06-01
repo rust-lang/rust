@@ -2329,6 +2329,7 @@ impl Expr<'_> {
             | ExprKind::Type(..)
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Use(..)
+            | ExprKind::DistributedSliceDeferredArray
             | ExprKind::Err(_) => ExprPrecedence::Unambiguous,
 
             ExprKind::DropTemps(expr, ..) => expr.precedence(),
@@ -2402,6 +2403,7 @@ impl Expr<'_> {
             | ExprKind::Yield(..)
             | ExprKind::Cast(..)
             | ExprKind::DropTemps(..)
+            | ExprKind::DistributedSliceDeferredArray
             | ExprKind::Err(_) => false,
         }
     }
@@ -2449,9 +2451,11 @@ impl Expr<'_> {
 
     pub fn can_have_side_effects(&self) -> bool {
         match self.peel_drop_temps().kind {
-            ExprKind::Path(_) | ExprKind::Lit(_) | ExprKind::OffsetOf(..) | ExprKind::Use(..) => {
-                false
-            }
+            ExprKind::Path(_)
+            | ExprKind::Lit(_)
+            | ExprKind::OffsetOf(..)
+            | ExprKind::Use(..)
+            | ExprKind::DistributedSliceDeferredArray => false,
             ExprKind::Type(base, _)
             | ExprKind::Unary(_, base)
             | ExprKind::Field(base, _)
@@ -2818,6 +2822,10 @@ pub enum ExprKind<'hir> {
     /// e.g. `unsafe<'a> &'a i32` <=> `&i32`.
     UnsafeBinderCast(UnsafeBinderCastKind, &'hir Expr<'hir>, Option<&'hir Ty<'hir>>),
 
+    /// Built from elements throughout the crate, when first accessed in const-eval
+    /// Mostly acts as a literal whose value we defer to create
+    DistributedSliceDeferredArray,
+
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
     Err(rustc_span::ErrorGuaranteed),
 }
@@ -3096,8 +3104,8 @@ impl<'hir> TraitItem<'hir> {
     }
 
     expect_methods_self_kind! {
-        expect_const, (&'hir Ty<'hir>, Option<BodyId>),
-            TraitItemKind::Const(ty, body), (ty, *body);
+        expect_const, (&'hir Ty<'hir>, Option<BodyId>, InvalidDistributedSliceDeclaration),
+            TraitItemKind::Const(ty, body, idsd), (ty, *body, *idsd);
 
         expect_fn, (&FnSig<'hir>, &TraitFn<'hir>),
             TraitItemKind::Fn(ty, trfn), (ty, trfn);
@@ -3121,7 +3129,7 @@ pub enum TraitFn<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TraitItemKind<'hir> {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
-    Const(&'hir Ty<'hir>, Option<BodyId>),
+    Const(&'hir Ty<'hir>, Option<BodyId>, InvalidDistributedSliceDeclaration),
     /// An associated function with an optional body.
     Fn(FnSig<'hir>, TraitFn<'hir>),
     /// An associated type with (possibly empty) bounds and optional concrete
@@ -3171,7 +3179,7 @@ impl<'hir> ImplItem<'hir> {
     }
 
     expect_methods_self_kind! {
-        expect_const, (&'hir Ty<'hir>, BodyId), ImplItemKind::Const(ty, body), (ty, *body);
+        expect_const, (&'hir Ty<'hir>, BodyId, InvalidDistributedSliceDeclaration), ImplItemKind::Const(ty, body, idsd), (ty, *body, *idsd);
         expect_fn,    (&FnSig<'hir>, BodyId),   ImplItemKind::Fn(ty, body),    (ty, *body);
         expect_type,  &'hir Ty<'hir>,           ImplItemKind::Type(ty),        ty;
     }
@@ -3182,7 +3190,7 @@ impl<'hir> ImplItem<'hir> {
 pub enum ImplItemKind<'hir> {
     /// An associated constant of the given type, set to the constant result
     /// of the expression.
-    Const(&'hir Ty<'hir>, BodyId),
+    Const(&'hir Ty<'hir>, BodyId, InvalidDistributedSliceDeclaration),
     /// An associated function implementation with the given signature and body.
     Fn(FnSig<'hir>, BodyId),
     /// An associated type.
@@ -4106,11 +4114,11 @@ impl<'hir> Item<'hir> {
 
         expect_use, (&'hir UsePath<'hir>, UseKind), ItemKind::Use(p, uk), (p, *uk);
 
-        expect_static, (Mutability, Ident, &'hir Ty<'hir>, BodyId),
-            ItemKind::Static(mutbl, ident, ty, body), (*mutbl, *ident, ty, *body);
+        expect_static, (Mutability, Ident, &'hir Ty<'hir>, BodyId, DistributedSlice),
+            ItemKind::Static(mutbl, ident, ty, body, distributed_slice), (*mutbl, *ident, *ty, *body, *distributed_slice);
 
-        expect_const, (Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId),
-            ItemKind::Const(ident, generics, ty, body), (*ident, generics, ty, *body);
+        expect_const, (Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId, DistributedSlice),
+            ItemKind::Const(ident, generics, ty, body, distributed_slice), (*ident, generics, *ty, *body, *distributed_slice);
 
         expect_fn, (Ident, &FnSig<'hir>, &'hir Generics<'hir>, BodyId),
             ItemKind::Fn { ident, sig, generics, body, .. }, (*ident, sig, generics, *body);
@@ -4264,6 +4272,22 @@ impl FnHeader {
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub enum DistributedSliceAdditionManyKind {
+    ArrayLit { length: usize },
+    Path { res: DefId },
+    Err(ErrorGuaranteed),
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic, Default)]
+pub enum DistributedSlice {
+    #[default]
+    None,
+    Declaration(Span),
+    Addition(LocalDefId),
+    AdditionMany(LocalDefId, DistributedSliceAdditionManyKind),
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum ItemKind<'hir> {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
     ///
@@ -4278,9 +4302,9 @@ pub enum ItemKind<'hir> {
     Use(&'hir UsePath<'hir>, UseKind),
 
     /// A `static` item.
-    Static(Mutability, Ident, &'hir Ty<'hir>, BodyId),
+    Static(Mutability, Ident, &'hir Ty<'hir>, BodyId, DistributedSlice),
     /// A `const` item.
-    Const(Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId),
+    Const(Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId, DistributedSlice),
     /// A function declaration.
     Fn {
         sig: FnSig<'hir>,
@@ -4375,7 +4399,7 @@ impl ItemKind<'_> {
         Some(match self {
             ItemKind::Fn { generics, .. }
             | ItemKind::TyAlias(_, generics, _)
-            | ItemKind::Const(_, generics, _, _)
+            | ItemKind::Const(_, generics, _, _, _)
             | ItemKind::Enum(_, generics, _)
             | ItemKind::Struct(_, generics, _)
             | ItemKind::Union(_, generics, _)
@@ -4495,6 +4519,13 @@ impl ForeignItem<'_> {
     }
 }
 
+/// Some info propagated to limit diagnostics after a distributed slice has already been recognized.
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub enum InvalidDistributedSliceDeclaration {
+    Yes(ErrorGuaranteed),
+    No,
+}
+
 /// An item within an `extern` block.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum ForeignItemKind<'hir> {
@@ -4506,7 +4537,7 @@ pub enum ForeignItemKind<'hir> {
     /// arbitrary patterns for parameters.
     Fn(FnSig<'hir>, &'hir [Option<Ident>], &'hir Generics<'hir>),
     /// A foreign static item (`static ext: u8`).
-    Static(&'hir Ty<'hir>, Mutability, Safety),
+    Static(&'hir Ty<'hir>, Mutability, Safety, InvalidDistributedSliceDeclaration),
     /// A foreign type.
     Type,
 }
@@ -4577,18 +4608,19 @@ impl<'hir> OwnerNode<'hir> {
         match self {
             OwnerNode::Item(Item {
                 kind:
-                    ItemKind::Static(_, _, _, body)
-                    | ItemKind::Const(_, _, _, body)
+                    ItemKind::Static(_, _, _, body, _)
+                    | ItemKind::Const(_, _, _, body, _)
                     | ItemKind::Fn { body, .. },
                 ..
             })
             | OwnerNode::TraitItem(TraitItem {
                 kind:
-                    TraitItemKind::Fn(_, TraitFn::Provided(body)) | TraitItemKind::Const(_, Some(body)),
+                    TraitItemKind::Fn(_, TraitFn::Provided(body))
+                    | TraitItemKind::Const(_, Some(body), _),
                 ..
             })
             | OwnerNode::ImplItem(ImplItem {
-                kind: ImplItemKind::Fn(_, body) | ImplItemKind::Const(_, body),
+                kind: ImplItemKind::Fn(_, body) | ImplItemKind::Const(_, body, _),
                 ..
             }) => Some(*body),
             _ => None,
@@ -4803,18 +4835,18 @@ impl<'hir> Node<'hir> {
         match self {
             Node::Item(it) => match it.kind {
                 ItemKind::TyAlias(_, _, ty)
-                | ItemKind::Static(_, _, ty, _)
-                | ItemKind::Const(_, _, ty, _) => Some(ty),
+                | ItemKind::Static(_, _, ty, _, _)
+                | ItemKind::Const(_, _, ty, _, _) => Some(ty),
                 ItemKind::Impl(impl_item) => Some(&impl_item.self_ty),
                 _ => None,
             },
             Node::TraitItem(it) => match it.kind {
-                TraitItemKind::Const(ty, _) => Some(ty),
+                TraitItemKind::Const(ty, _, _) => Some(ty),
                 TraitItemKind::Type(_, ty) => ty,
                 _ => None,
             },
             Node::ImplItem(it) => match it.kind {
-                ImplItemKind::Const(ty, _) => Some(ty),
+                ImplItemKind::Const(ty, _, _) => Some(ty),
                 ImplItemKind::Type(ty) => Some(ty),
                 _ => None,
             },
@@ -4835,20 +4867,21 @@ impl<'hir> Node<'hir> {
             Node::Item(Item {
                 owner_id,
                 kind:
-                    ItemKind::Const(_, _, _, body)
-                    | ItemKind::Static(.., body)
+                    ItemKind::Const(_, _, _, body, _)
+                    | ItemKind::Static(.., body, _)
                     | ItemKind::Fn { body, .. },
                 ..
             })
             | Node::TraitItem(TraitItem {
                 owner_id,
                 kind:
-                    TraitItemKind::Const(_, Some(body)) | TraitItemKind::Fn(_, TraitFn::Provided(body)),
+                    TraitItemKind::Const(_, Some(body), _)
+                    | TraitItemKind::Fn(_, TraitFn::Provided(body)),
                 ..
             })
             | Node::ImplItem(ImplItem {
                 owner_id,
-                kind: ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body),
+                kind: ImplItemKind::Const(_, body, _) | ImplItemKind::Fn(_, body),
                 ..
             }) => Some((owner_id.def_id, *body)),
 

@@ -136,18 +136,18 @@ fn diagnostic_hir_wf_check<'tcx>(
         WellFormedLoc::Ty(_) => match tcx.hir_node(hir_id) {
             hir::Node::ImplItem(item) => match item.kind {
                 hir::ImplItemKind::Type(ty) => vec![ty],
-                hir::ImplItemKind::Const(ty, _) => vec![ty],
+                hir::ImplItemKind::Const(ty, _, _) => vec![ty],
                 ref item => bug!("Unexpected ImplItem {:?}", item),
             },
             hir::Node::TraitItem(item) => match item.kind {
                 hir::TraitItemKind::Type(_, ty) => ty.into_iter().collect(),
-                hir::TraitItemKind::Const(ty, _) => vec![ty],
+                hir::TraitItemKind::Const(ty, _, _) => vec![ty],
                 ref item => bug!("Unexpected TraitItem {:?}", item),
             },
             hir::Node::Item(item) => match item.kind {
                 hir::ItemKind::TyAlias(_, _, ty)
-                | hir::ItemKind::Static(_, _, ty, _)
-                | hir::ItemKind::Const(_, _, ty, _) => vec![ty],
+                | hir::ItemKind::Static(_, _, ty, _, _)
+                | hir::ItemKind::Const(_, _, ty, _, _) => vec![ty],
                 hir::ItemKind::Impl(impl_) => match &impl_.of_trait {
                     Some(t) => t
                         .path
@@ -172,7 +172,8 @@ fn diagnostic_hir_wf_check<'tcx>(
             },
             hir::Node::Field(field) => vec![field.ty],
             hir::Node::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Static(ty, _, _), ..
+                kind: ForeignItemKind::Static(ty, _, _, _),
+                ..
             }) => vec![*ty],
             hir::Node::GenericParam(hir::GenericParam {
                 kind: hir::GenericParamKind::Type { default: Some(ty), .. },

@@ -56,6 +56,11 @@ ast_lowering_coroutine_too_many_parameters =
 ast_lowering_default_field_in_tuple = default fields are not supported in tuple structs
     .label = default fields are only supported on structs
 
+ast_lowering_distributed_slice_elements_wrong_expr =
+    `distributed_slice_elements!()` only accepts a path or array literal
+    .note = arbitrary expressions are not supported
+ast_lowering_distributed_slice_with_initializer =
+    distributed slice elements are added with `distributed_slice_element!(...)`
 ast_lowering_does_not_support_modifiers =
     the `{$class_name}` register class does not support template modifiers
 

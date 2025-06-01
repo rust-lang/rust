@@ -187,6 +187,7 @@ impl CheckInlineAssembly {
             | ExprKind::Become(..)
             | ExprKind::Struct(..)
             | ExprKind::Repeat(..)
+            | ExprKind::DistributedSliceDeferredArray
             | ExprKind::Yield(..) => {
                 self.items.push((ItemKind::NonAsm, span));
             }

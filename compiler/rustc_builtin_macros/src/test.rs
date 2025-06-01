@@ -377,6 +377,8 @@ pub(crate) fn expand_test_or_bench(
                     ],
                         ), // }
                     ),
+                    // FIXME(gr) tests should be GR
+                    distributed_slice: Default::default(),
                 }
                 .into(),
             ),

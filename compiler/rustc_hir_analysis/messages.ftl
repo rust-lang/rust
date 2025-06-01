@@ -148,6 +148,21 @@ hir_analysis_dispatch_from_dyn_repr = structs implementing `DispatchFromDyn` may
 hir_analysis_dispatch_from_dyn_zst = the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment that don't mention type/const generics, and nothing else
     .note = extra field `{$name}` of type `{$ty}` is not allowed
 
+hir_analysis_distributed_slice_non_array =
+    expected this type to be an array
+    .note = a distributed slice must have an array type with an inferred length
+    .suggestion = change the type to an array
+hir_analysis_distributed_slice_non_infer_length =
+    expected this length to be `_`
+    .note = the length of a distributed slice is determined by the added elements throughout the crate
+    .suggestion = "replace the length with `_`"
+
+hir_analysis_distributed_slice_wrong_target =
+    `distributed_slice_element!()` can only add to a distributed slice
+    .label = element added here
+    .wrong_declaration = not a distributed slice
+    .suggestion = add `#[distributed_slice(crate)]`
+
 hir_analysis_drop_impl_negative = negative `Drop` impls are not supported
 
 hir_analysis_drop_impl_on_wrong_item =

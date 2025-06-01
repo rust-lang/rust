@@ -246,6 +246,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 expr: _,
                 safety,
                 define_opaque: _,
+                distributed_slice: _,
             }) => {
                 let safety = match safety {
                     ast::Safety::Unsafe(_) | ast::Safety::Default => hir::Safety::Unsafe,

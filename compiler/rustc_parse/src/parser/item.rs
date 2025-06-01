@@ -260,6 +260,7 @@ impl<'a> Parser<'a> {
                     ty,
                     expr,
                     define_opaque: None,
+                    distributed_slice: Default::default(),
                 }))
             }
         } else if self.check_keyword(exp!(Trait)) || self.check_auto_or_unsafe_trait_item() {
@@ -966,6 +967,7 @@ impl<'a> Parser<'a> {
                             mutability: _,
                             expr,
                             define_opaque,
+                            distributed_slice,
                         }) => {
                             self.dcx().emit_err(errors::AssociatedStaticItemNotAllowed { span });
                             AssocItemKind::Const(Box::new(ConstItem {
@@ -975,6 +977,7 @@ impl<'a> Parser<'a> {
                                 ty,
                                 expr,
                                 define_opaque,
+                                distributed_slice,
                             }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`trait`s or `impl`s"),
@@ -1241,6 +1244,7 @@ impl<'a> Parser<'a> {
                                 expr,
                                 safety: Safety::Default,
                                 define_opaque: None,
+                                distributed_slice: Default::default(),
                             }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
@@ -1398,7 +1402,15 @@ impl<'a> Parser<'a> {
 
         self.expect_semi()?;
 
-        let item = StaticItem { ident, ty, safety, mutability, expr, define_opaque: None };
+        let item = StaticItem {
+            ident,
+            ty,
+            safety,
+            mutability,
+            expr,
+            define_opaque: None,
+            distributed_slice: Default::default(),
+        };
         Ok(ItemKind::Static(Box::new(item)))
     }
 

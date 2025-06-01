@@ -45,11 +45,11 @@ use fn_ctxt::FnCtxt;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{HirId, HirIdMap, Node};
+use rustc_hir::{self as hir, DistributedSlice, HirId, HirIdMap, ItemKind, Node};
 use rustc_hir_analysis::check::check_abi;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
+use rustc_hir_analysis::type_of_distributed_slice;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -172,8 +172,42 @@ fn typeck_with_inspect<'tcx>(
 
         check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params());
     } else {
-        let expected_type = if let Some(infer_ty) = infer_type_if_missing(&fcx, node) {
+        let expected_type = if let Node::Item(item) = node
+            && let ItemKind::Const(.., DistributedSlice::Addition(declaration_def_id, ..)) =
+                item.kind
+        {
+            // we reject generic const items (`#![feature(generic_const_items)]`) in `#[distributed_slice(crate)]`
+            let array_ty = tcx.type_of(declaration_def_id).instantiate_identity();
+
+            let ty = match array_ty.kind() {
+                ty::Array(element_ty, _) => *element_ty,
+                // totally wrong but we'll have already emitted a diagnostic of this
+                _ => array_ty,
+            };
+
+            ty
+        } else if let Node::Item(item) = node
+            && let ItemKind::Const(.., DistributedSlice::AdditionMany(declaration_def_id, ..)) =
+                item.kind
+        {
+            // we reject generic const items (`#![feature(generic_const_items)]`) in `#[distributed_slice(crate)]`
+            let array_ty = tcx.type_of(declaration_def_id).instantiate_identity();
+
+            let element_ty = match array_ty.kind() {
+                ty::Array(element_ty, _) => *element_ty,
+                // totally wrong but we'll have already emitted a diagnostic of this
+                _ => array_ty,
+            };
+
+            Ty::new_array_with_const_len(tcx, element_ty, fcx.next_const_var(item.span))
+        } else if let Some(infer_ty) = infer_type_if_missing(&fcx, node) {
             infer_ty
+        } else if let Node::Item(item) = node
+            && let ItemKind::Const(.., DistributedSlice::Declaration(..))
+            | ItemKind::Static(.., DistributedSlice::Declaration(..)) = item.kind
+            && let Some(ty) = node.ty()
+        {
+            type_of_distributed_slice(tcx, fcx.lowerer(), ty, def_id, false)
         } else if let Some(ty) = node.ty()
             && ty.is_suggestable_infer_ty()
         {
