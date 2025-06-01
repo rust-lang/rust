@@ -16,6 +16,7 @@
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
 #![feature(const_eval_select)]
+#![feature(const_float_round_methods)]
 #![feature(const_trait_impl)]
 #![feature(core_float_math)]
 #![feature(core_intrinsics)]

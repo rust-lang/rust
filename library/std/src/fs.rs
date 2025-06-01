@@ -2915,16 +2915,27 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to `openat`, `fdopendir`, `unlinkat` and `lstat` functions
-/// on Unix (except for REDOX) and the `CreateFileW`, `GetFileInformationByHandleEx`,
-/// `SetFileInformationByHandle`, and `NtCreateFile` functions on Windows. Note that, this
-/// [may change in the future][changes].
+/// These implementation details [may change in the future][changes].
+///
+/// - "Unix-like": By default, this function currently corresponds to
+/// `openat`, `fdopendir`, `unlinkat` and `lstat`
+/// on Unix-family platforms, except where noted otherwise.
+/// - "Windows": This function currently corresponds to `CreateFileW`,
+/// `GetFileInformationByHandleEx`, `SetFileInformationByHandle`, and `NtCreateFile`.
+///
+/// ## Time-of-check to time-of-use (TOCTOU) race conditions
+/// On a few platforms there is no way to remove a directory's contents without following symlinks
+/// unless you perform a check and then operate on paths based on that directory.
+/// This allows concurrently-running code to replace the directory with a symlink after the check,
+/// causing a removal to instead operate on a path based on the symlink. This is a TOCTOU race.
+/// By default, `fs::remove_dir_all` protects against a symlink TOCTOU race on all platforms
+/// except the following. It should not be used in security-sensitive contexts on these platforms:
+/// - Miri: Even when emulating targets where the underlying implementation will protect against
+/// TOCTOU races, Miri will not do so.
+/// - Redox OS: This function does not protect against TOCTOU races, as Redox does not implement
+/// the required platform support to do so.
 ///
 /// [changes]: io#platform-specific-behavior
-///
-/// On REDOX, as well as when running in Miri for any target, this function is not protected against
-/// time-of-check to time-of-use (TOCTOU) race conditions, and should not be used in
-/// security-sensitive code on those platforms. All other platforms are protected.
 ///
 /// # Errors
 ///

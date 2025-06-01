@@ -530,11 +530,13 @@ auto:
   - name: x86_64-msvc-ext2
     env:
       SCRIPT: >
-        python x.py test --stage 2 src/tools/miri --target aarch64-apple-darwin --test-args pass &&
+        python x.py test --stage 2 src/tools/miri --target x86_64-apple-darwin --test-args pass &&
         python x.py test --stage 2 src/tools/miri --target x86_64-pc-windows-gnu --test-args pass &&
         python x.py miri --stage 2 library/core --test-args notest &&
         python x.py miri --stage 2 library/alloc --test-args notest &&
         python x.py miri --stage 2 library/std --test-args notest
+      # The last 3 lines smoke-test `x.py miri`. This doesn't run any actual tests (that would take
+      # too long), but it ensures that the crates build properly when tested with Miri.
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
     <<: *job-windows
 

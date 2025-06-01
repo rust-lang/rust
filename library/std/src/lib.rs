@@ -335,6 +335,7 @@
 #![feature(bstr_internals)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
+#![feature(const_float_round_methods)]
 #![feature(core_intrinsics)]
 #![feature(core_io_borrowed_buf)]
 #![feature(duration_constants)]

@@ -2713,6 +2713,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ));
                     }
 
+                    // Don't try to suggest ref/deref on an `if` expression, because:
+                    // - The `if` could be part of a desugared `if else` statement,
+                    //   which would create impossible suggestions such as `if ... { ... } else &if { ... } else { ... }`.
+                    // - In general the suggestions it creates such as `&if ... { ... } else { ... }` are not very helpful.
+                    // We try to generate a suggestion such as `if ... { &... } else { &... }` instead.
+                    if let hir::ExprKind::If(_c, then, els) = expr.kind {
+                        // The `then` of a `Expr::If` always contains a block, and that block may have a final expression that we can borrow
+                        // If the block does not have a final expression, it will return () and we do not make a suggestion to borrow that.
+                        let ExprKind::Block(then, _) = then.kind else { return None };
+                        let Some(then) = then.expr else { return None };
+                        let (mut suggs, help, app, verbose, mutref) =
+                            self.suggest_deref_or_ref(then, checked_ty, expected)?;
+
+                        // If there is no `else`, the return type of this `if` will be (), so suggesting to change the `then` block is useless
+                        let els_expr = match els?.kind {
+                            ExprKind::Block(block, _) => block.expr?,
+                            _ => els?,
+                        };
+                        let (else_suggs, ..) =
+                            self.suggest_deref_or_ref(els_expr, checked_ty, expected)?;
+                        suggs.extend(else_suggs);
+
+                        return Some((suggs, help, app, verbose, mutref));
+                    }
+
                     if let Some((sugg, msg)) = self.can_use_as_ref(expr) {
                         return Some((
                             sugg,
