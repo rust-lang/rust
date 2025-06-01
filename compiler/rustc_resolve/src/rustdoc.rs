@@ -12,9 +12,13 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
+use rustc_span::source_map::SourceMap;
 use rustc_span::{DUMMY_SP, InnerSpan, Span, Symbol, sym};
 use thin_vec::ThinVec;
 use tracing::{debug, trace};
+
+#[cfg(test)]
+mod tests;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum DocFragmentKind {
@@ -532,9 +536,19 @@ pub fn source_span_for_markdown_range(
     md_range: &Range<usize>,
     fragments: &[DocFragment],
 ) -> Option<Span> {
+    let map = tcx.sess.source_map();
+    source_span_for_markdown_range_inner(map, markdown, md_range, fragments)
+}
+
+// inner function used for unit testing
+pub fn source_span_for_markdown_range_inner(
+    map: &SourceMap,
+    markdown: &str,
+    md_range: &Range<usize>,
+    fragments: &[DocFragment],
+) -> Option<Span> {
     use rustc_span::BytePos;
 
-    let map = tcx.sess.source_map();
     if let &[fragment] = &fragments
         && fragment.kind == DocFragmentKind::RawDoc
         && let Ok(snippet) = map.span_to_snippet(fragment.span)
@@ -570,7 +584,13 @@ pub fn source_span_for_markdown_range(
             {
                 // If there is either a match in a previous fragment, or
                 // multiple matches in this fragment, there is ambiguity.
-                if match_data.is_none() && !snippet[match_start + 1..].contains(pat) {
+                // the snippet cannot be zero-sized, because it matches
+                // the pattern, which is checked to not be zero sized.
+                if match_data.is_none()
+                    && !snippet.as_bytes()[match_start + 1..]
+                        .windows(pat.len())
+                        .any(|s| s == pat.as_bytes())
+                {
                     match_data = Some((i, match_start));
                 } else {
                     // Heirustic produced ambiguity, return nothing.
