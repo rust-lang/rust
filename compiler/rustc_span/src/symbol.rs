@@ -2850,3 +2850,221 @@ pub fn used_keywords(edition: impl Copy + FnOnce() -> Edition) -> Vec<Symbol> {
         })
         .collect()
 }
+
+/// njn: update
+/// njn: could move this to byte_symbol module
+/// An interned string.
+///
+/// Internally, a `Symbol` is implemented as an index, and all operations
+/// (including hashing, equality, and ordering) operate on that index. The use
+/// of `rustc_index::newtype_index!` means that `Option<Symbol>` only takes up 4 bytes,
+/// because `rustc_index::newtype_index!` reserves the last 256 values for tagging purposes.
+///
+/// Note that `Symbol` cannot directly be a `rustc_index::newtype_index!` because it
+/// implements `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ByteSymbol(ByteSymbolIndex);
+
+rustc_index::newtype_index! {
+    #[orderable]
+    struct ByteSymbolIndex {}
+}
+
+impl ByteSymbol {
+    pub const fn new(n: u32) -> Self {
+        ByteSymbol(ByteSymbolIndex::from_u32(n))
+    }
+
+    /// Maps a string to its interned representation.
+    #[rustc_diagnostic_item = "ByteSymbolIntern"]
+    // njn: rename `string` variables as `byte_str`?
+    pub fn intern(string: &[u8]) -> Self {
+        with_session_globals(|session_globals| session_globals.byte_symbol_interner.intern(string))
+    }
+
+    /// Access the underlying string. This is a slowish operation because it
+    /// requires locking the symbol interner.
+    ///
+    /// Note that the lifetime of the return value is a lie. It's not the same
+    /// as `&self`, but actually tied to the lifetime of the underlying
+    /// interner. Interners are long-lived, and there are very few of them, and
+    /// this function is typically used for short-lived things, so in practice
+    /// it works out ok.
+    /// njn: rename?
+    pub fn as_byte_str(&self) -> &[u8] {
+        with_session_globals(|session_globals| unsafe {
+            std::mem::transmute::<&[u8], &[u8]>(session_globals.byte_symbol_interner.get(*self))
+        })
+    }
+
+    pub fn as_u32(self) -> u32 {
+        self.0.as_u32()
+    }
+
+    // pub fn is_empty(self) -> bool {
+    //     self == sym::empty
+    // }
+}
+
+// njn: needed?
+impl fmt::Debug for ByteSymbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(self.as_byte_str(), f)
+    }
+}
+
+// impl fmt::Display for Symbol {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         fmt::Display::fmt(self.as_str(), f)
+//     }
+// }
+
+// impl<CTX> HashStable<CTX> for Symbol {
+//     #[inline]
+//     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+//         self.as_str().hash_stable(hcx, hasher);
+//     }
+// }
+
+// impl<CTX> ToStableHashKey<CTX> for Symbol {
+//     type KeyType = String;
+//     #[inline]
+//     fn to_stable_hash_key(&self, _: &CTX) -> String {
+//         self.as_str().to_string()
+//     }
+// }
+
+// impl StableCompare for Symbol {
+//     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+//     fn stable_cmp(&self, other: &Self) -> std::cmp::Ordering {
+//         self.as_str().cmp(other.as_str())
+//     }
+// }
+
+#[derive(Default)]
+pub(crate) struct ByteInterner(Lock<ByteInternerInner>);
+
+// njn: update comment
+// The `&'static str`s in this type actually point into the arena.
+//
+// This type is private to prevent accidentally constructing more than one
+// `Interner` on the same thread, which makes it easy to mix up `Symbol`s
+// between `Interner`s.
+// njn: parameterize?
+#[derive(Default)]
+struct ByteInternerInner {
+    arena: DroplessArena,
+    strings: FxIndexSet<&'static [u8]>, // njn: rename?
+}
+
+impl ByteInterner {
+    // fn new(init: &[&'static str], extra: &[&'static str]) -> Self {
+    //     let strings = FxIndexSet::from_iter(init.iter().copied().chain(extra.iter().copied()));
+    //     assert_eq!(
+    //         strings.len(),
+    //         init.len() + extra.len(),
+    //         "`init` or `extra` contain duplicate symbols",
+    //     );
+    //     Interner(Lock::new(ByteInternerInner { arena: Default::default(), strings }))
+    // }
+
+    // fn prefill(init: &[&'static str], extra: &[&'static str]) -> Self {
+    //     let strings = FxIndexSet::from_iter(init.iter().copied().chain(extra.iter().copied()));
+    //     assert_eq!(
+    //         strings.len(),
+    //         init.len() + extra.len(),
+    //         "`init` or `extra` contain duplicate symbols",
+    //     );
+    //     Interner(Lock::new(InternerInner { arena: Default::default(), strings }))
+    // }
+
+    #[inline]
+    fn intern(&self, string: &[u8]) -> ByteSymbol {
+        let mut inner = self.0.lock();
+        if let Some(idx) = inner.strings.get_index_of(string) {
+            return ByteSymbol::new(idx as u32);
+        }
+
+        let string: &[u8] = inner.arena.alloc_slice(string);
+
+        // SAFETY: we can extend the arena allocation to `'static` because we
+        // only access these while the arena is still alive.
+        let string: &'static [u8] = unsafe { &*(string as *const [u8]) };
+
+        // This second hash table lookup can be avoided by using `RawEntryMut`,
+        // but this code path isn't hot enough for it to be worth it. See
+        // #91445 for details.
+        let (idx, is_new) = inner.strings.insert_full(string);
+        debug_assert!(is_new); // due to the get_index_of check above
+
+        ByteSymbol::new(idx as u32)
+    }
+
+    /// Get the symbol as a string.
+    ///
+    /// [`ByteSymbol::as_byte_str()`] should be used in preference to this function.
+    fn get(&self, symbol: ByteSymbol) -> &[u8] {
+        self.0.lock().strings.get_index(symbol.0.as_usize()).unwrap()
+    }
+}
+
+impl Symbol {
+    // fn is_special(self) -> bool {
+    //     self <= kw::Underscore
+    // }
+
+    // fn is_used_keyword_always(self) -> bool {
+    //     self >= kw::As && self <= kw::While
+    // }
+
+    // fn is_unused_keyword_always(self) -> bool {
+    //     self >= kw::Abstract && self <= kw::Yield
+    // }
+
+    // fn is_used_keyword_conditional(self, edition: impl FnOnce() -> Edition) -> bool {
+    //     (self >= kw::Async && self <= kw::Dyn) && edition() >= Edition::Edition2018
+    // }
+
+    // fn is_unused_keyword_conditional(self, edition: impl Copy + FnOnce() -> Edition) -> bool {
+    //     self == kw::Gen && edition().at_least_rust_2024()
+    //         || self == kw::Try && edition().at_least_rust_2018()
+    // }
+
+    // pub fn is_reserved(self, edition: impl Copy + FnOnce() -> Edition) -> bool {
+    //     self.is_special()
+    //         || self.is_used_keyword_always()
+    //         || self.is_unused_keyword_always()
+    //         || self.is_used_keyword_conditional(edition)
+    //         || self.is_unused_keyword_conditional(edition)
+    // }
+
+    // pub fn is_weak(self) -> bool {
+    //     self >= kw::Auto && self <= kw::Yeet
+    // }
+
+    // /// A keyword or reserved identifier that can be used as a path segment.
+    // pub fn is_path_segment_keyword(self) -> bool {
+    //     self == kw::Super
+    //         || self == kw::SelfLower
+    //         || self == kw::SelfUpper
+    //         || self == kw::Crate
+    //         || self == kw::PathRoot
+    //         || self == kw::DollarCrate
+    // }
+
+    // /// Returns `true` if the symbol is `true` or `false`.
+    // pub fn is_bool_lit(self) -> bool {
+    //     self == kw::True || self == kw::False
+    // }
+
+    // /// Returns `true` if this symbol can be a raw identifier.
+    // pub fn can_be_raw(self) -> bool {
+    //     self != sym::empty && self != kw::Underscore && !self.is_path_segment_keyword()
+    // }
+
+    // /// Was this symbol predefined in the compiler's `symbols!` macro
+    // pub fn is_predefined(self) -> bool {
+    //     self.as_u32() < PREDEFINED_SYMBOLS_COUNT
+    // }
+}

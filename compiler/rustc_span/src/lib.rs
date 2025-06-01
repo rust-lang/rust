@@ -66,7 +66,9 @@ mod span_encoding;
 pub use span_encoding::{DUMMY_SP, Span};
 
 pub mod symbol;
-pub use symbol::{Ident, MacroRulesNormalizedIdent, STDLIB_STABLE_CRATES, Symbol, kw, sym};
+pub use symbol::{
+    ByteSymbol, Ident, MacroRulesNormalizedIdent, STDLIB_STABLE_CRATES, Symbol, kw, sym,
+};
 
 mod analyze_source_file;
 pub mod fatal_error;
@@ -101,6 +103,7 @@ mod tests;
 /// session.
 pub struct SessionGlobals {
     symbol_interner: symbol::Interner,
+    byte_symbol_interner: symbol::ByteInterner,
     span_interner: Lock<span_encoding::SpanInterner>,
     /// Maps a macro argument token into use of the corresponding metavariable in the macro body.
     /// Collisions are possible and processed in `maybe_use_metavar_location` on best effort basis.
@@ -121,6 +124,7 @@ impl SessionGlobals {
     ) -> SessionGlobals {
         SessionGlobals {
             symbol_interner: symbol::Interner::with_extra_symbols(extra_symbols),
+            byte_symbol_interner: symbol::ByteInterner::default(),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             metavar_spans: Default::default(),
             hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
