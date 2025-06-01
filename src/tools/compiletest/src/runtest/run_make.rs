@@ -221,6 +221,10 @@ impl TestCx<'_> {
             cmd.env("REMOTE_TEST_CLIENT", remote_test_client);
         }
 
+        if let Some(runner) = &self.config.runner {
+            cmd.env("RUNNER", runner);
+        }
+
         // We don't want RUSTFLAGS set from the outside to interfere with
         // compiler flags set in the test cases:
         cmd.env_remove("RUSTFLAGS");
