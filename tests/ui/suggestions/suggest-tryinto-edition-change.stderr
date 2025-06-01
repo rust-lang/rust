@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of undeclared type `TryFrom`
+error[E0433]: cannot find item `TryFrom` in this scope
   --> $DIR/suggest-tryinto-edition-change.rs:10:19
    |
 LL |     let _i: i16 = TryFrom::try_from(0_i32).unwrap();
@@ -10,7 +10,7 @@ help: consider importing this trait
 LL + use std::convert::TryFrom;
    |
 
-error[E0433]: failed to resolve: use of undeclared type `TryInto`
+error[E0433]: cannot find item `TryInto` in this scope
   --> $DIR/suggest-tryinto-edition-change.rs:15:19
    |
 LL |     let _i: i16 = TryInto::try_into(0_i32).unwrap();
@@ -22,7 +22,7 @@ help: consider importing this trait
 LL + use std::convert::TryInto;
    |
 
-error[E0433]: failed to resolve: use of undeclared type `FromIterator`
+error[E0433]: cannot find item `FromIterator` in this scope
   --> $DIR/suggest-tryinto-edition-change.rs:20:22
    |
 LL |     let _v: Vec<_> = FromIterator::from_iter(&[1]);

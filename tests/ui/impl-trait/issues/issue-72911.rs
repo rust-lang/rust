@@ -9,12 +9,12 @@ pub fn gather_all() -> impl Iterator<Item = Lint> {
 }
 
 fn gather_from_file(dir_entry: &foo::MissingItem) -> impl Iterator<Item = Lint> {
-    //~^ ERROR: failed to resolve
+    //~^ ERROR cannot find item
     unimplemented!()
 }
 
 fn lint_files() -> impl Iterator<Item = foo::MissingItem> {
-    //~^ ERROR: failed to resolve
+    //~^ ERROR cannot find item
     unimplemented!()
 }
 

@@ -1,5 +1,5 @@
-error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
-  --> $DIR/dollar-crate-is-keyword-2.rs:6:16
+error[E0433]: cannot find module `$crate` in module `a`
+  --> $DIR/dollar-crate-is-keyword-2.rs:7:16
    |
 LL |         use a::$crate::b;
    |                ^^^^^^ `$crate` in paths can only be used in start position
@@ -20,8 +20,8 @@ LL | m!();
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
-  --> $DIR/dollar-crate-is-keyword-2.rs:7:21
+error[E0433]: cannot find module `$crate` in module `a`
+  --> $DIR/dollar-crate-is-keyword-2.rs:9:21
    |
 LL |         type A = a::$crate;
    |                     ^^^^^^ `$crate` in paths can only be used in start position

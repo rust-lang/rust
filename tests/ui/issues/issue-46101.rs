@@ -1,6 +1,6 @@
 trait Foo {}
-#[derive(Foo::Anything)] //~ ERROR failed to resolve: partially resolved path in a derive macro
-                         //~| ERROR failed to resolve: partially resolved path in a derive macro
+#[derive(Foo::Anything)] //~ ERROR cannot find macro `Anything`
+                         //~| ERROR cannot find macro `Anything`
 struct S;
 
 fn main() {}

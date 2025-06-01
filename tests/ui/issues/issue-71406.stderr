@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: expected type, found function `channel` in `mpsc`
+error[E0433]: cannot find item `channel` in module `mpsc`
   --> $DIR/issue-71406.rs:4:26
    |
 LL |     let (tx, rx) = mpsc::channel::new(1);

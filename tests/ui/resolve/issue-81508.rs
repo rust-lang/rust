@@ -8,7 +8,7 @@
 fn main() {
     let Baz: &str = "";
 
-    println!("{}", Baz::Bar); //~ ERROR: failed to resolve: use of undeclared type `Baz`
+    println!("{}", Baz::Bar); //~ ERROR cannot find item `Baz`
 }
 
 #[allow(non_upper_case_globals)]
@@ -17,6 +17,6 @@ pub const Foo: &str = "";
 mod submod {
     use super::Foo;
     fn function() {
-        println!("{}", Foo::Bar); //~ ERROR: failed to resolve: use of undeclared type `Foo`
+        println!("{}", Foo::Bar); //~ ERROR cannot find item `Foo`
     }
 }

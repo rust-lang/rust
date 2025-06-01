@@ -1,2 +1,2 @@
-#[foo::bar] //~ ERROR failed to resolve: use of unresolved module or unlinked crate `foo`
+#[foo::bar] //~ ERROR cannot find item `foo`
 fn main() {}

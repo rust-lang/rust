@@ -4,7 +4,7 @@
 
  // Typeck fails for the arg type as
  // `Self` makes no sense here
-fn func(a: Self::ItemsIterator) { //~ ERROR failed to resolve: `Self` is only available in impls, traits, and type definitions
+fn func(a: Self::ItemsIterator) { //~ ERROR cannot find item `Self` in this scope
     a.into_iter();
 }
 

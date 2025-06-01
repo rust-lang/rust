@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of undeclared type `Command`
+error[E0433]: cannot find item `Command` in this scope
   --> $DIR/amputate-span.rs:49:5
    |
 LL |     Command::new("git");
@@ -9,7 +9,7 @@ help: consider importing this struct
 LL + use std::process::Command;
    |
 
-error[E0433]: failed to resolve: use of undeclared type `Command`
+error[E0433]: cannot find item `Command` in this scope
   --> $DIR/amputate-span.rs:63:9
    |
 LL |         Command::new("git");

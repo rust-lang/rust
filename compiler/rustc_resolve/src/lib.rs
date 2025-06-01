@@ -253,10 +253,11 @@ enum ResolutionError<'ra> {
     SelfImportOnlyInImportListWithNonEmptyPrefix,
     /// Error E0433: failed to resolve.
     FailedToResolve {
-        segment: Option<Symbol>,
+        segment: Symbol,
         label: String,
         suggestion: Option<Suggestion>,
         module: Option<ModuleOrUniformRoot<'ra>>,
+        item_type: &'static str,
     },
     /// Error E0434: can't capture dynamic environment in a fn item.
     CannotCaptureDynamicEnvironmentInFnItem,
@@ -315,7 +316,7 @@ enum ResolutionError<'ra> {
 enum VisResolutionError<'a> {
     Relative2018(Span, &'a ast::Path),
     AncestorOnly(Span),
-    FailedToResolve(Span, String, Option<Suggestion>),
+    FailedToResolve(Span, Symbol, String, Option<Suggestion>, &'static str),
     ExpectedFound(Span, String, Res),
     Indeterminate(Span),
     ModuleOnly(Span),
@@ -458,6 +459,7 @@ enum PathResult<'ra> {
         /// The segment name of target
         segment_name: Symbol,
         error_implied_by_parse_error: bool,
+        item_type: &'static str,
     },
 }
 
@@ -469,6 +471,7 @@ impl<'ra> PathResult<'ra> {
         error_implied_by_parse_error: bool,
         module: Option<ModuleOrUniformRoot<'ra>>,
         label_and_suggestion: impl FnOnce() -> (String, Option<Suggestion>),
+        item_type: &'static str,
     ) -> PathResult<'ra> {
         let (label, suggestion) =
             if finalize { label_and_suggestion() } else { (String::new(), None) };
@@ -480,6 +483,7 @@ impl<'ra> PathResult<'ra> {
             is_error_from_last_segment,
             module,
             error_implied_by_parse_error,
+            item_type,
         }
     }
 }

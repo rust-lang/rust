@@ -1,6 +1,6 @@
 #![crate_type = "lib"]
 
-use super::A; //~ ERROR failed to resolve
+use super::A; //~ ERROR cannot find module
 
 mod b {
     pub trait A {}

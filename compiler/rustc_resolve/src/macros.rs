@@ -856,47 +856,50 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ),
                 path_res @ (PathResult::NonModule(..) | PathResult::Failed { .. }) => {
                     let mut suggestion = None;
-                    let (span, label, module, segment) =
-                        if let PathResult::Failed { span, label, module, segment_name, .. } =
-                            path_res
+                    let (span, label, module, segment, item_type) = if let PathResult::Failed {
+                        span,
+                        label,
+                        module,
+                        segment_name,
+                        item_type,
+                        ..
+                    } = path_res
+                    {
+                        // try to suggest if it's not a macro, maybe a function
+                        if let PathResult::NonModule(partial_res) =
+                            self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope, None)
+                            && partial_res.unresolved_segments() == 0
                         {
-                            // try to suggest if it's not a macro, maybe a function
-                            if let PathResult::NonModule(partial_res) =
-                                self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope, None)
-                                && partial_res.unresolved_segments() == 0
-                            {
-                                let sm = self.tcx.sess.source_map();
-                                let exclamation_span = sm.next_point(span);
-                                suggestion = Some((
-                                    vec![(exclamation_span, "".to_string())],
-                                    format!(
-                                        "{} is not a macro, but a {}, try to remove `!`",
-                                        Segment::names_to_string(&path),
-                                        partial_res.base_res().descr()
-                                    ),
-                                    Applicability::MaybeIncorrect,
-                                ));
-                            }
-                            (span, label, module, segment_name)
-                        } else {
-                            (
-                                path_span,
+                            let sm = self.tcx.sess.source_map();
+                            let exclamation_span = sm.next_point(span);
+                            suggestion = Some((
+                                vec![(exclamation_span, "".to_string())],
                                 format!(
-                                    "partially resolved path in {} {}",
-                                    kind.article(),
-                                    kind.descr()
+                                    "{} is not a macro, but a {}, try to remove `!`",
+                                    Segment::names_to_string(&path),
+                                    partial_res.base_res().descr()
                                 ),
-                                None,
-                                path.last().map(|segment| segment.ident.name).unwrap(),
-                            )
-                        };
+                                Applicability::MaybeIncorrect,
+                            ));
+                        }
+                        (span, label, module, segment_name, item_type)
+                    } else {
+                        (
+                            path_span,
+                            "partially resolved path in a macro".to_string(),
+                            None,
+                            path.last().map(|segment| segment.ident.name).unwrap(),
+                            "macro",
+                        )
+                    };
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            segment: Some(segment),
+                            segment,
                             label,
                             suggestion,
                             module,
+                            item_type,
                         },
                     );
                 }
