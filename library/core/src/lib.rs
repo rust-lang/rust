@@ -95,6 +95,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
 #![feature(bigint_helper_methods)]
@@ -154,7 +155,6 @@
 #![feature(freeze_impls)]
 #![feature(fundamental)]
 #![feature(generic_arg_infer)]
-#![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]

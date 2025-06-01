@@ -2,8 +2,10 @@
 // only happen when the pattern is matched.
 
 //@ build-pass
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
-#![feature(if_let_guard)]
 #![allow(irrefutable_let_patterns)]
 
 fn same_pattern() {
@@ -36,6 +38,6 @@ fn main() {
 
     match v {
         (1, 2) if let y = x => false,
-        _ => { *x == 1 },
+        _ => *x == 1,
     };
 }

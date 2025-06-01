@@ -1,7 +1,6 @@
 // Test that we have enough false edges to avoid exposing the exact matching
 // algorithm in borrow checking.
 
-#![feature(if_let_guard)]
 
 #[rustfmt::skip]
 fn all_patterns_are_tested() {

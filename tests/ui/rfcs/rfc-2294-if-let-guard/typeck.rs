@@ -1,4 +1,6 @@
-#![feature(if_let_guard)]
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
 fn ok() -> Result<Option<bool>, ()> {
     Ok(Some(true))

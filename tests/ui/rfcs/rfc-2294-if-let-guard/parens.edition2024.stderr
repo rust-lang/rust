@@ -1,0 +1,54 @@
+error: expected expression, found `let` statement
+  --> $DIR/parens.rs:11:16
+   |
+LL |         () if (let 0 = 1) => {}
+   |                ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/parens.rs:11:16
+   |
+LL |         () if (let 0 = 1) => {}
+   |                ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/parens.rs:13:18
+   |
+LL |         () if (((let 0 = 1))) => {}
+   |                  ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/parens.rs:13:18
+   |
+LL |         () if (((let 0 = 1))) => {}
+   |                  ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/parens.rs:21:16
+   |
+LL |         () if (let 0 = 1) => {}
+   |                ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/parens.rs:21:16
+   |
+LL |         () if (let 0 = 1) => {}
+   |                ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/parens.rs:23:18
+   |
+LL |         () if (((let 0 = 1))) => {}
+   |                  ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/parens.rs:23:18
+   |
+LL |         () if (((let 0 = 1))) => {}
+   |                  ^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

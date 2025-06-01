@@ -1,6 +1,8 @@
 // References to by-move bindings in an if-let guard *cannot* be used after the guard.
 
-#![feature(if_let_guard)]
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
 fn main() {
     let x: Option<Option<String>> = Some(Some(String::new()));

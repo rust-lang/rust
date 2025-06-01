@@ -1,4 +1,8 @@
 #![feature(prelude_import)]
+#[prelude_import]
+use std::prelude::rust_2024::*;
+#[macro_use]
+extern crate std;
 //@ compile-flags: -Zunpretty=expanded
 //@ edition:2024
 //@ check-pass
@@ -9,11 +13,6 @@
 // Rust syntax. We also test negative cases: the pretty-printer should not be
 // synthesizing parentheses indiscriminately; only where necessary.
 
-#![feature(if_let_guard)]
-#[prelude_import]
-use std::prelude::rust_2024::*;
-#[macro_use]
-extern crate std;
 
 macro_rules! expr { ($expr:expr) => { $expr }; }
 
