@@ -197,6 +197,14 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     pub const MAX: f128 = 1.18973149535723176508575932662800702e+4932_f128;
 
+    /// Largest negative normal `f128` value.
+    ///
+    /// Equal to &minus;2<sup>[`MIN_EXP`]&nbsp;&minus;&nbsp;1</sup>.
+    ///
+    /// [`MIN_EXP`]: f128::MIN_EXP
+    #[unstable(feature = "f128", issue = "116909")]
+    pub const MAX_NEGATIVE: f128 = -3.36210314311209350626267781732175260e-4932_f128;
+    
     /// One greater than the minimum possible *normal* power of 2 exponent
     /// for a significand bounded by 1 ≤ x < 2 (i.e. the IEEE definition).
     ///

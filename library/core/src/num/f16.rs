@@ -194,6 +194,14 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     pub const MAX: f16 = 6.5504e+4_f16;
 
+    /// Largest negative normal `f16` value.
+    ///
+    /// Equal to &minus;2<sup>[`MIN_EXP`]&nbsp;&minus;&nbsp;1</sup>.
+    ///
+    /// [`MIN_EXP`]: f16::MIN_EXP
+    #[unstable(feature = "f16", issue = "116909")]
+    pub const MAX_NEGATIVE: f16 = -6.1035e-5_f16;
+
     /// One greater than the minimum possible *normal* power of 2 exponent
     /// for a significand bounded by 1 ≤ x < 2 (i.e. the IEEE definition).
     ///
