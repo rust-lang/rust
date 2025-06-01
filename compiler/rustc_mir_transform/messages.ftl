@@ -1,41 +1,3 @@
-mir_transform_abi_error_disabled_vector_type =
-  this function {$is_call ->
-    [true] call
-    *[false] definition
-  } uses SIMD vector type `{$ty}` which (with the chosen ABI) requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
-    [true] {" "}in the caller
-    *[false] {""}
-  }
-  .label = function {$is_call ->
-    [true] called
-    *[false] defined
-  } here
-  .help = consider enabling it globally (`-C target-feature=+{$required_feature}`) or locally (`#[target_feature(enable="{$required_feature}")]`)
-
-mir_transform_abi_error_unsupported_vector_type =
-  this function {$is_call ->
-    [true] call
-    *[false] definition
-  } uses SIMD vector type `{$ty}` which is not currently supported with the chosen ABI
-  .label = function {$is_call ->
-    [true] called
-    *[false] defined
-  } here
-
-mir_transform_abi_required_target_feature =
-  this function {$is_call ->
-    [true] call
-    *[false] definition
-  } uses ABI "{$abi}" which requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
-    [true] {" "}in the caller
-    *[false] {""}
-  }
-  .label = function {$is_call ->
-    [true] called
-    *[false] defined
-  } here
-  .help = consider enabling it globally (`-C target-feature=+{$required_feature}`) or locally (`#[target_feature(enable="{$required_feature}")]`)
-
 mir_transform_arithmetic_overflow = this arithmetic operation will overflow
 mir_transform_const_defined_here = `const` item defined here
 
@@ -73,11 +35,6 @@ mir_transform_force_inline_attr =
 
 mir_transform_force_inline_justification =
     `{$callee}` is required to be inlined to: {$sym}
-
-mir_transform_large_assignments =
-    moving {$size} bytes
-    .label = value moved from here
-    .note = The current maximum size is {$limit}, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 
 mir_transform_must_not_suspend = {$pre}`{$def_path}`{$post} held across a suspend point, but should not be
     .label = the value is held across this suspend point
@@ -122,12 +79,3 @@ mir_transform_unconditional_recursion = function cannot return without recursing
 mir_transform_unconditional_recursion_call_site_label = recursive call site
 
 mir_transform_unknown_pass_name = MIR pass `{$name}` is unknown and will be ignored
-
-mir_transform_unnecessary_transmute = unnecessary transmute
-
-mir_transform_wasm_c_abi_transition =
-    this function {$is_call ->
-      [true] call
-      *[false] definition
-    } involves an argument of type `{$ty}` which is affected by the wasm ABI transition
-    .help = the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target

@@ -12,10 +12,10 @@ use tracing::{debug, trace};
 
 use crate::errors::LargeAssignmentsLint;
 
-struct MoveCheckVisitor<'body, 'tcx> {
+struct MoveCheckVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
-    body: &'body mir::Body<'tcx>,
+    body: &'tcx mir::Body<'tcx>,
     /// Spans for move size lints already emitted. Helps avoid duplicate lints.
     move_size_spans: Vec<Span>,
 }
@@ -23,7 +23,7 @@ struct MoveCheckVisitor<'body, 'tcx> {
 pub(crate) fn check_moves<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
-    body: &mir::Body<'tcx>,
+    body: &'tcx mir::Body<'tcx>,
 ) {
     let mut visitor = MoveCheckVisitor { tcx, instance, body, move_size_spans: vec![] };
     for (bb, data) in body.basic_blocks.iter_enumerated() {
@@ -31,7 +31,7 @@ pub(crate) fn check_moves<'tcx>(
     }
 }
 
-impl<'body, 'tcx> MirVisitor<'tcx> for MoveCheckVisitor<'body, 'tcx> {
+impl<'tcx> MirVisitor<'tcx> for MoveCheckVisitor<'tcx> {
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
         match terminator.kind {
             mir::TerminatorKind::Call { ref func, ref args, ref fn_span, .. }
@@ -52,7 +52,7 @@ impl<'body, 'tcx> MirVisitor<'tcx> for MoveCheckVisitor<'body, 'tcx> {
     }
 }
 
-impl<'body, 'tcx> MoveCheckVisitor<'body, 'tcx> {
+impl<'tcx> MoveCheckVisitor<'tcx> {
     fn monomorphize<T>(&self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,

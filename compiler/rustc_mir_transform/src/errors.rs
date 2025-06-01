@@ -2,7 +2,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Diag, LintDiagnostic};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{self, Lint};
 use rustc_span::def_id::DefId;
 use rustc_span::{Ident, Span, Symbol};
@@ -117,16 +117,6 @@ pub(crate) struct FnItemRef {
     pub ident: Ident,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(mir_transform_large_assignments)]
-#[note]
-pub(crate) struct LargeAssignmentsLint {
-    #[label]
-    pub span: Span,
-    pub size: u64,
-    pub limit: u64,
-}
-
 #[derive(Diagnostic)]
 #[diag(mir_transform_exceeds_mcdc_test_vector_limit)]
 pub(crate) struct MCDCExceedsTestVectorLimit {
@@ -192,50 +182,4 @@ pub(crate) struct ForceInlineFailure {
 #[note(mir_transform_force_inline_justification)]
 pub(crate) struct ForceInlineJustification {
     pub sym: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(mir_transform_abi_error_disabled_vector_type)]
-#[help]
-pub(crate) struct AbiErrorDisabledVectorType<'a> {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub required_feature: &'a str,
-    pub ty: Ty<'a>,
-    /// Whether this is a problem at a call site or at a declaration.
-    pub is_call: bool,
-}
-
-#[derive(Diagnostic)]
-#[diag(mir_transform_abi_error_unsupported_vector_type)]
-pub(crate) struct AbiErrorUnsupportedVectorType<'a> {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub ty: Ty<'a>,
-    /// Whether this is a problem at a call site or at a declaration.
-    pub is_call: bool,
-}
-
-#[derive(Diagnostic)]
-#[diag(mir_transform_abi_required_target_feature)]
-#[help]
-pub(crate) struct AbiRequiredTargetFeature<'a> {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub required_feature: &'a str,
-    pub abi: &'a str,
-    /// Whether this is a problem at a call site or at a declaration.
-    pub is_call: bool,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(mir_transform_wasm_c_abi_transition)]
-#[help]
-pub(crate) struct WasmCAbiTransition<'a> {
-    pub ty: Ty<'a>,
-    /// Whether this is a problem at a call site or at a declaration.
-    pub is_call: bool,
 }

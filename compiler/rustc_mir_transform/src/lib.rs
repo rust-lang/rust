@@ -54,7 +54,6 @@ mod errors;
 mod ffi_unwind_calls;
 mod lint;
 mod lint_tail_expr_drop_order;
-mod mono_checks;
 mod patch;
 mod shim;
 mod ssa;
@@ -214,7 +213,6 @@ pub fn provide(providers: &mut Providers) {
     ffi_unwind_calls::provide(providers);
     shim::provide(providers);
     cross_crate_inline::provide(providers);
-    mono_checks::provide(providers);
     providers.queries = query::Providers {
         mir_keys,
         mir_built,
@@ -888,8 +886,6 @@ pub fn build_codegen_mir<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> &
     } else {
         body
     };
-
-    mono_checks::check_mono_item(tcx, instance, body);
 
     body
 }
