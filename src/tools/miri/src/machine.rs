@@ -532,6 +532,10 @@ pub struct MiriMachine<'tcx> {
     /// Needs to be queried by ptr_to_int, hence needs interior mutability.
     pub(crate) rng: RefCell<StdRng>,
 
+    /// The allocator used for the machine's `AllocBytes` in native-libs mode.
+    #[cfg(target_os = "linux")]
+    pub(crate) allocator: Option<Rc<RefCell<crate::alloc::isolated_alloc::IsolatedAlloc>>>,
+
     /// The allocation IDs to report when they are being allocated
     /// (helps for debugging memory leaks and use after free bugs).
     tracked_alloc_ids: FxHashSet<AllocId>,
@@ -715,6 +719,10 @@ impl<'tcx> MiriMachine<'tcx> {
             local_crates,
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
+            #[cfg(target_os = "linux")]
+            allocator: if config.native_lib.is_some() {
+                Some(Rc::new(RefCell::new(crate::alloc::isolated_alloc::IsolatedAlloc::new())))
+            } else { None },
             tracked_alloc_ids: config.tracked_alloc_ids.clone(),
             track_alloc_accesses: config.track_alloc_accesses,
             check_alignment: config.check_alignment,
@@ -917,6 +925,8 @@ impl VisitProvenance for MiriMachine<'_> {
             backtrace_style: _,
             local_crates: _,
             rng: _,
+            #[cfg(target_os = "linux")]
+            allocator: _,
             tracked_alloc_ids: _,
             track_alloc_accesses: _,
             check_alignment: _,
@@ -1637,7 +1647,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn before_stack_pop(ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
         let frame = ecx.frame();
         // We want this *before* the return value copy, because the return place itself is protected
-        // until we do `end_call` here.
+        // until we do `on_stack_pop` here, and we need to un-protect it to copy the return value.
         if ecx.machine.borrow_tracker.is_some() {
             ecx.on_stack_pop(frame)?;
         }
@@ -1804,8 +1814,17 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         Cow::Borrowed(ecx.machine.union_data_ranges.entry(ty).or_insert_with(compute_range))
     }
 
-    /// Placeholder!
-    fn get_default_alloc_params(&self) -> <Self::Bytes as AllocBytes>::AllocParams { () }
+    fn get_default_alloc_params(&self) -> <Self::Bytes as AllocBytes>::AllocParams {
+        use crate::alloc::MiriAllocParams;
+
+        #[cfg(target_os = "linux")]
+        match &self.allocator {
+            Some(alloc) => MiriAllocParams::Isolated(alloc.clone()),
+            None => MiriAllocParams::Global,
+        }
+        #[cfg(not(target_os = "linux"))]
+        MiriAllocParams::Global
+    }
 }
 
 /// Trait for callbacks handling asynchronous machine operations.

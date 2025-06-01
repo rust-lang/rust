@@ -4,8 +4,7 @@ error: unsupported operation: can't call foreign function `foo` on $OS
 LL |         foo();
    |         ^^^^^ can't call foreign function `foo` on $OS
    |
-   = help: if this is a basic API commonly used on this target, please report an issue with Miri
-   = help: however, note that Miri does not aim to support every FFI function out there; for instance, we will not support APIs for things such as GUIs, scripting languages, or databases
+   = help: this means the program tried to do something Miri does not support; it does not indicate a bug in the program
    = note: BACKTRACE:
    = note: inside `main` at tests/fail/unsupported_foreign_function.rs:LL:CC
 

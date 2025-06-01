@@ -202,6 +202,20 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
     fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
         panic!("Not a unix file descriptor: {}", self.name());
     }
+
+    /// Implementation of fcntl(F_GETFL) for this FD.
+    fn get_flags<'tcx>(&self, _ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
+        throw_unsup_format!("fcntl: {} is not supported for F_GETFL", self.name());
+    }
+
+    /// Implementation of fcntl(F_SETFL) for this FD.
+    fn set_flags<'tcx>(
+        &self,
+        _flag: i32,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        throw_unsup_format!("fcntl: {} is not supported for F_SETFL", self.name());
+    }
 }
 
 impl FileDescription for io::Stdin {

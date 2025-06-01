@@ -9,6 +9,7 @@ use crate::*;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PseudoHandle {
     CurrentThread,
+    CurrentProcess,
 }
 
 /// Miri representation of a Windows `HANDLE`
@@ -23,16 +24,19 @@ pub enum Handle {
 
 impl PseudoHandle {
     const CURRENT_THREAD_VALUE: u32 = 0;
+    const CURRENT_PROCESS_VALUE: u32 = 1;
 
     fn value(self) -> u32 {
         match self {
             Self::CurrentThread => Self::CURRENT_THREAD_VALUE,
+            Self::CurrentProcess => Self::CURRENT_PROCESS_VALUE,
         }
     }
 
     fn from_value(value: u32) -> Option<Self> {
         match value {
             Self::CURRENT_THREAD_VALUE => Some(Self::CurrentThread),
+            Self::CURRENT_PROCESS_VALUE => Some(Self::CurrentProcess),
             _ => None,
         }
     }
@@ -242,6 +246,76 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let handle = Handle::File(fd_num);
         interp_ok(handle.to_scalar(this))
+    }
+
+    fn DuplicateHandle(
+        &mut self,
+        src_proc: &OpTy<'tcx>,       // HANDLE
+        src_handle: &OpTy<'tcx>,     // HANDLE
+        target_proc: &OpTy<'tcx>,    // HANDLE
+        target_handle: &OpTy<'tcx>,  // LPHANDLE
+        desired_access: &OpTy<'tcx>, // DWORD
+        inherit: &OpTy<'tcx>,        // BOOL
+        options: &OpTy<'tcx>,        // DWORD
+    ) -> InterpResult<'tcx, Scalar> {
+        // ^ Returns BOOL (i32 on Windows)
+        let this = self.eval_context_mut();
+
+        let src_proc = this.read_handle(src_proc, "DuplicateHandle")?;
+        let src_handle = this.read_handle(src_handle, "DuplicateHandle")?;
+        let target_proc = this.read_handle(target_proc, "DuplicateHandle")?;
+        let target_handle_ptr = this.read_pointer(target_handle)?;
+        // Since we only support DUPLICATE_SAME_ACCESS, this value is ignored, but should be valid
+        let _ = this.read_scalar(desired_access)?.to_u32()?;
+        // We don't support the CreateProcess API, so inheritable or not means nothing.
+        // If we ever add CreateProcess support, this will need to be implemented.
+        let _ = this.read_scalar(inherit)?;
+        let options = this.read_scalar(options)?;
+
+        if src_proc != Handle::Pseudo(PseudoHandle::CurrentProcess) {
+            throw_unsup_format!(
+                "`DuplicateHandle` `hSourceProcessHandle` parameter is not the current process, which is unsupported"
+            );
+        }
+
+        if target_proc != Handle::Pseudo(PseudoHandle::CurrentProcess) {
+            throw_unsup_format!(
+                "`DuplicateHandle` `hSourceProcessHandle` parameter is not the current process, which is unsupported"
+            );
+        }
+
+        if this.ptr_is_null(target_handle_ptr)? {
+            throw_unsup_format!(
+                "`DuplicateHandle` `lpTargetHandle` parameter is null, which is unsupported"
+            );
+        }
+
+        if options != this.eval_windows("c", "DUPLICATE_SAME_ACCESS") {
+            throw_unsup_format!(
+                "`DuplicateHandle` `dwOptions` parameter is not `DUPLICATE_SAME_ACCESS`, which is unsupported"
+            );
+        }
+
+        let new_handle = match src_handle {
+            Handle::File(old_fd_num) => {
+                let Some(fd) = this.machine.fds.get(old_fd_num) else {
+                    this.invalid_handle("DuplicateHandle")?
+                };
+                Handle::File(this.machine.fds.insert(fd))
+            }
+            Handle::Thread(_) => {
+                throw_unsup_format!(
+                    "`DuplicateHandle` called on a thread handle, which is unsupported"
+                );
+            }
+            Handle::Pseudo(pseudo) => Handle::Pseudo(pseudo),
+            Handle::Null | Handle::Invalid => this.invalid_handle("DuplicateHandle")?,
+        };
+
+        let target_place = this.deref_pointer_as(target_handle, this.machine.layouts.usize)?;
+        this.write_scalar(new_handle.to_scalar(this), &target_place)?;
+
+        interp_ok(this.eval_windows("c", "TRUE"))
     }
 
     fn CloseHandle(&mut self, handle_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
