@@ -442,7 +442,6 @@ symbols! {
         allow_fail,
         allow_internal_unsafe,
         allow_internal_unstable,
-        allow_unstable_feature,
         altivec,
         alu32,
         always,
@@ -2248,6 +2247,7 @@ symbols! {
         unsized_locals,
         unsized_tuple_coercion,
         unstable,
+        unstable_feature_bound,
         unstable_location_reason_default: "this crate is being loaded from the sysroot, an \
                           unstable location; did you mean to load this crate \
                           from crates.io via `Cargo.toml` instead?",

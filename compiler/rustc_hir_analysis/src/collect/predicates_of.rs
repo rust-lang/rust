@@ -318,7 +318,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         predicates.extend(const_evaluatable_predicates_of(tcx, def_id, &predicates));
     }
 
-    for attr in tcx.get_attrs(def_id, sym::allow_unstable_feature) {
+    for attr in tcx.get_attrs(def_id, sym::unstable_feature_bound) {
         if let Some(list) = attr.meta_item_list() {
             for item in list.iter() {
                 if let Some(feature_name) = item.name() {

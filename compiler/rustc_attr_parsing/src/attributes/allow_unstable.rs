@@ -24,7 +24,7 @@ impl CombineAttributeParser for AllowInternalUnstableParser {
 
 pub(crate) struct AllowUnstableFeatureParser;
 impl CombineAttributeParser for AllowUnstableFeatureParser {
-    const PATH: &'static [rustc_span::Symbol] = &[sym::allow_unstable_feature];
+    const PATH: &'static [rustc_span::Symbol] = &[sym::unstable_feature_bound];
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::AllowUnstableFeature;
 

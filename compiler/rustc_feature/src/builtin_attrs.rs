@@ -656,7 +656,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "allow_internal_unstable side-steps feature gating and stability checks",
     ),
     gated!(
-        allow_unstable_feature, Normal, template!(Word, List: "feat1, feat2, ..."),
+        unstable_feature_bound, Normal, template!(Word, List: "feat1, feat2, ..."),
         DuplicatesOk, EncodeCrossCrate::No, impl_stability,
         "allow unstable impl",
     ),
