@@ -11,6 +11,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "uefi")] {
         mod uefi;
         pub use uefi::*;
+    } else if #[cfg(target_os = "cygwin")] {
+        mod cygwin;
+        pub use cygwin::*;
     } else {
         mod unix;
         pub use unix::*;
