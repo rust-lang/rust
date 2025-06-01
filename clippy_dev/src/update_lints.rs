@@ -73,8 +73,8 @@ pub fn generate_lint_files(
             (
                 "clippy_lints/src/lib.rs",
                 &mut update_text_region_fn(
-                    "// begin lints modules, do not remove this comment, it’s used in `update_lints`\n",
-                    "// end lints modules, do not remove this comment, it’s used in `update_lints`",
+                    "// begin lints modules, do not remove this comment, it's used in `update_lints`\n",
+                    "// end lints modules, do not remove this comment, it's used in `update_lints`",
                     |dst| {
                         for lint_mod in lints.iter().map(|l| &l.module).sorted().dedup() {
                             writeln!(dst, "mod {lint_mod};").unwrap();
