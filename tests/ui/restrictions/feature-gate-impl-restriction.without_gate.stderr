@@ -1,0 +1,23 @@
+error[E0658]: impl restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:7:5
+   |
+LL | pub impl(crate) trait Bar {}
+   |     ^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: impl restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:10:9
+   |
+LL |     pub impl(in crate::foo) trait Baz {}
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

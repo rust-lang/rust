@@ -33,8 +33,8 @@ use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::{
     BindingKey, Determinacy, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind,
     ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult,
-    ResolutionError, Resolver, ResolverArenas, Segment, ToNameBinding, Used, VisResolutionError,
-    errors,
+    ResolutionError, Resolver, ResolverArenas, RestrictionResolutionError, Segment, ToNameBinding,
+    Used, VisResolutionError, errors,
 };
 
 type Res = def::Res<NodeId>;
@@ -322,9 +322,9 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 })
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
-                // For visibilities we are not ready to provide correct implementation of "uniform
+                // For restrictions we are not ready to provide correct implementation of "uniform
                 // paths" right now, so on 2018 edition we only allow module-relative paths for now.
-                // On 2015 edition visibilities are resolved as crate-relative by default,
+                // On 2015 edition restrictions are resolved as crate-relative by default,
                 // so we are prepending a root segment if necessary.
                 let ident = path.segments.get(0).expect("empty path in visibility").ident;
                 let crate_root = if ident.is_path_segment_keyword() {
@@ -404,6 +404,97 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             })
             .collect();
         self.r.field_names.insert(def_id, fields);
+    }
+
+    fn resolve_restriction(&mut self, restriction: &ast::Restriction) -> ty::Restriction {
+        self.try_resolve_restriction(restriction, true).unwrap_or_else(|err| {
+            self.r.report_restriction_error(err);
+            ty::Restriction::Unrestricted
+        })
+    }
+
+    fn try_resolve_restriction<'ast>(
+        &mut self,
+        restriction: &'ast ast::Restriction,
+        finalize: bool,
+    ) -> Result<ty::Restriction, RestrictionResolutionError<'ast>> {
+        let parent_scope = &self.parent_scope;
+        match restriction.kind {
+            // If the restriction is implied, it has no effect when the item is otherwise visible.
+            ast::RestrictionKind::Unrestricted | ast::RestrictionKind::Implied => {
+                Ok(ty::Restriction::Unrestricted)
+            }
+            ast::RestrictionKind::Restricted { ref path, id, shorthand: _ } => {
+                // For restrictions we are not ready to provide correct implementation of "uniform
+                // paths" right now, so on 2018 edition we only allow module-relative paths for now.
+                // On 2015 edition visibilities are resolved as crate-relative by default,
+                // so we are prepending a root segment if necessary.
+                let ident = path.segments.get(0).expect("empty path in restriction").ident;
+                let crate_root = if ident.is_path_segment_keyword() {
+                    None
+                } else if ident.span.is_rust_2015() {
+                    Some(Segment::from_ident(Ident::new(
+                        kw::PathRoot,
+                        path.span.shrink_to_lo().with_ctxt(ident.span.ctxt()),
+                    )))
+                } else {
+                    return Err(RestrictionResolutionError::Relative2018(ident.span, path));
+                };
+
+                let segments = crate_root
+                    .into_iter()
+                    .chain(path.segments.iter().map(|seg| seg.into()))
+                    .collect::<Vec<_>>();
+                let expected_found_error = |res| {
+                    Err(RestrictionResolutionError::ExpectedFound(
+                        path.span,
+                        Segment::names_to_string(&segments),
+                        res,
+                    ))
+                };
+                match self.r.resolve_path(
+                    &segments,
+                    Some(TypeNS),
+                    parent_scope,
+                    finalize.then(|| Finalize::new(id, path.span)),
+                    None,
+                    None,
+                ) {
+                    PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
+                        let res = module.res().expect("restriction resolved to unnamed block");
+                        if finalize {
+                            self.r.record_partial_res(id, PartialRes::new(res));
+                        }
+                        if module.is_normal() {
+                            if res == Res::Err {
+                                Ok(ty::Restriction::Unrestricted)
+                            } else {
+                                let vis = ty::Visibility::Restricted(res.def_id());
+                                if self.r.is_accessible_from(vis, parent_scope.module) {
+                                    Ok(ty::Restriction::Restricted(res.def_id(), restriction.span))
+                                } else {
+                                    Err(RestrictionResolutionError::AncestorOnly(path.span))
+                                }
+                            }
+                        } else {
+                            expected_found_error(res)
+                        }
+                    }
+                    PathResult::Module(..) => {
+                        Err(RestrictionResolutionError::ModuleOnly(path.span))
+                    }
+                    PathResult::NonModule(partial_res) => {
+                        expected_found_error(partial_res.base_res())
+                    }
+                    PathResult::Failed { span, label, suggestion, .. } => {
+                        Err(RestrictionResolutionError::FailedToResolve(span, label, suggestion))
+                    }
+                    PathResult::Indeterminate => {
+                        Err(RestrictionResolutionError::Indeterminate(path.span))
+                    }
+                }
+            }
+        }
     }
 
     fn insert_field_visibilities_local(&mut self, def_id: DefId, fields: &[ast::FieldDef]) {
@@ -809,8 +900,21 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             ItemKind::TyAlias(box TyAlias { ident, .. }) | ItemKind::TraitAlias(ident, ..) => {
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
+            ItemKind::Trait(box ast::Trait { ident, ref impl_restriction, .. }) => {
+                let impl_restriction = self.resolve_restriction(impl_restriction);
+                self.r.impl_restrictions.insert(local_def_id, impl_restriction);
 
-            ItemKind::Enum(ident, _, _) | ItemKind::Trait(box ast::Trait { ident, .. }) => {
+                let module = self.r.new_module(
+                    Some(parent),
+                    ModuleKind::Def(def_kind, def_id, Some(ident.name)),
+                    expansion.to_expn_id(),
+                    item.span,
+                    parent.no_implicit_prelude,
+                );
+                self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
+                self.parent_scope.module = module;
+            }
+            ItemKind::Enum(ident, _, _) => {
                 let module = self.r.new_module(
                     Some(parent),
                     ModuleKind::Def(def_kind, def_id, Some(ident.name)),

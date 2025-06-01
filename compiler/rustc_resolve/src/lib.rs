@@ -321,6 +321,15 @@ enum VisResolutionError<'a> {
     ModuleOnly(Span),
 }
 
+enum RestrictionResolutionError<'a> {
+    Relative2018(Span, &'a ast::Path),
+    AncestorOnly(Span),
+    FailedToResolve(Span, String, Option<Suggestion>),
+    ExpectedFound(Span, String, Res),
+    Indeterminate(Span),
+    ModuleOnly(Span),
+}
+
 /// A minimal representation of a path segment. We use this in resolve because we synthesize 'path
 /// segments' which don't have the rest of an AST or HIR `PathSegment`.
 #[derive(Clone, Copy, Debug)]
@@ -1101,6 +1110,7 @@ pub struct Resolver<'ra, 'tcx> {
     glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
     glob_error: Option<ErrorGuaranteed>,
     visibilities_for_hashing: Vec<(LocalDefId, ty::Visibility)>,
+    impl_restrictions: FxIndexMap<LocalDefId, ty::Restriction>,
     used_imports: FxHashSet<NodeId>,
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
 
@@ -1492,6 +1502,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             glob_map: Default::default(),
             glob_error: None,
             visibilities_for_hashing: Default::default(),
+            impl_restrictions: Default::default(),
             used_imports: FxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
 
@@ -1661,6 +1672,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,
             visibilities_for_hashing: self.visibilities_for_hashing,
+            impl_restrictions: self.impl_restrictions,
             effective_visibilities,
             extern_crate_map,
             module_children: self.module_children,
