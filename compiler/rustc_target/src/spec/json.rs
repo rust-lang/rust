@@ -2,10 +2,12 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
+use rustc_abi::ExternAbi;
 use serde_json::Value;
 
 use super::{Target, TargetKind, TargetOptions, TargetWarnings};
 use crate::json::{Json, ToJson};
+use crate::spec::AbiMap;
 
 impl Target {
     /// Loads a target descriptor from a JSON object.
@@ -515,18 +517,6 @@ impl Target {
                     }
                 }
             } );
-            ($key_name:ident, Conv) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match super::Conv::from_str(s) {
-                        Ok(c) => {
-                            base.$key_name = c;
-                            Some(Ok(()))
-                        }
-                        Err(e) => Some(Err(e))
-                    }
-                })).unwrap_or(Ok(()))
-            } );
         }
 
         if let Some(j) = obj.remove("target-endian") {
@@ -660,8 +650,22 @@ impl Target {
         key!(supports_stack_protector, bool);
         key!(small_data_threshold_support, SmallDataThresholdSupport)?;
         key!(entry_name);
-        key!(entry_abi, Conv)?;
         key!(supports_xray, bool);
+
+        // we're going to run `update_from_cli`, but that won't change the target's AbiMap
+        // FIXME: better factor the Target definition so we enforce this on a type level
+        let abi_map = AbiMap::from_target(&base);
+
+        if let Some(abi_str) = obj.remove("entry-abi") {
+            if let Json::String(abi_str) = abi_str {
+                match abi_str.parse::<ExternAbi>() {
+                    Ok(abi) => base.options.entry_abi = abi_map.canonize_abi(abi, false).unwrap(),
+                    Err(_) => return Err(format!("{abi_str} is not a valid ExternAbi")),
+                }
+            } else {
+                incorrect_type.push("entry-abi".to_owned())
+            }
+        }
 
         base.update_from_cli();
         base.check_consistency(TargetKind::Json)?;

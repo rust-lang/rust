@@ -7,6 +7,8 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable};
 
+use crate::AbiFromStrErr;
+
 #[cfg(test)]
 mod tests;
 
@@ -97,11 +99,6 @@ macro_rules! abi_impls {
             }
         }
     }
-}
-
-#[derive(Debug)]
-pub enum AbiFromStrErr {
-    Unknown,
 }
 
 abi_impls! {

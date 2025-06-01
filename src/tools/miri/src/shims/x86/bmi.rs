@@ -1,6 +1,7 @@
+use rustc_abi::CanonAbi;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::{Conv, FnAbi};
+use rustc_target::callconv::FnAbi;
 
 use crate::*;
 
@@ -34,7 +35,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(EmulateItemResult::NotSupported);
         }
 
-        let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
+        let [left, right] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
         let left = this.read_scalar(left)?;
         let right = this.read_scalar(right)?;
 
