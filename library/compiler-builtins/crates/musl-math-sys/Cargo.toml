@@ -11,4 +11,4 @@ license = "MIT OR Apache-2.0"
 libm = { path = "../../libm" }
 
 [build-dependencies]
-cc = "1.2.16"
+cc = "1.2.25"
