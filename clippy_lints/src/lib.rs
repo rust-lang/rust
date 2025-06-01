@@ -69,7 +69,7 @@ pub mod ctfe; // Very important lint, do not remove (rust#125116)
 pub mod declared_lints;
 pub mod deprecated_lints;
 
-// begin lints modules, do not remove this comment, it’s used in `update_lints`
+// begin lints modules, do not remove this comment, it's used in `update_lints`
 mod absolute_paths;
 mod almost_complete_range;
 mod approx_const;
@@ -404,7 +404,7 @@ mod zero_div_zero;
 mod zero_repeat_side_effects;
 mod zero_sized_map_values;
 mod zombie_processes;
-// end lints modules, do not remove this comment, it’s used in `update_lints`
+// end lints modules, do not remove this comment, it's used in `update_lints`
 
 use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
