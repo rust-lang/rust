@@ -272,6 +272,16 @@ impl Mode {
     }
 }
 
+/// When `rust.rust_remap_debuginfo` is requested, the compiler needs to know how to
+/// opportunistically unremap compiler vs non-compiler sources. We use two schemes,
+/// [`RemapScheme::Compiler`] and [`RemapScheme::NonCompiler`].
+pub enum RemapScheme {
+    /// The [`RemapScheme::Compiler`] scheme will remap to `/rustc-dev/{hash}`.
+    Compiler,
+    /// The [`RemapScheme::NonCompiler`] scheme will remap to `/rustc/{hash}`.
+    NonCompiler,
+}
+
 #[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CLang {
     C,
@@ -1210,7 +1220,7 @@ Executed at: {executed_at}"#,
         })
     }
 
-    fn debuginfo_map_to(&self, which: GitRepo) -> Option<String> {
+    fn debuginfo_map_to(&self, which: GitRepo, remap_scheme: RemapScheme) -> Option<String> {
         if !self.config.rust_remap_debuginfo {
             return None;
         }
@@ -1218,7 +1228,24 @@ Executed at: {executed_at}"#,
         match which {
             GitRepo::Rustc => {
                 let sha = self.rust_sha().unwrap_or(&self.version);
-                Some(format!("/rustc/{sha}"))
+
+                match remap_scheme {
+                    RemapScheme::Compiler => {
+                        // For compiler sources, remap via `/rustc-dev/{sha}` to allow
+                        // distinguishing between compiler sources vs library sources, since
+                        // `rustc-dev` dist component places them under
+                        // `$sysroot/lib/rustlib/rustc-src/rust` as opposed to `rust-src`'s
+                        // `$sysroot/lib/rustlib/src/rust`.
+                        //
+                        // Keep this scheme in sync with `rustc_metadata::rmeta::decoder`'s
+                        // `try_to_translate_virtual_to_real`.
+                        Some(format!("/rustc-dev/{sha}"))
+                    }
+                    RemapScheme::NonCompiler => {
+                        // For non-compiler sources, use `/rustc/{sha}` remapping scheme.
+                        Some(format!("/rustc/{sha}"))
+                    }
+                }
             }
             GitRepo::Llvm => Some(String::from("/rustc/llvm")),
         }
@@ -1285,7 +1312,7 @@ Executed at: {executed_at}"#,
             base.push("-fno-omit-frame-pointer".into());
         }
 
-        if let Some(map_to) = self.debuginfo_map_to(which) {
+        if let Some(map_to) = self.debuginfo_map_to(which, RemapScheme::NonCompiler) {
             let map = format!("{}={}", self.src.display(), map_to);
             let cc = self.cc(target);
             if cc.ends_with("clang") || cc.ends_with("gcc") {
