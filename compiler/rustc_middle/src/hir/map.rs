@@ -920,7 +920,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }) => until_within(*outer_span, generics.where_clause_span),
             // Constants and Statics.
             Node::Item(Item {
-                kind: ItemKind::Const(_, ty, ..) | ItemKind::Static(_, ty, ..),
+                kind: ItemKind::Const(_, _, ty, _) | ItemKind::Static(_, _, ty, _),
                 span: outer_span,
                 ..
             })

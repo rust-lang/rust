@@ -513,7 +513,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         let attrs = cx.tcx.hir_attrs(it.hir_id());
         match it.kind {
-            hir::ItemKind::Static(ident, ..)
+            hir::ItemKind::Static(_, ident, ..)
                 if !ast::attr::contains_name(attrs, sym::no_mangle) =>
             {
                 NonUpperCaseGlobals::check_upper_case(cx, "static variable", &ident);

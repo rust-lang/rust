@@ -272,7 +272,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
             return;
         }
         match &item.kind {
-            ItemKind::Enum(_, enum_def, _generics) if self.enable_ordering_for_enum => {
+            ItemKind::Enum(_, _generics, enum_def) if self.enable_ordering_for_enum => {
                 let mut cur_v: Option<&Variant<'_>> = None;
                 for variant in enum_def.variants {
                     if variant.span.in_external_macro(cx.sess().source_map()) {
@@ -288,7 +288,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                     cur_v = Some(variant);
                 }
             },
-            ItemKind::Struct(_, VariantData::Struct { fields, .. }, _generics) if self.enable_ordering_for_struct => {
+            ItemKind::Struct(_, _generics, VariantData::Struct { fields, .. }) if self.enable_ordering_for_struct => {
                 let mut cur_f: Option<&FieldDef<'_>> = None;
                 for field in *fields {
                     if field.span.in_external_macro(cx.sess().source_map()) {

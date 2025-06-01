@@ -1,0 +1,85 @@
+- // MIR for `slice_get` before LowerIntrinsics
++ // MIR for `slice_get` after LowerIntrinsics
+  
+  fn slice_get(_1: &[i8], _2: &mut [i16], _3: *const [i32], _4: *mut [i64], _5: usize) -> (&i8, &mut i16, *const i32, *mut i64) {
+      debug r => _1;
+      debug rm => _2;
+      debug p => _3;
+      debug pm => _4;
+      debug i => _5;
+      let mut _0: (&i8, &mut i16, *const i32, *mut i64);
+      let mut _6: &i8;
+      let mut _7: &[i8];
+      let mut _8: usize;
+      let mut _9: &mut i16;
+      let mut _10: &mut [i16];
+      let mut _11: usize;
+      let mut _12: *const i32;
+      let mut _13: *const [i32];
+      let mut _14: usize;
+      let mut _15: *mut i64;
+      let mut _16: *mut [i64];
+      let mut _17: usize;
+  
+      bb0: {
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = copy _1;
+          StorageLive(_8);
+          _8 = copy _5;
+-         _6 = slice_get_unchecked::<&i8, &[i8], i8>(move _7, move _8) -> [return: bb1, unwind unreachable];
++         _6 = &(*_7)[_8];
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageLive(_9);
+          StorageLive(_10);
+          _10 = move _2;
+          StorageLive(_11);
+          _11 = copy _5;
+-         _9 = slice_get_unchecked::<&mut i16, &mut [i16], i16>(move _10, move _11) -> [return: bb2, unwind unreachable];
++         _9 = &mut (*_10)[_11];
++         goto -> bb2;
+      }
+  
+      bb2: {
+          StorageDead(_11);
+          StorageDead(_10);
+          StorageLive(_12);
+          StorageLive(_13);
+          _13 = copy _3;
+          StorageLive(_14);
+          _14 = copy _5;
+-         _12 = slice_get_unchecked::<*const i32, *const [i32], i32>(move _13, move _14) -> [return: bb3, unwind unreachable];
++         _12 = &raw const (*_13)[_14];
++         goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_14);
+          StorageDead(_13);
+          StorageLive(_15);
+          StorageLive(_16);
+          _16 = copy _4;
+          StorageLive(_17);
+          _17 = copy _5;
+-         _15 = slice_get_unchecked::<*mut i64, *mut [i64], i64>(move _16, move _17) -> [return: bb4, unwind unreachable];
++         _15 = &raw mut (*_16)[_17];
++         goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_17);
+          StorageDead(_16);
+          _0 = (move _6, move _9, move _12, move _15);
+          StorageDead(_15);
+          StorageDead(_12);
+          StorageDead(_9);
+          StorageDead(_6);
+          return;
+      }
+  }
+  

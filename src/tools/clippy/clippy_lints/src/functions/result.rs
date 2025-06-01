@@ -103,7 +103,7 @@ fn check_result_large_err<'tcx>(cx: &LateContext<'tcx>, err_ty: Ty<'tcx>, hir_ty
             .did()
             .as_local()
         && let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(local_def_id)
-        && let hir::ItemKind::Enum(_, ref def, _) = item.kind
+        && let hir::ItemKind::Enum(_, _, ref def) = item.kind
     {
         let variants_size = AdtVariantInfo::new(cx, *adt, subst);
         if let Some((first_variant, variants)) = variants_size.split_first()

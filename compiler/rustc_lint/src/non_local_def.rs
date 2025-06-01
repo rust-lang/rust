@@ -183,7 +183,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     && parent_opt_item_name != Some(kw::Underscore)
                     && let Some(parent) = parent.as_local()
                     && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent)
-                    && let ItemKind::Const(ident, ty, _, _) = item.kind
+                    && let ItemKind::Const(ident, _, ty, _) = item.kind
                     && let TyKind::Tup(&[]) = ty.kind
                 {
                     Some(ident.span)
