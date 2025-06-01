@@ -1722,7 +1722,6 @@ impl<T, E> Result<Result<T, E>, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_flattening)]
     /// let x: Result<Result<&'static str, u32>, u32> = Ok(Ok("hello"));
     /// assert_eq!(Ok("hello"), x.flatten());
     ///
@@ -1736,14 +1735,14 @@ impl<T, E> Result<Result<T, E>, E> {
     /// Flattening only removes one level of nesting at a time:
     ///
     /// ```
-    /// #![feature(result_flattening)]
     /// let x: Result<Result<Result<&'static str, u32>, u32>, u32> = Ok(Ok(Ok("hello")));
     /// assert_eq!(Ok(Ok("hello")), x.flatten());
     /// assert_eq!(Ok("hello"), x.flatten().flatten());
     /// ```
     #[inline]
-    #[unstable(feature = "result_flattening", issue = "70142")]
-    #[rustc_const_unstable(feature = "result_flattening", issue = "70142")]
+    #[stable(feature = "result_flattening", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    #[rustc_const_stable(feature = "result_flattening", since = "CURRENT_RUSTC_VERSION")]
     pub const fn flatten(self) -> Result<T, E> {
         // FIXME(const-hack): could be written with `and_then`
         match self {
