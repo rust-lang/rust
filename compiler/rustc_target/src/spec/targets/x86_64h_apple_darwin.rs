@@ -1,10 +1,9 @@
 use crate::spec::base::apple::{Arch, TargetAbi, base};
-use crate::spec::{FramePointer, SanitizerSet, Target, TargetMetadata, TargetOptions};
+use crate::spec::{SanitizerSet, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     let (mut opts, llvm_target, arch) = base("macos", Arch::X86_64h, TargetAbi::Normal);
     opts.max_atomic_width = Some(128);
-    opts.frame_pointer = FramePointer::Always;
     opts.supported_sanitizers =
         SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::LEAK | SanitizerSet::THREAD;
 

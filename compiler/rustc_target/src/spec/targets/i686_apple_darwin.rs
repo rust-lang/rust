@@ -1,5 +1,5 @@
 use crate::spec::base::apple::{Arch, TargetAbi, base};
-use crate::spec::{FramePointer, Target, TargetMetadata, TargetOptions};
+use crate::spec::{Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     let (opts, llvm_target, arch) = base("macos", Arch::I686, TargetAbi::Normal);
@@ -16,11 +16,6 @@ pub(crate) fn target() -> Target {
             i128:128-f64:32:64-f80:128-n8:16:32-S128"
             .into(),
         arch,
-        options: TargetOptions {
-            mcount: "\u{1}mcount".into(),
-            max_atomic_width: Some(64),
-            frame_pointer: FramePointer::Always,
-            ..opts
-        },
+        options: TargetOptions { mcount: "\u{1}mcount".into(), max_atomic_width: Some(64), ..opts },
     }
 }

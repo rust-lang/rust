@@ -124,7 +124,7 @@ pub(crate) fn base(
         // to v4, so we do the same.
         // https://github.com/llvm/llvm-project/blob/378778a0d10c2f8d5df8ceff81f95b6002984a4b/clang/lib/Driver/ToolChains/Darwin.cpp#L1203
         default_dwarf_version: 4,
-        frame_pointer: FramePointer::Always,
+        frame_pointer: FramePointer::NonLeaf,
         has_rpath: true,
         dll_suffix: ".dylib".into(),
         archive_format: "darwin".into(),
