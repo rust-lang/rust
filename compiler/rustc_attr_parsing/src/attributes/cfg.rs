@@ -9,8 +9,8 @@ use rustc_session::lint::{BuiltinLintDiag, Lint};
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
 
+use crate::parse_version;
 use crate::session_diagnostics::{self, UnsupportedLiteralReason};
-use crate::{fluent_generated, parse_version};
 
 /// Emitter of a builtin lint from `cfg_matches`.
 ///
@@ -182,34 +182,6 @@ pub fn eval_condition(
                     };
 
                     !eval_condition(mi, sess, features, eval)
-                }
-                Some(sym::target) => {
-                    if let Some(features) = features
-                        && !features.cfg_target_compact()
-                    {
-                        feature_err(
-                            sess,
-                            sym::cfg_target_compact,
-                            cfg.span,
-                            fluent_generated::attr_parsing_unstable_cfg_target_compact,
-                        )
-                        .emit();
-                    }
-
-                    mis.iter().fold(true, |res, mi| {
-                        let Some(mut mi) = mi.meta_item().cloned() else {
-                            dcx.emit_err(session_diagnostics::CfgPredicateIdentifier {
-                                span: mi.span(),
-                            });
-                            return false;
-                        };
-
-                        if let [seg, ..] = &mut mi.path.segments[..] {
-                            seg.ident.name = Symbol::intern(&format!("target_{}", seg.ident.name));
-                        }
-
-                        res & eval_condition(&MetaItemInner::MetaItem(mi), sess, features, eval)
-                    })
                 }
                 _ => {
                     dcx.emit_err(session_diagnostics::InvalidPredicate {
