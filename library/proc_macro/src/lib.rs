@@ -45,6 +45,7 @@ mod diagnostic;
 mod escape;
 mod to_tokens;
 
+use core::ops::BitOr;
 use std::ffi::CStr;
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
@@ -1612,5 +1613,204 @@ pub mod tracked_path {
     pub fn path<P: AsRef<str>>(path: P) {
         let path: &str = path.as_ref();
         crate::bridge::client::FreeFunctions::track_path(path);
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
+#[derive(Debug)]
+pub struct HasIterator; // True
+#[doc(hidden)]
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
+#[derive(Debug)]
+pub struct ThereIsNoIteratorInRepetition; // False
+
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
+impl BitOr<ThereIsNoIteratorInRepetition> for ThereIsNoIteratorInRepetition {
+    type Output = ThereIsNoIteratorInRepetition;
+    fn bitor(self, _rhs: ThereIsNoIteratorInRepetition) -> ThereIsNoIteratorInRepetition {
+        ThereIsNoIteratorInRepetition
+    }
+}
+
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
+impl BitOr<ThereIsNoIteratorInRepetition> for HasIterator {
+    type Output = HasIterator;
+    fn bitor(self, _rhs: ThereIsNoIteratorInRepetition) -> HasIterator {
+        HasIterator
+    }
+}
+
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
+impl BitOr<HasIterator> for ThereIsNoIteratorInRepetition {
+    type Output = HasIterator;
+    fn bitor(self, _rhs: HasIterator) -> HasIterator {
+        HasIterator
+    }
+}
+
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
+impl BitOr<HasIterator> for HasIterator {
+    type Output = HasIterator;
+    fn bitor(self, _rhs: HasIterator) -> HasIterator {
+        HasIterator
+    }
+}
+
+/// Extension traits used by the implementation of `quote!`. These are defined
+/// in separate traits, rather than as a single trait due to ambiguity issues.
+///
+/// These traits expose a `quote_into_iter` method which should allow calling
+/// whichever impl happens to be applicable. Calling that method repeatedly on
+/// the returned value should be idempotent.
+#[doc(hidden)]
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
+pub mod ext {
+    use core::slice;
+    use std::collections::btree_set::{self, BTreeSet};
+
+    use super::{
+        HasIterator as HasIter, RepInterp, ThereIsNoIteratorInRepetition as DoesNotHaveIter,
+    };
+    use crate::ToTokens;
+
+    /// Extension trait providing the `quote_into_iter` method on iterators.
+    #[unstable(feature = "proc_macro_quote", issue = "54722")]
+    pub trait RepIteratorExt: Iterator + Sized {
+        fn quote_into_iter(self) -> (Self, HasIter) {
+            (self, HasIter)
+        }
+    }
+
+    impl<T: Iterator> RepIteratorExt for T {}
+
+    /// Extension trait providing the `quote_into_iter` method for
+    /// non-iterable types. These types interpolate the same value in each
+    /// iteration of the repetition.
+    #[unstable(feature = "proc_macro_quote", issue = "54722")]
+    pub trait RepToTokensExt {
+        /// Pretend to be an iterator for the purposes of `quote_into_iter`.
+        /// This allows repeated calls to `quote_into_iter` to continue
+        /// correctly returning DoesNotHaveIter.
+        #[unstable(feature = "proc_macro_quote", issue = "54722")]
+        fn next(&self) -> Option<&Self> {
+            Some(self)
+        }
+
+        #[unstable(feature = "proc_macro_quote", issue = "54722")]
+        fn quote_into_iter(&self) -> (&Self, DoesNotHaveIter) {
+            (self, DoesNotHaveIter)
+        }
+    }
+
+    #[unstable(feature = "proc_macro_quote", issue = "54722")]
+    impl<T: ToTokens + ?Sized> RepToTokensExt for T {}
+
+    /// Extension trait providing the `quote_into_iter` method for types that
+    /// can be referenced as an iterator.
+    #[unstable(feature = "proc_macro_quote", issue = "54722")]
+    pub trait RepAsIteratorExt<'q> {
+        #[unstable(feature = "proc_macro_quote", issue = "54722")]
+        type Iter: Iterator;
+
+        #[unstable(feature = "proc_macro_quote", issue = "54722")]
+        fn quote_into_iter(&'q self) -> (Self::Iter, HasIter);
+    }
+
+    #[unstable(feature = "proc_macro_quote", issue = "54722")]
+    impl<'q, T: RepAsIteratorExt<'q> + ?Sized> RepAsIteratorExt<'q> for &T {
+        type Iter = T::Iter;
+
+        fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
+            <T as RepAsIteratorExt>::quote_into_iter(*self)
+        }
+    }
+
+    #[unstable(feature = "proc_macro_quote", issue = "54722")]
+    impl<'q, T: RepAsIteratorExt<'q> + ?Sized> RepAsIteratorExt<'q> for &mut T {
+        type Iter = T::Iter;
+
+        fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
+            <T as RepAsIteratorExt>::quote_into_iter(*self)
+        }
+    }
+
+    #[unstable(feature = "proc_macro_quote", issue = "54722")]
+    impl<'q, T: 'q> RepAsIteratorExt<'q> for [T] {
+        type Iter = slice::Iter<'q, T>;
+
+        fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
+            (self.iter(), HasIter)
+        }
+    }
+
+    #[unstable(feature = "proc_macro_quote", issue = "54722")]
+    impl<'q, T: 'q, const N: usize> RepAsIteratorExt<'q> for [T; N] {
+        type Iter = slice::Iter<'q, T>;
+
+        fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
+            (self.iter(), HasIter)
+        }
+    }
+
+    impl<'q, T: 'q> RepAsIteratorExt<'q> for Vec<T> {
+        type Iter = slice::Iter<'q, T>;
+
+        fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
+            (self.iter(), HasIter)
+        }
+    }
+
+    #[unstable(feature = "proc_macro_quote", issue = "54722")]
+    impl<'q, T: 'q> RepAsIteratorExt<'q> for BTreeSet<T> {
+        type Iter = btree_set::Iter<'q, T>;
+
+        fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
+            (self.iter(), HasIter)
+        }
+    }
+
+    #[unstable(feature = "proc_macro_quote", issue = "54722")]
+    impl<'q, T: RepAsIteratorExt<'q>> RepAsIteratorExt<'q> for RepInterp<T> {
+        type Iter = T::Iter;
+
+        fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
+            self.0.quote_into_iter()
+        }
+    }
+}
+
+// Helper type used within interpolations to allow for repeated binding names.
+// Implements the relevant traits, and exports a dummy `next()` method.
+#[derive(Copy, Clone)]
+#[doc(hidden)]
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
+pub struct RepInterp<T>(pub T);
+
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
+impl<T> RepInterp<T> {
+    // This method is intended to look like `Iterator::next`, and is called when
+    // a name is bound multiple times, as the previous binding will shadow the
+    // original `Iterator` object. This allows us to avoid advancing the
+    // iterator multiple times per iteration.
+    #[unstable(feature = "proc_macro_quote", issue = "54722")]
+    pub fn next(self) -> Option<T> {
+        Some(self.0)
+    }
+}
+
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
+impl<T: Iterator> Iterator for RepInterp<T> {
+    type Item = T::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
+impl<T: ToTokens> ToTokens for RepInterp<T> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.0.to_tokens(tokens);
     }
 }
