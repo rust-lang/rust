@@ -124,7 +124,7 @@ impl SessionGlobals {
     ) -> SessionGlobals {
         SessionGlobals {
             symbol_interner: symbol::Interner::with_extra_symbols(extra_symbols),
-            byte_symbol_interner: symbol::ByteInterner::default(),
+            byte_symbol_interner: symbol::ByteInterner::prefill(&[b""]), // njn: ?
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             metavar_spans: Default::default(),
             hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
@@ -1189,6 +1189,7 @@ rustc_index::newtype_index! {
 pub trait SpanEncoder: Encoder {
     fn encode_span(&mut self, span: Span);
     fn encode_symbol(&mut self, symbol: Symbol);
+    fn encode_byte_symbol(&mut self, symbol: ByteSymbol);
     fn encode_expn_id(&mut self, expn_id: ExpnId);
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext);
     /// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a tcx.
@@ -1207,6 +1208,10 @@ impl SpanEncoder for FileEncoder {
 
     fn encode_symbol(&mut self, symbol: Symbol) {
         self.emit_str(symbol.as_str());
+    }
+
+    fn encode_byte_symbol(&mut self, symbol: ByteSymbol) {
+        self.emit_byte_str(symbol.as_byte_str());
     }
 
     fn encode_expn_id(&mut self, _expn_id: ExpnId) {
@@ -1240,6 +1245,12 @@ impl<E: SpanEncoder> Encodable<E> for Span {
 impl<E: SpanEncoder> Encodable<E> for Symbol {
     fn encode(&self, s: &mut E) {
         s.encode_symbol(*self);
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for ByteSymbol {
+    fn encode(&self, s: &mut E) {
+        s.encode_byte_symbol(*self);
     }
 }
 
@@ -1284,6 +1295,7 @@ impl<E: SpanEncoder> Encodable<E> for AttrId {
 pub trait SpanDecoder: Decoder {
     fn decode_span(&mut self) -> Span;
     fn decode_symbol(&mut self) -> Symbol;
+    fn decode_byte_symbol(&mut self) -> ByteSymbol;
     fn decode_expn_id(&mut self) -> ExpnId;
     fn decode_syntax_context(&mut self) -> SyntaxContext;
     fn decode_crate_num(&mut self) -> CrateNum;
@@ -1302,6 +1314,10 @@ impl SpanDecoder for MemDecoder<'_> {
 
     fn decode_symbol(&mut self) -> Symbol {
         Symbol::intern(self.read_str())
+    }
+
+    fn decode_byte_symbol(&mut self) -> ByteSymbol {
+        ByteSymbol::intern(self.read_byte_str())
     }
 
     fn decode_expn_id(&mut self) -> ExpnId {
@@ -1338,6 +1354,12 @@ impl<D: SpanDecoder> Decodable<D> for Span {
 impl<D: SpanDecoder> Decodable<D> for Symbol {
     fn decode(s: &mut D) -> Symbol {
         s.decode_symbol()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for ByteSymbol {
+    fn decode(s: &mut D) -> ByteSymbol {
+        s.decode_byte_symbol()
     }
 }
 

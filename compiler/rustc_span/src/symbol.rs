@@ -2919,12 +2919,12 @@ impl fmt::Debug for ByteSymbol {
 //     }
 // }
 
-// impl<CTX> HashStable<CTX> for Symbol {
-//     #[inline]
-//     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-//         self.as_str().hash_stable(hcx, hasher);
-//     }
-// }
+impl<CTX> HashStable<CTX> for ByteSymbol {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.as_byte_str().hash_stable(hcx, hasher);
+    }
+}
 
 // impl<CTX> ToStableHashKey<CTX> for Symbol {
 //     type KeyType = String;
@@ -2942,7 +2942,6 @@ impl fmt::Debug for ByteSymbol {
 //     }
 // }
 
-#[derive(Default)]
 pub(crate) struct ByteInterner(Lock<ByteInternerInner>);
 
 // njn: update comment
@@ -2952,7 +2951,6 @@ pub(crate) struct ByteInterner(Lock<ByteInternerInner>);
 // `Interner` on the same thread, which makes it easy to mix up `Symbol`s
 // between `Interner`s.
 // njn: parameterize?
-#[derive(Default)]
 struct ByteInternerInner {
     arena: DroplessArena,
     strings: FxIndexSet<&'static [u8]>, // njn: rename?
@@ -2969,15 +2967,12 @@ impl ByteInterner {
     //     Interner(Lock::new(ByteInternerInner { arena: Default::default(), strings }))
     // }
 
-    // fn prefill(init: &[&'static str], extra: &[&'static str]) -> Self {
-    //     let strings = FxIndexSet::from_iter(init.iter().copied().chain(extra.iter().copied()));
-    //     assert_eq!(
-    //         strings.len(),
-    //         init.len() + extra.len(),
-    //         "`init` or `extra` contain duplicate symbols",
-    //     );
-    //     Interner(Lock::new(InternerInner { arena: Default::default(), strings }))
-    // }
+    pub(crate) fn prefill(init: &[&'static [u8]]) -> Self {
+        // njn: explain this
+        let strings = FxIndexSet::from_iter(init.iter().copied());
+        assert_eq!(strings.len(), init.len(), "`init` contains duplicate symbols",);
+        ByteInterner(Lock::new(ByteInternerInner { arena: Default::default(), strings }))
+    }
 
     #[inline]
     fn intern(&self, string: &[u8]) -> ByteSymbol {
@@ -3009,7 +3004,7 @@ impl ByteInterner {
     }
 }
 
-impl Symbol {
+impl ByteSymbol {
     // fn is_special(self) -> bool {
     //     self <= kw::Underscore
     // }
@@ -3063,8 +3058,9 @@ impl Symbol {
     //     self != sym::empty && self != kw::Underscore && !self.is_path_segment_keyword()
     // }
 
-    // /// Was this symbol predefined in the compiler's `symbols!` macro
-    // pub fn is_predefined(self) -> bool {
-    //     self.as_u32() < PREDEFINED_SYMBOLS_COUNT
-    // }
+    /// njn: update comment
+    /// Was this symbol predefined in the compiler's `symbols!` macro
+    pub fn is_predefined(self) -> bool {
+        self.as_u32() == 0 // njn: do better!
+    }
 }

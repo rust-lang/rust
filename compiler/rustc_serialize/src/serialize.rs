@@ -72,6 +72,13 @@ pub trait Encoder {
         self.emit_u8(STR_SENTINEL);
     }
 
+    #[inline]
+    fn emit_byte_str(&mut self, v: &[u8]) {
+        self.emit_usize(v.len());
+        self.emit_raw_bytes(v);
+        self.emit_u8(STR_SENTINEL);
+    }
+
     fn emit_raw_bytes(&mut self, s: &[u8]);
 }
 
@@ -123,6 +130,14 @@ pub trait Decoder {
         let bytes = self.read_raw_bytes(len + 1);
         assert!(bytes[len] == STR_SENTINEL);
         unsafe { std::str::from_utf8_unchecked(&bytes[..len]) }
+    }
+
+    #[inline]
+    fn read_byte_str(&mut self) -> &[u8] {
+        let len = self.read_usize();
+        let bytes = self.read_raw_bytes(len + 1);
+        assert!(bytes[len] == STR_SENTINEL);
+        &bytes[..len]
     }
 
     fn read_raw_bytes(&mut self, len: usize) -> &[u8];

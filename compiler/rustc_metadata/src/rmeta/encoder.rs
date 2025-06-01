@@ -29,7 +29,15 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::{CrateType, OptLevel, TargetModifier};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
-    ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
+    // njn: why is Symbol not here?
+    ByteSymbol,
+    ExternalSource,
+    FileName,
+    SourceFile,
+    SpanData,
+    SpanEncoder,
+    StableSourceFileId,
+    SyntaxContext,
     sym,
 };
 use tracing::{debug, instrument, trace};
@@ -64,6 +72,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     is_proc_macro: bool,
     hygiene_ctxt: &'a HygieneEncodeContext,
     symbol_table: FxHashMap<Symbol, usize>,
+    byte_symbol_table: FxHashMap<ByteSymbol, usize>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -213,6 +222,29 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
                     let pos = self.opaque.position();
                     o.insert(pos);
                     self.emit_str(symbol.as_str());
+                }
+                Entry::Occupied(o) => {
+                    let x = *o.get();
+                    self.emit_u8(SYMBOL_OFFSET);
+                    self.emit_usize(x);
+                }
+            }
+        }
+    }
+
+    fn encode_byte_symbol(&mut self, symbol: ByteSymbol) {
+        // if byte symbol predefined, emit tag and symbol index
+        if symbol.is_predefined() {
+            self.opaque.emit_u8(SYMBOL_PREDEFINED);
+            self.opaque.emit_u32(symbol.as_u32());
+        } else {
+            // otherwise write it as string or as offset to it
+            match self.byte_symbol_table.entry(symbol) {
+                Entry::Vacant(o) => {
+                    self.opaque.emit_u8(SYMBOL_STR);
+                    let pos = self.opaque.position();
+                    o.insert(pos);
+                    self.emit_byte_str(symbol.as_byte_str());
                 }
                 Entry::Occupied(o) => {
                     let x = *o.get();
@@ -2409,6 +2441,7 @@ fn with_encode_metadata_header(
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
         symbol_table: Default::default(),
+        byte_symbol_table: Default::default(),
     };
 
     // Encode the rustc version string in a predictable location.

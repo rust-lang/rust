@@ -43,27 +43,23 @@ pub(crate) fn lit_to_const<'tcx>(
             let str_bytes = s.as_str().as_bytes();
             ty::ValTree::from_raw_bytes(tcx, str_bytes)
         }
-        (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _))
+        (ast::LitKind::ByteStr(byte_sym, _), ty::Ref(_, inner_ty, _))
             if matches!(inner_ty.kind(), ty::Slice(_) | ty::Array(..)) =>
         {
-            let bytes = data as &[u8];
-            ty::ValTree::from_raw_bytes(tcx, bytes)
+            ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str())
         }
-        (ast::LitKind::ByteStr(data, _), ty::Slice(_) | ty::Array(..))
+        (ast::LitKind::ByteStr(byte_sym, _), ty::Slice(_) | ty::Array(..))
             if tcx.features().deref_patterns() =>
         {
             // Byte string literal patterns may have type `[u8]` or `[u8; N]` if `deref_patterns` is
             // enabled, in order to allow, e.g., `deref!(b"..."): Vec<u8>`.
-            let bytes = data as &[u8];
-            ty::ValTree::from_raw_bytes(tcx, bytes)
+            ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str())
         }
         (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
-            ty::ValTree::from_scalar_int(tcx, (*n).into())
+            ty::ValTree::from_scalar_int(tcx, n.into())
         }
-        (ast::LitKind::CStr(data, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::CStr)) =>
-        {
-            let bytes = data as &[u8];
-            ty::ValTree::from_raw_bytes(tcx, bytes)
+        (ast::LitKind::CStr(byte_sym, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::CStr)) => {
+            ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str())
         }
         (ast::LitKind::Int(n, _), ty::Uint(ui)) if !neg => {
             let scalar_int = trunc(n.get(), *ui);
@@ -76,15 +72,15 @@ pub(crate) fn lit_to_const<'tcx>(
             );
             ty::ValTree::from_scalar_int(tcx, scalar_int)
         }
-        (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int(tcx, (*b).into()),
+        (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int(tcx, b.into()),
         (ast::LitKind::Float(n, _), ty::Float(fty)) => {
-            let bits = parse_float_into_scalar(*n, *fty, neg).unwrap_or_else(|| {
+            let bits = parse_float_into_scalar(n, *fty, neg).unwrap_or_else(|| {
                 tcx.dcx().bug(format!("couldn't parse float literal: {:?}", lit_input.lit))
             });
             ty::ValTree::from_scalar_int(tcx, bits)
         }
-        (ast::LitKind::Char(c), ty::Char) => ty::ValTree::from_scalar_int(tcx, (*c).into()),
-        (ast::LitKind::Err(guar), _) => return ty::Const::new_error(tcx, *guar),
+        (ast::LitKind::Char(c), ty::Char) => ty::ValTree::from_scalar_int(tcx, c.into()),
+        (ast::LitKind::Err(guar), _) => return ty::Const::new_error(tcx, guar),
         _ => return ty::Const::new_misc_error(tcx),
     };
 

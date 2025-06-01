@@ -2433,9 +2433,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         let lit_input = match expr.kind {
-            hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
+            hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: lit.node, ty, neg: false }),
             hir::ExprKind::Unary(hir::UnOp::Neg, expr) => match expr.kind {
-                hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: true }),
+                hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: lit.node, ty, neg: true }),
                 _ => None,
             },
             _ => None,

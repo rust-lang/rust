@@ -152,7 +152,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         hir_visit::walk_pat(self, p);
     }
 
-    fn visit_lit(&mut self, hir_id: HirId, lit: &'tcx hir::Lit, negated: bool) {
+    fn visit_lit(&mut self, hir_id: HirId, lit: hir::Lit, negated: bool) {
         lint_callback!(self, check_lit, hir_id, lit, negated);
     }
 
