@@ -1,0 +1,20 @@
+error: expected expression, found end of macro arguments
+  --> $DIR/no_element.rs:6:34
+   |
+LL | distributed_slice_element!(MEOWS,);
+   |                                  ^ expected expression
+
+error: expected one of `,` or `::`, found `<eof>`
+  --> $DIR/no_element.rs:8:28
+   |
+LL | distributed_slice_element!(MEOWS);
+   |                            ^^^^^ expected one of `,` or `::`
+
+error: expected identifier, found `<eof>`
+  --> $DIR/no_element.rs:10:1
+   |
+LL | distributed_slice_element!();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

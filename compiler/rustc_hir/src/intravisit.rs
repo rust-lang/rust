@@ -545,12 +545,12 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
                 UseKind::Glob | UseKind::ListStem => {}
             }
         }
-        ItemKind::Static(_, ident, ref typ, body) => {
+        ItemKind::Static(_, ident, ref typ, body, _ds) => {
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_ty_unambig(typ));
             try_visit!(visitor.visit_nested_body(body));
         }
-        ItemKind::Const(ident, ref generics, ref typ, body) => {
+        ItemKind::Const(ident, ref generics, ref typ, body, _ds) => {
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_ty_unambig(typ));
@@ -659,7 +659,7 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(
                 visit_opt!(visitor, visit_ident, ident);
             }
         }
-        ForeignItemKind::Static(ref typ, _, _) => {
+        ForeignItemKind::Static(ref typ, _, _, _) => {
             try_visit!(visitor.visit_ty_unambig(typ));
         }
         ForeignItemKind::Type => (),
@@ -920,6 +920,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             visit_opt!(visitor, visit_ty_unambig, ty);
         }
         ExprKind::Lit(lit) => try_visit!(visitor.visit_lit(expression.hir_id, lit, false)),
+        ExprKind::DistributedSliceDeferredArray => {}
         ExprKind::Err(_) => {}
     }
     V::Result::output()
@@ -1166,7 +1167,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_defaultness(&defaultness));
     try_visit!(visitor.visit_id(hir_id));
     match *kind {
-        TraitItemKind::Const(ref ty, default) => {
+        TraitItemKind::Const(ref ty, default, _) => {
             try_visit!(visitor.visit_ty_unambig(ty));
             visit_opt!(visitor, visit_nested_body, default);
         }
@@ -1224,7 +1225,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_defaultness(defaultness));
     try_visit!(visitor.visit_id(impl_item.hir_id()));
     match *kind {
-        ImplItemKind::Const(ref ty, body) => {
+        ImplItemKind::Const(ref ty, body, _) => {
             try_visit!(visitor.visit_ty_unambig(ty));
             visitor.visit_nested_body(body)
         }

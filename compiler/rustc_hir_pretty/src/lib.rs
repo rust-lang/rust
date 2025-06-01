@@ -17,9 +17,9 @@ use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_attr_data_structures::{AttributeKind, PrintAttribute};
 use rustc_hir::{
-    BindingMode, ByRef, ConstArgKind, GenericArg, GenericBound, GenericParam, GenericParamKind,
-    HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term,
-    TyPatKind,
+    BindingMode, ByRef, ConstArgKind, DistributedSlice, GenericArg, GenericBound, GenericParam,
+    GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind,
+    PreciseCapturingArg, RangeEnd, Term, TyPatKind,
 };
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, Ident, Span, Symbol, kw};
@@ -488,7 +488,7 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(cb)
             }
-            hir::ForeignItemKind::Static(t, m, safety) => {
+            hir::ForeignItemKind::Static(t, m, safety, _) => {
                 self.print_safety(safety);
                 let (cb, ib) = self.head("static");
                 if m.is_mut() {
@@ -559,6 +559,14 @@ impl<'a> State<'a> {
         self.maybe_print_comment(item.span.lo());
         let attrs = self.attrs(item.hir_id());
         self.print_attrs_as_outer(attrs);
+
+        if let hir::ItemKind::Const(.., DistributedSlice::Declaration(..))
+        | hir::ItemKind::Static(.., DistributedSlice::Declaration(..)) = item.kind
+        {
+            self.word("#[distributed_slice(crate)]");
+            self.hardbreak_if_not_bol();
+        }
+
         self.ann.pre(self, AnnNode::Item(item));
         match item.kind {
             hir::ItemKind::ExternCrate(orig_name, ident) => {
@@ -593,7 +601,7 @@ impl<'a> State<'a> {
                 self.end(ib);
                 self.end(cb);
             }
-            hir::ItemKind::Static(m, ident, ty, expr) => {
+            hir::ItemKind::Static(m, ident, ty, expr, _ds) => {
                 let (cb, ib) = self.head("static");
                 if m.is_mut() {
                     self.word_space("mut");
@@ -609,7 +617,13 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(cb);
             }
-            hir::ItemKind::Const(ident, generics, ty, expr) => {
+            hir::ItemKind::Const(
+                ident,
+                generics,
+                ty,
+                expr,
+                DistributedSlice::None | DistributedSlice::Declaration(..),
+            ) => {
                 let (cb, ib) = self.head("const");
                 self.print_ident(ident);
                 self.print_generic_params(generics.params);
@@ -622,6 +636,28 @@ impl<'a> State<'a> {
                 self.ann.nested(self, Nested::Body(expr));
                 self.print_where_clause(generics);
                 self.word(";");
+                self.end(cb);
+            }
+            hir::ItemKind::Const(.., expr, DistributedSlice::Addition(d)) => {
+                let (cb, ib) = self.head("distributed_slice_element!");
+                self.popen();
+                self.word(format!("{d:?}"));
+                self.word(",");
+                self.ann.nested(self, Nested::Body(expr));
+                self.pclose();
+                self.word(";");
+                self.end(ib);
+                self.end(cb);
+            }
+            hir::ItemKind::Const(.., expr, DistributedSlice::AdditionMany(d, _)) => {
+                let (cb, ib) = self.head("distributed_slice_elements!");
+                self.popen();
+                self.word(format!("{d:?}"));
+                self.word(",");
+                self.ann.nested(self, Nested::Body(expr));
+                self.pclose();
+                self.word(";");
+                self.end(ib);
                 self.end(cb);
             }
             hir::ItemKind::Fn { ident, sig, generics, body, .. } => {
@@ -911,7 +947,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(ti.span.lo());
         self.print_attrs_as_outer(self.attrs(ti.hir_id()));
         match ti.kind {
-            hir::TraitItemKind::Const(ty, default) => {
+            hir::TraitItemKind::Const(ty, default, _) => {
                 self.print_associated_const(ti.ident, ti.generics, ty, default);
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(arg_idents)) => {
@@ -940,7 +976,7 @@ impl<'a> State<'a> {
         self.print_attrs_as_outer(self.attrs(ii.hir_id()));
 
         match ii.kind {
-            hir::ImplItemKind::Const(ty, expr) => {
+            hir::ImplItemKind::Const(ty, expr, _) => {
                 self.print_associated_const(ii.ident, ii.generics, ty, Some(expr));
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
@@ -1670,6 +1706,9 @@ impl<'a> State<'a> {
             hir::ExprKind::Yield(expr, _) => {
                 self.word_space("yield");
                 self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Jump);
+            }
+            hir::ExprKind::DistributedSliceDeferredArray => {
+                // literally nothing to print.
             }
             hir::ExprKind::Err(_) => {
                 self.popen();

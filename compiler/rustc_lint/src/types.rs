@@ -1641,7 +1641,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
                     vis.check_foreign_fn(it.owner_id.def_id, sig.decl);
                 }
             }
-            hir::ForeignItemKind::Static(ty, _, _) if !abi.is_rustic_abi() => {
+            hir::ForeignItemKind::Static(ty, _, _, _) if !abi.is_rustic_abi() => {
                 vis.check_foreign_static(it.owner_id, ty.span);
             }
             hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => (),
@@ -1735,8 +1735,8 @@ impl ImproperCTypesDefinitions {
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
-            hir::ItemKind::Static(_, _, ty, _)
-            | hir::ItemKind::Const(_, _, ty, _)
+            hir::ItemKind::Static(_, _, ty, _, _)
+            | hir::ItemKind::Const(_, _, ty, _, _)
             | hir::ItemKind::TyAlias(_, _, ty) => {
                 self.check_ty_maybe_containing_foreign_fnptr(
                     cx,

@@ -635,7 +635,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 intravisit::walk_item(self, item);
             }
             hir::ItemKind::TyAlias(_, generics, _)
-            | hir::ItemKind::Const(_, generics, _, _)
+            | hir::ItemKind::Const(_, generics, _, _, _)
             | hir::ItemKind::Enum(_, generics, _)
             | hir::ItemKind::Struct(_, generics, _)
             | hir::ItemKind::Union(_, generics, _)
@@ -855,7 +855,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     }
                 })
             }
-            Const(_, _) => self.visit_early(trait_item.hir_id(), trait_item.generics, |this| {
+            Const(_, _, _) => self.visit_early(trait_item.hir_id(), trait_item.generics, |this| {
                 intravisit::walk_trait_item(this, trait_item)
             }),
         }
@@ -872,7 +872,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 this.visit_generics(impl_item.generics);
                 this.visit_ty_unambig(ty);
             }),
-            Const(_, _) => self.visit_early(impl_item.hir_id(), impl_item.generics, |this| {
+            Const(_, _, _) => self.visit_early(impl_item.hir_id(), impl_item.generics, |this| {
                 intravisit::walk_impl_item(this, impl_item)
             }),
         }

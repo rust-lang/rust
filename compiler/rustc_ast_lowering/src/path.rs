@@ -36,7 +36,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let qself = qself
             .as_ref()
             // Reject cases like `<impl Trait>::Assoc` and `<impl Trait as Trait>::Assoc`.
-            .map(|q| self.lower_ty(&q.ty, ImplTraitContext::Disallowed(ImplTraitPosition::Path)));
+            .map(|q| {
+                self.lower_ty(&q.ty, ImplTraitContext::Disallowed(ImplTraitPosition::Path), false)
+            });
 
         let partial_res =
             self.resolver.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
@@ -510,7 +512,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // we generally don't permit such things (see #51008).
         let ParenthesizedArgs { span, inputs, inputs_span, output } = data;
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|ty| {
-            self.lower_ty_direct(ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam))
+            self.lower_ty_direct(
+                ty,
+                ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam),
+                false,
+            )
         }));
         let output_ty = match output {
             // Only allow `impl Trait` in return position. i.e.:
@@ -520,7 +526,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // ```
             FnRetTy::Ty(ty) if matches!(itctx, ImplTraitContext::OpaqueTy { .. }) => {
                 if self.tcx.features().impl_trait_in_fn_trait_return() {
-                    self.lower_ty(ty, itctx)
+                    self.lower_ty(ty, itctx, false)
                 } else {
                     self.lower_ty(
                         ty,
@@ -528,12 +534,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             ImplTraitPosition::FnTraitReturn,
                             sym::impl_trait_in_fn_trait_return,
                         ),
+                        false,
                     )
                 }
             }
-            FnRetTy::Ty(ty) => {
-                self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
-            }
+            FnRetTy::Ty(ty) => self.lower_ty(
+                ty,
+                ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn),
+                false,
+            ),
             FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(*span, &[])),
         };
         let args = smallvec![GenericArg::Type(

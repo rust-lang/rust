@@ -1084,9 +1084,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     _ => visit::walk_item(self, item),
                 }
             }
-            ItemKind::Const(box ConstItem { defaultness, expr, .. }) => {
+            ItemKind::Const(box ConstItem { defaultness, expr, distributed_slice, .. }) => {
                 self.check_defaultness(item.span, *defaultness);
-                if expr.is_none() {
+
+                // declarations of global registries have no body deliberately - items are added
+                // later using global registry additions
+                if expr.is_none() && !matches!(distributed_slice, DistributedSlice::Declaration(..))
+                {
                     self.dcx().emit_err(errors::ConstWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),
@@ -1094,13 +1098,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 visit::walk_item(self, item);
             }
-            ItemKind::Static(box StaticItem { expr, safety, .. }) => {
+            ItemKind::Static(box StaticItem { expr, safety, distributed_slice, .. }) => {
                 self.check_item_safety(item.span, *safety);
                 if matches!(safety, Safety::Unsafe(_)) {
                     self.dcx().emit_err(errors::UnsafeStatic { span: item.span });
                 }
 
-                if expr.is_none() {
+                // declarations of distributed slices have no body deliberately - items are added
+                // later using `distributed_slice_element`
+                if expr.is_none() && !matches!(distributed_slice, DistributedSlice::Declaration(..))
+                {
                     self.dcx().emit_err(errors::StaticWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),
@@ -1436,11 +1443,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         if let AssocCtxt::Impl { .. } = ctxt {
             match &item.kind {
-                AssocItemKind::Const(box ConstItem { expr: None, .. }) => {
-                    self.dcx().emit_err(errors::AssocConstWithoutBody {
-                        span: item.span,
-                        replace_span: self.ending_semi_or_hi(item.span),
-                    });
+                AssocItemKind::Const(box ConstItem { expr: None, distributed_slice, .. }) => {
+                    if !matches!(distributed_slice, DistributedSlice::Err(..)) {
+                        self.dcx().emit_err(errors::AssocConstWithoutBody {
+                            span: item.span,
+                            replace_span: self.ending_semi_or_hi(item.span),
+                        });
+                    }
                 }
                 AssocItemKind::Fn(box Fn { body, .. }) => {
                     if body.is_none() && !self.is_sdylib_interface {

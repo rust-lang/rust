@@ -1,0 +1,32 @@
+error: `distributed_slice_element!()` can only add to a distributed slice
+  --> $DIR/random_const.rs:6:1
+   |
+LL | const CONST_MEOWS: [&str; 2] = ["meow", "prrr"];
+   | ------------------------------------------------ not a distributed slice
+...
+LL | distributed_slice_element!(CONST_MEOWS, "mrow");
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ element added here
+   |
+help: add `#[distributed_slice(crate)]`
+   |
+LL + #[distributed_slice(crate)]
+LL | const CONST_MEOWS: [&str; 2] = ["meow", "prrr"];
+   |
+
+error: `distributed_slice_element!()` can only add to a distributed slice
+  --> $DIR/random_const.rs:8:1
+   |
+LL | static STATIC_MEOWS: [&str; 2] = ["meow", "prrr"];
+   | -------------------------------------------------- not a distributed slice
+...
+LL | distributed_slice_element!(STATIC_MEOWS, "mrow");
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ element added here
+   |
+help: add `#[distributed_slice(crate)]`
+   |
+LL + #[distributed_slice(crate)]
+LL | static STATIC_MEOWS: [&str; 2] = ["meow", "prrr"];
+   |
+
+error: aborting due to 2 previous errors
+

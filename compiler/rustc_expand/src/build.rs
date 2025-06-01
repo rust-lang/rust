@@ -700,6 +700,7 @@ impl<'a> ExtCtxt<'a> {
                     mutability,
                     expr: Some(expr),
                     define_opaque: None,
+                    distributed_slice: Default::default(),
                 }
                 .into(),
             ),
@@ -726,6 +727,7 @@ impl<'a> ExtCtxt<'a> {
                     ty,
                     expr: Some(expr),
                     define_opaque: None,
+                    distributed_slice: Default::default(),
                 }
                 .into(),
             ),

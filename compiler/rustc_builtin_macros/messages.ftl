@@ -134,6 +134,26 @@ builtin_macros_derive_path_args_list = traits in `#[derive(...)]` don't accept a
 builtin_macros_derive_path_args_value = traits in `#[derive(...)]` don't accept values
     .suggestion = remove the value
 
+builtin_macros_distributed_slice_assoc_item =
+    expected this to be a module-level const or a static
+    .note = this is an associated item
+    .label = because of this attribute
+
+builtin_macros_distributed_slice_expected_const_static =
+    expected this to be a const or a static
+    .label = because of this attribute
+
+builtin_macros_distributed_slice_expected_crate =
+    `#[distributed_slice]` must take one parameter `crate`
+    .suggestion = add `crate`
+
+builtin_macros_distributed_slice_foreign_item =
+    expected this to be a non-extern const or a static
+    .note = this is inside an `extern` block
+    .label = because of this attribute
+
+builtin_macros_distributed_slice_generic =
+    distributed slices can't be generic
 builtin_macros_env_not_defined = environment variable `{$var}` not defined at compile time
     .cargo = Cargo sets build script variables at run time. Use `std::env::var({$var_expr})` instead
     .custom = use `std::env::var({$var_expr})` to read the variable at run time

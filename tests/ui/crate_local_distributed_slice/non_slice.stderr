@@ -1,0 +1,15 @@
+error: expected this type to be an array
+  --> $DIR/non_slice.rs:4:14
+   |
+LL | const MEOWS: &str;
+   |              ^^^^
+   |
+   = note: a distributed slice must have an array type with an inferred length
+help: change the type to an array
+   |
+LL - const MEOWS: &str;
+LL + const MEOWS: [&'static str; _];
+   |
+
+error: aborting due to 1 previous error
+

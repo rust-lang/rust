@@ -434,6 +434,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::Break(..)
             | hir::ExprKind::Continue(_)
             | hir::ExprKind::Lit(_)
+            | hir::ExprKind::DistributedSliceDeferredArray
             | hir::ExprKind::ConstBlock(..)
             | hir::ExprKind::Ret(..)
             | hir::ExprKind::Become(..)
@@ -1160,6 +1161,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Lit(..)
+            | hir::ExprKind::DistributedSliceDeferredArray
             | hir::ExprKind::ConstBlock(..)
             | hir::ExprKind::Err(_)
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
@@ -1445,6 +1447,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         | hir::ExprKind::Break(..)
         | hir::ExprKind::Continue(..)
         | hir::ExprKind::Lit(_)
+        | hir::ExprKind::DistributedSliceDeferredArray
         | hir::ExprKind::ConstBlock(..)
         | hir::ExprKind::Block(..)
         | hir::ExprKind::AddrOf(..)

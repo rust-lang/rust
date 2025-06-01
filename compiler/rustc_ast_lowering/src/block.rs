@@ -97,7 +97,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Let statements are allowed to have impl trait in bindings.
         let super_ = l.super_;
         let ty = l.ty.as_ref().map(|t| {
-            self.lower_ty(t, self.impl_trait_in_bindings_ctxt(ImplTraitPosition::Variable))
+            self.lower_ty(t, self.impl_trait_in_bindings_ctxt(ImplTraitPosition::Variable), false)
         });
         let init = l.kind.init().map(|init| self.lower_expr(init));
         let hir_id = self.lower_node_id(l.id);

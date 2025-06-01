@@ -1,0 +1,10 @@
+error: expected this to be a const or a static
+  --> $DIR/wrong_item.rs:4:1
+   |
+LL | #[distributed_slice(crate)]
+   | --------------------------- because of this attribute
+LL | fn prr() {}
+   | ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

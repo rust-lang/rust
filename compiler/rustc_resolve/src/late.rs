@@ -438,6 +438,8 @@ pub(crate) enum PathSource<'a> {
     ReturnTypeNotation,
     /// Paths from `#[define_opaque]` attributes
     DefineOpaques,
+    /// Paths in `register!(<path>, ...);`, for registering new expressions
+    DistributedSlice,
 }
 
 impl<'a> PathSource<'a> {
@@ -451,7 +453,8 @@ impl<'a> PathSource<'a> {
             | PathSource::Pat
             | PathSource::TupleStruct(..)
             | PathSource::Delegation
-            | PathSource::ReturnTypeNotation => ValueNS,
+            | PathSource::ReturnTypeNotation
+            | PathSource::DistributedSlice => ValueNS,
             PathSource::TraitItem(ns) => ns,
             PathSource::PreciseCapturingArg(ns) => ns,
         }
@@ -469,6 +472,7 @@ impl<'a> PathSource<'a> {
             | PathSource::TraitItem(..)
             | PathSource::DefineOpaques
             | PathSource::Delegation
+            | PathSource::DistributedSlice
             | PathSource::PreciseCapturingArg(..) => false,
         }
     }
@@ -510,6 +514,7 @@ impl<'a> PathSource<'a> {
             },
             PathSource::ReturnTypeNotation | PathSource::Delegation => "function",
             PathSource::PreciseCapturingArg(..) => "type or const parameter",
+            PathSource::DistributedSlice => "const or static distributed slice",
         }
     }
 
@@ -519,6 +524,9 @@ impl<'a> PathSource<'a> {
 
     pub(crate) fn is_expected(self, res: Res) -> bool {
         match self {
+            PathSource::DistributedSlice => {
+                matches!(res, Res::Def(DefKind::Const | DefKind::Static { .. }, _))
+            }
             PathSource::DefineOpaques => {
                 matches!(
                     res,
@@ -623,6 +631,9 @@ impl<'a> PathSource<'a> {
             (PathSource::TraitItem(..) | PathSource::ReturnTypeNotation, false) => E0576,
             (PathSource::PreciseCapturingArg(..), true) => E0799,
             (PathSource::PreciseCapturingArg(..), false) => E0800,
+            // FIXME(gr): new error codes
+            (PathSource::DistributedSlice, true) => E0800,
+            (PathSource::DistributedSlice, false) => E0800,
         }
     }
 }
@@ -2063,7 +2074,8 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 | PathSource::Struct
                 | PathSource::TupleStruct(..)
                 | PathSource::DefineOpaques
-                | PathSource::Delegation => true,
+                | PathSource::Delegation
+                | PathSource::DistributedSlice => true,
             };
             if inferred {
                 // Do not create a parameter for patterns and expressions: type checking can infer
@@ -2807,6 +2819,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 ref ty,
                 ref expr,
                 ref define_opaque,
+                ref distributed_slice,
                 ..
             }) => {
                 self.with_generic_param_rib(
@@ -2833,6 +2846,17 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             }),
                             |this| this.visit_ty(ty),
                         );
+
+                        if let DistributedSlice::Addition { declaration, id }
+                        | DistributedSlice::AdditionMany { declaration, id } = distributed_slice
+                        {
+                            this.smart_resolve_path(
+                                *id,
+                                &None,
+                                declaration,
+                                PathSource::DistributedSlice,
+                            );
+                        }
 
                         if let Some(expr) = expr {
                             this.resolve_const_body(expr, Some((ident, ConstantItemKind::Const)));

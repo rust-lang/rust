@@ -384,6 +384,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ExprKind::ConstBlock(_)
                     | ExprKind::Loop(_, _, _, _)
                     | ExprKind::Lit(_)
+                    | ExprKind::DistributedSliceDeferredArray
                     | ExprKind::Path(_)
                     | ExprKind::Continue(_)
                     | ExprKind::OffsetOf(_, _)
@@ -505,6 +506,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
         match expr.kind {
+            ExprKind::DistributedSliceDeferredArray => self.next_ty_var(expr.span),
             ExprKind::Lit(ref lit) => self.check_expr_lit(lit, expected),
             ExprKind::Binary(op, lhs, rhs) => self.check_expr_binop(expr, op, lhs, rhs, expected),
             ExprKind::Assign(lhs, rhs, span) => {

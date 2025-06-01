@@ -508,6 +508,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
             hir::ExprKind::Continue(..)
             | hir::ExprKind::Lit(..)
+            | hir::ExprKind::DistributedSliceDeferredArray
             | hir::ExprKind::ConstBlock(..)
             | hir::ExprKind::OffsetOf(..)
             | hir::ExprKind::Err(_) => {}
@@ -1437,6 +1438,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             | hir::ExprKind::InlineAsm(..)
             | hir::ExprKind::OffsetOf(..)
             | hir::ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Wrap, ..)
+            | hir::ExprKind::DistributedSliceDeferredArray
             | hir::ExprKind::Err(_) => Ok(self.cat_rvalue(expr.hir_id, expr_ty)),
         }
     }

@@ -1,0 +1,14 @@
+error: `distributed_slice_elements!()` only accepts a path or array literal
+  --> $DIR/add_many_wrong.rs:9:36
+   |
+LL |   distributed_slice_elements!(MEOWS, {
+   |  ____________________________________^
+LL | |
+LL | |     THREE_MEOWS
+LL | | });
+   | |_^
+   |
+   = note: arbitrary expressions are not supported
+
+error: aborting due to 1 previous error
+
