@@ -82,11 +82,9 @@ fn main() {
     //~^ explicit_deref_methods
 
     let b: &str = a.deref().deref();
-    //~^ explicit_deref_methods
 
     let opt_a = Some(a.clone());
     let b = opt_a.unwrap().deref();
-    //~^ explicit_deref_methods
 
     Aaa::deref(&Aaa);
     Aaa::deref_mut(&mut Aaa);

@@ -139,5 +139,27 @@ LL | |                 return Some(x);
 LL | |         None
    | |____________^ help: replace with an iterator: `arr.into_iter().find(|&x| x < 1)`
 
-error: aborting due to 12 previous errors
+error: manual implementation of `Iterator::find`
+  --> tests/ui/manual_find_fixable.rs:257:9
+   |
+LL | /         for candidate in &["foo", "bar"] {
+LL | |
+LL | |             if candidate.eq_ignore_ascii_case(needle) {
+LL | |                 return Some(candidate);
+...  |
+LL | |         None
+   | |____________^ help: replace with an iterator: `["foo", "bar"].iter().find(|&candidate| candidate.eq_ignore_ascii_case(needle)).map(|v| v as _)`
+
+error: manual implementation of `Iterator::find`
+  --> tests/ui/manual_find_fixable.rs:267:9
+   |
+LL | /         for &candidate in &["foo", "bar"] {
+LL | |
+LL | |             if candidate.eq_ignore_ascii_case(needle) {
+LL | |                 return Some(candidate);
+...  |
+LL | |         None
+   | |____________^ help: replace with an iterator: `["foo", "bar"].iter().find(|&&candidate| candidate.eq_ignore_ascii_case(needle)).copied().map(|v| v as _)`
+
+error: aborting due to 14 previous errors
 

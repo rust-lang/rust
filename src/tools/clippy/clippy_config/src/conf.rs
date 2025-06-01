@@ -828,7 +828,7 @@ define_Conf! {
     trait_assoc_item_kinds_order: SourceItemOrderingTraitAssocItemKinds = DEFAULT_TRAIT_ASSOC_ITEM_KINDS_ORDER.into(),
     /// The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by
     /// reference.
-    #[default_text = "target_pointer_width * 2"]
+    #[default_text = "target_pointer_width"]
     #[lints(trivially_copy_pass_by_ref)]
     trivial_copy_size_limit: Option<u64> = None,
     /// The maximum complexity a type can have

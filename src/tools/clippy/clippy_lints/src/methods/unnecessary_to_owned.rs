@@ -44,7 +44,7 @@ pub fn check<'tcx>(
                 return;
             }
             // At this point, we know the call is of a `to_owned`-like function. The functions
-            // `check_addr_of_expr` and `check_call_arg` determine whether the call is unnecessary
+            // `check_addr_of_expr` and `check_into_iter_call_arg` determine whether the call is unnecessary
             // based on its context, that is, whether it is a referent in an `AddrOf` expression, an
             // argument in a `into_iter` call, or an argument in the call of some other function.
             if check_addr_of_expr(cx, expr, method_name, method_def_id, receiver) {

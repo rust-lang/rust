@@ -79,25 +79,19 @@ fn check_arguments<'tcx>(
     name: &str,
     fn_kind: &str,
 ) {
-    match type_definition.kind() {
-        ty::FnDef(..) | ty::FnPtr(..) => {
-            let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();
-            for (argument, parameter) in iter::zip(arguments, parameters) {
-                match parameter.kind() {
-                    ty::Ref(_, _, Mutability::Not) | ty::RawPtr(_, Mutability::Not) => {
-                        if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) = argument.kind {
-                            span_lint(
-                                cx,
-                                UNNECESSARY_MUT_PASSED,
-                                argument.span,
-                                format!("the {fn_kind} `{name}` doesn't need a mutable reference"),
-                            );
-                        }
-                    },
-                    _ => (),
-                }
+    if let ty::FnDef(..) | ty::FnPtr(..) = type_definition.kind() {
+        let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();
+        for (argument, parameter) in iter::zip(arguments, parameters) {
+            if let ty::Ref(_, _, Mutability::Not) | ty::RawPtr(_, Mutability::Not) = parameter.kind()
+                && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) = argument.kind
+            {
+                span_lint(
+                    cx,
+                    UNNECESSARY_MUT_PASSED,
+                    argument.span,
+                    format!("the {fn_kind} `{name}` doesn't need a mutable reference"),
+                );
             }
-        },
-        _ => (),
+        }
     }
 }

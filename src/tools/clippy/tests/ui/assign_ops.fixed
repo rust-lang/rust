@@ -1,5 +1,6 @@
 #![allow(clippy::useless_vec)]
 #![warn(clippy::assign_op_pattern)]
+#![feature(const_trait_impl, const_ops)]
 
 use core::num::Wrapping;
 use std::ops::{Mul, MulAssign};
@@ -71,5 +72,35 @@ impl Mul<i64> for Wrap {
 impl MulAssign<i64> for Wrap {
     fn mul_assign(&mut self, rhs: i64) {
         *self = *self * rhs
+    }
+}
+
+mod issue14871 {
+
+    use std::ops::{Add, AddAssign};
+
+    pub trait Number: Copy + Add<Self, Output = Self> + AddAssign {
+        const ZERO: Self;
+        const ONE: Self;
+    }
+
+    #[const_trait]
+    pub trait NumberConstants {
+        fn constant(value: usize) -> Self;
+    }
+
+    impl<T> const NumberConstants for T
+    where
+        T: Number + ~const core::ops::Add,
+    {
+        fn constant(value: usize) -> Self {
+            let mut res = Self::ZERO;
+            let mut count = 0;
+            while count < value {
+                res = res + Self::ONE;
+                count += 1;
+            }
+            res
+        }
     }
 }

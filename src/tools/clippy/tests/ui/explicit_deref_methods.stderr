@@ -56,40 +56,28 @@ LL |     let b: String = concat(just_return(a).deref());
    |                            ^^^^^^^^^^^^^^^^^^^^^^ help: try: `just_return(a)`
 
 error: explicit `deref` method call
-  --> tests/ui/explicit_deref_methods.rs:84:19
-   |
-LL |     let b: &str = a.deref().deref();
-   |                   ^^^^^^^^^^^^^^^^^ help: try: `&**a`
-
-error: explicit `deref` method call
-  --> tests/ui/explicit_deref_methods.rs:88:13
-   |
-LL |     let b = opt_a.unwrap().deref();
-   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*opt_a.unwrap()`
-
-error: explicit `deref` method call
-  --> tests/ui/explicit_deref_methods.rs:123:31
+  --> tests/ui/explicit_deref_methods.rs:121:31
    |
 LL |     let b: &str = expr_deref!(a.deref());
    |                               ^^^^^^^^^ help: try: `&*a`
 
 error: explicit `deref` method call
-  --> tests/ui/explicit_deref_methods.rs:141:14
+  --> tests/ui/explicit_deref_methods.rs:139:14
    |
 LL |     let _ = &Deref::deref(&"foo");
    |              ^^^^^^^^^^^^^^^^^^^^ help: try: `*&"foo"`
 
 error: explicit `deref_mut` method call
-  --> tests/ui/explicit_deref_methods.rs:143:14
+  --> tests/ui/explicit_deref_methods.rs:141:14
    |
 LL |     let _ = &DerefMut::deref_mut(&mut x);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut **&mut x`
 
 error: explicit `deref_mut` method call
-  --> tests/ui/explicit_deref_methods.rs:144:14
+  --> tests/ui/explicit_deref_methods.rs:142:14
    |
 LL |     let _ = &DerefMut::deref_mut((&mut &mut x).deref_mut());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut ***(&mut &mut x)`
 
-error: aborting due to 15 previous errors
+error: aborting due to 13 previous errors
 

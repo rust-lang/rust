@@ -26,7 +26,7 @@ fn main() {
             allow_staged,
             allow_no_vcs,
         } => dogfood::dogfood(fix, allow_dirty, allow_staged, allow_no_vcs),
-        DevCommand::Fmt { check } => fmt::run(&clippy, utils::UpdateMode::from_check(check)),
+        DevCommand::Fmt { check } => fmt::run(utils::UpdateMode::from_check(check)),
         DevCommand::UpdateLints { check } => update_lints::update(utils::UpdateMode::from_check(check)),
         DevCommand::NewLint {
             pass,

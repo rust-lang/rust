@@ -1,5 +1,5 @@
 use crate::utils::{
-    ErrAction, File, FileUpdater, RustSearcher, Token, UpdateMode, UpdateStatus, panic_action, update_text_region_fn,
+    ErrAction, File, FileUpdater, RustSearcher, Token, UpdateMode, UpdateStatus, expect_action, update_text_region_fn,
 };
 use itertools::Itertools;
 use std::collections::HashSet;
@@ -201,10 +201,7 @@ pub fn find_lint_decls() -> Vec<Lint> {
 /// Reads the source files from the given root directory
 fn read_src_with_module(src_root: &Path) -> impl use<'_> + Iterator<Item = (DirEntry, String)> {
     WalkDir::new(src_root).into_iter().filter_map(move |e| {
-        let e = match e {
-            Ok(e) => e,
-            Err(ref e) => panic_action(e, ErrAction::Read, src_root),
-        };
+        let e = expect_action(e, ErrAction::Read, src_root);
         let path = e.path().as_os_str().as_encoded_bytes();
         if let Some(path) = path.strip_suffix(b".rs")
             && let Some(path) = path.get("clippy_lints/src/".len()..)

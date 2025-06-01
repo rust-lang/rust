@@ -1,5 +1,6 @@
 use crate::utils::{
-    ClippyInfo, ErrAction, FileUpdater, UpdateMode, UpdateStatus, panic_action, run_with_args_split, run_with_output,
+    ErrAction, FileUpdater, UpdateMode, UpdateStatus, expect_action, run_with_output, split_args_for_threads,
+    walk_dir_no_dot_or_target,
 };
 use itertools::Itertools;
 use rustc_lexer::{TokenKind, tokenize};
@@ -9,7 +10,6 @@ use std::io::{self, Read};
 use std::ops::ControlFlow;
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
-use walkdir::WalkDir;
 
 pub enum Error {
     Io(io::Error),
@@ -260,7 +260,7 @@ fn fmt_syms(update_mode: UpdateMode) {
     );
 }
 
-fn run_rustfmt(clippy: &ClippyInfo, update_mode: UpdateMode) {
+fn run_rustfmt(update_mode: UpdateMode) {
     let mut rustfmt_path = String::from_utf8(run_with_output(
         "rustup which rustfmt",
         Command::new("rustup").args(["which", "rustfmt"]),
@@ -268,42 +268,19 @@ fn run_rustfmt(clippy: &ClippyInfo, update_mode: UpdateMode) {
     .expect("invalid rustfmt path");
     rustfmt_path.truncate(rustfmt_path.trim_end().len());
 
-    let mut cargo_path = String::from_utf8(run_with_output(
-        "rustup which cargo",
-        Command::new("rustup").args(["which", "cargo"]),
-    ))
-    .expect("invalid cargo path");
-    cargo_path.truncate(cargo_path.trim_end().len());
+    let args: Vec<_> = walk_dir_no_dot_or_target()
+        .filter_map(|e| {
+            let e = expect_action(e, ErrAction::Read, ".");
+            e.path()
+                .as_os_str()
+                .as_encoded_bytes()
+                .ends_with(b".rs")
+                .then(|| e.into_path().into_os_string())
+        })
+        .collect();
 
-    // Start all format jobs first before waiting on the results.
-    let mut children = Vec::with_capacity(16);
-    for &path in &[
-        ".",
-        "clippy_config",
-        "clippy_dev",
-        "clippy_lints",
-        "clippy_lints_internal",
-        "clippy_utils",
-        "rustc_tools_util",
-        "lintcheck",
-    ] {
-        let mut cmd = Command::new(&cargo_path);
-        cmd.current_dir(clippy.path.join(path))
-            .args(["fmt"])
-            .env("RUSTFMT", &rustfmt_path)
-            .stdout(Stdio::null())
-            .stdin(Stdio::null())
-            .stderr(Stdio::piped());
-        if update_mode.is_check() {
-            cmd.arg("--check");
-        }
-        match cmd.spawn() {
-            Ok(x) => children.push(("cargo fmt", x)),
-            Err(ref e) => panic_action(&e, ErrAction::Run, "cargo fmt".as_ref()),
-        }
-    }
-
-    run_with_args_split(
+    let mut children: Vec<_> = split_args_for_threads(
+        32,
         || {
             let mut cmd = Command::new(&rustfmt_path);
             if update_mode.is_check() {
@@ -312,66 +289,44 @@ fn run_rustfmt(clippy: &ClippyInfo, update_mode: UpdateMode) {
             cmd.stdout(Stdio::null())
                 .stdin(Stdio::null())
                 .stderr(Stdio::piped())
-                .args(["--config", "show_parse_errors=false"]);
+                .args(["--unstable-features", "--skip-children"]);
             cmd
         },
-        |cmd| match cmd.spawn() {
-            Ok(x) => children.push(("rustfmt", x)),
-            Err(ref e) => panic_action(&e, ErrAction::Run, "rustfmt".as_ref()),
-        },
-        WalkDir::new("tests")
-            .into_iter()
-            .filter_entry(|p| p.path().file_name().is_none_or(|x| x != "skip_rustfmt"))
-            .filter_map(|e| {
-                let e = e.expect("error reading `tests`");
-                e.path()
-                    .as_os_str()
-                    .as_encoded_bytes()
-                    .ends_with(b".rs")
-                    .then(|| e.into_path().into_os_string())
-            }),
-    );
+        args.iter(),
+    )
+    .map(|mut cmd| expect_action(cmd.spawn(), ErrAction::Run, "rustfmt"))
+    .collect();
 
-    for (name, child) in &mut children {
-        match child.wait() {
-            Ok(status) => match (update_mode, status.exit_ok()) {
-                (UpdateMode::Check | UpdateMode::Change, Ok(())) => {},
-                (UpdateMode::Check, Err(_)) => {
-                    let mut s = String::new();
-                    if let Some(mut stderr) = child.stderr.take()
-                        && stderr.read_to_string(&mut s).is_ok()
-                    {
-                        eprintln!("{s}");
-                    }
-                    eprintln!("Formatting check failed!\nRun `cargo dev fmt` to update.");
-                    process::exit(1);
-                },
-                (UpdateMode::Change, Err(e)) => {
-                    let mut s = String::new();
-                    if let Some(mut stderr) = child.stderr.take()
-                        && stderr.read_to_string(&mut s).is_ok()
-                    {
-                        eprintln!("{s}");
-                    }
-                    panic_action(&e, ErrAction::Run, name.as_ref());
-                },
+    for child in &mut children {
+        let status = expect_action(child.wait(), ErrAction::Run, "rustfmt");
+        match (update_mode, status.exit_ok()) {
+            (UpdateMode::Check | UpdateMode::Change, Ok(())) => {},
+            (UpdateMode::Check, Err(_)) => {
+                let mut s = String::new();
+                if let Some(mut stderr) = child.stderr.take()
+                    && stderr.read_to_string(&mut s).is_ok()
+                {
+                    eprintln!("{s}");
+                }
+                eprintln!("Formatting check failed!\nRun `cargo dev fmt` to update.");
+                process::exit(1);
             },
-            Err(ref e) => panic_action(e, ErrAction::Run, name.as_ref()),
+            (UpdateMode::Change, e) => {
+                let mut s = String::new();
+                if let Some(mut stderr) = child.stderr.take()
+                    && stderr.read_to_string(&mut s).is_ok()
+                {
+                    eprintln!("{s}");
+                }
+                expect_action(e, ErrAction::Run, "rustfmt");
+            },
         }
     }
 }
 
 // the "main" function of cargo dev fmt
-pub fn run(clippy: &ClippyInfo, update_mode: UpdateMode) {
-    if clippy.has_intellij_hook {
-        eprintln!(
-            "error: a local rustc repo is enabled as path dependency via `cargo dev setup intellij`.\n\
-            Not formatting because that would format the local repo as well!\n\
-            Please revert the changes to `Cargo.toml`s with `cargo dev remove intellij`."
-        );
-        return;
-    }
-    run_rustfmt(clippy, update_mode);
+pub fn run(update_mode: UpdateMode) {
+    run_rustfmt(update_mode);
     fmt_syms(update_mode);
     if let Err(e) = fmt_conf(update_mode.is_check()) {
         e.display();

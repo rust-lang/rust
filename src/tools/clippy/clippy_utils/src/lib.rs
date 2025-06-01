@@ -1565,10 +1565,10 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_>, expr: &Expr<'_
 /// Returns `true` if a pattern is refutable.
 // TODO: should be implemented using rustc/mir_build/thir machinery
 pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
-    fn is_enum_variant(cx: &LateContext<'_>, qpath: &QPath<'_>, id: HirId) -> bool {
-        matches!(
+    fn is_qpath_refutable(cx: &LateContext<'_>, qpath: &QPath<'_>, id: HirId) -> bool {
+        !matches!(
             cx.qpath_res(qpath, id),
-            Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(def::CtorOf::Variant, _), _)
+            Res::Def(DefKind::Struct, ..) | Res::Def(DefKind::Ctor(def::CtorOf::Struct, _), _)
         )
     }
 
@@ -1585,16 +1585,18 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
             kind: PatExprKind::Path(qpath),
             hir_id,
             ..
-        }) => is_enum_variant(cx, qpath, *hir_id),
+        }) => is_qpath_refutable(cx, qpath, *hir_id),
         PatKind::Or(pats) => {
             // TODO: should be the honest check, that pats is exhaustive set
             are_refutable(cx, pats)
         },
         PatKind::Tuple(pats, _) => are_refutable(cx, pats),
         PatKind::Struct(ref qpath, fields, _) => {
-            is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, fields.iter().map(|field| field.pat))
+            is_qpath_refutable(cx, qpath, pat.hir_id) || are_refutable(cx, fields.iter().map(|field| field.pat))
         },
-        PatKind::TupleStruct(ref qpath, pats, _) => is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats),
+        PatKind::TupleStruct(ref qpath, pats, _) => {
+            is_qpath_refutable(cx, qpath, pat.hir_id) || are_refutable(cx, pats)
+        },
         PatKind::Slice(head, middle, tail) => {
             match &cx.typeck_results().node_type(pat.hir_id).kind() {
                 rustc_ty::Slice(..) => {

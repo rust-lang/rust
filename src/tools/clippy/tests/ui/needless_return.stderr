@@ -685,5 +685,101 @@ LL -     return unsafe { todo() } as *const i32;
 LL +     (unsafe { todo() } as *const i32)
    |
 
-error: aborting due to 55 previous errors
+error: unneeded `return` statement
+  --> tests/ui/needless_return.rs:468:13
+   |
+LL |             return 1;
+   |             ^^^^^^^^
+   |
+help: remove `return`
+   |
+LL -             return 1;
+LL +             1
+   |
+
+error: unneeded `return` statement
+  --> tests/ui/needless_return.rs:471:13
+   |
+LL |             return 2;
+   |             ^^^^^^^^
+   |
+help: remove `return`
+   |
+LL -             return 2;
+LL +             2
+   |
+
+error: unneeded `return` statement
+  --> tests/ui/needless_return.rs:474:13
+   |
+LL |             return 3;
+   |             ^^^^^^^^
+   |
+help: remove `return`
+   |
+LL -             return 3;
+LL +             3
+   |
+
+error: unneeded `return` statement
+  --> tests/ui/needless_return.rs:481:13
+   |
+LL |             return 1;
+   |             ^^^^^^^^
+   |
+help: remove `return`
+   |
+LL -             return 1;
+LL +             1
+   |
+
+error: unneeded `return` statement
+  --> tests/ui/needless_return.rs:486:13
+   |
+LL |             return 3;
+   |             ^^^^^^^^
+   |
+help: remove `return`
+   |
+LL -             return 3;
+LL +             3
+   |
+
+error: unneeded `return` statement
+  --> tests/ui/needless_return.rs:493:13
+   |
+LL |             return 1;
+   |             ^^^^^^^^
+   |
+help: remove `return`
+   |
+LL -             return 1;
+LL +             1
+   |
+
+error: unneeded `return` statement
+  --> tests/ui/needless_return.rs:498:13
+   |
+LL |             return 3;
+   |             ^^^^^^^^
+   |
+help: remove `return`
+   |
+LL -             return 3;
+LL +             3
+   |
+
+error: unneeded `return` statement
+  --> tests/ui/needless_return.rs:506:13
+   |
+LL |             return 1;
+   |             ^^^^^^^^
+   |
+help: remove `return`
+   |
+LL -             return 1;
+LL +             1
+   |
+
+error: aborting due to 63 previous errors
 

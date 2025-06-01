@@ -71,6 +71,7 @@ window.searchState = {
         } else {
             window.location.hash = '';
         }
+        updateLintCount();
     },
 };
 
@@ -598,3 +599,14 @@ generateSearch();
 parseURLFilters();
 scrollToLintByURL();
 filters.filterLints();
+updateLintCount();
+
+function updateLintCount() {
+    const allLints = filters.getAllLints();
+    const totalLints = allLints.length;
+    
+    const countElement = document.getElementById("lint-count");
+    if (countElement) {
+        countElement.innerText = `Total number: ${totalLints}`;
+    }
+}

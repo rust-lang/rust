@@ -919,7 +919,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 modulo_arithmetic::check(cx, e, bin_op, lhs, rhs, false);
             },
             ExprKind::Assign(lhs, rhs, _) => {
-                assign_op_pattern::check(cx, e, lhs, rhs);
+                assign_op_pattern::check(cx, e, lhs, rhs, self.msrv);
                 self_assignment::check(cx, e, lhs, rhs);
             },
             ExprKind::Unary(op, arg) => {

@@ -1,13 +1,12 @@
 use crate::update_lints::{RenamedLint, find_lint_decls, generate_lint_files, read_deprecated_lints};
 use crate::utils::{
-    FileUpdater, RustSearcher, Token, UpdateMode, UpdateStatus, Version, delete_dir_if_exists, delete_file_if_exists,
-    try_rename_dir, try_rename_file,
+    ErrAction, FileUpdater, RustSearcher, Token, UpdateMode, UpdateStatus, Version, delete_dir_if_exists,
+    delete_file_if_exists, expect_action, try_rename_dir, try_rename_file, walk_dir_no_dot_or_target,
 };
 use rustc_lexer::TokenKind;
 use std::ffi::OsString;
 use std::fs;
 use std::path::Path;
-use walkdir::WalkDir;
 
 /// Runs the `rename_lint` command.
 ///
@@ -133,17 +132,10 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
     }
 
     let mut update_fn = file_update_fn(old_name, new_name, mod_edit);
-    for file in WalkDir::new(".").into_iter().filter_entry(|e| {
-        // Skip traversing some of the larger directories.
-        e.path()
-            .as_os_str()
-            .as_encoded_bytes()
-            .get(2..)
-            .is_none_or(|x| x != "target".as_bytes() && x != ".git".as_bytes())
-    }) {
-        let file = file.expect("error reading clippy directory");
-        if file.path().as_os_str().as_encoded_bytes().ends_with(b".rs") {
-            updater.update_file(file.path(), &mut update_fn);
+    for e in walk_dir_no_dot_or_target() {
+        let e = expect_action(e, ErrAction::Read, ".");
+        if e.path().as_os_str().as_encoded_bytes().ends_with(b".rs") {
+            updater.update_file(e.path(), &mut update_fn);
         }
     }
     generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
