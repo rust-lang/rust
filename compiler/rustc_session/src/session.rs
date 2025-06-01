@@ -141,7 +141,7 @@ pub struct CompilerIO {
 }
 
 pub trait DynLintStore: Any + DynSync + DynSend {
-    /// Provides a way to access lint groups without depending on [`rustc_lint`]
+    /// Provides a way to access lint groups without depending on `rustc_lint`
     fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_>;
 }
 
