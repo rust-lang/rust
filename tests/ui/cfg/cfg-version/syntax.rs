@@ -1,7 +1,5 @@
 //! Check `#[cfg(version(..))]` parsing.
 
-#![feature(cfg_version)]
-
 // Overall grammar
 // ===============
 //
