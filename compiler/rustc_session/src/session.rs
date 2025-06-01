@@ -140,7 +140,7 @@ pub struct CompilerIO {
     pub temps_dir: Option<PathBuf>,
 }
 
-pub trait LintStoreMarker: Any + DynSync + DynSend {
+pub trait DynLintStore: Any + DynSync + DynSend {
     /// Provides a way to access lint groups without depending on [`rustc_lint`]
     fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_>;
 }
@@ -168,7 +168,7 @@ pub struct Session {
     pub code_stats: CodeStats,
 
     /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
-    pub lint_store: Option<Arc<dyn LintStoreMarker>>,
+    pub lint_store: Option<Arc<dyn DynLintStore>>,
 
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
