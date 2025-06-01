@@ -11,7 +11,7 @@ import re
 import subprocess as sp
 import sys
 from dataclasses import dataclass
-from glob import glob, iglob
+from glob import glob
 from inspect import cleandoc
 from os import getenv
 from pathlib import Path
@@ -38,14 +38,10 @@ USAGE = cleandoc(
 
             Note that `--extract` will overwrite files in `iai-home`.
 
-        check-regressions [--home iai-home] [--allow-pr-override pr_number]
-            Check `iai-home` (or `iai-home` if unspecified) for `summary.json`
-            files and see if there are any regressions. This is used as a workaround
-            for `iai-callgrind` not exiting with error status; see
-            <https://github.com/iai-callgrind/iai-callgrind/issues/337>.
-
-            If `--allow-pr-override` is specified, the regression check will not exit
-            with failure if any line in the PR starts with `allow-regressions`.
+        handle-bench-regressions PR_NUMBER
+            Exit with success if the pull request contains a line starting with
+            `ci: allow-regressions`, indicating that regressions in benchmarks should
+            be accepted. Otherwise, exit 1.
     """
 )
 
@@ -365,64 +361,22 @@ def locate_baseline(flags: list[str]) -> None:
     eprint("baseline extracted successfully")
 
 
-def check_iai_regressions(args: list[str]):
-    """Find regressions in iai summary.json files, exit with failure if any are
-    found.
-    """
+def handle_bench_regressions(args: list[str]):
+    """Exit with error unless the PR message contains an ignore directive."""
 
-    iai_home_str = "iai-home"
-    pr_number = None
+    match args:
+        case [pr_number]:
+            pr_number = pr_number
+        case _:
+            eprint(USAGE)
+            exit(1)
 
-    while len(args) > 0:
-        match args:
-            case ["--home", home, *rest]:
-                iai_home_str = home
-                args = rest
-            case ["--allow-pr-override", pr_num, *rest]:
-                pr_number = pr_num
-                args = rest
-            case _:
-                eprint(USAGE)
-                exit(1)
-
-    iai_home = Path(iai_home_str)
-
-    found_summaries = False
-    regressions: list[dict] = []
-    for summary_path in iglob("**/summary.json", root_dir=iai_home, recursive=True):
-        found_summaries = True
-        with open(iai_home / summary_path, "r") as f:
-            summary = json.load(f)
-
-        summary_regs = []
-        run = summary["callgrind_summary"]["callgrind_run"]
-        fname = summary["function_name"]
-        id = summary["id"]
-        name_entry = {"name": f"{fname}.{id}"}
-
-        for segment in run["segments"]:
-            summary_regs.extend(segment["regressions"])
-
-        summary_regs.extend(run["total"]["regressions"])
-
-        regressions.extend(name_entry | reg for reg in summary_regs)
-
-    if not found_summaries:
-        eprint(f"did not find any summary.json files within {iai_home}")
-        exit(1)
-
-    if len(regressions) == 0:
-        eprint("No regressions found")
+    pr = PrInfo.load(pr_number)
+    if pr.contains_directive(REGRESSION_DIRECTIVE):
+        eprint("PR allows regressions")
         return
 
-    eprint("Found regressions:", json.dumps(regressions, indent=4))
-
-    if pr_number is not None:
-        pr = PrInfo.load(pr_number)
-        if pr.contains_directive(REGRESSION_DIRECTIVE):
-            eprint("PR allows regressions, returning")
-            return
-
+    eprint("Regressions were found; benchmark failed")
     exit(1)
 
 
@@ -433,8 +387,8 @@ def main():
             ctx.emit_workflow_output()
         case ["locate-baseline", *flags]:
             locate_baseline(flags)
-        case ["check-regressions", *args]:
-            check_iai_regressions(args)
+        case ["handle-bench-regressions", *args]:
+            handle_bench_regressions(args)
         case ["--help" | "-h"]:
             print(USAGE)
             exit()
