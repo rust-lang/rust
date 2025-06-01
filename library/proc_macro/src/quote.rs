@@ -6,57 +6,7 @@
 
 use crate::{
     Delimiter, Group, Ident, Literal, Punct, Spacing, Span, ToTokens, TokenStream, TokenTree,
-    token_stream,
 };
-
-// Helper for quote to parse TokenStream
-struct LookaheadIter {
-    iter: token_stream::IntoIter,
-    tokens: [Option<TokenTree>; 2],
-    pos: usize,
-}
-
-impl LookaheadIter {
-    fn new(ts: TokenStream) -> Self {
-        Self { iter: ts.into_iter(), tokens: [None, None], pos: 0 }
-    }
-
-    fn peek(&mut self) -> Option<TokenTree> {
-        if self.pos == 2 {
-            panic!("invalid peek")
-        }
-
-        self.tokens[self.pos] = self.iter.next();
-        let token_opt = self.tokens[self.pos].clone();
-        self.pos += 1;
-        token_opt
-    }
-
-    fn next(&mut self) -> Option<TokenTree> {
-        let token_opt = match self.pos {
-            0 => self.iter.next(),
-            1 => {
-                self.pos = 0;
-                self.tokens[0].take()
-            }
-            2 => {
-                self.pos = 1;
-                let token_opt = self.tokens[0].take();
-                self.tokens[0] = self.tokens[1].take();
-                token_opt
-            }
-            _ => panic!("invalid next"),
-        };
-        token_opt
-    }
-
-    fn nth(&mut self, n: usize) -> Option<TokenTree> {
-        for _ in 0..n - 1 {
-            self.next();
-        }
-        self.next()
-    }
-}
 
 macro_rules! minimal_quote_tt {
     (($($t:tt)*)) => { Group::new(Delimiter::Parenthesis, minimal_quote!($($t)*)) };
@@ -160,7 +110,7 @@ pub fn quote(stream: TokenStream) -> TokenStream {
     let mut after_dollar = false;
 
     let mut tokens = crate::TokenStream::new();
-    let mut iter = LookaheadIter::new(stream);
+    let mut iter = stream.into_iter().peekable();
     while let Some(tree) = iter.next() {
         if after_dollar {
             after_dollar = false;
@@ -168,20 +118,15 @@ pub fn quote(stream: TokenStream) -> TokenStream {
                 TokenTree::Group(inner) => {
                     let content = inner.stream();
 
-                    let sep_opt: Option<TokenTree> = match (iter.peek(), iter.peek()) {
-                        (Some(TokenTree::Punct(tt1)), Some(TokenTree::Punct(tt2)))
-                            if tt1.spacing() == Spacing::Joint && tt2.as_char() == '*' =>
+                    let sep_opt: Option<Punct> = match (iter.next(), iter.peek()) {
+                        (Some(TokenTree::Punct(sep)), Some(TokenTree::Punct(star)))
+                            if sep.spacing() == Spacing::Joint && star.as_char() == '*' =>
                         {
-                            iter.nth(2);
-                            Some(TokenTree::Punct(tt1))
-                        }
-                        (Some(TokenTree::Punct(tt1)), _) if tt1.as_char() == '*' => {
                             iter.next();
-                            None
+                            Some(sep)
                         }
-                        _ => {
-                            panic!("`$(...)` must be followed by `*` in `quote!`");
-                        }
+                        (Some(TokenTree::Punct(sep)), _) if sep.as_char() == '*' => None,
+                        _ => panic!("`$(...)` must be followed by `*` in `quote!`"),
                     };
 
                     let meta_vars = collect_meta_vars(content.clone());
@@ -191,7 +136,7 @@ pub fn quote(stream: TokenStream) -> TokenStream {
                         use crate::ext::*;
                     )
                     .to_tokens(&mut content_tokens);
-                    if let Some(TokenTree::Punct(_)) = sep_opt {
+                    if sep_opt.is_some() {
                         minimal_quote!(
                             let mut _i = 0usize;
                         )
@@ -227,11 +172,11 @@ pub fn quote(stream: TokenStream) -> TokenStream {
                         )
                         .to_tokens(&mut inner_tokens);
                     }
-                    if let Some(TokenTree::Punct(tt)) = sep_opt {
+                    if let Some(sep) = sep_opt {
                         minimal_quote!(
                             if _i > 0 {
                                 (@ minimal_quote!(crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new(
-                                    (@ TokenTree::from(Literal::character(tt.as_char()))),
+                                    (@ TokenTree::from(Literal::character(sep.as_char()))),
                                     (@ minimal_quote!(crate::Spacing::Alone)),
                                 )), &mut ts);))
                             }
