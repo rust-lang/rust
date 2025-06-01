@@ -584,7 +584,7 @@ impl<CTX: crate::HashStableContext> ToStableHashKey<CTX> for Namespace {
 }
 
 /// Just a helper ‒ separate structure for each namespace.
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug, HashStable_Generic)]
 pub struct PerNS<T> {
     pub value_ns: T,
     pub type_ns: T,
@@ -596,10 +596,16 @@ impl<T> PerNS<T> {
         PerNS { value_ns: f(self.value_ns), type_ns: f(self.type_ns), macro_ns: f(self.macro_ns) }
     }
 
+    /// Note: Do you really want to use this? Often you know which namespace a
+    /// name will belong in, and you can consider just that namespace directly,
+    /// rather than iterating through all of them.
     pub fn into_iter(self) -> IntoIter<T, 3> {
         [self.value_ns, self.type_ns, self.macro_ns].into_iter()
     }
 
+    /// Note: Do you really want to use this? Often you know which namespace a
+    /// name will belong in, and you can consider just that namespace directly,
+    /// rather than iterating through all of them.
     pub fn iter(&self) -> IntoIter<&T, 3> {
         [&self.value_ns, &self.type_ns, &self.macro_ns].into_iter()
     }
@@ -634,6 +640,10 @@ impl<T> PerNS<Option<T>> {
     }
 
     /// Returns an iterator over the items which are `Some`.
+    ///
+    /// Note: Do you really want to use this? Often you know which namespace a
+    /// name will belong in, and you can consider just that namespace directly,
+    /// rather than iterating through all of them.
     pub fn present_items(self) -> impl Iterator<Item = T> {
         [self.type_ns, self.value_ns, self.macro_ns].into_iter().flatten()
     }

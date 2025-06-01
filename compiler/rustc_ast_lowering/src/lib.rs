@@ -64,7 +64,7 @@ use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
-use smallvec::{SmallVec, smallvec};
+use smallvec::SmallVec;
 use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
 
@@ -705,12 +705,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.resolver.get_partial_res(id).map_or(Res::Err, |pr| pr.expect_full_res())
     }
 
-    fn lower_import_res(&mut self, id: NodeId, span: Span) -> SmallVec<[Res; 3]> {
-        let res = self.resolver.get_import_res(id).present_items();
-        let res: SmallVec<_> = res.map(|res| self.lower_res(res)).collect();
-        if res.is_empty() {
+    fn lower_import_res(&mut self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
+        let PerNS { type_ns, value_ns, macro_ns } = self.resolver.get_import_res(id);
+        let mut l = |ns: Option<_>| ns.map(|res| self.lower_res(res));
+        let mut res = PerNS { type_ns: l(type_ns), value_ns: l(value_ns), macro_ns: l(macro_ns) };
+
+        if res.type_ns.is_none() && res.value_ns.is_none() && res.macro_ns.is_none() {
+            // Mark all namespaces with error, just to be sure.
+            // Propagate the error to all namespaces, just to be sure.
+            let err = Some(Res::Err);
+            res = PerNS { type_ns: err, value_ns: err, macro_ns: err };
             self.dcx().span_delayed_bug(span, "no resolution for an import");
-            return smallvec![Res::Err];
         }
         res
     }

@@ -69,6 +69,7 @@ use rustc_ast::visit::{VisitorResult, try_visit, visit_opt, walk_list};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Ident, Span, Symbol};
 
+use crate::def::PerNS;
 use crate::hir::*;
 
 pub trait IntoVisitor<'hir> {
@@ -1147,9 +1148,15 @@ pub fn walk_use<'v, V: Visitor<'v>>(
     path: &'v UsePath<'v>,
     hir_id: HirId,
 ) -> V::Result {
-    let UsePath { segments, ref res, span } = *path;
-    for &res in res {
-        try_visit!(visitor.visit_path(&Path { segments, res, span }, hir_id));
+    let UsePath { segments, res: PerNS { value_ns, type_ns, macro_ns }, span } = *path;
+    if let Some(value_ns) = value_ns {
+        try_visit!(visitor.visit_path(&Path { segments, res: value_ns, span }, hir_id));
+    }
+    if let Some(type_ns) = type_ns {
+        try_visit!(visitor.visit_path(&Path { segments, res: type_ns, span }, hir_id));
+    }
+    if let Some(macro_ns) = macro_ns {
+        try_visit!(visitor.visit_path(&Path { segments, res: macro_ns, span }, hir_id));
     }
     V::Result::output()
 }

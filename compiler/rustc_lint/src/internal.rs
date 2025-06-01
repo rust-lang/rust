@@ -328,16 +328,19 @@ impl<'tcx> LateLintPass<'tcx> for TypeIr {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         let rustc_hir::ItemKind::Use(path, kind) = item.kind else { return };
 
-        let is_mod_inherent = |def_id| cx.tcx.is_diagnostic_item(sym::type_ir_inherent, def_id);
+        let is_mod_inherent = |res: Res| {
+            res.opt_def_id()
+                .is_some_and(|def_id| cx.tcx.is_diagnostic_item(sym::type_ir_inherent, def_id))
+        };
 
         // Path segments except for the final.
-        if let Some(seg) =
-            path.segments.iter().find(|seg| seg.res.opt_def_id().is_some_and(is_mod_inherent))
-        {
+        if let Some(seg) = path.segments.iter().find(|seg| is_mod_inherent(seg.res)) {
             cx.emit_span_lint(USAGE_OF_TYPE_IR_INHERENT, seg.ident.span, TypeIrInherentUsage);
         }
         // Final path resolutions, like `use rustc_type_ir::inherent`
-        else if path.res.iter().any(|res| res.opt_def_id().is_some_and(is_mod_inherent)) {
+        else if let Some(type_ns) = path.res.type_ns
+            && is_mod_inherent(type_ns)
+        {
             cx.emit_span_lint(
                 USAGE_OF_TYPE_IR_INHERENT,
                 path.segments.last().unwrap().ident.span,
@@ -346,13 +349,12 @@ impl<'tcx> LateLintPass<'tcx> for TypeIr {
         }
 
         let (lo, hi, snippet) = match path.segments {
-            [.., penultimate, segment]
-                if penultimate.res.opt_def_id().is_some_and(is_mod_inherent) =>
-            {
+            [.., penultimate, segment] if is_mod_inherent(penultimate.res) => {
                 (segment.ident.span, item.kind.ident().unwrap().span, "*")
             }
             [.., segment]
-                if path.res.iter().flat_map(Res::opt_def_id).any(is_mod_inherent)
+                if let Some(type_ns) = path.res.type_ns
+                    && is_mod_inherent(type_ns)
                     && let rustc_hir::UseKind::Single(ident) = kind =>
             {
                 let (lo, snippet) =
