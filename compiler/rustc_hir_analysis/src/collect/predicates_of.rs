@@ -321,12 +321,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     for attr in tcx.get_attrs(def_id, sym::allow_unstable_feature) {
         if let Some(list) = attr.meta_item_list() {
             for item in list.iter() {
-                // TODO: deal with error later
-                let feature_name = item.name().unwrap();
-                predicates.insert((
-                    ty::ClauseKind::UnstableFeature(feature_name).upcast(tcx),
-                    tcx.def_span(def_id),
-                ));
+                if let Some(feature_name) = item.name() {
+                    predicates.insert((
+                        ty::ClauseKind::UnstableFeature(feature_name).upcast(tcx),
+                        tcx.def_span(def_id),
+                    ));
+                }
             }
         }
     }
