@@ -2,7 +2,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, HirId, LifetimeSource, PredicateOrigin};
@@ -1617,9 +1617,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.error_on_invalid_abi(abi_str);
             ExternAbi::Rust
         });
-        let sess = self.tcx.sess;
-        let features = self.tcx.features();
-        gate_unstable_abi(sess, features, span, extern_abi);
+        let tcx = self.tcx;
+
+        // we can't do codegen for unsupported ABIs, so error now so we won't get farther
+        if !tcx.sess.target.is_abi_supported(extern_abi) {
+            struct_span_code_err!(
+                tcx.dcx(),
+                span,
+                E0570,
+                "`{extern_abi}` is not a supported ABI for the current target",
+            )
+            .emit();
+        }
+        // stability gate even things that are already errored on
+        gate_unstable_abi(tcx.sess, tcx.features(), span, extern_abi);
         extern_abi
     }
 
