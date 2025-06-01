@@ -11,8 +11,9 @@ use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtx
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, TypingMode};
-use rustc_next_trait_solver::solve::HasChanged;
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt as _, TypingMode,
+};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::traits::{EvaluateConstErr, ObligationCause, specialization_graph};
@@ -61,11 +62,41 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         span: Span,
-    ) -> Option<HasChanged> {
+    ) -> Option<Certainty> {
+        if let Some(trait_pred) = goal.predicate.as_trait_clause() {
+            if trait_pred.polarity() == ty::PredicatePolarity::Positive {
+                match self.0.tcx.as_lang_item(trait_pred.def_id()) {
+                    Some(LangItem::Sized)
+                        if self
+                            .resolve_vars_if_possible(trait_pred.self_ty().skip_binder())
+                            .is_trivially_sized(self.0.tcx) =>
+                    {
+                        return Some(Certainty::Yes);
+                    }
+                    Some(LangItem::Copy | LangItem::Clone) => {
+                        let self_ty =
+                            self.resolve_vars_if_possible(trait_pred.self_ty().skip_binder());
+                        // Unlike `Sized` traits, which always prefer the built-in impl,
+                        // `Copy`/`Clone` may be shadowed by a param-env candidate which
+                        // could force a lifetime error or guide inference. While that's
+                        // not generally desirable, it is observable, so for now let's
+                        // ignore this fast path for types that have regions or infer.
+                        if !self_ty
+                            .has_type_flags(TypeFlags::HAS_FREE_REGIONS | TypeFlags::HAS_INFER)
+                            && self_ty.is_trivially_pure_clone_copy()
+                        {
+                            return Some(Certainty::Yes);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         let pred = goal.predicate.kind();
         match pred.no_bound_vars()? {
             ty::PredicateKind::DynCompatible(def_id) if self.0.tcx.is_dyn_compatible(def_id) => {
-                Some(HasChanged::No)
+                Some(Certainty::Yes)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(outlives)) => {
                 self.0.sub_regions(
@@ -73,7 +104,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     outlives.1,
                     outlives.0,
                 );
-                Some(HasChanged::No)
+                Some(Certainty::Yes)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(outlives)) => {
                 self.0.register_type_outlives_constraint(
@@ -82,22 +113,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     &ObligationCause::dummy_with_span(span),
                 );
 
-                Some(HasChanged::No)
-            }
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
-                match self.0.tcx.as_lang_item(trait_pred.def_id()) {
-                    Some(LangItem::Sized)
-                        if trait_pred.self_ty().is_trivially_sized(self.0.tcx) =>
-                    {
-                        Some(HasChanged::No)
-                    }
-                    Some(LangItem::Copy | LangItem::Clone)
-                        if trait_pred.self_ty().is_trivially_pure_clone_copy() =>
-                    {
-                        Some(HasChanged::No)
-                    }
-                    _ => None,
-                }
+                Some(Certainty::Yes)
             }
             _ => None,
         }
