@@ -13,7 +13,6 @@ fn b() -> impl for<'a> Fn(&'a u8) -> (impl Debug + 'a) {
 
 fn c() -> impl for<'a> Fn(&'a u8) -> (impl Debug + '_) {
     //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
-    //~| WARNING elided lifetime has a name
     |x| x
 }
 
