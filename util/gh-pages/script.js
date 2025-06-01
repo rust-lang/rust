@@ -602,7 +602,7 @@ filters.filterLints();
 updateLintCount();
 
 function updateLintCount() {
-    const allLints = filters.getAllLints();
+    const allLints = filters.getAllLints().filter(lint => lint.group != "deprecated");
     const totalLints = allLints.length;
     
     const countElement = document.getElementById("lint-count");
