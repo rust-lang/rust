@@ -76,28 +76,69 @@ use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
 use crate::infer::resolve::OpportunisticRegionResolver;
 use crate::infer::snapshot::undo_log::UndoLog;
-use crate::infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
+use crate::infer::{
+    self, GenericKind, InferCtxt, SubregionOrigin, TypeOutlivesConstraint, VerifyBound,
+};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 
 impl<'tcx> InferCtxt<'tcx> {
+    pub fn register_outlives_constraint(
+        &self,
+        ty::OutlivesPredicate(arg, r2): ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
+        cause: &ObligationCause<'tcx>,
+    ) {
+        match arg.kind() {
+            ty::GenericArgKind::Lifetime(r1) => {
+                self.register_region_outlives_constraint(ty::OutlivesPredicate(r1, r2), cause);
+            }
+            ty::GenericArgKind::Type(ty1) => {
+                self.register_type_outlives_constraint(ty1, r2, cause);
+            }
+            ty::GenericArgKind::Const(_) => unreachable!(),
+        }
+    }
+
+    pub fn register_region_outlives_constraint(
+        &self,
+        ty::OutlivesPredicate(r_a, r_b): ty::RegionOutlivesPredicate<'tcx>,
+        cause: &ObligationCause<'tcx>,
+    ) {
+        let origin = SubregionOrigin::from_obligation_cause(cause, || {
+            SubregionOrigin::RelateRegionParamBound(cause.span, None)
+        });
+        // `'a: 'b` ==> `'b <= 'a`
+        self.sub_regions(origin, r_b, r_a);
+    }
+
     /// Registers that the given region obligation must be resolved
     /// from within the scope of `body_id`. These regions are enqueued
     /// and later processed by regionck, when full type information is
     /// available (see `region_obligations` field for more
     /// information).
     #[instrument(level = "debug", skip(self))]
-    pub fn register_region_obligation(&self, obligation: RegionObligation<'tcx>) {
+    pub fn register_type_outlives_constraint_inner(
+        &self,
+        obligation: TypeOutlivesConstraint<'tcx>,
+    ) {
         let mut inner = self.inner.borrow_mut();
-        inner.undo_log.push(UndoLog::PushRegionObligation);
+        inner.undo_log.push(UndoLog::PushTypeOutlivesConstraint);
         inner.region_obligations.push(obligation);
     }
 
-    pub fn register_region_obligation_with_cause(
+    pub fn register_type_outlives_constraint(
         &self,
         sup_type: Ty<'tcx>,
         sub_region: Region<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) {
+        // `is_global` means the type has no params, infer, placeholder, or non-`'static`
+        // free regions. If the type has none of these things, then we can skip registering
+        // this outlives obligation since it has no components which affect lifetime
+        // checking in an interesting way.
+        if sup_type.is_global() {
+            return;
+        }
+
         debug!(?sup_type, ?sub_region, ?cause);
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
             infer::RelateParamBound(
@@ -116,11 +157,15 @@ impl<'tcx> InferCtxt<'tcx> {
             )
         });
 
-        self.register_region_obligation(RegionObligation { sup_type, sub_region, origin });
+        self.register_type_outlives_constraint_inner(TypeOutlivesConstraint {
+            sup_type,
+            sub_region,
+            origin,
+        });
     }
 
     /// Trait queries just want to pass back type obligations "as is"
-    pub fn take_registered_region_obligations(&self) -> Vec<RegionObligation<'tcx>> {
+    pub fn take_registered_region_obligations(&self) -> Vec<TypeOutlivesConstraint<'tcx>> {
         std::mem::take(&mut self.inner.borrow_mut().region_obligations)
     }
 
@@ -158,7 +203,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 );
             }
 
-            for RegionObligation { sup_type, sub_region, origin } in my_region_obligations {
+            for TypeOutlivesConstraint { sup_type, sub_region, origin } in my_region_obligations {
                 let outlives = ty::Binder::dummy(ty::OutlivesPredicate(sup_type, sub_region));
                 let ty::OutlivesPredicate(sup_type, sub_region) =
                     deeply_normalize_ty(outlives, origin.clone())
@@ -458,8 +503,8 @@ where
         opt_variances: Option<&[ty::Variance]>,
     ) {
         let constraint = origin.to_constraint_category();
-        for (index, k) in args.iter().enumerate() {
-            match k.unpack() {
+        for (index, arg) in args.iter().enumerate() {
+            match arg.kind() {
                 GenericArgKind::Lifetime(lt) => {
                     let variance = if let Some(variances) = opt_variances {
                         variances[index]

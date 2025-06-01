@@ -69,7 +69,7 @@ use crate::boxed::Box;
 use crate::vec::Vec;
 
 impl<T> [T] {
-    /// Sorts the slice, preserving initial order of equal elements.
+    /// Sorts the slice in ascending order, preserving initial order of equal elements.
     ///
     /// This sort is stable (i.e., does not reorder equal elements) and *O*(*n* \* log(*n*))
     /// worst-case.
@@ -137,7 +137,8 @@ impl<T> [T] {
         stable_sort(self, T::lt);
     }
 
-    /// Sorts the slice with a comparison function, preserving initial order of equal elements.
+    /// Sorts the slice in ascending order with a comparison function, preserving initial order of
+    /// equal elements.
     ///
     /// This sort is stable (i.e., does not reorder equal elements) and *O*(*n* \* log(*n*))
     /// worst-case.
@@ -197,7 +198,8 @@ impl<T> [T] {
         stable_sort(self, |a, b| compare(a, b) == Less);
     }
 
-    /// Sorts the slice with a key extraction function, preserving initial order of equal elements.
+    /// Sorts the slice in ascending order with a key extraction function, preserving initial order
+    /// of equal elements.
     ///
     /// This sort is stable (i.e., does not reorder equal elements) and *O*(*m* \* *n* \* log(*n*))
     /// worst-case, where the key function is *O*(*m*).
@@ -252,7 +254,8 @@ impl<T> [T] {
         stable_sort(self, |a, b| f(a).lt(&f(b)));
     }
 
-    /// Sorts the slice with a key extraction function, preserving initial order of equal elements.
+    /// Sorts the slice in ascending order with a key extraction function, preserving initial order
+    /// of equal elements.
     ///
     /// This sort is stable (i.e., does not reorder equal elements) and *O*(*m* \* *n* + *n* \*
     /// log(*n*)) worst-case, where the key function is *O*(*m*).

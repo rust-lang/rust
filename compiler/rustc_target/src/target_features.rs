@@ -416,25 +416,25 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ),
     ("avx10.2", Unstable(sym::avx10_target_feature), &["avx10.1"]),
     ("avx2", Stable, &["avx"]),
-    ("avx512bf16", Unstable(sym::avx512_target_feature), &["avx512bw"]),
-    ("avx512bitalg", Unstable(sym::avx512_target_feature), &["avx512bw"]),
-    ("avx512bw", Unstable(sym::avx512_target_feature), &["avx512f"]),
-    ("avx512cd", Unstable(sym::avx512_target_feature), &["avx512f"]),
-    ("avx512dq", Unstable(sym::avx512_target_feature), &["avx512f"]),
-    ("avx512f", Unstable(sym::avx512_target_feature), &["avx2", "fma", "f16c"]),
-    ("avx512fp16", Unstable(sym::avx512_target_feature), &["avx512bw"]),
-    ("avx512ifma", Unstable(sym::avx512_target_feature), &["avx512f"]),
-    ("avx512vbmi", Unstable(sym::avx512_target_feature), &["avx512bw"]),
-    ("avx512vbmi2", Unstable(sym::avx512_target_feature), &["avx512bw"]),
-    ("avx512vl", Unstable(sym::avx512_target_feature), &["avx512f"]),
-    ("avx512vnni", Unstable(sym::avx512_target_feature), &["avx512f"]),
-    ("avx512vp2intersect", Unstable(sym::avx512_target_feature), &["avx512f"]),
-    ("avx512vpopcntdq", Unstable(sym::avx512_target_feature), &["avx512f"]),
-    ("avxifma", Unstable(sym::avx512_target_feature), &["avx2"]),
-    ("avxneconvert", Unstable(sym::avx512_target_feature), &["avx2"]),
-    ("avxvnni", Unstable(sym::avx512_target_feature), &["avx2"]),
-    ("avxvnniint16", Unstable(sym::avx512_target_feature), &["avx2"]),
-    ("avxvnniint8", Unstable(sym::avx512_target_feature), &["avx2"]),
+    ("avx512bf16", Stable, &["avx512bw"]),
+    ("avx512bitalg", Stable, &["avx512bw"]),
+    ("avx512bw", Stable, &["avx512f"]),
+    ("avx512cd", Stable, &["avx512f"]),
+    ("avx512dq", Stable, &["avx512f"]),
+    ("avx512f", Stable, &["avx2", "fma", "f16c"]),
+    ("avx512fp16", Stable, &["avx512bw"]),
+    ("avx512ifma", Stable, &["avx512f"]),
+    ("avx512vbmi", Stable, &["avx512bw"]),
+    ("avx512vbmi2", Stable, &["avx512bw"]),
+    ("avx512vl", Stable, &["avx512f"]),
+    ("avx512vnni", Stable, &["avx512f"]),
+    ("avx512vp2intersect", Stable, &["avx512f"]),
+    ("avx512vpopcntdq", Stable, &["avx512f"]),
+    ("avxifma", Stable, &["avx2"]),
+    ("avxneconvert", Stable, &["avx2"]),
+    ("avxvnni", Stable, &["avx2"]),
+    ("avxvnniint16", Stable, &["avx2"]),
+    ("avxvnniint8", Stable, &["avx2"]),
     ("bmi1", Stable, &[]),
     ("bmi2", Stable, &[]),
     ("cmpxchg16b", Stable, &[]),
@@ -442,7 +442,7 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("f16c", Stable, &["avx"]),
     ("fma", Stable, &["avx"]),
     ("fxsr", Stable, &[]),
-    ("gfni", Unstable(sym::avx512_target_feature), &["sse2"]),
+    ("gfni", Stable, &["sse2"]),
     ("kl", Unstable(sym::keylocker_x86), &["sse2"]),
     ("lahfsahf", Unstable(sym::lahfsahf_target_feature), &[]),
     ("lzcnt", Stable, &[]),
@@ -469,8 +469,8 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sse4a", Unstable(sym::sse4a_target_feature), &["sse3"]),
     ("ssse3", Stable, &["sse3"]),
     ("tbm", Unstable(sym::tbm_target_feature), &[]),
-    ("vaes", Unstable(sym::avx512_target_feature), &["avx2", "aes"]),
-    ("vpclmulqdq", Unstable(sym::avx512_target_feature), &["avx", "pclmulqdq"]),
+    ("vaes", Stable, &["avx2", "aes"]),
+    ("vpclmulqdq", Stable, &["avx", "pclmulqdq"]),
     ("widekl", Unstable(sym::keylocker_x86), &["kl"]),
     ("x87", Unstable(sym::x87_target_feature), &[]),
     ("xop", Unstable(sym::xop_target_feature), &[/*"fma4", */ "avx", "sse4a"]),
@@ -693,17 +693,17 @@ static CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 
 static LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
-    ("d", Unstable(sym::loongarch_target_feature), &["f"]),
+    ("d", Stable, &["f"]),
     ("div32", Unstable(sym::loongarch_target_feature), &[]),
-    ("f", Unstable(sym::loongarch_target_feature), &[]),
-    ("frecipe", Unstable(sym::loongarch_target_feature), &[]),
+    ("f", Stable, &[]),
+    ("frecipe", Stable, &[]),
     ("lam-bh", Unstable(sym::loongarch_target_feature), &[]),
     ("lamcas", Unstable(sym::loongarch_target_feature), &[]),
-    ("lasx", Unstable(sym::loongarch_target_feature), &["lsx"]),
-    ("lbt", Unstable(sym::loongarch_target_feature), &[]),
+    ("lasx", Stable, &["lsx"]),
+    ("lbt", Stable, &[]),
     ("ld-seq-sa", Unstable(sym::loongarch_target_feature), &[]),
-    ("lsx", Unstable(sym::loongarch_target_feature), &["d"]),
-    ("lvz", Unstable(sym::loongarch_target_feature), &[]),
+    ("lsx", Stable, &["d"]),
+    ("lvz", Stable, &[]),
     ("relax", Unstable(sym::loongarch_target_feature), &[]),
     ("scq", Unstable(sym::loongarch_target_feature), &[]),
     ("ual", Unstable(sym::loongarch_target_feature), &[]),
@@ -980,14 +980,16 @@ impl Target {
                 // the use of soft-float, so all we can do here is some crude hacks.
                 match &*self.abi {
                     "softfloat" => {
-                        // This is not fully correct, LLVM actually doesn't let us enforce the softfloat
-                        // ABI properly... see <https://github.com/rust-lang/rust/issues/134375>.
-                        // FIXME: should we forbid "neon" here? But that would be a breaking change.
-                        NOTHING
+                        // LLVM will use float registers when `fp-armv8` is available, e.g. for
+                        // calls to built-ins. The only way to ensure a consistent softfloat ABI
+                        // on aarch64 is to never enable `fp-armv8`, so we enforce that.
+                        // In Rust we tie `neon` and `fp-armv8` together, therefore `neon` is the
+                        // feature we have to mark as incompatible.
+                        FeatureConstraints { required: &[], incompatible: &["neon"] }
                     }
                     _ => {
                         // Everything else is assumed to use a hardfloat ABI. neon and fp-armv8 must be enabled.
-                        // These are Rust feature names and we use "neon" to control both of them.
+                        // `FeatureConstraints` uses Rust feature names, hence only "neon" shows up.
                         FeatureConstraints { required: &["neon"], incompatible: &[] }
                     }
                 }

@@ -20,7 +20,7 @@ use rustc_middle::ty::{
     self, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, ReifyReason, Ty, TyCtxt,
     TypeVisitable, TypeVisitableExt, UintTy,
 };
-use rustc_span::kw;
+use rustc_span::sym;
 
 pub(super) fn mangle<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -646,7 +646,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                         let name = cx.tcx.associated_item(projection.def_id).name();
                         cx.push("p");
                         cx.push_ident(name.as_str());
-                        match projection.term.unpack() {
+                        match projection.term.kind() {
                             ty::TermKind::Ty(ty) => ty.print(cx),
                             ty::TermKind::Const(c) => c.print(cx),
                         }?;
@@ -902,7 +902,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             print_prefix,
             ns,
             disambiguated_data.disambiguator as u64,
-            name.unwrap_or(kw::Empty).as_str(),
+            name.unwrap_or(sym::empty).as_str(),
         )
     }
 
@@ -912,11 +912,11 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         args: &[GenericArg<'tcx>],
     ) -> Result<(), PrintError> {
         // Don't print any regions if they're all erased.
-        let print_regions = args.iter().any(|arg| match arg.unpack() {
+        let print_regions = args.iter().any(|arg| match arg.kind() {
             GenericArgKind::Lifetime(r) => !r.is_erased(),
             _ => false,
         });
-        let args = args.iter().cloned().filter(|arg| match arg.unpack() {
+        let args = args.iter().cloned().filter(|arg| match arg.kind() {
             GenericArgKind::Lifetime(_) => print_regions,
             _ => true,
         });
@@ -928,7 +928,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         self.push("I");
         print_prefix(self)?;
         for arg in args {
-            match arg.unpack() {
+            match arg.kind() {
                 GenericArgKind::Lifetime(lt) => {
                     lt.print(self)?;
                 }

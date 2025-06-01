@@ -8,6 +8,30 @@ parse_array_brackets_instead_of_braces = this is a block expression, not an arra
 
 parse_array_index_offset_of = array indexing not supported in offset_of
 
+parse_asm_expected_comma = expected token: `,`
+    .label = expected `,`
+
+parse_asm_expected_other = expected operand, {$is_inline_asm ->
+    [false] options
+    *[true] clobber_abi, options
+    }, or additional template string
+
+parse_asm_expected_register_class_or_explicit_register = expected register class or explicit register
+
+parse_asm_expected_string_literal = expected string literal
+    .label = not a string literal
+
+parse_asm_non_abi = at least one abi must be provided as an argument to `clobber_abi`
+
+parse_asm_requires_template = requires at least a template string argument
+
+parse_asm_sym_no_path = expected a path for argument to `sym`
+
+parse_asm_underscore_input = _ cannot be used for input operands
+
+parse_asm_unsupported_operand = the `{$symbol}` operand cannot be used with `{$macro_name}!`
+    .label = the `{$symbol}` operand is not meaningful for global-scoped inline assembly, remove it
+
 parse_assignment_else_not_allowed = <assignment> ... else {"{"} ... {"}"} is not allowed
 
 parse_associated_static_item_not_allowed = associated `static` items are not allowed
@@ -690,8 +714,8 @@ parse_nul_in_c_str = null characters in C string literals are not supported
 
 parse_or_in_let_chain = `||` operators are not supported in let chain conditions
 
-parse_or_pattern_not_allowed_in_fn_parameters = top-level or-patterns are not allowed in function parameters
-parse_or_pattern_not_allowed_in_let_binding = top-level or-patterns are not allowed in `let` bindings
+parse_or_pattern_not_allowed_in_fn_parameters = function parameters require top-level or-patterns in parentheses
+parse_or_pattern_not_allowed_in_let_binding = `let` bindings require top-level or-patterns in parentheses
 parse_out_of_range_hex_escape = out of range hex escape
     .label = must be a character in the range [\x00-\x7f]
 
@@ -815,7 +839,6 @@ parse_switch_ref_box_order = switch the order of `ref` and `box`
     .suggestion = swap them
 
 parse_ternary_operator = Rust has no ternary operator
-    .help = use an `if-else` expression instead
 
 parse_tilde_is_not_unary_operator = `~` cannot be used as a unary operator
     .suggestion = use `!` to perform bitwise not
@@ -962,6 +985,8 @@ parse_use_empty_block_not_semi = expected { "`{}`" }, found `;`
 
 parse_use_eq_instead = unexpected `==`
     .suggestion = try using `=` instead
+
+parse_use_if_else = use an `if-else` expression instead
 
 parse_use_let_not_auto = write `let` instead of `auto` to introduce a new variable
 parse_use_let_not_var = write `let` instead of `var` to introduce a new variable

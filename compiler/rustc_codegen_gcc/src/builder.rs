@@ -12,7 +12,7 @@ use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
 use rustc_apfloat::{Float, Round, Status, ieee};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{
-    AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
+    AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
 };
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
@@ -26,7 +26,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
 };
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, AtomicOrdering, Instance, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use rustc_target::callconv::FnAbi;
@@ -75,7 +75,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let load_ordering = match order {
             // TODO(antoyo): does this make sense?
-            AtomicOrdering::AcquireRelease | AtomicOrdering::Release => AtomicOrdering::Acquire,
+            AtomicOrdering::AcqRel | AtomicOrdering::Release => AtomicOrdering::Acquire,
             _ => order,
         };
         let previous_value =
@@ -568,11 +568,28 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     ) {
         let mut gcc_cases = vec![];
         let typ = self.val_ty(value);
-        for (on_val, dest) in cases {
-            let on_val = self.const_uint_big(typ, on_val);
-            gcc_cases.push(self.context.new_case(on_val, on_val, dest));
+        // FIXME(FractalFir): This is a workaround for a libgccjit limitation.
+        // Currently, libgccjit can't directly create 128 bit integers.
+        // Since switch cases must be values, and casts are not constant, we can't use 128 bit switch cases.
+        // In such a case, we will simply fall back to an if-ladder.
+        // This *may* be slower than a native switch, but a slow working solution is better than none at all.
+        if typ.is_i128(self) || typ.is_u128(self) {
+            for (on_val, dest) in cases {
+                let on_val = self.const_uint_big(typ, on_val);
+                let is_case =
+                    self.context.new_comparison(self.location, ComparisonOp::Equals, value, on_val);
+                let next_block = self.current_func().new_block("case");
+                self.block.end_with_conditional(self.location, is_case, dest, next_block);
+                self.block = next_block;
+            }
+            self.block.end_with_jump(self.location, default_block);
+        } else {
+            for (on_val, dest) in cases {
+                let on_val = self.const_uint_big(typ, on_val);
+                gcc_cases.push(self.context.new_case(on_val, on_val, dest));
+            }
+            self.block.end_with_switch(self.location, value, default_block, &gcc_cases);
         }
-        self.block.end_with_switch(self.location, value, default_block, &gcc_cases);
     }
 
     #[cfg(feature = "master")]
@@ -2454,12 +2471,11 @@ impl ToGccOrdering for AtomicOrdering {
         use MemOrdering::*;
 
         let ordering = match self {
-            AtomicOrdering::Unordered => __ATOMIC_RELAXED,
             AtomicOrdering::Relaxed => __ATOMIC_RELAXED, // TODO(antoyo): check if that's the same.
             AtomicOrdering::Acquire => __ATOMIC_ACQUIRE,
             AtomicOrdering::Release => __ATOMIC_RELEASE,
-            AtomicOrdering::AcquireRelease => __ATOMIC_ACQ_REL,
-            AtomicOrdering::SequentiallyConsistent => __ATOMIC_SEQ_CST,
+            AtomicOrdering::AcqRel => __ATOMIC_ACQ_REL,
+            AtomicOrdering::SeqCst => __ATOMIC_SEQ_CST,
         };
         ordering as i32
     }

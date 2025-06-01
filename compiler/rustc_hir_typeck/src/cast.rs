@@ -408,6 +408,16 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     self.expr_ty,
                     fcx.ty_to_string(self.cast_ty)
                 );
+
+                if let Ok(snippet) = fcx.tcx.sess.source_map().span_to_snippet(self.expr_span)
+                    && matches!(self.expr.kind, ExprKind::AddrOf(..))
+                {
+                    err.note(format!(
+                        "casting reference expression `{}` because `&` binds tighter than `as`",
+                        snippet
+                    ));
+                }
+
                 let mut sugg = None;
                 let mut sugg_mutref = false;
                 if let ty::Ref(reg, cast_ty, mutbl) = *self.cast_ty.kind() {
@@ -490,11 +500,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         && let Some(from_trait) = fcx.tcx.get_diagnostic_item(sym::From)
                     {
                         let ty = fcx.resolve_vars_if_possible(self.cast_ty);
-                        // Erase regions to avoid panic in `prove_value` when calling
-                        // `type_implements_trait`.
-                        let ty = fcx.tcx.erase_regions(ty);
                         let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
-                        let expr_ty = fcx.tcx.erase_regions(expr_ty);
                         if fcx
                             .infcx
                             .type_implements_trait(from_trait, [ty, expr_ty], fcx.param_env)

@@ -9,13 +9,12 @@ use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
 use rustc_session::config;
-#[cfg(feature = "master")]
-use rustc_target::callconv::Conv;
 use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, PassMode};
+#[cfg(feature = "master")]
+use rustc_target::callconv::{Conv, RiscvInterruptKind};
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::intrinsic::ArgAbiExt;
 use crate::type_of::LayoutGccExt;
 
 impl AbiBuilderMethods for Builder<'_, '_, '_> {
@@ -125,7 +124,7 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_gcc_type(cx),
             PassMode::Cast { ref cast, .. } => cast.gcc_type(cx),
             PassMode::Indirect { .. } => {
-                argument_tys.push(cx.type_ptr_to(self.ret.memory_ty(cx)));
+                argument_tys.push(cx.type_ptr_to(self.ret.layout.gcc_type(cx)));
                 cx.type_void()
             }
         };
@@ -176,13 +175,13 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: true } => {
                     // This is a "byval" argument, so we don't apply the `restrict` attribute on it.
                     on_stack_param_indices.insert(argument_tys.len());
-                    arg.memory_ty(cx)
+                    arg.layout.gcc_type(cx)
                 }
                 PassMode::Direct(attrs) => {
                     apply_attrs(arg.layout.immediate_gcc_type(cx), &attrs, argument_tys.len())
                 }
                 PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
-                    apply_attrs(cx.type_ptr_to(arg.memory_ty(cx)), &attrs, argument_tys.len())
+                    apply_attrs(cx.type_ptr_to(arg.layout.gcc_type(cx)), &attrs, argument_tys.len())
                 }
                 PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
                     assert!(!on_stack);
@@ -240,38 +239,57 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
 #[cfg(feature = "master")]
 pub fn conv_to_fn_attribute<'gcc>(conv: Conv, arch: &str) -> Option<FnAttribute<'gcc>> {
-    // TODO: handle the calling conventions returning None.
     let attribute = match conv {
-        Conv::C
-        | Conv::Rust
-        | Conv::CCmseNonSecureCall
-        | Conv::CCmseNonSecureEntry
-        | Conv::RiscvInterrupt { .. } => return None,
-        Conv::Cold => return None,
+        Conv::C | Conv::Rust => return None,
+        Conv::CCmseNonSecureCall => {
+            if arch == "arm" {
+                FnAttribute::ArmCmseNonsecureCall
+            } else {
+                return None;
+            }
+        }
+        Conv::CCmseNonSecureEntry => {
+            if arch == "arm" {
+                FnAttribute::ArmCmseNonsecureEntry
+            } else {
+                return None;
+            }
+        }
+        Conv::Cold => FnAttribute::Cold,
+        // NOTE: the preserve attributes are not yet implemented in GCC:
+        // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=110899
         Conv::PreserveMost => return None,
         Conv::PreserveAll => return None,
         Conv::GpuKernel => {
-            // TODO(antoyo): remove clippy allow attribute when this is implemented.
-            #[allow(clippy::if_same_then_else)]
             if arch == "amdgpu" {
-                return None;
+                FnAttribute::GcnAmdGpuHsaKernel
             } else if arch == "nvptx64" {
-                return None;
+                FnAttribute::NvptxKernel
             } else {
                 panic!("Architecture {} does not support GpuKernel calling convention", arch);
             }
         }
-        Conv::AvrInterrupt => return None,
-        Conv::AvrNonBlockingInterrupt => return None,
-        Conv::ArmAapcs => return None,
-        Conv::Msp430Intr => return None,
-        Conv::X86Fastcall => return None,
-        Conv::X86Intr => return None,
-        Conv::X86Stdcall => return None,
-        Conv::X86ThisCall => return None,
+        // TODO(antoyo): check if those AVR attributes are mapped correctly.
+        Conv::AvrInterrupt => FnAttribute::AvrSignal,
+        Conv::AvrNonBlockingInterrupt => FnAttribute::AvrInterrupt,
+        Conv::ArmAapcs => FnAttribute::ArmPcs("aapcs"),
+        Conv::Msp430Intr => FnAttribute::Msp430Interrupt,
+        Conv::RiscvInterrupt { kind } => {
+            let kind = match kind {
+                RiscvInterruptKind::Machine => "machine",
+                RiscvInterruptKind::Supervisor => "supervisor",
+            };
+            FnAttribute::RiscvInterrupt(kind)
+        }
+        Conv::X86Fastcall => FnAttribute::X86FastCall,
+        Conv::X86Intr => FnAttribute::X86Interrupt,
+        Conv::X86Stdcall => FnAttribute::X86Stdcall,
+        Conv::X86ThisCall => FnAttribute::X86ThisCall,
+        // NOTE: the vectorcall calling convention is not yet implemented in GCC:
+        // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89485
         Conv::X86VectorCall => return None,
-        Conv::X86_64SysV => FnAttribute::SysvAbi,
-        Conv::X86_64Win64 => FnAttribute::MsAbi,
+        Conv::X86_64SysV => FnAttribute::X86SysvAbi,
+        Conv::X86_64Win64 => FnAttribute::X86MsAbi,
     };
     Some(attribute)
 }

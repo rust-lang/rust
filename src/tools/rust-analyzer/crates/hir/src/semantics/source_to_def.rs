@@ -96,6 +96,7 @@ use hir_def::{
         keys::{self, Key},
     },
     hir::{BindingId, Expr, LabelId},
+    nameres::{block_def_map, crate_def_map},
 };
 use hir_expand::{
     EditionedFileId, ExpansionInfo, HirFileId, InMacroFile, MacroCallId, attrs::AttrId,
@@ -180,7 +181,7 @@ impl SourceToDefCtx<'_, '_> {
 
             for &crate_id in self.db.relevant_crates(file).iter() {
                 // Note: `mod` declarations in block modules cannot be supported here
-                let crate_def_map = self.db.crate_def_map(crate_id);
+                let crate_def_map = crate_def_map(self.db, crate_id);
                 let n_mods = mods.len();
                 let modules = |file| {
                     crate_def_map
@@ -226,7 +227,7 @@ impl SourceToDefCtx<'_, '_> {
         let parent_module = match parent_declaration {
             Some(Either::Right(parent_block)) => self
                 .block_to_def(parent_block.as_ref())
-                .map(|block| self.db.block_def_map(block).root_module_id()),
+                .map(|block| block_def_map(self.db, block).root_module_id()),
             Some(Either::Left(parent_declaration)) => {
                 self.module_to_def(parent_declaration.as_ref())
             }
@@ -398,19 +399,6 @@ impl SourceToDefCtx<'_, '_> {
         Some((container, label?))
     }
 
-    pub(super) fn item_to_macro_call(&mut self, src: InFile<&ast::Item>) -> Option<MacroCallId> {
-        let map = self.dyn_map(src)?;
-        map[keys::ATTR_MACRO_CALL].get(&AstPtr::new(src.value)).copied()
-    }
-
-    pub(super) fn macro_call_to_macro_call(
-        &mut self,
-        src: InFile<&ast::MacroCall>,
-    ) -> Option<MacroCallId> {
-        let map = self.dyn_map(src)?;
-        map[keys::MACRO_CALL].get(&AstPtr::new(src.value)).copied()
-    }
-
     /// (AttrId, derive attribute call id, derive call ids)
     pub(super) fn attr_to_derive_macro_call(
         &mut self,
@@ -446,6 +434,17 @@ impl SourceToDefCtx<'_, '_> {
             .dynmap_cache
             .entry((container, file_id))
             .or_insert_with(|| container.child_by_source(db, file_id))
+    }
+
+    pub(super) fn item_to_macro_call(&mut self, src: InFile<&ast::Item>) -> Option<MacroCallId> {
+        self.to_def(src, keys::ATTR_MACRO_CALL)
+    }
+
+    pub(super) fn macro_call_to_macro_call(
+        &mut self,
+        src: InFile<&ast::MacroCall>,
+    ) -> Option<MacroCallId> {
+        self.to_def(src, keys::MACRO_CALL)
     }
 
     pub(super) fn type_param_to_def(

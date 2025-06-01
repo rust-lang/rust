@@ -32,7 +32,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
@@ -445,14 +444,14 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
         tcx.definitions_untracked().def_index_count(),
     );
 
+    let mut lowerer = item::ItemLowerer {
+        tcx,
+        resolver: &mut resolver,
+        ast_index: &ast_index,
+        owners: &mut owners,
+    };
     for def_id in ast_index.indices() {
-        item::ItemLowerer {
-            tcx,
-            resolver: &mut resolver,
-            ast_index: &ast_index,
-            owners: &mut owners,
-        }
-        .lower_node(def_id);
+        lowerer.lower_node(def_id);
     }
 
     drop(ast_index);
@@ -896,7 +895,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let ret = self.arena.alloc_from_iter(lowered_attrs);
 
             // this is possible if an item contained syntactical attribute,
-            // but none of them parse succesfully or all of them were ignored
+            // but none of them parse successfully or all of them were ignored
             // for not being built-in attributes at all. They could be remaining
             // unexpanded attributes used as markers in proc-macro derives for example.
             // This will have emitted some diagnostics for the misparse, but will then

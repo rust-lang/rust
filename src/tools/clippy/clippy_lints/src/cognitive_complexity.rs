@@ -3,14 +3,14 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_expr_without_closures;
-use clippy_utils::{LimitStack, get_async_fn_body, is_async_fn};
+use clippy_utils::{LimitStack, get_async_fn_body, is_async_fn, sym};
 use core::ops::ControlFlow;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Attribute, Body, Expr, ExprKind, FnDecl};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
+use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -104,7 +104,7 @@ impl CognitiveComplexity {
                 FnKind::Closure => {
                     let header_span = body_span.with_hi(decl.output.span().lo());
                     #[expect(clippy::range_plus_one)]
-                    if let Some(range) = header_span.map_range(cx, |src, range| {
+                    if let Some(range) = header_span.map_range(cx, |_, src, range| {
                         let mut idxs = src.get(range.clone())?.match_indices('|');
                         Some(range.start + idxs.next()?.0..range.start + idxs.next()?.0 + 1)
                     }) {
@@ -157,9 +157,9 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
     }
 
     fn check_attributes(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
-        self.limit.push_attrs(cx.sess(), attrs, "cognitive_complexity");
+        self.limit.push_attrs(cx.sess(), attrs, sym::cognitive_complexity);
     }
     fn check_attributes_post(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
-        self.limit.pop_attrs(cx.sess(), attrs, "cognitive_complexity");
+        self.limit.pop_attrs(cx.sess(), attrs, sym::cognitive_complexity);
     }
 }

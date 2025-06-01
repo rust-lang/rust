@@ -285,7 +285,8 @@ impl Step for Llvm {
             LlvmBuildStatus::ShouldBuild(m) => m,
         };
 
-        if builder.llvm_link_shared() && target.is_windows() {
+        if builder.llvm_link_shared() && target.is_windows() && !target.ends_with("windows-gnullvm")
+        {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
 
@@ -870,8 +871,8 @@ fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
     let kind = if host == target { "HOST" } else { "TARGET" };
     let target_u = target.replace('-', "_");
     env::var_os(format!("{var_base}_{target}"))
-        .or_else(|| env::var_os(format!("{}_{}", var_base, target_u)))
-        .or_else(|| env::var_os(format!("{}_{}", kind, var_base)))
+        .or_else(|| env::var_os(format!("{var_base}_{target_u}")))
+        .or_else(|| env::var_os(format!("{kind}_{var_base}")))
         .or_else(|| env::var_os(var_base))
 }
 
@@ -944,7 +945,7 @@ impl Step for Enzyme {
         }
 
         trace!(?target, "(re)building enzyme artifacts");
-        builder.info(&format!("Building Enzyme for {}", target));
+        builder.info(&format!("Building Enzyme for {target}"));
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
         t!(fs::create_dir_all(&out_dir));
@@ -1234,10 +1235,9 @@ fn supported_sanitizers(
         components
             .iter()
             .map(move |c| SanitizerRuntime {
-                cmake_target: format!("clang_rt.{}_{}_dynamic", c, os),
-                path: out_dir
-                    .join(format!("build/lib/darwin/libclang_rt.{}_{}_dynamic.dylib", c, os)),
-                name: format!("librustc-{}_rt.{}.dylib", channel, c),
+                cmake_target: format!("clang_rt.{c}_{os}_dynamic"),
+                path: out_dir.join(format!("build/lib/darwin/libclang_rt.{c}_{os}_dynamic.dylib")),
+                name: format!("librustc-{channel}_rt.{c}.dylib"),
             })
             .collect()
     };
@@ -1246,9 +1246,9 @@ fn supported_sanitizers(
         components
             .iter()
             .map(move |c| SanitizerRuntime {
-                cmake_target: format!("clang_rt.{}-{}", c, arch),
-                path: out_dir.join(format!("build/lib/{}/libclang_rt.{}-{}.a", os, c, arch)),
-                name: format!("librustc-{}_rt.{}.a", channel, c),
+                cmake_target: format!("clang_rt.{c}-{arch}"),
+                path: out_dir.join(format!("build/lib/{os}/libclang_rt.{c}-{arch}.a")),
+                name: format!("librustc-{channel}_rt.{c}.a"),
             })
             .collect()
     };
@@ -1367,8 +1367,8 @@ impl Step for CrtBeginEnd {
         for obj in objs {
             let base_name = unhashed_basename(&obj);
             assert!(base_name == "crtbegin" || base_name == "crtend");
-            t!(fs::copy(&obj, out_dir.join(format!("{}S.o", base_name))));
-            t!(fs::rename(&obj, out_dir.join(format!("{}.o", base_name))));
+            t!(fs::copy(&obj, out_dir.join(format!("{base_name}S.o"))));
+            t!(fs::rename(&obj, out_dir.join(format!("{base_name}.o"))));
         }
 
         out_dir
@@ -1436,6 +1436,7 @@ impl Step for Libunwind {
             cfg.flag("-funwind-tables");
             cfg.flag("-fvisibility=hidden");
             cfg.define("_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS", None);
+            cfg.define("_LIBUNWIND_IS_NATIVE_ONLY", "1");
             cfg.include(root.join("include"));
             cfg.cargo_metadata(false);
             cfg.out_dir(&out_dir);
@@ -1453,12 +1454,10 @@ impl Step for Libunwind {
                 cfg.define("__NO_STRING_INLINES", None);
                 cfg.define("__NO_MATH_INLINES", None);
                 cfg.define("_LIBUNWIND_IS_BAREMETAL", None);
-                cfg.define("__LIBUNWIND_IS_NATIVE_ONLY", None);
                 cfg.define("NDEBUG", None);
             }
             if self.target.is_windows() {
                 cfg.define("_LIBUNWIND_HIDE_SYMBOLS", "1");
-                cfg.define("_LIBUNWIND_IS_NATIVE_ONLY", "1");
             }
         }
 

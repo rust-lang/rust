@@ -594,16 +594,16 @@ impl Index<BindingId> for InferenceResult {
 
 /// The inference context contains all information needed during type inference.
 #[derive(Clone, Debug)]
-pub(crate) struct InferenceContext<'a> {
-    pub(crate) db: &'a dyn HirDatabase,
+pub(crate) struct InferenceContext<'db> {
+    pub(crate) db: &'db dyn HirDatabase,
     pub(crate) owner: DefWithBodyId,
-    pub(crate) body: &'a Body,
+    pub(crate) body: &'db Body,
     /// Generally you should not resolve things via this resolver. Instead create a TyLoweringContext
     /// and resolve the path via its methods. This will ensure proper error reporting.
-    pub(crate) resolver: Resolver,
+    pub(crate) resolver: Resolver<'db>,
     generic_def: GenericDefId,
     generics: OnceCell<Generics>,
-    table: unify::InferenceTable<'a>,
+    table: unify::InferenceTable<'db>,
     /// The traits in scope, disregarding block modules. This is used for caching purposes.
     traits_in_scope: FxHashSet<TraitId>,
     pub(crate) result: InferenceResult,
@@ -695,12 +695,12 @@ enum ImplTraitReplacingMode {
     TypeAlias,
 }
 
-impl<'a> InferenceContext<'a> {
+impl<'db> InferenceContext<'db> {
     fn new(
-        db: &'a dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         owner: DefWithBodyId,
-        body: &'a Body,
-        resolver: Resolver,
+        body: &'db Body,
+        resolver: Resolver<'db>,
     ) -> Self {
         let trait_env = db.trait_environment_for_body(owner);
         InferenceContext {

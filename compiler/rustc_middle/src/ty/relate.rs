@@ -169,7 +169,7 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::GenericArg<'tcx> {
         a: ty::GenericArg<'tcx>,
         b: ty::GenericArg<'tcx>,
     ) -> RelateResult<'tcx, ty::GenericArg<'tcx>> {
-        match (a.unpack(), b.unpack()) {
+        match (a.kind(), b.kind()) {
             (ty::GenericArgKind::Lifetime(a_lt), ty::GenericArgKind::Lifetime(b_lt)) => {
                 Ok(relation.relate(a_lt, b_lt)?.into())
             }
@@ -190,7 +190,7 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Term<'tcx> {
         a: Self,
         b: Self,
     ) -> RelateResult<'tcx, Self> {
-        Ok(match (a.unpack(), b.unpack()) {
+        Ok(match (a.kind(), b.kind()) {
             (ty::TermKind::Ty(a), ty::TermKind::Ty(b)) => relation.relate(a, b)?.into(),
             (ty::TermKind::Const(a), ty::TermKind::Const(b)) => relation.relate(a, b)?.into(),
             _ => return Err(TypeError::Mismatch),

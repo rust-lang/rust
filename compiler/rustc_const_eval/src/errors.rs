@@ -58,11 +58,6 @@ pub(crate) struct UnstableInStableExposed {
         code = "#[rustc_const_unstable(feature = \"...\", issue = \"...\")]\n",
         applicability = "has-placeholders"
     )]
-    #[suggestion(
-        const_eval_bypass_sugg,
-        code = "#[rustc_allow_const_fn_unstable({gate})]\n",
-        applicability = "has-placeholders"
-    )]
     pub attr_span: Span,
 }
 

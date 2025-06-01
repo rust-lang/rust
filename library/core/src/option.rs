@@ -120,20 +120,22 @@
 //!
 //! Rust guarantees to optimize the following types `T` such that
 //! [`Option<T>`] has the same size, alignment, and [function call ABI] as `T`. In some
-//! of these cases, Rust further guarantees that
-//! `transmute::<_, Option<T>>([0u8; size_of::<T>()])` is sound and
-//! produces `Option::<T>::None`. These cases are identified by the
-//! second column:
+//! of these cases, Rust further guarantees the following:
+//! - `transmute::<_, Option<T>>([0u8; size_of::<T>()])` is sound and produces
+//!   `Option::<T>::None`
+//! - `transmute::<_, [u8; size_of::<T>()]>(Option::<T>::None)` is sound and produces
+//!   `[0u8; size_of::<T>()]`
+//! These cases are identified by the second column:
 //!
-//! | `T`                                                                 | `transmute::<_, Option<T>>([0u8; size_of::<T>()])` sound? |
-//! |---------------------------------------------------------------------|----------------------------------------------------------------------|
-//! | [`Box<U>`] (specifically, only `Box<U, Global>`)                    | when `U: Sized`                                                      |
-//! | `&U`                                                                | when `U: Sized`                                                      |
-//! | `&mut U`                                                            | when `U: Sized`                                                      |
-//! | `fn`, `extern "C" fn`[^extern_fn]                                   | always                                                               |
-//! | [`num::NonZero*`]                                                   | always                                                               |
-//! | [`ptr::NonNull<U>`]                                                 | when `U: Sized`                                                      |
-//! | `#[repr(transparent)]` struct around one of the types in this list. | when it holds for the inner type                                     |
+//! | `T`                                                                 | Transmuting between `[0u8; size_of::<T>()]` and `Option::<T>::None` sound? |
+//! |---------------------------------------------------------------------|----------------------------------------------------------------------------|
+//! | [`Box<U>`] (specifically, only `Box<U, Global>`)                    | when `U: Sized`                                                            |
+//! | `&U`                                                                | when `U: Sized`                                                            |
+//! | `&mut U`                                                            | when `U: Sized`                                                            |
+//! | `fn`, `extern "C" fn`[^extern_fn]                                   | always                                                                     |
+//! | [`num::NonZero*`]                                                   | always                                                                     |
+//! | [`ptr::NonNull<U>`]                                                 | when `U: Sized`                                                            |
+//! | `#[repr(transparent)]` struct around one of the types in this list. | when it holds for the inner type                                           |
 //!
 //! [^extern_fn]: this remains true for any argument/return types and any other ABI: `extern "abi" fn` (_e.g._, `extern "system" fn`)
 //!
@@ -1248,6 +1250,36 @@ impl<T> Option<T> {
         match self {
             Some(t) => f(t),
             None => default(),
+        }
+    }
+
+    /// Maps an `Option<T>` to a `U` by applying function `f` to the contained
+    /// value if the option is [`Some`], otherwise if [`None`], returns the
+    /// [default value] for the type `U`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_option_map_or_default)]
+    ///
+    /// let x: Option<&str> = Some("hi");
+    /// let y: Option<&str> = None;
+    ///
+    /// assert_eq!(x.map_or_default(|x| x.len()), 2);
+    /// assert_eq!(y.map_or_default(|y| y.len()), 0);
+    /// ```
+    ///
+    /// [default value]: Default::default
+    #[inline]
+    #[unstable(feature = "result_option_map_or_default", issue = "138099")]
+    pub fn map_or_default<U, F>(self, f: F) -> U
+    where
+        U: Default,
+        F: FnOnce(T) -> U,
+    {
+        match self {
+            Some(t) => f(t),
+            None => U::default(),
         }
     }
 

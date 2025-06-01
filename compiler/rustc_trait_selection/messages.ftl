@@ -337,6 +337,8 @@ trait_selection_rustc_on_unimplemented_expected_one_predicate_in_not = expected 
     .label = unexpected quantity of predicates here
 trait_selection_rustc_on_unimplemented_invalid_flag = invalid flag in `on`-clause
     .label = expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `{$invalid_flag}`
+trait_selection_rustc_on_unimplemented_invalid_name = invalid name in `on`-clause
+    .label = expected one of `cause`, `from_desugaring`, `Self` or any generic parameter of the trait, not `{$invalid_name}`
 trait_selection_rustc_on_unimplemented_invalid_predicate = this predicate is invalid
     .label = expected one of `any`, `all` or `not` here, not `{$invalid_pred}`
 trait_selection_rustc_on_unimplemented_missing_value = this attribute must have a value
@@ -451,8 +453,6 @@ trait_selection_type_annotations_needed = {$source_kind ->
     *[other] type annotations needed
 }
     .label = type must be known at this point
-
-trait_selection_type_annotations_needed_error_time = this is an inference error on crate `time` caused by an API change in Rust 1.80.0; update `time` to version `>=0.3.35` by calling `cargo update`
 
 trait_selection_types_declared_different = these two types are declared with different lifetimes...
 

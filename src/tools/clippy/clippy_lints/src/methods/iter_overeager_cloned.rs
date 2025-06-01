@@ -8,7 +8,7 @@ use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, Pl
 use rustc_lint::LateContext;
 use rustc_middle::mir::{FakeReadCause, Mutability};
 use rustc_middle::ty::{self, BorrowKind};
-use rustc_span::sym;
+use rustc_span::{Symbol, sym};
 
 use super::ITER_OVEREAGER_CLONED;
 use crate::redundant_clone::REDUNDANT_CLONE;
@@ -26,7 +26,7 @@ pub(super) enum Op<'a> {
     // later `.cloned()`
     // and add `&` to the parameter of closure parameter
     // e.g. `find` `filter`
-    FixClosure(&'a str, &'a Expr<'a>),
+    FixClosure(Symbol, &'a Expr<'a>),
 
     // later `.cloned()`
     // e.g. `skip` `take`

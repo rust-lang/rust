@@ -13,5 +13,4 @@ fn main() {
     let x: i32 = 5;
     let y = x as dyn MyAdd<i32>;
     //~^ ERROR E0038
-    //~| ERROR cast to unsized type: `i32` as `dyn MyAdd<i32>`
 }

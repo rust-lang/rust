@@ -1,0 +1,57 @@
+error[E0658]: the `#[cfg(/* ... */)]` and `#[cfg_attr(/* ... */)]` attributes on assembly are unstable
+  --> $DIR/feature-gate-asm_cfg.rs:8:5
+   |
+LL |     #[cfg(false)]
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #140364 <https://github.com/rust-lang/rust/issues/140364> for more information
+   = help: add `#![feature(asm_cfg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `#[cfg(/* ... */)]` and `#[cfg_attr(/* ... */)]` attributes on assembly are unstable
+  --> $DIR/feature-gate-asm_cfg.rs:18:9
+   |
+LL |         #[cfg(false)]
+   |         ^^^^^^^^^^^^^
+   |
+   = note: see issue #140364 <https://github.com/rust-lang/rust/issues/140364> for more information
+   = help: add `#![feature(asm_cfg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `#[cfg(/* ... */)]` and `#[cfg_attr(/* ... */)]` attributes on assembly are unstable
+  --> $DIR/feature-gate-asm_cfg.rs:22:9
+   |
+LL |         #[cfg(false)]
+   |         ^^^^^^^^^^^^^
+   |
+   = note: see issue #140364 <https://github.com/rust-lang/rust/issues/140364> for more information
+   = help: add `#![feature(asm_cfg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `#[cfg(/* ... */)]` and `#[cfg_attr(/* ... */)]` attributes on assembly are unstable
+  --> $DIR/feature-gate-asm_cfg.rs:32:13
+   |
+LL |             #[cfg(false)]
+   |             ^^^^^^^^^^^^^
+   |
+   = note: see issue #140364 <https://github.com/rust-lang/rust/issues/140364> for more information
+   = help: add `#![feature(asm_cfg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: this attribute is not supported on assembly
+  --> $DIR/feature-gate-asm_cfg.rs:43:13
+   |
+LL |             #[inline]
+   |             ^^^^^^^^^
+
+error: `C` ABI specified multiple times
+  --> $DIR/feature-gate-asm_cfg.rs:35:13
+   |
+LL |             clobber_abi("C"),
+   |             ---------------- previously specified here
+LL |             clobber_abi("C"),
+   |             ^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

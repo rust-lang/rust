@@ -149,7 +149,7 @@ pub(crate) struct NullOnExport {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unsupported_instruction_set, code = E0779)]
-pub(crate) struct UnsuportedInstructionSet {
+pub(crate) struct UnsupportedInstructionSet {
     #[primary_span]
     pub span: Span,
 }
@@ -1316,3 +1316,7 @@ pub(crate) struct XcrunSdkPathWarning {
     pub sdk_name: &'static str,
     pub stderr: String,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(codegen_ssa_aarch64_softfloat_neon)]
+pub(crate) struct Aarch64SoftfloatNeon;

@@ -1010,7 +1010,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 });
                 self.extern_mod_span = old_item;
             }
-            ItemKind::Enum(_, def, _) => {
+            ItemKind::Enum(_, _, def) => {
                 for variant in &def.variants {
                     self.visibility_not_permitted(
                         &variant.vis,
@@ -1061,7 +1061,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 visit::walk_item(self, item)
             }
-            ItemKind::Struct(ident, vdata, generics) => match vdata {
+            ItemKind::Struct(ident, generics, vdata) => match vdata {
                 VariantData::Struct { fields, .. } => {
                     self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                     self.visit_generics(generics);
@@ -1070,7 +1070,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 _ => visit::walk_item(self, item),
             },
-            ItemKind::Union(ident, vdata, generics) => {
+            ItemKind::Union(ident, generics, vdata) => {
                 if vdata.fields().is_empty() {
                     self.dcx().emit_err(errors::FieldlessUnion { span: item.span });
                 }

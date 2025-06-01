@@ -70,44 +70,32 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         }
     }
 
-    pub(super) fn lower_node(&mut self, def_id: LocalDefId) -> hir::MaybeOwner<'hir> {
+    pub(super) fn lower_node(&mut self, def_id: LocalDefId) {
         let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
         if let hir::MaybeOwner::Phantom = owner {
             let node = self.ast_index[def_id];
             match node {
                 AstOwner::NonOwner => {}
-                AstOwner::Crate(c) => self.lower_crate(c),
-                AstOwner::Item(item) => self.lower_item(item),
-                AstOwner::AssocItem(item, ctxt) => self.lower_assoc_item(item, ctxt),
-                AstOwner::ForeignItem(item) => self.lower_foreign_item(item),
+                AstOwner::Crate(c) => {
+                    debug_assert_eq!(self.resolver.node_id_to_def_id[&CRATE_NODE_ID], CRATE_DEF_ID);
+                    self.with_lctx(CRATE_NODE_ID, |lctx| {
+                        let module = lctx.lower_mod(&c.items, &c.spans);
+                        // FIXME(jdonszelman): is dummy span ever a problem here?
+                        lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs, DUMMY_SP);
+                        hir::OwnerNode::Crate(module)
+                    })
+                }
+                AstOwner::Item(item) => {
+                    self.with_lctx(item.id, |lctx| hir::OwnerNode::Item(lctx.lower_item(item)))
+                }
+                AstOwner::AssocItem(item, ctxt) => {
+                    self.with_lctx(item.id, |lctx| lctx.lower_assoc_item(item, ctxt))
+                }
+                AstOwner::ForeignItem(item) => self.with_lctx(item.id, |lctx| {
+                    hir::OwnerNode::ForeignItem(lctx.lower_foreign_item(item))
+                }),
             }
         }
-
-        self.owners[def_id]
-    }
-
-    #[instrument(level = "debug", skip(self, c))]
-    fn lower_crate(&mut self, c: &Crate) {
-        debug_assert_eq!(self.resolver.node_id_to_def_id[&CRATE_NODE_ID], CRATE_DEF_ID);
-        self.with_lctx(CRATE_NODE_ID, |lctx| {
-            let module = lctx.lower_mod(&c.items, &c.spans);
-            // FIXME(jdonszelman): is dummy span ever a problem here?
-            lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs, DUMMY_SP);
-            hir::OwnerNode::Crate(module)
-        })
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn lower_item(&mut self, item: &Item) {
-        self.with_lctx(item.id, |lctx| hir::OwnerNode::Item(lctx.lower_item(item)))
-    }
-
-    fn lower_assoc_item(&mut self, item: &AssocItem, ctxt: AssocCtxt) {
-        self.with_lctx(item.id, |lctx| lctx.lower_assoc_item(item, ctxt))
-    }
-
-    fn lower_foreign_item(&mut self, item: &ForeignItem) {
-        self.with_lctx(item.id, |lctx| hir::OwnerNode::ForeignItem(lctx.lower_foreign_item(item)))
     }
 }
 
@@ -192,7 +180,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (ty, body_id) =
                     self.lower_const_item(t, span, e.as_deref(), ImplTraitPosition::StaticTy);
                 self.lower_define_opaque(hir_id, define_opaque);
-                hir::ItemKind::Static(ident, ty, *m, body_id)
+                hir::ItemKind::Static(*m, ident, ty, body_id)
             }
             ItemKind::Const(box ast::ConstItem {
                 ident,
@@ -212,7 +200,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     },
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
-                hir::ItemKind::Const(ident, ty, generics, body_id)
+                hir::ItemKind::Const(ident, generics, ty, body_id)
             }
             ItemKind::Fn(box Fn {
                 sig: FnSig { decl, header, span: fn_sig_span },
@@ -316,9 +304,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ),
                     },
                 );
-                hir::ItemKind::TyAlias(ident, ty, generics)
+                hir::ItemKind::TyAlias(ident, generics, ty)
             }
-            ItemKind::Enum(ident, enum_definition, generics) => {
+            ItemKind::Enum(ident, generics, enum_definition) => {
                 let ident = self.lower_ident(*ident);
                 let (generics, variants) = self.lower_generics(
                     generics,
@@ -330,9 +318,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         )
                     },
                 );
-                hir::ItemKind::Enum(ident, hir::EnumDef { variants }, generics)
+                hir::ItemKind::Enum(ident, generics, hir::EnumDef { variants })
             }
-            ItemKind::Struct(ident, struct_def, generics) => {
+            ItemKind::Struct(ident, generics, struct_def) => {
                 let ident = self.lower_ident(*ident);
                 let (generics, struct_def) = self.lower_generics(
                     generics,
@@ -340,9 +328,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| this.lower_variant_data(hir_id, struct_def),
                 );
-                hir::ItemKind::Struct(ident, struct_def, generics)
+                hir::ItemKind::Struct(ident, generics, struct_def)
             }
-            ItemKind::Union(ident, vdata, generics) => {
+            ItemKind::Union(ident, generics, vdata) => {
                 let ident = self.lower_ident(*ident);
                 let (generics, vdata) = self.lower_generics(
                     generics,
@@ -350,7 +338,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| this.lower_variant_data(hir_id, vdata),
                 );
-                hir::ItemKind::Union(ident, vdata, generics)
+                hir::ItemKind::Union(ident, generics, vdata)
             }
             ItemKind::Impl(box Impl {
                 safety,
@@ -479,8 +467,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::Delegation(box delegation) => {
                 let delegation_results = self.lower_delegation(delegation, id, false);
                 hir::ItemKind::Fn {
-                    ident: delegation_results.ident,
                     sig: delegation_results.sig,
+                    ident: delegation_results.ident,
                     generics: delegation_results.generics,
                     body: delegation_results.body_id,
                     has_body: true,

@@ -10,7 +10,7 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
             let mut _6: u32;
             scope 3 {
                 scope 5 (inlined <u32 as Step>::forward_unchecked) {
-                    scope 6 (inlined core::num::<impl u32>::unchecked_add) {
+                    scope 6 (inlined #[track_caller] core::num::<impl u32>::unchecked_add) {
                         scope 7 (inlined core::ub_checks::check_language_ub) {
                             scope 8 (inlined core::ub_checks::check_language_ub::runtime) {
                             }

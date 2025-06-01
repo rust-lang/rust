@@ -109,6 +109,67 @@ impl GenericParamsOwnerEdit for ast::Trait {
     }
 }
 
+impl GenericParamsOwnerEdit for ast::TraitAlias {
+    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
+        match self.generic_param_list() {
+            Some(it) => it,
+            None => {
+                let position = if let Some(name) = self.name() {
+                    Position::after(name.syntax)
+                } else if let Some(trait_token) = self.trait_token() {
+                    Position::after(trait_token)
+                } else {
+                    Position::last_child_of(self.syntax())
+                };
+                create_generic_param_list(position)
+            }
+        }
+    }
+
+    fn get_or_create_where_clause(&self) -> ast::WhereClause {
+        if self.where_clause().is_none() {
+            let position = match self.semicolon_token() {
+                Some(tok) => Position::before(tok),
+                None => Position::last_child_of(self.syntax()),
+            };
+            create_where_clause(position);
+        }
+        self.where_clause().unwrap()
+    }
+}
+
+impl GenericParamsOwnerEdit for ast::TypeAlias {
+    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
+        match self.generic_param_list() {
+            Some(it) => it,
+            None => {
+                let position = if let Some(name) = self.name() {
+                    Position::after(name.syntax)
+                } else if let Some(trait_token) = self.type_token() {
+                    Position::after(trait_token)
+                } else {
+                    Position::last_child_of(self.syntax())
+                };
+                create_generic_param_list(position)
+            }
+        }
+    }
+
+    fn get_or_create_where_clause(&self) -> ast::WhereClause {
+        if self.where_clause().is_none() {
+            let position = match self.eq_token() {
+                Some(tok) => Position::before(tok),
+                None => match self.semicolon_token() {
+                    Some(tok) => Position::before(tok),
+                    None => Position::last_child_of(self.syntax()),
+                },
+            };
+            create_where_clause(position);
+        }
+        self.where_clause().unwrap()
+    }
+}
+
 impl GenericParamsOwnerEdit for ast::Struct {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
         match self.generic_param_list() {

@@ -173,7 +173,7 @@ error[E0599]: no method named `method2` found for struct `no_method_suggested_tr
   --> $DIR/no-method-suggested-traits.rs:52:37
    |
 LL |     no_method_suggested_traits::Foo.method2();
-   |                                     ^^^^^^^ method not found in `Foo`
+   |                                     ^^^^^^^ method not found in `no_method_suggested_traits::Foo`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
@@ -186,7 +186,7 @@ error[E0599]: no method named `method2` found for struct `Rc<&mut Box<&no_method
   --> $DIR/no-method-suggested-traits.rs:54:71
    |
 LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).method2();
-   |                                                                       ^^^^^^^ method not found in `Rc<&mut Box<&Foo>>`
+   |                                                                       ^^^^^^^ method not found in `Rc<&mut Box<&no_method_suggested_traits::Foo>>`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
@@ -199,7 +199,7 @@ error[E0599]: no method named `method2` found for enum `no_method_suggested_trai
   --> $DIR/no-method-suggested-traits.rs:56:40
    |
 LL |     no_method_suggested_traits::Bar::X.method2();
-   |                                        ^^^^^^^ method not found in `Bar`
+   |                                        ^^^^^^^ method not found in `no_method_suggested_traits::Bar`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
@@ -212,7 +212,7 @@ error[E0599]: no method named `method2` found for struct `Rc<&mut Box<&no_method
   --> $DIR/no-method-suggested-traits.rs:58:74
    |
 LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).method2();
-   |                                                                          ^^^^^^^ method not found in `Rc<&mut Box<&Bar>>`
+   |                                                                          ^^^^^^^ method not found in `Rc<&mut Box<&no_method_suggested_traits::Bar>>`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
@@ -283,25 +283,25 @@ error[E0599]: no method named `method3` found for struct `no_method_suggested_tr
   --> $DIR/no-method-suggested-traits.rs:73:37
    |
 LL |     no_method_suggested_traits::Foo.method3();
-   |                                     ^^^^^^^ method not found in `Foo`
+   |                                     ^^^^^^^ method not found in `no_method_suggested_traits::Foo`
 
 error[E0599]: no method named `method3` found for struct `Rc<&mut Box<&no_method_suggested_traits::Foo>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:74:71
    |
 LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).method3();
-   |                                                                       ^^^^^^^ method not found in `Rc<&mut Box<&Foo>>`
+   |                                                                       ^^^^^^^ method not found in `Rc<&mut Box<&no_method_suggested_traits::Foo>>`
 
 error[E0599]: no method named `method3` found for enum `no_method_suggested_traits::Bar` in the current scope
   --> $DIR/no-method-suggested-traits.rs:76:40
    |
 LL |     no_method_suggested_traits::Bar::X.method3();
-   |                                        ^^^^^^^ method not found in `Bar`
+   |                                        ^^^^^^^ method not found in `no_method_suggested_traits::Bar`
 
 error[E0599]: no method named `method3` found for struct `Rc<&mut Box<&no_method_suggested_traits::Bar>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:77:74
    |
 LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).method3();
-   |                                                                          ^^^^^^^ method not found in `Rc<&mut Box<&Bar>>`
+   |                                                                          ^^^^^^^ method not found in `Rc<&mut Box<&no_method_suggested_traits::Bar>>`
 
 error: aborting due to 24 previous errors
 

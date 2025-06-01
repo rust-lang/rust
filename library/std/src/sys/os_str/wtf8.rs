@@ -215,9 +215,9 @@ impl Buf {
     /// The slice must be valid for the platform encoding (as described in
     /// [`Slice::from_encoded_bytes_unchecked`]).
     ///
-    /// This bypasses the WTF-8 surrogate joining, so `self` must not end with a
-    /// leading surrogate half and `other` must not start with with a trailing
-    /// surrogate half.
+    /// This bypasses the WTF-8 surrogate joining, so either `self` must not
+    /// end with a leading surrogate half, or `other` must not start with a
+    /// trailing surrogate half.
     #[inline]
     pub unsafe fn extend_from_slice_unchecked(&mut self, other: &[u8]) {
         self.inner.extend_from_slice(other);

@@ -704,7 +704,7 @@ pub(crate) unsafe fn llvm_optimize(
 }
 
 // Unsafe due to LLVM calls.
-pub(crate) unsafe fn optimize(
+pub(crate) fn optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
     module: &mut ModuleCodegen<ModuleLlvm>,
@@ -815,7 +815,7 @@ pub(crate) fn link(
     Ok(modules.remove(0))
 }
 
-pub(crate) unsafe fn codegen(
+pub(crate) fn codegen(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
     module: ModuleCodegen<ModuleLlvm>,
@@ -1148,9 +1148,9 @@ unsafe fn embed_bitcode(
             // We need custom section flags, so emit module-level inline assembly.
             let section_flags = if cgcx.is_pe_coff { "n" } else { "e" };
             let asm = create_section_with_flags_asm(".llvmbc", section_flags, bitcode);
-            llvm::LLVMAppendModuleInlineAsm(llmod, asm.as_c_char_ptr(), asm.len());
+            llvm::append_module_inline_asm(llmod, &asm);
             let asm = create_section_with_flags_asm(".llvmcmd", section_flags, cmdline.as_bytes());
-            llvm::LLVMAppendModuleInlineAsm(llmod, asm.as_c_char_ptr(), asm.len());
+            llvm::append_module_inline_asm(llmod, &asm);
         }
     }
 }

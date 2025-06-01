@@ -15,7 +15,6 @@ pub(crate) fn elided_lifetimes_in_path(
             "implicit elided lifetime not allowed here",
             d.generics_or_segment.map(Into::into),
         )
-        .experimental()
     } else {
         Diagnostic::new_with_syntax_node_ptr(
             ctx,
@@ -23,7 +22,6 @@ pub(crate) fn elided_lifetimes_in_path(
             "hidden lifetime parameters in types are deprecated",
             d.generics_or_segment.map(Into::into),
         )
-        .experimental()
     }
 }
 

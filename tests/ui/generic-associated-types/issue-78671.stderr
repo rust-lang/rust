@@ -15,10 +15,10 @@ LL |     Box::new(Family) as &dyn CollectionFamily<Member<T>=usize>
    |                                                     +++
 
 error[E0038]: the trait `CollectionFamily` is not dyn compatible
-  --> $DIR/issue-78671.rs:5:25
+  --> $DIR/issue-78671.rs:5:30
    |
 LL |     Box::new(Family) as &dyn CollectionFamily<Member=usize>
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `CollectionFamily` is not dyn compatible
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `CollectionFamily` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>

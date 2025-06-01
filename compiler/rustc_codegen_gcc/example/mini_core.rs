@@ -1,6 +1,14 @@
 #![feature(
-    no_core, lang_items, intrinsics, unboxed_closures, extern_types,
-    decl_macro, rustc_attrs, transparent_unions, auto_traits, freeze_impls,
+    no_core,
+    lang_items,
+    intrinsics,
+    unboxed_closures,
+    extern_types,
+    decl_macro,
+    rustc_attrs,
+    transparent_unions,
+    auto_traits,
+    freeze_impls,
     thread_local
 )]
 #![no_core]
@@ -35,13 +43,13 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
 pub trait DispatchFromDyn<T> {}
 
 // &T -> &U
-impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
 // &mut T -> &mut U
-impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<&'a mut U> for &'a mut T {}
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a mut U> for &'a mut T {}
 // *const T -> *const U
-impl<T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
 // *mut T -> *mut U
-impl<T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U, ()>> for Box<T, ()> {}
 
 #[lang = "legacy_receiver"]
@@ -52,8 +60,7 @@ impl<T: ?Sized> LegacyReceiver for &mut T {}
 impl<T: ?Sized, A: Allocator> LegacyReceiver for Box<T, A> {}
 
 #[lang = "receiver"]
-trait Receiver {
-}
+trait Receiver {}
 
 #[lang = "copy"]
 pub trait Copy {}
@@ -67,10 +74,13 @@ impl Copy for u16 {}
 impl Copy for u32 {}
 impl Copy for u64 {}
 impl Copy for usize {}
+impl Copy for u128 {}
 impl Copy for i8 {}
 impl Copy for i16 {}
 impl Copy for i32 {}
+impl Copy for i64 {}
 impl Copy for isize {}
+impl Copy for i128 {}
 impl Copy for f32 {}
 impl Copy for f64 {}
 impl Copy for char {}
@@ -336,7 +346,6 @@ impl PartialEq for u32 {
     }
 }
 
-
 impl PartialEq for u64 {
     fn eq(&self, other: &u64) -> bool {
         (*self) == (*other)
@@ -523,7 +532,11 @@ fn panic_in_cleanup() -> ! {
 #[track_caller]
 fn panic_bounds_check(index: usize, len: usize) -> ! {
     unsafe {
-        libc::printf("index out of bounds: the len is %d but the index is %d\n\0" as *const str as *const i8, len, index);
+        libc::printf(
+            "index out of bounds: the len is %d but the index is %d\n\0" as *const str as *const i8,
+            len,
+            index,
+        );
         intrinsics::abort();
     }
 }
@@ -551,8 +564,7 @@ pub trait Deref {
     fn deref(&self) -> &Self::Target;
 }
 
-pub trait Allocator {
-}
+pub trait Allocator {}
 
 impl Allocator for () {}
 
@@ -635,6 +647,8 @@ pub union MaybeUninit<T> {
 
 pub mod intrinsics {
     #[rustc_intrinsic]
+    pub const fn black_box<T>(_dummy: T) -> T;
+    #[rustc_intrinsic]
     pub fn abort() -> !;
     #[rustc_intrinsic]
     pub fn size_of<T>() -> usize;
@@ -711,19 +725,27 @@ pub struct VaList<'a>(&'a mut VaListImpl);
 
 #[rustc_builtin_macro]
 #[rustc_macro_transparency = "semitransparent"]
-pub macro stringify($($t:tt)*) { /* compiler built-in */ }
+pub macro stringify($($t:tt)*) {
+    /* compiler built-in */
+}
 
 #[rustc_builtin_macro]
 #[rustc_macro_transparency = "semitransparent"]
-pub macro file() { /* compiler built-in */ }
+pub macro file() {
+    /* compiler built-in */
+}
 
 #[rustc_builtin_macro]
 #[rustc_macro_transparency = "semitransparent"]
-pub macro line() { /* compiler built-in */ }
+pub macro line() {
+    /* compiler built-in */
+}
 
 #[rustc_builtin_macro]
 #[rustc_macro_transparency = "semitransparent"]
-pub macro cfg() { /* compiler built-in */ }
+pub macro cfg() {
+    /* compiler built-in */
+}
 
 pub static A_STATIC: u8 = 42;
 

@@ -10,7 +10,7 @@ use std::collections::hash_map::Entry;
 
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, MetaItemLit, ast};
-use rustc_attr_parsing::{AttributeKind, ReprAttr, find_attr};
+use rustc_attr_data_structures::{AttributeKind, ReprAttr, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
@@ -35,7 +35,7 @@ use rustc_session::lint::builtin::{
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, edition, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, edition, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -255,7 +255,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_generic_attr(hir_id, attr, target, Target::Fn);
                             self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
                         }
-                        [sym::autodiff, ..] => {
+                        [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
                         }
                         [sym::coroutine, ..] => {
@@ -802,7 +802,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             Target::Struct => {
                 if let Some(ItemLike::Item(hir::Item {
-                    kind: hir::ItemKind::Struct(_, hir::VariantData::Struct { fields, .. }, _),
+                    kind: hir::ItemKind::Struct(_, _, hir::VariantData::Struct { fields, .. }),
                     ..
                 })) = item
                     && !fields.is_empty()
@@ -936,7 +936,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let span = meta.name_value_literal_span().unwrap_or_else(|| meta.span());
         let attr_str =
             &format!("`#[doc(alias{})]`", if is_list { "(\"...\")" } else { " = \"...\"" });
-        if doc_alias == kw::Empty {
+        if doc_alias == sym::empty {
             tcx.dcx().emit_err(errors::DocAliasEmpty { span, attr_str });
             return;
         }
@@ -1068,7 +1068,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
 
         let doc_keyword = match meta.value_str() {
-            Some(value) if value != kw::Empty => value,
+            Some(value) if value != sym::empty => value,
             _ => return self.doc_attr_str_error(meta, "keyword"),
         };
 
@@ -1130,12 +1130,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         };
         match item.kind {
-            ItemKind::Enum(_, _, generics) | ItemKind::Struct(_, _, generics)
+            ItemKind::Enum(_, generics, _) | ItemKind::Struct(_, generics, _)
                 if generics.params.len() != 0 => {}
             ItemKind::Trait(_, _, _, generics, _, items)
                 if generics.params.len() != 0
                     || items.iter().any(|item| matches!(item.kind, AssocItemKind::Type)) => {}
-            ItemKind::TyAlias(_, _, generics) if generics.params.len() != 0 => {}
+            ItemKind::TyAlias(_, generics, _) if generics.params.len() != 0 => {}
             _ => {
                 self.dcx().emit_err(errors::DocSearchUnboxInvalid { span: meta.span() });
             }
@@ -2792,7 +2792,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 }
 
 fn is_c_like_enum(item: &Item<'_>) -> bool {
-    if let ItemKind::Enum(_, ref def, _) = item.kind {
+    if let ItemKind::Enum(_, _, ref def) = item.kind {
         for variant in def.variants {
             match variant.data {
                 hir::VariantData::Unit(..) => { /* continue */ }

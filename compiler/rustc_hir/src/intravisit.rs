@@ -545,15 +545,15 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
                 UseKind::Glob | UseKind::ListStem => {}
             }
         }
-        ItemKind::Static(ident, ref typ, _, body) => {
+        ItemKind::Static(_, ident, ref typ, body) => {
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_ty_unambig(typ));
             try_visit!(visitor.visit_nested_body(body));
         }
-        ItemKind::Const(ident, ref typ, ref generics, body) => {
+        ItemKind::Const(ident, ref generics, ref typ, body) => {
             try_visit!(visitor.visit_ident(ident));
-            try_visit!(visitor.visit_ty_unambig(typ));
             try_visit!(visitor.visit_generics(generics));
+            try_visit!(visitor.visit_ty_unambig(typ));
             try_visit!(visitor.visit_nested_body(body));
         }
         ItemKind::Fn { ident, sig, generics, body: body_id, .. } => {
@@ -583,12 +583,12 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             // typeck results set correctly.
             try_visit!(visitor.visit_nested_body(fake_body));
         }
-        ItemKind::TyAlias(ident, ref ty, ref generics) => {
+        ItemKind::TyAlias(ident, ref generics, ref ty) => {
             try_visit!(visitor.visit_ident(ident));
-            try_visit!(visitor.visit_ty_unambig(ty));
             try_visit!(visitor.visit_generics(generics));
+            try_visit!(visitor.visit_ty_unambig(ty));
         }
-        ItemKind::Enum(ident, ref enum_definition, ref generics) => {
+        ItemKind::Enum(ident, ref generics, ref enum_definition) => {
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_enum_def(enum_definition));
@@ -609,8 +609,8 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_ty_unambig(self_ty));
             walk_list!(visitor, visit_impl_item_ref, *items);
         }
-        ItemKind::Struct(ident, ref struct_definition, ref generics)
-        | ItemKind::Union(ident, ref struct_definition, ref generics) => {
+        ItemKind::Struct(ident, ref generics, ref struct_definition)
+        | ItemKind::Union(ident, ref generics, ref struct_definition) => {
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_variant_data(struct_definition));

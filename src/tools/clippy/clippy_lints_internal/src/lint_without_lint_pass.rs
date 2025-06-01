@@ -1,6 +1,7 @@
+use crate::internal_paths;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::is_lint_allowed;
 use clippy_utils::macros::root_macro_call_first_node;
-use clippy_utils::{is_lint_allowed, match_def_path, paths};
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
@@ -9,9 +10,8 @@ use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, HirId, Item, MutTy, Mutability, Path, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_lint_defs::declare_tool_lint;
 use rustc_middle::hir::nested_filter;
-use rustc_session::impl_lint_pass;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
@@ -209,10 +209,10 @@ pub(super) fn is_lint_ref_type(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
         && let TyKind::Path(ref path) = inner.kind
         && let Res::Def(DefKind::Struct, def_id) = cx.qpath_res(path, inner.hir_id)
     {
-        return match_def_path(cx, def_id, &paths::LINT);
+        internal_paths::LINT.matches(cx, def_id)
+    } else {
+        false
     }
-
-    false
 }
 
 fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'_>) {

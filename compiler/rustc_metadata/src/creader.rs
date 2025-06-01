@@ -7,7 +7,6 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{cmp, env, iter};
 
-use proc_macro::bridge::client::ProcMacro;
 use rustc_ast::expand::allocator::{AllocatorKind, alloc_error_handler_name, global_fn_name};
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::FxHashSet;
@@ -22,7 +21,9 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
+use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
+use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_session::config::{
     self, CrateType, ExtendedTargetModifierInfo, ExternLocation, OptionsTargetModifiers,
     TargetModifier,
@@ -281,7 +282,7 @@ impl CStore {
             .filter_map(|(cnum, data)| data.as_deref_mut().map(|data| (cnum, data)))
     }
 
-    fn push_dependencies_in_postorder(&self, deps: &mut Vec<CrateNum>, cnum: CrateNum) {
+    fn push_dependencies_in_postorder(&self, deps: &mut IndexSet<CrateNum>, cnum: CrateNum) {
         if !deps.contains(&cnum) {
             let data = self.get_crate_data(cnum);
             for dep in data.dependencies() {
@@ -290,12 +291,12 @@ impl CStore {
                 }
             }
 
-            deps.push(cnum);
+            deps.insert(cnum);
         }
     }
 
-    pub(crate) fn crate_dependencies_in_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
-        let mut deps = Vec::new();
+    pub(crate) fn crate_dependencies_in_postorder(&self, cnum: CrateNum) -> IndexSet<CrateNum> {
+        let mut deps = IndexSet::default();
         if cnum == LOCAL_CRATE {
             for (cnum, _) in self.iter_crate_data() {
                 self.push_dependencies_in_postorder(&mut deps, cnum);
@@ -306,10 +307,11 @@ impl CStore {
         deps
     }
 
-    fn crate_dependencies_in_reverse_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
-        let mut deps = self.crate_dependencies_in_postorder(cnum);
-        deps.reverse();
-        deps
+    fn crate_dependencies_in_reverse_postorder(
+        &self,
+        cnum: CrateNum,
+    ) -> impl Iterator<Item = CrateNum> {
+        self.crate_dependencies_in_postorder(cnum).into_iter().rev()
     }
 
     pub(crate) fn injected_panic_runtime(&self) -> Option<CrateNum> {
@@ -469,6 +471,27 @@ impl CStore {
             let dep_mods = data.target_modifiers();
             if mods != dep_mods {
                 Self::report_target_modifiers_extended(tcx, krate, &mods, &dep_mods, data);
+            }
+        }
+    }
+
+    // Report about async drop types in dependency if async drop feature is disabled
+    pub fn report_incompatible_async_drop_feature(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+        if tcx.features().async_drop() {
+            return;
+        }
+        for (_cnum, data) in self.iter_crate_data() {
+            if data.is_proc_macro_crate() {
+                continue;
+            }
+            if data.has_async_drops() {
+                let extern_crate = data.name();
+                let local_crate = tcx.crate_name(LOCAL_CRATE);
+                tcx.dcx().emit_warn(errors::AsyncDropTypesInDependency {
+                    span: krate.spans.inner_span.shrink_to_lo(),
+                    extern_crate,
+                    local_crate,
+                });
             }
         }
     }

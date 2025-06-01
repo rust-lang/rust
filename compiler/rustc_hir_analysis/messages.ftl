@@ -37,7 +37,7 @@ hir_analysis_assoc_kind_mismatch = expected {$expected}, found {$got}
 
 hir_analysis_assoc_kind_mismatch_wrap_in_braces_sugg = consider adding braces here
 
-hir_analysis_associated_type_trait_uninferred_generic_params = cannot use the associated {$what} of a trait with uninferred generic parameters
+hir_analysis_associated_type_trait_uninferred_generic_params = cannot use the {$what} of a trait with uninferred generic parameters
     .suggestion = use a fully qualified path with inferred lifetimes
 
 hir_analysis_associated_type_trait_uninferred_generic_params_multipart_suggestion = use a fully qualified path with explicit lifetimes
@@ -522,7 +522,7 @@ hir_analysis_trait_object_declared_with_no_traits =
     at least one trait is required for an object type
     .alias_span = this alias does not contain a trait
 
-hir_analysis_traits_with_defualt_impl = traits with a default impl, like `{$traits}`, cannot be implemented for {$problematic_kind} `{$self_ty}`
+hir_analysis_traits_with_default_impl = traits with a default impl, like `{$traits}`, cannot be implemented for {$problematic_kind} `{$self_ty}`
     .note = a trait object implements `{$traits}` if and only if `{$traits}` is one of the trait object's trait bounds
 
 hir_analysis_transparent_enum_variant = transparent enum needs exactly one variant, but has {$number}

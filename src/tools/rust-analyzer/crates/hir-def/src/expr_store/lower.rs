@@ -56,7 +56,7 @@ use crate::{
     item_scope::BuiltinShadowMode,
     item_tree::FieldsShape,
     lang_item::LangItem,
-    nameres::{DefMap, LocalDefMap, MacroSubNs},
+    nameres::{DefMap, LocalDefMap, MacroSubNs, block_def_map},
     type_ref::{
         ArrayType, ConstRef, FnType, LifetimeRef, LifetimeRefId, Mutability, PathId, Rawness,
         RefType, TraitBoundModifier, TraitRef, TypeBound, TypeRef, TypeRefId, UseArgRef,
@@ -436,8 +436,8 @@ pub struct ExprCollector<'db> {
     db: &'db dyn DefDatabase,
     cfg_options: &'db CfgOptions,
     expander: Expander,
-    def_map: Arc<DefMap>,
-    local_def_map: Arc<LocalDefMap>,
+    def_map: &'db DefMap,
+    local_def_map: &'db LocalDefMap,
     module: ModuleId,
     pub store: ExpressionStoreBuilder,
     pub(crate) source_map: ExpressionStoreSourceMap,
@@ -544,7 +544,7 @@ impl ExprCollector<'_> {
         current_file_id: HirFileId,
     ) -> ExprCollector<'_> {
         let (def_map, local_def_map) = module.local_def_map(db);
-        let expander = Expander::new(db, current_file_id, &def_map);
+        let expander = Expander::new(db, current_file_id, def_map);
         ExprCollector {
             db,
             cfg_options: module.krate().cfg_options(db),
@@ -1947,7 +1947,7 @@ impl ExprCollector<'_> {
                 let resolver = |path: &_| {
                     self.def_map
                         .resolve_path(
-                            &self.local_def_map,
+                            self.local_def_map,
                             self.db,
                             module,
                             path,
@@ -2163,12 +2163,12 @@ impl ExprCollector<'_> {
         };
 
         let (module, def_map) =
-            match block_id.map(|block_id| (self.db.block_def_map(block_id), block_id)) {
+            match block_id.map(|block_id| (block_def_map(self.db, block_id), block_id)) {
                 Some((def_map, block_id)) => {
                     self.store.block_scopes.push(block_id);
                     (def_map.module_id(DefMap::ROOT), def_map)
                 }
-                None => (self.module, self.def_map.clone()),
+                None => (self.module, self.def_map),
             };
         let prev_def_map = mem::replace(&mut self.def_map, def_map);
         let prev_local_module = mem::replace(&mut self.module, module);
@@ -2247,7 +2247,7 @@ impl ExprCollector<'_> {
                     // This could also be a single-segment path pattern. To
                     // decide that, we need to try resolving the name.
                     let (resolved, _) = self.def_map.resolve_path(
-                        &self.local_def_map,
+                        self.local_def_map,
                         self.db,
                         self.module.local_id,
                         &name.clone().into(),

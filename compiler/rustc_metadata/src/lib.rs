@@ -1,6 +1,5 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(coroutines)]
@@ -16,8 +15,6 @@
 #![feature(rustdoc_internals)]
 #![feature(trusted_len)]
 // tidy-alphabetical-end
-
-extern crate proc_macro;
 
 pub use rmeta::provide;
 

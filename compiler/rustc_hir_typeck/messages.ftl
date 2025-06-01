@@ -169,7 +169,7 @@ hir_typeck_option_result_copied = use `{$def_path}::copied` to copy the value in
 
 hir_typeck_pass_to_variadic_function = can't pass `{$ty}` to variadic function
     .suggestion = cast the value to `{$cast_ty}`
-    .teach_help = certain types, like `{$ty}`, must be casted before passing them to a variadic function, because of arcane ABI rules dictated by the C standard
+    .teach_help = certain types, like `{$ty}`, must be cast before passing them to a variadic function to match the implicit cast that a C compiler would perform as part of C's numeric promotion rules
 
 hir_typeck_ptr_cast_add_auto_to_object = cannot add {$traits_len ->
     [1] auto trait {$traits}

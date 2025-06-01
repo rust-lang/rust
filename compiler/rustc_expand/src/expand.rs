@@ -1,18 +1,16 @@
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::{iter, mem};
 
-use rustc_ast as ast;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
-    AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, ExprKind, ForeignItemKind,
-    HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind,
-    NodeId, PatKind, StmtKind, TyKind, token,
+    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, DUMMY_NODE_ID,
+    ExprKind, ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner,
+    MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
@@ -132,13 +130,9 @@ macro_rules! ast_fragments {
             pub(crate) fn mut_visit_with<F: MutVisitor>(&mut self, vis: &mut F) {
                 match self {
                     AstFragment::OptExpr(opt_expr) => {
-                        visit_clobber(opt_expr, |opt_expr| {
-                            if let Some(expr) = opt_expr {
-                                vis.filter_map_expr(expr)
-                            } else {
-                                None
-                            }
-                        });
+                        if let Some(expr) = opt_expr.take() {
+                            *opt_expr = vis.filter_map_expr(expr)
+                        }
                     }
                     AstFragment::MethodReceiverExpr(expr) => vis.visit_method_receiver_expr(expr),
                     $($(AstFragment::$Kind(ast) => vis.$mut_visit_ast(ast),)?)*
@@ -1117,7 +1111,6 @@ enum AddSemicolon {
 /// of functionality used by `InvocationCollector`.
 trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     type OutputTy = SmallVec<[Self; 1]>;
-    type AttrsTy: Deref<Target = [ast::Attribute]> = ast::AttrVec;
     type ItemKind = ItemKind;
     const KIND: AstFragmentKind;
     fn to_annotatable(self) -> Annotatable;
@@ -1134,7 +1127,7 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     fn is_mac_call(&self) -> bool {
         false
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         unreachable!()
     }
     fn delegation(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
@@ -1189,7 +1182,7 @@ impl InvocationCollectorNode for P<ast::Item> {
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ItemKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
             ItemKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
@@ -1321,10 +1314,10 @@ impl InvocationCollectorNode for P<ast::Item> {
 
             let mut idents = Vec::new();
             collect_use_tree_leaves(ut, &mut idents);
-            return idents;
+            idents
+        } else {
+            self.kind.ident().into_iter().collect()
         }
-
-        if let Some(ident) = self.kind.ident() { vec![ident] } else { vec![] }
     }
 }
 
@@ -1345,7 +1338,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitItemTag>
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let item = self.wrapped.into_inner();
         match item.kind {
             AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
@@ -1386,7 +1379,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, ImplItemTag> 
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let item = self.wrapped.into_inner();
         match item.kind {
             AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
@@ -1427,7 +1420,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitImplItem
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let item = self.wrapped.into_inner();
         match item.kind {
             AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
@@ -1465,7 +1458,7 @@ impl InvocationCollectorNode for P<ast::ForeignItem> {
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ForeignItemKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
             ForeignItemKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
@@ -1579,7 +1572,6 @@ impl InvocationCollectorNode for ast::Arm {
 }
 
 impl InvocationCollectorNode for ast::Stmt {
-    type AttrsTy = ast::AttrVec;
     const KIND: AstFragmentKind = AstFragmentKind::Stmts;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::Stmt(P(self))
@@ -1599,7 +1591,7 @@ impl InvocationCollectorNode for ast::Stmt {
             StmtKind::Let(..) | StmtKind::Empty => false,
         }
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         // We pull macro invocations (both attributes and fn-like macro calls) out of their
         // `StmtKind`s and treat them as statement macro invocations, not as items or expressions.
         let (add_semicolon, mac, attrs) = match self.kind {
@@ -1693,7 +1685,7 @@ impl InvocationCollectorNode for P<ast::Ty> {
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ast::TyKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
             TyKind::MacCall(mac) => (mac, AttrVec::new(), AddSemicolon::No),
@@ -1717,7 +1709,7 @@ impl InvocationCollectorNode for P<ast::Pat> {
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, PatKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
             PatKind::MacCall(mac) => (mac, AttrVec::new(), AddSemicolon::No),
@@ -1728,7 +1720,6 @@ impl InvocationCollectorNode for P<ast::Pat> {
 
 impl InvocationCollectorNode for P<ast::Expr> {
     type OutputTy = P<ast::Expr>;
-    type AttrsTy = ast::AttrVec;
     const KIND: AstFragmentKind = AstFragmentKind::Expr;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::Expr(self)
@@ -1745,7 +1736,7 @@ impl InvocationCollectorNode for P<ast::Expr> {
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ExprKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
             ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
@@ -1757,7 +1748,6 @@ impl InvocationCollectorNode for P<ast::Expr> {
 struct OptExprTag;
 impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, OptExprTag> {
     type OutputTy = Option<P<ast::Expr>>;
-    type AttrsTy = ast::AttrVec;
     const KIND: AstFragmentKind = AstFragmentKind::OptExpr;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::Expr(self.wrapped)
@@ -1772,7 +1762,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, OptExprTag> {
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, ast::ExprKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let node = self.wrapped.into_inner();
         match node.kind {
             ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
@@ -1787,14 +1777,9 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, OptExprTag> {
 /// This struct is a hack to workaround unstable of `stmt_expr_attributes`.
 /// It can be removed once that feature is stabilized.
 struct MethodReceiverTag;
-impl DummyAstNode for MethodReceiverTag {
-    fn dummy() -> MethodReceiverTag {
-        MethodReceiverTag
-    }
-}
+
 impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, MethodReceiverTag> {
     type OutputTy = Self;
-    type AttrsTy = ast::AttrVec;
     const KIND: AstFragmentKind = AstFragmentKind::MethodReceiverExpr;
     fn descr() -> &'static str {
         "an expression"
@@ -1811,7 +1796,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, MethodReceiverTag>
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, ast::ExprKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let node = self.wrapped.into_inner();
         match node.kind {
             ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
@@ -1856,6 +1841,57 @@ fn build_single_delegations<'a, Node: InvocationCollectorNode>(
             tokens: None,
         }
     })
+}
+
+/// Required for `visit_node` obtained an owned `Node` from `&mut Node`.
+trait DummyAstNode {
+    fn dummy() -> Self;
+}
+
+impl DummyAstNode for ast::Crate {
+    fn dummy() -> Self {
+        ast::Crate {
+            attrs: Default::default(),
+            items: Default::default(),
+            spans: Default::default(),
+            id: DUMMY_NODE_ID,
+            is_placeholder: Default::default(),
+        }
+    }
+}
+
+impl DummyAstNode for P<ast::Ty> {
+    fn dummy() -> Self {
+        P(ast::Ty {
+            id: DUMMY_NODE_ID,
+            kind: TyKind::Dummy,
+            span: Default::default(),
+            tokens: Default::default(),
+        })
+    }
+}
+
+impl DummyAstNode for P<ast::Pat> {
+    fn dummy() -> Self {
+        P(ast::Pat {
+            id: DUMMY_NODE_ID,
+            kind: PatKind::Wild,
+            span: Default::default(),
+            tokens: Default::default(),
+        })
+    }
+}
+
+impl DummyAstNode for P<ast::Expr> {
+    fn dummy() -> Self {
+        ast::Expr::dummy()
+    }
+}
+
+impl DummyAstNode for AstNodeWrapper<P<ast::Expr>, MethodReceiverTag> {
+    fn dummy() -> Self {
+        AstNodeWrapper::new(ast::Expr::dummy(), MethodReceiverTag)
+    }
 }
 
 struct InvocationCollector<'a, 'b> {
@@ -2161,18 +2197,19 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         self.expand_cfg_attr(node, &attr, pos);
                         continue;
                     }
-                    _ => visit_clobber(node, |node| {
-                        self.collect_attr((attr, pos, derives), node.to_annotatable(), Node::KIND)
+                    _ => {
+                        let n = mem::replace(node, Node::dummy());
+                        *node = self
+                            .collect_attr((attr, pos, derives), n.to_annotatable(), Node::KIND)
                             .make_ast::<Node>()
-                    }),
+                    }
                 },
                 None if node.is_mac_call() => {
-                    visit_clobber(node, |node| {
-                        // Do not clobber unless it's actually a macro (uncommon case).
-                        let (mac, attrs, _) = node.take_mac_call();
-                        self.check_attributes(&attrs, &mac);
-                        self.collect_bang(mac, Node::KIND).make_ast::<Node>()
-                    })
+                    let n = mem::replace(node, Node::dummy());
+                    let (mac, attrs, _) = n.take_mac_call();
+                    self.check_attributes(&attrs, &mac);
+
+                    *node = self.collect_bang(mac, Node::KIND).make_ast::<Node>()
                 }
                 None if node.delegation().is_some() => unreachable!(),
                 None => {
@@ -2299,18 +2336,14 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn visit_method_receiver_expr(&mut self, node: &mut P<ast::Expr>) {
-        visit_clobber(node, |node| {
-            let mut wrapper = AstNodeWrapper::new(node, MethodReceiverTag);
-            self.visit_node(&mut wrapper);
-            wrapper.wrapped
-        })
+        self.visit_node(AstNodeWrapper::from_mut(node, MethodReceiverTag))
     }
 
     fn filter_map_expr(&mut self, node: P<ast::Expr>) -> Option<P<ast::Expr>> {
         self.flat_map_node(AstNodeWrapper::new(node, OptExprTag))
     }
 
-    fn visit_block(&mut self, node: &mut P<ast::Block>) {
+    fn visit_block(&mut self, node: &mut ast::Block) {
         let orig_dir_ownership = mem::replace(
             &mut self.cx.current_expansion.dir_ownership,
             DirOwnership::UnownedViaBlock,

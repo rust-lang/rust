@@ -1,7 +1,6 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![feature(rustc_private)]
-#![feature(let_chains)]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
 // warn on rustc internal lints
@@ -97,16 +96,11 @@ fn track_files(psess: &mut ParseSess) {
 
     // During development track the `clippy-driver` executable so that cargo will re-run clippy whenever
     // it is rebuilt
-    #[expect(
-        clippy::collapsible_if,
-        reason = "Due to a bug in let_chains this if statement can't be collapsed"
-    )]
-    if cfg!(debug_assertions) {
-        if let Ok(current_exe) = env::current_exe()
-            && let Some(current_exe) = current_exe.to_str()
-        {
-            file_depinfo.insert(Symbol::intern(current_exe));
-        }
+    if cfg!(debug_assertions)
+        && let Ok(current_exe) = env::current_exe()
+        && let Some(current_exe) = current_exe.to_str()
+    {
+        file_depinfo.insert(Symbol::intern(current_exe));
     }
 }
 

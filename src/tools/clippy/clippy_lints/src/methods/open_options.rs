@@ -1,8 +1,8 @@
 use rustc_data_structures::fx::FxHashMap;
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::ty::{is_type_diagnostic_item, match_type};
-use clippy_utils::{match_any_def_paths, paths};
+use clippy_utils::paths;
+use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -13,7 +13,7 @@ use rustc_span::{Span, sym};
 use super::{NONSENSICAL_OPEN_OPTIONS, SUSPICIOUS_OPEN_OPTIONS};
 
 fn is_open_options(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    is_type_diagnostic_item(cx, ty, sym::FsOpenOptions) || match_type(cx, ty, &paths::TOKIO_IO_OPEN_OPTIONS)
+    is_type_diagnostic_item(cx, ty, sym::FsOpenOptions) || paths::TOKIO_IO_OPEN_OPTIONS.matches_ty(cx, ty)
 }
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
@@ -126,14 +126,14 @@ fn get_open_options(
         && let ExprKind::Path(path) = callee.kind
         && let Some(did) = cx.qpath_res(&path, callee.hir_id).opt_def_id()
     {
-        let std_file_options = [sym::file_options, sym::open_options_new];
+        let is_std_options = matches!(
+            cx.tcx.get_diagnostic_name(did),
+            Some(sym::file_options | sym::open_options_new)
+        );
 
-        let tokio_file_options: &[&[&str]] = &[&paths::TOKIO_IO_OPEN_OPTIONS_NEW, &paths::TOKIO_FILE_OPTIONS];
-
-        let is_std_options = std_file_options
-            .into_iter()
-            .any(|sym| cx.tcx.is_diagnostic_item(sym, did));
-        is_std_options || match_any_def_paths(cx, did, tokio_file_options).is_some()
+        is_std_options
+            || paths::TOKIO_IO_OPEN_OPTIONS_NEW.matches(cx, did)
+            || paths::TOKIO_FILE_OPTIONS.matches(cx, did)
     } else {
         false
     }

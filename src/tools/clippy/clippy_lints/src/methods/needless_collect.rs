@@ -357,20 +357,20 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
                     if let Some(hir_id) = self.current_statement_hir_id {
                         self.hir_id_uses_map.insert(hir_id, self.uses.len());
                     }
-                    match method_name.ident.name.as_str() {
-                        "into_iter" => self.uses.push(Some(IterFunction {
+                    match method_name.ident.name {
+                        sym::into_iter => self.uses.push(Some(IterFunction {
                             func: IterFunctionKind::IntoIter(expr.hir_id),
                             span: expr.span,
                         })),
-                        "len" => self.uses.push(Some(IterFunction {
+                        sym::len => self.uses.push(Some(IterFunction {
                             func: IterFunctionKind::Len,
                             span: expr.span,
                         })),
-                        "is_empty" => self.uses.push(Some(IterFunction {
+                        sym::is_empty => self.uses.push(Some(IterFunction {
                             func: IterFunctionKind::IsEmpty,
                             span: expr.span,
                         })),
-                        "contains" => self.uses.push(Some(IterFunction {
+                        sym::contains => self.uses.push(Some(IterFunction {
                             func: IterFunctionKind::Contains(args[0].span),
                             span: expr.span,
                         })),
@@ -508,7 +508,7 @@ fn get_captured_ids(cx: &LateContext<'_>, ty: Ty<'_>) -> HirIdSet {
         match ty.kind() {
             ty::Adt(_, generics) => {
                 for generic in *generics {
-                    if let GenericArgKind::Type(ty) = generic.unpack() {
+                    if let GenericArgKind::Type(ty) = generic.kind() {
                         get_captured_ids_recursive(cx, ty, set);
                     }
                 }

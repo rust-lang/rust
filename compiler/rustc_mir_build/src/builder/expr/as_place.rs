@@ -101,12 +101,12 @@ fn convert_to_hir_projections_and_truncate_for_capture(
                 variant = Some(*idx);
                 continue;
             }
+            ProjectionElem::UnwrapUnsafeBinder(_) => HirProjectionKind::UnwrapUnsafeBinder,
             // These do not affect anything, they just make sure we know the right type.
             ProjectionElem::OpaqueCast(_) | ProjectionElem::Subtype(..) => continue,
             ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }
-            | ProjectionElem::Subslice { .. }
-            | ProjectionElem::UnwrapUnsafeBinder(_) => {
+            | ProjectionElem::Subslice { .. } => {
                 // We don't capture array-access projections.
                 // We can stop here as arrays are captured completely.
                 break;
@@ -239,6 +239,9 @@ fn strip_prefix<'tcx>(
             }
             HirProjectionKind::OpaqueCast => {
                 assert_matches!(iter.next(), Some(ProjectionElem::OpaqueCast(..)));
+            }
+            HirProjectionKind::UnwrapUnsafeBinder => {
+                assert_matches!(iter.next(), Some(ProjectionElem::UnwrapUnsafeBinder(..)));
             }
             HirProjectionKind::Index | HirProjectionKind::Subslice => {
                 bug!("unexpected projection kind: {:?}", projection);

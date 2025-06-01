@@ -5,13 +5,11 @@ version = "0.0.1"
 edition = "2024"
 
 [dependencies]
-aho-corasick = "1.0"
 chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
 clap = { version = "4.4", features = ["derive"] }
 indoc = "1.0"
 itertools = "0.12"
 opener = "0.7"
-shell-escape = "0.1"
 walkdir = "2.3"
 
 [package.metadata.rust-analyzer]

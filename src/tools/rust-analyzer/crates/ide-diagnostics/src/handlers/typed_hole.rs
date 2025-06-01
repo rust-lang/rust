@@ -37,6 +37,7 @@ pub(crate) fn typed_hole(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Di
     };
 
     Diagnostic::new(DiagnosticCode::RustcHardError("typed-hole"), message, display_range)
+        .stable()
         .with_fixes(fixes)
 }
 

@@ -6,12 +6,6 @@ LL |     let Test(&desc[..]) = x;
    |
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
-error[E0308]: mismatched types
-  --> $DIR/pat-lt-bracket-6.rs:10:30
-   |
-LL | const RECOVERY_WITNESS: () = 0;
-   |                              ^ expected `()`, found integer
-
 error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 2 fields
   --> $DIR/pat-lt-bracket-6.rs:5:14
    |
@@ -25,6 +19,12 @@ help: use `_` to explicitly ignore each field
    |
 LL |     let Test(&desc[..], _) = x;
    |                       +++
+
+error[E0308]: mismatched types
+  --> $DIR/pat-lt-bracket-6.rs:10:30
+   |
+LL | const RECOVERY_WITNESS: () = 0;
+   |                              ^ expected `()`, found integer
 
 error: aborting due to 3 previous errors
 

@@ -3,6 +3,8 @@
     html_playground_url = "https://play.rust-lang.org/"
 )]
 #![feature(rustc_private)]
+#![feature(ascii_char)]
+#![feature(ascii_char_variants)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
@@ -11,7 +13,6 @@
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
-#![feature(let_chains)]
 #![feature(never_type)]
 #![feature(round_char_boundary)]
 #![feature(test)]
@@ -37,6 +38,7 @@ extern crate pulldown_cmark;
 extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
+extern crate rustc_attr_data_structures;
 extern crate rustc_attr_parsing;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -73,9 +75,11 @@ extern crate tikv_jemalloc_sys as jemalloc_sys;
 
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
+use std::path::Path;
 use std::process;
 
 use rustc_errors::DiagCtxtHandle;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
@@ -654,9 +658,9 @@ fn opts() -> Vec<RustcOptGroup> {
             Unstable,
             Multi,
             "",
-            "doctest-compilation-args",
-            "",
-            "add arguments to be used when compiling doctests",
+            "doctest-build-arg",
+            "One argument (of possibly many) to be used when compiling doctests",
+            "ARG",
         ),
         opt(
             Unstable,
@@ -904,6 +908,10 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 rustc_interface::passes::write_dep_info(tcx);
             }
 
+            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
+                dump_feature_usage_metrics(tcx, metrics_dir);
+            }
+
             if run_check {
                 // Since we're in "check" mode, no need to generate anything beyond this point.
                 return;
@@ -922,4 +930,17 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
             }
         })
     })
+}
+
+fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &Path) {
+    let hash = tcxt.crate_hash(LOCAL_CRATE);
+    let crate_name = tcxt.crate_name(LOCAL_CRATE);
+    let metrics_file_name = format!("unstable_feature_usage_metrics-{crate_name}-{hash}.json");
+    let metrics_path = metrics_dir.join(metrics_file_name);
+    if let Err(error) = tcxt.features().dump_feature_usage_metrics(metrics_path) {
+        // FIXME(yaahc): once metrics can be enabled by default we will want "failure to emit
+        // default metrics" to only produce a warning when metrics are enabled by default and emit
+        // an error only when the user manually enables metrics
+        tcxt.dcx().err(format!("cannot emit feature usage metrics: {error}"));
+    }
 }

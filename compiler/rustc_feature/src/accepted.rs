@@ -82,6 +82,8 @@ declare_features! (
     (accepted, attr_literals, "1.30.0", Some(34981)),
     /// Allows overloading augmented assignment operations like `a += b`.
     (accepted, augmented_assignments, "1.8.0", Some(28235)),
+    /// Allows using `avx512*` target features.
+    (accepted, avx512_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
     /// Allows mixing bind-by-move in patterns and references to those identifiers in guards.
     (accepted, bind_by_move_pattern_guards, "1.39.0", Some(15287)),
     /// Allows bindings in the subpattern of a binding pattern.
@@ -96,7 +98,7 @@ declare_features! (
     /// Allows `#[cfg_attr(predicate, multiple, attributes, here)]`.
     (accepted, cfg_attr_multi, "1.33.0", Some(54881)),
     /// Allows the use of `#[cfg(<true/false>)]`.
-    (accepted, cfg_boolean_literals, "CURRENT_RUSTC_VERSION", Some(131204)),
+    (accepted, cfg_boolean_literals, "1.88.0", Some(131204)),
     /// Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests.
     (accepted, cfg_doctest, "1.40.0", Some(62210)),
     /// Enables `#[cfg(panic = "...")]` config key.
@@ -301,7 +303,7 @@ declare_features! (
     /// For example, you can write `Foo(a, ref b)` where `a` is by-move and `b` is by-ref.
     (accepted, move_ref_pattern, "1.49.0", Some(68354)),
     /// Allows using `#[naked]` on functions.
-    (accepted, naked_functions, "CURRENT_RUSTC_VERSION", Some(90957)),
+    (accepted, naked_functions, "1.88.0", Some(90957)),
     /// Allows specifying modifiers in the link attribute: `#[link(modifiers = "...")]`
     (accepted, native_link_modifiers, "1.61.0", Some(81490)),
     /// Allows specifying the bundle link modifier
@@ -358,6 +360,8 @@ declare_features! (
     (accepted, relaxed_adts, "1.19.0", Some(35626)),
     /// Lessens the requirements for structs to implement `Unsize`.
     (accepted, relaxed_struct_unsize, "1.58.0", Some(81793)),
+    /// Allows the `#[repr(i128)]` attribute for enums.
+    (accepted, repr128, "CURRENT_RUSTC_VERSION", Some(56071)),
     /// Allows `repr(align(16))` struct attribute (RFC 1358).
     (accepted, repr_align, "1.25.0", Some(33626)),
     /// Allows using `#[repr(align(X))]` on enums with equivalent semantics

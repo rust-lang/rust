@@ -2,8 +2,7 @@ use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
 use rustc_abi::FieldIdx;
-use rustc_attr_parsing::AttributeKind;
-use rustc_attr_parsing::ReprAttr::ReprPacked;
+use rustc_attr_data_structures::ReprAttr::ReprPacked;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
@@ -19,7 +18,7 @@ use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
-use rustc_middle::ty::util::{Discr, IntTypeExt};
+use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
     AdtDef, BottomUpFolder, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, fold_regions,
@@ -31,7 +30,7 @@ use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use tracing::{debug, instrument};
 use ty::TypingMode;
-use {rustc_attr_parsing as attr, rustc_hir as hir};
+use {rustc_attr_data_structures as attrs, rustc_hir as hir};
 
 use super::compare_impl_item::check_type_bounds;
 use super::*;
@@ -1154,7 +1153,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
     let repr = def.repr();
     if repr.packed() {
         if let Some(reprs) =
-            attr::find_attr!(tcx.get_all_attrs(def.did()), AttributeKind::Repr(r) => r)
+            attrs::find_attr!(tcx.get_all_attrs(def.did()), attrs::AttributeKind::Repr(r) => r)
         {
             for (r, _) in reprs {
                 if let ReprPacked(pack) = r
@@ -1371,9 +1370,9 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     def.destructor(tcx); // force the destructor to be evaluated
 
     if def.variants().is_empty() {
-        attr::find_attr!(
+        attrs::find_attr!(
             tcx.get_all_attrs(def_id),
-            AttributeKind::Repr(rs) => {
+            attrs::AttributeKind::Repr(rs) => {
                 struct_span_code_err!(
                     tcx.dcx(),
                     rs.first().unwrap().1,
@@ -1384,19 +1383,6 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 .emit();
             }
         );
-    }
-
-    let repr_type_ty = def.repr().discr_type().to_ty(tcx);
-    if repr_type_ty == tcx.types.i128 || repr_type_ty == tcx.types.u128 {
-        if !tcx.features().repr128() {
-            feature_err(
-                &tcx.sess,
-                sym::repr128,
-                tcx.def_span(def_id),
-                "repr with 128-bit type is unstable",
-            )
-            .emit();
-        }
     }
 
     for v in def.variants() {
@@ -1576,7 +1562,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
 
     let mut params_used = DenseBitSet::new_empty(generics.own_params.len());
     for leaf in ty.walk() {
-        if let GenericArgKind::Type(leaf_ty) = leaf.unpack()
+        if let GenericArgKind::Type(leaf_ty) = leaf.kind()
             && let ty::Param(param) = leaf_ty.kind()
         {
             debug!("found use of ty param {:?}", param);
@@ -1701,7 +1687,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
 
                     let mut label_match = |ty: Ty<'_>, span| {
                         for arg in ty.walk() {
-                            if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                            if let ty::GenericArgKind::Type(ty) = arg.kind()
                                 && let ty::Alias(
                                     ty::Opaque,
                                     ty::AliasTy { def_id: captured_def_id, .. },
@@ -1754,17 +1740,19 @@ pub(super) fn check_coroutine_obligations(
     debug!(?typeck_results.coroutine_stalled_predicates);
 
     let mode = if tcx.next_trait_solver_globally() {
-        TypingMode::post_borrowck_analysis(tcx, def_id)
+        // This query is conceptually between HIR typeck and
+        // MIR borrowck. We use the opaque types defined by HIR
+        // and ignore region constraints.
+        TypingMode::borrowck(tcx, def_id)
     } else {
         TypingMode::analysis_in_body(tcx, def_id)
     };
 
-    let infcx = tcx
-        .infer_ctxt()
-        // typeck writeback gives us predicates with their regions erased.
-        // As borrowck already has checked lifetimes, we do not need to do it again.
-        .ignoring_regions()
-        .build(mode);
+    // Typeck writeback gives us predicates with their regions erased.
+    // We only need to check the goals while ignoring lifetimes to give good
+    // error message and to avoid breaking the assumption of `mir_borrowck`
+    // that all obligations already hold modulo regions.
+    let infcx = tcx.infer_ctxt().ignoring_regions().build(mode);
 
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     for (predicate, cause) in &typeck_results.coroutine_stalled_predicates {
@@ -1785,6 +1773,10 @@ pub(super) fn check_coroutine_obligations(
             let key = infcx.resolve_vars_if_possible(key);
             sanity_check_found_hidden_type(tcx, key, hidden_type)?;
         }
+    } else {
+        // We're not checking region constraints here, so we can simply drop the
+        // added opaque type uses in `TypingMode::Borrowck`.
+        let _ = infcx.take_opaque_types();
     }
 
     Ok(())

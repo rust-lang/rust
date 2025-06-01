@@ -60,9 +60,6 @@ monomorphize_start_not_found = using `fn main` requires the standard library
 
 monomorphize_symbol_already_defined = symbol `{$symbol}` is already defined
 
-monomorphize_unknown_cgu_collection_mode =
-    unknown codegen-item collection mode '{$mode}', falling back to 'lazy' mode
-
 monomorphize_wasm_c_abi_transition =
     this function {$is_call ->
       [true] call

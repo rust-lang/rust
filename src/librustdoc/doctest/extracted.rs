@@ -5,7 +5,7 @@
 
 use serde::Serialize;
 
-use super::{DocTestBuilder, ScrapedDocTest};
+use super::{BuildDocTestBuilder, ScrapedDocTest};
 use crate::config::Options as RustdocOptions;
 use crate::html::markdown;
 
@@ -35,16 +35,13 @@ impl ExtractedDocTests {
     ) {
         let edition = scraped_test.edition(options);
 
-        let ScrapedDocTest { filename, line, langstr, text, name } = scraped_test;
+        let ScrapedDocTest { filename, line, langstr, text, name, .. } = scraped_test;
 
-        let doctest = DocTestBuilder::new(
-            &text,
-            Some(&opts.crate_name),
-            edition,
-            false,
-            None,
-            Some(&langstr),
-        );
+        let doctest = BuildDocTestBuilder::new(&text)
+            .crate_name(&opts.crate_name)
+            .edition(edition)
+            .lang_str(&langstr)
+            .build(None);
         let (full_test_code, size) = doctest.generate_unique_doctest(
             &text,
             langstr.test_harness,

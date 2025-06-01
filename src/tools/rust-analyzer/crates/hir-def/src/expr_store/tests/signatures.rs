@@ -1,6 +1,7 @@
 use crate::{
     GenericDefId, ModuleDefId,
     expr_store::pretty::{print_function, print_struct},
+    nameres::crate_def_map,
     test_db::TestDB,
 };
 use expect_test::{Expect, expect};
@@ -12,7 +13,7 @@ fn lower_and_print(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expe
     let db = TestDB::with_files(ra_fixture);
 
     let krate = db.fetch_test_crate();
-    let def_map = db.crate_def_map(krate);
+    let def_map = crate_def_map(&db, krate);
     let mut defs = vec![];
     for (_, module) in def_map.modules() {
         for decl in module.scope.declarations() {

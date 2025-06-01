@@ -1,9 +1,9 @@
 # Rust for Linux notification group
 
-**Github Label:** [O-rfl] <br>
+**Github Label:** [A-rust-for-linux] <br>
 **Ping command:** `@rustbot ping rfl`
 
-[O-rfl]: https://github.com/rust-lang/rust/labels/O-rfl
+[A-rust-for-linux]: https://github.com/rust-lang/rust/labels/A-rust-for-linux
 
 This list will be used to notify [Rust for Linux (RfL)][rfl] maintainers
 when the compiler or the standard library changes in a way that would

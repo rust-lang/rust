@@ -1416,7 +1416,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
         cargo.env("LLVM_LINKER_FLAGS", llvm_linker_flags);
     }
 
-    // Building with a static libstdc++ is only supported on linux right now,
+    // Building with a static libstdc++ is only supported on Linux and windows-gnu* right now,
     // not for MSVC or macOS
     if builder.config.llvm_static_stdcpp
         && !target.contains("freebsd")
@@ -1424,12 +1424,14 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
         && !target.contains("apple")
         && !target.contains("solaris")
     {
+        let libstdcxx_name =
+            if target.contains("windows-gnullvm") { "libc++.a" } else { "libstdc++.a" };
         let file = compiler_file(
             builder,
             &builder.cxx(target).unwrap(),
             target,
             CLang::Cxx,
-            "libstdc++.a",
+            libstdcxx_name,
         );
         cargo.env("LLVM_STATIC_STDCPP", file);
     }
@@ -1778,7 +1780,7 @@ impl Step for Sysroot {
             } else if builder.download_rustc() && compiler.stage != builder.top_stage {
                 host_dir.join("ci-rustc-sysroot")
             } else {
-                host_dir.join(format!("stage{}", stage))
+                host_dir.join(format!("stage{stage}"))
             }
         };
         let sysroot = sysroot_dir(compiler.stage);
@@ -1991,17 +1993,20 @@ impl Step for Assemble {
                     trace!("installing `{tool}`");
                     let tool_exe = exe(tool, target_compiler.host);
                     let src_path = llvm_bin_dir.join(&tool_exe);
-                    // When using `download-ci-llvm`, some of the tools
-                    // may not exist, so skip trying to copy them.
-                    if src_path.exists() {
-                        // There is a chance that these tools are being installed from an external LLVM.
-                        // Use `Builder::resolve_symlink_and_copy` instead of `Builder::copy_link` to ensure
-                        // we are copying the original file not the symlinked path, which causes issues for
-                        // tarball distribution.
-                        //
-                        // See https://github.com/rust-lang/rust/issues/135554.
-                        builder.resolve_symlink_and_copy(&src_path, &libdir_bin.join(&tool_exe));
+
+                    // When using `download-ci-llvm`, some of the tools may not exist, so skip trying to copy them.
+                    if !src_path.exists() && builder.config.llvm_from_ci {
+                        eprintln!("{} does not exist; skipping copy", src_path.display());
+                        continue;
                     }
+
+                    // There is a chance that these tools are being installed from an external LLVM.
+                    // Use `Builder::resolve_symlink_and_copy` instead of `Builder::copy_link` to ensure
+                    // we are copying the original file not the symlinked path, which causes issues for
+                    // tarball distribution.
+                    //
+                    // See https://github.com/rust-lang/rust/issues/135554.
+                    builder.resolve_symlink_and_copy(&src_path, &libdir_bin.join(&tool_exe));
                 }
             }
         }

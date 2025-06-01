@@ -52,7 +52,7 @@ pub fn find_path(
             ignore_local_imports,
             is_std_item: item_module.krate().data(db).origin.is_lang(),
             from,
-            from_def_map: &from.def_map(db),
+            from_def_map: from.def_map(db),
             fuel: Cell::new(FIND_PATH_FUEL),
         },
         item,
@@ -691,7 +691,7 @@ mod tests {
         let (def_map, local_def_map) = module.local_def_map(&db);
         let resolved = def_map
             .resolve_path(
-                &local_def_map,
+                local_def_map,
                 &db,
                 module.local_id,
                 &mod_path,

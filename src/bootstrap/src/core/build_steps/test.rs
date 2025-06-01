@@ -739,7 +739,7 @@ impl Step for Clippy {
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/clippy")
+        run.suite_path("src/tools/clippy/tests").path("src/tools/clippy")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -782,6 +782,23 @@ impl Step for Clippy {
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
         let host_libs = builder.stage_out(compiler, Mode::ToolRustc).join(builder.cargo_dir());
         cargo.env("HOST_LIBS", host_libs);
+
+        // Collect paths of tests to run
+        'partially_test: {
+            let paths = &builder.config.paths[..];
+            let mut test_names = Vec::new();
+            for path in paths {
+                if let Some(path) =
+                    helpers::is_valid_test_suite_arg(path, "src/tools/clippy/tests", builder)
+                {
+                    test_names.push(path);
+                } else if path.ends_with("src/tools/clippy") {
+                    // When src/tools/clippy is called directly, all tests should be run.
+                    break 'partially_test;
+                }
+            }
+            cargo.env("TESTNAME", test_names.join(","));
+        }
 
         cargo.add_rustc_lib_path(builder);
         let cargo = prepare_cargo_test(cargo, &[], &[], host, builder);
@@ -1102,7 +1119,7 @@ impl Step for Tidy {
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             if !builder.config.json_output {
                 builder.info("fmt check");
-                if builder.initial_rustfmt().is_none() {
+                if builder.config.initial_rustfmt.is_none() {
                     let inferred_rustfmt_dir = builder.initial_sysroot.join("bin");
                     eprintln!(
                         "\
@@ -1593,10 +1610,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             let build = builder.build.build;
             compiler = builder.compiler(compiler.stage - 1, build);
             let test_stage = compiler.stage + 1;
-            (test_stage, format!("stage{}-{}", test_stage, build))
+            (test_stage, format!("stage{test_stage}-{build}"))
         } else {
             let stage = compiler.stage;
-            (stage, format!("stage{}-{}", stage, target))
+            (stage, format!("stage{stage}-{target}"))
         };
 
         if suite.ends_with("fulldeps") {
@@ -2947,7 +2964,14 @@ impl Step for Distcheck {
         run.builder.ensure(Distcheck);
     }
 
-    /// Runs "distcheck", a 'make check' from a tarball
+    /// Runs `distcheck`, which is a collection of smoke tests:
+    ///
+    /// - Run `make check` from an unpacked dist tarball to make sure we can at the minimum run
+    ///   check steps from those sources.
+    /// - Check that selected dist components (`rust-src` only at the moment) at least have expected
+    ///   directory shape and crate manifests that cargo can generate a lockfile from.
+    ///
+    /// FIXME(#136822): dist components are under-tested.
     fn run(self, builder: &Builder<'_>) {
         builder.info("Distcheck");
         let dir = builder.tempdir().join("distcheck");
@@ -3554,7 +3578,7 @@ impl Step for TestFloatParse {
         builder.ensure(tool::TestFloatParse { host: self.host });
 
         // Run any unit tests in the crate
-        let cargo_test = tool::prepare_tool_cargo(
+        let mut cargo_test = tool::prepare_tool_cargo(
             builder,
             compiler,
             Mode::ToolStd,
@@ -3564,6 +3588,7 @@ impl Step for TestFloatParse {
             SourceType::InTree,
             &[],
         );
+        cargo_test.allow_features(tool::TestFloatParse::ALLOW_FEATURES);
 
         run_cargo_test(cargo_test, &[], &[], crate_name, bootstrap_host, builder);
 
@@ -3578,6 +3603,7 @@ impl Step for TestFloatParse {
             SourceType::InTree,
             &[],
         );
+        cargo_run.allow_features(tool::TestFloatParse::ALLOW_FEATURES);
 
         if !matches!(env::var("FLOAT_PARSE_TESTS_NO_SKIP_HUGE").as_deref(), Ok("1") | Ok("true")) {
             cargo_run.args(["--", "--skip-huge"]);

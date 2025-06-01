@@ -1577,7 +1577,7 @@ impl<'a> Parser<'a> {
         };
 
         let enum_definition = EnumDef { variants: variants.into_iter().flatten().collect() };
-        Ok(ItemKind::Enum(ident, enum_definition, generics))
+        Ok(ItemKind::Enum(ident, generics, enum_definition))
     }
 
     fn parse_enum_variant(&mut self, span: Span) -> PResult<'a, Option<Variant>> {
@@ -1732,7 +1732,7 @@ impl<'a> Parser<'a> {
             return Err(self.dcx().create_err(err));
         };
 
-        Ok(ItemKind::Struct(ident, vdata, generics))
+        Ok(ItemKind::Struct(ident, generics, vdata))
     }
 
     /// Parses `union Foo { ... }`.
@@ -1764,7 +1764,7 @@ impl<'a> Parser<'a> {
             return Err(err);
         };
 
-        Ok(ItemKind::Union(ident, vdata, generics))
+        Ok(ItemKind::Union(ident, generics, vdata))
     }
 
     /// This function parses the fields of record structs:

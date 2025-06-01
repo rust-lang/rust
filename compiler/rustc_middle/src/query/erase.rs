@@ -6,7 +6,7 @@ use rustc_span::ErrorGuaranteed;
 
 use crate::query::CyclePlaceholder;
 use crate::ty::adjustment::CoerceUnsizedInfo;
-use crate::ty::{self, Ty};
+use crate::ty::{self, Ty, TyCtxt};
 use crate::{mir, traits};
 
 #[derive(Copy, Clone)]
@@ -207,6 +207,11 @@ impl EraseType for ty::Binder<'_, ty::FnSig<'_>> {
     type Result = [u8; size_of::<ty::Binder<'static, ty::FnSig<'static>>>()];
 }
 
+impl EraseType for ty::Binder<'_, ty::CoroutineWitnessTypes<TyCtxt<'_>>> {
+    type Result =
+        [u8; size_of::<ty::Binder<'static, ty::CoroutineWitnessTypes<TyCtxt<'static>>>>()];
+}
+
 impl EraseType for ty::Binder<'_, &'_ ty::List<Ty<'_>>> {
     type Result = [u8; size_of::<ty::Binder<'static, &'static ty::List<Ty<'static>>>>()];
 }
@@ -311,6 +316,7 @@ trivial! {
     rustc_middle::ty::Asyncness,
     rustc_middle::ty::AsyncDestructor,
     rustc_middle::ty::BoundVariableKind,
+    rustc_middle::ty::AnonConstKind,
     rustc_middle::ty::DeducedParamAttrs,
     rustc_middle::ty::Destructor,
     rustc_middle::ty::fast_reject::SimplifiedType,

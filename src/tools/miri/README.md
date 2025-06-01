@@ -218,7 +218,7 @@ degree documented below):
   make no promises and we don't run tests for such targets.
 - We have unofficial support (not maintained by the Miri team itself) for some further operating systems.
   - `solaris` / `illumos`: maintained by @devnexen. Supports the entire test suite.
-  - `freebsd`: maintained by @YohDeadfall. Supports `std::env` and parts of `std::{thread, fs}`, but not `std::sync`.
+  - `freebsd`: maintained by @YohDeadfall and @LorrensP-2158466. Supports the entire test suite.
   - `android`: **maintainer wanted**. Support very incomplete, but a basic "hello world" works.
   - `wasi`: **maintainer wanted**. Support very incomplete, not even standard output works, but an empty `main` function works.
 - For targets on other operating systems, Miri might fail before even reaching the `main` function.
@@ -393,6 +393,9 @@ to Miri failing to detect cases of undefined behavior in a program.
   disables the randomization of the next thread to be picked, instead fixing a round-robin schedule.
   Note however that other aspects of Miri's concurrency behavior are still randomize; use
   `-Zmiri-deterministic-concurrency` to disable them all.
+* `-Zmiri-force-intrinsic-fallback` forces the use of the "fallback" body for all intrinsics that
+  have one. This is useful to test the fallback bodies, but should not be used otherwise. It is
+  **unsound** since the fallback body might not be checking for all UB.
 * `-Zmiri-native-lib=<path to a shared object file>` is an experimental flag for providing support
   for calling native functions from inside the interpreter via FFI. The flag is supported only on
   Unix systems. Functions not provided by that file are still executed via the usual Miri shims.
@@ -577,6 +580,7 @@ Definite bugs found:
 * [Weak-memory-induced memory leak in Windows thread-local storage](https://github.com/rust-lang/rust/pull/124281)
 * [A bug in the new `RwLock::downgrade` implementation](https://rust-lang.zulipchat.com/#narrow/channel/269128-miri/topic/Miri.20error.20library.20test) (caught by Miri before it landed in the Rust repo)
 * [Mockall reading unintialized memory when mocking `std::io::Read::read`, even if all expectations are satisfied](https://github.com/asomers/mockall/issues/647) (caught by Miri running Tokio's test suite)
+* [`ReentrantLock` not correctly dealing with reuse of addresses for TLS storage of different threads](https://github.com/rust-lang/rust/pull/141248)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 

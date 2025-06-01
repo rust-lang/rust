@@ -208,7 +208,7 @@
 use std::cell::OnceCell;
 use std::path::PathBuf;
 
-use rustc_attr_parsing::InlineAttr;
+use rustc_attr_data_structures::InlineAttr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{MTLock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -1483,7 +1483,7 @@ impl<'v> RootCollector<'_, 'v> {
 
                 // But even just declaring them must collect the items they refer to
                 // unless their generics require monomorphization.
-                if !self.tcx.generics_of(id.owner_id).requires_monomorphization(self.tcx)
+                if !self.tcx.generics_of(id.owner_id).own_requires_monomorphization()
                     && let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id())
                 {
                     collect_const_value(self.tcx, val, self.output);

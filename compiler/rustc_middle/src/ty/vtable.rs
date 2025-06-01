@@ -110,7 +110,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     let ptr_align = tcx.data_layout.pointer_align.abi;
 
     let vtable_size = ptr_size * u64::try_from(vtable_entries.len()).unwrap();
-    let mut vtable = Allocation::new(vtable_size, ptr_align, AllocInit::Uninit);
+    let mut vtable = Allocation::new(vtable_size, ptr_align, AllocInit::Uninit, ());
 
     // No need to do any alignment checks on the memory accesses below, because we know the
     // allocation is correctly aligned as we created it above. Also we're only offsetting by

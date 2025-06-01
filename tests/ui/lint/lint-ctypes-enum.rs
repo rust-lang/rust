@@ -2,8 +2,6 @@
 #![deny(improper_ctypes)]
 #![feature(ptr_internals)]
 #![feature(transparent_unions)]
-#![feature(repr128)]
-#![allow(incomplete_features)]
 
 use std::num;
 

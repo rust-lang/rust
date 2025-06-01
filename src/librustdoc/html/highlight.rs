@@ -6,7 +6,7 @@
 //! Use the `render_with_highlighting` to highlight some rust code.
 
 use std::collections::VecDeque;
-use std::fmt::{Display, Write};
+use std::fmt::{self, Display, Write};
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_lexer::{Cursor, FrontmatterAllowed, LiteralKind, TokenKind};
@@ -36,9 +36,10 @@ pub(crate) struct HrefContext<'a, 'tcx> {
 #[derive(Default)]
 pub(crate) struct DecorationInfo(pub(crate) FxIndexMap<&'static str, Vec<(u32, u32)>>);
 
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone)]
 pub(crate) enum Tooltip {
-    Ignore,
+    IgnoreAll,
+    IgnoreSome(Vec<String>),
     CompileFail,
     ShouldPanic,
     Edition(Edition),
@@ -70,7 +71,7 @@ fn write_header(
         format_args!(
             "<div class=\"example-wrap{}\">",
             match tooltip {
-                Tooltip::Ignore => " ignore",
+                Tooltip::IgnoreAll | Tooltip::IgnoreSome(_) => " ignore",
                 Tooltip::CompileFail => " compile_fail",
                 Tooltip::ShouldPanic => " should_panic",
                 Tooltip::Edition(_) => " edition",
@@ -80,23 +81,29 @@ fn write_header(
     );
 
     if tooltip != Tooltip::None {
-        let edition_code;
-        write_str(
-            out,
-            format_args!(
-                "<a href=\"#\" class=\"tooltip\" title=\"{}\">ⓘ</a>",
-                match tooltip {
-                    Tooltip::Ignore => "This example is not tested",
-                    Tooltip::CompileFail => "This example deliberately fails to compile",
-                    Tooltip::ShouldPanic => "This example panics",
-                    Tooltip::Edition(edition) => {
-                        edition_code = format!("This example runs with edition {edition}");
-                        &edition_code
+        let tooltip = fmt::from_fn(|f| match &tooltip {
+            Tooltip::IgnoreAll => f.write_str("This example is not tested"),
+            Tooltip::IgnoreSome(platforms) => {
+                f.write_str("This example is not tested on ")?;
+                match &platforms[..] {
+                    [] => unreachable!(),
+                    [platform] => f.write_str(platform)?,
+                    [first, second] => write!(f, "{first} or {second}")?,
+                    [platforms @ .., last] => {
+                        for platform in platforms {
+                            write!(f, "{platform}, ")?;
+                        }
+                        write!(f, "or {last}")?;
                     }
-                    Tooltip::None => unreachable!(),
                 }
-            ),
-        );
+                Ok(())
+            }
+            Tooltip::CompileFail => f.write_str("This example deliberately fails to compile"),
+            Tooltip::ShouldPanic => f.write_str("This example panics"),
+            Tooltip::Edition(edition) => write!(f, "This example runs with edition {edition}"),
+            Tooltip::None => unreachable!(),
+        });
+        write_str(out, format_args!("<a href=\"#\" class=\"tooltip\" title=\"{tooltip}\">ⓘ</a>"));
     }
 
     if let Some(extra) = extra_content {

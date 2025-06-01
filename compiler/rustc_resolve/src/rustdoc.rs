@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
-use rustc_span::{DUMMY_SP, InnerSpan, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, InnerSpan, Span, Symbol, sym};
 use thin_vec::ThinVec;
 use tracing::{debug, trace};
 
@@ -157,7 +157,7 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
     };
 
     for fragment in docs {
-        if fragment.doc == kw::Empty {
+        if fragment.doc == sym::empty {
             continue;
         }
 
@@ -177,7 +177,7 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
 ///
 /// Note: remove the trailing newline where appropriate
 pub fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
-    if frag.doc == kw::Empty {
+    if frag.doc == sym::empty {
         out.push('\n');
         return;
     }
@@ -514,20 +514,30 @@ pub fn span_of_fragments(fragments: &[DocFragment]) -> Option<Span> {
 /// This method does not always work, because markdown bytes don't necessarily match source bytes,
 /// like if escapes are used in the string. In this case, it returns `None`.
 ///
-/// This method will return `Some` only if:
+/// `markdown` is typically the entire documentation for an item,
+/// after combining fragments.
+///
+/// This method will return `Some` only if one of the following is true:
 ///
 /// - The doc is made entirely from sugared doc comments, which cannot contain escapes
-/// - The doc is entirely from a single doc fragment, with a string literal, exactly equal
+/// - The doc is entirely from a single doc fragment with a string literal exactly equal to `markdown`.
 /// - The doc comes from `include_str!`
+/// - The doc includes exactly one substring matching `markdown[md_range]` which is contained in a single doc fragment.
+///
+/// This function is defined in the compiler so it can be used by
+/// both `rustdoc` and `clippy`.
 pub fn source_span_for_markdown_range(
     tcx: TyCtxt<'_>,
     markdown: &str,
     md_range: &Range<usize>,
     fragments: &[DocFragment],
 ) -> Option<Span> {
+    use rustc_span::BytePos;
+
+    let map = tcx.sess.source_map();
     if let &[fragment] = &fragments
         && fragment.kind == DocFragmentKind::RawDoc
-        && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(fragment.span)
+        && let Ok(snippet) = map.span_to_snippet(fragment.span)
         && snippet.trim_end() == markdown.trim_end()
         && let Ok(md_range_lo) = u32::try_from(md_range.start)
         && let Ok(md_range_hi) = u32::try_from(md_range.end)
@@ -544,10 +554,43 @@ pub fn source_span_for_markdown_range(
     let is_all_sugared_doc = fragments.iter().all(|frag| frag.kind == DocFragmentKind::SugaredDoc);
 
     if !is_all_sugared_doc {
+        // This case ignores the markdown outside of the range so that it can
+        // work in cases where the markdown is made from several different
+        // doc fragments, but the target range does not span across multiple
+        // fragments.
+        let mut match_data = None;
+        let pat = &markdown[md_range.clone()];
+        // This heirustic doesn't make sense with a zero-sized range.
+        if pat.is_empty() {
+            return None;
+        }
+        for (i, fragment) in fragments.iter().enumerate() {
+            if let Ok(snippet) = map.span_to_snippet(fragment.span)
+                && let Some(match_start) = snippet.find(pat)
+            {
+                // If there is either a match in a previous fragment, or
+                // multiple matches in this fragment, there is ambiguity.
+                if match_data.is_none() && !snippet[match_start + 1..].contains(pat) {
+                    match_data = Some((i, match_start));
+                } else {
+                    // Heirustic produced ambiguity, return nothing.
+                    return None;
+                }
+            }
+        }
+        if let Some((i, match_start)) = match_data {
+            let sp = fragments[i].span;
+            // we need to calculate the span start,
+            // then use that in our calulations for the span end
+            let lo = sp.lo() + BytePos(match_start as u32);
+            return Some(
+                sp.with_lo(lo).with_hi(lo + BytePos((md_range.end - md_range.start) as u32)),
+            );
+        }
         return None;
     }
 
-    let snippet = tcx.sess.source_map().span_to_snippet(span_of_fragments(fragments)?).ok()?;
+    let snippet = map.span_to_snippet(span_of_fragments(fragments)?).ok()?;
 
     let starting_line = markdown[..md_range.start].matches('\n').count();
     let ending_line = starting_line + markdown[md_range.start..md_range.end].matches('\n').count();

@@ -1239,7 +1239,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                         p!(write("{} = ", tcx.associated_item(assoc_item_def_id).name()));
 
-                        match term.unpack() {
+                        match term.kind() {
                             TermKind::Ty(ty) => p!(print(ty)),
                             TermKind::Const(c) => p!(print(c)),
                         };
@@ -1453,9 +1453,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                 // contain named regions. So we erase and anonymize everything
                                 // here to compare the types modulo regions below.
                                 let proj = cx.tcx().erase_regions(proj);
-                                let proj = cx.tcx().anonymize_bound_vars(proj);
                                 let super_proj = cx.tcx().erase_regions(super_proj);
-                                let super_proj = cx.tcx().anonymize_bound_vars(super_proj);
 
                                 proj == super_proj
                             });
@@ -3388,7 +3386,7 @@ define_print_and_forward_display! {
     }
 
     ty::Term<'tcx> {
-      match self.unpack() {
+      match self.kind() {
         ty::TermKind::Ty(ty) => p!(print(ty)),
         ty::TermKind::Const(c) => p!(print(c)),
       }
@@ -3403,7 +3401,7 @@ define_print_and_forward_display! {
     }
 
     GenericArg<'tcx> {
-        match self.unpack() {
+        match self.kind() {
             GenericArgKind::Lifetime(lt) => p!(print(lt)),
             GenericArgKind::Type(ty) => p!(print(ty)),
             GenericArgKind::Const(ct) => p!(print(ct)),

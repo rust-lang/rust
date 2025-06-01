@@ -281,7 +281,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
                             }
                             let codegen_fn_attrs = tcx.codegen_fn_attrs(local_def_id);
                             if codegen_fn_attrs.contains_extern_indicator()
-                                || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED)
+                                || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                                 || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
                             {
                                 Some((
@@ -459,7 +459,7 @@ fn jemalloc_magic() {
     // linking, so we need to explicitly depend on the function.
     #[cfg(target_os = "macos")]
     {
-        extern "C" {
+        unsafe extern "C" {
             fn _rjem_je_zone_register();
         }
 
@@ -584,6 +584,8 @@ fn main() {
         } else if arg == "-Zmiri-ignore-leaks" {
             miri_config.ignore_leaks = true;
             miri_config.collect_leak_backtraces = false;
+        } else if arg == "-Zmiri-force-intrinsic-fallback" {
+            miri_config.force_intrinsic_fallback = true;
         } else if arg == "-Zmiri-strict-provenance" {
             miri_config.provenance_mode = ProvenanceMode::Strict;
         } else if arg == "-Zmiri-permissive-provenance" {

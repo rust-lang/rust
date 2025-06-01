@@ -6,7 +6,7 @@
 
 use rustc_abi::ExternAbi;
 use rustc_ast::ast;
-use rustc_attr_parsing::DeprecatedSince;
+use rustc_attr_data_structures::{self as attrs, DeprecatedSince};
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_metadata::rendered_const;
@@ -40,7 +40,7 @@ impl JsonRenderer<'_> {
             })
             .collect();
         let docs = item.opt_doc_value();
-        let attrs = item.attributes(self.tcx, self.cache(), true);
+        let attrs = item.attributes_and_repr(self.tcx, self.cache(), true);
         let span = item.span(self.tcx);
         let visibility = item.visibility(self.tcx);
         let clean::ItemInner { name, item_id, .. } = *item.inner;
@@ -153,8 +153,8 @@ where
     }
 }
 
-pub(crate) fn from_deprecation(deprecation: rustc_attr_parsing::Deprecation) -> Deprecation {
-    let rustc_attr_parsing::Deprecation { since, note, suggestion: _ } = deprecation;
+pub(crate) fn from_deprecation(deprecation: attrs::Deprecation) -> Deprecation {
+    let attrs::Deprecation { since, note, suggestion: _ } = deprecation;
     let since = match since {
         DeprecatedSince::RustcVersion(version) => Some(version.to_string()),
         DeprecatedSince::Future => Some("TBD".to_owned()),

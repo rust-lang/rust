@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::{panic, str};
 
-pub(crate) use make::DocTestBuilder;
+pub(crate) use make::{BuildDocTestBuilder, DocTestBuilder};
 pub(crate) use markdown::test as test_markdown;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_errors::emitter::HumanReadableErrorType;
@@ -23,9 +23,9 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
 use rustc_session::config::{self, CrateType, ErrorOutputType, Input};
 use rustc_session::lint;
-use rustc_span::FileName;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
+use rustc_span::{FileName, Span};
 use rustc_target::spec::{Target, TargetTuple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
 use tracing::debug;
@@ -49,46 +49,6 @@ pub(crate) struct GlobalTestOptions {
     pub(crate) attrs: Vec<String>,
     /// Path to file containing arguments for the invocation of rustc.
     pub(crate) args_file: PathBuf,
-}
-
-/// Function used to split command line arguments just like a shell would.
-fn split_args(args: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut iter = args.chars();
-    let mut current = String::new();
-
-    while let Some(c) = iter.next() {
-        if c == '\\' {
-            if let Some(c) = iter.next() {
-                // If it's escaped, even a quote or a whitespace will be ignored.
-                current.push(c);
-            }
-        } else if c == '"' || c == '\'' {
-            while let Some(new_c) = iter.next() {
-                if new_c == c {
-                    break;
-                } else if new_c == '\\' {
-                    if let Some(c) = iter.next() {
-                        // If it's escaped, even a quote will be ignored.
-                        current.push(c);
-                    }
-                } else {
-                    current.push(new_c);
-                }
-            }
-        } else if " \n\t\r".contains(c) {
-            if !current.is_empty() {
-                out.push(current.clone());
-                current.clear();
-            }
-        } else {
-            current.push(c);
-        }
-    }
-    if !current.is_empty() {
-        out.push(current);
-    }
-    out
 }
 
 pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> Result<(), String> {
@@ -119,9 +79,7 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
         content.push(format!("-Z{unstable_option_str}"));
     }
 
-    for compilation_args in &options.doctest_compilation_args {
-        content.extend(split_args(compilation_args));
-    }
+    content.extend(options.doctest_build_args.clone());
 
     let content = content.join("\n");
 
@@ -239,7 +197,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
                 }
             } else {
                 let mut collector = CreateRunnableDocTests::new(options, opts);
-                tests.into_iter().for_each(|t| collector.add_test(t));
+                tests.into_iter().for_each(|t| collector.add_test(t, Some(compiler.sess.dcx())));
 
                 Ok(Some(collector))
             }
@@ -889,6 +847,7 @@ pub(crate) struct ScrapedDocTest {
     langstr: LangString,
     text: String,
     name: String,
+    span: Span,
 }
 
 impl ScrapedDocTest {
@@ -898,6 +857,7 @@ impl ScrapedDocTest {
         logical_path: Vec<String>,
         langstr: LangString,
         text: String,
+        span: Span,
     ) -> Self {
         let mut item_path = logical_path.join("::");
         item_path.retain(|c| c != ' ');
@@ -907,7 +867,7 @@ impl ScrapedDocTest {
         let name =
             format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionaly());
 
-        Self { filename, line, langstr, text, name }
+        Self { filename, line, langstr, text, name, span }
     }
     fn edition(&self, opts: &RustdocOptions) -> Edition {
         self.langstr.edition.unwrap_or(opts.edition)
@@ -963,7 +923,7 @@ impl CreateRunnableDocTests {
         }
     }
 
-    fn add_test(&mut self, scraped_test: ScrapedDocTest) {
+    fn add_test(&mut self, scraped_test: ScrapedDocTest, dcx: Option<DiagCtxtHandle<'_>>) {
         // For example `module/file.rs` would become `module_file_rs`
         let file = scraped_test
             .filename
@@ -987,14 +947,14 @@ impl CreateRunnableDocTests {
         );
 
         let edition = scraped_test.edition(&self.rustdoc_options);
-        let doctest = DocTestBuilder::new(
-            &scraped_test.text,
-            Some(&self.opts.crate_name),
-            edition,
-            self.can_merge_doctests,
-            Some(test_id),
-            Some(&scraped_test.langstr),
-        );
+        let doctest = BuildDocTestBuilder::new(&scraped_test.text)
+            .crate_name(&self.opts.crate_name)
+            .edition(edition)
+            .can_merge_doctests(self.can_merge_doctests)
+            .test_id(test_id)
+            .lang_str(&scraped_test.langstr)
+            .span(scraped_test.span)
+            .build(dcx);
         let is_standalone = !doctest.can_be_merged
             || scraped_test.langstr.compile_fail
             || scraped_test.langstr.test_harness

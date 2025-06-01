@@ -5,11 +5,10 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(bootstrap, feature(let_chains))]
+#![cfg_attr(not(bootstrap), feature(autodiff))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
-#![feature(autodiff)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
 #![feature(if_let_guard)]
@@ -20,8 +19,6 @@
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
-
-extern crate proc_macro;
 
 use std::sync::Arc;
 
@@ -113,7 +110,8 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
 
     register_attr! {
         alloc_error_handler: alloc_error_handler::expand,
-        autodiff: autodiff::expand,
+        autodiff_forward: autodiff::expand_forward,
+        autodiff_reverse: autodiff::expand_reverse,
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
         cfg_eval: cfg_eval::expand,
@@ -140,7 +138,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         CoercePointee: coerce_pointee::expand_deriving_coerce_pointee,
     }
 
-    let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
+    let client = rustc_proc_macro::bridge::client::Client::expand1(rustc_proc_macro::quote);
     register(sym::quote, SyntaxExtensionKind::Bang(Arc::new(BangProcMacro { client })));
     let requires = SyntaxExtensionKind::Attr(Arc::new(contracts::ExpandRequires));
     register(sym::contracts_requires, requires);

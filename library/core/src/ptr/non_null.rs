@@ -216,6 +216,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_new_unchecked", since = "1.25.0")]
     #[inline]
+    #[track_caller]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         // SAFETY: the caller must guarantee that `ptr` is non-null.
         unsafe {
@@ -262,7 +263,8 @@ impl<T: ?Sized> NonNull<T> {
     }
 
     /// Converts a reference to a `NonNull` pointer.
-    #[unstable(feature = "non_null_from_ref", issue = "130823")]
+    #[stable(feature = "non_null_from_ref", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "non_null_from_ref", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn from_ref(r: &T) -> Self {
         // SAFETY: A reference cannot be null.
@@ -270,7 +272,8 @@ impl<T: ?Sized> NonNull<T> {
     }
 
     /// Converts a mutable reference to a `NonNull` pointer.
-    #[unstable(feature = "non_null_from_ref", issue = "130823")]
+    #[stable(feature = "non_null_from_ref", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "non_null_from_ref", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn from_mut(r: &mut T) -> Self {
         // SAFETY: A mutable reference cannot be null.
@@ -486,6 +489,33 @@ impl<T: ?Sized> NonNull<T> {
     pub const fn cast<U>(self) -> NonNull<U> {
         // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
         unsafe { NonNull { pointer: self.as_ptr() as *mut U } }
+    }
+
+    /// Try to cast to a pointer of another type by checking aligment.
+    ///
+    /// If the pointer is properly aligned to the target type, it will be
+    /// cast to the target type. Otherwise, `None` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(pointer_try_cast_aligned)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let mut x = 0u64;
+    ///
+    /// let aligned = NonNull::from_mut(&mut x);
+    /// let unaligned = unsafe { aligned.byte_add(1) };
+    ///
+    /// assert!(aligned.try_cast_aligned::<u32>().is_some());
+    /// assert!(unaligned.try_cast_aligned::<u32>().is_none());
+    /// ```
+    #[unstable(feature = "pointer_try_cast_aligned", issue = "141221")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    pub fn try_cast_aligned<U>(self) -> Option<NonNull<U>> {
+        if self.is_aligned_to(align_of::<U>()) { Some(self.cast()) } else { None }
     }
 
     /// Adds an offset to a pointer.
@@ -1166,7 +1196,7 @@ impl<T: ?Sized> NonNull<T> {
     /// [`ptr::replace`]: crate::ptr::replace()
     #[inline(always)]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_inherent_ptr_replace", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_inherent_ptr_replace", since = "1.88.0")]
     pub const unsafe fn replace(self, src: T) -> T
     where
         T: Sized,

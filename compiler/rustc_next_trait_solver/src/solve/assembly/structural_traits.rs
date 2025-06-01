@@ -83,7 +83,7 @@ where
             .cx()
             .coroutine_hidden_types(def_id)
             .instantiate(cx, args)
-            .map_bound(|tys| tys.to_vec())),
+            .map_bound(|bound| bound.types.to_vec())),
 
         ty::UnsafeBinder(bound_ty) => Ok(bound_ty.map_bound(|ty| vec![ty])),
 
@@ -249,7 +249,7 @@ where
             .cx()
             .coroutine_hidden_types(def_id)
             .instantiate(ecx.cx(), args)
-            .map_bound(|tys| tys.to_vec())),
+            .map_bound(|bound| bound.types.to_vec())),
     }
 }
 
@@ -327,7 +327,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
                 // always be called once. It additionally implements `Fn`/`FnMut`
                 // only if it has no upvars referencing the closure-env lifetime,
                 // and if the closure kind permits it.
-                if closure_kind != ty::ClosureKind::FnOnce && args.has_self_borrows() {
+                if goal_kind != ty::ClosureKind::FnOnce && args.has_self_borrows() {
                     return Err(NoSolution);
                 }
 
@@ -945,7 +945,7 @@ where
 
         // This is quite similar to the `projection_may_match` we use in unsizing,
         // but here we want to unify a projection predicate against an alias term
-        // so we can replace it with the the projection predicate's term.
+        // so we can replace it with the projection predicate's term.
         let mut matching_projections = replacements
             .iter()
             .filter(|source_projection| self.projection_may_match(**source_projection, alias_term));

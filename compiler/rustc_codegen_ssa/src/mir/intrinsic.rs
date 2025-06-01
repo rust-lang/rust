@@ -1,9 +1,9 @@
 use rustc_abi::WrappingRange;
+use rustc_middle::mir::SourceInfo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
-use rustc_span::{Span, sym};
-use rustc_target::callconv::{FnAbi, PassMode};
+use rustc_span::sym;
 
 use super::FunctionCx;
 use super::operand::OperandRef;
@@ -52,13 +52,14 @@ fn memset_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// In the `Err` case, returns the instance that should be called instead.
     pub fn codegen_intrinsic_call(
+        &mut self,
         bx: &mut Bx,
         instance: ty::Instance<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, Bx::Value>],
-        llresult: Bx::Value,
-        span: Span,
+        result: PlaceRef<'tcx, Bx::Value>,
+        source_info: SourceInfo,
     ) -> Result<(), ty::Instance<'tcx>> {
+        let span = source_info.span;
         let callee_ty = instance.ty(bx.tcx(), bx.typing_env());
 
         let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
@@ -97,11 +98,27 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let llret_ty = bx.backend_type(bx.layout_of(ret_ty));
-        let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
+
+        let ret_llval = |bx: &mut Bx, llval| {
+            if result.layout.ty.is_bool() {
+                OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
+                    .val
+                    .store(bx, result);
+            } else if !result.layout.ty.is_unit() {
+                bx.store_to_place(llval, result.val);
+            }
+            Ok(())
+        };
 
         let llval = match name {
             sym::abort => {
                 bx.abort();
+                return Ok(());
+            }
+
+            sym::caller_location => {
+                let location = self.get_caller_location(bx, source_info);
+                location.val.store(bx, result);
                 return Ok(());
             }
 
@@ -328,22 +345,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // This requires that atomic intrinsics follow a specific naming pattern:
             // "atomic_<operation>[_<ordering>]"
             name if let Some(atomic) = name_str.strip_prefix("atomic_") => {
-                use crate::common::AtomicOrdering::*;
+                use rustc_middle::ty::AtomicOrdering::*;
+
                 use crate::common::{AtomicRmwBinOp, SynchronizationScope};
-
-                let Some((instruction, ordering)) = atomic.split_once('_') else {
-                    bx.sess().dcx().emit_fatal(errors::MissingMemoryOrdering);
-                };
-
-                let parse_ordering = |bx: &Bx, s| match s {
-                    "unordered" => Unordered,
-                    "relaxed" => Relaxed,
-                    "acquire" => Acquire,
-                    "release" => Release,
-                    "acqrel" => AcquireRelease,
-                    "seqcst" => SequentiallyConsistent,
-                    _ => bx.sess().dcx().emit_fatal(errors::UnknownAtomicOrdering),
-                };
 
                 let invalid_monomorphization = |ty| {
                     bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
@@ -351,6 +355,49 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         name,
                         ty,
                     });
+                };
+
+                let parse_const_generic_ordering = |ord: ty::Value<'tcx>| {
+                    let discr = ord.valtree.unwrap_branch()[0].unwrap_leaf();
+                    discr.to_atomic_ordering()
+                };
+
+                // Some intrinsics have the ordering already converted to a const generic parameter, we handle those first.
+                match name {
+                    sym::atomic_load => {
+                        let ty = fn_args.type_at(0);
+                        let ordering = fn_args.const_at(1).to_value();
+                        if !(int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr()) {
+                            invalid_monomorphization(ty);
+                            return Ok(());
+                        }
+                        let layout = bx.layout_of(ty);
+                        let source = args[0].immediate();
+                        let llval = bx.atomic_load(
+                            bx.backend_type(layout),
+                            source,
+                            parse_const_generic_ordering(ordering),
+                            layout.size,
+                        );
+
+                        return ret_llval(bx, llval);
+                    }
+
+                    // The rest falls back to below.
+                    _ => {}
+                }
+
+                let Some((instruction, ordering)) = atomic.split_once('_') else {
+                    bx.sess().dcx().emit_fatal(errors::MissingMemoryOrdering);
+                };
+
+                let parse_ordering = |bx: &Bx, s| match s {
+                    "relaxed" => Relaxed,
+                    "acquire" => Acquire,
+                    "release" => Release,
+                    "acqrel" => AcqRel,
+                    "seqcst" => SeqCst,
+                    _ => bx.sess().dcx().emit_fatal(errors::UnknownAtomicOrdering),
                 };
 
                 match instruction {
@@ -383,24 +430,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             invalid_monomorphization(ty);
                         }
                         return Ok(());
-                    }
-
-                    "load" => {
-                        let ty = fn_args.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
-                            let layout = bx.layout_of(ty);
-                            let size = layout.size;
-                            let source = args[0].immediate();
-                            bx.atomic_load(
-                                bx.backend_type(layout),
-                                source,
-                                parse_ordering(bx, ordering),
-                                size,
-                            )
-                        } else {
-                            invalid_monomorphization(ty);
-                            return Ok(());
-                        }
                     }
 
                     "store" => {
@@ -529,20 +558,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             _ => {
                 // Need to use backend-specific things in the implementation.
-                return bx.codegen_intrinsic_call(instance, fn_abi, args, llresult, span);
+                return bx.codegen_intrinsic_call(instance, args, result, span);
             }
         };
 
-        if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast { .. } = &fn_abi.ret.mode {
-                bx.store_to_place(llval, result.val);
-            } else {
-                OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
-                    .val
-                    .store(bx, result);
-            }
-        }
-        Ok(())
+        ret_llval(bx, llval)
     }
 }
 

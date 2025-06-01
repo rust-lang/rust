@@ -103,10 +103,18 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::minnumf32
         | sym::minnumf64
         | sym::minnumf128
+        | sym::minimumf16
+        | sym::minimumf32
+        | sym::minimumf64
+        | sym::minimumf128
         | sym::maxnumf16
         | sym::maxnumf32
         | sym::maxnumf64
         | sym::maxnumf128
+        | sym::maximumf16
+        | sym::maximumf32
+        | sym::maximumf64
+        | sym::maximumf128
         | sym::rustc_peek
         | sym::type_name
         | sym::forget
@@ -196,24 +204,25 @@ pub(crate) fn check_intrinsic_type(
 
         // Each atomic op has variants with different suffixes (`_seq_cst`, `_acquire`, etc.). Use
         // string ops to strip the suffixes, because the variants all get the same treatment here.
-        let (n_tps, inputs, output) = match split[1] {
+        let (n_tps, n_cts, inputs, output) = match split[1] {
             "cxchg" | "cxchgweak" => (
                 1,
+                0,
                 vec![Ty::new_mut_ptr(tcx, param(0)), param(0), param(0)],
                 Ty::new_tup(tcx, &[param(0), tcx.types.bool]),
             ),
-            "load" => (1, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
-            "store" => (1, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit),
+            "load" => (1, 1, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
+            "store" => (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit),
 
             "xchg" | "xadd" | "xsub" | "and" | "nand" | "or" | "xor" | "max" | "min" | "umax"
-            | "umin" => (1, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], param(0)),
-            "fence" | "singlethreadfence" => (0, Vec::new(), tcx.types.unit),
+            | "umin" => (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], param(0)),
+            "fence" | "singlethreadfence" => (0, 0, Vec::new(), tcx.types.unit),
             op => {
                 tcx.dcx().emit_err(UnrecognizedAtomicOperation { span, op });
                 return;
             }
         };
-        (n_tps, 0, 0, inputs, output, hir::Safety::Unsafe)
+        (n_tps, 0, n_cts, inputs, output, hir::Safety::Unsafe)
     } else if intrinsic_name == sym::contract_check_ensures {
         // contract_check_ensures::<Ret, C>(Ret, C) -> Ret
         // where C: for<'a> Fn(&'a Ret) -> bool,
@@ -256,6 +265,7 @@ pub(crate) fn check_intrinsic_type(
                 vec![Ty::new_imm_ptr(tcx, param(0)), tcx.types.isize],
                 Ty::new_imm_ptr(tcx, param(0)),
             ),
+            sym::slice_get_unchecked => (3, 0, vec![param(1), tcx.types.usize], param(0)),
             sym::ptr_mask => (
                 1,
                 0,
@@ -374,10 +384,20 @@ pub(crate) fn check_intrinsic_type(
             sym::minnumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
             sym::minnumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
 
+            sym::minimumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
+            sym::minimumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
+            sym::minimumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
+            sym::minimumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
+
             sym::maxnumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
             sym::maxnumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
             sym::maxnumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
             sym::maxnumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
+
+            sym::maximumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
+            sym::maximumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
+            sym::maximumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
+            sym::maximumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
 
             sym::copysignf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
             sym::copysignf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),

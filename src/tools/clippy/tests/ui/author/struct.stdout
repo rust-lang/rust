@@ -1,5 +1,4 @@
 if let ExprKind::Struct(qpath, fields, None) = expr.kind
-    && match_qpath(qpath, &["Test"])
     && fields.len() == 1
     && fields[0].ident.as_str() == "field"
     && let ExprKind::If(cond, then, Some(else_expr)) = fields[0].expr.kind
@@ -20,11 +19,10 @@ if let ExprKind::Struct(qpath, fields, None) = expr.kind
     // report your lint here
 }
 if let PatKind::Struct(ref qpath, fields, false) = arm.pat.kind
-    && match_qpath(qpath, &["Test"])
     && fields.len() == 1
     && fields[0].ident.as_str() == "field"
     && let PatKind::Expr(lit_expr) = fields[0].pat.kind
-    && let PatExprKind::Lit{ref lit, negated } = lit_expr.kind
+    && let PatExprKind::Lit { ref lit, negated } = lit_expr.kind
     && let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node
     && arm.guard.is_none()
     && let ExprKind::Block(block, None) = arm.body.kind
@@ -34,10 +32,9 @@ if let PatKind::Struct(ref qpath, fields, false) = arm.pat.kind
     // report your lint here
 }
 if let PatKind::TupleStruct(ref qpath, fields, None) = arm.pat.kind
-    && match_qpath(qpath, &["TestTuple"])
     && fields.len() == 1
     && let PatKind::Expr(lit_expr) = fields[0].kind
-    && let PatExprKind::Lit{ref lit, negated } = lit_expr.kind
+    && let PatExprKind::Lit { ref lit, negated } = lit_expr.kind
     && let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node
     && arm.guard.is_none()
     && let ExprKind::Block(block, None) = arm.body.kind
@@ -48,8 +45,6 @@ if let PatKind::TupleStruct(ref qpath, fields, None) = arm.pat.kind
 }
 if let ExprKind::MethodCall(method_name, receiver, args, _) = expr.kind
     && method_name.ident.as_str() == "test"
-    && let ExprKind::Path(ref qpath) = receiver.kind
-    && match_qpath(qpath, &["test_method_call"])
     && args.is_empty()
 {
     // report your lint here

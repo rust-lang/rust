@@ -7,7 +7,7 @@ use crate::inline_asm::{CInlineAsmOperand, codegen_inline_asm_inner};
 use crate::intrinsics::*;
 use crate::prelude::*;
 
-pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
+pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: &str,
     args: &[Spanned<mir::Operand<'tcx>>],
@@ -147,10 +147,10 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 let offset = fx.bcx.ins().imul(index_lane, scale);
                 let lane_ptr = fx.bcx.ins().iadd(ptr, offset);
                 let res = fx.bcx.ins().load(lane_clif_ty, MemFlags::trusted(), lane_ptr, 0);
-                fx.bcx.ins().jump(next, &[res]);
+                fx.bcx.ins().jump(next, &[res.into()]);
 
                 fx.bcx.switch_to_block(if_disabled);
-                fx.bcx.ins().jump(next, &[src_lane]);
+                fx.bcx.ins().jump(next, &[src_lane.into()]);
 
                 fx.bcx.seal_block(next);
                 fx.bcx.switch_to_block(next);
@@ -1316,7 +1316,12 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             fx.tcx
                 .dcx()
                 .warn(format!("unsupported x86 llvm intrinsic {}; replacing with trap", intrinsic));
-            crate::trap::trap_unimplemented(fx, intrinsic);
+            let msg = format!(
+                "{intrinsic} is not yet supported.\n\
+                 See https://github.com/rust-lang/rustc_codegen_cranelift/issues/171\n\
+                 Please open an issue at https://github.com/rust-lang/rustc_codegen_cranelift/issues"
+            );
+            crate::base::codegen_panic_nounwind(fx, &msg, None);
             return;
         }
     }

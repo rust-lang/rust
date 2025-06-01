@@ -109,7 +109,7 @@ impl<T> [T] {
     #[lang = "slice_len_fn"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_len", since = "1.39.0")]
-    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
+    #[rustc_no_implicit_autorefs]
     #[inline]
     #[must_use]
     pub const fn len(&self) -> usize {
@@ -129,7 +129,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_is_empty", since = "1.39.0")]
-    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
+    #[rustc_no_implicit_autorefs]
     #[inline]
     #[must_use]
     pub const fn is_empty(&self) -> bool {
@@ -564,7 +564,7 @@ impl<T> [T] {
     /// assert_eq!(None, v.get(0..4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
+    #[rustc_no_implicit_autorefs]
     #[inline]
     #[must_use]
     pub fn get<I>(&self, index: I) -> Option<&I::Output>
@@ -590,7 +590,7 @@ impl<T> [T] {
     /// assert_eq!(x, &[0, 42, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
+    #[rustc_no_implicit_autorefs]
     #[inline]
     #[must_use]
     pub fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
@@ -628,9 +628,10 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
+    #[rustc_no_implicit_autorefs]
     #[inline]
     #[must_use]
+    #[track_caller]
     pub unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
     where
         I: SliceIndex<Self>,
@@ -671,9 +672,10 @@ impl<T> [T] {
     /// assert_eq!(x, &[1, 13, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
+    #[rustc_no_implicit_autorefs]
     #[inline]
     #[must_use]
+    #[track_caller]
     pub unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
     where
         I: SliceIndex<Self>,
@@ -935,6 +937,7 @@ impl<T> [T] {
     /// [`swap`]: slice::swap
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
+    #[track_caller]
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
         assert_unsafe_precondition!(
             check_library_ub,
@@ -1303,10 +1306,11 @@ impl<T> [T] {
     /// // let chunks: &[[_; 5]] = slice.as_chunks_unchecked() // The slice length is not a multiple of 5
     /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked() // Zero-length chunks are never allowed
     /// ```
-    #[stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[inline]
     #[must_use]
+    #[track_caller]
     pub const unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
         assert_unsafe_precondition!(
             check_language_ub,
@@ -1360,8 +1364,8 @@ impl<T> [T] {
     /// };
     /// assert_eq!(chunks, &[['R', 'u'], ['s', 't']]);
     /// ```
-    #[stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1407,8 +1411,8 @@ impl<T> [T] {
     /// assert_eq!(remainder, &['l']);
     /// assert_eq!(chunks, &[['o', 'r'], ['e', 'm']]);
     /// ```
-    #[stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1498,10 +1502,11 @@ impl<T> [T] {
     /// // let chunks: &[[_; 5]] = slice.as_chunks_unchecked_mut() // The slice length is not a multiple of 5
     /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked_mut() // Zero-length chunks are never allowed
     /// ```
-    #[stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[inline]
     #[must_use]
+    #[track_caller]
     pub const unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
         assert_unsafe_precondition!(
             check_language_ub,
@@ -1551,8 +1556,8 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, &[1, 1, 2, 2, 9]);
     /// ```
-    #[stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1604,8 +1609,8 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, &[9, 1, 1, 2, 2]);
     /// ```
-    #[stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_as_chunks", since = "1.88.0")]
+    #[rustc_const_stable(feature = "slice_as_chunks", since = "1.88.0")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -2061,6 +2066,7 @@ impl<T> [T] {
     #[rustc_const_stable(feature = "const_slice_split_at_unchecked", since = "1.77.0")]
     #[inline]
     #[must_use]
+    #[track_caller]
     pub const unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
         // FIXME(const-hack): the const function `from_raw_parts` is used to make this
         // function const; previously the implementation used
@@ -2114,6 +2120,7 @@ impl<T> [T] {
     #[rustc_const_stable(feature = "const_slice_split_at_mut", since = "1.83.0")]
     #[inline]
     #[must_use]
+    #[track_caller]
     pub const unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         let len = self.len();
         let ptr = self.as_mut_ptr();
@@ -2986,7 +2993,7 @@ impl<T> [T] {
         self.binary_search_by(|k| f(k).cmp(b))
     }
 
-    /// Sorts the slice **without** preserving the initial order of equal elements.
+    /// Sorts the slice in ascending order **without** preserving the initial order of equal elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
     /// allocate), and *O*(*n* \* log(*n*)) worst-case.
@@ -3047,8 +3054,8 @@ impl<T> [T] {
         sort::unstable::sort(self, &mut T::lt);
     }
 
-    /// Sorts the slice with a comparison function, **without** preserving the initial order of
-    /// equal elements.
+    /// Sorts the slice in ascending order with a comparison function, **without** preserving the
+    /// initial order of equal elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
     /// allocate), and *O*(*n* \* log(*n*)) worst-case.
@@ -3102,8 +3109,8 @@ impl<T> [T] {
         sort::unstable::sort(self, &mut |a, b| compare(a, b) == Ordering::Less);
     }
 
-    /// Sorts the slice with a key extraction function, **without** preserving the initial order of
-    /// equal elements.
+    /// Sorts the slice in ascending order with a key extraction function, **without** preserving
+    /// the initial order of equal elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
     /// allocate), and *O*(*n* \* log(*n*)) worst-case.
@@ -4383,7 +4390,7 @@ impl<T> [T] {
     /// assert_eq!(first_three, &['a', 'b', 'c']);
     /// ```
     ///
-    /// Splitting off the last two elements of a slice:
+    /// Splitting off a slice starting with the third element:
     ///
     /// ```
     /// let mut slice: &[_] = &['a', 'b', 'c', 'd'];
@@ -4449,7 +4456,7 @@ impl<T> [T] {
     /// assert_eq!(first_three, &mut ['a', 'b', 'c']);
     /// ```
     ///
-    /// Taking the last two elements of a slice:
+    /// Splitting off a slice starting with the third element:
     ///
     /// ```
     /// let mut slice: &mut [_] = &mut ['a', 'b', 'c', 'd'];
@@ -4642,6 +4649,7 @@ impl<T> [T] {
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[stable(feature = "get_many_mut", since = "1.86.0")]
     #[inline]
+    #[track_caller]
     pub unsafe fn get_disjoint_unchecked_mut<I, const N: usize>(
         &mut self,
         indices: [I; N],

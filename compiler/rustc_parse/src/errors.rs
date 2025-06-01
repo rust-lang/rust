@@ -436,10 +436,28 @@ pub(crate) enum IfExpressionMissingThenBlockSub {
 
 #[derive(Diagnostic)]
 #[diag(parse_ternary_operator)]
-#[help]
 pub(crate) struct TernaryOperator {
     #[primary_span]
     pub span: Span,
+    /// If we have a span for the condition expression, suggest the if/else
+    #[subdiagnostic]
+    pub sugg: Option<TernaryOperatorSuggestion>,
+    /// Otherwise, just print the suggestion message
+    #[help(parse_use_if_else)]
+    pub no_sugg: bool,
+}
+
+#[derive(Subdiagnostic, Copy, Clone)]
+#[multipart_suggestion(parse_use_if_else, applicability = "maybe-incorrect", style = "verbose")]
+pub(crate) struct TernaryOperatorSuggestion {
+    #[suggestion_part(code = "if ")]
+    pub before_cond: Span,
+    #[suggestion_part(code = "{{")]
+    pub question: Span,
+    #[suggestion_part(code = "}} else {{")]
+    pub colon: Span,
+    #[suggestion_part(code = " }}")]
+    pub end: Span,
 }
 
 #[derive(Subdiagnostic)]
@@ -3506,4 +3524,74 @@ pub(crate) struct MoveSelfModifier {
     #[suggestion_part(code = "{modifier}")]
     pub insertion_span: Span,
     pub modifier: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_unsupported_operand)]
+pub(crate) struct AsmUnsupportedOperand<'a> {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) symbol: &'a str,
+    pub(crate) macro_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_underscore_input)]
+pub(crate) struct AsmUnderscoreInput {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_sym_no_path)]
+pub(crate) struct AsmSymNoPath {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_requires_template)]
+pub(crate) struct AsmRequiresTemplate {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_expected_comma)]
+pub(crate) struct AsmExpectedComma {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_expected_other)]
+pub(crate) struct AsmExpectedOther {
+    #[primary_span]
+    #[label(parse_asm_expected_other)]
+    pub(crate) span: Span,
+    pub(crate) is_inline_asm: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_non_abi)]
+pub(crate) struct NonABI {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_expected_string_literal)]
+pub(crate) struct AsmExpectedStringLiteral {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_asm_expected_register_class_or_explicit_register)]
+pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
+    #[primary_span]
+    pub(crate) span: Span,
 }

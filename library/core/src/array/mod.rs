@@ -531,6 +531,7 @@ impl<T, const N: usize> [T; N] {
     /// let y = x.map(|v| v.len());
     /// assert_eq!(y, [6, 9, 3, 3]);
     /// ```
+    #[must_use]
     #[stable(feature = "array_map", since = "1.55.0")]
     pub fn map<F, U>(self, f: F) -> [U; N]
     where
@@ -587,7 +588,7 @@ impl<T, const N: usize> [T; N] {
     /// Returns a mutable slice containing the entire array. Equivalent to
     /// `&mut s[..]`.
     #[stable(feature = "array_as_slice", since = "1.57.0")]
-    #[rustc_const_unstable(feature = "const_array_as_mut_slice", issue = "133333")]
+    #[rustc_const_stable(feature = "const_array_as_mut_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_mut_slice(&mut self) -> &mut [T] {
         self
     }

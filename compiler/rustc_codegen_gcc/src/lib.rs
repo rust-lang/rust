@@ -16,7 +16,7 @@
 #![allow(internal_features)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![feature(rustc_private, decl_macro, never_type, trusted_len, let_chains)]
+#![feature(rustc_private, decl_macro, never_type, trusted_len)]
 #![allow(broken_intra_doc_links)]
 #![recursion_limit = "256"]
 #![warn(rust_2018_idioms)]
@@ -37,7 +37,7 @@ extern crate tracing;
 extern crate rustc_abi;
 extern crate rustc_apfloat;
 extern crate rustc_ast;
-extern crate rustc_attr_parsing;
+extern crate rustc_attr_data_structures;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
@@ -391,7 +391,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!()
     }
 
-    unsafe fn optimize(
+    fn optimize(
         _cgcx: &CodegenContext<Self>,
         _dcx: DiagCtxtHandle<'_>,
         module: &mut ModuleCodegen<Self::Module>,
@@ -409,14 +409,14 @@ impl WriteBackendMethods for GccCodegenBackend {
         Ok(())
     }
 
-    unsafe fn optimize_thin(
+    fn optimize_thin(
         cgcx: &CodegenContext<Self>,
         thin: ThinModule<Self>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::lto::optimize_thin_module(thin, cgcx)
     }
 
-    unsafe fn codegen(
+    fn codegen(
         cgcx: &CodegenContext<Self>,
         dcx: DiagCtxtHandle<'_>,
         module: ModuleCodegen<Self::Module>,
@@ -454,7 +454,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 }
 
 /// This is the entrypoint for a hot plugged rustc_codegen_gccjit
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     #[cfg(feature = "master")]
     let info = {

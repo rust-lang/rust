@@ -1,7 +1,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(rust_logo)]
 #![feature(array_windows)]
 #![feature(associated_type_defaults)]
@@ -14,8 +13,6 @@
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
-
-extern crate proc_macro as pm;
 
 mod build;
 mod errors;

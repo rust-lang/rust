@@ -549,7 +549,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         source = module_path.pop().unwrap();
                         if rename.is_none() {
                             // Keep the span of `self`, but the name of `foo`
-                            ident = Ident { name: source.ident.name, span: self_span };
+                            ident = Ident::new(source.ident.name, self_span);
                         }
                     }
                 } else {
@@ -597,7 +597,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         if let Some(crate_name) = crate_name {
                             // `crate_name` should not be interpreted as relative.
                             module_path.push(Segment::from_ident_and_id(
-                                Ident { name: kw::PathRoot, span: source.ident.span },
+                                Ident::new(kw::PathRoot, source.ident.span),
                                 self.r.next_node_id(),
                             ));
                             source.ident.name = crate_name;
@@ -823,7 +823,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             // These items live in both the type and value namespaces.
-            ItemKind::Struct(ident, ref vdata, _) => {
+            ItemKind::Struct(ident, _, ref vdata) => {
                 self.build_reduced_graph_for_struct_variant(
                     vdata.fields(),
                     ident,
@@ -874,7 +874,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 }
             }
 
-            ItemKind::Union(ident, ref vdata, _) => {
+            ItemKind::Union(ident, _, ref vdata) => {
                 self.build_reduced_graph_for_struct_variant(
                     vdata.fields(),
                     ident,

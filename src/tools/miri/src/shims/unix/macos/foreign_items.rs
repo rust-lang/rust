@@ -186,7 +186,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let res = match this.pthread_setname_np(
                     thread,
                     this.read_scalar(name)?,
-                    this.eval_libc("MAXTHREADNAMESIZE").to_target_usize(this)?.try_into().unwrap(),
+                    this.eval_libc("MAXTHREADNAMESIZE").to_target_usize(this)?,
                     /* truncate */ false,
                 )? {
                     ThreadNameResult::Ok => Scalar::from_u32(0),

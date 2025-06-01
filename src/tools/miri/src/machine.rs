@@ -13,7 +13,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_attr_parsing::InlineAttr;
+use rustc_attr_data_structures::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
@@ -544,9 +544,6 @@ pub struct MiriMachine<'tcx> {
     /// Failure rate of compare_exchange_weak, between 0.0 and 1.0
     pub(crate) cmpxchg_weak_failure_rate: f64,
 
-    /// Corresponds to -Zmiri-mute-stdout-stderr and doesn't write the output but acts as if it succeeded.
-    pub(crate) mute_stdout_stderr: bool,
-
     /// The probability of the active thread being preempted at the end of each basic block.
     pub(crate) preemption_rate: f64,
 
@@ -614,6 +611,9 @@ pub struct MiriMachine<'tcx> {
 
     /// Cache for `mangle_internal_symbol`.
     pub(crate) mangle_internal_symbol_cache: FxHashMap<&'static str, String>,
+
+    /// Always prefer the intrinsic fallback body over the native Miri implementation.
+    pub force_intrinsic_fallback: bool,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -719,7 +719,6 @@ impl<'tcx> MiriMachine<'tcx> {
             track_alloc_accesses: config.track_alloc_accesses,
             check_alignment: config.check_alignment,
             cmpxchg_weak_failure_rate: config.cmpxchg_weak_failure_rate,
-            mute_stdout_stderr: config.mute_stdout_stderr,
             preemption_rate: config.preemption_rate,
             report_progress: config.report_progress,
             basic_block_count: 0,
@@ -770,6 +769,7 @@ impl<'tcx> MiriMachine<'tcx> {
             reject_in_isolation_warned: Default::default(),
             int2ptr_warned: Default::default(),
             mangle_internal_symbol_cache: Default::default(),
+            force_intrinsic_fallback: config.force_intrinsic_fallback,
         }
     }
 
@@ -921,7 +921,6 @@ impl VisitProvenance for MiriMachine<'_> {
             track_alloc_accesses: _,
             check_alignment: _,
             cmpxchg_weak_failure_rate: _,
-            mute_stdout_stderr: _,
             preemption_rate: _,
             report_progress: _,
             basic_block_count: _,
@@ -946,6 +945,7 @@ impl VisitProvenance for MiriMachine<'_> {
             reject_in_isolation_warned: _,
             int2ptr_warned: _,
             mangle_internal_symbol_cache: _,
+            force_intrinsic_fallback: _,
         } = self;
 
         threads.visit_provenance(visit);
@@ -1115,7 +1115,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         instance: ty::Instance<'tcx>,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx>,
+        dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
@@ -1142,7 +1142,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         fn_val: DynSym,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx>,
+        dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
@@ -1155,7 +1155,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx: &mut MiriInterpCx<'tcx>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: &MPlaceTy<'tcx>,
+        dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
@@ -1634,14 +1634,20 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         interp_ok(())
     }
 
-    fn before_stack_pop(
-        ecx: &InterpCx<'tcx, Self>,
-        frame: &Frame<'tcx, Self::Provenance, Self::FrameExtra>,
-    ) -> InterpResult<'tcx> {
+    fn before_stack_pop(ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
+        let frame = ecx.frame();
         // We want this *before* the return value copy, because the return place itself is protected
         // until we do `end_call` here.
         if ecx.machine.borrow_tracker.is_some() {
             ecx.on_stack_pop(frame)?;
+        }
+        if frame.extra.is_user_relevant {
+            // All that we store is whether or not the frame we just removed is local, so now we
+            // have no idea where the next topmost local frame is. So we recompute it.
+            // (If this ever becomes a bottleneck, we could have `push` store the previous
+            // user-relevant frame and restore that here.)
+            // We have to skip the frame that is just being popped.
+            ecx.active_thread_mut().recompute_top_user_relevant_frame(/* skip */ 1);
         }
         // tracing-tree can autoamtically annotate scope changes, but it gets very confused by our
         // concurrency and what it prints is just plain wrong. So we print our own information
@@ -1656,15 +1662,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         frame: Frame<'tcx, Provenance, FrameExtra<'tcx>>,
         unwinding: bool,
     ) -> InterpResult<'tcx, ReturnAction> {
-        if frame.extra.is_user_relevant {
-            // All that we store is whether or not the frame we just removed is local, so now we
-            // have no idea where the next topmost local frame is. So we recompute it.
-            // (If this ever becomes a bottleneck, we could have `push` store the previous
-            // user-relevant frame and restore that here.)
-            ecx.active_thread_mut().recompute_top_user_relevant_frame();
-        }
         let res = {
-            // Move `frame`` into a sub-scope so we control when it will be dropped.
+            // Move `frame` into a sub-scope so we control when it will be dropped.
             let mut frame = frame;
             let timing = frame.extra.timing.take();
             let res = ecx.handle_stack_pop_unwind(frame.extra, unwinding);
@@ -1776,7 +1775,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             let is_generic = instance
                 .args
                 .into_iter()
-                .any(|kind| !matches!(kind.unpack(), ty::GenericArgKind::Lifetime(_)));
+                .any(|arg| !matches!(arg.kind(), ty::GenericArgKind::Lifetime(_)));
             let can_be_inlined = matches!(
                 ecx.tcx.sess.opts.unstable_opts.cross_crate_inline_threshold,
                 InliningThreshold::Always
@@ -1804,6 +1803,9 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     ) -> Cow<'e, RangeSet> {
         Cow::Borrowed(ecx.machine.union_data_ranges.entry(ty).or_insert_with(compute_range))
     }
+
+    /// Placeholder!
+    fn get_default_alloc_params(&self) -> <Self::Bytes as AllocBytes>::AllocParams { () }
 }
 
 /// Trait for callbacks handling asynchronous machine operations.

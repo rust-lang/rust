@@ -1,23 +1,23 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/copy-intrinsic.rs:34:5
+  --> $DIR/copy-intrinsic.rs:20:5
    |
 LL |     copy_nonoverlapping(0x100 as *const i32, dangle, 1);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: attempting to access 4 bytes, but got 0x100[noalloc] which is a dangling pointer (it has no provenance)
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/copy-intrinsic.rs:43:5
+  --> $DIR/copy-intrinsic.rs:29:5
    |
 LL |     copy_nonoverlapping(dangle, 0x100 as *mut i32, 1);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: attempting to access 4 bytes, but got ALLOC0+0x28 which is at or beyond the end of the allocation of size 4 bytes
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/copy-intrinsic.rs:50:5
+  --> $DIR/copy-intrinsic.rs:36:5
    |
 LL |     copy(&x, &mut y, 1usize << (mem::size_of::<usize>() * 8 - 1));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow computing total size of `copy`
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/copy-intrinsic.rs:56:5
+  --> $DIR/copy-intrinsic.rs:42:5
    |
 LL |     copy_nonoverlapping(&x, &mut y, 1usize << (mem::size_of::<usize>() * 8 - 1));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow computing total size of `copy_nonoverlapping`

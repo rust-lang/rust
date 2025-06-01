@@ -385,7 +385,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let right: std::borrow::Cow<'_, [u8]>;
     /// ```
-    #[clippy::version = "1.85.0"]
+    #[clippy::version = "1.87.0"]
     pub OWNED_COW,
     style,
     "needlessly owned Cow type"
@@ -447,7 +447,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         match item.kind {
-            ItemKind::Static(_, ty, _, _) | ItemKind::Const(_, ty, _, _) => self.check_ty(
+            ItemKind::Static(_, _, ty, _) | ItemKind::Const(_, _, ty, _) => self.check_ty(
                 cx,
                 ty,
                 CheckTyContext {

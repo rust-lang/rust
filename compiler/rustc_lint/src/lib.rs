@@ -21,7 +21,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
@@ -49,7 +48,6 @@ mod errors;
 mod expect;
 mod for_loops_over_fallibles;
 mod foreign_modules;
-pub mod hidden_unicode_codepoints;
 mod if_let_rescope;
 mod impl_trait_overcaptures;
 mod internal;
@@ -76,6 +74,7 @@ mod reference_casting;
 mod shadowed_into_iter;
 mod static_mut_refs;
 mod traits;
+mod transmute;
 mod types;
 mod unit_bindings;
 mod unqualified_local_imports;
@@ -92,7 +91,6 @@ use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
-use hidden_unicode_codepoints::*;
 use if_let_rescope::IfLetRescope;
 use impl_trait_overcaptures::ImplTraitOvercaptures;
 use internal::*;
@@ -119,6 +117,7 @@ use shadowed_into_iter::ShadowedIntoIter;
 pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use static_mut_refs::*;
 use traits::*;
+use transmute::CheckTransmutes;
 use types::*;
 use unit_bindings::*;
 use unqualified_local_imports::*;
@@ -127,6 +126,7 @@ use unused::*;
 #[rustfmt::skip]
 pub use builtin::{MissingDoc, SoftLints};
 pub use context::{CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore};
+pub use early::diagnostics::decorate_builtin_lint;
 pub use early::{EarlyCheckNode, check_ast_node};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use levels::LintLevelsBuilder;
@@ -175,7 +175,6 @@ early_lint_methods!(
             DeprecatedAttr: DeprecatedAttr::default(),
             WhileTrue: WhileTrue,
             NonAsciiIdents: NonAsciiIdents,
-            HiddenUnicodeCodepoints: HiddenUnicodeCodepoints,
             IncompleteInternalFeatures: IncompleteInternalFeatures,
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
@@ -246,6 +245,7 @@ late_lint_methods!(
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,
             UnqualifiedLocalImports: UnqualifiedLocalImports,
+            CheckTransmutes: CheckTransmutes,
         ]
     ]
 );
