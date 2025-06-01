@@ -639,11 +639,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
                     }
 
-                    ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
-                        // TODO: write a test that can trigger this path.
-                        span_bug!(span, "unstable feature {:?} not enabled", symbol);
-                    }
-
                     // Errors for `ConstEvaluatable` predicates show up as
                     // `SelectionError::ConstEvalFailure`,
                     // not `Unimplemented`.
@@ -654,6 +649,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     | ty::PredicateKind::ConstEquate { .. }
                     // Ambiguous predicates should never error
                     | ty::PredicateKind::Ambiguous
+                    // We never return Err when proving UnstableFeature goal.
+                    | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature{ .. })
                     | ty::PredicateKind::NormalizesTo { .. }
                     | ty::PredicateKind::AliasRelate { .. }
                     | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType { .. }) => {
