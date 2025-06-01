@@ -32,7 +32,9 @@ use rustc_session::Session;
 use rustc_session::config::TargetModifier;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
-use rustc_span::{BytePos, DUMMY_SP, Pos, SpanData, SpanDecoder, SyntaxContext, kw};
+use rustc_span::{
+    BytePos, ByteSymbol, DUMMY_SP, Pos, SpanData, SpanDecoder, Symbol, SyntaxContext, kw,
+};
 use tracing::debug;
 
 use crate::creader::CStore;
@@ -384,6 +386,28 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
         self.opaque.read_raw_bytes(len)
     }
+
+    fn decode_symbol_or_byte_symbol<S>(
+        &mut self,
+        new_from_index: impl Fn(u32) -> S,
+        read_and_intern_str_or_byte_str_this: impl Fn(&mut Self) -> S,
+        read_and_intern_str_or_byte_str_opaque: impl Fn(&mut MemDecoder<'a>) -> S,
+    ) -> S {
+        let tag = self.read_u8();
+
+        match tag {
+            SYMBOL_STR => read_and_intern_str_or_byte_str_this(self),
+            SYMBOL_OFFSET => {
+                // read str offset
+                let pos = self.read_usize();
+
+                // move to str offset and read
+                self.opaque.with_position(pos, |d| read_and_intern_str_or_byte_str_opaque(d))
+            }
+            SYMBOL_PREDEFINED => new_from_index(self.read_u32()),
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
@@ -545,29 +569,19 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
     }
 
     fn decode_symbol(&mut self) -> Symbol {
-        let tag = self.read_u8();
+        self.decode_symbol_or_byte_symbol(
+            Symbol::new,
+            |this| Symbol::intern(this.read_str()),
+            |opaque| Symbol::intern(opaque.read_str()),
+        )
+    }
 
-        match tag {
-            SYMBOL_STR => {
-                let s = self.read_str();
-                Symbol::intern(s)
-            }
-            SYMBOL_OFFSET => {
-                // read str offset
-                let pos = self.read_usize();
-
-                // move to str offset and read
-                self.opaque.with_position(pos, |d| {
-                    let s = d.read_str();
-                    Symbol::intern(s)
-                })
-            }
-            SYMBOL_PREDEFINED => {
-                let symbol_index = self.read_u32();
-                Symbol::new(symbol_index)
-            }
-            _ => unreachable!(),
-        }
+    fn decode_byte_symbol(&mut self) -> ByteSymbol {
+        self.decode_symbol_or_byte_symbol(
+            ByteSymbol::new,
+            |this| ByteSymbol::intern(this.read_byte_str()),
+            |opaque| ByteSymbol::intern(opaque.read_byte_str()),
+        )
     }
 }
 

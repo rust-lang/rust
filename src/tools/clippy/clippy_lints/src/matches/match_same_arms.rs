@@ -12,7 +12,7 @@ use rustc_hir::{Arm, Expr, HirId, HirIdMap, HirIdMapEntry, HirIdSet, Pat, PatExp
 use rustc_lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty;
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ByteSymbol, ErrorGuaranteed, Span, Symbol};
 
 use super::MATCH_SAME_ARMS;
 
@@ -193,7 +193,7 @@ enum NormalizedPat<'a> {
     Or(&'a [Self]),
     Path(Option<DefId>),
     LitStr(Symbol),
-    LitBytes(&'a [u8]),
+    LitBytes(ByteSymbol),
     LitInt(u128),
     LitBool(bool),
     Range(PatRange),
@@ -332,7 +332,9 @@ impl<'a> NormalizedPat<'a> {
                 // TODO: Handle negative integers. They're currently treated as a wild match.
                 PatExprKind::Lit { lit, negated: false } => match lit.node {
                     LitKind::Str(sym, _) => Self::LitStr(sym),
-                    LitKind::ByteStr(ref bytes, _) | LitKind::CStr(ref bytes, _) => Self::LitBytes(bytes),
+                    LitKind::ByteStr(byte_sym, _) | LitKind::CStr(byte_sym, _) => {
+                        Self::LitBytes(byte_sym)
+                    }
                     LitKind::Byte(val) => Self::LitInt(val.into()),
                     LitKind::Char(val) => Self::LitInt(val.into()),
                     LitKind::Int(val, _) => Self::LitInt(val.get()),
