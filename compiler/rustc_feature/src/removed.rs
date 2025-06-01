@@ -207,6 +207,8 @@ declare_features! (
     /// Allows exhaustive integer pattern matching with `usize::MAX`/`isize::MIN`/`isize::MAX`.
     (removed, precise_pointer_size_matching, "1.32.0", Some(56354),
      Some("removed in favor of half-open ranges")),
+    (removed, pref_align_of, "CURRENT_RUSTC_VERSION", Some(91971),
+     Some("removed due to marginal use and inducing compiler complications")),
     (removed, proc_macro_expr, "1.27.0", Some(54727),
      Some("subsumed by `#![feature(proc_macro_hygiene)]`")),
     (removed, proc_macro_gen, "1.27.0", Some(54727),
