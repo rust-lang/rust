@@ -1723,7 +1723,7 @@ pub const fn needs_drop<T: ?Sized>() -> bool;
 /// # Safety
 ///
 /// If the computed offset is non-zero, then both the starting and resulting pointer must be
-/// either in bounds or at the end of an allocated object. If either pointer is out
+/// either in bounds or at the end of an allocation. If either pointer is out
 /// of bounds or arithmetic overflow occurs then this operation is undefined behavior.
 ///
 /// The stabilized version of this intrinsic is [`pointer::offset`].
