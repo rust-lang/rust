@@ -204,7 +204,7 @@ impl ArbitrarySourceItemOrdering {
                 self.assoc_types_order
             ),
             Some(before_item.span),
-            format!("should be placed before `{}`", before_item.ident.as_str(),),
+            format!("should be placed before `{}`", before_item.ident.name),
         );
     }
 
@@ -216,7 +216,7 @@ impl ArbitrarySourceItemOrdering {
             ident.span,
             "incorrect ordering of items (must be alphabetically ordered)",
             Some(before_ident.span),
-            format!("should be placed before `{}`", before_ident.as_str(),),
+            format!("should be placed before `{}`", before_ident.name),
         );
     }
 
@@ -228,7 +228,7 @@ impl ArbitrarySourceItemOrdering {
         };
 
         let (before_span, note) = if let Some(ident) = before_item.kind.ident() {
-            (ident.span, format!("should be placed before `{}`", ident.as_str(),))
+            (ident.span, format!("should be placed before `{}`", ident.name))
         } else {
             (
                 before_item.span,
@@ -255,7 +255,7 @@ impl ArbitrarySourceItemOrdering {
                 self.assoc_types_order
             ),
             Some(before_item.span),
-            format!("should be placed before `{}`", before_item.ident.as_str(),),
+            format!("should be placed before `{}`", before_item.ident.name),
         );
     }
 }
