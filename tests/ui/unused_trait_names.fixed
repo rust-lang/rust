@@ -294,3 +294,22 @@ mod allow_lint_import {
 //         "foo".type_id();
 //     }
 // }
+
+mod issue14924 {
+    mod m {
+        pub trait Tr {
+            fn method(&self) {}
+        }
+
+        impl Tr for u8 {}
+    }
+
+    macro gen_import($Br: ident) {
+        use m::Tr as $Br;
+    }
+    gen_import!(Br);
+
+    fn do_something() {
+        0u8.method();
+    }
+}

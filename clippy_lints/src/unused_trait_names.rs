@@ -73,6 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedTraitNames {
             && let Some(snip) = snippet_opt(cx, last_segment.ident.span)
             && self.msrv.meets(cx, msrvs::UNDERSCORE_IMPORTS)
             && !is_from_proc_macro(cx, &last_segment.ident)
+            && (!last_segment.ident.span.from_expansion() || ident.span.from_expansion())
         {
             let complete_span = last_segment.ident.span.to(ident.span);
             span_lint_and_sugg(
