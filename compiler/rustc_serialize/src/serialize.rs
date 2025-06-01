@@ -65,10 +65,11 @@ pub trait Encoder {
         self.emit_u32(v as u32);
     }
 
+    // This is used for `&str` too.
     #[inline]
-    fn emit_str(&mut self, v: &str) {
+    fn emit_byte_str(&mut self, v: &[u8]) {
         self.emit_usize(v.len());
-        self.emit_raw_bytes(v.as_bytes());
+        self.emit_raw_bytes(v);
         self.emit_u8(STR_SENTINEL);
     }
 
@@ -117,12 +118,20 @@ pub trait Decoder {
         std::char::from_u32(bits).unwrap()
     }
 
+    // `Encoder::emit_byte_str` is used for both strings and byte strings. This
+    // trait has separate methods for those two cases because it's convenient,
+    // but `read_str` is defined in terms of `read_byte_str`.
     #[inline]
     fn read_str(&mut self) -> &str {
+        unsafe { std::str::from_utf8_unchecked(self.read_byte_str()) }
+    }
+
+    #[inline]
+    fn read_byte_str(&mut self) -> &[u8] {
         let len = self.read_usize();
         let bytes = self.read_raw_bytes(len + 1);
         assert!(bytes[len] == STR_SENTINEL);
-        unsafe { std::str::from_utf8_unchecked(&bytes[..len]) }
+        &bytes[..len]
     }
 
     fn read_raw_bytes(&mut self, len: usize) -> &[u8];
@@ -233,19 +242,19 @@ impl<D: Decoder> Decodable<D> for NonZero<u32> {
 
 impl<S: Encoder> Encodable<S> for str {
     fn encode(&self, s: &mut S) {
-        s.emit_str(self);
+        s.emit_byte_str(self.as_bytes());
     }
 }
 
 impl<S: Encoder> Encodable<S> for String {
     fn encode(&self, s: &mut S) {
-        s.emit_str(&self[..]);
+        s.emit_byte_str(self.as_bytes());
     }
 }
 
 impl<D: Decoder> Decodable<D> for String {
     fn decode(d: &mut D) -> String {
-        d.read_str().to_owned()
+        unsafe { std::str::from_utf8_unchecked(d.read_byte_str()).to_owned() }
     }
 }
 

@@ -77,7 +77,7 @@ impl<'tcx> GlobalId<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, HashStable)]
 pub struct LitToConstInput<'tcx> {
     /// The absolute value of the resultant constant.
-    pub lit: &'tcx LitKind,
+    pub lit: LitKind,
     /// The type of the constant.
     pub ty: Ty<'tcx>,
     /// If the constant is negative.

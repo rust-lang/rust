@@ -63,7 +63,8 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     required_source_files: Option<FxIndexSet<usize>>,
     is_proc_macro: bool,
     hygiene_ctxt: &'a HygieneEncodeContext,
-    symbol_table: FxHashMap<Symbol, usize>,
+    // Used for both `Symbol`s and `ByteSymbol`s.
+    symbol_index_table: FxHashMap<u32, usize>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -200,19 +201,19 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_symbol(&mut self, symbol: Symbol) {
-        // if symbol predefined, emit tag and symbol index
-        if symbol.is_predefined() {
+    fn encode_symbol_index_or_byte_str(&mut self, index: u32, byte_str: &[u8]) {
+        // if symbol/byte symbol is predefined, emit tag and symbol index
+        if Symbol::is_predefined(index) {
             self.opaque.emit_u8(SYMBOL_PREDEFINED);
-            self.opaque.emit_u32(symbol.as_u32());
+            self.opaque.emit_u32(index);
         } else {
             // otherwise write it as string or as offset to it
-            match self.symbol_table.entry(symbol) {
+            match self.symbol_index_table.entry(index) {
                 Entry::Vacant(o) => {
                     self.opaque.emit_u8(SYMBOL_STR);
                     let pos = self.opaque.position();
                     o.insert(pos);
-                    self.emit_str(symbol.as_str());
+                    self.emit_byte_str(byte_str);
                 }
                 Entry::Occupied(o) => {
                     let x = *o.get();
@@ -2408,7 +2409,7 @@ fn with_encode_metadata_header(
         required_source_files,
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
-        symbol_table: Default::default(),
+        symbol_index_table: Default::default(),
     };
 
     // Encode the rustc version string in a predictable location.

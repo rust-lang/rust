@@ -66,7 +66,9 @@ mod span_encoding;
 pub use span_encoding::{DUMMY_SP, Span};
 
 pub mod symbol;
-pub use symbol::{Ident, MacroRulesNormalizedIdent, STDLIB_STABLE_CRATES, Symbol, kw, sym};
+pub use symbol::{
+    ByteSymbol, Ident, MacroRulesNormalizedIdent, STDLIB_STABLE_CRATES, Symbol, kw, sym,
+};
 
 mod analyze_source_file;
 pub mod fatal_error;
@@ -1184,11 +1186,13 @@ rustc_index::newtype_index! {
 /// It is similar to rustc_type_ir's TyEncoder.
 pub trait SpanEncoder: Encoder {
     fn encode_span(&mut self, span: Span);
-    fn encode_symbol(&mut self, symbol: Symbol);
+    /// This is used for both `Symbol`s and `ByteSymbol`s, which is why it uses the inner parts:
+    /// the index or the byte string.
+    fn encode_symbol_index_or_byte_str(&mut self, index: u32, byte_str: &[u8]);
     fn encode_expn_id(&mut self, expn_id: ExpnId);
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext);
-    /// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a tcx.
-    /// Therefore, make sure to include the context when encode a `CrateNum`.
+    /// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a
+    /// tcx. Therefore, make sure to include the context when encode a `CrateNum`.
     fn encode_crate_num(&mut self, crate_num: CrateNum);
     fn encode_def_index(&mut self, def_index: DefIndex);
     fn encode_def_id(&mut self, def_id: DefId);
@@ -1201,8 +1205,8 @@ impl SpanEncoder for FileEncoder {
         span.hi.encode(self);
     }
 
-    fn encode_symbol(&mut self, symbol: Symbol) {
-        self.emit_str(symbol.as_str());
+    fn encode_symbol_index_or_byte_str(&mut self, _index: u32, byte_str: &[u8]) {
+        self.emit_byte_str(byte_str);
     }
 
     fn encode_expn_id(&mut self, _expn_id: ExpnId) {
@@ -1235,7 +1239,13 @@ impl<E: SpanEncoder> Encodable<E> for Span {
 
 impl<E: SpanEncoder> Encodable<E> for Symbol {
     fn encode(&self, s: &mut E) {
-        s.encode_symbol(*self);
+        s.encode_symbol_index_or_byte_str(self.as_u32(), self.as_str().as_bytes());
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for ByteSymbol {
+    fn encode(&self, s: &mut E) {
+        s.encode_symbol_index_or_byte_str(self.as_u32(), self.as_byte_str());
     }
 }
 
@@ -1279,7 +1289,12 @@ impl<E: SpanEncoder> Encodable<E> for AttrId {
 /// It is similar to rustc_type_ir's TyDecoder.
 pub trait SpanDecoder: Decoder {
     fn decode_span(&mut self) -> Span;
-    fn decode_symbol(&mut self) -> Symbol;
+    // The `Fn` arguments produce a `Symbol` or `ByteSymbol` from the symbol inner parts.
+    fn decode_symbol_index_or_byte_str<S>(
+        &mut self,
+        new: impl Fn(u32) -> S,
+        intern: impl Fn(&[u8]) -> S,
+    ) -> S;
     fn decode_expn_id(&mut self) -> ExpnId;
     fn decode_syntax_context(&mut self) -> SyntaxContext;
     fn decode_crate_num(&mut self) -> CrateNum;
@@ -1296,8 +1311,12 @@ impl SpanDecoder for MemDecoder<'_> {
         Span::new(lo, hi, SyntaxContext::root(), None)
     }
 
-    fn decode_symbol(&mut self) -> Symbol {
-        Symbol::intern(self.read_str())
+    fn decode_symbol_index_or_byte_str<S>(
+        &mut self,
+        _new: impl Fn(u32) -> S,
+        intern: impl Fn(&[u8]) -> S,
+    ) -> S {
+        intern(self.read_byte_str())
     }
 
     fn decode_expn_id(&mut self) -> ExpnId {
@@ -1333,7 +1352,15 @@ impl<D: SpanDecoder> Decodable<D> for Span {
 
 impl<D: SpanDecoder> Decodable<D> for Symbol {
     fn decode(s: &mut D) -> Symbol {
-        s.decode_symbol()
+        s.decode_symbol_index_or_byte_str(Symbol::new, |b| {
+            Symbol::intern(unsafe { str::from_utf8_unchecked(b) })
+        })
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for ByteSymbol {
+    fn decode(s: &mut D) -> ByteSymbol {
+        s.decode_symbol_index_or_byte_str(ByteSymbol::new, ByteSymbol::intern)
     }
 }
 

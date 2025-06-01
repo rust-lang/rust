@@ -57,7 +57,7 @@ impl LateLintPass<'_> for LargeIncludeFile {
         if let ExprKind::Lit(lit) = &expr.kind
             && let len = match &lit.node {
                 // include_bytes
-                LitKind::ByteStr(bstr, _) => bstr.len(),
+                LitKind::ByteStr(bstr, _) => bstr.as_byte_str().len(),
                 // include_str
                 LitKind::Str(sym, _) => sym.as_str().len(),
                 _ => return,

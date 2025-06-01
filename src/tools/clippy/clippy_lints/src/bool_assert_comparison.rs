@@ -42,7 +42,7 @@ fn extract_bool_lit(e: &Expr<'_>) -> Option<bool> {
     }) = e.kind
         && !e.span.from_expansion()
     {
-        Some(*b)
+        Some(b)
     } else {
         None
     }

@@ -16,7 +16,7 @@ use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, utf8_error};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{Pos, Span, Symbol};
+use rustc_span::{ByteSymbol, Pos, Span, Symbol};
 use smallvec::SmallVec;
 
 use crate::errors;
@@ -237,7 +237,7 @@ pub(crate) fn expand_include_bytes(
         Ok((bytes, _bsp)) => {
             // Don't care about getting the span for the raw bytes,
             // because the console can't really show them anyway.
-            let expr = cx.expr(sp, ast::ExprKind::IncludedBytes(bytes));
+            let expr = cx.expr(sp, ast::ExprKind::IncludedBytes(ByteSymbol::intern(&bytes)));
             MacEager::expr(expr)
         }
         Err(dummy) => dummy,
