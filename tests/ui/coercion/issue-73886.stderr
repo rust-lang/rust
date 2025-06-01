@@ -3,6 +3,8 @@ error[E0605]: non-primitive cast: `&&[i32; 1]` as `&[_]`
    |
 LL |     let _ = &&[0] as &[_];
    |             ^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+   |
+   = note: casting reference expression `&&[0]` because `&` binds tighter than `as`
 
 error[E0605]: non-primitive cast: `u32` as `Option<_>`
   --> $DIR/issue-73886.rs:4:13

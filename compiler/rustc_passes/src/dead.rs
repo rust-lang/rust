@@ -736,7 +736,7 @@ fn check_item<'tcx>(
     match tcx.def_kind(id.owner_id) {
         DefKind::Enum => {
             let item = tcx.hir_item(id);
-            if let hir::ItemKind::Enum(_, ref enum_def, _) = item.kind {
+            if let hir::ItemKind::Enum(_, _, ref enum_def) = item.kind {
                 if let Some(comes_from_allow) = allow_dead_code {
                     worklist.extend(
                         enum_def.variants.iter().map(|variant| (variant.def_id, comes_from_allow)),
@@ -783,7 +783,7 @@ fn check_item<'tcx>(
         }
         DefKind::Struct => {
             let item = tcx.hir_item(id);
-            if let hir::ItemKind::Struct(_, ref variant_data, _) = item.kind
+            if let hir::ItemKind::Struct(_, _, ref variant_data) = item.kind
                 && let Some(ctor_def_id) = variant_data.ctor_def_id()
             {
                 struct_constructors.insert(ctor_def_id, item.owner_id.def_id);
@@ -1055,7 +1055,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                 let tuple_fields = if let Some(parent_id) = parent_item
                     && let node = tcx.hir_node_by_def_id(parent_id)
                     && let hir::Node::Item(hir::Item {
-                        kind: hir::ItemKind::Struct(_, hir::VariantData::Tuple(fields, _, _), _),
+                        kind: hir::ItemKind::Struct(_, _, hir::VariantData::Tuple(fields, _, _)),
                         ..
                     }) = node
                 {

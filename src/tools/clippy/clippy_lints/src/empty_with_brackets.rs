@@ -92,7 +92,7 @@ impl_lint_pass!(EmptyWithBrackets => [EMPTY_STRUCTS_WITH_BRACKETS, EMPTY_ENUM_VA
 
 impl LateLintPass<'_> for EmptyWithBrackets {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if let ItemKind::Struct(ident, var_data, _) = &item.kind
+        if let ItemKind::Struct(ident, _, var_data) = &item.kind
             && !item.span.from_expansion()
             && has_brackets(var_data)
             && let span_after_ident = item.span.with_lo(ident.span.hi())

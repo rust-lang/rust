@@ -263,3 +263,24 @@ pub fn get_metadata(a: *const i32, b: *const [u8], c: *const dyn std::fmt::Debug
     let _usize = ptr_metadata(b);
     let _vtable = ptr_metadata(c);
 }
+
+// EMIT_MIR lower_intrinsics.slice_get.LowerIntrinsics.diff
+pub unsafe fn slice_get<'a, 'b>(
+    r: &'a [i8],
+    rm: &'b mut [i16],
+    p: *const [i32],
+    pm: *mut [i64],
+    i: usize,
+) -> (&'a i8, &'b mut i16, *const i32, *mut i64) {
+    use std::intrinsics::slice_get_unchecked;
+    // CHECK: = &(*_{{[0-9]+}})[_{{[0-9]+}}]
+    // CHECK: = &mut (*_{{[0-9]+}})[_{{[0-9]+}}]
+    // CHECK: = &raw const (*_{{[0-9]+}})[_{{[0-9]+}}]
+    // CHECK: = &raw mut (*_{{[0-9]+}})[_{{[0-9]+}}]
+    (
+        slice_get_unchecked(r, i),
+        slice_get_unchecked(rm, i),
+        slice_get_unchecked(p, i),
+        slice_get_unchecked(pm, i),
+    )
+}
