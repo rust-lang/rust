@@ -46,17 +46,18 @@ function run_icount_benchmarks() {
         shift
     done
 
-    # Run iai-callgrind benchmarks
-    cargo bench "${cargo_args[@]}" -- "${iai_args[@]}"
+    # Run iai-callgrind benchmarks. Do this in a subshell with `&& true` to
+    # capture rather than exit on error.
+    (cargo bench "${cargo_args[@]}" -- "${iai_args[@]}") && true
+    exit_code="$?"
 
-    # NB: iai-callgrind should exit on error but does not, so we inspect the sumary
-    # for errors. See  https://github.com/iai-callgrind/iai-callgrind/issues/337
-    if [ -n "${PR_NUMBER:-}" ]; then
-        # If this is for a pull request, ignore regressions if specified.
-        ./ci/ci-util.py check-regressions --home "$iai_home" --allow-pr-override "$PR_NUMBER"
-    else
+    if [ "$exit_code" -eq 0 ]; then
+        echo "Benchmarks completed with no regressions"
+    elif [ -z "${PR_NUMBER:-}" ]; then
         # Disregard regressions after merge
-        ./ci/ci-util.py check-regressions --home "$iai_home" || true
+        echo "Benchmarks completed with regressions; ignoring (not in a PR)"
+    else
+        ./ci/ci-util.py handle-banch-regressions "$PR_NUMBER"
     fi
 }
 
