@@ -66,8 +66,8 @@ use crate::visit_ast::Module as DocModule;
 pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let mut items: Vec<Item> = vec![];
     let mut inserted = FxHashSet::default();
-    items.extend(doc.foreigns.iter().map(|(item, renamed)| {
-        let item = clean_maybe_renamed_foreign_item(cx, item, *renamed);
+    items.extend(doc.foreigns.iter().map(|(item, renamed, import_id)| {
+        let item = clean_maybe_renamed_foreign_item(cx, item, *renamed, *import_id);
         if let Some(name) = item.name
             && (cx.render_options.document_hidden || !item.is_doc_hidden())
         {
@@ -89,7 +89,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         Some(item)
     }));
 
-    // Split up imports from all other items.
+    // Split up glob imports from all other items.
     //
     // This covers the case where somebody does an import which should pull in an item,
     // but there's already an item with the same namespace and same name. Rust gives
@@ -115,16 +115,9 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         let import = cx.tcx.hir_expect_item(*local_import_id);
         match import.kind {
             hir::ItemKind::Use(path, kind) => {
-                let hir::UsePath { segments, span, .. } = *path;
-                let path = hir::Path { segments, res: *res, span };
-                clean_use_statement_inner(
-                    import,
-                    Some(name),
-                    &path,
-                    kind,
-                    cx,
-                    &mut Default::default(),
-                )
+                //let hir::UsePath { segments, span, .. } = *path;
+                //let path = hir::Path { segments, res: *res, span };
+                clean_use_statement(import, Some(name), &path, kind, cx, &mut Default::default())
             }
             _ => unreachable!(),
         }
@@ -2772,7 +2765,6 @@ fn clean_maybe_renamed_item<'tcx>(
     import_id: Option<LocalDefId>,
 ) -> Vec<Item> {
     use hir::ItemKind;
-
     fn get_name(
         cx: &DocContext<'_>,
         item: &hir::Item<'_>,
@@ -2984,6 +2976,7 @@ fn clean_extern_crate<'tcx>(
         && !cx.is_json_output();
 
     let krate_owner_def_id = krate.owner_id.def_id;
+
     if please_inline
         && let Some(items) = inline::try_inline(
             cx,
@@ -3145,6 +3138,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     cx: &mut DocContext<'tcx>,
     item: &hir::ForeignItem<'tcx>,
     renamed: Option<Symbol>,
+    import_id: Option<LocalDefId>,
 ) -> Item {
     let def_id = item.owner_id.to_def_id();
     cx.with_param_env(def_id, |cx| {
@@ -3160,11 +3154,13 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
             hir::ForeignItemKind::Type => ForeignTypeItem,
         };
 
-        Item::from_def_id_and_parts(
-            item.owner_id.def_id.to_def_id(),
-            Some(renamed.unwrap_or(item.ident.name)),
-            kind,
+        generate_item_with_correct_attrs(
             cx,
+            kind,
+            item.owner_id.def_id.to_def_id(),
+            item.ident.name,
+            import_id,
+            renamed,
         )
     })
 }
