@@ -21,6 +21,10 @@ async fn test_create_and_write() -> io::Result<()> {
 
     // Write 10 bytes to the file.
     file.write_all(b"some bytes").await?;
+    // For tokio's file I/O, `await` does not have its usual semantics of waiting until the
+    // operation is completed, so we have to wait some more to make sure the write is completed.
+    file.flush().await?;
+    // Check that 10 bytes have been written.
     assert_eq!(file.metadata().await.unwrap().len(), 10);
 
     remove_file(&path).unwrap();
