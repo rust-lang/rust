@@ -23,7 +23,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_middle::bug;
 #[cfg(feature = "master")]
 use rustc_middle::ty::layout::FnAbiOf;
-use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::callconv::{ArgAbi, PassMode};
@@ -205,21 +205,10 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         span: Span,
     ) -> Result<(), Instance<'tcx>> {
         let tcx = self.tcx;
-        let callee_ty = instance.ty(tcx, self.typing_env());
 
-        let (def_id, fn_args) = match *callee_ty.kind() {
-            ty::FnDef(def_id, fn_args) => (def_id, fn_args),
-            _ => bug!("expected fn item type, found {}", callee_ty),
-        };
-
-        let sig = callee_ty.fn_sig(tcx);
-        let sig = tcx.normalize_erasing_late_bound_regions(self.typing_env(), sig);
-        let arg_tys = sig.inputs();
-        let ret_ty = sig.output();
-        let name = tcx.item_name(def_id);
+        let name = tcx.item_name(instance.def_id());
         let name_str = name.as_str();
-
-        let llret_ty = self.layout_of(ret_ty).gcc_type(self);
+        let fn_args = instance.args;
 
         let simple = get_simple_intrinsic(self, name);
         let simple_func = get_simple_function(self, name);
@@ -320,8 +309,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::rotate_right
             | sym::saturating_add
             | sym::saturating_sub => {
-                let ty = arg_tys[0];
-                match int_type_width_signed(ty, self) {
+                match int_type_width_signed(args[0].layout.ty, self) {
                     Some((width, signed)) => match name {
                         sym::ctlz | sym::cttz => {
                             let func = self.current_func.borrow().expect("func");
@@ -400,7 +388,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
                             span,
                             name,
-                            ty,
+                            ty: args[0].layout.ty,
                         });
                         return Ok(());
                     }
@@ -492,7 +480,14 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             }
 
             _ if name_str.starts_with("simd_") => {
-                match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
+                match generic_simd_intrinsic(
+                    self,
+                    name,
+                    args,
+                    result.layout.ty,
+                    result.layout.gcc_type(self),
+                    span,
+                ) {
                     Ok(value) => value,
                     Err(()) => return Ok(()),
                 }
@@ -503,13 +498,10 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         };
 
         if result.layout.ty.is_bool() {
-            OperandRef::from_immediate_or_packed_pair(self, value, result.layout)
-                .val
-                .store(self, result);
+            let val = self.from_immediate(value);
+            self.store_to_place(val, result.val);
         } else if !result.layout.ty.is_unit() {
-            let ptr_llty = self.type_ptr_to(result.layout.gcc_type(self));
-            let ptr = self.pointercast(result.val.llval, ptr_llty);
-            self.store(value, ptr, result.val.align);
+            self.store_to_place(value, result.val);
         }
         Ok(())
     }
